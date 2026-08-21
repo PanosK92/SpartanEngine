@@ -641,11 +641,6 @@ namespace spartan
         // before this property existed loads without the attribute and keeps this value
         SetProperty(MaterialProperty::TerrainBlend,          1.0f);
         SetProperty(MaterialProperty::TerrainBlendSharpness, 0.5f);
-
-        const char* project_dir = ResourceCache::GetProjectDirectory();
-        char file_path[512];
-        snprintf(file_path, sizeof(file_path), "%smaterials\\empty.xml", project_dir);
-        SetResourceFilePath(file_path);
     }
 
     void Material::ApplyPaintPreset(MaterialPaintPreset preset, const Color& color, bool save)

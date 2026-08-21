@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "pch.h"
+#include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <unordered_set>
@@ -73,8 +74,10 @@ namespace spartan
         const aiScene* scene = nullptr;
         unordered_map<string, uint32_t> bone_name_to_index;
         unordered_map<string, string> directory_files;
+        unordered_map<uint32_t, shared_ptr<Material>> materials;
         std::vector<MeshJob> mesh_jobs;
         std::mutex mesh_jobs_mutex;
+        std::mutex materials_mutex;
     };
 
     namespace
@@ -184,6 +187,44 @@ namespace spartan
             return path;
         }
 
+        string normalize_stem(const string& name)
+        {
+            string out;
+            out.reserve(name.size());
+            for (unsigned char c : name)
+            {
+                if (c >= 'A' && c <= 'Z')
+                {
+                    c = static_cast<unsigned char>(c - 'A' + 'a');
+                }
+                if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
+                {
+                    out += static_cast<char>(c);
+                }
+            }
+            return out;
+        }
+
+        bool stems_compatible(const string& wanted, const string& found)
+        {
+            if (wanted.empty() || found.empty())
+            {
+                return false;
+            }
+            if (found == wanted)
+            {
+                return true;
+            }
+            if (found.size() > wanted.size() && found.compare(0, wanted.size(), wanted) == 0)
+            {
+                return all_of(found.begin() + static_cast<ptrdiff_t>(wanted.size()), found.end(), [](char c)
+                {
+                    return c >= '0' && c <= '9';
+                });
+            }
+            return false;
+        }
+
         void build_directory_file_cache(const string& root, unordered_map<string, string>& out)
         {
             try
@@ -256,89 +297,53 @@ namespace spartan
                 }
             }
 
-            return "";
-        }
-
-        // load texture synchronously (original working behavior)
-        bool load_material_texture(
-            const string& model_directory,
-            const unordered_map<string, string>& directory_files,
-            shared_ptr<Material> material,
-            const aiMaterial* material_assimp,
-            const MaterialTextureType texture_type,
-            const aiTextureType texture_type_assimp_pbr,
-            const aiTextureType texture_type_assimp_legacy
-        )
-        {
-            // determine texture type (prefer pbr)
-            aiTextureType type_assimp = aiTextureType_NONE;
-            type_assimp = material_assimp->GetTextureCount(texture_type_assimp_pbr) > 0 ? texture_type_assimp_pbr : type_assimp;
-            type_assimp = (type_assimp == aiTextureType_NONE) ? (material_assimp->GetTextureCount(texture_type_assimp_legacy) > 0 ? texture_type_assimp_legacy : type_assimp) : type_assimp;
-
-            // check if the material has any textures
-            if (material_assimp->GetTextureCount(type_assimp) == 0)
+            // spaces vs underscores, and a copy suffix, the fbx path is the same file
+            string underscored = file_name_no_ext;
+            replace(underscored.begin(), underscored.end(), ' ', '_');
+            if (underscored != file_name_no_ext)
             {
-                return true;
-            }
-
-            // get texture path
-            aiString texture_path;
-            if (material_assimp->GetTexture(type_assimp, 0, &texture_path) != AI_SUCCESS)
-            {
-                return false;
-            }
-
-            // resolve actual file path
-            const string resolved_path = resolve_texture_path(texture_path.data, model_directory, directory_files);
-            if (!FileSystem::IsSupportedImageFile(resolved_path))
-            {
-                return false;
-            }
-
-            // load the texture and set it to the material
-            {
-                shared_ptr<RHI_Texture> texture =
-                    ResourceCache::GetByPath<RHI_Texture>(
-                        resolved_path
-                    );
-
-                if (texture)
+                for (const char* ext : extensions)
                 {
-                    material->SetTexture(texture_type, texture);
-                }
-                else
-                {
-                    material->SetTexture(texture_type, resolved_path);
-                }
-            }
-
-            // fix: materials with diffuse texture should not be tinted black/gray
-            if (type_assimp == aiTextureType_BASE_COLOR || type_assimp == aiTextureType_DIFFUSE)
-            {
-                material->SetProperty(MaterialProperty::ColorR, 1.0f);
-                material->SetProperty(MaterialProperty::ColorG, 1.0f);
-                material->SetProperty(MaterialProperty::ColorB, 1.0f);
-                material->SetProperty(MaterialProperty::ColorA, 1.0f);
-            }
-
-            // fix: some models pass a normal map as a height map and vice versa
-            if (texture_type == MaterialTextureType::Normal || texture_type == MaterialTextureType::Height)
-            {
-                if (RHI_Texture* texture = material->GetTexture(texture_type))
-                {
-                    MaterialTextureType proper_type = texture_type;
-                    proper_type = (proper_type == MaterialTextureType::Normal && texture->IsGrayscale())  ? MaterialTextureType::Height : proper_type;
-                    proper_type = (proper_type == MaterialTextureType::Height && !texture->IsGrayscale()) ? MaterialTextureType::Normal : proper_type;
-
-                    if (proper_type != texture_type)
+                    if (string hit = probe(model_directory + underscored + ext); !hit.empty())
                     {
-                        material->SetTexture(texture_type, nullptr);
-                        material->SetTexture(proper_type, texture);
+                        return hit;
                     }
                 }
             }
 
-            return true;
+            const string wanted = normalize_stem(file_name_no_ext);
+            if (wanted.empty())
+            {
+                return "";
+            }
+
+            string best;
+            size_t best_size = numeric_limits<size_t>::max();
+            for (const auto& entry : directory_files)
+            {
+                if (!FileSystem::IsSupportedImageFile(entry.second))
+                {
+                    continue;
+                }
+
+                const string found = normalize_stem(FileSystem::GetFileNameWithoutExtensionFromFilePath(entry.second));
+                if (!stems_compatible(wanted, found))
+                {
+                    continue;
+                }
+
+                if (found.size() < best_size)
+                {
+                    best      = entry.second;
+                    best_size = found.size();
+                    if (found == wanted)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            return best;
         }
 
         bool has_any_texture(const shared_ptr<Material>& material)
@@ -352,6 +357,151 @@ namespace spartan
             }
 
             return false;
+        }
+
+        // the file is already on this material, the slot is unknown when assimp reports UNKNOWN
+        MaterialTextureType slot_from_texture_name(const string& path)
+        {
+            string stem = FileSystem::GetFileNameWithoutExtensionFromFilePath(path);
+            transform(stem.begin(), stem.end(), stem.begin(), ::tolower);
+
+            if (stem.find("opacity") != string::npos || stem.find("alpha") != string::npos)
+            {
+                return MaterialTextureType::AlphaMask;
+            }
+            if (stem.find("normal") != string::npos)
+            {
+                return MaterialTextureType::Normal;
+            }
+            if (stem.find("rough") != string::npos)
+            {
+                return MaterialTextureType::Roughness;
+            }
+            if (stem.find("metal") != string::npos)
+            {
+                return MaterialTextureType::Metalness;
+            }
+            if (stem.find("occlusion") != string::npos)
+            {
+                return MaterialTextureType::Occlusion;
+            }
+            if (stem.find("height") != string::npos || stem.find("displac") != string::npos)
+            {
+                return MaterialTextureType::Height;
+            }
+            if (stem.find("emiss") != string::npos)
+            {
+                return MaterialTextureType::Emission;
+            }
+
+            return MaterialTextureType::Color;
+        }
+
+        MaterialTextureType slot_from_assimp(aiTextureType type, const string& path)
+        {
+            // fbx often stores an opacity map as a second diffuse, the filename is the source of truth
+            const MaterialTextureType from_name = slot_from_texture_name(path);
+            if (from_name != MaterialTextureType::Color)
+            {
+                return from_name;
+            }
+
+            switch (type)
+            {
+                case aiTextureType_DIFFUSE:
+                case aiTextureType_BASE_COLOR:
+                case aiTextureType_MAYA_BASE:
+                    return MaterialTextureType::Color;
+                case aiTextureType_NORMALS:
+                case aiTextureType_NORMAL_CAMERA:
+                    return MaterialTextureType::Normal;
+                case aiTextureType_HEIGHT:
+                case aiTextureType_DISPLACEMENT:
+                    return MaterialTextureType::Height;
+                case aiTextureType_OPACITY:
+                case aiTextureType_TRANSMISSION:
+                    return MaterialTextureType::AlphaMask;
+                case aiTextureType_DIFFUSE_ROUGHNESS:
+                case aiTextureType_MAYA_SPECULAR_ROUGHNESS:
+                case aiTextureType_SHININESS:
+                    return MaterialTextureType::Roughness;
+                case aiTextureType_METALNESS:
+                    return MaterialTextureType::Metalness;
+                case aiTextureType_AMBIENT_OCCLUSION:
+                case aiTextureType_LIGHTMAP:
+                    return MaterialTextureType::Occlusion;
+                case aiTextureType_EMISSIVE:
+                case aiTextureType_EMISSION_COLOR:
+                    return MaterialTextureType::Emission;
+                default:
+                    return slot_from_texture_name(path);
+            }
+        }
+
+        void bind_assimp_textures(
+            const string& model_directory,
+            const unordered_map<string, string>& directory_files,
+            const shared_ptr<Material>& material,
+            const aiMaterial* material_assimp
+        )
+        {
+            for (int type = static_cast<int>(aiTextureType_NONE) + 1; type <= AI_TEXTURE_TYPE_MAX; type++)
+            {
+                const aiTextureType assimp_type = static_cast<aiTextureType>(type);
+                const uint32_t count            = material_assimp->GetTextureCount(assimp_type);
+                for (uint32_t i = 0; i < count; i++)
+                {
+                    aiString texture_path;
+                    if (material_assimp->GetTexture(assimp_type, i, &texture_path) != AI_SUCCESS)
+                    {
+                        continue;
+                    }
+
+                    const string resolved = resolve_texture_path(texture_path.data, model_directory, directory_files);
+                    if (!FileSystem::IsSupportedImageFile(resolved))
+                    {
+                        continue;
+                    }
+
+                    const MaterialTextureType slot = slot_from_assimp(assimp_type, texture_path.data);
+                    if (material->HasTextureOfType(slot))
+                    {
+                        continue;
+                    }
+
+                    if (shared_ptr<RHI_Texture> texture = ResourceCache::GetByPath<RHI_Texture>(resolved))
+                    {
+                        material->SetTexture(slot, texture);
+                    }
+                    else
+                    {
+                        material->SetTexture(slot, resolved);
+                    }
+
+                    if (slot == MaterialTextureType::Color)
+                    {
+                        material->SetProperty(MaterialProperty::ColorR, 1.0f);
+                        material->SetProperty(MaterialProperty::ColorG, 1.0f);
+                        material->SetProperty(MaterialProperty::ColorB, 1.0f);
+                        material->SetProperty(MaterialProperty::ColorA, 1.0f);
+                    }
+
+                    if (slot == MaterialTextureType::Normal || slot == MaterialTextureType::Height)
+                    {
+                        if (RHI_Texture* texture = material->GetTexture(slot))
+                        {
+                            MaterialTextureType proper = slot;
+                            proper = (proper == MaterialTextureType::Normal && texture->IsGrayscale())  ? MaterialTextureType::Height : proper;
+                            proper = (proper == MaterialTextureType::Height && !texture->IsGrayscale()) ? MaterialTextureType::Normal : proper;
+                            if (proper != slot)
+                            {
+                                material->SetTexture(slot, nullptr);
+                                material->SetTexture(proper, texture);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // a model whose mtl is missing, or whose material was never authored, imports with no maps at
@@ -370,9 +520,6 @@ namespace spartan
                 return;
             }
 
-            // one map set next to a model belongs to that model, next to a model that has several
-            // materials there is no telling which one it belongs to, so only a single material asset
-            // adopts, the others just say what is wrong
             if (material_count > 2)
             {
                 SP_LOG_WARNING(
@@ -410,7 +557,6 @@ namespace spartan
                         continue;
                     }
 
-                    // the resolver already probes every image extension, png is only the seed
                     const string path = resolve_texture_path(string(name) + ".png", model_directory, directory_files);
                     if (path.empty())
                     {
@@ -430,7 +576,6 @@ namespace spartan
 
             if (adopted.empty())
             {
-                // nothing to guess from, but silence here is what makes an asset look broken for weeks
                 SP_LOG_WARNING(
                     "material '%s' in %s has no textures at all, it will render flat, name its maps "
                     "albedo, normal, roughness or occlusion next to the model to have them picked up",
@@ -440,7 +585,6 @@ namespace spartan
                 return;
             }
 
-            // the diffuse tint an importer invents for a missing mtl would darken the adopted albedo
             if (material->HasTextureOfType(MaterialTextureType::Color))
             {
                 material->SetProperty(MaterialProperty::ColorR, 1.0f);
@@ -460,7 +604,7 @@ namespace spartan
         // two materials that answer to the same name are two surfaces the engine can no longer tell
         // apart, anything that resolves a material by name gets whichever one loaded first, so a name
         // that is generic or already taken carries the folder it came from from here on
-        string unique_material_name(const string& name, const string& model_directory)
+        string unique_material_name(const string& name, const string& model_directory, const uint32_t material_index)
         {
             string folder = model_directory;
             while (!folder.empty() && (folder.back() == '/' || folder.back() == '\\'))
@@ -471,7 +615,7 @@ namespace spartan
 
             if (folder.empty())
             {
-                return name;
+                return name.empty() ? ("material_" + to_string(material_index)) : name;
             }
 
             const string extension = EXTENSION_MATERIAL;
@@ -500,9 +644,11 @@ namespace spartan
             // an importer names an unauthored material after itself, every model in the project ends up
             // with the same one, prefixing these is unconditional so the name never depends on load order
             const string lowered = normalize_for_lookup(name);
-            const bool generic   = name.empty()                        ||
-                                   lowered.find("default") != string::npos ||
-                                   lowered == "material"               ||
+            const bool generic   = name.empty()              ||
+                                   lowered == "empty"        ||
+                                   lowered == "default"      ||
+                                   lowered == "defaultmaterial" ||
+                                   lowered == "material"     ||
                                    lowered == "none";
 
             if (!generic && !taken_by_another(name))
@@ -510,10 +656,10 @@ namespace spartan
                 return name;
             }
 
-            string candidate = name.empty() ? folder : folder + "_" + name;
+            string candidate = generic ? (folder + "_" + to_string(material_index)) : (folder + "_" + name);
             for (uint32_t suffix = 2; suffix < 64 && taken_by_another(candidate); suffix++)
             {
-                candidate = (name.empty() ? folder : folder + "_" + name) + "_" + to_string(suffix);
+                candidate = (generic ? (folder + "_" + to_string(material_index)) : (folder + "_" + name)) + "_" + to_string(suffix);
             }
 
             if (candidate != name)
@@ -530,49 +676,40 @@ namespace spartan
             return candidate;
         }
 
-        shared_ptr<Material> load_material(ImportContext& ctx, const aiMaterial* material_assimp)
+        shared_ptr<Material> load_material(ImportContext& ctx, const aiMaterial* material_assimp, const uint32_t material_index)
         {
             SP_ASSERT(material_assimp != nullptr);
-            shared_ptr<Material> material = make_shared<Material>();
 
-            // each type writes its own m_textures slot so concurrent loads are safe, packing only runs once the material is complete
-            struct TextureBinding
+            aiString name_assimp;
+            aiGetMaterialString(material_assimp, AI_MATKEY_NAME, &name_assimp);
+            const string name          = unique_material_name(name_assimp.C_Str(), ctx.model_directory, material_index);
+            const string material_path = ctx.model_directory + name + EXTENSION_MATERIAL;
+
+            shared_ptr<Material> material;
+            if (FileSystem::Exists(material_path))
             {
-                MaterialTextureType type;
-                aiTextureType pbr;
-                aiTextureType legacy;
-            };
-            static constexpr array<TextureBinding, 8> texture_bindings = {{
-                { MaterialTextureType::Color,     aiTextureType_BASE_COLOR,              aiTextureType_DIFFUSE             },
-                { MaterialTextureType::Roughness, aiTextureType_GLTF_METALLIC_ROUGHNESS, aiTextureType_DIFFUSE_ROUGHNESS   },
-                { MaterialTextureType::Metalness, aiTextureType_GLTF_METALLIC_ROUGHNESS, aiTextureType_METALNESS           },
-                { MaterialTextureType::Normal,    aiTextureType_NORMAL_CAMERA,           aiTextureType_NORMALS             },
-                { MaterialTextureType::Occlusion, aiTextureType_AMBIENT_OCCLUSION,       aiTextureType_LIGHTMAP            },
-                { MaterialTextureType::Emission,  aiTextureType_EMISSION_COLOR,          aiTextureType_EMISSIVE            },
-                { MaterialTextureType::Height,    aiTextureType_HEIGHT,                  aiTextureType_NONE                },
-                { MaterialTextureType::AlphaMask, aiTextureType_OPACITY,                 aiTextureType_NONE                },
-            }};
-            ThreadPool::ParallelLoop([&](uint32_t start, uint32_t end)
+                material = ResourceCache::Load<Material>(material_path);
+            }
+
+            if (!material)
             {
-                for (uint32_t i = start; i < end; i++)
-                {
-                    const TextureBinding& binding = texture_bindings[i];
-                    load_material_texture(ctx.model_directory, ctx.directory_files, material, material_assimp, binding.type, binding.pbr, binding.legacy);
-                }
-            }, static_cast<uint32_t>(texture_bindings.size()));
+                material = make_shared<Material>();
+            }
+            material->SetResourceFilePath(material_path);
+
+            bind_assimp_textures(ctx.model_directory, ctx.directory_files, material, material_assimp);
+
+            if (material->HasTextureOfType(MaterialTextureType::Color) &&
+                material->HasTextureOfType(MaterialTextureType::AlphaMask))
+            {
+                material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                return material;
+            }
 
             // gltf detection (including .glb binary format)
             const string extension = FileSystem::GetExtensionFromFilePath(ctx.file_path);
             const bool is_gltf = (extension == ".gltf") || (extension == ".glb");
             material->SetProperty(MaterialProperty::Gltf, is_gltf ? 1.0f : 0.0f);
-
-            // name
-            aiString name_assimp;
-            aiGetMaterialString(material_assimp, AI_MATKEY_NAME, &name_assimp);
-            string name = name_assimp.C_Str();
-            // name only, a resource name would give the material a file path relative to the working
-            // directory and every property set during this import would save itself out there
-            material->SetObjectName(name);
 
             // color
             aiColor4D color_diffuse(1.0f, 1.0f, 1.0f, 1.0f);
@@ -666,6 +803,11 @@ namespace spartan
                 name,
                 ctx.scene ? ctx.scene->mNumMaterials : 1
             );
+
+            if (material->HasTextureOfType(MaterialTextureType::AlphaMask))
+            {
+                material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+            }
 
             return material;
         }
@@ -1703,16 +1845,22 @@ namespace spartan
         // material
         if (ctx.scene->HasMaterials())
         {
-            const aiMaterial* assimp_material = ctx.scene->mMaterials[assimp_mesh->mMaterialIndex];
-            shared_ptr<Material> material = load_material(ctx, assimp_material);
+            const uint32_t material_index = assimp_mesh->mMaterialIndex;
+            shared_ptr<Material> material;
+            {
+                lock_guard<mutex> material_lock(ctx.materials_mutex);
+                auto it = ctx.materials.find(material_index);
+                if (it != ctx.materials.end())
+                {
+                    material = it->second;
+                }
+                else
+                {
+                    material = load_material(ctx, ctx.scene->mMaterials[material_index], material_index);
+                    ctx.materials[material_index] = material;
+                }
+            }
 
-            // create a file path for this material, the name is made unique first so two assets can
-            // never end up sharing one and being resolved into each other
-            const string material_name      = unique_material_name(material->GetObjectName(), ctx.model_directory);
-            const string spartan_asset_path = ctx.model_directory + material_name + EXTENSION_MATERIAL;
-            material->SetResourceFilePath(spartan_asset_path);
-
-            // add a render component and set the material to it
             entity_parent->AddComponent<Render>()->SetMaterial(material);
         }
     }

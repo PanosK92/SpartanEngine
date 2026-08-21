@@ -66,8 +66,13 @@ namespace spartan
 
         void SetResourceName(const std::string& name)
         {
-            m_object_name        = name;
-            m_resource_file_path = FileSystem::GetDirectoryFromFilePath(m_resource_file_path) + name;
+            m_object_name = name;
+            std::string directory = FileSystem::GetDirectoryFromFilePath(m_resource_file_path);
+            if (directory.empty())
+            {
+                directory = "project/materials/";
+            }
+            m_resource_file_path = directory + name;
         }
         
         ResourceType GetResourceType()           const { return m_resource_type; }

@@ -942,8 +942,7 @@ float terrain_macro_variation(float3 position_world)
     return clamp(a * b * c * 8.0f, 0.4f, 1.6f);
 }
 
-// resolve an already selected layer set, split out from terrain_shade so the g buffer can run its
-// parallax march against the dominant layer before the surface is sampled
+// resolve an already selected layer set
 TerrainSurface terrain_evaluate(
     MaterialParameters surface,
     TerrainLayerPick   pick,

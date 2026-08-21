@@ -476,51 +476,10 @@ namespace spartan
             return material;
         }
 
-        // a cutout is what separates a leaf card from a trunk, the name is the fallback for an asset
-        // whose material never declared one
+        // a cutout is what the importer bound, wind and no collision follow that map
         bool is_foliage_material(Material* material)
         {
-            if (material->HasTextureOfType(MaterialTextureType::AlphaMask))
-            {
-                return true;
-            }
-
-            string name = material->GetObjectName();
-            transform(name.begin(), name.end(), name.begin(), ::tolower);
-
-            return name.find("twig")    != string::npos ||
-                   name.find("leaf")    != string::npos ||
-                   name.find("leaves")  != string::npos ||
-                   name.find("foliage") != string::npos ||
-                   name.find("needle")  != string::npos ||
-                   name.find("frond")   != string::npos;
-        }
-
-        // an fbx that never declared its opacity map still ships it next to the mesh, and without
-        // the cutout every leaf card renders as a solid quad
-        void ensure_alpha_mask(Material* material, const string& mesh_path)
-        {
-            if (material->HasTextureOfType(MaterialTextureType::AlphaMask))
-            {
-                return;
-            }
-
-            const string directory = FileSystem::GetDirectoryFromFilePath(mesh_path);
-            for (const string& file : FileSystem::GetFilesInDirectory(directory))
-            {
-                if (!FileSystem::IsSupportedImageFile(file))
-                {
-                    continue;
-                }
-
-                string name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file);
-                transform(name.begin(), name.end(), name.begin(), ::tolower);
-                if (name.find("opacity") != string::npos || name.find("alpha") != string::npos)
-                {
-                    material->SetTexture(MaterialTextureType::AlphaMask, file);
-                    return;
-                }
-            }
+            return material->HasTextureOfType(MaterialTextureType::AlphaMask);
         }
 
         uint32_t count_mesh_renderables(Entity* root)
@@ -630,7 +589,10 @@ namespace spartan
 
         // two layers can point at one mesh at very different scales, boulders and rock debris both draw
         // rock_2 two hundred times apart, and a shared material means whichever attaches last decides the
-        // ground band for both, so every layer takes its own copy of whatever it resolved
+        // ground band for both. the first layer keeps the imported material. cloning and pushing that
+        // copy through SetMaterial was wiping the fbx maps, trees have no second layer so they just
+        // lost their bark and leaves
+        unordered_map<uint64_t, string> scatter_material_owners;
         unordered_map<string, shared_ptr<Material>> scatter_layer_materials;
 
         shared_ptr<Material> resolve_layer_material(Material* source, const string& layer_name)
@@ -640,15 +602,35 @@ namespace spartan
                 return nullptr;
             }
 
-            const string key = layer_name + "|" + source->GetObjectName();
+            const uint64_t id = source->GetObjectId();
+            auto owner        = scatter_material_owners.find(id);
+            if (owner == scatter_material_owners.end())
+            {
+                scatter_material_owners[id] = layer_name;
+                return nullptr;
+            }
+            if (owner->second == layer_name)
+            {
+                return nullptr;
+            }
 
-            auto it = scatter_layer_materials.find(key);
+            const string key = layer_name + "|" + to_string(id);
+            auto it          = scatter_layer_materials.find(key);
             if (it != scatter_layer_materials.end())
             {
                 return it->second;
             }
 
-            shared_ptr<Material> owned = source->Clone(layer_name + "_" + source->GetObjectName() + EXTENSION_MATERIAL);
+            const string file_name = layer_name + "_" + source->GetObjectName() + EXTENSION_MATERIAL;
+            shared_ptr<Material> owned = source->Clone(file_name);
+
+            string directory = FileSystem::GetDirectoryFromFilePath(source->GetResourceFilePath());
+            if (directory.empty())
+            {
+                directory = string(ResourceCache::GetProjectDirectory()) + "materials/";
+            }
+            owned->SetResourceFilePath(directory + file_name);
+            owned->SetPersistent(false);
             // the foliage checks read the name, a copy that renames itself stops being a leaf
             owned->SetObjectName(source->GetObjectName());
 
@@ -775,10 +757,6 @@ namespace spartan
 
                         if (foliage && (layer.flags & TerrainScatterFlags_Wind))
                         {
-                            if (prototype)
-                            {
-                                ensure_alpha_mask(material, layer.mesh_path);
-                            }
                             material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                             material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         }
@@ -1180,6 +1158,7 @@ namespace spartan
         // the caller is expected to disable it first so the renderer drops its references
         builtin_meshes.clear();
         scatter_materials.clear();
+        scatter_material_owners.clear();
         scatter_layer_materials.clear();
         builder_meshes.clear();
         builder_materials.clear();

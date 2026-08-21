@@ -1011,7 +1011,6 @@ void TerrainEditor::DrawGroundLayer(Terrain* terrain, const uint32_t index)
         };
 
         flag_toggle("Biplanar",  TerrainLayerFlags_Biplanar, "project on the two dominant axes, this is what stops cliff faces from smearing");
-        flag_toggle("Parallax",  TerrainLayerFlags_Pom,      "march the height map when this layer dominates up close");
         flag_toggle("Snow",      TerrainLayerFlags_Snow,     "weight comes from the snow accumulation model instead of the slope and altitude bands");
         flag_toggle("Below Sea", TerrainLayerFlags_BelowSea, "the altitude band is measured against sea level rather than absolute world y");
 
