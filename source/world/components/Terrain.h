@@ -144,6 +144,9 @@ namespace spartan
         void SetSnowAmount(float amount)        { m_snow_amount = amount; }
         float GetWetness() const                { return m_wetness; }
         void SetWetness(float wetness)          { m_wetness = wetness; }
+        // metres of ground that creep over anything sinking into the surface, 0 disables the blend
+        float GetBlendHeight() const            { return m_blend_height; }
+        void SetBlendHeight(float height)       { m_blend_height = height; }
         TerrainDebugView GetDebugView() const   { return m_debug_view; }
         void SetDebugView(TerrainDebugView view);
         RHI_Texture* GetAnalysisMapA() const    { return m_map_a.get(); }
@@ -352,6 +355,7 @@ namespace spartan
         uint32_t m_layer_quality      = 3;
         float m_snow_amount           = 1.0f;
         float m_wetness               = 0.0f;
+        float m_blend_height          = 0.35f;
         TerrainDebugView m_debug_view = TerrainDebugView::Off;
         // xy = world min xz, zw = 1 / world size xz, maps world position onto the analysis maps
         math::Vector4 m_world_mapping = math::Vector4::Zero;

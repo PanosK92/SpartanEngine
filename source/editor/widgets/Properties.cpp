@@ -2029,6 +2029,34 @@ void Properties::ShowMaterial(Material* material, Render* render) const
             material->SetProperty(MaterialProperty::MotionBlurRadial, motion_blur_radial ? 1.0f : 0.0f);
         }
 
+        float terrain_blend = material->GetProperty(MaterialProperty::TerrainBlend);
+        if (property_float(
+            "Terrain Blend",
+            &terrain_blend,
+            0.05f,
+            0.0f,
+            4.0f,
+            "scales how far the ground creeps over this surface where it sinks into the terrain, 0 opts out",
+            "%.2f"
+        ))
+        {
+            material->SetProperty(MaterialProperty::TerrainBlend, terrain_blend);
+        }
+
+        float terrain_blend_sharpness = material->GetProperty(MaterialProperty::TerrainBlendSharpness);
+        if (property_float(
+            "Terrain Blend Sharpness",
+            &terrain_blend_sharpness,
+            0.01f,
+            0.0f,
+            1.0f,
+            "0 washes the ground the whole way up the band, 1 cuts a hard waterline across the middle of it",
+            "%.2f"
+        ))
+        {
+            material->SetProperty(MaterialProperty::TerrainBlendSharpness, terrain_blend_sharpness);
+        }
+
         bool emissive_from_albedo = material->GetProperty(MaterialProperty::EmissiveFromAlbedo) != 0.0f;
         if (property_toggle("Emissive from Albedo", &emissive_from_albedo, "use albedo as emission"))
         {

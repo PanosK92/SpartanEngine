@@ -187,6 +187,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float3 camera_to_pixel = position_world - get_camera_position_for_view(vertex.view_id);
     float distance         = fast_sqrt(dot(camera_to_pixel, camera_to_pixel));
 
+    // taken at top level, the terrain paths below sit behind branches where a derivative is undefined
+    float3 dpdx_world = ddx(position_world);
+    float3 dpdy_world = ddy(position_world);
+
     // world space uv transformation
     // the full uv state is per-renderable, forwarded by the vs through uv_xform_ts/uv_xform_ir
     float  uv_world_space = vertex.uv_xform_ir.w;
@@ -216,8 +220,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     bool terrain_shaded = false;
     if (surface.is_terrain() && material.terrain_layer_count > 0)
     {
-        float3 dpdx = ddx(position_world);
-        float3 dpdy = ddy(position_world);
+        float3 dpdx = dpdx_world;
+        float3 dpdy = dpdy_world;
 
         // planar world xz, tiling is repeats per meter, the ray tracing passes derive the same uv
         // from the hit position so raster and gi cannot drift apart
@@ -280,6 +284,15 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             float2 prev_uv    = cur_uv;
             float  prev_layer = cur_layer;
             float  prev_samp  = cur_samp;
+
+            // shift the layer grid by a fraction of a step, taa averages the moving slices away
+            if (is_taa_enabled())
+            {
+                float dither = noise_interleaved_gradient(vertex.position.xy, false);
+                cur_uv    -= delta_uv * dither;
+                cur_layer -= layer_h * dither;
+                cur_samp   = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), cur_uv, dx, dy).a;
+            }
 
             // steep parallax linear search
             [loop]
@@ -448,6 +461,41 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         metalness         = saturate(metalness + sparkle * 0.12f);
     }
     
+    // terrain blending, the ground creeps up over whatever sinks into it so a prop reads as bedded in
+    // rather than parked on top, grass and flowers are excluded because their whole height sits inside
+    // the band and they would turn into ground
+    bool terrain_blendable =
+        !terrain_shaded           &&
+        pass_is_opaque()          &&
+        !surface.is_grass_blade() &&
+        !surface.is_flower()      &&
+        !surface.is_water();
+
+    if (terrain_blendable)
+    {
+        float band = buffer_frame.terrain_blend_height * material.terrain_blend;
+
+        TerrainBlend blend = terrain_blend_evaluate(
+            position_world, normal, dpdx_world, dpdy_world, distance, band, material.terrain_blend_sharpness
+        );
+
+        // the normal rides its own wider weight, that bend is what turns the contact into a rounded
+        // fillet instead of two surfaces meeting at a corner
+        if (blend.weight_normal > 0.0f)
+        {
+            normal = terrain_blend_normal_arc(normal, blend.normal, blend.weight_normal);
+        }
+
+        if (blend.weight > 0.0f)
+        {
+            albedo.rgb = lerp(albedo.rgb, blend.albedo, blend.weight);
+            roughness  = lerp(roughness, blend.roughness, blend.weight);
+            metalness  = lerp(metalness, blend.metalness, blend.weight);
+            occlusion  = lerp(occlusion, blend.occlusion, blend.weight);
+            emission   = lerp(emission, 0.0f, blend.weight);
+        }
+    }
+
     // geometric specular antialiasing, yamada 2018, the screen space normal variance is folded
     // into the ggx width so sub pixel detail rolls off into roughness instead of shimmering
     // water has analytic normals rather than a normal texture so it is admitted explicitly

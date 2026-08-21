@@ -58,7 +58,8 @@ static const float grass_cull_radius      = 1.5f;
 //   bits 20-27 packed instance scale at the large end
 //   bits 28-31 random lean away from the surface normal, in units of three degrees
 // camera xz comes from buffer_frame
-// terrain height is r32 local y bound to tex (t7), material_index bitcast is the entity y
+// terrain height is r32 local y bound to tex (t7), material_index bitcast is the entity y plus the
+// layer's seating offset, a negative offset is what pushes an instance down into the ground
 // biome_min arrives asfloat(is_transparent), negative disables the gate
 
 // 32-bit integer hash, takes the cell's integer world coords and returns a uniform 32-bit value
@@ -111,8 +112,9 @@ float2 terrain_normalized_to_uv(float2 normalized, float2 texture_size)
     return (normalized * (texture_size - 1.0f) + 0.5f) / texture_size;
 }
 
-// single centre sample, gates the cheap height reject and the frustum/hi-z visibility cull
-// before the four neighbor taps that the slope reject needs, so off-screen blades pay one tap not five
+// world y of the heightfield under this xz, reconstructed the way the terrain mesh triangulates
+// its cells. a bilinear tap reads the twist of the quad instead of the triangle plane, and on a
+// twenty five metre cell that misses the rendered surface by enough to leave every chip floating
 float sample_terrain_height(float2 world_xz, float2 height_size, out float valid)
 {
     float2 normalized = terrain_world_to_normalized(world_xz);
@@ -124,11 +126,21 @@ float sample_terrain_height(float2 world_xz, float2 height_size, out float valid
     }
 
     valid = 1.0f;
-    return tex.SampleLevel(
-        samplers[sampler_bilinear_clamp],
-        terrain_normalized_to_uv(normalized, height_size),
-        0
-    ).r;
+
+    float2 texels = max(height_size - 1.0f, 1.0f);
+    float2 grid   = normalized * texels;
+    float2 base   = min(floor(grid), texels - 1.0f);
+    float2 f      = saturate(grid - base);
+
+    float2 rcp_size = 1.0f / max(height_size, 1.0f);
+    float h00 = tex.SampleLevel(samplers[sampler_point_clamp], (base + float2(0.5f, 0.5f)) * rcp_size, 0).r;
+    float h10 = tex.SampleLevel(samplers[sampler_point_clamp], (base + float2(1.5f, 0.5f)) * rcp_size, 0).r;
+    float h01 = tex.SampleLevel(samplers[sampler_point_clamp], (base + float2(0.5f, 1.5f)) * rcp_size, 0).r;
+    float h11 = tex.SampleLevel(samplers[sampler_point_clamp], (base + float2(1.5f, 1.5f)) * rcp_size, 0).r;
+
+    return (f.x + f.y <= 1.0f)
+        ? h00 + f.x * (h10 - h00) + f.y * (h01 - h00)
+        : h11 + (1.0f - f.x) * (h01 - h11) + (1.0f - f.y) * (h10 - h11);
 }
 
 // two forward taps for the surface slope, reuses the centre height so a surviving blade pays three terrain
@@ -344,8 +356,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     float valid;
     float local_y = sample_terrain_height(world_xz, height_size, valid);
-    float entity_y = asfloat(buffer_pass.material_index);
-    float world_y  = local_y + entity_y;
+    float seat_y  = asfloat(buffer_pass.material_index);
+    float world_y = local_y + seat_y;
     if (valid < 0.5f || world_y < height_min || world_y > height_max)
     {
         return;

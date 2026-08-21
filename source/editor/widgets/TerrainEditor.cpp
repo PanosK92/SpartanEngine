@@ -823,6 +823,7 @@ void TerrainEditor::DrawGround(Terrain* terrain)
         uint32_t quality = terrain->GetLayerQuality();
         float snow       = terrain->GetSnowAmount();
         float wetness    = terrain->GetWetness();
+        float blend      = terrain->GetBlendHeight();
 
         if (property_uint(
             "Quality",
@@ -847,6 +848,21 @@ void TerrainEditor::DrawGround(Terrain* terrain)
         if (property_float("Wetness", &wetness, 0.01f, 0.0f, 1.0f, "wetness floor added on top of the flow driven amount, rain and storms drive this", "%.2f"))
         {
             terrain->SetWetness(wetness);
+            terrain->PushToRenderer();
+        }
+
+        if (property_float(
+            "Blend",
+            &blend,
+            0.01f,
+            0.0f,
+            2.0f,
+            "metres of ground that creep up anything intersecting the surface, so rocks and props sit "
+            "bedded in rather than parked on top, 0 turns it off, a material can opt out on its own",
+            "%.2f"
+        ))
+        {
+            terrain->SetBlendHeight(blend);
             terrain->PushToRenderer();
         }
     }
@@ -1351,16 +1367,42 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
         card_end();
     }
 
-    if (!is_gpu)
+    card_begin("Seating", "how the prop meets the ground, this is the difference between placed and floating");
     {
-        card_begin("Seating", "how the prop meets the ground, this is the difference between placed and floating");
+        if (!is_gpu)
         {
             changed |= property_float("Align To Normal", &layer.align_to_normal, 0.01f, 0.0f, 1.0f, "0 stands the prop upright, 1 lies it flat on the slope. trunks want 0, boulders want 1", "%.2f");
-            changed |= property_float("Surface Offset", &layer.surface_offset, 0.01f, -5.0f, 5.0f, "metres lifted off the ground", "%.2f m");
+        }
+
+        changed |= property_float("Surface Offset", &layer.surface_offset, 0.01f, -5.0f, 5.0f, "metres lifted off the ground, go negative to push the instance down into it", "%.2f m");
+
+        if (!is_gpu)
+        {
             changed |= property_float("Sink", &layer.sink, 0.01f, 0.0f, 1.0f, "fraction of the final size pushed into the ground, this is what stops a rock floating", "%.2f");
         }
-        card_end();
+
+        changed |= property_float(
+            "Blend Height",
+            &layer.blend_height,
+            0.05f,
+            0.0f,
+            4.0f,
+            "trims the band this prop gets, how far the ground washes up it, 0 opts out. "
+            "the band itself is already cut from the prop's own size, so 1 is the right answer for most",
+            "%.2f"
+        );
+
+        changed |= property_float(
+            "Blend Sharpness",
+            &layer.blend_sharpness,
+            0.01f,
+            0.0f,
+            1.0f,
+            "0 washes the ground the whole way up the band, 1 cuts a hard waterline across the middle of it",
+            "%.2f"
+        );
     }
+    card_end();
 
     card_begin("Rendering", "cost controls, these are the knobs to reach for when a layer is heavy");
     {

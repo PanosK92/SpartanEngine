@@ -186,8 +186,16 @@ namespace spartan
 
         // seating on the surface
         float align_to_normal       = 1.0f;  // 0 stands upright, 1 lies flat on the slope
-        float surface_offset        = 0.05f; // meters lifted off the ground
+        float surface_offset        = 0.05f; // meters lifted off the ground, negative pushes it in
         float sink                  = 0.0f;  // fraction of the final size pushed into the ground
+
+        // how the ground creeps over this prop where it meets the terrain, the band itself is derived
+        // from the prop's own size at scatter time so a pebble takes a few centimeters where a boulder
+        // takes half a meter, this height is a trim on that, 1 leaves it alone
+        // sharpness is 0 for a long gradient and 1 for a hard waterline, it is a look rather than a
+        // size so it stays authored per layer
+        float blend_height          = 1.0f;
+        float blend_sharpness       = 0.5f;
 
         // rendering
         float render_distance       = 0.0f;   // meters, 0 is unlimited

@@ -599,6 +599,65 @@ namespace spartan
             return order;
         }
 
+        // how far the ground creeps over a prop, taken from the prop rather than authored per layer, so
+        // a new scatter slot lands somewhere sensible without anyone tuning it and a layer that rolls a
+        // nine to one size range still beds its small end
+        // soil banks against the narrow side of whatever it meets, a trunk takes a hand's width where a
+        // boulder takes half a metre, and nothing takes more than the terrain's own band
+        float derive_terrain_blend(const float prop_extent_min, const float terrain_band)
+        {
+            if (prop_extent_min <= 0.0f || terrain_band <= 0.0f)
+            {
+                return 1.0f;
+            }
+
+            float band = clamp(prop_extent_min * 0.18f, 0.015f, terrain_band);
+
+            // a chip that is mostly band is a coloured smudge rather than a stone, nothing gives up more
+            // than this much of itself to the ground
+            band = min(band, prop_extent_min * 0.4f);
+
+            return clamp(band / terrain_band, 0.0f, 1.0f);
+        }
+
+        // the shortest side of the mesh is what the ground has to climb, a slab lying flat wants its own
+        // thickness and not its footprint, and a trunk wants its own width and not the canopy above it
+        float mesh_extent_min(const BoundingBox& aabb, const float instance_scale)
+        {
+            const Vector3 size = aabb.GetSize();
+            return min(min(size.x, size.y), size.z) * instance_scale;
+        }
+
+        // two layers can point at one mesh at very different scales, boulders and rock debris both draw
+        // rock_2 two hundred times apart, and a shared material means whichever attaches last decides the
+        // ground band for both, so every layer takes its own copy of whatever it resolved
+        unordered_map<string, shared_ptr<Material>> scatter_layer_materials;
+
+        shared_ptr<Material> resolve_layer_material(Material* source, const string& layer_name)
+        {
+            if (!source)
+            {
+                return nullptr;
+            }
+
+            const string key = layer_name + "|" + source->GetObjectName();
+
+            auto it = scatter_layer_materials.find(key);
+            if (it != scatter_layer_materials.end())
+            {
+                return it->second;
+            }
+
+            shared_ptr<Material> owned = source->Clone(layer_name + "_" + source->GetObjectName() + EXTENSION_MATERIAL);
+            // the foliage checks read the name, a copy that renames itself stops being a leaf
+            owned->SetObjectName(source->GetObjectName());
+
+            scatter_layer_materials[key] = owned;
+            builder_materials.push_back(owned);
+
+            return owned;
+        }
+
         void attach_scatter_layer(
             Mesh* mesh,
             const TerrainScatterLayer& layer,
@@ -606,7 +665,8 @@ namespace spartan
             const vector<vector<Matrix>>& transforms,
             const vector<uint32_t>& tile_order,
             const uint32_t order_begin,
-            const uint32_t order_end
+            const uint32_t order_end,
+            const float terrain_band
         )
         {
             Entity* prototype = mesh->GetRootEntity();
@@ -632,6 +692,20 @@ namespace spartan
                 layer.render_distance :
                 numeric_limits<float>::max();
             const bool casts_shadows = (layer.flags & TerrainScatterFlags_CastShadows) != 0;
+
+            // the band is cut for an average instance of this layer, the clamps inside the derivation
+            // take care of the ends of the size roll
+            float scale_sum      = 0.0f;
+            uint32_t scale_count = 0;
+            for (uint32_t order_index = order_begin; order_index < order_end; order_index++)
+            {
+                for (const Matrix& instance : transforms[tile_order[order_index]])
+                {
+                    scale_sum += instance.GetScale().y;
+                    scale_count++;
+                }
+            }
+            const float scale_typical = scale_count > 0 ? scale_sum / static_cast<float>(scale_count) : 1.0f;
 
             for (uint32_t order_index = order_begin; order_index < order_end; order_index++)
             {
@@ -689,6 +763,11 @@ namespace spartan
                         render->SetMaterial(material_override);
                     }
 
+                    if (shared_ptr<Material> owned = resolve_layer_material(render->GetMaterial(), layer.name))
+                    {
+                        render->SetMaterial(owned);
+                    }
+
                     bool foliage = false;
                     if (Material* material = render->GetMaterial())
                     {
@@ -708,6 +787,15 @@ namespace spartan
                         {
                             material->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
                         }
+
+                        // how far the ground creeps over this prop, sized off this part's own mesh so a
+                        // trunk gets the trunk's band and not the canopy's, the layer value trims it
+                        const float extent = mesh_extent_min(render->GetLodAabb(0), scale_typical);
+                        material->SetProperty(
+                            MaterialProperty::TerrainBlend,
+                            layer.blend_height * derive_terrain_blend(extent, terrain_band)
+                        );
+                        material->SetProperty(MaterialProperty::TerrainBlendSharpness, layer.blend_sharpness);
                     }
 
                     render->SetInstances(transforms[tile_index]);
@@ -820,7 +908,21 @@ namespace spartan
             const bool textured = material->HasTextureOfType(MaterialTextureType::Color);
             params.uv_patch     = (layer.kind == TerrainScatterKind::Detail && textured) ? 0.22f : 0.0f;
             params.tilt_deg     = layer.kind == TerrainScatterKind::Detail ? 18.0f : 0.0f;
+            params.surface_offset = layer.surface_offset;
             params.terrain_world_mapping = terrain->GetWorldMapping();
+
+            // how far the ground creeps over this prop, sized off the chip itself, the size range here
+            // already carries mesh_scale so this is the world extent the ground has to climb
+            float extent = 0.0f;
+            if (mesh->GetSubMeshCount() > 0 && !mesh->GetSubMesh(0).lods.empty())
+            {
+                extent = mesh_extent_min(mesh->GetSubMesh(0).lods[0].aabb, (params.size_min + params.size_max) * 0.5f);
+            }
+            material->SetProperty(
+                MaterialProperty::TerrainBlend,
+                layer.blend_height * derive_terrain_blend(extent, terrain->GetBlendHeight())
+            );
+            material->SetProperty(MaterialProperty::TerrainBlendSharpness, layer.blend_sharpness);
 
             const float extent_x = static_cast<float>(terrain->GetWidth()  - 1) * static_cast<float>(terrain->GetScale());
             const float extent_z = static_cast<float>(terrain->GetHeight() - 1) * static_cast<float>(terrain->GetScale());
@@ -1026,7 +1128,8 @@ namespace spartan
                     job.transforms,
                     tile_order,
                     order_done,
-                    order_end
+                    order_end,
+                    terrain->GetBlendHeight()
                 );
 
                 // the editor reads this while the scatter runs, keeping it live makes the props count
@@ -1077,6 +1180,7 @@ namespace spartan
         // the caller is expected to disable it first so the renderer drops its references
         builtin_meshes.clear();
         scatter_materials.clear();
+        scatter_layer_materials.clear();
         builder_meshes.clear();
         builder_materials.clear();
     }
@@ -1117,6 +1221,8 @@ namespace spartan
             "ColorVariationFromInstance", MaterialProperty::ColorVariationFromInstance,
             "IsWater",                    MaterialProperty::IsWater,
             "MotionBlurRadial",           MaterialProperty::MotionBlurRadial,
+            "TerrainBlend",               MaterialProperty::TerrainBlend,
+            "TerrainBlendSharpness",      MaterialProperty::TerrainBlendSharpness,
             "CullMode",                   MaterialProperty::CullMode
         );
 

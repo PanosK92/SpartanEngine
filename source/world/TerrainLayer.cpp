@@ -217,6 +217,9 @@ namespace spartan
             s.size_max             = 1.35f;
             s.align_to_normal      = 0.0f;
             s.surface_offset       = 0.05f;
+            // bark meets soil on a fairly definite line, the root flare is what softens it and that is
+            // geometry rather than a gradient
+            s.blend_sharpness      = 0.55f;
             s.flags                = TerrainScatterFlags_Wind |
                                      TerrainScatterFlags_ColorVariation |
                                      TerrainScatterFlags_Collision |
@@ -249,6 +252,9 @@ namespace spartan
             s.align_to_normal      = 1.0f;
             s.surface_offset       = 0.0f;
             s.sink                 = 0.10f;
+            // ground washes a long way up a boulder and never on a level line, this is the softest
+            // contact of any prop
+            s.blend_sharpness      = 0.40f;
             s.flags                = TerrainScatterFlags_CastShadows;
         }
 
@@ -268,6 +274,8 @@ namespace spartan
             s.size_min             = 0.25f;
             s.size_max             = 2.2f;
             s.align_to_normal      = 0.0f;
+            // a half buried stone, tighter than a boulder because there is less of it to wash over
+            s.blend_sharpness      = 0.55f;
             s.flags                = TerrainScatterFlags_CastShadows |
                                      TerrainScatterFlags_Tumble |
                                      TerrainScatterFlags_LogSize;
@@ -308,6 +316,8 @@ namespace spartan
             s.height_max             = 400.0f;
             s.mask_channel           = 0;
             s.mask_min               = 0.38f;
+            // a blade grows out of the ground, any lift and the whole field reads as a floating carpet
+            s.surface_offset         = 0.0f;
             s.render_distance        = 500.0f;
             s.grass_ring_radius[0]   = 55.0f;
             s.grass_ring_radius[1]   = 180.0f;
@@ -343,6 +353,11 @@ namespace spartan
             s.mesh_scale             = 0.11f;
             s.size_min               = 0.45f;
             s.size_max               = 1.80f;
+            // chips are bedded, half of one sitting proud is what a gravel bed looks like
+            s.surface_offset         = -0.01f;
+            // a chip is a couple of centimetres tall, so it beds on a tight waterline, the band itself
+            // is cut from the chip's own size
+            s.blend_sharpness        = 0.7f;
             s.render_distance        = 0.0f;
             s.grass_ring_radius[0]   = 18.0f;
             s.grass_ring_radius[1]   = 45.0f;

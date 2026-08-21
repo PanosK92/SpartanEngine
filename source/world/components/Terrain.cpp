@@ -1492,6 +1492,7 @@ namespace spartan
         params.snow_level    = m_level_snow;
         params.snow_amount   = m_snow_amount;
         params.wetness       = m_wetness;
+        params.blend_height  = m_blend_height;
         params.quality       = m_layer_quality;
         params.debug_view    = static_cast<uint32_t>(m_debug_view);
 
@@ -1527,6 +1528,7 @@ namespace spartan
         node.append_attribute("layer_quality") = m_layer_quality;
         node.append_attribute("snow_amount")   = m_snow_amount;
         node.append_attribute("wetness")       = m_wetness;
+        node.append_attribute("blend_height")  = m_blend_height;
 
         // surface layer rules, these are authored per world exactly like the scatter rules are
         pugi::xml_node layers_node = node.append_child("layers");
@@ -1598,6 +1600,8 @@ namespace spartan
             layer_node.append_attribute("align_to_normal")      = layer.align_to_normal;
             layer_node.append_attribute("surface_offset")       = layer.surface_offset;
             layer_node.append_attribute("sink")                 = layer.sink;
+            layer_node.append_attribute("blend_height")         = layer.blend_height;
+            layer_node.append_attribute("blend_sharpness")      = layer.blend_sharpness;
             layer_node.append_attribute("render_distance")      = layer.render_distance;
             layer_node.append_attribute("shadow_distance")      = layer.shadow_distance;
             layer_node.append_attribute("grass_ring_0")         = layer.grass_ring_radius[0];
@@ -1644,6 +1648,7 @@ namespace spartan
         m_layer_quality = clamp(node.attribute("layer_quality").as_uint(3), 1u, 4u);
         m_snow_amount   = node.attribute("snow_amount").as_float(1.0f);
         m_wetness       = node.attribute("wetness").as_float(0.0f);
+        m_blend_height  = node.attribute("blend_height").as_float(0.35f);
 
         // surface layer rules, a world saved before they travelled with it keeps the defaults
         m_layer_rules = TerrainLayerDefaults::Get();
@@ -1737,6 +1742,8 @@ namespace spartan
                 layer.align_to_normal      = layer_node.attribute("align_to_normal").as_float(1.0f);
                 layer.surface_offset       = layer_node.attribute("surface_offset").as_float(0.05f);
                 layer.sink                 = layer_node.attribute("sink").as_float(0.0f);
+                layer.blend_height         = layer_node.attribute("blend_height").as_float(1.0f);
+                layer.blend_sharpness      = layer_node.attribute("blend_sharpness").as_float(0.5f);
                 layer.render_distance      = layer_node.attribute("render_distance").as_float(0.0f);
                 layer.shadow_distance      = layer_node.attribute("shadow_distance").as_float(150.0f);
                 layer.grass_ring_radius[0] = layer_node.attribute("grass_ring_0").as_float(55.0f);

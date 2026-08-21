@@ -1197,6 +1197,10 @@ namespace spartan
                     -1.0f :
                     (state.prop_mask ? state.params.biome_min_weight : 2.0f);
 
+                // the seating offset rides along with the terrain entity y, the populate shader adds
+                // that single float to every sampled height so no push constant slot is needed
+                const float seat_y = terrain_entity_y + state.params.surface_offset;
+
                 Vector4 terrain_mapping = terrain_mapping_live;
                 if (terrain_mapping.z == 0.0f && terrain_mapping.w == 0.0f)
                 {
@@ -1240,7 +1244,8 @@ namespace spartan
                     // values[0] = (cell_size, ring_radius, lod_base, max_instances_per_lod)
                     // values[1] = (height_min, height_max, max_slope_cos, inner_radius)
                     // values[2] = (map_origin_x, map_origin_z, map_inv_x, map_inv_z)
-                    // heightmap is r32 local y, material_index bitcast is the entity y offset
+                    // heightmap is r32 local y, material_index bitcast is the entity y plus the layer's
+                    // seating offset
                     // is_transparent bitcast carries biome_min_weight, negative disables the mask gate
                     m_pcb_pass_cpu.is_transparent = *reinterpret_cast<const uint32_t*>(&biome_min);
                     m_pcb_pass_cpu.draw_index     = lod                 |
@@ -1249,7 +1254,7 @@ namespace spartan
                                                     (scale_min    << 12) |
                                                     (scale_max    << 20) |
                                                     (tilt         << 28);
-                    m_pcb_pass_cpu.material_index = *reinterpret_cast<const uint32_t*>(&terrain_entity_y);
+                    m_pcb_pass_cpu.material_index = *reinterpret_cast<const uint32_t*>(&seat_y);
                     m_pcb_pass_cpu.v[0]  = cell_size;
                     m_pcb_pass_cpu.v[1]  = ring_radius;
                     m_pcb_pass_cpu.v[2]  = static_cast<float>(lod_base);

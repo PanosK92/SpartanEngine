@@ -337,8 +337,12 @@ void evaluate_light(
                 L_shadow_primary *= cloud_shadow_sample(tex5, GET_SAMPLER(sampler_bilinear_clamp), surface.position, normalize(-light.forward), get_camera_position());
             }
 
-            bool rt_owns_contact = use_rt_shadow_texture || (use_inline_rt_shadow && light.is_directional());
-            if (light.has_shadows() && light.has_shadows_screen_space() && surface.is_opaque() && !rt_owns_contact)
+            // contact shadows apply on top of whatever produced the primary term, ray traced included.
+            // a ray can only hit what is in the acceleration structure, and gpu scatter has no entities
+            // behind it, so grass and micro detail cast nothing there. the screen space trace sees them
+            // because it reads the depth buffer. min() below takes the darker term, so the pixels the
+            // ray already resolved correctly do not change
+            if (light.has_shadows() && light.has_shadows_screen_space() && surface.is_opaque())
             {
                 float contact = tex_uav_sss[
                     int3(

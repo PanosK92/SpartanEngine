@@ -992,14 +992,32 @@ namespace spartan
             return;
         }
 
-        // the rt trace already captures exact contact occlusion, a secondary view never traces
-        const bool rt_shadows_active =
-            cvar_ray_traced_shadows.GetValueAs<bool>() &&
-            RHI_Device::IsSupportedRayTracing() &&
-            GetTopLevelAccelerationStructure() != nullptr &&
-            !IsSecondaryViewActive();
-        if (rt_shadows_active)
+        // this used to early out when ray traced shadows were on, on the grounds that the trace already
+        // captures exact contact occlusion. it only captures what is in the acceleration structure, and
+        // gpu scatter owns no entities, so grass and micro detail are missing from it entirely. the screen
+        // space trace sees whatever reached the depth buffer, so both run now and the lighting pass takes
+        // the darker of the two, which leaves geometry the trace can see unchanged
+
+        // nothing writes the target when no light qualifies, and the lighting pass still samples it for
+        // any light whose flags claim contact shadows, so the last frame that did write would keep being
+        // applied. clear to lit and leave
+        bool any_light = false;
+        for (Entity* entity : World::GetEntities())
         {
+            Light* light = entity->GetComponent<Light>();
+            any_light    = any_light ||
+                           (light                                           &&
+                            light->GetLightType() == LightType::Directional &&
+                            light->GetFlag(LightFlags::Shadows)             &&
+                            light->GetFlag(LightFlags::ShadowsScreenSpace)  &&
+                            light->GetIntensityRadiometric() != 0.0f);
+        }
+        if (!any_light)
+        {
+            if (tex_sss)
+            {
+                RHI_CommandList::ClearTexture(tex_sss, Color(1.0f, 1.0f, 1.0f, 1.0f));
+            }
             return;
         }
 

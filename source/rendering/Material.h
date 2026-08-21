@@ -109,6 +109,8 @@ namespace spartan
         ColorVariationFromInstance, // per-instance color variation
         IsWater,                    // water flow animation
         MotionBlurRadial,           // rotational motion blur instead of linear (wheels)
+        TerrainBlend,               // how far the terrain creeps over this surface, 0 opts out
+        TerrainBlendSharpness,      // 0 is a long gradient, 1 is a hard waterline
     
         // render settings
         CullMode,                   // face culling mode

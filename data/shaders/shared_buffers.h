@@ -158,7 +158,13 @@ struct FrameBufferData
     SHARED_FLOAT  terrain_height_y;
     SHARED_FLOAT  terrain_height_enabled;
     SHARED_FLOAT  terrain_maps_enabled;
-    SHARED_FLOAT  padding_terrain_height_1;
+    // metres of ground that creep up anything intersecting the heightfield, 0 disables the blend
+    SHARED_FLOAT  terrain_blend_height;
+
+    SHARED_UINT   terrain_blend_material;  // bindless index of the terrain surface material
+    SHARED_FLOAT  terrain_blend_tiling;    // terrain uv repeats per metre, matches the surface material
+    SHARED_FLOAT  padding_terrain_blend_0;
+    SHARED_FLOAT  padding_terrain_blend_1;
 
     // radial motion blur wheel hubs, xy = screen uv, z = signed per-frame rotation angle in radians, w = projected radius in output pixels
     SHARED_FLOAT4 radial_blur_hubs[8];
@@ -274,6 +280,14 @@ struct MaterialParameters
     SHARED_UINT  terrain_flags        SHARED_DEFAULT(0);
     SHARED_FLOAT terrain_snow_amount  SHARED_DEFAULT(1.0f); // global snow multiplier, 0 disables the snow layer
     SHARED_FLOAT terrain_wetness      SHARED_DEFAULT(0.0f); // global wetness added on top of the flow driven amount
+
+    // on any material, how far the ground creeps over this surface where it sinks into the terrain,
+    // it scales the global blend height, 0 opts the material out
+    SHARED_FLOAT terrain_blend           SHARED_DEFAULT(1.0f);
+    // 0 is a long gradient up the surface, 1 is a hard waterline
+    SHARED_FLOAT terrain_blend_sharpness SHARED_DEFAULT(0.5f);
+    SHARED_FLOAT padding_terrain_blend_a SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT padding_terrain_blend_b SHARED_DEFAULT(0.0f);
 
 #ifndef __cplusplus
     bool has_texture_albedo()    { return (flags & (1 << 2))  != 0; }

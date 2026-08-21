@@ -1811,6 +1811,18 @@ namespace spartan
             }
         }
 
+        // ground blending, the bindless slot is handed out by TickUploadMaterials which runs before
+        // this, so the index is the one this frame's draws will sample
+        m_cb_frame_cpu.terrain_blend_height   = 0.0f;
+        m_cb_frame_cpu.terrain_blend_material = 0;
+        m_cb_frame_cpu.terrain_blend_tiling   = 0.0f;
+        if (m_cb_frame_cpu.terrain_height_enabled > 0.5f && m_pass_state.terrain.surface)
+        {
+            m_cb_frame_cpu.terrain_blend_height   = m_pass_state.terrain.blend_height;
+            m_cb_frame_cpu.terrain_blend_material = m_pass_state.terrain.surface->GetIndex();
+            m_cb_frame_cpu.terrain_blend_tiling   = m_pass_state.terrain.surface->GetProperty(MaterialProperty::TextureTilingX);
+        }
+
         if (m_pass_state.terrain_enabled &&
             m_pass_state.terrain.map_a &&
             m_pass_state.terrain.map_b &&
@@ -2673,6 +2685,9 @@ namespace spartan
                 properties[count].thickness             = material->GetProperty(MaterialProperty::Thickness);
                 properties[count].sheen                 = material->GetProperty(MaterialProperty::Sheen);
                 properties[count].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
+                properties[count].terrain_blend         = material->GetProperty(MaterialProperty::TerrainBlend);
+                properties[count].terrain_blend_sharpness =
+                    material->GetProperty(MaterialProperty::TerrainBlendSharpness);
 
                 // flags
                 properties[count].flags  = material->HasTextureOfType(MaterialTextureType::Height)             ? (1U << 0)  : 0;

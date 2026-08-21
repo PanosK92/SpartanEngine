@@ -162,6 +162,8 @@ namespace spartan
             float tilt_deg           = 0.0f;
             float height_bake_min    = 0.0f; // remap 0-1 height preview to world y
             float height_bake_max    = 1.0f;
+            // metres added to the seating height, negative pushes the instance into the ground
+            float surface_offset     = 0.0f;
             math::Vector2 terrain_extent_m = math::Vector2(6144.0f, 6144.0f);
             math::Vector4 terrain_world_mapping = math::Vector4::Zero; // xy min xz, zw 1/size
         };
@@ -184,6 +186,7 @@ namespace spartan
             float snow_level            = 400.0f;
             float snow_amount           = 1.0f;
             float wetness               = 0.0f;
+            float blend_height          = 0.35f; // metres of ground that creep over an intersecting surface
             uint32_t quality            = 3; // top n layers sampled per pixel, matches Terrain's own default
             uint32_t debug_view         = 0; // TerrainDebugView, 0 is off
         };

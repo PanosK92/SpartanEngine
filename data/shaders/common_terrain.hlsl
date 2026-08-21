@@ -1241,6 +1241,311 @@ TerrainSurface terrain_shade_lod(
     return output;
 }
 
+//= ground blending ==============================================================================
+
+// anything that sinks into the heightfield gets the ground drawn over its lower part, so a rock, a
+// tree base or a kerb reads as part of the surface instead of an object parked on top of it
+// the ground is resolved with the terrain's own material and layer weights, a cheaper approximation
+// would land on a different colour than the terrain pixel right next to the prop and draw a ring
+
+// how far past the dirt line the shading normal keeps bending, in multiples of the band, a fillet
+// only reads as round if it has far more room than the material transition does
+static const float terrain_blend_fillet_reach = 3.5f;
+
+// how far around the arc the normal is allowed to travel
+// a real fillet between a wall and flat ground carries a normal pointing out and up at forty five degrees
+// where it touches the ground, and only reaches straight up once it is out on the terrain itself
+// only the prop's own pixels are ours to shade, so only the upper half of that arc is ours to draw, and
+// rotating all the way to the ground normal there flattens the bank into a sheet lying against the wall
+// stopping on the bisector leaves the curve reading as soil banked up rather than paint
+static const float terrain_blend_fillet_arc = 0.55f;
+
+struct TerrainBlend
+{
+    float  weight;        // material, follows the broken up dirt line
+    float  weight_normal; // fillet, smooth and reaching much further up the prop
+    float3 albedo;
+    float3 normal;
+    float  roughness;
+    float  metalness;
+    float  occlusion;
+};
+
+TerrainBlend terrain_blend_none()
+{
+    TerrainBlend output;
+    output.weight        = 0.0f;
+    output.weight_normal = 0.0f;
+    output.albedo        = 0.0f;
+    output.normal        = float3(0.0f, 1.0f, 0.0f);
+    output.roughness     = 1.0f;
+    output.metalness     = 0.0f;
+    output.occlusion     = 1.0f;
+    return output;
+}
+
+// rotate one normal onto the other along the arc between them, a straight lerp shortcuts through the
+// chord and leaves the contact reading as a corner instead of a curve
+float3 terrain_blend_normal_arc(float3 from, float3 to, float t)
+{
+    float cos_angle = clamp(dot(from, to), -1.0f, 1.0f);
+    float angle     = acos(cos_angle);
+    float sin_angle = sin(angle);
+
+    // antiparallel has no preferred axis to rotate about and a lerp through it normalizes a zero
+    if (sin_angle < 1e-3f)
+    {
+        return cos_angle > 0.0f ? normalize(lerp(from, to, t)) : (t < 0.5f ? from : to);
+    }
+
+    return normalize(from * sin((1.0f - t) * angle) + to * sin(t * angle));
+}
+
+// metre scale breakup, a level cut across a boulder is the tell that this is a shader effect
+float terrain_blend_noise(float3 position_world)
+{
+    float2 p = position_world.xz * terrain_noise_rcp_scale;
+    float n  = noise_perlin(p * (1.0f / 3.0f));        // 3 m
+    n       += noise_perlin(p * (1.0f / 0.9f)) * 0.5f; // 0.9 m
+    return n / 1.5f;
+}
+
+float terrain_blend_fetch(float2 normalized, float2 size)
+{
+    float2 uv = (saturate(normalized) * (size - 1.0f) + 0.5f) / max(size, 1.0f);
+    return tex_terrain_height.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0.0f);
+}
+
+// one texel is one terrain vertex, so a point tap is the vertex height with nothing filtered into it
+float terrain_blend_fetch_vertex(float2 texel, float2 size)
+{
+    float2 uv = (clamp(texel, 0.0f, size - 1.0f) + 0.5f) / max(size, 1.0f);
+    return tex_terrain_height.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0.0f);
+}
+
+// world y of the heightfield under an xz, reconstructed the way the terrain mesh triangulates its
+// cells so the answer is the surface that actually got rasterized
+// the vertex shaders call this on its own, they move geometry onto the ground and have no use for
+// the normal that the pixel path needs
+float terrain_blend_ground_height(float2 world_xz, out float valid)
+{
+    valid = 0.0f;
+
+    if (buffer_frame.terrain_height_enabled < 0.5f)
+    {
+        return 0.0f;
+    }
+
+    float2 origin     = buffer_frame.terrain_height_mapping.xy;
+    float2 inv_size   = buffer_frame.terrain_height_mapping.zw;
+    float2 normalized = (world_xz - origin) * inv_size;
+    if (any(normalized < 0.0f) || any(normalized > 1.0f))
+    {
+        return 0.0f;
+    }
+
+    float2 size;
+    tex_terrain_height.GetDimensions(size.x, size.y);
+    float2 texels = max(size - 1.0f, 1.0f);
+
+    // the mesh cuts every cell into two triangles across the corner pair the index buffer pairs up, a
+    // bilinear tap reads the twist of the cell instead of the triangle plane and on a twenty five metre
+    // cell that misses the rendered surface by more than the whole blend band, which is the seam
+    float2 grid = normalized * texels;
+    float2 base = min(floor(grid), texels - 1.0f);
+    float2 f    = saturate(grid - base);
+
+    float h00 = terrain_blend_fetch_vertex(base + float2(0.0f, 0.0f), size);
+    float h10 = terrain_blend_fetch_vertex(base + float2(1.0f, 0.0f), size);
+    float h01 = terrain_blend_fetch_vertex(base + float2(0.0f, 1.0f), size);
+    float h11 = terrain_blend_fetch_vertex(base + float2(1.0f, 1.0f), size);
+
+    float height = (f.x + f.y <= 1.0f)
+        ? h00 + f.x * (h10 - h00) + f.y * (h01 - h00)
+        : h11 + (1.0f - f.x) * (h01 - h11) + (1.0f - f.y) * (h10 - h11);
+
+    valid = 1.0f;
+    return height + buffer_frame.terrain_height_y;
+}
+
+// world y of the heightfield under an xz plus the surface normal of that heightfield, the blended
+// normal has to come from the ground rather than the prop or the contact band still shades as the prop
+float terrain_blend_ground(float2 world_xz, out float3 normal_out, out float valid)
+{
+    normal_out = float3(0.0f, 1.0f, 0.0f);
+
+    float height = terrain_blend_ground_height(world_xz, valid);
+    if (valid < 0.5f)
+    {
+        return 0.0f;
+    }
+
+    float2 origin     = buffer_frame.terrain_height_mapping.xy;
+    float2 inv_size   = buffer_frame.terrain_height_mapping.zw;
+    float2 normalized = (world_xz - origin) * inv_size;
+
+    float2 size;
+    tex_terrain_height.GetDimensions(size.x, size.y);
+    float2 texels = max(size - 1.0f, 1.0f);
+
+    // one texel of the heightfield, a shorter step lands inside the same bilinear cell twice and
+    // comes back flat
+    float2 step_normalized = 1.0f / texels;
+    float2 step_world      = 1.0f / max(inv_size * texels, 1e-6f);
+
+    // the normal stays on the filtered field, the terrain mesh carries smooth vertex normals so a per
+    // triangle gradient here would facet the fillet at every cell border
+    float h_left  = terrain_blend_fetch(normalized - float2(step_normalized.x, 0.0f), size);
+    float h_right = terrain_blend_fetch(normalized + float2(step_normalized.x, 0.0f), size);
+    float h_back  = terrain_blend_fetch(normalized - float2(0.0f, step_normalized.y), size);
+    float h_front = terrain_blend_fetch(normalized + float2(0.0f, step_normalized.y), size);
+
+    float slope_x = (h_right - h_left) / (2.0f * step_world.x);
+    float slope_z = (h_front - h_back) / (2.0f * step_world.y);
+
+    normal_out = normalize(float3(-slope_x, 1.0f, -slope_z));
+    return height;
+}
+
+// how much ground shows on this pixel, one below the surface and fading out over the band above it
+// sharpness squeezes that fade around its midpoint, a pebble wants a tight waterline where a boulder
+// wants the ground to wash a long way up it
+void terrain_blend_weights(
+    float3 position_world,
+    float3 normal_world,
+    float  ground_y,
+    float  band,
+    float  sharpness,
+    out float weight_material,
+    out float weight_normal
+)
+{
+    float depth = ground_y - position_world.y;
+
+    // the band used to shrink on faces pointing away from the sky, on the reasoning that soil settles on
+    // what faces up, but a low poly prop is flat shaded and hands every triangle one constant normal, so
+    // the band stepped at every shared edge and the stone came out cracked into wedges
+    // depth alone is continuous everywhere by construction, which is worth more than the overhang nicety
+    float band_face = band;
+
+    // the wobble scales with the band so a wide blend wanders more than a tight one, and a sharp edge
+    // needs the breakup more than a soft one does because there is no gradient left to hide it
+    float depth_noisy = depth +
+        terrain_blend_noise(position_world) * band_face * lerp(0.35f, 0.8f, saturate(sharpness));
+
+    weight_material = saturate(1.0f + depth_noisy / band_face);
+    float contrast  = 1.0f / max(1.0f - saturate(sharpness), 0.02f);
+    weight_material = saturate((weight_material - 0.5f) * contrast + 0.5f);
+    weight_material = smoothstep(0.0f, 1.0f, weight_material);
+
+    // the fillet runs off the clean depth, noise here would ripple the bend instead of curving it, and
+    // the power roughly traces a quarter round so most of the rotation sits near the ground
+    float fillet  = saturate(1.0f + depth / (band_face * terrain_blend_fillet_reach));
+    fillet        = fillet * sqrt(fillet);
+    weight_normal = max(fillet, weight_material) * terrain_blend_fillet_arc;
+}
+
+// dpdx and dpdy come from the caller because the evaluation sits behind a branch and a screen space
+// derivative taken there is undefined
+TerrainBlend terrain_blend_evaluate(
+    float3 position_world,
+    float3 normal_world,
+    float3 dpdx,
+    float3 dpdy,
+    float  distance_to_camera,
+    float  band,
+    float  sharpness
+)
+{
+    TerrainBlend output = terrain_blend_none();
+
+    if (band <= 0.0f)
+    {
+        return output;
+    }
+
+    float  valid = 0.0f;
+    float3 ground_normal;
+    float  ground_y = terrain_blend_ground(position_world.xz, ground_normal, valid);
+    if (valid < 0.5f)
+    {
+        return output;
+    }
+
+    float weight_material;
+    float weight_normal;
+    terrain_blend_weights(
+        position_world, normal_world, ground_y, band, sharpness, weight_material, weight_normal
+    );
+
+    if (weight_normal < 0.004f)
+    {
+        return output;
+    }
+
+    // the fillet only needs the heightfield normal, so the far cheaper half of the effect runs over the
+    // whole reach while the layer resolve stays inside the dirt line
+    output.weight_normal = weight_normal;
+    output.normal        = ground_normal;
+
+    if (weight_material < 0.004f)
+    {
+        return output;
+    }
+
+    MaterialParameters ground = material_parameters[NonUniformResourceIndex(buffer_frame.terrain_blend_material)];
+    if (ground.terrain_layer_count == 0)
+    {
+        return output;
+    }
+
+    float3 ground_position = float3(position_world.x, ground_y, position_world.z);
+    float2 tiling          = float2(buffer_frame.terrain_blend_tiling, buffer_frame.terrain_blend_tiling);
+
+    // the terrain projects its material straight down, which is right on ground that is mostly flat and
+    // smears into vertical stripes the moment the same material lands on the side of a rock, because x
+    // and z stop moving as the surface climbs and the same texels repeat all the way up
+    // switching the projection plane per face cures the smear and cracks a flat shaded prop into wedges
+    // instead, every triangle carrying one constant normal and so picking its own axis
+    // sliding the top down projection along the face keeps a single continuous plane, the offset grows
+    // with height above the contact so the texture advances up a wall at roughly the right rate, and it
+    // falls to nothing at the contact itself where this has to line up with the real ground exactly
+    float  climb = max(position_world.y - ground_y, 0.0f);
+    float2 uv    = (position_world.xz + normal_world.xz * climb) * tiling;
+
+    // the slide term is left out of the derivatives on purpose, it only picks the mip and carrying a
+    // per facet normal into a screen space derivative would put the seams straight back in
+    float2 duvdx = dpdx.xz * tiling;
+    float2 duvdy = dpdy.xz * tiling;
+
+    TerrainSurface ground_surface = terrain_shade(
+        ground,
+        ground_position,
+        ground_normal,
+        uv,
+        duvdx,
+        duvdy,
+        dpdx,
+        dpdy,
+        distance_to_camera,
+        0.0f
+    );
+
+    output.weight    = weight_material;
+    output.albedo    = ground_surface.albedo;
+    output.roughness = ground_surface.roughness;
+    output.metalness = ground_surface.metalness;
+    output.occlusion = ground_surface.occlusion;
+
+    // layer normal detail belongs to the pixels where the ground actually shows, ramping it in on the
+    // material weight keeps the fillet clear of a step where the layer resolve starts running
+    output.normal = terrain_blend_normal_arc(
+        ground_normal, ground_surface.normal, smoothstep(0.0f, 0.2f, weight_material)
+    );
+
+    return output;
+}
+
 //= tessellation =================================================================================
 
 // meters of displacement at a layer height of one, the tessellated grid is far coarser than the

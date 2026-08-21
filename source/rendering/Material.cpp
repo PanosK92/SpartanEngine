@@ -106,6 +106,8 @@ namespace spartan
                 case MaterialProperty::ColorVariationFromInstance: return "color_variation_from_instance";
                 case MaterialProperty::IsWater:                    return "vertex_animate_water";
                 case MaterialProperty::MotionBlurRadial:           return "motion_blur_radial";
+                case MaterialProperty::TerrainBlend:               return "terrain_blend";
+                case MaterialProperty::TerrainBlendSharpness:      return "terrain_blend_sharpness";
         
                 // Render settings
                 case MaterialProperty::CullMode:                   return "cull_mode";
@@ -635,6 +637,10 @@ namespace spartan
         SetProperty(MaterialProperty::Ior,            EnumToIor(MaterialIor::Glass));
         SetProperty(MaterialProperty::WorldHeight,    1.0f);
         SetProperty(MaterialProperty::CullMode,       static_cast<float>(RHI_CullMode::Back));
+        // the ground creeping over anything that sinks into it is the default, a material file written
+        // before this property existed loads without the attribute and keeps this value
+        SetProperty(MaterialProperty::TerrainBlend,          1.0f);
+        SetProperty(MaterialProperty::TerrainBlendSharpness, 0.5f);
 
         const char* project_dir = ResourceCache::GetProjectDirectory();
         char file_path[512];
