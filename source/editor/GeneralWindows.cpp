@@ -815,7 +815,44 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             }
 
             year = month = day = hour = minute = 0;
-            return sscanf(value.c_str(), "%d.%d.%d.%d.%d", &year, &month, &day, &hour, &minute) == 5;
+
+            auto parse_int = [](const char*& p, int& out) -> bool
+            {
+                if (*p < '0' || *p > '9')
+                {
+                    return false;
+                }
+
+                out = 0;
+                while (*p >= '0' && *p <= '9')
+                {
+                    out = out * 10 + (*p - '0');
+                    p++;
+                }
+
+                return true;
+            };
+
+            const char* p = value.c_str();
+            int* fields[] = { &year, &month, &day, &hour, &minute };
+            for (int i = 0; i < 5; i++)
+            {
+                if (!parse_int(p, *fields[i]))
+                {
+                    return false;
+                }
+
+                if (i < 4)
+                {
+                    if (*p != '.')
+                    {
+                        return false;
+                    }
+                    p++;
+                }
+            }
+
+            return *p == '\0';
         }
 
         void start_check()
