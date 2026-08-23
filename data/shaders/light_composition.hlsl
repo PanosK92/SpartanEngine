@@ -80,6 +80,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (pass_is_transparent() && !surface.is_transparent())
         return;
 
+    // rubber stain, multiply the lit ground, glass overwrite is the wrong operator
+    if (pass_is_transparent() && surface.is_skid_mark())
+    {
+        float coverage = saturate(surface.alpha);
+        float3 dest    = tex_uav[thread_id.xy].rgb;
+        float3 stain   = dest * lerp(float3(1.0f, 1.0f, 1.0f), surface.albedo, coverage);
+        tex_uav[thread_id.xy] = validate_output(float4(stain, 1.0f));
+        return;
+    }
+
     float3 light_diffuse       = 0.0f;
     float3 light_specular      = 0.0f;
     float3 light_emissive      = 0.0f;

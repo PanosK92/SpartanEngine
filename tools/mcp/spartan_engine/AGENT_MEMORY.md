@@ -48,7 +48,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - To drive and inspect a car: `engine_set_mode` play, `vehicle_enter`, hold `vehicle_set_input` for a stretch, then `vehicle_telemetry` and report anomalies. Agents cannot compile; stop at diagnosis unless the user asks for code changes.
 - Use `screenshot_take` when visual verification matters; it waits briefly for the async save and returns the image when ready.
 - Before deleting or rebuilding geometry that should preserve look, call `entity_render_materials` on the target and reuse material names.
-- Focused reusable assets default to game-ready environment props, never hero assets unless the user explicitly requests hero asset or hero quality. Target about 6000 triangles, at most 12 authored parts and at most 4 reused materials, merge geometry by material, and put non-silhouette detail into textures.
+- Focused reusable assets have no authored part, component, material or triangle cap. Create as many as the object needs. Hero bodies use dense loft profiles (24 to 64 points, 12 to 32 stations). Merge geometry that shares a material on save, and put fasteners, print and wear into textures.
 - Use `entity_create_light` for every light; it fully initializes intensity, range, angle, area size, shadows, and distances. Never hand-roll lights with empty + add component + component_set.
 - Light intensity is lux for directional and lumens otherwise. Visible blockout defaults: point/spot 8500, area 12000, directional 120000. Values like 25-100 are invisible.
 - Use `lights_calibrate` to fix existing scene lights in one call; specialty car lights stay dim, blockout lights get lifted.
@@ -124,3 +124,4 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Engine clients use separate connection and command timeouts. A command timeout closes the socket and rejects pending requests. Queued MCP jobs expire after 25 seconds, but an executing main-thread handler cannot be preempted.
 - Catalog writes use process-local serialization, a cross-process lock, staged files, backups, and rollback.
 - Glass materials use `color_a`, `ior`, `absorption`, and `thickness`. `transmission` and `transparency` alias inverted `color_a`.
+- Capability gap: Native MCP command or tool `entity_describe` is missing from the engine bridge or Node registry. Prompt: "Create an asset based on the car in the image, it's a hero asset so everything needs to be detailed, including its materials"

@@ -106,6 +106,7 @@ namespace spartan
                 case MaterialProperty::ColorVariationFromInstance: return "color_variation_from_instance";
                 case MaterialProperty::IsWater:                    return "vertex_animate_water";
                 case MaterialProperty::MotionBlurRadial:           return "motion_blur_radial";
+                case MaterialProperty::IsSkidMark:                 return "is_skid_mark";
                 case MaterialProperty::TerrainBlend:               return "terrain_blend";
                 case MaterialProperty::TerrainBlendSharpness:      return "terrain_blend_sharpness";
         

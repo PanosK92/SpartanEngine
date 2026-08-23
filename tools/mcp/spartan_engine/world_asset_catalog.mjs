@@ -122,11 +122,25 @@ function local_path(project_root, engine_path)
   return resolved;
 }
 
-function library_paths(project_root)
+const default_blockout_root = "project/mcp/blockout";
+const viewer_library_root = "project/mcp/library";
+
+function normalize_engine_root(value)
+{
+  return String(value ?? "")
+    .replace(/\\/g, "/")
+    .replace(/\/+$/g, "");
+}
+
+function library_paths(project_root, resource_directory)
 {
   const directory = "project";
-  // mcp ai blockout output, curated asset viewer library is separate under mcp/library
-  const engine_root = `${directory}/mcp/blockout`;
+  const requested = normalize_engine_root(resource_directory);
+  // mcp writes meshes into blockout. the asset viewer catalog is mcp/library.
+  const engine_root =
+    requested && requested !== directory
+      ? requested
+      : default_blockout_root;
   return {
     directory,
     engine_root,
@@ -572,6 +586,7 @@ async function ensure_catalog(
       "",
       "meshes",
       "materials",
+      "textures",
       "prefabs",
       "candidates",
       "sources",
@@ -602,7 +617,10 @@ async function read_catalog_unlocked(
   resource_directory,
 )
 {
-  const unresolved_paths = library_paths(project_root);
+  const unresolved_paths = library_paths(
+    project_root,
+    resource_directory,
+  );
   await recover_staged_transaction(
     `${unresolved_paths.catalog_local_path}.candidate_apply.transaction.json`,
     unresolved_paths.local_root,
@@ -2902,7 +2920,7 @@ export async function world_asset_register(
     project_root,
     resource_directory,
   );
-  return with_catalog_lock(
+  const result = await with_catalog_lock(
     paths.catalog_local_path,
     () => world_asset_register_unlocked(
       project_root,
@@ -2910,6 +2928,34 @@ export async function world_asset_register(
       args,
     ),
   );
+  // asset viewer reads mcp/library. mcp writes land in blockout, so a
+  // successful register also copies into the viewer catalog
+  if (
+    result?.ok &&
+    normalize_engine_root(resource_directory) !==
+      viewer_library_root
+  )
+  {
+    try
+    {
+      const library_paths_resolved = library_paths(
+        project_root,
+        viewer_library_root,
+      );
+      await with_catalog_lock(
+        library_paths_resolved.catalog_local_path,
+        () => world_asset_register_unlocked(
+          project_root,
+          viewer_library_root,
+          args,
+        ),
+      );
+    }
+    catch
+    {
+    }
+  }
+  return result;
 }
 
 async function world_asset_fork_unlocked(

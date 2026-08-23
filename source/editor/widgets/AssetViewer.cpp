@@ -428,8 +428,9 @@ namespace
         {
             relative_directory.pop_back();
         }
+        // disk scans store absolute paths, catalogs store project/mcp/...
+        // both have to match the same root
         if (
-            !filesystem::path(value).is_absolute() &&
             !relative_directory.empty() &&
             (
                 relative_value == relative_directory ||
@@ -515,6 +516,40 @@ namespace
             resolved_value.end()
         );
         return mismatch.first == resolved_directory.end();
+    }
+
+    bool path_is_in_viewer_roots(const string& value)
+    {
+        if (value.find("..") != string::npos)
+        {
+            return false;
+        }
+
+        const string roots[] =
+        {
+            World::GetLibraryResourceDirectory(),
+            World::GetGeneratedResourceDirectory()
+        };
+        const bool is_absolute =
+            filesystem::path(value).is_absolute();
+
+        for (const string& root : roots)
+        {
+            if (root.empty() || !path_is_within(value, root))
+            {
+                continue;
+            }
+            // weakly_canonical of a relative root follows cwd, so a
+            // project/mcp file opened from bin/ would be rejected
+            if (
+                !is_absolute ||
+                resolved_path_is_within(value, root)
+            )
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     // strips whatever a user typed into an inline rename down to something safe to put on disk
@@ -1524,26 +1559,38 @@ void AssetViewer::RefreshCatalog(bool force)
         World::GetLibraryResourceDirectory() +
         "catalog.json";
     // the directories are part of the signature, files can land on disk without the
-    // catalog ever being rewritten
-    string write_time =
-        FileSystem::Exists(catalog_path) ?
-        FileSystem::GetLastWriteTime(catalog_path) :
-        "";
-    for (
-        const char* folder :
-        { "meshes", "materials", "textures", "prefabs" }
-    )
+    // catalog ever being rewritten. mcp writes into mcp/blockout, the viewer catalog
+    // lives in mcp/library, so both roots have to be watched
+    string write_time;
+    auto append_root_times = [&](const string& root)
     {
-        const string directory =
-            FileSystem::GetDirectoryFromFilePath(catalog_path) +
-            folder;
-        if (FileSystem::Exists(directory))
+        if (root.empty())
+        {
+            return;
+        }
+        const string catalog = root + "catalog.json";
+        if (FileSystem::Exists(catalog))
         {
             write_time +=
                 "|" +
-                FileSystem::GetLastWriteTime(directory);
+                FileSystem::GetLastWriteTime(catalog);
         }
-    }
+        for (
+            const char* folder :
+            { "meshes", "materials", "textures", "prefabs" }
+        )
+        {
+            const string directory = root + folder;
+            if (FileSystem::Exists(directory))
+            {
+                write_time +=
+                    "|" +
+                    FileSystem::GetLastWriteTime(directory);
+            }
+        }
+    };
+    append_root_times(World::GetLibraryResourceDirectory());
+    append_root_times(World::GetGeneratedResourceDirectory());
 
     if (
         !force &&
@@ -1773,14 +1820,17 @@ void AssetViewer::RefreshCatalog(bool force)
             );
         }
 
-        const string root =
-            FileSystem::GetDirectoryFromFilePath(m_catalog_path);
         const auto scan =
-            [this, &known, &root](
+            [this, &known](
+                const string& root,
                 const char* folder,
                 const char* type
             )
         {
+            if (root.empty())
+            {
+                return;
+            }
             const string directory = root + folder;
             error_code error;
             filesystem::directory_iterator iterator(
@@ -1847,9 +1897,26 @@ void AssetViewer::RefreshCatalog(bool force)
             }
         };
 
-        scan("meshes", "mesh");
-        scan("materials", "material");
-        scan("textures", "texture");
+        const auto scan_root = [&](const string& root)
+        {
+            scan(root, "meshes", "mesh");
+            scan(root, "materials", "material");
+            scan(root, "textures", "texture");
+            scan(root, "prefabs", "prefab");
+        };
+        const string library_root =
+            FileSystem::GetDirectoryFromFilePath(m_catalog_path);
+        scan_root(library_root);
+        const string generated_root =
+            World::GetGeneratedResourceDirectory();
+        if (
+            !generated_root.empty() &&
+            normalized_path(generated_root) !=
+            normalized_path(library_root)
+        )
+        {
+            scan_root(generated_root);
+        }
     }
 
     sort(
@@ -1957,16 +2024,10 @@ void AssetViewer::LoadSelectedAsset(
         m_status = "The selected asset has no path.";
         return;
     }
-    string expected_root =
-        FileSystem::GetDirectoryFromFilePath(m_catalog_path);
-    if (
-        asset.path.find("..") != string::npos ||
-        expected_root.empty() ||
-        !path_is_within(asset.path, expected_root) ||
-        !resolved_path_is_within(asset.path, expected_root)
-    )
+    if (!path_is_in_viewer_roots(asset.path))
     {
-        m_status = "The selected asset has an unsafe catalog path.";
+        m_status =
+            "The selected asset is outside the library and mcp blockout folders.";
         return;
     }
     if (!FileSystem::Exists(asset.path))
@@ -5099,7 +5160,7 @@ void AssetViewer::DrawAssetList(float width, float height)
             message
         );
         const char* hint = m_assets.empty()
-            ? "Generate world resources, then refresh the library."
+            ? "AI builds land in mcp/blockout. Refresh the library after a run."
             : "Try another name or asset type.";
         const float hint_width =
             ImGui::CalcTextSize(hint).x;
@@ -8809,16 +8870,10 @@ bool AssetViewer::PreviewPath(
         error = "path is required";
         return false;
     }
-    const string library_root =
-        FileSystem::GetDirectoryFromFilePath(m_catalog_path);
-    if (
-        path.find("..") != string::npos ||
-        library_root.empty() ||
-        !path_is_within(path, library_root) ||
-        !resolved_path_is_within(path, library_root)
-    )
+    if (!path_is_in_viewer_roots(path))
     {
-        error = "path must be inside the active asset library";
+        error =
+            "path must be inside the asset library or mcp blockout";
         return false;
     }
     if (!FileSystem::Exists(path))

@@ -35,6 +35,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../resource/ResourceCache.h"
 #include "../../rhi/RHI_Texture.h"
 #include "../../file_system/FileSystem.h"
+#include "../../resource/import/ImageImporter.h"
+#include <cmath>
 SP_WARNINGS_OFF
 #include "../../io/pugixml.hpp"
 SP_WARNINGS_ON
@@ -55,6 +57,115 @@ namespace spartan
     {
         t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
         return t * t * (3.0f - 2.0f * t);
+    }
+
+    static void pack_skid_fade(RHI_Vertex_PosTexNorTan& vertex, float fade)
+    {
+        vertex.tan = vertex_pack::pack_half2(fade, 0.0f);
+    }
+
+    static float hash01(int x, int y)
+    {
+        uint32_t n = static_cast<uint32_t>(x) * 374761393u + static_cast<uint32_t>(y) * 668265263u;
+        n = (n ^ (n >> 13)) * 1274126177u;
+        return static_cast<float>(n & 0xffffffu) / 16777215.0f;
+    }
+
+    static float noise_fade(float t)
+    {
+        return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
+    }
+
+    static float noise_wrap(float x, float y, int period_x, int period_y)
+    {
+        float px = static_cast<float>(period_x);
+        float py = static_cast<float>(period_y);
+        x = fmodf(x, px);
+        y = fmodf(y, py);
+        if (x < 0.0f)
+        {
+            x += px;
+        }
+        if (y < 0.0f)
+        {
+            y += py;
+        }
+
+        int x0 = static_cast<int>(floorf(x)) % period_x;
+        int y0 = static_cast<int>(floorf(y)) % period_y;
+        if (x0 < 0)
+        {
+            x0 += period_x;
+        }
+        if (y0 < 0)
+        {
+            y0 += period_y;
+        }
+        int x1 = (x0 + 1) % period_x;
+        int y1 = (y0 + 1) % period_y;
+        float fx = noise_fade(x - floorf(x));
+        float fy = noise_fade(y - floorf(y));
+        float n00 = hash01(x0, y0);
+        float n10 = hash01(x1, y0);
+        float n01 = hash01(x0, y1);
+        float n11 = hash01(x1, y1);
+        float nx0 = n00 + (n10 - n00) * fx;
+        float nx1 = n01 + (n11 - n01) * fx;
+        return nx0 + (nx1 - nx0) * fy;
+    }
+
+    static float gauss(float x, float mu, float sigma)
+    {
+        float d = (x - mu) / sigma;
+        return expf(-0.5f * d * d);
+    }
+
+    static void generate_skid_texture_rgba(vector<uint8_t>& bytes, uint32_t width, uint32_t height)
+    {
+        bytes.resize(static_cast<size_t>(width) * height * 4);
+        for (uint32_t y = 0; y < height; y++)
+        {
+            float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(height);
+            float edge = smooth_fade(v / 0.10f) * smooth_fade((1.0f - v) / 0.10f);
+            float rib_l = gauss(v, 0.30f, 0.085f);
+            float rib_r = gauss(v, 0.70f, 0.085f);
+            float film  = gauss(v, 0.50f, 0.20f) * 0.42f;
+            float profile = edge * (film + 0.95f * rib_l + 0.95f * rib_r);
+            for (uint32_t x = 0; x < width; x++)
+            {
+                float u = (static_cast<float>(x) + 0.5f) / static_cast<float>(width);
+                float g0 = noise_wrap(u * 4.0f, v * 28.0f, 4, 28);
+                float g1 = noise_wrap(u * 8.0f + 1.7f, v * 56.0f, 8, 56);
+                float g2 = noise_wrap(u * 2.0f + 3.1f, v * 80.0f, 2, 80);
+                float g3 = noise_wrap(u * 16.0f + 0.4f, v * 18.0f, 16, 18);
+                float grain = g0 * 0.45f + g1 * 0.25f + g2 * 0.20f + g3 * 0.10f;
+                float macro = 0.82f + 0.18f * noise_wrap(u * 3.0f, v * 2.0f, 3, 2);
+                float breaks = 0.75f + 0.25f * noise_wrap(u * 5.0f + 2.2f, v * 3.0f, 5, 3);
+                float alpha = profile * (0.50f + 0.50f * grain) * macro * breaks * 0.90f;
+                alpha = alpha < 0.0f ? 0.0f : (alpha > 1.0f ? 1.0f : alpha);
+
+                float tone = 0.035f + 0.050f * grain;
+                float r = tone * 1.15f;
+                float g = tone * 0.92f;
+                float b = tone * 0.78f;
+                float polish = grain * grain * 0.025f;
+                r += polish;
+                g += polish * 0.9f;
+                b += polish * 0.7f;
+
+                auto to_u8 = [](float c) -> uint8_t
+                {
+                    c = c < 0.0f ? 0.0f : (c > 1.0f ? 1.0f : c);
+                    return static_cast<uint8_t>(c * 255.0f + 0.5f);
+                };
+
+                size_t i = (static_cast<size_t>(y) * width + x) * 4;
+                bytes[i + 0] = to_u8(r);
+                bytes[i + 1] = to_u8(g);
+                bytes[i + 2] = to_u8(b);
+                bytes[i + 3] = to_u8(alpha);
+            }
+        }
     }
 
     SkidMarks::SkidMarks(Entity* entity) : Component(entity)
@@ -146,8 +257,8 @@ namespace spartan
                 trail.smooth_center = Vector3::Lerp(trail.smooth_center, ground_point, m_center_smoothing);
             }
 
-            // strip width comes straight from the physical tire width defined on the car, never hardcoded here
-            float half_width = m_physics->GetWheelWidth(wheel) * 0.5f;
+            // strip width comes from the physical tire, scaled to the contact patch
+            float half_width = m_physics->GetWheelWidth(wheel) * 0.5f * m_width_scale;
             if (half_width <= 0.0f)
             {
                 continue;
@@ -161,12 +272,15 @@ namespace spartan
             }
             right.Normalize();
 
+            float slip_intensity = 0.40f + 0.60f * smooth_fade((slip - end_threshold) / 0.70f);
+
             // start (or restart) a strip, no quad is laid until the wheel has moved
             if (!trail.active)
             {
-                trail.active        = true;
-                trail.has_edge      = false;
+                trail.active         = true;
+                trail.has_edge       = false;
                 trail.strip_index++;
+                trail.intensity_edge = slip_intensity;
                 // each wheel and each successive pass sits at a slightly different height so stacked marks do not z-fight
                 trail.height_offset = m_z_offset + i * 0.0012f + (trail.strip_index % 6) * 0.0025f;
                 trail.anchor_center = trail.smooth_center + normal * trail.height_offset;
@@ -184,30 +298,31 @@ namespace spartan
 
             Vector3 travel = (center - trail.anchor_center) / d;
 
-            // a fresh strip starts as a single point, the first cross section has zero width
+            // full width from the first cross section, fade is alpha not a width taper
             if (!trail.has_edge)
             {
-                trail.u_accum    = 0.0f;
-                trail.edge_left  = trail.anchor_center;
-                trail.edge_right = trail.anchor_center;
-                trail.has_edge   = true;
+                trail.u_accum        = 0.0f;
+                trail.edge_left      = trail.anchor_center - right * half_width;
+                trail.edge_right     = trail.anchor_center + right * half_width;
+                trail.intensity_edge = slip_intensity;
+                trail.has_edge       = true;
             }
 
-            // taper the width up from the start point over the fade distance, a geometric fade in that does
-            // not rely on the texture alpha so it can never invert, the strip eases out of a point to full width
-            float w_b       = half_width * smooth_fade((trail.u_accum + d) / m_fade_distance);
-            Vector3 b_left  = center - right * w_b;
-            Vector3 b_right = center + right * w_b;
-            float u_a       = trail.u_accum * m_uv_tiling;
-            float u_b       = (trail.u_accum + d) * m_uv_tiling;
+            Vector3 b_left  = center - right * half_width;
+            Vector3 b_right = center + right * half_width;
+            float u_a       = trail.u_accum;
+            float u_b       = trail.u_accum + d;
+            float fade_a    = smooth_fade(u_a / m_fade_distance) * trail.intensity_edge;
+            float fade_b    = smooth_fade(u_b / m_fade_distance) * slip_intensity;
 
-            DepositQuad(trail, b_left, b_right, u_a, u_b, normal, travel);
+            DepositQuad(trail, b_left, b_right, u_a, u_b, fade_a, fade_b, trail.intensity_edge, slip_intensity, normal, travel);
 
             // advance, the new edge becomes the start of the next quad for seamless continuity
-            trail.edge_left     = b_left;
-            trail.edge_right    = b_right;
-            trail.u_accum      += d;
-            trail.anchor_center = center;
+            trail.edge_left      = b_left;
+            trail.edge_right     = b_right;
+            trail.u_accum       += d;
+            trail.anchor_center  = center;
+            trail.intensity_edge = slip_intensity;
         }
     }
 
@@ -270,22 +385,34 @@ namespace spartan
         render->SetMaterial(m_material);
         render->SetFlag(RenderFlags::CastsShadows, false);
         render->SetFlag(RenderFlags::ExcludeFromRayTracing, true);
+        render->SetFlag(RenderFlags::SkipDeferred, true);
 
         trail.global_vertex_offset = render->GetVertexOffset();
     }
 
-    void SkidMarks::DepositQuad(WheelTrail& trail, const Vector3& bl, const Vector3& br, float u_a, float u_b, const Vector3& normal, const Vector3& tangent)
+    void SkidMarks::DepositQuad(WheelTrail& trail, const Vector3& bl, const Vector3& br, float u_a, float u_b, float fade_a, float fade_b, float intensity_a, float intensity_b, const Vector3& normal, const Vector3& tangent)
     {
         uint32_t slot   = trail.head_quad % trail.capacity_quads;
         uint32_t offset = trail.global_vertex_offset + slot * 4;
 
-        // u tiles along travel, v spans the tire so the project texture reads as a tread
+        float uv_a = u_a * m_uv_tiling;
+        float uv_b = u_b * m_uv_tiling;
+
+        // u tiles along travel, v spans the tire, fade lives in the tangent uint
         RecentQuad rq;
-        rq.slot     = slot;
-        rq.verts[0] = RHI_Vertex_PosTexNorTan(trail.edge_left,  Vector2(u_a, 0.0f), normal, tangent);
-        rq.verts[1] = RHI_Vertex_PosTexNorTan(trail.edge_right, Vector2(u_a, 1.0f), normal, tangent);
-        rq.verts[2] = RHI_Vertex_PosTexNorTan(bl,               Vector2(u_b, 0.0f), normal, tangent);
-        rq.verts[3] = RHI_Vertex_PosTexNorTan(br,               Vector2(u_b, 1.0f), normal, tangent);
+        rq.slot         = slot;
+        rq.u_a          = u_a;
+        rq.u_b          = u_b;
+        rq.intensity_a  = intensity_a;
+        rq.intensity_b  = intensity_b;
+        rq.verts[0]     = RHI_Vertex_PosTexNorTan(trail.edge_left,  Vector2(uv_a, 0.0f), normal, tangent);
+        rq.verts[1]     = RHI_Vertex_PosTexNorTan(trail.edge_right, Vector2(uv_a, 1.0f), normal, tangent);
+        rq.verts[2]     = RHI_Vertex_PosTexNorTan(bl,               Vector2(uv_b, 0.0f), normal, tangent);
+        rq.verts[3]     = RHI_Vertex_PosTexNorTan(br,               Vector2(uv_b, 1.0f), normal, tangent);
+        pack_skid_fade(rq.verts[0], fade_a);
+        pack_skid_fade(rq.verts[1], fade_a);
+        pack_skid_fade(rq.verts[2], fade_b);
+        pack_skid_fade(rq.verts[3], fade_b);
 
         GeometryBuffer::UpdateVertices(rq.verts, offset, 4);
         trail.head_quad = (trail.head_quad + 1) % trail.capacity_quads;
@@ -306,26 +433,16 @@ namespace spartan
             return;
         }
 
-        // the tail narrows to zero width so the strip eases away instead of ending on a full width cross section
+        // keep full width, ramp alpha to zero over the fade distance
         float u_end = trail.u_accum;
-        const int pairs[2][2] = { { 0, 1 }, { 2, 3 } };
         for (RecentQuad& rq : trail.recent)
         {
-            for (int p = 0; p < 2; p++)
-            {
-                RHI_Vertex_PosTexNorTan& a = rq.verts[pairs[p][0]];
-                RHI_Vertex_PosTexNorTan& b = rq.verts[pairs[p][1]];
-
-                Vector2 uv_a = a.get_uv();
-                float u_dist = (m_uv_tiling > 0.0f) ? (uv_a.x / m_uv_tiling) : u_end;
-                float factor = smooth_fade((u_end - u_dist) / m_fade_distance);
-
-                Vector3 pa = a.get_position();
-                Vector3 pb = b.get_position();
-                Vector3 c  = (pa + pb) * 0.5f;
-                a.set_position(c + (pa - c) * factor);
-                b.set_position(c + (pb - c) * factor);
-            }
+            float fade_a = smooth_fade(rq.u_a / m_fade_distance) * smooth_fade((u_end - rq.u_a) / m_fade_distance) * rq.intensity_a;
+            float fade_b = smooth_fade(rq.u_b / m_fade_distance) * smooth_fade((u_end - rq.u_b) / m_fade_distance) * rq.intensity_b;
+            pack_skid_fade(rq.verts[0], fade_a);
+            pack_skid_fade(rq.verts[1], fade_a);
+            pack_skid_fade(rq.verts[2], fade_b);
+            pack_skid_fade(rq.verts[3], fade_b);
             uint32_t offset = trail.global_vertex_offset + rq.slot * 4;
             GeometryBuffer::UpdateVertices(rq.verts, offset, 4);
         }
@@ -334,10 +451,25 @@ namespace spartan
 
     void SkidMarks::CreateMaterial()
     {
-        const string texture_path = "project/materials/skid_marks/albedo.png";
+        const string texture_path = string(ResourceCache::GetProjectDirectory()) + "materials/skid_marks/albedo.png";
+        if (!FileSystem::Exists(texture_path))
+        {
+            const uint32_t size = 256;
+            vector<uint8_t> pixels;
+            generate_skid_texture_rgba(pixels, size, size);
+            FileSystem::CreateDirectory_(FileSystem::GetDirectoryFromFilePath(texture_path));
+            ImageImporter::SaveSdrRgba8(texture_path, size, size, pixels.data());
+        }
+
         if (FileSystem::Exists(texture_path))
         {
             m_texture = ResourceCache::Load<RHI_Texture>(texture_path);
+        }
+
+        if (m_texture)
+        {
+            // blend the grain, do not cut it out with alpha test
+            m_texture->SetFlag(RHI_Texture_Transparent, false);
         }
 
         m_material = make_shared<Material>();
@@ -348,10 +480,13 @@ namespace spartan
         }
         else
         {
-            m_material->SetColor(Color(0.05f, 0.05f, 0.05f, m_opacity));
+            m_material->SetColor(Color(0.04f, 0.035f, 0.03f, m_opacity));
         }
-        m_material->SetProperty(MaterialProperty::Roughness, 0.95f);
+        m_material->SetProperty(MaterialProperty::Roughness, 0.88f);
         m_material->SetProperty(MaterialProperty::Metalness, 0.0f);
+        m_material->SetProperty(MaterialProperty::IsSkidMark, 1.0f);
+        m_material->SetProperty(MaterialProperty::TerrainBlend, 0.0f);
+        m_material->SetProperty(MaterialProperty::Ior, 1.0f);
         m_material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
         if (m_texture)
         {
@@ -387,9 +522,9 @@ namespace spartan
         m_slip_threshold       = node.attribute("slip_threshold").as_float(0.35f);
         m_min_segment_distance = node.attribute("min_segment_distance").as_float(0.05f);
         m_max_segments         = node.attribute("max_segments").as_uint(512);
-        m_opacity              = node.attribute("opacity").as_float(0.75f);
+        m_opacity              = node.attribute("opacity").as_float(0.92f);
         m_z_offset             = node.attribute("z_offset").as_float(0.02f);
-        m_uv_tiling            = node.attribute("uv_tiling").as_float(2.0f);
-        m_fade_distance        = node.attribute("fade_distance").as_float(0.5f);
+        m_uv_tiling            = node.attribute("uv_tiling").as_float(1.25f);
+        m_fade_distance        = node.attribute("fade_distance").as_float(1.1f);
     }
 }

@@ -1907,6 +1907,13 @@ namespace spartan
 
     const string& World::GetGeneratedResourceDirectory()
     {
+        if (generated_resource_directory.empty())
+        {
+            SetGeneratedResourceDirectory(
+                string(ResourceCache::GetProjectDirectory()) +
+                "mcp/blockout/"
+            );
+        }
         return generated_resource_directory;
     }
 
@@ -1932,6 +1939,13 @@ namespace spartan
 
     const string& World::GetLibraryResourceDirectory()
     {
+        if (library_resource_directory.empty())
+        {
+            SetLibraryResourceDirectory(
+                string(ResourceCache::GetProjectDirectory()) +
+                "mcp/library/"
+            );
+        }
         return library_resource_directory;
     }
 

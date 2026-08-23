@@ -371,6 +371,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
     // alpha: opaque pass forces alpha to 1 for non-transparent pixels
     albedo.a = lerp(albedo.a, 1.0f, step(albedo_sample.a, 1.0f) * pass_is_opaque());
+    if (surface.is_skid_mark())
+    {
+        albedo.a *= saturate(vertex.uv_misc.z);
+    }
 
     // emission
     if (surface.has_texture_emissive())
@@ -469,7 +473,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         pass_is_opaque()          &&
         !surface.is_grass_blade() &&
         !surface.is_flower()      &&
-        !surface.is_water();
+        !surface.is_water()       &&
+        !surface.is_skid_mark();
 
     if (terrain_blendable)
     {

@@ -353,6 +353,7 @@ namespace spartan
         at(blend_states, Renderer_BlendState::Alpha)         = make_shared<RHI_BlendState>(true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
         at(blend_states, Renderer_BlendState::Premultiplied) = make_shared<RHI_BlendState>(true, RHI_Blend::One,       RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
         at(blend_states, Renderer_BlendState::Additive)      = make_shared<RHI_BlendState>(true, RHI_Blend::One,       RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 1.0f);
+        at(blend_states, Renderer_BlendState::Multiply)      = make_shared<RHI_BlendState>(true, RHI_Blend::Dest_Color, RHI_Blend::Zero,         RHI_Blend_Operation::Add, RHI_Blend::Zero, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
     }
 
     void Renderer::CreateSamplers()
@@ -977,6 +978,8 @@ namespace spartan
             { Renderer_Shader::outline_v,                             RHI_Shader_Type::Vertex,  "outline.hlsl",                               RHI_Vertex_Type::PosUvNorTan  },
             { Renderer_Shader::outline_p,                             RHI_Shader_Type::Pixel,   "outline.hlsl"                                                               },
             { Renderer_Shader::outline_c,                             RHI_Shader_Type::Compute, "outline.hlsl"                                                               },
+            { Renderer_Shader::skid_marks_v,                          RHI_Shader_Type::Vertex,  "skid_marks.hlsl",                            RHI_Vertex_Type::PosUvNorTan  },
+            { Renderer_Shader::skid_marks_p,                          RHI_Shader_Type::Pixel,   "skid_marks.hlsl"                                                            },
 
             // depth
             { Renderer_Shader::depth_prepass_v,                       RHI_Shader_Type::Vertex,  "depth_prepass.hlsl",                         RHI_Vertex_Type::PosUvNorTan  },

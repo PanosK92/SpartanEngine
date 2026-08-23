@@ -24,6 +24,8 @@ jobs:
       matrix:
         include:
           - api: vulkan
+            configuration: development
+          - api: vulkan
             configuration: release
           - api: vulkan
             configuration: debug

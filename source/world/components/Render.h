@@ -40,7 +40,9 @@ namespace spartan
     {
         CastsShadows         = 1U << 0,
         // skips blas builds and tlas registration, a per-blade blas for millions of grass instances buys nothing
-        ExcludeFromRayTracing = 1U << 1
+        ExcludeFromRayTracing = 1U << 1,
+        // drawn in a dedicated forward pass, never written into the g-buffer
+        SkipDeferred          = 1U << 2
     };
 
     // per-render uv overrides, each field defaults to nan meaning inherit from the material asset at draw time

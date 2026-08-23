@@ -48,6 +48,7 @@ import {
 import {
   get_project_root,
   get_shared_codebase,
+  resolve_readable_path,
 } from "./shared_codebase.mjs";
 import {
   constrain_generated_resources,
@@ -952,6 +953,111 @@ async function wait_for_screenshot(file_path, wait_ms = 5000) {
   return false;
 }
 
+async function screenshot_file_path(file_path)
+{
+  const requested_path = String(file_path ?? "")
+    .replaceAll("\\", "/");
+  const possible_paths = path.isAbsolute(requested_path)
+    ? [requested_path]
+    : [
+        path.resolve(
+          get_project_root(),
+          "binaries",
+          requested_path,
+        ),
+        path.resolve(
+          get_project_root(),
+          requested_path,
+        ),
+      ];
+  for (const possible_path of possible_paths)
+  {
+    try
+    {
+      const stats = await fs.stat(possible_path);
+      if (stats.size > 0)
+      {
+        return possible_path;
+      }
+    }
+    catch
+    {
+    }
+  }
+  return resolve_readable_path(requested_path);
+}
+
+async function capture_asset_viewer_review(run, root_id, label)
+{
+  const preview = await run.tool(
+    "asset_viewer_preview_entity",
+    {
+      id: root_id,
+    },
+    10000,
+  );
+  if (!preview.ok)
+  {
+    return {
+      ok: false,
+      path: "",
+      error: preview.error ?? "asset preview failed",
+    };
+  }
+  const camera = await run.tool(
+    "asset_viewer_set_view",
+    {
+      view: "perspective",
+      zoom: 1,
+    },
+    10000,
+  );
+  if (!camera.ok)
+  {
+    return {
+      ok: false,
+      path: "",
+      error: camera.error ?? "asset viewer camera failed",
+    };
+  }
+  const screenshot = await run.tool(
+    "asset_viewer_screenshot",
+    {
+      path: `asset_${root_id}_${label}.png`,
+      width: 768,
+      height: 768,
+    },
+    10000,
+  );
+  if (!screenshot.ok || !screenshot.path)
+  {
+    return {
+      ok: false,
+      path: "",
+      error: screenshot.error ?? "asset viewer screenshot failed",
+    };
+  }
+  const ready = await wait_for_screenshot(
+    screenshot.path,
+    12000,
+  );
+  if (!ready)
+  {
+    return {
+      ok: false,
+      path: "",
+      error: "asset viewer screenshot was not written",
+    };
+  }
+  const disk_path = await screenshot_file_path(
+    screenshot.path,
+  );
+  return {
+    ok: Boolean(disk_path),
+    path: disk_path,
+  };
+}
+
 async function review_scene(run, args) {
   const id = args.id ?? args.root_id;
   const requested_views = Array.isArray(args.views)
@@ -1209,11 +1315,44 @@ function flatten_points(value, dimensions) {
   });
 }
 
+function flatten_loft_profiles(profiles)
+{
+  if (!Array.isArray(profiles) || profiles.length === 0)
+  {
+    return {
+      loft_profiles: profiles,
+    };
+  }
+  if (profiles.every((entry) => Number.isFinite(entry)))
+  {
+    return {
+      loft_profiles: profiles,
+    };
+  }
+  const flattened = profiles.map((profile) =>
+    flatten_points(profile, 2),
+  );
+  const point_count = flattened[0]?.length
+    ? flattened[0].length / 2
+    : 0;
+  return {
+    loft_profiles: flattened.flat(),
+    loft_profile_points: point_count,
+  };
+}
+
 function normalize_mesh_arguments(args) {
+  const loft = flatten_loft_profiles(args.loft_profiles);
   const normalized = {
     ...args,
     profile: flatten_points(args.profile, 2),
     path_points: flatten_points(args.path_points, 3),
+    loft_profiles: loft.loft_profiles,
+    ...(
+      loft.loft_profile_points
+        ? { loft_profile_points: loft.loft_profile_points }
+        : {}
+    ),
   };
   if (
     normalized.shape === "curved_profile" &&
@@ -2197,138 +2336,14 @@ async function save_asset_progress(
   }
 }
 
-// a budget stated once in the system prompt is a suggestion by the fortieth part. one that answers back in the
-// reply to the call that spent it is a fact the run cannot read past, so the accounting rides along with the
-// geometry commands and speaks up at the moment the limit is crossed
 function track_asset_budget(
-  context,
-  command,
-  args,
+  _context,
+  _command,
+  _args,
   result,
 )
 {
-  const budget = context?.asset_budget;
-  if (
-    !budget ||
-    result?.ok !== true
-  )
-  {
-    return result;
-  }
-
-  if (
-    command === "material_create" ||
-    command === "material_semantic_create"
-  )
-  {
-    const name = String(
-      result.resource?.path ??
-      result.material?.path ??
-      args?.path ??
-      args?.name ??
-      "",
-    ).toLowerCase();
-    const materials = (context.asset_materials ??= new Set());
-    if (name)
-    {
-      materials.add(name);
-    }
-
-    const count = materials.size;
-    const over_materials = count > budget.materials;
-    if (
-      !over_materials &&
-      count <= budget.materials * 0.7
-    )
-    {
-      return result;
-    }
-
-    return {
-      ...result,
-      asset_budget: {
-        tier: budget.tier,
-        materials_used: count,
-        materials_budget: budget.materials,
-        over_budget: over_materials,
-      },
-      guidance: over_materials
-        ? `this asset is over its ${budget.materials} material limit, stop creating materials and reuse or merge the existing set`
-        : `material budget check: ${count} of ${budget.materials} materials used, reuse these materials for the remaining parts`,
-    };
-  }
-
-  if (
-    command !== "mesh_generate" &&
-    command !== "mesh_raw_create"
-  )
-  {
-    return result;
-  }
-
-  const triangles = Math.round(
-    (Number(result.index_count) || 0) / 3,
-  );
-  const name = String(args?.name ?? args?.path ?? "").toLowerCase();
-
-  // a reused mesh is the same geometry the asset already paid for
-  if (result.reused === true)
-  {
-    return result;
-  }
-
-  const seen = (context.asset_parts ??= new Map());
-  const duplicate = name.length > 0 && seen.has(name);
-  if (name.length > 0)
-  {
-    seen.set(name, triangles);
-  }
-  context.asset_triangles =
-    (context.asset_triangles ?? 0) + triangles;
-
-  const spent = context.asset_triangles;
-  const parts = seen.size;
-  const over_triangles = spent > budget.triangles;
-  const over_parts = parts > budget.parts;
-  const notes = [];
-
-  if (duplicate)
-  {
-    notes.push(
-      `a part named ${name} was already generated for this asset, so this call duplicated geometry that already existed, delete one of the two`,
-    );
-  }
-  if (over_triangles || over_parts)
-  {
-    notes.push(
-      `this asset is over budget at ${spent.toLocaleString("en-US")} triangles across ${parts} parts, against a budget of ${budget.triangles.toLocaleString("en-US")} triangles and ${budget.parts} parts`,
-      "stop adding parts now. finish the asset with what it already has: verify the parts are placed and materialled, then let it be saved. if something essential to recognising the object is genuinely missing, remove or simplify existing geometry to pay for it, starting with anything on a face the viewer never sees",
-    );
-  }
-  else if (spent > budget.triangles * 0.7)
-  {
-    notes.push(
-      `budget check: ${spent.toLocaleString("en-US")} of ${budget.triangles.toLocaleString("en-US")} triangles and ${parts} of ${budget.parts} parts used, so only the parts the object is recognised by are still affordable`,
-    );
-  }
-
-  if (notes.length === 0)
-  {
-    return result;
-  }
-
-  return {
-    ...result,
-    asset_budget: {
-      tier: budget.tier,
-      triangles_used: spent,
-      triangles_budget: budget.triangles,
-      parts_used: parts,
-      parts_budget: budget.parts,
-      over_budget: over_triangles || over_parts,
-    },
-    guidance: notes.join(". "),
-  };
+  return result;
 }
 
 async function dispatch_assistant_command(
@@ -4864,13 +4879,68 @@ async function prepare_asset_library_context(
   return matches.slice(0, 20);
 }
 
-// every asset here is an environment prop for a video game unless the request says otherwise, and only the
-// request can say otherwise. the previous wording made every prompt a hero prop and told the run that part
-// count was never worth quality, which is how a flat screen television for a living room ended up with
-// modelled hdmi ports, screw recesses, speaker perforations and a hundred and nineteen thousand triangles
-//
-// the escalation words are deliberately narrow. detailed, nice and high quality are words people use about
-// ordinary work, so they must not buy a thirty thousand triangle budget
+// a car or a hero reference cannot be built in four minutes, the old wall clock stopped the run after a
+// first massing piece and the finalizer then saved whatever scene object matched the name
+function focused_asset_time_budget_ms(prompt, has_images)
+{
+  const override = process.env.SPARTAN_FOCUSED_ASSET_MAX_MS;
+  if (override)
+  {
+    return Number.parseInt(override, 10);
+  }
+  const budget = asset_detail_budget(prompt);
+  const vehicle =
+    /\b(?:car|cars|vehicle|vehicles|bike|motorcycle|truck|plane|helicopter|ship|boat|ferrari|porsche)\b/i
+      .test(String(prompt ?? ""));
+  if (budget.tier === "hero" || has_images || vehicle)
+  {
+    return 900000;
+  }
+  return 360000;
+}
+
+function prompt_is_vehicle(prompt)
+{
+  return (
+    /\b(?:car|cars|vehicle|vehicles|bike|motorcycle|truck|van|bus|ferrari|porsche|testarossa|coupe|sedan|supercar)\b/i
+      .test(String(prompt ?? ""))
+  );
+}
+
+function authored_part_count(entity)
+{
+  const children = entity?.children;
+  if (!Array.isArray(children))
+  {
+    return 0;
+  }
+  return children.length;
+}
+
+function asset_build_is_incomplete(entity, prompt)
+{
+  const parts = authored_part_count(entity);
+  if (prompt_is_vehicle(prompt))
+  {
+    return parts < 8;
+  }
+  return parts < 3;
+}
+
+function incomplete_asset_continue_prompt(prompt, root_id, entity)
+{
+  const parts = authored_part_count(entity);
+  return [
+    `Continue the existing asset root id ${root_id}. Do not create a second root and do not start over.`,
+    `The previous window ended with ${parts} authored parts. That is not a finished asset.`,
+    "Stop probing mesh_generate. Use a loft for the body: path_points along the length, one loft_profiles cross section per station, identical point counts. Parent every part to this root.",
+    "A car still needs four wheels, glass, lights, and body volumes that match the reference photo. A hull alone is a fail.",
+    "Do not call prefab_save, world_asset_register, scene_visual_review, screenshot_take, or asset_viewer_screenshot.",
+    `Original request: ${prompt}`,
+  ].join("\n");
+}
+
+// blockout is the only remaining authored-scope reduction. every other request is unbounded
 function asset_detail_budget(prompt)
 {
   const value = String(prompt ?? "").toLowerCase();
@@ -4882,9 +4952,6 @@ function asset_detail_budget(prompt)
   {
     return {
       tier: "blockout",
-      triangles: 800,
-      parts: 6,
-      materials: 2,
     };
   }
   const explicitly_hero =
@@ -4895,52 +4962,67 @@ function asset_detail_budget(prompt)
   {
     return {
       tier: "hero",
-      triangles: 30000,
-      parts: 40,
-      materials: 8,
     };
   }
   return {
-    tier: "environment_prop",
-    triangles: 6000,
-    parts: 12,
-    materials: 4,
+    tier: "unbounded",
   };
 }
 
-function focused_asset_quality_prompt_lines(prompt)
+function focused_asset_quality_prompt_lines(
+  prompt,
+  reference_images = [],
+)
 {
   const budget = asset_detail_budget(prompt);
+  const has_reference = reference_images.length > 0;
   const tier_line =
     budget.tier === "blockout"
       ? "This request asked for a blockout, so build the massing and proportions only and stop there."
       : budget.tier === "hero"
-        ? "This request asked for a hero asset, so it earns close-up detail. Spend it on the silhouette and on the surfaces that face the viewer, never on hidden faces."
-        : "This is an environment prop. That is the default for every asset request and only the explicit words hero asset or hero quality can elevate it. Close-up, photorealistic, detailed, premium, flagship and high quality do not change the tier. An environment prop is placed in a game alongside many other objects and seen from a normal viewing distance, so build it recognisable, correctly proportioned, cleanly made and game ready, then stop.";
+        ? "This request asked for a hero asset. Build the real object at the resolution the reference and the request need."
+        : "There is no part, material, or triangle cap. Split every surface that needs its own shape or material, and keep constructing until the object is complete.";
 
   return [
     "Focused asset quality standard:",
-    "Everything you build here is a real-time asset for a video game. Assume it has to render in a frame alongside hundreds of others, on a budget, from a normal viewing distance. It is not for a render, a film, a turntable, or a portfolio piece. Triangles and draw calls are the currency you are spending and the game is what you are spending them on.",
+    "Everything you build here is a real-time asset for a video game. Assume it has to render in a frame alongside hundreds of others, from a normal viewing distance. It is not for a render, a film, a turntable, or a portfolio piece.",
     tier_line,
-    `Budget for this asset: about ${budget.triangles.toLocaleString("en-US")} triangles in total, at most ${budget.parts} authored parts and at most ${budget.materials} materials. Treat these as real limits. Reuse materials across parts, merge geometry that shares a material, and spend geometry on the shape the object is recognised by. Coming in well under budget with a clean, readable object is better than using all of it.`,
-    "Model what changes the silhouette or the material. Everything else is the texture's job. Do not model fasteners, screws, screw recesses, ports, sockets, connectors, cables, vents, grilles, perforations, panel seams, embossed text, regulatory markings, badges, or logos as geometry. Those belong in the colour, normal and roughness maps, where they cost nothing.",
+    "There is no authored-part cap, no material cap, and no triangle cap. Create as many parts, components and materials as the object needs. Do not stop because a count feels high.",
+    "Spend triangles on curvature and on parts a stranger uses to name the object. A dense tessellation of a boxy 8-point loft is still a box. Hero bodies use 24 to 64 profile points and 12 to 32 distinct stations, each station a different cross section.",
+    "Model characteristic construction as geometry: body volumes, wheel arches, glass as thin shells, light housings, mirrors, and signature intakes or strakes. Do not model fasteners, screws, screw recesses, ports, sockets, connectors, cables, embossed text, regulatory markings, badges, or logos. Those belong in textures.",
     "Do not model anything the object hides from the viewer. A television, a wardrobe or a fridge stands against a wall, so its back is a flat panel with a material on it. A cabinet has no interior unless it opens. Nothing has internal components. If a surface is never seen in normal use, it is one quad.",
     "Infer the ordinary real-world construction, proportions, silhouette transitions, wall thickness, joins, rims, bevels, and material boundaries that make the object recognizable and credible. The user should not need to enumerate standard object anatomy.",
-    "Build the primary form first, then add only secondary construction that changes the silhouette, function or material boundary. Put tertiary identity detail into textures and stop when the prop reads clearly at normal gameplay distance.",
+    "Build the primary form first, then every secondary part, component and material the object needs. Fasteners, print and wear still belong in textures.",
     "Do not approximate a continuous manufactured or organic surface by visibly stacking cylinders, boxes, spheres, cones, or capsules. Use mesh_generate, variable lofts, sweeps, profiles, shells, bends, tapers, or mesh_raw_create to produce continuous curved transitions with enough radial and longitudinal resolution for a clean solid silhouette.",
     "Primitives are acceptable only for hidden construction, genuinely primitive parts, or an explicitly requested blockout. If several visible primitive sections merely trace one continuous outline, replace them with one coherent generated surface.",
+    "Do not spend the construction window probing mesh_generate argument names. A loft that works is: shape loft, path_points as world stations along the length, loft_profiles as one closed x,y cross section per station, same point count on every profile. Wheels are shape torus with mirror_axis z. Glass is a thin loft or extruded_profile, not a box.",
+    "A car is unfinished until it has a body with changing cross sections, four wheels in arches, glass openings, light housings, and the signature side treatment. A single hull, wedge, or blob is a failed build even if it is painted.",
     "Use physically plausible dimensions and thickness. Avoid coplanar overlaps, open shells, abrupt radius jumps, floating trim, z-fighting, and decorative parts that do not follow the parent surface.",
     "For transparent materials, model the actual outer and inner surfaces or a valid shell and preserve believable thickness at rims and openings. Do not rely on transparency to imply missing geometry.",
     "Build only the reusable object under its prepared root. Do not surround it with a ground pad, route, display structure, studio set, or review lights unless the user explicitly requests those as part of the asset.",
-    "Use one construction pass. Build the current asset completely, then stop authoring. There are no automatic correction, polish, comparison, or alternate passes.",
+    ...(has_reference
+      ? [
+          "Attached reference images are the acceptance test. A stranger looking at the Asset Viewer must name the same object as the photo. A wedge, slab, formula 1 tub, or generic hull is a failed build, even if it has paint.",
+          "Do not substitute a library asset or a simpler vehicle for the photographed object. Model this specific object, including wheels, glass openings, light housings, and body volumes that match the photo.",
+          "Keep constructing until the silhouette and the signature parts match. A painted wedge is not done.",
+        ]
+      : [
+          "Use one construction pass. Build the current asset completely, then stop authoring. There are no automatic correction, polish, comparison, or alternate passes.",
+        ]),
     "Do not call prefab_save, world_asset_register, scene_visual_review, screenshot_take, or asset_viewer_screenshot. The run finalizer performs one game-ready pass, one final prefab save, one current-asset catalog registration, and one perspective Asset Viewer screenshot review.",
-    "Saving the prefab merges every part that shares a material into one mesh, so splitting a surface off for a genuine material change is cheap. That is a reason to split for material and construction, not a reason to ignore the budget above, because merging parts does not remove a single triangle.",
-    "Never generate the same part twice. Before adding a part, check whether you already made it. A regenerated duplicate wastes the budget and leaves two copies of the same geometry in the asset.",
+    "Saving the prefab merges every part that shares a material into one mesh, so splitting a surface off for a genuine material change is cheap. Split as often as the object needs distinct materials or construction.",
+    "Never generate the same part twice. Before adding a part, check whether you already made it. A regenerated duplicate leaves two copies of the same geometry in the asset.",
     "Author repetition as one mesh instead of one mesh per copy. When the same shape repeats in the same material, generate it once with the array and mirror modifiers on that mesh_generate call: radial_count with radial_axis, radial_radius and radial_step_degrees for spokes, castors, legs, bolts, flutes and anything arranged around an axis; linear_count with linear_step for slats, ribs, treads, rungs and rows; mirror_axis with mirror_plane for a symmetric pair such as two armrests. A five-spoke base is one call, not five. This is identical geometry at a fraction of the parts, so prefer it over generating each copy separately.",
-    "Give a part its own entity only when it needs its own material or its own geometry. Do not split one surface across several entities that all end up with the same material, and keep a collider, light, or sound on the functional entity it belongs to rather than on a part that exists only to be drawn.",
+    "Give a part its own entity whenever it needs its own material or its own geometry. Keep a collider, light, or sound on the functional entity it belongs to rather than on a part that exists only to be drawn.",
     "Assemble the asset as you go, one part at a time. The prepared root already exists and is previewing, so every part you make is joined to the asset the moment you make it: generate the part, parent it to the root, give it its material, and place it against the parts that are already there. Do not author a batch of loose meshes and materials with the intention of assembling them later.",
     "Work outward from the part that fixes the asset's scale and orientation, usually the primary body or the base, because every later part is positioned against what is already standing. Finish and place each part before starting the next one.",
-    "Do not rotate or screenshot while constructing. Finish the current asset in one pass and leave finalization and review to the run finalizer.",
+    ...(has_reference
+      ? [
+          "Do not rotate the main viewport or capture it while constructing. The run will screenshot the Asset Viewer and send it back to you if the result still does not match the photo.",
+        ]
+      : [
+          "Do not rotate or screenshot while constructing. Finish the current asset in one pass and leave finalization and review to the run finalizer.",
+        ]),
     "The Asset Viewer preview follows the root live, so the asset is visible as it grows. Never activate the workspace root or move it into the scene to look at it, and never capture the main viewport for this. Preview and screenshot through the Asset Viewer.",
     ...(budget.tier === "blockout"
       ? [
@@ -4948,6 +5030,20 @@ function focused_asset_quality_prompt_lines(prompt)
         ]
       : []),
   ];
+}
+
+function visual_match_prompt(prompt, root_id, pass)
+{
+  return [
+    `Visual match pass ${pass} of 2.`,
+    `Keep editing the existing asset root id ${root_id}. Do not create a second root and do not start over.`,
+    "The last attached image is the current Asset Viewer screenshot. The other attached images are the reference.",
+    "If a stranger cannot name the same object from the screenshot as from the reference, the build has failed so far.",
+    "A wedge, slab, formula 1 tub, display pad, or generic car hull is a fail. Missing wheels, missing glass, or the wrong body proportions is a fail. Paint on a blob is still a fail.",
+    "Replace wrong parts. Add the missing wheels, glass, body volumes, and silhouette features from the photo. Keep constructing.",
+    "Do not call prefab_save, world_asset_register, scene_visual_review, screenshot_take, or asset_viewer_screenshot.",
+    `Original request: ${prompt}`,
+  ].join("\n");
 }
 
 function asset_revision_prompt_lines(revision)
@@ -5045,7 +5141,7 @@ function build_prompt(
     "Use context_snapshot and entity_resolve instead of multiple separate read calls.",
     "For every new build, design directly from the current request and prepared context. Do not search for persisted layouts, build definitions, or prior generated instructions.",
     "Before you build any recognisable object, ask the library for it first. Call world_asset_search with the plain object name, then with semantic aliases, tags, dimensions, style, and material constraints. If the current match fits, load it with world_asset_load and place it, rather than modelling or approximating it again. Primitives are the fallback for objects the library does not have, never the first choice for objects it might.",
-    "For a focused single-asset request, build one current asset in isolation as a game-ready environment prop with budgeted geometry and a small reused material set. Only an explicit request for a hero asset or hero quality changes this tier.",
+    "For a focused single-asset request, build one current asset in isolation. There is no part, material, or triangle cap. Create every part and material the object needs.",
     "For focused asset work, begin editing the prepared asset root immediately. Do not spend multiple minutes narrating, repeating lookups, or redesigning the prepared baseline before the first mutation.",
     "For focused asset work, never move or capture the main scene viewport. The run finalizer performs the one Asset Viewer review.",
     "For an environment build, reuse current library assets where they fit. Attempt at most one focused improvement per reused asset during the run; otherwise keep the current asset and continue the environment.",
@@ -5099,7 +5195,12 @@ function build_prompt(
     );
   if (focused_asset)
   {
-    lines.push(...focused_asset_quality_prompt_lines(prompt));
+    lines.push(
+      ...focused_asset_quality_prompt_lines(
+        prompt,
+        reference_images,
+      ),
+    );
     lines.push(
       "For entity_add_component pass exactly id and a valid component type, for example {id, type: \"physics\"}; call component_types when the exact type is unknown.",
       "For material commands, pass the .material resource path returned by material creation or inspection as path, never an entity id or display name.",
@@ -5109,6 +5210,7 @@ function build_prompt(
     {
       lines.push(
         `The focused asset root already exists as entity id ${prepared_root.id}, named ${prepared_root.name}, with prefab path ${prepared_root.prefab_path}. Use this exact root.`,
+        "This root is a new empty authoring workspace. Do not attach it to, replace, or save any existing scene entity whose name merely contains the subject.",
         "Do not call entity_find or entity_create_empty for the prepared root. Its prefab is intentionally not saved while empty; progress saving starts after the first successful part-changing command.",
         "Your first mutation must be mesh_generate or another direct geometry creation command for the primary form, parented to the prepared root. Do not mutate the root merely to begin.",
       );
@@ -5189,7 +5291,7 @@ function build_prompt(
     lines.push(
       "",
       `${reference_images.length} reference image${reference_images.length === 1 ? " is" : "s are"} attached to this message. They are the visual specification of what to build.`,
-      "Match silhouette, proportions, construction, materials, and colour from the images. The text request wins for scale in metres, game-ready budget, and anything to omit.",
+      "Match silhouette, proportions, construction, materials, and colour from the images. The text request wins for scale in metres and anything to omit.",
       "Do not invent a different design. If the image and the text disagree about appearance, the image wins unless the text explicitly overrides that part.",
       `Attached files: ${names.join(", ")}`,
     );
@@ -5202,7 +5304,7 @@ function build_prompt(
     lines.push(
       "",
       focused_asset
-        ? "Design brief expanded from that request. Use it only to clarify proportions, construction and materials within the environment-prop budget above. It cannot increase the triangle, part or material limits, and it cannot elevate the asset to hero quality. Where it conflicts with the request or budget, ignore it."
+        ? "Design brief expanded from that request. Use it to clarify proportions, construction, parts and materials. It cannot cap parts, materials or triangles. Where it conflicts with the request or the attached images, ignore it."
         : "Design brief expanded from that request. Treat it as the default specification for anything the request left unsaid, and build to this level of detail. Where the brief and the request disagree, the request wins. Where the brief is wrong about this subject, correct it rather than following it.",
       String(brief).trim(),
     );
@@ -5253,6 +5355,7 @@ async function resolve_quality_root(
   run,
   target_name,
   attempts = 10,
+  options = {},
 )
 {
   let last_result = {
@@ -5294,6 +5397,14 @@ async function resolve_quality_root(
         (resolve) => setTimeout(resolve, 500),
       );
     }
+  }
+
+  if (options.exact_only)
+  {
+    return {
+      ...last_result,
+      root: null,
+    };
   }
 
   const partial = await run.tool(
@@ -5486,6 +5597,24 @@ function is_focused_asset_request(prompt)
   );
 }
 
+async function ensure_edit_mode(run, snapshot)
+{
+  const playing =
+    snapshot?.status?.playing === true ||
+    snapshot?.playing === true;
+  if (!playing)
+  {
+    return;
+  }
+  await run.tool(
+    "engine_set_mode",
+    {
+      mode: "edit",
+    },
+    15000,
+  );
+}
+
 async function prepare_focused_asset_root(
   run,
   snapshot,
@@ -5494,40 +5623,7 @@ async function prepare_focused_asset_root(
 {
   const prefab_path = `${asset_file_name(target_name)}.prefab`;
 
-  const open_workspace = async (root) =>
-  {
-    await run.tool(
-      "asset_viewer_preview_entity",
-      {
-        id: root.id,
-      },
-      10000,
-    );
-    return {
-      ...root,
-      prefab_path,
-      prefab_ready: false,
-    };
-  };
-
-  const existing = await resolve_quality_root(
-    run,
-    target_name,
-    1,
-  );
-  if (existing.ok && existing.root?.id)
-  {
-    await run.tool(
-      "entity_update",
-      {
-        id: existing.root.id,
-        active: false,
-        transient: true,
-      },
-      10000,
-    );
-    return open_workspace(existing.root);
-  }
+  await ensure_edit_mode(run, snapshot);
 
   const created = await run.tool(
     "entity_create_empty",
@@ -5548,7 +5644,18 @@ async function prepare_focused_asset_root(
     return null;
   }
 
-  return open_workspace(created.entity);
+  await run.tool(
+    "asset_viewer_preview_entity",
+    {
+      id: created.entity.id,
+    },
+    10000,
+  );
+  return {
+    ...created.entity,
+    prefab_path,
+    prefab_ready: false,
+  };
 }
 
 // puts the asset the user named in front of the agent, already loaded, so the run continues the asset
@@ -5875,7 +5982,8 @@ async function load_reference_images(paths)
     }
     try
     {
-      const buffer = await fs.readFile(file_path);
+      const resolved = await resolve_readable_path(file_path);
+      const buffer = await fs.readFile(resolved);
       if (buffer.length > MAX_REFERENCE_IMAGE_BYTES)
       {
         skipped.push({
@@ -5888,7 +5996,7 @@ async function load_reference_images(paths)
         data: buffer.toString("base64"),
         mimeType: mime,
       });
-      loaded.push(file_path);
+      loaded.push(resolved);
     }
     catch (error)
     {
@@ -5949,6 +6057,12 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
       intent?.kind !== "city_develop" &&
       !names_a_place(prompt)
     );
+  const focused_run_budget_ms = focused_asset_run
+    ? focused_asset_time_budget_ms(
+        prompt,
+        prompt_image_paths.length > 0,
+      )
+    : maximum_focused_asset_run_ms;
   let focused_deadline_at = null;
   let focused_construction_deadline_at = null;
   let engine_tool_seen = false;
@@ -5963,7 +6077,6 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
     asset_budget: focused_asset_run
       ? asset_detail_budget(prompt)
       : null,
-    asset_triangles: 0,
     focused_asset_run,
     owned_resource_paths: new Set(),
     focused_deadline_at,
@@ -6007,7 +6120,7 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
     )
     {
       throw new Error(
-        `focused asset run exceeded ${maximum_focused_asset_run_ms}ms`,
+        `focused asset run exceeded ${focused_run_budget_ms}ms`,
       );
     }
   };
@@ -6020,14 +6133,18 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
     active_assistant_context.construction_gate_closed =
       true;
   };
-  const start_focused_deadline = () =>
+  const start_focused_deadline = (budget_ms) =>
   {
     if (!focused_asset_run)
     {
       return;
     }
+    const total_ms =
+      Number(budget_ms) > 0
+        ? Number(budget_ms)
+        : focused_run_budget_ms;
     focused_deadline_at =
-      Date.now() + maximum_focused_asset_run_ms;
+      Date.now() + total_ms;
     focused_construction_deadline_at =
       focused_deadline_at -
       focused_finalization_reserve_ms;
@@ -6295,15 +6412,27 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
       queue_activity(activity);
     }
   };
-  const execute_agent_prompt = async (agent, prompt_text) => {
-    start_focused_deadline();
+  const execute_agent_prompt = async (
+    agent,
+    prompt_text,
+    options = {},
+  ) => {
+    start_focused_deadline(options.budget_ms);
     ensure_focused_time();
     last_activity_at = Date.now();
+    const extra_images = options.extra_images ?? [];
+    const send_images = [
+      ...prompt_images.slice(
+        0,
+        Math.max(0, 5 - extra_images.length),
+      ),
+      ...extra_images,
+    ];
     cursor_run = await agent.send(
-      prompt_images.length > 0
+      send_images.length > 0
         ? {
             text: prompt_text,
-            images: prompt_images,
+            images: send_images,
           }
         : prompt_text,
       {
@@ -6698,6 +6827,103 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
           "Cursor run was cancelled.",
       });
     }
+
+    if (
+      focused_asset_run &&
+      prompt_image_paths.length > 0 &&
+      active_assistant_context.authoring_root_id &&
+      cursor_result.status !== "error" &&
+      cursor_result.status !== "cancelled"
+    )
+    {
+      const built = await run.tool(
+        "entity_get",
+        {
+          id: active_assistant_context.authoring_root_id,
+          recursive: true,
+        },
+        10000,
+      );
+      if (
+        built?.ok &&
+        asset_build_is_incomplete(built.entity, prompt)
+      )
+      {
+        run.receipt("incomplete asset continue", {
+          parts: authored_part_count(built.entity),
+          root_id: active_assistant_context.authoring_root_id,
+        });
+        cursor_result = await run.stage(
+          "Continue Incomplete Asset",
+          "the first window ended before the asset was recognisable",
+          () => execute_agent_prompt(
+            agent,
+            incomplete_asset_continue_prompt(
+              prompt,
+              active_assistant_context.authoring_root_id,
+              built.entity,
+            ),
+            {
+              budget_ms: focused_run_budget_ms,
+            },
+          ),
+        );
+      }
+    }
+
+    if (
+      focused_asset_run &&
+      prompt_image_paths.length > 0 &&
+      active_assistant_context.authoring_root_id &&
+      cursor_result.status !== "error"
+    )
+    {
+      for (let pass = 1; pass <= 2; pass++)
+      {
+        const review = await run.stage(
+          `Capture Reference Match ${pass}`,
+          "screenshotting the current asset against the reference",
+          () => capture_asset_viewer_review(
+            run,
+            active_assistant_context.authoring_root_id,
+            `match_${pass}`,
+          ),
+        );
+        const extra_images = review?.path
+          ? (
+              await load_reference_images([review.path])
+            ).images
+          : [];
+        run.receipt("reference match capture", {
+          pass,
+          ok: review?.ok === true,
+          path: review?.path ?? "",
+        });
+        cursor_result = await run.stage(
+          `Match Reference ${pass}`,
+          "continuing construction until the asset matches the photo",
+          () => execute_agent_prompt(
+            agent,
+            visual_match_prompt(
+              prompt,
+              active_assistant_context.authoring_root_id,
+              pass,
+            ),
+            {
+              extra_images,
+              budget_ms: focused_run_budget_ms,
+            },
+          ),
+        );
+        if (
+          cursor_result.status === "error" ||
+          cursor_result.status === "cancelled"
+        )
+        {
+          break;
+        }
+      }
+    }
     if (
       !scene_mutation_seen &&
       (
@@ -6734,12 +6960,35 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
     const found = await run.stage(
       "Resolve Quality Root",
       "finding the completed scene hierarchy",
-      () => intent.target_name
-        ? resolve_quality_root(
-          run,
-          intent.target_name,
+      async () =>
+      {
+        if (
+          focused_asset_run &&
+          active_assistant_context.authoring_root_id
         )
-        : resolve_selected_quality_root(run),
+        {
+          const entity = await run.tool(
+            "entity_get",
+            { id: active_assistant_context.authoring_root_id },
+          );
+          if (entity.ok && entity.entity)
+          {
+            return {
+              ok: true,
+              root: entity.entity,
+              resolution: "authoring_root",
+            };
+          }
+        }
+        return intent.target_name
+          ? resolve_quality_root(
+              run,
+              intent.target_name,
+              focused_asset_run ? 1 : 10,
+              { exact_only: focused_asset_run },
+            )
+          : resolve_selected_quality_root(run);
+      },
     );
     let root_id = found.root?.id;
     let root_name = scene_plan_root_name(
@@ -7385,7 +7634,11 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
               "Done."
             ),
         focused_asset
-          ? "Prop quality passed: renderable material content and perspective review are complete."
+          ? (
+              prompt_image_paths.length > 0
+                ? "Prefab saved. Compare the Asset Viewer to your reference photo. If the silhouette still does not match, send another prompt describing what to change."
+                : "Prop quality passed: renderable material content and perspective review are complete."
+            )
           : `Quality gates passed: content ${audit.score}/100, layout ${layout_audit.score}/100, visual review complete.`,
         ...(asset_prefab?.ok
           ? [

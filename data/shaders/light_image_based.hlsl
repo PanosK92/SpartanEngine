@@ -138,6 +138,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (surface.is_sky())
         return;
 
+    // stain already multiplied into the frame, do not add rubber ibl on top
+    if (surface.is_skid_mark())
+        return;
+
     // view and energy calculations
     const float3 view_dir = normalize(-surface.camera_to_pixel);
     const float n_dot_v   = saturate(dot(surface.normal, view_dir));

@@ -629,7 +629,21 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     // decode packed vertex attributes
     float2 input_uv      = unpack_vertex_uv(input.uv_packed);
     float3 input_normal  = unpack_vertex_oct(input.normal_packed);
-    float3 input_tangent = unpack_vertex_oct(input.tangent_packed);
+    float3 input_tangent;
+    if (surface.is_skid_mark())
+    {
+        // tangent uint carries the ribbon fade, rebuild a lighting tangent from the normal
+        float3 t = cross(input_normal, float3(0.0f, 0.0f, 1.0f));
+        if (dot(t, t) < 0.001f)
+        {
+            t = cross(input_normal, float3(1.0f, 0.0f, 0.0f));
+        }
+        input_tangent = normalize(t);
+    }
+    else
+    {
+        input_tangent = unpack_vertex_oct(input.tangent_packed);
+    }
 
     // uv state now lives on the per-renderable draw data, so multiple renderables can share a material
     float2 uv_tiling      = _draw.uv_tiling;
@@ -658,7 +672,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     // compute width and height percent for grass blade positioning
     float width_percent  = saturate((input.position.x + material.local_width * 0.5f) / material.local_width);
     float height_percent = saturate(input.position.y / material.local_height);
-    vertex.uv_misc.z     = height_percent;
+    vertex.uv_misc.z     = surface.is_skid_mark() ? saturate(unpack_vertex_uv(input.tangent_packed).x) : height_percent;
     vertex.width_percent = width_percent;
     
     // compose instance transform and apply to base transform

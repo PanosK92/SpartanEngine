@@ -1819,6 +1819,8 @@ namespace spartan
                 return "vertex_animate_water";
             case MaterialProperty::MotionBlurRadial:
                 return "motion_blur_radial";
+            case MaterialProperty::IsSkidMark:
+                return "is_skid_mark";
             case MaterialProperty::CullMode:
                 return "cull_mode";
             default:

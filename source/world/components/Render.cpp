@@ -206,6 +206,26 @@ namespace spartan
                 }
             }
         }
+        else if (!mesh_path.empty())
+        {
+            shared_ptr<Mesh> mesh =
+                ResourceCache::GetByPath<Mesh>(mesh_path);
+            if (!mesh && FileSystem::IsFile(mesh_path))
+            {
+                mesh = ResourceCache::Load<Mesh>(mesh_path);
+            }
+            if (mesh)
+            {
+                m_mesh = mesh.get();
+            }
+            else
+            {
+                SP_LOG_WARNING(
+                    "Render::Load - mesh path '%s' was not found",
+                    mesh_path.c_str()
+                );
+            }
+        }
 
         // material
         m_material_default         = node.attribute("material_default").as_bool(true);

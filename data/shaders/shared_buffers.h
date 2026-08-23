@@ -303,6 +303,7 @@ struct MaterialParameters
     bool is_albedo_srgb()        { return (flags & (1 << 17)) != 0; }
     bool is_emissive_srgb()      { return (flags & (1 << 18)) != 0; }
     bool is_motion_blur_radial() { return (flags & (1 << 19)) != 0; }
+    bool is_skid_mark()          { return (flags & (1 << 20)) != 0; }
 
     // terrain_flags bits, see TerrainLayer.h
     bool terrain_layer_biplanar() { return (terrain_flags & (1 << 0)) != 0; }

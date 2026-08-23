@@ -64,7 +64,11 @@ namespace spartan
         struct RecentQuad
         {
             RHI_Vertex_PosTexNorTan verts[4];
-            uint32_t slot = 0;
+            uint32_t slot      = 0;
+            float u_a          = 0.0f;
+            float u_b          = 0.0f;
+            float intensity_a  = 1.0f;
+            float intensity_b  = 1.0f;
         };
 
         // per-wheel growing ribbon, each segment is an independent quad so gaps never bridge
@@ -84,13 +88,14 @@ namespace spartan
             math::Vector3 edge_right      = math::Vector3::Zero;
             float u_accum                 = 0.0f; // distance since the strip started
             float height_offset           = 0.0f; // per strip lift, breaks coplanar z-fighting
+            float intensity_edge          = 1.0f; // slip intensity baked into the last deposited edge
             uint32_t strip_index          = 0;     // increments per strip for height layering
             std::vector<RecentQuad> recent;        // trailing quads pending end fade
         };
 
         void EnsureInitialized();
         void BuildTrailMesh(WheelTrail& trail, const std::string& name);
-        void DepositQuad(WheelTrail& trail, const math::Vector3& bl, const math::Vector3& br, float u_a, float u_b, const math::Vector3& normal, const math::Vector3& tangent);
+        void DepositQuad(WheelTrail& trail, const math::Vector3& bl, const math::Vector3& br, float u_a, float u_b, float fade_a, float fade_b, float intensity_a, float intensity_b, const math::Vector3& normal, const math::Vector3& tangent);
         void FadeStripEnd(WheelTrail& trail);
         void CreateMaterial();
 
@@ -104,10 +109,11 @@ namespace spartan
         float m_slip_threshold       = 0.35f; // combined slip magnitude needed to start marking
         float m_min_segment_distance = 0.05f; // minimum travel before a new quad is laid
         uint32_t m_max_segments      = 512;   // ring buffer size per wheel  
-        float m_opacity              = 0.75f; // base material alpha
+        float m_opacity              = 0.92f; // material alpha, below 1 so the ribbon uses the transparent pass
         float m_z_offset             = 0.02f; // lift above ground to avoid z-fighting
-        float m_uv_tiling            = 2.0f;  // texture repeats per meter along travel
-        float m_fade_distance        = 0.5f;  // length of the width taper fade in and fade out at each strip end, in meters
+        float m_uv_tiling            = 1.25f; // texture repeats per meter along travel
+        float m_fade_distance        = 1.1f;  // length of the alpha fade in and fade out at each strip end, in meters
         float m_center_smoothing     = 0.5f;  // contact point low pass, kills lateral jitter
+        float m_width_scale          = 0.86f; // contact patch is narrower than the physical tire
     };
 }

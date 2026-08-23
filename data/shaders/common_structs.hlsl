@@ -80,6 +80,7 @@ struct Surface
     bool is_water()                      { return flags & uint(1U << 13); }
     bool is_tessellated()                { return flags & uint(1U << 14); }
     bool is_motion_blur_radial()         { return flags & uint(1U << 19); }
+    bool is_skid_mark()                  { return flags & uint(1U << 20); }
     bool is_sky()                        { return alpha == 0.0f; }
     bool is_opaque()                     { return alpha == 1.0f; }
     bool is_transparent()                { return alpha > 0.0f && alpha < 1.0f; }

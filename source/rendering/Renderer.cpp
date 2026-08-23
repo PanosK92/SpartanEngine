@@ -2741,6 +2741,7 @@ namespace spartan
                 properties[count].flags |= should_decode_as_srgb(material->GetTexture(MaterialTextureType::Color))    ? (1U << 17) : 0;
                 properties[count].flags |= should_decode_as_srgb(material->GetTexture(MaterialTextureType::Emission)) ? (1U << 18) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::MotionBlurRadial)          ? (1U << 19) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::IsSkidMark)                ? (1U << 20) : 0;
                 // keep in sync with Surface struct in common_structs.hlsl
             }
     
@@ -3238,10 +3239,13 @@ namespace spartan
                 continue;
             }
 
+            const bool is_skid_mark = material->GetProperty(MaterialProperty::IsSkidMark) != 0.0f;
+            const bool skip_deferred = render->HasFlag(RenderFlags::SkipDeferred) || is_skid_mark;
+
             // off-screen geometry is only kept when classic shadow maps need the caster
             if (!render->IsVisible())
             {
-                if (material->IsTransparent())
+                if (material->IsTransparent() && !skip_deferred)
                 {
                     m_transparents_present = true;
                 }
@@ -3255,7 +3259,7 @@ namespace spartan
                 }
             }
 
-            if (material->IsTransparent())
+            if (material->IsTransparent() && !skip_deferred)
             {
                 m_transparents_present = true;
             }
@@ -3354,7 +3358,7 @@ namespace spartan
             Render* render              = dc.render;
             Material* material          = render->GetMaterial();
 
-            if (!material || material->IsTransparent())
+            if (!material || material->IsTransparent() || render->HasFlag(RenderFlags::SkipDeferred))
             {
                 continue;
             }
@@ -4615,6 +4619,7 @@ namespace spartan
         Pass_Reflections_Denoise(eye_layer);
 
         Pass_Reflections_Apply(eye_layer);
+        Pass_SkidMarks(eye_layer);
         Pass_LightFlares(eye_layer);
         if (clouds_prepared)
         {

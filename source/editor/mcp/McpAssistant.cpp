@@ -760,6 +760,19 @@ namespace
             " matching the attached reference image.";
     }
 
+    std::string absolute_reference_image_path(const std::string& path)
+    {
+        if (path.size() >= 2 && path[1] == ':')
+        {
+            return path;
+        }
+        if (!path.empty() && (path[0] == '/' || path[0] == '\\'))
+        {
+            return path;
+        }
+        return spartan::FileSystem::GetWorkingDirectory() + "/" + path;
+    }
+
     std::string url_encode(const std::string& value)
     {
         std::ostringstream stream;
@@ -2374,8 +2387,7 @@ void McpAssistant::OnTickVisible()
         {
             ImGui::SetTooltip(
                 "Expands a short request into a detailed design brief before building.\n"
-                "Assets remain game-ready environment props with moderate geometry,\n"
-                "few parts and a small reused material set unless hero quality is explicit.\n"
+                "There is no part, component, material or triangle cap.\n"
                 "Skipped when the request is already detailed, asks for a blockout, or is a question."
             );
         }
@@ -2512,12 +2524,17 @@ void McpAssistant::AttachReferenceImage(const std::string& path)
     {
         return;
     }
-    if (!spartan::FileSystem::Exists(path))
+    const std::string resolved = absolute_reference_image_path(path);
+    if (!spartan::FileSystem::Exists(resolved) && !spartan::FileSystem::Exists(path))
     {
         log_error("Reference image does not exist: " + path);
         return;
     }
-    if (!is_prompt_reference_image(path))
+    const std::string stored =
+        spartan::FileSystem::Exists(resolved)
+            ? resolved
+            : path;
+    if (!is_prompt_reference_image(stored))
     {
         log_error("Reference images must be png, jpg, jpeg, gif, or webp.");
         return;
@@ -2529,12 +2546,12 @@ void McpAssistant::AttachReferenceImage(const std::string& path)
     }
     for (const std::string& existing : m_reference_images)
     {
-        if (existing == path)
+        if (existing == stored)
         {
             return;
         }
     }
-    m_reference_images.push_back(path);
+    m_reference_images.push_back(stored);
 }
 
 void McpAssistant::TickImageBrowser()

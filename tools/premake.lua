@@ -74,18 +74,33 @@ function solution_configuration()
     solution(SOLUTION_NAME)
         location ".."
         language "C++"
-        configurations { "debug", "release" }
+        -- development first so visual studio selects it by default
+        configurations { "development", "debug", "release" }
         fatalwarnings { "All" }
 
         filter { "configurations:debug" }
             defines { "DEBUG" }
             flags { "MultiProcessorCompile" }
+            runtime "Debug"
             optimize "Off"
             symbols "On"
             debugformat "c7"
 
+        -- optimized like release, symbols on, no lto, release crt
+        filter { "configurations:development" }
+            defines { "DEVELOPMENT" }
+            flags { "MultiProcessorCompile" }
+            runtime "Release"
+            optimize "Speed"
+            symbols "On"
+
+        filter { "configurations:development", "system:windows" }
+            buildoptions { "/Zo", "/Oy-" }
+            linkoptions { "/DEBUG:FULL", "/OPT:NOICF" }
+
         filter { "configurations:release" }
             flags { "MultiProcessorCompile" }
+            runtime "Release"
             linktimeoptimization "On"
             optimize "Speed"
             symbols "Off"
@@ -220,9 +235,8 @@ function spartan_project_configuration()
                 end
             end
 
-        -- Release configuration
-        filter { "configurations:release" }
-            targetname(EXECUTABLE_NAME)
+        -- release and development share optimized third party libraries
+        filter { "configurations:release or development" }
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
             links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "meshoptimizer", "openxr_loader", "lua" }
@@ -231,7 +245,7 @@ function spartan_project_configuration()
                 "PhysXPvdSDK_static_64", "PhysXCooking_static_64", "PhysXVehicle_static_64", "PhysXCharacterKinematic_static_64"
             }
 
-            filter { "system:windows", "configurations:release" }
+            filter { "system:windows", "configurations:release or development" }
                 if ARG_API_GRAPHICS == "vulkan" then
                     links {
                         "spirv-cross-c", "spirv-cross-core", "spirv-cross-cpp", "spirv-cross-glsl", "spirv-cross-hlsl",
@@ -242,6 +256,12 @@ function spartan_project_configuration()
                     -- nri.lib refs CreateDeviceVK, satisfied by stub, not nri_vk (needs vma)
                     links { "libxess", "nvsdk_ngx_s", "NRD", "NRI", "NRI_Shared", "NRI_D3D12", "NRI_Validation", "ShaderMakeBlob", "dxguid" }
                 end
+
+        filter { "configurations:release" }
+            targetname(EXECUTABLE_NAME)
+
+        filter { "configurations:development" }
+            targetname(EXECUTABLE_NAME .. "_development")
 
         -- Debug configuration
         filter { "configurations:debug" }

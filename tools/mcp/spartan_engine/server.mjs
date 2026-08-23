@@ -920,10 +920,28 @@ function engine_mesh_args(args) {
       profile.push([...first]);
     }
   }
+  let loft_profiles = args.loft_profiles;
+  let loft_profile_points = args.loft_profile_points;
+  if (
+    Array.isArray(loft_profiles) &&
+    loft_profiles.length > 0 &&
+    !loft_profiles.every((entry) => Number.isFinite(entry))
+  )
+  {
+    const flattened = loft_profiles.map((profile) =>
+      flatten_engine_points(profile),
+    );
+    loft_profile_points = flattened[0]?.length
+      ? flattened[0].length / 2
+      : loft_profile_points;
+    loft_profiles = flattened.flat();
+  }
   return {
     ...args,
     profile: flatten_engine_points(profile),
     path_points: flatten_engine_points(args.path_points),
+    loft_profiles,
+    loft_profile_points,
   };
 }
 

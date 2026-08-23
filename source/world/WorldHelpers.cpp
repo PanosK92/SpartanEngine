@@ -1200,6 +1200,7 @@ namespace spartan
             "ColorVariationFromInstance", MaterialProperty::ColorVariationFromInstance,
             "IsWater",                    MaterialProperty::IsWater,
             "MotionBlurRadial",           MaterialProperty::MotionBlurRadial,
+            "IsSkidMark",                 MaterialProperty::IsSkidMark,
             "TerrainBlend",               MaterialProperty::TerrainBlend,
             "TerrainBlendSharpness",      MaterialProperty::TerrainBlendSharpness,
             "CullMode",                   MaterialProperty::CullMode

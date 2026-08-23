@@ -109,6 +109,7 @@ namespace spartan
         ColorVariationFromInstance, // per-instance color variation
         IsWater,                    // water flow animation
         MotionBlurRadial,           // rotational motion blur instead of linear (wheels)
+        IsSkidMark,                 // ribbon fade stored in the tangent, full width alpha in and out
         TerrainBlend,               // how far the terrain creeps over this surface, 0 opts out
         TerrainBlendSharpness,      // 0 is a long gradient, 1 is a hard waterline
     

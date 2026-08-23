@@ -10,6 +10,7 @@ import { Agent } from "@cursor/sdk";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { resolve_readable_path } from "./shared_codebase.mjs";
 
 const __dirname = path.dirname(
   fileURLToPath(import.meta.url),
@@ -84,7 +85,8 @@ async function load_brief_images(paths)
     }
     try
     {
-      const buffer = await fs.readFile(file_path);
+      const resolved = await resolve_readable_path(file_path);
+      const buffer = await fs.readFile(resolved);
       if (buffer.length > 15 * 1024 * 1024)
       {
         continue;
@@ -173,17 +175,28 @@ function brief_instructions(prompt, intent, has_images = false) {
     "- Reply with the brief only. No preamble, no closing remarks, no markdown headings, no code fences.",
     "- Do not use any tools and do not read any files. Answer from knowledge.",
     "- Be concrete and physical. Real proportions in metres, real thicknesses, real materials.",
-    "- Where a real reference exists, describe the ordinary version of it rather than an exotic one.",
     "- State only what a modeller can act on. Skip mood, story, marketing language and adjectives that carry no geometry.",
     "- The headings below are prompts to think about, not a form to fill in. Cover the ones this subject actually has, drop the ones it does not, and add a heading of your own where the subject needs one that is not listed.",
     "- Keep it under 300 words.",
   ];
 
+  const wants_hero =
+    /\bhero[\s-]+(?:asset|prop|quality)\b/i.test(
+      String(prompt ?? ""),
+    );
+
   if (has_images)
   {
     lines.push(
       "- Reference images are attached to this message. Describe the object in those images, not a generic version of the request.",
-      "- Take silhouette, proportions, construction, materials and colour from the images. The text request only wins for scale in metres, game-ready budget, and anything to omit.",
+      "- Take silhouette, proportions, construction, materials and colour from the images. The text request only wins for scale in metres and anything to omit.",
+      "- Do not substitute a simpler or more ordinary object than the one in the images.",
+    );
+  }
+  else
+  {
+    lines.push(
+      "- Where a real reference exists, describe the ordinary version of it rather than an exotic one.",
     );
   }
 
@@ -191,12 +204,25 @@ function brief_instructions(prompt, intent, has_images = false) {
     // the brief is read as a build list, so anything it names as a feature gets modelled. asking it for
     // seams, embossing and text is how a living room television acquired geometry for its hdmi ports, its
     // regulatory markings and its screw recesses
-    lines.push(
-      "- This is an environment prop for a video game, seen from across a room, not a hero asset and not a render. Describe the ordinary, plain version of the subject at the level of detail that reads at that distance. Do not describe a premium, flagship or feature-laden variant unless the request asked for one.",
-      "- Keep the complete asset near 6000 triangles, no more than 12 authored parts and no more than 4 reused materials. Only the explicit phrase hero asset or hero quality may raise those limits.",
-      "- Name only features that change the outline or the material. Do not list screws, fasteners, ports, sockets, connectors, cables, vents, grilles, perforations, panel seams, embossed or printed text, badges, logos, regulatory markings, or internal components. Those are painted into the textures, so putting them in the brief only invites wasted geometry.",
-      "- Describe the faces that get looked at. A subject that stands against a wall or sits on the floor has a back or an underside that is a plain panel, so say so in one clause and spend the brief on the front.",
-    );
+    if (wants_hero || has_images)
+    {
+      lines.push(
+        wants_hero
+          ? "- The request asked for a hero asset. Describe the actual object, including its real silhouette, glass, wheels, lights and materials. Do not replace it with a simpler generic stand-in."
+          : "- Describe the object in the images as a game-ready 3d asset. Match the real silhouette. Do not replace it with a simpler generic object.",
+        "- There is no part, component, material or triangle cap. Describe every distinct volume, opening, glass, light, wheel, trim and material the object actually has.",
+        "- Name every volume a modeller needs: body sections, glass, wheels, lights, mirrors, and signature intakes or strakes. Do not list screws, fasteners, ports, sockets, connectors, cables, embossed or printed text, badges, logos, regulatory markings, or internal components.",
+      );
+    }
+    else
+    {
+      lines.push(
+        "- This is an environment prop for a video game, seen from across a room, not a render. Describe the ordinary, plain version of the subject. Do not describe a premium, flagship or feature-laden variant unless the request asked for one.",
+        "- There is no part, component, material or triangle cap. Name every distinct volume and material the object needs.",
+        "- Name every distinct volume and material. Do not list screws, fasteners, ports, sockets, connectors, cables, embossed or printed text, badges, logos, regulatory markings, or internal components.",
+        "- Describe the faces that get looked at. A subject that stands against a wall or sits on the floor has a back or an underside that is a plain panel, so say so in one clause and spend the brief on the front.",
+      );
+    }
   }
 
   if (scene) {
@@ -221,12 +247,11 @@ function brief_instructions(prompt, intent, has_images = false) {
       "Cover, as short labelled lines:",
       "Overall dimensions in metres and the silhouette.",
       "Primary form, the main body and the profile that defines it.",
-      "Secondary construction, only the few parts that visibly change the silhouette, function or material boundary. Combine the rest.",
+      "Secondary construction, every part, component and material split the object needs.",
       "Thickness, and how edges, openings, joins and contact surfaces are actually formed. A hollow subject has walls and rims, a solid one has edge treatments, a layered one has a stack. Describe whichever this subject has.",
       "Moving or posable parts only when the request requires them or they define the normal gameplay silhouette.",
-      "A small reused material set, no more than four materials for the complete prop.",
+      "Materials for every distinct surface. Create a new material whenever the surface needs one.",
       "Surface character that belongs in the textures rather than the geometry, such as grain, weave, print or wear. Name it as texture work so it is not modelled.",
-      "Do not invent extra pieces or material splits for details that can be baked into textures.",
     );
   }
 
