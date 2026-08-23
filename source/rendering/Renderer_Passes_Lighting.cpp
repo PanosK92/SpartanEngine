@@ -47,10 +47,11 @@ using namespace spartan::math;
 namespace spartan
 {
     // restir gi composition gain, pairs with get_restir_w_clamp in restir_reservoir.hlsl
-    // the reservoir estimate is already the diffuse indirect radiance, so an unbiased composition
-    // is exactly one, anything above that was compensating for the gi clamp cutting real sky
-    // bounce energy and it scales every leak by the same factor
-    static const float restir_composition_intensity = 1.0f;
+    // the reservoir estimate is already the diffuse indirect radiance so an unbiased composition
+    // would be one, sh_irradiance_l2 returns true irradiance and the sky diffuse ibl path never
+    // divides it by pi, so the sky term restir replaces is itself pi too bright and matching it
+    // is what this factor is for, see the note in light_image_based
+    static const float restir_composition_intensity = 5.0f;
 
     void Renderer::Pass_Reflections_Apply(uint32_t eye_layer /*= rhi_all_mips*/)
     {

@@ -1181,6 +1181,28 @@ namespace spartan
         }
     }
 
+    bool FileSystem::DownloadToString(const string& url, string& contents)
+    {
+        contents.clear();
+
+        string result;
+        run_silent_process({
+            "curl", "-sL", "-f",
+            "--connect-timeout", "5",
+            "--max-time", "10",
+            "-A", "SpartanEngine",
+            url
+        }, &result);
+
+        if (result.empty())
+        {
+            return false;
+        }
+
+        contents = result;
+        return true;
+    }
+
     bool FileSystem::ExtractArchive(const string& archive_path, const string& destination_path)
     {
         if (!Exists(destination_path))

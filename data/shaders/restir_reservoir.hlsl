@@ -59,11 +59,10 @@ uint  get_restir_emtri_candidates()    { return 8u; }
 // single sample w cap, trades firefly safety for highlight energy
 float get_restir_w_clamp()             { return 100.0f; }
 uint  get_restir_validation_period()   { return 8u; }
-// firefly ceiling on the demodulated gi, which is irradiance over pi, so it has to sit at the
-// same band a single sky sample is allowed to carry, see clamp_sky_radiance below, a ceiling
-// under that band clips open sky lit pixels to a constant and the frame loses all contrast
-// between exposed and occluded surfaces, it is a spike guard and not an exposure control
-float get_restir_gi_clamp()            { return 400.0f; }
+// firefly ceiling on the demodulated gi, which is irradiance over pi so it sits in the same
+// band as incident sky radiance, not in the single sample w band, raising it toward the sky
+// radiance clamp lets the reuse passes' outliers through and they read as saturated blobs
+float get_restir_gi_clamp()            { return get_restir_w_clamp() * 0.05f; }
 // depth and normal gates for spatial reuse and temporal validity, ~26 deg keeps reuse on continuous surfaces
 static const float RESTIR_DEPTH_THRESHOLD    = 0.03f;
 static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
