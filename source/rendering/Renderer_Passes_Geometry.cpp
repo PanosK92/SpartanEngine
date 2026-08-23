@@ -449,16 +449,45 @@ namespace spartan
         RHI_CommandList::EndTimeblock();
     }
 
+    void Renderer::Pass_HiZ_BuildFromDepth(RHI_Texture* tex_depth)
+    {
+        RHI_Texture* tex_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
+        if (!tex_depth || !tex_hiz)
+        {
+            return;
+        }
+
+        Pass_Blit(tex_depth, tex_hiz, false);
+        Pass_Downscale(tex_hiz, Renderer_DownsampleFilter::Min);
+    }
+
     void Renderer::Pass_HiZ()
     {
-        // renders major occluders and builds the hi-z chain, always cleared and rebuilt so the cull shader never reads stale depth
+        // last frame's scene depth occludes instanced city and trees, the 64 unique-mesh occluders never saw those
 
         RHI_CommandList::BeginTimeblock("hiz");
 
         RHI_Texture* tex_occluders     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders);
         RHI_Texture* tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
+        RHI_Texture* tex_depth_prev    = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous);
 
-        bool render_occluders = cvar_hiz_occlusion.GetValueAs<bool>() && !m_is_hiz_suppressed;
+        const bool occlusion_on = cvar_hiz_occlusion.GetValueAs<bool>() && !m_is_hiz_suppressed;
+        const bool use_scene_depth = occlusion_on
+            && !IsSecondaryViewActive()
+            && tex_depth_prev
+            && tex_occluders_hiz
+            && tex_depth_prev->GetType() == tex_occluders_hiz->GetType()
+            && tex_depth_prev->GetWidth() == tex_occluders_hiz->GetWidth()
+            && tex_depth_prev->GetHeight() == tex_occluders_hiz->GetHeight();
+
+        if (use_scene_depth)
+        {
+            Pass_HiZ_BuildFromDepth(tex_depth_prev);
+            RHI_CommandList::EndTimeblock();
+            return;
+        }
+
+        bool render_occluders = occlusion_on;
 
         struct HiZBatch
         {
@@ -628,6 +657,14 @@ namespace spartan
         }
         RHI_CommandList::EndPass();
 
+        Pass_IndirectCull_Meshlets();
+    }
+
+    void Renderer::Pass_IndirectCull_Meshlets()
+    {
+        RHI_Texture* tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
+        const float  max_hiz_mip       = static_cast<float>(tex_occluders_hiz->GetMipCount() - 1);
+
         // phase b, expand the meshlets of the surviving instances, per-meshlet cone + frustum + hi-z, one workgroup per survivor
         RHI_CommandList::BeginPass("indirect_cull_meshlet");
         {
@@ -676,6 +713,54 @@ namespace spartan
             }
             RHI_CommandList::EndPass();
         }
+    }
+
+    void Renderer::Pass_IndirectCull_Refine()
+    {
+        // rebuild hi-z from this frame's prepass, then keep only meshlets that survived it
+        if (m_indirect_draw_count == 0 || m_cull_task_count == 0)
+        {
+            return;
+        }
+
+        if (!cvar_hiz_occlusion.GetValueAs<bool>() || m_is_hiz_suppressed)
+        {
+            return;
+        }
+
+        RHI_CommandList::BeginTimeblock("meshlet_cull_refine");
+
+        Pass_HiZ_BuildFromDepth(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+
+        Sb_IndirectDispatchArgs dispatch_args[2] = {};
+        dispatch_args[0].group_count_y           = 1;
+        dispatch_args[0].group_count_z           = 1;
+        dispatch_args[1].group_count_y           = 1;
+        dispatch_args[1].group_count_z           = 1;
+        RHI_CommandList::UpdateBuffer(
+            GetBuffer(Renderer_Buffer::TriangleDispatchArgs),
+            0,
+            sizeof(dispatch_args),
+            &dispatch_args[0],
+            false
+        );
+
+        if (!use_mesh_shaders())
+        {
+            Sb_IndirectDrawArgs draw_args[2] = {};
+            draw_args[0].instance_count      = 1;
+            draw_args[1].instance_count      = 1;
+            RHI_CommandList::UpdateBuffer(
+                GetBuffer(Renderer_Buffer::IndirectDrawArgs),
+                0,
+                sizeof(draw_args),
+                &draw_args[0],
+                false
+            );
+        }
+
+        Pass_IndirectCull_Meshlets();
+        RHI_CommandList::EndTimeblock();
     }
 
     void Renderer::Pass_Depth_Prepass()

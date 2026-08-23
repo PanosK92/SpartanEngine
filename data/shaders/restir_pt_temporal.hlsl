@@ -324,8 +324,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         }
 
         // diffuse albedo demodulation and firefly ceiling, matches shade_reservoir_path so the composition re-modulation applies albedo exactly once
-        gi = gi / max(albedo, 0.1f);
-        gi = soft_saturate_radiance(gi, get_restir_w_clamp() * 0.05f);
+        gi = gi / restir_gi_demodulator(albedo);
+        gi = soft_saturate_radiance(gi, get_restir_gi_clamp());
     }
     else
     {

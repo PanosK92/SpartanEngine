@@ -820,10 +820,10 @@ void ray_gen()
     tex_reservoir4[launch_id] = t4;
 
     canonical_gi /= n_brdf;
-    canonical_gi /= max(albedo, 0.1f);
+    canonical_gi /= restir_gi_demodulator(albedo);
     canonical_gi = soft_saturate_radiance(
         canonical_gi,
-        get_restir_w_clamp() * 0.05f
+        get_restir_gi_clamp()
     );
 
     // real reconnection distance in w so reblur can size its kernels, sky gets the far band,

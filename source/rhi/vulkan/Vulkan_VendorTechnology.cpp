@@ -147,6 +147,12 @@ namespace spartan
         void fill_preset_gi(nrd::ReblurSettings& settings, float delta_time)
         {
             settings                                   = {};
+            // must match the curve restir_pt_nrd_pack encodes, the defaults saturate every hit
+            // past a few meters to 1 so reblur loses all contact information and blurs the whole
+            // frame at max radius, which reads as colored blobs and kills occlusion darkening
+            settings.hitDistanceParameters.A           = restir_hit_distance_a;
+            settings.hitDistanceParameters.B           = restir_hit_distance_b;
+            settings.hitDistanceParameters.C           = restir_hit_distance_c;
             settings.diffusePrepassBlurRadius          = 0.0f;
             settings.specularPrepassBlurRadius         = 0.0f;
             settings.maxBlurRadius                     = 8.0f;

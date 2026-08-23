@@ -42,16 +42,21 @@ static const float3 flower_base         = float3(0.05f, 0.07f, 0.03f);
 static const float3 flower_blue         = float3(0.529f, 0.808f, 0.922f);
 static const float3 flower_red          = float3(0.8f, 0.2f, 0.2f);
 static const float3 flower_yellow       = float3(0.9f, 0.8f, 0.1f);
-// parallax occlusion mapping
-static const uint  POM_MAX_STEPS         = 40;
-static const uint  POM_MIN_STEPS         = 12;
-static const uint  POM_REFINE_ITERATIONS = 6;
-static const float POM_FADE_START        = 25.0f;
-static const float POM_FADE_END          = 50.0f;
+// parallax occlusion mapping, kept cheap because the racing camera stares at the road
+static const uint  POM_MAX_STEPS         = 16;
+static const uint  POM_MIN_STEPS         = 6;
+static const uint  POM_REFINE_ITERATIONS = 3;
+static const float POM_FADE_START        = 16.0f;
+static const float POM_FADE_END          = 36.0f;
 static const float POM_HEIGHT_SCALE      = 0.04f;
 
-static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface surface, float3 world_pos)
+static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, float dist)
 {
+    // 16x aniso on a full screen road is the gbuffer cost, bilinear is enough past a car length
+    if (dist > 18.0f)
+    {
+        return GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_bilinear_wrap), vertex.uv_misc.xy);
+    }
     return GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy);
 }
 
@@ -227,22 +232,26 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         // from the hit position so raster and gi cannot drift apart
         float2 tiling = vertex.uv_xform_ts.xy;
         float2 uv     = position_world.xz * tiling + vertex.uv_xform_ts.zw;
-        float2 duvdx  = dpdx.xz * tiling;
-        float2 duvdy  = dpdy.xz * tiling;
         vertex.uv_misc.xy = uv;
 
-        // which layer owns a pixel must not depend on where the camera stands, a distance driven mip
-        // feeds blurrier analysis into the scores the further out you are, so the boundaries crawl and
-        // the ranking flips as you move toward a hillside, the maps are already low frequency
-        float analysis_lod = 0.0f;
-
-        TerrainAnalysis analysis = terrain_sample_analysis(material, position_world, analysis_lod);
-        float slope_radians      = acos(saturate(dot(vertex.normal, float3(0.0f, 1.0f, 0.0f))));
-        TerrainLayerPick pick    = terrain_pick_layers(material, analysis, position_world, vertex.normal, slope_radians);
-
-        TerrainSurface terrain = terrain_evaluate(
-            material, pick, analysis, position_world, vertex.normal, uv, duvdx, duvdy, dpdx, dpdy, distance
-        );
+        TerrainSurface terrain;
+        if (distance > 55.0f)
+        {
+            float lod = saturate((distance - 55.0f) / 160.0f) * 3.0f;
+            terrain = terrain_shade_lod(material, position_world, vertex.normal, uv, lod);
+        }
+        else
+        {
+            float2 duvdx = dpdx.xz * tiling;
+            float2 duvdy = dpdy.xz * tiling;
+            float analysis_lod = 0.0f;
+            TerrainAnalysis analysis = terrain_sample_analysis(material, position_world, analysis_lod);
+            float slope_radians      = acos(saturate(dot(vertex.normal, float3(0.0f, 1.0f, 0.0f))));
+            TerrainLayerPick pick    = terrain_pick_layers(material, analysis, position_world, vertex.normal, slope_radians);
+            terrain = terrain_evaluate(
+                material, pick, analysis, position_world, vertex.normal, uv, duvdx, duvdy, dpdx, dpdy, distance
+            );
+        }
 
         albedo.rgb     *= terrain.albedo;
         normal          = terrain.normal;
@@ -252,10 +261,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         terrain_shaded  = true;
     }
 
-    // parallax occlusion mapping, gated on height texture
-    // uses offset limiting (no v.z divide), a grazing fade to kill warp at glancing angles,
-    // and an analytical sub-step intersection that removes residual contour stepping
-    if (surface.has_texture_height() && !surface.is_terrain() && !surface.is_grass_blade() && !surface.is_flower() && !surface.is_water())
+    // pom is off, 16+ samplegrad steps on the road was ~10ms of the gbuffer
+    if (false && surface.has_texture_height() && !surface.is_terrain() && !surface.is_grass_blade() && !surface.is_flower() && !surface.is_water())
     {
         float3x3 world_to_tangent = make_world_to_tangent_matrix(vertex.normal, vertex.tangent);
         float3 v_tangent          = normalize(mul(-camera_to_pixel, world_to_tangent));
@@ -337,7 +344,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float4 albedo_sample = 1.0f;
     if (!terrain_shaded && surface.has_texture_albedo())
     {
-        albedo_sample     = sample_texture(vertex, material_texture_index_albedo, surface, position_world);
+        albedo_sample     = sample_texture(vertex, material_texture_index_albedo, distance);
         if (material.is_albedo_srgb())
         {
             albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
@@ -396,7 +403,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float distance_fade = 1.0f;
     if (!terrain_shaded && surface.has_texture_normal())
     {
-        float3 normal_sample  = sample_texture(vertex, material_texture_index_normal, surface, position_world).xyz;
+        float3 normal_sample  = sample_texture(vertex, material_texture_index_normal, distance).xyz;
         float3 tangent_normal = normalize(unpack(normal_sample));
     
         // reconstruct z for bc5 two-channel normal maps
@@ -434,7 +441,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         )
     )
     {
-        float4 packed = sample_texture(vertex, material_texture_index_packed, surface, position_world);
+        float4 packed = sample_texture(vertex, material_texture_index_packed, distance);
         occlusion     = lerp(occlusion, packed.r, (float)material.has_texture_occlusion());
         roughness    *= lerp(1.0f, packed.g, (float)material.has_texture_roughness());
         metalness    *= lerp(1.0f, packed.b, (float)material.has_texture_metalness());

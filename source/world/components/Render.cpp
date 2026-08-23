@@ -353,6 +353,34 @@ namespace spartan
         }
     }
 
+    float Render::GetEffectiveMaxRenderDistance() const
+    {
+        if (m_max_distance_render > 0.0f && m_max_distance_render < FLT_MAX * 0.5f)
+        {
+            return m_max_distance_render;
+        }
+
+        if (m_material && m_material->GetProperty(MaterialProperty::IsTerrain) > 0.5f)
+        {
+            return m_max_distance_render;
+        }
+
+        Vector3 extents = GetBoundingBox().GetExtents();
+        if (HasInstancing() && GetEntity())
+        {
+            const Vector3 scale        = GetEntity()->GetScale();
+            const Vector3 mesh_extents = GetLodAabb(0).GetExtents();
+            extents = Vector3(
+                mesh_extents.x * abs(scale.x),
+                mesh_extents.y * abs(scale.y),
+                mesh_extents.z * abs(scale.z)
+            );
+        }
+
+        const float radius = max(extents.x, max(extents.y, extents.z));
+        return clamp(radius * 40.0f, 80.0f, 480.0f);
+    }
+
     void Render::UpdateFrustumAndDistanceCulling()
     {
         Camera* camera = World::GetCamera();
@@ -377,7 +405,7 @@ namespace spartan
         }
 
         const Vector3 camera_position = camera->GetEntity()->GetPosition();
-        const float max_distance = m_max_distance_render;
+        const float max_distance = GetEffectiveMaxRenderDistance();
         const float max_distance_sq = max_distance * max_distance;
 
         // distance-culled static props stay culled until the camera moves a few meters
@@ -1012,11 +1040,11 @@ namespace spartan
         // screen height coverage each lod requires, calibrated so the transitions stay imperceptible
         static constexpr array<float, 5> screen_thresholds =
         {
-            0.05f,   // lod0: object covers >= 5% of screen height
-            0.025f,  // lod1: object covers >= 2.5% of screen height
-            0.012f,  // lod2: object covers >= 1.2% of screen height
-            0.006f,  // lod3: object covers >= 0.6% of screen height
-            0.003f   // lod4: object covers >= 0.3% of screen height
+            0.10f,   // lod0: object covers >= 10% of screen height
+            0.04f,   // lod1: object covers >= 4% of screen height
+            0.018f,  // lod2: object covers >= 1.8% of screen height
+            0.008f,  // lod3: object covers >= 0.8% of screen height
+            0.004f   // lod4: object covers >= 0.4% of screen height
         };
 
         // hysteresis against lod popping, a change requires passing the threshold by 10 percent in either direction

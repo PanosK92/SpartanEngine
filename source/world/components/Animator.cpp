@@ -1144,7 +1144,8 @@ namespace spartan
         nodes.push_back(GetEntity());
         GetEntity()->GetDescendants(&nodes);
 
-        uint32_t count = 0;
+        uint32_t count    = 0;
+        uint32_t excluded = 0;
         for (Entity* node : nodes)
         {
             if (!node)
@@ -1158,6 +1159,12 @@ namespace spartan
                 continue;
             }
 
+            if (render->HasFlag(RenderFlags::ExcludeFromRayTracing))
+            {
+                excluded++;
+                continue;
+            }
+
             render->SetAllowBlasUpdate(true);
             render->InvalidateAccelerationStructure();
             ++count;
@@ -1165,6 +1172,10 @@ namespace spartan
 
         if (count == 0)
         {
+            if (excluded > 0)
+            {
+                m_dynamic_blas_ready = true;
+            }
             return;
         }
 
@@ -1191,6 +1202,11 @@ namespace spartan
 
             Render* render = node->GetComponent<Render>();
             if (!render || render->GetMesh() != mesh)
+            {
+                continue;
+            }
+
+            if (render->HasFlag(RenderFlags::ExcludeFromRayTracing))
             {
                 continue;
             }

@@ -173,7 +173,7 @@ bool sphere_hiz_visible(Texture2D hiz_tex, float3 center_world, float radius_wor
 // meshes and meshlets are tuned apart because meshlet screen size is far more uniform than mesh screen size
 // the meshlet threshold stays the lower of the two, over-culling meshlets punches sub-pixel holes in solid surfaces
 // while over-culling an instance only removes a speck
-#define CULL_CONTRIBUTION_MESH_PX    2.0f
+#define CULL_CONTRIBUTION_MESH_PX    3.0f
 #define CULL_CONTRIBUTION_MESHLET_PX 1.0f
 
 // contribution cull, rejects a sphere whose projected footprint is thinner than min_extent_pixels on both axes

@@ -70,7 +70,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 diff_radiance = max(tex[thread_id.xy].rgb, 0.0f);
     // reconnection distance from the reuse passes, a real hit t lets reblur shrink kernels at contacts
     float hit_dist = max(tex[thread_id.xy].a, 0.0f);
-    float3 hit_dist_params = float3(3.0f, 0.1f, 20.0f);
+    float3 hit_dist_params = float3(restir_hit_distance_a, restir_hit_distance_b, restir_hit_distance_c);
     float norm_hit_dist = REBLUR_FrontEnd_GetNormHitDist(hit_dist, view_z, hit_dist_params, 1.0f);
 
     tex_uav[thread_id.xy]  = float4(mv, 0.0f, 0.0f);

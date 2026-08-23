@@ -493,6 +493,7 @@ namespace spartan
             }
 
             render->SetMesh(instance_mesh.get(), render->GetSubMeshIndex());
+            render->SetFlag(RenderFlags::ExcludeFromRayTracing, true);
         }
 
         entity->SetObjectName("pedestrian_" + to_string(index + 1));

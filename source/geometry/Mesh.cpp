@@ -805,36 +805,20 @@ namespace spartan
         }
 
         // share index/meshlet gpu slices, allocate a private vertex slice for skinning
-        instance->m_global_index_offset           = m_global_index_offset;
-        instance->m_global_index_capacity         = m_global_index_capacity;
-        instance->m_global_meshlet_offset         = m_global_meshlet_offset;
-        instance->m_global_meshlet_capacity       = m_global_meshlet_capacity;
-        instance->m_global_meshlet_vertex_offset  = m_global_meshlet_vertex_offset;
+        instance->m_global_index_offset            = m_global_index_offset;
+        instance->m_global_index_capacity          = m_global_index_capacity;
+        instance->m_global_meshlet_offset          = m_global_meshlet_offset;
+        instance->m_global_meshlet_capacity        = m_global_meshlet_capacity;
+        instance->m_global_meshlet_vertex_offset   = m_global_meshlet_vertex_offset;
         instance->m_global_meshlet_vertex_capacity = m_global_meshlet_vertex_capacity;
-        instance->m_global_meshlet_micro_offset   = m_global_meshlet_micro_offset;
-        instance->m_global_meshlet_micro_capacity = m_global_meshlet_micro_capacity;
+        instance->m_global_meshlet_micro_offset    = m_global_meshlet_micro_offset;
+        instance->m_global_meshlet_micro_capacity  = m_global_meshlet_micro_capacity;
 
-        auto get_dynamic_capacity = [](const size_t count) -> uint32_t
-        {
-            if (count == 0)
-            {
-                return 0u;
-            }
-
-            uint32_t capacity = 1;
-            while (capacity < count)
-            {
-                capacity *= 2;
-            }
-
-            return capacity;
-        };
-
-        instance->m_global_vertex_capacity = get_dynamic_capacity(m_vertices.size());
-        vector<RHI_Vertex_PosTexNorTan> vertices = m_vertices;
-        vertices.resize(instance->m_global_vertex_capacity);
-        instance->m_global_vertex_offset = GeometryBuffer::AppendVertices(
-            vertices.data(),
+        // skinning writes the same count every frame, padding to the next pow2 uploaded 16k dummy
+        // verts per pedestrian and hitching the geometry buffer
+        instance->m_global_vertex_capacity = static_cast<uint32_t>(m_vertices.size());
+        instance->m_global_vertex_offset   = GeometryBuffer::AppendVertices(
+            m_vertices.data(),
             instance->m_global_vertex_capacity
         );
         instance->m_ready_for_blas.store(true, memory_order_release);

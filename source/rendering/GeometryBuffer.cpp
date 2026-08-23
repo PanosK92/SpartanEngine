@@ -646,10 +646,6 @@ namespace spartan
             meshlet_vertex_count_committed = meshlet_vertex_count;
             meshlet_micro_count_committed  = meshlet_micro_count;
             instance_count_committed       = instance_count;
-
-            SP_LOG_INFO("Global geometry buffer updated: +%u vertices, +%u indices, +%u meshlets, +%u meshlet verts, +%u micro indices, +%u instances (sub-region upload, no rebuild)",
-                new_vertices, new_indices, new_meshlets, new_meshlet_verts, new_meshlet_micros, new_instances
-            );
         }
 
         dirty = false;

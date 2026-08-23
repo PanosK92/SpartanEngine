@@ -25,6 +25,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // sigma local lights, 1 jittered ray each, bits 8-10 of light flags store slot+1
 #define nrd_local_shadow_max 4
 
+// reblur diffuse hit distance normalization for restir gi, norm = saturate(hit_dist / f) with
+// f = (a + viewZ * b) * lerp(c, 1, smc), the gi lobe is packed at roughness 1 so smc is 1 and c
+// drops out, a and b therefore set the distance at which the normalized hit distance saturates
+// these must match nrd::ReblurHitDistanceParameters on the cpu side or reblur sizes its kernels
+// against a different curve than the one the pack shader encoded
+#define restir_hit_distance_a 32.0f
+#define restir_hit_distance_b 0.5f
+#define restir_hit_distance_c 20.0f
+
 // shared type abstraction - resolves to native types on each side
 #ifdef __cplusplus
     #define SHARED_FLOAT    float

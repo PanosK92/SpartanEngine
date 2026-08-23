@@ -146,6 +146,7 @@ namespace spartan
 
         // render distance
         float GetMaxRenderDistance() const                         { return m_max_distance_render; }
+        float GetEffectiveMaxRenderDistance() const;
         void SetMaxRenderDistance(const float max_render_distance) { m_max_distance_render = max_render_distance; }
 
         // shadow distance

@@ -232,7 +232,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             );
             float3 restir_ibl =
                 restir_gi *
-                max(surface.albedo, 0.1f) *
+                restir_gi_demodulator(surface.albedo.rgb) *
                 pass_get_f3_value().z;
 
             diffuse_ibl = lerp(diffuse_ibl, restir_ibl, coverage);

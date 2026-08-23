@@ -3464,7 +3464,7 @@ namespace spartan
             draw_data.lod_aabb_diag           = lod_extent.Length();
 
             // squared once here so the cull shader skips a sqrt, zero disables the check, this is the only per-instance distance test for consolidated entities
-            const float max_distance          = render->GetMaxRenderDistance();
+            const float max_distance          = render->GetEffectiveMaxRenderDistance();
             const bool  finite_distance       = max_distance > 0.0f && max_distance < numeric_limits<float>::max() * 0.5f;
             draw_data.max_render_distance_squared = finite_distance ? (max_distance * max_distance) : 0.0f;
 
@@ -3642,6 +3642,8 @@ namespace spartan
 
     void Renderer::UpdateAccelerationStructures()
     {
+        SP_PROFILE_CPU();
+
         bool ray_tracing_enabled = cvar_ray_traced_reflections.GetValueAs<bool>() || cvar_ray_traced_shadows.GetValueAs<bool>() || cvar_restir_pt.GetValueAs<bool>();
         if (!ray_tracing_enabled)
         {
@@ -3730,6 +3732,12 @@ namespace spartan
                 }
             }
 
+            static bool blas_was_backlogged = false;
+            if (blas_remaining > 0)
+            {
+                blas_was_backlogged = true;
+            }
+
             blas_burst_done = (blas_remaining == 0);
             blas_built_this_frame = blas_built > 0;
 
@@ -3741,7 +3749,11 @@ namespace spartan
             if (blas_burst_done && blas_built > 0)
             {
                 RHI_AccelerationStructure::FreeSharedBlasScratch();
-                SP_LOG_INFO("Ray tracing: BLAS build burst complete (last frame built %u, total %u)", blas_built, blas_total);
+                if (blas_was_backlogged || blas_built > 1)
+                {
+                    SP_LOG_INFO("Ray tracing: BLAS build burst complete (last frame built %u, total %u)", blas_built, blas_total);
+                }
+                blas_was_backlogged = false;
             }
 
             RHI_CommandList::EndMarker();
@@ -3755,13 +3767,14 @@ namespace spartan
 
         // static scenes keep a valid tlas, only rebuild when transforms, materials, or blas move
         {
-            bool needs_tlas_rebuild =
+            const bool structural_tlas_rebuild =
                 !m_tlas ||
                 materials_uploaded_this_frame ||
                 blas_refit_done ||
                 blas_built_this_frame;
             materials_uploaded_this_frame = false;
 
+            bool needs_tlas_rebuild = structural_tlas_rebuild;
             if (!needs_tlas_rebuild)
             {
                 const float move_window_sec = max(
@@ -3800,6 +3813,18 @@ namespace spartan
             if (!needs_tlas_rebuild)
             {
                 return;
+            }
+
+            // the player car moves every frame, a full rebuild of thousands of instances
+            // does not need to ride that, a one frame stale tlas is fine for shadows
+            if (!structural_tlas_rebuild && m_tlas)
+            {
+                static uint32_t tlas_transform_skip = 0;
+                tlas_transform_skip++;
+                if ((tlas_transform_skip & 1u) != 0u)
+                {
+                    return;
+                }
             }
         }
 
@@ -4573,6 +4598,7 @@ namespace spartan
         // safe to run unconditionally, the pass early-outs when grass is disabled
         Pass_Grass_Populate();
         Pass_Depth_Prepass();
+        Pass_IndirectCull_Refine();
         Pass_GBuffer(false);
         Pass_MeshletVisualize();
     }

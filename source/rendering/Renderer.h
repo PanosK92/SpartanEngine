@@ -358,7 +358,10 @@ namespace spartan
         void Pass_VariableRateShading();
         void Pass_ShadowMaps();
         void Pass_HiZ();
+        void Pass_HiZ_BuildFromDepth(RHI_Texture* tex_depth);
         void Pass_IndirectCull();
+        void Pass_IndirectCull_Meshlets();
+        void Pass_IndirectCull_Refine();
         void Pass_Depth_Prepass();
         void Pass_GBuffer(const bool is_transparent_pass);
         void Pass_GBuffer_Indirect();
