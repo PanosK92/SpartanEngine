@@ -131,6 +131,7 @@ namespace spartan
         uint32_t GetDepth() const       { return m_depth; }
         uint32_t GetArrayLength() const { return (m_type == RHI_Texture_Type::Type3D) ? 1 : m_depth; }
         bool HasData() const            { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
+        bool HasAlphaPixels() const;
         RHI_Texture_Mip* GetMip(const uint32_t array_index, const uint32_t mip_index);
         RHI_Texture_Slice* GetSlice(const uint32_t array_index);
         void AllocateMip(uint32_t slice_index = 0);

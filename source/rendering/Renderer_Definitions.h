@@ -365,8 +365,6 @@ namespace spartan
         outline_v,
         outline_p,
         outline_c,
-        skid_marks_v,
-        skid_marks_p,
         font_v,
         font_p,
         ssao_c,

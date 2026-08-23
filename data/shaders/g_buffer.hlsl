@@ -373,7 +373,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     albedo.a = lerp(albedo.a, 1.0f, step(albedo_sample.a, 1.0f) * pass_is_opaque());
     if (surface.is_skid_mark())
     {
-        albedo.a *= saturate(vertex.uv_misc.z);
+        // stain mask is texture alpha times vertex fade, color.a is only the transparent pass ticket
+        albedo.a = saturate(albedo_sample.a) * saturate(vertex.uv_misc.z);
     }
 
     // emission
@@ -522,6 +523,6 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     g_buffer.albedo   = albedo;
     g_buffer.normal   = float4(normal, pass_get_material_index());
     g_buffer.material = float4(roughness, metalness, emission, occlusion);
-    g_buffer.velocity = float4(velocity, material.is_motion_blur_radial() ? 1.0f : 0.0f, 0.0f);
+    g_buffer.velocity = float4(velocity, material.is_motion_blur_radial() ? 1.0f : 0.0f, surface.is_skid_mark() ? 1.0f : 0.0f);
     return g_buffer;
 }

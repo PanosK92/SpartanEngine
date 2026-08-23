@@ -603,7 +603,12 @@ namespace spartan
             if (texture_color && !texture_color->IsCompressedFormat())
             {
                 texture_color->SetFlag(RHI_Texture_Compress);
-                texture_color->SetCompressionFormat(texture_color->IsSemiTransparent() ? RHI_Format::BC3_Unorm : RHI_Format::BC1_Unorm);
+                const bool has_alpha = texture_color->HasAlphaPixels();
+                texture_color->SetCompressionFormat(has_alpha ? RHI_Format::BC3_Unorm : RHI_Format::BC1_Unorm);
+                if (has_alpha)
+                {
+                    texture_color->SetFlag(RHI_Texture_Transparent, true);
+                }
             }
 
             if (texture_normal && !texture_normal->IsCompressedFormat())
@@ -1363,6 +1368,12 @@ namespace spartan
     bool Material::IsAlphaTested()
     {
         // hot path for draw sort and shadow passes, read slots directly
+        // skids keep texture alpha for a multiply mask, clipping would punch holes in the ribbon
+        if (GetProperty(MaterialProperty::IsSkidMark) != 0.0f)
+        {
+            return false;
+        }
+
         RHI_Texture* color = m_textures[static_cast<uint32_t>(MaterialTextureType::Color) * slots_per_texture];
         const bool albedo_mask = color && color->IsSemiTransparent();
         return HasTextureOfType(MaterialTextureType::AlphaMask) || albedo_mask;

@@ -3239,13 +3239,10 @@ namespace spartan
                 continue;
             }
 
-            const bool is_skid_mark = material->GetProperty(MaterialProperty::IsSkidMark) != 0.0f;
-            const bool skip_deferred = render->HasFlag(RenderFlags::SkipDeferred) || is_skid_mark;
-
             // off-screen geometry is only kept when classic shadow maps need the caster
             if (!render->IsVisible())
             {
-                if (material->IsTransparent() && !skip_deferred)
+                if (material->IsTransparent())
                 {
                     m_transparents_present = true;
                 }
@@ -3259,7 +3256,7 @@ namespace spartan
                 }
             }
 
-            if (material->IsTransparent() && !skip_deferred)
+            if (material->IsTransparent())
             {
                 m_transparents_present = true;
             }
@@ -3358,7 +3355,7 @@ namespace spartan
             Render* render              = dc.render;
             Material* material          = render->GetMaterial();
 
-            if (!material || material->IsTransparent() || render->HasFlag(RenderFlags::SkipDeferred))
+            if (!material || material->IsTransparent())
             {
                 continue;
             }
@@ -4619,7 +4616,6 @@ namespace spartan
         Pass_Reflections_Denoise(eye_layer);
 
         Pass_Reflections_Apply(eye_layer);
-        Pass_SkidMarks(eye_layer);
         Pass_LightFlares(eye_layer);
         if (clouds_prepared)
         {

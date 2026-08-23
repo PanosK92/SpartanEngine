@@ -1024,10 +1024,6 @@ namespace spartan
             }
 
             const bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-            if (render->HasFlag(RenderFlags::SkipDeferred) || material->GetProperty(MaterialProperty::IsSkidMark) != 0.0f)
-            {
-                continue;
-            }
             if (is_transparent_pass)
             {
                 if (!material->IsTransparent())
@@ -1079,99 +1075,6 @@ namespace spartan
         }
 
         RHI_CommandList::EndTimeblock();
-    }
-
-    bool Renderer::Pass_SkidMarks(uint32_t eye_layer)
-    {
-        (void)eye_layer;
-
-        RHI_Shader* shader_v = GetShader(Renderer_Shader::skid_marks_v);
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::skid_marks_p);
-        if (!shader_v || !shader_p || !shader_v->IsCompiled() || !shader_p->IsCompiled())
-        {
-            return false;
-        }
-
-        RHI_Texture* tex_out     = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        RHI_Texture* tex_lit     = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);
-        RHI_Texture* tex_depth   = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
-        if (!tex_out || !tex_lit || !tex_depth)
-        {
-            return false;
-        }
-
-        bool has_skid = false;
-        for (uint32_t i = 0; i < m_draw_call_count; i++)
-        {
-            Render* render = m_draw_calls[i].render;
-            if (render && render->HasFlag(RenderFlags::SkipDeferred) && m_draw_calls[i].camera_visible)
-            {
-                has_skid = true;
-                break;
-            }
-        }
-        if (!has_skid)
-        {
-            return false;
-        }
-
-        RHI_CommandList::Blit(tex_out, tex_lit, false);
-
-        RHI_PipelineState pso;
-        pso.name                             = "skid_marks";
-        pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
-        pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
-        pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
-        pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
-        pso.primitive_topology               = RHI_PrimitiveTopology::TriangleList;
-        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
-        pso.resolution_scale                 = true;
-        pso.render_target_color_textures[0]  = tex_out;
-        pso.render_target_depth_texture      = tex_depth;
-        pso.clear_color[0]                   = rhi_color_load;
-        pso.cull_mode                        = RHI_CullMode::None;
-
-        RHI_CommandList::BeginTimeblock("skid_marks");
-        RHI_CommandList::SetPipelineState(pso);
-        RHI_CommandList::SetCullMode(RHI_CullMode::None);
-        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_lit);
-
-        RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer()
-            ? GeometryBuffer::GetInstanceBuffer()
-            : GetBuffer(Renderer_Buffer::DummyInstance);
-
-        for (uint32_t i = 0; i < m_draw_call_count; i++)
-        {
-            const Renderer_DrawCall& draw_call = m_draw_calls[i];
-            Render* render                     = draw_call.render;
-            if (!render || !draw_call.camera_visible || !render->HasFlag(RenderFlags::SkipDeferred))
-            {
-                continue;
-            }
-
-            Material* material = render->GetMaterial();
-            if (!material)
-            {
-                continue;
-            }
-
-            m_pcb_pass_cpu.draw_index     = draw_call.draw_data_index;
-            m_pcb_pass_cpu.material_index = material->GetIndex();
-            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-
-            RHI_CommandList::SetBufferVertex(render->GetVertexBuffer(), instance_buffer);
-            RHI_CommandList::SetBufferIndex(render->GetIndexBuffer());
-            RHI_CommandList::DrawIndexed(
-                render->GetIndexCount(draw_call.lod_index),
-                render->GetIndexOffset(draw_call.lod_index),
-                render->GetVertexOffset(draw_call.lod_index),
-                render->GetGlobalInstanceOffset() + draw_call.instance_index,
-                draw_call.instance_count
-            );
-        }
-
-        RHI_CommandList::EndTimeblock();
-        return true;
     }
 
     void Renderer::Pass_GBuffer(const bool is_transparent_pass)

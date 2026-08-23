@@ -1357,6 +1357,14 @@ namespace spartan
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), tex_skysphere);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3), tex_light_diffuse);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex4), tex_light_specular);
+            if (is_transparent_pass)
+            {
+                RHI_Texture* tex_opaque = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);
+                if (tex_opaque)
+                {
+                    RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_opaque);
+                }
+            }
             if (tex_fog)
             {
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3d), tex_fog);

@@ -126,7 +126,7 @@ namespace spartan
         for (uint32_t y = 0; y < height; y++)
         {
             float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(height);
-            float edge = smooth_fade(v / 0.10f) * smooth_fade((1.0f - v) / 0.10f);
+            float edge = smooth_fade(v / 0.18f) * smooth_fade((1.0f - v) / 0.18f);
             float rib_l = gauss(v, 0.30f, 0.085f);
             float rib_r = gauss(v, 0.70f, 0.085f);
             float film  = gauss(v, 0.50f, 0.20f) * 0.42f;
@@ -385,7 +385,6 @@ namespace spartan
         render->SetMaterial(m_material);
         render->SetFlag(RenderFlags::CastsShadows, false);
         render->SetFlag(RenderFlags::ExcludeFromRayTracing, true);
-        render->SetFlag(RenderFlags::SkipDeferred, true);
 
         trail.global_vertex_offset = render->GetVertexOffset();
     }
@@ -451,7 +450,7 @@ namespace spartan
 
     void SkidMarks::CreateMaterial()
     {
-        const string texture_path = string(ResourceCache::GetProjectDirectory()) + "materials/skid_marks/albedo.png";
+        const string texture_path = string(ResourceCache::GetProjectDirectory()) + "materials/skid_marks/stain.png";
         if (!FileSystem::Exists(texture_path))
         {
             const uint32_t size = 256;
@@ -468,8 +467,8 @@ namespace spartan
 
         if (m_texture)
         {
-            // blend the grain, do not cut it out with alpha test
-            m_texture->SetFlag(RHI_Texture_Transparent, false);
+            // keep alpha for the stain mask, bc1 would drop it and leave a solid quad
+            m_texture->SetFlag(RHI_Texture_Transparent, true);
         }
 
         m_material = make_shared<Material>();

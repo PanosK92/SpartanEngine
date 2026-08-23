@@ -916,6 +916,32 @@ namespace spartan
         gpu_compression::shutdown();
     }
 
+    bool RHI_Texture::HasAlphaPixels() const
+    {
+        if (m_channel_count < 4 || m_bits_per_channel != 8)
+        {
+            return false;
+        }
+
+        if (m_slices.empty() || m_slices[0].mips.empty())
+        {
+            return false;
+        }
+
+        const vector<std::byte>& bytes = m_slices[0].mips[0].bytes;
+        const size_t pixel_count       = bytes.size() / 4;
+        const uint8_t* data            = reinterpret_cast<const uint8_t*>(bytes.data());
+        for (size_t i = 0; i < pixel_count; i++)
+        {
+            if (data[i * 4 + 3] != 255)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void RHI_Texture::PrepareForGpu()
     {
         // atomically transition from idle to preparing so only one thread can enter
@@ -969,6 +995,11 @@ namespace spartan
             if (compress && not_compressed)
             {
                 RHI_Format target = m_compression_format != RHI_Format::Max ? m_compression_format : RHI_Format::BC3_Unorm;
+                if (target == RHI_Format::BC1_Unorm && HasAlphaPixels())
+                {
+                    target = RHI_Format::BC3_Unorm;
+                    m_flags |= RHI_Texture_Transparent;
+                }
 
                 if (!gpu_compression::compress(this, target))
                 {

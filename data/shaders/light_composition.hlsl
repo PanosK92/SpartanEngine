@@ -76,19 +76,19 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     Surface surface;
     surface.Build(thread_id.xy, resolution_out, true, false);
 
-    // skip non transparent pixels during the transparent pass, the opaque pass already wrote them
-    if (pass_is_transparent() && !surface.is_transparent())
-        return;
-
-    // rubber stain, multiply the lit ground, glass overwrite is the wrong operator
+    // rubber stain, multiply the lit ground from the opaque blit, glass overwrite is the wrong operator
     if (pass_is_transparent() && surface.is_skid_mark())
     {
-        float coverage = saturate(surface.alpha);
-        float3 dest    = tex_uav[thread_id.xy].rgb;
-        float3 stain   = dest * lerp(float3(1.0f, 1.0f, 1.0f), surface.albedo, coverage);
+        float mask   = saturate(surface.alpha);
+        float3 dest  = tex[thread_id.xy].rgb;
+        float3 stain = dest * lerp(float3(1.0f, 1.0f, 1.0f), surface.albedo, mask);
         tex_uav[thread_id.xy] = validate_output(float4(stain, 1.0f));
         return;
     }
+
+    // skip non transparent pixels during the transparent pass, the opaque pass already wrote them
+    if (pass_is_transparent() && !surface.is_transparent())
+        return;
 
     float3 light_diffuse       = 0.0f;
     float3 light_specular      = 0.0f;

@@ -365,6 +365,7 @@ namespace spartan
     {
         bool sdk_ready                        = false;
         bool create_failed                    = false;
+        bool pending_gpu_init                 = false;
         NVSDK_NGX_Parameter* parameters       = nullptr;
         NVSDK_NGX_Handle* handle              = nullptr;
         Vector2 jitter                        = Vector2::Zero;
@@ -407,14 +408,28 @@ namespace spartan
 
         NVSDK_NGX_Resource_VK to_ngx(RHI_Texture* texture, bool read_write)
         {
+            // ngx wants a 2d mip 0 view, not an array or mip chain
+            void* view = nullptr;
+            if (texture->GetType() == RHI_Texture_Type::Type2DArray && texture->GetRhiSrvLayer(0))
+            {
+                view = texture->GetRhiSrvLayer(0);
+            }
+            else if (texture->HasPerMipViews() && texture->GetRhiSrvMip(0))
+            {
+                view = texture->GetRhiSrvMip(0);
+            }
+            else
+            {
+                view = texture->GetRhiSrv();
+            }
+
             VkImageSubresourceRange range = {};
             range.aspectMask              = texture->IsDepthFormat() ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-            range.aspectMask             |= texture->IsStencilFormat() ? VK_IMAGE_ASPECT_STENCIL_BIT : 0;
             range.levelCount              = 1;
             range.layerCount              = 1;
 
             return NVSDK_NGX_Create_ImageView_Resource_VK(
-                static_cast<VkImageView>(texture->GetRhiSrv()),
+                static_cast<VkImageView>(view),
                 static_cast<VkImage>(texture->GetRhiResource()),
                 range,
                 vulkan_format[rhi_format_to_index(texture->GetFormat())],
@@ -431,7 +446,8 @@ namespace spartan
                 NVSDK_NGX_VULKAN_ReleaseFeature(handle);
                 handle = nullptr;
             }
-            create_failed = false;
+            create_failed    = false;
+            pending_gpu_init = false;
         }
 
         void sdk_shutdown()
@@ -490,8 +506,6 @@ namespace spartan
                 return;
             }
 
-            sdk_ready = true;
-
             unsigned int available    = 0;
             unsigned int needs_driver = 0;
             int init_result           = 0;
@@ -501,7 +515,13 @@ namespace spartan
             if (!available)
             {
                 SP_LOG_WARNING("DLSS super sampling unavailable, needs_driver=%u, init_result=0x%x", needs_driver, static_cast<unsigned int>(init_result));
+                NVSDK_NGX_VULKAN_DestroyParameters(parameters);
+                NVSDK_NGX_VULKAN_Shutdown1(RHI_Context::device);
+                parameters = nullptr;
+                return;
             }
+
+            sdk_ready = true;
         }
 
         void set_dlss4_presets()
@@ -578,7 +598,10 @@ namespace spartan
                 SP_LOG_WARNING("DLSS feature creation failed: 0x%x", static_cast<unsigned int>(result));
                 handle        = nullptr;
                 create_failed = true;
+                return;
             }
+
+            pending_gpu_init = true;
         }
     }
 
@@ -960,6 +983,14 @@ namespace spartan
         dlss::feature_create(vk_cmd);
         if (!dlss::handle)
         {
+            return;
+        }
+
+        // createfeature gpu work must finish before evaluate, skip this frame
+        if (dlss::pending_gpu_init)
+        {
+            dlss::pending_gpu_init = false;
+            common::reset_history  = true;
             return;
         }
 

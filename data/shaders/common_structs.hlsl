@@ -102,6 +102,11 @@ struct Surface
         depth                 = sample_depth;
         normal                = sample_normal.xyz;
         flags                 = material.flags;
+        // velocity.w is packed at gbuffer time so composition can find skids if the material index misses
+        if (tex_velocity.SampleLevel(samplers[sampler_point_clamp], uv, 0).a > 0.5f)
+        {
+            flags |= uint(1U << 20);
+        }
         albedo                = replace_color_with_one ? 1.0f : sample_albedo.rgb;
         alpha                 = sample_albedo.a;
         roughness             = sample_material.r;
