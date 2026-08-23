@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "input/Input.h"
 #include "profiling/Profiler.h"
 #include "mcp/EditorMcpCommands.h"
+#include "world/World.h"
 #include "rendering/Renderer.h"
 //===============================
 
@@ -67,6 +68,8 @@ void Editor::Tick()
             "frame_active",
             spartan::TimeBlockType::Cpu
         );
+
+        spartan::World::ProcessPendingLoad();
 
         const bool render_editor = spartan::Engine::IsFlagSet(
             spartan::EngineMode::EditorVisible

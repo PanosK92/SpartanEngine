@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "world/World.h"
 #include "world/components/Script.h"
 #include "core/ThreadPool.h"
+#include "core/Event.h"
 //=========================================
 
 //= NAMESPACES ===============
@@ -46,7 +47,20 @@ using namespace spartan::math;
 namespace
 {
     #define OPERATION_NAME (m_operation == FileDialog_Op_Open) ? "Open"      : (m_operation == FileDialog_Op_Load)   ? "Load"        : (m_operation == FileDialog_Op_Save) ? "Save" : "View"
-    #define FILTER_NAME    (m_filter == FileDialog_Filter_All) ? "All (*.*)" : (m_filter == FileDialog_Filter_Model) ? "Model (*.*)" : "World (*.world)"
+    #define FILTER_NAME    (m_filter == FileDialog_Filter_All) ? "All (*.*)" : (m_filter == FileDialog_Filter_Model) ? "Model (*.*)" : (m_filter == FileDialog_Filter_Image) ? "Image (*.png, *.jpg)" : "World (*.world)"
+
+    bool is_prompt_reference_image(const string& path)
+    {
+        const string extension = FileSystem::ConvertToUppercase(
+            FileSystem::GetExtensionFromFilePath(path)
+        );
+        return
+            extension == ".PNG" ||
+            extension == ".JPG" ||
+            extension == ".JPEG" ||
+            extension == ".GIF" ||
+            extension == ".WEBP";
+    }
 
     // visual configuration
     const float item_size_min       = 50.0f;
@@ -170,6 +184,25 @@ FileDialog::FileDialog(const bool standalone_window, const FileDialog_Type type,
     m_rename_select_pending           = false;
     m_rename_item_id                  = UINT32_MAX;
     m_context_menu_id                 = 0;
+    m_world_unloading_handle          = SP_SUBSCRIBE_TO_EVENT(
+        EventType::WorldUnloading,
+        SP_EVENT_HANDLER_EXPRESSION(
+            {
+                lock_guard<mutex> lock(m_mutex_items);
+                m_items.clear();
+                m_is_dirty = true;
+            }
+        )
+    );
+}
+
+FileDialog::~FileDialog()
+{
+    if (m_world_unloading_handle != 0)
+    {
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldUnloading, m_world_unloading_handle);
+        m_world_unloading_handle = 0;
+    }
 }
 
 void FileDialog::SetOperation(const FileDialog_Operation operation)
@@ -664,6 +697,11 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
                     m_filter   = FileDialog_Filter_World;
                     m_is_dirty = true;
                 }
+                if (ImGui::Selectable("Image (*.png, *.jpg)", m_filter == FileDialog_Filter_Image))
+                {
+                    m_filter   = FileDialog_Filter_Image;
+                    m_is_dirty = true;
+                }
                 ImGui::EndCombo();
             }
             ImGui::PopStyleVar();
@@ -814,31 +852,32 @@ void FileDialog::RenderGridView()
         // icon - draw directly to draw list
         float icon_area    = icon_size - grid_item_padding;
         const spartan::Icon& icon = item.GetIcon();
-        if (icon.texture)
+        if (
+            icon.texture &&
+            icon.texture->GetResourceState() == ResourceState::PreparedForGpu &&
+            icon.texture->GetRhiResource()
+        )
         {
-            if (icon.texture->GetResourceState() == ResourceState::PreparedForGpu)
-            {
-                // source size derived from the uv sub rect, works for both atlas icons and full thumbnails
-                ImVec2 img_size(
-                    (icon.uv_max.x - icon.uv_min.x) * static_cast<float>(icon.texture->GetWidth()),
-                    (icon.uv_max.y - icon.uv_min.y) * static_cast<float>(icon.texture->GetHeight())
-                );
-                float scale = min(icon_area / img_size.x, icon_area / img_size.y);
-                img_size.x *= scale;
-                img_size.y *= scale;
+            // source size derived from the uv sub rect, works for both atlas icons and full thumbnails
+            ImVec2 img_size(
+                (icon.uv_max.x - icon.uv_min.x) * static_cast<float>(icon.texture->GetWidth()),
+                (icon.uv_max.y - icon.uv_min.y) * static_cast<float>(icon.texture->GetHeight())
+            );
+            float scale = min(icon_area / img_size.x, icon_area / img_size.y);
+            img_size.x *= scale;
+            img_size.y *= scale;
 
-                // center icon horizontally and vertically within icon area
-                float img_x = card_min.x + (item_width - 4 - img_size.x) * 0.5f;
-                float img_y = card_min.y + grid_item_padding + (icon_area - img_size.y) * 0.5f;
+            // center icon horizontally and vertically within icon area
+            float img_x = card_min.x + (item_width - 4 - img_size.x) * 0.5f;
+            float img_y = card_min.y + grid_item_padding + (icon_area - img_size.y) * 0.5f;
 
-                draw_list->AddImage(
-                    reinterpret_cast<ImTextureID>(icon.texture),
-                    ImVec2(img_x, img_y),
-                    ImVec2(img_x + img_size.x, img_y + img_size.y),
-                    ImVec2(icon.uv_min.x, icon.uv_min.y),
-                    ImVec2(icon.uv_max.x, icon.uv_max.y)
-                );
-            }
+            draw_list->AddImage(
+                reinterpret_cast<ImTextureID>(icon.texture),
+                ImVec2(img_x, img_y),
+                ImVec2(img_x + img_size.x, img_y + img_size.y),
+                ImVec2(icon.uv_min.x, icon.uv_min.y),
+                ImVec2(icon.uv_max.x, icon.uv_max.y)
+            );
         }
 
         // label - positioned below the icon area
@@ -1059,14 +1098,15 @@ void FileDialog::RenderListView()
             // icon
             ImGui::SameLine(0, 0);
             const spartan::Icon& icon = item.GetIcon();
-            if (icon.texture)
+            if (
+                icon.texture &&
+                icon.texture->GetResourceState() == ResourceState::PreparedForGpu &&
+                icon.texture->GetRhiResource()
+            )
             {
-                if (icon.texture->GetResourceState() == ResourceState::PreparedForGpu)
-                {
-                    ImVec2 icon_size(20.0f, 20.0f);
-                    ImGuiSp::image(icon.texture, icon_size, icon.uv_min, icon.uv_max);
-                    ImGui::SameLine(0, 8);
-                }
+                ImVec2 icon_size(20.0f, 20.0f);
+                ImGuiSp::image(icon.texture, icon_size, icon.uv_min, icon.uv_max);
+                ImGui::SameLine(0, 8);
             }
 
             // name (or inline rename input)
@@ -1223,8 +1263,15 @@ void FileDialog::ItemDrag(FileDialogItem* item)
         // drag preview
         ImGui::BeginTooltip();
         const spartan::Icon& drag_icon = item->GetIcon();
-        ImGuiSp::image(drag_icon.texture, ImVec2(48, 48), drag_icon.uv_min, drag_icon.uv_max);
-        ImGui::SameLine();
+        if (
+            drag_icon.texture &&
+            drag_icon.texture->GetResourceState() == ResourceState::PreparedForGpu &&
+            drag_icon.texture->GetRhiResource()
+        )
+        {
+            ImGuiSp::image(drag_icon.texture, ImVec2(48, 48), drag_icon.uv_min, drag_icon.uv_max);
+            ImGui::SameLine();
+        }
         ImGui::Text("%s", item->GetLabel().c_str());
         ImGui::EndTooltip();
 
@@ -1410,6 +1457,27 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
             {
                 m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Model));
             }
+        }
+    }
+    else if (m_filter == FileDialog_Filter_Image)
+    {
+        for (const string& path : paths_anything)
+        {
+            if (!is_prompt_reference_image(path))
+            {
+                continue;
+            }
+
+            ThreadPool::AddTask([this, path]()
+            {
+                auto texture = spartan::ResourceCache::Load<RHI_Texture>(path);
+                if (texture)
+                {
+                    texture->PrepareForGpu();
+                }
+                lock_guard<mutex> lock(m_mutex_items);
+                m_items.emplace_back(path, texture.get());
+            });
         }
     }
 

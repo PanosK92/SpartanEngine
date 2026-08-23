@@ -37,6 +37,7 @@ SOFTWARE.
 #include "world/Entity.h"
 #include "world/Prefab.h"
 #include "world/World.h"
+#include "core/Event.h"
 #include "world/components/Camera.h"
 #include "world/components/Light.h"
 #include "world/components/Render.h"
@@ -1120,10 +1121,19 @@ AssetViewer::AssetViewer(Editor* editor) : Widget(editor)
     m_size_initial = math::Vector2(1280.0f, 760.0f);
     m_size_min     = math::Vector2(720.0f, 480.0f);
     m_next_refresh_check = chrono::steady_clock::now();
+    m_world_unloading_handle = SP_SUBSCRIBE_TO_EVENT(
+        EventType::WorldUnloading,
+        SP_EVENT_HANDLER(ClearLoadedAsset)
+    );
 }
 
 AssetViewer::~AssetViewer()
 {
+    if (m_world_unloading_handle != 0)
+    {
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldUnloading, m_world_unloading_handle);
+        m_world_unloading_handle = 0;
+    }
     DestroyPreviewScene();
 }
 

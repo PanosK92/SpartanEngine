@@ -671,7 +671,7 @@ namespace
 
         draw_list->AddRectFilled(min_pos, max_pos, colors.preview_bg, rounding);
 
-        if (preview_tex)
+        if (preview_tex && preview_tex->GetRhiResource())
         {
             draw_list->AddImageRounded(
                 reinterpret_cast<ImTextureID>(preview_tex),
@@ -685,7 +685,7 @@ namespace
             return;
         }
 
-        if (!world_icon.texture)
+        if (!world_icon.texture || !world_icon.texture->GetRhiResource())
         {
             return;
         }

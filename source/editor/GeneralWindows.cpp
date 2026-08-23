@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "file_system/FileSystem.h"
 #include "widgets/Viewport.h"
 #include "input/Input.h"
+#include "../car/Car.h"
 // third party version queries
 SP_WARNINGS_OFF
 #include <assimp/version.h>
@@ -562,6 +563,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             { "Arrow Left/Right","Left Stick X",    "Steering"                  },
             { "Space",           "O / Circle",       "Handbrake"                 },
             { "R",               "X / Cross",        "Reset to Spawn"            },
+            { "H",               "D-Pad Down",       "Summon Car Here"           },
             { "V",               "Triangle / Y",     "Cycle Camera View"         },
             { "-",               "L1",               "Shift Down (Manual)"       },
             { "-",               "R1",               "Shift Up (Manual)"         },
@@ -708,6 +710,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
                     if (ImGui::BeginTabItem("Car"))
                     {
+                        ImGui::Spacing();
+                        if (ImGui::Button("Summon car here", ImVec2(-FLT_MIN, 0.0f)))
+                        {
+                            spartan::Car::SummonPlayerCar();
+                        }
                         ImGui::Spacing();
                         show_control_binding_table("##car_controls_table", car_controls, std::size(car_controls));
                         ImGui::EndTabItem();

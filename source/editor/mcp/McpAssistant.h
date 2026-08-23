@@ -24,9 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==========
 #include "../widgets/Widget.h"
 #include <array>
+#include <memory>
 #include <string>
 #include <vector>
 //=====================
+
+class FileDialog;
 
 class McpAssistant : public Widget
 {
@@ -44,9 +47,12 @@ private:
     {
         bool is_user = false;
         std::string text;
+        std::vector<std::string> images;
     };
 
     void SubmitPrompt();
+    void AttachReferenceImage(const std::string& path);
+    void TickImageBrowser();
     void StartVoiceCapture();
     void StopVoiceCapture();
     void PollVoiceCapture();
@@ -63,6 +69,9 @@ private:
 
     std::array<char, 512> m_cursor_api_key = {};
     std::array<char, 4096> m_prompt = {};
+    std::vector<std::string> m_reference_images;
+    std::unique_ptr<FileDialog> m_image_dialog;
+    bool m_image_dialog_visible = false;
     std::string m_api_key_file_status;
     std::vector<ChatMessage> m_messages;
     std::vector<std::string> m_model_ids = { "auto" };

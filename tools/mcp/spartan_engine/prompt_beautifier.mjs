@@ -8,6 +8,7 @@
 
 import { Agent } from "@cursor/sdk";
 import { fileURLToPath } from "node:url";
+import fs from "node:fs/promises";
 import path from "node:path";
 
 const __dirname = path.dirname(
@@ -54,6 +55,51 @@ const DEFAULT_TIMEOUT_MS = 60000;
 
 // a prompt this long is already carrying its own detail
 const LONG_PROMPT_WORDS = 60;
+
+const REFERENCE_IMAGE_MIME = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+};
+
+async function load_brief_images(paths)
+{
+  const images = [];
+  const seen = new Set();
+  for (const raw of Array.isArray(paths) ? paths : [])
+  {
+    const file_path = String(raw ?? "").trim();
+    const key = file_path.toLowerCase();
+    if (!file_path || seen.has(key) || images.length >= 5)
+    {
+      continue;
+    }
+    seen.add(key);
+    const mime = REFERENCE_IMAGE_MIME[path.extname(file_path).toLowerCase()];
+    if (!mime)
+    {
+      continue;
+    }
+    try
+    {
+      const buffer = await fs.readFile(file_path);
+      if (buffer.length > 15 * 1024 * 1024)
+      {
+        continue;
+      }
+      images.push({
+        data: buffer.toString("base64"),
+        mimeType: mime,
+      });
+    }
+    catch
+    {
+    }
+  }
+  return images;
+}
 
 function word_count(text) {
   const value = String(text ?? "").trim();
@@ -113,7 +159,7 @@ export function should_beautify(prompt, intent) {
   return { ok: true, reason: `terse ${words} word build request` };
 }
 
-function brief_instructions(prompt, intent) {
+function brief_instructions(prompt, intent, has_images = false) {
   const scene =
     intent?.kind === "city_develop" ||
     is_place_request(prompt);
@@ -132,6 +178,14 @@ function brief_instructions(prompt, intent) {
     "- The headings below are prompts to think about, not a form to fill in. Cover the ones this subject actually has, drop the ones it does not, and add a heading of your own where the subject needs one that is not listed.",
     "- Keep it under 300 words.",
   ];
+
+  if (has_images)
+  {
+    lines.push(
+      "- Reference images are attached to this message. Describe the object in those images, not a generic version of the request.",
+      "- Take silhouette, proportions, construction, materials and colour from the images. The text request only wins for scale in metres, game-ready budget, and anything to omit.",
+    );
+  }
 
   if (!scene) {
     // the brief is read as a build list, so anything it names as a feature gets modelled. asking it for
@@ -262,6 +316,7 @@ export async function beautify_prompt({
   model_id = "auto",
   timeout_ms = DEFAULT_TIMEOUT_MS,
   on_note = null,
+  images = [],
 }) {
   const decision = should_beautify(prompt, intent);
   if (!decision.ok) {
@@ -291,8 +346,18 @@ export async function beautify_prompt({
       },
     });
 
+    const prompt_images = await load_brief_images(images);
     const run = await agent.send(
-      brief_instructions(prompt, intent),
+      prompt_images.length > 0
+        ? {
+            text: brief_instructions(
+              prompt,
+              intent,
+              true,
+            ),
+            images: prompt_images,
+          }
+        : brief_instructions(prompt, intent),
     );
 
     // enrichment is optional work in front of the real build, so it gets a deadline rather than the

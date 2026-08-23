@@ -502,6 +502,7 @@ private:
     std::vector<AssetEntry> m_assets;
     std::array<char, 192> m_search = {};
     std::string m_world_file_path;
+    uint64_t m_world_unloading_handle = 0;
     std::string m_catalog_path;
     std::string m_catalog_write_time;
     std::string m_status;

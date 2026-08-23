@@ -548,20 +548,23 @@ namespace ImGui::RHI
 
                             if (spartan::RHI_Texture* texture = reinterpret_cast<spartan::RHI_Texture*>(pcmd->GetTexID()))
                             {
-                                is_frame_texture = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output)->GetObjectId() == texture->GetObjectId();
-
-                                // during engine startup, some textures might be loading in different threads
-                                if (texture->GetResourceState() == ResourceState::PreparedForGpu)
+                                if (texture->GetRhiResource())
                                 {
-                                    // update texture viewer parameters
-                                    is_texture_visualised = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
-                                    if (is_texture_visualised)
-                                    {
-                                        mip_level   = static_cast<float>(TextureViewer::GetMipLevel());
-                                        array_level = static_cast<float>(TextureViewer::GetArrayLevel());
-                                    }
+                                    is_frame_texture = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output)->GetObjectId() == texture->GetObjectId();
 
-                                    texture_bound = texture;
+                                    // during engine startup, some textures might be loading in different threads
+                                    if (texture->GetResourceState() == ResourceState::PreparedForGpu)
+                                    {
+                                        // update texture viewer parameters
+                                        is_texture_visualised = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
+                                        if (is_texture_visualised)
+                                        {
+                                            mip_level   = static_cast<float>(TextureViewer::GetMipLevel());
+                                            array_level = static_cast<float>(TextureViewer::GetArrayLevel());
+                                        }
+
+                                        texture_bound = texture;
+                                    }
                                 }
                             }
 

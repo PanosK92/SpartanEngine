@@ -3724,8 +3724,10 @@ namespace spartan
             Quaternion body_rot_inv = body_rot.Conjugate();
 
             int shapes_created = 0;
-            for (const auto& [entity, render] : render_entities)
+            for (const auto& render_entity : render_entities)
             {
+                Entity* entity = render_entity.first;
+                Render* render = render_entity.second;
                 // get geometry
                 vector<uint32_t> indices;
                 vector<RHI_Vertex_PosTexNorTan> vertices;
@@ -3763,14 +3765,6 @@ namespace spartan
                         vertex.pos[2] * entity_scale.z
                     );
                 }
-                if (px_vertices.size() < 4)
-                {
-                    SP_LOG_WARNING(
-                        "Skipping convex hull with fewer than four vertices for entity '%s'",
-                        entity->GetObjectName().c_str()
-                    );
-                    continue;
-                }
                 PxVec3 minimum(PX_MAX_F32);
                 PxVec3 maximum(-PX_MAX_F32);
                 bool finite = true;
@@ -3788,18 +3782,80 @@ namespace spartan
                     maximum.y = max(maximum.y, vertex.y);
                     maximum.z = max(maximum.z, vertex.z);
                 }
+
+                auto attach_box = [&](PxVec3 box_min, PxVec3 box_max) -> bool
+                {
+                    // thin or failed hulls still collide as a box
+                    if (box_min.x > box_max.x)
+                    {
+                        const BoundingBox& mesh_aabb = render->GetBoundingBoxMesh();
+                        if (mesh_aabb.IsInfinite())
+                        {
+                            return false;
+                        }
+
+                        const Vector3& mn = mesh_aabb.GetMin();
+                        const Vector3& mx = mesh_aabb.GetMax();
+                        const float x0 = mn.x * entity_scale.x;
+                        const float x1 = mx.x * entity_scale.x;
+                        const float y0 = mn.y * entity_scale.y;
+                        const float y1 = mx.y * entity_scale.y;
+                        const float z0 = mn.z * entity_scale.z;
+                        const float z1 = mx.z * entity_scale.z;
+                        box_min = PxVec3(min(x0, x1), min(y0, y1), min(z0, z1));
+                        box_max = PxVec3(max(x0, x1), max(y0, y1), max(z0, z1));
+                    }
+
+                    const PxVec3 extent = box_max - box_min;
+                    const float min_half = 0.005f;
+                    const PxVec3 half(
+                        max(extent.x * 0.5f, min_half),
+                        max(extent.y * 0.5f, min_half),
+                        max(extent.z * 0.5f, min_half)
+                    );
+                    const PxVec3 center(
+                        (box_min.x + box_max.x) * 0.5f,
+                        (box_min.y + box_max.y) * 0.5f,
+                        (box_min.z + box_max.z) * 0.5f
+                    );
+                    const Vector3 offset = local_rot * Vector3(center.x, center.y, center.z);
+                    const Vector3 box_pos = local_pos + offset;
+                    PxBoxGeometry geometry(half.x, half.y, half.z);
+                    PxShape* box_shape = physics->createShape(geometry, *material);
+                    if (!box_shape)
+                    {
+                        return false;
+                    }
+
+                    PxTransform local_pose(
+                        PxVec3(box_pos.x, box_pos.y, box_pos.z),
+                        PxQuat(local_rot.x, local_rot.y, local_rot.z, local_rot.w)
+                    );
+                    box_shape->setLocalPose(local_pose);
+                    box_shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
+                    actor->attachShape(*box_shape);
+                    box_shape->release();
+                    return true;
+                };
+
                 const PxVec3 extent = maximum - minimum;
-                if (
+                const bool degenerate =
                     !finite ||
+                    px_vertices.size() < 4 ||
                     extent.x <= 0.000001f ||
                     extent.y <= 0.000001f ||
-                    extent.z <= 0.000001f
-                )
+                    extent.z <= 0.000001f;
+                if (degenerate)
                 {
-                    SP_LOG_WARNING(
-                        "Skipping degenerate convex hull for entity '%s'",
-                        entity->GetObjectName().c_str()
-                    );
+                    if (!finite)
+                    {
+                        minimum = PxVec3(1.0f);
+                        maximum = PxVec3(-1.0f);
+                    }
+                    if (attach_box(minimum, maximum))
+                    {
+                        shapes_created++;
+                    }
                     continue;
                 }
 
@@ -3817,10 +3873,13 @@ namespace spartan
                 PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
                 if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
                 {
-                    SP_LOG_WARNING("Failed to create convex hull for entity '%s'", entity->GetObjectName().c_str());
                     if (convex_mesh)
                     {
                         convex_mesh->release();
+                    }
+                    if (attach_box(minimum, maximum))
+                    {
+                        shapes_created++;
                     }
                     continue;
                 }
@@ -3839,6 +3898,10 @@ namespace spartan
                     shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
                     actor->attachShape(*shape);
                     shape->release(); // actor owns the shape now
+                    shapes_created++;
+                }
+                else if (attach_box(minimum, maximum))
+                {
                     shapes_created++;
                 }
 

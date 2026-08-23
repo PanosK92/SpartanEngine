@@ -47,7 +47,8 @@ enum FileDialog_Filter
 {
     FileDialog_Filter_All,
     FileDialog_Filter_World,
-    FileDialog_Filter_Model
+    FileDialog_Filter_Model,
+    FileDialog_Filter_Image
 };
 
 enum FileDialog_SortColumn
@@ -121,6 +122,7 @@ class FileDialog
 {
 public:
     FileDialog(bool standalone_window, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter);
+    ~FileDialog();
 
     // type & filter
     auto GetType() const { return m_type; }
@@ -221,4 +223,5 @@ private:
     std::filesystem::file_time_type m_watch_dir_time{};
     std::chrono::steady_clock::time_point m_watch_last_check{};
     std::string m_watch_path;
+    uint64_t m_world_unloading_handle = 0;
 };

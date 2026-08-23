@@ -1086,18 +1086,6 @@ namespace spartan
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_volume_density), buf_volume_density);
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_volume_color), buf_volume_color);
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3d), tex_volume, rhi_all_mips, 0, true);
-
-                if (RHI_Device::IsSupportedRayTracing())
-                {
-                    if (RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure())
-                    {
-                        if (tlas->GetRhiResource())
-                        {
-                            RHI_CommandList::SetAccelerationStructure(static_cast<uint32_t>(Renderer_BindingsSrv::tlas), tlas);
-                        }
-                    }
-                }
-
                 RHI_CommandList::Dispatch((renderer_particle_volume_width + 7) / 8, (renderer_particle_volume_height + 7) / 8, (renderer_particle_volume_depth + 3) / 4);
             }
             RHI_CommandList::EndMarker();

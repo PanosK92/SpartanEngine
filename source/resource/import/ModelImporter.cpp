@@ -24,7 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <limits>
 #include <unordered_set>
+#include <vector>
 #include "ModelImporter.h"
 #include "../../core/ProgressTracker.h"
 #include "../../core/ThreadPool.h"
@@ -41,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../resource/ResourceCache.h"
 SP_WARNINGS_OFF
 #include "assimp/scene.h"
+#include "assimp/material.h"
 #include "assimp/ProgressHandler.hpp"
 #include "assimp/version.h"
 #include "assimp/Importer.hpp"
@@ -359,6 +362,242 @@ namespace spartan
             return false;
         }
 
+        string material_short_name(const string& material_name, const string& model_directory)
+        {
+            string folder = model_directory;
+            while (!folder.empty() && (folder.back() == '/' || folder.back() == '\\'))
+            {
+                folder.pop_back();
+            }
+            folder = FileSystem::GetFileNameFromFilePath(folder);
+            if (folder.empty())
+            {
+                return material_name;
+            }
+
+            const string prefix = folder + "_";
+            if (material_name.size() > prefix.size() &&
+                material_name.compare(0, prefix.size(), prefix) == 0)
+            {
+                return material_name.substr(prefix.size());
+            }
+
+            return material_name;
+        }
+
+        string strip_trailing_digits(const string& stem)
+        {
+            size_t end = stem.size();
+            while (end > 0 && stem[end - 1] >= '0' && stem[end - 1] <= '9')
+            {
+                end--;
+            }
+
+            return (end == 0) ? stem : stem.substr(0, end);
+        }
+
+        bool stem_matches_material(const string& material_stem, const string& file_stem)
+        {
+            if (material_stem.size() < 3 || file_stem.empty())
+            {
+                return false;
+            }
+            if (file_stem == material_stem)
+            {
+                return true;
+            }
+
+            return file_stem.size() > material_stem.size() &&
+                   file_stem.compare(0, material_stem.size(), material_stem) == 0;
+        }
+
+        bool has_authored_color(const shared_ptr<Material>& material)
+        {
+            const float r = material->GetProperty(MaterialProperty::ColorR);
+            const float g = material->GetProperty(MaterialProperty::ColorG);
+            const float b = material->GetProperty(MaterialProperty::ColorB);
+            const float a = material->GetProperty(MaterialProperty::ColorA);
+            const bool near_white =
+                fabs(r - 1.0f) < 0.02f &&
+                fabs(g - 1.0f) < 0.02f &&
+                fabs(b - 1.0f) < 0.02f;
+
+            return !near_white || a < 0.99f;
+        }
+
+        void bind_resolved_texture(
+            const shared_ptr<Material>& material,
+            const MaterialTextureType type,
+            const string& path
+        )
+        {
+            if (path.empty() || material->HasTextureOfType(type))
+            {
+                return;
+            }
+
+            if (shared_ptr<RHI_Texture> texture = ResourceCache::GetByPath<RHI_Texture>(path))
+            {
+                material->SetTexture(type, texture);
+            }
+            else
+            {
+                material->SetTexture(type, path);
+            }
+        }
+
+        void append_adopted(string& adopted, const string& path)
+        {
+            if (path.empty())
+            {
+                return;
+            }
+            if (!adopted.empty())
+            {
+                adopted += ", ";
+            }
+            adopted += FileSystem::GetFileNameFromFilePath(path);
+        }
+
+        void infer_untextured_surface(const shared_ptr<Material>& material, const string& name_lower)
+        {
+            auto contains = [&](const char* token) -> bool
+            {
+                return name_lower.find(token) != string::npos;
+            };
+
+            if (contains("glass"))
+            {
+                material->SetProperty(MaterialProperty::Metalness, 0.0f);
+                material->SetProperty(MaterialProperty::Roughness, 0.02f);
+                material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.04f);
+                material->SetProperty(
+                    MaterialProperty::Ior,
+                    Material::EnumToIor(MaterialIor::Glass)
+                );
+                if (material->GetProperty(MaterialProperty::ColorA) >= 0.99f)
+                {
+                    material->SetProperty(MaterialProperty::ColorA, 0.5f);
+                }
+                return;
+            }
+
+            if (contains("chrome") || contains("chrom") || contains("rim") || contains("mirror"))
+            {
+                material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                material->SetProperty(MaterialProperty::Roughness, 0.08f);
+                return;
+            }
+
+            if (contains("red_light") ||
+                contains("tail_light") ||
+                contains("run_light") ||
+                (contains("break") && contains("light")) ||
+                ((contains("rear") || contains("tail")) && contains("headlight")))
+            {
+                material->SetProperty(MaterialProperty::Roughness, 0.2f);
+                material->SetProperty(MaterialProperty::EmissiveFromAlbedo, 0.02f);
+                return;
+            }
+
+            if (contains("headlight") || contains("head_light"))
+            {
+                material->SetProperty(MaterialProperty::Roughness, 0.15f);
+                material->SetProperty(MaterialProperty::EmissiveFromAlbedo, 1.0f);
+                return;
+            }
+
+            if (contains("tread") ||
+                contains("tire") ||
+                contains("tyre") ||
+                contains("viper") ||
+                contains("wiper"))
+            {
+                material->SetProperty(MaterialProperty::Metalness, 0.0f);
+                material->SetProperty(MaterialProperty::Roughness, 0.9f);
+                return;
+            }
+
+            if (contains("disk") || contains("disc"))
+            {
+                material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                material->SetProperty(MaterialProperty::Roughness, 0.36f);
+                return;
+            }
+
+            if ((contains("body") || contains("paint")) && !contains("interior"))
+            {
+                material->SetProperty(MaterialProperty::Metalness, 0.0f);
+                material->SetProperty(MaterialProperty::Roughness, 0.25f);
+                material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.04f);
+                return;
+            }
+
+            if (contains("nut") || contains("bolt") || contains("screw"))
+            {
+                material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                material->SetProperty(MaterialProperty::Roughness, 0.4f);
+                return;
+            }
+
+            if (contains("leather") ||
+                contains("seat") ||
+                contains("seet") ||
+                contains("interior"))
+            {
+                material->SetProperty(MaterialProperty::Roughness, 0.7f);
+                material->SetProperty(MaterialProperty::Sheen, 0.2f);
+                return;
+            }
+
+            if (contains("carbon"))
+            {
+                material->SetProperty(MaterialProperty::Roughness, 0.38f);
+                material->SetProperty(MaterialProperty::Clearcoat, 0.65f);
+                material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.18f);
+                return;
+            }
+
+            if (contains("black") || contains("plastic"))
+            {
+                material->SetProperty(MaterialProperty::Roughness, 0.5f);
+                return;
+            }
+
+            if (contains("metal") || contains("iron") || contains("radiator"))
+            {
+                material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                material->SetProperty(MaterialProperty::Roughness, 0.3f);
+                return;
+            }
+
+            if (contains("ceramic"))
+            {
+                material->SetProperty(MaterialProperty::Roughness, 0.3f);
+                return;
+            }
+
+            if (contains("tile"))
+            {
+                material->SetProperty(MaterialProperty::Roughness, 0.4f);
+                return;
+            }
+
+            if (contains("plaster"))
+            {
+                material->SetProperty(MaterialProperty::Roughness, 0.65f);
+                return;
+            }
+
+            if (has_authored_color(material) &&
+                material->GetProperty(MaterialProperty::Roughness) >= 0.99f)
+            {
+                material->SetProperty(MaterialProperty::Roughness, 0.45f);
+            }
+        }
+
         // the file is already on this material, the slot is unknown when assimp reports UNKNOWN
         MaterialTextureType slot_from_texture_name(const string& path)
         {
@@ -504,9 +743,7 @@ namespace spartan
             }
         }
 
-        // a model whose mtl is missing, or whose material was never authored, imports with no maps at
-        // all and renders as flat grey, which reads as the asset having lost its material, the maps are
-        // almost always sitting next to the model under conventional names so they get picked up
+        // pick up maps next to the model by material name, then albedo/normal/roughness for 1-2 material files
         void adopt_sibling_textures(
             const string& model_directory,
             const unordered_map<string, string>& directory_files,
@@ -520,84 +757,198 @@ namespace spartan
                 return;
             }
 
-            if (material_count > 2)
+            vector<string> keys;
+            auto add_key = [&](const string& stem)
             {
-                SP_LOG_WARNING(
-                    "material '%s' in %s has no textures and the model has %u materials, it will render "
-                    "flat, point it at its maps by hand",
-                    material_name.c_str(),
-                    model_directory.c_str(),
-                    material_count
-                );
-                return;
-            }
-
-            struct convention
-            {
-                MaterialTextureType type;
-                array<const char*, 3> names;
-            };
-            static const array<convention, 6> conventions =
-            {{
-                { MaterialTextureType::Color,     {{ "albedo",     "basecolor",    "diffuse" }} },
-                { MaterialTextureType::Normal,    {{ "normal",     "normalmap",    nullptr   }} },
-                { MaterialTextureType::Roughness, {{ "roughness",  "rough",        nullptr   }} },
-                { MaterialTextureType::Occlusion, {{ "occlusion",  "ao",           nullptr   }} },
-                { MaterialTextureType::Height,    {{ "height",     "displacement", nullptr   }} },
-                { MaterialTextureType::AlphaMask, {{ "alpha_mask", "opacity",      nullptr   }} }
-            }};
-
-            string adopted;
-            for (const convention& entry : conventions)
-            {
-                for (const char* name : entry.names)
+                if (stem.size() < 3)
                 {
-                    if (!name)
-                    {
-                        continue;
-                    }
+                    return;
+                }
+                if (stem == "material" || stem == "empty" || stem == "default" || stem == "none")
+                {
+                    return;
+                }
+                if (find(keys.begin(), keys.end(), stem) == keys.end())
+                {
+                    keys.push_back(stem);
+                }
+            };
 
-                    const string path = resolve_texture_path(string(name) + ".png", model_directory, directory_files);
-                    if (path.empty())
-                    {
-                        continue;
-                    }
+            const string short_name = material_short_name(material_name, model_directory);
+            add_key(normalize_stem(material_name));
+            add_key(normalize_stem(short_name));
+            add_key(strip_trailing_digits(normalize_stem(short_name)));
 
-                    material->SetTexture(entry.type, path);
+            constexpr uint32_t slot_count = static_cast<uint32_t>(MaterialTextureType::Max);
+            vector<string> best_path(slot_count);
+            vector<size_t> best_size(slot_count, numeric_limits<size_t>::max());
 
-                    if (!adopted.empty())
+            for (const auto& entry : directory_files)
+            {
+                if (!FileSystem::IsSupportedImageFile(entry.second))
+                {
+                    continue;
+                }
+
+                const string found = normalize_stem(
+                    FileSystem::GetFileNameWithoutExtensionFromFilePath(entry.second)
+                );
+                bool matched = false;
+                for (const string& key : keys)
+                {
+                    if (stem_matches_material(key, found))
                     {
-                        adopted += ", ";
+                        matched = true;
+                        break;
                     }
-                    adopted += FileSystem::GetFileNameFromFilePath(path);
-                    break;
+                }
+                if (!matched)
+                {
+                    continue;
+                }
+
+                const MaterialTextureType slot = slot_from_texture_name(entry.second);
+                const uint32_t index = static_cast<uint32_t>(slot);
+                if (found.size() < best_size[index])
+                {
+                    best_path[index] = entry.second;
+                    best_size[index] = found.size();
                 }
             }
 
-            if (adopted.empty())
+            string adopted;
+            for (uint32_t i = 0; i < slot_count; i++)
             {
-                SP_LOG_WARNING(
-                    "material '%s' in %s has no textures at all, it will render flat, name its maps "
-                    "albedo, normal, roughness or occlusion next to the model to have them picked up",
+                if (best_path[i].empty())
+                {
+                    continue;
+                }
+
+                const MaterialTextureType type = static_cast<MaterialTextureType>(i);
+                if (type == MaterialTextureType::Packed)
+                {
+                    continue;
+                }
+
+                bind_resolved_texture(material, type, best_path[i]);
+                append_adopted(adopted, best_path[i]);
+            }
+
+            string name_lower = material_name;
+            transform(name_lower.begin(), name_lower.end(), name_lower.begin(), ::tolower);
+
+            auto try_file = [&](const char* file_name, const MaterialTextureType type)
+            {
+                if (material->HasTextureOfType(type))
+                {
+                    return;
+                }
+
+                const string path = resolve_texture_path(
+                    file_name,
+                    model_directory,
+                    directory_files
+                );
+                if (path.empty())
+                {
+                    return;
+                }
+
+                bind_resolved_texture(material, type, path);
+                append_adopted(adopted, path);
+            };
+
+            if (name_lower.find("body") != string::npos || name_lower.find("paint") != string::npos)
+            {
+                try_file("paint_normal.png", MaterialTextureType::Normal);
+                try_file("paint.png", MaterialTextureType::Color);
+            }
+            if (name_lower.find("logo") != string::npos)
+            {
+                try_file("logo.png", MaterialTextureType::Color);
+            }
+
+            if (!has_any_texture(material) && material_count <= 2)
+            {
+                struct convention
+                {
+                    MaterialTextureType type;
+                    array<const char*, 3> names;
+                };
+                static const array<convention, 6> conventions =
+                {{
+                    { MaterialTextureType::Color,     {{ "albedo",     "basecolor",    "diffuse" }} },
+                    { MaterialTextureType::Normal,    {{ "normal",     "normalmap",    nullptr   }} },
+                    { MaterialTextureType::Roughness, {{ "roughness",  "rough",        nullptr   }} },
+                    { MaterialTextureType::Occlusion, {{ "occlusion",  "ao",           nullptr   }} },
+                    { MaterialTextureType::Height,    {{ "height",     "displacement", nullptr   }} },
+                    { MaterialTextureType::AlphaMask, {{ "alpha_mask", "opacity",      nullptr   }} }
+                }};
+
+                for (const convention& entry : conventions)
+                {
+                    for (const char* name : entry.names)
+                    {
+                        if (!name)
+                        {
+                            continue;
+                        }
+
+                        const string path = resolve_texture_path(
+                            string(name) + ".png",
+                            model_directory,
+                            directory_files
+                        );
+                        if (path.empty())
+                        {
+                            continue;
+                        }
+
+                        bind_resolved_texture(material, entry.type, path);
+                        append_adopted(adopted, path);
+                        break;
+                    }
+                }
+            }
+
+            if (has_any_texture(material))
+            {
+                if (material->HasTextureOfType(MaterialTextureType::Color))
+                {
+                    material->SetProperty(MaterialProperty::ColorR, 1.0f);
+                    material->SetProperty(MaterialProperty::ColorG, 1.0f);
+                    material->SetProperty(MaterialProperty::ColorB, 1.0f);
+                }
+
+                SP_LOG_INFO(
+                    "material '%s' in %s imported with no maps, its mtl is missing or empty, adopting the "
+                    "textures next to the model: %s",
                     material_name.c_str(),
-                    model_directory.c_str()
+                    model_directory.c_str(),
+                    adopted.c_str()
                 );
                 return;
             }
 
-            if (material->HasTextureOfType(MaterialTextureType::Color))
+            if (has_authored_color(material) ||
+                material->GetProperty(MaterialProperty::Metalness) > 0.01f ||
+                material->GetProperty(MaterialProperty::Roughness) < 0.99f ||
+                material->GetProperty(MaterialProperty::EmissiveFromAlbedo) > 0.0f ||
+                material->GetProperty(MaterialProperty::Clearcoat) > 0.0f)
             {
-                material->SetProperty(MaterialProperty::ColorR, 1.0f);
-                material->SetProperty(MaterialProperty::ColorG, 1.0f);
-                material->SetProperty(MaterialProperty::ColorB, 1.0f);
+                return;
+            }
+
+            if (material_count > 2)
+            {
+                return;
             }
 
             SP_LOG_WARNING(
-                "material '%s' in %s imported with no maps, its mtl is missing or empty, adopting the "
-                "textures next to the model: %s",
+                "material '%s' in %s has no textures at all, it will render flat, name its maps "
+                "albedo, normal, roughness or occlusion next to the model to have them picked up",
                 material_name.c_str(),
-                model_directory.c_str(),
-                adopted.c_str()
+                model_directory.c_str()
             );
         }
 
@@ -711,13 +1062,20 @@ namespace spartan
             const bool is_gltf = (extension == ".gltf") || (extension == ".glb");
             material->SetProperty(MaterialProperty::Gltf, is_gltf ? 1.0f : 0.0f);
 
-            // color
+            // color, prefer gltf base color when the exporter wrote both
             aiColor4D color_diffuse(1.0f, 1.0f, 1.0f, 1.0f);
-            aiGetMaterialColor(material_assimp, AI_MATKEY_COLOR_DIFFUSE, &color_diffuse);
+            if (aiGetMaterialColor(material_assimp, AI_MATKEY_BASE_COLOR, &color_diffuse) != AI_SUCCESS)
+            {
+                aiGetMaterialColor(material_assimp, AI_MATKEY_COLOR_DIFFUSE, &color_diffuse);
+            }
 
             // opacity
             aiColor4D opacity(1.0f, 1.0f, 1.0f, 1.0f);
             aiGetMaterialColor(material_assimp, AI_MATKEY_OPACITY, &opacity);
+            if (color_diffuse.a < opacity.r)
+            {
+                opacity.r = color_diffuse.a;
+            }
 
             // convert name to lowercase once for all comparisons
             string name_lower = name;
@@ -749,6 +1107,47 @@ namespace spartan
             material->SetProperty(MaterialProperty::ColorB, color_diffuse.b);
             material->SetProperty(MaterialProperty::ColorA, opacity.r);
 
+            float roughness_factor = 1.0f;
+            if (aiGetMaterialFloat(material_assimp, AI_MATKEY_ROUGHNESS_FACTOR, &roughness_factor) == AI_SUCCESS)
+            {
+                material->SetProperty(MaterialProperty::Roughness, roughness_factor);
+            }
+
+            float metallic_factor = 0.0f;
+            if (aiGetMaterialFloat(material_assimp, AI_MATKEY_METALLIC_FACTOR, &metallic_factor) == AI_SUCCESS)
+            {
+                material->SetProperty(MaterialProperty::Metalness, metallic_factor);
+            }
+
+            float clearcoat_factor = 0.0f;
+            if (aiGetMaterialFloat(material_assimp, AI_MATKEY_CLEARCOAT_FACTOR, &clearcoat_factor) == AI_SUCCESS &&
+                clearcoat_factor > 0.0f)
+            {
+                material->SetProperty(MaterialProperty::Clearcoat, clearcoat_factor);
+                float clearcoat_roughness = 0.03f;
+                aiGetMaterialFloat(
+                    material_assimp,
+                    AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR,
+                    &clearcoat_roughness
+                );
+                material->SetProperty(MaterialProperty::Clearcoat_Roughness, clearcoat_roughness);
+            }
+
+            aiColor4D emissive(0.0f, 0.0f, 0.0f, 0.0f);
+            if (aiGetMaterialColor(material_assimp, AI_MATKEY_COLOR_EMISSIVE, &emissive) == AI_SUCCESS)
+            {
+                const float chroma = max(max(emissive.r, emissive.g), emissive.b);
+                if (chroma > 0.01f)
+                {
+                    float intensity = 1.0f;
+                    aiGetMaterialFloat(material_assimp, AI_MATKEY_EMISSIVE_INTENSITY, &intensity);
+                    material->SetProperty(
+                        MaterialProperty::EmissiveFromAlbedo,
+                        min(chroma * max(intensity, 0.0f), 1.0f)
+                    );
+                }
+            }
+
             // gltf exporters flag opaque materials doubleSided as a precaution, only honor it for transparent and alpha tested surfaces
             const bool has_alpha_mask = material->HasTextureOfType(MaterialTextureType::AlphaMask);
             if (is_transparent || has_alpha_mask)
@@ -761,41 +1160,6 @@ namespace spartan
                 }
             }
 
-            // deduce metalness/roughness from material name if textures missing
-            if (!has_metalness || !has_roughness)
-            {
-                const bool is_metal =
-                    name_lower.find("metal")    != string::npos ||
-                    name_lower.find("iron")     != string::npos ||
-                    name_lower.find("radiator") != string::npos ||
-                    name_lower.find("chrome")   != string::npos;
-
-                const bool is_smooth  = name_lower.find("ceramic") != string::npos;
-                const bool is_plaster = name_lower.find("plaster") != string::npos;
-                const bool is_tile    = name_lower.find("tile")    != string::npos;
-
-                if (!has_metalness && is_metal)
-                {
-                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                }
-
-                if (!has_roughness)
-                {
-                    if (is_smooth || is_metal)
-                    {
-                        material->SetProperty(MaterialProperty::Roughness, 0.3f);
-                    }
-                    else if (is_tile)
-                    {
-                        material->SetProperty(MaterialProperty::Roughness, 0.4f);
-                    }
-                    else if (is_plaster)
-                    {
-                        material->SetProperty(MaterialProperty::Roughness, 0.65f);
-                    }
-                }
-            }
-
             adopt_sibling_textures(
                 ctx.model_directory,
                 ctx.directory_files,
@@ -803,6 +1167,8 @@ namespace spartan
                 name,
                 ctx.scene ? ctx.scene->mNumMaterials : 1
             );
+
+            infer_untextured_surface(material, name_lower);
 
             if (material->HasTextureOfType(MaterialTextureType::AlphaMask))
             {

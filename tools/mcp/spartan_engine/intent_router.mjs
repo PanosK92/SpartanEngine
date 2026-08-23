@@ -330,7 +330,8 @@ function bare_object_subject(value) {
   return subject;
 }
 
-function focused_asset_subject(value) {
+export function focused_asset_subject(value) {
+  value = normalized(value);
   const explicit_3d =
     /\b(?:3d|asset|prefab|prop|mesh)\b/.test(value);
   if (
@@ -346,6 +347,19 @@ function focused_asset_subject(value) {
   )
   {
     return "";
+  }
+
+  const from_reference = value.match(
+    /\b(?:based\s+on|from|matching)\s+(?:the\s+|an?\s+)?([a-z0-9][a-z0-9_-]{1,40}?)\s+in\s+the\s+(?:attached\s+)?(?:image|photo|picture|reference)\b/,
+  ) || value.match(
+    /\b(?:based\s+on|from|matching)\s+(?:the\s+|an?\s+)?([a-z0-9][a-z0-9_-]{1,40}?)\b/,
+  );
+  if (
+    from_reference?.[1] &&
+    !names_a_place(from_reference[1])
+  )
+  {
+    return from_reference[1];
   }
 
   const explicit_patterns = [
@@ -469,7 +483,7 @@ export function asset_hint_from_prompt(prompt) {
     // meant rather than what it is called, so the phrase is trimmed back to the subject
     const hint = match[1]
       .replace(
-        /\b(geometry|mesh|meshes|material|materials|texture|textures|uv|uvs|mapping|shape|silhouette|colour|color|finish|surface|label|version|thing)\b/g,
+        /\b(geometry|mesh|meshes|material|materials|texture|textures|uv|uvs|mapping|shape|silhouette|colour|color|finish|surface|label|version|thing|hero|focused|reusable|standalone|isolated|detailed)\b/g,
         " ",
       )
       .replace(
@@ -557,12 +571,12 @@ function is_asset_revision_request(value) {
     return false;
   }
 
-  // starting a fresh design says create, and says nothing about an existing one
+  // create a/an starts a new object. later words like it's, this, asset, detailed and
+  // materials describe that new object, they do not turn the request into a library edit
   const starts_new_build =
     /\b(create|make|build|generate|construct|design|model)\s+(?:me\s+)?(?:a|an)\s+/.test(
       value,
     ) &&
-    !points_at_existing &&
     !revision_verb_pattern.test(value);
   if (starts_new_build)
   {

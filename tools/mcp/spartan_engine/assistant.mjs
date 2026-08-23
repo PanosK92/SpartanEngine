@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 import net from "node:net";
+import path from "node:path";
 import { append_agent_memory } from "./agent_memory.mjs";
 import { append_debug_log } from "./debug_log.mjs";
 import { EngineClient } from "./engine_client.mjs";
 import { run_cursor_fallback, list_models, dispose_cached_agent } from "./cursor_agent.mjs";
 import { run_fast_path } from "./fast_paths.mjs";
-import { route_intent } from "./intent_router.mjs";
+import { focused_asset_subject, route_intent } from "./intent_router.mjs";
 import { beautify_prompt } from "./prompt_beautifier.mjs";
 import { make_run_id, parse_key_payload, parse_line, parse_prompt_payload, send_event, send_line } from "./protocol.mjs";
 
@@ -98,6 +99,8 @@ const engine = new EngineClient({
 void append_debug_log({
   type: "assistant_started",
   source: "assistant",
+  code_id: "image-build-v2",
+  pid: process.pid,
   port: assistant_port,
   engine_host,
   engine_port,
@@ -332,6 +335,22 @@ function summarize_tool_result(result) {
   return summary;
 }
 
+function asset_name_from_image_path(file_path)
+{
+  const base = path
+    .basename(String(file_path ?? ""), path.extname(String(file_path ?? "")))
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return base || "reference_asset";
+}
+
+function default_prompt_for_images(images)
+{
+  const name = asset_name_from_image_path(images[0]);
+  return `Create a 3d asset named ${name} matching the attached reference image.`;
+}
+
 function start_heartbeat(run, get_phase) {
   const interval = setInterval(() => {
     run.event("heartbeat", {
@@ -343,20 +362,53 @@ function start_heartbeat(run, get_phase) {
   return () => clearInterval(interval);
 }
 
+function is_explicit_asset_revision(prompt)
+{
+  const value = String(prompt ?? "").toLowerCase();
+  return (
+    /\b(revise|revisit|rework|tweak|adjust|modify|change|alter|update|edit)\b/.test(
+      value,
+    ) &&
+    /\b(existing|selected|current|library|catalog|catalogue)\b/.test(
+      value,
+    )
+  );
+}
+
 async function execute_prompt(socket, payload) {
+  const images = Array.isArray(payload.images) ? payload.images : [];
+  if (!String(payload.prompt ?? "").trim() && images.length > 0)
+  {
+    payload.prompt = default_prompt_for_images(images);
+  }
   const run = new AssistantRun(socket, payload.prompt);
   active_runs.set(run.id, run);
 
   const started_at = Date.now();
   let phase = "starting";
   const stop_heartbeat = start_heartbeat(run, () => phase);
-  const intent = route_intent(payload.prompt);
+  let intent = route_intent(payload.prompt);
+  if (images.length > 0 && !is_explicit_asset_revision(payload.prompt))
+  {
+    const subject = focused_asset_subject(payload.prompt);
+    intent = {
+      kind: "focused_asset",
+      confidence: 0.95,
+      live_scene_action: true,
+      allow_cursor_fallback: true,
+      target_name:
+        subject ||
+        asset_name_from_image_path(images[0]),
+      use_selected: false,
+    };
+  }
   run.start(intent);
   void append_debug_log({
     type: "assistant_prompt",
     source: "assistant",
     run_id: run.id,
     prompt: payload.prompt,
+    images,
     intent,
   });
 
@@ -400,6 +452,7 @@ async function execute_prompt(socket, payload) {
               intent,
               api_key: payload.api_key,
               model_id: payload.model_id,
+              images,
               on_note: (text) => run.event("stage_note", { text }),
             });
             brief = enriched.brief;
@@ -435,6 +488,7 @@ async function execute_prompt(socket, payload) {
         timeout_ms: run_timeout_ms,
         engine_first_timeout_ms,
         intent,
+        images,
       });
       if (!result.ok) {
         throw new Error(result.text);
@@ -550,6 +604,12 @@ const server = net.createServer((socket) => {
   });
 });
 
+server.on("error", (error) => {
+  console.error(
+    `spartan assistant failed to listen on 127.0.0.1:${assistant_port}: ${error.message}`,
+  );
+  process.exit(1);
+});
 server.listen(assistant_port, "127.0.0.1", () => {
   console.error(`spartan assistant listening on 127.0.0.1:${assistant_port}`);
 });

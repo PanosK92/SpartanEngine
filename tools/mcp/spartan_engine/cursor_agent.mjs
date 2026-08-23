@@ -5030,6 +5030,7 @@ function build_prompt(
   reuse_plan = null,
   revision = null,
   prepared_root = null,
+  reference_images = [],
 ) {
   const lines = [
     "You are controlling Spartan Engine through the spartan_engine MCP tools.",
@@ -5088,7 +5089,14 @@ function build_prompt(
 
   const focused_asset =
     is_focused_asset_request(prompt) ||
-    Boolean(revision);
+    Boolean(revision) ||
+    intent?.kind === "focused_asset" ||
+    (
+      reference_images.length > 0 &&
+      intent?.kind !== "scene_rebuild" &&
+      intent?.kind !== "city_develop" &&
+      !names_a_place(prompt)
+    );
   if (focused_asset)
   {
     lines.push(...focused_asset_quality_prompt_lines(prompt));
@@ -5172,6 +5180,20 @@ function build_prompt(
     "User request:",
     prompt,
   );
+
+  if (reference_images.length > 0)
+  {
+    const names = reference_images.map((file_path) =>
+      path.basename(file_path),
+    );
+    lines.push(
+      "",
+      `${reference_images.length} reference image${reference_images.length === 1 ? " is" : "s are"} attached to this message. They are the visual specification of what to build.`,
+      "Match silhouette, proportions, construction, materials, and colour from the images. The text request wins for scale in metres, game-ready budget, and anything to omit.",
+      "Do not invent a different design. If the image and the text disagree about appearance, the image wins unless the text explicitly overrides that part.",
+      `Attached files: ${names.join(", ")}`,
+    );
+  }
 
   // the brief is what the request implies rather than what it says, so it is advice, the request above
   // still decides what gets built and wins any disagreement between the two
@@ -5761,7 +5783,10 @@ async function prepare_scene_build_plan({
   run,
 })
 {
-  if (is_focused_asset_request(prompt))
+  if (
+    is_focused_asset_request(prompt) ||
+    intent?.kind === "focused_asset"
+  )
   {
     return null;
   }
@@ -5802,7 +5827,81 @@ async function prepare_scene_build_plan({
   };
 }
 
-async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_id, engine_host, engine_port, run, timeout_ms, engine_first_timeout_ms, intent = null }) {
+const REFERENCE_IMAGE_MIME = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+};
+const MAX_REFERENCE_IMAGES = 5;
+const MAX_REFERENCE_IMAGE_BYTES = 15 * 1024 * 1024;
+
+async function load_reference_images(paths)
+{
+  const images = [];
+  const loaded = [];
+  const skipped = [];
+  const seen = new Set();
+  for (const raw of Array.isArray(paths) ? paths : [])
+  {
+    const file_path = String(raw ?? "").trim();
+    if (!file_path)
+    {
+      continue;
+    }
+    const key = file_path.toLowerCase();
+    if (seen.has(key))
+    {
+      continue;
+    }
+    seen.add(key);
+    if (images.length >= MAX_REFERENCE_IMAGES)
+    {
+      skipped.push({
+        path: file_path,
+        reason: "more than 5 images",
+      });
+      continue;
+    }
+    const mime = REFERENCE_IMAGE_MIME[path.extname(file_path).toLowerCase()];
+    if (!mime)
+    {
+      skipped.push({
+        path: file_path,
+        reason: "use png, jpg, jpeg, gif, or webp",
+      });
+      continue;
+    }
+    try
+    {
+      const buffer = await fs.readFile(file_path);
+      if (buffer.length > MAX_REFERENCE_IMAGE_BYTES)
+      {
+        skipped.push({
+          path: file_path,
+          reason: "larger than 15 mb",
+        });
+        continue;
+      }
+      images.push({
+        data: buffer.toString("base64"),
+        mimeType: mime,
+      });
+      loaded.push(file_path);
+    }
+    catch (error)
+    {
+      skipped.push({
+        path: file_path,
+        reason: error.message,
+      });
+    }
+  }
+  return { images, loaded, skipped };
+}
+
+async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_id, engine_host, engine_port, run, timeout_ms, engine_first_timeout_ms, intent = null, images = [] }) {
   if (!api_key) {
     return {
       ok: false,
@@ -5810,10 +5909,46 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
     };
   }
 
+  const image_load = await load_reference_images(images);
+  if (
+    image_load.loaded.length > 0 ||
+    image_load.skipped.length > 0
+  )
+  {
+    run.receipt("reference images", {
+      loaded: image_load.loaded,
+      skipped: image_load.skipped,
+    });
+  }
+  const prompt_images = image_load.images;
+  const prompt_image_paths = image_load.loaded;
+  if (
+    prompt_image_paths.length > 0 &&
+    intent?.kind === "asset_revise"
+  )
+  {
+    intent = {
+      ...intent,
+      kind: "focused_asset",
+      use_selected: false,
+    };
+    run.receipt("reference image build", {
+      reason:
+        "attached images are a spec for a new asset, not a library revision",
+    });
+  }
+
   let cursor_run = null;
   const focused_asset_run =
     is_focused_asset_request(prompt) ||
-    intent?.kind === "asset_revise";
+    intent?.kind === "asset_revise" ||
+    intent?.kind === "focused_asset" ||
+    (
+      prompt_image_paths.length > 0 &&
+      intent?.kind !== "scene_rebuild" &&
+      intent?.kind !== "city_develop" &&
+      !names_a_place(prompt)
+    );
   let focused_deadline_at = null;
   let focused_construction_deadline_at = null;
   let engine_tool_seen = false;
@@ -6164,11 +6299,19 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
     start_focused_deadline();
     ensure_focused_time();
     last_activity_at = Date.now();
-    cursor_run = await agent.send(prompt_text, {
-      onStep: ({ step }) => {
-        void observe(step);
+    cursor_run = await agent.send(
+      prompt_images.length > 0
+        ? {
+            text: prompt_text,
+            images: prompt_images,
+          }
+        : prompt_text,
+      {
+        onStep: ({ step }) => {
+          void observe(step);
+        },
       },
-    });
+    );
     run.receipt("cursor run", { id: cursor_run.id });
 
     const stream_task = cursor_run.stream ? (async () => {
@@ -6337,15 +6480,30 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
         revision;
       if (!revision?.root_id)
       {
-        const reason = revision?.ambiguous?.length > 0
-          ? "the revision target is ambiguous"
-          : (
-              revision?.candidate_error ??
-              "the revision target is not a registered asset"
-            );
-        throw new Error(
-          `${reason}, select the asset in the Asset Viewer or name it explicitly`,
-        );
+        if ((revision?.ambiguous ?? []).length > 0)
+        {
+          throw new Error(
+            "the revision target is ambiguous, select the asset in the Asset Viewer or name it explicitly",
+          );
+        }
+        if (revision?.candidate_error)
+        {
+          throw new Error(
+            `${revision.candidate_error}, select the asset in the Asset Viewer or name it explicitly`,
+          );
+        }
+        run.receipt("asset revision declined", {
+          reason:
+            "named asset is not in the library, creating a new one",
+        });
+        revision = null;
+        active_assistant_context.asset_revision = null;
+        intent = {
+          ...intent,
+          kind: "focused_asset",
+          use_selected: false,
+        };
+        active_assistant_context.intent = intent;
       }
       if (revision?.root_id)
       {
@@ -6377,7 +6535,7 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
     if (
       !revision &&
       intent?.target_name &&
-      is_focused_asset_request(prompt)
+      focused_asset_run
     )
     {
       initial_root = await run.stage(
@@ -6479,6 +6637,7 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
           reuse_plan,
           revision,
           initial_root,
+          prompt_image_paths,
         ),
       );
     });

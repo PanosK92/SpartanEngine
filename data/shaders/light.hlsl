@@ -110,116 +110,6 @@ float sample_nrd_area_shadow(float2 uv, uint slot)
     return saturate(acc / max(weight_sum, 1e-4f));
 }
 
-// inline fallback when a local light did not get an nrd slot
-#ifdef RAY_TRACING_ENABLED
-static const uint k_area_inline_shadow_samples = 8;
-
-float2 area_inline_shadow_uv(uint sample_index, float width, float height)
-{
-    float aspect = height / max(width, 1e-4f);
-    if (aspect >= 3.0f || aspect <= (1.0f / 3.0f))
-    {
-        float t = ((float)sample_index + 0.5f) / (float)k_area_inline_shadow_samples * 2.0f - 1.0f;
-        if (aspect >= 3.0f)
-        {
-            return float2(0.0f, t);
-        }
-        return float2(t, 0.0f);
-    }
-
-    const uint nx = 2;
-    const uint ny = 4;
-    uint ix = sample_index % nx;
-    uint iy = sample_index / nx;
-    float u = ((float)ix + 0.5f) / (float)nx * 2.0f - 1.0f;
-    float v = ((float)iy + 0.5f) / (float)ny * 2.0f - 1.0f;
-    return float2(u, v);
-}
-
-float trace_inline_area_shadow(Light light, float3 origin, float3 normal)
-{
-    float3 area_right;
-    float3 area_up;
-    light.compute_area_light_basis(area_right, area_up);
-    float half_w         = light.area_width * 0.5f;
-    float half_h         = light.area_height * 0.5f;
-    float emitter_safety = min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f;
-    float vis_sum        = 0.0f;
-
-    [unroll]
-    for (uint s = 0; s < k_area_inline_shadow_samples; s++)
-    {
-        float2 uv = area_inline_shadow_uv(s, light.area_width, light.area_height);
-        float3 sample_point = light.position
-            + area_right * uv.x * half_w
-            + area_up    * uv.y * half_h;
-        float3 to_sample = sample_point - origin;
-        float dist       = length(to_sample);
-        if (dist < 0.0001f)
-        {
-            vis_sum += 1.0f;
-            continue;
-        }
-
-        float3 direction = to_sample / dist;
-        if (dot(normal, direction) <= 0.0f)
-        {
-            vis_sum += 1.0f;
-            continue;
-        }
-
-        RayDesc ray;
-        ray.Origin    = origin;
-        ray.Direction = direction;
-        ray.TMin      = 0.001f;
-        ray.TMax      = max(dist - emitter_safety, 0.001f);
-
-        RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-        query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
-        query.Proceed();
-        vis_sum += query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
-    }
-
-    return vis_sum / (float)k_area_inline_shadow_samples;
-}
-
-float trace_inline_shadow_ray(Light light, Surface surface)
-{
-    float bias    = 0.005f + surface.camera_to_pixel_length * 0.0001f;
-    float3 origin = surface.position + surface.normal * bias;
-
-    if (light.is_area())
-    {
-        return trace_inline_area_shadow(light, origin, surface.normal);
-    }
-
-    float3 to_light = light.position - origin;
-    float  dist     = length(to_light);
-    if (dist < 0.0001f)
-    {
-        return 1.0f;
-    }
-
-    float3 direction = to_light / dist;
-    if (dot(surface.normal, direction) <= 0.0f)
-    {
-        return 1.0f;
-    }
-
-    RayDesc ray;
-    ray.Origin    = origin;
-    ray.Direction = direction;
-    ray.TMin      = 0.001f;
-    ray.TMax      = max(dist - bias * 2.0f, 0.001f);
-
-    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
-    query.Proceed();
-
-    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
-}
-#endif
-
 // subsurface scattering with wrapped diffuse and thickness estimation
 float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_info)
 {
@@ -303,8 +193,7 @@ void evaluate_light(
             const bool want_shadows          = light.has_shadows();
             const bool use_rt_shadow_texture = want_shadows && is_ray_traced_shadows_enabled() && light.is_directional();
             const bool use_nrd_local_shadow  = want_shadows && is_ray_traced_shadows_enabled() && light.nrd_local_shadow_slot() != 0u;
-            const bool use_inline_rt_shadow  = want_shadows && !use_rt_shadow_texture && !use_nrd_local_shadow && is_ray_traced_shadows_enabled();
-            const bool use_shadow_maps       = want_shadows && !use_rt_shadow_texture && !use_nrd_local_shadow && !use_inline_rt_shadow;
+            const bool use_shadow_maps       = want_shadows && !use_rt_shadow_texture && !use_nrd_local_shadow;
 
             if (use_rt_shadow_texture)
             {
@@ -321,12 +210,6 @@ void evaluate_light(
                     L_shadow_primary = sample_nrd_local_shadow(surface.uv, light.nrd_local_shadow_slot());
                 }
             }
-        #ifdef RAY_TRACING_ENABLED
-            else if (use_inline_rt_shadow)
-            {
-                L_shadow_primary = trace_inline_shadow_ray(light, surface);
-            }
-        #endif
             else if (use_shadow_maps)
             {
                 L_shadow_primary = compute_shadow(surface, light);

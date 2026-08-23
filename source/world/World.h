@@ -54,6 +54,7 @@ namespace spartan
         static bool SaveToFile(std::string file_path);
         static bool SaveToFileAsync(std::string file_path);
         static bool LoadFromFile(const std::string& file_path);
+        static void ProcessPendingLoad();
         static bool IsSaving();
         static std::string GetResourceDirectory(
             const std::string& world_file_path

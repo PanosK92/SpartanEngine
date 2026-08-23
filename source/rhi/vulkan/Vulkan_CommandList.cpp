@@ -389,6 +389,76 @@ namespace spartan
 
             return sanitized;
         }
+
+        VkPipelineStageFlags2 shader_stages()
+        {
+            return VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT |
+                   VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT |
+                   VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT |
+                   VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+                   VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
+                   VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
+                   VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
+                   VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
+                   VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
+                   VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR |
+                   VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+                   VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
+        }
+
+        // shader write is illegal with transfer-only stages, vuid 03909
+        VkAccessFlags2 access_compatible_with_stages(
+            VkPipelineStageFlags2 stages,
+            VkAccessFlags2 access
+        )
+        {
+            const VkAccessFlags2 shader_access =
+                VK_ACCESS_2_SHADER_READ_BIT |
+                VK_ACCESS_2_SHADER_WRITE_BIT |
+                VK_ACCESS_2_SHADER_SAMPLED_READ_BIT |
+                VK_ACCESS_2_SHADER_STORAGE_READ_BIT |
+                VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+
+            const VkAccessFlags2 transfer_access =
+                VK_ACCESS_2_TRANSFER_READ_BIT |
+                VK_ACCESS_2_TRANSFER_WRITE_BIT;
+
+            const VkPipelineStageFlags2 transfer_stage_bits =
+                transfer_stages() | VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+
+            if ((access & shader_access) && !(stages & shader_stages()))
+            {
+                if (access & (VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT))
+                {
+                    access |= (stages & transfer_stage_bits)
+                        ? VK_ACCESS_2_TRANSFER_WRITE_BIT
+                        : VK_ACCESS_2_MEMORY_WRITE_BIT;
+                }
+                if (access & (VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_SAMPLED_READ_BIT))
+                {
+                    access |= (stages & transfer_stage_bits)
+                        ? VK_ACCESS_2_TRANSFER_READ_BIT
+                        : VK_ACCESS_2_MEMORY_READ_BIT;
+                }
+                access &= ~shader_access;
+            }
+
+            if ((access & transfer_access) &&
+                !(stages & (transfer_stage_bits | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)))
+            {
+                if (access & VK_ACCESS_2_TRANSFER_WRITE_BIT)
+                {
+                    access |= VK_ACCESS_2_MEMORY_WRITE_BIT;
+                }
+                if (access & VK_ACCESS_2_TRANSFER_READ_BIT)
+                {
+                    access |= VK_ACCESS_2_MEMORY_READ_BIT;
+                }
+                access &= ~transfer_access;
+            }
+
+            return access;
+        }
     }
 
     RHI_Image_Layout RHI_CommandList::GetTrackedImageLayout(void* image, uint32_t mip_index)
@@ -670,16 +740,27 @@ namespace spartan
             pso_scope_hint = RHI_Barrier_Scope::Compute;
         } // ray tracing uses compute-adjacent stages
 
-        auto access_to_mask = [](RHI_Resource_Access access)
+        auto access_to_mask = [](
+            RHI_Resource_Access access,
+            RHI_Barrier_Scope scope,
+            RHI_Resource_Usage usage
+        )
         {
+            const bool transfer = usage == RHI_Resource_Usage::Transfer ||
+                (usage == RHI_Resource_Usage::None && scope == RHI_Barrier_Scope::Transfer);
+
             VkAccessFlags2 mask = 0;
             if ((static_cast<uint8_t>(access) & static_cast<uint8_t>(RHI_Resource_Access::Read)) != 0)
             {
-                mask |= VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+                mask |= transfer
+                    ? VK_ACCESS_2_TRANSFER_READ_BIT
+                    : (VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT);
             }
             if ((static_cast<uint8_t>(access) & static_cast<uint8_t>(RHI_Resource_Access::Write)) != 0)
             {
-                mask |= VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+                mask |= transfer
+                    ? VK_ACCESS_2_TRANSFER_WRITE_BIT
+                    : (VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
             }
             return mask;
         };
@@ -798,11 +879,19 @@ namespace spartan
                     );
                     if (pending.barrier.access_src != RHI_Resource_Access::None)
                     {
-                        vk_barrier.srcAccessMask = access_to_mask(pending.barrier.access_src);
+                        vk_barrier.srcAccessMask = access_to_mask(
+                            pending.barrier.access_src,
+                            pending.barrier.scope_src,
+                            pending.barrier.usage_src
+                        );
                     }
                     if (pending.barrier.access_dst != RHI_Resource_Access::None)
                     {
-                        vk_barrier.dstAccessMask = access_to_mask(pending.barrier.access_dst);
+                        vk_barrier.dstAccessMask = access_to_mask(
+                            pending.barrier.access_dst,
+                            pending.barrier.scope_dst,
+                            pending.barrier.usage_dst
+                        );
                     }
                     apply_image_usage(vk_barrier, pending.barrier.usage_src, pending.barrier.access_src, true, pending.is_depth);
                     apply_image_usage(vk_barrier, pending.barrier.usage_dst, pending.barrier.access_dst, false, pending.is_depth);
@@ -824,12 +913,29 @@ namespace spartan
                     memory_barrier.dstStageMask |= dst_stages;
                     if (pending.barrier.scope_src != RHI_Barrier_Scope::None)
                     {
-                        memory_barrier.srcAccessMask |= pending.barrier.access_src != RHI_Resource_Access::None
-                            ? access_to_mask(pending.barrier.access_src)
-                            : (VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_SHADER_WRITE_BIT);
+                        if (pending.barrier.access_src != RHI_Resource_Access::None)
+                        {
+                            memory_barrier.srcAccessMask |= access_to_mask(
+                                pending.barrier.access_src,
+                                pending.barrier.scope_src,
+                                pending.barrier.usage_src
+                            );
+                        }
+                        else if (pending.barrier.scope_src == RHI_Barrier_Scope::Transfer)
+                        {
+                            memory_barrier.srcAccessMask |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
+                        }
+                        else
+                        {
+                            memory_barrier.srcAccessMask |= VK_ACCESS_2_MEMORY_WRITE_BIT;
+                        }
                     }
                     memory_barrier.dstAccessMask |= pending.barrier.access_dst != RHI_Resource_Access::None
-                        ? access_to_mask(pending.barrier.access_dst)
+                        ? access_to_mask(
+                            pending.barrier.access_dst,
+                            pending.barrier.scope_dst,
+                            pending.barrier.usage_dst
+                        )
                         : (VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT);
                     if (VkPipelineStageFlags2 stage = usage_to_stage(pending.barrier.usage_src))
                     {
@@ -904,6 +1010,29 @@ namespace spartan
                 memory_barrier.srcAccessMask = barrier_helpers::sanitize_compute_access(memory_barrier.srcAccessMask);
                 memory_barrier.dstAccessMask = barrier_helpers::sanitize_compute_access(memory_barrier.dstAccessMask);
             }
+        }
+
+        for (auto& b : image_barriers)
+        {
+            b.srcAccessMask = barrier_helpers::access_compatible_with_stages(
+                b.srcStageMask,
+                b.srcAccessMask
+            );
+            b.dstAccessMask = barrier_helpers::access_compatible_with_stages(
+                b.dstStageMask,
+                b.dstAccessMask
+            );
+        }
+        if (need_memory_sync)
+        {
+            memory_barrier.srcAccessMask = barrier_helpers::access_compatible_with_stages(
+                memory_barrier.srcStageMask,
+                memory_barrier.srcAccessMask
+            );
+            memory_barrier.dstAccessMask = barrier_helpers::access_compatible_with_stages(
+                memory_barrier.dstStageMask,
+                memory_barrier.dstAccessMask
+            );
         }
 
         if (image_barriers.empty() && !need_memory_sync)
@@ -2915,6 +3044,13 @@ namespace spartan
             sizeof(uint32_t),
             value
         );
+
+        // host and the next fill both need the write available
+        barrier.srcStageMask  = VK_PIPELINE_STAGE_2_CLEAR_BIT;
+        barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        barrier.dstStageMask  = VK_PIPELINE_STAGE_2_HOST_BIT | VK_PIPELINE_STAGE_2_CLEAR_BIT;
+        barrier.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        vkCmdPipelineBarrier2(cmd, &dep);
     }
     
     uint32_t RHI_CommandList::begin_timestamp()

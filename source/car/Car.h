@@ -119,6 +119,8 @@ namespace spartan
         void SetSteering(float value);
         void SetHandbrake(float value);
         void ResetToSpawn();
+        void SummonToPlayer();
+        static void SummonPlayerCar();
 
         // when true, external control owns vehicle input and interaction
         void SetExternallyControlled(bool controlled) { m_externally_controlled = controlled; }
@@ -172,6 +174,7 @@ namespace spartan
         void TickChaseCamera();
         void TickEnterExit();
         void TickViewSwitch();
+        void TickSummon();
         void TickVisualization();
         void ApplySkeletonBodyVisibility();
         // restore=false when the cached entities are about to be destroyed

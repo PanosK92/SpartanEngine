@@ -36,12 +36,18 @@ function parse_enrich(params) {
 export function parse_prompt_payload(value) {
   const params = new URLSearchParams(value);
   const prompt = params.get("prompt");
+  const images = params
+    .getAll("image")
+    .map((item) => String(item ?? "").trim())
+    .filter(Boolean)
+    .slice(0, 5);
   if (prompt !== null) {
     return {
       prompt,
       api_key: (params.get("api_key") ?? process.env.CURSOR_API_KEY ?? "").trim(),
       model_id: (params.get("model") ?? "auto").trim() || "auto",
       enrich: parse_enrich(params),
+      images,
     };
   }
 
@@ -50,6 +56,7 @@ export function parse_prompt_payload(value) {
     api_key: (process.env.CURSOR_API_KEY ?? "").trim(),
     model_id: "auto",
     enrich: true,
+    images,
   };
 }
 

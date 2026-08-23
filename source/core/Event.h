@@ -74,6 +74,7 @@ namespace spartan
         // Display
         HdrToggled,                    // HDR output has been toggled on or off
         // World
+        WorldUnloading,                // world is about to drop the resource cache
         WorldLoaded,                   // a world finished loading and entities are ready
         // Max
         Max

@@ -187,11 +187,7 @@ namespace spartan
             m_gpu_marker_counts[qi] = 0;
             m_gpu_marker_names[qi].fill(nullptr);
 
-            // zero out the mapped buffer so all slots read as "not reached"
-            if (mapped)
-            {
-                memset(mapped, 0, max_gpu_markers * sizeof(uint32_t));
-            }
+            // keep mapped fills, device lost is reported on the next submit
         }
     }
 
@@ -302,17 +298,28 @@ namespace spartan
                 continue;
             }
 
-            collect_queue(qi, m_gpu_marker_names[qi].data(), gpu_data);
-        }
-
-        // the faulting commands usually belong to the frame that was already reset, fall back to
-        // the snapshot so a device loss reported on the next submit still names a pass
-        if (!has_any_gpu_marker && m_has_prev_frame)
-        {
-            report += "  (current frame recorded nothing, showing the previous frame)\n";
-            for (uint32_t qi = 0; qi < queue_count; qi++)
+            bool current_has_names = false;
+            for (uint32_t i = 0; i < max_gpu_markers; i++)
             {
-                collect_queue(qi, m_gpu_marker_names_prev[qi].data(), m_gpu_marker_values_prev[qi].data());
+                if (m_gpu_marker_names[qi][i])
+                {
+                    current_has_names = true;
+                    break;
+                }
+            }
+
+            // device lost lands on the next submit, after StartFrame cleared current names
+            if (current_has_names)
+            {
+                collect_queue(qi, m_gpu_marker_names[qi].data(), gpu_data);
+            }
+            else if (m_has_prev_frame)
+            {
+                if (qi == 0)
+                {
+                    report += "  (current frame recorded nothing, reading live gpu buffer with previous names)\n";
+                }
+                collect_queue(qi, m_gpu_marker_names_prev[qi].data(), gpu_data);
             }
         }
 

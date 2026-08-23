@@ -114,6 +114,12 @@ namespace spartan
         }
         m_pass_state.cleared_rt_reflections = false;
 
+        // same gate as rt shadows, a blas written this list is not safe to closest-hit
+        if (m_pass_state.skip_rt_trace)
+        {
+            return;
+        }
+
         RHI_CommandList::BeginTimeblock("reflections_trace");
         {
             RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
@@ -153,7 +159,11 @@ namespace spartan
     void Renderer::Pass_Reflections_Shade(uint32_t eye_layer /*= rhi_all_mips*/)
     {
         // restir pt is diffuse only at the primary, so the two never double count specular
-        if (!cvar_ray_traced_reflections.GetValueAs<bool>() || IsSecondaryViewActive())
+        if (
+            !cvar_ray_traced_reflections.GetValueAs<bool>() ||
+            IsSecondaryViewActive() ||
+            m_pass_state.skip_rt_trace
+        )
         {
             return;
         }
@@ -309,7 +319,7 @@ namespace spartan
         }
             
         RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
-        if (!tlas)
+        if (!tlas || m_pass_state.skip_rt_trace)
         {
             return;
         }
@@ -800,7 +810,7 @@ namespace spartan
         m_pass_state.cleared_restir = false;
 
         RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
-        if (!tlas)
+        if (!tlas || m_pass_state.skip_rt_trace)
             return;
 
         RHI_Shader* shader_rgen = GetShader(Renderer_Shader::restir_pt_ray_generation_r);

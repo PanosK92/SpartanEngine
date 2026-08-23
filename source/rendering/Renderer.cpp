@@ -1858,10 +1858,41 @@ namespace spartan
         // a secondary view is absent from the tlas, so every ray traced feature is off for it
         const bool ray_tracing_allowed = !secondary_render_root_active;
         const bool tlas_available      = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr && ray_tracing_allowed;
-        m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>() && ray_tracing_allowed, 1 << 0);
-        m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                                          1 << 1);
-        m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available,          1 << 2);
-        m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>() && ray_tracing_allowed,              1 << 3);
+
+        // frame cb is uploaded before blas builds, so shaders would still see rt on while
+        // skip_rt_trace is about to flip. any missing blas means spawn is in flight
+        bool pending_blas = false;
+        if (tlas_available)
+        {
+            for (Entity* entity : render_entities())
+            {
+                if (!entity || !entity->GetActive())
+                {
+                    continue;
+                }
+                if (!is_secondary_view_entity(entity))
+                {
+                    continue;
+                }
+
+                Render* render = entity->GetComponent<Render>();
+                if (!render || render->HasFlag(RenderFlags::ExcludeFromRayTracing))
+                {
+                    continue;
+                }
+                if (!render->HasAccelerationStructure())
+                {
+                    pending_blas = true;
+                    break;
+                }
+            }
+        }
+
+        const bool ray_tracing_ready = ray_tracing_allowed && !pending_blas;
+        m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>() && ray_tracing_ready, 1 << 0);
+        m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                                        1 << 1);
+        m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available && !pending_blas, 1 << 2);
+        m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>() && ray_tracing_ready,              1 << 3);
     }
 
     void Renderer::UpdateFrameCb_StereoXr()
@@ -3701,6 +3732,9 @@ namespace spartan
             blas_burst_done = (blas_remaining == 0);
             blas_built_this_frame = blas_built > 0;
 
+            // a blas written this list is not safe to trace from batch b, skip until the burst settles
+            m_pass_state.skip_rt_trace = blas_built_this_frame || !blas_burst_done;
+
             // free the shared static scratch only once the burst fully completes
             // freeing mid-burst would force a reallocation on next frame
             if (blas_burst_done && blas_built > 0)
@@ -4481,6 +4515,8 @@ namespace spartan
     {
         RHI_CommandList::BeginMarker("compute_batch_a");
 
+        m_pass_state.skip_rt_trace = false;
+
         // accel structures first so batch b's rt passes inherit the tlas via compute queue order
         UpdateAccelerationStructures();
 
@@ -4696,7 +4732,7 @@ namespace spartan
                 !IsSecondaryViewActive();
             const bool shadow_maps_required =
                 World::GetLightCount() > 0 &&
-                !(ray_traced_shadows && tlas_available);
+                !(ray_traced_shadows && tlas_available && !m_pass_state.skip_rt_trace);
             RHI_Device::Bind(RHI_Frame_List::Graphics);
             if (shadow_maps_required)
             {

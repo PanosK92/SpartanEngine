@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../imgui/ImGui_Extension.h"
 #include "../imgui/ImGui_Style.h"
 #include "../imgui/source/imgui_internal.h"
+#include "../widgets/FileDialog.h"
 #include <algorithm>
 #include <atomic>
 #include <cctype>
@@ -69,6 +70,7 @@ namespace
     constexpr int assistant_model_timeout_ms = 60000;
     constexpr int assistant_start_timeout_ms = 10000;
     constexpr int assistant_start_poll_ms = 100;
+    constexpr int max_reference_images = 5;
     std::mutex assistant_mutex;
     std::mutex assistant_start_mutex;
     std::string assistant_response;
@@ -248,13 +250,20 @@ namespace
     bool terminate_any_assistant_process()
     {
     #ifdef _WIN32
-        const char* command =
+        // command line matching missed leftover node processes because windows reports
+        // single backslashes, so stop whoever still owns the assistant port
+        const std::string command =
             "powershell -NoProfile -ExecutionPolicy Bypass -Command \""
+            "Get-NetTCPConnection -LocalPort " +
+            std::to_string(assistant_port) +
+            " -ErrorAction SilentlyContinue | "
+            "ForEach-Object { if ($_.OwningProcess -gt 0) { "
+            "Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }; "
             "Get-CimInstance Win32_Process -Filter \\\"name = 'node.exe'\\\" | "
-            "Where-Object { $_.CommandLine -like '*tools\\\\mcp\\\\spartan_engine\\\\assistant.mjs*' -or $_.CommandLine -like '*tools/mcp/spartan_engine/assistant.mjs*' } | "
-            "ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"
+            "Where-Object { $_.CommandLine -match 'assistant\\.mjs' } | "
+            "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
             "\"";
-        return std::system(command) == 0;
+        return std::system(command.c_str()) == 0;
     #else
         return std::system("pkill -f assistant.mjs >/dev/null 2>&1") == 0;
     #endif
@@ -266,14 +275,11 @@ namespace
         bool killed =
             terminate_tracked_assistant_process();
         assistant_spawned_this_session = false;
-        if (is_assistant_ready())
-        {
-            killed =
-                terminate_any_assistant_process() ||
-                killed;
-        }
+        killed =
+            terminate_any_assistant_process() ||
+            killed;
 
-        for (int attempt = 0; attempt < 20; attempt++)
+        for (int attempt = 0; attempt < 50; attempt++)
         {
             if (!is_assistant_ready())
             {
@@ -700,6 +706,58 @@ namespace
         }
 
         assistant_run.elapsed_ms = json_get_int(json, "elapsed_ms", assistant_run.elapsed_ms);
+    }
+
+    bool is_prompt_reference_image(const std::string& path)
+    {
+        const std::string extension = spartan::FileSystem::ConvertToUppercase(
+            spartan::FileSystem::GetExtensionFromFilePath(path)
+        );
+        return
+            extension == ".PNG" ||
+            extension == ".JPG" ||
+            extension == ".JPEG" ||
+            extension == ".GIF" ||
+            extension == ".WEBP";
+    }
+
+    std::string reference_asset_name(const std::string& path)
+    {
+        std::string name = spartan::FileSystem::GetFileNameWithoutExtensionFromFilePath(path);
+        for (char& character : name)
+        {
+            if (character >= 'A' && character <= 'Z')
+            {
+                character = static_cast<char>(character - 'A' + 'a');
+            }
+            else if (
+                (character < 'a' || character > 'z') &&
+                (character < '0' || character > '9')
+            )
+            {
+                character = '_';
+            }
+        }
+        while (!name.empty() && name.front() == '_')
+        {
+            name.erase(name.begin());
+        }
+        while (!name.empty() && name.back() == '_')
+        {
+            name.pop_back();
+        }
+        return name.empty() ? "reference_asset" : name;
+    }
+
+    std::string default_prompt_for_images(const std::vector<std::string>& images)
+    {
+        const std::string name = images.empty()
+            ? "reference_asset"
+            : reference_asset_name(images.front());
+        return
+            "Create a 3d asset named " +
+            name +
+            " matching the attached reference image.";
     }
 
     std::string url_encode(const std::string& value)
@@ -1137,6 +1195,12 @@ namespace
             kill_assistant_process();
         }
 
+        if (is_assistant_ready())
+        {
+            log_error("Cursor assistant is still listening after stop, cannot start a new one.");
+            return false;
+        }
+
         std::filesystem::path script_path;
         if (!find_assistant_script(script_path))
         {
@@ -1315,7 +1379,14 @@ namespace
             response == "assistant returned an invalid model response";
     }
 
-    bool send_prompt_to_assistant(const std::string& prompt, const std::string& api_key, const std::string& model_id, const bool enrich, std::string& response)
+    bool send_prompt_to_assistant(
+        const std::string& prompt,
+        const std::string& api_key,
+        const std::string& model_id,
+        const bool enrich,
+        const std::vector<std::string>& images,
+        std::string& response
+    )
     {
     #ifdef _WIN32
         WSADATA data = {};
@@ -1353,7 +1424,16 @@ namespace
 
         set_receive_timeout(socket, assistant_prompt_timeout_ms);
 
-        const std::string request = "prompt api_key=" + url_encode(api_key) + "&model=" + url_encode(model_id) + "&enrich=" + (enrich ? "1" : "0") + "&prompt=" + url_encode(prompt) + "\n";
+        std::string request =
+            "prompt api_key=" + url_encode(api_key) +
+            "&model=" + url_encode(model_id) +
+            "&enrich=" + (enrich ? "1" : "0") +
+            "&prompt=" + url_encode(prompt);
+        for (const std::string& image : images)
+        {
+            request += "&image=" + url_encode(image);
+        }
+        request += "\n";
         if (!send_all(socket, request))
         {
             response = "failed to send prompt to assistant";
@@ -1706,6 +1786,8 @@ void McpAssistant::OnTickVisible()
     }
 
     UpdateInputOwnership();
+
+    TickImageBrowser();
 
     const float scale = ui_scale();
     const ImGuiStyle& style = ImGui::GetStyle();
@@ -2107,7 +2189,7 @@ void McpAssistant::OnTickVisible()
     {
         draw_section_title(
             "Ask Spartan AI",
-            "Describe the outcome you want, Ctrl+Enter to send."
+            "Describe the outcome, attach a reference image, Ctrl+Enter to send."
         );
         if (m_voice_active)
         {
@@ -2122,15 +2204,58 @@ void McpAssistant::OnTickVisible()
                 ImGui::GetTextLineHeight() * 3.6f
             )
         );
+        const bool prompt_focused = ImGui::IsItemFocused();
+
+        if (
+            ImGuiSp::DragDropPayload* payload =
+                ImGuiSp::receive_drag_drop_payload(
+                    ImGuiSp::DragPayloadType::Texture
+                )
+        )
+        {
+            AttachReferenceImage(payload->path);
+        }
+
+        if (!m_reference_images.empty())
+        {
+            ImGui::Spacing();
+            for (int index = 0; index < static_cast<int>(m_reference_images.size()); index++)
+            {
+                ImGui::PushID(index);
+                const std::string label =
+                    spartan::FileSystem::GetFileNameFromFilePath(
+                        m_reference_images[static_cast<size_t>(index)]
+                    );
+                ImGui::TextUnformatted(label.c_str());
+                ImGuiSp::tooltip(m_reference_images[static_cast<size_t>(index)].c_str());
+                ImGui::SameLine();
+                if (ImGui::SmallButton("x"))
+                {
+                    m_reference_images.erase(
+                        m_reference_images.begin() + index
+                    );
+                    ImGui::PopID();
+                    break;
+                }
+                ImGuiSp::tooltip("Remove this reference image");
+                if (index + 1 < static_cast<int>(m_reference_images.size()))
+                {
+                    ImGui::SameLine();
+                }
+                ImGui::PopID();
+            }
+        }
 
         const bool submit_from_keyboard =
-            ImGui::IsItemFocused() &&
+            prompt_focused &&
             ImGui::GetIO().KeyCtrl &&
             ImGui::IsKeyPressed(ImGuiKey_Enter);
         const bool has_prompt = m_prompt[0] != '\0';
+        const bool has_images = !m_reference_images.empty();
+        const bool can_send = has_prompt || has_images;
         if (
             submit_from_keyboard &&
-            has_prompt &&
+            can_send &&
             !is_assistant_busy
         )
         {
@@ -2152,7 +2277,7 @@ void McpAssistant::OnTickVisible()
         }
         else
         {
-            if (!has_prompt)
+            if (!can_send)
             {
                 ImGui::BeginDisabled();
             }
@@ -2165,10 +2290,44 @@ void McpAssistant::OnTickVisible()
             {
                 SubmitPrompt();
             }
-            if (!has_prompt)
+            if (!can_send)
             {
                 ImGui::EndDisabled();
             }
+        }
+
+        ImGui::SameLine();
+        const bool images_full =
+            static_cast<int>(m_reference_images.size()) >=
+            max_reference_images;
+        if (images_full)
+        {
+            ImGui::BeginDisabled();
+        }
+        if (ImGuiSp::button("Attach image"))
+        {
+            if (!m_image_dialog)
+            {
+                m_image_dialog = std::make_unique<FileDialog>(
+                    true,
+                    FileDialog_Type_FileSelection,
+                    FileDialog_Op_Load,
+                    FileDialog_Filter_Image
+                );
+            }
+            m_image_dialog_visible = true;
+        }
+        if (images_full)
+        {
+            ImGui::EndDisabled();
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        {
+            ImGui::SetTooltip(
+                images_full
+                    ? "At most 5 reference images."
+                    : "Browse to a png, jpg, jpeg, gif, or webp, or drag one onto the prompt."
+            );
         }
 
         ImGui::SameLine();
@@ -2195,15 +2354,16 @@ void McpAssistant::OnTickVisible()
         }
 
         ImGui::SameLine();
-        if (!has_prompt)
+        if (!can_send)
         {
             ImGui::BeginDisabled();
         }
         if (ImGuiSp::button("Clear draft"))
         {
             m_prompt[0] = '\0';
+            m_reference_images.clear();
         }
-        if (!has_prompt)
+        if (!can_send)
         {
             ImGui::EndDisabled();
         }
@@ -2227,6 +2387,10 @@ void McpAssistant::OnTickVisible()
             " / " +
             std::to_string(m_prompt.size() - 1) +
             "  |  " +
+            std::to_string(m_reference_images.size()) +
+            "/" +
+            std::to_string(max_reference_images) +
+            " images  |  " +
             GetSelectedModelId();
         const float composer_status_width =
             ImGui::CalcTextSize(composer_status.c_str()).x;
@@ -2342,6 +2506,55 @@ void McpAssistant::PollVoiceCapture()
 #endif
 }
 
+void McpAssistant::AttachReferenceImage(const std::string& path)
+{
+    if (path.empty())
+    {
+        return;
+    }
+    if (!spartan::FileSystem::Exists(path))
+    {
+        log_error("Reference image does not exist: " + path);
+        return;
+    }
+    if (!is_prompt_reference_image(path))
+    {
+        log_error("Reference images must be png, jpg, jpeg, gif, or webp.");
+        return;
+    }
+    if (static_cast<int>(m_reference_images.size()) >= max_reference_images)
+    {
+        log_error("At most 5 reference images.");
+        return;
+    }
+    for (const std::string& existing : m_reference_images)
+    {
+        if (existing == path)
+        {
+            return;
+        }
+    }
+    m_reference_images.push_back(path);
+}
+
+void McpAssistant::TickImageBrowser()
+{
+    if (!m_image_dialog_visible || !m_image_dialog)
+    {
+        return;
+    }
+
+    std::string selected_path;
+    if (m_image_dialog->Show(&m_image_dialog_visible, m_editor, nullptr, &selected_path))
+    {
+        if (!selected_path.empty())
+        {
+            AttachReferenceImage(selected_path);
+        }
+        m_image_dialog_visible = false;
+    }
+}
+
 void McpAssistant::SubmitPrompt()
 {
     if (!spartan::McpServer::IsRunning())
@@ -2354,6 +2567,11 @@ void McpAssistant::SubmitPrompt()
     }
 
     std::string prompt = m_prompt.data();
+    std::vector<std::string> images = m_reference_images;
+    if (prompt.empty() && !images.empty())
+    {
+        prompt = default_prompt_for_images(images);
+    }
     std::string api_key = trim_copy_paste_whitespace(m_cursor_api_key.data());
     std::string model_id = GetSelectedModelId();
     if (api_key.empty())
@@ -2361,19 +2579,24 @@ void McpAssistant::SubmitPrompt()
         log_error("Cursor API key is empty.");
         return;
     }
+    if (prompt.empty() && images.empty())
+    {
+        return;
+    }
 
-    m_messages.push_back({ true, prompt });
+    m_messages.push_back({ true, prompt, images });
     m_prompt[0] = '\0';
+    m_reference_images.clear();
     m_scroll_to_bottom = true;
     set_response("");
     start_local_run(prompt, "sending request to assistant");
     log_info("Sending prompt to assistant with model " + model_id + ".");
 
     const bool enrich = m_enrich_prompt;
-    std::thread([prompt, api_key, model_id, enrich]()
+    std::thread([prompt, api_key, model_id, enrich, images]()
     {
         std::string response;
-        if (!send_prompt_to_assistant(prompt, api_key, model_id, enrich, response))
+        if (!send_prompt_to_assistant(prompt, api_key, model_id, enrich, images, response))
         {
             if (!should_restart_assistant_after_failure(response))
             {
@@ -2403,7 +2626,7 @@ void McpAssistant::SubmitPrompt()
                 return;
             }
 
-            if (!send_prompt_to_assistant(prompt, api_key, model_id, enrich, response))
+            if (!send_prompt_to_assistant(prompt, api_key, model_id, enrich, images, response))
             {
                 response = response.empty()
                     ? "failed to connect to Cursor assistant. "
@@ -2727,7 +2950,12 @@ void McpAssistant::DrawChatMessage(const ChatMessage& message, int index)
         ImGui::SetCursorPosX(content_right - copy_width);
         if (ImGui::SmallButton("Copy"))
         {
-            ImGui::SetClipboardText(message.text.c_str());
+            std::string copy_text = message.text;
+            for (const std::string& image : message.images)
+            {
+                copy_text += "\n" + image;
+            }
+            ImGui::SetClipboardText(copy_text.c_str());
         }
         ImGuiSp::tooltip("Copy message");
 
@@ -2737,6 +2965,18 @@ void McpAssistant::DrawChatMessage(const ChatMessage& message, int index)
         );
         ImGui::TextUnformatted(message.text.c_str());
         ImGui::PopTextWrapPos();
+        if (!message.images.empty())
+        {
+            ImGui::Spacing();
+            ImGui::TextDisabled("Reference images");
+            for (const std::string& image : message.images)
+            {
+                ImGui::TextUnformatted(
+                    spartan::FileSystem::GetFileNameFromFilePath(image).c_str()
+                );
+                ImGuiSp::tooltip(image.c_str());
+            }
+        }
     }
     ImGui::EndChild();
 

@@ -2480,6 +2480,92 @@ namespace spartan
         m_chase_camera.initialized = false;
     }
 
+    void Car::SummonToPlayer()
+    {
+        if (!m_vehicle_entity || m_is_occupied)
+        {
+            return;
+        }
+
+        Entity* origin_entity = nullptr;
+        bool from_eye = false;
+        if (Engine::IsFlagSet(EngineMode::Playing) && default_camera)
+        {
+            origin_entity = default_camera;
+        }
+        else if (Camera* camera = World::GetCamera())
+        {
+            origin_entity = camera->GetEntity();
+            from_eye = true;
+        }
+        if (!origin_entity)
+        {
+            return;
+        }
+
+        math::Vector3 forward = origin_entity->GetForward();
+        forward.y = 0.0f;
+        if (forward.LengthSquared() < 0.001f)
+        {
+            forward = math::Vector3::Forward;
+        }
+        forward.Normalize();
+
+        math::Vector3 position = origin_entity->GetPosition() + forward * 4.0f;
+        if (from_eye)
+        {
+            position.y -= 1.6f;
+        }
+        float lift = 0.6f;
+        if (m_definition)
+        {
+            lift = get_car_lower_extent(m_definition->performance);
+        }
+        position.y += lift;
+
+        math::Quaternion rotation = math::Quaternion::FromLookRotation(
+            forward,
+            math::Vector3::Up
+        );
+
+        if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
+        {
+            physics->SetBodyTransform(position, rotation);
+        }
+        m_vehicle_entity->SetPosition(position);
+        m_vehicle_entity->SetRotation(rotation);
+        m_chase_camera.initialized = false;
+    }
+
+    void Car::SummonPlayerCar()
+    {
+        Car* player_car = nullptr;
+        for (Car* car : GetAll())
+        {
+            if (!car || !car->IsDrivable())
+            {
+                continue;
+            }
+
+            Entity* root = car->GetRootEntity();
+            Entity* owner = root ? root->GetParent() : nullptr;
+            if (owner && owner->GetComponent<CarReset>())
+            {
+                player_car = car;
+                break;
+            }
+            if (!player_car)
+            {
+                player_car = car;
+            }
+        }
+
+        if (player_car)
+        {
+            player_car->SummonToPlayer();
+        }
+    }
+
     void Car::CycleView()
     {
         m_current_view = static_cast<CarView>((static_cast<int>(m_current_view) + 1) % 3);
@@ -3403,6 +3489,7 @@ namespace spartan
         TickChaseCamera();
         TickEnterExit();
         TickViewSwitch();
+        TickSummon();
         TickVisualization();
 
         if (m_is_occupied)
@@ -3431,6 +3518,7 @@ namespace spartan
                 "ReCam\tC\tR3\n"
                 "Look\tRClk\tRStick\n"
                 "Reset\tR\tCross\n"
+                "Summon\tH\tDpadDn\n"
                 "Exit\tE\tSquare",
                 math::Vector2(0.006f, 0.03f));
         }
@@ -3984,4 +4072,27 @@ namespace spartan
         }
     }
 
+    void Car::TickSummon()
+    {
+        if (m_externally_controlled)
+        {
+            return;
+        }
+        if (Input::IsBlockedByUi())
+        {
+            return;
+        }
+        if (!Input::GetKeyDown(KeyCode::H) && !Input::GetKeyDown(KeyCode::DPad_Down))
+        {
+            return;
+        }
+
+        Entity* owner = m_vehicle_entity ? m_vehicle_entity->GetParent() : nullptr;
+        if (!owner || !owner->GetComponent<CarReset>())
+        {
+            return;
+        }
+
+        SummonToPlayer();
+    }
 }

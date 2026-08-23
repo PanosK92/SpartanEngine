@@ -121,6 +121,7 @@ namespace spartan
             Loading
         };
         atomic<WorldIoState> world_io_state = WorldIoState::Idle;
+        string pending_load_path;
         BoundingBox bounding_box    = BoundingBox::Unit;
         Entity* camera              = nullptr;
         Entity* camera_override     = nullptr; // set by the sequencer or gameplay, takes precedence over the default camera
@@ -1352,6 +1353,7 @@ namespace spartan
         }
 
         WorldHelpers::Clear();                        // release long lived builder meshes and materials
+        SP_FIRE_EVENT(EventType::WorldUnloading);    // editor drops thumbnail pointers before the cache frees them
         ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
         play_mode_spawned_ids.clear();
         play_mode_snapshot.clear();
@@ -2471,6 +2473,26 @@ namespace spartan
 
     bool World::LoadFromFile(const string& file_path_)
     {
+        if (file_path_.empty())
+        {
+            return false;
+        }
+
+        // imgui still holds texture ids from this frame, shutdown must wait until the next tick
+        pending_load_path = file_path_;
+        return true;
+    }
+
+    void World::ProcessPendingLoad()
+    {
+        if (pending_load_path.empty())
+        {
+            return;
+        }
+
+        const string file_path_ = pending_load_path;
+        pending_load_path.clear();
+
         // reject re-entrant loads, the second Shutdown below would tear down the world while the first load's workers are still building it
         WorldIoState expected = WorldIoState::Idle;
         if (
@@ -2480,7 +2502,7 @@ namespace spartan
             )
         )
         {
-            return false;
+            return;
         }
 
         // ensure prefabs are registered before loading
@@ -2785,8 +2807,6 @@ namespace spartan
             // hand off publish + deferred script init to World::Tick, loading stays up until that finishes
             load_ready_for_main_commit.store(true, memory_order_release);
         });
-
-        return true;
     }
 
     sol::state_view World::GetLuaState()

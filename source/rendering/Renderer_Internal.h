@@ -99,6 +99,7 @@ namespace spartan
             bool cleared_reflections     = false;
             bool cleared_rt_reflections  = false;
             bool cleared_rt_shadows      = false;
+            bool skip_rt_trace           = false;
             bool cleared_restir          = false;
             bool restir_reservoirs_initialized = false;
 

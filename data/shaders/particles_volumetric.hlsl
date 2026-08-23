@@ -240,47 +240,6 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
 #elif defined(VOLUME_RESOLVE)
 
-#ifdef RAY_TRACING_ENABLED
-float trace_volume_shadow_ray(Light light, float3 sample_pos, float3 light_dir)
-{
-    float bias = 0.015f;
-    float3 origin = sample_pos + light_dir * bias;
-    float3 direction;
-    float t_max;
-
-    if (light.is_directional())
-    {
-        direction = normalize(-light.forward);
-        t_max = 10000.0f;
-    }
-    else
-    {
-        float3 target = light.is_area() ? light.compute_closest_point_on_area(sample_pos) : light.position;
-        float3 to_light = target - origin;
-        float dist = length(to_light);
-        if (dist <= bias)
-        {
-            return 1.0f;
-        }
-
-        direction = to_light / dist;
-        t_max = max(dist - bias, 0.001f);
-    }
-
-    RayDesc ray;
-    ray.Origin    = origin;
-    ray.Direction = direction;
-    ray.TMin      = 0.001f;
-    ray.TMax      = t_max;
-
-    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
-    query.Proceed();
-
-    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
-}
-#endif
-
 [numthreads(8, 8, 4)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
@@ -298,30 +257,6 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         color.r = (float)particle_volume_color[index * 3u + 0u] / ((float)density_u * volume_color_scale / volume_density_scale);
         color.g = (float)particle_volume_color[index * 3u + 1u] / ((float)density_u * volume_color_scale / volume_density_scale);
         color.b = (float)particle_volume_color[index * 3u + 2u] / ((float)density_u * volume_color_scale / volume_density_scale);
-
-    #ifdef RAY_TRACING_ENABLED
-        if ((is_ray_traced_shadows_enabled() || is_restir_pt_enabled()) && buffer_frame.cluster_light_count > 0u)
-        {
-            float3 sample_pos = volume_world_position(dispatch_thread_id);
-            float2 uv = (float2(dispatch_thread_id.xy) + 0.5f) / float2((float)volume_width, (float)volume_height);
-            float3 ray_direction = normalize(sample_pos - get_camera_position());
-            Surface surface = build_volume_surface(sample_pos, ray_direction, dispatch_thread_id.xy, uv);
-
-            Light light;
-            light.Build(0u, surface);
-            if (light.has_shadows())
-            {
-                float3 light_dir;
-                float local_atten;
-                compute_volumetric_light_sample(light, sample_pos, light_dir, local_atten);
-                if (local_atten > 0.0f)
-                {
-                    float visibility = trace_volume_shadow_ray(light, sample_pos, light_dir);
-                    color *= lerp(volume_shadow_min_light, 1.0f, visibility);
-                }
-            }
-        }
-    #endif
     }
 
     tex3d_uav[dispatch_thread_id] = float4(saturate(color), density);

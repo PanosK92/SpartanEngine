@@ -859,6 +859,8 @@ namespace spartan
 
     void Renderer::Pass_GBuffer_Indirect()
     {
+        RHI_CommandList::BeginTimeblock("g_buffer_indirect");
+
         const bool xr_multiview = Xr::IsSessionRunning() && Xr::GetStereoMode();
         const bool mesh_path    = use_mesh_shaders();
 
@@ -965,10 +967,14 @@ namespace spartan
                 RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
             }
         }
+
+        RHI_CommandList::EndTimeblock();
     }
 
     void Renderer::Pass_GBuffer_TessellatedAndTransparent(const bool is_transparent_pass)
     {
+        RHI_CommandList::BeginTimeblock(is_transparent_pass ? "g_buffer_transparent_draw" : "g_buffer_tessellated");
+
         const bool xr_multiview = Xr::IsSessionRunning() && Xr::GetStereoMode();
 
         RHI_PipelineState pso;
@@ -1067,6 +1073,8 @@ namespace spartan
 
             pso.clear_depth = rhi_depth_load;
         }
+
+        RHI_CommandList::EndTimeblock();
     }
 
     void Renderer::Pass_GBuffer(const bool is_transparent_pass)
@@ -1086,9 +1094,11 @@ namespace spartan
             {
                 // opaque depth blit moved here from the prepass, all opaque geometry including grass has rasterized so the
                 // opaque output carries grass occlusion, batch b consumers run after phase 1 so this write is visible to them
+                RHI_CommandList::BeginTimeblock("g_buffer_depth_blit");
                 RHI_Texture* tex_depth        = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
                 RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output);
                 RHI_CommandList::Blit(tex_depth, tex_depth_output, false, Renderer::GetResolutionScale());
+                RHI_CommandList::EndTimeblock();
             }
 
         }
@@ -1386,6 +1396,7 @@ namespace spartan
         pso.clear_color[3]                   = rhi_color_load;
         pso.clear_depth                      = rhi_depth_load;
 
+        RHI_CommandList::BeginTimeblock("g_buffer_grass");
         RHI_CommandList::SetPipelineState(pso);
 
         // grass blades are double sided and a stone chip is closed, but both are cheap enough that one
@@ -1435,6 +1446,8 @@ namespace spartan
                 RHI_CommandList::DrawIndexedIndirect(buf_args, renderer_gpu_scatter_arg_index(slot, lod) * arg_stride);
             }
         }
+
+        RHI_CommandList::EndTimeblock();
     }
 
     void Renderer::Pass_MeshletVisualize()
