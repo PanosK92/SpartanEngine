@@ -84,8 +84,8 @@ static const float terrain_height_jitter = 4.0f;
 
 // past this range the per layer detail work, hex tiling variants and the third and fourth picks, stops
 // paying for itself
-static const float terrain_detail_distance = 50.0f;
-static const float terrain_detail_fade     = 40.0f;
+static const float terrain_detail_distance = 140.0f;
+static const float terrain_detail_fade     = 140.0f;
 // the interface between two layers is a different thing to the detail inside one, a layer patch is tens
 // to hundreds of metres across so its boundary stays resolvable all the way out, collapsing to a single
 // pick at the detail range is what turns the mid field into a hard edged patchwork
@@ -93,8 +93,8 @@ static const float terrain_blend_distance = 1800.0f;
 static const float terrain_blend_fade     = 1400.0f;
 // three anisotropic taps per layer, far hills fill the screen so the lattice has to die off before
 // that, planar plus macro variation covers the repeat past this range
-static const float terrain_hex_distance = 50.0f;
-static const float terrain_hex_fade     = 30.0f;
+static const float terrain_hex_distance = 1200.0f;
+static const float terrain_hex_fade     = 1000.0f;
 
 // debug views, must match TerrainDebugView in TerrainLayer.h
 static const uint terrain_debug_off        = 0;
@@ -583,9 +583,9 @@ TerrainHexSetup terrain_hex_setup(float2 uv, float2 duvdx, float2 duvdy)
 
 float4 terrain_hex_sample(TerrainHexSetup setup, uint texture_index, bool restore_contrast)
 {
-    float4 tap0 = material_textures[NonUniformResourceIndex(texture_index)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), setup.uv[0], setup.duvdx[0], setup.duvdy[0]);
-    float4 tap1 = material_textures[NonUniformResourceIndex(texture_index)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), setup.uv[1], setup.duvdx[1], setup.duvdy[1]);
-    float4 tap2 = material_textures[NonUniformResourceIndex(texture_index)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), setup.uv[2], setup.duvdx[2], setup.duvdy[2]);
+    float4 tap0 = material_textures[NonUniformResourceIndex(texture_index)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), setup.uv[0], setup.duvdx[0], setup.duvdy[0]);
+    float4 tap1 = material_textures[NonUniformResourceIndex(texture_index)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), setup.uv[1], setup.duvdx[1], setup.duvdy[1]);
+    float4 tap2 = material_textures[NonUniformResourceIndex(texture_index)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), setup.uv[2], setup.duvdx[2], setup.duvdy[2]);
 
     // luminance weighting keeps the brighter tap dominant instead of averaging detail away
     const float3 luma = float3(0.299f, 0.587f, 0.114f);
@@ -652,8 +652,8 @@ TerrainBiplanarSetup terrain_biplanar_setup(float3 position, float3 normal, floa
 
 float4 terrain_biplanar_sample(TerrainBiplanarSetup setup, uint texture_index)
 {
-    float4 tap0 = material_textures[NonUniformResourceIndex(texture_index)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), setup.uv[0], setup.duvdx[0], setup.duvdy[0]);
-    float4 tap1 = material_textures[NonUniformResourceIndex(texture_index)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), setup.uv[1], setup.duvdx[1], setup.duvdy[1]);
+    float4 tap0 = material_textures[NonUniformResourceIndex(texture_index)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), setup.uv[0], setup.duvdx[0], setup.duvdy[0]);
+    float4 tap1 = material_textures[NonUniformResourceIndex(texture_index)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), setup.uv[1], setup.duvdx[1], setup.duvdy[1]);
     return setup.weights.x * tap0 + setup.weights.y * tap1;
 }
 
@@ -746,8 +746,8 @@ TerrainMapFetch terrain_fetch_biplanar(
 
     if (layer.has_texture_normal())
     {
-        float4 normal0 = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_normal)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), setup.uv[0], setup.duvdx[0], setup.duvdy[0]);
-        float4 normal1 = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_normal)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), setup.uv[1], setup.duvdx[1], setup.duvdy[1]);
+        float4 normal0 = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_normal)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), setup.uv[0], setup.duvdx[0], setup.duvdy[0]);
+        float4 normal1 = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_normal)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), setup.uv[1], setup.duvdx[1], setup.duvdy[1]);
 
         fetch.gradient  = terrain_gradient_axis(terrain_normal_to_gradient(normal0.xyz), setup.axis_major)  * setup.weights.x;
         fetch.gradient += terrain_gradient_axis(terrain_normal_to_gradient(normal1.xyz), setup.axis_median) * setup.weights.y;
@@ -798,12 +798,12 @@ TerrainMapFetch terrain_fetch_planar(
     float2 layer_dx = duvdx * layer.terrain_tiling_scale;
     float2 layer_dy = duvdy * layer.terrain_tiling_scale;
 
-    fetch.albedo = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_albedo)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), layer_uv, layer_dx, layer_dy);
-    fetch.packed = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_packed)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), layer_uv, layer_dx, layer_dy);
+    fetch.albedo = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_albedo)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), layer_uv, layer_dx, layer_dy);
+    fetch.packed = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_packed)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), layer_uv, layer_dx, layer_dy);
 
     if (layer.has_texture_normal())
     {
-        float4 normal_sample = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_normal)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), layer_uv, layer_dx, layer_dy);
+        float4 normal_sample = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_normal)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), layer_uv, layer_dx, layer_dy);
         fetch.gradient       = terrain_gradient_planar(terrain_normal_to_gradient(normal_sample.xyz)) * layer.normal;
     }
 
@@ -1075,7 +1075,7 @@ TerrainSurface terrain_evaluate(
         MaterialParameters dominant = material_parameters[NonUniformResourceIndex(pick.index[0])];
         float scale                 = dominant.terrain_tiling_scale / terrain_macro_scale_ratio;
         float4 far_albedo           = material_textures[NonUniformResourceIndex(pick.index[0] + material_texture_index_albedo)]
-            .SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), uv * scale, duvdx * scale, duvdy * scale);
+            .SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv * scale, duvdx * scale, duvdy * scale);
 
         if (dominant.is_albedo_srgb())
         {

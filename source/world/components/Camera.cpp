@@ -1012,8 +1012,8 @@ namespace spartan
         bool button_move_backward   = Input::GetKey(KeyCode::S);
         bool button_move_right      = Input::GetKey(KeyCode::D);
         bool button_move_left       = Input::GetKey(KeyCode::A);
-        bool button_move_up         = Input::GetKey(KeyCode::Q);
-        bool button_move_down       = Input::GetKey(KeyCode::E);
+        bool button_move_up         = Input::GetKey(KeyCode::E);
+        bool button_move_down       = Input::GetKey(KeyCode::Q);
         bool button_sprint          = Input::GetKey(KeyCode::Shift_Left) || Input::GetKey(KeyCode::Left_Shoulder);
         bool button_jump            = Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_South);
         bool button_crouch          = Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Button_East); // Left Ctrl or O button

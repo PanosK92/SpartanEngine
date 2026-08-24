@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include "pch.h"
 #include <algorithm>
+#include <array>
+#include <cctype>
 #include <fstream>
 #include <functional>
 #include <unordered_set>
@@ -44,6 +46,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../geometry/GeometryProcessing.h"
 #include "../../core/ThreadPool.h"
 #include "../../core/ProgressTracker.h"
+#include "../../core/Engine.h"
+#include "../../core/Timer.h"
 #include "../../file_system/FileSystem.h"
 #include "../../physics/PhysicsWorld.h"
 #include "../../math/Ray.h"
@@ -104,6 +108,62 @@ namespace spartan
             return name.find("spline_point_") == 0 || name.find("spline_instance_") == 0;
         }
 
+        bool has_spline_component(Entity* entity)
+        {
+            return entity && entity->GetComponent<Spline>();
+        }
+
+        bool has_spline_ancestor(Entity* entity)
+        {
+            for (Entity* current = entity; current; current = current->GetParent())
+            {
+                if (has_spline_component(current))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        bool entity_has_spline(Entity* entity)
+        {
+            if (!entity)
+            {
+                return false;
+            }
+
+            if (has_spline_component(entity))
+            {
+                return true;
+            }
+
+            vector<Entity*> descendants;
+            entity->GetDescendants(&descendants);
+            for (Entity* descendant : descendants)
+            {
+                if (has_spline_component(descendant))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        bool selection_has_spline(const vector<Entity*>& entities)
+        {
+            for (Entity* entity : entities)
+            {
+                if (entity_has_spline(entity))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         bool entity_has_snappable_mesh(Entity* entity)
         {
             if (!entity)
@@ -119,7 +179,7 @@ namespace spartan
             // roads and other splines snap via control points, not as a rigid mesh, and whatever
             // the spline spawned is placed by the spline itself, but a hand placed wall parented
             // to a road is ordinary geometry and has to land like everything else
-            if (entity->GetComponent<Spline>())
+            if (has_spline_component(entity))
             {
                 return false;
             }
@@ -288,6 +348,808 @@ namespace spartan
             }
 
             return entity ? entity->GetPosition().y : 0.0f;
+        }
+
+        struct MeshFootprint
+        {
+            Entity* entity    = nullptr;
+            BoundingBox aabb;
+            float area        = 0.0f;
+            float span        = 0.0f;
+            float height      = 0.0f;
+            float bottom      = 0.0f;
+        };
+
+        struct SnapPlatformDesc
+        {
+            uint64_t entity_id  = 0;
+            float min_x         = 0.0f;
+            float min_z         = 0.0f;
+            float max_x         = 0.0f;
+            float max_z         = 0.0f;
+            float center_x      = 0.0f;
+            float center_z      = 0.0f;
+            float half_x        = 0.0f;
+            float half_z        = 0.0f;
+            float yaw           = 0.0f;
+            float height        = 0.0f;
+            float margin        = 0.0f;
+            uint32_t mesh_count = 0;
+            vector<Entity*> floors;
+        };
+
+        float obb_outside_distance(
+            float x,
+            float z,
+            float center_x,
+            float center_z,
+            float half_x,
+            float half_z,
+            float yaw
+        )
+        {
+            const float c  = cosf(yaw);
+            const float s  = sinf(yaw);
+            const float dx = x - center_x;
+            const float dz = z - center_z;
+            const float lx =  dx * c + dz * s;
+            const float lz = -dx * s + dz * c;
+            const float ox = max(fabsf(lx) - half_x, 0.0f);
+            const float oz = max(fabsf(lz) - half_z, 0.0f);
+            return sqrtf(ox * ox + oz * oz);
+        }
+
+        bool pads_match(const TerrainPlatform& a, const TerrainPlatform& b)
+        {
+            const float pos_eps = 0.05f;
+            const float ang_eps = 0.01f;
+            return a.entity_id == b.entity_id &&
+                fabsf(a.center_x - b.center_x) < pos_eps &&
+                fabsf(a.center_z - b.center_z) < pos_eps &&
+                fabsf(a.half_x - b.half_x) < pos_eps &&
+                fabsf(a.half_z - b.half_z) < pos_eps &&
+                fabsf(a.height - b.height) < pos_eps &&
+                fabsf(a.yaw - b.yaw) < ang_eps;
+        }
+
+        bool pads_same_place(const TerrainPlatform& a, const TerrainPlatform& b)
+        {
+            const float pos_eps = 0.5f;
+            const float ang_eps = 0.05f;
+            return a.entity_id != 0 &&
+                a.entity_id == b.entity_id &&
+                fabsf(a.center_x - b.center_x) < pos_eps &&
+                fabsf(a.center_z - b.center_z) < pos_eps &&
+                fabsf(a.half_x - b.half_x) < pos_eps &&
+                fabsf(a.half_z - b.half_z) < pos_eps &&
+                fabsf(a.yaw - b.yaw) < ang_eps;
+        }
+
+        void pad_clear_extents(const TerrainPlatform& pad, float& half_x, float& half_z)
+        {
+            const float extra = max(pad.margin, 0.5f);
+            half_x = pad.half_x + extra;
+            half_z = pad.half_z + extra;
+        }
+
+        void obb_write_aabb(
+            float center_x,
+            float center_z,
+            float half_x,
+            float half_z,
+            float yaw,
+            float& min_x,
+            float& min_z,
+            float& max_x,
+            float& max_z
+        )
+        {
+            const float c = cosf(yaw);
+            const float s = sinf(yaw);
+            min_x = numeric_limits<float>::max();
+            min_z = numeric_limits<float>::max();
+            max_x = -numeric_limits<float>::max();
+            max_z = -numeric_limits<float>::max();
+            const float signs[2] = { -1.0f, 1.0f };
+            for (float sx : signs)
+            {
+                for (float sz : signs)
+                {
+                    const float x = center_x + (c * sx * half_x) - (s * sz * half_z);
+                    const float z = center_z + (s * sx * half_x) + (c * sz * half_z);
+                    min_x = min(min_x, x);
+                    max_x = max(max_x, x);
+                    min_z = min(min_z, z);
+                    max_z = max(max_z, z);
+                }
+            }
+        }
+
+        bool fit_floor_obb(const vector<MeshFootprint*>& used, SnapPlatformDesc& out)
+        {
+            if (used.empty() || !used[0] || !used[0]->entity)
+            {
+                return false;
+            }
+
+            Entity* seed = used[0]->entity;
+            Vector3 axis_x = seed->GetRight();
+            axis_x.y = 0.0f;
+            if (axis_x.LengthSquared() < 1e-8f)
+            {
+                axis_x = Vector3::Right;
+            }
+            axis_x.Normalize();
+            const float yaw = atan2f(axis_x.z, axis_x.x);
+            axis_x = Vector3(cosf(yaw), 0.0f, sinf(yaw));
+            const Vector3 axis_z(-sinf(yaw), 0.0f, cosf(yaw));
+
+            float min_u = numeric_limits<float>::max();
+            float max_u = -numeric_limits<float>::max();
+            float min_v = numeric_limits<float>::max();
+            float max_v = -numeric_limits<float>::max();
+            uint32_t corner_count = 0;
+
+            for (MeshFootprint* mesh : used)
+            {
+                if (!mesh || !mesh->entity)
+                {
+                    continue;
+                }
+
+                Render* render = mesh->entity->GetComponent<Render>();
+                if (!render || !render->GetMesh())
+                {
+                    continue;
+                }
+
+                array<Vector3, 8> local_corners;
+                render->GetBoundingBoxMesh().GetCorners(&local_corners);
+                const Matrix world = mesh->entity->GetMatrix();
+                for (const Vector3& local : local_corners)
+                {
+                    const Vector3 world_p = world * local;
+                    const float u = world_p.x * axis_x.x + world_p.z * axis_x.z;
+                    const float v = world_p.x * axis_z.x + world_p.z * axis_z.z;
+                    min_u = min(min_u, u);
+                    max_u = max(max_u, u);
+                    min_v = min(min_v, v);
+                    max_v = max(max_v, v);
+                    corner_count++;
+                }
+            }
+
+            if (corner_count == 0 || max_u <= min_u || max_v <= min_v)
+            {
+                return false;
+            }
+
+            const float span = max(max_u - min_u, max_v - min_v);
+            const float overhang = min(max(span * 0.02f, 1.0f), 4.0f);
+            min_u -= overhang;
+            max_u += overhang;
+            min_v -= overhang;
+            max_v += overhang;
+
+            const float mid_u = (min_u + max_u) * 0.5f;
+            const float mid_v = (min_v + max_v) * 0.5f;
+            out.yaw      = yaw;
+            out.half_x   = (max_u - min_u) * 0.5f;
+            out.half_z   = (max_v - min_v) * 0.5f;
+            out.center_x = axis_x.x * mid_u + axis_z.x * mid_v;
+            out.center_z = axis_x.z * mid_u + axis_z.z * mid_v;
+            out.margin   = min(max(span * 0.06f, 2.0f), 6.0f);
+            obb_write_aabb(
+                out.center_x,
+                out.center_z,
+                out.half_x,
+                out.half_z,
+                out.yaw,
+                out.min_x,
+                out.min_z,
+                out.max_x,
+                out.max_z
+            );
+
+            return out.half_x > 0.05f && out.half_z > 0.05f;
+        }
+
+        bool name_looks_like_floor(const string& name)
+        {
+            string lower;
+            lower.reserve(name.size());
+            for (char c : name)
+            {
+                lower.push_back(static_cast<char>(tolower(static_cast<unsigned char>(c))));
+            }
+
+            static const char* keys[] =
+            {
+                "floor", "apron", "runway", "tarmac", "taxi",
+                "ground", "pad", "slab", "asphalt", "parking",
+                "city", "plaza", "station", "foundation",
+                "sidewalk", "pavement", "courtyard", "platform"
+            };
+
+            for (const char* key : keys)
+            {
+                if (lower.find(key) != string::npos)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        bool is_floor_like(const MeshFootprint& mesh)
+        {
+            if (has_spline_ancestor(mesh.entity))
+            {
+                return false;
+            }
+
+            const bool named     = mesh.entity && name_looks_like_floor(mesh.entity->GetObjectName());
+            const float min_span = named ? 8.0f : 20.0f;
+            if (mesh.span < min_span)
+            {
+                return false;
+            }
+
+            const float extent_x   = mesh.aabb.GetMax().x - mesh.aabb.GetMin().x;
+            const float extent_z   = mesh.aabb.GetMax().z - mesh.aabb.GetMin().z;
+            const float short_side = min(extent_x, extent_z);
+            const float long_side  = max(extent_x, extent_z);
+            const bool compact     = short_side > 0.1f && (long_side / short_side) <= 4.0f;
+
+            // a winding road aabb is a long strip, flattening it plazas the hillside
+            if (!named && !compact)
+            {
+                return false;
+            }
+
+            // hangars and houses are thick, aprons and roads are thin slabs
+            // a compact city or station can be tall, the pad is still the aabb bottom
+            if (!compact && mesh.height > 8.0f && mesh.height > mesh.span * 0.2f)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        float live_pad_span_cap(float half_x, float half_z)
+        {
+            const float span       = max(half_x, half_z) * 2.0f;
+            const float short_side = min(half_x, half_z) * 2.0f;
+            if (short_side < 0.1f)
+            {
+                return 400.0f;
+            }
+
+            const float aspect = span / short_side;
+            return aspect <= 3.0f ? 4000.0f : 400.0f;
+        }
+
+        bool occupant_skippable(Entity* entity)
+        {
+            if (!entity || !entity->GetActive())
+            {
+                return true;
+            }
+
+            if (entity->HasTag("terrain_prop") || entity->GetObjectName() == "live_pad")
+            {
+                return true;
+            }
+
+            if (is_terrain_tile_or_water(entity))
+            {
+                return true;
+            }
+
+            if (entity->GetComponent<Camera>() || entity->GetComponent<Light>())
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        bool mesh_sits_on_pad(Entity* entity, const TerrainPlatform& pad)
+        {
+            BoundingBox aabb;
+            if (!get_world_aabb(entity, aabb))
+            {
+                return false;
+            }
+
+            const Vector3 mn = aabb.GetMin();
+            const Vector3 mx = aabb.GetMax();
+            if (mn.y > pad.height + 12.0f || mx.y < pad.height - 4.0f)
+            {
+                return false;
+            }
+
+            const float xs[3] = { mn.x, (mn.x + mx.x) * 0.5f, mx.x };
+            const float zs[3] = { mn.z, (mn.z + mx.z) * 0.5f, mx.z };
+            for (float x : xs)
+            {
+                for (float z : zs)
+                {
+                    if (obb_outside_distance(x, z, pad.center_x, pad.center_z, pad.half_x, pad.half_z, pad.yaw) <= 0.0f)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        bool platform_has_occupant(const TerrainPlatform& pad)
+        {
+            for (Entity* entity : World::GetEntitiesWithRender())
+            {
+                if (occupant_skippable(entity))
+                {
+                    continue;
+                }
+
+                if (mesh_sits_on_pad(entity, pad))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        TerrainPlatform platform_from_cluster(const vector<MeshFootprint*>& cluster)
+        {
+            TerrainPlatform pad;
+            if (cluster.empty() || !cluster[0] || !cluster[0]->entity)
+            {
+                return pad;
+            }
+
+            SnapPlatformDesc desc;
+            desc.entity_id = cluster[0]->entity->GetObjectId();
+            desc.height    = cluster[0]->bottom;
+            for (MeshFootprint* mesh : cluster)
+            {
+                if (mesh)
+                {
+                    desc.height = min(desc.height, mesh->bottom);
+                }
+            }
+
+            if (!fit_floor_obb(cluster, desc))
+            {
+                return pad;
+            }
+
+            pad.entity_id = desc.entity_id;
+            pad.center_x  = desc.center_x;
+            pad.center_z  = desc.center_z;
+            pad.half_x    = desc.half_x;
+            pad.half_z    = desc.half_z;
+            pad.yaw       = desc.yaw;
+            pad.height    = desc.height - 0.08f;
+            pad.margin    = desc.margin;
+            pad.min_x     = desc.min_x;
+            pad.min_z     = desc.min_z;
+            pad.max_x     = desc.max_x;
+            pad.max_z     = desc.max_z;
+            return pad;
+        }
+
+        bool aabb_xz_near(const BoundingBox& a, const BoundingBox& b, float gap)
+        {
+            const bool overlap_x =
+                a.GetMin().x - gap <= b.GetMax().x &&
+                b.GetMin().x - gap <= a.GetMax().x;
+            const bool overlap_z =
+                a.GetMin().z - gap <= b.GetMax().z &&
+                b.GetMin().z - gap <= a.GetMax().z;
+
+            return overlap_x && overlap_z;
+        }
+
+        bool collect_mesh_footprints(const vector<Entity*>& entities, vector<MeshFootprint>& out)
+        {
+            unordered_set<Entity*> unique;
+            for (Entity* entity : entities)
+            {
+                vector<Entity*> meshes;
+                collect_snappable_entities(entity, meshes);
+                for (Entity* part : meshes)
+                {
+                    if (!part || !unique.insert(part).second)
+                    {
+                        continue;
+                    }
+
+                    BoundingBox aabb;
+                    if (!get_world_aabb(part, aabb))
+                    {
+                        continue;
+                    }
+
+                    const Vector3 box_min = aabb.GetMin();
+                    const Vector3 box_max = aabb.GetMax();
+                    const bool usable =
+                        isfinite(box_min.x) && isfinite(box_min.z) &&
+                        isfinite(box_max.x) && isfinite(box_max.z) &&
+                        box_min.x <= box_max.x && box_min.z <= box_max.z;
+
+                    if (!usable)
+                    {
+                        continue;
+                    }
+
+                    MeshFootprint mesh;
+                    mesh.entity = part;
+                    mesh.aabb   = aabb;
+                    mesh.span   = max(box_max.x - box_min.x, box_max.z - box_min.z);
+                    mesh.height = box_max.y - box_min.y;
+                    mesh.area   = max(box_max.x - box_min.x, 0.0f) * max(box_max.z - box_min.z, 0.0f);
+                    mesh.bottom = box_min.y;
+                    out.push_back(mesh);
+                }
+            }
+
+            return !out.empty();
+        }
+
+        bool find_snap_platform(
+            const vector<Entity*>& entities,
+            bool require_floor,
+            SnapPlatformDesc& out
+        )
+        {
+            vector<MeshFootprint> meshes;
+            if (!collect_mesh_footprints(entities, meshes))
+            {
+                return false;
+            }
+
+            vector<MeshFootprint*> floors;
+            for (MeshFootprint& mesh : meshes)
+            {
+                if (is_floor_like(mesh))
+                {
+                    floors.push_back(&mesh);
+                }
+            }
+
+            vector<MeshFootprint*> used;
+            if (!floors.empty())
+            {
+                float lowest = numeric_limits<float>::max();
+                for (MeshFootprint* mesh : floors)
+                {
+                    lowest = min(lowest, mesh->bottom);
+                }
+
+                vector<MeshFootprint*> band;
+                for (MeshFootprint* mesh : floors)
+                {
+                    if (mesh->bottom <= lowest + 2.0f)
+                    {
+                        band.push_back(mesh);
+                    }
+                }
+
+                MeshFootprint* seed = nullptr;
+                float best_area     = -1.0f;
+                for (MeshFootprint* mesh : band)
+                {
+                    if (mesh->area > best_area)
+                    {
+                        best_area = mesh->area;
+                        seed      = mesh;
+                    }
+                }
+
+                if (!seed)
+                {
+                    return false;
+                }
+
+                used.push_back(seed);
+                const float gap = max(2.0f, min(seed->span * 0.08f, 40.0f));
+                bool added      = true;
+                while (added)
+                {
+                    added = false;
+                    for (MeshFootprint* mesh : band)
+                    {
+                        if (find(used.begin(), used.end(), mesh) != used.end())
+                        {
+                            continue;
+                        }
+
+                        bool near = false;
+                        for (MeshFootprint* member : used)
+                        {
+                            if (aabb_xz_near(member->aabb, mesh->aabb, gap))
+                            {
+                                near = true;
+                                break;
+                            }
+                        }
+
+                        if (near)
+                        {
+                            used.push_back(mesh);
+                            added = true;
+                        }
+                    }
+                }
+
+                out.entity_id = seed->entity ? seed->entity->GetObjectId() : 0;
+                out.height    = seed->bottom;
+            }
+            else
+            {
+                if (require_floor)
+                {
+                    return false;
+                }
+
+                for (MeshFootprint& mesh : meshes)
+                {
+                    used.push_back(&mesh);
+                }
+
+                out.entity_id = (!entities.empty() && entities[0]) ? entities[0]->GetObjectId() : 0;
+                out.height    = numeric_limits<float>::max();
+                for (MeshFootprint* mesh : used)
+                {
+                    out.height = min(out.height, mesh->bottom);
+                }
+            }
+
+            if (used.empty())
+            {
+                return false;
+            }
+
+            if (!fit_floor_obb(used, out))
+            {
+                return false;
+            }
+
+            out.mesh_count = static_cast<uint32_t>(used.size());
+            out.floors.clear();
+            out.floors.reserve(used.size());
+            for (MeshFootprint* mesh : used)
+            {
+                if (mesh && mesh->entity)
+                {
+                    out.floors.push_back(mesh->entity);
+                }
+            }
+
+            return true;
+        }
+
+        void level_selection(const vector<Entity*>& entities)
+        {
+            unordered_set<Entity*> unique;
+            auto level = [&](Entity* entity)
+            {
+                if (!entity || !unique.insert(entity).second)
+                {
+                    return;
+                }
+
+                if (entity->GetComponent<Spline>())
+                {
+                    return;
+                }
+
+                apply_surface_alignment(entity, Vector3::Up);
+            };
+
+            for (Entity* entity : entities)
+            {
+                if (!entity || is_terrain_tile_or_water(entity))
+                {
+                    continue;
+                }
+
+                level(entity);
+
+                vector<Entity*> descendants;
+                entity->GetDescendants(&descendants);
+                for (Entity* descendant : descendants)
+                {
+                    if (!descendant || is_spline_owned(descendant) || is_terrain_tile_or_water(descendant))
+                    {
+                        continue;
+                    }
+
+                    level(descendant);
+                }
+            }
+        }
+
+        bool entity_in_selection_tree(Entity* entity, const vector<Entity*>& selection)
+        {
+            if (!entity)
+            {
+                return false;
+            }
+
+            for (Entity* root : selection)
+            {
+                if (is_entity_or_descendant(entity, root))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        bool sibling_branch_has_spline(Entity* parent, Entity* child_branch)
+        {
+            if (!parent)
+            {
+                return false;
+            }
+
+            if (has_spline_component(parent))
+            {
+                return true;
+            }
+
+            const uint32_t child_count = parent->GetChildrenCount();
+            for (uint32_t i = 0; i < child_count; i++)
+            {
+                Entity* child = parent->GetChildByIndex(i);
+                if (!child || child == child_branch)
+                {
+                    continue;
+                }
+
+                if (entity_has_spline(child))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        Entity* floor_movable_root(Entity* floor, const vector<Entity*>& selection)
+        {
+            if (!floor || has_spline_component(floor) || has_spline_ancestor(floor))
+            {
+                return nullptr;
+            }
+
+            Entity* current = floor;
+            while (Entity* parent = current->GetParent())
+            {
+                if (!entity_in_selection_tree(parent, selection))
+                {
+                    break;
+                }
+
+                if (has_spline_component(parent) || sibling_branch_has_spline(parent, current))
+                {
+                    break;
+                }
+
+                current = parent;
+            }
+
+            if (has_spline_component(current))
+            {
+                return nullptr;
+            }
+
+            return current;
+        }
+
+        void translate_floor_cluster(
+            const vector<Entity*>& floors,
+            const vector<Entity*>& selection,
+            float delta_y
+        )
+        {
+            if (fabsf(delta_y) < 0.0001f)
+            {
+                return;
+            }
+
+            vector<Entity*> roots;
+            unordered_set<Entity*> unique;
+            for (Entity* floor : floors)
+            {
+                Entity* root = floor_movable_root(floor, selection);
+                if (!root || !unique.insert(root).second)
+                {
+                    continue;
+                }
+
+                roots.push_back(root);
+            }
+
+            for (Entity* entity : roots)
+            {
+                bool nested = false;
+                for (Entity* other : roots)
+                {
+                    if (other && other != entity && entity->IsDescendantOf(other))
+                    {
+                        nested = true;
+                        break;
+                    }
+                }
+
+                if (nested)
+                {
+                    continue;
+                }
+
+                const Vector3 position = entity->GetPosition();
+                entity->SetPosition(Vector3(position.x, position.y + delta_y, position.z));
+            }
+        }
+
+        bool sample_terrain_max(
+            Terrain* terrain,
+            float center_x,
+            float center_z,
+            float half_x,
+            float half_z,
+            float yaw,
+            float& max_out
+        )
+        {
+            if (!terrain)
+            {
+                return false;
+            }
+
+            const TerrainGridMapping mapping = terrain->GetGridMapping();
+            const uint32_t samples_x = footprint_samples(half_x * 2.0f, mapping.scale_x);
+            const uint32_t samples_z = footprint_samples(half_z * 2.0f, mapping.scale_z);
+            const Vector3 axis_x(cosf(yaw), 0.0f, sinf(yaw));
+            const Vector3 axis_z(-sinf(yaw), 0.0f, cosf(yaw));
+
+            float highest  = -numeric_limits<float>::max();
+            uint32_t count = 0;
+
+            for (uint32_t iz = 0; iz < samples_z; iz++)
+            {
+                for (uint32_t ix = 0; ix < samples_x; ix++)
+                {
+                    const float u = (samples_x > 1) ? (static_cast<float>(ix) / static_cast<float>(samples_x - 1)) * 2.0f - 1.0f : 0.0f;
+                    const float v = (samples_z > 1) ? (static_cast<float>(iz) / static_cast<float>(samples_z - 1)) * 2.0f - 1.0f : 0.0f;
+                    const float x = center_x + axis_x.x * (u * half_x) + axis_z.x * (v * half_z);
+                    const float z = center_z + axis_x.z * (u * half_x) + axis_z.z * (v * half_z);
+
+                    float height = 0.0f;
+                    if (terrain->SampleHeight(x, z, height))
+                    {
+                        highest = max(highest, height);
+                        count++;
+                    }
+                }
+            }
+
+            if (count == 0)
+            {
+                return false;
+            }
+
+            max_out = highest;
+            return true;
         }
 
         // drop a vertical ray from the top of the entity, the heightfield is always the floor
@@ -599,13 +1461,14 @@ namespace spartan
             // dropping only the control points leaves the pivot where it was authored, and every
             // wall, light and camera parented to the road keeps riding it, so land the pivot too,
             // the control points are set in world space right after and do not care where it sits
+            const float clearance = 0.05f;
             if (terrain)
             {
                 const Vector3 pivot = entity->GetPosition();
                 float pivot_ground  = 0.0f;
                 if (terrain->SampleHeight(pivot.x, pivot.z, pivot_ground))
                 {
-                    entity->SetPosition(Vector3(pivot.x, pivot_ground + offset, pivot.z));
+                    entity->SetPosition(Vector3(pivot.x, pivot_ground + offset + clearance, pivot.z));
                 }
             }
 
@@ -623,12 +1486,21 @@ namespace spartan
                     continue;
                 }
 
-                snap_entity_position(child, terrain, ignored, offset);
+                const Vector3 point = child->GetPosition();
+                float ground        = 0.0f;
+                if (terrain && terrain->SampleHeight(point.x, point.z, ground))
+                {
+                    child->SetPosition(Vector3(point.x, ground + offset + clearance, point.z));
+                }
+                else
+                {
+                    snap_entity_position(child, terrain, ignored, offset + clearance);
+                }
             }
 
             // denser samples between points follow the heightfield
             spline->SetConformToTerrain(true);
-            if (spline->GetMeshEnabled())
+            if (spline->GetMeshEnabled() || spline->HasRoadMesh())
             {
                 spline->GenerateRoadMesh();
             }
@@ -640,6 +1512,117 @@ namespace spartan
             }
 
             return true;
+        }
+
+        uint32_t snap_splines_in_selection(const vector<Entity*>& entities, Terrain* terrain, float offset)
+        {
+            unordered_set<Entity*> unique;
+            uint32_t count = 0;
+
+            for (Entity* entity : entities)
+            {
+                vector<Entity*> splines;
+                collect_spline_entities(entity, splines);
+                for (Entity* spline_entity : splines)
+                {
+                    if (!spline_entity || !unique.insert(spline_entity).second)
+                    {
+                        continue;
+                    }
+
+                    unordered_set<Entity*> ignored;
+                    if (snap_spline_to_terrain(spline_entity, terrain, ignored, offset))
+                    {
+                        count++;
+                    }
+                }
+            }
+
+            return count;
+        }
+
+        bool mesh_is_buried(Entity* entity, Terrain* terrain)
+        {
+            if (!entity || !terrain)
+            {
+                return false;
+            }
+
+            BoundingBox aabb;
+            if (!get_world_aabb(entity, aabb))
+            {
+                return false;
+            }
+
+            float ground = 0.0f;
+            if (!terrain->SampleHeight(entity->GetPosition().x, entity->GetPosition().z, ground))
+            {
+                return false;
+            }
+
+            return aabb.GetMin().y < (ground - 0.05f);
+        }
+
+        uint32_t snap_cargo_after_platform(
+            const vector<Entity*>& entities,
+            const vector<Entity*>& floors,
+            Terrain* terrain,
+            float offset
+        )
+        {
+            unordered_set<Entity*> floor_tree;
+            for (Entity* floor : floors)
+            {
+                Entity* root = floor_movable_root(floor, entities);
+                if (!root)
+                {
+                    continue;
+                }
+
+                floor_tree.insert(root);
+                vector<Entity*> descendants;
+                root->GetDescendants(&descendants);
+                for (Entity* descendant : descendants)
+                {
+                    if (descendant)
+                    {
+                        floor_tree.insert(descendant);
+                    }
+                }
+            }
+
+            unordered_set<Entity*> unique;
+            uint32_t count = 0;
+            for (Entity* entity : entities)
+            {
+                vector<Entity*> targets;
+                collect_snappable_entities(entity, targets);
+                for (Entity* target : targets)
+                {
+                    if (!target || !unique.insert(target).second)
+                    {
+                        continue;
+                    }
+
+                    if (floor_tree.count(target) > 0)
+                    {
+                        continue;
+                    }
+
+                    if (!has_spline_ancestor(target) && !mesh_is_buried(target, terrain))
+                    {
+                        continue;
+                    }
+
+                    unordered_set<Entity*> ignored;
+                    if (snap_mesh_entity(target, terrain, ignored, offset))
+                    {
+                        count++;
+                    }
+                }
+            }
+
+            return count;
         }
 
         string get_terrain_cache_directory()
@@ -1613,6 +2596,25 @@ namespace spartan
             layer_node.append_attribute("flags")                = layer.flags;
         }
 
+        // pads cut for snapped floors, regenerate rebuilds them from this list
+        pugi::xml_node platforms_node = node.append_child("platforms");
+        for (const TerrainPlatform& platform : m_platforms)
+        {
+            pugi::xml_node pad = platforms_node.append_child("platform");
+            pad.append_attribute("entity_id") = platform.entity_id;
+            pad.append_attribute("min_x")     = platform.min_x;
+            pad.append_attribute("min_z")     = platform.min_z;
+            pad.append_attribute("max_x")     = platform.max_x;
+            pad.append_attribute("max_z")     = platform.max_z;
+            pad.append_attribute("center_x")  = platform.center_x;
+            pad.append_attribute("center_z")  = platform.center_z;
+            pad.append_attribute("half_x")    = platform.half_x;
+            pad.append_attribute("half_z")    = platform.half_z;
+            pad.append_attribute("yaw")       = platform.yaw;
+            pad.append_attribute("height")    = platform.height;
+            pad.append_attribute("margin")    = platform.margin;
+        }
+
         // flat terrain dims, used when there is no height map seed
         if (!m_height_map_seed && m_width > 1 && m_height > 1)
         {
@@ -1785,6 +2787,54 @@ namespace spartan
 
         // forest grass/rock/sand slope material
         ApplyDefaultMaterial();
+
+        m_platforms.clear();
+        if (pugi::xml_node platforms_node = node.child("platforms"))
+        {
+            for (pugi::xml_node pad = platforms_node.child("platform"); pad; pad = pad.next_sibling("platform"))
+            {
+                TerrainPlatform platform;
+                platform.entity_id = pad.attribute("entity_id").as_ullong(0);
+                platform.min_x     = pad.attribute("min_x").as_float(0.0f);
+                platform.min_z     = pad.attribute("min_z").as_float(0.0f);
+                platform.max_x     = pad.attribute("max_x").as_float(0.0f);
+                platform.max_z     = pad.attribute("max_z").as_float(0.0f);
+                platform.center_x  = pad.attribute("center_x").as_float(0.0f);
+                platform.center_z  = pad.attribute("center_z").as_float(0.0f);
+                platform.half_x    = pad.attribute("half_x").as_float(0.0f);
+                platform.half_z    = pad.attribute("half_z").as_float(0.0f);
+                platform.yaw       = pad.attribute("yaw").as_float(0.0f);
+                platform.height    = pad.attribute("height").as_float(0.0f);
+                platform.margin    = min(pad.attribute("margin").as_float(0.0f), 6.0f);
+                if (platform.half_x <= 0.05f || platform.half_z <= 0.05f)
+                {
+                    platform.center_x = (platform.min_x + platform.max_x) * 0.5f;
+                    platform.center_z = (platform.min_z + platform.max_z) * 0.5f;
+                    platform.half_x   = (platform.max_x - platform.min_x) * 0.5f;
+                    platform.half_z   = (platform.max_z - platform.min_z) * 0.5f;
+                    platform.yaw      = 0.0f;
+                }
+                else if (platform.max_x <= platform.min_x || platform.max_z <= platform.min_z)
+                {
+                    obb_write_aabb(
+                        platform.center_x,
+                        platform.center_z,
+                        platform.half_x,
+                        platform.half_z,
+                        platform.yaw,
+                        platform.min_x,
+                        platform.min_z,
+                        platform.max_x,
+                        platform.max_z
+                    );
+                }
+
+                if (platform.half_x > 0.05f && platform.half_z > 0.05f)
+                {
+                    m_platforms.push_back(platform);
+                }
+            }
+        }
 
         // regenerate terrain if we have a height map
         if (m_height_map_seed)
@@ -2264,8 +3314,25 @@ namespace spartan
             SaveToFile(cache_file.c_str());
         }
 
+        SnapshotSeed();
+        m_live_pad_active = false;
+        m_live_pad_dirty  = false;
+
+        if (!ProgressTracker::GetProgress(ProgressType::World).IsProgressing())
+        {
+            HarvestOccupiedPlatforms();
+            PruneOrphanPlatforms();
+        }
+
+        if (ApplyPlatformsToHeightfield())
+        {
+            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying platforms...");
+            RebuildMeshData(true);
+        }
+
         BakeTerrainMaps();
         BakeHeightMapPixels();
+        m_prop_mask_seed = m_prop_mask_pixels;
 
         // the dense erosion grid is only needed for the analysis bake above, it is tens of
         // megabytes and nothing reads it afterwards
@@ -2333,6 +3400,11 @@ namespace spartan
         {
             CommitProps();
         }
+
+        if (!Engine::IsFlagSet(EngineMode::Playing) && !m_is_generating.load(memory_order_acquire))
+        {
+            UpdateLivePads();
+        }
     }
 
     void Terrain::CommitGpu()
@@ -2370,6 +3442,22 @@ namespace spartan
         RefreshLayers();
         PushToRenderer();
         SpawnFlowRivers();
+        RebuildCommittedPadOverlays();
+        for (Entity* entity : World::GetEntities())
+        {
+            if (!entity)
+            {
+                continue;
+            }
+
+            if (Spline* spline = entity->GetComponent<Spline>())
+            {
+                if (spline->GetConformToTerrain())
+                {
+                    spline->GenerateRoadMesh();
+                }
+            }
+        }
 
         ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         ProgressTracker::GetProgress(ProgressType::Terrain).Complete();
@@ -2557,166 +3645,43 @@ namespace spartan
             return 0;
         }
 
-        // horizontal footprint of everything the snap is about to move
-        float min_x          = numeric_limits<float>::max();
-        float max_x          = -numeric_limits<float>::max();
-        float min_z          = numeric_limits<float>::max();
-        float max_z          = -numeric_limits<float>::max();
-        Entity* driver_min_x = nullptr;
-        Entity* driver_max_x = nullptr;
-        Entity* driver_min_z = nullptr;
-        Entity* driver_max_z = nullptr;
-        bool has_footprint   = false;
-        uint32_t mesh_count  = 0;
-
-        auto grow = [&](const Vector3& point, Entity* part)
+        // a compact building floor gets a tight pad, a road drapes on the hills instead of being
+        // dropped as a rigid slab and buried
+        const bool had_platform = terrain->BuildSnapPlatform(entities, true);
+        if (had_platform)
         {
-            if (point.x < min_x)
-            {
-                min_x        = point.x;
-                driver_min_x = part;
-            }
-            if (point.x > max_x)
-            {
-                max_x        = point.x;
-                driver_max_x = part;
-            }
-            if (point.z < min_z)
-            {
-                min_z        = point.z;
-                driver_min_z = part;
-            }
-            if (point.z > max_z)
-            {
-                max_z        = point.z;
-                driver_max_z = part;
-            }
-
-            has_footprint = true;
-        };
-
-        // only real geometry defines the footprint, a marker or a control point out on the
-        // horizon would otherwise stretch the rectangle across the whole map
-        auto grow_by_entity = [&grow, &mesh_count](Entity* part)
-        {
-            BoundingBox aabb;
-            if (!part || !get_world_aabb(part, aabb))
-            {
-                return;
-            }
-
-            const Vector3 box_min = aabb.GetMin();
-            const Vector3 box_max = aabb.GetMax();
-
-            // an empty or non finite box would drag the rectangle out to infinity
-            const bool usable =
-                isfinite(box_min.x) && isfinite(box_min.z) &&
-                isfinite(box_max.x) && isfinite(box_max.z) &&
-                box_min.x <= box_max.x && box_min.z <= box_max.z;
-
-            if (!usable)
-            {
-                return;
-            }
-
-            mesh_count++;
-            grow(box_min, part);
-            grow(box_max, part);
-        };
-
-        for (Entity* entity : entities)
-        {
-            vector<Entity*> meshes;
-            collect_snappable_entities(entity, meshes);
-            for (Entity* part : meshes)
-            {
-                grow_by_entity(part);
-            }
-
-            // a spline only counts once it has an actual road mesh
-            vector<Entity*> splines;
-            collect_spline_entities(entity, splines);
-            for (Entity* spline_entity : splines)
-            {
-                grow_by_entity(spline_entity);
-            }
+            snap_splines_in_selection(entities, terrain, offset);
+            snap_cargo_after_platform(entities, {}, terrain, offset);
+            return 1;
         }
 
-        if (!has_footprint)
+        if (selection_has_spline(entities))
+        {
+            return SnapEntitiesToTerrain(entities, offset, false);
+        }
+
+        if (!terrain->BuildSnapPlatform(entities, false))
         {
             SP_LOG_WARNING("nothing snappable in the selection, no footprint to flatten");
             return 0;
         }
 
-        // level the pad at the average ground height under the footprint, least cut and fill
-        const uint32_t axis_samples = 16;
-        float height_sum            = 0.0f;
-        uint32_t height_count       = 0;
-
-        for (uint32_t iz = 0; iz < axis_samples; iz++)
-        {
-            for (uint32_t ix = 0; ix < axis_samples; ix++)
-            {
-                const float u = static_cast<float>(ix) / static_cast<float>(axis_samples - 1);
-                const float v = static_cast<float>(iz) / static_cast<float>(axis_samples - 1);
-                const float x = min_x + (max_x - min_x) * u;
-                const float z = min_z + (max_z - min_z) * v;
-
-                float sampled_height = 0.0f;
-                if (terrain->SampleHeight(x, z, sampled_height))
-                {
-                    height_sum += sampled_height;
-                    height_count++;
-                }
-            }
-        }
-
-        if (height_count == 0)
-        {
-            SP_LOG_WARNING("the selection footprint does not overlap the terrain");
-            return 0;
-        }
-
-        const float pad_height = height_sum / static_cast<float>(height_count);
-
-        // the ramp begins where the pad ends, so a rectangle drawn tight around the geometry puts
-        // rising ground right under the outer edge of every ground plane and buries it, the pad
-        // has to reach past the footprint before it starts climbing back
-        const float overhang = min(max(max(max_x - min_x, max_z - min_z) * 0.02f, 10.0f), 100.0f);
-        min_x -= overhang;
-        max_x += overhang;
-        min_z -= overhang;
-        max_z += overhang;
-
-        // the pad itself stays a hard rectangle, the ramp only lives outside it
-        const float footprint = max(max_x - min_x, max_z - min_z);
-        const float margin    = min(max(footprint * 0.15f, 25.0f), 500.0f);
-
-        auto driver_name = [](Entity* part)
-        {
-            return part ? part->GetObjectName().c_str() : "none";
-        };
-
-        SP_LOG_INFO(
-            "snap flat: %u meshes, rect %.0f x %.0f, pad at %.1f, ramp %.0f",
-            mesh_count, max_x - min_x, max_z - min_z, pad_height, margin
-        );
-        SP_LOG_INFO(
-            "snap flat: extents from -x '%s', +x '%s', -z '%s', +z '%s'",
-            driver_name(driver_min_x),
-            driver_name(driver_max_x),
-            driver_name(driver_min_z),
-            driver_name(driver_max_z)
-        );
-
-        terrain->FlattenRegion(min_x, min_z, max_x, max_z, pad_height, margin);
-
-        return SnapEntitiesToTerrain(entities, offset);
+        snap_splines_in_selection(entities, terrain, offset);
+        snap_cargo_after_platform(entities, {}, terrain, offset);
+        return 1;
     }
 
-    uint32_t Terrain::SnapEntitiesToTerrain(const vector<Entity*>& entities, float offset)
+
+    uint32_t Terrain::SnapEntitiesToTerrain(const vector<Entity*>& entities, float offset, bool build_platform)
     {
         Terrain* terrain = FindActive();
+        if (build_platform && terrain && terrain->BuildSnapPlatform(entities, true))
+        {
+            snap_splines_in_selection(entities, terrain, offset);
+            snap_cargo_after_platform(entities, {}, terrain, offset);
+            return 1;
+        }
+
         unordered_set<Entity*> unique_splines;
         unordered_set<Entity*> unique_targets;
         vector<Entity*> splines;
@@ -3058,10 +4023,11 @@ namespace spartan
     }
 
     bool Terrain::FlattenRegion(
-        float world_min_x,
-        float world_min_z,
-        float world_max_x,
-        float world_max_z,
+        float center_x,
+        float center_z,
+        float half_x,
+        float half_z,
+        float yaw,
         float world_height,
         float blend_margin
     )
@@ -3071,53 +4037,1898 @@ namespace spartan
             return false;
         }
 
-        // the grid lives in terrain local space
-        Vector3 local_min(world_min_x, world_height, world_min_z);
-        Vector3 local_max(world_max_x, world_height, world_max_z);
+        ApplyFlattenToPositions(
+            center_x,
+            center_z,
+            half_x,
+            half_z,
+            yaw,
+            world_height,
+            blend_margin
+        );
+
+        RebuildSurface(false);
+        PunchPropMaskFootprint(center_x, center_z, half_x + blend_margin, half_z + blend_margin, yaw);
+        UploadPropMask();
+        ClearFootprintProps(center_x, center_z, half_x + blend_margin, half_z + blend_margin, yaw);
+        WorldHelpers::RefreshTerrainGpuScatter(this);
+        return true;
+    }
+
+    void Terrain::ApplyFlattenToPositions(
+        float center_x,
+        float center_z,
+        float half_x,
+        float half_z,
+        float yaw,
+        float world_height,
+        float blend_margin
+    )
+    {
+        if (!HasHeightfield())
+        {
+            return;
+        }
+
+        float local_cx     = center_x;
+        float local_cz     = center_z;
+        float local_hx     = half_x;
+        float local_hz     = half_z;
+        float local_yaw    = yaw;
+        float local_height = world_height;
+
         if (Entity* entity = GetEntity())
         {
             const Matrix inverse = entity->GetMatrix().Inverted();
-            local_min = inverse * local_min;
-            local_max = inverse * local_max;
+            const Vector3 local_center = inverse * Vector3(center_x, world_height, center_z);
+            local_cx     = local_center.x;
+            local_cz     = local_center.z;
+            local_height = local_center.y;
+
+            const Vector3 world_axis(center_x + cosf(yaw), world_height, center_z + sinf(yaw));
+            const Vector3 local_axis = inverse * world_axis - local_center;
+            local_yaw = atan2f(local_axis.z, local_axis.x);
+
+            const Vector3 world_x(center_x + cosf(yaw) * half_x, world_height, center_z + sinf(yaw) * half_x);
+            const Vector3 world_z(center_x - sinf(yaw) * half_z, world_height, center_z + cosf(yaw) * half_z);
+            local_hx = (inverse * world_x - local_center).Length();
+            local_hz = (inverse * world_z - local_center).Length();
         }
 
-        const float min_x    = min(local_min.x, local_max.x);
-        const float max_x    = max(local_min.x, local_max.x);
-        const float min_z    = min(local_min.z, local_max.z);
-        const float max_z    = max(local_min.z, local_max.z);
-        const float target_y = (local_min.y + local_max.y) * 0.5f;
-        const float margin   = max(blend_margin, 0.0f);
+        const TerrainGridMapping mapping = GetGridMapping();
+        const float step   = max(mapping.scale_x, mapping.scale_z);
+        const float margin = max(max(blend_margin, 0.0f), step);
+        const float inner  = min(step * 0.5f, margin);
 
         for (Vector3& position : m_positions)
         {
-            // how far outside the rectangle the sample sits, zero anywhere inside it
-            const float distance_x = max(max(min_x - position.x, position.x - max_x), 0.0f);
-            const float distance_z = max(max(min_z - position.z, position.z - max_z), 0.0f);
-            const float distance   = sqrtf(distance_x * distance_x + distance_z * distance_z);
+            const float distance = obb_outside_distance(
+                position.x,
+                position.z,
+                local_cx,
+                local_cz,
+                local_hx,
+                local_hz,
+                local_yaw
+            );
 
             if (distance > margin)
             {
                 continue;
             }
 
-            // dead flat inside the rectangle, smooth ramp back to the original ground outside it
             float weight = 1.0f;
-            if (distance > 0.0f && margin > 0.0f)
+            if (distance > inner && margin > inner)
             {
-                const float t = distance / margin;
+                const float t = (distance - inner) / (margin - inner);
                 weight        = 1.0f - (t * t * (3.0f - 2.0f * t));
             }
 
-            position.y += (target_y - position.y) * weight;
+            position.y += (local_height - position.y) * weight;
         }
 
         if (!m_height_data.empty() && m_height_data.size() == m_positions.size())
         {
             TerrainSystem::SyncHeightDataFromPositions(m_height_data, m_positions);
         }
+    }
 
-        RebuildSurface(true);
+    void Terrain::PunchPropMaskFootprint(
+        float center_x,
+        float center_z,
+        float half_x,
+        float half_z,
+        float yaw
+    )
+    {
+        if (m_prop_mask_pixels.empty() || m_map_width < 2 || m_map_height < 2)
+        {
+            return;
+        }
+
+        if (fabsf(m_world_mapping.z) < 1e-12f || fabsf(m_world_mapping.w) < 1e-12f)
+        {
+            return;
+        }
+
+        float min_x = 0.0f;
+        float min_z = 0.0f;
+        float max_x = 0.0f;
+        float max_z = 0.0f;
+        obb_write_aabb(center_x, center_z, half_x, half_z, yaw, min_x, min_z, max_x, max_z);
+
+        auto world_to_pixel = [&](float world, float origin, float inv_size, uint32_t resolution) -> int
+        {
+            const float u = (world - origin) * inv_size;
+            return static_cast<int>(clamp(u, 0.0f, 1.0f) * static_cast<float>(resolution - 1) + 0.5f);
+        };
+
+        const int x0 = world_to_pixel(min_x, m_world_mapping.x, m_world_mapping.z, m_map_width);
+        const int x1 = world_to_pixel(max_x, m_world_mapping.x, m_world_mapping.z, m_map_width);
+        const int z0 = world_to_pixel(min_z, m_world_mapping.y, m_world_mapping.w, m_map_height);
+        const int z1 = world_to_pixel(max_z, m_world_mapping.y, m_world_mapping.w, m_map_height);
+
+        const int x_min = min(x0, x1);
+        const int x_max = max(x0, x1);
+        const int z_min = min(z0, z1);
+        const int z_max = max(z0, z1);
+
+        for (int z = z_min; z <= z_max; z++)
+        {
+            const float v       = static_cast<float>(z) / static_cast<float>(m_map_height - 1);
+            const float world_z = m_world_mapping.y + v / m_world_mapping.w;
+            for (int x = x_min; x <= x_max; x++)
+            {
+                const float u       = static_cast<float>(x) / static_cast<float>(m_map_width - 1);
+                const float world_x = m_world_mapping.x + u / m_world_mapping.z;
+                if (obb_outside_distance(world_x, world_z, center_x, center_z, half_x, half_z, yaw) > 0.0f)
+                {
+                    continue;
+                }
+
+                const size_t offset = (static_cast<size_t>(z) * m_map_width + static_cast<size_t>(x)) * 4;
+                m_prop_mask_pixels[offset + 0] = 0;
+                m_prop_mask_pixels[offset + 1] = 0;
+                m_prop_mask_pixels[offset + 2] = 0;
+            }
+        }
+    }
+
+    void Terrain::RestorePropMaskFootprint(
+        float center_x,
+        float center_z,
+        float half_x,
+        float half_z,
+        float yaw
+    )
+    {
+        if (m_prop_mask_pixels.empty() || m_prop_mask_seed.size() != m_prop_mask_pixels.size())
+        {
+            return;
+        }
+
+        if (m_map_width < 2 || m_map_height < 2)
+        {
+            return;
+        }
+
+        if (fabsf(m_world_mapping.z) < 1e-12f || fabsf(m_world_mapping.w) < 1e-12f)
+        {
+            return;
+        }
+
+        float min_x = 0.0f;
+        float min_z = 0.0f;
+        float max_x = 0.0f;
+        float max_z = 0.0f;
+        obb_write_aabb(center_x, center_z, half_x, half_z, yaw, min_x, min_z, max_x, max_z);
+
+        auto world_to_pixel = [&](float world, float origin, float inv_size, uint32_t resolution) -> int
+        {
+            const float u = (world - origin) * inv_size;
+            return static_cast<int>(clamp(u, 0.0f, 1.0f) * static_cast<float>(resolution - 1) + 0.5f);
+        };
+
+        const int x0 = world_to_pixel(min_x, m_world_mapping.x, m_world_mapping.z, m_map_width);
+        const int x1 = world_to_pixel(max_x, m_world_mapping.x, m_world_mapping.z, m_map_width);
+        const int z0 = world_to_pixel(min_z, m_world_mapping.y, m_world_mapping.w, m_map_height);
+        const int z1 = world_to_pixel(max_z, m_world_mapping.y, m_world_mapping.w, m_map_height);
+
+        const int x_min = min(x0, x1);
+        const int x_max = max(x0, x1);
+        const int z_min = min(z0, z1);
+        const int z_max = max(z0, z1);
+
+        for (int z = z_min; z <= z_max; z++)
+        {
+            const float v       = static_cast<float>(z) / static_cast<float>(m_map_height - 1);
+            const float world_z = m_world_mapping.y + v / m_world_mapping.w;
+            for (int x = x_min; x <= x_max; x++)
+            {
+                const float u       = static_cast<float>(x) / static_cast<float>(m_map_width - 1);
+                const float world_x = m_world_mapping.x + u / m_world_mapping.z;
+                if (obb_outside_distance(world_x, world_z, center_x, center_z, half_x, half_z, yaw) > 0.0f)
+                {
+                    continue;
+                }
+
+                const size_t offset = (static_cast<size_t>(z) * m_map_width + static_cast<size_t>(x)) * 4;
+                m_prop_mask_pixels[offset + 0] = m_prop_mask_seed[offset + 0];
+                m_prop_mask_pixels[offset + 1] = m_prop_mask_seed[offset + 1];
+                m_prop_mask_pixels[offset + 2] = m_prop_mask_seed[offset + 2];
+            }
+        }
+    }
+
+    void Terrain::UploadPropMask()
+    {
+        if (m_prop_mask_pixels.empty() || m_map_width == 0 || m_map_height == 0)
+        {
+            return;
+        }
+
+        m_prop_mask_retired = m_prop_mask;
+        m_prop_mask = make_shared<RHI_Texture>(
+            RHI_Texture_Type::Type2D,
+            m_map_width, m_map_height, 1, 1,
+            RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv,
+            "terrain_prop_mask", to_single_mip_slice(m_prop_mask_pixels)
+        );
+        m_prop_mask->PrepareForGpu();
+    }
+
+    void Terrain::SnapshotPropInstances()
+    {
+        m_prop_instance_seed.clear();
+        m_prop_entity_seed.clear();
+        if (!m_entity_ptr)
+        {
+            return;
+        }
+
+        function<void(Entity*, bool)> visit = [&](Entity* entity, bool inside_prop)
+        {
+            if (!entity)
+            {
+                return;
+            }
+
+            const bool prop = inside_prop || entity->HasTag("terrain_prop");
+            if (prop)
+            {
+                if (Render* render = entity->GetComponent<Render>())
+                {
+                    if (render->HasInstancing())
+                    {
+                        vector<Matrix> transforms;
+                        const uint32_t count = render->GetInstanceCount();
+                        transforms.reserve(count);
+                        for (uint32_t i = 0; i < count; i++)
+                        {
+                            transforms.push_back(render->GetInstance(i, false));
+                        }
+                        m_prop_instance_seed[entity->GetObjectId()] = move(transforms);
+                    }
+                    else if (entity->GetChildrenCount() == 0)
+                    {
+                        m_prop_entity_seed[entity->GetObjectId()] = entity->IsActive();
+                    }
+                }
+            }
+
+            const uint32_t child_count = entity->GetChildrenCount();
+            for (uint32_t i = 0; i < child_count; i++)
+            {
+                visit(entity->GetChildByIndex(i), prop);
+            }
+        };
+
+        visit(m_entity_ptr, false);
+    }
+
+    void Terrain::ClearFootprintProps(
+        float center_x,
+        float center_z,
+        float half_x,
+        float half_z,
+        float yaw
+    )
+    {
+        if (!m_entity_ptr)
+        {
+            return;
+        }
+
+        if (m_prop_instance_seed.empty() && m_prop_entity_seed.empty())
+        {
+            SnapshotPropInstances();
+        }
+
+        auto on_pad = [&](float x, float z) -> bool
+        {
+            return obb_outside_distance(x, z, center_x, center_z, half_x, half_z, yaw) <= 0.0f;
+        };
+
+        function<void(Entity*, bool)> visit = [&](Entity* entity, bool inside_prop)
+        {
+            if (!entity)
+            {
+                return;
+            }
+
+            const bool prop = inside_prop || entity->HasTag("terrain_prop");
+            if (prop)
+            {
+                if (Render* render = entity->GetComponent<Render>())
+                {
+                    if (render->HasInstancing())
+                    {
+                        vector<Matrix> kept;
+                        const uint32_t count = render->GetInstanceCount();
+                        kept.reserve(count);
+                        for (uint32_t i = 0; i < count; i++)
+                        {
+                            const Vector3 world = render->GetInstance(i, true).GetTranslation();
+                            if (!on_pad(world.x, world.z))
+                            {
+                                kept.push_back(render->GetInstance(i, false));
+                            }
+                        }
+
+                        if (kept.size() != count)
+                        {
+                            render->SetInstances(kept);
+                        }
+                    }
+                    else if (entity->GetChildrenCount() == 0 && on_pad(entity->GetPosition().x, entity->GetPosition().z))
+                    {
+                        entity->SetActive(false);
+                    }
+                }
+            }
+
+            const uint32_t child_count = entity->GetChildrenCount();
+            for (uint32_t i = 0; i < child_count; i++)
+            {
+                visit(entity->GetChildByIndex(i), prop);
+            }
+        };
+
+        visit(m_entity_ptr, false);
+    }
+
+    void Terrain::RestoreFootprintProps(
+        float center_x,
+        float center_z,
+        float half_x,
+        float half_z,
+        float yaw
+    )
+    {
+        if (!m_entity_ptr)
+        {
+            return;
+        }
+
+        if (m_prop_instance_seed.empty() && m_prop_entity_seed.empty())
+        {
+            return;
+        }
+
+        auto on_pad = [&](float x, float z) -> bool
+        {
+            return obb_outside_distance(x, z, center_x, center_z, half_x, half_z, yaw) <= 0.0f;
+        };
+
+        function<void(Entity*, bool)> visit = [&](Entity* entity, bool inside_prop)
+        {
+            if (!entity)
+            {
+                return;
+            }
+
+            const bool prop = inside_prop || entity->HasTag("terrain_prop");
+            if (prop)
+            {
+                const uint64_t id = entity->GetObjectId();
+                if (Render* render = entity->GetComponent<Render>())
+                {
+                    auto seed = m_prop_instance_seed.find(id);
+                    if (seed != m_prop_instance_seed.end())
+                    {
+                        const Matrix world = entity->GetMatrix();
+                        bool touches = false;
+                        for (const Matrix& local : seed->second)
+                        {
+                            const Vector3 position = (local * world).GetTranslation();
+                            if (on_pad(position.x, position.z))
+                            {
+                                touches = true;
+                                break;
+                            }
+                        }
+
+                        if (touches)
+                        {
+                            vector<Matrix> kept;
+                            if (render->HasInstancing())
+                            {
+                                const uint32_t count = render->GetInstanceCount();
+                                kept.reserve(count + seed->second.size());
+                                for (uint32_t i = 0; i < count; i++)
+                                {
+                                    const Vector3 position = render->GetInstance(i, true).GetTranslation();
+                                    if (!on_pad(position.x, position.z))
+                                    {
+                                        kept.push_back(render->GetInstance(i, false));
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                kept.reserve(seed->second.size());
+                            }
+
+                            for (const Matrix& local : seed->second)
+                            {
+                                const Vector3 position = (local * world).GetTranslation();
+                                if (on_pad(position.x, position.z))
+                                {
+                                    kept.push_back(local);
+                                }
+                            }
+
+                            render->SetInstances(kept);
+                        }
+                    }
+                    else if (entity->GetChildrenCount() == 0)
+                    {
+                        auto active = m_prop_entity_seed.find(id);
+                        if (active != m_prop_entity_seed.end() &&
+                            on_pad(entity->GetPosition().x, entity->GetPosition().z))
+                        {
+                            entity->SetActive(active->second);
+                        }
+                    }
+                }
+            }
+
+            const uint32_t child_count = entity->GetChildrenCount();
+            for (uint32_t i = 0; i < child_count; i++)
+            {
+                visit(entity->GetChildByIndex(i), prop);
+            }
+        };
+
+        visit(m_entity_ptr, false);
+    }
+
+    void Terrain::RememberPlatform(const TerrainPlatform& platform)
+    {
+        auto area = [](const TerrainPlatform& pad) -> float
+        {
+            if (pad.half_x > 0.0f && pad.half_z > 0.0f)
+            {
+                return pad.half_x * pad.half_z * 4.0f;
+            }
+
+            return max(pad.max_x - pad.min_x, 0.0f) * max(pad.max_z - pad.min_z, 0.0f);
+        };
+
+        auto iou = [&](const TerrainPlatform& a, const TerrainPlatform& b) -> float
+        {
+            const float inter_x = max(0.0f, min(a.max_x, b.max_x) - max(a.min_x, b.min_x));
+            const float inter_z = max(0.0f, min(a.max_z, b.max_z) - max(a.min_z, b.min_z));
+            const float inter   = inter_x * inter_z;
+            const float uni     = area(a) + area(b) - inter;
+            return uni > 0.0f ? inter / uni : 0.0f;
+        };
+
+        for (TerrainPlatform& existing : m_platforms)
+        {
+            if ((platform.entity_id != 0 && existing.entity_id == platform.entity_id) ||
+                iou(existing, platform) > 0.5f)
+            {
+                existing = platform;
+                return;
+            }
+        }
+
+        m_platforms.push_back(platform);
+    }
+
+    void Terrain::HarvestOccupiedPlatforms()
+    {
+        auto placed_root = [](Entity* entity) -> Entity*
+        {
+            Entity* current = entity;
+            Entity* best    = entity;
+            while (current)
+            {
+                if (current->GetComponent<Terrain>() ||
+                    current->GetComponent<Camera>() ||
+                    current->GetComponent<Water>())
+                {
+                    break;
+                }
+
+                if (entity_has_spline(current))
+                {
+                    return nullptr;
+                }
+
+                best    = current;
+                current = current->GetParent();
+            }
+
+            return best;
+        };
+
+        unordered_set<Entity*> roots;
+        for (Entity* entity : World::GetEntitiesWithRender())
+        {
+            if (occupant_skippable(entity))
+            {
+                continue;
+            }
+
+            if (Entity* root = placed_root(entity))
+            {
+                roots.insert(root);
+            }
+        }
+
+        for (Entity* root : roots)
+        {
+            SnapPlatformDesc desc;
+            if (!find_snap_platform({ root }, false, desc))
+            {
+                continue;
+            }
+
+            const float span = max(desc.half_x, desc.half_z) * 2.0f;
+            if (span < 6.0f || span >= live_pad_span_cap(desc.half_x, desc.half_z))
+            {
+                continue;
+            }
+
+            TerrainPlatform pad;
+            pad.entity_id = root->GetObjectId();
+            pad.center_x  = desc.center_x;
+            pad.center_z  = desc.center_z;
+            pad.half_x    = desc.half_x;
+            pad.half_z    = desc.half_z;
+            pad.yaw       = desc.yaw;
+            pad.height    = desc.height - 0.08f;
+            pad.margin    = max(desc.margin, 2.0f);
+            pad.min_x     = desc.min_x;
+            pad.min_z     = desc.min_z;
+            pad.max_x     = desc.max_x;
+            pad.max_z     = desc.max_z;
+            RememberPlatform(pad);
+        }
+    }
+
+    void Terrain::PruneOrphanPlatforms()
+    {
+        m_platforms.erase(
+            remove_if(
+                m_platforms.begin(),
+                m_platforms.end(),
+                [](const TerrainPlatform& pad)
+                {
+                    return !platform_has_occupant(pad);
+                }
+            ),
+            m_platforms.end()
+        );
+    }
+
+    void Terrain::ApplyPlatformsToProps()
+    {
+        if (m_platforms.empty())
+        {
+            return;
+        }
+
+        for (const TerrainPlatform& platform : m_platforms)
+        {
+            float clear_hx = 0.0f;
+            float clear_hz = 0.0f;
+            pad_clear_extents(platform, clear_hx, clear_hz);
+            PunchPropMaskFootprint(
+                platform.center_x,
+                platform.center_z,
+                clear_hx,
+                clear_hz,
+                platform.yaw
+            );
+            ClearFootprintProps(
+                platform.center_x,
+                platform.center_z,
+                clear_hx,
+                clear_hz,
+                platform.yaw
+            );
+        }
+
+        UploadPropMask();
+        WorldHelpers::RefreshTerrainGpuScatter(this);
+    }
+
+    void Terrain::OnBiomePropsPopulated()
+    {
+        if (!ProgressTracker::GetProgress(ProgressType::World).IsProgressing())
+        {
+            PruneOrphanPlatforms();
+        }
+
+        SnapshotPropInstances();
+        ApplyPlatformsToProps();
+    }
+
+    void Terrain::ForgetPlatform(uint64_t entity_id)
+    {
+        if (entity_id == 0)
+        {
+            return;
+        }
+
+        m_platforms.erase(
+            remove_if(
+                m_platforms.begin(),
+                m_platforms.end(),
+                [entity_id](const TerrainPlatform& pad)
+                {
+                    return pad.entity_id == entity_id;
+                }
+            ),
+            m_platforms.end()
+        );
+    }
+
+    void Terrain::SnapshotSeed()
+    {
+        m_positions_seed = m_positions;
+    }
+
+    void Terrain::PaintPadFromSeed(
+        float center_x,
+        float center_z,
+        float half_x,
+        float half_z,
+        float yaw,
+        float world_height,
+        float blend_margin,
+        bool restore_only
+    )
+    {
+        if (!HasHeightfield() || m_positions_seed.size() != m_positions.size())
+        {
+            return;
+        }
+
+        float local_cx     = center_x;
+        float local_cz     = center_z;
+        float local_hx     = half_x;
+        float local_hz     = half_z;
+        float local_yaw    = yaw;
+        float local_height = world_height;
+
+        if (Entity* entity = GetEntity())
+        {
+            const Matrix inverse = entity->GetMatrix().Inverted();
+            const Vector3 local_center = inverse * Vector3(center_x, world_height, center_z);
+            local_cx     = local_center.x;
+            local_cz     = local_center.z;
+            local_height = local_center.y;
+
+            const Vector3 world_axis(center_x + cosf(yaw), world_height, center_z + sinf(yaw));
+            const Vector3 local_axis = inverse * world_axis - local_center;
+            local_yaw = atan2f(local_axis.z, local_axis.x);
+
+            const Vector3 world_x(center_x + cosf(yaw) * half_x, world_height, center_z + sinf(yaw) * half_x);
+            const Vector3 world_z(center_x - sinf(yaw) * half_z, world_height, center_z + cosf(yaw) * half_z);
+            local_hx = (inverse * world_x - local_center).Length();
+            local_hz = (inverse * world_z - local_center).Length();
+        }
+
+        const float margin = max(blend_margin, 0.0f);
+        float min_x = 0.0f;
+        float min_z = 0.0f;
+        float max_x = 0.0f;
+        float max_z = 0.0f;
+        obb_write_aabb(local_cx, local_cz, local_hx, local_hz, local_yaw, min_x, min_z, max_x, max_z);
+        min_x -= margin;
+        max_x += margin;
+        min_z -= margin;
+        max_z += margin;
+
+        const TerrainGridMapping mapping = GetGridMapping();
+        const float step_x = max(mapping.scale_x, 0.001f);
+        const float step_z = max(mapping.scale_z, 0.001f);
+        const int x0 = max(static_cast<int>(floorf((min_x + mapping.offset_x) / step_x)), 0);
+        const int z0 = max(static_cast<int>(floorf((min_z + mapping.offset_z) / step_z)), 0);
+        const int x1 = min(static_cast<int>(ceilf((max_x + mapping.offset_x) / step_x)), static_cast<int>(m_dense_width) - 1);
+        const int z1 = min(static_cast<int>(ceilf((max_z + mapping.offset_z) / step_z)), static_cast<int>(m_dense_height) - 1);
+
+        for (int z = z0; z <= z1; z++)
+        {
+            for (int x = x0; x <= x1; x++)
+            {
+                const uint32_t index = static_cast<uint32_t>(z) * m_dense_width + static_cast<uint32_t>(x);
+                Vector3& position    = m_positions[index];
+                const float distance = obb_outside_distance(
+                    position.x,
+                    position.z,
+                    local_cx,
+                    local_cz,
+                    local_hx,
+                    local_hz,
+                    local_yaw
+                );
+
+                if (distance > margin)
+                {
+                    continue;
+                }
+
+                const float seed_y = m_positions_seed[index].y;
+                if (restore_only)
+                {
+                    position.y = seed_y;
+                    continue;
+                }
+
+                float weight = 1.0f;
+                if (distance > 0.0f && margin > 0.0f)
+                {
+                    const float t = distance / margin;
+                    weight        = 1.0f - (t * t * (3.0f - 2.0f * t));
+                }
+
+                position.y = seed_y + (local_height - seed_y) * weight;
+            }
+        }
+
+        if (!m_height_data.empty() && m_height_data.size() == m_positions.size())
+        {
+            TerrainSystem::SyncHeightDataFromPositions(m_height_data, m_positions);
+        }
+    }
+
+    bool Terrain::SampleSeedMax(
+        float center_x,
+        float center_z,
+        float half_x,
+        float half_z,
+        float yaw,
+        float& out_max
+    )
+    {
+        out_max = 0.0f;
+        if (m_positions_seed.size() != m_positions.size() || !HasHeightfield())
+        {
+            return false;
+        }
+
+        float local_cx  = center_x;
+        float local_cz  = center_z;
+        float local_hx  = half_x;
+        float local_hz  = half_z;
+        float local_yaw = yaw;
+        if (Entity* entity = GetEntity())
+        {
+            const Matrix inverse = entity->GetMatrix().Inverted();
+            const Vector3 local_center = inverse * Vector3(center_x, 0.0f, center_z);
+            local_cx = local_center.x;
+            local_cz = local_center.z;
+            const Vector3 local_axis = inverse * Vector3(center_x + cosf(yaw), 0.0f, center_z + sinf(yaw)) - local_center;
+            local_yaw = atan2f(local_axis.z, local_axis.x);
+            local_hx = (inverse * Vector3(center_x + cosf(yaw) * half_x, 0.0f, center_z + sinf(yaw) * half_x) - local_center).Length();
+            local_hz = (inverse * Vector3(center_x - sinf(yaw) * half_z, 0.0f, center_z + cosf(yaw) * half_z) - local_center).Length();
+        }
+
+        float highest = -numeric_limits<float>::max();
+        uint32_t count = 0;
+        float min_x = 0.0f;
+        float min_z = 0.0f;
+        float max_x = 0.0f;
+        float max_z = 0.0f;
+        obb_write_aabb(local_cx, local_cz, local_hx, local_hz, local_yaw, min_x, min_z, max_x, max_z);
+
+        const TerrainGridMapping mapping = GetGridMapping();
+        const float step_x = max(mapping.scale_x, 0.001f);
+        const float step_z = max(mapping.scale_z, 0.001f);
+        const int x0 = max(static_cast<int>(floorf((min_x + mapping.offset_x) / step_x)), 0);
+        const int z0 = max(static_cast<int>(floorf((min_z + mapping.offset_z) / step_z)), 0);
+        const int x1 = min(static_cast<int>(ceilf((max_x + mapping.offset_x) / step_x)), static_cast<int>(m_dense_width) - 1);
+        const int z1 = min(static_cast<int>(ceilf((max_z + mapping.offset_z) / step_z)), static_cast<int>(m_dense_height) - 1);
+
+        for (int z = z0; z <= z1; z++)
+        {
+            for (int x = x0; x <= x1; x++)
+            {
+                const uint32_t index = static_cast<uint32_t>(z) * m_dense_width + static_cast<uint32_t>(x);
+                const Vector3& local = m_positions_seed[index];
+                if (obb_outside_distance(local.x, local.z, local_cx, local_cz, local_hx, local_hz, local_yaw) > 0.0f)
+                {
+                    continue;
+                }
+
+                float world_y = local.y;
+                if (Entity* entity = GetEntity())
+                {
+                    world_y = (entity->GetMatrix() * Vector3(local.x, local.y, local.z)).y;
+                }
+
+                highest = max(highest, world_y);
+                count++;
+            }
+        }
+
+        if (count == 0)
+        {
+            return false;
+        }
+
+        out_max = highest;
         return true;
+    }
+
+    void Terrain::PatchLiveTiles(const TerrainPlatform& pad)
+    {
+        if (!m_mesh || m_tile_offsets.empty() || !HasHeightfield())
+        {
+            return;
+        }
+
+        float local_cx     = pad.center_x;
+        float local_cz     = pad.center_z;
+        float local_hx     = pad.half_x;
+        float local_hz     = pad.half_z;
+        float local_yaw    = pad.yaw;
+        const float margin = max(pad.margin, 0.0f);
+
+        if (Entity* entity = GetEntity())
+        {
+            const Matrix inverse = entity->GetMatrix().Inverted();
+            const Vector3 local_center = inverse * Vector3(pad.center_x, pad.height, pad.center_z);
+            local_cx = local_center.x;
+            local_cz = local_center.z;
+
+            const Vector3 world_axis(pad.center_x + cosf(pad.yaw), pad.height, pad.center_z + sinf(pad.yaw));
+            const Vector3 local_axis = inverse * world_axis - local_center;
+            local_yaw = atan2f(local_axis.z, local_axis.x);
+
+            const Vector3 world_x(pad.center_x + cosf(pad.yaw) * pad.half_x, pad.height, pad.center_z + sinf(pad.yaw) * pad.half_x);
+            const Vector3 world_z(pad.center_x - sinf(pad.yaw) * pad.half_z, pad.height, pad.center_z + cosf(pad.yaw) * pad.half_z);
+            local_hx = (inverse * world_x - local_center).Length();
+            local_hz = (inverse * world_z - local_center).Length();
+        }
+
+        float min_x = 0.0f;
+        float min_z = 0.0f;
+        float max_x = 0.0f;
+        float max_z = 0.0f;
+        obb_write_aabb(local_cx, local_cz, local_hx, local_hz, local_yaw, min_x, min_z, max_x, max_z);
+        min_x -= margin;
+        max_x += margin;
+        min_z -= margin;
+        max_z += margin;
+
+        const uint32_t n = max(m_tile_count, 1u);
+        const TerrainGridMapping mapping = GetGridMapping();
+        const float tile_w = max(mapping.extent_x / static_cast<float>(n), 0.001f);
+        const float tile_d = max(mapping.extent_z / static_cast<float>(n), 0.001f);
+        const int tx0 = max(static_cast<int>(floorf((min_x + mapping.offset_x) / tile_w)), 0);
+        const int tz0 = max(static_cast<int>(floorf((min_z + mapping.offset_z) / tile_d)), 0);
+        const int tx1 = min(static_cast<int>(floorf((max_x + mapping.offset_x) / tile_w)), static_cast<int>(n) - 1);
+        const int tz1 = min(static_cast<int>(floorf((max_z + mapping.offset_z) / tile_d)), static_cast<int>(n) - 1);
+
+        vector<RHI_Vertex_PosTexNorTan>& verts = m_mesh->GetVertices();
+        unordered_set<uint32_t> touched;
+        for (int tz = tz0; tz <= tz1; tz++)
+        {
+            for (int tx = tx0; tx <= tx1; tx++)
+            {
+                const uint32_t tile_index = static_cast<uint32_t>(tz) * n + static_cast<uint32_t>(tx);
+                if (tile_index >= m_mesh->GetSubMeshCount() || tile_index >= m_tile_offsets.size())
+                {
+                    continue;
+                }
+
+                const Vector3& offset = m_tile_offsets[tile_index];
+                const SubMesh& sub    = m_mesh->GetSubMesh(tile_index);
+                for (const MeshLod& lod : sub.lods)
+                {
+                    if (lod.vertex_count == 0)
+                    {
+                        continue;
+                    }
+
+                    for (uint32_t i = 0; i < lod.vertex_count; i++)
+                    {
+                        RHI_Vertex_PosTexNorTan& vertex = verts[lod.vertex_offset + i];
+                        const float lx = vertex.pos[0] + offset.x;
+                        const float lz = vertex.pos[2] + offset.z;
+                        if (obb_outside_distance(lx, lz, local_cx, local_cz, local_hx, local_hz, local_yaw) > margin)
+                        {
+                            continue;
+                        }
+
+                        vertex.pos[1] = TerrainSystem::SampleHeight(
+                            m_positions,
+                            m_dense_width,
+                            m_dense_height,
+                            lx,
+                            lz,
+                            mapping
+                        );
+                        vertex.set_normal(TerrainSystem::SampleNormal(
+                            m_positions,
+                            m_dense_width,
+                            m_dense_height,
+                            lx,
+                            lz,
+                            mapping
+                        ));
+                    }
+
+                    m_mesh->UploadVertexRange(lod.vertex_offset, lod.vertex_count);
+                }
+
+                m_mesh->RefreshLodBounds(tile_index);
+                touched.insert(tile_index);
+            }
+        }
+
+        if (!m_entity_ptr)
+        {
+            return;
+        }
+
+        for (Entity* child : m_entity_ptr->GetChildren())
+        {
+            const int index = ParseTileIndex(child);
+            if (index < 0 || touched.find(static_cast<uint32_t>(index)) == touched.end())
+            {
+                continue;
+            }
+
+            if (Render* render = child->GetComponent<Render>())
+            {
+                render->SetMesh(m_mesh.get(), static_cast<uint32_t>(index));
+            }
+        }
+    }
+
+    void Terrain::HidePadOverlay()
+    {
+        if (!m_entity_ptr)
+        {
+            return;
+        }
+
+        if (Entity* pad = m_entity_ptr->GetChildByName("live_pad"))
+        {
+            pad->SetActive(false);
+        }
+    }
+
+    void Terrain::UpdatePadOverlay(const TerrainPlatform* pad)
+    {
+        if (!pad || !m_entity_ptr || !HasHeightfield())
+        {
+            HidePadOverlay();
+            return;
+        }
+
+        float local_cx     = pad->center_x;
+        float local_cz     = pad->center_z;
+        float local_hx     = pad->half_x;
+        float local_hz     = pad->half_z;
+        float local_yaw    = pad->yaw;
+        float local_height = pad->height;
+        const float margin = max(pad->margin, 0.5f);
+
+        if (Entity* entity = GetEntity())
+        {
+            const Matrix inverse = entity->GetMatrix().Inverted();
+            const Vector3 local_center = inverse * Vector3(pad->center_x, pad->height, pad->center_z);
+            local_cx     = local_center.x;
+            local_cz     = local_center.z;
+            local_height = local_center.y;
+
+            const Vector3 world_axis(pad->center_x + cosf(pad->yaw), pad->height, pad->center_z + sinf(pad->yaw));
+            const Vector3 local_axis = inverse * world_axis - local_center;
+            local_yaw = atan2f(local_axis.z, local_axis.x);
+
+            const Vector3 world_x(pad->center_x + cosf(pad->yaw) * pad->half_x, pad->height, pad->center_z + sinf(pad->yaw) * pad->half_x);
+            const Vector3 world_z(pad->center_x - sinf(pad->yaw) * pad->half_z, pad->height, pad->center_z + cosf(pad->yaw) * pad->half_z);
+            local_hx = (inverse * world_x - local_center).Length();
+            local_hz = (inverse * world_z - local_center).Length();
+        }
+
+        if (local_hx < 0.05f || local_hz < 0.05f)
+        {
+            HidePadOverlay();
+            return;
+        }
+
+        const uint32_t seg_x = 16;
+        const uint32_t seg_z = 16;
+        const uint32_t nx    = seg_x + 3;
+        const uint32_t nz    = seg_z + 3;
+        const float c        = cosf(local_yaw);
+        const float s        = sinf(local_yaw);
+        const float bias     = 0.02f;
+        const TerrainGridMapping mapping = GetGridMapping();
+        const vector<Vector3>& seed = (m_positions_seed.size() == m_positions.size()) ? m_positions_seed : m_positions;
+        const float uv_sx = 1.0f / max(mapping.extent_x, 0.001f);
+        const float uv_sz = 1.0f / max(mapping.extent_z, 0.001f);
+
+        auto sample_axis = [&](uint32_t i, uint32_t segs, float half) -> float
+        {
+            if (i == 0)
+            {
+                return -(half + margin);
+            }
+            if (i == segs + 2)
+            {
+                return +(half + margin);
+            }
+
+            const float t = static_cast<float>(i - 1) / static_cast<float>(segs);
+            return -half + t * (2.0f * half);
+        };
+
+        vector<RHI_Vertex_PosTexNorTan> vertices(nx * nz);
+        for (uint32_t iz = 0; iz < nz; iz++)
+        {
+            const bool outer_z = (iz == 0 || iz == nz - 1);
+            const float lz     = sample_axis(iz, seg_z, local_hz);
+            for (uint32_t ix = 0; ix < nx; ix++)
+            {
+                const bool outer_x = (ix == 0 || ix == nx - 1);
+                const float lx     = sample_axis(ix, seg_x, local_hx);
+                const float wx     = local_cx + c * lx - s * lz;
+                const float wz     = local_cz + s * lx + c * lz;
+                const bool inner   = !outer_x && !outer_z;
+
+                float wy = local_height;
+                Vector3 normal = Vector3::Up;
+                if (!inner && !seed.empty())
+                {
+                    wy     = TerrainSystem::SampleHeight(seed, m_dense_width, m_dense_height, wx, wz, mapping);
+                    normal = TerrainSystem::SampleNormal(seed, m_dense_width, m_dense_height, wx, wz, mapping);
+                }
+
+                const Vector2 uv(
+                    saturate((wx + mapping.offset_x) * uv_sx),
+                    saturate((wz + mapping.offset_z) * uv_sz)
+                );
+                const Vector3 tangent(c, 0.0f, s);
+                vertices[iz * nx + ix] = RHI_Vertex_PosTexNorTan(
+                    Vector3(wx, wy + bias, wz),
+                    uv,
+                    normal,
+                    tangent
+                );
+            }
+        }
+
+        vector<uint32_t> indices;
+        indices.reserve((nx - 1) * (nz - 1) * 6);
+        for (uint32_t iz = 0; iz < nz - 1; iz++)
+        {
+            for (uint32_t ix = 0; ix < nx - 1; ix++)
+            {
+                const uint32_t bl = iz * nx + ix;
+                const uint32_t br = bl + 1;
+                const uint32_t tl = bl + nx;
+                const uint32_t tr = tl + 1;
+                indices.push_back(br);
+                indices.push_back(bl);
+                indices.push_back(tl);
+                indices.push_back(br);
+                indices.push_back(tl);
+                indices.push_back(tr);
+            }
+        }
+
+        Entity* pad_entity = m_entity_ptr->GetChildByName("live_pad");
+        if (!pad_entity)
+        {
+            pad_entity = World::CreateEntity();
+            pad_entity->SetObjectName("live_pad");
+            pad_entity->SetTransient(true);
+            pad_entity->SetParent(m_entity_ptr);
+            pad_entity->SetPositionLocal(Vector3::Zero);
+        }
+        pad_entity->SetActive(true);
+
+        Render* render = pad_entity->GetComponent<Render>();
+        if (!render)
+        {
+            render = pad_entity->AddComponent<Render>();
+        }
+
+        bool reused = m_live_pad_mesh &&
+            render->GetMesh() == m_live_pad_mesh.get() &&
+            m_live_pad_mesh->UpdateGeometry(vertices, indices);
+
+        if (!reused)
+        {
+            ResourceCache::Remove(m_live_pad_mesh);
+            m_live_pad_mesh = make_shared<Mesh>();
+            m_live_pad_mesh->SetObjectName("live_pad_mesh");
+            m_live_pad_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+            m_live_pad_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
+            m_live_pad_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods), false);
+            m_live_pad_mesh->SetDynamic(true);
+            m_live_pad_mesh->AddGeometry(vertices, indices, false);
+            m_live_pad_mesh->CreateGpuBuffers();
+        }
+
+        render->SetMesh(m_live_pad_mesh.get());
+        if (m_material)
+        {
+            render->SetMaterial(m_material);
+        }
+    }
+
+    void Terrain::RebuildCommittedPadOverlays()
+    {
+        if (!m_entity_ptr || !HasHeightfield() || m_platforms.empty())
+        {
+            if (m_entity_ptr)
+            {
+                if (Entity* pad = m_entity_ptr->GetChildByName("pad_overlay"))
+                {
+                    pad->SetActive(false);
+                }
+            }
+            return;
+        }
+
+        vector<RHI_Vertex_PosTexNorTan> vertices;
+        vector<uint32_t> indices;
+        const TerrainGridMapping mapping = GetGridMapping();
+        const vector<Vector3>& seed = (m_positions_seed.size() == m_positions.size()) ? m_positions_seed : m_positions;
+        const float uv_sx = 1.0f / max(mapping.extent_x, 0.001f);
+        const float uv_sz = 1.0f / max(mapping.extent_z, 0.001f);
+        const Matrix inverse = GetEntity() ? GetEntity()->GetMatrix().Inverted() : Matrix::Identity;
+        const bool has_entity = GetEntity() != nullptr;
+
+        for (const TerrainPlatform& pad : m_platforms)
+        {
+            float local_cx     = pad.center_x;
+            float local_cz     = pad.center_z;
+            float local_hx     = pad.half_x;
+            float local_hz     = pad.half_z;
+            float local_yaw    = pad.yaw;
+            float local_height = pad.height;
+            const float margin = max(pad.margin, 0.5f);
+
+            if (has_entity)
+            {
+                const Vector3 local_center = inverse * Vector3(pad.center_x, pad.height, pad.center_z);
+                local_cx     = local_center.x;
+                local_cz     = local_center.z;
+                local_height = local_center.y;
+
+                const Vector3 world_axis(pad.center_x + cosf(pad.yaw), pad.height, pad.center_z + sinf(pad.yaw));
+                const Vector3 local_axis = inverse * world_axis - local_center;
+                local_yaw = atan2f(local_axis.z, local_axis.x);
+
+                const Vector3 world_x(pad.center_x + cosf(pad.yaw) * pad.half_x, pad.height, pad.center_z + sinf(pad.yaw) * pad.half_x);
+                const Vector3 world_z(pad.center_x - sinf(pad.yaw) * pad.half_z, pad.height, pad.center_z + cosf(pad.yaw) * pad.half_z);
+                local_hx = (inverse * world_x - local_center).Length();
+                local_hz = (inverse * world_z - local_center).Length();
+            }
+
+            if (local_hx < 0.05f || local_hz < 0.05f)
+            {
+                continue;
+            }
+
+            const uint32_t seg_x = 16;
+            const uint32_t seg_z = 16;
+            const uint32_t nx    = seg_x + 3;
+            const uint32_t nz    = seg_z + 3;
+            const float c        = cosf(local_yaw);
+            const float s        = sinf(local_yaw);
+            const float bias     = 0.02f;
+            const uint32_t base  = static_cast<uint32_t>(vertices.size());
+
+            auto sample_axis = [&](uint32_t i, uint32_t segs, float half) -> float
+            {
+                if (i == 0)
+                {
+                    return -(half + margin);
+                }
+                if (i == segs + 2)
+                {
+                    return +(half + margin);
+                }
+
+                const float t = static_cast<float>(i - 1) / static_cast<float>(segs);
+                return -half + t * (2.0f * half);
+            };
+
+            vertices.reserve(vertices.size() + nx * nz);
+            for (uint32_t iz = 0; iz < nz; iz++)
+            {
+                const bool outer_z = (iz == 0 || iz == nz - 1);
+                const float lz     = sample_axis(iz, seg_z, local_hz);
+                for (uint32_t ix = 0; ix < nx; ix++)
+                {
+                    const bool outer_x = (ix == 0 || ix == nx - 1);
+                    const float lx     = sample_axis(ix, seg_x, local_hx);
+                    const float wx     = local_cx + c * lx - s * lz;
+                    const float wz     = local_cz + s * lx + c * lz;
+                    const bool inner   = !outer_x && !outer_z;
+
+                    float wy = local_height;
+                    Vector3 normal = Vector3::Up;
+                    if (!inner && !seed.empty())
+                    {
+                        wy     = TerrainSystem::SampleHeight(seed, m_dense_width, m_dense_height, wx, wz, mapping);
+                        normal = TerrainSystem::SampleNormal(seed, m_dense_width, m_dense_height, wx, wz, mapping);
+                    }
+
+                    const Vector2 uv(
+                        saturate((wx + mapping.offset_x) * uv_sx),
+                        saturate((wz + mapping.offset_z) * uv_sz)
+                    );
+                    vertices.push_back(RHI_Vertex_PosTexNorTan(
+                        Vector3(wx, wy + bias, wz),
+                        uv,
+                        normal,
+                        Vector3(c, 0.0f, s)
+                    ));
+                }
+            }
+
+            indices.reserve(indices.size() + (nx - 1) * (nz - 1) * 6);
+            for (uint32_t iz = 0; iz < nz - 1; iz++)
+            {
+                for (uint32_t ix = 0; ix < nx - 1; ix++)
+                {
+                    const uint32_t bl = base + iz * nx + ix;
+                    const uint32_t br = bl + 1;
+                    const uint32_t tl = bl + nx;
+                    const uint32_t tr = tl + 1;
+                    indices.push_back(br);
+                    indices.push_back(bl);
+                    indices.push_back(tl);
+                    indices.push_back(br);
+                    indices.push_back(tl);
+                    indices.push_back(tr);
+                }
+            }
+        }
+
+        if (vertices.empty())
+        {
+            if (Entity* pad = m_entity_ptr->GetChildByName("pad_overlay"))
+            {
+                pad->SetActive(false);
+            }
+            return;
+        }
+
+        Entity* pad_entity = m_entity_ptr->GetChildByName("pad_overlay");
+        if (!pad_entity)
+        {
+            pad_entity = World::CreateEntity();
+            pad_entity->SetObjectName("pad_overlay");
+            pad_entity->SetTransient(true);
+            pad_entity->SetParent(m_entity_ptr);
+            pad_entity->SetPositionLocal(Vector3::Zero);
+        }
+        pad_entity->SetActive(true);
+
+        Render* render = pad_entity->GetComponent<Render>();
+        if (!render)
+        {
+            render = pad_entity->AddComponent<Render>();
+        }
+
+        bool reused = m_pad_overlay_mesh &&
+            render->GetMesh() == m_pad_overlay_mesh.get() &&
+            m_pad_overlay_mesh->UpdateGeometry(vertices, indices);
+
+        if (!reused)
+        {
+            ResourceCache::Remove(m_pad_overlay_mesh);
+            m_pad_overlay_mesh = make_shared<Mesh>();
+            m_pad_overlay_mesh->SetObjectName("pad_overlay_mesh");
+            m_pad_overlay_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+            m_pad_overlay_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
+            m_pad_overlay_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods), false);
+            m_pad_overlay_mesh->SetDynamic(true);
+            m_pad_overlay_mesh->AddGeometry(vertices, indices, false);
+            m_pad_overlay_mesh->CreateGpuBuffers();
+        }
+
+        render->SetMesh(m_pad_overlay_mesh.get());
+        if (m_material)
+        {
+            render->SetMaterial(m_material);
+        }
+    }
+
+    void Terrain::SyncLivePadVisuals(const TerrainPlatform* restore, const TerrainPlatform* paint)
+    {
+        if (restore)
+        {
+            float clear_hx = 0.0f;
+            float clear_hz = 0.0f;
+            pad_clear_extents(*restore, clear_hx, clear_hz);
+            RestorePropMaskFootprint(
+                restore->center_x,
+                restore->center_z,
+                clear_hx,
+                clear_hz,
+                restore->yaw
+            );
+            RestoreFootprintProps(
+                restore->center_x,
+                restore->center_z,
+                clear_hx,
+                clear_hz,
+                restore->yaw
+            );
+            PatchLiveTiles(*restore);
+        }
+
+        if (paint)
+        {
+            float clear_hx = 0.0f;
+            float clear_hz = 0.0f;
+            pad_clear_extents(*paint, clear_hx, clear_hz);
+            PunchPropMaskFootprint(
+                paint->center_x,
+                paint->center_z,
+                clear_hx,
+                clear_hz,
+                paint->yaw
+            );
+            UpdatePadOverlay(paint);
+            ClearFootprintProps(
+                paint->center_x,
+                paint->center_z,
+                clear_hx,
+                clear_hz,
+                paint->yaw
+            );
+        }
+        else
+        {
+            HidePadOverlay();
+        }
+
+        UploadPropMask();
+        WorldHelpers::RefreshTerrainGpuScatter(this);
+    }
+
+    void Terrain::RebuildPhysicsForPad(const TerrainPlatform& pad)
+    {
+        if (!m_entity_ptr)
+        {
+            return;
+        }
+
+        float min_x = 0.0f;
+        float min_z = 0.0f;
+        float max_x = 0.0f;
+        float max_z = 0.0f;
+        obb_write_aabb(pad.center_x, pad.center_z, pad.half_x, pad.half_z, pad.yaw, min_x, min_z, max_x, max_z);
+        min_x -= pad.margin;
+        max_x += pad.margin;
+        min_z -= pad.margin;
+        max_z += pad.margin;
+
+        const uint32_t n = max(m_tile_count, 1u);
+        const TerrainGridMapping mapping = GetGridMapping();
+        const float tile_w = max(mapping.extent_x / static_cast<float>(n), 0.001f);
+        const float tile_d = max(mapping.extent_z / static_cast<float>(n), 0.001f);
+
+        float local_min_x = min_x;
+        float local_min_z = min_z;
+        float local_max_x = max_x;
+        float local_max_z = max_z;
+        if (Entity* entity = GetEntity())
+        {
+            const Matrix inverse = entity->GetMatrix().Inverted();
+            const Vector3 a = inverse * Vector3(min_x, 0.0f, min_z);
+            const Vector3 b = inverse * Vector3(max_x, 0.0f, max_z);
+            local_min_x = min(a.x, b.x);
+            local_max_x = max(a.x, b.x);
+            local_min_z = min(a.z, b.z);
+            local_max_z = max(a.z, b.z);
+        }
+
+        const int tx0 = max(static_cast<int>(floorf((local_min_x + mapping.offset_x) / tile_w)), 0);
+        const int tz0 = max(static_cast<int>(floorf((local_min_z + mapping.offset_z) / tile_d)), 0);
+        const int tx1 = min(static_cast<int>(floorf((local_max_x + mapping.offset_x) / tile_w)), static_cast<int>(n) - 1);
+        const int tz1 = min(static_cast<int>(floorf((local_max_z + mapping.offset_z) / tile_d)), static_cast<int>(n) - 1);
+
+        unordered_set<uint32_t> touched;
+        for (int tz = tz0; tz <= tz1; tz++)
+        {
+            for (int tx = tx0; tx <= tx1; tx++)
+            {
+                touched.insert(static_cast<uint32_t>(tz) * n + static_cast<uint32_t>(tx));
+            }
+        }
+
+        for (Entity* child : m_entity_ptr->GetChildren())
+        {
+            const int index = ParseTileIndex(child);
+            if (index < 0 || touched.find(static_cast<uint32_t>(index)) == touched.end())
+            {
+                continue;
+            }
+
+            if (Physics* physics = child->GetComponent<Physics>())
+            {
+                physics->Rebuild();
+            }
+        }
+    }
+
+    void Terrain::CommitLivePad(bool punch)
+    {
+        RebuildPhysicsForPad(m_live_pad);
+        if (punch)
+        {
+            float clear_hx = 0.0f;
+            float clear_hz = 0.0f;
+            pad_clear_extents(m_live_pad, clear_hx, clear_hz);
+            PunchPropMaskFootprint(
+                m_live_pad.center_x,
+                m_live_pad.center_z,
+                clear_hx,
+                clear_hz,
+                m_live_pad.yaw
+            );
+            UploadPropMask();
+            ClearFootprintProps(
+                m_live_pad.center_x,
+                m_live_pad.center_z,
+                clear_hx,
+                clear_hz,
+                m_live_pad.yaw
+            );
+            WorldHelpers::RefreshTerrainGpuScatter(this);
+        }
+        RebuildCommittedPadOverlays();
+        SnapshotBaseline();
+        m_live_pad_dirty = false;
+    }
+
+    void Terrain::UpdateLivePads()
+    {
+        if (!HasHeightfield())
+        {
+            return;
+        }
+
+        if (m_positions_seed.size() != m_positions.size())
+        {
+            if (!m_platforms.empty())
+            {
+                return;
+            }
+
+            SnapshotSeed();
+        }
+
+        if (m_positions_seed.size() != m_positions.size())
+        {
+            return;
+        }
+
+        vector<Entity*> selected;
+        if (Camera* camera = World::GetCamera())
+        {
+            selected = camera->GetSelectedEntities();
+        }
+
+        vector<Entity*> candidates;
+        candidates.reserve(selected.size());
+        for (Entity* entity : selected)
+        {
+            if (!entity || is_terrain_tile_or_water(entity) || entity->GetComponent<Terrain>())
+            {
+                continue;
+            }
+
+            candidates.push_back(entity);
+        }
+
+        if (candidates.empty())
+        {
+            if (m_live_pad_active)
+            {
+                CommitLivePad(true);
+                HidePadOverlay();
+                m_live_pad_active   = false;
+                m_live_track_entity = 0;
+            }
+
+            return;
+        }
+
+        Entity* track = candidates[0];
+        if (m_live_pad_active &&
+            m_live_track_entity == track->GetObjectId() &&
+            (track->GetPosition() - m_live_track_position).LengthSquared() < 0.0001f &&
+            fabsf(Quaternion::Dot(track->GetRotation(), m_live_track_rotation)) > 0.99999f &&
+            (track->GetScale() - m_live_track_scale).LengthSquared() < 0.0001f)
+        {
+            return;
+        }
+
+        SnapPlatformDesc desc;
+        const bool has_floor  = find_snap_platform(candidates, true, desc);
+        const float clearance = 0.08f;
+
+        TerrainPlatform wanted;
+        bool want_pad = false;
+        if (has_floor && desc.half_x > 0.05f && desc.half_z > 0.05f)
+        {
+            const float span = max(desc.half_x, desc.half_z) * 2.0f;
+            if (span < live_pad_span_cap(desc.half_x, desc.half_z))
+            {
+                float seed_max = 0.0f;
+                if (SampleSeedMax(
+                    desc.center_x,
+                    desc.center_z,
+                    desc.half_x,
+                    desc.half_z,
+                    desc.yaw,
+                    seed_max))
+                {
+                    const float engage = max(6.0f, min(span * 0.04f, 48.0f));
+                    if ((desc.height - seed_max) < engage)
+                    {
+                        want_pad           = true;
+                        wanted.entity_id   = desc.entity_id;
+                        wanted.center_x    = desc.center_x;
+                        wanted.center_z    = desc.center_z;
+                        wanted.half_x      = desc.half_x;
+                        wanted.half_z      = desc.half_z;
+                        wanted.yaw         = desc.yaw;
+                        wanted.height      = desc.height - clearance;
+                        wanted.margin      = desc.margin;
+                        wanted.min_x       = desc.min_x;
+                        wanted.min_z       = desc.min_z;
+                        wanted.max_x       = desc.max_x;
+                        wanted.max_z       = desc.max_z;
+                    }
+                }
+            }
+        }
+
+        auto remember_track = [this, track]()
+        {
+            m_live_track_entity   = track->GetObjectId();
+            m_live_track_position = track->GetPosition();
+            m_live_track_rotation = track->GetRotation();
+            m_live_track_scale    = track->GetScale();
+        };
+
+        if (m_live_pad_active && want_pad && wanted.entity_id == m_live_pad.entity_id)
+        {
+            if (pads_match(m_live_pad, wanted))
+            {
+                if (m_live_pad_dirty && (Timer::GetTimeMs() - m_live_pad_changed_ms) > 250.0)
+                {
+                    CommitLivePad(true);
+                }
+
+                remember_track();
+                return;
+            }
+
+            const TerrainPlatform previous = m_live_pad;
+            PaintPadFromSeed(
+                previous.center_x,
+                previous.center_z,
+                previous.half_x,
+                previous.half_z,
+                previous.yaw,
+                previous.height,
+                previous.margin,
+                true
+            );
+            ForgetPlatform(previous.entity_id);
+            PaintPadFromSeed(
+                wanted.center_x,
+                wanted.center_z,
+                wanted.half_x,
+                wanted.half_z,
+                wanted.yaw,
+                wanted.height,
+                wanted.margin,
+                false
+            );
+            RememberPlatform(wanted);
+            m_live_pad            = wanted;
+            m_live_pad_active     = true;
+            m_live_pad_dirty      = true;
+            m_live_pad_changed_ms = Timer::GetTimeMs();
+            SyncLivePadVisuals(&previous, &wanted);
+            remember_track();
+            return;
+        }
+
+        if (m_live_pad_active && want_pad)
+        {
+            CommitLivePad(true);
+            HidePadOverlay();
+            m_live_pad_active = false;
+        }
+
+        if (m_live_pad_active && !want_pad)
+        {
+            const bool still_holding = m_live_track_entity == track->GetObjectId();
+            if (!still_holding)
+            {
+                CommitLivePad(true);
+                HidePadOverlay();
+                m_live_pad_active   = false;
+                m_live_track_entity = 0;
+                remember_track();
+                return;
+            }
+
+            const TerrainPlatform previous = m_live_pad;
+            PaintPadFromSeed(
+                previous.center_x,
+                previous.center_z,
+                previous.half_x,
+                previous.half_z,
+                previous.yaw,
+                previous.height,
+                previous.margin,
+                true
+            );
+            ForgetPlatform(previous.entity_id);
+            m_live_pad_active = false;
+            SyncLivePadVisuals(&previous, nullptr);
+            RebuildCommittedPadOverlays();
+            RebuildPhysicsForPad(previous);
+            SnapshotBaseline();
+            m_live_pad_dirty    = false;
+            m_live_track_entity = 0;
+            return;
+        }
+
+        if (want_pad)
+        {
+            bool already_there = false;
+            for (const TerrainPlatform& existing : m_platforms)
+            {
+                if (pads_same_place(existing, wanted) && fabsf(existing.height - wanted.height) < 0.2f)
+                {
+                    already_there = true;
+                    break;
+                }
+            }
+
+            m_live_pad            = wanted;
+            m_live_pad_active     = true;
+            m_live_pad_changed_ms = Timer::GetTimeMs();
+
+            if (already_there)
+            {
+                m_live_pad_dirty = false;
+                float clear_hx = 0.0f;
+                float clear_hz = 0.0f;
+                pad_clear_extents(wanted, clear_hx, clear_hz);
+                PunchPropMaskFootprint(
+                    wanted.center_x,
+                    wanted.center_z,
+                    clear_hx,
+                    clear_hz,
+                    wanted.yaw
+                );
+                UploadPropMask();
+                ClearFootprintProps(
+                    wanted.center_x,
+                    wanted.center_z,
+                    clear_hx,
+                    clear_hz,
+                    wanted.yaw
+                );
+                WorldHelpers::RefreshTerrainGpuScatter(this);
+                UpdatePadOverlay(&wanted);
+            }
+            else
+            {
+                PaintPadFromSeed(
+                    wanted.center_x,
+                    wanted.center_z,
+                    wanted.half_x,
+                    wanted.half_z,
+                    wanted.yaw,
+                    wanted.height,
+                    wanted.margin,
+                    false
+                );
+                RememberPlatform(wanted);
+                m_live_pad_dirty = true;
+                SyncLivePadVisuals(nullptr, &wanted);
+            }
+
+            remember_track();
+        }
+    }
+
+    bool Terrain::ApplyPlatformsToHeightfield()
+    {
+        if (m_platforms.empty() || !HasHeightfield())
+        {
+            return false;
+        }
+
+        for (const TerrainPlatform& platform : m_platforms)
+        {
+            float center_x = platform.center_x;
+            float center_z = platform.center_z;
+            float half_x   = platform.half_x;
+            float half_z   = platform.half_z;
+            float yaw      = platform.yaw;
+            if (half_x <= 0.05f || half_z <= 0.05f)
+            {
+                center_x = (platform.min_x + platform.max_x) * 0.5f;
+                center_z = (platform.min_z + platform.max_z) * 0.5f;
+                half_x   = (platform.max_x - platform.min_x) * 0.5f;
+                half_z   = (platform.max_z - platform.min_z) * 0.5f;
+                yaw      = 0.0f;
+            }
+
+            ApplyFlattenToPositions(
+                center_x,
+                center_z,
+                half_x,
+                half_z,
+                yaw,
+                platform.height,
+                max(platform.margin, 0.0f)
+            );
+        }
+
+        SP_LOG_INFO("applied %zu terrain platforms", m_platforms.size());
+        return true;
+    }
+
+    bool Terrain::BuildSnapPlatform(const vector<Entity*>& entities, bool require_floor)
+    {
+        if (!HasHeightfield())
+        {
+            return false;
+        }
+
+        // stand the group up first, a tilted floor makes a lying aabb and the pad follows that lie
+        level_selection(entities);
+
+        SnapPlatformDesc desc;
+        if (!find_snap_platform(entities, require_floor, desc))
+        {
+            return false;
+        }
+
+        const float floor_bottom = desc.height;
+
+        float terrain_max = 0.0f;
+        if (!sample_terrain_max(
+                this,
+                desc.center_x,
+                desc.center_z,
+                desc.half_x,
+                desc.half_z,
+                desc.yaw,
+                terrain_max))
+        {
+            SP_LOG_WARNING("the selection footprint does not overlap the terrain");
+            return false;
+        }
+
+        // sit on the highest ground under the object so nothing is buried, then fill the rest of
+        // the pad up to that plane
+        desc.height = terrain_max;
+
+        TerrainPlatform platform;
+        platform.entity_id = desc.entity_id;
+        platform.min_x     = desc.min_x;
+        platform.min_z     = desc.min_z;
+        platform.max_x     = desc.max_x;
+        platform.max_z     = desc.max_z;
+        platform.center_x  = desc.center_x;
+        platform.center_z  = desc.center_z;
+        platform.half_x    = desc.half_x;
+        platform.half_z    = desc.half_z;
+        platform.yaw       = desc.yaw;
+        platform.height    = desc.height;
+        platform.margin    = desc.margin;
+        RememberPlatform(platform);
+
+        const float span      = max(desc.half_x, desc.half_z) * 2.0f;
+        const float clearance = min(max(span * 0.001f, 0.05f), 0.5f);
+
+        SP_LOG_INFO(
+            "snap platform: %u floors, obb %.0f x %.0f yaw %.0f, pad at %.1f, drop %.1f, ramp %.0f",
+            desc.mesh_count,
+            desc.half_x * 2.0f,
+            desc.half_z * 2.0f,
+            desc.yaw * (180.0f / 3.14159265f),
+            desc.height,
+            floor_bottom - (desc.height + clearance),
+            desc.margin
+        );
+
+        if (!FlattenRegion(
+                desc.center_x,
+                desc.center_z,
+                desc.half_x,
+                desc.half_z,
+                desc.yaw,
+                desc.height,
+                desc.margin))
+        {
+            return false;
+        }
+
+        SnapshotBaseline();
+        translate_floor_cluster(desc.floors, entities, (desc.height + clearance) - floor_bottom);
+        return true;
+    }
+
+    void Terrain::RebuildMeshData(bool update_placement)
+    {
+        if (m_dense_width < 2 || m_dense_height < 2 || m_positions.empty())
+        {
+            return;
+        }
+
+        m_vertices.resize(m_dense_width * m_dense_height);
+        m_indices.resize((m_dense_width - 1) * (m_dense_height - 1) * 6);
+        TerrainSystem::GenerateVerticesAndIndices(
+            m_vertices,
+            m_indices,
+            m_positions,
+            m_dense_width,
+            m_dense_height
+        );
+        TerrainSystem::GenerateNormals(m_vertices, m_dense_width, m_dense_height);
+        geometry_processing::split_surface_into_tiles(
+            m_vertices,
+            m_indices,
+            m_tile_count,
+            m_tile_vertices,
+            m_tile_indices,
+            m_tile_offsets
+        );
+
+        if (update_placement)
+        {
+            m_triangle_data.clear();
+            for (uint32_t tile_index = 0; tile_index < m_tile_vertices.size(); tile_index++)
+            {
+                placement::compute_triangle_data(
+                    m_tile_vertices,
+                    m_tile_indices,
+                    tile_index,
+                    m_triangle_data
+                );
+            }
+        }
     }
 
     float Terrain::ResolveSeaLevelLocal() const
@@ -4233,7 +7044,7 @@ namespace spartan
         }
     }
 
-    void Terrain::RebuildSurface(bool update_placement)
+    void Terrain::RebuildSurface(bool update_placement, bool preview)
     {
         if (!HasHeightfield())
         {
@@ -4265,19 +7076,40 @@ namespace spartan
             }
         }
 
-        BakeHeightMapTexture();
-        BakeTerrainMaps();
-        UploadTerrainMaps();
+        if (!preview)
+        {
+            BakeHeightMapTexture();
+            BakeTerrainMaps();
+            UploadTerrainMaps();
+        }
 
         m_height_samples = m_dense_width * m_dense_height;
         m_vertex_count   = static_cast<uint32_t>(m_vertices.size());
         m_index_count    = static_cast<uint32_t>(m_indices.size());
         m_triangle_count = m_index_count / 3;
-        m_area_km2       = TerrainSystem::ComputeSurfaceAreaKm2(m_vertices, m_indices);
+        if (!preview)
+        {
+            m_area_km2 = TerrainSystem::ComputeSurfaceAreaKm2(m_vertices, m_indices);
+        }
+
+        vector<Entity*> existing_tiles(m_tile_offsets.size(), nullptr);
+        uint32_t existing_count = 0;
+        if (m_entity_ptr)
+        {
+            for (Entity* child : m_entity_ptr->GetChildren())
+            {
+                const int index = ParseTileIndex(child);
+                if (index >= 0 && static_cast<uint32_t>(index) < existing_tiles.size() && !existing_tiles[index])
+                {
+                    existing_tiles[index] = child;
+                    existing_count++;
+                }
+            }
+        }
+        const bool reuse_tiles = existing_count == existing_tiles.size() && !existing_tiles.empty();
 
         // drop tile draws before freeing the mesh they still reference
         DetachTileMeshes();
-        ClearTileEntities();
 
         ResourceCache::Remove(m_mesh);
         m_mesh = make_shared<Mesh>();
@@ -4292,11 +7124,44 @@ namespace spartan
         }
         m_mesh->CreateGpuBuffers();
 
-        CreateTileEntities();
-        RefreshPhysics();
-        RefreshLayers();
+        if (reuse_tiles)
+        {
+            for (uint32_t tile_index = 0; tile_index < existing_tiles.size(); tile_index++)
+            {
+                Entity* tile = existing_tiles[tile_index];
+                if (!tile)
+                {
+                    continue;
+                }
+
+                tile->SetPositionLocal(m_tile_offsets[tile_index]);
+                if (Render* render = tile->GetComponent<Render>())
+                {
+                    render->SetMesh(m_mesh.get(), tile_index);
+                }
+            }
+        }
+        else
+        {
+            ClearTileEntities();
+            CreateTileEntities();
+        }
+
+        if (!preview)
+        {
+            RefreshPhysics();
+            RefreshLayers();
+        }
         PushToRenderer();
-        SpawnFlowRivers();
+        if (!preview && !reuse_tiles)
+        {
+            SpawnFlowRivers();
+        }
+
+        if (!preview)
+        {
+            RebuildCommittedPadOverlays();
+        }
 
         m_vertices.clear();
         m_indices.clear();
@@ -4330,7 +7195,17 @@ namespace spartan
         m_dense_width  = m_density * (base_width - 1) + 1;
         m_dense_height = m_density * (base_height - 1) + 1;
 
+        SnapshotSeed();
+        m_live_pad_active = false;
+        m_live_pad_dirty  = false;
+        if (!ProgressTracker::GetProgress(ProgressType::World).IsProgressing())
+        {
+            HarvestOccupiedPlatforms();
+            PruneOrphanPlatforms();
+        }
+        ApplyPlatformsToHeightfield();
         RebuildSurface(true);
+        m_prop_mask_seed = m_prop_mask_pixels;
         SnapshotBaseline();
 
         WorldHelpers::PopulateTerrainBiomeProps(this);
@@ -4459,6 +7334,29 @@ namespace spartan
         m_tile_indices.clear();
         m_triangle_data.clear();
         m_positions_baseline.clear();
+        m_positions_seed.clear();
+        m_prop_mask_seed.clear();
+        m_prop_instance_seed.clear();
+        m_prop_entity_seed.clear();
+        m_live_pad_active    = false;
+        m_live_pad_dirty     = false;
+        m_live_pad           = {};
+        m_live_track_entity  = 0;
+        if (m_entity_ptr)
+        {
+            if (Entity* pad = m_entity_ptr->GetChildByName("live_pad"))
+            {
+                World::RemoveEntity(pad);
+            }
+            if (Entity* pad = m_entity_ptr->GetChildByName("pad_overlay"))
+            {
+                World::RemoveEntity(pad);
+            }
+        }
+        ResourceCache::Remove(m_live_pad_mesh);
+        m_live_pad_mesh = nullptr;
+        ResourceCache::Remove(m_pad_overlay_mesh);
+        m_pad_overlay_mesh = nullptr;
         ResourceCache::Remove(m_mesh);
         m_mesh = nullptr;
     }

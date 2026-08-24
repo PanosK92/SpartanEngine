@@ -912,6 +912,64 @@ namespace spartan
         }
     }
 
+    void WorldHelpers::RefreshTerrainGpuScatter(Terrain* terrain)
+    {
+        if (!terrain || !terrain->GetSpawnBiomeProps())
+        {
+            Renderer::DisableGpuScatter();
+            return;
+        }
+
+        bool gpu_slot_pushed[renderer_max_gpu_scatter_slots] = {};
+        uint32_t detail_slot_next                            = 1;
+        array<TerrainScatterLayer, terrain_scatter_max>& layers = terrain->GetScatterLayers();
+
+        for (uint32_t layer_index = 0; layer_index < terrain_scatter_max; layer_index++)
+        {
+            TerrainScatterLayer& layer = layers[layer_index];
+            if (!terrain->IsScatterActive(layer))
+            {
+                continue;
+            }
+
+            if (layer.kind != TerrainScatterKind::Grass && layer.kind != TerrainScatterKind::Detail)
+            {
+                continue;
+            }
+
+            uint32_t slot = 0;
+            if (layer.kind == TerrainScatterKind::Detail)
+            {
+                if (detail_slot_next >= renderer_max_gpu_scatter_slots)
+                {
+                    continue;
+                }
+                slot = detail_slot_next++;
+            }
+            else if (gpu_slot_pushed[0])
+            {
+                if (detail_slot_next >= renderer_max_gpu_scatter_slots)
+                {
+                    continue;
+                }
+                slot = detail_slot_next++;
+            }
+
+            if (enable_gpu_scatter(terrain, layer, slot))
+            {
+                gpu_slot_pushed[slot] = true;
+            }
+        }
+
+        for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
+        {
+            if (!gpu_slot_pushed[slot])
+            {
+                Renderer::DisableGpuScatter(slot);
+            }
+        }
+    }
+
     void WorldHelpers::PopulateTerrainBiomeProps(Terrain* terrain)
     {
         if (!terrain || !terrain->GetEntity())
@@ -1150,6 +1208,8 @@ namespace spartan
                 Renderer::DisableGpuScatter(slot);
             }
         }
+
+        terrain->OnBiomePropsPopulated();
     }
 
     void WorldHelpers::Clear()

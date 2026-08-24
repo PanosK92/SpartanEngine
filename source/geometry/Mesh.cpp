@@ -753,6 +753,60 @@ namespace spartan
         return true;
     }
 
+    void Mesh::UploadVertexRange(uint32_t vertex_offset, uint32_t vertex_count)
+    {
+        if (vertex_count == 0 || vertex_offset + vertex_count > m_vertices.size())
+        {
+            return;
+        }
+
+        GeometryBuffer::UpdateVertices(
+            m_vertices.data() + vertex_offset,
+            m_global_vertex_offset + vertex_offset,
+            vertex_count
+        );
+    }
+
+    void Mesh::RefreshLodBounds(uint32_t sub_mesh_index)
+    {
+        if (sub_mesh_index >= m_sub_meshes.size())
+        {
+            return;
+        }
+
+        lock_guard lock(m_mutex);
+        SubMesh& sub_mesh = m_sub_meshes[sub_mesh_index];
+        for (MeshLod& lod : sub_mesh.lods)
+        {
+            if (lod.vertex_count == 0 || lod.vertex_offset + lod.vertex_count > m_vertices.size())
+            {
+                continue;
+            }
+
+            lod.aabb = BoundingBox(m_vertices.data() + lod.vertex_offset, lod.vertex_count);
+
+            if (lod.meshlet_count == 0 || lod.meshlet_offset + lod.meshlet_count > m_meshlets.size())
+            {
+                continue;
+            }
+
+            vector<Sb_MeshletBounds> gpu_meshlets(lod.meshlet_count);
+            for (uint32_t i = 0; i < lod.meshlet_count; i++)
+            {
+                Sb_MeshletBounds bounds = m_meshlets[lod.meshlet_offset + i];
+                offset_meshlet_unique_ranges(bounds, m_global_meshlet_vertex_offset, m_global_meshlet_micro_offset);
+                bounds.center_z_radius |= (0xFFFFu << 16);
+                gpu_meshlets[i] = bounds;
+            }
+
+            GeometryBuffer::UpdateMeshletBounds(
+                gpu_meshlets.data(),
+                m_global_meshlet_offset + lod.meshlet_offset,
+                lod.meshlet_count
+            );
+        }
+    }
+
     uint32_t Mesh::GetVertexCount() const
     {
         return static_cast<uint32_t>(m_vertices.size());

@@ -319,8 +319,9 @@ void accumulate_subpath_at_rc(
     out float3 out_first_dir,
     out float out_first_pdf)
 {
-    // emtri strategy carries emission when active, zero here to avoid double counting
-    out_L_nee = is_emtri_pool_active() ? float3(0, 0, 0) : rc.emission;
+    // the closest hit shader already zeroes whatever the emtri strategy carries, so no blanket
+    // kill here, that one dropped texture emitters from gi entirely whenever the pool was active
+    out_L_nee = rc.emission;
     // diffuse only brdf at rc keeps the stored nee view independent for reuse at any dst
     out_L_nee += direct_lighting_at_vertex(
         rc.hit_position, rc.hit_normal, rc.geometric_normal,
@@ -1004,7 +1005,12 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     }
     if (mat.emissive_from_albedo())
     {
-        emission = albedo * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
+        // the nee pool holds authored emitters only, so zero them here while it is active to keep
+        // the two strategies from double counting, texture emitters stay on this path because the
+        // pool derives radiance from the flat material color and cannot evaluate their texture
+        emission = is_emtri_pool_active()
+            ? float3(0.0f, 0.0f, 0.0f)
+            : albedo * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
     }
 
     payload.hit_position     = hit_position;

@@ -2118,11 +2118,14 @@ namespace spartan
                 continue;
             }
 
-            // accepts the synthetic albedo to emission path or an explicit emission texture, matching the bit 15 flag in UpdateMaterials
-            bool has_emission =
-                material->GetProperty(MaterialProperty::EmissiveFromAlbedo) > 0.0f ||
-                material->HasTextureOfType(MaterialTextureType::Emission);
-            if (!has_emission)
+            // authored emitters only, matching the bit 15 flag in UpdateMaterials
+            // an emission texture is deliberately not accepted here, the radiance below is derived
+            // from the flat material color and cannot see the texture, so an imported asset that
+            // merely ships a black emission map would enter as a full brightness emitter, that both
+            // injects light from surfaces that emit nothing and floods the pool past its cap, the
+            // closest hit shader samples those textures properly so brdf sampling already covers them
+            const float emissive_from_albedo = material->GetProperty(MaterialProperty::EmissiveFromAlbedo);
+            if (emissive_from_albedo <= 0.0f)
             {
                 continue;
             }
@@ -2134,9 +2137,8 @@ namespace spartan
             );
 
             // nits calibration matching light_composition, otherwise emitters glow on screen but bounce no light
-            const float emissive_from_albedo = material->GetProperty(MaterialProperty::EmissiveFromAlbedo);
-            const float luminous_efficacy    = 683.0f;
-            const float nits                 = emissive_from_albedo > 0.0f ? emissive_from_albedo * 100000.0f : 10000.0f;
+            const float luminous_efficacy = 683.0f;
+            const float nits              = emissive_from_albedo * 100000.0f;
             emission *= nits / luminous_efficacy;
 
             float emission_lum = 0.299f * emission.x + 0.587f * emission.y + 0.114f * emission.z;
@@ -2213,12 +2215,17 @@ namespace spartan
         }
 
         // a truncated pool would zero emission at vertices it cannot sample, brdf sampling is unbiased so fall back to it
+        // that fallback is correct but very noisy, cosine rays find small bright emitters rarely and
+        // each hit lands far above its neighbours, so the reuse passes freeze those spikes into blobs
         if (truncated)
         {
             static bool warned = false;
             if (!warned)
             {
-                SP_LOG_WARNING("emissive triangle count exceeds the nee pool cap, falling back to brdf sampled emission");
+                SP_LOG_WARNING(
+                    "emissive triangle count exceeds the nee pool cap of %u, falling back to brdf sampled emission, expect noisy indirect light from emitters",
+                    restir_emissive_tri_max
+                );
                 warned = true;
             }
             m_cb_frame_cpu.restir_pt_emissive_tri_count = 0.0f;
@@ -3335,8 +3342,9 @@ namespace spartan
 
     void Renderer::UpdateDrawCalls_BuildIndirectAndCullTasks()
     {
-        // one draw entry per render lod, one instance cull task per (render, instance) tuple
-        // phase a compacts visible instances, phase b expands their meshlets, the triangle cull then feeds the indirect draw
+        // one draw entry per render lod, instanced meshes with several lods emit every lod and the
+        // instance cull keeps each instance on the lod its screen coverage wants
+        // one instance cull task per (draw, instance), phase b expands the meshlets of the survivors
         m_indirect_draw_count       = 0;
         m_indirect_render_count = 0;
         m_cull_task_count           = 0;
@@ -3368,26 +3376,45 @@ namespace spartan
                 continue;
             }
 
-            const uint32_t lod_index_count = render->GetIndexCount(dc.lod_index);
-            if (lod_index_count == 0)
-            {
-                continue;
-            }
-
-            const uint32_t lod_meshlet_count = render->GetMeshletCount(dc.lod_index);
-            if (lod_meshlet_count == 0)
+            Entity* entity = render->GetEntity();
+            Mesh* mesh     = render->GetMesh();
+            if (!mesh)
             {
                 continue;
             }
 
             const bool is_instanced = dc.instance_count > 1;
             const uint32_t inst_n   = is_instanced ? dc.instance_count : 1;
+            const bool is_skinned   =
+                render->HasBoundingBoxOverride() ||
+                (mesh->IsSkinned() && !cvar_meshlet_cull_skinned.GetValueAs<bool>());
 
-            // one instance cull task per instance (phase a), phase b expands the meshlets of the survivors,
-            // so the task budget scales with instance count, not meshlets x instances as the old single-phase path did
-            const uint32_t tasks_add = inst_n;
+            // instanced tiles share one cpu lod, so a forest next to the camera pins every tree at lod 0,
+            // submit every lod and let instance cull keep each instance on the lod its screen coverage wants
+            const uint32_t mesh_lod_count = max(render->GetLodCount(), 1u);
+            const bool gpu_lod            = is_instanced && !is_skinned && mesh_lod_count > 1u;
+            const uint32_t lod_first      = gpu_lod ? 0u : dc.lod_index;
+            const uint32_t lod_last       = gpu_lod ? mesh_lod_count : (dc.lod_index + 1u);
 
-            if (m_indirect_draw_count + 1 > indirect_draw_capacity)
+            uint32_t lods_emit      = 0;
+            uint32_t meshlets_worst = 0;
+            for (uint32_t lod = lod_first; lod < lod_last; lod++)
+            {
+                const uint32_t meshlet_count = render->GetMeshletCount(lod);
+                if (meshlet_count == 0 || render->GetIndexCount(lod) == 0)
+                {
+                    continue;
+                }
+                lods_emit++;
+                meshlets_worst = max(meshlets_worst, meshlet_count);
+            }
+            if (lods_emit == 0)
+            {
+                continue;
+            }
+
+            const uint32_t tasks_add = inst_n * lods_emit;
+            if (m_indirect_draw_count + lods_emit > indirect_draw_capacity)
             {
                 continue;
             }
@@ -3397,32 +3424,20 @@ namespace spartan
                 continue;
             }
 
-            // worst case survivor accounting, every instance visible and emitting all of its meshlets
-            expected_survivors_worst_case += static_cast<uint64_t>(inst_n) * static_cast<uint64_t>(lod_meshlet_count);
+            expected_survivors_worst_case += static_cast<uint64_t>(inst_n) * static_cast<uint64_t>(meshlets_worst);
 
-            const uint32_t render_aabb_slot     = aabb_frame_offset + m_draw_calls_prepass_count + m_indirect_render_count;
-            const uint32_t base_first_index     = render->GetIndexOffset(dc.lod_index);
-            const uint32_t vertex_offset        = render->GetVertexOffset(dc.lod_index);
-            const uint32_t base_meshlet_index   = render->GetGlobalMeshletOffset() + render->GetMeshletOffset(dc.lod_index);
+            const uint32_t render_aabb_slot = aabb_frame_offset + m_draw_calls_prepass_count + m_indirect_render_count;
+            m_indirect_render_count++;
 
-            Entity* entity = render->GetEntity();
-            Mesh* mesh     = render->GetMesh();
-
-            // flags bit 0 skinned, bit 1 per instance, bit 3 two sided, bit 4 alpha tested, bit 5 skip hi-z
-            // override means cpu already wrote a deformed world aabb, use the skinned cull path so phase a does not test lod_aabb * entity
-            const bool is_skinned       =
-                render->HasBoundingBoxOverride() ||
-                (mesh->IsSkinned() && !cvar_meshlet_cull_skinned.GetValueAs<bool>());
-            const bool use_per_instance = is_instanced;
-            const bool is_two_sided     = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
-            const bool is_alpha_tested  = material->IsAlphaTested();
-            const bool skip_hiz         = entity && entity->GetTimeSinceLastTransform() <= 0.1f;
-            uint32_t base_flags         = 0u;
+            const bool is_two_sided    = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
+            const bool is_alpha_tested = material->IsAlphaTested();
+            const bool skip_hiz        = entity && entity->GetTimeSinceLastTransform() <= 0.1f;
+            uint32_t base_flags        = 0u;
             if (is_skinned)
             {
                 base_flags |= 1u;
             }
-            if (use_per_instance)
+            if (is_instanced)
             {
                 base_flags |= 2u;
             }
@@ -3439,49 +3454,53 @@ namespace spartan
                 base_flags |= 32u;
             }
 
-            const uint32_t draw_idx        = m_indirect_draw_count++;
-            Sb_DrawData& draw_data         = m_indirect_draw_data[draw_idx];
-            draw_data.transform            = entity->GetMatrix();
-            draw_data.transform_previous   = matrix_previous_for_velocity(entity);
-            draw_data.material_index       = material->GetIndex();
-            draw_data.is_transparent       = 0;
-            draw_data.aabb_index           = render_aabb_slot;
-            draw_data.lod_first_index      = base_first_index;
-            draw_data.flags                = base_flags;
-            draw_data.instance_offset      = render->GetGlobalInstanceOffset();
-            draw_data.instance_index       = 0;
-            draw_data.lod_vertex_offset    = vertex_offset;
-            draw_data.lod_meshlet_offset   = base_meshlet_index;
-            draw_data.lod_meshlet_count    = lod_meshlet_count;
-            fill_uv_draw_fields_from_render(draw_data, render);
+            const float max_distance    = render->GetMaxRenderDistance();
+            const bool  finite_distance = max_distance > 0.0f && max_distance < numeric_limits<float>::max() * 0.5f;
+            const float max_distance_sq = finite_distance ? (max_distance * max_distance) : 0.0f;
+            const Matrix transform_prev = matrix_previous_for_velocity(entity);
 
-            // lod-local aabb, must match the one build_meshlets quantized the compressed meshlet bounds against
-            // diag is precomputed length(extent), the cull shader uses it to dequantize radius without a sqrt
-            const BoundingBox& lod_aabb_local = render->GetLodAabb(dc.lod_index);
-            const Vector3 lod_extent          = lod_aabb_local.GetMax() - lod_aabb_local.GetMin();
-            draw_data.lod_aabb_min            = lod_aabb_local.GetMin();
-            draw_data.lod_aabb_extent         = lod_extent;
-            draw_data.lod_aabb_diag           = lod_extent.Length();
-
-            // squared once here so the cull shader skips a sqrt, zero disables the check, this is the only per-instance distance test for consolidated entities
-            const float max_distance          = render->GetEffectiveMaxRenderDistance();
-            const bool  finite_distance       = max_distance > 0.0f && max_distance < numeric_limits<float>::max() * 0.5f;
-            draw_data.max_render_distance_squared = finite_distance ? (max_distance * max_distance) : 0.0f;
-
-            // parallel render handle, UpdateBoundingBoxes uses this to write each aabb at exactly the slot the cull shader will read
-            m_indirect_renders[draw_idx] = render;
-
-            // one instance cull task per instance, phase a tests each instance's bounds, phase b expands the survivors' meshlets
-            for (uint32_t inst = 0; inst < inst_n; inst++)
+            for (uint32_t lod = lod_first; lod < lod_last; lod++)
             {
-                Sb_CullTask& task   = m_cull_tasks[m_cull_task_count++];
-                task.draw_index     = draw_idx;
-                task.meshlet_index  = 0; // unused in phase a, the meshlet range lives on DrawData
-                task.instance_index = inst;
-                task.instance_count = 1;
-            }
+                const uint32_t lod_meshlet_count = render->GetMeshletCount(lod);
+                if (lod_meshlet_count == 0 || render->GetIndexCount(lod) == 0)
+                {
+                    continue;
+                }
 
-            m_indirect_render_count++;
+                const uint32_t draw_idx = m_indirect_draw_count++;
+                Sb_DrawData& draw_data  = m_indirect_draw_data[draw_idx];
+                draw_data.transform     = entity->GetMatrix();
+                draw_data.transform_previous = transform_prev;
+                draw_data.material_index     = material->GetIndex();
+                draw_data.is_transparent     = 0;
+                draw_data.aabb_index         = render_aabb_slot;
+                draw_data.lod_first_index    = render->GetIndexOffset(lod);
+                draw_data.flags              = base_flags | ((lod & 7u) << 8u) | ((mesh_lod_count & 7u) << 11u);
+                draw_data.instance_offset    = render->GetGlobalInstanceOffset();
+                draw_data.instance_index     = 0;
+                draw_data.lod_vertex_offset  = render->GetVertexOffset(lod);
+                draw_data.lod_meshlet_offset = render->GetGlobalMeshletOffset() + render->GetMeshletOffset(lod);
+                draw_data.lod_meshlet_count  = lod_meshlet_count;
+                fill_uv_draw_fields_from_render(draw_data, render);
+
+                const BoundingBox& lod_aabb_local = render->GetLodAabb(lod);
+                const Vector3 lod_extent          = lod_aabb_local.GetMax() - lod_aabb_local.GetMin();
+                draw_data.lod_aabb_min            = lod_aabb_local.GetMin();
+                draw_data.lod_aabb_extent         = lod_extent;
+                draw_data.lod_aabb_diag           = lod_extent.Length();
+                draw_data.max_render_distance_squared = max_distance_sq;
+
+                m_indirect_renders[draw_idx] = render;
+
+                for (uint32_t inst = 0; inst < inst_n; inst++)
+                {
+                    Sb_CullTask& task   = m_cull_tasks[m_cull_task_count++];
+                    task.draw_index     = draw_idx;
+                    task.meshlet_index  = 0;
+                    task.instance_index = inst;
+                    task.instance_count = 1;
+                }
+            }
         }
 
         // reported once per session, either the survivor count exceeded the buffer or the cull task budget rejected renders

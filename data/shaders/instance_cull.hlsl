@@ -75,22 +75,38 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             radius_world        = draw.lod_aabb_diag * 0.5f * max_world_scale(world_xform);
         }
 
-        // per-instance distance cull, the cpu Render::UpdateFrustumAndDistanceCulling can only test the whole renderable bbox
-        // which always passes for consolidated world-spanning entities (forest trees, rocks), max_render_distance_squared == 0 disables it
+        // closest point on the instance sphere, origin distance was dropping roads and buildings
+        // whose entity pivot sat hundreds of metres away from the mesh in front of the camera
         bool passes_distance = true;
         if (draw.max_render_distance_squared > 0.0f)
         {
-            float3 instance_pos     = float3(world_xform._m30, world_xform._m31, world_xform._m32);
-            float3 to_camera        = instance_pos - buffer_frame.camera_position;
-            passes_distance         = dot(to_camera, to_camera) <= draw.max_render_distance_squared;
+            float3 to_camera = center_world - buffer_frame.camera_position;
+            float dist_center = length(to_camera);
+            float max_dist = sqrt(draw.max_render_distance_squared);
+            passes_distance = (dist_center - radius_world) <= max_dist;
         }
 
         // frustum, then contribution, then hi-z, the hi-z test also rejects instances entirely behind the camera (the side planes alone do not)
         // contribution runs before hi-z because it reuses the same projection without sampling the hi-z pyramid
         survives = passes_distance
             && sphere_in_side_planes(center_world, radius_world, plane_l, plane_r, plane_b, plane_t)
-            && sphere_contributes(center_world, radius_world, CULL_CONTRIBUTION_MESH_PX)
-            && (skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level));
+            && sphere_contributes(center_world, radius_world, CULL_CONTRIBUTION_MESH_PX);
+
+        // instanced tiles submit one draw per lod, keep the instance only on the lod its screen coverage wants
+        if (survives && is_per_instance)
+        {
+            uint lod_count = (draw.flags >> 11u) & 7u;
+            if (lod_count > 1u)
+            {
+                uint draw_lod = (draw.flags >> 8u) & 7u;
+                survives      = sphere_lod_index(center_world, radius_world, lod_count) == draw_lod;
+            }
+        }
+
+        if (survives)
+        {
+            survives = skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level);
+        }
     }
 
     // wave-aggregated compaction, the first lane reserves a contiguous range so dense visibility doesn't hammer one address

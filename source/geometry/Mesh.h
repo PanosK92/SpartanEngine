@@ -116,6 +116,10 @@ namespace spartan
             std::vector<RHI_Vertex_PosTexNorTan>& vertices,
             std::vector<uint32_t>& indices
         );
+        // write a slice of m_vertices into the global buffer, cloth and live terrain pads
+        void UploadVertexRange(uint32_t vertex_offset, uint32_t vertex_count);
+        // grow lod aabbs from current verts and max out meshlet radii so raised pads are not culled
+        void RefreshLodBounds(uint32_t sub_mesh_index);
         // pre-allocate sub-mesh slots so concurrent AddGeometry calls with explicit indices target stable positions
         void ReserveSubMeshes(const uint32_t count);
         std::vector<RHI_Vertex_PosTexNorTan>& GetVertices()    { return m_vertices; }

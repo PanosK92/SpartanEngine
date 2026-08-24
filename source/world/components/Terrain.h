@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include <vector>
 #include "../../rhi/RHI_Definitions.h"
+#include "../../math/Matrix.h"
 #include "../../math/Quaternion.h"
 #include "../../math/Ray.h"
 #include "../../math/Vector4.h"
@@ -74,6 +75,23 @@ namespace spartan
         float height_max;
         math::Quaternion rotation_to_normal;
         math::Vector3 centroid;
+    };
+
+    // a level pad cut or filled under a snapped floor, stored with the world so generate rebuilds it
+    struct TerrainPlatform
+    {
+        uint64_t entity_id = 0;
+        float min_x        = 0.0f;
+        float min_z        = 0.0f;
+        float max_x        = 0.0f;
+        float max_z        = 0.0f;
+        float center_x     = 0.0f;
+        float center_z     = 0.0f;
+        float half_x       = 0.0f;
+        float half_z       = 0.0f;
+        float yaw          = 0.0f;
+        float height       = 0.0f;
+        float margin       = 0.0f;
     };
 
     class Terrain : public Component
@@ -153,6 +171,8 @@ namespace spartan
         RHI_Texture* GetAnalysisMapB() const    { return m_map_b.get(); }
         RHI_Texture* GetPropMask() const        { return m_prop_mask.get(); }
         void RebuildPropMask();
+        // after biome scatter, keep instance seeds then hide props on occupied pads
+        void OnBiomePropsPopulated();
 
         // r=grass, g=trees, b=rocks, bilinear sample in world xz
         math::Vector3 SamplePropMask(float world_x, float world_z) const;
@@ -183,7 +203,7 @@ namespace spartan
         // generation
         void Generate();
         void CreateFlat(uint32_t base_width = 128, uint32_t base_height = 128);
-        void RebuildSurface(bool update_placement = false);
+        void RebuildSurface(bool update_placement = false, bool preview = false);
         // wipe sculpt and rebuild from heightmap or flat params
         void Regenerate();
         // restore one tile region from the pre-sculpt baseline
@@ -213,13 +233,14 @@ namespace spartan
         // world-space unit normal at xz, returns false if no heightfield
         bool SampleNormal(float world_x, float world_z, math::Vector3& normal_out) const;
         void ApplyBrush(const math::Vector3& world_center, const TerrainBrush& brush);
-        // level the heightfield inside a world space xz rectangle, ramped back to the original
+        // level the heightfield inside a world space xz obb, ramped back to the original
         // ground over blend_margin so the pad does not end in a cliff
         bool FlattenRegion(
-            float world_min_x,
-            float world_min_z,
-            float world_max_x,
-            float world_max_z,
+            float center_x,
+            float center_z,
+            float half_x,
+            float half_z,
+            float yaw,
             float world_height,
             float blend_margin
         );
@@ -235,10 +256,15 @@ namespace spartan
 
         // find the first terrain with a heightfield in the loaded world
         static Terrain* FindActive();
-        // snap this entity and any mesh descendants onto the surface below each one
+        // snap this entity and any mesh descendants onto the surface below each one, a large floor
+        // under the group levels the group, drops it onto the ground, then cuts a pad to meet it
         static bool SnapEntityToTerrain(Entity* entity, float offset = 0.0f);
-        static uint32_t SnapEntitiesToTerrain(const std::vector<Entity*>& entities, float offset = 0.0f);
-        // flatten the ground under the horizontal footprint of the selection, then snap onto it
+        static uint32_t SnapEntitiesToTerrain(
+            const std::vector<Entity*>& entities,
+            float offset = 0.0f,
+            bool build_platform = true
+        );
+        // level the selection, drop it onto the ground, flatten a pad under it, keep it upright
         static bool SnapEntityToFlatTerrain(Entity* entity, float offset = 0.0f);
         static uint32_t SnapEntitiesToFlatTerrain(const std::vector<Entity*>& entities, float offset = 0.0f);
 
@@ -279,6 +305,80 @@ namespace spartan
         float ResolveSeaLevelLocal() const;
         bool ApplyShorelineLock();
         bool ApplyFlowChannelCarve();
+        void RememberPlatform(const TerrainPlatform& platform);
+        void HarvestOccupiedPlatforms();
+        void PruneOrphanPlatforms();
+        void ApplyPlatformsToProps();
+        void PunchPropMaskFootprint(
+            float center_x,
+            float center_z,
+            float half_x,
+            float half_z,
+            float yaw
+        );
+        void ClearFootprintProps(
+            float center_x,
+            float center_z,
+            float half_x,
+            float half_z,
+            float yaw
+        );
+        void RestoreFootprintProps(
+            float center_x,
+            float center_z,
+            float half_x,
+            float half_z,
+            float yaw
+        );
+        void SnapshotPropInstances();
+        void UploadPropMask();
+        void ApplyFlattenToPositions(
+            float center_x,
+            float center_z,
+            float half_x,
+            float half_z,
+            float yaw,
+            float world_height,
+            float blend_margin
+        );
+        void ForgetPlatform(uint64_t entity_id);
+        void SnapshotSeed();
+        void UpdateLivePads();
+        void PaintPadFromSeed(
+            float center_x,
+            float center_z,
+            float half_x,
+            float half_z,
+            float yaw,
+            float world_height,
+            float blend_margin,
+            bool restore_only
+        );
+        bool SampleSeedMax(
+            float center_x,
+            float center_z,
+            float half_x,
+            float half_z,
+            float yaw,
+            float& out_max
+        );
+        void CommitLivePad(bool punch);
+        void RestorePropMaskFootprint(
+            float center_x,
+            float center_z,
+            float half_x,
+            float half_z,
+            float yaw
+        );
+        void PatchLiveTiles(const TerrainPlatform& pad);
+        void UpdatePadOverlay(const TerrainPlatform* pad);
+        void HidePadOverlay();
+        void RebuildCommittedPadOverlays();
+        void SyncLivePadVisuals(const TerrainPlatform* restore, const TerrainPlatform* paint);
+        void RebuildPhysicsForPad(const TerrainPlatform& pad);
+        bool ApplyPlatformsToHeightfield();
+        bool BuildSnapPlatform(const std::vector<Entity*>& entities, bool require_floor);
+        void RebuildMeshData(bool update_placement);
 
         // textures
         RHI_Texture* m_height_map_seed                  = nullptr;
@@ -299,6 +399,10 @@ namespace spartan
         std::vector<uint8_t> m_map_a_pixels; // mip 0 rgba8, kept so the cache write does not re-derive it
         std::vector<uint8_t> m_map_b_pixels;
         std::vector<uint8_t> m_prop_mask_pixels; // r=grass g=trees b=rocks
+        std::vector<uint8_t> m_prop_mask_seed;
+        // full scatter instances, live pads hide from this and restore when the pad leaves
+        std::unordered_map<uint64_t, std::vector<math::Matrix>> m_prop_instance_seed;
+        std::unordered_map<uint64_t, bool> m_prop_entity_seed;
         std::vector<uint8_t> m_layer_dominant;   // one surface layer index per analysis cell
         std::vector<uint8_t> m_height_gpu_bytes;
         std::vector<uint8_t> m_height_preview_bytes;
@@ -344,6 +448,8 @@ namespace spartan
         std::vector<uint32_t> m_indices;
         std::vector<std::vector<uint32_t>> m_tile_indices;
         std::shared_ptr<Mesh> m_mesh;
+        std::shared_ptr<Mesh> m_live_pad_mesh;
+        std::shared_ptr<Mesh> m_pad_overlay_mesh;
         // the surface material, tile renders point at this one, it carries no layer textures of its
         // own, only the terrain flag and the pointer to where the layer table starts
         std::shared_ptr<Material> m_material;
@@ -363,8 +469,20 @@ namespace spartan
         TerrainErosionMaps m_erosion_maps;
         std::vector<math::Vector3> m_tile_offsets;
         std::vector<math::Vector3> m_positions;
+        // unpadded heightfield, live pads restore from this when a building moves away
+        std::vector<math::Vector3> m_positions_seed;
         // heights right after generate/create flat, used to undo sculpt
         std::vector<math::Vector3> m_positions_baseline;
+        // pads under buildings, replayed after generate from the seed heightfield
+        std::vector<TerrainPlatform> m_platforms;
+        bool m_live_pad_active           = false;
+        TerrainPlatform m_live_pad;
+        bool m_live_pad_dirty            = false;
+        double m_live_pad_changed_ms     = 0.0;
+        uint64_t m_live_track_entity     = 0;
+        math::Vector3 m_live_track_position = math::Vector3::Zero;
+        math::Quaternion m_live_track_rotation;
+        math::Vector3 m_live_track_scale = math::Vector3::One;
 
         // placement data (per-terrain, not static)
         std::unordered_map<uint64_t, std::vector<TriangleData>> m_triangle_data;

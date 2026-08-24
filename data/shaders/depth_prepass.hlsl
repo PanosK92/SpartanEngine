@@ -88,7 +88,7 @@ void main_ps(gbuffer_vertex vertex)
     const float3 position_world = get_position_for_view(vertex.position.z, screen_uv, vertex.view_id);
     const float alpha_threshold = get_alpha_threshold(position_world);
 
-    float a = GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_bilinear_wrap], vertex.uv_misc.xy).a;
+    float a = GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a;
     if (a <= alpha_threshold)
         discard;
 }
@@ -106,7 +106,7 @@ void main_ps(gbuffer_vertex vertex)
     const float3 position_world = get_position_for_view(vertex.position.z, screen_uv, vertex.view_id);
     const float alpha_threshold = get_alpha_threshold(position_world);
 
-    if (has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_bilinear_wrap], vertex.uv_misc.xy).a <= alpha_threshold)
+    if (has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a <= alpha_threshold)
         discard;
 }
 #endif

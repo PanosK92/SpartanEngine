@@ -173,7 +173,7 @@ bool sphere_hiz_visible(Texture2D hiz_tex, float3 center_world, float radius_wor
 // meshes and meshlets are tuned apart because meshlet screen size is far more uniform than mesh screen size
 // the meshlet threshold stays the lower of the two, over-culling meshlets punches sub-pixel holes in solid surfaces
 // while over-culling an instance only removes a speck
-#define CULL_CONTRIBUTION_MESH_PX    3.0f
+#define CULL_CONTRIBUTION_MESH_PX    2.0f
 #define CULL_CONTRIBUTION_MESHLET_PX 1.0f
 
 // contribution cull, rejects a sphere whose projected footprint is thinner than min_extent_pixels on both axes
@@ -196,6 +196,54 @@ bool sphere_contributes(float3 center_world, float radius_world, float min_exten
     // ndc spans two units across the viewport, so half the resolution converts an ndc extent into pixels
     float2 extent_pixels = (max_ndc - min_ndc) * get_render_resolution_active() * 0.5f;
     return max(extent_pixels.x, extent_pixels.y) >= min_extent_pixels;
+}
+
+// same screen-height fractions as Render::UpdateLodIndices, near-plane straddlers keep lod 0
+uint sphere_lod_index(float3 center_world, float radius_world, uint lod_count)
+{
+    if (lod_count <= 1u)
+    {
+        return 0u;
+    }
+
+    float2 min_ndc, max_ndc;
+    float  closest_z;
+    uint   status = sphere_project_ndc(center_world, radius_world, min_ndc, max_ndc, closest_z);
+
+    float screen_fraction = 1.0f;
+    if (status == SPHERE_PROJECT_BEHIND)
+    {
+        screen_fraction = 0.0f;
+    }
+    else if (status == SPHERE_PROJECT_VALID)
+    {
+        float2 extent_ndc = (max_ndc - min_ndc) * 0.5f;
+        screen_fraction   = max(extent_ndc.x, extent_ndc.y);
+    }
+
+    uint lod = lod_count - 1u;
+    if (screen_fraction >= 0.05f)
+    {
+        lod = 0u;
+    }
+    else if (screen_fraction >= 0.025f)
+    {
+        lod = 1u;
+    }
+    else if (screen_fraction >= 0.012f)
+    {
+        lod = 2u;
+    }
+    else if (screen_fraction >= 0.006f)
+    {
+        lod = 3u;
+    }
+    else
+    {
+        lod = 4u;
+    }
+
+    return min(lod, lod_count - 1u);
 }
 
 // largest world-axis scale of the upper 3x3, used to lift a local-space radius into world units

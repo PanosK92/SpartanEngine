@@ -416,6 +416,7 @@ struct IndirectDispatchArgs
 // flags bit 3: two-sided material (triangle pass skips backface)
 // flags bit 4: alpha-tested material (triangle pass routes survivors to the alpha half so the depth prepass can run opaque depth-only)
 // flags bit 5: skip hi-z (recently moved, last frame occluder depth would pop the mesh)
+// flags bits 8-10: lod index of this draw, bits 11-13: mesh lod count, instance cull keeps the instance only on the lod its screen coverage wants
 // lod_first_index/lod_vertex_offset hold the global geometry offsets for the lod (replaces what indirect_draw_args used to carry)
 struct DrawData
 {

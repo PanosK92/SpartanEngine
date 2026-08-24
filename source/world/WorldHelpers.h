@@ -43,6 +43,9 @@ namespace spartan
         // spawn biome-masked grass, rocks and trees on an existing terrain
         static void PopulateTerrainBiomeProps(class Terrain* terrain);
 
+        // rebind grass and micro detail to the current height map and biome mask, leaves cpu props alone
+        static void RefreshTerrainGpuScatter(class Terrain* terrain);
+
         // sweeps every terrain prop out of the world, wherever it currently sits in the hierarchy
         static void RemoveTerrainProps();
 
