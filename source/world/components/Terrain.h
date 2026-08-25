@@ -306,7 +306,6 @@ namespace spartan
         bool ApplyShorelineLock();
         bool ApplyFlowChannelCarve();
         void RememberPlatform(const TerrainPlatform& platform);
-        void HarvestOccupiedPlatforms();
         void PruneOrphanPlatforms();
         void ApplyPlatformsToProps();
         void PunchPropMaskFootprint(
@@ -363,6 +362,9 @@ namespace spartan
             float& out_max
         );
         void CommitLivePad(bool punch);
+        void RestoreLivePad();
+        void RestorePlatform(const TerrainPlatform& pad);
+        void PruneVanishedPlatforms();
         void RestorePropMaskFootprint(
             float center_x,
             float center_z,
@@ -371,9 +373,21 @@ namespace spartan
             float yaw
         );
         void PatchLiveTiles(const TerrainPlatform& pad);
-        void UpdatePadOverlay(const TerrainPlatform* pad);
-        void HidePadOverlay();
-        void RebuildCommittedPadOverlays();
+        void DestroyPadOverlays();
+        void DestroyPadRefine(uint64_t entity_id);
+        void DestroyAllPadRefines();
+        void SyncPadRefine(const TerrainPlatform& pad, bool cook_physics);
+        void RebuildCommittedRefines();
+        void RestampPropsForPad(const TerrainPlatform& pad, bool restore);
+        void SnapPropsToSurface(
+            float center_x,
+            float center_z,
+            float deform_hx,
+            float deform_hz,
+            float object_hx,
+            float object_hz,
+            float yaw
+        );
         void SyncLivePadVisuals(const TerrainPlatform* restore, const TerrainPlatform* paint);
         void RebuildPhysicsForPad(const TerrainPlatform& pad);
         bool ApplyPlatformsToHeightfield();
@@ -448,8 +462,6 @@ namespace spartan
         std::vector<uint32_t> m_indices;
         std::vector<std::vector<uint32_t>> m_tile_indices;
         std::shared_ptr<Mesh> m_mesh;
-        std::shared_ptr<Mesh> m_live_pad_mesh;
-        std::shared_ptr<Mesh> m_pad_overlay_mesh;
         // the surface material, tile renders point at this one, it carries no layer textures of its
         // own, only the terrain flag and the pointer to where the layer table starts
         std::shared_ptr<Material> m_material;
@@ -483,6 +495,8 @@ namespace spartan
         math::Vector3 m_live_track_position = math::Vector3::Zero;
         math::Quaternion m_live_track_rotation;
         math::Vector3 m_live_track_scale = math::Vector3::One;
+        // dense pad meshes, one per occupied floor, collision included
+        std::unordered_map<uint64_t, std::shared_ptr<Mesh>> m_pad_refine_meshes;
 
         // placement data (per-terrain, not static)
         std::unordered_map<uint64_t, std::vector<TriangleData>> m_triangle_data;

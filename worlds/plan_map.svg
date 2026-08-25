@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-21000 -19000 42000 38000" width="980" height="886">
+<rect x="-21000" y="-19000" width="42000" height="38000" fill="#152033"/>
+<polygon fill="#4a6a52" stroke="#2e4534" stroke-width="60" points="-16528,-8110 -16404,-7696 -15770,-7426 -15814,-7068 -16430,-6711 -15750,-6105 -15883,-5639 -15436,-4962 -15482,-4346 -15745,-4410 -15901,-3916 -15756,-3242 -15460,-3324 -15355,-3762 -15102,-3694 -15202,-2995 -15543,-2766 -14897,-2264 -14644,-2495 -14836,-2081 -14552,-1999 -14284,-1270 -13673,-1340 -14039,-922 -13492,-492 -12745,-269 -12358,-428 -12180,-47 -11671,-364 -11817,-32 -11227,-174 -11533,202 -11161,250 -11069,724 -11519,803 -11537,1104 -11893,1160 -11664,1325 -11973,1427 -11833,1684 -11249,1654 -11771,2176 -11661,2505 -11095,2849 -10737,2752 -10753,2962 -9559,3115 -10154,3846 -9635,4015 -10017,5043 -9510,5523 -9230,5447 -9239,5936 -8385,6720 -8323,7145 -6902,7447 -7104,7838 -6861,8084 -6469,8047 -6225,7613 -5827,8548 -5154,8264 -4673,9003 -4187,9009 -4151,10124 -3227,10949 -3015,11342 -3171,11682 -2575,11706 -1820,12856 -364,13255 -490,13953 62,14539 -299,14775 -113,15044 522,15118 897,15513 1752,15484 2058,16118 2695,16083 2875,15657 3403,15855 3372,15243 3779,15407 4158,14887 4475,15093 4453,14758 4675,14790 4430,14322 4754,14131 4440,13438 3852,13189 3379,12200 2648,11951 3067,10214 5172,8261 4850,7930 5133,7388 7516,6127 9959,5809 10403,6498 11013,6669 11511,7203 13778,7774 13909,8322 14454,8433 14896,9026 15918,9183 16132,9532 15747,10195 16453,9577 16058,8996 16512,8009 16153,8025 15971,7624 16100,6907 16444,6744 12782,5019 11776,3116 10866,2957 8335,1495 8593,1247 8272,1228 8629,1168 8518,857 8201,1250 8019,900 8272,331 8737,875 8246,-300 8659,-1794 6747,-3071 5426,-3223 5371,-3579 4684,-3868 4672,-4228 3555,-4195 1312,-5743 395,-5587 -1447,-6572 -2143,-6090 -2362,-6208 -2431,-5768 -3072,-5807 -5677,-7819 -6099,-8775 -6366,-8845 -6413,-10205 -7145,-9979 -7276,-10524 -8008,-11215 -7890,-11839 -8831,-13068 -8452,-13293 -8606,-13780 -8350,-14316 -8459,-14990 -8974,-15340 -8919,-15862 -9422,-16118 -10054,-15443 -11052,-15109 -11446,-14388 -12849,-13451 -12702,-13123 -13534,-12913 -13421,-12450 -13834,-12667 -14174,-12342 -14102,-11784 -14613,-11860 -14310,-11674 -14639,-10888 -15316,-10575 -15238,-10080 -15697,-10081 -15646,-9443 -15925,-9184 -15686,-8798 -16255,-8709 -15928,-7915 -16528,-8110"/>
+<polygon fill="#3d5c46" stroke="#2e4534" stroke-width="30" points="781,15614 872,15667 895,15529 781,15614"/>
+<path d="M6959,4258 L5775,3458 L7363,1901 L8240,236" fill="none" stroke="#c9b27a" stroke-width="70" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M8240,236 L9211,1790 L8243,5686 L5246,6916" fill="none" stroke="#c9b27a" stroke-width="70" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M6959,4258 L8243,5686" fill="none" stroke="#c9b27a" stroke-width="40" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M9211,1790 L14401,8135" fill="none" stroke="#c9b27a" stroke-width="40" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M5246,6916 L3668,6465 L2085,9916 L180,14956" fill="none" stroke="#c9b27a" stroke-width="70" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M8240,236 L5773,-2952 L1205,-4333 L-2754,-5669 L-8648,-12793" fill="none" stroke="#c9b27a" stroke-width="70" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M-8648,-12793 L-12167,-9899 L-14806,-7828" fill="none" stroke="#9a8a6a" stroke-width="40" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M-12167,-9899 L2085,9916" fill="none" stroke="#9a8a6a" stroke-width="40" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M8240,236 L8346,824" fill="none" stroke="#c9b27a" stroke-width="40" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M8240,236 L7539,-214" fill="none" stroke="#c9b27a" stroke-width="40" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M6959,4258 L6615,3972 L6413,4484" fill="none" stroke="#c9b27a" stroke-width="40" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M7363,1901 L7134,1367 L7698,521 L8240,236" fill="none" stroke="#c9b27a" stroke-width="40" stroke-linejoin="round" stroke-linecap="round"/>
+<g font-family="Georgia, serif" fill="#f3ead4" text-anchor="middle">
+<text x="0" y="-16800" font-size="720" fill="#d8c48a">ZAKYNTHOS</text>
+<text x="0" y="-15950" font-size="320" fill="#8a9bb0">complete skeleton  north up</text>
+<circle cx="6959" cy="4258" r="200" fill="#f4ead0"/>
+<text x="6959" y="3978" font-size="340">Airport</text>
+<circle cx="5775" cy="3458" r="200" fill="#f4ead0"/>
+<text x="5775" y="3178" font-size="340">Garage</text>
+<circle cx="7363" cy="1901" r="200" fill="#f4ead0"/>
+<text x="7363" y="1621" font-size="340">Gas</text>
+<circle cx="8240" cy="236" r="200" fill="#f4ead0"/>
+<text x="8240" y="-44" font-size="340">Zante</text>
+<circle cx="8346" cy="824" r="140" fill="#c45c26"/>
+<text x="8346" y="544" font-size="340">PORT</text>
+<circle cx="6615" cy="3972" r="140" fill="#c45c26"/>
+<text x="6615" y="3692" font-size="340">EXOTIC DEALER</text>
+<circle cx="6413" cy="4484" r="140" fill="#c45c26"/>
+<text x="6413" y="4204" font-size="340">LICENSE SCHOOL</text>
+<circle cx="7134" cy="1367" r="140" fill="#c45c26"/>
+<text x="7134" y="1087" font-size="340">TUNE SHOP</text>
+<circle cx="7698" cy="521" r="140" fill="#c45c26"/>
+<text x="7698" y="241" font-size="340">TOWN DEALER</text>
+<circle cx="9211" cy="1790" r="140" fill="#c45c26"/>
+<text x="9211" y="1510" font-size="340">ARGASSI</text>
+<circle cx="8243" cy="5686" r="140" fill="#c45c26"/>
+<text x="8243" y="5406" font-size="340">KALAMAKI</text>
+<circle cx="5246" cy="6916" r="140" fill="#c45c26"/>
+<text x="5246" y="6636" font-size="340">LAGANAS</text>
+<circle cx="14401" cy="8135" r="140" fill="#c45c26"/>
+<text x="14401" y="7855" font-size="340">VASILIKOS</text>
+<circle cx="180" cy="14956" r="140" fill="#c45c26"/>
+<text x="180" y="14676" font-size="340">KERI</text>
+<circle cx="2085" cy="9916" r="140" fill="#c45c26"/>
+<text x="2085" y="9636" font-size="340">LITHAKIA</text>
+<circle cx="5773" cy="-2952" r="140" fill="#c45c26"/>
+<text x="5773" y="-3232" font-size="340">TSILIVI</text>
+<circle cx="-2754" cy="-5669" r="140" fill="#c45c26"/>
+<text x="-2754" y="-5949" font-size="340">ALYKES</text>
+<circle cx="-8648" cy="-12793" r="140" fill="#c45c26"/>
+<text x="-8648" y="-13073" font-size="340">AGIOS NIKOLAOS</text>
+<circle cx="-12167" cy="-9899" r="140" fill="#c45c26"/>
+<text x="-12167" y="-10179" font-size="340">VOLIMES</text>
+<circle cx="-14806" cy="-7828" r="140" fill="#c45c26"/>
+<text x="-14806" y="-8108" font-size="340">NAVAGIO</text>
+<circle cx="7539" cy="-214" r="140" fill="#c45c26"/>
+<text x="7539" y="-494" font-size="340">BOCHALI</text>
+<circle cx="1205" cy="-4333" r="140" fill="#c45c26"/>
+<text x="1205" y="-4613" font-size="340">GAS NORTH</text>
+<circle cx="3668" cy="6465" r="140" fill="#c45c26"/>
+<text x="3668" y="6185" font-size="340">GAS SOUTH</text>
+</g></svg>

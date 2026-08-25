@@ -8,7 +8,7 @@
   <Variable name="r.chromatic_aberration" value="0.000000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="player_car" id="2411005043703651744" active="true" position="2604.62 19.471 -2053.33" rotation="0 0.42284 0 0.906205" scale="1 1 1" tags="focal_point,player_car,current_car,player_garage_hub_display">
+  <Entity name="player_car" id="2411005043703651744" active="true" position="5775.2 10 -3446" rotation="0 0 0 1" scale="1 1 1" tags="focal_point,player_car,current_car,player_garage_hub_display">
    <prefab type="car" file="cars/ferrari_laferrari.car" telemetry="true" drivable="true" camera_follows="true" paint_color_a="1" paint_preset="metallic" paint_color_b="0" paint_color_r="0.392156869" paint_color_g="0" />
    <car_reset spawn_point_entity_id="2411005043703651745" />
    <prefab_override path="vehicle">
@@ -83,10 +83,10 @@
     </Entity>
    </prefab_override>
   </Entity>
-  <Entity name="player_car_spawn" id="2411005043703651745" active="true" position="2606.81 20.571 -2055.93" rotation="0 0.42284 0 0.906205" scale="1 1 1">
+  <Entity name="player_car_spawn" id="2411005043703651745" active="true" position="5777 10 -3448" rotation="0 0 0 1" scale="1 1 1">
    <spawn_point />
   </Entity>
-  <Entity name="world" id="9002000000000000001" active="true" position="2587.4 32.271 -1766.6" rotation="0 0.42284 0 0.906205" scale="1 1 1">
+  <Entity name="world" id="9002000000000000001" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="spline_car" id="5723169428173956022" active="false" position="1958.04 8.31514 800.637" rotation="0.00100538 -0.826177 0.00147428 0.563408" scale="1 1 1">
     <prefab type="car" file="cars/ferrari_laferrari.car" static_physics="false" drivable="false" paint_preset="metallic" paint_color_r="0.392156869" paint_color_b="0" paint_color_g="0" paint_color_a="1" />
     <spline_follower spline_entity_id="10358794943034623506" speed="60" follow_mode="0" align_to_spline="true" flip_forward="true" animate_wheels="true" wheel_radius="0" max_steer_angle="35" />
@@ -107,7 +107,17 @@
      <camera aperture="1.39999998" shutter_speed="0.0333333351" iso="1600" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="100000" projection="0" preset="5" flags="17" />
     </Entity>
    </Entity>
-   <Entity name="gas_station_showcase__sr_8aa1454b_8da79a95cd" id="9975885574175935593" active="true" position="299.15 -10.1 -345.122" rotation="0 -0.707108 0 0.707106" scale="1 1 1" tags="scene_recipe=gas_station_showcase,semantic_id=gs.root,focal_point,gas_station">
+   <Entity name="gas_station_showcase__sr_8aa1454b_8da79a95cd" id="9975885574175935593" active="true" position="7363.2 6 -1901" rotation="0 -0.707108 0 0.707106" scale="1 1 1" tags="scene_recipe=gas_station_showcase,semantic_id=gs.root,focal_point,gas_station,landmark">
+    <Entity name="map_label" id="9003000000000000201" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+     <Entity name="map_label_a" id="9003000000000000202" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+      <text_3d text="GAS" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+     </Entity>
+     <Entity name="map_label_b" id="9003000000000000203" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+      <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+      <text_3d text="GAS" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+     </Entity>
+    </Entity>
     <Entity name="parking_spaces__sr_8aa1454b_d7b1c90525" id="10596162387345431417" active="true" position="12 0 -6" rotation="0 0 0 1" scale="1 1 1" tags="scene_recipe=gas_station_showcase,semantic_id=gs.parking,vehicle_route">
      <Entity name="parking_space_1" id="3349209433326265278" active="true" position="-8.1 0.04 0" rotation="0 0 0 1" scale="0.12 0.05 5.4">
       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -357,7 +367,7 @@
      </Entity>
      <Entity name="supported_canopy" id="16546110976723011395" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
      <Entity name="bright_canopy_lighting" id="17185135779486198432" active="true" position="0 5.1 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-      <light flags="1" light_type="3" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="14000" range="24" angle="0.52359879" index="1" preset="5" area_width="20" area_height="10" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="3" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="14000" range="24" angle="0.52359879" index="4294967295" preset="5" area_width="20" area_height="10" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="supported canopy" id="4723648470276431592" active="true" position="0 6.15 0" rotation="0 0 0 1" scale="22 0.35 0.45">
       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -369,28 +379,28 @@
      </Entity>
      <Entity name="canopy_lighting__sr_8aa1454b_8fb9d1b485" id="66495270451328882" active="true" position="0 5.1 0" rotation="0 0 0 1" scale="1 1 1" tags="scene_recipe=gas_station_showcase,semantic_id=gs.canopylights">
       <Entity name="canopy_lights_4" id="13993690499153362758" active="true" position="11 0.25 -5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="2" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="canopy_lights_5" id="14368113862486260036" active="true" position="-11 0.25 5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="3" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="canopy_lights_6" id="14653238272795965265" active="true" position="-4 0.25 5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="canopy_lights_7" id="15020716375561050508" active="true" position="4 0.25 5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="5" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="canopy_lights_8" id="15314592750590705596" active="true" position="11 0.25 5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="6" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="canopy_lights_1" id="11221308876274045138" active="true" position="-11 0.25 -5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="7" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="canopy_lights_2" id="12971416434040686782" active="true" position="-4 0.25 -5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="8" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="canopy_lights_3" id="13348546083500287256" active="true" position="4 0.25 -5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="9" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
      </Entity>
     </Entity>
@@ -541,7 +551,7 @@
      </Entity>
      <Entity name="convenience_store" id="16629047030505769030" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
      <Entity name="warm_interior_lighting" id="16913291195874868699" active="true" position="0 3.2 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="9000" range="14" angle="0.52359879" index="10" preset="5" area_width="8" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="9000" range="14" angle="0.52359879" index="4294967295" preset="5" area_width="8" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="convenience store" id="4724455967230454161" active="true" position="0 5.35 3.75" rotation="0 0 0 1" scale="10 0.3 0.18">
       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -553,16 +563,16 @@
      </Entity>
      <Entity name="store_lighting__sr_8aa1454b_1a7699570d" id="169965884932043290" active="true" position="0 3.4 0" rotation="0 0 0 1" scale="1 1 1" tags="scene_recipe=gas_station_showcase,semantic_id=gs.storelights">
       <Entity name="store_lights_1" id="15638133234979188285" active="true" position="-8 0.8 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="11" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="store_lights_2" id="16000611197716511590" active="true" position="-2.5 0.8 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="12" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="store_lights_3" id="16687814890918099960" active="true" position="3 0.8 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="13" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="store_lights_4" id="16960507313265151072" active="true" position="8 0.8 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="14" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
      </Entity>
      <Entity name="roof_vents__sr_8aa1454b_537df41554" id="457126520929355937" active="true" position="0 4.8 0" rotation="0 0 0 1" scale="1 1 1" tags="scene_recipe=gas_station_showcase,semantic_id=gs.vents">
@@ -956,10 +966,10 @@
      </Entity>
     </Entity>
     <Entity name="storefront_accent_left" id="17275017198260262089" active="true" position="5 3 -7" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.96200538" color_g="0.792158365" color_b="0.226122275" temperature="2800" intensity="8" intensity_photometric="7000" range="16" angle="0.52359879" index="15" preset="5" area_width="1" area_height="1" draw_distance="100" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.96200538" color_g="0.792158365" color_b="0.226122275" temperature="2800" intensity="8" intensity_photometric="7000" range="16" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="100" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="storefront_accent_right" id="17702765425932361635" active="true" position="25 3 -7" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.96200538" color_g="0.792158365" color_b="0.226122275" temperature="2800" intensity="8" intensity_photometric="7000" range="16" angle="0.52359879" index="16" preset="5" area_width="1" area_height="1" draw_distance="100" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.96200538" color_g="0.792158365" color_b="0.226122275" temperature="2800" intensity="8" intensity_photometric="7000" range="16" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="100" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="four_complete_fuel_pump_islands" id="16469573671870620436" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
     <Entity name="fuel_hoses" id="16797890223916284875" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
@@ -972,10 +982,10 @@
      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gs_road_paint" material_path="./project/plan_resources/gs_road_paint.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="subtle_exterior_light_left" id="10681305324362455510" active="true" position="2 2.8 -10" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="5000" range="10" angle="0.52359879" index="17" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="5000" range="10" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="subtle_exterior_light_right" id="10839222147088926397" active="true" position="22 2.8 -10" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="5000" range="10" angle="0.52359879" index="18" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="5000" range="10" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="surrounding_asphalt__sr_8aa1454b_cb9448ae19" id="10253077208951222911" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="scene_recipe=gas_station_showcase,semantic_id=gs.asphalt,vehicle_route,walkable">
      <Entity name="asphalt_site_surface" id="3406323777341763460" active="true" position="0 -0.1 0" rotation="0 0 0 1" scale="72 0.2 58">
@@ -1022,7 +1032,7 @@
       </Entity>
      </Entity>
      <Entity name="price_sign_accent" id="18031366581651383761" active="true" position="0 5 2" rotation="0 1 -0 -4.37114e-08" scale="1 1 1">
-      <light flags="1" light_type="2" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="9500" range="18" angle="0.610865235" index="19" preset="5" area_width="1" area_height="1" draw_distance="120" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="2" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="9500" range="18" angle="0.610865235" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="120" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="price_sign" id="16689735993709317976" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
      <Entity name="price sign" id="4967812559231032058" active="true" position="0 6.5 0.440002" rotation="0 0 0 1" scale="2.6 1.4 0.08">
@@ -1074,7 +1084,17 @@
    <Entity name="pedestrian_manager" id="18446744073709551021" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
     <pedestrians count="100" model_file="project/models/mannequiny/mannequiny.glb" bounds_min_x="454.5" bounds_min_y="-10" bounds_min_z="-793.900024" bounds_max_x="1414.5" bounds_max_y="80" bounds_max_z="166.100006" max_animated="16" animation_radius="80" walk_speed="2.5" />
    </Entity>
-   <Entity name="airport" id="767181977370211419" active="true" position="0 10.5014 0" rotation="0 8.9407e-07 0 0.999999" scale="1 1 1">
+   <Entity name="airport" id="767181977370211419" active="true" position="6959.2 8 -4257.6" rotation="0 0 0 1" scale="1 1 1" tags="landmark,airport">
+    <Entity name="map_label" id="9003000000000000101" active="true" position="-1600 250 -100" rotation="0 0 0 1" scale="1 1 1">
+     <Entity name="map_label_a" id="9003000000000000102" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+      <text_3d text="AIRPORT" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="120" depth="2" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+     </Entity>
+     <Entity name="map_label_b" id="9003000000000000103" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+      <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+      <text_3d text="AIRPORT" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="120" depth="2" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+     </Entity>
+    </Entity>
     <Entity name="runway_marking_26" id="7893234644321767119" active="true" position="-2000 0.32 300" rotation="0 4.17233e-07 0 1" scale="40 0.03 1.2">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="airport_white_marking" material_path="./project/plan_resources/airport_white_marking.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
@@ -2140,40 +2160,50 @@
      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="airport_asphalt" material_path="./project/plan_resources/airport_asphalt.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
    </Entity>
-   <Entity name="player_garage_hub" id="12848334842964081404" active="true" position="234.2 -14.2556 -183" rotation="0 8.34465e-07 0 0.999999" scale="1 1 1" tags="scene_recipe=player_garage_hub,semantic_id=hub.root,focal_point,landmark,scene_recipe_player_garage_hub">
+   <Entity name="player_garage_hub" id="12848334842964081404" active="true" position="5775.2 8 -3458.5" rotation="0 0 0 1" scale="1 1 1" tags="scene_recipe=player_garage_hub,semantic_id=hub.root,focal_point,landmark,scene_recipe_player_garage_hub">
+    <Entity name="map_label" id="9003000000000000301" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+     <Entity name="map_label_a" id="9003000000000000302" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+      <text_3d text="GARAGE" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="100" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+     </Entity>
+     <Entity name="map_label_b" id="9003000000000000303" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+      <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+      <text_3d text="GARAGE" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="100" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+     </Entity>
+    </Entity>
     <Entity name="practical_lighting__sr_465e8212_abbb1027ad" id="15317390147473076062" active="true" position="0 0 0" rotation="0 7.45058e-07 0 1" scale="1 1 1" tags="scene_recipe=player_garage_hub,semantic_id=hub.lighting">
      <Entity name="garage_car_key_area" id="10712998828182731605" active="true" position="0 4.6 -3" rotation="0 -0.422841 0 0.906204" scale="1 1 1">
-      <light flags="1" light_type="3" color_r="1.63633871" color_g="0.867911816" color_b="0.434678763" temperature="3500" intensity="8" intensity_photometric="12000" range="16" angle="0.52359879" index="20" preset="5" area_width="4.5" area_height="1.20000005" draw_distance="60" distance_shadows="35" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="3" color_r="1.63633871" color_g="0.867911816" color_b="0.434678763" temperature="3500" intensity="8" intensity_photometric="12000" range="16" angle="0.52359879" index="4294967295" preset="5" area_width="4.5" area_height="1.20000005" draw_distance="60" distance_shadows="35" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="garage_left_ceiling_practical" id="10623919915995389065" active="true" position="-4.2 4.35 -3.5" rotation="0 8.34465e-07 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.56429791" color_g="0.883990467" color_b="0.487537891" temperature="3700" intensity="8" intensity_photometric="8500" range="11" angle="0.52359879" index="21" preset="5" area_width="1" area_height="1" draw_distance="45" distance_shadows="24" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.56429791" color_g="0.883990467" color_b="0.487537891" temperature="3700" intensity="8" intensity_photometric="8500" range="11" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="45" distance_shadows="24" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="garage_right_ceiling_practical" id="9643989669480197143" active="true" position="4.2 4.35 -3.5" rotation="0 8.34465e-07 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.56429791" color_g="0.883990467" color_b="0.487537891" temperature="3700" intensity="8" intensity_photometric="8500" range="11" angle="0.52359879" index="22" preset="5" area_width="1" area_height="1" draw_distance="45" distance_shadows="24" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.56429791" color_g="0.883990467" color_b="0.487537891" temperature="3700" intensity="8" intensity_photometric="8500" range="11" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="45" distance_shadows="24" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="workshop_neutral_area" id="6533251680557657035" active="true" position="-11 4.1 -3.5" rotation="0 -0.422841 0 0.906204" scale="1 1 1">
-      <light flags="1" light_type="3" color_r="1.44028628" color_g="0.911148608" color_b="0.58368057" temperature="4100" intensity="8" intensity_photometric="12000" range="10" angle="0.52359879" index="23" preset="5" area_width="3.79999995" area_height="0.699999988" draw_distance="40" distance_shadows="22" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="3" color_r="1.44028628" color_g="0.911148608" color_b="0.58368057" temperature="4100" intensity="8" intensity_photometric="12000" range="10" angle="0.52359879" index="4294967295" preset="5" area_width="3.79999995" area_height="0.699999988" draw_distance="40" distance_shadows="22" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="lounge_amber_main" id="6323953488332192275" active="true" position="11 3.3 -3" rotation="0 8.34465e-07 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="2.08303308" color_g="0.762563944" color_b="0.162900239" temperature="2600" intensity="8" intensity_photometric="8500" range="9" angle="0.52359879" index="24" preset="5" area_width="1" area_height="1" draw_distance="40" distance_shadows="20" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="2.08303308" color_g="0.762563944" color_b="0.162900239" temperature="2600" intensity="8" intensity_photometric="8500" range="9" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="40" distance_shadows="20" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="jukebox_amber_accent" id="6052627904330939166" active="true" position="13.5 1.7 0.5" rotation="0 8.34465e-07 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="2.22046041" color_g="0.727859795" color_b="0.102005936" temperature="2400" intensity="8" intensity_photometric="4800" range="5" angle="0.52359879" index="25" preset="5" area_width="1" area_height="1" draw_distance="24" distance_shadows="12" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="2.22046041" color_g="0.727859795" color_b="0.102005936" temperature="2400" intensity="8" intensity_photometric="4800" range="5" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="24" distance_shadows="12" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="garden_path_light_1" id="7876733908508742374" active="true" position="8 0.9 11" rotation="0 8.34465e-07 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="4200" range="6" angle="0.52359879" index="26" preset="5" area_width="1" area_height="1" draw_distance="28" distance_shadows="14" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="4200" range="6" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="28" distance_shadows="14" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="garden_path_light_2" id="7523146821320826700" active="true" position="16 0.9 13" rotation="0 8.34465e-07 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="4200" range="6" angle="0.52359879" index="27" preset="5" area_width="1" area_height="1" draw_distance="28" distance_shadows="14" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="4200" range="6" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="28" distance_shadows="14" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="driveway_entry_light" id="7181780495775446075" active="true" position="-5.2 0.2 11" rotation="0 8.34465e-07 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="5200" range="8" angle="0.52359879" index="28" preset="5" area_width="1" area_height="1" draw_distance="32" distance_shadows="16" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="5200" range="8" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="32" distance_shadows="16" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="garage_light" id="12287940123286892819" active="true" position="0 0 0" rotation="0 8.34465e-07 0 1" scale="1 1 1" />
      <Entity name="lounge_light" id="12314872709020588963" active="true" position="0 0 0" rotation="0 8.34465e-07 0 1" scale="1 1 1" />
     </Entity>
     <Entity name="lounge_warm_fill" id="3912926680596372468" active="true" position="12 2.6 -2" rotation="0 7.45058e-07 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="4200" range="9" angle="0.52359879" index="29" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="4200" range="9" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="text_label" id="11628295388919037259" active="true" position="8.90001 8.6 0" rotation="0 -1 0 -1.2219e-06" scale="1 1 1">
      <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" ovr_uv_world_space="1" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
@@ -3408,7 +3438,17 @@
    </Entity>
    <Entity name="lounge_warm_fill" id="16632083105559814588" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
    <Entity name="lounge_warm_fill" id="10790373977462857119" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
-   <Entity name="city_grid_1km__sr_7329bb48_315d55d1b2" id="8374879925780328293" active="true" position="930.599 0.353203 -56" rotation="0 4.17233e-07 0 0.999999" scale="1 1 1" tags="scene_recipe=city_grid_1km,semantic_id=city.root,focal_point,landmark">
+   <Entity name="city_grid_1km__sr_7329bb48_315d55d1b2" id="8374879925780328293" active="true" position="8239.7 6 -236.1" rotation="0 0 0 1" scale="1 1 1" tags="scene_recipe=city_grid_1km,semantic_id=city.root,focal_point,landmark">
+    <Entity name="map_label" id="9003000000000000401" active="true" position="0 250 0" rotation="0 0 0 1" scale="1 1 1">
+     <Entity name="map_label_a" id="9003000000000000402" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+      <text_3d text="ZANTE" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="120" depth="2" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+     </Entity>
+     <Entity name="map_label_b" id="9003000000000000403" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+      <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+      <text_3d text="ZANTE" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="120" depth="2" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+     </Entity>
+    </Entity>
     <Entity name="short_perimeter__sr_7329bb48_e79db53dad" id="8136056220636980367" active="true" position="0 0 0" rotation="0 3.8743e-07 0 1" scale="1 1 1" tags="scene_recipe=city_grid_1km,semantic_id=city.perimeter,support">
      <Entity name="perimeter_block_18__sr_7329bb48_2120bf0cf0" id="16516323596092367768" active="true" position="420 0 180" rotation="0 3.57628e-07 0 1" scale="1 1 1" tags="scene_recipe=city_grid_1km,semantic_id=city.p18,support">
       <Entity name="perimeter_block_18_building_a" id="17177191144426967341" active="true" position="-24 7 -24" rotation="0 4.17233e-07 0 1" scale="28 14 24">
@@ -4146,7 +4186,7 @@
      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="city_grid_concrete" material_path="./project/plan_resources/city_grid_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="city_key_light_1" id="5570802553204494432" active="true" position="-260 110 -260" rotation="0 3.8743e-07 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="0.720000029" color_g="0.819999993" color_b="1" temperature="5000" intensity="8" intensity_photometric="16000" range="420" angle="0.52359879" index="30" preset="5" area_width="1" area_height="1" draw_distance="1600" distance_shadows="900" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="0.720000029" color_g="0.819999993" color_b="1" temperature="5000" intensity="8" intensity_photometric="16000" range="420" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="1600" distance_shadows="900" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="city_key_light_2" id="8182112276208694911" active="true" position="260 110 -260" rotation="0 3.8743e-07 0 1" scale="1 1 1">
      <light flags="1" light_type="1" color_r="0.819999993" color_g="0.879999995" color_b="1" temperature="5000" intensity="8" intensity_photometric="28000" range="420" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="1600" distance_shadows="900" distance_volumetric="32" cloud_coverage="0.379999995" />
@@ -6041,7 +6081,7 @@
      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_playground_painted_wall" material_path="./project/plan_resources/car_playground_painted_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="playground_area_light_01" id="4283901531113133461" active="true" position="-34 9 -24" rotation="0 0.349068 0 0.937097" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="1.67532992" color_g="0.859113038" color_b="0.407026142" temperature="3400" intensity="8" intensity_photometric="14000" range="42" angle="0.52359879" index="31" preset="5" area_width="5" area_height="3" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="1.67532992" color_g="0.859113038" color_b="0.407026142" temperature="3400" intensity="8" intensity_photometric="14000" range="42" angle="0.52359879" index="4294967295" preset="5" area_width="5" area_height="3" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="playground_area_light_02" id="4624875051700964158" active="true" position="34 9 -24" rotation="0 0.349068 0 0.937097" scale="1 1 1">
      <light flags="1" light_type="3" color_r="1.19455719" color_g="0.963140607" color_b="0.792230189" temperature="5200" intensity="8" intensity_photometric="14000" range="42" angle="0.52359879" index="4294967295" preset="5" area_width="5" area_height="3" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
@@ -6306,6 +6346,337 @@
     </Entity>
    </Entity>
   </Entity>
+  <Entity name="map_skeleton" id="9004000000000000000" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="map_skeleton,landmark">
+   <Entity name="pins" id="9004000000000000001" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="pin_port" id="9004100000000000000" active="true" position="8345.9 8 -824.5" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_used_cars">
+     <Entity name="map_label" id="9004100000000000001" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000002" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="PORT / USED CARS" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000003" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="PORT / USED CARS" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_dealer_exotic" id="9004100000000000010" active="true" position="6615.4 8 -3971.5" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_dealer">
+     <Entity name="map_label" id="9004100000000000011" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000012" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="EXOTIC DEALER" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000013" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="EXOTIC DEALER" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_license_school" id="9004100000000000020" active="true" position="6413.1 8 -4483.6" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_license">
+     <Entity name="map_label" id="9004100000000000021" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000022" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="LICENSE SCHOOL" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000023" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="LICENSE SCHOOL" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_tune_shop" id="9004100000000000030" active="true" position="7134.5 8 -1366.6" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_tune">
+     <Entity name="map_label" id="9004100000000000031" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000032" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="TUNE SHOP" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000033" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="TUNE SHOP" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_dealer_town" id="9004100000000000040" active="true" position="7697.5 8 -520.6" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_dealer">
+     <Entity name="map_label" id="9004100000000000041" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000042" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="TOWN DEALER" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000043" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="TOWN DEALER" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_argassi" id="9004100000000000050" active="true" position="9210.6 8 -1789.6" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_town">
+     <Entity name="map_label" id="9004100000000000051" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000052" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="ARGASSI" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000053" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="ARGASSI" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_kalamaki" id="9004100000000000060" active="true" position="8242.9 8 -5685.8" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_beach">
+     <Entity name="map_label" id="9004100000000000061" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000062" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="KALAMAKI" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000063" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="KALAMAKI" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_laganas" id="9004100000000000070" active="true" position="5246.3 8 -6916.5" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_night">
+     <Entity name="map_label" id="9004100000000000071" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000072" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="LAGANAS NIGHT" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000073" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="LAGANAS NIGHT" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_vasilikos" id="9004100000000000080" active="true" position="15124.6 8 -6738.3" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_beach">
+     <Entity name="map_label" id="9004100000000000081" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000082" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="VASILIKOS" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000083" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="VASILIKOS" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_keri" id="9004100000000000090" active="true" position="1362.6 318.5 -12086.9" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_scenic">
+     <Entity name="map_label" id="9004100000000000091" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000092" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="KERI LIGHT" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000093" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="KERI LIGHT" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_lithakia" id="9004100000000000100" active="true" position="2084.8 284.1 -9916" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_village">
+     <Entity name="map_label" id="9004100000000000101" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000102" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="LITHAKIA" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000103" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="LITHAKIA" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_tsilivi" id="9004100000000000110" active="true" position="5773.2 8 2951.6" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_town">
+     <Entity name="map_label" id="9004100000000000111" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000112" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="TSILIVI" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000113" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="TSILIVI" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_alykes" id="9004100000000000120" active="true" position="-2753.7 8 5668.8" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_town">
+     <Entity name="map_label" id="9004100000000000121" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000122" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="ALYKES" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000123" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="ALYKES" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_agios_nikolaos" id="9004100000000000130" active="true" position="-8647.9 8 12793.3" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_ferry">
+     <Entity name="map_label" id="9004100000000000131" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000132" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="NORTH FERRY" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000133" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="NORTH FERRY" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_volimes" id="9004100000000000140" active="true" position="-12166.8 228 9899" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_mountain">
+     <Entity name="map_label" id="9004100000000000141" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000142" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="VOLIMES" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000143" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="VOLIMES" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_navagio_view" id="9004100000000000150" active="true" position="-14806 498.8 7828.4" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_scenic">
+     <Entity name="map_label" id="9004100000000000151" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000152" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="NAVAGIO VIEW" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000153" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="NAVAGIO VIEW" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_bochali" id="9004100000000000160" active="true" position="7539.1 8 214.1" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_scenic">
+     <Entity name="map_label" id="9004100000000000161" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000162" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="BOCHALI VIEW" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000163" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="BOCHALI VIEW" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_gas_north" id="9004100000000000170" active="true" position="1205.1 8 4333" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_service">
+     <Entity name="map_label" id="9004100000000000171" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000172" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="GAS NORTH" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000173" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="GAS NORTH" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="pin_gas_south" id="9004100000000000180" active="true" position="3668.3 8 -6465.1" rotation="0 0 0 1" scale="1 1 1" tags="landmark,map_pin,pin_service">
+     <Entity name="map_label" id="9004100000000000181" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="map_label_a" id="9004100000000000182" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="GAS SOUTH" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+      <Entity name="map_label_b" id="9004100000000000183" active="true" position="0 0 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+       <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="airport_emissive" material_path="./project/plan_resources/airport_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+       <text_3d text="GAS SOUTH" font_path="Data/fonts/OpenSans/OpenSans-Medium.ttf" size="80" depth="5" weight="0" letter_spacing="0" line_spacing="1.20000005" resolution="128" alignment="1" />
+      </Entity>
+     </Entity>
+    </Entity>
+   </Entity>
+   <Entity name="roads" id="9004000000000000002" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="road_commute" id="9004200000000000000" active="true" position="6959.2 8 -4257.6" rotation="0 0 0 1" scale="1 1 1" tags="road,map_road,primary">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="standard" material_path="./project/plan_resources/standard.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <spline closed_loop="false" resolution="48" road_width="12" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="12" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="true" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="true" terrain_offset="0.0500000007" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+     <Entity name="spline_point_0" id="9004200000000000001" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_1" id="9004200000000000002" active="true" position="-1184 0 799.1" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_2" id="9004200000000000003" active="true" position="404 0 2356.6" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_3" id="9004200000000000004" active="true" position="1280.5 0 4021.5" rotation="0 0 0 1" scale="1 1 1" />
+    </Entity>
+    <Entity name="road_south_coast" id="9004200000000000100" active="true" position="8239.7 8 -236.1" rotation="0 0 0 1" scale="1 1 1" tags="road,map_road,primary">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="standard" material_path="./project/plan_resources/standard.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <spline closed_loop="false" resolution="48" road_width="12" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="12" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="true" terrain_offset="0.0500000007" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+     <Entity name="spline_point_0" id="9004200000000000101" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_1" id="9004200000000000102" active="true" position="970.9 0 -1553.5" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_2" id="9004200000000000103" active="true" position="3.2 0 -5449.7" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_3" id="9004200000000000104" active="true" position="-2993.4 0 -6680.4" rotation="0 0 0 1" scale="1 1 1" />
+    </Entity>
+    <Entity name="road_airport_beach" id="9004200000000000200" active="true" position="6959.2 8 -4257.6" rotation="0 0 0 1" scale="1 1 1" tags="road,map_road,local">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="standard" material_path="./project/plan_resources/standard.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <spline closed_loop="false" resolution="48" road_width="8" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="8" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="true" terrain_offset="0.0500000007" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+     <Entity name="spline_point_0" id="9004200000000000201" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_1" id="9004200000000000202" active="true" position="1283.7 0 -1428.2" rotation="0 0 0 1" scale="1 1 1" />
+    </Entity>
+    <Entity name="road_vasilikos" id="9004200000000000300" active="true" position="9210.6 8 -1789.6" rotation="0 0 0 1" scale="1 1 1" tags="road,map_road,local">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="standard" material_path="./project/plan_resources/standard.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <spline closed_loop="false" resolution="48" road_width="8" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="8" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="true" terrain_offset="0.0500000007" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+     <Entity name="spline_point_0" id="9004200000000000301" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_1" id="9004200000000000302" active="true" position="5537.3 0 -4818.8" rotation="0 0 0 1" scale="1 1 1" />
+    </Entity>
+    <Entity name="road_laganas_keri" id="9004200000000000400" active="true" position="5246.3 8 -6916.5" rotation="0 0 0 1" scale="1 1 1" tags="road,map_road,primary">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="standard" material_path="./project/plan_resources/standard.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <spline closed_loop="false" resolution="48" road_width="10" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="10" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="true" terrain_offset="0.0500000007" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+     <Entity name="spline_point_0" id="9004200000000000401" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_1" id="9004200000000000402" active="true" position="-1578 0 451.4" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_2" id="9004200000000000403" active="true" position="-3161.5 0 -2999.5" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_3" id="9004200000000000404" active="true" position="-3981.5 430.4 -5426.3" rotation="0 0 0 1" scale="1 1 1" />
+    </Entity>
+    <Entity name="road_north_coast" id="9004200000000000500" active="true" position="8239.7 8 -236.1" rotation="0 0 0 1" scale="1 1 1" tags="road,map_road,primary">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="standard" material_path="./project/plan_resources/standard.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <spline closed_loop="false" resolution="48" road_width="12" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="12" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="true" terrain_offset="0.0500000007" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+     <Entity name="spline_point_0" id="9004200000000000501" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_1" id="9004200000000000502" active="true" position="-2466.5 0 3187.7" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_2" id="9004200000000000503" active="true" position="-7034.6 0 4569.1" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_3" id="9004200000000000504" active="true" position="-10993.4 0 5904.9" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_4" id="9004200000000000505" active="true" position="-16887.6 0 13029.4" rotation="0 0 0 1" scale="1 1 1" />
+    </Entity>
+    <Entity name="road_hills" id="9004200000000000600" active="true" position="-8647.9 8 12793.3" rotation="0 0 0 1" scale="1 1 1" tags="road,map_road,mountain">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="standard" material_path="./project/plan_resources/standard.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <spline closed_loop="false" resolution="48" road_width="7" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="7" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="true" terrain_offset="0.0500000007" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+     <Entity name="spline_point_0" id="9004200000000000601" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_1" id="9004200000000000602" active="true" position="-3518.9 0 -2894.3" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_2" id="9004200000000000603" active="true" position="-6158.1 0 -4964.9" rotation="0 0 0 1" scale="1 1 1" />
+    </Entity>
+    <Entity name="road_west_inland" id="9004200000000000700" active="true" position="-12166.8 8 9899" rotation="0 0 0 1" scale="1 1 1" tags="road,map_road,mountain">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="standard" material_path="./project/plan_resources/standard.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <spline closed_loop="false" resolution="48" road_width="7" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="7" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="true" terrain_offset="0.0500000007" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+     <Entity name="spline_point_0" id="9004200000000000701" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_1" id="9004200000000000702" active="true" position="14251.6 0 -19815" rotation="0 0 0 1" scale="1 1 1" />
+    </Entity>
+    <Entity name="road_port" id="9004200000000000800" active="true" position="8239.7 8 -236.1" rotation="0 0 0 1" scale="1 1 1" tags="road,map_road,local">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="standard" material_path="./project/plan_resources/standard.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <spline closed_loop="false" resolution="48" road_width="8" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="8" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="true" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="true" terrain_offset="0.0500000007" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+     <Entity name="spline_point_0" id="9004200000000000801" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_1" id="9004200000000000802" active="true" position="106.2 0 -588.4" rotation="0 0 0 1" scale="1 1 1" />
+    </Entity>
+    <Entity name="road_bochali" id="9004200000000000900" active="true" position="8239.7 8 -236.1" rotation="0 0 0 1" scale="1 1 1" tags="road,map_road,local">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="standard" material_path="./project/plan_resources/standard.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <spline closed_loop="false" resolution="48" road_width="7" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="7" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="true" terrain_offset="0.0500000007" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+     <Entity name="spline_point_0" id="9004200000000000901" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_1" id="9004200000000000902" active="true" position="-700.6 0 450.2" rotation="0 0 0 1" scale="1 1 1" />
+    </Entity>
+    <Entity name="road_dealers" id="9004200000000001000" active="true" position="6959.2 8 -4257.6" rotation="0 0 0 1" scale="1 1 1" tags="road,map_road,local">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="standard" material_path="./project/plan_resources/standard.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <spline closed_loop="false" resolution="48" road_width="8" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="8" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="true" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="true" terrain_offset="0.0500000007" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+     <Entity name="spline_point_0" id="9004200000000001001" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_1" id="9004200000000001002" active="true" position="-343.8 0 286.1" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_2" id="9004200000000001003" active="true" position="-546.1 0 -226" rotation="0 0 0 1" scale="1 1 1" />
+    </Entity>
+    <Entity name="road_tune" id="9004200000000001100" active="true" position="7363.2 8 -1901" rotation="0 0 0 1" scale="1 1 1" tags="road,map_road,local">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="standard" material_path="./project/plan_resources/standard.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     <spline closed_loop="false" resolution="48" road_width="8" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="8" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="true" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="true" terrain_offset="0.0500000007" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+     <Entity name="spline_point_0" id="9004200000000001101" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_1" id="9004200000000001102" active="true" position="-228.7 0 534.4" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_2" id="9004200000000001103" active="true" position="334.3 0 1380.4" rotation="0 0 0 1" scale="1 1 1" />
+     <Entity name="spline_point_3" id="9004200000000001104" active="true" position="876.5 0 1664.9" rotation="0 0 0 1" scale="1 1 1" />
+    </Entity>
+   </Entity>
+  </Entity>
   <Entity name="light_directional" id="17063083112552285226" active="true" position="0 0 0" rotation="-0.464154 -0.0275096 0.88521 -0.0144243" scale="1 1 1">
    <light flags="3" light_type="0" color_r="2.22046041" color_g="0.727859795" color_b="0.102005936" temperature="2400" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="4" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.689999998" />
   </Entity>
@@ -6331,31 +6702,23 @@
      <layer name="" mesh_path="" material_folder="" enabled="false" kind="0" density="8" max_per_tile="0" seed="0" slope_min="0" slope_max="35" slope_bias="0" height_min="1" height_max="100000" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="-1" mask_min="0" clump_radius="0" clump_count="1" clump_raggedness="1" mesh_scale="1" size_min="0.800000012" size_max="1.20000005" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="0.0500000007" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="150" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="8" />
      <layer name="" mesh_path="" material_folder="" enabled="false" kind="0" density="8" max_per_tile="0" seed="0" slope_min="0" slope_max="35" slope_bias="0" height_min="1" height_max="100000" height_fade="0" curvature="0" flow="0" occlusion="0" insolation="0" wear="0" deposition="0" talus="0" ground_mask="0" mask_channel="-1" mask_min="0" clump_radius="0" clump_count="1" clump_raggedness="1" mesh_scale="1" size_min="0.800000012" size_max="1.20000005" size_from_slope="0" size_from_altitude="0" altitude_span="180" giant_chance="0" giant_size="0" align_to_normal="1" surface_offset="0.0500000007" sink="0" blend_height="1" blend_sharpness="0.5" render_distance="0" shadow_distance="150" grass_ring_0="55" grass_ring_1="180" grass_ring_2="500" grass_cell_0="0.360000014" grass_cell_1="0.819999993" grass_cell_2="2.0999999" flags="8" />
     </scatter>
-    <platforms>
-     <platform entity_id="9002000000000000002" min_x="2226.8689" min_z="-2129.32227" max_x="2861.1084" max_z="-1825.94409" center_x="2543.98877" center_z="-1977.63318" half_x="317.119751" half_z="151.689087" yaw="0" height="17.9453964" margin="6" />
-     <platform entity_id="9623501250191570405" min_x="15.518219" min_z="-2177.4082" max_x="2950.29102" max_z="968.077881" center_x="1482.90466" center_z="-604.665222" half_x="1504.00049" half_z="654.000244" yaw="-0.873155951" height="42.0723953" margin="6" />
-     <platform entity_id="3406323777341763460" min_x="2466.69824" min_z="-2265.06982" max_x="2563.48193" max_z="-2170.06494" center_x="2515.09009" center_z="-2217.56738" half_x="37.6221161" half_z="30.4471436" yaw="0.697645485" height="21.8910007" margin="4.34101295" />
-     <platform entity_id="15604530453485782906" min_x="2398.76416" min_z="-2071.6499" max_x="2503.03564" max_z="-1969.42053" center_x="2450.8999" center_z="-2020.53528" half_x="41.5999298" half_z="31.6000977" yaw="0.713146687" height="19.7479992" margin="4.79999256" />
-     <platform entity_id="1468181053381494524" min_x="2446.37891" min_z="-3211.68213" max_x="3838.24609" max_z="-1819.81482" center_x="3142.3125" center_z="-2515.74854" half_x="494.000488" half_z="494.000488" yaw="-0.873156667" height="32.5442009" margin="6" />
-     <platform entity_id="9281318951284505473" min_x="2572.68066" min_z="-1894.12341" max_x="2590.10938" max_z="-1877.23474" center_x="2581.39502" center_z="-1885.67908" half_x="5.00024414" half_z="7.17962646" yaw="-0.873154342" height="16.7033768" margin="2" />
-     <platform entity_id="6623536741855552405" min_x="2579.22144" min_z="-2086.80249" max_x="2624.8938" max_z="-2040.20044" center_x="2602.05762" center_z="-2063.50146" half_x="18.25" half_z="14.5001221" yaw="-0.87316227" height="17.8153992" margin="2.06999993" />
-    </platforms>
+    <platforms />
    </terrain>
   </Entity>
-  <Entity name="ocean" id="9001000000000000006" active="true" position="2612 0 -2042" rotation="0 0 0 1" scale="1 1 1">
+  <Entity name="ocean" id="9001000000000000006" active="true" position="3351 0 -13894" rotation="0 0 0 1" scale="1 1 1">
    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="water_fft" material_path="./project/plan_resources/water_fft.xml" material_default="false" flags="0" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <water>
     <water cascade_count="4" amplitude="1" choppiness="0.300000012" displacement_scale="1" normal_strength="1" sea_level="0" turbidity="1" caustics_intensity="1" />
    </water>
   </Entity>
-  <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="2612.13 22.6298 -2041.75" rotation="0 0 0 1" scale="1 1 1">
+  <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="3351.46 1012.08 -13893.9" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <Entity name="component_camera" id="17524583551347340245" active="true" position="0 0.77 0" rotation="-0.0759026 0.898442 -0.172094 -0.396767" scale="1 1 1">
+   <Entity name="component_camera" id="17524583551347340245" active="true" position="0 0.77 0" rotation="0.0598971 -0.063956 0.00393388 0.996146" scale="1 1 1">
     <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="400" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" fov_horizontal="1.58724964" near_plane="0.100000001" far_plane="100000" projection="0" preset="3" flags="17" />
    </Entity>
   </Entity>
   <Entity name="ufo_disc_craft_zeta_reticuli" id="15374946806319271320" active="true" position="0 6518.14 0" rotation="0 0.626093 0 0.779748" scale="1 1 1">
-   <script file_path="../worlds/ufo_hover.lua" cruise_y="96" Tick="" min_x="-150000" warp_acceleration="900" hover_height="1" target_pause="1" altitude_clearance="18" target_z="107593" pause_time="1" elapsed_time="12" boundary_margin="0" target_x="98861" current_speed="0" hover_speed="1" Start="" bounds_refresh_time="0" max_z="150000" min_z="-150000" rotation_speed="0" max_x="150000" warp_deceleration="1200" Initialize="" warp_speed="300" />
+   <script file_path="../worlds/ufo_hover.lua" Tick="" Initialize="" hover_height="1" pause_time="1" min_z="-150000" min_x="-150000" target_z="-125702" target_pause="1" warp_acceleration="900" target_x="129617" current_speed="0" bounds_refresh_time="0" max_z="150000" cruise_y="96" altitude_clearance="18" warp_deceleration="1200" boundary_margin="0" max_x="150000" warp_speed="300" elapsed_time="12" Start="" hover_speed="1" rotation_speed="0" />
    <Entity name="main_hull" id="15092377769586295881" active="true" position="-1.52588e-05 0.0200195 1.52588e-05" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
     <render mesh_name="ufo_disc_craft_0_main_hull_22cd1637" mesh_path="./project/plan_resources/ufo_disc_craft_0_main_hull_22cd1637.mesh" sub_mesh_index="0" material_name="ufo_painted_metal" material_path="./project/plan_resources/ufo_painted_metal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />

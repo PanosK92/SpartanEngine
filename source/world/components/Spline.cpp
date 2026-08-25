@@ -228,12 +228,6 @@ namespace spartan
             return;
         }
 
-        // only draw spline visualization in edit mode
-        if (Engine::IsFlagSet(EngineMode::Playing))
-        {
-            return;
-        }
-
         // resolve the source if it has not been resolved yet (e.g. after a fresh component add)
         if (m_source_spline_entity_id != 0 && !m_source_spline_entity)
         {
@@ -302,6 +296,12 @@ namespace spartan
         else if (m_mesh_enabled && !has_mesh_input && HasRoadMesh())
         {
             ClearRoadMesh();
+        }
+
+        // debug lines are edit only, road meshes already generated above
+        if (Engine::IsFlagSet(EngineMode::Playing))
+        {
+            return;
         }
 
         const Color color_curve = Color(0.3f, 0.85f, 0.75f, 1.0f);

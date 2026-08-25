@@ -1,0 +1,399 @@
+{
+  "name": "zakynthos_complete",
+  "crs": {
+    "plus_x": "east",
+    "plus_z": "north",
+    "center_lat": 37.7890766,
+    "center_lon": 20.80630175,
+    "meters_per_degree_lat": 111320.0,
+    "meters_per_degree_lon": 87973.06
+  },
+  "existing_kits": [
+    {
+      "id": "airport",
+      "name": "Airport",
+      "role": "arrival",
+      "lat": 37.75083,
+      "lon": 20.8854077,
+      "x": 6959.2,
+      "z": -4257.6,
+      "y": 8.0
+    },
+    {
+      "id": "garage",
+      "name": "Garage",
+      "role": "hub",
+      "lat": 37.7580081,
+      "lon": 20.8719489,
+      "x": 5775.2,
+      "z": -3458.5,
+      "y": 8.0
+    },
+    {
+      "id": "gas",
+      "name": "Gas",
+      "role": "service",
+      "lat": 37.772,
+      "lon": 20.89,
+      "x": 7363.2,
+      "z": -1901.0,
+      "y": 8.0
+    },
+    {
+      "id": "zante",
+      "name": "Zante",
+      "role": "city",
+      "lat": 37.7869556,
+      "lon": 20.899963,
+      "x": 8239.7,
+      "z": -236.1,
+      "y": 8.0
+    }
+  ],
+  "pins": [
+    {
+      "id": "port",
+      "name": "PORT",
+      "label": "PORT / USED CARS",
+      "role": "used_cars",
+      "lat": 37.78167,
+      "lon": 20.90117,
+      "x": 8345.9,
+      "z": -824.5,
+      "y": 8.0
+    },
+    {
+      "id": "dealer_exotic",
+      "name": "EXOTIC DEALER",
+      "label": "EXOTIC DEALER",
+      "role": "dealer",
+      "lat": 37.7534,
+      "lon": 20.8815,
+      "x": 6615.4,
+      "z": -3971.5,
+      "y": 8.0
+    },
+    {
+      "id": "license_school",
+      "name": "LICENSE SCHOOL",
+      "label": "LICENSE SCHOOL",
+      "role": "license",
+      "lat": 37.7488,
+      "lon": 20.8792,
+      "x": 6413.1,
+      "z": -4483.6,
+      "y": 8.0
+    },
+    {
+      "id": "tune_shop",
+      "name": "TUNE SHOP",
+      "label": "TUNE SHOP",
+      "role": "tune",
+      "lat": 37.7768,
+      "lon": 20.8874,
+      "x": 7134.5,
+      "z": -1366.6,
+      "y": 8.0
+    },
+    {
+      "id": "dealer_town",
+      "name": "TOWN DEALER",
+      "label": "TOWN DEALER",
+      "role": "dealer",
+      "lat": 37.7844,
+      "lon": 20.8938,
+      "x": 7697.5,
+      "z": -520.6,
+      "y": 8.0
+    },
+    {
+      "id": "argassi",
+      "name": "ARGASSI",
+      "label": "ARGASSI",
+      "role": "town",
+      "lat": 37.773,
+      "lon": 20.911,
+      "x": 9210.6,
+      "z": -1789.6,
+      "y": 8.0
+    },
+    {
+      "id": "kalamaki",
+      "name": "KALAMAKI",
+      "label": "KALAMAKI",
+      "role": "beach",
+      "lat": 37.738,
+      "lon": 20.9,
+      "x": 8242.9,
+      "z": -5685.8,
+      "y": 8.0
+    },
+    {
+      "id": "laganas",
+      "name": "LAGANAS",
+      "label": "LAGANAS NIGHT",
+      "role": "night",
+      "lat": 37.7269452,
+      "lon": 20.8659368,
+      "x": 5246.3,
+      "z": -6916.5,
+      "y": 8.0
+    },
+    {
+      "id": "vasilikos",
+      "name": "VASILIKOS",
+      "label": "VASILIKOS",
+      "role": "beach",
+      "lat": 37.716,
+      "lon": 20.97,
+      "x": 14401.0,
+      "z": -8134.9,
+      "y": 8.0
+    },
+    {
+      "id": "keri",
+      "name": "KERI",
+      "label": "KERI LIGHT",
+      "role": "scenic",
+      "lat": 37.65473,
+      "lon": 20.80835,
+      "x": 180.2,
+      "z": -14955.5,
+      "y": 8.0
+    },
+    {
+      "id": "lithakia",
+      "name": "LITHAKIA",
+      "label": "LITHAKIA",
+      "role": "village",
+      "lat": 37.7,
+      "lon": 20.83,
+      "x": 2084.8,
+      "z": -9916.0,
+      "y": 8.0
+    },
+    {
+      "id": "tsilivi",
+      "name": "TSILIVI",
+      "label": "TSILIVI",
+      "role": "town",
+      "lat": 37.8155909,
+      "lon": 20.8719262,
+      "x": 5773.2,
+      "z": 2951.6,
+      "y": 8.0
+    },
+    {
+      "id": "alykes",
+      "name": "ALYKES",
+      "label": "ALYKES",
+      "role": "town",
+      "lat": 37.84,
+      "lon": 20.775,
+      "x": -2753.7,
+      "z": 5668.8,
+      "y": 8.0
+    },
+    {
+      "id": "agios_nikolaos",
+      "name": "AGIOS NIKOLAOS",
+      "label": "NORTH FERRY",
+      "role": "ferry",
+      "lat": 37.904,
+      "lon": 20.708,
+      "x": -8647.9,
+      "z": 12793.3,
+      "y": 8.0
+    },
+    {
+      "id": "volimes",
+      "name": "VOLIMES",
+      "label": "VOLIMES",
+      "role": "mountain",
+      "lat": 37.878,
+      "lon": 20.668,
+      "x": -12166.8,
+      "z": 9899.0,
+      "y": 8.0
+    },
+    {
+      "id": "navagio_view",
+      "name": "NAVAGIO",
+      "label": "NAVAGIO VIEW",
+      "role": "scenic",
+      "lat": 37.8594,
+      "lon": 20.638,
+      "x": -14806.0,
+      "z": 7828.4,
+      "y": 8.0
+    },
+    {
+      "id": "bochali",
+      "name": "BOCHALI",
+      "label": "BOCHALI VIEW",
+      "role": "scenic",
+      "lat": 37.791,
+      "lon": 20.892,
+      "x": 7539.1,
+      "z": 214.1,
+      "y": 8.0
+    },
+    {
+      "id": "gas_north",
+      "name": "GAS NORTH",
+      "label": "GAS NORTH",
+      "role": "service",
+      "lat": 37.828,
+      "lon": 20.82,
+      "x": 1205.1,
+      "z": 4333.0,
+      "y": 8.0
+    },
+    {
+      "id": "gas_south",
+      "name": "GAS SOUTH",
+      "label": "GAS SOUTH",
+      "role": "service",
+      "lat": 37.731,
+      "lon": 20.848,
+      "x": 3668.3,
+      "z": -6465.1,
+      "y": 8.0
+    }
+  ],
+  "roads": [
+    {
+      "id": "road_commute",
+      "class": "primary",
+      "width": 12.0,
+      "sidewalk": true,
+      "nodes": [
+        "airport",
+        "garage",
+        "gas",
+        "zante"
+      ]
+    },
+    {
+      "id": "road_south_coast",
+      "class": "primary",
+      "width": 12.0,
+      "sidewalk": false,
+      "nodes": [
+        "zante",
+        "argassi",
+        "kalamaki",
+        "laganas"
+      ]
+    },
+    {
+      "id": "road_airport_beach",
+      "class": "local",
+      "width": 8.0,
+      "sidewalk": false,
+      "nodes": [
+        "airport",
+        "kalamaki"
+      ]
+    },
+    {
+      "id": "road_vasilikos",
+      "class": "local",
+      "width": 8.0,
+      "sidewalk": false,
+      "nodes": [
+        "argassi",
+        "vasilikos"
+      ]
+    },
+    {
+      "id": "road_laganas_keri",
+      "class": "primary",
+      "width": 10.0,
+      "sidewalk": false,
+      "nodes": [
+        "laganas",
+        "gas_south",
+        "lithakia",
+        "keri"
+      ]
+    },
+    {
+      "id": "road_north_coast",
+      "class": "primary",
+      "width": 12.0,
+      "sidewalk": false,
+      "nodes": [
+        "zante",
+        "tsilivi",
+        "gas_north",
+        "alykes",
+        "agios_nikolaos"
+      ]
+    },
+    {
+      "id": "road_hills",
+      "class": "mountain",
+      "width": 7.0,
+      "sidewalk": false,
+      "nodes": [
+        "agios_nikolaos",
+        "volimes",
+        "navagio_view"
+      ]
+    },
+    {
+      "id": "road_west_inland",
+      "class": "mountain",
+      "width": 7.0,
+      "sidewalk": false,
+      "nodes": [
+        "volimes",
+        "lithakia"
+      ]
+    },
+    {
+      "id": "road_port",
+      "class": "local",
+      "width": 8.0,
+      "sidewalk": true,
+      "nodes": [
+        "zante",
+        "port"
+      ]
+    },
+    {
+      "id": "road_bochali",
+      "class": "local",
+      "width": 7.0,
+      "sidewalk": false,
+      "nodes": [
+        "zante",
+        "bochali"
+      ]
+    },
+    {
+      "id": "road_dealers",
+      "class": "local",
+      "width": 8.0,
+      "sidewalk": true,
+      "nodes": [
+        "airport",
+        "dealer_exotic",
+        "license_school"
+      ]
+    },
+    {
+      "id": "road_tune",
+      "class": "local",
+      "width": 8.0,
+      "sidewalk": true,
+      "nodes": [
+        "gas",
+        "tune_shop",
+        "dealer_town",
+        "zante"
+      ]
+    }
+  ]
+}
