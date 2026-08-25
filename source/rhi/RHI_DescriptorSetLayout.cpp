@@ -95,9 +95,7 @@ namespace spartan
             const uint32_t dynamic_offset     = constant_buffer->GetOffset();
 
             if (binding->resource == constant_buffer && binding->range == range && binding->dynamic_offset == dynamic_offset)
-            {
                 return;
-            }
 
             binding->resource       = constant_buffer;
             binding->range          = range;
@@ -112,6 +110,9 @@ namespace spartan
 
     void RHI_DescriptorSetLayout::SetBuffer(uint32_t slot, RHI_Buffer* buffer)
     {
+        if (!buffer)
+            return;
+
         uint32_t actual_slot = slot + rhi_shader_register_shift_u;
         RHI_DescriptorBinding* binding = FindBinding(actual_slot);
         if (!binding)
@@ -125,9 +126,7 @@ namespace spartan
             const uint64_t range          = buffer->GetObjectSize();
             const uint32_t dynamic_offset = buffer->GetOffset();
             if (binding->resource == buffer && binding->range == range && binding->dynamic_offset == dynamic_offset)
-            {
                 return;
-            }
 
             binding->resource       = buffer;
             binding->range          = range;

@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "world/Entity.h"
 #include "world/components/Camera.h"
 #include "world/components/Render.h"
+#include "world/components/Spline.h"
 #include "input/Input.h"
 #include "commands/CommandStack.h"
 #include "commands/CommandTransform.h"
@@ -378,7 +379,7 @@ namespace ImGui::TransformGizmo
         spartan::math::Vector3 gizmo_position = spartan::math::Vector3::Zero;
         if (pivot_mode == ::TransformGizmo::Pivot::Active || pivot_mode == ::TransformGizmo::Pivot::Individual)
         {
-            gizmo_position = primary_entity->GetPosition();
+            gizmo_position = spartan::Spline::GetEditorHandlePosition(primary_entity);
         }
         else
         {
@@ -387,7 +388,7 @@ namespace ImGui::TransformGizmo
             {
                 if (entity)
                 {
-                    gizmo_position += entity->GetPosition();
+                    gizmo_position += spartan::Spline::GetEditorHandlePosition(entity);
                     valid_entity_count++;
                 }
             }
@@ -502,7 +503,19 @@ namespace ImGui::TransformGizmo
 
                 if (do_translate)
                 {
-                    entity->SetPosition(entity->GetPosition() + position_delta);
+                    spartan::math::Vector3 delta = position_delta;
+                    if (spartan::Entity* parent = entity->GetParent())
+                    {
+                        if (spartan::Spline* spline = parent->GetComponent<spartan::Spline>())
+                        {
+                            if (spline->GetConformToTerrain() &&
+                                entity->GetObjectName().rfind("spline_point_", 0) == 0)
+                            {
+                                delta.y = 0.0f;
+                            }
+                        }
+                    }
+                    entity->SetPosition(entity->GetPosition() + delta);
                 }
 
                 if (do_rotate)

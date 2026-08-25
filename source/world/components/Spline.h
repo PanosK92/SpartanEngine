@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ========================
 #include "Component.h"
+#include "../../math/Quaternion.h"
 #include "../../math/Vector2.h"
 #include "../../math/Vector3.h"
 #include "../../core/Event.h"
-//=============================
+//===================================
 
 namespace spartan
 {
@@ -92,6 +93,8 @@ namespace spartan
         // control point management (children of the owning entity)
         uint32_t GetControlPointCount() const;
         std::vector<math::Vector3> GetControlPoints() const;
+        // handle position on the road deck, stored y is left alone
+        static math::Vector3 GetEditorHandlePosition(Entity* entity);
         void AddControlPoint(const math::Vector3& local_position = math::Vector3::Zero);
         void RemoveLastControlPoint();
 
@@ -279,7 +282,7 @@ namespace spartan
 
         // terrain conforming
         bool m_conform_to_terrain = false;
-        float m_terrain_offset    = 0.01f;
+        float m_terrain_offset    = 0.25f;
 
         // attachment
         uint64_t m_source_spline_entity_id    = 0;
@@ -336,5 +339,8 @@ namespace spartan
         bool m_prev_attach_inherit_closed_loop          = true;
         uint32_t m_prev_attach_sample_count             = 0;
         uint64_t m_prev_source_hash                     = 0;
+        math::Vector3 m_prev_world_position             = math::Vector3::Zero;
+        math::Quaternion m_prev_world_rotation          = math::Quaternion::Identity;
+        math::Vector3 m_prev_world_scale                = math::Vector3::One;
     };
 }

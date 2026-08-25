@@ -3521,6 +3521,14 @@ namespace spartan
             CommitProps();
         }
 
+        if (m_spline_carve_dirty &&
+            !m_is_generating.load(memory_order_acquire) &&
+            !ProgressTracker::IsLoading())
+        {
+            m_spline_carve_dirty = false;
+            RefreshSplinePropCarves();
+        }
+
         if (!Engine::IsFlagSet(EngineMode::Playing) && !m_is_generating.load(memory_order_acquire))
         {
             UpdateLivePads();
@@ -4663,6 +4671,612 @@ namespace spartan
         visit(m_entity_ptr, false);
     }
 
+    void Terrain::MarkSplinePropCarvesDirty(uint64_t spline_id)
+    {
+        m_spline_carve_dirty = true;
+        if (spline_id == 0)
+        {
+            m_spline_carve_dirty_all = true;
+            return;
+        }
+
+        m_spline_carve_dirty_ids.insert(spline_id);
+    }
+
+    void Terrain::RefreshSplinePropCarves()
+    {
+        if (m_prop_mask_pixels.empty() || m_map_width < 2 || m_map_height < 2)
+        {
+            return;
+        }
+
+        if (fabsf(m_world_mapping.z) < 1e-12f || fabsf(m_world_mapping.w) < 1e-12f)
+        {
+            return;
+        }
+
+        const uint32_t width  = m_map_width;
+        const uint32_t height = m_map_height;
+        const size_t count    = static_cast<size_t>(width) * static_cast<size_t>(height);
+
+        if (m_spline_carve_bits.size() != count)
+        {
+            m_spline_carve_bits.assign(count, 0);
+            m_spline_carve_x1 = -1;
+            m_spline_carve_z1 = -1;
+            m_spline_carve_spline_bounds.clear();
+        }
+
+        const bool refresh_all = m_spline_carve_dirty_all || m_spline_carve_dirty_ids.empty();
+        unordered_set<uint64_t> dirty_ids;
+        dirty_ids.swap(m_spline_carve_dirty_ids);
+        m_spline_carve_dirty_all = false;
+
+        int ox0 = static_cast<int>(width);
+        int ox1 = -1;
+        int oz0 = static_cast<int>(height);
+        int oz1 = -1;
+        auto include_old = [&](int a0, int a1, int b0, int b1)
+        {
+            if (a1 < a0 || b1 < b0)
+            {
+                return;
+            }
+
+            if (ox1 < ox0)
+            {
+                ox0 = a0;
+                ox1 = a1;
+                oz0 = b0;
+                oz1 = b1;
+                return;
+            }
+
+            ox0 = min(ox0, a0);
+            ox1 = max(ox1, a1);
+            oz0 = min(oz0, b0);
+            oz1 = max(oz1, b1);
+        };
+
+        if (refresh_all)
+        {
+            include_old(m_spline_carve_x0, m_spline_carve_x1, m_spline_carve_z0, m_spline_carve_z1);
+        }
+        else
+        {
+            for (uint64_t id : dirty_ids)
+            {
+                auto it = m_spline_carve_spline_bounds.find(id);
+                if (it != m_spline_carve_spline_bounds.end())
+                {
+                    include_old(it->second[0], it->second[1], it->second[2], it->second[3]);
+                }
+            }
+        }
+
+        const bool old_valid = ox1 >= ox0 && oz1 >= oz0;
+        const int old_w = old_valid ? (ox1 - ox0 + 1) : 0;
+        vector<uint8_t> old_rect;
+        if (old_valid)
+        {
+            old_rect.resize(static_cast<size_t>(oz1 - oz0 + 1) * static_cast<size_t>(old_w));
+            for (int z = oz0; z <= oz1; z++)
+            {
+                uint8_t* dst = old_rect.data() + static_cast<size_t>(z - oz0) * static_cast<size_t>(old_w);
+                const uint8_t* src = m_spline_carve_bits.data() + static_cast<size_t>(z) * width + static_cast<size_t>(ox0);
+                memcpy(dst, src, static_cast<size_t>(old_w));
+                memset(m_spline_carve_bits.data() + static_cast<size_t>(z) * width + static_cast<size_t>(ox0), 0, static_cast<size_t>(old_w));
+            }
+        }
+
+        auto world_to_pixel = [&](float world, float origin, float inv_size, uint32_t resolution) -> int
+        {
+            const float u = (world - origin) * inv_size;
+            return static_cast<int>(clamp(u, 0.0f, 1.0f) * static_cast<float>(resolution - 1) + 0.5f);
+        };
+
+        const float pixel_size_x = 1.0f / max(m_world_mapping.z * static_cast<float>(width - 1), 1e-6f);
+        const float pixel_size_z = 1.0f / max(m_world_mapping.w * static_cast<float>(height - 1), 1e-6f);
+        const float pixel_size   = max(pixel_size_x, pixel_size_z);
+
+        int nx0 = static_cast<int>(width);
+        int nx1 = -1;
+        int nz0 = static_cast<int>(height);
+        int nz1 = -1;
+
+        const float carve_margin = 2.0f;
+
+        int sx0 = static_cast<int>(width);
+        int sx1 = -1;
+        int sz0 = static_cast<int>(height);
+        int sz1 = -1;
+        unordered_map<uint64_t, array<int32_t, 4>> new_spline_bounds;
+
+        auto stamp_disk = [&](float world_x, float world_z, float radius)
+        {
+            const int cx = world_to_pixel(world_x, m_world_mapping.x, m_world_mapping.z, width);
+            const int cz = world_to_pixel(world_z, m_world_mapping.y, m_world_mapping.w, height);
+            const int r  = max(1, static_cast<int>(ceilf(radius / max(pixel_size, 1e-4f))) + 1);
+            const int r2 = r * r;
+            const int z0 = max(0, cz - r);
+            const int z1 = min(static_cast<int>(height) - 1, cz + r);
+            const int x0 = max(0, cx - r);
+            const int x1 = min(static_cast<int>(width) - 1, cx + r);
+            if (x0 > x1 || z0 > z1)
+            {
+                return;
+            }
+
+            nx0 = min(nx0, x0);
+            nx1 = max(nx1, x1);
+            nz0 = min(nz0, z0);
+            nz1 = max(nz1, z1);
+            sx0 = min(sx0, x0);
+            sx1 = max(sx1, x1);
+            sz0 = min(sz0, z0);
+            sz1 = max(sz1, z1);
+
+            for (int z = z0; z <= z1; z++)
+            {
+                const int dz = z - cz;
+                for (int x = x0; x <= x1; x++)
+                {
+                    const int dx = x - cx;
+                    if (dx * dx + dz * dz <= r2)
+                    {
+                        m_spline_carve_bits[static_cast<size_t>(z) * width + static_cast<size_t>(x)] = 1;
+                    }
+                }
+            }
+        };
+
+        for (Entity* entity : World::GetEntities())
+        {
+            if (!entity)
+            {
+                continue;
+            }
+
+            Spline* spline = entity->GetComponent<Spline>();
+            if (!spline || !spline->GetMeshEnabled())
+            {
+                continue;
+            }
+
+            if (!spline->IsAttached() && spline->GetControlPointCount() < 2)
+            {
+                continue;
+            }
+
+            const uint64_t spline_id = entity->GetObjectId();
+            const bool is_dirty = refresh_all || dirty_ids.find(spline_id) != dirty_ids.end();
+            auto old_bounds_it = m_spline_carve_spline_bounds.find(spline_id);
+            bool overlaps_zero = false;
+            if (old_valid && old_bounds_it != m_spline_carve_spline_bounds.end())
+            {
+                const array<int32_t, 4>& b = old_bounds_it->second;
+                overlaps_zero = b[0] <= ox1 && b[1] >= ox0 && b[2] <= oz1 && b[3] >= oz0;
+            }
+
+            if (!is_dirty && !overlaps_zero)
+            {
+                if (old_bounds_it != m_spline_carve_spline_bounds.end())
+                {
+                    new_spline_bounds[spline_id] = old_bounds_it->second;
+                }
+                continue;
+            }
+
+            float half_width = max(spline->GetRoadWidth(), spline->GetRoadWidthEnd()) * 0.5f;
+            if (spline->GetSidewalkEnabled() && spline->GetProfile() == SplineProfile::Road)
+            {
+                half_width += spline->GetSidewalkWidth();
+            }
+
+            const float radius = half_width + carve_margin;
+            const float length = max(spline->GetLength(), 1.0f);
+            const uint32_t samples = max(2u, static_cast<uint32_t>(ceilf(length / max(radius * 0.5f, pixel_size))));
+
+            sx0 = static_cast<int>(width);
+            sx1 = -1;
+            sz0 = static_cast<int>(height);
+            sz1 = -1;
+
+            Vector3 prev = spline->GetPoint(0.0f);
+            stamp_disk(prev.x, prev.z, radius);
+
+            for (uint32_t i = 1; i <= samples; i++)
+            {
+                const float t = static_cast<float>(i) / static_cast<float>(samples);
+                const Vector3 point = spline->GetPoint(t);
+                stamp_disk(point.x, point.z, radius);
+
+                const float dx = point.x - prev.x;
+                const float dz = point.z - prev.z;
+                const float span = sqrtf(dx * dx + dz * dz);
+                if (span > radius)
+                {
+                    const uint32_t mid_count = max(1u, static_cast<uint32_t>(span / max(radius * 0.5f, pixel_size)));
+                    for (uint32_t m = 1; m < mid_count; m++)
+                    {
+                        const float u = static_cast<float>(m) / static_cast<float>(mid_count);
+                        stamp_disk(prev.x + dx * u, prev.z + dz * u, radius);
+                    }
+                }
+
+                prev = point;
+            }
+
+            if (sx1 >= sx0)
+            {
+                new_spline_bounds[spline_id] = { sx0, sx1, sz0, sz1 };
+            }
+        }
+
+        const bool new_valid = nx1 >= nx0 && nz1 >= nz0;
+        m_spline_carve_x0 = new_valid ? nx0 : 0;
+        m_spline_carve_x1 = new_valid ? nx1 : -1;
+        m_spline_carve_z0 = new_valid ? nz0 : 0;
+        m_spline_carve_z1 = new_valid ? nz1 : -1;
+
+        int ux0 = static_cast<int>(width);
+        int ux1 = -1;
+        int uz0 = static_cast<int>(height);
+        int uz1 = -1;
+        auto include_rect = [&](int a0, int a1, int b0, int b1)
+        {
+            if (a1 < a0 || b1 < b0)
+            {
+                return;
+            }
+
+            if (ux1 < ux0)
+            {
+                ux0 = a0;
+                ux1 = a1;
+                uz0 = b0;
+                uz1 = b1;
+                return;
+            }
+
+            ux0 = min(ux0, a0);
+            ux1 = max(ux1, a1);
+            uz0 = min(uz0, b0);
+            uz1 = max(uz1, b1);
+        };
+
+        if (refresh_all)
+        {
+            for (const auto& kv : m_spline_carve_spline_bounds)
+            {
+                include_rect(kv.second[0], kv.second[1], kv.second[2], kv.second[3]);
+            }
+
+            for (const auto& kv : new_spline_bounds)
+            {
+                include_rect(kv.second[0], kv.second[1], kv.second[2], kv.second[3]);
+            }
+        }
+        else
+        {
+            for (uint64_t id : dirty_ids)
+            {
+                auto old_it = m_spline_carve_spline_bounds.find(id);
+                if (old_it != m_spline_carve_spline_bounds.end())
+                {
+                    include_rect(old_it->second[0], old_it->second[1], old_it->second[2], old_it->second[3]);
+                }
+
+                auto new_it = new_spline_bounds.find(id);
+                if (new_it != new_spline_bounds.end())
+                {
+                    include_rect(new_it->second[0], new_it->second[1], new_it->second[2], new_it->second[3]);
+                }
+            }
+        }
+
+        m_spline_carve_spline_bounds.swap(new_spline_bounds);
+
+        if (ux1 < ux0)
+        {
+            return;
+        }
+
+        auto old_at = [&](int x, int z) -> uint8_t
+        {
+            if (!old_valid || x < ox0 || x > ox1 || z < oz0 || z > oz1)
+            {
+                return 0;
+            }
+
+            return old_rect[static_cast<size_t>(z - oz0) * static_cast<size_t>(old_w) + static_cast<size_t>(x - ox0)];
+        };
+
+        auto on_pad = [&](float world_x, float world_z) -> bool
+        {
+            if (m_live_pad_active &&
+                obb_outside_distance(
+                    world_x, world_z,
+                    m_live_pad.center_x, m_live_pad.center_z,
+                    m_live_pad.half_x, m_live_pad.half_z,
+                    m_live_pad.yaw) <= 0.0f)
+            {
+                return true;
+            }
+
+            for (const TerrainPlatform& pad : m_platforms)
+            {
+                if (obb_outside_distance(
+                    world_x, world_z,
+                    pad.center_x, pad.center_z,
+                    pad.half_x, pad.half_z,
+                    pad.yaw) <= 0.0f)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        int cx0 = static_cast<int>(width);
+        int cx1 = -1;
+        int cz0 = static_cast<int>(height);
+        int cz1 = -1;
+
+        for (int z = uz0; z <= uz1; z++)
+        {
+            const float v       = static_cast<float>(z) / static_cast<float>(height - 1);
+            const float world_z = m_world_mapping.y + v / m_world_mapping.w;
+
+            for (int x = ux0; x <= ux1; x++)
+            {
+                const size_t i = static_cast<size_t>(z) * width + static_cast<size_t>(x);
+                const bool now  = m_spline_carve_bits[i] != 0;
+                const bool was  = old_at(x, z) != 0;
+                if (now == was)
+                {
+                    continue;
+                }
+
+                cx0 = min(cx0, x);
+                cx1 = max(cx1, x);
+                cz0 = min(cz0, z);
+                cz1 = max(cz1, z);
+
+                const size_t offset = i * 4;
+                if (now)
+                {
+                    m_prop_mask_pixels[offset + 0] = 0;
+                    m_prop_mask_pixels[offset + 1] = 0;
+                    m_prop_mask_pixels[offset + 2] = 0;
+                    continue;
+                }
+
+                if (m_prop_mask_seed.size() == m_prop_mask_pixels.size())
+                {
+                    m_prop_mask_pixels[offset + 0] = m_prop_mask_seed[offset + 0];
+                    m_prop_mask_pixels[offset + 1] = m_prop_mask_seed[offset + 1];
+                    m_prop_mask_pixels[offset + 2] = m_prop_mask_seed[offset + 2];
+                }
+
+                const float u       = static_cast<float>(x) / static_cast<float>(width - 1);
+                const float world_x = m_world_mapping.x + u / m_world_mapping.z;
+                if (on_pad(world_x, world_z))
+                {
+                    m_prop_mask_pixels[offset + 0] = 0;
+                    m_prop_mask_pixels[offset + 1] = 0;
+                    m_prop_mask_pixels[offset + 2] = 0;
+                }
+            }
+        }
+
+        if (cx1 < cx0)
+        {
+            return;
+        }
+
+        const float u0 = static_cast<float>(max(cx0 - 1, 0)) / static_cast<float>(width - 1);
+        const float u1 = static_cast<float>(min(cx1 + 1, static_cast<int>(width) - 1)) / static_cast<float>(width - 1);
+        const float v0 = static_cast<float>(max(cz0 - 1, 0)) / static_cast<float>(height - 1);
+        const float v1 = static_cast<float>(min(cz1 + 1, static_cast<int>(height) - 1)) / static_cast<float>(height - 1);
+        const float world_min_x = m_world_mapping.x + u0 / m_world_mapping.z;
+        const float world_max_x = m_world_mapping.x + u1 / m_world_mapping.z;
+        const float world_min_z = m_world_mapping.y + v0 / m_world_mapping.w;
+        const float world_max_z = m_world_mapping.y + v1 / m_world_mapping.w;
+
+        UploadPropMask();
+        ApplySplineCarveToProps(
+            min(world_min_x, world_max_x),
+            min(world_min_z, world_max_z),
+            max(world_min_x, world_max_x),
+            max(world_min_z, world_max_z)
+        );
+        WorldHelpers::RefreshTerrainGpuScatter(this);
+    }
+
+    void Terrain::ApplySplineCarveToProps(float min_x, float min_z, float max_x, float max_z)
+    {
+        if (!m_entity_ptr)
+        {
+            return;
+        }
+
+        if (m_prop_instance_seed.empty() && m_prop_entity_seed.empty())
+        {
+            SnapshotPropInstances();
+        }
+
+        if (m_spline_carve_bits.empty() || m_map_width < 2 || m_map_height < 2)
+        {
+            return;
+        }
+
+        const uint32_t width  = m_map_width;
+        const uint32_t height = m_map_height;
+
+        auto on_road = [&](float world_x, float world_z) -> bool
+        {
+            const float u = (world_x - m_world_mapping.x) * m_world_mapping.z;
+            const float v = (world_z - m_world_mapping.y) * m_world_mapping.w;
+            if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f)
+            {
+                return false;
+            }
+
+            const int x = static_cast<int>(clamp(u, 0.0f, 1.0f) * static_cast<float>(width - 1) + 0.5f);
+            const int z = static_cast<int>(clamp(v, 0.0f, 1.0f) * static_cast<float>(height - 1) + 0.5f);
+            const size_t i = static_cast<size_t>(z) * width + static_cast<size_t>(x);
+            if (i >= m_spline_carve_bits.size())
+            {
+                return false;
+            }
+
+            return m_spline_carve_bits[i] != 0;
+        };
+
+        auto on_pad = [&](float world_x, float world_z) -> bool
+        {
+            if (m_live_pad_active &&
+                obb_outside_distance(
+                    world_x, world_z,
+                    m_live_pad.center_x, m_live_pad.center_z,
+                    m_live_pad.half_x, m_live_pad.half_z,
+                    m_live_pad.yaw) <= 0.0f)
+            {
+                return true;
+            }
+
+            for (const TerrainPlatform& pad : m_platforms)
+            {
+                if (obb_outside_distance(
+                    world_x, world_z,
+                    pad.center_x, pad.center_z,
+                    pad.half_x, pad.half_z,
+                    pad.yaw) <= 0.0f)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        float local_min_x = min_x;
+        float local_min_z = min_z;
+        float local_max_x = max_x;
+        float local_max_z = max_z;
+        if (Entity* entity = GetEntity())
+        {
+            const Matrix inverse = entity->GetMatrix().Inverted();
+            const Vector3 corners[4] =
+            {
+                inverse * Vector3(min_x, 0.0f, min_z),
+                inverse * Vector3(max_x, 0.0f, min_z),
+                inverse * Vector3(min_x, 0.0f, max_z),
+                inverse * Vector3(max_x, 0.0f, max_z)
+            };
+
+            local_min_x = local_max_x = corners[0].x;
+            local_min_z = local_max_z = corners[0].z;
+            for (int i = 1; i < 4; i++)
+            {
+                local_min_x = min(local_min_x, corners[i].x);
+                local_max_x = max(local_max_x, corners[i].x);
+                local_min_z = min(local_min_z, corners[i].z);
+                local_max_z = max(local_max_z, corners[i].z);
+            }
+        }
+
+        const TerrainGridMapping mapping = GetGridMapping();
+        const uint32_t n = max(m_tile_count, 1u);
+        const float tile_w = max(mapping.extent_x / static_cast<float>(n), 0.001f);
+        const float tile_d = max(mapping.extent_z / static_cast<float>(n), 0.001f);
+        const int tx0 = max(static_cast<int>(floorf((local_min_x + mapping.offset_x) / tile_w)) - 1, 0);
+        const int tz0 = max(static_cast<int>(floorf((local_min_z + mapping.offset_z) / tile_d)) - 1, 0);
+        const int tx1 = min(static_cast<int>(floorf((local_max_x + mapping.offset_x) / tile_w)) + 1, static_cast<int>(n) - 1);
+        const int tz1 = min(static_cast<int>(floorf((local_max_z + mapping.offset_z) / tile_d)) + 1, static_cast<int>(n) - 1);
+        if (tx0 > tx1 || tz0 > tz1)
+        {
+            return;
+        }
+
+        unordered_set<int> dirty_tiles;
+        dirty_tiles.reserve(static_cast<size_t>(max(tx1 - tx0 + 1, 1) * max(tz1 - tz0 + 1, 1)));
+        for (int tz = tz0; tz <= tz1; tz++)
+        {
+            for (int tx = tx0; tx <= tx1; tx++)
+            {
+                dirty_tiles.insert(tz * static_cast<int>(n) + tx);
+            }
+        }
+
+        function<void(Entity*, bool)> visit = [&](Entity* entity, bool inside_prop)
+        {
+            if (!entity)
+            {
+                return;
+            }
+
+            const bool prop = inside_prop || entity->HasTag("terrain_prop");
+            if (prop)
+            {
+                const uint64_t id = entity->GetObjectId();
+                if (Render* render = entity->GetComponent<Render>())
+                {
+                    auto seed = m_prop_instance_seed.find(id);
+                    if (seed != m_prop_instance_seed.end())
+                    {
+                        const Matrix world = entity->GetMatrix();
+                        vector<Matrix> kept;
+                        kept.reserve(seed->second.size());
+                        for (const Matrix& local : seed->second)
+                        {
+                            const Vector3 position = (local * world).GetTranslation();
+                            if (!on_road(position.x, position.z) && !on_pad(position.x, position.z))
+                            {
+                                kept.push_back(local);
+                            }
+                        }
+
+                        render->SetInstances(kept);
+                    }
+                    else if (entity->GetChildrenCount() == 0)
+                    {
+                        auto active = m_prop_entity_seed.find(id);
+                        const bool blocked = on_road(entity->GetPosition().x, entity->GetPosition().z) ||
+                                             on_pad(entity->GetPosition().x, entity->GetPosition().z);
+                        if (blocked)
+                        {
+                            entity->SetActive(false);
+                        }
+                        else if (active != m_prop_entity_seed.end())
+                        {
+                            entity->SetActive(active->second);
+                        }
+                    }
+                }
+            }
+
+            const uint32_t child_count = entity->GetChildrenCount();
+            for (uint32_t i = 0; i < child_count; i++)
+            {
+                visit(entity->GetChildByIndex(i), prop);
+            }
+        };
+
+        for (Entity* child : m_entity_ptr->GetChildren())
+        {
+            const int index = ParseTileIndex(child);
+            if (index < 0 || dirty_tiles.find(index) == dirty_tiles.end())
+            {
+                continue;
+            }
+
+            visit(child, false);
+        }
+    }
+
     void Terrain::RememberPlatform(const TerrainPlatform& platform)
     {
         auto area = [](const TerrainPlatform& pad) -> float
@@ -4743,6 +5357,7 @@ namespace spartan
 
         SnapshotPropInstances();
         ApplyPlatformsToProps();
+        MarkSplinePropCarvesDirty();
     }
 
     void Terrain::ForgetPlatform(uint64_t entity_id)

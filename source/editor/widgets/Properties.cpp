@@ -2765,16 +2765,30 @@ void Properties::ShowSpline(spartan::Spline* spline) const
         }
 
         layout::separator();
-        layout::section_header("Mesh Generation");
+        layout::section_header("Generation");
 
-        if (property_toggle("Enabled", &mesh_enabled, "automatically generate a mesh along the spline"))
+        static vector<string> spline_mode_names = { "Path", "Road" };
+        uint32_t spline_mode = mesh_enabled ? 1 : 0;
+        if (property_combo("Mode", spline_mode_names, &spline_mode, "path is a flying guide, road drapes on terrain and rebuilds as you move"))
         {
-            spline->SetMeshEnabled(mesh_enabled);
-            if (!mesh_enabled)
+            spline->SetMeshEnabled(spline_mode == 1);
+            if (spline_mode == 1)
+            {
+                spline->SetConformToTerrain(true);
+                if (spline->GetTerrainOffset() < 0.25f)
+                {
+                    spline->SetTerrainOffset(0.25f);
+                }
+                spline->GenerateRoadMesh();
+            }
+            else
             {
                 spline->ClearRoadMesh();
             }
         }
+
+        mesh_enabled       = spline->GetMeshEnabled();
+        conform_to_terrain = spline->GetConformToTerrain();
 
         ImGui::BeginDisabled(!mesh_enabled);
 
@@ -2867,7 +2881,7 @@ void Properties::ShowSpline(spartan::Spline* spline) const
         }
         if (conform_to_terrain)
         {
-            if (property_float("Terrain Offset", &terrain_offset, 0.001f, 0.0f, 10.0f, "vertical offset above the terrain", "%.3f m"))
+            if (property_float("Terrain Offset", &terrain_offset, 0.05f, 0.05f, 10.0f, "lift above ground and water, keeps the mesh from z fighting", "%.2f m"))
             {
                 spline->SetTerrainOffset(terrain_offset);
             }

@@ -751,7 +751,12 @@ namespace spartan
                         continue;
                     }
 
-                    Vector3 world_pos = point_entity->GetPosition();
+                    if (point_entity->GetObjectName().find("spline_point_") != 0)
+                    {
+                        continue;
+                    }
+
+                    Vector3 world_pos = Spline::GetEditorHandlePosition(point_entity);
 
                     // depth along the ray direction
                     float depth = (world_pos - ray_origin).Dot(ray_dir);

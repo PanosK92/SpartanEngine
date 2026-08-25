@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <atomic>
 #include <array>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "../../rhi/RHI_Definitions.h"
 #include "../../math/Matrix.h"
@@ -173,6 +174,7 @@ namespace spartan
         void RebuildPropMask();
         // after biome scatter, keep instance seeds then hide props on occupied pads
         void OnBiomePropsPopulated();
+        void MarkSplinePropCarvesDirty(uint64_t spline_id = 0);
 
         // r=grass, g=trees, b=rocks, bilinear sample in world xz
         math::Vector3 SamplePropMask(float world_x, float world_z) const;
@@ -308,6 +310,8 @@ namespace spartan
         void RememberPlatform(const TerrainPlatform& platform);
         void PruneOrphanPlatforms();
         void ApplyPlatformsToProps();
+        void RefreshSplinePropCarves();
+        void ApplySplineCarveToProps(float min_x, float min_z, float max_x, float max_z);
         void PunchPropMaskFootprint(
             float center_x,
             float center_z,
@@ -414,6 +418,15 @@ namespace spartan
         std::vector<uint8_t> m_map_b_pixels;
         std::vector<uint8_t> m_prop_mask_pixels; // r=grass g=trees b=rocks
         std::vector<uint8_t> m_prop_mask_seed;
+        std::vector<uint8_t> m_spline_carve_bits;
+        bool m_spline_carve_dirty = false;
+        bool m_spline_carve_dirty_all = false;
+        std::unordered_set<uint64_t> m_spline_carve_dirty_ids;
+        std::unordered_map<uint64_t, std::array<int32_t, 4>> m_spline_carve_spline_bounds;
+        int32_t m_spline_carve_x0 = 0;
+        int32_t m_spline_carve_x1 = -1;
+        int32_t m_spline_carve_z0 = 0;
+        int32_t m_spline_carve_z1 = -1;
         // full scatter instances, live pads hide from this and restore when the pad leaves
         std::unordered_map<uint64_t, std::vector<math::Matrix>> m_prop_instance_seed;
         std::unordered_map<uint64_t, bool> m_prop_entity_seed;

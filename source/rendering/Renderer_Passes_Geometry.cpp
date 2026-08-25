@@ -645,6 +645,15 @@ namespace spartan
 
     void Renderer::Pass_IndirectCull_Meshlets()
     {
+        if (!GeometryBuffer::GetMeshletBoundsBuffer() ||
+            !GetBuffer(Renderer_Buffer::SurvivingInstances) ||
+            !GetBuffer(Renderer_Buffer::MeshletInstances) ||
+            !GetBuffer(Renderer_Buffer::TriangleDispatchArgs) ||
+            !GetBuffer(Renderer_Buffer::IndirectDrawData))
+        {
+            return;
+        }
+
         RHI_Texture* tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
         const float  max_hiz_mip       = static_cast<float>(tex_occluders_hiz->GetMipCount() - 1);
 
