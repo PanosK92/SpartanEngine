@@ -203,6 +203,54 @@ namespace ImGui::TransformGizmo
         return false;
     }
 
+    static bool is_conforming_spline_handle(spartan::Entity* entity)
+    {
+        if (!entity)
+        {
+            return false;
+        }
+
+        spartan::Entity* parent = entity->GetParent();
+        if (!parent)
+        {
+            return false;
+        }
+
+        spartan::Spline* spline = parent->GetComponent<spartan::Spline>();
+        return spline &&
+               spline->GetConformToTerrain() &&
+               entity->GetObjectName().rfind("spline_point_", 0) == 0;
+    }
+
+    static bool project_mouse_onto_y_plane(spartan::Camera* camera, float plane_y, float& out_x, float& out_z)
+    {
+        if (!camera)
+        {
+            return false;
+        }
+
+        const spartan::math::Ray& pick = camera->ComputePickingRay();
+        const spartan::math::Vector3 origin = pick.GetStart();
+        spartan::math::Vector3 dir = pick.GetDirection() - origin;
+        if (fabsf(dir.y) < 1e-6f)
+        {
+            return false;
+        }
+
+        const float t = (plane_y - origin.y) / dir.y;
+        if (t < 0.0f)
+        {
+            return false;
+        }
+
+        const spartan::math::Vector3 hit = origin + dir * t;
+        out_x = hit.x;
+        out_z = hit.z;
+        return true;
+    }
+
+    inline spartan::math::Vector3 spline_drag_anchor = spartan::math::Vector3::Zero;
+
     static void apply_aabb_edge_snap(
         spartan::Entity* primary_entity,
         const std::vector<spartan::Entity*>& selected_entities,
@@ -464,6 +512,7 @@ namespace ImGui::TransformGizmo
                         scales_previous.push_back(entity->GetScale());
                     }
                 }
+                spline_drag_anchor = spartan::Spline::GetEditorHandlePosition(primary_entity);
                 first_use = false;
             }
 
@@ -503,19 +552,28 @@ namespace ImGui::TransformGizmo
 
                 if (do_translate)
                 {
-                    spartan::math::Vector3 delta = position_delta;
-                    if (spartan::Entity* parent = entity->GetParent())
+                    if (is_conforming_spline_handle(entity))
                     {
-                        if (spartan::Spline* spline = parent->GetComponent<spartan::Spline>())
+                        spartan::math::Vector3 stored = entity->GetPosition();
+                        const spartan::math::Vector3 start = positions_previous[entity_index];
+                        float hit_x = 0.0f;
+                        float hit_z = 0.0f;
+                        if (project_mouse_onto_y_plane(camera, spline_drag_anchor.y, hit_x, hit_z))
                         {
-                            if (spline->GetConformToTerrain() &&
-                                entity->GetObjectName().rfind("spline_point_", 0) == 0)
-                            {
-                                delta.y = 0.0f;
-                            }
+                            stored.x = start.x + (hit_x - spline_drag_anchor.x);
+                            stored.z = start.z + (hit_z - spline_drag_anchor.z);
                         }
+                        else
+                        {
+                            stored.x = start.x + position_delta.x;
+                            stored.z = start.z + position_delta.z;
+                        }
+                        entity->SetPosition(stored);
                     }
-                    entity->SetPosition(entity->GetPosition() + delta);
+                    else
+                    {
+                        entity->SetPosition(entity->GetPosition() + position_delta);
+                    }
                 }
 
                 if (do_rotate)
