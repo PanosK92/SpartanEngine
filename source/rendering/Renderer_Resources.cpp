@@ -1393,6 +1393,7 @@ namespace spartan
         FileSystem::CreateDirectory_(data_dir);
 
         standard_material = make_shared<Material>();
+        standard_material->SetPersistent(false);
         standard_material->SetResourceName("standard" + string(EXTENSION_MATERIAL));
         standard_material->SetProperty(MaterialProperty::TextureTilingX, 1.0f);
         standard_material->SetProperty(MaterialProperty::TextureTilingY, 1.0f);

@@ -127,7 +127,7 @@ namespace engine_sound
                 candidates.emplace_back(requested_path);
             }
             candidates.emplace_back(
-                "project/music/"
+                "project/music/cars/"
                 "engine_minimal_muffling_01.wav"
             );
 
@@ -143,7 +143,7 @@ namespace engine_sound
             }
 
             return
-                "project/music/"
+                "project/music/cars/"
                 "engine_minimal_muffling_01.wav";
         }
     }

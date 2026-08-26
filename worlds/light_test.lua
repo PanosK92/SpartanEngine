@@ -14,7 +14,7 @@ end
 function light_test.Initialize(self, entity)
     -- material test sphere
     local ball_flags = Mesh.GetDefaultFlags() | MeshFlags.ImportCombineMeshes
-    local ball_mesh  = ResourceCache.LoadMesh("project/models/material_ball_in_3d-coat/scene.gltf", ball_flags)
+    local ball_mesh  = ResourceCache.LoadMesh("project/models/material_ball/scene.gltf", ball_flags)
     if ball_mesh then
         local ball = ball_mesh:GetRootEntity()
         ball:SetName("material_ball")
@@ -29,7 +29,7 @@ function light_test.Initialize(self, entity)
 
     -- cornell box, preserve the hard edges so the cubes are not smoothed
     local cornell_flags = Mesh.GetDefaultFlags() & ~MeshFlags.ImportGenerateSmoothNormals
-    local cornell_mesh  = ResourceCache.LoadMesh("project/models/CornellBox/CornellBox-Original.obj", cornell_flags)
+    local cornell_mesh  = ResourceCache.LoadMesh("project/models/cornell_box/cornell_box_original.obj", cornell_flags)
     if cornell_mesh then
         local cornell = cornell_mesh:GetRootEntity()
         cornell:SetName("cornell_box")

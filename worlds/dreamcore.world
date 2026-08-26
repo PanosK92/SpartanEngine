@@ -43,10 +43,10 @@
    </water>
   </Entity>
   <Entity name="ocean_sound" id="2001000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <audio_source path="project/music/ocean.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.649999976" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
+   <audio_source path="project/music/ambient/ocean.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.649999976" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
   </Entity>
   <Entity name="ambient_music" id="2001000000000000007" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <audio_source path="project/music/leberch-meditative-ambient-509385.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
+   <audio_source path="project/music/soundtrack/leberch_meditative_ambient.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
   </Entity>
   <Entity name="platform_1" id="17907731649294026939" active="true" position="-70.7327 2 -53.3227" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="top" id="17908225014493606013" active="true" position="0 0 0" rotation="0 0 0 1" scale="10 1 10">

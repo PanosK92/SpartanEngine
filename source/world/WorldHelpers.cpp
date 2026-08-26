@@ -174,7 +174,7 @@ namespace spartan
                 sound->SetObjectName("forest_river");
                 sound->SetParent(entity);
                 AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                audio_source->SetAudioClip("project/music/forest_river.wav");
+                audio_source->SetAudioClip("project/music/ambient/forest_river.wav");
                 audio_source->SetLoop(true);
             }
 
@@ -184,7 +184,7 @@ namespace spartan
                 sound->SetObjectName("wind");
                 sound->SetParent(entity);
                 AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                audio_source->SetAudioClip("project/music/wind.wav");
+                audio_source->SetAudioClip("project/music/ambient/wind.wav");
                 audio_source->SetLoop(true);
             }
 
@@ -194,7 +194,7 @@ namespace spartan
                 sound->SetObjectName("underwater");
                 sound->SetParent(entity);
                 AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                audio_source->SetAudioClip("project/music/underwater.wav");
+                audio_source->SetAudioClip("project/music/ambient/underwater.wav");
                 audio_source->SetPlayOnStart(false);
             }
         }
@@ -289,7 +289,7 @@ namespace spartan
         shared_ptr<Mesh> build_flower_mesh()
         {
             shared_ptr<Mesh> mesh   = make_shared<Mesh>();
-            const string cache_path = string(ResourceCache::GetProjectDirectory()) + "standard_flower" + EXTENSION_MESH;
+            const string cache_path = string(ResourceCache::GetProjectDirectory()) + "models/flower/standard_flower" + EXTENSION_MESH;
             if (FileSystem::Exists(cache_path))
             {
                 mesh->LoadFromFile(cache_path);
@@ -322,6 +322,7 @@ namespace spartan
                 }
             }
             mesh->SetResourceFilePath(cache_path);
+            FileSystem::CreateDirectory_(FileSystem::GetDirectoryFromFilePath(cache_path));
             mesh->SaveToFile(cache_path);
             mesh->CreateGpuBuffers();
 
@@ -389,6 +390,7 @@ namespace spartan
             }
 
             shared_ptr<Material> material = make_shared<Material>();
+            material->SetPersistent(false);
             material->SetTexture(MaterialTextureType::Color, albedo);
 
             auto set_optional = [&material, &base](MaterialTextureType type, const char* file)
@@ -431,6 +433,7 @@ namespace spartan
             }
 
             shared_ptr<Material> material = make_shared<Material>();
+            material->SetPersistent(false);
             material->SetColor(Color::standard_white);
             material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
 

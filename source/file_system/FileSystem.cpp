@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <codecvt>
 #include <locale>
 #include <regex>
+#include <cctype>
 #ifdef _WIN32
 #include <Windows.h>
 #endif
@@ -420,6 +421,70 @@ namespace spartan
     string FileSystem::GetFileNameFromFilePath(const string& path)
     {
         return filesystem::path(path).filename().generic_string();
+    }
+
+    string FileSystem::ToSnakeCase(const string& text)
+    {
+        if (text.empty())
+        {
+            return "unnamed";
+        }
+
+        // treat gltf as one word so NewSponza_Curtains_glTF becomes new_sponza_curtains_gltf
+        string source = text;
+        const string gltf_tokens[] = { "glTF", "GLTF", "Gltf" };
+        for (const string& token : gltf_tokens)
+        {
+            size_t pos = 0;
+            while ((pos = source.find(token, pos)) != string::npos)
+            {
+                source.replace(pos, token.size(), "gltf");
+                pos += 4;
+            }
+        }
+
+        string result;
+        result.reserve(source.size() * 2);
+        for (size_t i = 0; i < source.size(); i++)
+        {
+            const unsigned char c = static_cast<unsigned char>(source[i]);
+            // 0xE0C657 stays 0xe0c657, not 0x_e0c657
+            const bool hex_digit = i >= 2 &&
+                source[i - 2] == '0' &&
+                (source[i - 1] == 'x' || source[i - 1] == 'X') &&
+                isupper(c);
+            if (i > 0 && isupper(c) && islower(static_cast<unsigned char>(source[i - 1])) && !hex_digit)
+            {
+                result.push_back('_');
+            }
+
+            if (isalnum(c))
+            {
+                result.push_back(static_cast<char>(tolower(c)));
+            }
+            else if (result.empty() || result.back() != '_')
+            {
+                result.push_back('_');
+            }
+        }
+
+        while (!result.empty() && result.front() == '_')
+        {
+            result.erase(result.begin());
+        }
+        while (!result.empty() && result.back() == '_')
+        {
+            result.pop_back();
+        }
+
+        // already-split hex prefixes: 0x_e0c657 -> 0xe0c657
+        size_t hex_pos = 0;
+        while ((hex_pos = result.find("0x_", hex_pos)) != string::npos)
+        {
+            result.erase(hex_pos + 2, 1);
+        }
+
+        return result.empty() ? "unnamed" : result;
     }
 
     string FileSystem::GetFileNameWithoutExtensionFromFilePath(const string& path)

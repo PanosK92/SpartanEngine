@@ -394,9 +394,12 @@ namespace spartan
         lock_guard<recursive_mutex> guard(m_mutex);
         rebuild_resource_path_index();
 
-        const string path = resource_path_key(
-            resource->GetResourceFilePath()
-        );
+        string path = resource->GetResourceFilePath();
+        if (path.empty())
+        {
+            path = string("runtime:") + resource->GetResourceTypeCstr() + ":" + resource->GetObjectName();
+        }
+        path = resource_path_key(path);
         const auto it = m_resources_by_path.find(path);
         if (it != m_resources_by_path.end())
         {

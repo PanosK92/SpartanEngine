@@ -91,18 +91,18 @@ namespace
     LauncherColors colors;
     ImGuiTextFilter search_filter;
 
-    float last_click_time      = -1.0f;
-    int last_click_index       = -1;
-    bool scroll_to_selection   = false;
+    float last_click_time    = -1.0f;
+    int last_click_index     = -1;
+    bool scroll_to_selection = false;
 
     unordered_map<string, int64_t> world_last_opened;
 
     const char* world_recency_file = "spartan_worlds.xml";
 
-    const char* assets_url          = "https://www.dropbox.com/scl/fi/fussg3x0nxfrlvjlqxq4h/project.7z?rlkey=tcxpm7ixzeacrqze6gull2out&dl=1";
+    const char* assets_url          = "https://www.dropbox.com/scl/fi/4fxlqc6z6aqhh5ix8yg2q/project.7z?rlkey=m25em33ym1z5za0xqal39m6zo&dl=1";
     const char* assets_destination  = "project/project.7z";
     const char* assets_extract_dir  = "project/";
-    const char* assets_expected_sha = "fb58a4ec6796f4d62a01db50e14f74200f3d45025b1b46b206f1e50bde55f01b";
+    const char* assets_expected_sha = "b71048aa743063d77bb11c554b709cb42930f59260d580583d44f4c604501c63";
 
     float dpi()
     {

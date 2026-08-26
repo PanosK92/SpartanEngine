@@ -941,12 +941,19 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             const float dpi = spartan::Window::GetDpiScale();
             ImGui::SetNextWindowPos(
                 editor->GetWidget<Viewport>()->GetCenter(),
-                ImGuiCond_Appearing,
+                ImGuiCond_Always,
                 ImVec2(0.5f, 0.5f)
             );
+            ImGui::SetNextWindowViewport(ImGui::GetMainViewport()->ID);
 
             bool open = true;
-            if (ImGui::Begin("Engine update available", &open, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+            const ImGuiWindowFlags flags =
+                ImGuiWindowFlags_NoDocking |
+                ImGuiWindowFlags_NoCollapse |
+                ImGuiWindowFlags_AlwaysAutoResize |
+                ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoMove;
+            if (ImGui::Begin("Engine update available", &open, flags))
             {
                 float content_width = 500.0f * dpi;
                 ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + content_width);

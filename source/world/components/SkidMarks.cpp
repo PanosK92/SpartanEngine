@@ -472,6 +472,7 @@ namespace spartan
         }
 
         m_material = make_shared<Material>();
+        m_material->SetPersistent(false);
         m_material->SetResourceName("skidmarks" + string(EXTENSION_MATERIAL));
         if (m_texture)
         {

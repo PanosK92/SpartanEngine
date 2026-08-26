@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <car name="FWD Reference Hatch">
-    <wheels model="project\models\wheel\model.blend"
+    <wheels model="project/models/wheel/model.blend"
         front_wheel_radius="0.315" rear_wheel_radius="0.315" front_wheel_width="0.225" rear_wheel_width="0.225" wheel_mass="20"
-        albedo="project\models\wheel\albedo.jpeg" metalness="project\models\wheel\metalness.png"
-        normal="project\models\wheel\normal.png" roughness="project\models\wheel\roughness.png" />
+        albedo="project/models/wheel/albedo.jpeg" metalness="project/models/wheel/metalness.png"
+        normal="project/models/wheel/normal.png" roughness="project/models/wheel/roughness.png" />
 
     <chassis mass="1320" length="4.35" width="1.78" height="1.45"
         wheelbase="2.64" track_front="1.53" track_rear="1.52"

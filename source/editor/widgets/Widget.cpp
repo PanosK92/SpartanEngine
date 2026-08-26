@@ -130,7 +130,7 @@ void Widget::OnPreBegin()
 
 spartan::math::Vector2 Widget::GetCenter() const
 {
-    if (!m_window)
+    if (!m_window || m_window->Size.x < 1.0f || m_window->Size.y < 1.0f)
     {
         return ImGui::GetMainViewport()->GetCenter();
     }

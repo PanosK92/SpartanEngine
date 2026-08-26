@@ -150,12 +150,6 @@ namespace spartan
             if (!resource || IsShuttingDown())
                 return nullptr;
 
-            if (resource->GetResourceFilePath().empty())
-            {
-                SP_LOG_ERROR("Resource \"%s\" has an empty file path and cannot be cached.", resource->GetObjectName().c_str());
-                return nullptr;
-            }
-
             return std::static_pointer_cast<T>(
                 CacheInternal(resource)
             );

@@ -2547,6 +2547,7 @@ namespace spartan
             }
 
             shared_ptr<Material>& layer = m_layer_materials[i];
+            layer->SetPersistent(false);
             layer->SetObjectName("terrain_layer_" + rule.name);
             layer->SetResourceName("terrain_layer_" + rule.name + EXTENSION_MATERIAL);
             layer->SetProperty(MaterialProperty::IsTerrain, 1.0f);
@@ -6803,6 +6804,7 @@ namespace spartan
         }
 
         shared_ptr<Material> water_material = make_shared<Material>();
+        water_material->SetPersistent(false);
         water_material->SetResourceName("river_water" + string(EXTENSION_MATERIAL));
         water_material->SetColor(Color(0.0f, 0.09f, 0.13f, 0.9f));
         water_material->SetProperty(MaterialProperty::Roughness,            0.05f);

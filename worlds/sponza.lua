@@ -52,7 +52,7 @@ function sponza.Initialize(self, entity)
 
     -- main building, import authored lights so cluster shading can pick them up
     local mesh_flags = Mesh.GetDefaultFlags() | MeshFlags.ImportLights
-    local mesh_main = ResourceCache.LoadMesh("project/models/sponza/main/NewSponza_Main_Blender_glTF.gltf", mesh_flags)
+    local mesh_main = ResourceCache.LoadMesh("project/models/sponza/main/new_sponza_main_blender_gltf.gltf", mesh_flags)
     if mesh_main then
         local main = mesh_main:GetRootEntity()
         main:SetName("sponza")
@@ -82,7 +82,7 @@ function sponza.Initialize(self, entity)
     end
 
     -- curtains
-    local mesh_curtains = ResourceCache.LoadMesh("project/models/sponza/curtains/NewSponza_Curtains_glTF.gltf")
+    local mesh_curtains = ResourceCache.LoadMesh("project/models/sponza/curtains/new_sponza_curtains_gltf.gltf")
     if mesh_curtains then
         local curtains = mesh_curtains:GetRootEntity()
         curtains:SetName("sponza_curtains")
@@ -96,7 +96,7 @@ function sponza.Initialize(self, entity)
     end
 
     -- ivy
-    local mesh_ivy = ResourceCache.LoadMesh("project/models/sponza/ivy/NewSponza_IvyGrowth_glTF.gltf")
+    local mesh_ivy = ResourceCache.LoadMesh("project/models/sponza/ivy/new_sponza_ivy_growth_gltf.gltf")
     if mesh_ivy then
         local ivy = mesh_ivy:GetRootEntity()
         ivy:SetName("sponza_ivy")

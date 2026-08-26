@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <car name="Ferrari LaFerrari">
 
-    <body model="project\models\ferrari_laferrari\scene.gltf" scale="2.0" forward_z="-1"
+    <body model="project/models/ferrari_laferrari/scene.gltf" scale="2.0" forward_z="-1"
         hide_parts="tire 1,tire 2,tire 3,tire 4,brakerear" />
 
-    <wheels model="project\models\wheel\model.blend"
+    <wheels model="project/models/wheel/model.blend"
         front_wheel_radius="0.321" rear_wheel_radius="0.358" front_wheel_width="0.265" rear_wheel_width="0.345" wheel_mass="20"
-        albedo="project\models\wheel\albedo.jpeg" metalness="project\models\wheel\metalness.png"
-        normal="project\models\wheel\normal.png" roughness="project\models\wheel\roughness.png" />
+        albedo="project/models/wheel/albedo.jpeg" metalness="project/models/wheel/metalness.png"
+        normal="project/models/wheel/normal.png" roughness="project/models/wheel/roughness.png" />
 
     <!-- dimensions in meters, mass in kg -->
     <chassis

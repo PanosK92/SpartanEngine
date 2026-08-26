@@ -995,12 +995,14 @@ namespace spartan
             // an importer names an unauthored material after itself, every model in the project ends up
             // with the same one, prefixing these is unconditional so the name never depends on load order
             const string lowered = normalize_for_lookup(name);
-            const bool generic   = name.empty()              ||
-                                   lowered == "empty"        ||
-                                   lowered == "default"      ||
+            const bool generic   = name.empty()                 ||
+                                   lowered == "empty"           ||
+                                   lowered == "default"         ||
+                                   lowered == "default_material" ||
                                    lowered == "defaultmaterial" ||
-                                   lowered == "material"     ||
-                                   lowered == "none";
+                                   lowered == "material"        ||
+                                   lowered == "none"            ||
+                                   lowered == "unnamed";
 
             if (!generic && !taken_by_another(name))
             {
@@ -1033,7 +1035,11 @@ namespace spartan
 
             aiString name_assimp;
             aiGetMaterialString(material_assimp, AI_MATKEY_NAME, &name_assimp);
-            const string name          = unique_material_name(name_assimp.C_Str(), ctx.model_directory, material_index);
+            const string name          = unique_material_name(
+                FileSystem::ToSnakeCase(name_assimp.C_Str()),
+                ctx.model_directory,
+                material_index
+            );
             const string material_path = ctx.model_directory + name + EXTENSION_MATERIAL;
 
             shared_ptr<Material> material;
@@ -1917,7 +1923,9 @@ namespace spartan
         // initialize import context
         ImportContext ctx;
         ctx.file_path       = file_path;
-        ctx.model_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        ctx.model_name      = FileSystem::ToSnakeCase(
+            FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path)
+        );
         ctx.model_directory = FileSystem::GetDirectoryFromFilePath(file_path);
         ctx.mesh            = mesh_in;
         ctx.mesh->SetObjectName(ctx.model_name);

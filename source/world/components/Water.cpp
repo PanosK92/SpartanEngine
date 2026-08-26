@@ -155,6 +155,7 @@ namespace spartan
 
         // the fft passes supply displacement and normals, a little roughness is essential or the sun glint disappears
         m_material = make_shared<Material>();
+        m_material->SetPersistent(false);
         m_material->SetResourceName("water_fft" + string(EXTENSION_MATERIAL));
         m_material->SetColor(Color(0.0f, 0.09f, 0.13f, 0.9f));
         m_material->SetProperty(MaterialProperty::Roughness,            0.05f);

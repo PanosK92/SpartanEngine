@@ -51,7 +51,7 @@ namespace spartan
             const std::array<std::filesystem::path, 2> candidates =
             {
                 requested_path,
-                "project/music/"
+                "project/music/cars/"
                     "engine_minimal_muffling_01.wav"
             };
 

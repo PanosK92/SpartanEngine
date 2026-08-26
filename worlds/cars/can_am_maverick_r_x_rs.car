@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <car name="2026 Can-Am Maverick R X rs">
-    <wheels model="project\models\wheel\model.blend"
+    <wheels model="project/models/wheel/model.blend"
         front_wheel_radius="0.4064" rear_wheel_radius="0.4064" front_wheel_width="0.254" rear_wheel_width="0.254" wheel_mass="30"
-        albedo="project\models\wheel\albedo.jpeg" metalness="project\models\wheel\metalness.png"
-        normal="project\models\wheel\normal.png" roughness="project\models\wheel\roughness.png" />
+        albedo="project/models/wheel/albedo.jpeg" metalness="project/models/wheel/metalness.png"
+        normal="project/models/wheel/normal.png" roughness="project/models/wheel/roughness.png" />
 
     <chassis mass="1016" length="3.556" width="1.985" height="1.815"
         wheelbase="2.743" track_front="1.731" track_rear="1.731"

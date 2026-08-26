@@ -3200,7 +3200,7 @@
        </Entity>
       </Entity>
       <Entity name="garage_shell" id="12846260032434658680" active="true" position="0 0 0" rotation="0 7.7486e-07 0 1" scale="1 1 1" />
-      <Entity name="player_car_display__sr_465e8212_70a1429892" id="14327374496176899117" active="true" position="0 0.2 1" rotation="0 7.7486e-07 0 1" scale="1 1 1" tags="scene_recipe=player_garage_hub,semantic_id=hub.car_display,focal_point">
+      <Entity name="player_car_display_sr_465e8212_70a1429892" id="14327374496176899117" active="true" position="0 0.2 1" rotation="0 7.7486e-07 0 1" scale="1 1 1" tags="scene_recipe=player_garage_hub,semantic_id=hub.car_display,focal_point">
        <Entity name="player_car_display_pedestal" id="3245721236774781428" active="true" position="0 0 0" rotation="0 8.04663e-07 0 1" scale="1 1 1">
         <Entity name="low_car_display_pad" id="2620787075678604621" active="true" position="0 0.04 0" rotation="0 8.64267e-07 0 1" scale="1 1 1">
          <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -3422,7 +3422,7 @@
     </Entity>
    </Entity>
    <Entity name="Highway" id="7850748446432689067" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-    <script file_path="project/Scripts\new_lua_script.lua" />
+    <script file_path="project/scripts/new_lua_script.lua" />
     <Entity name="billboard_pole" id="15352894423597569130" active="true" position="100 6 90" rotation="0 0 0 1" scale="2 12 2">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />

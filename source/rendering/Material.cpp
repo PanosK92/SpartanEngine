@@ -907,6 +907,7 @@ namespace spartan
     {
         shared_ptr<Material> clone = make_shared<Material>();
         clone->SetResourceName(resource_name);
+        clone->SetPersistent(false);
         clone->m_textures      = m_textures;
         clone->m_properties    = m_properties;
         clone->m_flags         = m_flags;
@@ -995,8 +996,8 @@ namespace spartan
     
     void Material::SaveToFile(const string& file_path)
     {
-        // skip when called without a resolved path
-        if (file_path.empty())
+        // skip when called without a resolved path, runtime clones must not dump xml
+        if (file_path.empty() || !IsPersistent())
         {
             return;
         }

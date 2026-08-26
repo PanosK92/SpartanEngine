@@ -66,13 +66,27 @@ namespace spartan
 
         void SetResourceName(const std::string& name)
         {
-            m_object_name = name;
-            std::string directory = FileSystem::GetDirectoryFromFilePath(m_resource_file_path);
+            const std::string file_name = FileSystem::GetFileNameFromFilePath(name);
+            std::string object_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_name);
+            if (object_name.empty())
+            {
+                object_name = file_name;
+            }
+            m_object_name = object_name;
+
+            // runtime resources keep a name only, do not invent a file under the texture library
+            const std::string directory = FileSystem::GetDirectoryFromFilePath(m_resource_file_path);
             if (directory.empty())
             {
-                directory = "project/materials/";
+                return;
             }
-            m_resource_file_path = directory + name;
+
+            std::string extension = FileSystem::GetExtensionFromFilePath(file_name);
+            if (extension.empty())
+            {
+                extension = FileSystem::GetExtensionFromFilePath(m_resource_file_path);
+            }
+            m_resource_file_path = directory + object_name + extension;
         }
         
         ResourceType GetResourceType()           const { return m_resource_type; }

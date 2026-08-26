@@ -28,13 +28,13 @@ namespace spartan
 
         static std::unique_ptr<CarEngineSimFerrari412> create(
             const std::string& impulse_response_path =
-                "project/music/"
+                "project/music/cars/"
                 "engine_minimal_muffling_01.wav"
         );
 
         void initialize(
             const std::string& impulse_response_path =
-                "project/music/"
+                "project/music/cars/"
                 "engine_minimal_muffling_01.wav"
         );
         void destroy();

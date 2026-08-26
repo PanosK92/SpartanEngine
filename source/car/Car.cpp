@@ -3353,7 +3353,7 @@ namespace spartan
             sound->SetParent(parent_entity);
 
             AudioSource* audio_source = sound->AddComponent<AudioSource>();
-            audio_source->SetAudioClip("project\\music\\car_start.wav");
+            audio_source->SetAudioClip("project/music/cars/car_start.wav");
             audio_source->SetLoop(false);
             audio_source->SetPlayOnStart(false);
         }
@@ -3377,7 +3377,7 @@ namespace spartan
             sound->SetParent(parent_entity);
 
             AudioSource* audio_source = sound->AddComponent<AudioSource>();
-            audio_source->SetAudioClip("project\\music\\car_door.wav");
+            audio_source->SetAudioClip("project/music/cars/car_door.wav");
             audio_source->SetLoop(false);
             audio_source->SetPlayOnStart(false);
         }

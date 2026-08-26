@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <car name="Mitsubishi Lancer Evolution IX">
 
-    <wheels model="project\models\wheel\model.blend"
+    <wheels model="project/models/wheel/model.blend"
         front_wheel_radius="0.322" rear_wheel_radius="0.322" front_wheel_width="0.235" rear_wheel_width="0.235" wheel_mass="22"
-        albedo="project\models\wheel\albedo.jpeg" metalness="project\models\wheel\metalness.png"
-        normal="project\models\wheel\normal.png" roughness="project\models\wheel\roughness.png" />
+        albedo="project/models/wheel/albedo.jpeg" metalness="project/models/wheel/metalness.png"
+        normal="project/models/wheel/normal.png" roughness="project/models/wheel/roughness.png" />
 
     <!-- dimensions in meters, mass in kg -->
     <chassis

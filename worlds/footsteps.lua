@@ -2,12 +2,12 @@ local footsteps = {}
 
 -- material name -> sound file mapping
 local sound_map = {
-    carpet    = "project/music/footsteps_carpet.wav",
-    tile_pool  = "project/music/footsteps_tiles.wav",
-    grass      = "project/music/footsteps_grass.wav",
-    water      = "project/music/footsteps_water.wav",
+    carpet    = "project/music/footsteps/footsteps_carpet.wav",
+    tile_pool  = "project/music/footsteps/footsteps_tiles.wav",
+    grass      = "project/music/footsteps/footsteps_grass.wav",
+    water      = "project/music/footsteps/footsteps_water.wav",
 }
-local default_sound = "project/music/footsteps_tiles.wav"
+local default_sound = "project/music/footsteps/footsteps_tiles.wav"
 
 -- timing
 local walk_speed      = 5.0  -- walking speed threshold (m/s)
