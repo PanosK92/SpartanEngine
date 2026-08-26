@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <cstdint>
 #include <d3d12.h>
+#include "../../memory/GpuMemory.h"
 
 namespace spartan
 {
@@ -161,4 +162,10 @@ namespace spartan::d3d12_pipeline_library
 namespace spartan::d3d12_shader
 {
     void release_bytecode_blob(void* bytecode_ptr);
+}
+
+// reports committed resources to the api-agnostic gpu memory tracker
+namespace spartan::d3d12_gpu_memory
+{
+    void register_resource(ID3D12Resource* resource, GpuMemoryKind kind, const char* name);
 }

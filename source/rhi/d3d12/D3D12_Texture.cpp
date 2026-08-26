@@ -202,6 +202,12 @@ namespace spartan
             d3d12_utility::debug::set_name(texture, m_object_name.c_str());
         }
 
+        d3d12_gpu_memory::register_resource(
+            texture,
+            GpuMemoryKind::Texture,
+            m_object_name.c_str()
+        );
+
         // seed the d3d12 state tracker so future barriers know the StateBefore
         d3d12_state::SetState(texture, initial_state);
         // buffers and simultaneous-access textures decay to common after every executecommandlists
@@ -587,6 +593,7 @@ namespace spartan
         if (m_rhi_resource)
         {
             d3d12_state::RemoveState(static_cast<ID3D12Resource*>(m_rhi_resource));
+            GpuMemory::Unregister(m_rhi_resource);
             static_cast<ID3D12Resource*>(m_rhi_resource)->Release();
             m_rhi_resource = nullptr;
         }

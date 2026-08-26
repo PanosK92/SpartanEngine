@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Buffer.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_VendorTechnology.h"
+#include "../../memory/GpuMemory.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -895,6 +896,71 @@ namespace spartan
             lock_guard<mutex> lock(mutex_allocator);
             auto it = allocations.find(resource);
             return it != allocations.end() ? it->second : nullptr;
+        }
+
+        GpuMemoryKind kind_from_buffer_usage(uint32_t flags_usage)
+        {
+            if (flags_usage & VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR)
+            {
+                return GpuMemoryKind::AccelerationStructure;
+            }
+            if (flags_usage & VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR)
+            {
+                return GpuMemoryKind::ShaderBindingTable;
+            }
+            if (flags_usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+            {
+                return GpuMemoryKind::Vertex;
+            }
+            if (flags_usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+            {
+                return GpuMemoryKind::Index;
+            }
+            if (flags_usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+            {
+                return GpuMemoryKind::Constant;
+            }
+            if (flags_usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
+            {
+                return GpuMemoryKind::Storage;
+            }
+            if ((flags_usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0 &&
+                (flags_usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) == 0)
+            {
+                return GpuMemoryKind::Upload;
+            }
+            if ((flags_usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) != 0 &&
+                (flags_usage & ~VK_BUFFER_USAGE_TRANSFER_DST_BIT) == 0)
+            {
+                return GpuMemoryKind::Readback;
+            }
+            return GpuMemoryKind::Other;
+        }
+
+        void register_gpu_memory(
+            void* resource,
+            VmaAllocation allocation,
+            GpuMemoryKind kind,
+            const char* name
+        )
+        {
+            if (!resource || !allocation)
+            {
+                return;
+            }
+
+            VmaAllocationInfo2 info2 = {};
+            vmaGetAllocationInfo2(allocator, allocation, &info2);
+
+            GpuMemory::Register(
+                resource,
+                info2.allocationInfo.size,
+                kind,
+                name,
+                info2.allocationInfo.offset,
+                reinterpret_cast<uint64_t>(info2.allocationInfo.deviceMemory),
+                info2.blockSize
+            );
         }
     }
 
@@ -2141,6 +2207,7 @@ namespace spartan
 
         // destroy the allocator itself and assert if any allocations are left
         vulkan_memory_allocator::destroy();
+        GpuMemory::Clear();
 
         // device and instance
         vkDestroyDevice(RHI_Context::device, nullptr);
@@ -2638,6 +2705,12 @@ namespace spartan
 
         vmaSetAllocationName(vulkan_memory_allocator::allocator, allocation, name);
         vulkan_memory_allocator::save_allocation(resource, allocation);
+        vulkan_memory_allocator::register_gpu_memory(
+            resource,
+            allocation,
+            vulkan_memory_allocator::kind_from_buffer_usage(flags_usage),
+            name
+        );
     }
 
     void RHI_Device::MemoryBufferDestroy(void*& resource)
@@ -2645,6 +2718,7 @@ namespace spartan
         VmaAllocation allocation = vulkan_memory_allocator::get_allocation_from_resource(resource);
         if (allocation)
         {
+            GpuMemory::Unregister(resource);
             vmaDestroyBuffer(vulkan_memory_allocator::allocator, static_cast<VkBuffer>(resource), allocation);
             vulkan_memory_allocator::destroy_allocation(resource);
             resource = nullptr;
@@ -2761,6 +2835,12 @@ namespace spartan
         }
 
         vulkan_memory_allocator::save_allocation(texture->GetRhiResource(), allocation);
+        vulkan_memory_allocator::register_gpu_memory(
+            texture->GetRhiResource(),
+            allocation,
+            GpuMemoryKind::Texture,
+            texture->GetObjectName().c_str()
+        );
     }
 
     void RHI_Device::MemoryTextureDestroy(void*& resource)
@@ -2768,6 +2848,7 @@ namespace spartan
         VmaAllocation allocation = vulkan_memory_allocator::get_allocation_from_resource(resource);
         if (allocation)
         {
+            GpuMemory::Unregister(resource);
             vmaDestroyImage(vulkan_memory_allocator::allocator, static_cast<VkImage>(resource), allocation);
             vulkan_memory_allocator::destroy_allocation(resource);
             resource = nullptr;

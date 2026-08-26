@@ -42,10 +42,9 @@ namespace spartan
     {
         // callbacks for cascading changes and validation
 
-        void on_anisotropy_change(const CVarVariant& value)
+        void on_anisotropy_change(const CVarVariant&)
         {
-            float v = clamp(get<float>(value), 0.0f, 16.0f);
-            *ConsoleRegistry::Get().Find("r.anisotropy")->m_value_ptr = v;
+            *ConsoleRegistry::Get().Find("r.anisotropy")->m_value_ptr = 16.0f;
         }
 
         void on_resolution_scale_change(const CVarVariant& value)
@@ -203,7 +202,7 @@ namespace spartan
     TConsoleVar<float> cvar_dithering                      ("r.dithering",                      0.0f,                                                    "dithering to reduce banding");
     TConsoleVar<float> cvar_sharpness                      ("r.sharpness",                      0.0f,                                                    "sharpening intensity");
     // quality settings
-    TConsoleVar<float> cvar_anisotropy                     ("r.anisotropy",                     16.0f,                                                   "anisotropic filtering level (0-16)",      on_anisotropy_change);
+    TConsoleVar<float> cvar_anisotropy                     ("r.anisotropy",                     16.0f,                                                   "anisotropic filtering, always 16x",      on_anisotropy_change);
     TConsoleVar<float> cvar_tonemapping                    ("r.tonemapping",                    4.0f,                                                    "tonemapping algorithm index");
     TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau), "aa/upsampling method index",              on_antialiasing_change);
     // display

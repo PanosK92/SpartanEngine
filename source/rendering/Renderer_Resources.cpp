@@ -393,9 +393,8 @@ namespace spartan
             static float mip_bias = numeric_limits<float>::max();
             if (mip_bias_new != mip_bias)
             {
-                mip_bias         = mip_bias_new;
-                float anisotropy = cvar_anisotropy.GetValue();
-                create_sampler(Renderer_Sampler::Anisotropic_wrap, RHI_Filter::Linear, RHI_Filter::Linear, RHI_Filter::Linear, RHI_Sampler_Address_Mode::Wrap, RHI_Comparison_Function::Always, anisotropy, false, mip_bias);
+                mip_bias = mip_bias_new;
+                create_sampler(Renderer_Sampler::Anisotropic_wrap, RHI_Filter::Linear, RHI_Filter::Linear, RHI_Filter::Linear, RHI_Sampler_Address_Mode::Wrap, RHI_Comparison_Function::Always, 16.0f, false, mip_bias);
             }
         }
 

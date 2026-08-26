@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Buffer.h"
 #include "../RHI_Texture.h"
 #include "../RHI_CommandList.h"
+#include "../../memory/GpuMemory.h"
 #include "../RHI_Sampler.h"
 #include <wrl/client.h>
 #include "../RHI_Queue.h"
@@ -967,6 +968,8 @@ namespace spartan
         // release info queue before the device, since it holds a reference to it
         validation::destroy();
 
+        GpuMemory::Clear();
+
         if (RHI_Context::device)
         {
             RHI_Context::device->Release();
@@ -1079,6 +1082,7 @@ namespace spartan
             {
                 // both are ID3D12Resource, also evict from the global state tracker
                 ID3D12Resource* d3d_res = static_cast<ID3D12Resource*>(resource);
+                GpuMemory::Unregister(resource);
                 d3d12_state::RemoveState(d3d_res);
                 d3d_res->Release();
                 break;
@@ -1490,6 +1494,25 @@ namespace spartan
     void RHI_Device::UpdateBindlessGeometryIndices(RHI_Buffer* buffer)   { write_bindless_structured_srv(d3d12_descriptors::bindless_buffer_slot::geometry_indices, buffer); }
     void RHI_Device::UpdateBindlessInstances(RHI_Buffer* buffer)         { write_bindless_structured_srv(d3d12_descriptors::bindless_buffer_slot::geometry_instances, buffer); }
 
+    void d3d12_gpu_memory::register_resource(ID3D12Resource* resource, GpuMemoryKind kind, const char* name)
+    {
+        if (!resource)
+        {
+            return;
+        }
+
+        D3D12_RESOURCE_DESC desc = resource->GetDesc();
+        D3D12_RESOURCE_ALLOCATION_INFO info =
+            RHI_Context::device->GetResourceAllocationInfo(0, 1, &desc);
+
+        GpuMemory::Register(
+            resource,
+            info.SizeInBytes,
+            kind,
+            name
+        );
+    }
+
     void* RHI_Device::MemoryGetMappedDataFromBuffer(void* resource)
     {
         return nullptr;
@@ -1504,6 +1527,7 @@ namespace spartan
     {
         if (resource)
         {
+            GpuMemory::Unregister(resource);
             static_cast<ID3D12Resource*>(resource)->Release();
             resource = nullptr;
         }
@@ -1518,6 +1542,7 @@ namespace spartan
     {
         if (resource)
         {
+            GpuMemory::Unregister(resource);
             static_cast<ID3D12Resource*>(resource)->Release();
             resource = nullptr;
         }
@@ -1640,6 +1665,7 @@ namespace spartan
         d3d12_state::SetDecaysToCommon(upload_buffer, true);
         d3d12_state::SetIsBuffer(upload_buffer, true);
         d3d12_state::SetSubresourceCount(upload_buffer, 1);
+        d3d12_gpu_memory::register_resource(upload_buffer, GpuMemoryKind::Upload, "staging");
         return upload_buffer;
     }
 
@@ -1663,6 +1689,7 @@ namespace spartan
         {
             if (entry.buffer)
             {
+                GpuMemory::Unregister(entry.buffer);
                 entry.buffer->Release();
             }
         }

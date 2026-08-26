@@ -136,9 +136,9 @@ A full vehicle dynamics simulation running inside the PhysX fixed-timestep loop.
 | **Cinematics**    | Camera cut sequencer with entity tracking, spline-driven movement, and exact cut timing           |
 | **Threading**     | Hardware-aware thread pool with parallel loops and nested parallelism detection                   |
 | **VR (WIP)**      | OpenXR with multiview single-pass stereo (Vulkan and DirectX 12)                                   |
-| **Profiling**     | Nsight/RGP-style timeline with separate graphics and async compute lanes, RenderDoc integration   |
+| **Profiling**     | Nsight/RGP-style timeline with separate graphics and async compute lanes, RenderDoc integration, GPU/CPU memory fragmentation map |
 | **Asset import**  | 40+ model formats (Assimp), 30+ image formats (FreeImage), 10+ font formats (FreeType)            |
-| **Editor**        | ImGui-based with hierarchy, asset browser, inspector, script and shader editors, gizmos, profiler |
+| **Editor**        | ImGui-based with hierarchy, asset browser, inspector, script and shader editors, gizmos, profiler, memory fragmentation viewer |
 
 ---
 

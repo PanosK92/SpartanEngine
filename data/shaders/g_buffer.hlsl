@@ -50,13 +50,8 @@ static const float POM_FADE_START        = 25.0f;
 static const float POM_FADE_END          = 50.0f;
 static const float POM_HEIGHT_SCALE      = 0.04f;
 
-static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, float dist)
+static float4 sample_texture(gbuffer_vertex vertex, uint texture_index)
 {
-    // aniso only where texels span pixels, past the pom fade start bilinear is the same picture
-    if (dist > POM_FADE_START)
-    {
-        return GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_bilinear_wrap), vertex.uv_misc.xy);
-    }
     return GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy);
 }
 
@@ -335,7 +330,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float4 albedo_sample = 1.0f;
     if (!terrain_shaded && surface.has_texture_albedo())
     {
-        albedo_sample     = sample_texture(vertex, material_texture_index_albedo, distance);
+        albedo_sample     = sample_texture(vertex, material_texture_index_albedo);
         if (material.is_albedo_srgb())
         {
             albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
@@ -394,7 +389,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float distance_fade = 1.0f;
     if (!terrain_shaded && surface.has_texture_normal())
     {
-        float3 normal_sample  = sample_texture(vertex, material_texture_index_normal, distance).xyz;
+        float3 normal_sample  = sample_texture(vertex, material_texture_index_normal).xyz;
         float3 tangent_normal = normalize(unpack(normal_sample));
     
         // reconstruct z for bc5 two-channel normal maps
@@ -432,7 +427,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         )
     )
     {
-        float4 packed = sample_texture(vertex, material_texture_index_packed, distance);
+        float4 packed = sample_texture(vertex, material_texture_index_packed);
         occlusion     = lerp(occlusion, packed.r, (float)material.has_texture_occlusion());
         roughness    *= lerp(1.0f, packed.g, (float)material.has_texture_roughness());
         metalness    *= lerp(1.0f, packed.b, (float)material.has_texture_metalness());

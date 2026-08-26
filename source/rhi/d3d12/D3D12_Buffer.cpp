@@ -70,6 +70,7 @@ namespace spartan
         if (m_rhi_resource)
         {
             RHI_Device::DescriptorSetInvalidateReferencingResource(this);
+            GpuMemory::Unregister(m_rhi_resource);
             d3d12_state::RemoveState(static_cast<ID3D12Resource*>(m_rhi_resource));
             static_cast<ID3D12Resource*>(m_rhi_resource)->Release();
             m_rhi_resource = nullptr;
@@ -201,6 +202,12 @@ namespace spartan
 
         m_rhi_resource   = buffer;
         m_device_address = buffer->GetGPUVirtualAddress();
+
+        d3d12_gpu_memory::register_resource(
+            buffer,
+            GpuMemory::FromBufferType(static_cast<uint32_t>(m_type)),
+            m_object_name.c_str()
+        );
 
         // sbt offsets must respect the base alignment, compute them from the actual gpu virtual address
         if (m_type == RHI_Buffer_Type::ShaderBindingTable)

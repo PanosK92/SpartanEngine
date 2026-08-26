@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "widgets/AssetBrowser.h"
 #include "widgets/Sequencer.h"
 #include "widgets/Profiler.h"
+#include "widgets/MemoryViewer.h"
 #include "widgets/ResourceViewer.h"
 #include "widgets/ShaderEditor.h"
 #include "widgets/ScriptEditor.h"
@@ -52,6 +53,7 @@ void Editor::RegisterWidgets()
     AddWidget<AssetBrowser>();
     AddWidget<Sequencer>();
     AddWidget<Profiler>();
+    AddWidget<MemoryViewer>();
     AddWidget<ResourceViewer>();
     AddWidget<ShaderEditor>();
     AddWidget<ScriptEditor>();

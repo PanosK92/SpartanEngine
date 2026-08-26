@@ -92,6 +92,14 @@ namespace spartan
                 d3d12_utility::debug::set_name(resource, name);
             }
 
+            d3d12_gpu_memory::register_resource(
+                resource,
+                is_as_state ?
+                    GpuMemoryKind::AccelerationStructure :
+                    GpuMemoryKind::Storage,
+                name
+            );
+
             return resource;
         }
 
@@ -161,6 +169,12 @@ namespace spartan
             {
                 d3d12_utility::debug::set_name(resource, name);
             }
+
+            d3d12_gpu_memory::register_resource(
+                resource,
+                GpuMemoryKind::Upload,
+                name
+            );
 
             return resource;
         }

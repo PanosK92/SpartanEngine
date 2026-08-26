@@ -539,6 +539,29 @@ float3 terrain_gain3(float3 x, float r)
     return v / max(v.x + v.y + v.z, 1e-6f);
 }
 
+// samplegrad without hardware af picks the mip from the stretched axis, so grazing ground
+// a few metres out collapses to a single colour. cap at 16x, the same ratio the sampler uses
+void terrain_limit_aniso(inout float2 duvdx, inout float2 duvdy)
+{
+    float lx    = length(duvdx);
+    float ly    = length(duvdy);
+    float minor = max(min(lx, ly), 1e-6f);
+    float major = max(lx, ly);
+    const float max_aniso = 16.0f;
+    if (major > minor * max_aniso)
+    {
+        float scale = (minor * max_aniso) / major;
+        if (lx > ly)
+        {
+            duvdx *= scale;
+        }
+        else
+        {
+            duvdy *= scale;
+        }
+    }
+}
+
 struct TerrainHexSetup
 {
     float3   weights;
@@ -551,6 +574,8 @@ struct TerrainHexSetup
 // reuse them for albedo, normal and packed
 TerrainHexSetup terrain_hex_setup(float2 uv, float2 duvdx, float2 duvdy)
 {
+    terrain_limit_aniso(duvdx, duvdy);
+
     float3 weights;
     int2 vertex1, vertex2, vertex3;
     terrain_hex_lattice(uv, weights, vertex1, vertex2, vertex3);
@@ -640,6 +665,8 @@ TerrainBiplanarSetup terrain_biplanar_setup(float3 position, float3 normal, floa
     setup.duvdx[1] = float2(dpdx[median.y], dpdx[median.z]);
     setup.duvdy[0] = float2(dpdy[major.y],  dpdy[major.z]);
     setup.duvdy[1] = float2(dpdy[median.y], dpdy[median.z]);
+    terrain_limit_aniso(setup.duvdx[0], setup.duvdy[0]);
+    terrain_limit_aniso(setup.duvdx[1], setup.duvdy[1]);
 
     // local support, the remap is what keeps the two weights from bleeding across the whole sphere
     float2 w      = float2(n[major.x], n[median.x]);
@@ -797,6 +824,7 @@ TerrainMapFetch terrain_fetch_planar(
     float2 layer_uv = uv * layer.terrain_tiling_scale;
     float2 layer_dx = duvdx * layer.terrain_tiling_scale;
     float2 layer_dy = duvdy * layer.terrain_tiling_scale;
+    terrain_limit_aniso(layer_dx, layer_dy);
 
     fetch.albedo = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_albedo)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), layer_uv, layer_dx, layer_dy);
     fetch.packed = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_packed)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), layer_uv, layer_dx, layer_dy);
@@ -1074,8 +1102,11 @@ TerrainSurface terrain_evaluate(
     {
         MaterialParameters dominant = material_parameters[NonUniformResourceIndex(pick.index[0])];
         float scale                 = dominant.terrain_tiling_scale / terrain_macro_scale_ratio;
+        float2 far_dx               = duvdx * scale;
+        float2 far_dy               = duvdy * scale;
+        terrain_limit_aniso(far_dx, far_dy);
         float4 far_albedo           = material_textures[NonUniformResourceIndex(pick.index[0] + material_texture_index_albedo)]
-            .SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv * scale, duvdx * scale, duvdy * scale);
+            .SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv * scale, far_dx, far_dy);
 
         if (dominant.is_albedo_srgb())
         {
