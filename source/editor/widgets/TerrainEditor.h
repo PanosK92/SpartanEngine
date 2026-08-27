@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "Widget.h"
 #include "world/TerrainSystem.h"
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <string>
@@ -80,12 +81,23 @@ private:
     void Browse(const std::function<void(const std::string&)>& on_selected);
     void TickBrowse();
 
+    // a rule edit schedules the placement rather than asking for a button press, this is what runs it
+    void TickScatter();
+    // every edit routes through here so the quiet period restarts, which is what collapses a slider
+    // drag into one rebuild instead of one per frame
+    void MarkScatterDirty();
+
     Mode m_mode                 = Mode::Shape;
     uint32_t m_ground_selected  = 0;
     uint32_t m_life_selected    = 0;
     // amber on the action bar, what is authored no longer matches what is in the viewport
     bool m_shape_dirty          = false;
     bool m_scatter_dirty        = false;
+    // seconds of quiet since the last rule edit, the props are placed again once it runs out
+    float m_scatter_timer       = 0.0f;
+    // set for as long as a placement is on a worker, a second one would race it over the same tiles
+    std::shared_ptr<std::atomic<bool>> m_scatter_running =
+        std::make_shared<std::atomic<bool>>(false);
     // the window fades so the terrain stays visible behind it while a rule is being tuned
     float m_opacity             = 1.0f;
 

@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SwapChain.h"
 #include "../RHI_Texture.h"
 #include "../rendering/Renderer.h"
+#include "../rendering/Renderer_Buffers.h"
 #include "D3D12_Internal.h"
 #include <wrl/client.h>
 #include <cstring>
@@ -593,7 +594,9 @@ namespace spartan
         params[1].ParameterType            = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
         params[1].Constants.ShaderRegister = 1;
         params[1].Constants.RegisterSpace  = 0;
-        params[1].Constants.Num32BitValues = 16; // PassBufferData = 64 bytes
+        // derived rather than written out, a root signature narrower than the struct silently drops the
+        // tail of every push instead of failing
+        params[1].Constants.Num32BitValues = sizeof(Pcb_Pass) / 4;
         params[1].ShaderVisibility         = D3D12_SHADER_VISIBILITY_ALL;
 
         // 2: SRV table t0..t59 space0

@@ -76,6 +76,11 @@ namespace spartan
 
     void RHI_AccelerationStructure::Destroy()
     {
+        if (m_type == RHI_AccelerationStructureType::Top && m_rhi_resource)
+        {
+            RHI_Device::DescriptorSetInvalidateReferencingResource(this);
+        }
+
         if (m_rhi_resource)
         {
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::AccelerationStructure, m_rhi_resource);
@@ -369,6 +374,19 @@ namespace spartan
         // while frame N's GPU is reading from buffer set 0, frame N+1's CPU writes to buffer set 1
         uint32_t buf_idx = m_buffer_index;
         m_buffer_index   = (m_buffer_index + 1) % buffer_count;
+
+        uint32_t primitive_count = static_cast<uint32_t>(instances.size());
+        uint32_t sized_count     = 256;
+        while (sized_count < primitive_count)
+        {
+            uint32_t next = sized_count << 1;
+            if (next < sized_count)
+            {
+                sized_count = primitive_count;
+                break;
+            }
+            sized_count = next;
+        }
     
         // define instances (static to avoid per-frame heap allocation - resize keeps capacity)
         static vector<VkAccelerationStructureInstanceKHR> vk_instances;
@@ -386,7 +404,8 @@ namespace spartan
         }
     
         // reuse or create staging buffer for current frame
-        const size_t data_size = sizeof(VkAccelerationStructureInstanceKHR) * vk_instances.size();
+        const size_t data_size   = sizeof(VkAccelerationStructureInstanceKHR) * vk_instances.size();
+        const size_t padded_size = sizeof(VkAccelerationStructureInstanceKHR) * sized_count;
         if (!m_staging_buffer[buf_idx] || data_size > m_staging_buffer_size[buf_idx])
         {
             if (m_staging_buffer[buf_idx])
@@ -395,8 +414,8 @@ namespace spartan
             }
             VkBufferUsageFlags staging_usage         = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
             VkMemoryPropertyFlags staging_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-            RHI_Device::MemoryBufferCreate(m_staging_buffer[buf_idx], data_size, staging_usage, staging_properties, nullptr, (m_object_name + "_staging_" + to_string(buf_idx)).c_str());
-            m_staging_buffer_size[buf_idx] = data_size;
+            RHI_Device::MemoryBufferCreate(m_staging_buffer[buf_idx], padded_size, staging_usage, staging_properties, nullptr, (m_object_name + "_staging_" + to_string(buf_idx)).c_str());
+            m_staging_buffer_size[buf_idx] = padded_size;
         }
 
         // copy data to staging buffer
@@ -405,7 +424,7 @@ namespace spartan
     
         // reuse or create instance buffer for current frame
         const uint64_t alignment = max(static_cast<uint64_t>(16), RHI_Device::PropertyGetMinStorageBufferOffsetAlignment());
-        const size_t required_instance_size = data_size + alignment - 1; // pad for alignment
+        const size_t required_instance_size = padded_size + alignment - 1;
         if (!m_instance_buffer[buf_idx] || required_instance_size > m_instance_buffer_size[buf_idx])
         {
             if (m_instance_buffer[buf_idx])
@@ -460,22 +479,28 @@ namespace spartan
         build_info.pGeometries                                 = &geom;
     
         // always use full build mode - tlas updates can produce degenerate bvh when transforms change significantly
-        uint32_t primitive_count            = static_cast<uint32_t>(instances.size());
         build_info.mode                     = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
         build_info.srcAccelerationStructure = VK_NULL_HANDLE;
         build_info.dstAccelerationStructure = VK_NULL_HANDLE;
     
-        // get build sizes
+        // size for the next power of two instance count so growth does not recreate the handle
         VkAccelerationStructureBuildSizesInfoKHR size_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
-        as_get_build_sizes(RHI_Context::device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build_info, &primitive_count, &size_info);
+        as_get_build_sizes(RHI_Context::device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build_info, &sized_count, &size_info);
     
         // create or resize acceleration structure if needed
         if (!m_rhi_resource || size_info.accelerationStructureSize > m_size)
         {
-            // destroy old resources if they exist
+            // drop only the as storage, instance buffers are already sized for this capacity
             if (m_rhi_resource)
             {
-                Destroy();
+                RHI_Device::DescriptorSetInvalidateReferencingResource(this);
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::AccelerationStructure, m_rhi_resource);
+                m_rhi_resource = nullptr;
+            }
+            if (m_rhi_resource_results)
+            {
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_rhi_resource_results);
+                m_rhi_resource_results = nullptr;
             }
 
             // create result buffer

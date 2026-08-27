@@ -160,6 +160,53 @@ namespace spartan
         // has to match GRASS_FILL_MARGIN in grass_populate.hlsl
         const float gpu_scatter_fill_margin = 0.85f;
 
+        // has to match grass_patch_max_boost in grass_populate.hlsl
+        const float gpu_scatter_patch_max_boost = 4.0f;
+
+        // has to match grass_max_boost in grass_populate.hlsl, this is what bounds the dispatch
+        const float gpu_scatter_max_boost = 12.0f;
+
+        // mirrors grass_patch_density_boost in grass_populate.hlsl, the two decide the same thing from
+        // opposite ends, this one sizes dispatch z and the shader one sizes the keep probability, so a
+        // disagreement shows up as a ring that is either starved or clipped by its own atomic
+        //
+        // pulling a slot into pockets empties most of the ring, spreading the same budget over what is
+        // left is what makes clustering buy density rather than cost it
+        float gpu_scatter_patch_boost(const float patch_size, const float coverage, const float scar)
+        {
+            if (patch_size <= 0.0f || coverage >= 1.0f)
+            {
+                return 1.0f;
+            }
+
+            // the threshold keeps coverage exactly and the scar field independently removes the mean of
+            // its own smoothstep, which for the band the shader uses is 0.26
+            const float expected = clamp(coverage, 0.0f, 1.0f) *
+                                   (1.0f - 0.26f * clamp(scar, 0.0f, 1.0f));
+
+            return min(1.0f / max(expected, 0.08f), gpu_scatter_patch_max_boost);
+        }
+
+        // the ring is a full circle but the camera only ever sees a wedge of it, and the populate pass
+        // culls against the frustum before it allocates, so most of the per lod budget was being spent
+        // on candidates behind the viewer and then thrown away. the counter was sitting near a tenth of
+        // its cap, which is the real reason the cover read as thin no matter how the rings were tuned
+        //
+        // handing the visible wedge the budget the rest of the circle is never going to use is what
+        // makes the cap mean something. it is deliberately an over estimate of the visible share, so the
+        // boost lands under the truth, because overshooting saturates the atomic and grass then stops
+        // dead partway across the view, which is far worse than leaving a little budget unspent
+        float gpu_scatter_frustum_boost(const float fov_horizontal_rad)
+        {
+            const float wedge = clamp(fov_horizontal_rad, 0.35f, math::pi_2);
+
+            // the wedge widens toward the whole circle as the camera pitches down, and near the viewer
+            // the ring is inside the view whichever way it points, so half the circle is the floor
+            const float visible = clamp((wedge * 1.6f) / math::pi_2, 0.18f, 1.0f);
+
+            return 1.0f / visible;
+        }
+
         // the populate dispatch stops writing at this many instances, so the args builder has to clamp
         // the atomic counter against the same number or the raster reads instances nobody wrote
         uint32_t gpu_scatter_lod_cap(const uint32_t slot, const uint32_t lod, const float density)
@@ -1319,6 +1366,23 @@ namespace spartan
                     clamp(state.params.tilt_deg, 0.0f, 45.0f) * (15.0f / 45.0f) + 0.5f
                 );
 
+                // the sign of the size carries the inversion, a slot that inverts takes the ground the
+                // slot it mirrors left bare, so the two have to be authored at the same size to interlock
+                const float patch_size  = max(state.params.patch_size_m, 0.0f);
+                const float patch_push  = state.params.patch_invert ? -patch_size : patch_size;
+                const float patch_boost = gpu_scatter_patch_boost(
+                    patch_size,
+                    state.params.patch_coverage,
+                    state.params.patch_scar
+                );
+
+                // the same argument applies to the part of the circle the camera cannot see, and the
+                // two multiply, this has to track grass_max_boost in grass_populate.hlsl
+                const float total_boost = std::min(
+                    patch_boost * gpu_scatter_frustum_boost(camera->GetFovHorizontalRad()),
+                    gpu_scatter_max_boost
+                );
+
                 for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
                 {
                     const float cell_size   = state.params.cell_size_m[lod];
@@ -1366,6 +1430,10 @@ namespace spartan
                     m_pcb_pass_cpu.v[9]  = terrain_mapping.y;
                     m_pcb_pass_cpu.v[10] = terrain_mapping.z;
                     m_pcb_pass_cpu.v[11] = terrain_mapping.w;
+                    m_pcb_pass_cpu.v[12] = patch_push;
+                    m_pcb_pass_cpu.v[13] = state.params.patch_coverage;
+                    m_pcb_pass_cpu.v[14] = state.params.patch_edge;
+                    m_pcb_pass_cpu.v[15] = state.params.patch_scar;
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
                     // one cell per thread, dispatch z carries the instance index inside the cell, the
@@ -1386,7 +1454,8 @@ namespace spartan
                         (cell_size * cell_size);
                     // mirrors grass_populate.hlsl, the fraction it drops here it carries as a keep
                     // probability instead, so this only decides how many threads a cell gets
-                    const float per_cell = static_cast<float>(lod_cap) * gpu_scatter_fill_margin /
+                    const float per_cell = static_cast<float>(lod_cap) * gpu_scatter_fill_margin *
+                                           total_boost /
                                            std::max(cells_in_ring, 1.0f);
                     const uint32_t blades_per_cell = std::max(
                         1u,

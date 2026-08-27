@@ -316,6 +316,12 @@ namespace spartan
             s.height_max             = 400.0f;
             s.mask_channel           = 0;
             s.mask_min               = 0.38f;
+            // grass takes ground in meadow sized pockets rather than covering a hillside evenly. the
+            // ring budget is refilled by the same fraction it drops here, so pulling coverage down to
+            // 0.45 does not remove grass, it moves it, and what is left runs roughly four times thicker
+            s.clump_radius           = 26.0f;
+            s.clump_coverage         = 0.45f;
+            s.clump_raggedness       = 0.85f;
             // a blade grows out of the ground, any lift and the whole field reads as a floating carpet
             s.surface_offset         = 0.0f;
             s.render_distance        = 500.0f;
@@ -350,6 +356,13 @@ namespace spartan
             s.height_max             = 100000.0f;
             // chips belong on every surface, gating them on a biome channel would leave the meadows bare
             s.mask_channel           = -1;
+            // the complement of the grass pockets, so a chip surfaces on the bare ground between the
+            // tufts instead of hiding under them. the radius has to stay equal to the grass one or the
+            // two fields drift apart and the ground stops reading as one story
+            s.clump_radius           = 26.0f;
+            s.clump_coverage         = 0.55f;
+            s.clump_raggedness       = 0.7f;
+            s.clump_invert           = true;
             s.mesh_scale             = 0.11f;
             s.size_min               = 0.45f;
             s.size_max               = 1.80f;

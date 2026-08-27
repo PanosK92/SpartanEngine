@@ -2694,6 +2694,8 @@ namespace spartan
             layer_node.append_attribute("clump_radius")         = layer.clump_radius;
             layer_node.append_attribute("clump_count")          = layer.clump_count;
             layer_node.append_attribute("clump_raggedness")     = layer.clump_raggedness;
+            layer_node.append_attribute("clump_coverage")       = layer.clump_coverage;
+            layer_node.append_attribute("clump_invert")         = layer.clump_invert;
             layer_node.append_attribute("mesh_scale")           = layer.mesh_scale;
             layer_node.append_attribute("size_min")             = layer.size_min;
             layer_node.append_attribute("size_max")             = layer.size_max;
@@ -2855,6 +2857,26 @@ namespace spartan
                 layer.clump_radius         = layer_node.attribute("clump_radius").as_float(0.0f);
                 layer.clump_count          = max(layer_node.attribute("clump_count").as_uint(1), 1u);
                 layer.clump_raggedness     = layer_node.attribute("clump_raggedness").as_float(1.0f);
+
+                // a world saved before ground cover grew in pockets has no coverage attribute, and it
+                // wrote a zero radius because the gpu kinds ignored that field back then. reading it
+                // back would load the new look switched off, so those slots take the whole patch set
+                // from the engine default instead. only the patch fields, the ring tuning in the file
+                // is authored and stays
+                if (layer_node.attribute("clump_coverage"))
+                {
+                    layer.clump_coverage = layer_node.attribute("clump_coverage").as_float(0.0f);
+                    layer.clump_invert   = layer_node.attribute("clump_invert").as_bool(false);
+                }
+                else if (layer.kind != TerrainScatterKind::Mesh)
+                {
+                    const TerrainScatterLayer& defaults = TerrainScatterDefaults::Get()[index];
+                    layer.clump_radius     = defaults.clump_radius;
+                    layer.clump_raggedness = defaults.clump_raggedness;
+                    layer.clump_coverage   = defaults.clump_coverage;
+                    layer.clump_invert     = defaults.clump_invert;
+                }
+
                 layer.mesh_scale           = layer_node.attribute("mesh_scale").as_float(1.0f);
                 layer.size_min             = layer_node.attribute("size_min").as_float(0.8f);
                 layer.size_max             = layer_node.attribute("size_max").as_float(1.2f);

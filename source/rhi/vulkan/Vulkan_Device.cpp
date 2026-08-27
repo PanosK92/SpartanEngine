@@ -968,7 +968,13 @@ namespace spartan
     {
         mutex descriptor_pipeline_mutex;
         uint32_t allocated_descriptor_sets = 0;
-        vector<VkDescriptorPool> descriptor_pools;
+        struct Pool
+        {
+            VkDescriptorPool handle = nullptr;
+            uint32_t allocated      = 0;
+        };
+        vector<Pool> descriptor_pools;
+        unordered_map<VkDescriptorSet, VkDescriptorPool> set_to_pool;
         VkPipelineCache pipeline_cache     = nullptr;
 
         // cache
@@ -1048,7 +1054,8 @@ namespace spartan
 
             VkDescriptorPoolCreateInfo pool_create_info = {};
             pool_create_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            pool_create_info.flags                      = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
+            pool_create_info.flags                      = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT |
+                                                          VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
             pool_create_info.poolSizeCount              = RHI_Device::IsSupportedRayTracing() ? static_cast<uint32_t>(pool_sizes.size()) : static_cast<uint32_t>(pool_sizes.size() - 1);
             pool_create_info.pPoolSizes                 = pool_sizes.data();
             pool_create_info.maxSets                    = rhi_max_descriptor_set_count;
@@ -1058,10 +1065,77 @@ namespace spartan
             return pool;
         }
 
+        void grow_pool()
+        {
+            Pool pool;
+            pool.handle    = create_descriptor_pool();
+            pool.allocated = 0;
+            descriptor_pools.push_back(pool);
+        }
+
         void create_pool()
         {
-            descriptors::descriptor_pools.push_back(create_descriptor_pool());
+            grow_pool();
             Profiler::m_rhi_descriptor_set_count = 0;
+        }
+
+        int32_t find_pool_with_room()
+        {
+            for (int32_t i = static_cast<int32_t>(descriptor_pools.size()) - 1; i >= 0; i--)
+            {
+                if (descriptor_pools[i].allocated < rhi_max_descriptor_set_count)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        void release_descriptor_set(void* resource)
+        {
+            lock_guard<mutex> lock(descriptor_pipeline_mutex);
+
+            if (descriptor_pools.empty())
+            {
+                return;
+            }
+
+            VkDescriptorSet set = static_cast<VkDescriptorSet>(resource);
+            auto it = set_to_pool.find(set);
+            if (it == set_to_pool.end())
+            {
+                return;
+            }
+
+            VkDescriptorPool pool = it->second;
+            vkFreeDescriptorSets(RHI_Context::device, pool, 1, &set);
+            set_to_pool.erase(it);
+
+            for (Pool& entry : descriptor_pools)
+            {
+                if (entry.handle == pool && entry.allocated > 0)
+                {
+                    entry.allocated--;
+                    break;
+                }
+            }
+
+            if (allocated_descriptor_sets > 0)
+            {
+                allocated_descriptor_sets--;
+            }
+            if (Profiler::m_rhi_descriptor_set_count > 0)
+            {
+                Profiler::m_rhi_descriptor_set_count--;
+            }
+        }
+
+        void queue_set_free(void* vk_set)
+        {
+            if (vk_set)
+            {
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::DescriptorSet, vk_set);
+            }
         }
 
         void merge_descriptors(vector<RHI_Descriptor>& base_descriptors, const vector<RHI_Descriptor>& additional_descriptors)
@@ -1323,7 +1397,7 @@ namespace spartan
 
                 VkDescriptorSetAllocateInfo alloc_info = {};
                 alloc_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-                alloc_info.descriptorPool     = descriptors::descriptor_pools.front();
+                alloc_info.descriptorPool     = descriptors::descriptor_pools.front().handle;
                 alloc_info.descriptorSetCount = 1;
                 alloc_info.pSetLayouts        = &layouts[index];
                 alloc_info.pNext              = &count_info;
@@ -1337,6 +1411,13 @@ namespace spartan
                 for (uint32_t i = 0; i < static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max); i++)
                 {
                     create_layout_and_set(static_cast<RHI_Device_Bindless_Resource>(i));
+                }
+
+                // bindless sets live in the first pool for the lifetime of the device
+                if (!descriptors::descriptor_pools.empty())
+                {
+                    descriptors::descriptor_pools.front().allocated +=
+                        static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max);
                 }
             }
 
@@ -2124,6 +2205,7 @@ namespace spartan
             {
                 if (frame_count - it->second.GetLastUsedFrame() > max_unused_frames)
                 {
+                    descriptors::queue_set_free(it->second.GetResource());
                     it = descriptors::sets.erase(it);
                 }
                 else
@@ -2154,6 +2236,7 @@ namespace spartan
         {
             if (it->second.IsReferingToResource(resource))
             {
+                descriptors::queue_set_free(it->second.GetResource());
                 it = descriptors::sets.erase(it);
             }
             else
@@ -2181,10 +2264,11 @@ namespace spartan
             descriptors::pipeline_cache = nullptr;
         }
 
-        // descriptor pools
-        for (VkDescriptorPool pool : descriptors::descriptor_pools)
+        // descriptor pools, destroying a pool frees every set in it so drop the set map first
+        descriptors::set_to_pool.clear();
+        for (const descriptors::Pool& pool : descriptors::descriptor_pools)
         {
-            vkDestroyDescriptorPool(RHI_Context::device, pool, nullptr);
+            vkDestroyDescriptorPool(RHI_Context::device, pool.handle, nullptr);
         }
         descriptors::descriptor_pools.clear();
 
@@ -2344,6 +2428,7 @@ namespace spartan
                 case RHI_Resource_Type::Semaphore:             vkDestroySemaphore(RHI_Context::device, static_cast<VkSemaphore>(resource), nullptr);                                      break;
                 case RHI_Resource_Type::Fence:                 vkDestroyFence(RHI_Context::device, static_cast<VkFence>(resource), nullptr);                                              break;
                 case RHI_Resource_Type::DescriptorSetLayout:   vkDestroyDescriptorSetLayout(RHI_Context::device, static_cast<VkDescriptorSetLayout>(resource), nullptr);                  break;
+                case RHI_Resource_Type::DescriptorSet:         descriptors::release_descriptor_set(resource);                                                                             break;
                 case RHI_Resource_Type::QueryPool:             vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(resource), nullptr);                                      break;
                 case RHI_Resource_Type::Pipeline:              vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(resource), nullptr);                                        break;
                 case RHI_Resource_Type::PipelineLayout:        vkDestroyPipelineLayout(RHI_Context::device, static_cast<VkPipelineLayout>(resource), nullptr);                            break;
@@ -2402,21 +2487,38 @@ namespace spartan
         allocate_info.descriptorSetCount          = 1;
         allocate_info.pSetLayouts                 = reinterpret_cast<VkDescriptorSetLayout*>(descriptor_set_layouts.data());
 
-        // try the most recent pool first; if full, create a new pool and retry
-        allocate_info.descriptorPool = descriptors::descriptor_pools.back();
-        VkResult result = vkAllocateDescriptorSets(RHI_Context::device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&resource));
+        // grow before the current pools are exhausted so validation never sees a failed allocate
+        int32_t pool_index = descriptors::find_pool_with_room();
+        if (pool_index < 0)
+        {
+            descriptors::grow_pool();
+            pool_index = static_cast<int32_t>(descriptors::descriptor_pools.size()) - 1;
+        }
+
+        allocate_info.descriptorPool = descriptors::descriptor_pools[pool_index].handle;
+        VkResult result = vkAllocateDescriptorSets(
+            RHI_Context::device,
+            &allocate_info,
+            reinterpret_cast<VkDescriptorSet*>(&resource)
+        );
 
         if (result == VK_ERROR_OUT_OF_POOL_MEMORY || result == VK_ERROR_FRAGMENTED_POOL)
         {
-            descriptors::descriptor_pools.push_back(descriptors::create_descriptor_pool());
-            allocate_info.descriptorPool = descriptors::descriptor_pools.back();
-            SP_ASSERT_VK(vkAllocateDescriptorSets(RHI_Context::device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&resource)));
-        }
-        else
-        {
-            SP_ASSERT_VK(result);
+            descriptors::grow_pool();
+            pool_index = static_cast<int32_t>(descriptors::descriptor_pools.size()) - 1;
+            allocate_info.descriptorPool = descriptors::descriptor_pools[pool_index].handle;
+            result = vkAllocateDescriptorSets(
+                RHI_Context::device,
+                &allocate_info,
+                reinterpret_cast<VkDescriptorSet*>(&resource)
+            );
         }
 
+        SP_ASSERT_VK(result);
+
+        descriptors::descriptor_pools[pool_index].allocated++;
+        descriptors::set_to_pool[static_cast<VkDescriptorSet>(resource)] =
+            descriptors::descriptor_pools[pool_index].handle;
         descriptors::allocated_descriptor_sets++;
         Profiler::m_rhi_descriptor_set_count++;
     }

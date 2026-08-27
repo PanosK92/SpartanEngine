@@ -194,7 +194,7 @@ struct FrameBufferData
 // push constant buffer - carries per-draw and per-pass data
 // draw_index indexes into the bindless draw data buffer for transforms and material info
 // material_index and is_transparent are pass-level state for compute shaders
-// values[] carries generic per-pass parameters (3 x float4)
+// values[] carries generic per-pass parameters (4 x float4)
 struct PassBufferData
 {
     SHARED_UINT draw_index     SHARED_DEFAULT(0);
@@ -204,7 +204,8 @@ struct PassBufferData
 
 #ifdef __cplusplus
     // c++ uses a flat float array with setter helpers
-    float v[12] = {};
+    // the last float4 has no named setter, passes that need it write v[12..15] directly
+    float v[16] = {};
 
     void set_f3_value(const spartan::math::Vector3& value) { v[0] = value.x; v[1] = value.y; v[2] = value.z; }
     void set_f3_value(float x, float y = 0.0f, float z = 0.0f) { v[0] = x; v[1] = y; v[2] = z; }
@@ -218,7 +219,7 @@ struct PassBufferData
     void set_f2_value(float x, float y) { v[3] = x; v[7] = y; }
 #else
     // hlsl uses float4 array with swizzle accessors
-    float4 values[3];
+    float4 values[4];
 #endif
 };
 

@@ -266,6 +266,9 @@ void TerrainEditor::OnTick()
 
     s_sculpt_active = m_visible && m_sculpt_enabled;
     TickSculpting();
+
+    // ticks even while the window is hidden so a pending edit still lands if it gets closed mid tune
+    TickScatter();
 }
 
 void TerrainEditor::OnTickVisible()
@@ -403,7 +406,7 @@ void TerrainEditor::DrawActionBar(Terrain* terrain)
                             (terrain->GetWidth() > 1 && terrain->GetHeight() > 1);
 
     const float spacing = design::spacing_sm;
-    const float width   = (ImGui::GetContentRegionAvail().x - spacing * 2.0f) / 3.0f;
+    const float width   = (ImGui::GetContentRegionAvail().x - spacing) * 0.5f;
 
     ImGui::BeginDisabled(generating || !can_build);
     if (attention_button(generating ? "Building..." : "Generate", m_shape_dirty, ImVec2(width, 0.0f)))
@@ -416,19 +419,6 @@ void TerrainEditor::DrawActionBar(Terrain* terrain)
             ? "rebuild the surface from the height map on a worker thread, this clears sculpt edits "
               "and respawns the props when it lands"
             : "assign a height map in shape first, or create a flat terrain"
-    );
-
-    ImGui::SameLine(0.0f, spacing);
-
-    ImGui::BeginDisabled(generating || !terrain->HasHeightfield());
-    if (attention_button("Rescatter", m_scatter_dirty, ImVec2(width, 0.0f)))
-    {
-        Rescatter(terrain);
-    }
-    ImGui::EndDisabled();
-    ImGuiSp::tooltip(
-        "rebuild the biome mask and place every prop layer again, the surface is left alone so this "
-        "is far cheaper than a generate"
     );
 
     ImGui::SameLine(0.0f, spacing);
@@ -454,18 +444,24 @@ void TerrainEditor::DrawActionBar(Terrain* terrain)
     const float row_width     = ImGui::GetContentRegionAvail().x;
     const float opacity_width = ImGui::EditorUi::scaled(120.0f);
 
+    const bool placing = m_scatter_running->load();
+
     ImGui::AlignTextToFramePadding();
     ImGui::PushStyleColor(
         ImGuiCol_Text,
-        (m_shape_dirty || m_scatter_dirty) ? design::warning() : ImGui::Style::color_text_muted
+        (m_shape_dirty || m_scatter_dirty || placing) ? design::warning() : ImGui::Style::color_text_muted
     );
     if (m_shape_dirty)
     {
         ImGui::TextUnformatted("shape edits pending, generate");
     }
+    else if (placing)
+    {
+        ImGui::TextUnformatted("placing props");
+    }
     else if (m_scatter_dirty)
     {
-        ImGui::TextUnformatted("rule edits pending, rescatter");
+        ImGui::TextUnformatted("rule edits land in a moment");
     }
     else
     {
@@ -529,6 +525,7 @@ void TerrainEditor::Rebuild(Terrain* terrain)
 {
     m_shape_dirty   = false;
     m_scatter_dirty = false;
+    m_scatter_timer = 0.0f;
     m_heights_dirty = false;
 
     ThreadPool::AddTask([terrain]()
@@ -540,11 +537,55 @@ void TerrainEditor::Rebuild(Terrain* terrain)
 void TerrainEditor::Rescatter(Terrain* terrain)
 {
     m_scatter_dirty = false;
+    m_scatter_timer = 0.0f;
 
-    ThreadPool::AddTask([terrain]()
+    shared_ptr<atomic<bool>> running = m_scatter_running;
+    running->store(true);
+
+    ThreadPool::AddTask([terrain, running]()
     {
         WorldHelpers::PopulateTerrainBiomeProps(terrain);
+        running->store(false);
     });
+}
+
+void TerrainEditor::MarkScatterDirty()
+{
+    m_scatter_dirty = true;
+    m_scatter_timer = 0.0f;
+}
+
+void TerrainEditor::TickScatter()
+{
+    if (!m_scatter_dirty)
+    {
+        return;
+    }
+
+    Terrain* terrain = ResolveTerrain();
+    if (!terrain || !terrain->HasHeightfield() || terrain->IsGenerating())
+    {
+        return;
+    }
+
+    // placing every prop layer again walks all the tiles, so it waits for the hand to come off the
+    // slider instead of firing mid drag. the timer restarts on every edit, so this measures the quiet
+    // since the last one rather than the age of the first, and a whole drag collapses into one rebuild
+    const float quiet_period = 0.6f;
+
+    m_scatter_timer += static_cast<float>(Timer::GetDeltaTimeSec());
+    if (m_scatter_timer < quiet_period)
+    {
+        return;
+    }
+
+    // one already on a worker would be racing this one over the same tiles, let it land and retry
+    if (m_scatter_running->load())
+    {
+        return;
+    }
+
+    Rescatter(terrain);
 }
 
 void TerrainEditor::Browse(const function<void(const string&)>& on_selected)
@@ -731,7 +772,7 @@ void TerrainEditor::DrawShape(Terrain* terrain)
         if (ImGuiSp::button("Make Island", ImVec2(width, 0.0f)))
         {
             terrain->MakeIslandShore();
-            m_scatter_dirty = true;
+            MarkScatterDirty();
         }
         ImGuiSp::tooltip("bend the map borders down to sea level, run generate first");
 
@@ -740,7 +781,7 @@ void TerrainEditor::DrawShape(Terrain* terrain)
         if (ImGuiSp::button("Lock Shoreline", ImVec2(width, 0.0f)))
         {
             terrain->LockShoreline();
-            m_scatter_dirty = true;
+            MarkScatterDirty();
         }
         ImGuiSp::tooltip("raise the real coastline above the waves and cut a beach");
         ImGui::EndDisabled();
@@ -836,7 +877,7 @@ void TerrainEditor::DrawGround(Terrain* terrain)
         ))
         {
             terrain->SetLayerQuality(quality);
-            m_scatter_dirty = true;
+            MarkScatterDirty();
         }
 
         if (property_float("Snow", &snow, 0.01f, 0.0f, 1.0f, "multiplier on the snow layer, 0 removes snow whatever the altitude", "%.2f"))
@@ -1022,7 +1063,7 @@ void TerrainEditor::DrawGroundLayer(Terrain* terrain, const uint32_t index)
     {
         // the surface reacts this frame, the props only follow on the next scatter
         terrain->PushToRenderer();
-        m_scatter_dirty = true;
+        MarkScatterDirty();
     }
 }
 
@@ -1098,14 +1139,14 @@ void TerrainEditor::DrawLife(Terrain* terrain)
             if (row_toggle("enabled", ImVec2(x, toggle_y), toggle, layer.enabled, "E", "switch this layer on or off"))
             {
                 layer.enabled   = !layer.enabled;
-                m_scatter_dirty = true;
+                MarkScatterDirty();
             }
             x += toggle + design::spacing_xs;
 
             if (row_toggle("solo", ImVec2(x, toggle_y), toggle, layer.solo, "S", "show only this layer, the fastest way to see what one rule does on its own"))
             {
                 layer.solo      = !layer.solo;
-                m_scatter_dirty = true;
+                MarkScatterDirty();
             }
             x += toggle + design::spacing_md;
 
@@ -1204,7 +1245,7 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
             Browse([this, terrain, index](const string& path)
             {
                 terrain->GetScatterLayers()[index].mesh_path = path;
-                m_scatter_dirty                             = true;
+                MarkScatterDirty();
             });
         }
 
@@ -1344,6 +1385,17 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
         }
         card_end();
     }
+    else
+    {
+        card_begin("Grouping", "ground cover grows in pockets, and the ring budget the pockets free up is spent inside them, so less coverage is denser cover rather than less of it");
+        {
+            changed |= property_float("Patch Size", &layer.clump_radius, 0.5f, 0.0f, 500.0f, "pocket scale, 0 turns pockets off and spreads evenly, around 26 m reads as meadows and 8 to 12 m as tufty ground", "%.1f m");
+            changed |= property_float("Coverage", &layer.clump_coverage, 0.01f, 0.05f, 1.0f, "share of the eligible ground the pockets take, 1 covers it all evenly, lower packs the same budget into tighter and thicker pockets", "%.2f");
+            changed |= property_float("Raggedness", &layer.clump_raggedness, 0.01f, 0.0f, 1.0f, "frays the pocket edge into a fringe and breaks the interior with bare scars", "%.2f");
+            changed |= property_toggle("Invert", &layer.clump_invert, "take the ground the pockets left bare instead, for chips and litter that belong between the tufts, it only lines up against a layer using the same patch size");
+        }
+        card_end();
+    }
 
     // grass sizes itself from the blade mesh, everything else earns its variety here, and for gpu
     // detail this is the whole reason a chip reads as gravel instead of as a repeated prop
@@ -1465,7 +1517,20 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
 
     if (changed)
     {
-        m_scatter_dirty = true;
+        // a gpu layer owns no entities, its entire state is the params block the populate pass reads
+        // every frame, so pushing it now makes the sliders answer immediately. routing it through the
+        // rescatter button instead meant every tweak looked like it did nothing
+        const bool gpu_now = layer.kind != TerrainScatterKind::Mesh;
+        if (gpu_now)
+        {
+            WorldHelpers::RefreshTerrainGpuScatter(terrain);
+        }
+
+        // a mesh layer has to place entities again, and so does one that just stopped being gpu
+        if (!gpu_now || gpu_now != is_gpu)
+        {
+            MarkScatterDirty();
+        }
     }
 }
 
@@ -1700,6 +1765,6 @@ void TerrainEditor::TickSculpting()
         m_rebuild_timer = 0.0f;
 
         // sculpted ground means the props no longer sit where the rules said they would
-        m_scatter_dirty = true;
+        MarkScatterDirty();
     }
 }

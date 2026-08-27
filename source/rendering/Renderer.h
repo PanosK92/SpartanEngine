@@ -164,6 +164,16 @@ namespace spartan
             float height_bake_max    = 1.0f;
             // metres added to the seating height, negative pushes the instance into the ground
             float surface_offset     = 0.0f;
+            // patch clustering, real ground cover grows in pockets rather than spread evenly, and
+            // emptying most of the ring is what lets the same budget run thick inside what is left.
+            // a size of 0 turns the whole thing off and scatters evenly
+            float patch_size_m       = 0.0f;  // pocket scale in metres
+            float patch_coverage     = 0.45f; // fraction of the eligible ground the pockets take
+            float patch_edge         = 0.35f; // 0 is a hard boundary, 1 is a wide fringe
+            float patch_scar         = 0.25f; // bare ground punched through pocket interiors
+            // take the complement of the field, for a slot that belongs on the ground the pockets
+            // left bare. it only lines up if both slots use the same patch_size_m
+            bool patch_invert        = false;
             math::Vector2 terrain_extent_m = math::Vector2(6144.0f, 6144.0f);
             math::Vector4 terrain_world_mapping = math::Vector4::Zero; // xy min xz, zw 1/size
         };

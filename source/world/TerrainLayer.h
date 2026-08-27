@@ -170,9 +170,18 @@ namespace spartan
         float mask_min              = 0.0f;
 
         // clumping, a radius of zero scatters evenly
+        // the gpu kinds read the same three fields as a procedural patch field instead of as placed
+        // clusters, radius is the pocket scale, raggedness is the edge fringe and also drives the bare
+        // scars inside a pocket, and clump_count is unused because there is nothing to place
         float clump_radius          = 0.0f; // meters
         uint32_t clump_count        = 1;    // instances per clump
         float clump_raggedness      = 1.0f; // 0 is a clean circle, 1 is an organic blob
+        // gpu kinds only, fraction of the eligible ground the pockets take, 0 spreads evenly. the ring
+        // budget is refilled by the same fraction, so a lower number is denser grass, not less of it
+        float clump_coverage        = 0.0f;
+        // gpu kinds only, take the ground the pockets left bare instead, for chips and litter that
+        // belong between the tufts. only interlocks with a slot sharing the same clump_radius
+        bool clump_invert           = false;
 
         // size, the final scale is mesh_scale times the size pick
         float mesh_scale            = 1.0f; // asset unit fix, the size below is relative to it

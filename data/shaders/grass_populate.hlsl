@@ -46,10 +46,13 @@ static const float grass_cull_radius      = 1.5f;
 // inside each cell is keyed off world-space integer coordinates, so the same blade lands at the same
 // world position regardless of the camera path. only ring-boundary cells appear and disappear.
 //
-// push constant layout (PassBufferData.values, 12 floats total):
+// push constant layout (PassBufferData.values, 16 floats total):
 //   values[0] = (cell_size, ring_radius, lod_base_in_instances, max_instances_per_lod)
 //   values[1] = (height_min, height_max, max_slope_cos, inner_radius)
 //   values[2] = (map_origin_x, map_origin_z, map_inv_size_x, map_inv_size_z)
+//   values[3] = (patch_size_m, patch_coverage, patch_edge, patch_scar)
+// a patch size of zero spreads the slot evenly, which is what this pass did before patches existed,
+// and a negative one inverts the field so a slot takes the ground the others left bare
 // every float is taken, so the rest travels in the bits of draw_index:
 //   bits 0-3   lod ring
 //   bits 4-7   scatter slot
@@ -80,6 +83,20 @@ float hash_unit(uint h)
     return float(h) * (1.0f / 4294967296.0f);
 }
 
+// avalanche one hash into an independent one. deriving a second random by multiplying or xoring the
+// first is not enough, a multiply only carries bits upward and an xor flips fixed ones, so the second
+// value stays a linear function of the first and the pair lands on a rank 1 lattice, which draws the
+// scatter as evenly spaced parallel rows the moment a cell holds more than a handful of instances
+uint hash_mix(uint h)
+{
+    h ^= h >> 16;
+    h *= 0x7feb352du;
+    h ^= h >> 15;
+    h *= 0x846ca68bu;
+    h ^= h >> 16;
+    return h;
+}
+
 // bilinear value noise, used to warp lod ring distances into blobs
 float grass_value_noise(float2 p, uint seed)
 {
@@ -91,6 +108,148 @@ float grass_value_noise(float2 p, uint seed)
     float c = hash_unit(hash_u32((uint)i.x,      (uint)i.y + 1u, seed));
     float d = hash_unit(hash_u32((uint)i.x + 1u, (uint)i.y + 1u, seed));
     return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y) * 2.0f - 1.0f;
+}
+
+// grass does not carpet a hillside evenly. it takes ground in pockets, thick through the middle and
+// frayed at the edge, because soil depth, moisture, shelter and grazing vary far faster than any of
+// the terrain analysis channels can see. the biome mask decides where grass can live, everything
+// below decides where it actually took hold
+//
+// one seed for every slot, not one per slot, so two slots authored at the same patch size interlock
+// rather than drifting apart. that is what lets the pebbles invert the grass and land exactly on the
+// bare ground between the tufts
+static const uint  grass_patch_seed  = 0x5f3a91u;
+// standard deviation of the four octave fbm below, the octave amplitudes are fixed so this is a
+// constant, it only has to be close because the threshold feather absorbs the error
+static const float grass_patch_sigma = 0.25f;
+// hard ceiling on how much the thread count may grow to refill the patches, a coverage slider near
+// zero would otherwise ask for an unbounded dispatch
+static const float grass_patch_max_boost = 4.0f;
+// ceiling on the patch and frustum boosts combined, this is what bounds the dispatch, every thread
+// past it would be work the atomic cap refuses to accept anyway
+static const float grass_max_boost = 12.0f;
+// how far above its own gate the biome mask has to climb before a slot runs at full density, a
+// narrow band here is what keeps meadow cores thick while the mask edges still fade out
+static const float grass_biome_gain = 0.25f;
+
+// four octaves, the fewest that still reads as an organic outline rather than a blob
+float grass_fbm(float2 p, uint seed)
+{
+    return grass_value_noise(p,          seed)       * 0.5333f +
+           grass_value_noise(p * 2.03f,  seed + 17u) * 0.2667f +
+           grass_value_noise(p * 4.11f,  seed + 53u) * 0.1333f +
+           grass_value_noise(p * 8.07f,  seed + 97u) * 0.0667f;
+}
+
+// the fbm is a sum of independent octaves so it lands close to a normal distribution, pushing it
+// through the cdf gives a value uniform on 0 to 1. that is the only thing that makes the coverage
+// number below mean the fraction of ground the patches actually take, which in turn is what lets the
+// density compensation on the cpu be honest instead of a guess
+float grass_gaussian_cdf(float x)
+{
+    return saturate(1.0f / (1.0f + exp(-1.702f * x)));
+}
+
+// fraction of this point's budget the patch structure keeps, 1 deep inside a pocket and 0 on bare
+// ground, with a fringe in between. coverage means the same thing whether the slot is inverted or
+// not, it is always the share of ground this slot ends up taking
+float grass_patch_weight(
+    float2 world_xz,
+    float  patch_size,
+    float  coverage,
+    float  edge,
+    float  scar,
+    bool   invert
+)
+{
+    // a slot that asked for no patches, or one asked to cover everything, spreads evenly
+    if (patch_size <= 0.0f || coverage >= 1.0f)
+    {
+        return 1.0f;
+    }
+
+    float inv = 1.0f / patch_size;
+
+    // domain warp. thresholding a plain fbm gives rounded blobs with a smooth outline, pushing the
+    // sample point around with a second low frequency field is what frays the boundary into
+    // something that reads as grown rather than stamped
+    float2 warp = float2(
+        grass_value_noise(world_xz * inv * 0.61f, grass_patch_seed + 811u),
+        grass_value_noise(world_xz * inv * 0.61f, grass_patch_seed + 977u)
+    );
+    float2 p = world_xz * inv + warp * 0.55f;
+
+    float u = grass_gaussian_cdf(
+        grass_fbm(p, grass_patch_seed) / grass_patch_sigma
+    );
+
+    // u is uniform, so thresholding at 1 - coverage passes exactly that fraction of the ground and
+    // the feather either side costs nothing on average, it only turns the boundary into a fringe.
+    // an inverted slot asks for the complement first and flips, which lands it on the same threshold
+    // as the slot it mirrors, so the two tile the ground with no gap and no overlap
+    float share = invert ? (1.0f - coverage) : coverage;
+    float t     = 1.0f - share;
+    float e     = max(edge * 0.5f, 1e-3f);
+    float w     = smoothstep(t - e, t + e, u);
+    if (invert)
+    {
+        w = 1.0f - w;
+    }
+
+    // bare scars. real ground inside a meadow is broken by paths, outcrops and dry spots, and
+    // without them a patch interior reads as a printed texture no matter how good its edge is.
+    // applied after the flip so an inverted slot gets broken up too, and so the average cost is the
+    // same either way and the density compensation stays one formula
+    if (scar > 0.0f)
+    {
+        float s = grass_gaussian_cdf(
+            grass_fbm(world_xz * inv * 3.7f + 31.0f, grass_patch_seed + 1409u) / grass_patch_sigma
+        );
+        w *= 1.0f - scar * smoothstep(0.62f, 0.86f, s);
+    }
+
+    return w;
+}
+
+// what fraction of the eligible ground survives the patch field on average. the threshold keeps
+// coverage exactly, and the scar field independently removes the mean of its own smoothstep, which
+// for the 0.62 to 0.86 band above is 0.26
+float grass_patch_coverage_expected(float patch_size, float coverage, float scar)
+{
+    if (patch_size <= 0.0f || coverage >= 1.0f)
+    {
+        return 1.0f;
+    }
+
+    return coverage * (1.0f - 0.26f * scar);
+}
+
+// pulling grass into pockets empties most of the ring, so the same budget spread over what is left
+// is what turns a thin even carpet into a thick patchy one. this is the whole reason clustering buys
+// density rather than costing it
+float grass_patch_density_boost(float patch_size, float coverage, float scar)
+{
+    float expected = grass_patch_coverage_expected(patch_size, coverage, scar);
+
+    return min(1.0f / max(expected, 0.08f), grass_patch_max_boost);
+}
+
+// the ring is a full circle, the camera sees a wedge of it, and the cull below runs before the atomic
+// allocates, so everything behind the viewer spent budget that was then thrown away and the counter
+// never came close to its cap. handing the wedge what the rest of the circle cannot use is what makes
+// the cover thick, and it is the largest single lever on density there is
+//
+// the visible share is deliberately over estimated so the boost lands under the truth, overshooting
+// saturates the atomic and the cover then stops dead partway across the view
+float grass_frustum_density_boost()
+{
+    float wedge = clamp(buffer_frame.camera_fov, 0.35f, PI2);
+
+    // the wedge widens toward the whole circle as the camera pitches down, and the near ring is in
+    // view whichever way it points, so the visible share never drops below a fifth
+    float visible = clamp((wedge * 1.6f) / PI2, 0.18f, 1.0f);
+
+    return 1.0f / visible;
 }
 
 // 0 at the terrain's world minimum, 1 at its maximum, the range test lives in this space
@@ -215,6 +374,15 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float max_slope_cos = buffer_pass.values[1].z;
     float inner_radius  = buffer_pass.values[1].w;
 
+    // a negative size is the slot asking for the complement of the patch field, the magnitude is
+    // still the pocket scale and has to match the slot it is inverting or the two will not interlock
+    float patch_size_signed = buffer_pass.values[3].x;
+    float patch_size        = abs(patch_size_signed);
+    bool  patch_invert      = patch_size_signed < 0.0f;
+    float patch_coverage    = saturate(buffer_pass.values[3].y);
+    float patch_edge        = saturate(buffer_pass.values[3].z);
+    float patch_scar        = saturate(buffer_pass.values[3].w);
+
     uint  packed_index  = buffer_pass.draw_index;
     uint  lod_index     = packed_index & 0xFu;
     uint  slot_index    = (packed_index >> 4)  & 0xFu;
@@ -250,11 +418,20 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     );
     float cells_in_ring  = ring_area / max(cell_size * cell_size, 1e-6f);
 
+    // the patches reject most of the ring, so the cell has to be handed proportionally more threads
+    // or the budget is simply lost and clustering costs density instead of buying it. the cpu sizes
+    // dispatch z from the identical expression
+    float patch_boost = grass_patch_density_boost(patch_size, patch_coverage, patch_scar);
+
+    // the same argument applies to the part of the circle the camera cannot see, and the two multiply
+    float total_boost = min(patch_boost * grass_frustum_density_boost(), grass_max_boost);
+
     // the budget divided by the cells is rarely a whole number, flooring it threw the remainder away
     // and turned the fill slider into a staircase, 1 instance per cell then 2 with nothing in between.
     // ceil the count and carry the fraction as a keep probability instead, so density is continuous
     // and two rings with different cell sizes can be tuned to the same instances per square metre
-    float per_cell        = float(max_instances_per_lod) * GRASS_FILL_MARGIN / max(cells_in_ring, 1.0f);
+    float per_cell        = float(max_instances_per_lod) * GRASS_FILL_MARGIN * total_boost /
+                            max(cells_in_ring, 1.0f);
     uint  blades_per_cell = max(1u, (uint)ceil(per_cell));
     float cell_keep       = saturate(per_cell / float(blades_per_cell));
     if (dispatch_thread_id.x >= cells_per_axis ||
@@ -282,10 +459,16 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         (uint)world_cell_z,
         lod_index * 2654435761u + blade_index * 0x9e3779b9u + slot_index * 0x85ebca6bu
     );
+    // each roll is a fresh avalanche of the one before it, so the streams are independent rather than
+    // linear images of each other, which is what keeps the in cell positions a scatter and not a grid
+    uint h1 = hash_mix(h0 ^ 0x9e3779b9u);
+    uint h2 = hash_mix(h1 ^ 0x85ebca6bu);
+    uint h3 = hash_mix(h2 ^ 0xc2b2ae35u);
+
     float jx = hash_unit(h0);
-    float jz = hash_unit(h0 * 16807u + 1u);
-    float ys = hash_unit(h0 * 48271u + 3u);
-    float sc = hash_unit(h0 * 277803737u + 5u);
+    float jz = hash_unit(h1);
+    float ys = hash_unit(h2);
+    float sc = hash_unit(h3);
 
     // uniform random position inside the cell, the cell is the stratum, every blade in a cell rolls
     // its own jx/jz so the cell interior is filled with pure random scatter rather than a single
@@ -341,8 +524,21 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         ring_radius,
         distance_warped
     );
-    float lod_weight = fade_in * fade_out * cell_keep;
-    float lod_random = hash_unit(h0 ^ 0xa511e9b3u);
+    // the patch field, evaluated before any texture tap so the threads it rejects are the cheapest
+    // ones in the pass, which is most of what pays for the boosted thread count above. it is keyed
+    // off world space only, never off the lod or the camera, so a pocket keeps the same outline
+    // across every ring and the lod seams stay invisible
+    float patch = grass_patch_weight(
+        world_xz,
+        patch_size,
+        patch_coverage,
+        patch_edge,
+        patch_scar,
+        patch_invert
+    );
+
+    float lod_weight = fade_in * fade_out * cell_keep * patch;
+    float lod_random = hash_unit(hash_mix(h0 ^ 0xa511e9b3u));
     if (lod_random > lod_weight)
     {
         return;
@@ -407,14 +603,17 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         float4 mask     = tex3.SampleLevel(samplers[sampler_bilinear_clamp], mask_uv, 0);
         float grass_w   = mask_channel == 0u ? mask.r : (mask_channel == 1u ? mask.g : mask.b);
         float slope_fit = saturate((surface_normal.y - max_slope_cos) / max(1.0f - max_slope_cos, 1e-4f));
-        grass_w *= slope_fit;
         if (grass_w < biome_min)
         {
             return;
         }
-        // density follows the mask, cores stay thick, the cpu bake already killed mixed rock
-        float biome_roll = hash_unit(h0 ^ 0x27d4eb2du);
-        if (biome_roll > grass_w)
+
+        // the mask decides where grass can live, the patch field above decides where it did, so the
+        // mask is remapped to saturate just past its own gate instead of being used as the density
+        // directly. a meadow core reading 0.6 used to throw away four blades in ten for nothing
+        float ground = saturate((grass_w - biome_min) / grass_biome_gain) * slope_fit;
+        float biome_roll = hash_unit(hash_mix(h0 ^ 0x27d4eb2du));
+        if (biome_roll > ground)
         {
             return;
         }
@@ -424,14 +623,19 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // unpacks them so no size ever leaves the range the layer asked for
     float scale_01 = lerp(scale_01_min, scale_01_max, sc);
 
+    // a pocket that keeps full height right up to its edge reads as mown, so the fringe tapers back
+    // toward the small end of the range. the packed scale is logarithmic, so this interpolates the
+    // exponent and the blades shrink geometrically, which is how a tuft actually thins out
+    scale_01 = lerp(scale_01_min, scale_01, saturate(patch * 1.4f));
+
     // a stone that has come to rest is not flat on the ground. the lean goes on after the slope gate so
     // it cannot smuggle an instance onto a cliff, and the mesh sits low enough that the raised edge
     // stays seated. this is most of what separates a field of gravel from a field of stickers
     if (tilt_deg > 0.0f)
     {
         float2 lean = float2(
-            hash_unit(h0 ^ 0x1b56c4e9u),
-            hash_unit(h0 ^ 0x632be5abu)
+            hash_unit(hash_mix(h0 ^ 0x1b56c4e9u)),
+            hash_unit(hash_mix(h0 ^ 0x632be5abu))
         ) * 2.0f - 1.0f;
 
         surface_normal = normalize(

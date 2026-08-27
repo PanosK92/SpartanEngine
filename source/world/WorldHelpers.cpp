@@ -892,6 +892,21 @@ namespace spartan
             params.surface_offset = layer.surface_offset;
             params.terrain_world_mapping = terrain->GetWorldMapping();
 
+            // the gpu kinds reuse the clump fields as a procedural patch field. patch size alone says
+            // whether there are pockets at all, gating it on coverage as well meant zero coverage and
+            // full coverage both came out as an even spread, so the slider was dead at both ends and
+            // only did anything in the middle, which is exactly what it felt like to author
+            //
+            // the floor keeps it away from that dead zone from below, at this end the pockets are tiny
+            // and the compensation below is already at its ceiling
+            params.patch_coverage = clamp(layer.clump_coverage, 0.05f, 1.0f);
+            params.patch_size_m   = max(layer.clump_radius, 0.0f);
+            params.patch_edge     = clamp(layer.clump_raggedness, 0.0f, 1.0f);
+            // the same knob that frays the outline breaks up the interior, a clean edged pocket with a
+            // pockmarked middle would read as two unrelated effects
+            params.patch_scar     = params.patch_edge * 0.3f;
+            params.patch_invert   = layer.clump_invert;
+
             // how far the ground creeps over this prop, sized off the chip itself, the size range here
             // already carries mesh_scale so this is the world extent the ground has to climb
             float extent = 0.0f;
