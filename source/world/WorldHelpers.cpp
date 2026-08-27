@@ -827,7 +827,7 @@ namespace spartan
             // a layer that gates on a mask channel cannot run without the mask, a layer that ignores it
             // does not care, which is what lets micro detail cover ground no biome claimed
             RHI_Texture* prop_mask = terrain->GetPropMask();
-            if (!prop_mask && layer.mask_channel >= 0)
+            if (!prop_mask && (layer.mask_channel >= 0 || layer.ground_mask != 0))
             {
                 SP_LOG_WARNING("terrain scatter '%s': no biome mask, gpu scatter disabled", layer.name.c_str());
                 return false;
@@ -880,6 +880,9 @@ namespace spartan
             // a mask channel of -1 turns the gate off, which is what detail wants, a chip belongs anywhere
             params.biome_min_weight = layer.mask_channel >= 0 ? layer.mask_min : -1.0f;
             params.mask_channel = layer.mask_channel >= 0 ? static_cast<uint32_t>(layer.mask_channel) : 0u;
+            // the ground type gate used to stop at the mesh layers, so ticking sand on grass or pebbles
+            // changed a value the gpu never saw
+            params.ground_mask = layer.ground_mask;
             params.density = clamp(layer.density, 0.01f, 1.0f);
             // the gpu rolls one size per instance the same way the cpu placer does
             params.size_min = layer.mesh_scale * min(layer.size_min, layer.size_max);
@@ -903,7 +906,9 @@ namespace spartan
             params.patch_size_m   = max(layer.clump_radius, 0.0f);
             params.patch_edge     = clamp(layer.clump_raggedness, 0.0f, 1.0f);
             // the same knob that frays the outline breaks up the interior, a clean edged pocket with a
-            // pockmarked middle would read as two unrelated effects
+            // pockmarked middle would read as two unrelated effects. this is no longer pushed, the
+            // shader derives it from the edge with the same ratio, so grass_patch_scar_ratio in
+            // grass_populate.hlsl has to track this number. it still feeds the cpu density boost
             params.patch_scar     = params.patch_edge * 0.3f;
             params.patch_invert   = layer.clump_invert;
 

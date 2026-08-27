@@ -50,7 +50,7 @@ static const float grass_cull_radius      = 1.5f;
 //   values[0] = (cell_size, ring_radius, lod_base_in_instances, max_instances_per_lod)
 //   values[1] = (height_min, height_max, max_slope_cos, inner_radius)
 //   values[2] = (map_origin_x, map_origin_z, map_inv_size_x, map_inv_size_z)
-//   values[3] = (patch_size_m, patch_coverage, patch_edge, patch_scar)
+//   values[3] = (patch_size_m, patch_coverage, patch_edge, ground_mask bits)
 // a patch size of zero spreads the slot evenly, which is what this pass did before patches existed,
 // and a negative one inverts the field so a slot takes the ground the others left bare
 // every float is taken, so the rest travels in the bits of draw_index:
@@ -64,6 +64,8 @@ static const float grass_cull_radius      = 1.5f;
 // terrain height is r32 local y bound to tex (t7), material_index bitcast is the entity y plus the
 // layer's seating offset, a negative offset is what pushes an instance down into the ground
 // biome_min arrives asfloat(is_transparent), negative disables the gate
+// the prop mask is rgb weights plus the dominant surface layer index in alpha, the index needs a
+// point tap because a bilinear one between two layers averages to a value that names a third
 
 // 32-bit integer hash, takes the cell's integer world coords and returns a uniform 32-bit value
 // keyed off coordinates that do not move with the camera, so blade placement is stable
@@ -131,6 +133,11 @@ static const float grass_max_boost = 12.0f;
 // how far above its own gate the biome mask has to climb before a slot runs at full density, a
 // narrow band here is what keeps meadow cores thick while the mask edges still fade out
 static const float grass_biome_gain = 0.25f;
+// share of the edge fringe amount that also punches bare scars through a pocket interior, a clean
+// edged pocket with a pockmarked middle would read as two unrelated effects. mirrored on the cpu
+static const float grass_patch_scar_ratio = 0.3f;
+// terrain_layer_max, the dominant layer index in the mask alpha can never exceed this
+static const uint grass_ground_layer_max = 8u;
 
 // four octaves, the fewest that still reads as an organic outline rather than a blob
 float grass_fbm(float2 p, uint seed)
@@ -381,7 +388,10 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     bool  patch_invert      = patch_size_signed < 0.0f;
     float patch_coverage    = saturate(buffer_pass.values[3].y);
     float patch_edge        = saturate(buffer_pass.values[3].z);
-    float patch_scar        = saturate(buffer_pass.values[3].w);
+    // the knob that frays the outline also breaks the interior, one is a fixed fraction of the other
+    // so it is derived here rather than pushed, which frees the float for the ground type bits
+    float patch_scar        = patch_edge * grass_patch_scar_ratio;
+    uint  ground_mask       = (uint)buffer_pass.values[3].w;
 
     uint  packed_index  = buffer_pass.draw_index;
     uint  lod_index     = packed_index & 0xFu;
@@ -589,7 +599,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // biome mask, same uv as the heightfield, the slot picks the channel it is gated on
     // is_transparent carries biome_min as float bits, negative disables the gate
     float biome_min = asfloat(buffer_pass.is_transparent);
-    if (biome_min >= 0.0f)
+    if (biome_min >= 0.0f || ground_mask != 0u)
     {
         // the mask is baked at its own resolution, so it needs its own texel centre rebase
         uint mask_w;
@@ -600,22 +610,44 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             terrain_world_to_normalized(world_xz),
             float2(mask_w, mask_h)
         );
-        float4 mask     = tex3.SampleLevel(samplers[sampler_bilinear_clamp], mask_uv, 0);
-        float grass_w   = mask_channel == 0u ? mask.r : (mask_channel == 1u ? mask.g : mask.b);
-        float slope_fit = saturate((surface_normal.y - max_slope_cos) / max(1.0f - max_slope_cos, 1e-4f));
-        if (grass_w < biome_min)
+
+        // ground type gate, the same bitfield the mesh placer reads. the dominant surface layer rides
+        // in alpha as an index rather than a weight, so it takes a point tap, a bilinear one across the
+        // boundary between two layers averages out to a value that names a third
+        if (ground_mask != 0u)
         {
-            return;
+            float index_a = tex3.SampleLevel(samplers[sampler_point_clamp], mask_uv, 0).a;
+            uint  dominant = min(
+                (uint)(index_a * 255.0f + 0.5f),
+                grass_ground_layer_max - 1u
+            );
+            if ((ground_mask & (1u << dominant)) == 0u)
+            {
+                return;
+            }
         }
 
-        // the mask decides where grass can live, the patch field above decides where it did, so the
-        // mask is remapped to saturate just past its own gate instead of being used as the density
-        // directly. a meadow core reading 0.6 used to throw away four blades in ten for nothing
-        float ground = saturate((grass_w - biome_min) / grass_biome_gain) * slope_fit;
-        float biome_roll = hash_unit(hash_mix(h0 ^ 0x27d4eb2du));
-        if (biome_roll > ground)
+        // a slot with the biome set to ignore still wants the ground gate above, so this is nested
+        // rather than being the condition on the whole block
+        if (biome_min >= 0.0f)
         {
-            return;
+            float4 mask     = tex3.SampleLevel(samplers[sampler_bilinear_clamp], mask_uv, 0);
+            float grass_w   = mask_channel == 0u ? mask.r : (mask_channel == 1u ? mask.g : mask.b);
+            float slope_fit = saturate((surface_normal.y - max_slope_cos) / max(1.0f - max_slope_cos, 1e-4f));
+            if (grass_w < biome_min)
+            {
+                return;
+            }
+
+            // the mask decides where grass can live, the patch field above decides where it did, so the
+            // mask is remapped to saturate just past its own gate instead of being used as the density
+            // directly. a meadow core reading 0.6 used to throw away four blades in ten for nothing
+            float ground = saturate((grass_w - biome_min) / grass_biome_gain) * slope_fit;
+            float biome_roll = hash_unit(hash_mix(h0 ^ 0x27d4eb2du));
+            if (biome_roll > ground)
+            {
+                return;
+            }
         }
     }
 

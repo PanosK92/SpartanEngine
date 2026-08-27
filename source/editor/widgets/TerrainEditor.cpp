@@ -1574,7 +1574,7 @@ void TerrainEditor::DrawAnalysis(Terrain* terrain)
 
         draw_map("wear, sun, talus", terrain->GetAnalysisMapB(), size, "red is bedrock wear, green is insolation, blue is normalised height, alpha is talus scree");
         ImGui::SameLine(0.0f, design::spacing_lg);
-        draw_map("grass, trees, rocks", terrain->GetPropMask(), size, "the biome mask, props only spawn where their channel is bright");
+        draw_map("grass, trees, rocks", terrain->GetPropMask(), size, "the biome mask, props only spawn where their channel is bright, alpha carries the dominant ground layer index");
 
         if (!terrain->GetAnalysisMapA())
         {

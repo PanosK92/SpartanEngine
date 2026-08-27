@@ -151,6 +151,9 @@ namespace spartan
             float max_slope_deg      = 45.0f;
             float biome_min_weight   = 0.2f;
             uint32_t mask_channel    = 0;    // which prop mask channel gates the slot, 0 grass, 1 trees, 2 rocks
+            // ground type gate, bit i allows surface layer i, 0 allows every layer. the dominant layer
+            // arrives in the prop mask alpha, so this needs the mask bound even with no biome channel
+            uint32_t ground_mask     = 0;
             float density            = 1.0f;
             float size_min           = 0.8f; // world scale on the mesh, one roll per instance inside the range
             float size_max           = 1.2f;

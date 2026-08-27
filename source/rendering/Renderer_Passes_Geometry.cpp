@@ -1433,7 +1433,9 @@ namespace spartan
                     m_pcb_pass_cpu.v[12] = patch_push;
                     m_pcb_pass_cpu.v[13] = state.params.patch_coverage;
                     m_pcb_pass_cpu.v[14] = state.params.patch_edge;
-                    m_pcb_pass_cpu.v[15] = state.params.patch_scar;
+                    // the scar amount is always a fixed fraction of the edge, so the shader derives it
+                    // and this float carries the ground type bits instead, every other one is taken
+                    m_pcb_pass_cpu.v[15] = static_cast<float>(state.params.ground_mask);
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
                     // one cell per thread, dispatch z carries the instance index inside the cell, the

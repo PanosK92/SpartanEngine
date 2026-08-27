@@ -7582,10 +7582,12 @@ namespace spartan
                 m_prop_mask_pixels[offset + 0] = static_cast<uint8_t>(grass * 255.0f + 0.5f);
                 m_prop_mask_pixels[offset + 1] = static_cast<uint8_t>(trees * 255.0f + 0.5f);
                 m_prop_mask_pixels[offset + 2] = static_cast<uint8_t>(rock * 255.0f + 0.5f);
-                m_prop_mask_pixels[offset + 3] = 255;
-                // which surface layer won this point, it stays off the texture so the preview and the
-                // grass populate pass keep reading an opaque rgb mask
-                m_layer_dominant[i] = static_cast<uint8_t>(dominant_layer);
+                // which surface layer won this point. the mesh placer reads it off the cpu copy below,
+                // the gpu scatter pass reads it out of alpha, which is what lets a ground type gate
+                // apply to grass and detail instead of only to mesh layers. it is an index and not a
+                // weight, so anything sampling it has to use a point tap
+                m_prop_mask_pixels[offset + 3] = static_cast<uint8_t>(dominant_layer);
+                m_layer_dominant[i]            = static_cast<uint8_t>(dominant_layer);
             }
         };
         ThreadPool::ParallelLoop(bake, static_cast<uint32_t>(cell_count));
