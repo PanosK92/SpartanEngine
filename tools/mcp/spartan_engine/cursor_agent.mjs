@@ -35,7 +35,7 @@ import {
   suggest_scene_plan,
 } from "./design_intelligence.mjs";
 import {
-  names_a_place,
+  is_scene_stage_request,
   scene_root_name_from_prompt,
 } from "./intent_router.mjs";
 import {
@@ -5116,6 +5116,56 @@ function asset_revision_prompt_lines(revision)
   return lines;
 }
 
+function task_kind_prompt_lines(intent, prompt, revision)
+{
+  if (revision || intent?.kind === "asset_revise")
+  {
+    return [
+      "TASK KIND: library asset revision.",
+      "This is not a new asset and not a scene command. Edit only the loaded candidate in Asset Viewer.",
+    ];
+  }
+  if (intent?.kind === "focused_asset")
+  {
+    return [
+      "TASK KIND: focused library asset creation.",
+      "Author one reusable object in Asset Viewer. Do not blockout a scene, do not dress a set around the object, and do not treat this as an engine command.",
+    ];
+  }
+  if (intent?.kind === "city_develop")
+  {
+    return [
+      "TASK KIND: city layout command.",
+      "Edit the live world. Do not open Asset Viewer. Do not create a library prefab for this request.",
+    ];
+  }
+  if (
+    intent?.greybox ||
+    is_scene_stage_request(prompt)
+  )
+  {
+    return [
+      "TASK KIND: live scene greybox command.",
+      "This is not asset creation. Do not open Asset Viewer. Do not register a library prefab. Do not generate hero meshes or material sets.",
+      "Greybox in the current world with entity_create_primitive_batch and entity_create_light. Massing and proportions only. Stop when the volumes read.",
+    ];
+  }
+  if (
+    intent?.kind === "scene_rebuild" ||
+    intent?.live_scene_action
+  )
+  {
+    return [
+      "TASK KIND: live scene construction.",
+      "Build in the current world. This is not a focused Asset Viewer library asset.",
+    ];
+  }
+  return [
+    "TASK KIND: engine command.",
+    "Do the requested action with the matching Spartan tool. Do not start asset creation or a scene rebuild unless the request clearly asks for one.",
+  ];
+}
+
 function build_prompt(
   prompt,
   snapshot,
@@ -5130,6 +5180,7 @@ function build_prompt(
 ) {
   const lines = [
     "You are controlling Spartan Engine through the spartan_engine MCP tools.",
+    ...task_kind_prompt_lines(intent, prompt, revision),
     "Use the spartan_engine_command custom tool as the primary live-engine bridge. Pass the native tool name in command and its arguments object in arguments.",
     "The spartan_engine_command tool handles both native and composite scene commands. Do not use shell commands or source-code tools for live scene work.",
     "Read agent_memory_read early when available, and treat it as project advice rather than absolute truth.",
@@ -5139,60 +5190,21 @@ function build_prompt(
     "Use spartan_status when you need to know whether the MCP bridge, engine, or codebase index is ready.",
     "Use debug_log_read when diagnosing what commands the assistant sent to the engine and what came back.",
     "Use context_snapshot and entity_resolve instead of multiple separate read calls.",
-    "For every new build, design directly from the current request and prepared context. Do not search for persisted layouts, build definitions, or prior generated instructions.",
-    "Before you build any recognisable object, ask the library for it first. Call world_asset_search with the plain object name, then with semantic aliases, tags, dimensions, style, and material constraints. If the current match fits, load it with world_asset_load and place it, rather than modelling or approximating it again. Primitives are the fallback for objects the library does not have, never the first choice for objects it might.",
-    "For a focused single-asset request, build one current asset in isolation. There is no part, material, or triangle cap. Create every part and material the object needs.",
-    "For focused asset work, begin editing the prepared asset root immediately. Do not spend multiple minutes narrating, repeating lookups, or redesigning the prepared baseline before the first mutation.",
-    "For focused asset work, never move or capture the main scene viewport. The run finalizer performs the one Asset Viewer review.",
-    "For an environment build, reuse current library assets where they fit. Attempt at most one focused improvement per reused asset during the run; otherwise keep the current asset and continue the environment.",
-    "When an environment build makes you model a recognisable standalone object the library did not have, register it as a library prefab once it looks right, and give it plain aliases and tags a later request would search by, meaning the everyday name of the object rather than its role in this scene. A workbench is registered as workbench with the alias table, not as rear_wall_prop. This is how the library grows enough to make the next blockout better than this one.",
-    "Every persistent resource created through MCP belongs under the shared project/mcp/blockout directory. Put meshes, materials, textures, prefabs, editable sources, thumbnails, and catalog metadata in their matching shared subdirectories. Never write MCP-generated resources into a world-specific resource directory.",
     "Use camera_snapshot before camera-relative placement such as in front of camera, beside camera, or from camera.",
     "Use world_raycast for ground or surface-relative placement instead of assuming y=0 when precision matters.",
-    "Before deleting or rebuilding existing geometry while preserving look, call entity_render_materials on the target parent and reuse material names in entity_create_primitive_batch or component_set.",
-    "Use mesh_geometry_capabilities before deciding that requested procedural geometry is unavailable.",
-    "Prefer concave extruded profiles, multi-opening walls, variable lofts or sweeps, shell thickness, and seam-split box UVs when they express the design better than stacked boxes.",
-    "When one shape repeats in one material, generate it once with the array or mirror modifiers on that mesh_generate call rather than once per copy: radial_count for anything arranged around an axis, linear_count with linear_step for rows, mirror_axis for a symmetric pair. The geometry is identical and the part count collapses.",
-    "For multiple materials, split semantic surfaces into compound parts because one render entity owns one material. Saving a focused asset merges the parts that ended up sharing a material back into one mesh, so split for material and construction reasons rather than counting parts.",
-    "Texture every material that represents a real surface. Use material_textured_create so the material and its color, roughness, normal and packed maps are made together, and set tiling so the pattern reads at the right scale.",
-    "Build textures from layers: fill for the base, noise for variation, bricks, tiles, stripes or checker for structure, spots and scratches for wear and dirt, shape and text for labels, signage and decals.",
-    "Give layers relief for bumps, roughness and roughness_b for finish, and metalness for metal, otherwise the surface stays flat and uniformly shiny.",
-    "For cloth, paper, leather and other continuous surfaces, generate relief only from smooth noise. Never give checker, tiles, bricks or stripes relief unless the requested surface has visible seams or grooves, because periodic relief boundaries render as grid lines in the normal map.",
-    "Keep environment textures seamless and check seam_error in the response. Labels and decals are not tiled, so set seamless false and use alpha.",
-    "Skip textures only for glass, pure emitters, and placeholder greybox volumes.",
-    "Add collision only where gameplay needs it. For focused assets, use one simplified collider on the functional root or primary body; never add mesh_convex physics to decorative shells, threads, labels, liners, trim, or repeated details. For environments, cover structural and traversable surfaces without giving every visual detail its own body.",
     "Use entity_create_light for every light. Never hand-roll lights with entity_create_empty + entity_add_component light + component_set; that path leaves weak invisible lights.",
-    "A light entity satisfies a key_lights plan element. Never add a render component to it or fabricate emissive primitives merely to satisfy an audit. If the requested scene needs a visible fixture, create a separate child primitive and tag it as detail rather than light or plan_element:key_lights.",
-    "entity_create_light fully initializes the light: intensity is lux for directional and lumens otherwise. Visible blockout defaults are point/spot 8500, area 12000, directional 120000, plus range, angle, area size, shadows, and draw/shadow distances.",
-    "Do not pass tiny intensities like 25-100 for blockout lights. If you omit intensity, the tool calibrates it. Only set calibrated false when you intentionally want a dim light.",
-    "To calibrate existing scene lights, call lights_calibrate once. Do not write execute_lua or dozens of component_set calls for that.",
-    "For city development: massing first, roads second. Use city_blockout / district_blockout for districts; never hand-place hundreds of cubes for a city.",
-    "district_blockout presets: market, downtown/skyscrapers, park, industrial, residential, parking, plaza, gas_station. city_blockout lays several districts with corridor gaps and avoid_existing landmarks.",
-    "Architect rules: leave corridors between districts for arterials; do not stamp on runway/existing landmarks; vary density by preset.",
-    "Road pass after massing: world_landmarks -> arterial that skirts large districts -> spur branches to district edges -> spline_junction -> spline_decorate. Never triangle center-to-center through an airway.",
-    "To fix an existing road that cuts through buildings or other roads, call spline_reroute on it. It skirts obstacles and redistributes lights/cameras/props along the new path without deleting them.",
-    "Never drive through an airway/runway, dockyard footprint, or building mass. Approach district edges, not centers. Use via points when an arterial must go around a district.",
-    "spline_decorate adds sidewalks, street lights, and roadside props. Never stop at bare undecorated lines.",
-    "Never hand-build spline_point_* children. Do not search source code for city prompts. Do not invent Lua APIs.",
-    "Use primitive-only single-area construction only when the user explicitly asks for a greybox. Normal environments require semantic planning, generated or compound geometry, materials, calibrated lighting, and correction audits.",
     "Do not use execute_lua for API discovery, pairs/next probing, method listing, or exploratory scripts. Those crash or hang the engine.",
     "Prefer entity_create_primitive_batch over execute_lua for repeated primitives. Use execute_lua only when a native batch tool cannot express the edit, and then only with one focused script that uses known bindings.",
-    "Known Lua facts if you must use it: World.CreateEntity, World.GetEntityByName, World.GetEntityById(id_string), entity:SetParent, entity:AddComponent(ComponentType.Render|Light|...), Render:SetMesh(MeshType.Cube), Light:SetLightType(LightType.Point), never pairs() on World.GetEntities or GetChildren, use ForEachChild instead.",
     "When you learn a durable lesson, correction, recurring problem, or maintainer improvement idea, update agent memory concisely.",
-    "world_resources_clean is available for explicit cleanup receipts. Finished scene construction runs it automatically.",
     "Do not reveal hidden chain of thought. Report only brief progress, blockers, and final results.",
   ];
 
   const focused_asset =
-    is_focused_asset_request(prompt) ||
     Boolean(revision) ||
-    intent?.kind === "focused_asset" ||
-    (
-      reference_images.length > 0 &&
-      intent?.kind !== "scene_rebuild" &&
-      intent?.kind !== "city_develop" &&
-      !names_a_place(prompt)
-    );
+    intent?.kind === "focused_asset";
+  const greybox =
+    Boolean(intent?.greybox) ||
+    is_scene_stage_request(prompt);
   if (focused_asset)
   {
     lines.push(
@@ -5202,6 +5214,10 @@ function build_prompt(
       ),
     );
     lines.push(
+      "For a focused single-asset request, build one current asset in isolation. There is no part, material, or triangle cap. Create every part and material the object needs.",
+      "Begin editing the prepared asset root immediately. Do not spend multiple minutes narrating, repeating lookups, or redesigning the prepared baseline before the first mutation.",
+      "Never move or capture the main scene viewport. The run finalizer performs the one Asset Viewer review.",
+      "Texture every material that represents a real surface. Use material_textured_create so the material and its color, roughness, normal and packed maps are made together.",
       "For entity_add_component pass exactly id and a valid component type, for example {id, type: \"physics\"}; call component_types when the exact type is unknown.",
       "For material commands, pass the .material resource path returned by material creation or inspection as path, never an entity id or display name.",
       "material_set_texture requires {path, texture_type, texture_path}; slot is optional.",
@@ -5216,15 +5232,27 @@ function build_prompt(
       );
     }
   }
-
-  // the scene construction block below plans zones, circulation and lighting, which is the wrong shape of
-  // work for changing one part of one object, and its stage list would talk the run into a rebuild
-  if (
-    !focused_asset &&
-    (intent?.kind === "scene_rebuild" || intent?.live_scene_action)
+  else if (greybox)
+  {
+    lines.push(
+      "entity_create_light fully initializes intensity, range, angle, area size, shadows, and distances. Visible blockout defaults are point/spot 8500, area 12000, directional 120000.",
+      "Do not pass tiny intensities like 25-100. If you omit intensity, the tool calibrates it.",
+      "Parent new volumes under the resolved scene root or the current selection. Do not create a library prefab or open Asset Viewer.",
+    );
+  }
+  else if (
+    intent?.kind === "scene_rebuild" ||
+    intent?.live_scene_action
   )
   {
-    lines.push(...scene_quality_prompt_lines(prompt, intent));
+    lines.push(
+      "For every new build, design directly from the current request and prepared context. Do not search for persisted layouts, build definitions, or prior generated instructions.",
+      "Before you build any recognisable object, ask the library for it first. Call world_asset_search with the plain object name, then with semantic aliases, tags, dimensions, style, and material constraints.",
+      "For an environment build, reuse current library assets where they fit.",
+      "Every persistent resource created through MCP belongs under the shared project/mcp/blockout directory.",
+      "Use primitive-only single-area construction only when the user explicitly asks for a greybox. Normal environments require semantic planning, generated or compound geometry, materials, calibrated lighting, and correction audits.",
+      ...scene_quality_prompt_lines(prompt, intent),
+    );
     lines.push(
       "Work through these internal stages in order and finish each stage before moving on:",
       "1 layout, establish zones, circulation, entrances, service access, and primary spatial hierarchy",
@@ -5269,6 +5297,7 @@ function build_prompt(
   }
   if (
     !focused_asset &&
+    !greybox &&
     (intent?.kind === "scene_rebuild" || intent?.live_scene_action)
   )
   {
@@ -5482,7 +5511,7 @@ function recover_new_build_intent(prompt, intent, run)
     .toLowerCase()
     .trim();
   const starts_new_build =
-    /^(?:create|make|build|generate|construct|blockout|design)\b/.test(
+    /^(?:create|make|build|generate|construct|block\s*out|grey\s*box|gray\s*box|design)\b/.test(
       value,
     );
   const explicitly_existing =
@@ -5514,60 +5543,6 @@ function recover_new_build_intent(prompt, intent, run)
   return recovered;
 }
 
-// a bare request for one object, make a book, is single asset work even though it never says the word asset
-//
-// without this such a request went down the scene path, which planned zones and circulation for a book and
-// skipped the focused asset rules, including the one that says not to build a studio set around the subject
-function is_bare_object_build(value)
-{
-  const match = value.match(
-    /^\s*(?:please\s+)?(?:could\s+you\s+|can\s+you\s+|i\s+want\s+you\s+to\s+)?(?:create|make|build|generate|design|model)\s+(?:me\s+)?(?:a|an)\s+([a-z0-9][a-z0-9 _-]{0,60}?)(?=\s*$|[,.;]|\s+(?:with|that|which|featuring|made\s+of|using|from)\b)/,
-  );
-  if (!match?.[1])
-  {
-    return false;
-  }
-
-  const subject = match[1]
-    .replace(
-      /\b(?:asset|prefab|model|prop|object|item)\b/g,
-      " ",
-    )
-    .replace(/\s+/g, " ")
-    .trim();
-
-  // only the head noun decides, a place word before it is a modifier. an office chair is a chair, a
-  // warehouse interior is an interior
-  const head = subject
-    .split(/[\s_-]+/)
-    .filter(Boolean)
-    .pop() ?? "";
-  if (subject.length < 3 || names_a_place(head))
-  {
-    return false;
-  }
-
-  // several subjects make a scene, and a placement phrase means the object is being put somewhere rather
-  // than authored, which is scene work either way
-  if (/\b(?:and|plus|along\s+with|together\s+with)\b/.test(value))
-  {
-    return false;
-  }
-  if (
-    /\b(?:onto|inside|next\s+to|beside|around|near|under|underneath|above|behind|in\s+front\s+of|scattered|arranged|placed|populate|fill)\b/.test(
-      value,
-    ) ||
-    /\bon\s+(?:a|an|the)\b/.test(value)
-  )
-  {
-    return false;
-  }
-
-  return true;
-}
-
-// an entity name becomes a file name, and a prefab whose name came from the user's words has to survive
-// spaces and punctuation without producing a path the engine will reject
 function asset_file_name(value)
 {
   const safe = String(value ?? "asset")
@@ -5575,26 +5550,6 @@ function asset_file_name(value)
     .replace(/[^a-z0-9_-]+/g, "_")
     .replace(/^_+|_+$/g, "");
   return safe || "asset";
-}
-
-function is_focused_asset_request(prompt)
-{
-  const value = String(prompt ?? "").toLowerCase();
-  if (
-    names_a_place(value) &&
-    !is_bare_object_build(value)
-  )
-  {
-    return false;
-  }
-  return (
-    /\bfocused[\s-]+(?:hero[\s-]+)?asset\b/.test(value) ||
-    /\breusable\s+.+\s+(?:model|asset)\b/.test(value) ||
-    /\basset[\s-]+(?:library|catalog|catalogue)\b/.test(value) ||
-    /\b(?:standalone|isolated|hero)[\s-]+(?:asset|model|prop)\b/.test(value) ||
-    /\b(?:create|make|build|generate|design|model)\b[^.\n]{0,120}\b(?:asset|prefab|prop|model)\b/.test(value) ||
-    is_bare_object_build(value)
-  );
 }
 
 async function ensure_edit_mode(run, snapshot)
@@ -5891,9 +5846,13 @@ async function prepare_scene_build_plan({
 })
 {
   if (
-    is_focused_asset_request(prompt) ||
-    intent?.kind === "focused_asset"
+    intent?.kind === "focused_asset" ||
+    intent?.kind === "asset_revise"
   )
+  {
+    return null;
+  }
+  if (intent?.greybox || is_scene_stage_request(prompt))
   {
     return null;
   }
@@ -6032,7 +5991,9 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
   const prompt_image_paths = image_load.loaded;
   if (
     prompt_image_paths.length > 0 &&
-    intent?.kind === "asset_revise"
+    intent?.kind === "asset_revise" &&
+    !intent?.greybox &&
+    !is_scene_stage_request(prompt)
   )
   {
     intent = {
@@ -6048,15 +6009,8 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
 
   let cursor_run = null;
   const focused_asset_run =
-    is_focused_asset_request(prompt) ||
     intent?.kind === "asset_revise" ||
-    intent?.kind === "focused_asset" ||
-    (
-      prompt_image_paths.length > 0 &&
-      intent?.kind !== "scene_rebuild" &&
-      intent?.kind !== "city_develop" &&
-      !names_a_place(prompt)
-    );
+    intent?.kind === "focused_asset";
   const focused_run_budget_ms = focused_asset_run
     ? focused_asset_time_budget_ms(
         prompt,
@@ -6936,6 +6890,17 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
         ok: false,
         text:
           "Cursor completed twice without using a Spartan engine tool. No scene changes were made.",
+      });
+    }
+
+    if (
+      intent?.greybox ||
+      is_scene_stage_request(prompt)
+    )
+    {
+      return finalize_response({
+        ok: true,
+        text: cursor_result.result?.trim() || "Done.",
       });
     }
 

@@ -149,6 +149,12 @@ export function should_beautify(prompt, intent) {
       reason: "prompt asks for a rough or low detail result",
     };
   }
+  if (intent?.greybox) {
+    return {
+      ok: false,
+      reason: "greybox command stays terse",
+    };
+  }
   if (NOT_A_BUILD.test(value)) {
     return { ok: false, reason: "prompt is a question or a read only request" };
   }

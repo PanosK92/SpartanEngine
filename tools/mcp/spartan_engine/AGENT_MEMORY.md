@@ -101,6 +101,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - `city_blockout`, `district_blockout`, and `spline_reroute` are native MCP tools after rebuild. If you see `unknown command`, rebuild the engine and restart the MCP assistant.
 - Use `spline_reroute` to fix an existing arterial that cuts through buildings/roads; it preserves and redistributes lights/cameras.
 - Invalid scene-plan replacements preserve the previous valid plan and return `ok: false`.
+- Prompt classification lives only in `route_intent`. Greybox and blockout prompts are live scene commands (`greybox: true`), not Asset Viewer library assets. Do not re-classify in `cursor_agent` or because an image is attached.
 
 ## Advice To Future Agents
 - Treat this file as advice, not absolute truth.

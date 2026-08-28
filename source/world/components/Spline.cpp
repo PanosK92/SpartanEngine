@@ -132,11 +132,17 @@ namespace spartan
         float& height_out
     )
     {
+        // roads grade the terrain, so they have to conform to the ground as it was before any road
+        // touched it, otherwise every rebuild would chase the fill it laid down last time
         float heightfield_y  = 0.0f;
         bool has_heightfield = false;
+        bool carved          = false;
         if (query.terrain)
         {
-            has_heightfield = query.terrain->SampleHeight(world_x, world_z, heightfield_y);
+            carved          = query.terrain->HasRoadCarve();
+            has_heightfield = carved
+                              ? query.terrain->SampleHeightBase(world_x, world_z, heightfield_y)
+                              : query.terrain->SampleHeight(world_x, world_z, heightfield_y);
         }
 
         const float sky_y = 10000.0f;
@@ -155,7 +161,9 @@ namespace spartan
         if (has_heightfield)
         {
             height_out = heightfield_y;
-            if (terrain_ray && hit.position.y > height_out)
+
+            // the collision mesh already carries the carve, trusting it here would feed it back in
+            if (terrain_ray && !carved && hit.position.y > height_out)
             {
                 height_out = hit.position.y;
             }
@@ -195,7 +203,9 @@ namespace spartan
         const Vector3& world_right,
         float half_extent,
         const GroundQuery& query,
-        float& height_out
+        float& height_out,
+        float* edge_left_out  = nullptr,
+        float* edge_right_out = nullptr
     )
     {
         const uint32_t cross_count = 7;
@@ -212,6 +222,16 @@ namespace spartan
             {
                 base = max(base, ground_height);
                 any_valid = true;
+
+                // the outermost samples sit exactly on the road edges, the skirt needs them
+                if (s == 0 && edge_left_out)
+                {
+                    *edge_left_out = ground_height;
+                }
+                if (s == cross_count - 1 && edge_right_out)
+                {
+                    *edge_right_out = ground_height;
+                }
             }
         }
 
@@ -222,6 +242,199 @@ namespace spartan
 
         height_out = base;
         return true;
+    }
+
+    // raise samples until no segment climbs or drops faster than the slope limit
+    static void grade_limit_from_below(vector<float>& heights, const vector<float>& spans, float slope, bool closed)
+    {
+        const size_t count = heights.size();
+        if (count < 2)
+        {
+            return;
+        }
+
+        const uint32_t rounds = closed ? 3u : 1u;
+        for (uint32_t round = 0; round < rounds; round++)
+        {
+            if (closed)
+            {
+                const float shared = max(heights.front(), heights.back());
+                heights.front()    = shared;
+                heights.back()     = shared;
+            }
+
+            for (size_t i = 1; i < count; i++)
+            {
+                heights[i] = max(heights[i], heights[i - 1] - slope * spans[i - 1]);
+            }
+
+            for (size_t i = count - 1; i-- > 0;)
+            {
+                heights[i] = max(heights[i], heights[i + 1] - slope * spans[i]);
+            }
+        }
+    }
+
+    // mirror of the above, lowers samples instead
+    static void grade_limit_from_above(vector<float>& heights, const vector<float>& spans, float slope, bool closed)
+    {
+        const size_t count = heights.size();
+        if (count < 2)
+        {
+            return;
+        }
+
+        const uint32_t rounds = closed ? 3u : 1u;
+        for (uint32_t round = 0; round < rounds; round++)
+        {
+            if (closed)
+            {
+                const float shared = min(heights.front(), heights.back());
+                heights.front()    = shared;
+                heights.back()     = shared;
+            }
+
+            for (size_t i = 1; i < count; i++)
+            {
+                heights[i] = min(heights[i], heights[i - 1] + slope * spans[i - 1]);
+            }
+
+            for (size_t i = count - 1; i-- > 0;)
+            {
+                heights[i] = min(heights[i], heights[i + 1] + slope * spans[i]);
+            }
+        }
+    }
+
+    // running average of the profile over a fixed arc length, the window is in meters so the result
+    // does not change when the spline happens to be sampled more densely
+    static void smooth_profile_by_length(vector<float>& heights, const vector<float>& spans, float length, bool closed)
+    {
+        const size_t count = heights.size();
+        if (count < 3 || length <= 0.0f || spans.size() + 1 != count)
+        {
+            return;
+        }
+
+        vector<float> distance(count, 0.0f);
+        for (size_t i = 1; i < count; i++)
+        {
+            distance[i] = distance[i - 1] + spans[i - 1];
+        }
+
+        const float total = distance.back();
+        if (total < 1e-3f)
+        {
+            return;
+        }
+
+        const float radius = min(length * 0.5f, total * 0.5f);
+        if (radius < 1e-3f)
+        {
+            return;
+        }
+
+        // integrating first turns each window average into two lookups instead of a scan
+        vector<float> integral(count, 0.0f);
+        for (size_t i = 1; i < count; i++)
+        {
+            integral[i] = integral[i - 1] + (heights[i] + heights[i - 1]) * 0.5f * spans[i - 1];
+        }
+
+        auto integral_at = [&](float s) -> float
+        {
+            // past either end the profile continues flat, which keeps the endpoints on their own height
+            if (s <= 0.0f)
+            {
+                return integral.front() + heights.front() * s;
+            }
+
+            if (s >= total)
+            {
+                return integral.back() + heights.back() * (s - total);
+            }
+
+            const size_t hi  = static_cast<size_t>(lower_bound(distance.begin(), distance.end(), s) - distance.begin());
+            const size_t lo  = (hi > 0) ? hi - 1 : 0;
+            const float span = distance[hi] - distance[lo];
+            const float t    = (span > 1e-6f) ? (s - distance[lo]) / span : 0.0f;
+            const float h    = heights[lo] + (heights[hi] - heights[lo]) * t;
+
+            return integral[lo] + (heights[lo] + h) * 0.5f * (s - distance[lo]);
+        };
+
+        vector<float> result(count);
+        for (size_t i = 0; i < count; i++)
+        {
+            const float a = distance[i] - radius;
+            const float b = distance[i] + radius;
+            result[i]     = (integral_at(b) - integral_at(a)) / (b - a);
+        }
+
+        if (closed)
+        {
+            const float shared = (result.front() + result.back()) * 0.5f;
+            result.front()     = shared;
+            result.back()      = shared;
+        }
+
+        heights = move(result);
+    }
+
+    // a designed road is a long smooth curve fitted through the hills, not a drape over them, so the
+    // profile is first averaged over a design length, then clamped to the deepest allowed cut, then
+    // turned into the higher of two slope limited profiles which gives fill on the approach to a crest
+    // and a cut through it
+    static void apply_grade_limit(
+        vector<float>& deck_heights,
+        const vector<float>& ground_heights,
+        const vector<float>& spans,
+        float slope,
+        float max_cut,
+        float smoothing,
+        float smoothing_length,
+        bool closed
+    )
+    {
+        const size_t count = deck_heights.size();
+        if (count < 3 || spans.size() + 1 != count)
+        {
+            return;
+        }
+
+        const float blend = saturate(smoothing);
+        if (blend > 0.0f && smoothing_length > 0.0f)
+        {
+            // two box passes approximate a triangular kernel, enough to kill the curvature kinks
+            vector<float> target = deck_heights;
+            smooth_profile_by_length(target, spans, smoothing_length, closed);
+            smooth_profile_by_length(target, spans, smoothing_length, closed);
+
+            for (size_t i = 0; i < count; i++)
+            {
+                deck_heights[i] += (target[i] - deck_heights[i]) * blend;
+            }
+        }
+
+        // the lowest the deck may ever sit, cutting into a hill is cheaper than an endless ramp
+        vector<float> floor_heights(count);
+        for (size_t i = 0; i < count; i++)
+        {
+            floor_heights[i] = ground_heights[i] - max_cut;
+            deck_heights[i]  = max(deck_heights[i], floor_heights[i]);
+        }
+
+        vector<float> fill_profile = floor_heights;
+        grade_limit_from_below(fill_profile, spans, slope, closed);
+
+        vector<float> cut_profile = deck_heights;
+        grade_limit_from_above(cut_profile, spans, slope, closed);
+
+        // both profiles respect the slope limit, so their maximum does too
+        for (size_t i = 0; i < count; i++)
+        {
+            deck_heights[i] = max(fill_profile[i], cut_profile[i]);
+        }
     }
 
     static float snapped_control_point_y(
@@ -293,6 +506,19 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_curb_height, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_conform_to_terrain, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_terrain_offset, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_grade_limit_enabled, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_grade_degrees, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_cut, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_grade_smoothing, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_smoothing_length, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_embankment_enabled, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_embankment_slope_degrees, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_embankment_max_height, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_carve_terrain, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_carve_bed_drop, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_carve_fill_slope_degrees, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_carve_cut_slope_degrees, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_carve_max_shoulder, float);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_source_spline_entity_id, SetSourceSplineEntityId, uint64_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_attach_mode, SplineAttachMode);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_attach_lateral_offset, float);
@@ -325,6 +551,15 @@ namespace spartan
         }
 
         ClearRoadMesh();
+
+        // the terrain still holds this road's cut and fill, tell it to hand that ground back
+        if (m_carve_entity_id != 0)
+        {
+            if (Terrain* terrain = Terrain::FindActive())
+            {
+                terrain->MarkSplineHeightCarvesDirty(m_carve_entity_id);
+            }
+        }
 
         // no ClearInstances here, shutdown may leave dangling entities and the world already removes descendants
     }
@@ -406,6 +641,20 @@ namespace spartan
         m_prev_terrain_offset     = m_terrain_offset;
         m_prev_control_points     = GetControlPointsLocal();
 
+        m_prev_grade_limit_enabled       = m_grade_limit_enabled;
+        m_prev_max_grade_degrees         = m_max_grade_degrees;
+        m_prev_max_cut                   = m_max_cut;
+        m_prev_grade_smoothing           = m_grade_smoothing;
+        m_prev_smoothing_length          = m_smoothing_length;
+        m_prev_embankment_enabled        = m_embankment_enabled;
+        m_prev_embankment_slope_degrees  = m_embankment_slope_degrees;
+        m_prev_embankment_max_height     = m_embankment_max_height;
+        m_prev_carve_terrain             = m_carve_terrain;
+        m_prev_carve_bed_drop            = m_carve_bed_drop;
+        m_prev_carve_fill_slope_degrees  = m_carve_fill_slope_degrees;
+        m_prev_carve_cut_slope_degrees   = m_carve_cut_slope_degrees;
+        m_prev_carve_max_shoulder        = m_carve_max_shoulder;
+
         m_prev_attach_mode                = m_attach_mode;
         m_prev_source_spline_entity_id    = m_source_spline_entity_id;
         m_prev_attach_lateral_offset      = m_attach_lateral_offset;
@@ -478,6 +727,19 @@ namespace spartan
                       || (m_curb_height                != m_prev_curb_height)
                       || (m_conform_to_terrain         != m_prev_conform_to_terrain)
                       || (m_terrain_offset             != m_prev_terrain_offset)
+                      || (m_grade_limit_enabled        != m_prev_grade_limit_enabled)
+                      || (m_max_grade_degrees          != m_prev_max_grade_degrees)
+                      || (m_max_cut                    != m_prev_max_cut)
+                      || (m_grade_smoothing            != m_prev_grade_smoothing)
+                      || (m_smoothing_length           != m_prev_smoothing_length)
+                      || (m_embankment_enabled         != m_prev_embankment_enabled)
+                      || (m_embankment_slope_degrees   != m_prev_embankment_slope_degrees)
+                      || (m_embankment_max_height      != m_prev_embankment_max_height)
+                      || (m_carve_terrain              != m_prev_carve_terrain)
+                      || (m_carve_bed_drop             != m_prev_carve_bed_drop)
+                      || (m_carve_fill_slope_degrees   != m_prev_carve_fill_slope_degrees)
+                      || (m_carve_cut_slope_degrees    != m_prev_carve_cut_slope_degrees)
+                      || (m_carve_max_shoulder         != m_prev_carve_max_shoulder)
                       || (current_points               != m_prev_control_points)
                       || (m_attach_mode                != m_prev_attach_mode)
                       || (m_source_spline_entity_id    != m_prev_source_spline_entity_id)
@@ -632,6 +894,23 @@ namespace spartan
         node.append_attribute("conform_to_terrain") = m_conform_to_terrain;
         node.append_attribute("terrain_offset")     = m_terrain_offset;
 
+        // grade limiting and embankment
+        node.append_attribute("grade_limit_enabled")      = m_grade_limit_enabled;
+        node.append_attribute("max_grade_degrees")        = m_max_grade_degrees;
+        node.append_attribute("max_cut")                  = m_max_cut;
+        node.append_attribute("grade_smoothing")          = m_grade_smoothing;
+        node.append_attribute("smoothing_length")         = m_smoothing_length;
+        node.append_attribute("embankment_enabled")       = m_embankment_enabled;
+        node.append_attribute("embankment_slope_degrees") = m_embankment_slope_degrees;
+        node.append_attribute("embankment_max_height")    = m_embankment_max_height;
+
+        // terrain carving
+        node.append_attribute("carve_terrain")             = m_carve_terrain;
+        node.append_attribute("carve_bed_drop")            = m_carve_bed_drop;
+        node.append_attribute("carve_fill_slope_degrees")  = m_carve_fill_slope_degrees;
+        node.append_attribute("carve_cut_slope_degrees")   = m_carve_cut_slope_degrees;
+        node.append_attribute("carve_max_shoulder")        = m_carve_max_shoulder;
+
         // instancing
         node.append_attribute("instance_spacing")          = m_instance_spacing;
         node.append_attribute("align_instances")           = m_align_instances_to_spline;
@@ -685,6 +964,22 @@ namespace spartan
         {
             m_terrain_offset = min_ground_clearance;
         }
+
+        // grade limiting and embankment, older worlds get the new behaviour by default
+        m_grade_limit_enabled      = node.attribute("grade_limit_enabled").as_bool(true);
+        m_max_grade_degrees        = node.attribute("max_grade_degrees").as_float(8.0f);
+        m_max_cut                  = node.attribute("max_cut").as_float(20.0f);
+        m_grade_smoothing          = node.attribute("grade_smoothing").as_float(0.9f);
+        m_smoothing_length         = node.attribute("smoothing_length").as_float(160.0f);
+        m_embankment_enabled       = node.attribute("embankment_enabled").as_bool(true);
+        m_embankment_slope_degrees = node.attribute("embankment_slope_degrees").as_float(50.0f);
+        m_embankment_max_height    = node.attribute("embankment_max_height").as_float(8.0f);
+
+        m_carve_terrain             = node.attribute("carve_terrain").as_bool(true);
+        m_carve_bed_drop            = node.attribute("carve_bed_drop").as_float(0.15f);
+        m_carve_fill_slope_degrees  = node.attribute("carve_fill_slope_degrees").as_float(33.0f);
+        m_carve_cut_slope_degrees   = node.attribute("carve_cut_slope_degrees").as_float(45.0f);
+        m_carve_max_shoulder        = node.attribute("carve_max_shoulder").as_float(60.0f);
 
         // instancing
         m_instance_spacing           = node.attribute("instance_spacing").as_float(5.0f);
@@ -960,9 +1255,52 @@ namespace spartan
         bool close_profile             = IsProfileClosed();
         GenerateMesh(frames, profile_points, close_profile);
 
+        CacheCarveSamples(frames);
+
+        const uint64_t id = m_entity_ptr ? m_entity_ptr->GetObjectId() : 0;
+        if (id != 0)
+        {
+            m_carve_entity_id = id;
+        }
+
         if (Terrain* terrain = Terrain::FindActive())
         {
-            terrain->MarkSplinePropCarvesDirty(m_entity_ptr ? m_entity_ptr->GetObjectId() : 0);
+            terrain->MarkSplinePropCarvesDirty(id);
+            terrain->MarkSplineHeightCarvesDirty(id);
+        }
+    }
+
+    bool Spline::CarvesTerrain() const
+    {
+        return m_carve_terrain
+            && m_mesh_enabled
+            && m_conform_to_terrain
+            && m_profile == SplineProfile::Road;
+    }
+
+    void Spline::CacheCarveSamples(const vector<SplineFrame>& frames)
+    {
+        m_carve_samples.clear();
+
+        if (!CarvesTerrain() || frames.size() < 2 || !m_entity_ptr)
+        {
+            return;
+        }
+
+        const Matrix world_matrix = m_entity_ptr->GetMatrix();
+        const bool width_varies   = (m_road_width_end != m_road_width);
+
+        m_carve_samples.reserve(frames.size());
+        for (const SplineFrame& frame : frames)
+        {
+            const float width = width_varies
+                                ? (m_road_width + (m_road_width_end - m_road_width) * frame.t)
+                                : m_road_width;
+
+            SplineCarveSample sample;
+            sample.position   = world_matrix * frame.position;
+            sample.half_width = width * 0.5f + (m_sidewalk_enabled ? m_sidewalk_width : 0.0f);
+            m_carve_samples.push_back(sample);
         }
     }
 
@@ -994,9 +1332,13 @@ namespace spartan
 
         if (!m_mesh_enabled)
         {
+            m_carve_samples.clear();
+
             if (Terrain* terrain = Terrain::FindActive())
             {
-                terrain->MarkSplinePropCarvesDirty(m_entity_ptr ? m_entity_ptr->GetObjectId() : 0);
+                const uint64_t id = m_entity_ptr ? m_entity_ptr->GetObjectId() : 0;
+                terrain->MarkSplinePropCarvesDirty(id);
+                terrain->MarkSplineHeightCarvesDirty(id);
             }
         }
     }
@@ -1423,6 +1765,43 @@ namespace spartan
         return profile;
     }
 
+    bool Spline::UsesEmbankment() const
+    {
+        return m_embankment_enabled
+            && m_conform_to_terrain
+            && !IsAttached()
+            && m_profile == SplineProfile::Road
+            && m_embankment_max_height > 0.0f;
+    }
+
+    vector<Vector2> Spline::GetProfileForFrame(float width, float fill_left, float fill_right) const
+    {
+        vector<Vector2> profile = GetProfilePointsForWidth(width);
+        if (!UsesEmbankment() || profile.size() < 2)
+        {
+            return profile;
+        }
+
+        // never let the skirt collapse onto the deck edge, that would emit degenerate triangles
+        const float min_depth = applied_terrain_offset(m_terrain_offset);
+        const float max_depth = max(m_embankment_max_height, min_depth);
+
+        // past a certain height an earth bank stops being believable, the deck becomes a viaduct edge
+        const float depth_left  = clamp(fill_left,  min_depth, max_depth);
+        const float depth_right = clamp(fill_right, min_depth, max_depth);
+
+        const float angle    = clamp(m_embankment_slope_degrees, 5.0f, 89.0f) * deg_to_rad;
+        const float run_rate = 1.0f / tanf(angle);
+
+        const Vector2 outer_left  = profile.front();
+        const Vector2 outer_right = profile.back();
+
+        profile.insert(profile.begin(), Vector2(outer_left.x - depth_left * run_rate, -depth_left));
+        profile.emplace_back(outer_right.x + depth_right * run_rate, -depth_right);
+
+        return profile;
+    }
+
     bool Spline::IsProfileClosed() const
     {
         return m_profile == SplineProfile::Tube;
@@ -1665,6 +2044,13 @@ namespace spartan
         vector<Vector3> positions(sample_count);
         vector<Vector3> rights(sample_count);
 
+        // world space bookkeeping used by the grade limiter and the embankment skirt
+        vector<Vector3> world_positions(sample_count);
+        vector<float> ground_heights(sample_count, 0.0f);
+        vector<float> edge_ground_left(sample_count, 0.0f);
+        vector<float> edge_ground_right(sample_count, 0.0f);
+        bool ground_valid = m_conform_to_terrain;
+
         // first pass, place every sample, keep the deck level and lift it off the ground
         for (size_t i = 0; i < sample_count; i++)
         {
@@ -1698,8 +2084,21 @@ namespace spartan
                 }
                 world_right.Normalize();
 
+                // the edges get their own ground so the skirt lands on the real surface rather than
+                // on the highest point across the cross-section that the deck was lifted to
+                edge_ground_left[i]  = world_pos.y;
+                edge_ground_right[i] = world_pos.y;
+
                 float base = 0.0f;
-                if (sample_deck_height(world_pos, world_right, half_extent, ground_query, base))
+                if (sample_deck_height(
+                    world_pos,
+                    world_right,
+                    half_extent,
+                    ground_query,
+                    base,
+                    &edge_ground_left[i],
+                    &edge_ground_right[i]
+                ))
                 {
                     // the chord between two samples may sag by up to the refinement tolerance
                     world_pos.y = base + applied_terrain_offset(m_terrain_offset) + conform_sag;
@@ -1711,11 +2110,55 @@ namespace spartan
                         right = tangent.Cross(Vector3::Up);
                     }
                     right.Normalize();
+
+                    ground_heights[i] = base;
                 }
+                else
+                {
+                    ground_valid = false;
+                }
+
+                world_positions[i] = world_pos;
             }
 
             positions[i] = position;
             rights[i]    = right;
+        }
+
+        // rebuild the elevation profile so a car can actually drive it
+        if (ground_valid && m_grade_limit_enabled && sample_count >= 3)
+        {
+            // grade is rise over horizontal run, so the spans ignore height
+            vector<float> spans(sample_count - 1);
+            for (size_t i = 0; i + 1 < sample_count; i++)
+            {
+                const Vector3 delta = world_positions[i + 1] - world_positions[i];
+                spans[i]            = max(sqrtf(delta.x * delta.x + delta.z * delta.z), 1e-3f);
+            }
+
+            vector<float> deck_heights(sample_count);
+            for (size_t i = 0; i < sample_count; i++)
+            {
+                deck_heights[i] = world_positions[i].y;
+            }
+
+            const float slope = tanf(clamp(m_max_grade_degrees, 0.5f, 80.0f) * deg_to_rad);
+            apply_grade_limit(
+                deck_heights,
+                ground_heights,
+                spans,
+                slope,
+                max(m_max_cut, 0.0f),
+                m_grade_smoothing,
+                max(m_smoothing_length, 0.0f),
+                m_closed_loop
+            );
+
+            for (size_t i = 0; i < sample_count; i++)
+            {
+                world_positions[i].y = deck_heights[i];
+                positions[i]         = inverse_matrix * world_positions[i];
+            }
         }
 
         // second pass, tangents come from the conformed positions so the frames follow the real slope
@@ -1775,6 +2218,16 @@ namespace spartan
             frame.up       = up;
             frame.t        = sample_ts[i];
             frame.distance = accumulated_distance;
+
+            // the skirt always reaches down to the untouched ground, the terrain carve fills most of
+            // that volume and swallows it, what stays visible is wherever the terrain grid was too
+            // coarse to follow the road, which is exactly where a gap would otherwise show
+            if (m_conform_to_terrain)
+            {
+                frame.fill_left  = max(world_positions[i].y - edge_ground_left[i], 0.0f);
+                frame.fill_right = max(world_positions[i].y - edge_ground_right[i], 0.0f);
+            }
+
             frames.push_back(frame);
         }
 
@@ -1863,10 +2316,11 @@ namespace spartan
             return;
         }
 
-        bool width_varies = (m_road_width_end != m_road_width);
+        bool width_varies     = (m_road_width_end != m_road_width);
+        const bool embankment = UsesEmbankment();
 
         uint32_t total_samples = static_cast<uint32_t>(frames.size()) - 1;
-        uint32_t profile_count = static_cast<uint32_t>(profile_points.size());
+        uint32_t profile_count = static_cast<uint32_t>(profile_points.size()) + (embankment ? 2u : 0u);
 
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
@@ -1877,10 +2331,18 @@ namespace spartan
         {
             const SplineFrame& frame = frames[i];
 
-            // interpolate width if it varies along the spline
-            float current_width         = width_varies ? (m_road_width + (m_road_width_end - m_road_width) * frame.t) : m_road_width;
-            vector<Vector2> cur_profile = width_varies ? GetProfilePointsForWidth(current_width) : profile_points;
-            uint32_t cur_profile_count  = static_cast<uint32_t>(cur_profile.size());
+            // interpolate width if it varies along the spline, the skirt depth varies per frame
+            float current_width = width_varies ? (m_road_width + (m_road_width_end - m_road_width) * frame.t) : m_road_width;
+            vector<Vector2> cur_profile;
+            if (embankment)
+            {
+                cur_profile = GetProfileForFrame(current_width, frame.fill_left, frame.fill_right);
+            }
+            else
+            {
+                cur_profile = width_varies ? GetProfilePointsForWidth(current_width) : profile_points;
+            }
+            uint32_t cur_profile_count = static_cast<uint32_t>(cur_profile.size());
 
             // recompute perimeter for the current cross-section
             float cur_perimeter = 0.0f;

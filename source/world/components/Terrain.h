@@ -175,6 +175,8 @@ namespace spartan
         // after biome scatter, keep instance seeds then hide props on occupied pads
         void OnBiomePropsPopulated();
         void MarkSplinePropCarvesDirty(uint64_t spline_id = 0);
+        // roads grade the ground they sit on, queue the affected corridor for a re-carve
+        void MarkSplineHeightCarvesDirty(uint64_t spline_id = 0);
 
         // r=grass, g=trees, b=rocks, bilinear sample in world xz
         math::Vector3 SamplePropMask(float world_x, float world_z) const;
@@ -232,6 +234,10 @@ namespace spartan
         uint32_t GetDenseHeight() const { return m_dense_height; }
         bool Raycast(const math::Ray& ray, math::Vector3& hit_out) const;
         bool SampleHeight(float world_x, float world_z, float& height_out) const;
+        // height with every road cut and fill taken back out, roads conform to this so they cannot
+        // chase the ground they just moved
+        bool SampleHeightBase(float world_x, float world_z, float& height_out) const;
+        bool HasRoadCarve() const { return !m_road_carve_delta.empty(); }
         // world-space unit normal at xz, returns false if no heightfield
         bool SampleNormal(float world_x, float world_z, math::Vector3& normal_out) const;
         void ApplyBrush(const math::Vector3& world_center, const TerrainBrush& brush);
@@ -312,6 +318,11 @@ namespace spartan
         void ApplyPlatformsToProps();
         void RefreshSplinePropCarves();
         void ApplySplineCarveToProps(float min_x, float min_z, float max_x, float max_z);
+        // rebuild the road cut and fill inside whatever corridor changed, then repair that region only
+        void RefreshSplineHeightCarves();
+        void ClearRoadCarve();
+        void PatchTilesInRegion(float local_min_x, float local_min_z, float local_max_x, float local_max_z);
+        void RebuildPhysicsInRegion(float local_min_x, float local_min_z, float local_max_x, float local_max_z);
         void PunchPropMaskFootprint(
             float center_x,
             float center_z,
@@ -427,6 +438,12 @@ namespace spartan
         int32_t m_spline_carve_x1 = -1;
         int32_t m_spline_carve_z0 = 0;
         int32_t m_spline_carve_z1 = -1;
+        // height the roads added to the dense grid, subtracting it gives the untouched ground back
+        std::vector<float> m_road_carve_delta;
+        std::unordered_map<uint64_t, std::array<int32_t, 4>> m_road_carve_bounds;
+        std::unordered_set<uint64_t> m_road_carve_dirty_ids;
+        bool m_road_carve_dirty     = false;
+        bool m_road_carve_dirty_all = false;
         // full scatter instances, live pads hide from this and restore when the pad leaves
         std::unordered_map<uint64_t, std::vector<math::Matrix>> m_prop_instance_seed;
         std::unordered_map<uint64_t, bool> m_prop_entity_seed;

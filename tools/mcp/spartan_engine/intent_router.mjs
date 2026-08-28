@@ -3,7 +3,11 @@ function normalized(prompt) {
 }
 
 export function should_use_selected_entity(prompt) {
-  return /\b(this|selected|current)\s+entity\b/.test(normalized(prompt));
+  const value = normalized(prompt);
+  return (
+    /\b(this|selected|current)\s+entity\b/.test(value) ||
+    /\b(?:the\s+)?(?:current\s+)?selection\b/.test(value)
+  );
 }
 
 const target_name_stopwords = new Set([
@@ -225,7 +229,7 @@ export function scene_root_name_from_prompt(prompt) {
   }
 
   const match = value.match(
-    /\b(?:create|make|build|generate|construct|design|continue|finish|complete|polish|improve|refine|enhance|upgrade|detail|beautify)\s+(?:me\s+)?(?:an?\s+|the\s+)?([a-z0-9][a-z0-9 _-]{0,60}?)(?=\s+(?:with|that|which|containing|under|inside|for)\b|[,.;]|$)/,
+    /\b(?:create|make|build|generate|construct|design|block\s*out|grey\s*box|gray\s*box|continue|finish|complete|polish|improve|refine|enhance|upgrade|detail|beautify)\s+(?:me\s+)?(?:an?\s+|the\s+)?([a-z0-9][a-z0-9 _-]{0,60}?)(?=\s+(?:with|that|which|containing|under|inside|for)\b|[,.;]|$)/,
   );
   if (!match?.[1])
   {
@@ -263,8 +267,8 @@ function is_rebuild_scene_request(value) {
 }
 
 function is_scene_construction_request(value) {
-  const constructive = /\b(create|make|build|uild|generate|construct|blockout|layout|lay out|design|place|continue|finish|complete|audit|review|correct|polish|improve|refine|enhance|upgrade|detail|beautify|dress)\b/.test(value);
-  const scene_target = /\b(rooms?|levels?|areas?|scenes?|geometry|environments?|blockouts?|hallways?|corridors?|mazes?|maps?|interiors?|spaces?|backrooms|liminal|playgrounds?|parks?|factories|factory|warehouses?|stations?|gas stations?|streets?|plazas?|offices?|houses?|buildings?|landscapes?|arenas?|yards?|gardens?|cities|city|districts?|downtown|neighborhoods?|garages?|workshops?|lounges?|bars?|airports?|shops?|stores?|cafes?|coffee shops?|restaurants?|hotels?|schools?|hospitals?|museums?|facilities|venues?|places?)\b/.test(value);
+  const constructive = /\b(create|make|build|uild|generate|construct|block\s*outs?|grey\s*box|gray\s*box|layout|lay out|design|place|continue|finish|complete|audit|review|correct|polish|improve|refine|enhance|upgrade|detail|beautify|dress)\b/.test(value);
+  const scene_target = /\b(rooms?|levels?|areas?|scenes?|geometry|environments?|blockouts?|greybox(?:es)?|hallways?|corridors?|mazes?|maps?|interiors?|spaces?|backrooms|liminal|playgrounds?|parks?|factories|factory|warehouses?|stations?|gas stations?|streets?|plazas?|offices?|houses?|buildings?|landscapes?|arenas?|yards?|gardens?|cities|city|districts?|downtown|neighborhoods?|garages?|workshops?|lounges?|bars?|airports?|shops?|stores?|cafes?|coffee shops?|restaurants?|hotels?|schools?|hospitals?|museums?|facilities|venues?|places?)\b/.test(value);
   const generic_verb =
     /\b(build|construct|design|generate)\b/.test(value) ||
     /\b(create|make)\s+(?:me\s+)?(?:an?\s+|the\s+)[a-z]/.test(value);
@@ -279,13 +283,42 @@ function is_scene_construction_request(value) {
   );
 }
 
-// nouns that name a place or a whole scene, a change aimed at one of those is scene work however it is
-// phrased, so they are what keeps make the garage bigger away from the asset revision path
+// nouns that name a place or a whole scene. blockout and greybox are verbs, not places, so they stay out
 const scene_subject_pattern =
-  /\b(scene|level|map|world|environment|city|district|downtown|street|road|neighbourhood|neighborhood|blockout|greybox|room|rooms|interior|exterior|area|zone|hallway|corridor|building|house|apartment|tower|skyscraper|garage|workshop|warehouse|factory|office|station|airport|playground|park|garden|plaza|square|courtyard|market|shop|store|bar|cafe|restaurant|hotel|school|hospital|museum|arena|stadium|yard|dockyard|lounge|terrain|landscape|island|layout|circulation)\b/;
+  /\b(scene|level|map|world|environment|city|district|downtown|street|road|neighbourhood|neighborhood|room|rooms|interior|exterior|area|zone|hallway|corridor|building|house|apartment|tower|skyscraper|garage|workshop|warehouse|factory|office|station|airport|playground|park|garden|plaza|square|courtyard|market|shop|store|bar|cafe|restaurant|hotel|school|hospital|museum|arena|stadium|yard|dockyard|lounge|terrain|landscape|island)\b/;
 
-// a place is somewhere you stand, an object is something you pick up, and almost every decision about how
-// to build one differs from the other, so both the router and the build stages ask this same question
+const scene_stage_pattern =
+  /\b(?:block\s*outs?|grey\s*box(?:es)?|gray\s*box(?:es)?|greybox(?:es)?|graybox(?:es)?)\b/;
+
+const explicit_asset_language_pattern =
+  /\b(?:focused[\s-]+(?:hero[\s-]+)?asset|(?:standalone|isolated|hero|reusable)[\s-]+(?:asset|model|prop)|(?:asset|prefab|prop)[\s-]+(?:library|catalog|catalogue)|3d[\s-]+(?:asset|model|prefab|prop))\b/;
+
+export function is_explicit_asset_language(prompt)
+{
+  const value = normalized(prompt);
+  if (explicit_asset_language_pattern.test(value))
+  {
+    return true;
+  }
+  return (
+    /\b(?:create|make|build|generate|design|model)\b[^.\n]{0,120}\b(?:assets?|prefabs?|props?|3d\s+models?)\b/.test(
+      value,
+    ) ||
+    /\b(?:assets?|prefabs?|3d\s+models?)\s+(?:of|for|named|called|based)\b/.test(
+      value,
+    )
+  );
+}
+
+export function is_scene_stage_request(prompt)
+{
+  const value = normalized(prompt);
+  return (
+    scene_stage_pattern.test(value) &&
+    !is_explicit_asset_language(value)
+  );
+}
+
 export function names_a_place(text) {
   return scene_subject_pattern.test(normalized(text));
 }
@@ -332,6 +365,11 @@ function bare_object_subject(value) {
 
 export function focused_asset_subject(value) {
   value = normalized(value);
+  if (is_scene_stage_request(value))
+  {
+    return "";
+  }
+
   const explicit_3d =
     /\b(?:3d|asset|prefab|prop|mesh)\b/.test(value);
   if (
@@ -351,8 +389,6 @@ export function focused_asset_subject(value) {
 
   const from_reference = value.match(
     /\b(?:based\s+on|from|matching)\s+(?:the\s+|an?\s+)?([a-z0-9][a-z0-9_-]{1,40}?)\s+in\s+the\s+(?:attached\s+)?(?:image|photo|picture|reference)\b/,
-  ) || value.match(
-    /\b(?:based\s+on|from|matching)\s+(?:the\s+|an?\s+)?([a-z0-9][a-z0-9_-]{1,40}?)\b/,
   );
   if (
     from_reference?.[1] &&
@@ -380,7 +416,7 @@ export function focused_asset_subject(value) {
       .split(/[\s_-]+/)
       .filter(Boolean)
       .pop() ?? "";
-    if (!names_a_place(head))
+    if (!names_a_place(head) || is_explicit_asset_language(value))
     {
       return subject;
     }
@@ -517,6 +553,11 @@ function is_asset_revision_request(value) {
     return false;
   }
 
+  if (is_scene_stage_request(value))
+  {
+    return false;
+  }
+
   // a place is a scene even when the phrasing is identical, and a scene already has its own refinement path
   if (scene_subject_pattern.test(value))
   {
@@ -600,7 +641,7 @@ function is_asset_revision_request(value) {
 
 function is_scene_refinement_request(value) {
   const starts_new_build =
-    /^(?:create|make|build|generate|construct|blockout|design)\b/.test(
+    /^(?:create|make|build|generate|construct|block\s*out|grey\s*box|gray\s*box|design)\b/.test(
       value,
     ) &&
     !/\b(?:existing|selected|current|this)\s+(?:scene|environment|entity|area|level|map)\b/.test(
@@ -655,7 +696,11 @@ function is_create_primitive_request(value) {
 }
 
 function is_live_scene_edit_request(value) {
-  const edit_verb = /\b(create|make|spawn|add|place|put|move|delete|remove|destroy|rotate|scale|select|build|clear|wipe)\b/.test(value);
+  if (is_scene_stage_request(value))
+  {
+    return true;
+  }
+  const edit_verb = /\b(create|make|spawn|add|place|put|move|delete|remove|destroy|rotate|scale|select|build|clear|wipe|block\s*out)\b/.test(value);
   const scene_object = /\b(entity|entities|world|scene|primitive|mesh|cube|box|quad|plane|sphere|ball|cylinder|cone|camera|light|physics|rigidbody|collider|track|ramp|room|rooms|level|levels|area|environment|hallway|hallways|corridor|corridors|backrooms|liminal)\b/.test(value);
   return edit_verb && scene_object && !/\b(source|code|file|cpp|c\+\+|javascript|compile|build error|git|diff)\b/.test(value);
 }
@@ -792,10 +837,27 @@ function is_city_develop_request(value) {
     return false;
   }
 
-  const wants_city = /\b(road|roads|spline|highway|street|connect|link|network|district|landmark|city|blockout|market|downtown|skyscraper|park|industrial|residential|plaza|parking)\b/.test(positive_value);
+  const city_scale =
+    /\b(city|cities|districts?|downtown|urban|neighbourhoods?|neighborhoods?|skyline|skyscrapers?)\b/.test(
+      positive_value,
+    );
+  const road_network =
+    /\b(road|roads|spline|highway|street|arterial|connect|link|network)\b/.test(
+      positive_value,
+    ) &&
+    (
+      /\b(landmark|between|gas_station|dockyard|airway|airport|playground|districts?|city)\b/.test(
+        positive_value,
+      ) ||
+      /\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/.test(positive_value)
+    );
+  if (is_scene_stage_request(positive_value) && !city_scale && !road_network)
+  {
+    return false;
+  }
+
   const constructive = /\b(create|make|build|connect|link|lay|add|generate|scan|decorate|develop|block\s*out|plan|continue|finish|polish|improve|refine|enhance|upgrade|detail|beautify)\b/.test(positive_value);
-  const has_targets = /\b(gas_station|dockyard|airway|airport|playground|landmark|between|from|to|map|world|areas?|districts?|city|around)\b/.test(positive_value) || /\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/.test(positive_value);
-  return wants_city && constructive && has_targets && !/\b(source|code|file|cpp|c\+\+|javascript)\b/.test(positive_value);
+  return (city_scale || road_network) && constructive && !/\b(source|code|file|cpp|c\+\+|javascript)\b/.test(positive_value);
 }
 
 function landmarks_from_prompt(prompt) {
@@ -849,6 +911,35 @@ function is_source_code_request(value) {
 // fast paths exist for terse commands, long prompts describe real work and must reach the full agent
 const fast_path_max_length = 160;
 
+function scene_command_intent(prompt, value, extra = {})
+{
+  const place_phrase = place_phrase_from_prompt(value);
+  const explicit_name = target_name_from_prompt(prompt);
+  const deictic =
+    /\b(this|that|these|those|here|there|selection|selected)\b/.test(
+      value,
+    );
+  const use_selected =
+    should_use_selected_entity(prompt) ||
+    (
+      Boolean(extra.greybox) &&
+      deictic &&
+      !place_phrase &&
+      !explicit_name
+    );
+  return {
+    kind: "scene_rebuild",
+    confidence: extra.confidence ?? 0.9,
+    live_scene_action: true,
+    allow_cursor_fallback: true,
+    greybox: Boolean(extra.greybox),
+    target_name: use_selected
+      ? ""
+      : scene_root_name_from_prompt(prompt),
+    use_selected,
+  };
+}
+
 export function route_intent(prompt) {
   const value = normalized(prompt);
   if (!value) {
@@ -884,6 +975,19 @@ export function route_intent(prompt) {
       target_name: target_name_from_prompt(prompt),
       use_selected: should_use_selected_entity(prompt),
     };
+  }
+
+  // greybox and blockout are live scene commands, never library asset creation
+  if (is_scene_stage_request(value))
+  {
+    return scene_command_intent(
+      prompt,
+      value,
+      {
+        confidence: 0.94,
+        greybox: true,
+      },
+    );
   }
 
   // ahead of the scene paths, they read a change to a named thing as a scene refinement and would rebuild
@@ -928,6 +1032,7 @@ export function route_intent(prompt) {
       confidence: 0.9,
       live_scene_action: true,
       allow_cursor_fallback: true,
+      greybox: is_scene_stage_request(value),
       target_name,
       use_selected: target_name === "",
     };
@@ -936,14 +1041,14 @@ export function route_intent(prompt) {
   if (is_rebuild_scene_request(value))
   {
     return {
-      kind: "scene_rebuild",
-      confidence: 0.9,
-      live_scene_action: true,
-      allow_cursor_fallback: true,
-      target_name: should_use_selected_entity(prompt)
-        ? ""
-        : scene_root_name_from_prompt(prompt),
-      use_selected: should_use_selected_entity(prompt),
+      ...scene_command_intent(
+        prompt,
+        value,
+        {
+          confidence: 0.9,
+          greybox: is_scene_stage_request(value),
+        },
+      ),
     };
   }
 
@@ -971,16 +1076,14 @@ export function route_intent(prompt) {
 
   if (is_scene_construction_request(value))
   {
-    return {
-      kind: "scene_rebuild",
-      confidence: 0.88,
-      live_scene_action: true,
-      allow_cursor_fallback: true,
-      target_name: should_use_selected_entity(prompt)
-        ? ""
-        : scene_root_name_from_prompt(prompt),
-      use_selected: should_use_selected_entity(prompt),
-    };
+    return scene_command_intent(
+      prompt,
+      value,
+      {
+        confidence: 0.88,
+        greybox: is_scene_stage_request(value),
+      },
+    );
   }
 
   if (is_terse && is_create_primitive_request(value)) {
@@ -1031,8 +1134,10 @@ export function route_intent(prompt) {
       confidence: 0.82,
       live_scene_action: true,
       allow_cursor_fallback: true,
+      greybox: is_scene_stage_request(value),
     };
   }
 
   return { kind: "cursor", confidence: 0.4, allow_cursor_fallback: true };
 }
+

@@ -388,7 +388,28 @@ async function execute_prompt(socket, payload) {
   let phase = "starting";
   const stop_heartbeat = start_heartbeat(run, () => phase);
   let intent = route_intent(payload.prompt);
-  if (images.length > 0 && !is_explicit_asset_revision(payload.prompt))
+  const prompt_text = String(payload.prompt ?? "").trim();
+  const image_can_default_to_asset =
+    images.length > 0 &&
+    !is_explicit_asset_revision(prompt_text) &&
+    intent.kind !== "asset_revise" &&
+    intent.kind !== "scene_rebuild" &&
+    intent.kind !== "city_develop" &&
+    intent.kind !== "live_scene_edit" &&
+    intent.kind !== "create_primitive" &&
+    intent.kind !== "delete_entity" &&
+    intent.kind !== "delete_children" &&
+    intent.kind !== "calibrate_lights" &&
+    !intent.greybox;
+  if (
+    image_can_default_to_asset &&
+    (
+      intent.kind === "focused_asset" ||
+      intent.kind === "cursor" ||
+      intent.kind === "none" ||
+      prompt_text.length === 0
+    )
+  )
   {
     const subject = focused_asset_subject(payload.prompt);
     intent = {
@@ -419,6 +440,8 @@ async function execute_prompt(socket, payload) {
       run.receipt("route selected", {
         intent: intent.kind,
         confidence: intent.confidence,
+        greybox: Boolean(intent.greybox),
+        target_name: intent.target_name ?? "",
       });
     });
 

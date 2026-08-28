@@ -2604,6 +2604,19 @@ void Properties::ShowSpline(spartan::Spline* spline) const
         float curb_height                 = spline->GetCurbHeight();
         bool conform_to_terrain           = spline->GetConformToTerrain();
         float terrain_offset              = spline->GetTerrainOffset();
+        bool grade_limit_enabled          = spline->GetGradeLimitEnabled();
+        float max_grade_degrees           = spline->GetMaxGradeDegrees();
+        float max_cut                     = spline->GetMaxCut();
+        float grade_smoothing             = spline->GetGradeSmoothing();
+        float smoothing_length            = spline->GetSmoothingLength();
+        bool embankment_enabled           = spline->GetEmbankmentEnabled();
+        float embankment_slope_degrees    = spline->GetEmbankmentSlopeDegrees();
+        float embankment_max_height       = spline->GetEmbankmentMaxHeight();
+        bool carve_terrain                = spline->GetCarveTerrain();
+        float carve_bed_drop              = spline->GetCarveBedDrop();
+        float carve_fill_slope_degrees    = spline->GetCarveFillSlopeDegrees();
+        float carve_cut_slope_degrees     = spline->GetCarveCutSlopeDegrees();
+        float carve_max_shoulder          = spline->GetCarveMaxShoulder();
         bool mesh_enabled                 = spline->GetMeshEnabled();
         float inst_spacing                = spline->GetInstanceSpacing();
         bool inst_align                   = spline->GetAlignInstancesToSpline();
@@ -2884,6 +2897,76 @@ void Properties::ShowSpline(spartan::Spline* spline) const
             if (property_float("Terrain Offset", &terrain_offset, 0.05f, 0.05f, 10.0f, "lift above ground and water, keeps the mesh from z fighting", "%.2f m"))
             {
                 spline->SetTerrainOffset(terrain_offset);
+            }
+
+            if (property_toggle("Grade Limit", &grade_limit_enabled, "ramp up before a hill instead of tracking it, keeps the road drivable"))
+            {
+                spline->SetGradeLimitEnabled(grade_limit_enabled);
+            }
+
+            if (grade_limit_enabled)
+            {
+                if (property_float("Max Grade", &max_grade_degrees, 0.5f, 1.0f, 45.0f, "steepest slope a vehicle should ever face along the road", "%.1f deg"))
+                {
+                    spline->SetMaxGradeDegrees(max_grade_degrees);
+                }
+                if (property_float("Max Cut", &max_cut, 0.1f, 0.0f, 50.0f, "how deep the road may sink into a hill before it has to ramp instead", "%.2f m"))
+                {
+                    spline->SetMaxCut(max_cut);
+                }
+                if (property_float("Grade Smoothing", &grade_smoothing, 0.05f, 0.0f, 1.0f, "how much of the smoothed profile to take over the raw terrain drape", "%.2f"))
+                {
+                    spline->SetGradeSmoothing(grade_smoothing);
+                }
+                if (property_float("Smoothing Length", &smoothing_length, 5.0f, 0.0f, 600.0f, "arc length the elevation is averaged over, raise it to iron out rolling terrain", "%.0f m"))
+                {
+                    spline->SetSmoothingLength(smoothing_length);
+                }
+            }
+
+            if (current_profile == spartan::SplineProfile::Road)
+            {
+                if (property_toggle("Carve Terrain", &carve_terrain, "grade the ground to meet the road, moving or deleting the road puts it back"))
+                {
+                    spline->SetCarveTerrain(carve_terrain);
+                }
+
+                if (carve_terrain)
+                {
+                    if (property_float("Bed Drop", &carve_bed_drop, 0.01f, 0.0f, 2.0f, "how far the graded bed sits below the road surface", "%.2f m"))
+                    {
+                        spline->SetCarveBedDrop(carve_bed_drop);
+                    }
+                    if (property_float("Fill Slope", &carve_fill_slope_degrees, 0.5f, 5.0f, 85.0f, "angle of the embankment where the road stands above the ground", "%.1f deg"))
+                    {
+                        spline->SetCarveFillSlopeDegrees(carve_fill_slope_degrees);
+                    }
+                    if (property_float("Cut Slope", &carve_cut_slope_degrees, 0.5f, 5.0f, 85.0f, "angle of the cut face where the road sits below the ground", "%.1f deg"))
+                    {
+                        spline->SetCarveCutSlopeDegrees(carve_cut_slope_degrees);
+                    }
+                    if (property_float("Max Shoulder", &carve_max_shoulder, 1.0f, 0.0f, 300.0f, "how far the cut and fill faces may reach out from the road", "%.0f m"))
+                    {
+                        spline->SetCarveMaxShoulder(carve_max_shoulder);
+                    }
+                }
+
+                if (property_toggle("Embankment", &embankment_enabled, "fill the gap between a raised deck and the ground with sloped banks"))
+                {
+                    spline->SetEmbankmentEnabled(embankment_enabled);
+                }
+
+                if (embankment_enabled)
+                {
+                    if (property_float("Bank Slope", &embankment_slope_degrees, 0.5f, 5.0f, 89.0f, "angle of the fill slope, steeper means less spread", "%.1f deg"))
+                    {
+                        spline->SetEmbankmentSlopeDegrees(embankment_slope_degrees);
+                    }
+                    if (property_float("Bank Max Height", &embankment_max_height, 0.5f, 0.0f, 100.0f, "above this the deck stops banking and reads as a viaduct", "%.1f m"))
+                    {
+                        spline->SetEmbankmentMaxHeight(embankment_max_height);
+                    }
+                }
             }
         }
 

@@ -65,6 +65,17 @@ namespace spartan
         math::Vector3 up;
         float t        = 0.0f;
         float distance = 0.0f;
+
+        // how far the deck sits above the ground at each edge, drives the embankment skirt
+        float fill_left  = 0.0f;
+        float fill_right = 0.0f;
+    };
+
+    // one point of the finished road deck in world space, this is what the terrain grades itself to
+    struct SplineCarveSample
+    {
+        math::Vector3 position;
+        float half_width = 0.0f;
     };
 
     class Spline : public Component
@@ -154,6 +165,42 @@ namespace spartan
         float GetTerrainOffset() const                { return m_terrain_offset; }
         void SetTerrainOffset(float offset)           { m_terrain_offset = offset; }
 
+        // grade limiting, keeps the longitudinal slope drivable instead of tracking the terrain
+        bool GetGradeLimitEnabled() const             { return m_grade_limit_enabled; }
+        void SetGradeLimitEnabled(bool enabled)       { m_grade_limit_enabled = enabled; }
+        float GetMaxGradeDegrees() const              { return m_max_grade_degrees; }
+        void SetMaxGradeDegrees(float degrees)        { m_max_grade_degrees = degrees; }
+        float GetMaxCut() const                       { return m_max_cut; }
+        void SetMaxCut(float meters)                  { m_max_cut = meters; }
+        float GetGradeSmoothing() const               { return m_grade_smoothing; }
+        void SetGradeSmoothing(float strength)        { m_grade_smoothing = strength; }
+        float GetSmoothingLength() const              { return m_smoothing_length; }
+        void SetSmoothingLength(float meters)         { m_smoothing_length = meters; }
+
+        // terrain carving, the ground is graded to meet the road instead of the road chasing the ground
+        bool GetCarveTerrain() const                  { return m_carve_terrain; }
+        void SetCarveTerrain(bool carve)              { m_carve_terrain = carve; }
+        float GetCarveBedDrop() const                 { return m_carve_bed_drop; }
+        void SetCarveBedDrop(float meters)            { m_carve_bed_drop = meters; }
+        float GetCarveFillSlopeDegrees() const        { return m_carve_fill_slope_degrees; }
+        void SetCarveFillSlopeDegrees(float degrees)  { m_carve_fill_slope_degrees = degrees; }
+        float GetCarveCutSlopeDegrees() const         { return m_carve_cut_slope_degrees; }
+        void SetCarveCutSlopeDegrees(float degrees)   { m_carve_cut_slope_degrees = degrees; }
+        float GetCarveMaxShoulder() const             { return m_carve_max_shoulder; }
+        void SetCarveMaxShoulder(float meters)        { m_carve_max_shoulder = meters; }
+
+        // finished deck in world space, cached on the last mesh build, empty when the road cannot carve
+        const std::vector<SplineCarveSample>& GetCarveSamples() const { return m_carve_samples; }
+        bool CarvesTerrain() const;
+
+        // embankment skirt, closes the gap between a raised deck and the ground
+        bool GetEmbankmentEnabled() const             { return m_embankment_enabled; }
+        void SetEmbankmentEnabled(bool enabled)       { m_embankment_enabled = enabled; }
+        float GetEmbankmentSlopeDegrees() const       { return m_embankment_slope_degrees; }
+        void SetEmbankmentSlopeDegrees(float degrees) { m_embankment_slope_degrees = degrees; }
+        float GetEmbankmentMaxHeight() const          { return m_embankment_max_height; }
+        void SetEmbankmentMaxHeight(float meters)     { m_embankment_max_height = meters; }
+
         // instancing properties
         float GetInstanceSpacing() const                        { return m_instance_spacing; }
         void SetInstanceSpacing(float spacing)                  { m_instance_spacing = spacing; }
@@ -214,6 +261,15 @@ namespace spartan
         // resolve the current profile into a set of 2d cross-section points (in right-up plane)
         std::vector<math::Vector2> GetProfilePoints() const;
         std::vector<math::Vector2> GetProfilePointsForWidth(float width) const;
+
+        // cross-section for one frame, extends down to the ground when the deck is raised
+        std::vector<math::Vector2> GetProfileForFrame(float width, float fill_left, float fill_right) const;
+
+        // whether the current settings add an embankment skirt to the cross-section
+        bool UsesEmbankment() const;
+
+        // keep the finished deck in world space so the terrain can grade itself to it
+        void CacheCarveSamples(const std::vector<SplineFrame>& frames);
 
         // whether the current profile forms a closed loop cross-section (e.g. tube)
         bool IsProfileClosed() const;
@@ -284,6 +340,29 @@ namespace spartan
         bool m_conform_to_terrain = false;
         float m_terrain_offset    = 0.25f;
 
+        // grade limiting
+        bool m_grade_limit_enabled = true;
+        float m_max_grade_degrees  = 8.0f;
+        float m_max_cut            = 20.0f;
+        float m_grade_smoothing    = 0.9f;
+        // arc length the elevation profile is averaged over, this is what stops the rollercoaster
+        float m_smoothing_length   = 160.0f;
+
+        // terrain carving
+        bool m_carve_terrain              = true;
+        float m_carve_bed_drop            = 0.15f;
+        float m_carve_fill_slope_degrees  = 33.0f;
+        float m_carve_cut_slope_degrees   = 45.0f;
+        float m_carve_max_shoulder        = 60.0f;
+        std::vector<SplineCarveSample> m_carve_samples;
+        // remembered so the destructor can release the carve without touching the dying entity
+        uint64_t m_carve_entity_id        = 0;
+
+        // embankment, steeper than the terrain fill slope so it hides inside the carved bank
+        bool m_embankment_enabled        = true;
+        float m_embankment_slope_degrees = 50.0f;
+        float m_embankment_max_height    = 8.0f;
+
         // attachment
         uint64_t m_source_spline_entity_id    = 0;
         Entity* m_source_spline_entity        = nullptr;
@@ -331,6 +410,19 @@ namespace spartan
         float m_prev_curb_height                        = 0.0f;
         bool m_prev_conform_to_terrain                  = false;
         float m_prev_terrain_offset                     = 0.0f;
+        bool m_prev_grade_limit_enabled                 = true;
+        float m_prev_max_grade_degrees                  = 0.0f;
+        float m_prev_max_cut                            = 0.0f;
+        float m_prev_grade_smoothing                    = 0.0f;
+        float m_prev_smoothing_length                   = 0.0f;
+        bool m_prev_embankment_enabled                  = true;
+        float m_prev_embankment_slope_degrees           = 0.0f;
+        float m_prev_embankment_max_height              = 0.0f;
+        bool m_prev_carve_terrain                       = true;
+        float m_prev_carve_bed_drop                     = 0.0f;
+        float m_prev_carve_fill_slope_degrees           = 0.0f;
+        float m_prev_carve_cut_slope_degrees            = 0.0f;
+        float m_prev_carve_max_shoulder                 = 0.0f;
         std::vector<math::Vector3> m_prev_control_points;
         SplineAttachMode m_prev_attach_mode             = SplineAttachMode::None;
         uint64_t m_prev_source_spline_entity_id         = 0;

@@ -3331,6 +3331,9 @@ namespace spartan
             m_max_y = 755.0f;
         }
     
+        // the heightfield is about to be rebuilt from scratch, the old road grading no longer applies
+        ClearRoadCarve();
+
         // 8 cpu jobs, 1 gpu upload on the main thread
         uint32_t job_count = 9;
         ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "generating terrain...");
@@ -3544,9 +3547,15 @@ namespace spartan
             CommitProps();
         }
 
-        if (m_spline_carve_dirty &&
-            !m_is_generating.load(memory_order_acquire) &&
-            !ProgressTracker::IsLoading())
+        const bool carves_can_run = !m_is_generating.load(memory_order_acquire) && !ProgressTracker::IsLoading();
+
+        // grade the ground before the props are re-evaluated, they key off the new surface
+        if (m_road_carve_dirty && carves_can_run)
+        {
+            RefreshSplineHeightCarves();
+        }
+
+        if (m_spline_carve_dirty && carves_can_run)
         {
             m_spline_carve_dirty = false;
             RefreshSplinePropCarves();
@@ -3643,7 +3652,6 @@ namespace spartan
         WorldHelpers::PopulateTerrainBiomeProps(this);
         m_is_generating.store(false, memory_order_release);
     }
-
 
     TerrainGridMapping Terrain::GetGridMapping() const
     {
@@ -4706,6 +4714,502 @@ namespace spartan
         m_spline_carve_dirty_ids.insert(spline_id);
     }
 
+    void Terrain::MarkSplineHeightCarvesDirty(uint64_t spline_id)
+    {
+        m_road_carve_dirty = true;
+        if (spline_id == 0)
+        {
+            m_road_carve_dirty_all = true;
+            return;
+        }
+
+        m_road_carve_dirty_ids.insert(spline_id);
+    }
+
+    // drop the carve record without restoring, the caller is rebuilding the heightfield from scratch
+    void Terrain::ClearRoadCarve()
+    {
+        m_road_carve_delta.clear();
+        m_road_carve_bounds.clear();
+        m_road_carve_dirty_ids.clear();
+        m_road_carve_dirty     = false;
+        m_road_carve_dirty_all = false;
+    }
+
+    bool Terrain::SampleHeightBase(float world_x, float world_z, float& height_out) const
+    {
+        if (!SampleHeight(world_x, world_z, height_out))
+        {
+            return false;
+        }
+
+        if (m_road_carve_delta.size() != m_positions.size() || m_dense_width < 2 || m_dense_height < 2)
+        {
+            return true;
+        }
+
+        float local_x = world_x;
+        float local_z = world_z;
+        if (Entity* entity = GetEntity())
+        {
+            const Vector3 local = entity->GetMatrix().Inverted() * Vector3(world_x, 0.0f, world_z);
+            local_x = local.x;
+            local_z = local.z;
+        }
+
+        // bilinear over the carve delta, mirrors TerrainSystem::SampleHeight so the two stay aligned
+        const TerrainGridMapping mapping = GetGridMapping();
+        const float gx = (local_x + mapping.offset_x) / mapping.scale_x;
+        const float gz = (local_z + mapping.offset_z) / mapping.scale_z;
+        const int ix   = clamp(static_cast<int>(floorf(gx)), 0, static_cast<int>(m_dense_width) - 2);
+        const int iz   = clamp(static_cast<int>(floorf(gz)), 0, static_cast<int>(m_dense_height) - 2);
+        const float fx = clamp(gx - static_cast<float>(ix), 0.0f, 1.0f);
+        const float fz = clamp(gz - static_cast<float>(iz), 0.0f, 1.0f);
+
+        const size_t row0 = static_cast<size_t>(iz) * m_dense_width;
+        const size_t row1 = row0 + m_dense_width;
+        const float d00   = m_road_carve_delta[row0 + ix];
+        const float d10   = m_road_carve_delta[row0 + ix + 1];
+        const float d01   = m_road_carve_delta[row1 + ix];
+        const float d11   = m_road_carve_delta[row1 + ix + 1];
+        const float top   = d00 + fx * (d10 - d00);
+        const float bottom = d01 + fx * (d11 - d01);
+
+        height_out -= top + fz * (bottom - top);
+        return true;
+    }
+
+    // one road ready to be stamped into the dense grid, everything already in terrain local space
+    struct RoadCarveJob
+    {
+        uint64_t id = 0;
+        std::vector<Vector3> points;
+        std::vector<float> half_widths;
+        float bed_drop   = 0.0f;
+        float fill_slope = 0.0f;
+        float cut_slope  = 0.0f;
+        float shoulder   = 0.0f;
+        std::array<int32_t, 4> bounds = { 0, -1, 0, -1 };
+    };
+
+    void Terrain::RefreshSplineHeightCarves()
+    {
+        m_road_carve_dirty = false;
+
+        if (!HasHeightfield())
+        {
+            m_road_carve_dirty_ids.clear();
+            m_road_carve_dirty_all = false;
+            return;
+        }
+
+        const size_t cell_count = m_positions.size();
+        if (m_road_carve_delta.size() != cell_count)
+        {
+            m_road_carve_delta.assign(cell_count, 0.0f);
+            m_road_carve_bounds.clear();
+            m_road_carve_dirty_all = true;
+        }
+
+        const TerrainGridMapping mapping = GetGridMapping();
+
+        // the flat bench the carve holds either side of the deck, it must span at least one grid cell
+        // or bilinear interpolation between vertices can climb straight over the road surface
+        const float plateau = 0.75f * max(mapping.scale_x, mapping.scale_z);
+
+        Matrix world_to_local = Matrix::Identity;
+        float world_to_local_scale = 1.0f;
+        if (Entity* entity = GetEntity())
+        {
+            world_to_local = entity->GetMatrix().Inverted();
+            const Vector3 origin = world_to_local * Vector3::Zero;
+            world_to_local_scale = ((world_to_local * Vector3::Right) - origin).Length();
+            if (world_to_local_scale < 1e-4f)
+            {
+                world_to_local_scale = 1.0f;
+            }
+        }
+
+        const int32_t grid_max_x = static_cast<int32_t>(m_dense_width) - 1;
+        const int32_t grid_max_z = static_cast<int32_t>(m_dense_height) - 1;
+
+        auto to_grid_bounds = [&](float min_x, float min_z, float max_x, float max_z)
+        {
+            std::array<int32_t, 4> bounds;
+            bounds[0] = clamp(static_cast<int32_t>(floorf((min_x + mapping.offset_x) / mapping.scale_x)), 0, grid_max_x);
+            bounds[1] = clamp(static_cast<int32_t>(ceilf ((max_x + mapping.offset_x) / mapping.scale_x)), 0, grid_max_x);
+            bounds[2] = clamp(static_cast<int32_t>(floorf((min_z + mapping.offset_z) / mapping.scale_z)), 0, grid_max_z);
+            bounds[3] = clamp(static_cast<int32_t>(ceilf ((max_z + mapping.offset_z) / mapping.scale_z)), 0, grid_max_z);
+            return bounds;
+        };
+
+        // collect every road that grades the ground and convert its deck into terrain local space
+        std::vector<RoadCarveJob> jobs;
+        for (Entity* entity : World::GetEntities())
+        {
+            if (!entity)
+            {
+                continue;
+            }
+
+            Spline* spline = entity->GetComponent<Spline>();
+            if (!spline || !spline->CarvesTerrain())
+            {
+                continue;
+            }
+
+            const std::vector<SplineCarveSample>& samples = spline->GetCarveSamples();
+            if (samples.size() < 2)
+            {
+                continue;
+            }
+
+            RoadCarveJob job;
+            job.id         = entity->GetObjectId();
+            job.bed_drop   = spline->GetCarveBedDrop();
+            job.fill_slope = tanf(clamp(spline->GetCarveFillSlopeDegrees(), 5.0f, 85.0f) * deg_to_rad);
+            job.cut_slope  = tanf(clamp(spline->GetCarveCutSlopeDegrees(),  5.0f, 85.0f) * deg_to_rad);
+            job.shoulder   = max(spline->GetCarveMaxShoulder(), plateau);
+
+            job.points.reserve(samples.size());
+            job.half_widths.reserve(samples.size());
+
+            float min_x = numeric_limits<float>::max();
+            float min_z = numeric_limits<float>::max();
+            float max_x = -numeric_limits<float>::max();
+            float max_z = -numeric_limits<float>::max();
+
+            for (const SplineCarveSample& sample : samples)
+            {
+                const Vector3 local = world_to_local * sample.position;
+                const float half    = sample.half_width * world_to_local_scale;
+                job.points.push_back(local);
+                job.half_widths.push_back(half);
+
+                const float reach = half + job.shoulder;
+                min_x = min(min_x, local.x - reach);
+                max_x = max(max_x, local.x + reach);
+                min_z = min(min_z, local.z - reach);
+                max_z = max(max_z, local.z + reach);
+            }
+
+            job.bounds = to_grid_bounds(min_x, min_z, max_x, max_z);
+            jobs.push_back(move(job));
+        }
+
+        // the dirty region is wherever a road used to be plus wherever it is now, roads that vanished
+        // only contribute their old footprint so the ground there springs back
+        int32_t rect_x0 = grid_max_x;
+        int32_t rect_x1 = 0;
+        int32_t rect_z0 = grid_max_z;
+        int32_t rect_z1 = 0;
+        bool has_rect   = false;
+
+        auto grow_rect = [&](const std::array<int32_t, 4>& bounds)
+        {
+            if (bounds[1] < bounds[0] || bounds[3] < bounds[2])
+            {
+                return;
+            }
+
+            rect_x0  = min(rect_x0, bounds[0]);
+            rect_x1  = max(rect_x1, bounds[1]);
+            rect_z0  = min(rect_z0, bounds[2]);
+            rect_z1  = max(rect_z1, bounds[3]);
+            has_rect = true;
+        };
+
+        std::unordered_map<uint64_t, std::array<int32_t, 4>> new_bounds;
+        for (const RoadCarveJob& job : jobs)
+        {
+            new_bounds[job.id] = job.bounds;
+
+            if (m_road_carve_dirty_all || m_road_carve_dirty_ids.count(job.id) != 0)
+            {
+                grow_rect(job.bounds);
+            }
+        }
+
+        for (const auto& previous : m_road_carve_bounds)
+        {
+            const bool vanished = new_bounds.find(previous.first) == new_bounds.end();
+            if (vanished || m_road_carve_dirty_all || m_road_carve_dirty_ids.count(previous.first) != 0)
+            {
+                grow_rect(previous.second);
+            }
+        }
+
+        m_road_carve_bounds    = move(new_bounds);
+        m_road_carve_dirty_ids.clear();
+        m_road_carve_dirty_all = false;
+
+        if (!has_rect)
+        {
+            return;
+        }
+
+        const uint32_t rect_width  = static_cast<uint32_t>(rect_x1 - rect_x0 + 1);
+        const uint32_t rect_height = static_cast<uint32_t>(rect_z1 - rect_z0 + 1);
+
+        // put the ground back the way it was before any road touched this region
+        for (int32_t z = rect_z0; z <= rect_z1; z++)
+        {
+            const size_t row = static_cast<size_t>(z) * m_dense_width;
+            for (int32_t x = rect_x0; x <= rect_x1; x++)
+            {
+                const size_t index = row + static_cast<size_t>(x);
+                m_positions[index].y   -= m_road_carve_delta[index];
+                m_road_carve_delta[index] = 0.0f;
+            }
+        }
+
+        // two envelopes, the highest fill cone and the lowest cut cone
+        // the cut cone holds a flat plateau one grid cell wide around every road point, which is what
+        // guarantees the carved surface can never interpolate up through the deck between vertices
+        const size_t scratch_count = static_cast<size_t>(rect_width) * rect_height;
+        std::vector<float> raise_to(scratch_count, -numeric_limits<float>::max());
+        std::vector<float> lower_to(scratch_count,  numeric_limits<float>::max());
+
+        for (const RoadCarveJob& job : jobs)
+        {
+            if (job.bounds[1] < rect_x0 || job.bounds[0] > rect_x1 ||
+                job.bounds[3] < rect_z0 || job.bounds[2] > rect_z1)
+            {
+                continue;
+            }
+
+            for (size_t s = 0; s + 1 < job.points.size(); s++)
+            {
+                const Vector3& a = job.points[s];
+                const Vector3& b = job.points[s + 1];
+                const float half_a = job.half_widths[s];
+                const float half_b = job.half_widths[s + 1];
+                const float reach  = max(half_a, half_b) + job.shoulder;
+
+                const int32_t sx0 = max(static_cast<int32_t>(floorf((min(a.x, b.x) - reach + mapping.offset_x) / mapping.scale_x)), rect_x0);
+                const int32_t sx1 = min(static_cast<int32_t>(ceilf ((max(a.x, b.x) + reach + mapping.offset_x) / mapping.scale_x)), rect_x1);
+                const int32_t sz0 = max(static_cast<int32_t>(floorf((min(a.z, b.z) - reach + mapping.offset_z) / mapping.scale_z)), rect_z0);
+                const int32_t sz1 = min(static_cast<int32_t>(ceilf ((max(a.z, b.z) + reach + mapping.offset_z) / mapping.scale_z)), rect_z1);
+
+                if (sx1 < sx0 || sz1 < sz0)
+                {
+                    continue;
+                }
+
+                const float dx = b.x - a.x;
+                const float dz = b.z - a.z;
+                const float segment_length_sq = dx * dx + dz * dz;
+
+                for (int32_t z = sz0; z <= sz1; z++)
+                {
+                    const size_t row        = static_cast<size_t>(z) * m_dense_width;
+                    const size_t scratch_row = static_cast<size_t>(z - rect_z0) * rect_width;
+
+                    for (int32_t x = sx0; x <= sx1; x++)
+                    {
+                        const size_t index = row + static_cast<size_t>(x);
+                        const Vector3& cell = m_positions[index];
+
+                        float t = 0.0f;
+                        if (segment_length_sq > 1e-8f)
+                        {
+                            t = ((cell.x - a.x) * dx + (cell.z - a.z) * dz) / segment_length_sq;
+                            t = clamp(t, 0.0f, 1.0f);
+                        }
+
+                        const float px = a.x + dx * t;
+                        const float pz = a.z + dz * t;
+                        const float ox = cell.x - px;
+                        const float oz = cell.z - pz;
+                        const float distance = sqrtf(ox * ox + oz * oz);
+
+                        const float half = half_a + (half_b - half_a) * t;
+                        if (distance > half + job.shoulder)
+                        {
+                            continue;
+                        }
+
+                        const size_t scratch = scratch_row + static_cast<size_t>(x - rect_x0);
+                        const float bed      = (a.y + (b.y - a.y) * t) - job.bed_drop;
+
+                        // fill cone, highest one wins so an embankment survives a neighbouring dip
+                        const float fill_over = max(0.0f, distance - half);
+                        raise_to[scratch] = max(raise_to[scratch], bed - fill_over * job.fill_slope);
+
+                        // cut cone, lowest one wins, the plateau keeps it at bed level for a whole grid
+                        // cell around the road so bilinear interpolation can never climb over the deck
+                        const float cut_over = max(0.0f, distance - half - plateau);
+                        lower_to[scratch] = min(lower_to[scratch], bed + cut_over * job.cut_slope);
+                    }
+                }
+            }
+        }
+
+        // resolve both envelopes against the untouched ground
+        for (int32_t z = rect_z0; z <= rect_z1; z++)
+        {
+            const size_t row         = static_cast<size_t>(z) * m_dense_width;
+            const size_t scratch_row = static_cast<size_t>(z - rect_z0) * rect_width;
+
+            for (int32_t x = rect_x0; x <= rect_x1; x++)
+            {
+                const size_t scratch = scratch_row + static_cast<size_t>(x - rect_x0);
+                if (lower_to[scratch] == numeric_limits<float>::max())
+                {
+                    continue;
+                }
+
+                const size_t index = row + static_cast<size_t>(x);
+                const float base   = m_positions[index].y;
+
+                float target = max(base, raise_to[scratch]);
+                target       = min(target, lower_to[scratch]);
+
+                m_road_carve_delta[index] = target - base;
+                m_positions[index].y      = target;
+            }
+        }
+
+        if (!m_height_data.empty() && m_height_data.size() == m_positions.size())
+        {
+            TerrainSystem::SyncHeightDataFromPositions(m_height_data, m_positions);
+        }
+
+        // repair only what moved, plus a ring so the normals on the seam are recomputed too
+        const float pad = 2.0f * max(mapping.scale_x, mapping.scale_z);
+        const float min_x = static_cast<float>(rect_x0) * mapping.scale_x - mapping.offset_x - pad;
+        const float max_x = static_cast<float>(rect_x1) * mapping.scale_x - mapping.offset_x + pad;
+        const float min_z = static_cast<float>(rect_z0) * mapping.scale_z - mapping.offset_z - pad;
+        const float max_z = static_cast<float>(rect_z1) * mapping.scale_z - mapping.offset_z + pad;
+
+        PatchTilesInRegion(min_x, min_z, max_x, max_z);
+        RebuildPhysicsInRegion(min_x, min_z, max_x, max_z);
+        BakeHeightMapTexture();
+        PushToRenderer();
+    }
+
+    void Terrain::PatchTilesInRegion(float local_min_x, float local_min_z, float local_max_x, float local_max_z)
+    {
+        if (!m_mesh || m_tile_offsets.empty() || !HasHeightfield())
+        {
+            return;
+        }
+
+        const TerrainGridMapping mapping = GetGridMapping();
+        const uint32_t n   = max(m_tile_count, 1u);
+        const float tile_w = max(mapping.extent_x / static_cast<float>(n), 0.001f);
+        const float tile_d = max(mapping.extent_z / static_cast<float>(n), 0.001f);
+
+        const int tx0 = max(static_cast<int>(floorf((local_min_x + mapping.offset_x) / tile_w)), 0);
+        const int tz0 = max(static_cast<int>(floorf((local_min_z + mapping.offset_z) / tile_d)), 0);
+        const int tx1 = min(static_cast<int>(floorf((local_max_x + mapping.offset_x) / tile_w)), static_cast<int>(n) - 1);
+        const int tz1 = min(static_cast<int>(floorf((local_max_z + mapping.offset_z) / tile_d)), static_cast<int>(n) - 1);
+
+        vector<RHI_Vertex_PosTexNorTan>& verts = m_mesh->GetVertices();
+        unordered_set<uint32_t> touched;
+
+        for (int tz = tz0; tz <= tz1; tz++)
+        {
+            for (int tx = tx0; tx <= tx1; tx++)
+            {
+                const uint32_t tile_index = static_cast<uint32_t>(tz) * n + static_cast<uint32_t>(tx);
+                if (tile_index >= m_mesh->GetSubMeshCount() || tile_index >= m_tile_offsets.size())
+                {
+                    continue;
+                }
+
+                const Vector3& offset = m_tile_offsets[tile_index];
+                const SubMesh& sub    = m_mesh->GetSubMesh(tile_index);
+                for (const MeshLod& lod : sub.lods)
+                {
+                    if (lod.vertex_count == 0)
+                    {
+                        continue;
+                    }
+
+                    for (uint32_t i = 0; i < lod.vertex_count; i++)
+                    {
+                        RHI_Vertex_PosTexNorTan& vertex = verts[lod.vertex_offset + i];
+                        const float lx = vertex.pos[0] + offset.x;
+                        const float lz = vertex.pos[2] + offset.z;
+                        if (lx < local_min_x || lx > local_max_x || lz < local_min_z || lz > local_max_z)
+                        {
+                            continue;
+                        }
+
+                        vertex.pos[1] = TerrainSystem::SampleHeight(m_positions, m_dense_width, m_dense_height, lx, lz, mapping);
+                        vertex.set_normal(TerrainSystem::SampleNormal(m_positions, m_dense_width, m_dense_height, lx, lz, mapping));
+                    }
+
+                    m_mesh->UploadVertexRange(lod.vertex_offset, lod.vertex_count);
+                }
+
+                m_mesh->RefreshLodBounds(tile_index);
+                touched.insert(tile_index);
+            }
+        }
+
+        if (!m_entity_ptr)
+        {
+            return;
+        }
+
+        for (Entity* child : m_entity_ptr->GetChildren())
+        {
+            const int index = ParseTileIndex(child);
+            if (index < 0 || touched.find(static_cast<uint32_t>(index)) == touched.end())
+            {
+                continue;
+            }
+
+            if (Render* render = child->GetComponent<Render>())
+            {
+                render->SetMesh(m_mesh.get(), static_cast<uint32_t>(index));
+            }
+        }
+    }
+
+    void Terrain::RebuildPhysicsInRegion(float local_min_x, float local_min_z, float local_max_x, float local_max_z)
+    {
+        if (!m_entity_ptr)
+        {
+            return;
+        }
+
+        const TerrainGridMapping mapping = GetGridMapping();
+        const uint32_t n   = max(m_tile_count, 1u);
+        const float tile_w = max(mapping.extent_x / static_cast<float>(n), 0.001f);
+        const float tile_d = max(mapping.extent_z / static_cast<float>(n), 0.001f);
+
+        const int tx0 = max(static_cast<int>(floorf((local_min_x + mapping.offset_x) / tile_w)), 0);
+        const int tz0 = max(static_cast<int>(floorf((local_min_z + mapping.offset_z) / tile_d)), 0);
+        const int tx1 = min(static_cast<int>(floorf((local_max_x + mapping.offset_x) / tile_w)), static_cast<int>(n) - 1);
+        const int tz1 = min(static_cast<int>(floorf((local_max_z + mapping.offset_z) / tile_d)), static_cast<int>(n) - 1);
+
+        unordered_set<uint32_t> touched;
+        for (int tz = tz0; tz <= tz1; tz++)
+        {
+            for (int tx = tx0; tx <= tx1; tx++)
+            {
+                touched.insert(static_cast<uint32_t>(tz) * n + static_cast<uint32_t>(tx));
+            }
+        }
+
+        for (Entity* child : m_entity_ptr->GetChildren())
+        {
+            const int index = ParseTileIndex(child);
+            if (index < 0 || touched.find(static_cast<uint32_t>(index)) == touched.end())
+            {
+                continue;
+            }
+
+            if (Physics* physics = child->GetComponent<Physics>())
+            {
+                physics->Rebuild();
+            }
+        }
+    }
+
     void Terrain::RefreshSplinePropCarves()
     {
         if (m_prop_mask_pixels.empty() || m_map_width < 2 || m_map_height < 2)
@@ -4896,7 +5400,15 @@ namespace spartan
                 half_width += spline->GetSidewalkWidth();
             }
 
-            const float radius = half_width + carve_margin;
+            // a road that grades the ground moves it out from under nearby props, clear a strip wide
+            // enough to cover the visible part of the cut and fill faces
+            float carve_reach = 0.0f;
+            if (spline->CarvesTerrain())
+            {
+                carve_reach = min(spline->GetCarveMaxShoulder(), 12.0f);
+            }
+
+            const float radius = half_width + carve_margin + carve_reach;
             const float length = max(spline->GetLength(), 1.0f);
             const uint32_t samples = max(2u, static_cast<uint32_t>(ceilf(length / max(radius * 0.5f, pixel_size))));
 
@@ -7949,6 +8461,7 @@ namespace spartan
         }
 
         Clear();
+        ClearRoadCarve();
 
         TerrainSystem::CreateFlatHeightfield(
             m_height_data,
@@ -8068,7 +8581,10 @@ namespace spartan
         const float z1     = z0 + tile_d;
         const float eps    = 0.001f;
 
-        auto restore = [this, x0, x1, z0, z1, eps](uint32_t start, uint32_t end)
+        // the baseline predates any road grading, so the carve record for this tile has to go with it
+        const bool has_carve = m_road_carve_delta.size() == m_positions.size();
+
+        auto restore = [this, x0, x1, z0, z1, eps, has_carve](uint32_t start, uint32_t end)
         {
             for (uint32_t i = start; i < end; i++)
             {
@@ -8079,9 +8595,18 @@ namespace spartan
                 }
 
                 m_positions[i].y = m_positions_baseline[i].y;
+                if (has_carve)
+                {
+                    m_road_carve_delta[i] = 0.0f;
+                }
             }
         };
         ThreadPool::ParallelLoop(restore, static_cast<uint32_t>(m_positions.size()));
+
+        if (has_carve)
+        {
+            MarkSplineHeightCarvesDirty();
+        }
 
         if (!m_height_data.empty() && m_height_data.size() == m_positions.size())
         {

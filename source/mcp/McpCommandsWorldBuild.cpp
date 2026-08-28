@@ -742,6 +742,10 @@ namespace spartan::mcp_world_build
         json += ",\"road_width\":" + std::to_string(spline->GetRoadWidth());
         json += ",\"profile\":" + json_string(spline_profile_to_name(spline->GetProfile()));
         json += ",\"conform_to_terrain\":" + json_bool(spline->GetConformToTerrain());
+        json += ",\"grade_limit_enabled\":" + json_bool(spline->GetGradeLimitEnabled());
+        json += ",\"max_grade_degrees\":" + std::to_string(spline->GetMaxGradeDegrees());
+        json += ",\"max_cut\":" + std::to_string(spline->GetMaxCut());
+        json += ",\"carve_terrain\":" + json_bool(spline->GetCarveTerrain());
         json += ",\"closed_loop\":" + json_bool(spline->GetClosedLoop());
         json += ",\"mesh_enabled\":" + json_bool(spline->GetMeshEnabled());
         json += "}";
@@ -846,6 +850,150 @@ namespace spartan::mcp_world_build
                 spline->SetSidewalkEnabled(true);
             }
         }
+
+        if (const std::optional<std::string> grade_limit = get_argument(request, "grade_limit_enabled"))
+        {
+            bool enabled = true;
+            if (!parse_bool(*grade_limit, enabled))
+            {
+                error = "invalid grade_limit_enabled";
+                return false;
+            }
+            spline->SetGradeLimitEnabled(enabled);
+        }
+
+        if (const std::optional<std::string> max_grade = get_argument(request, "max_grade_degrees"))
+        {
+            float parsed = 0.0f;
+            if (!parse_float(*max_grade, parsed) || parsed <= 0.0f || parsed > 60.0f)
+            {
+                error = "invalid max_grade_degrees";
+                return false;
+            }
+            spline->SetMaxGradeDegrees(parsed);
+        }
+
+        if (const std::optional<std::string> max_cut = get_argument(request, "max_cut"))
+        {
+            float parsed = 0.0f;
+            if (!parse_float(*max_cut, parsed) || parsed < 0.0f)
+            {
+                error = "invalid max_cut";
+                return false;
+            }
+            spline->SetMaxCut(parsed);
+        }
+
+        if (const std::optional<std::string> smoothing = get_argument(request, "grade_smoothing"))
+        {
+            float parsed = 0.0f;
+            if (!parse_float(*smoothing, parsed) || parsed < 0.0f || parsed > 1.0f)
+            {
+                error = "invalid grade_smoothing";
+                return false;
+            }
+            spline->SetGradeSmoothing(parsed);
+        }
+
+        if (const std::optional<std::string> length = get_argument(request, "smoothing_length"))
+        {
+            float parsed = 0.0f;
+            if (!parse_float(*length, parsed) || parsed < 0.0f)
+            {
+                error = "invalid smoothing_length";
+                return false;
+            }
+            spline->SetSmoothingLength(parsed);
+        }
+
+        if (const std::optional<std::string> embankment = get_argument(request, "embankment_enabled"))
+        {
+            bool enabled = true;
+            if (!parse_bool(*embankment, enabled))
+            {
+                error = "invalid embankment_enabled";
+                return false;
+            }
+            spline->SetEmbankmentEnabled(enabled);
+        }
+
+        if (const std::optional<std::string> bank_slope = get_argument(request, "embankment_slope_degrees"))
+        {
+            float parsed = 0.0f;
+            if (!parse_float(*bank_slope, parsed) || parsed < 5.0f || parsed > 89.0f)
+            {
+                error = "invalid embankment_slope_degrees";
+                return false;
+            }
+            spline->SetEmbankmentSlopeDegrees(parsed);
+        }
+
+        if (const std::optional<std::string> bank_height = get_argument(request, "embankment_max_height"))
+        {
+            float parsed = 0.0f;
+            if (!parse_float(*bank_height, parsed) || parsed < 0.0f)
+            {
+                error = "invalid embankment_max_height";
+                return false;
+            }
+            spline->SetEmbankmentMaxHeight(parsed);
+        }
+
+        if (const std::optional<std::string> carve = get_argument(request, "carve_terrain"))
+        {
+            bool enabled = true;
+            if (!parse_bool(*carve, enabled))
+            {
+                error = "invalid carve_terrain";
+                return false;
+            }
+            spline->SetCarveTerrain(enabled);
+        }
+
+        if (const std::optional<std::string> bed_drop = get_argument(request, "carve_bed_drop"))
+        {
+            float parsed = 0.0f;
+            if (!parse_float(*bed_drop, parsed) || parsed < 0.0f || parsed > 5.0f)
+            {
+                error = "invalid carve_bed_drop";
+                return false;
+            }
+            spline->SetCarveBedDrop(parsed);
+        }
+
+        if (const std::optional<std::string> fill_slope = get_argument(request, "carve_fill_slope_degrees"))
+        {
+            float parsed = 0.0f;
+            if (!parse_float(*fill_slope, parsed) || parsed < 5.0f || parsed > 85.0f)
+            {
+                error = "invalid carve_fill_slope_degrees";
+                return false;
+            }
+            spline->SetCarveFillSlopeDegrees(parsed);
+        }
+
+        if (const std::optional<std::string> cut_slope = get_argument(request, "carve_cut_slope_degrees"))
+        {
+            float parsed = 0.0f;
+            if (!parse_float(*cut_slope, parsed) || parsed < 5.0f || parsed > 85.0f)
+            {
+                error = "invalid carve_cut_slope_degrees";
+                return false;
+            }
+            spline->SetCarveCutSlopeDegrees(parsed);
+        }
+
+        if (const std::optional<std::string> shoulder = get_argument(request, "carve_max_shoulder"))
+        {
+            float parsed = 0.0f;
+            if (!parse_float(*shoulder, parsed) || parsed < 0.0f)
+            {
+                error = "invalid carve_max_shoulder";
+                return false;
+            }
+            spline->SetCarveMaxShoulder(parsed);
+        }
+
         return true;
     }
 
