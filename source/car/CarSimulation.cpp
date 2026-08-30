@@ -2307,12 +2307,15 @@ namespace car
 
     float Simulation::read_driveline_gearbox_speed() const
     {
-            if (!has_physical_driveline())
+            if (!has_physical_driveline() || !body)
             {
                 return gearbox_input_angular_velocity;
             }
             PxVec3 axis = multibody.driveline.gearbox_output->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
-            return multibody.driveline.gearbox_output->getAngularVelocity().dot(axis);
+            // spin is relative to the chassis, the writers set chassis angular velocity plus axis spin
+            // so reading the absolute value back fed the chassis roll rate into the gearbox every substep
+            PxVec3 spin = multibody.driveline.gearbox_output->getAngularVelocity() - body->getAngularVelocity();
+            return spin.dot(axis);
     }
 
 
@@ -3176,7 +3179,7 @@ namespace car
 
             if (shift_cooldown > 0.0f)
             {
-                shift_cooldown -= dt;
+                shift_cooldown = PxMax(shift_cooldown - dt, 0.0f);
             }
 
             if (is_shifting)
@@ -3438,6 +3441,7 @@ namespace car
             // pedal closed means coast, blip may still raise revs for a matched downshift
             bool coasting = drive_input <= spec.input_deadzone;
             float idle_angular_velocity = spec.engine_idle_rpm * PxPi * 2.0f / 60.0f;
+            float max_angular_velocity = PxMax(spec.engine_max_rpm * PxPi * 2.0f / 60.0f, idle_angular_velocity);
             float clutch_capacity = PxMax(spec.clutch_max_torque, 10.0f);
             float clutch_damping = clutch_capacity / 12.0f;
             float electric_target = is_in_forward_gear() ? get_electric_motor_torque(engine_rpm, input.throttle) * assisted_actuators.engine_torque_scale : 0.0f;
@@ -3454,7 +3458,12 @@ namespace car
             axle_drive_torque = 0.0f;
             engine_brake_torque = 0.0f;
 
-            int substep_count = PxClamp(static_cast<int>(ceilf(dt / 0.0025f)), 1, 16);
+            // the clutch damper couples two small inertias, so the substep has to resolve it or the slip
+            // rings, damping times substep times the coupling compliance must stay at or under one
+            float coupling_compliance = 1.0f / engine_inertia + 1.0f / driveline_inertia;
+            float clutch_substep = 1.0f / PxMax(clutch_damping * coupling_compliance, 1e-6f);
+            float target_substep = PxMin(0.0025f, clutch_substep);
+            int substep_count = PxClamp(static_cast<int>(ceilf(dt / target_substep)), 1, 32);
             float substep = dt / static_cast<float>(substep_count);
             float accumulated_axle_torque = 0.0f;
             float accumulated_powertrain_reaction = 0.0f;
@@ -3474,6 +3483,10 @@ namespace car
                 accumulated_engine_torque += combustion_torque + idle_torque;
                 float clutch_slip = engine_angular_velocity - gearbox_input_angular_velocity;
                 float clutch_torque = PxClamp(clutch_slip * clutch_damping, -clutch_capacity * clutch, clutch_capacity * clutch);
+                // a damper cannot pull the two speeds past each other in one substep, without this cap the
+                // explicit integration flipped the slip sign every substep and dragged the engine to a stall
+                float non_overshoot_torque = fabsf(clutch_slip) / PxMax(substep * coupling_compliance, 1e-6f);
+                clutch_torque = PxClamp(clutch_torque, -non_overshoot_torque, non_overshoot_torque);
                 float shaft_torque = 0.0f;
                 float shaft_speed_difference = 0.0f;
                 // open driveline during shifts or with clutch out, shaft must not keep shoving the axle
@@ -3557,7 +3570,9 @@ namespace car
                 float friction_torque = spec.engine_friction * engine_angular_velocity + pumping_torque;
                 float engine_acceleration = (combustion_torque + idle_torque - friction_torque - clutch_torque) / engine_inertia;
                 float previous_engine_angular_velocity = engine_angular_velocity;
-                engine_angular_velocity = PxClamp(engine_angular_velocity + engine_acceleration * substep, 0.0f, spec.engine_max_rpm * PxPi * 4.0f / 60.0f);
+                // idle is the floor, the torque curve is only defined at or above it and there is no
+                // stall or restart model, so a dragged down engine could never come back
+                engine_angular_velocity = PxClamp(engine_angular_velocity + engine_acceleration * substep, idle_angular_velocity, max_angular_velocity);
                 engine_acceleration = (engine_angular_velocity - previous_engine_angular_velocity) / substep;
 
                 float efficiency = PxClamp(spec.drivetrain_efficiency, 0.1f, 1.0f);
@@ -3708,7 +3723,7 @@ namespace car
 
             if (downshift_blip_timer > 0.0f)
             {
-                downshift_blip_timer -= dt;
+                downshift_blip_timer = PxMax(downshift_blip_timer - dt, 0.0f);
             }
 
             if (is_shifting)
