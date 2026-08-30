@@ -505,6 +505,7 @@ namespace spartan::car_hud
             static pill_anim drs_anim;
             static pill_anim hbrk_anim;
             static pill_anim turbo_anim;
+            static pill_anim lock_anim;
 
             const bool abs_on     = physics->GetAbsEnabled();
             const bool abs_active = physics->IsAbsActiveAny();
@@ -516,6 +517,7 @@ namespace spartan::car_hud
             const bool drs_on     = physics->GetDrsEnabled();
             const bool drs_active = physics->GetDrsActive();
             const bool hbrk_active = handbrake > 0.1f;
+            const bool lock_active = physics->IsBurnoutActive();
             const bool turbo_active =
                 turbo_enabled &&
                 boost_bar > 0.5f;
@@ -538,6 +540,10 @@ namespace spartan::car_hud
                 : (turbo_enabled ? pill_state::idle : pill_state::off);
             const pill_state hbrk_state =
                 hbrk_active
+                ? pill_state::active
+                : pill_state::idle;
+            const pill_state lock_state =
+                lock_active
                 ? pill_state::active
                 : pill_state::idle;
 
@@ -578,6 +584,13 @@ namespace spartan::car_hud
                 "HBRK",
                 hbrk_state,
                 hbrk_anim,
+                accent_danger,
+                false
+            );
+            add_pill(
+                "LOCK",
+                lock_state,
+                lock_anim,
                 accent_danger,
                 false
             );

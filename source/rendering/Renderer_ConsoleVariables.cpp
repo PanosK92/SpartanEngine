@@ -205,6 +205,7 @@ namespace spartan
     TConsoleVar<float> cvar_anisotropy                     ("r.anisotropy",                     16.0f,                                                   "anisotropic filtering, always 16x",      on_anisotropy_change);
     TConsoleVar<float> cvar_tonemapping                    ("r.tonemapping",                    4.0f,                                                    "tonemapping algorithm index");
     TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau), "aa/upsampling method index",              on_antialiasing_change);
+    TConsoleVar<float> cvar_dlss_reactivity            ("r.dlss_reactivity",               1.0f,                                                    "dlss current-frame bias, 1 discards history on disocclusion and particles");
     // display
     TConsoleVar<float> cvar_hdr                            ("r.hdr",                            0.0f,                                                    "enable hdr output",                       on_hdr_change);
     TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,                                                    "display gamma");

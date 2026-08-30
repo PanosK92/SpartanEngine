@@ -69,7 +69,8 @@ namespace spartan
             RHI_Texture* tex_color,
             RHI_Texture* tex_depth,
             RHI_Texture* tex_velocity,
-            RHI_Texture* tex_output
+            RHI_Texture* tex_output,
+            RHI_Texture* tex_bias = nullptr
         );
 
         // nrd, guides + signal in/out, light_direction only for shadows

@@ -106,6 +106,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_anisotropy;
     extern TConsoleVar<float> cvar_tonemapping;
     extern TConsoleVar<float> cvar_antialiasing_upsampling;
+    extern TConsoleVar<float> cvar_dlss_reactivity;
     extern TConsoleVar<float> cvar_hdr;
     extern TConsoleVar<float> cvar_gamma;
     extern TConsoleVar<float> cvar_vsync;
@@ -445,6 +446,7 @@ namespace spartan
         void Pass_Tonemap(RHI_Texture* tex_in, RHI_Texture* tex_out, bool force_sdr = false);
         void Pass_Bloom(RHI_Texture* tex_in, RHI_Texture* tex_out);
         void Pass_AA_Upscale(uint32_t eye_layer = rhi_all_mips);
+        void Pass_Upscaler_Reactivity();
         void Pass_AutoExposure(RHI_Texture* tex_in);
         // passes - utility
         void Pass_Blit(RHI_Texture* tex_in, RHI_Texture* tex_out, const bool gpu_timing = true);

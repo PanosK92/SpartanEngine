@@ -3532,6 +3532,14 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
         float wind_influence       = particle_system->GetWindInfluence();
         float velocity_inheritance = particle_system->GetVelocityInheritance();
         float velocity_stretch     = particle_system->GetVelocityStretch();
+        float vortex_strength      = particle_system->GetVortexStrength();
+        float vortex_radius        = particle_system->GetVortexRadius();
+        float thermal_strength     = particle_system->GetThermalStrength();
+        float thermal_decay        = particle_system->GetThermalDecay();
+        float rollup_strength      = particle_system->GetRollupStrength();
+        float wake_strength        = particle_system->GetWakeStrength();
+        float churn_strength       = particle_system->GetChurnStrength();
+        float collision_clearance  = particle_system->GetCollisionClearance();
         float spawn_burst          = particle_system->GetSpawnBurst();
         float flipbook_rows        = static_cast<float>(particle_system->GetFlipbookRows());
         float flipbook_columns     = static_cast<float>(particle_system->GetFlipbookColumns());
@@ -3574,6 +3582,14 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
             wind_influence = particle_system->GetWindInfluence();
             velocity_inheritance = particle_system->GetVelocityInheritance();
             velocity_stretch = particle_system->GetVelocityStretch();
+            vortex_strength = particle_system->GetVortexStrength();
+            vortex_radius = particle_system->GetVortexRadius();
+            thermal_strength = particle_system->GetThermalStrength();
+            thermal_decay = particle_system->GetThermalDecay();
+            rollup_strength = particle_system->GetRollupStrength();
+            wake_strength = particle_system->GetWakeStrength();
+            churn_strength = particle_system->GetChurnStrength();
+            collision_clearance = particle_system->GetCollisionClearance();
             color_picker_particle_start->SetColor(particle_system->GetStartColor());
             color_picker_particle_end->SetColor(particle_system->GetEndColor());
         }
@@ -3690,6 +3706,46 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
         if (property_float("Stretch", &velocity_stretch, 0.01f, 0.0f, 5.0f, "screen-space stretch along particle velocity", "%.2f"))
         {
             particle_system->SetVelocityStretch(velocity_stretch);
+        }
+
+        if (property_float("Vortex", &vortex_strength, 0.1f, -400.0f, 400.0f, "orbit acceleration around the vortex axis, scripts drive the centre and axis", "%.1f"))
+        {
+            particle_system->SetVortexStrength(vortex_strength);
+        }
+
+        if (property_float("Vortex Radius", &vortex_radius, 0.01f, 0.0f, 20.0f, "tread radius, the boundary layer decays outside it", "%.2f m"))
+        {
+            particle_system->SetVortexRadius(vortex_radius);
+        }
+
+        if (property_float("Thermal", &thermal_strength, 0.05f, 0.0f, 50.0f, "buoyant lift from hot smoke, in meters per second squared", "%.2f"))
+        {
+            particle_system->SetThermalStrength(thermal_strength);
+        }
+
+        if (property_float("Thermal Decay", &thermal_decay, 0.05f, 0.0f, 20.0f, "how fast the plume cools by mixing, higher fades the lift sooner", "%.2f"))
+        {
+            particle_system->SetThermalDecay(thermal_decay);
+        }
+
+        if (property_float("Rollup", &rollup_strength, 0.01f, 0.0f, 10.0f, "shear rollup of a jet running along the ground, this is what curls the plume up", "%.2f"))
+        {
+            particle_system->SetRollupStrength(rollup_strength);
+        }
+
+        if (property_float("Wake Pair", &wake_strength, 0.05f, 0.0f, 100.0f, "counter rotating vortex pair trailing the emitter, needs motion to appear", "%.2f"))
+        {
+            particle_system->SetWakeStrength(wake_strength);
+        }
+
+        if (property_float("Churn", &churn_strength, 0.001f, 0.0f, 0.1f, "boils the texture from the inside over time, needs a texture to be set", "%.3f"))
+        {
+            particle_system->SetChurnStrength(churn_strength);
+        }
+
+        if (property_float("Collision Clearance", &collision_clearance, 0.01f, 0.0f, 2.0f, "how far a particle must get from the emitter before it collides with the world, raise it when the emitter sits inside geometry such as an exhaust tip", "%.2f m"))
+        {
+            particle_system->SetCollisionClearance(collision_clearance);
         }
 
         layout::separator();

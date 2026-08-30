@@ -975,7 +975,8 @@ namespace spartan
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
-        RHI_Texture* tex_output
+        RHI_Texture* tex_output,
+        RHI_Texture* tex_bias
     )
     {
         RHI_CommandList* cmd_list = RHI_Device::Cmd();
@@ -1003,6 +1004,10 @@ namespace spartan
         tex_color->SetLayout(RHI_Image_Layout::General, cmd_list);
         tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
         tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list);
+        if (tex_bias)
+        {
+            tex_bias->SetLayout(RHI_Image_Layout::General, cmd_list);
+        }
         cmd_list->PrepareForExternalWrite(tex_output);
         cmd_list->FlushBarriers();
 
@@ -1010,6 +1015,7 @@ namespace spartan
         NVSDK_NGX_Resource_VK depth    = dlss::to_ngx(tex_depth, false);
         NVSDK_NGX_Resource_VK velocity = dlss::to_ngx(tex_velocity, false);
         NVSDK_NGX_Resource_VK output   = dlss::to_ngx(tex_output, true);
+        NVSDK_NGX_Resource_VK bias     = {};
 
         const float render_w = static_cast<float>(common::resolution_render_width);
         const float render_h = static_cast<float>(common::resolution_render_height);
@@ -1030,6 +1036,11 @@ namespace spartan
         eval.InMVScaleY                       =  0.5f * render_h;
         eval.InPreExposure                    = 1.0f;
         eval.InExposureScale                  = 1.0f;
+        if (tex_bias)
+        {
+            bias = dlss::to_ngx(tex_bias, false);
+            eval.pInBiasCurrentColorMask = &bias;
+        }
         if (common::cb_frame)
         {
             eval.InFrameTimeDeltaInMsec = common::cb_frame->delta_time * 1000.0f;
@@ -1044,6 +1055,10 @@ namespace spartan
             cmd_list->AdoptComputeShaderResource(tex_color);
             cmd_list->AdoptComputeShaderResource(tex_velocity);
             cmd_list->AdoptComputeShaderResource(tex_depth);
+            if (tex_bias)
+            {
+                cmd_list->AdoptComputeShaderResource(tex_bias);
+            }
             cmd_list->AdoptUnorderedAccess(tex_output);
             cmd_list->restore_after_external_pass();
             return;
@@ -1052,6 +1067,10 @@ namespace spartan
         cmd_list->AdoptComputeShaderResource(tex_color);
         cmd_list->AdoptComputeShaderResource(tex_velocity);
         cmd_list->AdoptComputeShaderResource(tex_depth);
+        if (tex_bias)
+        {
+            cmd_list->AdoptComputeShaderResource(tex_bias);
+        }
         cmd_list->AdoptUnorderedAccess(tex_output);
         cmd_list->restore_after_external_pass();
     #endif

@@ -34,6 +34,12 @@ static const uint particle_blend_additive      = 2u;
 static const uint particle_lighting_lit        = 0u;
 static const uint particle_lighting_unlit      = 1u;
 static const uint particle_lighting_emissive   = 2u;
+// how much of the skylight a billboard collects, kept in step with volume_sky_fill so the billboard
+// and volumetric paths do not disagree on smoke color when an emitter switches between them
+static const float particle_sky_fill           = 0.14f;
+// how fast the texture churn boils, and how many cycles of it fit across one puff
+static const float churn_speed                 = 1.1f;
+static const float churn_frequency             = 5.0f;
 
 // xorshift-based rng
 float rng(uint seed)
@@ -147,6 +153,114 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 static const float collision_restitution = 0.3;  // velocity retained after bounce
 static const float collision_offset      = 0.05; // push off surface, must exceed depth buffer precision to prevent re-triggering
 
+// diameter gained per metre travelled through still air, the entrainment hypothesis for a turbulent jet
+// puts this near a fifth for the radius of a real plume, this is well under that because a particle here
+// is one parcel of a plume rather than the whole thing and the authored ramp still carries the envelope
+static const float entrainment_rate      = 0.06;
+// diameter gained per second once a parcel has stalled, real smoke keeps spreading by turbulent
+// diffusion after it has given up its momentum, and that slow thinning is what dissipates a trail
+static const float entrainment_diffusion = 0.12;
+
+// curl noise
+//
+// the field this replaced was a single frequency triple of sines and cosines, and its divergence is not
+// zero, so wherever it was positive a parcel was pulled apart and wherever it was negative it was
+// squeezed, which inflates a puff into a smooth ball no matter how strong the field is. the curl of a
+// vector potential is divergence free by construction, so it can only shear, fold and stretch a parcel
+// and never change its volume, and that is what tears a plume into filaments instead of lumps.
+//
+// three octaves, because turbulence has texture at every scale and one swirl frequency reads as a
+// pattern. the amplitude falls as the cube root of the length scale across the inertial range, so each
+// octave that halves the eddy size carries about four fifths of the velocity of the one below it.
+static const uint  curl_octaves      = 3u;
+static const float curl_frequency    = 0.55; // coarsest eddy is a little under two metres across
+static const float curl_falloff      = 0.79; // two to the minus one third
+static const float curl_drift_speed  = 0.42;
+
+// each octave drifts in its own direction, a single shared direction slides the whole field past the
+// smoke like a projected texture and the eye reads the slide rather than the swirl
+static const float3 curl_drift[3] =
+{
+    float3( 0.31, -0.62,  0.19),
+    float3(-0.47,  0.28, -0.55),
+    float3( 0.22,  0.51,  0.44)
+};
+
+float curl_hash(float3 p)
+{
+    p = frac(p * 0.3183099 + 0.1);
+    p *= 17.0;
+    return frac(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+float curl_value_noise(float3 p)
+{
+    float3 i = floor(p);
+    float3 f = frac(p);
+    f = f * f * (3.0 - 2.0 * f);
+
+    float2 a = float2(0.0, 1.0);
+    return lerp(lerp(lerp(curl_hash(i + a.xxx), curl_hash(i + a.yxx), f.x),
+                     lerp(curl_hash(i + a.xyx), curl_hash(i + a.yyx), f.x), f.y),
+                lerp(lerp(curl_hash(i + a.xxy), curl_hash(i + a.yxy), f.x),
+                     lerp(curl_hash(i + a.xyy), curl_hash(i + a.yyy), f.x), f.y), f.z);
+}
+
+// three scalar fields offset far enough apart on the lattice that they share no features, together they
+// are the vector potential the curl is taken of
+float3 curl_potential(float3 p)
+{
+    return float3(curl_value_noise(p),
+                  curl_value_noise(p + float3( 71.3, 19.7,  43.1)),
+                  curl_value_noise(p + float3(-37.9, 61.5, -11.3)));
+}
+
+// central differences, the discrete curl of a discrete potential is divergence free on the same stencil,
+// so the property that matters survives the finite difference
+float3 curl_noise(float3 p)
+{
+    const float e = 0.35; // in cells, wide enough that the hash lattice does not alias through
+
+    float3 px0 = curl_potential(p - float3(e, 0.0, 0.0));
+    float3 px1 = curl_potential(p + float3(e, 0.0, 0.0));
+    float3 py0 = curl_potential(p - float3(0.0, e, 0.0));
+    float3 py1 = curl_potential(p + float3(0.0, e, 0.0));
+    float3 pz0 = curl_potential(p - float3(0.0, 0.0, e));
+    float3 pz1 = curl_potential(p + float3(0.0, 0.0, e));
+
+    float inv = 1.0 / (2.0 * e);
+
+    return float3((py1.z - py0.z) - (pz1.y - pz0.y),
+                  (pz1.x - pz0.x) - (px1.z - px0.z),
+                  (px1.y - px0.y) - (py1.x - py0.x)) * inv;
+}
+
+// a parcel cannot be advected by structure finer than itself, it only gets sheared inside, so the fine
+// octaves fade out as a puff entrains air and grows, which is why a young wisp boils and an old billow
+// only drifts on the coarse eddies
+float3 curl_turbulence(float3 position, float size, float time)
+{
+    float3 sum  = 0.0;
+    float  freq = curl_frequency;
+    float  amp  = 1.0;
+
+    [unroll]
+    for (uint i = 0u; i < curl_octaves; i++)
+    {
+        float eddy   = 1.0 / freq;
+        float cutoff = saturate(eddy / max(size, 0.001) - 0.5);
+        if (cutoff > 0.0)
+        {
+            sum += curl_noise(position * freq + curl_drift[i] * time * curl_drift_speed) * amp * cutoff;
+        }
+
+        freq *= 2.0;
+        amp  *= curl_falloff;
+    }
+
+    return sum;
+}
+
 void apply_depth_collision(inout Particle p, inout float3 new_pos, EmitterParams emitter)
 {
     float4 clip_new = mul(float4(new_pos, 1.0), buffer_frame.view_projection);
@@ -218,6 +332,122 @@ void apply_depth_collision(inout Particle p, inout float3 new_pos, EmitterParams
     }
 }
 
+#ifdef RAY_TRACING_ENABLED
+
+// six axis probes, a surface found along any of them pushes back the other way
+static const float3 collision_probe[6] =
+{
+    float3( 1.0,  0.0,  0.0), float3(-1.0,  0.0,  0.0),
+    float3( 0.0,  1.0,  0.0), float3( 0.0, -1.0,  0.0),
+    float3( 0.0,  0.0,  1.0), float3( 0.0,  0.0, -1.0)
+};
+
+float trace_surface_distance(float3 origin, float3 direction, float max_distance)
+{
+    RayDesc ray;
+    ray.Origin    = origin;
+    ray.Direction = direction;
+    ray.TMin      = 0.001;
+    ray.TMax      = max(max_distance, 0.002);
+
+    RayQuery<RAY_FLAG_FORCE_OPAQUE> query;
+    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
+    query.Proceed();
+
+    return query.CommittedStatus() == COMMITTED_NOTHING ? -1.0 : query.CommittedRayT();
+}
+
+// an inline ray query returns a hit distance but no surface normal, that needs vertex data and a hit
+// shader, so the normal is recovered from the probe set instead, each probe that lands close pushes back
+// along its own direction and the sum behaves like the gradient of a distance field, which also picks a
+// sensible direction in a corner where any single ray would just choose one of the two walls
+void apply_traced_collision(inout Particle p, inout float3 new_pos, EmitterParams emitter)
+{
+    float dt     = emitter.delta_time;
+    float radius = max(p.size * 0.5, 0.05);
+    float travel = distance(new_pos, p.position);
+
+    // the reach covers this frame's travel as well as the particle itself, so a fast puff cannot tunnel
+    // through a thin wall between two frames the way a position only test does
+    float reach = radius + travel + 0.06;
+
+    float3 push    = 0.0;
+    float  nearest = reach;
+    uint   hits    = 0u;
+    bool   pinched = false;
+
+    [unroll]
+    for (uint a = 0u; a < 3u; a++)
+    {
+        float3 dir_pos = collision_probe[a * 2u + 0u];
+        float3 dir_neg = collision_probe[a * 2u + 1u];
+        float  d_pos   = trace_surface_distance(p.position, dir_pos, reach);
+        float  d_neg   = trace_surface_distance(p.position, dir_neg, reach);
+
+        // geometry on both sides of one axis and closer than the particle is a gap it does not fit
+        // through, an exhaust recess is exactly that, and pushing out of one wall only drives it into
+        // the other so it sits in the pipe jittering instead of leaving
+        if (d_pos >= 0.0 && d_neg >= 0.0 && min(d_pos, d_neg) < radius)
+        {
+            pinched = true;
+        }
+
+        if (d_pos >= 0.0)
+        {
+            float w = 1.0 - saturate(d_pos / reach);
+            push   -= dir_pos * w * w;
+            nearest = min(nearest, d_pos);
+            hits++;
+        }
+
+        if (d_neg >= 0.0)
+        {
+            float w = 1.0 - saturate(d_neg / reach);
+            push   -= dir_neg * w * w;
+            nearest = min(nearest, d_neg);
+            hits++;
+        }
+    }
+
+    // enclosed on nearly every side, so there is no direction left to resolve towards, let it travel and
+    // sort itself out once it is clear rather than pinning it here
+    if (pinched || hits >= 5u || length(push) <= 0.0001)
+    {
+        return;
+    }
+
+    float3 normal   = normalize(push);
+    float clearance = nearest - radius;
+    float proximity = 1.0 - saturate(clearance / max(reach - radius, 0.001));
+
+    // smoke does not bounce off a wall, it flows along it, so the part of the velocity heading into the
+    // surface is removed rather than reflected, a bounce is right for a spark and wrong for a gas
+    float into_surface = dot(p.velocity, normal);
+    if (into_surface < 0.0)
+    {
+        p.velocity -= normal * into_surface * proximity;
+    }
+
+    // displaced air has nowhere left to go but along the surface, this is the wall jet that spreads
+    // burnout smoke outward across the tarmac instead of letting it stack up against it
+    float3 tangent    = p.velocity - normal * dot(p.velocity, normal);
+    float tangent_len = length(tangent);
+    if (tangent_len > 0.001)
+    {
+        p.velocity += (tangent / tangent_len) * proximity * emitter.rollup_strength * dt;
+    }
+
+    new_pos = p.position + p.velocity * dt;
+
+    // hard contact, a particle never ends a frame inside geometry
+    if (clearance < 0.0)
+    {
+        new_pos += normal * (collision_offset - clearance);
+    }
+}
+
+#endif
+
 void apply_moving_emitter_push(inout Particle p, EmitterParams emitter)
 {
     float speed = length(emitter.emitter_velocity);
@@ -256,6 +486,125 @@ void apply_moving_emitter_push(inout Particle p, EmitterParams emitter)
     p.velocity -= wake_dir * dot(p.velocity, wake_dir) * strength * 0.04 * emitter.delta_time;
 }
 
+// height of the shear layer where the wall jet meets the still air above it
+static const float rollup_layer_height = 0.55;
+// how far downstream the shoulder vortices stay coherent
+static const float wake_pair_length    = 4.0;
+
+// smoking tire aerodynamics
+//
+// four mechanisms carry the look in real footage. the tread injects the smoke as a wall jet running
+// backwards along the tarmac at a fraction of the slip speed. that jet decelerates into the still air
+// above it and the shear layer between them rolls up, which is what stands the plume on end behind the
+// tire. the smoke gasses off rubber near three hundred degrees so it climbs on its own. and once the
+// car is moving the tread shoulders shed a counter rotating pair with streamwise axes that drags the
+// wake outboard and lifts it.
+//
+// the tread also drags a boundary layer around itself by no slip, but that layer is thin and the
+// tarmac blocks the bottom of the loop while separation kills it over the crown, so it is confined to
+// the rear lower quadrant rather than being a free orbit around the axle
+void apply_tire_aerodynamics(inout Particle p, EmitterParams emitter, float age)
+{
+    if (emitter.vortex_strength == 0.0 &&
+        emitter.rollup_strength <= 0.0 &&
+        emitter.thermal_strength <= 0.0 &&
+        emitter.wake_strength <= 0.0)
+    {
+        return;
+    }
+
+    float dt = emitter.delta_time;
+
+    // the emitter lives in the contact patch, so its own height is the tarmac datum
+    float  height     = max(p.position.y - emitter.position.y, 0.0);
+    float3 axis       = safe_normalize(emitter.vortex_axis, float3(1.0, 0.0, 0.0));
+    float3 horizontal = float3(p.velocity.x, 0.0, p.velocity.z);
+    float  jet_speed  = length(horizontal);
+    float  tire_radius = emitter.vortex_radius;
+
+    // tread boundary layer
+    if (emitter.vortex_strength != 0.0 && tire_radius > 0.0)
+    {
+        float3 rel    = p.position - emitter.vortex_center;
+        float  along  = dot(rel, axis);
+        float3 radial = rel - axis * along;
+        float  r      = length(radial);
+        if (r > 0.0001)
+        {
+            // no slip carries air around the tread, the layer is thin so it decays off the surface
+            float radial_fade = r <= tire_radius ? 1.0 : exp(-(r - tire_radius) / (tire_radius * 0.6));
+
+            // the swirl is only as wide as the tread
+            float axial_fade = saturate(1.0 - abs(along) / (tire_radius * 1.5));
+
+            // without the crown clamp the circulation carries smoke forward over the top of the wheel,
+            // which never happens because the flow has separated long before it gets there
+            float crown_fade = saturate(1.0 - rel.y / tire_radius);
+
+            float3 tangential = cross(axis, radial) / r;
+            p.velocity += tangential * emitter.vortex_strength * radial_fade * axial_fade * crown_fade * dt;
+        }
+    }
+
+    // shear rollup, emergent, this is the curl and it needs no hand placed vortex
+    if (emitter.rollup_strength > 0.0 && jet_speed > 0.001)
+    {
+        float ground_prox = saturate(1.0 - height / rollup_layer_height);
+        float lift        = jet_speed * ground_prox * emitter.rollup_strength;
+        p.velocity.y += lift * dt;
+
+        // the rise is bought with jet momentum, the sheet stalls as it stands up
+        p.velocity -= horizontal * (emitter.rollup_strength * ground_prox * 0.35) * dt;
+
+        // a wall jet cannot go down, so it fans sideways, and which way is decided by the side of the
+        // tread the parcel already sits on
+        float side = dot(p.position - emitter.position, axis) >= 0.0 ? 1.0 : -1.0;
+        p.velocity += axis * side * lift * 0.45 * dt;
+    }
+
+    // thermal, strong at birth then fading as cold air mixes in, the climb it already banked carries on
+    if (emitter.thermal_strength > 0.0)
+    {
+        p.velocity.y += emitter.thermal_strength * exp(-age * emitter.thermal_decay) * dt;
+    }
+
+    float travel_speed = length(emitter.emitter_velocity);
+    if (emitter.wake_strength <= 0.0 || travel_speed < 2.0 || tire_radius <= 0.0)
+    {
+        return;
+    }
+
+    // counter rotating shoulder pair
+    float3 travel = emitter.emitter_velocity / travel_speed;
+    float3 rel_e  = p.position - emitter.position;
+    float  behind = -dot(rel_e, travel);
+    if (behind < -0.2 || behind > wake_pair_length)
+    {
+        return;
+    }
+
+    // one core per shoulder, a tread half width outboard and just clear of the tarmac
+    float  side  = dot(rel_e, axis) >= 0.0 ? 1.0 : -1.0;
+    float3 core  = emitter.position + axis * side * tire_radius * 0.5 + float3(0.0, tire_radius * 0.6, 0.0);
+    float3 rel_c = p.position - core;
+    float3 plane = rel_c - travel * dot(rel_c, travel);
+    float  d     = length(plane);
+    if (d < 0.0001)
+    {
+        return;
+    }
+
+    // rankine core, and the pair diffuses as it trails away
+    float core_radius = tire_radius * 0.8;
+    float profile     = d < core_radius ? d / core_radius : core_radius / d;
+    float decay       = saturate(1.0 - behind / wake_pair_length);
+
+    // signing the axis by side is what makes the two cores counter rotate, each one then sweeps the
+    // ground level wake outboard and lifts it once it is clear of the tread
+    float3 spin = cross(travel * side, plane) / d;
+    p.velocity += spin * emitter.wake_strength * profile * decay * dt;
+}
+
 [numthreads(256, 1, 1)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
@@ -286,24 +635,71 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // air drag, smoke loses its launch momentum quickly and settles instead of flying in a straight line
     p.velocity *= saturate(1.0 - emitter.drag * dt);
 
-    // curl-like turbulence so the plume swirls and billows organically rather than expanding as a clean ball
-    float  ts   = (float)buffer_frame.time;
-    float3 tp   = p.position * 1.5;
-    float3 turb = float3(sin(tp.y + ts * 1.3) + cos(tp.z * 0.7 - ts),
-                         sin(tp.z + ts * 1.1) + cos(tp.x * 0.8 + ts),
-                         sin(tp.x + ts * 0.9) + cos(tp.y * 0.6 - ts));
-    p.velocity += turb * emitter.turbulence_strength * 0.55 * dt;
+    // entrainment
+    //
+    // a turbulent parcel grows by dragging ambient air in across its own surface, and the rate it does
+    // that at is set by how fast it is moving through that air. the air it swallows arrives with no
+    // momentum of its own, so the parcel keeps the momentum it was born with spread across a cross
+    // section that keeps growing, and the speed has to fall to pay for it. that coupling is what makes a
+    // real plume shoot out, balloon and stall, and it is missing when a fixed size ramp runs beside a
+    // fixed drag coefficient with neither knowing about the other, which is what produced a puff that
+    // reached its final size on a timer regardless of what it was doing
+    //
+    // a shrinking authored ramp is a spark or a flame tapering out, not a gas entraining air, so that
+    // keeps the plain interpolation and nothing here touches it
+    bool entrains = p.end_size > p.start_size;
+    if (entrains)
+    {
+        float3 relative = p.velocity - buffer_frame.wind * emitter.wind_influence;
+        float  size_old = max(p.size, 0.0001);
+        float  size_new = size_old + (entrainment_rate * length(relative) + entrainment_diffusion) * dt;
+
+        p.size = size_new;
+
+        // a parcel in a jet, not an isolated puff, so momentum spreads over a cross section rather than a
+        // volume and the exponent is one, an isolated puff would be three and stops far too abruptly
+        p.velocity *= size_old / size_new;
+    }
+
+    // divergence free turbulence, the plume shears and folds instead of inflating
+    // the clock is wrapped because the drift offset is multiplied by the octave frequency and an
+    // unwrapped one runs out of fractional precision after a while and the field starts to quantise
+    float ts = fmod((float)buffer_frame.time, 600.0);
+    p.velocity += curl_turbulence(p.position, p.size, ts) * emitter.turbulence_strength * dt;
     p.velocity += buffer_frame.wind * emitter.wind_influence * dt;
-    apply_moving_emitter_push(p, emitter);
+
+    float age_for_collision = 1.0 - saturate(p.lifetime / max(p.max_lifetime, 0.0001));
+    apply_tire_aerodynamics(p, emitter, age_for_collision);
+
+    // the shoulder pair already models this wake properly, the generic radial push would double it
+    if (emitter.wake_strength <= 0.0)
+    {
+        apply_moving_emitter_push(p, emitter);
+    }
 
     // predict next position
     float3 new_pos = p.position + p.velocity * dt;
 
     // fresh puffs need a short grace period to leave tight emitters such as exhaust tips
-    float age_for_collision = 1.0 - saturate(p.lifetime / max(p.max_lifetime, 0.0001));
     if (age_for_collision > 0.18)
     {
-        apply_depth_collision(p, new_pos, emitter);
+    #ifdef RAY_TRACING_ENABLED
+        if (emitter.collision_traced != 0u)
+        {
+            // an exhaust tip sits down inside the bodywork, so collision has to stay off until the
+            // particle has actually left the emitter or it fights the pipe it just came out of, this is a
+            // distance because the grace above is a fraction of lifetime and a slow puff covers almost no
+            // ground in that time while a scrubbing tire covers metres
+            if (distance(p.position, emitter.position) > emitter.collision_clearance)
+            {
+                apply_traced_collision(p, new_pos, emitter);
+            }
+        }
+        else
+    #endif
+        {
+            apply_depth_collision(p, new_pos, emitter);
+        }
     }
 
     // commit the new position
@@ -328,7 +724,13 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     p.color.a = min(p.color.a, lerp(p.color.a, emitter.end_color.a, end_pull));
     float life_left = saturate(p.lifetime / max(p.max_lifetime, 0.0001));
     p.color.a = min(p.color.a, emitter.start_color.a * smoothstep(0.0, 0.25, life_left));
-    p.size   = lerp(p.start_size, p.end_size, te);
+
+    // for an entraining parcel the authored ramp is a floor rather than the answer, so an effect still
+    // reaches the size it was authored to reach when it is moving too slowly to entrain its way there,
+    // and there is deliberately no ceiling, a parcel still growing at the end of its life is exactly what
+    // the tail of a dissipating trail looks like
+    float size_ramp = lerp(p.start_size, p.end_size, te);
+    p.size = entrains ? max(p.size, size_ramp) : size_ramp;
 
     particle_buffer_a[index] = p;
 }
@@ -351,6 +753,7 @@ struct ps_input
     float  age_t          : TEXCOORD7;
     float4 render_params  : TEXCOORD8; // blend mode, lighting mode, emissive strength, soft depth
     float4 flipbook       : TEXCOORD9; // rows, columns, fps, random seed
+    float  churn          : TEXCOORD10;
 };
 
 ps_input main_vs(uint vertex_id : SV_VertexID)
@@ -375,6 +778,7 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     o.age_t     = 0.0;
     o.render_params = float4((float)emitter.blend_mode, (float)emitter.lighting_mode, emitter.emissive_strength, emitter.soft_depth_scale);
     o.flipbook  = float4((float)emitter.flipbook_rows, (float)emitter.flipbook_columns, emitter.flipbook_fps, 0.0);
+    o.churn     = 0.0;
 
     Particle p = particle_buffer_a[index];
 
@@ -428,6 +832,7 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     o.age_t     = age_t;
     o.render_params = float4((float)emitter.blend_mode, (float)emitter.lighting_mode, emitter.emissive_strength, emitter.soft_depth_scale);
     o.flipbook  = float4((float)emitter.flipbook_rows, (float)emitter.flipbook_columns, emitter.flipbook_fps, rng(index * 1664525u + 1013904223u));
+    o.churn     = emitter.churn_strength;
     return o;
 }
 
@@ -561,7 +966,11 @@ float3 evaluate_particle_light(uint light_index, uint2 pixel, Surface surface, b
 
 float3 evaluate_particle_lighting(uint2 pixel, Surface surface)
 {
-    float3 ambient = surface.albedo * 0.08;
+    // skylight, the flat eight percent term had no illuminant at all so the warm sun was the only
+    // thing with a hue and smoke read brown, the divide by pi keeps it in the same units as the
+    // diffuse lobe below
+    float3 sky     = get_sky_fill_radiance() * particle_sky_fill / 3.14159265;
+    float3 ambient = surface.albedo * (0.02 + sky);
     float3 result  = ambient;
     uint total_lights = buffer_frame.cluster_light_count;
 
@@ -606,7 +1015,13 @@ float4 main_ps(ps_input input) : SV_Target0
     {
         discard;
     }
-    float falloff = 1.0 - dist * dist;
+
+    // an untextured particle gets its whole shape from this radial ramp, but a textured one already
+    // carries a silhouette in its alpha and multiplying the ramp over the top of it rounds every puff
+    // back into a smooth ball, which is what makes a dense plume read as a heap of spheres, so a
+    // textured particle only gets a thin edge feather to hide the circular cut
+    bool  textured = input.use_tex > 0.5;
+    float falloff  = textured ? saturate((1.0 - dist) * 3.0) : (1.0 - dist * dist);
 
     // soft depth test against the scene so billboards do not bleed through surfaces
     int2  pixel        = int2(input.position.xy);
@@ -619,12 +1034,27 @@ float4 main_ps(ps_input input) : SV_Target0
 
     float3 base_color = input.color;
     float alpha_mask  = 1.0;
-    if (input.use_tex > 0.5)
+    if (textured)
     {
         // rotate the sample coords so each particle shows the texture at its own angle
         float2 r_xy   = float2(input.local.x * input.rot.x - input.local.y * input.rot.y,
                                input.local.x * input.rot.y + input.local.y * input.rot.x);
         float2 tex_uv = r_xy * 0.5 + 0.5;
+
+        // churn, drag the sample coords around with a scrolling field so the inside of the puff boils
+        // while its outline holds, a still texture can only rotate and scale which is what makes smoke
+        // read as ambient fog no matter how good the flow field moving it is
+        if (input.churn > 0.0)
+        {
+            // the per particle seed offsets the phase, without it every puff in the plume boils in step
+            float  t    = (float)buffer_frame.time * churn_speed + input.flipbook.w * 6.28318530718;
+            float2 w    = tex_uv * churn_frequency;
+            float2 warp = float2(sin(w.y + t)       + cos(w.x * 1.7 - t * 0.8),
+                                 sin(w.x * 1.3 - t) + cos(w.y * 0.8 + t * 0.9));
+
+            // the boil coarsens as the puff expands and its fine structure is torn apart
+            tex_uv = saturate(tex_uv + warp * input.churn * (0.6 + input.age_t * 0.7));
+        }
 
         float rows    = max(input.flipbook.x, 1.0);
         float columns = max(input.flipbook.y, 1.0);

@@ -40,7 +40,7 @@ export const component_property_catalog = {
     notes: "controls volume bounds and audio reverb behavior",
   },
   particle_system: {
-    properties: ["preset", "max_particles", "emission_rate", "lifetime", "start_speed", "start_size", "end_size", "start_color", "end_color", "gravity_modifier", "emission_radius", "emission_direction", "emission_cone_angle", "directional_blend", "blend_mode", "lighting_mode", "emissive_strength", "soft_depth_scale", "drag", "turbulence_strength", "wind_influence", "velocity_inheritance", "velocity_stretch", "spawn_burst", "flipbook_rows", "flipbook_columns", "flipbook_fps", "effect_path"],
+    properties: ["preset", "max_particles", "emission_rate", "lifetime", "start_speed", "start_size", "end_size", "start_color", "end_color", "gravity_modifier", "emission_radius", "emission_direction", "emission_cone_angle", "directional_blend", "blend_mode", "lighting_mode", "emissive_strength", "soft_depth_scale", "drag", "turbulence_strength", "wind_influence", "velocity_inheritance", "velocity_stretch", "vortex_strength", "vortex_radius", "thermal_strength", "thermal_decay", "rollup_strength", "wake_strength", "churn_strength", "collision_clearance", "spawn_burst", "flipbook_rows", "flipbook_columns", "flipbook_fps", "effect_path"],
     notes: "controls emitter simulation, colors, motion, rendering, bursts, and flipbook playback",
   },
   skid_marks: {

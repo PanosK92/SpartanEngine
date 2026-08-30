@@ -113,6 +113,7 @@ namespace spartan
             TemporalPingPong cloud_history;
             TemporalPingPong ssao_history;
             TemporalPingPong fog_history;
+            TemporalPingPong particle_volume_history;
             bool     cloud_environment_dirty   = true;
             uint32_t cloud_environment_strip   = 0;
             bool     cloud_environment_baking  = false;

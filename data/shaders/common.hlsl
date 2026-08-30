@@ -113,6 +113,28 @@ float3 get_sun_radiance()
     return get_sun_color() * get_sun_intensity();
 }
 
+// skylight fill for participating media, light.color is only what survived extinction along the sun
+// ray, the energy the beam lost is exactly what the sky scattered and now pours into the medium from
+// every other direction, and it is blue by the same rayleigh curve that reddened the beam, this is
+// why real smoke and cloud read white under a low sun instead of taking its full orange, feeding the
+// extincted sun color back in as ambient tints the medium twice and turns white smoke brown
+float3 get_sky_fill_radiance()
+{
+    float3 transmittance = get_sun_color();
+    float  peak          = max(max(transmittance.r, transmittance.g), transmittance.b);
+    if (peak <= 0.0f)
+    {
+        // below the horizon there is no beam left to scatter
+        return 0.0f;
+    }
+
+    // the spectral complement on its own is far too saturated, real skylight is a soft blue grey
+    // because most of what reaches a surface has scattered many times and washed out, and a plume in
+    // shadow has nothing but this fill left so an aggressive tint here turns the whole thing cyan
+    float3 scattered = saturate(1.0f - transmittance / peak);
+    return get_sun_intensity() * peak * (0.85f + scattered * 0.30f);
+}
+
 // shared night radiometric levels, skysphere ambient and cloud night lighting both use these
 // so the panorama stays one coherent night exposure instead of detached layers
 static const float3 night_sky_zenith_rad  = float3(0.00009, 0.00015, 0.00030);

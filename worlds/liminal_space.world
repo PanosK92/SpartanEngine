@@ -1,147 +1,19 @@
 <?xml version="1.0"?>
-<World name="liminal_space" description="Shifts your frequency to a nearby reality">
+<World name="liminal_space" description="You noclipped out of reality, the level builds itself as you walk">
  <ConsoleVariables>
-  <Variable name="r.restir_pt" value="1.000000" />
+  <Variable name="r.fog" value="1.400000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="physics_body_camera" id="96622692557092671" active="true" position="-40.3457 6.70206 57.4194" rotation="0 0 0 1" scale="1 1 1">
+  <Entity name="physics_body_camera" id="96622692557092671" active="true" position="2.5 1.2 2.5" rotation="0 0 0 1" scale="1 1 1">
    <audio_source path="project/music/footsteps/footsteps_carpet.wav" is_3d="false" mute="false" loop="false" play_on_start="false" volume="0.5" pitch="1.16626024" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <Entity name="component_camera" id="96799266697307222" active="true" position="0 0.77 0" rotation="0.00738476 -0.963831 -0.0268561 -0.265056" scale="1 1 1">
+   <Entity name="component_camera" id="96799266697307222" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
     <camera exposure_mode="1" aperture="2.8" shutter_speed="0.0166666675" iso="800" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="4" flags="17" />
-    <script file_path="../worlds/footsteps.lua" Tick="" />
+    <script file_path="../worlds/footsteps.lua" />
    </Entity>
   </Entity>
-  <Entity name="Cylinder" id="11499718562595756533" active="true" position="6.8 6.2 -9.4" rotation="0 0 0 1" scale="1 12.32 1">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <render mesh_name="standard_cylinder" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
-  </Entity>
-  <Entity name="light_directional" id="312454911112735887" active="true" position="0 2.01 0.08" rotation="-0.93468 -0.0931935 -0.340548 -0.0414238" scale="1 -6.67 -42.99">
-   <light flags="3" light_type="0" color_r="1" color_g="0.72007829" color_b="0.482821107" temperature="3200" intensity="8" intensity_photometric="0" range="3.40282347e+38" angle="0.52359879" index="0" preset="2" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-  </Entity>
-  <Entity name="room_backroom" id="12292286771932980155" active="true" position="0 0 24.1" rotation="0 0 0 1" scale="1 1 1">
-   <Entity name="ceiling" id="12292264921962601496" active="true" position="-2.9 10.56 -0.120998" rotation="0 0 0 1" scale="120 1 120">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="ceiling_tiles" material_default="false" ovr_uv_tiling_x="0.100000001" ovr_uv_tiling_y="0.200000003" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="wall_1_2" id="12292399676186061409" active="true" position="2.95844 5.58 -13.8851" rotation="0 0 0 1" scale="1 8.96 7.86511">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="wallpaper" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="wall_1_1_1" id="11309908553965578417" active="true" position="49.2 5.58 -0.200001" rotation="0 0 0 1" scale="1 8.96 133.083">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="wallpaper" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="floor" id="14133852619626470948" active="true" position="-2.9 0.6 -0.121298" rotation="0 0 0 1" scale="128 1 128">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="carpet" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="wall_1_1_3_1_1" id="9014031982690862084" active="true" position="5 5.58 -60.0104" rotation="0 -0.707107 0 0.707107" scale="1 8.96 150.828">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="wallpaper" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="wall_1_1_3_1_1_1" id="4536289803824507937" active="true" position="-5.93423 5.58 -9.4213" rotation="0 -0.707107 0 0.707107" scale="1 8.96 16.7853">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="wallpaper" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="ramp" id="3714157728309935946" active="true" position="-20.7269 2.62982 -4.2" rotation="0.258584 -0.965989 1.49011e-08 4.91738e-07" scale="14 1 5.1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="carpet" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="wall_1_2_1" id="16402271924365634904" active="true" position="-62.1269 5.58 -0.121149" rotation="0 0 0 1" scale="1 8.96 137.639">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="wallpaper" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="wall_1_2_2" id="3754191856358671655" active="true" position="-14.8269 5.58 -0.121149" rotation="0 0 0 1" scale="1 8.96 19.6628">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="wallpaper" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="wall_1_1_3_1_1_1_1" id="8022262725717171231" active="true" position="1.3 5.58 58.7787" rotation="0 -0.707107 0 0.707107" scale="1 8.96 141.836">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="wallpaper" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="wall_1_1_3_1_1_1_2" id="5518534274049805424" active="true" position="-17.684 5.58 9.87871" rotation="0 -0.707107 0 0.707107" scale="0.97 8.96 6.71413">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="wallpaper" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="wall_1_2_3" id="16076758556419213544" active="true" position="2.95844 5.58 -0.121149" rotation="0 0 0 1" scale="1 8.96 19.6628">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="wallpaper" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="wall_1_1_3_1_1_1_2_1" id="5450932375704595448" active="true" position="-5.93423 5.58 9.87871" rotation="0 -0.707107 0 0.707107" scale="1 8.96 16.7853">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="wallpaper" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-  </Entity>
-  <Entity name="Cylinder_1" id="3020511838369535700" active="true" position="-29.6 6.2 0" rotation="0 0 0 1" scale="1 12.32 1">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <render mesh_name="standard_cylinder" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
-  </Entity>
-  <Entity name="Area" id="15433749284114940480" active="true" position="0 9.1 0" rotation="0.707282 0 0 0.706931" scale="1 1 1">
-   <light flags="1" light_type="3" color_r="1" color_g="0.653803825" color_b="0.342766613" temperature="2700" intensity="8" intensity_photometric="244020" range="82.8000031" angle="0.52359879" index="1" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   <Entity name="Quad" id="8912128754646494019" active="true" position="0 0 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_quad" sub_mesh_index="0" material_name="area_light_emissive" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-  </Entity>
-  <Entity name="Area_1" id="4344178989790944211" active="true" position="19.1 9.1 48.1" rotation="0.707282 0 0 0.706931" scale="1 1 1">
-   <light flags="1" light_type="3" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="1" intensity_photometric="244020" range="557.401001" angle="0.52359879" index="2" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   <Entity name="Quad" id="4344273018838813361" active="true" position="0 0 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_quad" sub_mesh_index="0" material_name="area_light_emissive" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-  </Entity>
-  <Entity name="Area_1_1" id="2540919726110367087" active="true" position="19.1 9.1 0" rotation="0.707282 0 0 0.706931" scale="1 1 1">
-   <light flags="1" light_type="3" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="1" intensity_photometric="244020" range="557.401001" angle="0.52359879" index="3" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   <Entity name="Quad" id="2540684954478654846" active="true" position="0 0 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_quad" sub_mesh_index="0" material_name="area_light_emissive" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-  </Entity>
-  <Entity name="Area_1_2" id="13774301228040694663" active="true" position="-44.9 9.1 48.1" rotation="0.707282 0 0 0.706931" scale="1 1 1">
-   <light flags="1" light_type="3" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="1" intensity_photometric="244020" range="557.401001" angle="0.52359879" index="4" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   <Entity name="Quad" id="13774430438290159076" active="true" position="0 0 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_quad" sub_mesh_index="0" material_name="area_light_emissive" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
+  <Entity name="backrooms_generator" id="7734000000000000001" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <script file_path="../worlds/backrooms.lua" />
   </Entity>
  </Entities>
 </World>

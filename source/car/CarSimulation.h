@@ -68,6 +68,8 @@ namespace car
         bool            abs_active[wheel_count] = {};
         float           tc_reduction            = 0.0f;
         bool            tc_active               = false;
+        bool            burnout_active          = false;
+        float           reverse_request_timer   = 0.0f;
         float           engine_rpm              = 800.0f;
         float           engine_rotation         = 0.0f;
         int             current_gear            = 1;
@@ -178,6 +180,7 @@ namespace car
         void clear_abs_state();
         float get_assisted_steering_target(float raw_input);
         void update_assist_controller(bool traction_requested, bool braking_requested, float dt);
+        void update_burnout(float forward_speed_ms);
 
         // lateral grip peaks at a slightly negative camber and falls off quadratically
         float get_camber_grip_factor(float camber);
@@ -400,6 +403,7 @@ namespace car
         bool get_tc_enabled();
         bool is_tc_active();
         float get_tc_reduction();
+        bool is_burnout_active();
         void set_manual_transmission(bool enabled);
         bool get_manual_transmission();
         void begin_shift(int direction);

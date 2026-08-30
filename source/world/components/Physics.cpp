@@ -1230,6 +1230,7 @@ namespace spartan
             "GetTcEnabled",                 &Physics::GetTcEnabled,
             "IsTcActive",                   &Physics::IsTcActive,
             "GetTcReduction",               &Physics::GetTcReduction,
+            "IsBurnoutActive",              &Physics::IsBurnoutActive,
 
             "SetTurboEnabled",              &Physics::SetTurboEnabled,
             "GetTurboEnabled",              &Physics::GetTurboEnabled,
@@ -3018,6 +3019,15 @@ namespace spartan
             return 0.0f;
         }
         return m_vehicle_simulation->get_tc_reduction();
+    }
+
+    bool Physics::IsBurnoutActive() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+        {
+            return false;
+        }
+        return m_vehicle_simulation->is_burnout_active();
     }
 
     void Physics::SetTurboEnabled(bool enabled)

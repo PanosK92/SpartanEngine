@@ -1,8 +1,13 @@
 local exhaust_fx = {}
 
-local smoke_rate_idle      = 36.0
-local smoke_rate_load      = 36.0
-local smoke_rate_overrun   = 44.0
+-- a warm modern petrol engine puts almost nothing visible out of the pipe, the plume that used to run at
+-- a constant thirty six a second whatever the car was doing was the wrong thing to be seeing at all, so
+-- the baseline is now barely there and the visibility is spent on the moments that actually produce
+-- smoke, an upshift dumping unburnt fuel into the exhaust and the overrun behind a closed throttle
+local smoke_rate_idle      = 9.0
+local smoke_rate_load      = 14.0
+local smoke_rate_rich      = 170.0
+local smoke_rich_fade_speed = 4.5
 local smoke_phase_strength = 0.12
 local fire_rate_peak       = 1050.0
 local fire_fade_speed      = 13.0
@@ -59,31 +64,35 @@ local function tail_direction(vehicle, lift)
     return normalize_or(Vector3(back.x, lift, back.z), Vector3(0.0, lift, -1.0))
 end
 
-local function apply_smoke(pipe, vehicle, intensity, overrun, speed, time)
+local function apply_smoke(pipe, vehicle, intensity, rich, speed, time)
     if not pipe.smoke then
         return
     end
 
     intensity = clamp(intensity, 0.0, 1.0)
-    overrun   = clamp(overrun, 0.0, 1.0)
+    rich      = clamp(rich, 0.0, 1.0)
 
     local phase = 1.0 + math.sin(time * 9.0 + pipe.phase) * smoke_phase_strength
-    local rate  = (smoke_rate_idle + intensity * smoke_rate_load + overrun * smoke_rate_overrun) * pipe.bias * phase
+    local rate  = (smoke_rate_idle + intensity * smoke_rate_load + rich * smoke_rate_rich) * pipe.bias * phase
     local travel = clamp(speed / 40.0, 0.0, 1.0)
 
     pipe.smoke:SetBlendMode(1)
     pipe.smoke:SetLightingMode(0)
     pipe.smoke:SetEmissionRate(rate)
-    pipe.smoke:SetLifetime(0.85 + intensity * 0.42 + overrun * 0.16)
-    pipe.smoke:SetStartSpeed(0.48 + intensity * 0.26 + travel * 0.24)
+    -- a rich puff has to survive long enough to be seen leaving the car rather than dying at the bumper
+    pipe.smoke:SetLifetime(0.85 + intensity * 0.30 + rich * 1.40)
+    pipe.smoke:SetStartSpeed(0.48 + intensity * 0.26 + travel * 0.24 + rich * 1.60)
     pipe.smoke:SetStartSize(0.04 + intensity * 0.03)
-    pipe.smoke:SetEndSize(0.24 + intensity * 0.18 + overrun * 0.07)
+    -- entrainment needs headroom, the old third of a metre was reached almost immediately and the parcel
+    -- then held that size for the rest of its life
+    pipe.smoke:SetEndSize(0.45 + intensity * 0.20 + rich * 0.55)
     pipe.smoke:SetGravityModifier(-0.025 - intensity * 0.035)
     pipe.smoke:SetEmissionRadius(0.035 + intensity * 0.035)
     pipe.smoke:SetEmissionConeAngle(0.42 + intensity * 0.16)
     pipe.smoke:SetDirectionalBlend(0.68)
-    pipe.smoke:SetDrag(1.25 + intensity * 0.25)
-    pipe.smoke:SetTurbulenceStrength(0.22 + intensity * 0.25 + overrun * 0.18)
+    -- entrainment carries most of the deceleration now, this is the residual on top of it
+    pipe.smoke:SetDrag(0.60 + intensity * 0.15)
+    pipe.smoke:SetTurbulenceStrength(0.22 + intensity * 0.25 + rich * 0.40)
     pipe.smoke:SetWindInfluence(0.22 + travel * 0.2)
     pipe.smoke:SetVelocityInheritance(0.82)
     pipe.smoke:SetVelocityStretch(0.22 + travel * 0.28)
@@ -92,14 +101,17 @@ local function apply_smoke(pipe, vehicle, intensity, overrun, speed, time)
     local direction = tail_direction(vehicle, 0.08 + intensity * 0.06)
     pipe.smoke:SetEmissionDirection(direction.x, direction.y, direction.z)
 
-    pipe.smoke:SetVolumeDensity(0.95 + intensity * 0.08 + overrun * 0.05)
+    -- the field no longer clamps at one, so this carries a real optical depth, exhaust is a thin medium
+    -- next to tire smoke and a warm engine is thinner still, the density lives almost entirely in the
+    -- rich transients
+    pipe.smoke:SetVolumeDensity(0.55 + intensity * 0.25 + rich * 1.90)
     pipe.smoke:SetVolumeAnisotropy(0.35)
-    pipe.smoke:SetVolumeShadowing(0.55)
 
-    local alpha = clamp(0.32 + intensity * 0.06 + overrun * 0.04, 0.0, 0.38)
-    local shade = 0.58 - intensity * 0.09 - overrun * 0.06
+    local alpha = clamp(0.035 + intensity * 0.045 + rich * 0.26, 0.0, 0.34)
+    -- unburnt fuel comes out grey and goes darker the richer it is, a warm cruise is near colourless
+    local shade = 0.62 - intensity * 0.06 - rich * 0.26
     pipe.smoke:SetStartColor(shade + 0.10, shade + 0.09, shade + 0.085, alpha)
-    pipe.smoke:SetEndColor(0.32, 0.32, 0.30, 0.0)
+    pipe.smoke:SetEndColor(0.34, 0.34, 0.32, 0.0)
 end
 
 local function apply_fire(pipe, vehicle, intensity)
@@ -180,6 +192,16 @@ local function trigger_fire(self, amount)
     self.ember_intensity = math.max(self.ember_intensity, amount)
 end
 
+-- the unburnt fuel that makes visible exhaust arrives in transients, an upshift or a closing throttle, so
+-- it has to be latched and allowed to decay, feeding the instantaneous value straight in made the plume
+-- flicker on and off within a frame or two of the event and it never read as a puff at all
+local function trigger_rich(self, amount)
+    amount = clamp(amount, 0.0, 1.0)
+    if amount > 0.0 then
+        self.rich_intensity = math.max(self.rich_intensity, amount)
+    end
+end
+
 function exhaust_fx.Tick(self, entity)
     if not self.physics then
         local vehicle = entity:GetParent()
@@ -214,15 +236,20 @@ function exhaust_fx.Tick(self, entity)
             if pipe.smoke then
                 pipe.smoke:LoadEffect("worlds/exhaust_smoke.particle")
                 pipe.smoke:SetRenderMode(1)
-                pipe.smoke:SetVolumeDensity(0.95)
+                pipe.smoke:SetVolumeDensity(0.55)
                 pipe.smoke:SetVolumeAnisotropy(0.35)
-                pipe.smoke:SetVolumeShadowing(0.55)
+                -- the tip is recessed into the bumper, so a particle spawned there is boxed in by
+                -- bodywork and has to clear it before colliding with the world means anything
+                pipe.smoke:SetCollisionClearance(0.35)
             end
             if pipe.fire then
                 pipe.fire:LoadEffect("worlds/exhaust_fire.particle")
+                -- flame lives and dies inside the clearance, so it never fights the bumper it shoots past
+                pipe.fire:SetCollisionClearance(0.35)
             end
             if pipe.embers then
                 pipe.embers:LoadEffect("worlds/exhaust_embers.particle")
+                pipe.embers:SetCollisionClearance(0.30)
             end
         end
 
@@ -241,6 +268,7 @@ function exhaust_fx.Tick(self, entity)
         self.time                 = 0.0
         self.fire_intensity = 0.0
         self.ember_intensity = 0.0
+        self.rich_intensity = 0.0
     end
 
     if not self.physics then
@@ -293,11 +321,21 @@ function exhaust_fx.Tick(self, entity)
 
     trigger_fire(self, fire_trigger)
 
+    -- an upshift dumps fuel the closed throttle plate did not burn, and so does a snapped throttle on the
+    -- overrun, both of which are events rather than states, the flame only lights on the strongest of them
+    -- so the rich puff is triggered from a lower bar than the fire is
+    trigger_rich(self, fire_trigger)
+    trigger_rich(self, overrun_intensity * 0.85)
+    if shift_event and gear >= 2 then
+        trigger_rich(self, ramp(rpm_norm, 0.25, 0.85) * ramp(self.prev_throttle, 0.25, 1.0))
+    end
+
     self.fire_intensity = math.max(self.fire_intensity - dt * fire_fade_speed, 0.0)
     self.ember_intensity = math.max(self.ember_intensity - dt * ember_fade_speed, 0.0)
+    self.rich_intensity = math.max(self.rich_intensity - dt * smoke_rich_fade_speed, 0.0)
 
-    apply_smoke(self.pipes[1], self.vehicle, smoke_intensity, overrun_intensity, speed, self.time)
-    apply_smoke(self.pipes[2], self.vehicle, smoke_intensity, overrun_intensity, speed, self.time)
+    apply_smoke(self.pipes[1], self.vehicle, smoke_intensity, self.rich_intensity, speed, self.time)
+    apply_smoke(self.pipes[2], self.vehicle, smoke_intensity, self.rich_intensity, speed, self.time)
     apply_fire(self.pipes[1], self.vehicle, self.fire_intensity)
     apply_fire(self.pipes[2], self.vehicle, self.fire_intensity)
     apply_embers(self.pipes[1], self.vehicle, self.ember_intensity)

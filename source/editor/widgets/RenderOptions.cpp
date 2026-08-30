@@ -346,6 +346,7 @@ void RenderOptions::OnTickVisible()
                     }
 
                     option_value("Sharpness (CAS)", "r.sharpness", "AMD FidelityFX Contrast Adaptive Sharpening", 0.1f, 0.0f, 1.0f);
+                    option_value("DLSS reactivity", "r.dlss_reactivity", "Higher discards history faster, less ghosting, more flicker", 0.05f, 0.0f, 1.0f);
                 }
 
                 if (option_header("Ray-traced Effects"))

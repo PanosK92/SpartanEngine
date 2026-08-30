@@ -623,6 +623,27 @@ struct EmitterParams
     // splat every nth particle into the volume grid, each one scatters into hundreds of voxels so the
     // cost is unbounded in live particle count, the survivors carry the dropped density
     SHARED_UINT   volume_splat_stride SHARED_DEFAULT(1);
+    // smoking tire aerodynamics, centre and axis locate the axle, radius is the tread radius, the
+    // tread drags a boundary layer around itself and the ground confines it to the rear lower quadrant
+    SHARED_FLOAT3 vortex_center;
+    SHARED_FLOAT  vortex_strength SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT3 vortex_axis;
+    SHARED_FLOAT  vortex_radius   SHARED_DEFAULT(0.0f);
+    // thermal buoyancy that fades as the plume entrains cold air, shear rollup of the wall jet against
+    // the tarmac, and the counter rotating pair shed off the tread shoulders once the emitter moves
+    SHARED_FLOAT  thermal_strength SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT  thermal_decay    SHARED_DEFAULT(2.5f);
+    SHARED_FLOAT  rollup_strength  SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT  wake_strength    SHARED_DEFAULT(0.0f);
+    // warps the texture lookup with a scrolling field so a puff boils from the inside, what a flipbook
+    // buys with baked frames except continuous in time, so it cannot strobe or pop back to frame zero
+    SHARED_FLOAT  churn_strength   SHARED_DEFAULT(0.0f);
+    // set when a top level acceleration structure is bound, the simulation then traces against the real
+    // world instead of the depth buffer, which only ever knew about the front layer of what was on screen
+    SHARED_UINT   collision_traced SHARED_DEFAULT(0);
+    // how far a particle has to get from the emitter before collision engages, an emitter buried inside
+    // geometry such as an exhaust tip needs enough of this to clear the bodywork around it
+    SHARED_FLOAT  collision_clearance SHARED_DEFAULT(0.0f);
 };
 
 // c++ backward compatibility aliases

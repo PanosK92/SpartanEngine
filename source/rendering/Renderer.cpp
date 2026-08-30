@@ -1517,6 +1517,7 @@ namespace spartan
             m_pass_state.cloud_environment_dirty = true;
             m_pass_state.ssao_history.Reset();
             m_pass_state.fog_history.Reset();
+            m_pass_state.particle_volume_history.Reset();
             m_taau_reset_history                 = true;
 
             CreateSamplers();
@@ -1568,6 +1569,7 @@ namespace spartan
         m_pass_state.cloud_environment_dirty = true;
         m_pass_state.ssao_history.Reset();
         m_pass_state.fog_history.Reset();
+        m_pass_state.particle_volume_history.Reset();
         CreateSamplers();
     }
 
@@ -4682,6 +4684,7 @@ namespace spartan
         // particles remain foreground content and composite after world space clouds
         if (eye == 0)
         {
+            Pass_Upscaler_Reactivity();
             Pass_Particles();
         }
 

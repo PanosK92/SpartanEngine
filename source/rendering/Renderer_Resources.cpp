@@ -307,7 +307,10 @@ namespace spartan
         at(buffers, Renderer_Buffer::ParticleEmitter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_EmitterParams)),  particle_emitter_max, nullptr,           true, "particle_emitter");
         const uint32_t particle_volume_voxel_count = renderer_particle_volume_width * renderer_particle_volume_height * renderer_particle_volume_depth;
         at(buffers, Renderer_Buffer::ParticleVolumeDensity) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), particle_volume_voxel_count, nullptr, false, "particle_volume_density");
-        at(buffers, Renderer_Buffer::ParticleVolumeColor)   = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), particle_volume_voxel_count * 3, nullptr, false, "particle_volume_color");
+        // two channels, not three, the authored colour of every volumetric effect sits within a couple of
+        // percent of neutral so a scalar shade carries it, and the channel that frees holds the mean parcel
+        // age the ray march needs to give each parcel its own noise phase
+        at(buffers, Renderer_Buffer::ParticleVolumeColor)   = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), particle_volume_voxel_count * 2, nullptr, false, "particle_volume_color");
 
         // one pool shared by every gpu scatter slot, each slot and lod owns a contiguous range of it
         // GrassInstance keeps full float xyz, the shared packed format quantizes distant positions onto a visible lattice
@@ -557,11 +560,13 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_normal_previous)     = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_material)            = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_velocity)            = nullptr;
+            at(render_targets, Renderer_RenderTarget::dlss_reactivity)              = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_depth)               = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_previous)      = nullptr;
             at(render_targets, Renderer_RenderTarget::light_diffuse)               = nullptr;
             at(render_targets, Renderer_RenderTarget::light_specular)              = nullptr;
             at(render_targets, Renderer_RenderTarget::particle_volume)             = nullptr;
+            at(render_targets, Renderer_RenderTarget::particle_volume_history)     = nullptr;
             at(render_targets, Renderer_RenderTarget::cloud_raw)                   = nullptr;
             at(render_targets, Renderer_RenderTarget::cloud_raw_distance)          = nullptr;
             at(render_targets, Renderer_RenderTarget::cloud_resolved_0)            = nullptr;
@@ -656,7 +661,12 @@ namespace spartan
             // concurrent sharing, the compute batch writes it and the graphics queue reads it from the blit onward
             at(render_targets, Renderer_RenderTarget::frame_render)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "frame_render");
             at(render_targets, Renderer_RenderTarget::frame_render_opaque) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_render_opaque");
-            at(render_targets, Renderer_RenderTarget::particle_volume)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, renderer_particle_volume_width, renderer_particle_volume_height, renderer_particle_volume_depth, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "particle_volume");
+            at(render_targets, Renderer_RenderTarget::particle_volume)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, renderer_particle_volume_width, renderer_particle_volume_height, renderer_particle_volume_depth, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "particle_volume");
+            // the splat only deposits a fixed size subset of the live particles each frame, so a single
+            // frame of the grid is a sparse decimated sample of the medium, accumulating it against a
+            // reprojected history is what turns that subset into a dense field without splatting more
+            at(render_targets, Renderer_RenderTarget::particle_volume_history) = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, renderer_particle_volume_width, renderer_particle_volume_height, renderer_particle_volume_depth, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "particle_volume_history");
+            m_pass_state.particle_volume_history.Reset();
 
             // debug output sits at render resolution so debug raster passes can share gbuffer_depth for read-equal tests
             at(render_targets, Renderer_RenderTarget::debug_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "debug_output");
@@ -668,6 +678,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_material) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_material");
             // rgba: xy = ndc velocity, z = radial motion blur mask, w unused
             at(render_targets, Renderer_RenderTarget::gbuffer_velocity) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_velocity");
+            at(render_targets, Renderer_RenderTarget::dlss_reactivity)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "dlss_reactivity");
             at(render_targets, Renderer_RenderTarget::gbuffer_depth)    = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float,          flags, "gbuffer_depth");
             // restir's temporal gate tests disocclusion against the prior depth, the current frame's depth ghosts moving objects
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float, flags, "gbuffer_depth_previous");
@@ -1101,6 +1112,7 @@ namespace spartan
             // post-process
             { Renderer_Shader::fxaa_c,                                RHI_Shader_Type::Compute, "fxaa/fxaa.hlsl"                                                             },
             { Renderer_Shader::taau_c,                                RHI_Shader_Type::Compute, "taau.hlsl"                                                                  },
+            { Renderer_Shader::dlss_reactivity_c,                      RHI_Shader_Type::Compute, "dlss_reactivity.hlsl"                                                     },
             { Renderer_Shader::font_v,                                RHI_Shader_Type::Vertex,  "font.hlsl",                                  RHI_Vertex_Type::PosUv         },
             { Renderer_Shader::font_p,                                RHI_Shader_Type::Pixel,   "font.hlsl"                                                                  },
             { Renderer_Shader::film_grain_c,                          RHI_Shader_Type::Compute, "film_grain.hlsl"                                                            },

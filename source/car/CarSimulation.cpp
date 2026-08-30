@@ -418,7 +418,7 @@ namespace car
     {
             assisted_actuators = assist_command();
             tc_active = false;
-            if (traction_requested && spec.tc_enabled && spec.assists.traction_control_level > 0.0f)
+            if (traction_requested && !burnout_active && spec.tc_enabled && spec.assists.traction_control_level > 0.0f)
             {
                 float max_slip = 0.0f;
                 for (int i = 0; i < wheel_count; i++)
@@ -467,6 +467,28 @@ namespace car
                     assisted_actuators.brake_torque_scale[i] = abs_phase < 0.5f ? release_factor : 1.0f;
                 }
             }
+    }
+
+
+    void Simulation::update_burnout(float forward_speed_ms)
+    {
+            // pinning both pedals is the line lock request, the front circuit takes all the pressure and
+            // traction control steps aside so the driven wheels can actually break traction, the pedal
+            // bar is high so a part pressed brake cannot ask for a hold it has no grip to deliver
+            bool pedals_held = input.throttle > 0.8f
+                && input.brake > 0.8f
+                && is_in_forward_gear()
+                && !is_shifting;
+            if (!pedals_held)
+            {
+                burnout_active = false;
+                return;
+            }
+
+            // engage from a near stop only, then hold as it creeps so the rear brakes cannot cut back in
+            float speed_kmh = fabsf(forward_speed_ms) * 3.6f;
+            float release_speed_kmh = burnout_active ? 60.0f : 5.0f;
+            burnout_active = speed_kmh < release_speed_kmh;
     }
 
 
@@ -3250,7 +3272,9 @@ namespace car
                 float shift_rpm = PxMax(engine_rpm, coupled_engine_rpm);
                 bool rpm_trigger = shift_rpm >= spec.shift_up_rpm;
 
-                if (can_shift && (speed_trigger || rpm_trigger) && current_gear < spec.gear_count - 1 && throttle > 0.1f)
+                // hold the gear through a line lock, the driven wheels are spinning so both triggers are
+                // armed even though the car has not moved and the box would run out of gears standing still
+                if (can_shift && !burnout_active && (speed_trigger || rpm_trigger) && current_gear < spec.gear_count - 1 && throttle > 0.1f)
                 {
                     set_active_gear(current_gear + 1);
                     is_shifting = true;
@@ -3665,6 +3689,7 @@ namespace car
             if (input.brake <= spec.input_deadzone)
             {
                 clear_abs_state();
+                reverse_request_timer = 0.0f;
                 return;
             }
 
@@ -3672,18 +3697,23 @@ namespace car
             if (is_in_reverse())
             {
                 clear_abs_state();
+                reverse_request_timer = 0.0f;
                 return;
             }
 
             // require true near-stop, forward-only gate was engaging reverse mid-spin
             float body_speed_ms = body ? body->getLinearVelocity().magnitude() : fabsf(forward_speed_ms);
-            bool reverse_requested = !spec.manual_transmission
+            bool reverse_conditions_met = !spec.manual_transmission
                 && body_speed_ms < 1.0f
                 && fabsf(forward_speed_ms) < 0.5f
                 && input.brake > 0.8f
                 && input.throttle < spec.input_deadzone
                 && is_in_forward_gear()
                 && !is_shifting;
+            // dwell on the request, reaching for the throttle to hold a line lock lands the brake first
+            // and a single frame of that used to drop the car straight into reverse
+            reverse_request_timer = reverse_conditions_met ? reverse_request_timer + dt : 0.0f;
+            bool reverse_requested = reverse_request_timer >= 0.25f;
             if (reverse_requested)
             {
                 clear_abs_state();
@@ -3693,8 +3723,10 @@ namespace car
                 return;
             }
 
-            float front_t = spec.brake_force * cfg.front_wheel_radius * input.brake * spec.brake_bias_front * 0.5f;
-            float rear_t  = spec.brake_force * cfg.rear_wheel_radius * input.brake * (1.0f - spec.brake_bias_front) * 0.5f;
+            // line lock sends the whole circuit to the front so the held axle can out grip the driven one
+            float bias_front = burnout_active ? 1.0f : spec.brake_bias_front;
+            float front_t = spec.brake_force * cfg.front_wheel_radius * input.brake * bias_front * 0.5f;
+            float rear_t  = burnout_active ? 0.0f : spec.brake_force * cfg.rear_wheel_radius * input.brake * (1.0f - spec.brake_bias_front) * 0.5f;
 
             for (int i = 0; i < wheel_count; i++)
             {
@@ -3716,9 +3748,11 @@ namespace car
     {
             float forward_speed_ms = forward_speed_kmh / 3.6f;
 
+            update_burnout(forward_speed_ms);
             update_automatic_gearbox(dt, input.throttle, forward_speed_ms);
             bool traction_requested = input.throttle > spec.input_deadzone && is_in_forward_gear();
-            bool braking_requested = input.brake > spec.input_deadzone && !is_in_reverse() && fabsf(forward_speed_kmh) > spec.braking_speed_threshold;
+            // abs must not pulse the held front wheels out of a line lock
+            bool braking_requested = input.brake > spec.input_deadzone && !is_in_reverse() && !burnout_active && fabsf(forward_speed_kmh) > spec.braking_speed_threshold;
             update_assist_controller(traction_requested, braking_requested, dt);
 
             if (downshift_blip_timer > 0.0f)
@@ -4644,6 +4678,8 @@ namespace car
             gearbox_input_angular_velocity = 0.0f;
             tc_reduction = 0.0f;
             tc_active = false;
+            burnout_active = false;
+            reverse_request_timer = 0.0f;
             abs_phase = 0.0f;
             for (int i = 0; i < wheel_count; i++)
             {
@@ -5362,6 +5398,10 @@ namespace car
 
     float Simulation::get_tc_reduction()
     { return tc_reduction; }
+
+
+    bool Simulation::is_burnout_active()
+    { return burnout_active; }
 
 
     void Simulation::set_manual_transmission(bool enabled)

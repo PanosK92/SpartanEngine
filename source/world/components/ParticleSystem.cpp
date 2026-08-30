@@ -68,6 +68,14 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_wind_influence, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_velocity_inheritance, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_velocity_stretch, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_vortex_strength, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_vortex_radius, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_thermal_strength, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_thermal_decay, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rollup_strength, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_wake_strength, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_churn_strength, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_collision_clearance, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_spawn_burst, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flipbook_rows, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flipbook_columns, uint32_t);
@@ -100,6 +108,16 @@ namespace spartan
         m_wind_influence        = 0.0f;
         m_velocity_inheritance  = 0.0f;
         m_velocity_stretch      = 0.0f;
+        m_vortex_center         = Vector3::Zero;
+        m_vortex_axis           = Vector3::Zero;
+        m_vortex_strength       = 0.0f;
+        m_vortex_radius         = 0.0f;
+        m_thermal_strength      = 0.0f;
+        m_thermal_decay         = 2.5f;
+        m_rollup_strength       = 0.0f;
+        m_wake_strength         = 0.0f;
+        m_churn_strength        = 0.0f;
+        m_collision_clearance   = 0.0f;
         m_spawn_burst           = 0.0f;
         m_flipbook_rows         = 1;
         m_flipbook_columns      = 1;
@@ -382,47 +400,82 @@ namespace spartan
                 break;
 
             case ParticlePreset::TireSmoke:
-                m_max_particles   = 8000;
-                m_emission_rate   = 600.0f;
-                m_lifetime        = 3.0f;
+                m_max_particles   = 12000;
+                m_emission_rate   = 900.0f;
+                // burnt rubber smoke hangs for the better part of ten seconds, at three the plume died
+                // about a metre from the tire and read as a lump stuck to the wheel
+                m_lifetime        = 4.5f;
                 m_start_speed     = 1.5f;
                 m_start_size      = 0.15f;
-                m_end_size        = 1.2f;
-                m_start_color     = Color(0.85f, 0.85f, 0.85f, 0.5f);
-                m_end_color       = Color(0.7f, 0.7f, 0.7f, 0.0f);
-                m_gravity_modifier = -0.05f;
+                // entrainment grows a parcel toward this and needs somewhere to grow into, half a metre
+                // was reached in a fraction of a second and the parcel then coasted at a fixed size
+                m_end_size        = 1.3f;
+                // density is no longer clamped at one in the resolve, so this carries a real optical depth
+                // rather than being held under a fifth to keep the field from clipping solid everywhere
+                m_start_color     = Color(0.95f, 0.95f, 0.96f, 0.22f);
+                m_end_color       = Color(0.8f, 0.8f, 0.82f, 0.0f);
+                // the thermal carries the rise, cooled smoke is close to neutrally buoyant
+                m_gravity_modifier = 0.0f;
                 m_emission_radius = 0.15f;
                 m_emission_direction = Vector3::Up;
-                m_emission_cone_angle = 1.2f;
-                m_directional_blend = 0.2f;
+                m_emission_cone_angle = 0.6f;
+                m_directional_blend = 0.7f;
                 m_blend_mode = ParticleBlendMode::Premultiplied;
-                m_drag = 1.85f;
-                m_turbulence_strength = 0.65f;
+                m_render_mode = ParticleRenderMode::Volumetric;
+                m_volume_density = 2.4f;
+                m_volume_anisotropy = 0.6f;
+                // the splat darkens a voxel by its own density, which is a crude stand in, the march now
+                // steps toward the light for a real one so a high value here only doubles up on it
+                m_volume_shadowing = 0.1f;
+                // entrainment supplies most of the deceleration, a parcel slows because it is spreading its
+                // momentum over the air it swallows, this is only the residual form drag on top
+                m_drag = 0.45f;
+                m_turbulence_strength = 0.85f;
                 m_wind_influence = 0.45f;
-                m_velocity_inheritance = 0.55f;
+                // low, tire smoke is dumped into the world and the car drives out of it
+                m_velocity_inheritance = 0.2f;
                 m_velocity_stretch = 0.25f;
+                m_vortex_radius = 0.34f;
+                m_thermal_strength = 6.0f;
+                m_thermal_decay = 2.5f;
+                m_rollup_strength = 0.55f;
+                m_wake_strength = 6.0f;
+                m_churn_strength = 0.035f;
                 break;
 
             case ParticlePreset::Exhaust:
                 m_max_particles   = 3000;
-                m_emission_rate   = 300.0f;
+                // a warm modern petrol engine puts almost nothing visible out of the pipe, three hundred a
+                // second was a constant grey plume that no healthy car produces, the visibility belongs to
+                // the transients instead, an upshift or an overrun dumping unburnt fuel
+                m_emission_rate   = 12.0f;
                 m_lifetime        = 1.2f;
                 m_start_speed     = 0.6f;
                 m_start_size      = 0.03f;
-                m_end_size        = 0.15f;
-                m_start_color     = Color(0.4f, 0.4f, 0.4f, 0.8f);
-                m_end_color       = Color(0.25f, 0.25f, 0.25f, 0.0f);
+                // entrainment needs headroom to grow into
+                m_end_size        = 0.45f;
+                m_start_color     = Color(0.72f, 0.71f, 0.705f, 0.08f);
+                m_end_color       = Color(0.34f, 0.34f, 0.32f, 0.0f);
                 m_gravity_modifier = -0.08f;
                 m_emission_radius = 0.03f;
                 m_emission_direction = Vector3::Backward;
                 m_emission_cone_angle = 0.45f;
                 m_directional_blend = 0.85f;
                 m_blend_mode = ParticleBlendMode::Premultiplied;
-                m_drag = 1.4f;
+                m_render_mode = ParticleRenderMode::Volumetric;
+                // exhaust is a thin medium next to tire smoke and a warm engine is thinner still
+                m_volume_density = 0.55f;
+                m_volume_anisotropy = 0.35f;
+                m_volume_shadowing = 0.1f;
+                // entrainment carries most of the deceleration now, this is the residual on top of it
+                m_drag = 0.6f;
                 m_turbulence_strength = 0.28f;
                 m_wind_influence = 0.3f;
                 m_velocity_inheritance = 0.75f;
                 m_velocity_stretch = 0.35f;
+                // a tailpipe sits down inside the bodywork, so a particle spawned there is surrounded by
+                // geometry and has to get clear of it before world collision can mean anything
+                m_collision_clearance = 0.35f;
                 break;
 
             case ParticlePreset::Custom:
@@ -609,6 +662,114 @@ namespace spartan
     void ParticleSystem::SetVelocityStretch(float stretch)
     {
         m_velocity_stretch = clamp(stretch, 0.0f, 5.0f);
+        MarkCustom();
+    }
+
+    const Vector3& ParticleSystem::GetVortexCenter() const
+    {
+        return m_vortex_center;
+    }
+
+    void ParticleSystem::SetVortexCenter(const Vector3& center)
+    {
+        m_vortex_center = center;
+    }
+
+    const Vector3& ParticleSystem::GetVortexAxis() const
+    {
+        return m_vortex_axis;
+    }
+
+    void ParticleSystem::SetVortexAxis(const Vector3& axis)
+    {
+        m_vortex_axis = axis;
+    }
+
+    float ParticleSystem::GetVortexStrength() const
+    {
+        return m_vortex_strength;
+    }
+
+    void ParticleSystem::SetVortexStrength(float strength)
+    {
+        m_vortex_strength = clamp(strength, -400.0f, 400.0f);
+        MarkCustom();
+    }
+
+    float ParticleSystem::GetVortexRadius() const
+    {
+        return m_vortex_radius;
+    }
+
+    void ParticleSystem::SetVortexRadius(float radius)
+    {
+        m_vortex_radius = clamp(radius, 0.0f, 20.0f);
+        MarkCustom();
+    }
+
+    float ParticleSystem::GetThermalStrength() const
+    {
+        return m_thermal_strength;
+    }
+
+    void ParticleSystem::SetThermalStrength(float strength)
+    {
+        m_thermal_strength = clamp(strength, 0.0f, 50.0f);
+        MarkCustom();
+    }
+
+    float ParticleSystem::GetThermalDecay() const
+    {
+        return m_thermal_decay;
+    }
+
+    void ParticleSystem::SetThermalDecay(float decay)
+    {
+        m_thermal_decay = clamp(decay, 0.0f, 20.0f);
+        MarkCustom();
+    }
+
+    float ParticleSystem::GetRollupStrength() const
+    {
+        return m_rollup_strength;
+    }
+
+    void ParticleSystem::SetRollupStrength(float strength)
+    {
+        m_rollup_strength = clamp(strength, 0.0f, 10.0f);
+        MarkCustom();
+    }
+
+    float ParticleSystem::GetWakeStrength() const
+    {
+        return m_wake_strength;
+    }
+
+    void ParticleSystem::SetWakeStrength(float strength)
+    {
+        m_wake_strength = clamp(strength, 0.0f, 100.0f);
+        MarkCustom();
+    }
+
+    float ParticleSystem::GetChurnStrength() const
+    {
+        return m_churn_strength;
+    }
+
+    float ParticleSystem::GetCollisionClearance() const
+    {
+        return m_collision_clearance;
+    }
+
+    void ParticleSystem::SetCollisionClearance(float distance)
+    {
+        m_collision_clearance = clamp(distance, 0.0f, 2.0f);
+    }
+
+    void ParticleSystem::SetChurnStrength(float strength)
+    {
+        // past about a tenth of a uv the warp tears the texture apart instead of stirring it
+        m_churn_strength = clamp(strength, 0.0f, 0.1f);
         MarkCustom();
     }
 
@@ -800,6 +961,14 @@ namespace spartan
         node.append_attribute("wind_influence")       = m_wind_influence;
         node.append_attribute("velocity_inheritance") = m_velocity_inheritance;
         node.append_attribute("velocity_stretch")     = m_velocity_stretch;
+        node.append_attribute("vortex_strength")      = m_vortex_strength;
+        node.append_attribute("vortex_radius")        = m_vortex_radius;
+        node.append_attribute("thermal_strength")     = m_thermal_strength;
+        node.append_attribute("thermal_decay")        = m_thermal_decay;
+        node.append_attribute("rollup_strength")      = m_rollup_strength;
+        node.append_attribute("wake_strength")        = m_wake_strength;
+        node.append_attribute("churn_strength")       = m_churn_strength;
+        node.append_attribute("collision_clearance") = m_collision_clearance;
         node.append_attribute("spawn_burst")          = m_spawn_burst;
         node.append_attribute("flipbook_rows")        = m_flipbook_rows;
         node.append_attribute("flipbook_columns")     = m_flipbook_columns;
@@ -870,6 +1039,14 @@ namespace spartan
         m_wind_influence       = clamp(node.attribute("wind_influence").as_float(m_wind_influence), 0.0f, 5.0f);
         m_velocity_inheritance = clamp(node.attribute("velocity_inheritance").as_float(m_velocity_inheritance), 0.0f, 2.0f);
         m_velocity_stretch     = clamp(node.attribute("velocity_stretch").as_float(m_velocity_stretch), 0.0f, 5.0f);
+        m_vortex_strength      = clamp(node.attribute("vortex_strength").as_float(m_vortex_strength), -400.0f, 400.0f);
+        m_vortex_radius        = clamp(node.attribute("vortex_radius").as_float(m_vortex_radius), 0.0f, 20.0f);
+        m_thermal_strength     = clamp(node.attribute("thermal_strength").as_float(m_thermal_strength), 0.0f, 50.0f);
+        m_thermal_decay        = clamp(node.attribute("thermal_decay").as_float(m_thermal_decay), 0.0f, 20.0f);
+        m_rollup_strength      = clamp(node.attribute("rollup_strength").as_float(m_rollup_strength), 0.0f, 10.0f);
+        m_wake_strength        = clamp(node.attribute("wake_strength").as_float(m_wake_strength), 0.0f, 100.0f);
+        m_churn_strength       = clamp(node.attribute("churn_strength").as_float(m_churn_strength), 0.0f, 0.1f);
+        m_collision_clearance  = clamp(node.attribute("collision_clearance").as_float(m_collision_clearance), 0.0f, 2.0f);
         m_spawn_burst          = clamp(node.attribute("spawn_burst").as_float(m_spawn_burst), 0.0f, 100000.0f);
         m_flipbook_rows        = clamp(node.attribute("flipbook_rows").as_uint(m_flipbook_rows), 1u, 32u);
         m_flipbook_columns     = clamp(node.attribute("flipbook_columns").as_uint(m_flipbook_columns), 1u, 32u);
@@ -1000,6 +1177,24 @@ namespace spartan
             "SetVelocityInheritance", &ParticleSystem::SetVelocityInheritance,
             "GetVelocityStretch",     &ParticleSystem::GetVelocityStretch,
             "SetVelocityStretch",     &ParticleSystem::SetVelocityStretch,
+            "SetVortexCenter",        [](ParticleSystem& self, float x, float y, float z) { self.SetVortexCenter(Vector3(x, y, z)); },
+            "SetVortexAxis",          [](ParticleSystem& self, float x, float y, float z) { self.SetVortexAxis(Vector3(x, y, z)); },
+            "GetVortexStrength",      &ParticleSystem::GetVortexStrength,
+            "SetVortexStrength",      &ParticleSystem::SetVortexStrength,
+            "GetVortexRadius",        &ParticleSystem::GetVortexRadius,
+            "SetVortexRadius",        &ParticleSystem::SetVortexRadius,
+            "GetThermalStrength",     &ParticleSystem::GetThermalStrength,
+            "SetThermalStrength",     &ParticleSystem::SetThermalStrength,
+            "GetThermalDecay",        &ParticleSystem::GetThermalDecay,
+            "SetThermalDecay",        &ParticleSystem::SetThermalDecay,
+            "GetRollupStrength",      &ParticleSystem::GetRollupStrength,
+            "SetRollupStrength",      &ParticleSystem::SetRollupStrength,
+            "GetWakeStrength",        &ParticleSystem::GetWakeStrength,
+            "SetWakeStrength",        &ParticleSystem::SetWakeStrength,
+            "GetChurnStrength",       &ParticleSystem::GetChurnStrength,
+            "SetChurnStrength",       &ParticleSystem::SetChurnStrength,
+            "GetCollisionClearance",  &ParticleSystem::GetCollisionClearance,
+            "SetCollisionClearance",  &ParticleSystem::SetCollisionClearance,
             "GetSpawnBurst",          &ParticleSystem::GetSpawnBurst,
             "SetSpawnBurst",          &ParticleSystem::SetSpawnBurst,
             "TriggerBurst",           &ParticleSystem::TriggerBurst,

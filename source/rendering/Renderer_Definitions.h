@@ -159,9 +159,10 @@ namespace spartan
     const uint32_t renderer_resolution_cloud_environment_h = 256;
     const uint32_t renderer_resolution_brdf_lut     = 512;  // pre integrated brdf lookup table
     const uint32_t renderer_resolution_restir_min   = 64;   // minimum restir output dimension regardless of scale
+    // keep in sync with volume_width, volume_height, volume_depth in particles_volumetric.hlsl
     const uint32_t renderer_particle_volume_width   = 160;
     const uint32_t renderer_particle_volume_height  = 90;
-    const uint32_t renderer_particle_volume_depth   = 64;
+    const uint32_t renderer_particle_volume_depth   = 128;
     // keep in sync with fog_width, fog_height, fog_depth in fog.hlsl
     const uint32_t renderer_fog_volume_width        = 384;
     const uint32_t renderer_fog_volume_height       = 216;
@@ -336,6 +337,7 @@ namespace spartan
         depth_light_multi_draw_alpha_color_p,
         fxaa_c,
         taau_c,
+        dlss_reactivity_c,
         film_grain_c,
         motion_blur_c,
         depth_of_field_c,
@@ -495,6 +497,7 @@ namespace spartan
         fog_scatter_history,
         fog_integrated,
         particle_volume,
+        particle_volume_history,
         frame_render,
         frame_render_opaque,
         frame_output,
@@ -502,6 +505,7 @@ namespace spartan
         screenshot_sdr,
         screenshot_sdr_2,
         taau_history,
+        dlss_reactivity,
         ssao,
         ssao_history_0,
         ssao_history_1,

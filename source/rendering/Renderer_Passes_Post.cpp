@@ -438,6 +438,50 @@ namespace spartan
         RHI_CommandList::EndPass();
     }
 
+    void Renderer::Pass_Upscaler_Reactivity()
+    {
+        RHI_Texture* tex_reactivity = GetRenderTarget(Renderer_RenderTarget::dlss_reactivity);
+        RHI_Shader* shader = GetShader(Renderer_Shader::dlss_reactivity_c);
+        if (!tex_reactivity || !shader || !shader->IsCompiled())
+        {
+            return;
+        }
+
+        RHI_Texture* tex_velocity = GetRenderTarget(
+            m_pass_state.cloud_history.valid && !IsSecondaryViewActive() ?
+            Renderer_RenderTarget::cloud_velocity :
+            Renderer_RenderTarget::gbuffer_velocity
+        );
+        RHI_Texture* tex_depth_previous = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous);
+        if (!tex_velocity || !tex_depth_previous)
+        {
+            return;
+        }
+
+        Renderer::BeginPass("upscaler_reactivity", rhi_all_mips);
+        {
+            RHI_CommandList::SetShader(shader);
+            RHI_CommandList::SetTexture(
+                static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_velocity),
+                tex_velocity
+            );
+            RHI_CommandList::SetTexture(
+                static_cast<uint32_t>(Renderer_BindingsSrv::tex3),
+                tex_depth_previous
+            );
+            RHI_CommandList::SetTexture(
+                static_cast<uint32_t>(Renderer_BindingsUav::tex),
+                tex_reactivity,
+                rhi_all_mips,
+                0,
+                true
+            );
+            m_pcb_pass_cpu.set_f3_value(std::clamp(cvar_dlss_reactivity.GetValue(), 0.0f, 1.0f), 0.0f, 0.0f);
+            RHI_CommandList::Dispatch(tex_reactivity, GetResolutionScale());
+        }
+        RHI_CommandList::EndPass();
+    }
+
     void Renderer::Pass_AA_Upscale(uint32_t eye_layer /*= rhi_all_mips*/)
     {
         RHI_Texture* tex_in          = GetRenderTarget(Renderer_RenderTarget::frame_render);
@@ -482,7 +526,8 @@ namespace spartan
                     tex_in,
                     tex_depth,
                     tex_velocity,
-                    tex_out
+                    tex_out,
+                    GetRenderTarget(Renderer_RenderTarget::dlss_reactivity)
                 );
             }
             else if (method == Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau)
@@ -778,14 +823,15 @@ namespace spartan
         RHI_Buffer* buf_a       = GetBuffer(Renderer_Buffer::ParticleBufferA);
         RHI_Buffer* buf_counter = GetBuffer(Renderer_Buffer::ParticleCounter);
         RHI_Buffer* buf_emitter = GetBuffer(Renderer_Buffer::ParticleEmitter);
-        RHI_Buffer* buf_volume_density = GetBuffer(Renderer_Buffer::ParticleVolumeDensity);
-        RHI_Buffer* buf_volume_color   = GetBuffer(Renderer_Buffer::ParticleVolumeColor);
-        RHI_Texture* tex_volume        = GetRenderTarget(Renderer_RenderTarget::particle_volume);
+        RHI_Buffer* buf_volume_density  = GetBuffer(Renderer_Buffer::ParticleVolumeDensity);
+        RHI_Buffer* buf_volume_color    = GetBuffer(Renderer_Buffer::ParticleVolumeColor);
+        RHI_Texture* tex_volume         = GetRenderTarget(Renderer_RenderTarget::particle_volume);
+        RHI_Texture* tex_volume_history = GetRenderTarget(Renderer_RenderTarget::particle_volume_history);
         if (!buf_a || !buf_counter || !buf_emitter)
         {
             return;
         }
-        volume_shaders_ready = volume_shaders_ready && buf_volume_density && buf_volume_color && tex_volume;
+        volume_shaders_ready = volume_shaders_ready && buf_volume_density && buf_volume_color && tex_volume && tex_volume_history;
 
         // clamp the emitter count to the emitter buffer capacity
         uint32_t emitter_capacity = static_cast<uint32_t>(buf_emitter->GetObjectSize() / sizeof(Sb_EmitterParams));
@@ -882,6 +928,16 @@ namespace spartan
             params.wind_influence       = emitter->GetWindInfluence();
             params.velocity_inheritance = emitter->GetVelocityInheritance();
             params.velocity_stretch     = emitter->GetVelocityStretch();
+            params.vortex_center        = emitter->GetVortexCenter();
+            params.vortex_axis          = emitter->GetVortexAxis();
+            params.vortex_strength      = emitter->GetVortexStrength();
+            params.vortex_radius        = emitter->GetVortexRadius();
+            params.thermal_strength     = emitter->GetThermalStrength();
+            params.thermal_decay        = emitter->GetThermalDecay();
+            params.rollup_strength      = emitter->GetRollupStrength();
+            params.wake_strength        = emitter->GetWakeStrength();
+            params.churn_strength       = emitter->GetChurnStrength();
+            params.collision_clearance  = emitter->GetCollisionClearance();
             params.emissive_strength    = emitter->GetEmissiveStrength();
             params.flipbook_rows        = emitter->GetFlipbookRows();
             params.flipbook_columns     = emitter->GetFlipbookColumns();
@@ -894,7 +950,7 @@ namespace spartan
         // world full of cars hands us dozens of volumetric emitters and the pass then overruns the
         // driver watchdog, so only the closest few live emitters keep it and the rest fall back to billboards
         {
-            const float volume_max_distance    = 96.0f; // must match volume_max_distance in particles_volumetric.hlsl
+            const float volume_max_distance    = 64.0f; // must match volume_max_distance in particles_volumetric.hlsl
             const uint32_t volumetric_budget   = 8;
 
             vector<uint32_t> candidates;
@@ -939,10 +995,15 @@ namespace spartan
 
             volume_present = !candidates.empty();
 
-            // every splatted particle scatters into up to fifteen by fifteen by eleven voxels with four
-            // atomics each, so a drifting car at six hundred particles per second per wheel alone runs
-            // into the tens of billions, splat a fixed size subset and let it carry the missing density
-            const uint32_t splat_budget = 3000;
+            // every splatted particle scatters into a block of voxels with four atomics each, so a drifting
+            // car at six hundred particles per second per wheel alone runs into the billions, splat a fixed
+            // size subset and let it carry the missing density
+            //
+            // the depth extent is derived from the particle radius now rather than floored at a slice, so a
+            // puff covers about three slices instead of eleven and a splat costs well under half what it
+            // did, and the subset rotates each frame with the resolve accumulating the frames, so a larger
+            // budget buys coverage that compounds instead of just costing more
+            const uint32_t splat_budget = 6000;
 
             uint32_t live_estimate = 0;
             for (uint32_t index : candidates)
@@ -960,6 +1021,26 @@ namespace spartan
             {
                 emitter_params[index].volume_splat_stride = splat_stride;
             }
+        }
+
+        // the depth buffer only ever knew about the front layer of what was on screen, so a particle
+        // behind geometry, off screen or behind the camera passed straight through the world, trace
+        // against the acceleration structure instead whenever one is available
+        RHI_AccelerationStructure* tlas_collision = nullptr;
+        if (RHI_Device::IsSupportedRayTracing())
+        {
+            if (RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure())
+            {
+                if (tlas->GetRhiResource())
+                {
+                    tlas_collision = tlas;
+                }
+            }
+        }
+
+        for (uint32_t i = 0; i < emitter_count; i++)
+        {
+            emitter_params[i].collision_traced = tlas_collision ? 1u : 0u;
         }
 
         buf_emitter->ResetOffset();
@@ -998,6 +1079,10 @@ namespace spartan
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_emitter), buf_emitter);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_normal), GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
+            if (tlas_collision)
+            {
+                RHI_CommandList::SetAccelerationStructure(static_cast<uint32_t>(Renderer_BindingsSrv::tlas), tlas_collision);
+            }
             RHI_CommandList::Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
         }
         RHI_CommandList::EndMarker();
@@ -1060,6 +1145,12 @@ namespace spartan
         {
             const uint32_t voxel_count = renderer_particle_volume_width * renderer_particle_volume_height * renderer_particle_volume_depth;
 
+            // the resolve accumulates against the previous frame's grid, so the two swap roles each frame,
+            // a secondary view has no history of its own and its reprojection belongs to the primary
+            const bool use_history      = m_pass_state.particle_volume_history.valid && !IsSecondaryViewActive();
+            RHI_Texture* tex_volume_write = m_pass_state.particle_volume_history.SelectWrite(tex_volume, tex_volume_history);
+            RHI_Texture* tex_volume_read  = m_pass_state.particle_volume_history.SelectRead(tex_volume, tex_volume_history);
+
             RHI_CommandList::BeginMarker("particle_volume_clear");
             {
                 RHI_CommandList::SetShader(shader_volume_clear, "particle_volume_clear");
@@ -1085,7 +1176,10 @@ namespace spartan
                 RHI_CommandList::SetShader(shader_volume_resolve, "particle_volume_resolve");
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_volume_density), buf_volume_density);
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_volume_color), buf_volume_color);
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3d), tex_volume, rhi_all_mips, 0, true);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3d), tex_volume_write, rhi_all_mips, 0, true);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3d), tex_volume_read);
+                m_pcb_pass_cpu.set_f3_value(use_history ? 0.0f : 1.0f, 0.0f, 0.0f);
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                 RHI_CommandList::Dispatch((renderer_particle_volume_width + 7) / 8, (renderer_particle_volume_height + 7) / 8, (renderer_particle_volume_depth + 3) / 4);
             }
             RHI_CommandList::EndMarker();
@@ -1094,7 +1188,11 @@ namespace spartan
             {
                 RHI_CommandList::SetShader(shader_volume_composite, "particle_volume_composite");
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_render, rhi_all_mips, 0, true);
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3d), tex_volume);
+                if (RHI_Texture* tex_reactivity = GetRenderTarget(Renderer_RenderTarget::dlss_reactivity))
+                {
+                    RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), tex_reactivity, rhi_all_mips, 0, true);
+                }
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3d), tex_volume_write);
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::cluster_light_grid), GetBuffer(Renderer_Buffer::ClusterLightGrid));
@@ -1102,6 +1200,11 @@ namespace spartan
                 RHI_CommandList::Dispatch(tex_render);
             }
             RHI_CommandList::EndMarker();
+
+            if (!IsSecondaryViewActive())
+            {
+                m_pass_state.particle_volume_history.Advance();
+            }
         }
 
         RHI_CommandList::EndTimeblock();

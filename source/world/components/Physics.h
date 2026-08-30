@@ -251,6 +251,7 @@ namespace spartan
         bool GetTcEnabled() const;
         bool IsTcActive() const;                                // is traction control intervening
         float GetTcReduction() const;                           // current power reduction (0-1)
+        bool IsBurnoutActive() const;                           // line lock held, fronts braked and tc stood down
 
         // turbo
         void SetTurboEnabled(bool enabled);

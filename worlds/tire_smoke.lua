@@ -6,7 +6,9 @@ local slip_range             = 0.78
 local slip_angle_threshold   = 0.12
 local slip_ratio_threshold   = 0.13
 local brake_threshold        = 0.68
-local max_emission_rate      = 560.0
+-- a real burnout lays a trail twenty metres long that hangs for the better part of ten seconds, so the
+-- rate has to fill that volume rather than the metre around the tire the old lifetime could reach
+local max_emission_rate      = 900.0
 local contact_height_offset  = 0.045
 local contact_smoothing_rate = 18.0
 
@@ -105,6 +107,10 @@ local function apply_emitter(wheel, intensity, speed, velocity, vehicle)
 
     if intensity <= 0.01 then
         emitter:SetEmissionRate(0.0)
+        -- every live particle reads its emitter, so only the wheel attached fields are dropped here,
+        -- the thermal and the rollup stay put or a plume already in the air would stop dead on lift off
+        emitter:SetVortexStrength(0.0)
+        emitter:SetWakeStrength(0.0)
         return
     end
 
@@ -112,41 +118,108 @@ local function apply_emitter(wheel, intensity, speed, velocity, vehicle)
     local speed_push = clamp(speed / 32.0, 0.0, 1.0)
     local density    = intensity * (0.35 + intensity * 0.65)
 
+    -- how hard the tread is scrubbing across the ground, this is what actually flings the smoke
+    local scrub      = wheel.scrub_speed or 0.0
+    local scrub_push = clamp(scrub / 26.0, 0.0, 1.0)
+    local fury       = intensity * (0.35 + scrub_push * 0.65)
+
     emitter:SetBlendMode(1)
     emitter:SetLightingMode(0)
     emitter:SetEmissionRate(42.0 + density * max_emission_rate)
-    emitter:SetLifetime(0.82 + intensity * 0.85 + speed_push * 0.24)
-    emitter:SetStartSpeed(0.16 + intensity * 0.36 + speed_push * 0.36)
+    -- the plume used to die about a metre from the tire, which is why it read as a lump stuck to the
+    -- wheel rather than smoke the car was leaving behind, burnt rubber smoke hangs for the better part of
+    -- ten seconds and this is long enough to lay a real trail without holding thousands of dead slots
+    emitter:SetLifetime(3.20 + intensity * 1.80 + speed_push * 0.60)
+    emitter:SetStartSpeed(1.10 + scrub_push * 3.80 + fury * 2.20)
+    -- small at birth, so the jet out of the contact patch is tight and there are plenty of envelope edges
+    -- through the near plume where the carved detail lives
     emitter:SetStartSize(0.09 + intensity * 0.07)
-    emitter:SetEndSize(0.40 + intensity * 0.34 + speed_push * 0.20)
-    emitter:SetGravityModifier(-0.095 - intensity * 0.055)
-    emitter:SetEmissionRadius(tire_width * (0.30 + intensity * 0.38))
-    emitter:SetEmissionConeAngle(0.78 + (1.0 - intensity) * 0.38)
-    emitter:SetDirectionalBlend(0.42 + intensity * 0.38)
-    emitter:SetDrag(1.55 + intensity * 0.35)
-    emitter:SetTurbulenceStrength(0.20 + intensity * 0.16)
-    emitter:SetWindInfluence(0.20 + speed_push * 0.16)
-    emitter:SetVelocityInheritance(0.55 + speed_push * 0.28)
-    emitter:SetVelocityStretch(0.18 + speed_push * 0.35)
+    -- and metres wide by the end, entrainment needs somewhere to grow into, a ceiling a third of a metre
+    -- up was reached in a fraction of a second and the parcel then coasted at a fixed size for the rest of
+    -- its life, which is what capped the plume at the size of the wheel
+    emitter:SetEndSize(0.90 + intensity * 0.50 + fury * 0.40)
+    -- the thermal below carries the rise, cooled smoke is close to neutrally buoyant
+    emitter:SetGravityModifier(-0.02)
+    emitter:SetEmissionRadius(tire_width * (0.28 + intensity * 0.34))
+    -- a hard scrub is a jet out of the contact patch, a light one is a lazy puff
+    emitter:SetEmissionConeAngle(0.68 - fury * 0.34)
+    emitter:SetDirectionalBlend(0.62 + fury * 0.30)
+    -- entrainment supplies most of the deceleration now, the parcel slows because it is spreading its
+    -- momentum over the air it swallows, so this is only the residual form drag on top of that, at the old
+    -- value the two together stopped the jet dead inside half a metre
+    emitter:SetDrag(0.55 - fury * 0.25)
+    emitter:SetTurbulenceStrength(0.34 + fury * 0.85)
+    emitter:SetWindInfluence(0.24 + speed_push * 0.20)
+    -- smoke is dumped into the world, it does not ride along with the car
+    emitter:SetVelocityInheritance(0.12 + speed_push * 0.26)
+    -- stretch smears the texture along the flow, past about a third it turns billowing puffs into
+    -- streaks and the shape is the first thing to go
+    emitter:SetVelocityStretch(0.12 + fury * 0.20)
+    -- the harder the tire works the more violently the puff churns from the inside
+    emitter:SetChurnStrength(0.022 + fury * 0.026)
     emitter:SetSoftDepthScale(14.0)
-    emitter:SetVolumeDensity(0.52 + intensity * 0.22)
-    emitter:SetVolumeAnisotropy(0.12)
-    emitter:SetVolumeShadowing(0.78)
 
-    local rear_warmth = wheel.rear and 0.035 or 0.0
-    local alpha       = clamp(0.15 + intensity * 0.18, 0.0, 0.34)
-    local warmth      = clamp(speed_push * 0.06 + rear_warmth, 0.0, 0.10)
-    emitter:SetStartColor(0.74 + warmth, 0.72 + warmth, 0.68 + warmth, alpha)
-    emitter:SetEndColor(0.34 + warmth * 0.4, 0.35 + warmth * 0.4, 0.34 + warmth * 0.3, 0.0)
+    -- burnt rubber smoke is white, the albedo used to carry its own warm tint on top of a warm scene
+    -- light so the hue landed twice and came out brown
+    -- alpha is density in the volume, it used to be held under a fifth because the field clamped at one
+    -- and anything above that clipped the whole plume solid with nothing left for the noise to carve,
+    -- the clamp is gone so this can carry a real optical depth, if the plume comes out too solid or too
+    -- thin the volume density on the effect is the one knob to turn
+    -- the longer lifetime and the wider end size put several times as much smoke in the air as before, and
+    -- density accumulates across all of it, so the per parcel figure comes down to pay for the trail
+    local alpha = clamp(0.08 + intensity * 0.14, 0.0, 0.22)
+    emitter:SetStartColor(0.95, 0.95, 0.96, alpha)
+    -- it thins out rather than darkening, the old dark grey end read as soot
+    emitter:SetEndColor(0.80, 0.80, 0.82, 0.0)
 
+    -- the tread carries the smoke with it, so the launch is along the surface velocity of the contact
+    -- patch, that is backwards when the wheel is driving and forwards when it is locked under braking
+    local tread     = vehicle:GetForward()
+    local tread_vel = -(wheel.surface_speed or 0.0)
     local fallback  = vehicle:GetBackward()
-    local direction = fallback
-    if speed > 0.75 then
-        direction = Vector3(-velocity.x, 0.0, -velocity.z)
+    local direction = Vector3(tread.x * tread_vel, 0.0, tread.z * tread_vel)
+
+    -- a locked or lightly slipping wheel has no tread velocity to speak of, the plume then trails the car
+    if math.abs(tread_vel) < 1.5 then
+        direction = fallback
+        if speed > 0.75 then
+            direction = Vector3(-velocity.x, 0.0, -velocity.z)
+        end
     end
 
-    direction = normalize_or(Vector3(direction.x, 0.05 + intensity * 0.05, direction.z), Vector3(fallback.x, 0.05, fallback.z))
+    local lift = 0.05 + intensity * 0.05 + fury * 0.16
+    direction  = normalize_or(Vector3(direction.x, lift, direction.z), Vector3(fallback.x, 0.05, fallback.z))
     emitter:SetEmissionDirection(direction.x, direction.y, direction.z)
+
+    -- locate the axle so the simulation can build the flow field around the tire
+    local hub  = wheel.wheel:GetPosition()
+    local axis = vehicle:GetRight()
+    local spin = wheel.surface_speed or 0.0
+
+    emitter:SetVortexCenter(hub.x, hub.y, hub.z)
+    emitter:SetVortexAxis(axis.x, axis.y, axis.z)
+    emitter:SetVortexRadius(math.max(wheel.radius or 0.34, 0.2))
+
+    -- boundary layer the tread drags around itself, thin and confined, so it is a trim on the jet
+    -- rather than the thing that shapes the plume
+    local layer = clamp(math.abs(spin) * 0.45, 0.0, 16.0) * intensity
+    if spin < 0.0 then
+        layer = -layer
+    end
+    emitter:SetVortexStrength(layer)
+
+    -- rubber gasses off near three hundred degrees, so the harder the tire works the hotter the plume
+    -- and the harder it climbs, the decay is what turns a jet into a mushrooming column
+    emitter:SetThermalStrength(1.40 + fury * 5.60)
+    emitter:SetThermalDecay(2.90 - fury * 1.10)
+
+    -- the wall jet shears against the still air above the tarmac and rolls up, this is the curl
+    emitter:SetRollupStrength(0.22 + fury * 0.55)
+
+    -- the tread shoulders shed a counter rotating pair once the car is actually moving, it sweeps the
+    -- ground level wake outboard and lifts its outer edge, kept modest because the downwash it puts
+    -- between the wheels works against the thermal
+    emitter:SetWakeStrength(speed_push * 6.0 * intensity)
 end
 
 function tire_smoke.Tick(self, entity)
@@ -162,10 +235,9 @@ function tire_smoke.Tick(self, entity)
         for _, wheel in ipairs(self.wheels) do
             if wheel and wheel.emitter then
                 wheel.emitter:LoadEffect("worlds/tire_smoke.particle")
+                -- volumetric, the grid only carries the coarse envelope and the march carves the
+                -- structure in from world space noise, so the texture is not needed for detail
                 wheel.emitter:SetRenderMode(1)
-                wheel.emitter:SetVolumeDensity(0.52)
-                wheel.emitter:SetVolumeAnisotropy(0.12)
-                wheel.emitter:SetVolumeShadowing(0.78)
             end
         end
     end
@@ -180,6 +252,14 @@ function tire_smoke.Tick(self, entity)
     local throttle  = self.physics:GetVehicleThrottle()
     local brake     = self.physics:GetVehicleBrake()
     local handbrake = self.physics:GetVehicleHandbrake()
+    local radius    = self.physics:GetWheelRadius()
+
+    -- the tread scrubs against the ground at the difference between its own surface speed and the
+    -- ground speed, so both axes of the chassis are needed to split the body velocity apart
+    local forward       = entity:GetForward()
+    local right         = entity:GetRight()
+    local forward_speed = dot(velocity, forward)
+    local lateral_speed = dot(velocity, right)
 
     local brake_intensity = 0.0
     if speed > min_speed and brake > brake_threshold then
@@ -193,7 +273,14 @@ function tire_smoke.Tick(self, entity)
             if self.physics:IsWheelGrounded(wheel.index) then
                 local ground_point = smooth_contact(dt, wheel, get_ground_point(self.physics, wheel))
                 wheel.smoke:SetPosition(ground_point)
-                wheel.width = self.physics:GetWheelWidth(wheel.index)
+                wheel.width  = self.physics:GetWheelWidth(wheel.index)
+                wheel.radius = radius
+
+                -- signed, positive means the tread is rolling the car forward
+                local surface_speed = self.physics:GetWheelAngularVelocity(wheel.index) * radius
+                local long_scrub    = surface_speed - forward_speed
+                wheel.surface_speed = surface_speed
+                wheel.scrub_speed   = math.sqrt(long_scrub * long_scrub + lateral_speed * lateral_speed)
 
                 local slip       = self.physics:GetWheelSlipMagnitude(wheel.index)
                 local slip_angle = math.abs(self.physics:GetWheelSlipAngle(wheel.index))
@@ -204,7 +291,9 @@ function tire_smoke.Tick(self, entity)
                 local longitudinal_intensity = ramp(slip_ratio, slip_ratio_threshold, 0.95)
                 local combined_intensity     = ramp(slip, slip_threshold, slip_threshold + slip_range)
                 local load_scale             = clamp(tire_load / 4200.0, 0.55, 1.35)
-                local motion_scale           = math.max(ramp(speed, min_speed, 14.0), longitudinal_intensity * 0.75)
+                -- a standing burnout has no road speed at all, the tread scrub is what makes the smoke,
+                -- scaling by road speed alone capped a line lock at three quarters intensity
+                local motion_scale           = math.max(ramp(speed, min_speed, 14.0), ramp(wheel.scrub_speed, 2.0, 16.0))
                 local axle_scale             = wheel.rear and 1.0 or 0.55
 
                 intensity = math.max(lateral_intensity, longitudinal_intensity, combined_intensity * 0.8)

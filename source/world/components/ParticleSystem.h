@@ -175,6 +175,36 @@ namespace spartan
         float GetVelocityStretch() const;
         void SetVelocityStretch(float stretch);
 
+        // wheel vortex, particles orbit an axle so smoke leaves the contact patch backwards and curls up
+        // behind the tire, centre and axis are world space and expected to be driven per frame
+        const math::Vector3& GetVortexCenter() const;
+        void SetVortexCenter(const math::Vector3& center);
+        const math::Vector3& GetVortexAxis() const;
+        void SetVortexAxis(const math::Vector3& axis);
+        float GetVortexStrength() const;
+        void SetVortexStrength(float strength);
+        float GetVortexRadius() const;
+        void SetVortexRadius(float radius);
+
+        // smoke that gasses off hot rises on its own, the lift fades as the plume entrains cold air
+        float GetThermalStrength() const;
+        void SetThermalStrength(float strength);
+        float GetThermalDecay() const;
+        void SetThermalDecay(float decay);
+        // a jet running along the ground rolls up where it shears against the still air above it
+        float GetRollupStrength() const;
+        void SetRollupStrength(float strength);
+        // counter rotating pair shed off the tread shoulders, only active while the emitter moves
+        float GetWakeStrength() const;
+        void SetWakeStrength(float strength);
+        // warps the texture lookup over time so a puff boils instead of only rotating and scaling
+        float GetChurnStrength() const;
+        void SetChurnStrength(float strength);
+        // distance from the emitter before world collision engages, an emitter buried inside geometry
+        // such as an exhaust tip needs enough of this to clear the bodywork around it
+        float GetCollisionClearance() const;
+        void SetCollisionClearance(float distance);
+
         // bursts and flipbooks
         float GetSpawnBurst() const;
         void SetSpawnBurst(float count);
@@ -237,6 +267,16 @@ namespace spartan
         float m_wind_influence              = 0.0f;
         float m_velocity_inheritance        = 0.0f;
         float m_velocity_stretch            = 0.0f;
+        math::Vector3 m_vortex_center       = math::Vector3::Zero;
+        math::Vector3 m_vortex_axis         = math::Vector3::Zero;
+        float m_vortex_strength             = 0.0f;
+        float m_vortex_radius               = 0.0f;
+        float m_thermal_strength            = 0.0f;
+        float m_thermal_decay               = 2.5f;
+        float m_rollup_strength             = 0.0f;
+        float m_wake_strength               = 0.0f;
+        float m_churn_strength              = 0.0f;
+        float m_collision_clearance         = 0.0f;
         float m_spawn_burst                 = 0.0f;
         uint32_t m_flipbook_rows            = 1;
         uint32_t m_flipbook_columns         = 1;
