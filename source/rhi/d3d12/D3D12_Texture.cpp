@@ -202,10 +202,26 @@ namespace spartan
             d3d12_utility::debug::set_name(texture, m_object_name.c_str());
         }
 
+        GpuMemoryDetail detail = {};
+        detail.width     = m_width;
+        detail.height    = m_height;
+        detail.depth     = m_depth;
+        detail.mip_count = m_mip_count;
+        detail.format    = rhi_format_to_string(m_format);
+        detail.path      = GetResourceFilePath().c_str();
+        switch (m_type)
+        {
+            case RHI_Texture_Type::Type2D:      detail.type = "2D"; break;
+            case RHI_Texture_Type::Type2DArray: detail.type = "2DArray"; break;
+            case RHI_Texture_Type::Type3D:      detail.type = "3D"; break;
+            case RHI_Texture_Type::TypeCube:    detail.type = "Cube"; break;
+            default: break;
+        }
         d3d12_gpu_memory::register_resource(
             texture,
             GpuMemoryKind::Texture,
-            m_object_name.c_str()
+            m_object_name.c_str(),
+            detail
         );
 
         // seed the d3d12 state tracker so future barriers know the StateBefore

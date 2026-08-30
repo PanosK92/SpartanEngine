@@ -1228,11 +1228,38 @@ namespace spartan
         }
 
         // gpu prep outside the material lock, ImmediateExecution and compress can take a while
-        for (RHI_Texture* texture : textures)
+        // packed channels stay cpu-only after packing, shaders read occlusion/roughness/metalness/height from packed
+        for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); type++)
         {
-            if (texture && texture->GetResourceState() == ResourceState::Max)
+            const bool cpu_only =
+                type == static_cast<uint32_t>(MaterialTextureType::Roughness) ||
+                type == static_cast<uint32_t>(MaterialTextureType::Metalness) ||
+                type == static_cast<uint32_t>(MaterialTextureType::Occlusion) ||
+                type == static_cast<uint32_t>(MaterialTextureType::Height) ||
+                type == static_cast<uint32_t>(MaterialTextureType::AlphaMask);
+
+            for (uint32_t slot = 0; slot < slots_per_texture; slot++)
             {
-                texture->PrepareForGpu();
+                RHI_Texture* texture =
+                    textures[type * slots_per_texture + slot];
+                if (!texture)
+                {
+                    continue;
+                }
+
+                if (cpu_only)
+                {
+                    if (texture->GetRhiResource())
+                    {
+                        texture->DestroyResourceImmediate();
+                    }
+                    continue;
+                }
+
+                if (texture->GetResourceState() == ResourceState::Max)
+                {
+                    texture->PrepareForGpu();
+                }
             }
         }
 

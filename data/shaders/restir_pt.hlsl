@@ -928,29 +928,20 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     albedo = saturate(albedo);
 
     float roughness = mat.roughness;
+    float metallic  = mat.metalness;
     if (terrain_shaded)
     {
         roughness = terrain.roughness;
+        metallic  = terrain.metalness;
     }
-    else if (mat.has_texture_roughness())
+    else if (mat.has_texture_roughness() || mat.has_texture_metalness())
     {
-        uint roughness_texture_index = material_index + material_texture_index_roughness;
-        roughness *= material_textures[roughness_texture_index].SampleLevel(
-            GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).g;
+        float4 packed = material_textures[material_index + material_texture_index_packed].SampleLevel(
+            GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
+        roughness *= lerp(1.0f, packed.g, (float)mat.has_texture_roughness());
+        metallic  *= lerp(1.0f, packed.b, (float)mat.has_texture_metalness());
     }
     roughness = max(roughness, 0.04f);
-
-    float metallic = mat.metalness;
-    if (terrain_shaded)
-    {
-        metallic = terrain.metalness;
-    }
-    else if (mat.has_texture_metalness())
-    {
-        uint metalness_texture_index = material_index + material_texture_index_metalness;
-        metallic *= material_textures[metalness_texture_index].SampleLevel(
-            GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).r;
-    }
 
     float3x3 obj_to_world_3x3 = (float3x3)ObjectToWorld4x3();
     float3 edge1_world   = mul(pv1.position - pv0.position, obj_to_world_3x3);

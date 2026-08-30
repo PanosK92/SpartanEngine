@@ -941,7 +941,8 @@ namespace spartan
             void* resource,
             VmaAllocation allocation,
             GpuMemoryKind kind,
-            const char* name
+            const char* name,
+            const GpuMemoryDetail& detail = {}
         )
         {
             if (!resource || !allocation)
@@ -959,7 +960,8 @@ namespace spartan
                 name,
                 info2.allocationInfo.offset,
                 reinterpret_cast<uint64_t>(info2.allocationInfo.deviceMemory),
-                info2.blockSize
+                info2.blockSize,
+                detail
             );
         }
     }
@@ -2937,11 +2939,27 @@ namespace spartan
         }
 
         vulkan_memory_allocator::save_allocation(texture->GetRhiResource(), allocation);
+        GpuMemoryDetail detail = {};
+        detail.width     = texture->GetWidth();
+        detail.height    = texture->GetHeight();
+        detail.depth     = texture->GetDepth();
+        detail.mip_count = texture->GetMipCount();
+        detail.format    = rhi_format_to_string(texture->GetFormat());
+        detail.path      = texture->GetResourceFilePath().c_str();
+        switch (texture->GetType())
+        {
+            case RHI_Texture_Type::Type2D:      detail.type = "2D"; break;
+            case RHI_Texture_Type::Type2DArray: detail.type = "2DArray"; break;
+            case RHI_Texture_Type::Type3D:      detail.type = "3D"; break;
+            case RHI_Texture_Type::TypeCube:    detail.type = "Cube"; break;
+            default: break;
+        }
         vulkan_memory_allocator::register_gpu_memory(
             texture->GetRhiResource(),
             allocation,
             GpuMemoryKind::Texture,
-            texture->GetObjectName().c_str()
+            texture->GetObjectName().c_str(),
+            detail
         );
     }
 

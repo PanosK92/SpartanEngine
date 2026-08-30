@@ -43,6 +43,17 @@ namespace spartan
         Count
     };
 
+    struct GpuMemoryDetail
+    {
+        uint32_t width     = 0;
+        uint32_t height    = 0;
+        uint32_t depth     = 0;
+        uint32_t mip_count = 0;
+        const char* format = nullptr;
+        const char* path   = nullptr;
+        const char* type   = nullptr;
+    };
+
     struct GpuMemoryBlock
     {
         void* resource     = nullptr;
@@ -51,7 +62,14 @@ namespace spartan
         uint64_t heap_id   = 0;
         uint64_t heap_size = 0;
         GpuMemoryKind kind = GpuMemoryKind::Other;
+        uint32_t width     = 0;
+        uint32_t height    = 0;
+        uint32_t depth     = 0;
+        uint32_t mip_count = 0;
         char name[96]      = {};
+        char format[32]    = {};
+        char path[160]     = {};
+        char type[16]      = {};
     };
 
     class GpuMemory
@@ -64,7 +82,8 @@ namespace spartan
             const char* name,
             uint64_t offset = 0,
             uint64_t heap_id = 0,
-            uint64_t heap_size = 0
+            uint64_t heap_size = 0,
+            const GpuMemoryDetail& detail = {}
         );
 
         static void Unregister(void* resource);

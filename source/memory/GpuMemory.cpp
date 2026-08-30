@@ -57,6 +57,21 @@ namespace spartan
         }
     }
 
+    const char* strip_format_prefix(const char* format)
+    {
+        static const char prefix[] = "RHI_Format_";
+        if (!format)
+        {
+            return "";
+        }
+        const size_t n = sizeof(prefix) - 1;
+        if (strncmp(format, prefix, n) == 0)
+        {
+            return format + n;
+        }
+        return format;
+    }
+
     void GpuMemory::Register(
         void* resource,
         uint64_t size,
@@ -64,7 +79,8 @@ namespace spartan
         const char* name,
         uint64_t offset,
         uint64_t heap_id,
-        uint64_t heap_size
+        uint64_t heap_size,
+        const GpuMemoryDetail& detail
     )
     {
         if (!resource || size == 0)
@@ -73,13 +89,20 @@ namespace spartan
         }
 
         GpuMemoryBlock block = {};
-        block.resource = resource;
-        block.size     = size;
-        block.offset   = offset;
-        block.heap_id  = heap_id != 0 ? heap_id : reinterpret_cast<uint64_t>(resource);
+        block.resource  = resource;
+        block.size      = size;
+        block.offset    = offset;
+        block.heap_id   = heap_id != 0 ? heap_id : reinterpret_cast<uint64_t>(resource);
         block.heap_size = heap_size != 0 ? heap_size : size;
-        block.kind     = kind;
+        block.kind      = kind;
+        block.width     = detail.width;
+        block.height    = detail.height;
+        block.depth     = detail.depth;
+        block.mip_count = detail.mip_count;
         copy_name(block.name, sizeof(block.name), name);
+        copy_name(block.format, sizeof(block.format), strip_format_prefix(detail.format));
+        copy_name(block.path, sizeof(block.path), detail.path);
+        copy_name(block.type, sizeof(block.type), detail.type);
 
         lock_guard<mutex> lock(mutex_blocks);
         auto it = blocks.find(resource);

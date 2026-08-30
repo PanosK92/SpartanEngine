@@ -291,8 +291,9 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     }
     else if (mat.has_texture_roughness())
     {
-        uint roughness_texture_index = material_index + material_texture_index_roughness;
-        roughness *= material_textures[roughness_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).g;
+        float4 packed = material_textures[material_index + material_texture_index_packed].SampleLevel(
+            GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
+        roughness *= packed.g;
     }
     roughness = max(roughness, 0.04f);
     

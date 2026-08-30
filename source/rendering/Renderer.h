@@ -352,6 +352,7 @@ namespace spartan
         void CreateShaders();
         void CreateSamplers();
         void CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic);
+        void EnsureScreenshotTargets();
         void UpdateOptionalRenderTargets();
         void CreateFonts();
         void CreateStandardMeshes();

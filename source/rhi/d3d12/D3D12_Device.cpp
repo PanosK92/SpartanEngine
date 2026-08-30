@@ -1494,7 +1494,12 @@ namespace spartan
     void RHI_Device::UpdateBindlessGeometryIndices(RHI_Buffer* buffer)   { write_bindless_structured_srv(d3d12_descriptors::bindless_buffer_slot::geometry_indices, buffer); }
     void RHI_Device::UpdateBindlessInstances(RHI_Buffer* buffer)         { write_bindless_structured_srv(d3d12_descriptors::bindless_buffer_slot::geometry_instances, buffer); }
 
-    void d3d12_gpu_memory::register_resource(ID3D12Resource* resource, GpuMemoryKind kind, const char* name)
+    void d3d12_gpu_memory::register_resource(
+        ID3D12Resource* resource,
+        GpuMemoryKind kind,
+        const char* name,
+        const GpuMemoryDetail& detail
+    )
     {
         if (!resource)
         {
@@ -1509,7 +1514,11 @@ namespace spartan
             resource,
             info.SizeInBytes,
             kind,
-            name
+            name,
+            0,
+            0,
+            0,
+            detail
         );
     }
 

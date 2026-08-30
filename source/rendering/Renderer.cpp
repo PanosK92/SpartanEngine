@@ -4239,6 +4239,12 @@ namespace spartan
         RHI_Texture* tex_ping = GetRenderTarget(Renderer_RenderTarget::screenshot_sdr_2);
         if (!tex_sdr || !tex_ping)
         {
+            EnsureScreenshotTargets();
+            tex_sdr  = GetRenderTarget(Renderer_RenderTarget::screenshot_sdr);
+            tex_ping = GetRenderTarget(Renderer_RenderTarget::screenshot_sdr_2);
+        }
+        if (!tex_sdr || !tex_ping)
+        {
             return;
         }
 
@@ -4288,6 +4294,11 @@ namespace spartan
 
         RHI_Texture* tex_stereo = GetRenderTarget(Renderer_RenderTarget::frame_output_stereo);
         RHI_Texture* tex_sdr    = GetRenderTarget(Renderer_RenderTarget::screenshot_sdr);
+        if (!tex_sdr)
+        {
+            EnsureScreenshotTargets();
+            tex_sdr = GetRenderTarget(Renderer_RenderTarget::screenshot_sdr);
+        }
         if (!tex_stereo || !tex_sdr)
         {
             return;

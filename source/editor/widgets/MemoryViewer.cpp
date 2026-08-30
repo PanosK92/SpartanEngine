@@ -398,6 +398,414 @@ namespace
         format_bytes(cell_text, sizeof(cell_text), cell_bytes);
         ImGui::TextDisabled("each square is %s", cell_text);
     }
+
+    string csv_escape(const char* value)
+    {
+        if (!value || !value[0])
+        {
+            return "";
+        }
+
+        bool quote = false;
+        for (const char* c = value; *c; c++)
+        {
+            if (*c == ',' || *c == '"' || *c == '\n' || *c == '\r')
+            {
+                quote = true;
+                break;
+            }
+        }
+        if (!quote)
+        {
+            return string(value);
+        }
+
+        string out = "\"";
+        for (const char* c = value; *c; c++)
+        {
+            if (*c == '"')
+            {
+                out += "\"\"";
+            }
+            else
+            {
+                out += *c;
+            }
+        }
+        out += '"';
+        return out;
+    }
+
+    void csv_cell_str(string& csv, bool& first, const char* value)
+    {
+        if (!first)
+        {
+            csv += ',';
+        }
+        first = false;
+        csv += csv_escape(value);
+    }
+
+    void csv_cell_u64(string& csv, bool& first, uint64_t value)
+    {
+        if (!first)
+        {
+            csv += ',';
+        }
+        first = false;
+        char buf[32];
+        snprintf(
+            buf,
+            sizeof(buf),
+            "%llu",
+            static_cast<unsigned long long>(value)
+        );
+        csv += buf;
+    }
+
+    void csv_cell_f(string& csv, bool& first, double value)
+    {
+        if (!first)
+        {
+            csv += ',';
+        }
+        first = false;
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%.2f", value);
+        csv += buf;
+    }
+
+    void csv_end_row(string& csv)
+    {
+        csv += '\n';
+    }
+
+    struct csv_group
+    {
+        string name;
+        string extra;
+        uint32_t count = 0;
+        uint64_t bytes = 0;
+    };
+
+    void csv_write_groups(
+        string& csv,
+        const char* section,
+        const char* extra_header,
+        vector<csv_group>& groups,
+        uint64_t tracked
+    )
+    {
+        sort(
+            groups.begin(),
+            groups.end(),
+            [](const csv_group& a, const csv_group& b)
+            {
+                return a.bytes > b.bytes;
+            }
+        );
+
+        csv += "## ";
+        csv += section;
+        csv += '\n';
+        csv += "name,";
+        csv += extra_header;
+        csv += ",count,bytes,pct\n";
+        for (const csv_group& group : groups)
+        {
+            bool first = true;
+            csv_cell_str(csv, first, group.name.c_str());
+            csv_cell_str(csv, first, group.extra.c_str());
+            csv_cell_u64(csv, first, group.count);
+            csv_cell_u64(csv, first, group.bytes);
+            const double pct = tracked > 0
+                ? (static_cast<double>(group.bytes) * 100.0 /
+                    static_cast<double>(tracked))
+                : 0.0;
+            csv_cell_f(csv, first, pct);
+            csv_end_row(csv);
+        }
+        csv_end_row(csv);
+    }
+
+    bool export_gpu_csv(
+        const string& path,
+        const vector<GpuMemoryBlock>& blocks,
+        uint64_t vram_total,
+        uint64_t driver_bytes
+    )
+    {
+        vector<map_range> ranges;
+        uint64_t used = 0;
+        uint64_t holes = 0;
+        uint64_t unused = 0;
+        uint64_t largest_free = 0;
+        build_ranges(
+            blocks,
+            vram_total,
+            ranges,
+            used,
+            holes,
+            unused,
+            largest_free
+        );
+
+        const uint64_t total_free = holes + unused;
+        const float fragmentation = (total_free > 0)
+            ? (1.0f - static_cast<float>(largest_free) /
+                static_cast<float>(total_free))
+            : 0.0f;
+
+        array<uint64_t, static_cast<size_t>(GpuMemoryKind::Count)> kind_bytes = {};
+        array<uint32_t, static_cast<size_t>(GpuMemoryKind::Count)> kind_count = {};
+        for (const GpuMemoryBlock& block : blocks)
+        {
+            const size_t index = static_cast<size_t>(block.kind);
+            kind_bytes[index] += block.size;
+            kind_count[index]++;
+        }
+
+        unordered_map<uint64_t, uint32_t> heap_index;
+        uint32_t next_heap = 0;
+        for (const GpuMemoryBlock& block : blocks)
+        {
+            if (heap_index.find(block.heap_id) == heap_index.end())
+            {
+                heap_index[block.heap_id] = next_heap++;
+            }
+        }
+
+        unordered_map<string, csv_group> by_name;
+        unordered_map<string, csv_group> by_format;
+        unordered_map<string, csv_group> by_path;
+        by_name.reserve(blocks.size());
+        by_format.reserve(64);
+        by_path.reserve(blocks.size());
+        for (const GpuMemoryBlock& block : blocks)
+        {
+            const char* name = block.name[0] ? block.name : "(unnamed)";
+            const char* kind = GpuMemory::GetKindName(block.kind);
+            string name_key = string(name) + '\t' + kind;
+            csv_group& name_group = by_name[name_key];
+            if (name_group.count == 0)
+            {
+                name_group.name  = name;
+                name_group.extra = kind;
+            }
+            name_group.count++;
+            name_group.bytes += block.size;
+
+            if (block.format[0])
+            {
+                csv_group& format_group = by_format[block.format];
+                if (format_group.count == 0)
+                {
+                    format_group.name  = block.format;
+                    format_group.extra = block.kind == GpuMemoryKind::Texture
+                        ? "Texture"
+                        : kind;
+                }
+                format_group.count++;
+                format_group.bytes += block.size;
+            }
+
+            if (block.path[0])
+            {
+                csv_group& path_group = by_path[block.path];
+                if (path_group.count == 0)
+                {
+                    path_group.name  = block.path;
+                    path_group.extra = name;
+                }
+                path_group.count++;
+                path_group.bytes += block.size;
+            }
+        }
+
+        string csv;
+        csv.reserve(blocks.size() * 192 + 8192);
+
+        csv += "## summary\n";
+        csv += "metric,value\n";
+        {
+            auto metric_u64 = [&](const char* name, uint64_t value)
+            {
+                bool first = true;
+                csv_cell_str(csv, first, name);
+                csv_cell_u64(csv, first, value);
+                csv_end_row(csv);
+            };
+            auto metric_f = [&](const char* name, double value)
+            {
+                bool first = true;
+                csv_cell_str(csv, first, name);
+                csv_cell_f(csv, first, value);
+                csv_end_row(csv);
+            };
+            metric_u64("tracked_bytes", used);
+            metric_u64("vram_total_bytes", vram_total);
+            metric_u64("alloc_count", blocks.size());
+            metric_u64("holes_bytes", holes);
+            metric_u64("unused_bytes", unused);
+            metric_u64("largest_free_bytes", largest_free);
+            metric_f("fragmentation_pct", fragmentation * 100.0);
+            metric_u64("driver_bytes", driver_bytes);
+            metric_u64("heap_count", next_heap);
+        }
+        csv_end_row(csv);
+
+        csv += "## by_kind\n";
+        csv += "kind,count,bytes,pct\n";
+        for (uint8_t i = 0; i < static_cast<uint8_t>(GpuMemoryKind::Count); i++)
+        {
+            if (kind_bytes[i] == 0)
+            {
+                continue;
+            }
+            bool first = true;
+            csv_cell_str(csv, first, GpuMemory::GetKindName(static_cast<GpuMemoryKind>(i)));
+            csv_cell_u64(csv, first, kind_count[i]);
+            csv_cell_u64(csv, first, kind_bytes[i]);
+            const double pct = used > 0
+                ? (static_cast<double>(kind_bytes[i]) * 100.0 /
+                    static_cast<double>(used))
+                : 0.0;
+            csv_cell_f(csv, first, pct);
+            csv_end_row(csv);
+        }
+        csv_end_row(csv);
+
+        vector<csv_group> name_groups;
+        name_groups.reserve(by_name.size());
+        for (auto& pair : by_name)
+        {
+            name_groups.push_back(move(pair.second));
+        }
+        csv_write_groups(csv, "by_name", "kind", name_groups, used);
+
+        vector<csv_group> format_groups;
+        format_groups.reserve(by_format.size());
+        for (auto& pair : by_format)
+        {
+            format_groups.push_back(move(pair.second));
+        }
+        csv_write_groups(csv, "by_format", "kind", format_groups, used);
+
+        vector<csv_group> path_groups;
+        path_groups.reserve(by_path.size());
+        for (auto& pair : by_path)
+        {
+            path_groups.push_back(move(pair.second));
+        }
+        csv_write_groups(csv, "by_path", "name", path_groups, used);
+
+        vector<const GpuMemoryBlock*> sorted;
+        sorted.reserve(blocks.size());
+        for (const GpuMemoryBlock& block : blocks)
+        {
+            sorted.push_back(&block);
+        }
+        sort(
+            sorted.begin(),
+            sorted.end(),
+            [](const GpuMemoryBlock* a, const GpuMemoryBlock* b)
+            {
+                return a->size > b->size;
+            }
+        );
+
+        csv += "## allocations\n";
+        csv += "name,kind,type,width,height,depth,mips,format,size_bytes,offset,heap,dedicated,path\n";
+        for (const GpuMemoryBlock* block : sorted)
+        {
+            bool first = true;
+            csv_cell_str(
+                csv,
+                first,
+                block->name[0] ? block->name : "(unnamed)"
+            );
+            csv_cell_str(csv, first, GpuMemory::GetKindName(block->kind));
+            csv_cell_str(csv, first, block->type);
+            csv_cell_u64(csv, first, block->width);
+            csv_cell_u64(csv, first, block->height);
+            csv_cell_u64(csv, first, block->depth);
+            csv_cell_u64(csv, first, block->mip_count);
+            csv_cell_str(csv, first, block->format);
+            csv_cell_u64(csv, first, block->size);
+            csv_cell_u64(csv, first, block->offset);
+            csv_cell_u64(csv, first, heap_index[block->heap_id]);
+            csv_cell_u64(
+                csv,
+                first,
+                (block->heap_size == block->size) ? 1 : 0
+            );
+            csv_cell_str(csv, first, block->path);
+            csv_end_row(csv);
+        }
+
+        return FileSystem::WriteFile(path, csv);
+    }
+
+    bool export_cpu_csv(const string& path)
+    {
+        const float allocated_mb = Allocator::GetMemoryAllocatedMb();
+        const float process_mb   = Allocator::GetMemoryProcessUsedMb();
+        const float available_mb = Allocator::GetMemoryAvailableMb();
+        const float total_mb     = Allocator::GetMemoryTotalMb();
+
+        string csv;
+        csv.reserve(1024);
+
+        char line[256];
+        snprintf(
+            line,
+            sizeof(line),
+            "# engine_mb=%.3f\n",
+            allocated_mb
+        );
+        csv += line;
+        snprintf(
+            line,
+            sizeof(line),
+            "# process_mb=%.3f\n",
+            process_mb
+        );
+        csv += line;
+        snprintf(
+            line,
+            sizeof(line),
+            "# system_used_mb=%.3f\n",
+            total_mb - available_mb
+        );
+        csv += line;
+        snprintf(
+            line,
+            sizeof(line),
+            "# system_total_mb=%.3f\n",
+            total_mb
+        );
+        csv += line;
+        csv += "tag,mb\n";
+
+        for (uint8_t i = 0; i < static_cast<uint8_t>(MemoryTag::Count); i++)
+        {
+            const MemoryTag tag = static_cast<MemoryTag>(i);
+            const float mb = Allocator::GetMemoryAllocatedByTagMb(tag);
+            csv += csv_escape(Allocator::GetTagName(tag));
+            snprintf(line, sizeof(line), ",%.3f\n", mb);
+            csv += line;
+        }
+
+        const float other_mb = max(0.0f, process_mb - allocated_mb);
+        csv += "Process";
+        snprintf(line, sizeof(line), ",%.3f\n", other_mb);
+        csv += line;
+        csv += "Free";
+        snprintf(line, sizeof(line), ",%.3f\n", available_mb);
+        csv += line;
+
+        return FileSystem::WriteFile(path, csv);
+    }
 }
 
 MemoryViewer::MemoryViewer(Editor* editor) : Widget(editor)
@@ -433,6 +841,65 @@ void MemoryViewer::OnTickVisible()
         m_frozen = !m_frozen;
     }
     ImGuiSp::tooltip(m_frozen ? "resume live capture" : "freeze the current map");
+    ImGui::SameLine();
+    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+    ImGui::SameLine();
+    if (ImGui::Button("Export CSV"))
+    {
+        const string path = FileSystem::GetExecutableDirectory() +
+            (m_show_gpu ? "/memory_gpu.csv" : "/memory_cpu.csv");
+        bool ok = false;
+        if (m_show_gpu)
+        {
+            vector<GpuMemoryBlock> blocks;
+            if (m_frozen)
+            {
+                blocks = m_frozen_blocks;
+            }
+            else
+            {
+                GpuMemory::GetBlocks(blocks);
+            }
+            const uint64_t vram_total =
+                RHI_Device::MemoryGetTotalMb() * 1024ull * 1024ull;
+            const uint64_t driver_bytes =
+                RHI_Device::MemoryGetAllocatedMb() * 1024ull * 1024ull;
+            ok = export_gpu_csv(
+                path,
+                blocks,
+                vram_total,
+                driver_bytes
+            );
+        }
+        else
+        {
+            ok = export_cpu_csv(path);
+        }
+
+        if (ok)
+        {
+            m_export_path = path;
+            SP_LOG_INFO("memory csv written to %s", path.c_str());
+        }
+        else
+        {
+            SP_LOG_ERROR("failed to write memory csv to %s", path.c_str());
+        }
+    }
+    ImGuiSp::tooltip(
+        m_show_gpu ?
+            "write every gpu allocation to memory_gpu.csv" :
+            "write cpu tag totals to memory_cpu.csv"
+    );
+    if (!m_export_path.empty())
+    {
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Copy path"))
+        {
+            ImGui::SetClipboardText(m_export_path.c_str());
+        }
+        ImGuiSp::tooltip(m_export_path.c_str());
+    }
 
     ImGui::Separator();
 
@@ -545,7 +1012,7 @@ void MemoryViewer::OnTickVisible()
         ImGui::Separator();
         if (ImGui::BeginTable(
             "gpu_allocs",
-            3,
+            4,
             ImGuiTableFlags_Borders |
             ImGuiTableFlags_RowBg |
             ImGuiTableFlags_ScrollY |
@@ -556,6 +1023,7 @@ void MemoryViewer::OnTickVisible()
             ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 90.0f * Window::GetDpiScale());
             ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, 80.0f * Window::GetDpiScale());
+            ImGui::TableSetupColumn("Info", ImGuiTableColumnFlags_WidthFixed, 160.0f * Window::GetDpiScale());
             ImGui::TableHeadersRow();
 
             vector<const GpuMemoryBlock*> sorted;
@@ -569,27 +1037,58 @@ void MemoryViewer::OnTickVisible()
                 return a->size > b->size;
             });
 
-            const int show_count = min(static_cast<int>(sorted.size()), 256);
-            for (int i = 0; i < show_count; i++)
+            ImGuiListClipper clipper;
+            clipper.Begin(static_cast<int>(sorted.size()));
+            while (clipper.Step())
             {
-                const GpuMemoryBlock* block = sorted[i];
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                const bool selected = block->resource == m_selected_resource;
-                if (ImGui::Selectable(
-                    block->name[0] ? block->name : "(unnamed)",
-                    selected,
-                    ImGuiSelectableFlags_SpanAllColumns
-                ))
+                for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
                 {
-                    m_selected_resource = block->resource;
+                    const GpuMemoryBlock* block = sorted[i];
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::PushID(i);
+                    const bool selected =
+                        block->resource == m_selected_resource;
+                    if (ImGui::Selectable(
+                        block->name[0] ? block->name : "(unnamed)",
+                        selected,
+                        ImGuiSelectableFlags_SpanAllColumns
+                    ))
+                    {
+                        m_selected_resource = block->resource;
+                    }
+                    if (ImGui::IsItemHovered() && block->path[0])
+                    {
+                        ImGui::SetTooltip("%s", block->path);
+                    }
+                    ImGui::PopID();
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(
+                        GpuMemory::GetKindName(block->kind)
+                    );
+                    ImGui::TableNextColumn();
+                    char size_text[32];
+                    format_bytes(
+                        size_text,
+                        sizeof(size_text),
+                        block->size
+                    );
+                    ImGui::TextUnformatted(size_text);
+                    ImGui::TableNextColumn();
+                    if (block->width > 0)
+                    {
+                        ImGui::Text(
+                            "%ux%u %s",
+                            block->width,
+                            block->height,
+                            block->format[0] ? block->format : ""
+                        );
+                    }
+                    else if (block->path[0])
+                    {
+                        ImGui::TextUnformatted(block->path);
+                    }
                 }
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(GpuMemory::GetKindName(block->kind));
-                ImGui::TableNextColumn();
-                char size_text[32];
-                format_bytes(size_text, sizeof(size_text), block->size);
-                ImGui::TextUnformatted(size_text);
             }
             ImGui::EndTable();
         }

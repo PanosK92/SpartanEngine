@@ -609,6 +609,8 @@ namespace spartan
         {
             at(render_targets, Renderer_RenderTarget::frame_output)                = nullptr;
             at(render_targets, Renderer_RenderTarget::frame_output_2)              = nullptr;
+            at(render_targets, Renderer_RenderTarget::screenshot_sdr)              = nullptr;
+            at(render_targets, Renderer_RenderTarget::screenshot_sdr_2)            = nullptr;
             at(render_targets, Renderer_RenderTarget::taau_history)                = nullptr;
             at(render_targets, Renderer_RenderTarget::frame_output_stereo)         = nullptr;
             at(render_targets, Renderer_RenderTarget::bloom)                       = nullptr;
@@ -743,8 +745,6 @@ namespace spartan
             uint32_t mip_count = compute_mip_count(width_output, height_output, 16);
             at(render_targets, Renderer_RenderTarget::frame_output)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews | RHI_Texture_ConcurrentSharing, "frame_output");
             at(render_targets, Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_output_2");
-            at(render_targets, Renderer_RenderTarget::screenshot_sdr)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,       RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "screenshot_sdr");
-            at(render_targets, Renderer_RenderTarget::screenshot_sdr_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,       RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "screenshot_sdr_2");
             // stereo needs one history layer per eye, frame_render and frame_output stay 2d and are reused per eye
             if (xr_stereo)
             {
@@ -798,7 +798,6 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::cloud_shadow)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1024, 1024, 1, compute_mip_count(1024, 1024, 16),                 RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ConcurrentSharing, "cloud_shadow");
             at(render_targets, Renderer_RenderTarget::cloud_environment)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_cloud_environment_w, renderer_resolution_cloud_environment_h, 1, compute_mip_count(renderer_resolution_cloud_environment_w, renderer_resolution_cloud_environment_h, 16), RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "cloud_environment");
 
-            at(render_targets, Renderer_RenderTarget::blur)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_blur_scratch, renderer_resolution_blur_scratch, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "blur_scratch");
             const uint32_t lowest_dimension                 = 16; // lowest mip is 16x16, preserving directional detail for diffuse IBL (1x1 loses directionality)
             at(render_targets, Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_skysphere_w, renderer_resolution_skysphere_h, 1, compute_mip_count(renderer_resolution_skysphere_w, renderer_resolution_skysphere_h, lowest_dimension), RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "skysphere");
             // l2 sh coeffs for directional diffuse ibl, 9 float4s in a 9x1 texture
@@ -915,6 +914,66 @@ namespace spartan
             );
             m_pass_state.fog_history.Reset();
         }
+
+        const uint32_t blur_dim = min(
+            renderer_resolution_blur_scratch,
+            max(
+                max(width_output, height_output),
+                max(width_render, height_render)
+            )
+        );
+        RHI_Texture* blur = at(render_targets, Renderer_RenderTarget::blur).get();
+        if (!blur || blur->GetWidth() != blur_dim || blur->GetHeight() != blur_dim)
+        {
+            at(render_targets, Renderer_RenderTarget::blur) = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2D,
+                blur_dim,
+                blur_dim,
+                1,
+                1,
+                RHI_Format::R16G16B16A16_Float,
+                RHI_Texture_Uav | RHI_Texture_Srv,
+                "blur_scratch"
+            );
+        }
+    }
+
+    void Renderer::EnsureScreenshotTargets()
+    {
+        const uint32_t width  = static_cast<uint32_t>(GetResolutionOutput().x);
+        const uint32_t height = static_cast<uint32_t>(GetResolutionOutput().y);
+        const uint32_t flags  =
+            RHI_Texture_Uav |
+            RHI_Texture_Srv |
+            RHI_Texture_Rtv |
+            RHI_Texture_ClearBlit;
+
+        auto ensure = [&](Renderer_RenderTarget id, const char* name)
+        {
+            RHI_Texture* existing = at(render_targets, id).get();
+            if (
+                existing &&
+                existing->GetWidth() == width &&
+                existing->GetHeight() == height
+            )
+            {
+                return;
+            }
+
+            at(render_targets, id) = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2D,
+                width,
+                height,
+                1,
+                1,
+                RHI_Format::R16G16B16A16_Float,
+                flags,
+                name
+            );
+        };
+
+        ensure(Renderer_RenderTarget::screenshot_sdr, "screenshot_sdr");
+        ensure(Renderer_RenderTarget::screenshot_sdr_2, "screenshot_sdr_2");
     }
 
     namespace

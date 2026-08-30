@@ -1331,11 +1331,12 @@ namespace spartan
             camera_override = nullptr;
             light           = nullptr;
             Camera::ClearSelection(); // the selection outlives cameras now, don't let it hold freed entities
-            for (Entity* entity : entities)
-            {
-                delete entity;
-            }
-            entities.clear();
+
+            // drop the live lists first, destructors that walk GetEntities must not see freed pointers
+            vector<Entity*> to_delete;
+            to_delete.swap(entities);
+            vector<Entity*> pending_to_delete;
+            pending_to_delete.swap(entities_pending);
             entities_lights.clear();
             entities_with_render.clear();
             entities_with_ragdoll.clear();
@@ -1343,13 +1344,16 @@ namespace spartan
             entities_with_logic.clear();
             entities_with_icon.clear();
             entities_with_particles.clear();
-            // also clear any entities the loader had queued, otherwise we'd leak partially-built objects when a load is aborted
-            for (Entity* entity : entities_pending)
+            pending_remove.clear();
+
+            for (Entity* entity : to_delete)
             {
                 delete entity;
             }
-            entities_pending.clear();
-            pending_remove.clear();
+            for (Entity* entity : pending_to_delete)
+            {
+                delete entity;
+            }
         }
 
         WorldHelpers::Clear();                        // release long lived builder meshes and materials

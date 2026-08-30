@@ -90,7 +90,7 @@ namespace spartan
     // meshlet cull survivors, bounded by the visible meshlets of the instance cull survivors
     const uint32_t renderer_max_meshlet_instances  = 4 * 1024 * 1024;
     // triangle cull survivors, packed (meshlet_instance, triangle), overflow silently drops late triangles
-    const uint32_t renderer_max_visible_triangles  = 32 * 1024 * 1024;
+    const uint32_t renderer_max_visible_triangles  = 16 * 1024 * 1024;
     // opaque survivors grow from 0 and alpha tested from here, so the prepass can draw the opaque half with no pixel shader
     const uint32_t renderer_visible_triangles_half = renderer_max_visible_triangles / 2;
 
@@ -152,7 +152,7 @@ namespace spartan
 
     // render target dimensions, fixed allocations sized for current quality budgets
     const uint32_t renderer_resolution_shadow_atlas = 8192; // total shadow atlas, packed by row of square slices
-    const uint32_t renderer_resolution_blur_scratch = 4096; // ping pong target reused by every blur pass
+    const uint32_t renderer_resolution_blur_scratch = 4096; // upper bound, actual scratch matches output resolution
     const uint32_t renderer_resolution_skysphere_w  = 4096; // skysphere panorama width
     const uint32_t renderer_resolution_skysphere_h  = 2048; // skysphere panorama height
     const uint32_t renderer_resolution_cloud_environment_w = 512;

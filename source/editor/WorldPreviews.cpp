@@ -37,7 +37,65 @@ namespace
 
     preview_request_state preview_request;
     unordered_map<string, shared_ptr<spartan::RHI_Texture>> preview_textures;
+    constexpr uint32_t preview_max_dimension = 512;
     constexpr double preview_capture_delay_sec = 1.0;
+
+    void downscale_preview(spartan::RHI_Texture* texture)
+    {
+        if (!texture)
+        {
+            return;
+        }
+
+        while (
+            texture->GetWidth() > preview_max_dimension ||
+            texture->GetHeight() > preview_max_dimension
+        )
+        {
+            spartan::RHI_Texture_Mip* mip = texture->GetMip(0, 0);
+            if (!mip || mip->bytes.empty())
+            {
+                return;
+            }
+
+            const uint32_t width    = texture->GetWidth();
+            const uint32_t height   = texture->GetHeight();
+            const uint32_t channels = max(texture->GetChannelCount(), 1u);
+            const uint32_t new_width  = max(1u, width / 2);
+            const uint32_t new_height = max(1u, height / 2);
+            vector<std::byte> output(
+                static_cast<size_t>(new_width) * new_height * channels
+            );
+            const uint8_t* input =
+                reinterpret_cast<const uint8_t*>(mip->bytes.data());
+
+            for (uint32_t y = 0; y < new_height; y++)
+            {
+                for (uint32_t x = 0; x < new_width; x++)
+                {
+                    const uint32_t src_x = min(x * 2, width - 1);
+                    const uint32_t src_y = min(y * 2, height - 1);
+                    const uint32_t src_x2 = min(src_x + 1, width - 1);
+                    const uint32_t src_y2 = min(src_y + 1, height - 1);
+                    const uint32_t dst_index = (y * new_width + x) * channels;
+                    for (uint32_t c = 0; c < channels; c++)
+                    {
+                        const uint32_t sum =
+                            input[(src_y * width + src_x) * channels + c] +
+                            input[(src_y * width + src_x2) * channels + c] +
+                            input[(src_y2 * width + src_x) * channels + c] +
+                            input[(src_y2 * width + src_x2) * channels + c];
+                        output[dst_index + c] =
+                            static_cast<std::byte>(sum / 4);
+                    }
+                }
+            }
+
+            mip->bytes = move(output);
+            texture->SetWidth(new_width);
+            texture->SetHeight(new_height);
+        }
+    }
 
     void clear_request()
     {
@@ -186,17 +244,17 @@ namespace
             return texture.get();
         }
 
-        shared_ptr<spartan::RHI_Texture> texture = make_shared<spartan::RHI_Texture>(preview_path);
-        if (!texture)
-        {
-            return nullptr;
-        }
-
+        shared_ptr<spartan::RHI_Texture> texture = make_shared<spartan::RHI_Texture>();
+        texture->SetFlag(spartan::RHI_Texture_DeferUpload);
+        texture->LoadFromFile(preview_path);
         if (texture->GetWidth() == 0 || texture->GetHeight() == 0)
         {
             invalidate_preview(preview_path);
             return nullptr;
         }
+
+        downscale_preview(texture.get());
+        texture->PrepareForGpu();
 
         preview_textures[preview_path] = texture;
         if (texture->GetResourceState() != spartan::ResourceState::PreparedForGpu || texture->GetRhiResource() == nullptr)

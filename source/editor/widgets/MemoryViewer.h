@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "Widget.h"
+#include <string>
 #include <vector>
 #include "memory/GpuMemory.h"
 //================================
@@ -37,4 +38,5 @@ private:
     bool m_frozen   = false;
     std::vector<spartan::GpuMemoryBlock> m_frozen_blocks;
     void* m_selected_resource = nullptr;
+    std::string m_export_path;
 };
