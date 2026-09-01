@@ -190,6 +190,85 @@ void sample_spherical_rectangle(
     out_pos = origin + xu * x + yv * y + z0 * z;
 }
 
+// arvo 1995 spherical triangle sampling, pbrt v4 formulation, uniform in solid angle
+// returns the unit direction from origin and the subtended solid angle, zero when degenerate
+// area sampling of an emitter carries dist^2 / cos_e in the pdf, so a receiver near a large
+// triangle sees weights spanning orders of magnitude across one triangle, sampling the solid
+// angle directly makes the weight L * cos * omega with no distance term at all
+void sample_spherical_triangle(
+    float3 origin,
+    float3 v0,
+    float3 v1,
+    float3 v2,
+    float2 u,
+    out float3 out_dir,
+    out float  out_solid_angle)
+{
+    out_dir         = float3(0.0f, 0.0f, 1.0f);
+    out_solid_angle = 0.0f;
+
+    float3 a = normalize(v0 - origin);
+    float3 b = normalize(v1 - origin);
+    float3 c = normalize(v2 - origin);
+
+    float3 n_ab = cross(a, b);
+    float3 n_bc = cross(b, c);
+    float3 n_ca = cross(c, a);
+    if (dot(n_ab, n_ab) < 1e-12f || dot(n_bc, n_bc) < 1e-12f || dot(n_ca, n_ca) < 1e-12f)
+    {
+        return;
+    }
+    n_ab = normalize(n_ab);
+    n_bc = normalize(n_bc);
+    n_ca = normalize(n_ca);
+
+    float alpha = acos(clamp(dot(n_ab, -n_ca), -1.0f, 1.0f));
+    float beta  = acos(clamp(dot(n_bc, -n_ab), -1.0f, 1.0f));
+    float gamma = acos(clamp(dot(n_ca, -n_bc), -1.0f, 1.0f));
+
+    float area_pi = alpha + beta + gamma;
+    float area    = area_pi - PI;
+    if (area <= 1e-6f || isnan(area))
+    {
+        return;
+    }
+    out_solid_angle = area;
+
+    // pick a sub triangle with a fraction u.x of the area, then locate its third vertex cp on arc ac
+    float ap_pi     = lerp(PI, area_pi, u.x);
+    float cos_alpha = cos(alpha);
+    float sin_alpha = sin(alpha);
+    float sin_phi   = sin(ap_pi) * cos_alpha - cos(ap_pi) * sin_alpha;
+    float cos_phi   = cos(ap_pi) * cos_alpha + sin(ap_pi) * sin_alpha;
+
+    float k1     = cos_phi + cos_alpha;
+    float k2     = sin_phi - sin_alpha * dot(a, b);
+    float denom  = (k2 * sin_phi + k1 * cos_phi) * sin_alpha;
+    denom        = (abs(denom) < 1e-7f) ? (denom < 0.0f ? -1e-7f : 1e-7f) : denom;
+    float cos_bp = (k2 + (k2 * cos_phi - k1 * sin_phi) * cos_alpha) / denom;
+    cos_bp       = clamp(cos_bp, -1.0f, 1.0f);
+    float sin_bp = sqrt(max(1.0f - cos_bp * cos_bp, 0.0f));
+
+    float3 c_perp = c - dot(c, a) * a;
+    if (dot(c_perp, c_perp) < 1e-12f)
+    {
+        out_solid_angle = 0.0f;
+        return;
+    }
+    float3 cp = cos_bp * a + sin_bp * normalize(c_perp);
+
+    // sample along the arc from b to cp with a fraction u.y of its cosine span
+    float  cos_theta = 1.0f - u.y * (1.0f - dot(cp, b));
+    float  sin_theta = sqrt(max(1.0f - cos_theta * cos_theta, 0.0f));
+    float3 cp_perp   = cp - dot(cp, b) * b;
+    if (dot(cp_perp, cp_perp) < 1e-12f)
+    {
+        out_dir = b;
+        return;
+    }
+    out_dir = normalize(cos_theta * b + sin_theta * normalize(cp_perp));
+}
+
 // path flags, pack_path_info stores these in a nibble so a fifth bit needs a layout change
 static const uint PATH_FLAG_SKY      = 1 << 0;  // rc is the sky dome, rc_pos stores a unit direction
 static const uint PATH_FLAG_HAS_RC   = 1 << 1;  // reconnection vertex is valid for the reconnection shift
@@ -1325,27 +1404,35 @@ bool emtri_ris_pick(
             continue;
         }
 
-        float  su = sqrt(xi.y);
-        float3 p  = tri.v0 * (1.0f - su) + tri.v1 * (su * (1.0f - xi.z)) + tri.v2 * (su * xi.z);
+        // solid angle sampling, the direction is uniform over the triangle's projection so the
+        // weight below has no distance term, see sample_spherical_triangle
+        float3 dir;
+        float  solid_angle;
+        sample_spherical_triangle(pos, tri.v0, tri.v1, tri.v2, xi.yz, dir, solid_angle);
+        if (solid_angle <= 0.0f)
+        {
+            continue;
+        }
 
-        float3 to      = p - pos;
-        float  dist_sq = dot(to, to);
-        if (dist_sq < 1e-6f)
+        float cos_l = dot(normal, dir);
+        float cos_e = dot(-dir, tri.normal);
+        if (cos_l <= 0.0f || cos_e <= 1e-4f)
         {
             continue;
         }
-        float3 dir   = to * rsqrt(dist_sq);
-        float  cos_l = dot(normal, dir);
-        float  cos_e = dot(-dir, tri.normal);
-        if (cos_l <= 0.0f || cos_e <= 0.0f)
+
+        // the point on the emitter, ray against the triangle plane
+        float t = dot(tri.v0 - pos, tri.normal) / dot(dir, tri.normal);
+        if (t <= 1e-4f || isnan(t) || isinf(t))
         {
             continue;
         }
+        float3 p = pos + dir * t;
 
         // unshadowed lambert target, the brdf albedo is a constant across candidates
         float target = luminance(tri.emission) * cos_l;
-        // solid angle pdf of the cdf draw = pick_prob * (1 / area) * dist^2 / cos_e
-        float pdf_sa = (tri.weight / total_weight) * dist_sq / max(tri.area * cos_e, 1e-6f);
+        // solid angle pdf of the draw = pick_prob / omega
+        float pdf_sa = (tri.weight / total_weight) / solid_angle;
         float w      = target / max(pdf_sa, RESTIR_MIN_PDF);
 
         weight_sum += w;

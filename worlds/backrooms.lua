@@ -11,10 +11,12 @@
 local backrooms = {}
 
 -- serialized configuration, editable from the script node attributes in the world file
-backrooms.seed              = 1337
+backrooms.seed              = 0      -- 0 rolls a new layout each play, any other value locks it
 backrooms.cell_size         = 4.0    -- meters per maze cell
 backrooms.chunk_cells       = 12     -- cells per chunk side
-backrooms.view_radius       = 1      -- chunks kept around the camera, 1 means a 3x3 block
+backrooms.view_radius       = 2      -- chunks queued around the camera, 2 means a 5x5 block
+backrooms.build_extra       = 1      -- extra rings built hidden so long halls never show the void
+backrooms.keep_extra        = 2      -- extra rings kept so looking back does not despawn geometry
 backrooms.wall_height       = 3.2
 backrooms.wall_thickness    = 0.3
 backrooms.slab_thickness    = 0.4
@@ -43,8 +45,8 @@ backrooms.light_lumens      = 1600.0
 backrooms.light_temp        = 3800.0 -- sick fluorescent, not office white
 backrooms.light_volumetric  = true
 backrooms.flicker           = true
-backrooms.spawn_budget      = 24     -- entities spawned per frame while streaming
-backrooms.stream_interval   = 0.2    -- seconds between residency checks
+backrooms.spawn_budget      = 96     -- entities spawned per frame while streaming
+backrooms.stream_interval   = 0.05   -- seconds between residency checks
 backrooms.chair_room        = 0.028  -- chance a room cell gets a chair
 backrooms.chair_maze        = 0.008
 backrooms.chair_hall        = 0.006
@@ -66,8 +68,6 @@ local host          = nil
 local initialized   = false
 local materials     = {}
 local chunks        = {}
-local spawn_queue   = {}
-local queue_head    = 1
 local light_pool    = {}
 local stream_timer  = 0.0
 local hum_audio     = nil
@@ -75,6 +75,11 @@ local chair_template = nil
 local chair_searched = false
 local table_template = nil
 local table_searched = false
+local layout_seed    = 1
+local last_pos_x     = nil
+local last_pos_z     = nil
+local last_ccx       = nil
+local last_ccz       = nil
 
 -- fnv1a over three integers, the only source of determinism that does not depend on visit order
 local function hash_u32(a, b, c)
@@ -90,6 +95,7 @@ local function hash_u32(a, b, c)
     mix(a)
     mix(b)
     mix(c)
+    mix(layout_seed)
 
     return h
 end
@@ -132,20 +138,20 @@ local KIND_ROOM     = 2
 
 -- global row and column hashes, a corridor that leaves a chunk is the same corridor next door
 local function ew_width_start(gz)
-    if hash_unit(gz, backrooms.seed, 0xc0) >= backrooms.corridor_density then
+    if hash_unit(gz, layout_seed, 0xc0) >= backrooms.corridor_density then
         return 0
     end
-    if hash_unit(gz, backrooms.seed, 0xc2) < backrooms.corridor_wide then
+    if hash_unit(gz, layout_seed, 0xc2) < backrooms.corridor_wide then
         return 2
     end
     return 1
 end
 
 local function ns_width_start(gx)
-    if hash_unit(gx, backrooms.seed, 0xc1) >= backrooms.corridor_density then
+    if hash_unit(gx, layout_seed, 0xc1) >= backrooms.corridor_density then
         return 0
     end
-    if hash_unit(gx, backrooms.seed, 0xc3) < backrooms.corridor_wide then
+    if hash_unit(gx, layout_seed, 0xc3) < backrooms.corridor_wide then
         return 2
     end
     return 1
@@ -191,7 +197,7 @@ end
 -- a chunk only ever owns lines 0..n-1 on each axis, its east and south borders belong to the neighbours
 local function generate_grid(cx, cz)
     local n   = backrooms.chunk_cells
-    local rnd = prng_new(hash_u32(cx, cz, backrooms.seed))
+    local rnd = prng_new(hash_u32(cx, cz, layout_seed))
 
     local wall_w = {}
     local wall_n = {}
@@ -666,8 +672,11 @@ local function build_jobs(cx, cz, key)
         if panel_alive(cx * n + x, cz * n + z, salt) then
             local px = ox + (x + 0.5) * cs
             local pz = oz + (z + 0.5) * cs
-            push_job(jobs, key, "ceiling_light", px, wall_h - 0.05, pz,
-                     cs * 0.55, 0.12, 0.45, false)
+            -- flush troffer, only the bottom face emits into the room, a box hanging below the
+            -- ceiling turns its four sides into strips that blast the tiles at grazing angles and
+            -- that bright ring is a tiny secondary emitter every wall and floor pixel has to find
+            push_job(jobs, key, "ceiling_light", px, wall_h - 0.01, pz,
+                     cs * 0.55, 0.02, 0.45, false)
             lights[#lights + 1] = { px, pz }
         end
     end
@@ -880,35 +889,76 @@ local function queue_chunk(cx, cz)
     root:SetTransient(true)
     root:SetParent(host)
     root:SetPositionLocal(Vector3(0.0, 0.0, 0.0))
+    root:SetActive(false)
 
     local jobs, lights, chairs, tables = build_jobs(cx, cz, key)
 
-    chunks[key] = { cx = cx, cz = cz, root = root, lights = lights }
+    chunks[key] =
+    {
+        cx = cx, cz = cz, root = root, lights = lights,
+        jobs = jobs, job_index = 1, ready = false,
+    }
 
     spawn_from_template(get_chair_template(), chairs, "chair", root)
     spawn_from_template(get_table_template(), tables, "table", root)
-
-    for i = 1, #jobs do
-        spawn_queue[#spawn_queue + 1] = jobs[i]
-    end
 end
 
-local function drain_queue(budget)
-    while queue_head <= #spawn_queue and budget > 0 do
-        local job   = spawn_queue[queue_head]
-        queue_head  = queue_head + 1
+local function reveal_chunk(chunk)
+    if chunk.ready then
+        return
+    end
+    chunk.ready     = true
+    chunk.jobs      = nil
+    chunk.job_index = 1
+    chunk.root:SetActive(true)
+end
 
-        -- the chunk may have been unloaded while its jobs were still queued
-        local chunk = chunks[job.key]
-        if chunk then
-            spawn_job(job, chunk.root)
-            budget = budget - 1
+local function finish_chunk_jobs(chunk)
+    while chunk.jobs and chunk.job_index <= #chunk.jobs do
+        spawn_job(chunk.jobs[chunk.job_index], chunk.root)
+        chunk.job_index = chunk.job_index + 1
+    end
+    reveal_chunk(chunk)
+end
+
+local function drain_queue(budget, pos)
+    local size = chunk_size()
+    local ccx  = math.floor(pos.x / size)
+    local ccz  = math.floor(pos.z / size)
+
+    -- the ring under the player must exist this frame, otherwise a sprint shows the builder
+    for _, chunk in pairs(chunks) do
+        if not chunk.ready then
+            local cheb = math.max(math.abs(chunk.cx - ccx), math.abs(chunk.cz - ccz))
+            if cheb <= 1 then
+                finish_chunk_jobs(chunk)
+            end
         end
     end
 
-    if queue_head > #spawn_queue then
-        spawn_queue = {}
-        queue_head  = 1
+    local incomplete = {}
+    for _, chunk in pairs(chunks) do
+        if not chunk.ready then
+            local dx = chunk.cx - ccx
+            local dz = chunk.cz - ccz
+            incomplete[#incomplete + 1] = { dx * dx + dz * dz, chunk }
+        end
+    end
+    table.sort(incomplete, function(a, b) return a[1] < b[1] end)
+
+    for i = 1, #incomplete do
+        if budget <= 0 then
+            break
+        end
+        local chunk = incomplete[i][2]
+        while chunk.jobs and chunk.job_index <= #chunk.jobs and budget > 0 do
+            spawn_job(chunk.jobs[chunk.job_index], chunk.root)
+            chunk.job_index = chunk.job_index + 1
+            budget = budget - 1
+        end
+        if not chunk.jobs or chunk.job_index > #chunk.jobs then
+            reveal_chunk(chunk)
+        end
     end
 end
 
@@ -916,7 +966,7 @@ local function update_residency(pos)
     local size = chunk_size()
     local ccx  = math.floor(pos.x / size)
     local ccz  = math.floor(pos.z / size)
-    local r    = backrooms.view_radius
+    local r    = backrooms.view_radius + backrooms.build_extra
 
     for cz = ccz - r, ccz + r do
         for cx = ccx - r, ccx + r do
@@ -924,8 +974,39 @@ local function update_residency(pos)
         end
     end
 
-    -- keep one extra ring so pacing back and forth over a border does not thrash the builder
-    local keep  = r + 1
+    -- prefetch along travel so a fast walk does not catch the hidden build ring
+    if last_pos_x then
+        local vx = pos.x - last_pos_x
+        local vz = pos.z - last_pos_z
+        local speed = math.sqrt(vx * vx + vz * vz)
+        if speed > 0.4 then
+            local extra = 1
+            if speed > 1.2 then
+                extra = 2
+            end
+            local dirx = 0
+            local dirz = 0
+            if math.abs(vx) >= math.abs(vz) then
+                dirx = (vx > 0) and 1 or -1
+            else
+                dirz = (vz > 0) and 1 or -1
+            end
+            for step = 1, extra do
+                for side = -r, r do
+                    if dirx ~= 0 then
+                        queue_chunk(ccx + dirx * (r + step), ccz + side)
+                    else
+                        queue_chunk(ccx + side, ccz + dirz * (r + step))
+                    end
+                end
+            end
+        end
+    end
+
+    last_pos_x = pos.x
+    last_pos_z = pos.z
+
+    local keep  = backrooms.view_radius + backrooms.keep_extra
     local stale = {}
     for key, chunk in pairs(chunks) do
         if math.abs(chunk.cx - ccx) > keep or math.abs(chunk.cz - ccz) > keep then
@@ -948,11 +1029,13 @@ local function update_lights(pos)
 
     local candidates = {}
     for _, chunk in pairs(chunks) do
-        for i = 1, #chunk.lights do
-            local light = chunk.lights[i]
-            local dx    = light[1] - pos.x
-            local dz    = light[2] - pos.z
-            candidates[#candidates + 1] = { dx * dx + dz * dz, light[1], light[2] }
+        if chunk.ready then
+            for i = 1, #chunk.lights do
+                local light = chunk.lights[i]
+                local dx    = light[1] - pos.x
+                local dz    = light[2] - pos.z
+                candidates[#candidates + 1] = { dx * dx + dz * dz, light[1], light[2] }
+            end
         end
     end
 
@@ -1046,13 +1129,37 @@ function backrooms.Initialize(self, entity)
     load_materials()
     create_light_pool()
 
+    -- lua has no os library here, randomseed() with no args uses system entropy
+    if backrooms.seed ~= 0 then
+        layout_seed = backrooms.seed & 0xffffffff
+    else
+        local a, b = math.randomseed()
+        a = math.floor((tonumber(a) or 1) % 4294967296)
+        b = math.floor((tonumber(b) or 1) % 4294967296)
+        layout_seed = hash_u32(a, b, math.floor(Timer.GetTimeMs()))
+        if layout_seed == 0 then
+            layout_seed = 1
+        end
+    end
+
     -- the starting block is built in one go, otherwise the player spawns into the void and falls
     -- the active camera is not always picked yet this early, so fall back to the body then to the origin
     local anchor = World.GetCameraEntity() or World.GetEntityByName("physics_body_camera")
     local pos    = anchor and anchor:GetPosition() or Vector3(0.0, 0.0, 0.0)
 
     update_residency(pos)
-    drain_queue(math.maxinteger)
+
+    -- finish the visible ring now, outer rings stay hidden and fill in over the first seconds
+    local size = chunk_size()
+    local ccx  = math.floor(pos.x / size)
+    local ccz  = math.floor(pos.z / size)
+    for _, chunk in pairs(chunks) do
+        local cheb = math.max(math.abs(chunk.cx - ccx), math.abs(chunk.cz - ccz))
+        if cheb <= backrooms.view_radius then
+            finish_chunk_jobs(chunk)
+        end
+    end
+
     update_lights(pos)
 end
 
@@ -1077,23 +1184,29 @@ function backrooms.Tick(self, entity)
 
     local dt = Timer.GetDeltaTimeSec()
 
-    drain_queue(backrooms.spawn_budget)
     update_flicker()
     update_hum()
-
-    stream_timer = stream_timer + dt
-    if stream_timer < backrooms.stream_interval then
-        return
-    end
-    stream_timer = 0.0
 
     local camera = World.GetCameraEntity()
     if not camera then
         return
     end
 
-    local pos = camera:GetPosition()
-    update_residency(pos)
+    local pos  = camera:GetPosition()
+    local size = chunk_size()
+    local ccx  = math.floor(pos.x / size)
+    local ccz  = math.floor(pos.z / size)
+
+    stream_timer = stream_timer + dt
+    local crossed = last_ccx ~= ccx or last_ccz ~= ccz
+    if crossed or stream_timer >= backrooms.stream_interval then
+        stream_timer = 0.0
+        last_ccx = ccx
+        last_ccz = ccz
+        update_residency(pos)
+    end
+
+    drain_queue(backrooms.spawn_budget, pos)
     update_lights(pos)
 end
 
