@@ -5,15 +5,24 @@
  </ConsoleVariables>
  <Entities>
   <Entity name="physics_body_camera" id="96622692557092671" active="true" position="2.5 1.2 2.5" rotation="0 0 0 1" scale="1 1 1">
-   <audio_source path="project/music/footsteps/footsteps_carpet.wav" is_3d="false" mute="false" loop="false" play_on_start="false" volume="0.5" pitch="1.16626024" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
+   <audio_source path="project/music/footsteps/footsteps_carpet.wav" is_3d="false" mute="false" loop="false" play_on_start="false" volume="0.5" pitch="1.16626024" reverb_enabled="true" reverb_room_size="0.78" reverb_decay="0.62" reverb_wet="0.42" />
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
    <Entity name="component_camera" id="96799266697307222" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
     <camera exposure_mode="1" aperture="2.8" shutter_speed="0.0166666675" iso="800" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="4" flags="17" />
     <script file_path="../worlds/footsteps.lua" />
    </Entity>
   </Entity>
+  <Entity name="chair_template" id="7734000000000000003" active="false" position="0 -80 0" rotation="0 0 0 1" scale="1 1 1">
+   <prefab file="project/mcp/library/prefabs/wooden_chair.prefab" />
+  </Entity>
+  <Entity name="table_template" id="7734000000000000004" active="false" position="0 -80 0" rotation="0 0 0 1" scale="1 1 1">
+   <prefab file="project/mcp/library/prefabs/gustav_2.prefab" />
+  </Entity>
   <Entity name="backrooms_generator" id="7734000000000000001" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <script file_path="../worlds/backrooms.lua" />
+  </Entity>
+  <Entity name="fluorescent_hum" id="7734000000000000002" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <audio_source path="../worlds/fluorescent_hum.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.18" pitch="0.97" reverb_enabled="true" reverb_room_size="0.82" reverb_decay="0.68" reverb_wet="0.38" />
   </Entity>
  </Entities>
 </World>

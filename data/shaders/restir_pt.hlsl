@@ -98,26 +98,6 @@ float light_pick_pdf_for_index(uint light_idx, float total_weight)
     return light_pick_weight(light_parameters[light_idx]) / total_weight;
 }
 
-// binary search over the cdf, returns the triangle whose cumulative weight first exceeds u
-uint emtri_pick_index(float u, uint count)
-{
-    uint lo = 0u;
-    uint hi = count;
-    while (lo < hi)
-    {
-        uint mid = (lo + hi) >> 1u;
-        if (emissive_triangles[mid].cdf < u)
-        {
-            lo = mid + 1u;
-        }
-        else
-        {
-            hi = mid;
-        }
-    }
-    return min(lo, count - 1u);
-}
-
 // samples a candidate whose rc sits on an area sampled point of an emissive triangle
 // returns the rc position, emitted radiance and solid angle pdf at the primary vertex
 PathSample sample_emissive_tri_candidate(
@@ -585,6 +565,12 @@ PathSample trace_path_from_primary(
     s.rc_metallic  = hit.metallic;
     s.rc_length    = 2;
 
+    // an emissive rc folds its own emission into rc_L_nee below, sample validation cannot pull
+    // that back apart from the shaded term so it has to skip these, luminance floors at FLT_MIN
+    // and would mark every surface
+    if (any(hit.emission > 0.0f))
+        s.flags |= PATH_FLAG_RC_EMIT;
+
     float3 L_nee, L_post, first_outgoing_dir;
     float  first_pdf;
     accumulate_subpath_at_rc(hit, -dir, max(get_restir_max_path_length(), 2u) - 1u, seed, L_nee, L_post, first_outgoing_dir, first_pdf);
@@ -796,6 +782,14 @@ void ray_gen()
     float final_target = target_pdf_self(reservoir.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     reservoir.target_pdf = final_target;
     reservoir.W = (final_target > 0.0f) ? (reservoir.weight_sum / final_target) : 0.0f;
+
+    // the canonical technique gets a confidence of one no matter how many candidates scored,
+    // the mis shares downstream are functions of the technique, not of what it happened to draw,
+    // counting only the non zero candidates made the canonical vanish from the denominators on
+    // exactly the pixels where the target is hard to hit, corners and the dark stretches between
+    // panels, so the reused sample kept its full weight there frame after frame and the temporal
+    // loop had nothing left to dilute it, that surplus is what grew into the bright blobs
+    reservoir.M = 1.0f;
 
     // soft saturator, see soft_clamp_w in restir_reservoir.hlsl
     float w_clamp = get_w_clamp_for_sample(reservoir.sample);

@@ -57,6 +57,11 @@ float3 sample_restir_gi_bilateral(
     float weight_total = 0.0f;
     int2 pixel_max     = int2(width, height) - 1;
 
+    // best surface match irrespective of the bilinear footprint, the fallback below needs a tap
+    // that sits on this surface rather than the nearest one in screen space
+    float3 best_value      = 0.0f;
+    float  best_similarity = -1.0f;
+
     [unroll]
     for (uint i = 0; i < 4; i++)
     {
@@ -80,10 +85,19 @@ float3 sample_restir_gi_bilateral(
             saturate(dot(normal, get_normal(sample_uv))),
             16.0f
         );
-        float weight = weights[i] * depth_weight * normal_weight;
+        float similarity = depth_weight * normal_weight;
+        float weight     = weights[i] * similarity;
 
-        result       += tex4.Load(int3(pixel, 0)).rgb * weight;
+        float3 value = tex4.Load(int3(pixel, 0)).rgb;
+
+        result       += value * weight;
         weight_total += weight;
+
+        if (similarity > best_similarity)
+        {
+            best_similarity = similarity;
+            best_value      = value;
+        }
     }
 
     if (weight_total > 1e-5f)
@@ -91,11 +105,12 @@ float3 sample_restir_gi_bilateral(
         return result / weight_total;
     }
 
-    return tex4.SampleLevel(
-        samplers[sampler_point_clamp],
-        uv,
-        0.0f
-    ).rgb;
+    // every tap sits on a different surface, which is the common case along a silhouette at the
+    // quarter resolution restir runs at, a point sample here grabs whatever surface happens to
+    // be under the texel centre and the composition then remodulates that irradiance with this
+    // pixel's albedo, drawing a bright rim along every edge, the closest matching tap at least
+    // carries irradiance from a comparable surface
+    return best_value;
 }
 
 // approx of multi-bounce (inter-reflection) for ao

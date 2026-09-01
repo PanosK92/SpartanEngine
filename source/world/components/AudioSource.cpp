@@ -250,7 +250,17 @@ namespace spartan
             "GetVolume",                    &AudioSource::GetVolume,
             "SetVolume",                    &AudioSource::SetVolume,
             "GetPlayOnStart",               &AudioSource::GetPlayOnStart,
-            "SetPlayOnStart",               &AudioSource::SetPlayOnStart
+            "SetPlayOnStart",               &AudioSource::SetPlayOnStart,
+            "GetIs3d",                      &AudioSource::GetIs3d,
+            "SetIs3d",                      &AudioSource::SetIs3d,
+            "GetReverbEnabled",             &AudioSource::GetReverbEnabled,
+            "SetReverbEnabled",             &AudioSource::SetReverbEnabled,
+            "GetReverbRoomSize",            &AudioSource::GetReverbRoomSize,
+            "SetReverbRoomSize",            &AudioSource::SetReverbRoomSize,
+            "GetReverbDecay",               &AudioSource::GetReverbDecay,
+            "SetReverbDecay",               &AudioSource::SetReverbDecay,
+            "GetReverbWet",                 &AudioSource::GetReverbWet,
+            "SetReverbWet",                 &AudioSource::SetReverbWet
             );
     }
 

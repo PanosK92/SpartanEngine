@@ -68,7 +68,7 @@ void main_ps(gbuffer_vertex vertex)
 
     // distance based alpha threshold
 #ifdef INDEXED_MULTI_DRAW
-    const bool has_albedo       = GetMaterial().has_texture_albedo();
+    const bool has_albedo       = GetMaterial().has_texture_albedo();<
 #else
     const bool has_albedo       = pass_get_f3_value().x == 1.0f;
 #endif

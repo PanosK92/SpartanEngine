@@ -96,6 +96,10 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 
 ## Corrections
 - Add corrections here when a previous note turns out to be wrong or incomplete.
+- `mesh_generate` `mirror_axis` reflects the mesh in place, it does not union the original with its reflection, so a symmetric pair needs `linear_count` 2 with a `linear_step` across the pair, or one mesh instanced onto several entities. Vertex count in the response confirms which happened.
+- `material_textured_create` forwards every finite number in its arguments to `material_set_property`, so passing `width`, `height`, `seed`, `normal_strength` or `tiling` fails with invalid material property. Pass only material scalars there and let the texture defaults apply.
+- Rewriting a texture through `texture_generate` at a path that is already loaded does not change what renders. The new PNG lands on disk but the resource cache keeps serving the texture it already has, and the response still reports fresh stats, so the numbers look like the fix worked. Generate to a new path and let `material_path` rebind the material, the same way `mesh_generate` refuses a cached mesh path.
+- `mesh_generate` `uv_projection` box normalizes each axis over the whole mesh bounds, so one `uv_scale` cannot serve faces whose in-plane extents differ wildly. Keep arrayed copies out of the axes the visible faces project along, or instance a single-copy mesh.
 - `spline_distribute` `edge_offset` 2 is too wide on roads with side walls (plan.world); cameras land outside the walls looking at them, use `edge_offset` 1 there.
 - Target name extraction used to steal phrases ending in `entity` such as `parent under an`; it now prefers `called`/`named` names and filters stopwords.
 - `city_blockout`, `district_blockout`, and `spline_reroute` are native MCP tools after rebuild. If you see `unknown command`, rebuild the engine and restart the MCP assistant.
@@ -126,3 +130,6 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Catalog writes use process-local serialization, a cross-process lock, staged files, backups, and rollback.
 - Glass materials use `color_a`, `ior`, `absorption`, and `thickness`. `transmission` and `transparency` alias inverted `color_a`.
 - Capability gap: Native MCP command or tool `entity_describe` is missing from the engine bridge or Node registry. Prompt: "Create an asset based on the car in the image, it's a hero asset so everything needs to be detailed, including its materials"
+- Capability gap: Native MCP command or tool `spartan_engine_command` is missing from the engine bridge or Node registry. Prompt: "Create an asset of a wooden chair"
+- Capability gap: Native MCP command or tool `entity_list_children` is missing from the engine bridge or Node registry. Prompt: "Create an asset of a wooden chair"
+- Capability gap: Native MCP command or tool `agent_memory_update` is missing from the engine bridge or Node registry. Prompt: "Create an asset of a wooden chair"

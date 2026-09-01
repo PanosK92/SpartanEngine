@@ -307,11 +307,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         hit_dist = is_sky_sample(combined.sample) ? 10000.0f : min(length(combined.sample.rc_pos - pos_ws), 10000.0f);
     }
 
-    // fall back to the temporal stage estimate and carry its hit distance too, radiance paired
-    // with a zero hit distance reads as a contact hit to reblur which then refuses to blur it
-    float4 temporal_stage = tex_uav[pixel];
-    if (all(gi <= 1e-6f))
+    // fall back to the temporal stage estimate only when the reservoir is genuinely empty, see
+    // the matching comment in restir_pt_temporal, a value keyed fallback lifts every dark pixel
+    // and flips estimators frame to frame
+    if (combined.M <= 0.0f || combined.W <= 0.0f)
     {
+        float4 temporal_stage = tex_uav[pixel];
         gi       = temporal_stage.rgb;
         hit_dist = temporal_stage.a;
     }

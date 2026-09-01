@@ -42,6 +42,12 @@ function footsteps.Tick(self, entity)
         audio:SetPlayOnStart(false)
         audio:SetLoop(false)
         audio:SetVolume(0.5)
+        pcall(function()
+            audio:SetReverbEnabled(true)
+            audio:SetReverbRoomSize(0.78)
+            audio:SetReverbDecay(0.62)
+            audio:SetReverbWet(0.42)
+        end)
     end
 
     if not physics then

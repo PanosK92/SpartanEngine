@@ -146,6 +146,34 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                 float  src_metallic    = temporal.sample.src_metallic;
                 float3 src_view_dir    = normalize(get_camera_position() - src_primary_pos);
 
+                // lin 2022 6.4 sample validation, run before the shift so the shifted target,
+                // the mis denominators and the shading integrand all see the refreshed radiance
+                // the visibility validation further down only catches geometry going stale, this
+                // catches a light changing intensity or moving, which is the only thing that
+                // changes in a scene whose walls never move
+                uint refresh_period = get_restir_validation_period();
+                if (refresh_period > 0u)
+                {
+                    uint refresh_hash = (pixel.x * 73856093u) ^ (pixel.y * 19349663u);
+                    if (((buffer_frame.frame + refresh_hash) % refresh_period) == 0u)
+                    {
+                        if (restir_refresh_rc_radiance(temporal.sample, src_primary_pos))
+                        {
+                            // w is scale free, the own domain target is not, re-derive it from
+                            // the refreshed radiance or the mis denominator keeps the old scale
+                            temporal.target_pdf = target_pdf_self(
+                                temporal.sample,
+                                src_primary_pos,
+                                src_normal_ws,
+                                src_view_dir,
+                                src_albedo,
+                                src_roughness,
+                                src_metallic
+                            );
+                        }
+                    }
+                }
+
                 ShiftResult shift_t_to_c = try_reconnection_shift(
                     temporal.sample,
                     src_primary_pos,
@@ -196,9 +224,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         clamp_reservoir_M(temporal, get_restir_m_cap_decorrelated(duplication));
     }
 
-    // defensive pairwise mis with the temporal stream as the single neighbor, lin 2022 5.2
+    // balance heuristic with confidence weights over the two techniques, lin 2022 5.2
     // each share evaluates one sample under both techniques' densities, own domain target in
     // the numerator, shifted target times the shift jacobian in the other denominator term
+    // this is deliberately not the defensive pairwise form the spatial pass uses, defensive
+    // weights floor the canonical at 0.5 which is the right trade against three sibling pixels
+    // of equal confidence but ruinous here, it hands a fresh single frame estimate half the
+    // image every frame no matter how deep the history is, so nothing ever settles, the plain
+    // balance heuristic lets an m of 128 push the canonical down to its proper few percent
     float weight_cur = 0.0f;
     float weight_tmp = 0.0f;
     // kept in scope for the vector shading sum further down
@@ -216,8 +249,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float temp_denom      = temporal.M * target_temp_own + current.M * target_temp * jacobian_temp;
         float temp_share      = (temp_denom > 0.0f) ? (temporal.M * target_temp_own) / temp_denom : 0.0f;
 
-        m_cur  = 0.5f * (1.0f + canon_share);
-        m_temp = 0.5f * temp_share;
+        m_cur  = canon_share;
+        m_temp = temp_share;
 
         // gris streaming weights, w = m_i * p_hat * jacobian * W
         weight_cur = (target_cur > 0.0f) ? (m_cur  * target_cur  * current.W)                : 0.0f;
@@ -347,11 +380,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         hit_dist = is_sky_sample(combined.sample) ? 10000.0f : min(length(combined.sample.rc_pos - pos_ws), 10000.0f);
     }
 
-    // fall back to the trace pass estimate and carry its hit distance too, radiance paired with
-    // a zero hit distance reads as a contact hit to reblur which then refuses to blur the pixel
-    float4 trace_stage = tex_uav[pixel];
-    if (all(gi <= 1e-6f))
+    // fall back to the trace pass estimate only when the reservoir is genuinely empty, keying
+    // this on a small gi value instead swaps in a different estimator exactly on the pixels
+    // where the resampled one came out dark, which is a one sided lift of every shadowed pixel
+    // and reads as boiling because the switch flips frame to frame
+    if (combined.M <= 0.0f || combined.W <= 0.0f)
     {
+        float4 trace_stage = tex_uav[pixel];
         gi       = trace_stage.rgb;
         hit_dist = trace_stage.a;
     }
