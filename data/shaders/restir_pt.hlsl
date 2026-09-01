@@ -99,12 +99,12 @@ float light_pick_pdf_for_index(uint light_idx, float total_weight)
 }
 
 // samples a candidate whose rc sits on an area sampled point of an emissive triangle
-// returns the rc position, emitted radiance and solid angle pdf at the primary vertex
+// returns the rc position, emitted radiance and the ris weight standing in for 1 / source pdf
 PathSample sample_emissive_tri_candidate(
     float3 primary_pos,
     float3 primary_normal,
     inout uint seed,
-    out float source_pdf)
+    out float ris_weight)
 {
     PathSample s;
     s.rc_pos          = float3(0, 0, 0);
@@ -124,69 +124,28 @@ PathSample sample_emissive_tri_candidate(
     s.path_length     = 1;
     s.rc_length       = 2;
     s.flags           = 0;
-    source_pdf        = 0.0f;
+    ris_weight        = 0.0f;
 
-    uint emtri_count = (uint)buffer_frame.restir_pt_emissive_tri_count;
-    if (emtri_count == 0u)
+    // ris over cdf draws, see emtri_ris_pick, the unshadowed geometry term picks the panel
+    float3 light_pos, light_normal, emission;
+    float  W;
+    if (!emtri_ris_pick(primary_pos, primary_normal, seed, light_pos, light_normal, emission, W))
     {
         return s;
     }
 
-    // last triangle's cdf is the total weight, the cpu builds it as a running prefix sum
-    float total_weight = emissive_triangles[emtri_count - 1u].cdf;
-    if (total_weight <= 0.0f)
+    float3 to   = light_pos - primary_pos;
+    float  dist = length(to);
+    if (dist < 1e-3f || dot(to / dist, primary_normal) <= MIN_COS_AT_PRIMARY)
     {
         return s;
     }
 
-    float pick_xi = random_float(seed) * total_weight;
-    uint  tri_idx = emtri_pick_index(pick_xi, emtri_count);
-    EmissiveTriangle tri = emissive_triangles[tri_idx];
-    if (tri.area <= 0.0f || tri.weight <= 0.0f)
-    {
-        return s;
-    }
-
-    // uniform barycentric on the triangle
-    float2 xi = random_float2(seed);
-    float  su = sqrt(max(xi.x, 0.0f));
-    float  b0 = 1.0f - su;
-    float  b1 = su * (1.0f - xi.y);
-    float  b2 = su * xi.y;
-
-    float3 sampled_pos = tri.v0 * b0 + tri.v1 * b1 + tri.v2 * b2;
-    float3 to          = sampled_pos - primary_pos;
-    float  dist        = length(to);
-    if (dist < 1e-3f)
-    {
-        return s;
-    }
-
-    float3 dir       = to / dist;
-    float  cos_at_p  = dot(dir, primary_normal);
-    if (cos_at_p <= MIN_COS_AT_PRIMARY)
-    {
-        return s;
-    }
-
-    // emitter is single sided, geometry behind the normal does not emit
-    float cos_at_e = dot(-dir, tri.normal);
-    if (cos_at_e <= 0.0f)
-    {
-        return s;
-    }
-
-    // solid angle pdf = pick_prob * area_pdf * jacobian(area to solid angle)
-    //                 = (w_i / total_w) * (1 / area) * (dist^2 / cos_at_e)
-    float pick_prob = tri.weight / total_weight;
-    float area_pdf  = 1.0f / tri.area;
-    float sa_jac    = (dist * dist) / max(cos_at_e, 1e-4f);
-    source_pdf      = pick_prob * area_pdf * sa_jac;
-
+    ris_weight  = W;
     s.flags    |= PATH_FLAG_HAS_RC | PATH_FLAG_NEE;
-    s.rc_pos    = sampled_pos;
-    s.rc_normal = tri.normal;
-    s.rc_L_nee  = tri.emission;
+    s.rc_pos    = light_pos;
+    s.rc_normal = light_normal;
+    s.rc_L_nee  = emission;
     s.rc_L_post = float3(0, 0, 0);
     return s;
 }
@@ -761,16 +720,17 @@ void ray_gen()
     // mixing in the brdf density here would shrink the weights and lose emissive energy
     for (uint ei = 0; ei < n_emtri_count; ei++)
     {
-        float emtri_source_pdf;
-        PathSample emtri_candidate = sample_emissive_tri_candidate(pos_ws, normal_ws, seed, emtri_source_pdf);
+        float emtri_ris_weight;
+        PathSample emtri_candidate = sample_emissive_tri_candidate(pos_ws, normal_ws, seed, emtri_ris_weight);
 
         float emtri_weight = 0.0f;
-        if (emtri_source_pdf >= RESTIR_MIN_PDF)
+        if (emtri_ris_weight > 0.0f)
         {
             float target_pdf = target_pdf_self(emtri_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f && trace_shift_visibility(emtri_candidate, pos_ws, normal_ws))
             {
-                emtri_weight = target_pdf / (n_emtri * emtri_source_pdf);
+                // the ris weight is the unbiased stand in for 1 / source pdf of the pick
+                emtri_weight = target_pdf * emtri_ris_weight / n_emtri;
             }
         }
 

@@ -1280,12 +1280,97 @@ uint emtri_pick_index(float u, uint count)
     return min(lo, count - 1u);
 }
 
+// emissive triangle pick, ris over a handful of cdf draws, lin 2022 6.1 / bitterli 2020 initial candidates
+// the pool cdf is area times luminance over every panel in the loaded world, so a lone draw lands
+// in some other room and gets shadowed most of the time, which left the rc radiance a spike
+// distribution that no amount of reuse could settle, resampling the draws against the unshadowed
+// geometry term toward this vertex concentrates the one shadow ray the caller will trace on the
+// panels that can actually light it, out_W is the ris estimate of 1 / pdf of the pick
+// the draw count is fixed so the stream stays aligned between the trace and the refresh
+static const uint RESTIR_EMTRI_RIS_CANDIDATES = 8u;
+
+bool emtri_ris_pick(
+    float3 pos,
+    float3 normal,
+    inout uint seed,
+    out float3 out_pos,
+    out float3 out_normal,
+    out float3 out_emission,
+    out float  out_W)
+{
+    out_pos      = float3(0.0f, 0.0f, 0.0f);
+    out_normal   = float3(0.0f, 1.0f, 0.0f);
+    out_emission = float3(0.0f, 0.0f, 0.0f);
+    out_W        = 0.0f;
+
+    uint  count        = (uint)buffer_frame.restir_pt_emissive_tri_count;
+    float total_weight = (count > 0u) ? emissive_triangles[count - 1u].cdf : 0.0f;
+    bool  pool_ok      = count > 0u && total_weight > 0.0f;
+
+    float weight_sum = 0.0f;
+    float target_sel = 0.0f;
+
+    for (uint i = 0u; i < RESTIR_EMTRI_RIS_CANDIDATES; i++)
+    {
+        float3 xi = random_float3(seed);
+        float  u  = random_float(seed);
+        if (!pool_ok)
+        {
+            continue;
+        }
+
+        EmissiveTriangle tri = emissive_triangles[emtri_pick_index(xi.x * total_weight, count)];
+        if (tri.area <= 0.0f || tri.weight <= 0.0f)
+        {
+            continue;
+        }
+
+        float  su = sqrt(xi.y);
+        float3 p  = tri.v0 * (1.0f - su) + tri.v1 * (su * (1.0f - xi.z)) + tri.v2 * (su * xi.z);
+
+        float3 to      = p - pos;
+        float  dist_sq = dot(to, to);
+        if (dist_sq < 1e-6f)
+        {
+            continue;
+        }
+        float3 dir   = to * rsqrt(dist_sq);
+        float  cos_l = dot(normal, dir);
+        float  cos_e = dot(-dir, tri.normal);
+        if (cos_l <= 0.0f || cos_e <= 0.0f)
+        {
+            continue;
+        }
+
+        // unshadowed lambert target, the brdf albedo is a constant across candidates
+        float target = luminance(tri.emission) * cos_l;
+        // solid angle pdf of the cdf draw = pick_prob * (1 / area) * dist^2 / cos_e
+        float pdf_sa = (tri.weight / total_weight) * dist_sq / max(tri.area * cos_e, 1e-6f);
+        float w      = target / max(pdf_sa, RESTIR_MIN_PDF);
+
+        weight_sum += w;
+        if (u * weight_sum < w)
+        {
+            out_pos      = p;
+            out_normal   = tri.normal;
+            out_emission = tri.emission;
+            target_sel   = target;
+        }
+    }
+
+    if (weight_sum <= 0.0f || target_sel <= 0.0f)
+    {
+        return false;
+    }
+
+    out_W = weight_sum / (float(RESTIR_EMTRI_RIS_CANDIDATES) * target_sel);
+    return true;
+}
+
 // emissive triangle nee at a bounce vertex, single strategy, the pool owns authored emitters so
 // the brdf bounce and the env probe both return zero for them and nothing is counted twice
 // without this the only way a bounce vertex saw a ceiling panel was a cosine hemisphere draw
-// landing on it, a few percent chance per path, so the stored rc radiance was zero for most paths
-// and a spike for the rest and no amount of reuse could settle that
-// the draws are always consumed so the stream stays aligned between the trace and the refresh
+// landing on it, a few percent chance per path
 float3 emtri_nee_at_vertex(
     float3 shading_pos,
     float3 shading_normal,
@@ -1297,61 +1382,25 @@ float3 emtri_nee_at_vertex(
     float specular_blend,
     inout uint seed)
 {
-    float3 xi = random_float3(seed);
-
-    uint count = (uint)buffer_frame.restir_pt_emissive_tri_count;
-    if (count == 0u)
+    float3 light_pos, light_normal, emission;
+    float  W;
+    if (!emtri_ris_pick(shading_pos, shading_normal, seed, light_pos, light_normal, emission, W))
     {
         return float3(0.0f, 0.0f, 0.0f);
     }
 
-    float total_weight = emissive_triangles[count - 1u].cdf;
-    if (total_weight <= 0.0f)
-    {
-        return float3(0.0f, 0.0f, 0.0f);
-    }
-
-    EmissiveTriangle tri = emissive_triangles[emtri_pick_index(xi.x * total_weight, count)];
-    if (tri.area <= 0.0f || tri.weight <= 0.0f)
-    {
-        return float3(0.0f, 0.0f, 0.0f);
-    }
-
-    float  su = sqrt(xi.y);
-    float3 p  = tri.v0 * (1.0f - su) + tri.v1 * (su * (1.0f - xi.z)) + tri.v2 * (su * xi.z);
-
-    float3 to      = p - shading_pos;
-    float  dist_sq = dot(to, to);
-    if (dist_sq < 1e-6f)
-    {
-        return float3(0.0f, 0.0f, 0.0f);
-    }
-    float  dist = sqrt(dist_sq);
+    float3 to   = light_pos - shading_pos;
+    float  dist = length(to);
     float3 dir  = to / dist;
-
-    if (dot(shading_normal, dir) <= 0.0f)
-    {
-        return float3(0.0f, 0.0f, 0.0f);
-    }
-
-    // emitter is single sided
-    float cos_e = dot(-dir, tri.normal);
-    if (cos_e <= 0.0f)
-    {
-        return float3(0.0f, 0.0f, 0.0f);
-    }
 
     if (!trace_shadow_ray(ray_origin, dir, dist))
     {
         return float3(0.0f, 0.0f, 0.0f);
     }
 
-    // solid angle pdf = pick_prob * (1 / area) * dist^2 / cos_e
-    float pdf_sa = (tri.weight / total_weight) * dist_sq / max(tri.area * cos_e, 1e-6f);
-
     float  brdf_pdf;
     float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, dir, brdf_pdf, specular_blend);
-    return brdf * tri.emission / max(pdf_sa, RESTIR_MIN_PDF);
+    return brdf * emission * W;
 }
 
 // direct lighting (analytical lights + environment probe) at a surface vertex toward view_dir

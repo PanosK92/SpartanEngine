@@ -51,7 +51,7 @@ Launch the engine and choose from a selection of default worlds. Nothing is a ca
     <td><img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_sponza.png" width="100%"/></td>
   </tr>
   <tr>
-    <td><img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_liminal_a.png" width="100%"/></td>
+    <td><img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_cornell.png" width="100%"/></td>
     <td><img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_showroom_a.png" width="100%"/></td>
   </tr>
 </table>
