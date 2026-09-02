@@ -54,6 +54,10 @@ namespace spartan
         // index 0 is reserved for the identity instance used by non-instanced draws
         static uint32_t AppendInstances(const Instance* data, uint32_t count);
 
+        // overwrite instances in-place inside a range a previous append returned, false when the range is invalid
+        // the cpu copy is immediate, the gpu copy is queued and coalesced by the next BuildIfDirty
+        static bool UpdateInstances(const Instance* data, uint32_t offset, uint32_t count);
+
         // update existing vertices in-place, used by deformable meshes like cloth and skinning
         // the cpu copy is immediate, the gpu copy is queued and coalesced by the next BuildIfDirty
         static void UpdateVertices(const RHI_Vertex_PosTexNorTan* data, uint32_t offset, uint32_t count);

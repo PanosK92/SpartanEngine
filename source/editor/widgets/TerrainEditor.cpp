@@ -838,7 +838,7 @@ void TerrainEditor::DrawSculpt(Terrain* terrain)
                     terrain->RegenerateTile(static_cast<uint32_t>(tile));
                     m_heights_dirty = false;
                 }
-                ImGuiSp::tooltip("restore this one tile from the pre sculpt baseline");
+                ImGuiSp::tooltip("remove the sculpt layer from this one tile, the procedural ground comes back");
             }
             else
             {
@@ -853,6 +853,48 @@ void TerrainEditor::DrawSculpt(Terrain* terrain)
             ImGui::TextUnformatted("surface dirty, release the mouse to rebuild");
             ImGui::PopStyleColor();
         }
+    }
+    card_end();
+
+    card_begin("Sculpt Layer", "your brush work lives here, apart from the generated ground, it is reapplied after every generate and saved with the world");
+    {
+        const TerrainSculptLayer& sculpt = terrain->GetSculptLayer();
+        if (sculpt.IsEmpty())
+        {
+            layout::caption("empty, the surface is exactly what the generator produced plus pads and roads");
+        }
+        else
+        {
+            float min_x = 0.0f;
+            float min_z = 0.0f;
+            float max_x = 0.0f;
+            float max_z = 0.0f;
+            sculpt.GetBounds(min_x, min_z, max_x, max_z);
+
+            const float tile_m = static_cast<float>(TerrainSculptLayer::tile_cells) * sculpt.GetCellSizeX();
+            char line[200];
+            snprintf(
+                line,
+                sizeof(line),
+                "%zu tiles of %.0f m, %.1f kb, covers %.0f x %.0f m",
+                sculpt.GetTileCount(),
+                tile_m,
+                static_cast<float>(sculpt.GetByteCount()) / 1024.0f,
+                max_x - min_x,
+                max_z - min_z
+            );
+            layout::caption(line);
+        }
+
+        ImGui::BeginDisabled(sculpt.IsEmpty() || terrain->IsGenerating());
+        if (ImGuiSp::button("Clear Sculpt Layer", ImVec2(-1.0f, 0.0f)))
+        {
+            terrain->ClearSculptLayer();
+            m_heights_dirty = false;
+            MarkScatterDirty();
+        }
+        ImGuiSp::tooltip("drop every brush stroke, pads and roads stay because they come from their objects, saving the world afterwards removes the file");
+        ImGui::EndDisabled();
     }
     card_end();
 }
@@ -1713,7 +1755,7 @@ void TerrainEditor::TickSculpting()
     }
 
     Terrain* terrain = ResolveTerrain();
-    if (!terrain || !terrain->HasHeightfield())
+    if (!terrain || !terrain->HasHeightfield() || terrain->IsGenerating())
     {
         return;
     }
@@ -1722,8 +1764,10 @@ void TerrainEditor::TickSculpting()
     {
         if (m_heights_dirty && !Input::GetKey(KeyCode::Click_Left))
         {
-            terrain->RebuildSurface(false);
+            terrain->FlushHeightEdits(true);
+            terrain->FlushPendingProps();
             m_heights_dirty = false;
+            m_rebuild_timer = 0.0f;
         }
         return;
     }
@@ -1750,21 +1794,25 @@ void TerrainEditor::TickSculpting()
         stroke.strength     = m_strength_per_second * dt;
         terrain->ApplyBrush(hit, stroke);
         m_heights_dirty = true;
+
+        // the mesh follows the brush every frame, only the cells under it are repatched, collision
+        // and the biome mask are the expensive part so they land on a timer and when the stroke ends
         m_rebuild_timer += dt;
-        if (m_rebuild_timer >= 0.15f)
+        const bool commit = m_rebuild_timer >= 0.15f;
+        terrain->FlushHeightEdits(commit);
+        if (commit)
         {
-            terrain->RebuildSurface(false);
             m_rebuild_timer = 0.0f;
-            m_heights_dirty = false;
         }
     }
     else if (m_heights_dirty)
     {
-        terrain->RebuildSurface(false);
+        terrain->FlushHeightEdits(true);
         m_heights_dirty = false;
         m_rebuild_timer = 0.0f;
 
-        // sculpted ground means the props no longer sit where the rules said they would
-        MarkScatterDirty();
+        // sculpted ground means the props no longer sit where the rules said they would, only
+        // the tiles under the stroke are placed again, the rest of the map keeps what it has
+        terrain->FlushPendingProps();
     }
 }

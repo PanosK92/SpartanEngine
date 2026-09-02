@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cmath>
 #include <limits>
 #include <queue>
+#include <fstream>
+#include <iterator>
 //=======================================
 
 //= NAMESPACES ===============
@@ -1620,13 +1622,24 @@ namespace spartan
         int x1 = min(static_cast<int>(width) - 1, cx + radius_cells_x);
         int z1 = min(static_cast<int>(height) - 1, cz + radius_cells_z);
 
+        // smoothing reads neighbours that this same pass may already have written, so it samples a
+        // copy, only the brush rect plus a one cell ring, not the whole grid per stroke
         vector<float> smooth_src;
+        const int src_x0    = max(x0 - 1, 0);
+        const int src_z0    = max(z0 - 1, 0);
+        const int src_x1    = min(x1 + 1, static_cast<int>(width) - 1);
+        const int src_z1    = min(z1 + 1, static_cast<int>(height) - 1);
+        const int src_width = src_x1 - src_x0 + 1;
         if (brush.mode == TerrainBrushMode::Smooth)
         {
-            smooth_src.resize(positions.size());
-            for (size_t i = 0; i < positions.size(); i++)
+            smooth_src.resize(static_cast<size_t>(src_width) * (src_z1 - src_z0 + 1));
+            for (int z = src_z0; z <= src_z1; z++)
             {
-                smooth_src[i] = positions[i].y;
+                for (int x = src_x0; x <= src_x1; x++)
+                {
+                    smooth_src[static_cast<size_t>(z - src_z0) * src_width + (x - src_x0)] =
+                        positions[static_cast<size_t>(z) * width + x].y;
+                }
             }
         }
 
@@ -1669,9 +1682,9 @@ namespace spartan
                         {
                             int sx = x + nx;
                             int sz = z + nz;
-                            if (sx >= 0 && sx < static_cast<int>(width) && sz >= 0 && sz < static_cast<int>(height))
+                            if (sx >= src_x0 && sx <= src_x1 && sz >= src_z0 && sz <= src_z1)
                             {
-                                sum += smooth_src[static_cast<size_t>(sz) * width + sx];
+                                sum += smooth_src[static_cast<size_t>(sz - src_z0) * src_width + (sx - src_x0)];
                                 count++;
                             }
                         }
@@ -3147,5 +3160,326 @@ namespace spartan
                 paths_out.push_back(move(path));
             }
         }
+    }
+
+    uint64_t TerrainSculptLayer::make_key(int32_t tx, int32_t tz)
+    {
+        return (static_cast<uint64_t>(static_cast<uint32_t>(tx)) << 32) | static_cast<uint32_t>(tz);
+    }
+
+    int32_t TerrainSculptLayer::floor_div(int32_t value, int32_t divisor)
+    {
+        return (value >= 0) ? value / divisor : -((-value - 1) / divisor) - 1;
+    }
+
+    const TerrainSculptLayer::Tile* TerrainSculptLayer::find_tile(int32_t tx, int32_t tz) const
+    {
+        auto it = m_tiles.find(make_key(tx, tz));
+        return (it != m_tiles.end()) ? &it->second : nullptr;
+    }
+
+    TerrainSculptLayer::Tile& TerrainSculptLayer::get_or_create_tile(int32_t tx, int32_t tz)
+    {
+        Tile& tile = m_tiles[make_key(tx, tz)];
+        if (tile.delta.empty())
+        {
+            tile.tx = tx;
+            tile.tz = tz;
+            tile.delta.assign(static_cast<size_t>(tile_cells) * tile_cells, 0.0f);
+        }
+        return tile;
+    }
+
+    void TerrainSculptLayer::Clear()
+    {
+        m_tiles.clear();
+    }
+
+    bool TerrainSculptLayer::MatchesGrid(float origin_x, float origin_z, float cell_x, float cell_z) const
+    {
+        return
+            fabsf(m_origin_x - origin_x) < 1e-4f &&
+            fabsf(m_origin_z - origin_z) < 1e-4f &&
+            fabsf(m_cell_x - cell_x) < 1e-6f &&
+            fabsf(m_cell_z - cell_z) < 1e-6f;
+    }
+
+    void TerrainSculptLayer::SetGrid(float origin_x, float origin_z, float cell_x, float cell_z)
+    {
+        if (cell_x <= 0.0f || cell_z <= 0.0f || MatchesGrid(origin_x, origin_z, cell_x, cell_z))
+        {
+            return;
+        }
+
+        if (m_tiles.empty() || !HasGrid())
+        {
+            m_origin_x = origin_x;
+            m_origin_z = origin_z;
+            m_cell_x   = cell_x;
+            m_cell_z   = cell_z;
+            return;
+        }
+
+        // the density or scale changed under the layer, resample the old lattice onto the new one
+        // so the same ground keeps the same sculpt
+        TerrainSculptLayer old = *this;
+        m_tiles.clear();
+        m_origin_x = origin_x;
+        m_origin_z = origin_z;
+        m_cell_x   = cell_x;
+        m_cell_z   = cell_z;
+
+        float min_x = 0.0f;
+        float min_z = 0.0f;
+        float max_x = 0.0f;
+        float max_z = 0.0f;
+        old.GetBounds(min_x, min_z, max_x, max_z);
+
+        const int32_t cx0 = static_cast<int32_t>(floorf((min_x - m_origin_x) / m_cell_x));
+        const int32_t cz0 = static_cast<int32_t>(floorf((min_z - m_origin_z) / m_cell_z));
+        const int32_t cx1 = static_cast<int32_t>(ceilf((max_x - m_origin_x) / m_cell_x));
+        const int32_t cz1 = static_cast<int32_t>(ceilf((max_z - m_origin_z) / m_cell_z));
+        for (int32_t cz = cz0; cz <= cz1; cz++)
+        {
+            const float z = m_origin_z + static_cast<float>(cz) * m_cell_z;
+            for (int32_t cx = cx0; cx <= cx1; cx++)
+            {
+                const float x     = m_origin_x + static_cast<float>(cx) * m_cell_x;
+                const float value = old.Sample(x, z);
+                if (fabsf(value) > 1e-6f)
+                {
+                    AddCell(cx, cz, value);
+                }
+            }
+        }
+    }
+
+    float TerrainSculptLayer::GetCell(int32_t cx, int32_t cz) const
+    {
+        const int32_t n  = static_cast<int32_t>(tile_cells);
+        const int32_t tx = floor_div(cx, n);
+        const int32_t tz = floor_div(cz, n);
+        const Tile* tile = find_tile(tx, tz);
+        if (!tile)
+        {
+            return 0.0f;
+        }
+
+        const int32_t lx = cx - tx * n;
+        const int32_t lz = cz - tz * n;
+        return tile->delta[static_cast<size_t>(lz) * tile_cells + static_cast<size_t>(lx)];
+    }
+
+    void TerrainSculptLayer::AddCell(int32_t cx, int32_t cz, float amount)
+    {
+        if (amount == 0.0f)
+        {
+            return;
+        }
+
+        const int32_t n  = static_cast<int32_t>(tile_cells);
+        const int32_t tx = floor_div(cx, n);
+        const int32_t tz = floor_div(cz, n);
+        Tile& tile       = get_or_create_tile(tx, tz);
+        const int32_t lx = cx - tx * n;
+        const int32_t lz = cz - tz * n;
+        tile.delta[static_cast<size_t>(lz) * tile_cells + static_cast<size_t>(lx)] += amount;
+    }
+
+    float TerrainSculptLayer::Sample(float x, float z) const
+    {
+        if (m_tiles.empty() || !HasGrid())
+        {
+            return 0.0f;
+        }
+
+        const float gx   = (x - m_origin_x) / m_cell_x;
+        const float gz   = (z - m_origin_z) / m_cell_z;
+        const int32_t ix = static_cast<int32_t>(floorf(gx));
+        const int32_t iz = static_cast<int32_t>(floorf(gz));
+        const float fx   = gx - static_cast<float>(ix);
+        const float fz   = gz - static_cast<float>(iz);
+
+        // on lattice, one lookup
+        if (fx < 1e-4f && fz < 1e-4f)
+        {
+            return GetCell(ix, iz);
+        }
+
+        const float d00 = GetCell(ix, iz);
+        const float d10 = GetCell(ix + 1, iz);
+        const float d01 = GetCell(ix, iz + 1);
+        const float d11 = GetCell(ix + 1, iz + 1);
+        const float top = d00 + fx * (d10 - d00);
+        const float bot = d01 + fx * (d11 - d01);
+        return top + fz * (bot - top);
+    }
+
+    void TerrainSculptLayer::ClearRect(float min_x, float min_z, float max_x, float max_z)
+    {
+        if (m_tiles.empty() || !HasGrid())
+        {
+            return;
+        }
+
+        const int32_t cx0 = static_cast<int32_t>(floorf((min_x - m_origin_x) / m_cell_x));
+        const int32_t cz0 = static_cast<int32_t>(floorf((min_z - m_origin_z) / m_cell_z));
+        const int32_t cx1 = static_cast<int32_t>(ceilf((max_x - m_origin_x) / m_cell_x));
+        const int32_t cz1 = static_cast<int32_t>(ceilf((max_z - m_origin_z) / m_cell_z));
+        const int32_t n   = static_cast<int32_t>(tile_cells);
+
+        for (auto& [key, tile] : m_tiles)
+        {
+            const int32_t tx0 = tile.tx * n;
+            const int32_t tz0 = tile.tz * n;
+            if (tx0 + n - 1 < cx0 || tx0 > cx1 || tz0 + n - 1 < cz0 || tz0 > cz1)
+            {
+                continue;
+            }
+
+            const int32_t lx0 = max(cx0 - tx0, 0);
+            const int32_t lz0 = max(cz0 - tz0, 0);
+            const int32_t lx1 = min(cx1 - tx0, n - 1);
+            const int32_t lz1 = min(cz1 - tz0, n - 1);
+            for (int32_t lz = lz0; lz <= lz1; lz++)
+            {
+                float* row = tile.delta.data() + static_cast<size_t>(lz) * tile_cells;
+                for (int32_t lx = lx0; lx <= lx1; lx++)
+                {
+                    row[lx] = 0.0f;
+                }
+            }
+        }
+
+        Prune();
+    }
+
+    void TerrainSculptLayer::Prune()
+    {
+        for (auto it = m_tiles.begin(); it != m_tiles.end();)
+        {
+            bool empty = true;
+            for (const float value : it->second.delta)
+            {
+                if (fabsf(value) > 1e-6f)
+                {
+                    empty = false;
+                    break;
+                }
+            }
+
+            it = empty ? m_tiles.erase(it) : next(it);
+        }
+    }
+
+    bool TerrainSculptLayer::GetBounds(float& min_x, float& min_z, float& max_x, float& max_z) const
+    {
+        if (m_tiles.empty() || !HasGrid())
+        {
+            return false;
+        }
+
+        int32_t tx0 = numeric_limits<int32_t>::max();
+        int32_t tz0 = numeric_limits<int32_t>::max();
+        int32_t tx1 = numeric_limits<int32_t>::min();
+        int32_t tz1 = numeric_limits<int32_t>::min();
+        for (const auto& [key, tile] : m_tiles)
+        {
+            tx0 = min(tx0, tile.tx);
+            tz0 = min(tz0, tile.tz);
+            tx1 = max(tx1, tile.tx);
+            tz1 = max(tz1, tile.tz);
+        }
+
+        const float n = static_cast<float>(tile_cells);
+        min_x = m_origin_x + static_cast<float>(tx0) * n * m_cell_x;
+        min_z = m_origin_z + static_cast<float>(tz0) * n * m_cell_z;
+        max_x = m_origin_x + (static_cast<float>(tx1 + 1) * n - 1.0f) * m_cell_x;
+        max_z = m_origin_z + (static_cast<float>(tz1 + 1) * n - 1.0f) * m_cell_z;
+        return true;
+    }
+
+    bool TerrainSculptLayer::SaveToFile(const string& path) const
+    {
+        ofstream file(path, ios::binary | ios::trunc);
+        if (!file.is_open())
+        {
+            return false;
+        }
+
+        const uint32_t magic      = 0x4c435053; // spsl
+        const uint32_t version    = 1;
+        const uint32_t cells      = tile_cells;
+        const uint32_t tile_count = static_cast<uint32_t>(m_tiles.size());
+        file.write(reinterpret_cast<const char*>(&magic), sizeof(magic));
+        file.write(reinterpret_cast<const char*>(&version), sizeof(version));
+        file.write(reinterpret_cast<const char*>(&m_origin_x), sizeof(float));
+        file.write(reinterpret_cast<const char*>(&m_origin_z), sizeof(float));
+        file.write(reinterpret_cast<const char*>(&m_cell_x), sizeof(float));
+        file.write(reinterpret_cast<const char*>(&m_cell_z), sizeof(float));
+        file.write(reinterpret_cast<const char*>(&cells), sizeof(cells));
+        file.write(reinterpret_cast<const char*>(&tile_count), sizeof(tile_count));
+
+        for (const auto& [key, tile] : m_tiles)
+        {
+            file.write(reinterpret_cast<const char*>(&tile.tx), sizeof(int32_t));
+            file.write(reinterpret_cast<const char*>(&tile.tz), sizeof(int32_t));
+            file.write(reinterpret_cast<const char*>(tile.delta.data()), tile.delta.size() * sizeof(float));
+        }
+
+        return static_cast<bool>(file);
+    }
+
+    bool TerrainSculptLayer::LoadFromFile(const string& path)
+    {
+        ifstream file(path, ios::binary);
+        if (!file.is_open())
+        {
+            return false;
+        }
+
+        uint32_t magic      = 0;
+        uint32_t version    = 0;
+        uint32_t cells      = 0;
+        uint32_t tile_count = 0;
+        float origin_x      = 0.0f;
+        float origin_z      = 0.0f;
+        float cell_x        = 0.0f;
+        float cell_z        = 0.0f;
+        file.read(reinterpret_cast<char*>(&magic), sizeof(magic));
+        file.read(reinterpret_cast<char*>(&version), sizeof(version));
+        file.read(reinterpret_cast<char*>(&origin_x), sizeof(float));
+        file.read(reinterpret_cast<char*>(&origin_z), sizeof(float));
+        file.read(reinterpret_cast<char*>(&cell_x), sizeof(float));
+        file.read(reinterpret_cast<char*>(&cell_z), sizeof(float));
+        file.read(reinterpret_cast<char*>(&cells), sizeof(cells));
+        file.read(reinterpret_cast<char*>(&tile_count), sizeof(tile_count));
+        if (!file || magic != 0x4c435053 || version != 1 || cells != tile_cells || cell_x <= 0.0f || cell_z <= 0.0f || tile_count > 1000000)
+        {
+            return false;
+        }
+
+        unordered_map<uint64_t, Tile> tiles;
+        tiles.reserve(tile_count);
+        for (uint32_t i = 0; i < tile_count; i++)
+        {
+            Tile tile;
+            file.read(reinterpret_cast<char*>(&tile.tx), sizeof(int32_t));
+            file.read(reinterpret_cast<char*>(&tile.tz), sizeof(int32_t));
+            tile.delta.resize(static_cast<size_t>(tile_cells) * tile_cells);
+            file.read(reinterpret_cast<char*>(tile.delta.data()), tile.delta.size() * sizeof(float));
+            if (!file)
+            {
+                return false;
+            }
+            tiles[make_key(tile.tx, tile.tz)] = move(tile);
+        }
+
+        m_origin_x = origin_x;
+        m_origin_z = origin_z;
+        m_cell_x   = cell_x;
+        m_cell_z   = cell_z;
+        m_tiles    = move(tiles);
+        return true;
     }
 }

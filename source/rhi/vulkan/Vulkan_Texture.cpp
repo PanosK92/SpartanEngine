@@ -323,6 +323,99 @@ namespace spartan
         }
     }
 
+    bool RHI_Texture::RHI_UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data)
+    {
+        // same staging path as a fresh upload, only the copy region is a sub-rectangle of mip 0
+        lock_guard<mutex> lock(stage_mutex);
+
+        const uint64_t size = static_cast<uint64_t>(width) * height * GetBytesPerPixel();
+        if (size == 0)
+        {
+            return false;
+        }
+
+        void* staging_buffer = RHI_Device::StagingBufferAcquire(size);
+        if (!staging_buffer)
+        {
+            return false;
+        }
+
+        void* mapped_data = nullptr;
+        RHI_Device::MemoryMap(staging_buffer, mapped_data);
+        if (!mapped_data)
+        {
+            RHI_Device::StagingBufferRelease(staging_buffer);
+            return false;
+        }
+        memcpy(mapped_data, data, static_cast<size_t>(size));
+        RHI_Device::MemoryUnmap(staging_buffer);
+
+        VkBufferImageCopy region{};
+        region.bufferOffset                    = 0;
+        region.bufferRowLength                 = 0;
+        region.bufferImageHeight               = 0;
+        region.imageSubresource.aspectMask     = get_aspect_mask(this);
+        region.imageSubresource.mipLevel       = 0;
+        region.imageSubresource.baseArrayLayer = 0;
+        region.imageSubresource.layerCount     = 1;
+        region.imageOffset                     = { static_cast<int32_t>(x), static_cast<int32_t>(y), 0 };
+        region.imageExtent                     = { width, height, 1 };
+
+        bool copied = false;
+        if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
+        {
+            VkCommandBuffer vk_cmd = static_cast<VkCommandBuffer>(cmd_list->GetRhiResource());
+
+            // the image already sits in general, so the layout tracker emits nothing, the memory
+            // dependency against in flight shader reads still has to be spelled out by hand
+            RHI_CommandList::PrepareTextureForUpload(cmd_list, this);
+
+            VkImageMemoryBarrier2 barrier{};
+            barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+            barrier.srcStageMask                    = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+            barrier.srcAccessMask                   = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+            barrier.dstStageMask                    = VK_PIPELINE_STAGE_2_COPY_BIT;
+            barrier.dstAccessMask                   = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            barrier.oldLayout                       = vulkan_image_layout[static_cast<uint8_t>(RHI_Image_Layout::General)];
+            barrier.newLayout                       = barrier.oldLayout;
+            barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrier.image                           = static_cast<VkImage>(m_rhi_resource);
+            barrier.subresourceRange.aspectMask     = get_aspect_mask(this);
+            barrier.subresourceRange.baseMipLevel   = 0;
+            barrier.subresourceRange.levelCount     = 1;
+            barrier.subresourceRange.baseArrayLayer = 0;
+            barrier.subresourceRange.layerCount     = 1;
+
+            VkDependencyInfo dependency{};
+            dependency.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency.imageMemoryBarrierCount = 1;
+            dependency.pImageMemoryBarriers    = &barrier;
+            vkCmdPipelineBarrier2(vk_cmd, &dependency);
+
+            vkCmdCopyBufferToImage(
+                vk_cmd,
+                static_cast<VkBuffer>(staging_buffer),
+                static_cast<VkImage>(m_rhi_resource),
+                vulkan_image_layout[static_cast<uint8_t>(RHI_Image_Layout::General)],
+                1,
+                &region
+            );
+
+            barrier.srcStageMask  = VK_PIPELINE_STAGE_2_COPY_BIT;
+            barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            barrier.dstStageMask  = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+            barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+            vkCmdPipelineBarrier2(vk_cmd, &dependency);
+
+            RHI_CommandList::ImmediateExecutionEnd(cmd_list);
+            copied = true;
+        }
+
+        RHI_Device::StagingBufferRelease(staging_buffer);
+        return copied;
+    }
+
     bool RHI_Texture::RHI_CreateResource()
     {
         SP_ASSERT_MSG(m_width  != 0, "Width can't be zero");

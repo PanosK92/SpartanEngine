@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include <sol/forward.hpp>
+#include <vector>
+#include <cstdint>
 //==========================
 
 namespace spartan
@@ -42,6 +44,9 @@ namespace spartan
 
         // spawn biome-masked grass, rocks and trees on an existing terrain
         static void PopulateTerrainBiomeProps(class Terrain* terrain);
+
+        // place the mesh layers again on the given tiles only, the rest of the map keeps its props
+        static void RepopulateTerrainProps(class Terrain* terrain, const std::vector<uint32_t>& tile_indices);
 
         // rebind grass and micro detail to the current height map and biome mask, leaves cpu props alone
         static void RefreshTerrainGpuScatter(class Terrain* terrain);

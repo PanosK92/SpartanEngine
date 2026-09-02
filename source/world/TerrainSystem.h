@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include <vector>
 #include <cstdint>
+#include <string>
+#include <unordered_map>
 #include "../math/Vector3.h"
 #include "../math/Ray.h"
 #include "../rhi/RHI_Vertex.h"
@@ -143,6 +145,65 @@ namespace spartan
                    deposition.size() == n && wear.size() == n && insolation.size() == n &&
                    height_norm.size() == n && talus.size() == n;
         }
+    };
+
+    // hand sculpting kept apart from the procedural ground, the generator rebuilds the base from
+    // the seed and the parameters and this layer is added on top, so edits survive a regenerate
+    // stored in terrain local metres on a sparse set of tiles, only touched ground costs memory
+    class TerrainSculptLayer
+    {
+    public:
+        static constexpr uint32_t tile_cells = 64;
+
+        struct Tile
+        {
+            int32_t tx = 0;
+            int32_t tz = 0;
+            std::vector<float> delta;
+        };
+
+        void Clear();
+        bool IsEmpty() const           { return m_tiles.empty(); }
+        size_t GetTileCount() const    { return m_tiles.size(); }
+        size_t GetByteCount() const    { return m_tiles.size() * tile_cells * tile_cells * sizeof(float); }
+        bool HasGrid() const           { return m_cell_x > 0.0f && m_cell_z > 0.0f; }
+        float GetCellSizeX() const     { return m_cell_x; }
+        float GetCellSizeZ() const     { return m_cell_z; }
+        const std::unordered_map<uint64_t, Tile>& GetTiles() const { return m_tiles; }
+
+        // the lattice the layer is stored on, cell (cx, cz) sits at origin + cell * size
+        // changing it resamples every tile onto the new lattice
+        void SetGrid(float origin_x, float origin_z, float cell_x, float cell_z);
+        bool MatchesGrid(float origin_x, float origin_z, float cell_x, float cell_z) const;
+
+        // lattice cell access, cells outside any tile read as zero
+        float GetCell(int32_t cx, int32_t cz) const;
+        void AddCell(int32_t cx, int32_t cz, float amount);
+
+        // bilinear in local metres, zero away from any tile
+        float Sample(float x, float z) const;
+
+        // zero every cell inside the local rect, tiles left empty are dropped
+        void ClearRect(float min_x, float min_z, float max_x, float max_z);
+        void Prune();
+
+        // local metres covered by the tiles that exist, false when empty
+        bool GetBounds(float& min_x, float& min_z, float& max_x, float& max_z) const;
+
+        bool SaveToFile(const std::string& path) const;
+        bool LoadFromFile(const std::string& path);
+
+    private:
+        static uint64_t make_key(int32_t tx, int32_t tz);
+        static int32_t floor_div(int32_t value, int32_t divisor);
+        const Tile* find_tile(int32_t tx, int32_t tz) const;
+        Tile& get_or_create_tile(int32_t tx, int32_t tz);
+
+        float m_origin_x = 0.0f;
+        float m_origin_z = 0.0f;
+        float m_cell_x   = 0.0f;
+        float m_cell_z   = 0.0f;
+        std::unordered_map<uint64_t, Tile> m_tiles;
     };
 
     // core terrain algorithms, heightfield ops, and brush sculpting

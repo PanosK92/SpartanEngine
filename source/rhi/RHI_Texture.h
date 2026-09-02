@@ -117,6 +117,10 @@ namespace spartan
         // misc
         void ClearData();
         void PrepareForGpu();
+        // overwrite a sub-rectangle of mip 0, layer 0 on an already created, uncompressed 2d texture
+        // data is tightly packed rows of width * bytes per pixel, the cpu mirror is patched too when kept
+        // false when the request cannot be served and the caller has to recreate the texture instead
+        bool UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data);
         void DestroyResourceImmediate();
         void InvalidateGpuState() { ClearLayouts(); }
         RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layouts[mip]; }
@@ -180,6 +184,8 @@ namespace spartan
 
     protected:
         bool RHI_CreateResource();
+        // backend copy for UpdateRegion, arguments are already validated
+        bool RHI_UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data);
 
         uint32_t m_width                = 0;
         uint32_t m_height               = 0;

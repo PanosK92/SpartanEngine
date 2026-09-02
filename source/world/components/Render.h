@@ -187,6 +187,9 @@ namespace spartan
         // instancing
         std::vector<Instance> m_instances;
         uint32_t m_global_instance_offset = 0; // 0 means non-instanced reads identity from slot 0 of the global instance pool
+        // pool range this renderer appended once, later SetInstances calls that fit rewrite it instead of appending again
+        uint32_t m_global_instance_slot          = 0;
+        uint32_t m_global_instance_slot_capacity = 0;
 
         // blas refit
         bool m_needs_blas_refit  = false;

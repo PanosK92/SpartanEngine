@@ -825,6 +825,7 @@ namespace spartan
     {
         if (instances.empty())
         {
+            // offset 0 makes the draw read identity, the owned slot stays so a refill can reuse it
             m_instances.clear();
             m_global_instance_offset = 0;
             m_bounding_box_dirty     = true;
@@ -832,11 +833,25 @@ namespace spartan
         }
 
         m_instances = instances;
+        const uint32_t count = static_cast<uint32_t>(m_instances.size());
 
-        // append into the global instance pool so the indirect path can read instance attrs by offset + sv_instanceid
-        m_global_instance_offset = GeometryBuffer::AppendInstances(m_instances.data(), static_cast<uint32_t>(m_instances.size()));
+        // rewrite the slot we already own when the new set fits, appending every time leaks the pool
+        // until the global geometry buffer has to reallocate and re-upload the entire world
+        bool reused = false;
+        if (m_global_instance_slot != 0 && count <= m_global_instance_slot_capacity)
+        {
+            reused = GeometryBuffer::UpdateInstances(m_instances.data(), m_global_instance_slot, count);
+        }
 
-        m_bounding_box_dirty = true;
+        if (!reused)
+        {
+            // append into the global instance pool so the indirect path can read instance attrs by offset + sv_instanceid
+            m_global_instance_slot          = GeometryBuffer::AppendInstances(m_instances.data(), count);
+            m_global_instance_slot_capacity = count;
+        }
+
+        m_global_instance_offset = m_global_instance_slot;
+        m_bounding_box_dirty     = true;
         Tick(); // update bounding boxes, frustum and distance culling
     }
 

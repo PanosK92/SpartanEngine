@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_Texture.h"
 #include "../RHI_Device.h"
+#include "../RHI_CommandList.h"
 #include "D3D12_Internal.h"
 #include <mutex>
 //================================
@@ -33,6 +34,116 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    bool RHI_Texture::RHI_UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data)
+    {
+        ID3D12Resource* texture = static_cast<ID3D12Resource*>(m_rhi_resource);
+        if (!texture || !RHI_Context::device)
+        {
+            return false;
+        }
+
+        // buffer to texture copies want 256 byte rows, the source is tightly packed so rows are re-laid here
+        const uint32_t bytes_per_pixel = GetBytesPerPixel();
+        const uint32_t row_bytes       = width * bytes_per_pixel;
+        const uint32_t row_pitch       = (row_bytes + D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1) & ~(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1);
+        const uint64_t staging_size    = static_cast<uint64_t>(row_pitch) * height;
+        if (row_bytes == 0)
+        {
+            return false;
+        }
+
+        static mutex update_mutex;
+        lock_guard<mutex> update_lock(update_mutex);
+
+        ID3D12Resource* staging = static_cast<ID3D12Resource*>(RHI_Device::StagingBufferAcquire(staging_size));
+        if (!staging)
+        {
+            return false;
+        }
+
+        void* mapped = nullptr;
+        D3D12_RANGE read_range = { 0, 0 };
+        if (FAILED(staging->Map(0, &read_range, &mapped)) || !mapped)
+        {
+            RHI_Device::StagingBufferRelease(staging);
+            return false;
+        }
+
+        for (uint32_t row = 0; row < height; row++)
+        {
+            memcpy(
+                static_cast<uint8_t*>(mapped) + static_cast<size_t>(row) * row_pitch,
+                static_cast<const uint8_t*>(data) + static_cast<size_t>(row) * row_bytes,
+                row_bytes
+            );
+        }
+        staging->Unmap(0, nullptr);
+
+        bool copied = false;
+        if (RHI_CommandList* cmd_list_rhi = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
+        {
+            ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list_rhi->GetRhiResource());
+
+            const D3D12_RESOURCE_STATES state_before = d3d12_state::GetState(texture);
+            if (state_before != D3D12_RESOURCE_STATE_COPY_DEST)
+            {
+                D3D12_RESOURCE_BARRIER barrier = {};
+                barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                barrier.Transition.pResource   = texture;
+                barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+                barrier.Transition.StateBefore = state_before;
+                barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_COPY_DEST;
+                d3d12_barriers::Submit(cmd_list, &barrier, 1);
+            }
+
+            D3D12_TEXTURE_COPY_LOCATION dest_location = {};
+            dest_location.pResource        = texture;
+            dest_location.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+            dest_location.SubresourceIndex = 0;
+
+            D3D12_TEXTURE_COPY_LOCATION src_location = {};
+            src_location.pResource                   = staging;
+            src_location.Type                        = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+            src_location.PlacedFootprint.Offset      = 0;
+            src_location.PlacedFootprint.Footprint.Format   = texture->GetDesc().Format;
+            src_location.PlacedFootprint.Footprint.Width    = width;
+            src_location.PlacedFootprint.Footprint.Height   = height;
+            src_location.PlacedFootprint.Footprint.Depth    = 1;
+            src_location.PlacedFootprint.Footprint.RowPitch = row_pitch;
+
+            cmd_list->CopyTextureRegion(&dest_location, x, y, 0, &src_location, nullptr);
+
+            // back to what the tracker had, a fresh upload parks in pixel|non pixel srv so match that when unknown
+            D3D12_RESOURCE_STATES state_after = state_before;
+            if (state_after == D3D12_RESOURCE_STATE_COPY_DEST || state_after == D3D12_RESOURCE_STATE_COMMON)
+            {
+                state_after = (m_flags & RHI_Texture_Uav)
+                    ? D3D12_RESOURCE_STATE_UNORDERED_ACCESS
+                    : (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            }
+
+            if (state_after != D3D12_RESOURCE_STATE_COPY_DEST)
+            {
+                D3D12_RESOURCE_BARRIER barrier = {};
+                barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                barrier.Transition.pResource   = texture;
+                barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+                barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+                barrier.Transition.StateAfter  = state_after;
+                d3d12_barriers::Submit(cmd_list, &barrier, 1);
+            }
+
+            RHI_CommandList::ImmediateExecutionEnd(cmd_list_rhi);
+
+            const D3D12_RESOURCE_STATES tracked = d3d12_state::DecaysToCommon(texture) ? D3D12_RESOURCE_STATE_COMMON : state_after;
+            d3d12_state::SetState(texture, tracked);
+            copied = true;
+        }
+
+        RHI_Device::StagingBufferRelease(staging);
+        return copied;
+    }
+
     bool RHI_Texture::RHI_CreateResource()
     {
         SP_ASSERT_MSG(RHI_Context::device != nullptr, "D3D12 device is null");

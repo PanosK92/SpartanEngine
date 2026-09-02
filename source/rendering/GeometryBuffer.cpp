@@ -183,6 +183,64 @@ namespace spartan
             upload(begin, end);
             vertex_dirty_ranges.clear();
         }
+
+        // deferred instance uploads, same idea, terrain prop restamps rewrite a handful of slots per frame
+        vector<DirtyRange> instance_dirty_ranges;
+
+        void flush_instance_updates()
+        {
+            if (instance_dirty_ranges.empty())
+            {
+                return;
+            }
+
+            if (!instance_buffer)
+            {
+                instance_dirty_ranges.clear();
+                return;
+            }
+
+            sort(
+                instance_dirty_ranges.begin(),
+                instance_dirty_ranges.end(),
+                [](const DirtyRange& a, const DirtyRange& b)
+                {
+                    return a.offset < b.offset;
+                }
+            );
+
+            uint32_t begin = instance_dirty_ranges[0].offset;
+            uint32_t end   = begin + instance_dirty_ranges[0].count;
+
+            auto upload = [](const uint32_t first, const uint32_t last)
+            {
+                if (last <= first || last > instance_count_committed)
+                {
+                    return;
+                }
+
+                const uint64_t byte_offset = static_cast<uint64_t>(first) * sizeof(Instance);
+                const uint64_t byte_size   = static_cast<uint64_t>(last - first) * sizeof(Instance);
+                instance_buffer->UploadSubRegion(instances.data() + first, byte_offset, byte_size);
+            };
+
+            for (size_t i = 1; i < instance_dirty_ranges.size(); ++i)
+            {
+                const DirtyRange& range = instance_dirty_ranges[i];
+                if (range.offset <= end + dirty_merge_slack)
+                {
+                    end = max(end, range.offset + range.count);
+                    continue;
+                }
+
+                upload(begin, end);
+                begin = range.offset;
+                end   = range.offset + range.count;
+            }
+
+            upload(begin, end);
+            instance_dirty_ranges.clear();
+        }
     }
 
     uint32_t GeometryBuffer::AppendVertices(const RHI_Vertex_PosTexNorTan* data, uint32_t count)
@@ -286,6 +344,27 @@ namespace spartan
         return base_offset;
     }
 
+    bool GeometryBuffer::UpdateInstances(const Instance* data, uint32_t offset, uint32_t count)
+    {
+        lock_guard<mutex> lock(buffer_mutex);
+
+        // slot 0 is the shared identity, never a writable range
+        if (offset == 0 || count == 0 || offset + count > static_cast<uint32_t>(instances.size()))
+        {
+            return false;
+        }
+
+        memcpy(instances.data() + offset, data, count * sizeof(Instance));
+
+        // committed ranges flush next frame, uncommitted ones ride along with the pending append upload
+        if (instance_buffer && offset + count <= instance_count_committed)
+        {
+            instance_dirty_ranges.push_back({ offset, count });
+        }
+
+        return true;
+    }
+
     void GeometryBuffer::UpdateVertices(const RHI_Vertex_PosTexNorTan* data, uint32_t offset, uint32_t count)
     {
         lock_guard<mutex> lock(buffer_mutex);
@@ -375,6 +454,7 @@ namespace spartan
         // once per frame sync point for skinning and other deformables, must run before the dirty
         // early out because deformable writes do not mark the buffer dirty
         flush_vertex_updates();
+        flush_instance_updates();
 
         if (!dirty || vertices.empty() || indices.empty())
         {
@@ -699,6 +779,8 @@ namespace spartan
         instances.shrink_to_fit();
         vertex_dirty_ranges.clear();
         vertex_dirty_ranges.shrink_to_fit();
+        instance_dirty_ranges.clear();
+        instance_dirty_ranges.shrink_to_fit();
         vertex_count_committed         = 0;
         index_count_committed          = 0;
         meshlet_bounds_count_committed = 0;

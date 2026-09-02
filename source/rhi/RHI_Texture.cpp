@@ -911,6 +911,49 @@ namespace spartan
          m_slices.shrink_to_fit();
     }
 
+    bool RHI_Texture::UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data)
+    {
+        if (!m_rhi_resource || !data || width == 0 || height == 0)
+        {
+            return false;
+        }
+
+        if (m_type != RHI_Texture_Type::Type2D || IsCompressedFormat() || IsDepthStencilFormat())
+        {
+            return false;
+        }
+
+        if (x + width > m_width || y + height > m_height)
+        {
+            return false;
+        }
+
+        if (!RHI_UpdateRegion(x, y, width, height, data))
+        {
+            return false;
+        }
+
+        // keep the cpu copy honest so a later save or reupload does not resurrect the old pixels
+        const size_t bytes_per_pixel = GetBytesPerPixel();
+        if (bytes_per_pixel > 0 && !m_slices.empty() && !m_slices[0].mips.empty())
+        {
+            vector<std::byte>& bytes = m_slices[0].mips[0].bytes;
+            const size_t expected    = static_cast<size_t>(m_width) * m_height * bytes_per_pixel;
+            if (bytes.size() == expected)
+            {
+                const size_t row_bytes = static_cast<size_t>(width) * bytes_per_pixel;
+                for (uint32_t row = 0; row < height; row++)
+                {
+                    std::byte* dst       = bytes.data() + ((static_cast<size_t>(y) + row) * m_width + x) * bytes_per_pixel;
+                    const std::byte* src = static_cast<const std::byte*>(data) + static_cast<size_t>(row) * row_bytes;
+                    memcpy(dst, src, row_bytes);
+                }
+            }
+        }
+
+        return true;
+    }
+
     void RHI_Texture::ShutdownCompressionPool()
     {
         gpu_compression::shutdown();

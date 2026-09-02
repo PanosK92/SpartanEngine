@@ -1235,6 +1235,191 @@ namespace spartan
         terrain->OnBiomePropsPopulated();
     }
 
+    void WorldHelpers::RepopulateTerrainProps(Terrain* terrain, const vector<uint32_t>& tile_indices)
+    {
+        if (!terrain || !terrain->GetEntity() || tile_indices.empty() || !terrain->GetSpawnBiomeProps())
+        {
+            return;
+        }
+
+        Entity* terrain_entity    = terrain->GetEntity();
+        const uint32_t tile_axis  = max(terrain->GetTileCountAxis(), 1u);
+        const uint32_t tile_count = tile_axis * tile_axis;
+
+        // only the tiles asked for, everything else keeps the props it has
+        vector<Entity*> tiles(tile_count, nullptr);
+        for (Entity* child : terrain_entity->GetChildren())
+        {
+            const int tile_index = Terrain::ParseTileIndex(child);
+            if (tile_index < 0 || static_cast<uint32_t>(tile_index) >= tile_count)
+            {
+                continue;
+            }
+
+            if (find(tile_indices.begin(), tile_indices.end(), static_cast<uint32_t>(tile_index)) != tile_indices.end())
+            {
+                tiles[static_cast<uint32_t>(tile_index)] = child;
+            }
+        }
+
+        // the old props on these tiles go first, and their seeds with them, so a pad passing over
+        // later cannot bring back an instance that no longer exists
+        array<TerrainScatterLayer, terrain_scatter_max>& layers = terrain->GetScatterLayers();
+        size_t removed_roots = 0;
+        for (uint32_t tile_index : tile_indices)
+        {
+            Entity* tile = tile_index < tile_count ? tiles[tile_index] : nullptr;
+            if (!tile)
+            {
+                continue;
+            }
+
+            // the name test is safe here, a tile subtree holds no mesh prototypes
+            vector<Entity*> doomed;
+            for (Entity* child : tile->GetChildren())
+            {
+                if (child && (child->HasTag(terrain_prop_tag) || is_terrain_prop_name(child->GetObjectName())))
+                {
+                    doomed.push_back(child);
+                }
+            }
+
+            for (Entity* prop : doomed)
+            {
+                // the layer count comes down by what this root held, one instanced part is enough
+                // to read it, every part of a clone carries the same instance list
+                for (TerrainScatterLayer& layer : layers)
+                {
+                    if (layer.name != prop->GetObjectName())
+                    {
+                        continue;
+                    }
+
+                    vector<Entity*> parts;
+                    parts.push_back(prop);
+                    prop->GetDescendants(&parts);
+                    for (Entity* part : parts)
+                    {
+                        Render* render = part ? part->GetComponent<Render>() : nullptr;
+                        if (render && render->HasInstancing())
+                        {
+                            const uint32_t count = render->GetInstanceCount();
+                            layer.instance_count = layer.instance_count > count ? layer.instance_count - count : 0;
+                            break;
+                        }
+                    }
+                    break;
+                }
+
+                terrain->ForgetPropSeeds(prop);
+                World::RemoveEntity(prop);
+                removed_roots++;
+            }
+        }
+
+        // the scatter rules read the placement triangles, and those still describe the ground
+        // from before the edit
+        terrain->RefreshPlacementData(tile_indices);
+
+        struct scatter_job
+        {
+            TerrainScatterLayer* layer = nullptr;
+            Mesh* mesh                 = nullptr;
+            vector<vector<Matrix>> transforms;
+            size_t placed              = 0;
+        };
+        vector<scatter_job> jobs;
+        jobs.reserve(terrain_scatter_max);
+
+        for (uint32_t layer_index = 0; layer_index < terrain_scatter_max; layer_index++)
+        {
+            TerrainScatterLayer& layer = layers[layer_index];
+            if (!terrain->IsScatterActive(layer))
+            {
+                continue;
+            }
+
+            // grass and detail are gpu passes over the height map, they follow the edit on their own
+            if (layer.kind == TerrainScatterKind::Grass || layer.kind == TerrainScatterKind::Detail)
+            {
+                continue;
+            }
+
+            Mesh* mesh = resolve_scatter_mesh(layer.mesh_path);
+            if (!mesh)
+            {
+                continue;
+            }
+
+            scatter_job& job = jobs.emplace_back();
+            job.layer        = &layer;
+            job.mesh         = mesh;
+            job.transforms.resize(tile_count);
+        }
+
+        if (jobs.empty())
+        {
+            terrain->OnBiomePropsRepopulated(tile_indices);
+            return;
+        }
+
+        const uint32_t order_count = static_cast<uint32_t>(tile_indices.size());
+        for (scatter_job& job : jobs)
+        {
+            auto place = [&job, &tiles, &tile_indices, terrain](uint32_t start_index, uint32_t end_index)
+            {
+                for (uint32_t order_index = start_index; order_index < end_index; order_index++)
+                {
+                    const uint32_t tile_index = tile_indices[order_index];
+                    if (tile_index >= tiles.size() || !tiles[tile_index])
+                    {
+                        continue;
+                    }
+
+                    terrain->FindTransforms(tile_index, *job.layer, job.transforms[tile_index]);
+                }
+            };
+            ThreadPool::ParallelLoop(place, order_count);
+
+            for (uint32_t tile_index : tile_indices)
+            {
+                if (tile_index < tile_count)
+                {
+                    job.placed += job.transforms[tile_index].size();
+                }
+            }
+        }
+
+        for (scatter_job& job : jobs)
+        {
+            if (job.placed == 0)
+            {
+                continue;
+            }
+
+            attach_scatter_layer(
+                job.mesh,
+                *job.layer,
+                tiles,
+                job.transforms,
+                tile_indices,
+                0,
+                order_count,
+                terrain->GetBlendHeight()
+            );
+
+            job.layer->instance_count += static_cast<uint32_t>(job.placed);
+        }
+
+        SP_LOG_INFO(
+            "terrain scatter: re-placed %u tiles, %zu prop roots replaced",
+            order_count,
+            removed_roots
+        );
+
+        terrain->OnBiomePropsRepopulated(tile_indices);
+    }
+
     void WorldHelpers::Clear()
     {
         // procedural grass references a mesh and a material owned by these vectors,

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "Component.h"
 #include <atomic>
+#include <algorithm>
 #include <array>
 #include <unordered_map>
 #include <unordered_set>
@@ -93,6 +94,39 @@ namespace spartan
         float yaw          = 0.0f;
         float height       = 0.0f;
         float margin       = 0.0f;
+    };
+
+    // inclusive cell rect on a grid, empty until something merges into it
+    struct TerrainDirtyRect
+    {
+        int32_t x0 = 0;
+        int32_t z0 = 0;
+        int32_t x1 = -1;
+        int32_t z1 = -1;
+
+        bool IsEmpty() const { return x1 < x0 || z1 < z0; }
+        void Clear()         { x0 = 0; z0 = 0; x1 = -1; z1 = -1; }
+        void Merge(int32_t ax0, int32_t az0, int32_t ax1, int32_t az1)
+        {
+            if (ax1 < ax0 || az1 < az0)
+            {
+                return;
+            }
+
+            if (IsEmpty())
+            {
+                x0 = ax0;
+                z0 = az0;
+                x1 = ax1;
+                z1 = az1;
+                return;
+            }
+
+            x0 = std::min(x0, ax0);
+            z0 = std::min(z0, az0);
+            x1 = std::max(x1, ax1);
+            z1 = std::max(z1, az1);
+        }
     };
 
     class Terrain : public Component
@@ -174,6 +208,13 @@ namespace spartan
         void RebuildPropMask();
         // after biome scatter, keep instance seeds then hide props on occupied pads
         void OnBiomePropsPopulated();
+        // same bookkeeping after a partial scatter, only the tiles that were re-placed are visited
+        void OnBiomePropsRepopulated(const std::vector<uint32_t>& tile_indices);
+        // drop the seed entries of a prop root that is about to be removed, and of everything under it
+        void ForgetPropSeeds(Entity* prop_root);
+        // recompute the placement triangles of these tiles from the live mesh, sculpted ground
+        // would otherwise hand the scatter rules the heights from before the edit
+        void RefreshPlacementData(const std::vector<uint32_t>& tile_indices);
         void MarkSplinePropCarvesDirty(uint64_t spline_id = 0);
         // roads grade the ground they sit on, queue the affected corridor for a re-carve
         void MarkSplineHeightCarvesDirty(uint64_t spline_id = 0);
@@ -208,10 +249,15 @@ namespace spartan
         void Generate();
         void CreateFlat(uint32_t base_width = 128, uint32_t base_height = 128);
         void RebuildSurface(bool update_placement = false, bool preview = false);
-        // wipe sculpt and rebuild from heightmap or flat params
+        // rebuild from heightmap or flat params, the sculpt layer and the pads are applied on top again
         void Regenerate();
-        // restore one tile region from the pre-sculpt baseline
+        // remove the sculpt layer from one tile so it shows the procedural ground again
         bool RegenerateTile(uint32_t tile_index);
+        // hand sculpting lives here, not in the heightfield, so it survives a regenerate and is
+        // saved next to the world, brush strokes record into it, pads and roads stay derived
+        const TerrainSculptLayer& GetSculptLayer() const { return m_sculpt; }
+        void ClearSculptLayer();
+        void SaveSculptLayer(const std::string& directory) const;
         // tile_N child -> 0-based index, or -1
         static int ParseTileIndex(Entity* entity);
         uint32_t GetTileCountAxis() const { return m_tile_count; }
@@ -241,6 +287,22 @@ namespace spartan
         // world-space unit normal at xz, returns false if no heightfield
         bool SampleNormal(float world_x, float world_z, math::Vector3& normal_out) const;
         void ApplyBrush(const math::Vector3& world_center, const TerrainBrush& brush);
+        // incremental edit path, every height edit marks the dense cells it touched and one flush
+        // repairs only that region, mesh, normals and the gpu height texture every call, collision
+        // and the prop mask only on a commit flush, a full RebuildSurface is only needed when the
+        // whole map changes shape, shoreline, flow carving, a new heightmap
+        void MarkHeightsDirty(int32_t x0, int32_t z0, int32_t x1, int32_t z1);
+        void MarkHeightsDirtyLocal(float local_min_x, float local_min_z, float local_max_x, float local_max_z);
+        bool HasPendingHeightEdits() const { return !m_height_dirty.IsEmpty(); }
+        // true when a gpu texture had to be recreated and the renderer was already told
+        bool FlushHeightEdits(bool commit);
+        void FlushPendingPhysics();
+        bool FlushPendingPropMask();
+        // re-place the mesh props on the tiles a height edit touched, nothing else moves, the
+        // brush marks this on every flush and the editor fires it once the stroke ends
+        void FlushPendingProps();
+        bool HasPendingPhysics() const { return !m_physics_dirty.IsEmpty(); }
+        bool HasPendingProps() const   { return !m_props_dirty.IsEmpty(); }
         // level the heightfield inside a world space xz obb, ramped back to the original
         // ground over blend_margin so the pad does not end in a cliff
         bool FlattenRegion(
@@ -306,9 +368,18 @@ namespace spartan
         void CommitProps();
         void FinishGenerate();
         void BakePropMask();
+        // map space rect, inclusive, the full bake and the region rebake share this
+        bool BakePropMaskCells(int32_t mx0, int32_t mz0, int32_t mx1, int32_t mz1);
+        // after a full bake, seed from the fresh pixels and punch the road and pad holes again
+        void ReapplyPropMaskHoles();
         bool LoadTerrainMapsFromCache();
         void SaveTerrainMapsToCache() const;
-        void SnapshotBaseline();
+        // sculpt layer plumbing, the lattice follows the dense grid so cell writes are exact
+        void EnsureSculptGrid();
+        // add the layer onto freshly generated ground, true when any cell moved
+        bool ApplySculptLayer();
+        // undo the layer inside a local rect, repaint the pads that overlap it, flush the region
+        void ClearSculptInRect(float min_x, float min_z, float max_x, float max_z);
         uint64_t ComputeCacheHash() const;
         float ResolveSeaLevelLocal() const;
         bool ApplyShorelineLock();
@@ -345,7 +416,40 @@ namespace spartan
             float yaw
         );
         void SnapshotPropInstances();
-        void UploadPropMask();
+        // record the instance seeds of every prop under root, the full snapshot walks the terrain,
+        // a partial scatter walks its tiles
+        void SnapshotPropSeedsUnder(Entity* root, bool inside_prop);
+        // pixel rect writers call this so the upload can stay a sub-region copy
+        void MarkPropMaskDirty(int32_t x0, int32_t z0, int32_t x1, int32_t z1);
+        // true when the texture object was replaced and the gpu scatter needs the new pointer
+        bool UploadPropMask();
+        // true when the r32 texture had to be recreated instead of patched
+        bool UploadHeightRegion(const TerrainDirtyRect& rect);
+        // tile indices whose footprint overlaps a local space aabb
+        void CollectTilesInRegion(
+            float local_min_x,
+            float local_min_z,
+            float local_max_x,
+            float local_max_z,
+            std::unordered_set<uint32_t>& tiles_out
+        ) const;
+        // same, for a world space aabb, the rect is brought into entity space first
+        void CollectTilesInWorldRect(
+            float world_min_x,
+            float world_min_z,
+            float world_max_x,
+            float world_max_z,
+            std::unordered_set<uint32_t>& tiles_out
+        ) const;
+        // prop renderers under tiles that overlap a world aabb, everything else is skipped untouched
+        void CollectPropRendersInWorldRect(
+            float world_min_x,
+            float world_min_z,
+            float world_max_x,
+            float world_max_z,
+            bool cull_by_bounds,
+            std::vector<Entity*>& props_out
+        );
         void ApplyFlattenToPositions(
             float center_x,
             float center_z,
@@ -387,7 +491,6 @@ namespace spartan
             float half_z,
             float yaw
         );
-        void PatchLiveTiles(const TerrainPlatform& pad);
         void DestroyPadOverlays();
         void DestroyPadRefine(uint64_t entity_id);
         void DestroyAllPadRefines();
@@ -404,7 +507,6 @@ namespace spartan
             float yaw
         );
         void SyncLivePadVisuals(const TerrainPlatform* restore, const TerrainPlatform* paint);
-        void RebuildPhysicsForPad(const TerrainPlatform& pad);
         bool ApplyPlatformsToHeightfield();
         bool BuildSnapPlatform(const std::vector<Entity*>& entities, bool require_floor);
         void RebuildMeshData(bool update_placement);
@@ -511,10 +613,10 @@ namespace spartan
         TerrainErosionMaps m_erosion_maps;
         std::vector<math::Vector3> m_tile_offsets;
         std::vector<math::Vector3> m_positions;
-        // unpadded heightfield, live pads restore from this when a building moves away
+        // unpadded heightfield, procedural ground plus the sculpt layer, live pads restore from this
         std::vector<math::Vector3> m_positions_seed;
-        // heights right after generate/create flat, used to undo sculpt
-        std::vector<math::Vector3> m_positions_baseline;
+        // hand sculpting, survives generate, saved with the world, never cleared by Clear()
+        TerrainSculptLayer m_sculpt;
         // pads under buildings, replayed after generate from the seed heightfield
         std::vector<TerrainPlatform> m_platforms;
         bool m_live_pad_active           = false;
@@ -527,6 +629,15 @@ namespace spartan
         math::Vector3 m_live_track_scale = math::Vector3::One;
         // dense pad meshes, one per occupied floor, collision included
         std::unordered_map<uint64_t, std::shared_ptr<Mesh>> m_pad_refine_meshes;
+        // dense cells edited since the last flush, and cells whose collision still needs a rebuild
+        TerrainDirtyRect m_height_dirty;
+        TerrainDirtyRect m_physics_dirty;
+        // prop mask pixels rewritten since the last upload
+        TerrainDirtyRect m_prop_mask_dirty;
+        // dense cells whose slope changed, the biome mask under them rebakes on the next commit
+        TerrainDirtyRect m_prop_mask_bake_dirty;
+        // dense cells whose props still sit on the old ground, re-placed by FlushPendingProps
+        TerrainDirtyRect m_props_dirty;
 
         // placement data (per-terrain, not static)
         std::unordered_map<uint64_t, std::vector<TriangleData>> m_triangle_data;

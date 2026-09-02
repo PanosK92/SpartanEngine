@@ -1774,6 +1774,13 @@ namespace spartan
                 entities_with_particles.clear();
                 for (Entity* entity : entities)
                 {
+                    // still in the live list until next removal flush, skip so draw does not
+                    // read a mesh the owner already freed this tick
+                    if (pending_remove.count(entity->GetObjectId()) > 0)
+                    {
+                        continue;
+                    }
+
                     if (entity->GetActive())
                     {
                         camera = pick_default_camera(camera, entity);
@@ -2027,6 +2034,24 @@ namespace spartan
         {
             string directory = world_file_path_to_resource_directory(file_path);
             FileSystem::CreateDirectory_(directory);
+
+            // terrain sculpt layers are world data written by the component, not resources, they
+            // go next to the world so a regenerate on load finds them
+            {
+                lock_guard<mutex> lock(entity_access_mutex);
+                for (Entity* entity : entities)
+                {
+                    if (!entity || entity->IsTransient())
+                    {
+                        continue;
+                    }
+
+                    if (Terrain* terrain = entity->GetComponent<Terrain>())
+                    {
+                        terrain->SaveSculptLayer(directory);
+                    }
+                }
+            }
             // mcp raw blockout and curated library live outside the world, leave them alone
             const string generated_directory =
                 World::GetGeneratedResourceDirectory();
@@ -2055,14 +2080,15 @@ namespace spartan
                 return false;
             };
 
-            // caches are written by the engine, not by an entity, so nothing in the world points at
-            // them and the prune below would wipe them on every save, forcing a full regeneration
+            // caches and the sculpt layer are written by the engine, not by an entity, so nothing in
+            // the world points at them and the prune below would wipe them on every save
             auto is_engine_cache = [](const string& path) -> bool
             {
                 const string name = FileSystem::GetFileNameFromFilePath(path);
                 return
                     name.find("terrain_cache")      == 0 ||
-                    name.find("terrain_mesh_cache") == 0;
+                    name.find("terrain_mesh_cache") == 0 ||
+                    name.find("terrain_sculpt")     == 0;
             };
 
             vector<shared_ptr<IResource>> resources = ResourceCache::GetResourcesSnapshot();

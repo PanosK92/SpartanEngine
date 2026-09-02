@@ -915,6 +915,19 @@ namespace
         );
     }
 
+    // imgui 1.92 asserts if setcursorscreenpos is the last layout call in a window
+    void finish_overlay_cursor(const ImVec2& cursor)
+    {
+        if (ImGuiWindow* window = ImGui::GetCurrentWindow())
+        {
+            window->DC.CurrLineSize = ImVec2(0.0f, 0.0f);
+            window->DC.CurrLineTextBaseOffset = 0.0f;
+        }
+        ImGui::SetCursorScreenPos(cursor);
+        ImGui::Dummy(ImVec2(0.0f, 0.0f));
+        ImGui::SetCursorScreenPos(cursor);
+    }
+
     float ui_scale()
     {
         return Window::GetDpiScale();
@@ -4872,7 +4885,7 @@ void AssetViewer::DrawAssetList(float width, float height)
                         row_end.x - text_x - 8.0f * scale
                     )
                 );
-                ImGui::SetCursorScreenPos(cursor_below_row);
+                finish_overlay_cursor(cursor_below_row);
             }
             else
             {
@@ -5101,7 +5114,7 @@ void AssetViewer::DrawAssetList(float width, float height)
                         31.0f * scale
                     )
                 );
-                ImGui::SetCursorScreenPos(cursor_below_dependency);
+                finish_overlay_cursor(cursor_below_dependency);
             }
             else
             {
