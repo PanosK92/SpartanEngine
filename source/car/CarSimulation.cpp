@@ -433,13 +433,16 @@ namespace car
                 {
                     tc_active = true;
                     float reduction_limit = spec.tc_power_reduction * spec.assists.traction_control_level;
-                    target_reduction = PxClamp((max_slip - spec.tc_slip_threshold) * 5.0f, 0.0f, reduction_limit);
+                    // a soft gain let the rears settle far past the threshold where lateral grip is already gone
+                    target_reduction = PxClamp((max_slip - spec.tc_slip_threshold) * 20.0f, 0.0f, reduction_limit);
                 }
-                tc_reduction = lerp(tc_reduction, target_reduction, exp_decay(spec.tc_response_rate, dt));
+                // cut fast, restore slowly, the reverse let the slip spike again the moment torque came back
+                float rate = target_reduction > tc_reduction ? spec.tc_response_rate * 2.0f : spec.tc_response_rate * 0.5f;
+                tc_reduction = lerp(tc_reduction, target_reduction, exp_decay(rate, dt));
             }
             else
             {
-                tc_reduction = lerp(tc_reduction, 0.0f, exp_decay(spec.tc_response_rate * 2.0f, dt));
+                tc_reduction = lerp(tc_reduction, 0.0f, exp_decay(spec.tc_response_rate, dt));
             }
             assisted_actuators.engine_torque_scale = 1.0f - tc_reduction;
 
@@ -1180,7 +1183,10 @@ namespace car
             joint->setMotion(PxD6Axis::eTWIST, PxD6Motion::eFREE);
             joint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eFREE);
             joint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eFREE);
-            PxJointLinearLimitPair stop(multibody.physics->getTolerancesScale(), -travel, travel);
+            // a hard stop one millimetre out sat inside pgs solver error, every snap against it flung the
+            // unsprung mass and kicked the chassis sideways, so the stop is a soft progressive stage instead
+            const float stop_travel = travel * 3.0f;
+            PxJointLinearLimitPair stop(-stop_travel, stop_travel, PxSpring(radial * 10.0f, damping * 4.0f));
             joint->setLinearLimit(PxD6Axis::eX, stop);
             joint->setLinearLimit(PxD6Axis::eY, stop);
             joint->setLinearLimit(PxD6Axis::eZ, stop);
@@ -1828,11 +1834,44 @@ namespace car
     bool Simulation::create_steering_rack()
     {
             PxTransform chassis_pose = body->getGlobalPose();
-            multibody.rack_travel = PxClamp(tanf(fabsf(spec.max_steer_angle)) * 0.22f, 0.05f, 0.20f);
-            float front_z = wheel_offsets[front_left].z + spec.front_geometry.tie_rod_z;
-            float rack_y = wheel_offsets[front_left].y + spec.front_geometry.tie_rod_y;
+            const suspension_geometry& geometry = spec.front_geometry;
+            // the steering arm is the tie rod z offset, so rack travel maps onto the requested lock
+            const float steering_arm = PxMax(fabsf(geometry.tie_rod_z), 0.05f);
+            multibody.rack_travel = PxClamp(tanf(fabsf(spec.max_steer_angle)) * steering_arm, 0.03f, 0.20f);
+            const PxVec3& wheel_local = wheel_offsets[front_left];
+            const float half_track = fabsf(wheel_local.x);
+            float front_z = wheel_local.z + geometry.tie_rod_z;
+            float rack_y = wheel_local.y + geometry.tie_rod_y;
+
+            // zero bump steer needs the tie rod to sweep the same arc as the arms, so both of its
+            // pivots sit on the line between the lower and upper pivots at the tie rod height
+            float lower_inner_x = half_track * geometry.chassis_inset;
+            float upper_inner_x = geometry.mechanism == suspension_mechanism::macpherson
+                ? half_track - geometry.strut_top_inset
+                : half_track * geometry.upper_chassis_inset;
+            float upper_inner_y = geometry.mechanism == suspension_mechanism::macpherson
+                ? geometry.strut_top_y
+                : geometry.upper_inner_y;
+            float lower_outer_x = half_track - PxMax(geometry.lower_upright_inset, 0.0f);
+            float upper_outer_x = geometry.mechanism == suspension_mechanism::macpherson
+                ? half_track
+                : half_track - PxMax(geometry.upper_upright_inset, 0.0f);
+            float upper_outer_y = geometry.mechanism == suspension_mechanism::macpherson
+                ? geometry.strut_top_y
+                : geometry.upper_upright_y;
+
+            float inner_span_y = PxMax(upper_inner_y - geometry.lower_inner_y, 0.01f);
+            float inner_t = PxClamp((geometry.tie_rod_y - geometry.lower_inner_y) / inner_span_y, 0.0f, 1.0f);
+            float rack_half_length = lerp(lower_inner_x, upper_inner_x, inner_t);
+            rack_half_length = PxClamp(rack_half_length, 0.1f, half_track - 0.1f);
+
+            float outer_span_y = PxMax(upper_outer_y - geometry.lower_upright_y, 0.01f);
+            float outer_t = PxClamp((geometry.tie_rod_y - geometry.lower_upright_y) / outer_span_y, 0.0f, 1.0f);
+            float tie_rod_upright_inset = half_track - lerp(lower_outer_x, upper_outer_x, outer_t);
+            tie_rod_upright_inset = PxMax(tie_rod_upright_inset, 0.0f);
+
             PxVec3 rack_world = hardpoint_world(chassis_pose, PxVec3(0.0f, rack_y, front_z));
-            multibody.rack = create_mechanism_actor(PxTransform(rack_world, chassis_pose.q), PxBoxGeometry(cfg.track_front * 0.35f, 0.025f, 0.025f), spec.steering_rack_mass);
+            multibody.rack = create_mechanism_actor(PxTransform(rack_world, chassis_pose.q), PxBoxGeometry(rack_half_length, 0.025f, 0.025f), spec.steering_rack_mass);
             if (!multibody.rack)
             {
                 return false;
@@ -1849,7 +1888,9 @@ namespace car
             multibody.rack_joint->setMotion(PxD6Axis::eTWIST, PxD6Motion::eLOCKED);
             multibody.rack_joint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eLOCKED);
             multibody.rack_joint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eLOCKED);
-            multibody.rack_joint->setLinearLimit(PxD6Axis::eX, PxJointLinearLimitPair(multibody.physics->getTolerancesScale(), -multibody.rack_travel, multibody.rack_travel));
+            // the drive target reaches rack_travel at full lock, a hard stop exactly there chatters
+            const float rack_stop = multibody.rack_travel * 1.15f;
+            multibody.rack_joint->setLinearLimit(PxD6Axis::eX, PxJointLinearLimitPair(multibody.physics->getTolerancesScale(), -rack_stop, rack_stop));
             // force drive must out-stiff tire sat through the tie rods, soft accel drive let the rack steer itself into a brake weave
             const float rack_mass = PxMax(spec.steering_rack_mass, 0.5f);
             const float rack_hold_stiffness = 500000.0f;
@@ -1863,8 +1904,8 @@ namespace car
             {
                 suspension_corner& corner = multibody.corners[wheel_index];
                 float side = wheel_index == front_left ? -1.0f : 1.0f;
-                PxVec3 rack_end_world = hardpoint_world(chassis_pose, PxVec3(side * cfg.track_front * 0.35f, rack_y, front_z));
-                PxVec3 upright_anchor_world = hardpoint_world(chassis_pose, wheel_offsets[wheel_index] + PxVec3(0.0f, spec.front_geometry.tie_rod_y, spec.front_geometry.tie_rod_z));
+                PxVec3 rack_end_world = hardpoint_world(chassis_pose, PxVec3(side * rack_half_length, rack_y, front_z));
+                PxVec3 upright_anchor_world = hardpoint_world(chassis_pose, wheel_offsets[wheel_index] + PxVec3(-side * tie_rod_upright_inset, geometry.tie_rod_y, geometry.tie_rod_z));
                 if (!add_link_member(corner, rack_end_world, upright_anchor_world, spec.suspension_link_mass, multibody.rack))
                 {
                     return false;

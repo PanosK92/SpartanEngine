@@ -471,6 +471,7 @@ namespace spartan
         gbuffer_normal_previous,
         gbuffer_material,
         gbuffer_velocity,
+        gbuffer_velocity_previous,
         gbuffer_depth,
         gbuffer_depth_previous,
         gbuffer_depth_occluders,

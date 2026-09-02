@@ -110,6 +110,32 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float2 prev_uv     = reproject_to_previous_frame(uv);
     float  temporal_confidence = 0.0f;
 
+    // where the history reservoir is read from, prev_uv unless the dual motion vector takes over
+    float2 history_uv   = prev_uv;
+    bool   have_history = is_temporal_sample_valid(uv, prev_uv, pos_ws, normal_ws, buffer_frame.resolution_render, temporal_confidence);
+    bool   dual_history = false;
+
+    // dual motion vectors on disocclusion, lin 2026 6.4 after zeng 2021, a freshly revealed
+    // pixel has no history of its own but the surface that hid it kept moving, its velocity in
+    // the previous frame, read at prev_uv where it stood, says which way it came from, and the
+    // background just past its earlier silhouette in that direction was visible then, so that
+    // reservoir is offered as the temporal neighbour, the shift moves the path onto this primary
+    // with a proper jacobian so nothing is copy pasted, only the plane gate below is relaxed to
+    // the spatial neighbour tolerance since the source primary is a different surface point
+    bool prev_on_screen = all(prev_uv > 0.0f) && all(prev_uv < 1.0f);
+    if (!have_history && prev_on_screen)
+    {
+        float2 occluder_motion = tex6.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).xy * float2(0.5f, -0.5f);
+        float2 dual_uv         = prev_uv - occluder_motion;
+        // a still occluder reproduces prev_uv, which already failed
+        if (dot(occluder_motion, occluder_motion) > 0.0f && all(dual_uv > 0.0f) && all(dual_uv < 1.0f))
+        {
+            history_uv   = dual_uv;
+            have_history = true;
+            dual_history = true;
+        }
+    }
+
     bool have_temporal = false;
     Reservoir temporal = create_empty_reservoir();
     float  target_temp          = 0.0f;
@@ -119,9 +145,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // rgb integrand of the shifted temporal sample, kept for vector shading weights, lin 2026 6.3
     float3 f_temp               = float3(0, 0, 0);
 
-    if (is_temporal_sample_valid(uv, prev_uv, pos_ws, normal_ws, buffer_frame.resolution_render, temporal_confidence))
+    if (have_history)
     {
-        float2 prev_pixel_f = prev_uv * resolution;
+        float2 prev_pixel_f = history_uv * resolution;
         bool in_bounds = prev_pixel_f.x >= 0.5f && prev_pixel_f.x < resolution.x - 0.5f &&
                          prev_pixel_f.y >= 0.5f && prev_pixel_f.y < resolution.y - 0.5f;
         if (in_bounds)
@@ -136,7 +162,21 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                 tex_reservoir_prev4[prev_pixel]
             );
 
-            if (is_reservoir_valid(temporal) && temporal.M > 0.0f && temporal.W > 0.0f)
+            bool usable = is_reservoir_valid(temporal) && temporal.M > 0.0f && temporal.W > 0.0f;
+
+            // the dual candidate skipped the reprojection gate, it is a neighbour on the same
+            // surface or nothing, tested against the stored source primary like the spatial pass
+            if (usable && dual_history)
+            {
+                float3 src_offset  = temporal.sample.src_pos - pos_ws;
+                float  view_dist   = max(length(get_camera_position() - pos_ws), 1e-3f);
+                float  plane_dist  = abs(dot(normal_ws, src_offset));
+                bool   same_plane  = plane_dist <= RESTIR_DEPTH_THRESHOLD * view_dist;
+                bool   same_facing = dot(normal_ws, temporal.sample.src_normal) >= RESTIR_NORMAL_THRESHOLD;
+                usable             = same_plane && same_facing;
+            }
+
+            if (usable)
             {
                 // use the stored source primary g-buffer, correct even for moving objects
                 float3 src_primary_pos = temporal.sample.src_pos;
@@ -220,7 +260,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // correlated regions decay faster which trades a small bias for far fewer correlation blobs
     if (have_temporal)
     {
-        float duplication = tex2.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).r;
+        float duplication = tex2.SampleLevel(GET_SAMPLER(sampler_point_clamp), history_uv, 0).r;
         clamp_reservoir_M(temporal, get_restir_m_cap_decorrelated(duplication));
     }
 

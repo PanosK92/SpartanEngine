@@ -646,6 +646,12 @@ namespace spartan
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex5), normal_prev);
             }
 
+            // previous frame velocity, occluder motion for the dual motion vector on disocclusion, lin 2026 6.4
+            if (RHI_Texture* velocity_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity_previous))
+            {
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex6), velocity_prev);
+            }
+
             if (RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere))
             {
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3), tex_skysphere);
@@ -775,6 +781,13 @@ namespace spartan
         {
             swap(render_targets[idx_normal], render_targets[idx_normal_prev]);
         }
+
+        uint32_t idx_velocity      = static_cast<uint32_t>(Renderer_RenderTarget::gbuffer_velocity);
+        uint32_t idx_velocity_prev = static_cast<uint32_t>(Renderer_RenderTarget::gbuffer_velocity_previous);
+        if (render_targets[idx_velocity] && render_targets[idx_velocity_prev])
+        {
+            swap(render_targets[idx_velocity], render_targets[idx_velocity_prev]);
+        }
     }
 
     void Renderer::Pass_ReSTIR_PathTracing()
@@ -863,6 +876,12 @@ namespace spartan
             if (RHI_Texture* normal_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal_previous))
             {
                 RHI_CommandList::ClearTexture(normal_prev, Color::standard_black);
+            }
+
+            // zero velocity disables the dual motion vector until real history exists
+            if (RHI_Texture* velocity_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity_previous))
+            {
+                RHI_CommandList::ClearTexture(velocity_prev, Color::standard_black);
             }
 
             // zero duplication keeps the temporal m cap at its default until real history exists

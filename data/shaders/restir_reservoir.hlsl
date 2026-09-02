@@ -30,13 +30,20 @@ static const uint  RESTIR_MAX_PATH_LENGTH    = 5;
 // curve to a floor that keeps a few frames alive
 static const uint  RESTIR_M_CAP_MIN          = 16;
 static const uint  RESTIR_M_CAP_MAX          = 64;
-static const float RESTIR_C_CAP_DUPLICATED   = 4.0f;
+static const float RESTIR_C_CAP_DUPLICATED   = 2.0f;
 
 // paired spatial reuse, lin 2026 3, three tileable self inverting gaussian pairing tables
 // sizes are near coprime so the tiling periods never align within a screen
 static const uint RESTIR_PAIRING_COUNT    = 3;
 static const uint RESTIR_PAIRING_SIZES[3] = { 254u, 230u, 210u };
 static const uint RESTIR_PAIRING_BASES[3] = { 0u, 64516u, 117416u };
+
+// lin 2026 5 sensitivity of the cap reduction, c_cap = lerp(default, min, d^alpha), the paper
+// uses 0.1 which collapses the cap toward the floor at a few percent duplication, without a
+// random replay leg every reusable path here is a reconnection so copies of a good path spread
+// faster than in the paper and that setting starves the history, 0.5 keeps the quick early
+// response while leaving several frames alive at typical duplication scores
+static const float RESTIR_DUPLICATION_ALPHA  = 0.5f;
 
 float get_restir_m_cap()
 {
@@ -47,7 +54,8 @@ float get_restir_m_cap()
 // duplication is the fraction of the 17x17 window carrying this pixel's replay seed
 float get_restir_m_cap_decorrelated(float duplication)
 {
-    return lerp(get_restir_m_cap(), RESTIR_C_CAP_DUPLICATED, saturate(duplication));
+    float d = pow(saturate(duplication), RESTIR_DUPLICATION_ALPHA);
+    return lerp(get_restir_m_cap(), RESTIR_C_CAP_DUPLICATED, d);
 }
 uint  get_restir_max_path_length()     { return RESTIR_MAX_PATH_LENGTH; }
 uint  get_restir_light_candidates()    { return 16u; }
@@ -1125,34 +1133,17 @@ float restir_primary_specular_blend(float roughness)
     return 0.0f;
 }
 
-// primary ray footprint squared radius, lin 2026 eq 5 rhs without the constant scale
-// measures the world space area a primary sample represents at this hit, the solid angle is
-// the restir pixel cone, a whole sphere here made the gate grow with distance alone until it
-// rejected every reconnection past a few hundred units and left the far ground with no sample
+// primary ray footprint squared radius, lin 2026 eq 5 rhs without the constant scale,
+// r_pri^2 = |x0 - x1|^2 / (cos / 4pi) following muller 2021, the paper's c = 0.02 is tuned
+// against this normalization, scaling by the pixel cone instead left the threshold four orders
+// of magnitude below any reconnection footprint and the gate never fired
 float restir_primary_footprint_sq(float3 primary_pos, float3 primary_normal)
 {
     float3 to_cam  = get_camera_position() - primary_pos;
     float  dist_sq = dot(to_cam, to_cam);
     float  cos_cam = max(dot(primary_normal, normalize(to_cam)), 1e-3f);
 
-    // pixels are square so the vertical angular size equals the horizontal one
-    float2 res_restir  = max(buffer_frame.resolution_render * buffer_frame.restir_pt_scale, 1.0f);
-    float  pixel_angle = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / res_restir.x;
-
-    return dist_sq * (pixel_angle * pixel_angle) / cos_cam;
-}
-
-// lin 2026 reconnection conditions, the footprint gates are enforced at sample construction
-bool can_reconnect_at_dst(PathSample src, float3 dst_pos, float dst_roughness)
-{
-    if (!has_reconnection(src))
-        return false;
-
-    float3 to_rc = src.rc_pos - dst_pos;
-    if (dot(to_rc, to_rc) < RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE)
-        return false;
-
-    return true;
+    return dist_sq / (cos_cam * 4.0f * PI);
 }
 
 struct ShiftResult
@@ -1217,9 +1208,6 @@ ShiftResult try_reconnection_shift(
         return result;
     }
 
-    if (!can_reconnect_at_dst(src, dst_pos, dst_roughness))
-        return result;
-
     float3 rc_from_dst = src.rc_pos - dst_pos;
     float  dist_dst_sq = dot(rc_from_dst, rc_from_dst);
     if (dist_dst_sq < RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE)
@@ -1229,6 +1217,12 @@ ShiftResult try_reconnection_shift(
     // geometry so the jacobian is exactly one and every gate below matches self_shift_evaluate
     float3 primary_delta = dst_pos - src_primary_pos;
     bool   is_identity   = dot(primary_delta, primary_delta) <= dist_dst_sq * RESTIR_SHIFT_IDENTITY_EPS_SQ;
+
+    // paths that failed the footprint criteria, lin 2026 4, carry no reconnection vertex and
+    // cannot be moved to another primary, the identity shift leaves the path where it is so a
+    // still camera keeps its history instead of dropping it whenever such a path wins a pixel
+    if (!is_identity && !has_reconnection(src))
+        return result;
 
     float3 rc_from_src = is_identity ? rc_from_dst : (src.rc_pos - src_primary_pos);
     float  dist_src_sq = is_identity ? dist_dst_sq : dot(rc_from_src, rc_from_src);
@@ -1252,11 +1246,15 @@ ShiftResult try_reconnection_shift(
         return result;
 
     // dst side forward footprint test mirrors the source reconnection criteria, lin 2026 4
-    // the primary lobe is diffuse only here so the directional pdf is cosine over pi
-    float pdf_dst = max(dot(dst_normal, dir_dst), 0.0f) / PI;
-    float fp_dst  = dist_dst_sq / max(pdf_dst * cos_rc_dst, 1e-6f);
-    if (fp_dst < RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(dst_pos, dst_normal))
-        return result;
+    // the primary lobe is diffuse only here so the directional pdf is cosine over pi, the
+    // identity shift skips it like self_shift_evaluate does, the path is not being moved
+    if (!is_identity)
+    {
+        float pdf_dst = max(dot(dst_normal, dir_dst), 0.0f) / PI;
+        float fp_dst  = dist_dst_sq / max(pdf_dst * cos_rc_dst, 1e-6f);
+        if (fp_dst < RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(dst_pos, dst_normal))
+            return result;
+    }
 
     float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, restir_primary_specular_blend(dst_roughness));
     if (all(brdf_cos <= 0.0f))
@@ -1706,8 +1704,10 @@ bool restir_refresh_rc_radiance(inout PathSample s, float3 src_primary_pos)
     random_float2(seed);
 
     // sky and nee samples carry an emitter's own radiance, and an emissive rc folds a term into
-    // rc_L_nee that is not separable from the shaded one, none of them can be rebuilt here
-    if (is_sky_sample(s) || is_nee_sample(s) || is_rc_emissive(s) || !has_reconnection(s))
+    // rc_L_nee that is not separable from the shaded one, none of them can be rebuilt here,
+    // paths without the rc flag still store a full rc vertex and survive through the identity
+    // shift so they are refreshed like any other
+    if (is_sky_sample(s) || is_nee_sample(s) || is_rc_emissive(s))
         return false;
 
     float3 to_rc = s.rc_pos - src_primary_pos;
@@ -1775,7 +1775,7 @@ bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal)
     return query.CommittedStatus() == COMMITTED_NOTHING;
 }
 
-// identity shift, jacobian is 1, bypasses can_reconnect_at_dst since this is the source pixel
+// identity shift, jacobian is 1, no rc flag or footprint gate since this is the source pixel
 // the acceptance gates below must stay identical to try_reconnection_shift, this function
 // supplies the own domain density in the pairwise mis denominators while try_reconnection_shift
 // supplies the cross domain one, so the moment the two disagree the shares stop summing to one

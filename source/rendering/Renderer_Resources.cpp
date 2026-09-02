@@ -560,6 +560,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_normal_previous)     = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_material)            = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_velocity)            = nullptr;
+            at(render_targets, Renderer_RenderTarget::gbuffer_velocity_previous)   = nullptr;
             at(render_targets, Renderer_RenderTarget::dlss_reactivity)              = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_depth)               = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_previous)      = nullptr;
@@ -685,6 +686,9 @@ namespace spartan
             // previous frame normals for the same gate, sampling the current normal buffer at
             // prev_uv reads a different surface whenever anything moved
             at(render_targets, Renderer_RenderTarget::gbuffer_normal_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_normal_previous");
+            // previous frame velocity, restir's temporal pass reads the occluder's motion at the
+            // reprojected position to build a dual motion vector on disocclusion, lin 2026 6.4
+            at(render_targets, Renderer_RenderTarget::gbuffer_velocity_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_velocity_previous");
 
             // hi-z occluders, amd depth format restrictions force a separate texture for uav and a manual blit
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_occluders) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float, RHI_Texture_Rtv | RHI_Texture_Srv, "depth_occluders");

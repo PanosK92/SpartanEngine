@@ -82,12 +82,12 @@
 
     <!-- brush model, cup 2, about 1930 N per degree at the 4 kN reference load -->
     <tires
-        tire_model_type="1" tread_stiffness_long="33000000" tread_stiffness_lat="24000000" tire_slide_friction_ratio="0.84"
+        tire_model_type="1" tread_stiffness_long="18000000" tread_stiffness_lat="24000000" tire_slide_friction_ratio="0.84"
         tire_probe_rows="5" tire_probe_columns="3" tire_probe_arc="0.32" tire_crown_drop="0.0035" tire_substeps="4"
         lat_B="12" lat_C="1.55" lat_D="1" lat_E="-0.2" long_B="20" long_C="1.6" long_D="1" long_E="-0.3" combined_long_B="10" combined_long_C="1" combined_long_E="0" combined_lat_B="8" combined_lat_C="1" combined_lat_E="0"
         load_B_scale_min="0.5" pneumatic_trail_max="0.04" pneumatic_trail_peak="0.14"
         tire_friction="1.5" min_slip_speed="0.5" load_sensitivity="0.92" load_reference="4000" rear_grip_ratio="1.0"
-        slip_angle_deadband="0.01" camber_thrust_coeff="0.015" max_slip_angle="1.2"
+        slip_angle_deadband="0" camber_thrust_coeff="0.015" max_slip_angle="1.2"
         tire_pressure="2.2" tire_pressure_optimal="2.2" tire_vertical_stiffness="180000" rolling_resistance="0.011"
         tire_ambient_temp="50" tire_optimal_temp="90" tire_temp_range="50"
         tire_heat_from_slip="25" tire_heat_from_rolling="0.15" tire_cooling_rate="2" tire_cooling_airflow="0.05"
@@ -105,7 +105,7 @@
 
     <assists
         abs_enabled="true" abs_slip_threshold="0.15" abs_release_rate="0.7" abs_pulse_frequency="15" abs_load_sensitivity="0.15"
-        tc_enabled="true" tc_slip_threshold="0.08" tc_power_reduction="0.8" tc_response_rate="15"
+        tc_enabled="true" tc_slip_threshold="0.05" tc_power_reduction="0.8" tc_response_rate="30"
         steering_speed_reduction="0.55" steering_speed_reference="55" abs_level="1" traction_control_level="1" />
 
     <input
