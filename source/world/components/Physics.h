@@ -160,6 +160,9 @@ namespace spartan
         bool GetUseConvexHull() const { return m_use_convex_hull; }
         void SetUseConvexHull(bool enabled);
 
+        // the render rewrote its instance list, the per instance actors are rebuilt on the next tick
+        void OnInstancesChanged() { m_instances_dirty = true; }
+
         // ground
         bool IsGrounded() const;
         Entity* GetGroundEntity() const;
@@ -349,6 +352,7 @@ namespace spartan
         void CaptureCheapWheelRestPoses();
         void Create();
         void CreateBodies();
+        void RebuildInstanceActors();
         void CreateCloth();
         // builds overlapping low poly convex proxies for the vehicle chassis
         void BuildChassisConvexShapes(Entity* chassis_entity, const std::vector<Entity*>& entities_to_exclude);
@@ -408,6 +412,8 @@ namespace spartan
 
         // deferred creation flag for loading (wait until render is available)
         bool m_needs_creation = false;
+        // set by the render when its instance list changes, consumed once per frame in PreTick
+        bool m_instances_dirty = false;
 
         // cached scale for detecting editor-time scale changes
         math::Vector3 m_scale_previous = math::Vector3::Zero;

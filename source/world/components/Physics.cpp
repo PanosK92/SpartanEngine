@@ -380,6 +380,13 @@ namespace spartan
             Create();
         }
 
+        // a live drag rewrites the instance list many times a frame, the actors follow it once here
+        if (m_instances_dirty)
+        {
+            m_instances_dirty = false;
+            RebuildInstanceActors();
+        }
+
         // sync physics transforms to entities before other components (like camera) tick
         // this ensures child entities have up-to-date parent transforms when they compute matrices
         const bool is_playing  = Engine::IsFlagSet(EngineMode::Playing);
@@ -994,7 +1001,14 @@ namespace spartan
         Render* render      = GetEntity()->GetComponent<Render>();
         const bool instanced = render && render->HasInstancing();
 
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
+        // the instance list can shrink before the actors are rebuilt, never index past it
+        uint32_t count = static_cast<uint32_t>(m_actors.size());
+        if (instanced)
+        {
+            count = min(count, render->GetInstanceCount());
+        }
+
+        for (uint32_t i = 0; i < count; i++)
         {
             PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[i]);
             if (!actor)
@@ -1040,7 +1054,15 @@ namespace spartan
             return;
         }
 
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
+        // the instance list can shrink before the actors are rebuilt, never index past it
+        const bool instanced = render->HasInstancing();
+        uint32_t count       = static_cast<uint32_t>(m_actors.size());
+        if (instanced)
+        {
+            count = min(count, render->GetInstanceCount());
+        }
+
+        for (uint32_t i = 0; i < count; i++)
         {
             PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[i]);
             if (!actor)
@@ -1049,7 +1071,7 @@ namespace spartan
             }
 
             // compute distance to actor
-            Vector3 closest_point = render->HasInstancing()
+            Vector3 closest_point = instanced
                 ? render->GetInstance(i, true).GetTranslation()
                 : render->GetBoundingBox().GetClosestPoint(camera_pos);
             const float distance_squared = Vector3::DistanceSquared(camera_pos, closest_point);
@@ -4419,6 +4441,57 @@ namespace spartan
 
             m_actors[i] = actor;
         }
+
+        // the actors now match the instance list, a notification raised before this point is stale
+        m_instances_dirty = false;
+    }
+
+    // a scattered prop owns one actor per render instance, when the terrain hides, restores or snaps
+    // instances the list changes size and the actors are rebuilt from the cooked shape already held in
+    // m_mesh, going through Create would recook the hull for every drag step
+    void Physics::RebuildInstanceActors()
+    {
+        // only the body types that CreateBodies lays out per instance
+        switch (m_body_type)
+        {
+            case BodyType::Box:
+            case BodyType::Sphere:
+            case BodyType::Capsule:
+            case BodyType::Plane:
+            case BodyType::Mesh:
+            case BodyType::Heightfield:
+                break;
+            default:
+                return;
+        }
+
+        // never created, or the shape cook failed, there is nothing to lay out
+        if (!m_material || !PhysicsWorld::GetScene())
+        {
+            return;
+        }
+        if ((m_body_type == BodyType::Mesh || m_body_type == BodyType::Heightfield) && !m_mesh)
+        {
+            return;
+        }
+
+        lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
+
+        // release the old set, distance activation may have already pulled some out of the scene
+        for (auto* body : m_actors)
+        {
+            if (body)
+            {
+                PxRigidActor* actor = static_cast<PxRigidActor*>(body);
+                PhysicsWorld::RemoveActor(actor);
+                actor->release();
+            }
+        }
+        m_actors.clear();
+        m_actors_active.clear();
+        m_actors_active_count = 0;
+
+        CreateBodies();
     }
 
     void Physics::CreateCloth()

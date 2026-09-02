@@ -46,14 +46,15 @@ static const float grass_cull_radius      = 1.5f;
 // inside each cell is keyed off world-space integer coordinates, so the same blade lands at the same
 // world position regardless of the camera path. only ring-boundary cells appear and disappear.
 //
-// push constant layout (PassBufferData.values, 16 floats total):
+// push constant layout (PassBufferData.values, 20 floats total):
 //   values[0] = (cell_size, ring_radius, lod_base_in_instances, max_instances_per_lod)
 //   values[1] = (height_min, height_max, max_slope_cos, inner_radius)
 //   values[2] = (map_origin_x, map_origin_z, map_inv_size_x, map_inv_size_z)
 //   values[3] = (patch_size_m, patch_coverage, patch_edge, ground_mask bits)
+//   values[4] = (min_slope_cos, slope_bias, height_fade, unused)
 // a patch size of zero spreads the slot evenly, which is what this pass did before patches existed,
 // and a negative one inverts the field so a slot takes the ground the others left bare
-// every float is taken, so the rest travels in the bits of draw_index:
+// the first four float4s are taken, so the rest travels in the bits of draw_index:
 //   bits 0-3   lod ring
 //   bits 4-7   scatter slot
 //   bits 8-11  prop mask channel, 0 grass, 1 trees, 2 rocks
@@ -393,6 +394,12 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float patch_scar        = patch_edge * grass_patch_scar_ratio;
     uint  ground_mask       = (uint)buffer_pass.values[3].w;
 
+    // the same shaping the cpu placer applies, a slope floor, a bias toward one end of the slope band
+    // and a density ramp above the height floor
+    float min_slope_cos = buffer_pass.values[4].x;
+    float slope_bias    = buffer_pass.values[4].y;
+    float height_fade   = buffer_pass.values[4].z;
+
     uint  packed_index  = buffer_pass.draw_index;
     uint  lod_index     = packed_index & 0xFu;
     uint  slot_index    = (packed_index >> 4)  & 0xFu;
@@ -591,9 +598,35 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         height_size,
         local_y
     );
-    if (surface_normal.y < max_slope_cos)
+    // cos is monotonic over the band so the floor is the larger cosine, a floor of zero degrees is open
+    bool below_slope_floor = min_slope_cos < 1.0f && surface_normal.y > min_slope_cos;
+    if (surface_normal.y < max_slope_cos || below_slope_floor)
     {
         return;
+    }
+
+    // height fade and slope bias scale the keep probability rather than gating it, matching the cpu
+    // placer where the weight scales the instance count
+    float shape = 1.0f;
+    if (height_fade > 0.0f)
+    {
+        shape *= saturate((world_y - height_min) / height_fade);
+    }
+    if (slope_bias != 0.0f)
+    {
+        float slope       = acos(saturate(surface_normal.y));
+        float slope_floor = acos(saturate(min_slope_cos));
+        float slope_roof  = acos(saturate(max_slope_cos));
+        float t           = saturate((slope - slope_floor) / max(slope_roof - slope_floor, 1e-3f));
+        shape            *= slope_bias > 0.0f ? pow(t, slope_bias) : pow(1.0f - t, -slope_bias);
+    }
+    if (shape < 1.0f)
+    {
+        float shape_roll = hash_unit(hash_mix(h0 ^ 0x3c6ef372u));
+        if (shape_roll > shape)
+        {
+            return;
+        }
     }
 
     // biome mask, same uv as the heightfield, the slot picks the channel it is gated on

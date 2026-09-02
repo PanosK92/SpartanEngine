@@ -29,8 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // note this header is pulled in by every shader through common.hlsl, so nothing in here may call
 // ddx or ddy, derivatives are always passed in by the caller
 
-static const float sea_level = 0.0f;
-
 // hex tiling, mikkelsen jcgt 2022
 // soft blend, a high exponent paints a diamond waffle across mid distance hills
 static const float terrain_hex_exponent          = 4.0f;
@@ -255,16 +253,26 @@ float terrain_layer_weight(
     float              jitter
 )
 {
+    float slope_jittered = slope_radians + jitter * terrain_slope_jitter;
+
     if (layer.terrain_layer_snow())
     {
-        return terrain_snow_weight(surface, analysis, position_world, normal_world, jitter);
+        // the accumulation model sheds off steep faces on its own, the authored slope band still caps it
+        float slope_band = terrain_band(
+            slope_jittered,
+            layer.terrain_slope_range.x,
+            layer.terrain_slope_range.y,
+            terrain_slope_feather_max,
+            terrain_slope_domain_min,
+            terrain_slope_domain_max
+        );
+        return terrain_snow_weight(surface, analysis, position_world, normal_world, jitter) * slope_band;
     }
 
     // the height band is measured against sea level for the layers that care about the shore
     float height = position_world.y - (layer.terrain_layer_below_sea() ? surface.terrain_sea_level : 0.0f);
 
-    float slope_jittered  = slope_radians + jitter * terrain_slope_jitter;
-    float height_jittered = height        + jitter * terrain_height_jitter;
+    float height_jittered = height + jitter * terrain_height_jitter;
 
     // altitude gained per metre travelled horizontally, the tangent of the slope, this is the factor
     // between a feather written in altitude and the width it actually covers on the ground
@@ -731,8 +739,14 @@ struct TerrainSurface
     float  occlusion;
     float  height;    // resolved blend height, drives tessellation displacement
     float  wetness;
-    float  pom_height_scale; // zero when the dominant layer does not want parallax
 };
+
+// parallax amplitude of the dominant pick, zero when that layer does not ask for it or has no height map
+float terrain_pom_height_scale(TerrainLayerPick pick)
+{
+    MaterialParameters dominant = material_parameters[NonUniformResourceIndex(pick.index[0])];
+    return (dominant.terrain_layer_pom() && dominant.has_texture_height()) ? dominant.height : 0.0f;
+}
 
 // one layer resolved into albedo, a world space gradient and orm
 struct TerrainLayerSample
@@ -993,7 +1007,6 @@ TerrainSurface terrain_evaluate(
     output.occlusion        = 1.0f;
     output.height           = 0.5f;
     output.wetness          = 0.0f;
-    output.pom_height_scale = 0.0f;
 
     if (pick.count == 0)
     {
@@ -1003,11 +1016,13 @@ TerrainSurface terrain_evaluate(
     // wobble each cutoff so the fade is not a geometric circle around the camera
     float lod_noise     = terrain_jitter(position_world, 4.2f);
     float detail_weight = terrain_lod_weight(distance_to_camera, terrain_detail_distance, terrain_detail_fade, lod_noise * terrain_detail_fade * 0.75f);
+    float blend_weight  = terrain_lod_weight(distance_to_camera, terrain_blend_distance,  terrain_blend_fade,  lod_noise * terrain_blend_fade  * 0.75f);
     float hex_weight    = terrain_lod_weight(distance_to_camera, terrain_hex_distance,    terrain_hex_fade,    lod_noise * terrain_hex_fade    * 0.75f);
 
-    // two layers stay in play at every distance, dropping to one is the hard split
+    // two layers stay in play at every distance, dropping to one is the hard split, the third and
+    // fourth pick collapse over the blend range rather than at the detail range
     uint count = pick.count;
-    if (detail_weight <= 0.0f)
+    if (blend_weight <= 0.0f)
     {
         count = min(pick.count, 2u);
     }
@@ -1057,11 +1072,11 @@ TerrainSurface terrain_evaluate(
 
     if (count > 2)
     {
-        resolved[2] *= detail_weight;
+        resolved[2] *= blend_weight;
     }
     if (count > 3)
     {
-        resolved[3] *= detail_weight;
+        resolved[3] *= blend_weight;
     }
 
     float weight_sum = 0.0f;
@@ -1142,8 +1157,6 @@ TerrainSurface terrain_evaluate(
     // wet ground is a plane, flatten the detail gradient in proportion
     gradient *= lerp(1.0f, 0.25f, pool);
 
-    MaterialParameters dominant_layer = material_parameters[NonUniformResourceIndex(pick.index[0])];
-
     output.albedo           = albedo.rgb;
     output.normal           = terrain_resolve_normal(geometric_normal, gradient, 1.0f);
     output.occlusion        = orm.r;
@@ -1151,7 +1164,6 @@ TerrainSurface terrain_evaluate(
     output.metalness        = saturate(orm.b);
     output.height           = height;
     output.wetness          = wet;
-    output.pom_height_scale = dominant_layer.terrain_layer_pom() ? dominant_layer.height : 0.0f;
 
     // debug views, without these the rule set is untunable, you cannot see why a layer won
     uint debug = surface.terrain_debug_view();
@@ -1232,7 +1244,6 @@ TerrainSurface terrain_shade_lod(
     output.occlusion        = 1.0f;
     output.height           = 0.5f;
     output.wetness          = 0.0f;
-    output.pom_height_scale = 0.0f;
 
     if (surface.terrain_layer_count == 0)
     {
@@ -1581,6 +1592,16 @@ TerrainBlend terrain_blend_evaluate(
 // meters of displacement at a layer height of one, the tessellated grid is far coarser than the
 // texel grid so anything larger than this pops between lod rings
 static const float terrain_displacement_scale = 0.5f;
+
+// range of the hull tessellation ramp, the displacement fade shares it so the amplitude tracks how much
+// geometry is actually there to carry it, the shadow vertex shader uses the same fade to stay in step
+static const float terrain_tessellation_distance = 32.0f;
+
+float terrain_displacement_fade(float distance_to_camera)
+{
+    float t = saturate(1.0f - distance_to_camera / terrain_tessellation_distance);
+    return t * t;
+}
 
 // vertex displacement for tessellated terrain, driven by the dominant layer's own height map so
 // the silhouette agrees with what the pixel shader ends up drawing on it

@@ -877,6 +877,11 @@ namespace spartan
             params.height_min = terrain->GetSeaLevel() + layer.height_min;
             params.height_max = terrain->GetSeaLevel() + layer.height_max;
             params.max_slope_deg = layer.slope_max;
+            // the slope floor, bias and height fade used to stop at the mesh placer, so the gpu kinds
+            // ignored three of the authored fields
+            params.min_slope_deg = layer.slope_min;
+            params.slope_bias    = layer.slope_bias;
+            params.height_fade   = layer.height_fade;
             // a mask channel of -1 turns the gate off, which is what detail wants, a chip belongs anywhere
             params.biome_min_weight = layer.mask_channel >= 0 ? layer.mask_min : -1.0f;
             params.mask_channel = layer.mask_channel >= 0 ? static_cast<uint32_t>(layer.mask_channel) : 0u;
@@ -1123,6 +1128,16 @@ namespace spartan
         // batch is tiny, so the ground the camera is on gets its trees and its rocks in a few
         // milliseconds and the map grows outward from there, a pass per layer over every tile would
         // leave the terrain bare until the last tile of the last layer was done
+        if (!jobs.empty())
+        {
+            vector<uint32_t> all_tiles(tile_count);
+            for (uint32_t i = 0; i < tile_count; i++)
+            {
+                all_tiles[i] = i;
+            }
+            terrain->EnsurePlacementData(all_tiles);
+        }
+
         uint32_t order_done = 0;
         uint32_t batch      = 4;
         while (order_done < tile_count && !jobs.empty())

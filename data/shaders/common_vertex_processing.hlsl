@@ -79,21 +79,18 @@ Vertex_PosUvNorTan pull_vertex(uint vertex_id, uint instance_id, uint instance_o
 
     // slot 0 of the global instance pool is seeded with an identity instance, non-instanced renderables pass instance_offset=0 and read it
     PackedInstance pi = geometry_instances[instance_offset + instance_id];
-    uint pos_x_h      = pi.pos_xy & 0xFFFF;
-    uint pos_y_h      = (pi.pos_xy >> 16) & 0xFFFF;
-    uint pos_z_h      = pi.pos_z_norm & 0xFFFF;
-    uint nrm_oct      = (pi.pos_z_norm >> 16) & 0xFFFF;
-    uint yaw_p        = pi.yaw_scale & 0xFF;
-    uint scale_p      = (pi.yaw_scale >> 8) & 0xFF;
+    uint nrm_oct      = pi.norm_yaw_scale & 0xFFFF;
+    uint yaw_p        = (pi.norm_yaw_scale >> 16) & 0xFF;
+    uint scale_p      = (pi.norm_yaw_scale >> 24) & 0xFF;
 
     Vertex_PosUvNorTan v;
     v.position            = pulled.position;
     v.uv_packed           = pulled.uv;
     v.normal_packed       = pulled.normal;
     v.tangent_packed      = pulled.tangent;
-    v.instance_position_x = f16tof32(pos_x_h);
-    v.instance_position_y = f16tof32(pos_y_h);
-    v.instance_position_z = f16tof32(pos_z_h);
+    v.instance_position_x = pi.pos_x;
+    v.instance_position_y = pi.pos_y;
+    v.instance_position_z = pi.pos_z;
     v.instance_normal_oct = nrm_oct;
     v.instance_yaw        = yaw_p;
     v.instance_scale      = scale_p;
@@ -238,14 +235,11 @@ float4x4 pull_instance_transform(uint instance_offset, uint instance_id)
         return float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 
     PackedInstance pi = geometry_instances[instance_offset + instance_id];
-    uint pos_x_h      = pi.pos_xy & 0xFFFF;
-    uint pos_y_h      = (pi.pos_xy >> 16) & 0xFFFF;
-    uint pos_z_h      = pi.pos_z_norm & 0xFFFF;
-    uint nrm_oct      = (pi.pos_z_norm >> 16) & 0xFFFF;
-    uint yaw_p        = pi.yaw_scale & 0xFF;
-    uint scale_p      = (pi.yaw_scale >> 8) & 0xFF;
+    uint nrm_oct      = pi.norm_yaw_scale & 0xFFFF;
+    uint yaw_p        = (pi.norm_yaw_scale >> 16) & 0xFF;
+    uint scale_p      = (pi.norm_yaw_scale >> 24) & 0xFF;
 
-    float3 instance_position = float3(f16tof32(pos_x_h), f16tof32(pos_y_h), f16tof32(pos_z_h));
+    float3 instance_position = float3(pi.pos_x, pi.pos_y, pi.pos_z);
 
     if (dot(instance_position, instance_position) < 1e-10f && nrm_oct == 0u && yaw_p == 0u && scale_p == 0u)
         return float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);

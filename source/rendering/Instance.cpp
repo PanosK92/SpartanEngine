@@ -67,69 +67,6 @@ namespace spartan
             return direction;
         }
 
-        // convert float to IEEE 754 half-precision
-        uint16_t float_to_half(float value)
-        {
-            union { float f; uint32_t i; } u = { value };
-            uint32_t sign     = (u.i >> 16) & 0x8000;
-            int32_t exponent  = ((u.i >> 23) & 0xFF) - 127;
-            uint32_t mantissa = u.i & 0x7FFFFF;
-
-            if (exponent <= -15)
-            {
-                return sign;
-            }
-
-            if (exponent > 15)
-            {
-                return sign | 0x7C00;
-            }
-
-            if (exponent <= -14)
-            {
-                mantissa |= 0x800000;
-                mantissa >>= -14 - exponent;
-                return sign | mantissa;
-            }
-
-            exponent += 15;
-            mantissa >>= 13;
-
-            return sign | (exponent << 10) | mantissa;
-        }
-
-        // convert IEEE 754 half-precision to float
-        float half_to_float(uint16_t value)
-        {
-            uint32_t sign     = (value & 0x8000) << 16;
-            uint32_t exponent = (value >> 10) & 0x1F;
-            uint32_t mantissa = value & 0x3FF;
-
-            // inf and nan read as zero
-            if (exponent == 0x1F)
-            {
-                return 0.0f;
-            }
-
-            if (exponent == 0 && mantissa == 0)
-            {
-                return std::bit_cast<float>(sign);
-            }
-
-            // denormalized, normalize the mantissa
-            if (exponent == 0)
-            {
-                int shifts = std::countl_zero(mantissa) - 21; // 32 - 11 effective bits
-                mantissa <<= shifts;
-                exponent = 1 - shifts;
-            }
-
-            // half bias 15 to float bias 127
-            exponent += 112;
-
-            return std::bit_cast<float>(sign | (exponent << 23) | (mantissa << 13));
-        }
-
         // the rotation that takes up to the given normal
         Quaternion align_up_to(const Vector3& normal)
         {
@@ -154,7 +91,7 @@ namespace spartan
 
     Matrix Instance::GetMatrix() const
     {
-        const Vector3 position(half_to_float(position_x), half_to_float(position_y), half_to_float(position_z));
+        const Vector3 position(position_x, position_y, position_z);
 
         const Quaternion align = align_up_to(decode_octahedral(normal_oct));
         const float yaw        = (static_cast<float>(yaw_packed) / 255.0f) * math::pi_2;
@@ -170,12 +107,10 @@ namespace spartan
 
     void Instance::SetMatrix(const Matrix& matrix)
     {
-        padding = 0;
-
         const Vector3 position = matrix.GetTranslation();
-        position_x             = float_to_half(position.x);
-        position_y             = float_to_half(position.y);
-        position_z             = float_to_half(position.z);
+        position_x             = position.x;
+        position_y             = position.y;
+        position_z             = position.z;
 
         const Quaternion rotation = matrix.GetRotation();
         const Vector3 normal      = rotation * Vector3::Up;
@@ -200,13 +135,12 @@ namespace spartan
     Instance Instance::GetIdentity()
     {
         Instance instance;
-        instance.position_x   = 0;
-        instance.position_y   = 0;
-        instance.position_z   = 0;
+        instance.position_x   = 0.0f;
+        instance.position_y   = 0.0f;
+        instance.position_z   = 0.0f;
         instance.normal_oct   = 0;
         instance.yaw_packed   = 0;
         instance.scale_packed = 0;
-        instance.padding      = 0;
 
         return instance;
     }

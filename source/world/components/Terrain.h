@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <atomic>
 #include <algorithm>
 #include <array>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -215,9 +216,13 @@ namespace spartan
         // recompute the placement triangles of these tiles from the live mesh, sculpted ground
         // would otherwise hand the scatter rules the heights from before the edit
         void RefreshPlacementData(const std::vector<uint32_t>& tile_indices);
+        // builds only the tiles that have no placement triangles yet, call before parallel scatter
+        void EnsurePlacementData(const std::vector<uint32_t>& tile_indices);
         void MarkSplinePropCarvesDirty(uint64_t spline_id = 0);
         // roads grade the ground they sit on, queue the affected corridor for a re-carve
         void MarkSplineHeightCarvesDirty(uint64_t spline_id = 0);
+        // every road whose carve footprint overlaps the dense grid rect
+        void MarkRoadCarvesDirtyInGridRect(int32_t x0, int32_t z0, int32_t x1, int32_t z1);
 
         // r=grass, g=trees, b=rocks, bilinear sample in world xz
         math::Vector3 SamplePropMask(float world_x, float world_z) const;
@@ -234,8 +239,11 @@ namespace spartan
         bool IsScatterActive(const TerrainScatterLayer& layer) const;
         // ground area one instance of density 1 covers, used to turn instances per hectare into a count
         float GetTriangleArea() const;
-        // sea and snow in entity local y, triangle heights are local and the levels are world
+        // sea and snow in entity local y, triangle heights are local and the levels are world, the
+        // sea comes from the water component when there is one, every cpu and gpu path reads these
         float GetSeaLevelLocal() const;
+        float GetSnowLevelLocal() const;
+        float ResolveSeaLevelWorld() const;
         // baked analysis and biome mask at a world xz, false when nothing is baked yet
         bool SampleSurface(float world_x, float world_z, TerrainSurfaceSample& sample_out) const;
         // reload the layer materials from project/materials and hand the whole set to the renderer
@@ -273,7 +281,9 @@ namespace spartan
         );
 
         // sculpting
-        bool HasHeightfield() const { return !m_positions.empty() && m_dense_width > 1 && m_dense_height > 1; }
+        // false while a worker is rebuilding the arrays, so every sampler bails instead of reading a
+        // vector that is being resized on another thread
+        bool HasHeightfield() const { return !IsHeightfieldUnsafe() && !m_positions.empty() && m_dense_width > 1 && m_dense_height > 1; }
         // dense grid in entity local space, indexed as row_z * dense_width + column_x
         const std::vector<math::Vector3>& GetPositions() const { return m_positions; }
         uint32_t GetDenseWidth() const  { return m_dense_width; }
@@ -361,7 +371,8 @@ namespace spartan
         void UploadHeightMapTextures();
         void BakeHeightMapTexture();
         // curvature, flow, occlusion, insolation, wear, deposition and talus into two rgba8 textures
-        void BakeTerrainMaps();
+        // allow_cache false when the heights carry sculpt or pads, the cache only describes procedural ground
+        void BakeTerrainMaps(bool allow_cache);
         void UploadTerrainMaps();
         void BuildCpuMesh();
         void CommitGpu();
@@ -382,6 +393,11 @@ namespace spartan
         void ClearSculptInRect(float min_x, float min_z, float max_x, float max_z);
         uint64_t ComputeCacheHash() const;
         float ResolveSeaLevelLocal() const;
+        float GetEntityY() const;
+        // true for any thread other than the generating worker while it is rebuilding the arrays
+        bool IsHeightfieldUnsafe() const;
+        // the local mapping shifted into world xz, for every sampler that is handed world coordinates
+        math::Vector4 GetMappingWorld() const;
         bool ApplyShorelineLock();
         bool ApplyFlowChannelCarve();
         void RememberPlatform(const TerrainPlatform& platform);
@@ -577,6 +593,10 @@ namespace spartan
         uint32_t m_height                 = 0;
         float m_area_km2                  = 0.0f;
         std::atomic<bool> m_is_generating = false;
+        // a worker is inside generate, the heightfield arrays are being resized under it, samplers
+        // on other threads bail instead of reading them, the destructor waits for it
+        std::atomic<uint32_t> m_worker_busy = 0;
+        std::thread::id m_worker_thread;
         std::atomic<bool> m_gpu_commit_pending = false;
         std::atomic<bool> m_props_commit_pending = false;
         std::shared_ptr<Mesh> m_mesh_pending;

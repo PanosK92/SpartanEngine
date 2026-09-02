@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define MAX_POINTS 3
 #define TESS_FACTOR 64
-#define TESS_DISTANCE 32.0f
+#define TESS_DISTANCE terrain_tessellation_distance
 
 // hull shader constant data
 struct HsConstantDataOutput
@@ -145,8 +145,7 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
     // geometry is actually there to carry it, instead of snapping to full height in the last four
     // metres over a patch that is still barely subdivided
     float distance_from_cam = fast_length(position - get_camera_position_for_view(vertex.view_id));
-    float fade_t            = saturate(1.0f - distance_from_cam / TESS_DISTANCE);
-    float fade_factor       = fade_t * fade_t;
+    float fade_factor       = terrain_displacement_fade(distance_from_cam);
 
     MaterialParameters material = GetMaterial();
     Surface surface; surface.flags = material.flags;

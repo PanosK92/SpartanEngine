@@ -150,6 +150,12 @@ namespace spartan
             float height_min         = 0.0f;
             float height_max         = 400.0f;
             float max_slope_deg      = 45.0f;
+            float min_slope_deg      = 0.0f;
+            // signed exponent on the slope position inside the band, positive favours the steep end,
+            // negative the flat end, 0 is uniform, mirrors the cpu placer
+            float slope_bias         = 0.0f;
+            // metres above height_min over which the density ramps in, 0 is a hard floor
+            float height_fade        = 0.0f;
             float biome_min_weight   = 0.2f;
             uint32_t mask_channel    = 0;    // which prop mask channel gates the slot, 0 grass, 1 trees, 2 rocks
             // ground type gate, bit i allows surface layer i, 0 allows every layer. the dominant layer

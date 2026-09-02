@@ -1336,6 +1336,10 @@ namespace spartan
                         GetStandardTexture(Renderer_StandardTexture::Black));
 
                 const float max_slope_cos = cosf(state.params.max_slope_deg * (math::pi / 180.0f));
+                // the floor can never sit above the ceiling, the shader divides by the gap between them
+                const float min_slope_cos = cosf(
+                    std::min(state.params.min_slope_deg, state.params.max_slope_deg) * (math::pi / 180.0f)
+                );
                 // a negative weight is the slot saying it wants no biome gate at all, which is what micro
                 // detail asks for. a slot that does want one and has no mask fails closed instead of
                 // filling the world
@@ -1403,10 +1407,11 @@ namespace spartan
                     const uint32_t lod_base   = renderer_gpu_scatter_base(slot, lod);
                     const uint32_t lod_cap    = gpu_scatter_lod_cap(slot, lod, state.params.density);
 
-                    // layout mirrors grass_populate.hlsl values[0..2]
+                    // layout mirrors grass_populate.hlsl values[0..4]
                     // values[0] = (cell_size, ring_radius, lod_base, max_instances_per_lod)
                     // values[1] = (height_min, height_max, max_slope_cos, inner_radius)
                     // values[2] = (map_origin_x, map_origin_z, map_inv_x, map_inv_z)
+                    // values[4] = (min_slope_cos, slope_bias, height_fade, unused)
                     // heightmap is r32 local y, material_index bitcast is the entity y plus the layer's
                     // seating offset
                     // is_transparent bitcast carries biome_min_weight, negative disables the mask gate
@@ -1436,6 +1441,10 @@ namespace spartan
                     // the scar amount is always a fixed fraction of the edge, so the shader derives it
                     // and this float carries the ground type bits instead, every other one is taken
                     m_pcb_pass_cpu.v[15] = static_cast<float>(state.params.ground_mask);
+                    m_pcb_pass_cpu.v[16] = min_slope_cos;
+                    m_pcb_pass_cpu.v[17] = state.params.slope_bias;
+                    m_pcb_pass_cpu.v[18] = state.params.height_fade;
+                    m_pcb_pass_cpu.v[19] = 0.0f;
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
                     // one cell per thread, dispatch z carries the instance index inside the cell, the

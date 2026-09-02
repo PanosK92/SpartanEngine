@@ -52,6 +52,23 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index          = _draw.material_index;
     vertex.view_id                 = 0;
+
+    // the camera passes displace tessellated terrain in the domain shader, this pass has no hull or domain
+    // stage so the same displacement is applied per vertex here, otherwise the shadow is cast by flat ground
+    MaterialParameters material = material_parameters[_draw.material_index];
+    Surface surface;
+    surface.flags = material.flags;
+    if (surface.is_terrain() && surface.is_tessellated())
+    {
+        float distance_to_camera = fast_length(position_world - get_camera_position());
+        float fade               = terrain_displacement_fade(distance_to_camera);
+        if (fade > 0.0f)
+        {
+            float height    = terrain_displacement(material, position_world, vertex.normal, vertex.uv_misc.xy);
+            position_world += vertex.normal * height * fade;
+        }
+    }
+
     vertex.position                = mul(
         float4(position_world, 1.0f),
         light_parameters[

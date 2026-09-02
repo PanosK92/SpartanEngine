@@ -55,6 +55,93 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index)
     return GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy);
 }
 
+// parallax dies off with distance and at grazing angles, where the march is all cost and no visible relief
+float parallax_fade(float distance, float n_dot_v)
+{
+    float distance_fade = saturate((POM_FADE_END - distance) / (POM_FADE_END - POM_FADE_START));
+    float grazing_fade  = smoothstep(0.1f, 0.4f, n_dot_v);
+    return distance_fade * grazing_fade;
+}
+
+float parallax_sample_height(uint texture_index, float2 uv, float2 dx, float2 dy)
+{
+    return material_textures[NonUniformResourceIndex(texture_index)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), uv, dx, dy).a;
+}
+
+// steep parallax march with a binary refinement and an analytic final intersection, texture_index is
+// the absolute bindless index of the packed map whose alpha carries height
+float2 parallax_occlusion_uv(
+    uint   texture_index,
+    float2 uv,
+    float2 dx,
+    float2 dy,
+    float3 v_tangent,
+    float  n_dot_v,
+    float  max_disp,
+    float2 position_screen
+)
+{
+    uint num_steps = (uint)lerp(POM_MAX_STEPS, POM_MIN_STEPS, n_dot_v);
+
+    // offset limited delta_uv, total shift across the march is bounded by max_disp regardless of view angle
+    float2 delta_uv  = v_tangent.xy * max_disp / num_steps;
+    float  layer_h   = 1.0f / num_steps;
+    float2 cur_uv    = uv;
+    float  cur_layer = 1.0f;
+    float  cur_samp  = parallax_sample_height(texture_index, cur_uv, dx, dy);
+
+    // track the previous straddling sample so we can solve the exact intersection at the end
+    float2 prev_uv    = cur_uv;
+    float  prev_layer = cur_layer;
+    float  prev_samp  = cur_samp;
+
+    // shift the layer grid by a fraction of a step, taa averages the moving slices away
+    if (is_taa_enabled())
+    {
+        float dither = noise_interleaved_gradient(position_screen, false);
+        cur_uv    -= delta_uv * dither;
+        cur_layer -= layer_h * dither;
+        cur_samp   = parallax_sample_height(texture_index, cur_uv, dx, dy);
+    }
+
+    // steep parallax linear search
+    [loop]
+    while (cur_layer > cur_samp && cur_layer > 0.0f)
+    {
+        prev_uv    = cur_uv;
+        prev_layer = cur_layer;
+        prev_samp  = cur_samp;
+
+        cur_uv    -= delta_uv;
+        cur_layer -= layer_h;
+        cur_samp   = parallax_sample_height(texture_index, cur_uv, dx, dy);
+    }
+
+    // binary search refinement, narrows the bracket while preserving the above/below invariant
+    [unroll(POM_REFINE_ITERATIONS)]
+    for (uint i = 0; i < POM_REFINE_ITERATIONS; ++i)
+    {
+        float2 mid_uv    = (cur_uv + prev_uv)       * 0.5f;
+        float  mid_layer = (cur_layer + prev_layer) * 0.5f;
+        float  mid_samp  = parallax_sample_height(texture_index, mid_uv, dx, dy);
+        bool   above     = mid_layer > mid_samp;
+
+        cur_uv     = above ? mid_uv     : cur_uv;
+        cur_layer  = above ? mid_layer  : cur_layer;
+        cur_samp   = above ? mid_samp   : cur_samp;
+        prev_uv    = above ? prev_uv    : mid_uv;
+        prev_layer = above ? prev_layer : mid_layer;
+        prev_samp  = above ? prev_samp  : mid_samp;
+    }
+
+    // analytical intersection between the ray and the linear segment connecting the two samples,
+    // this is what eliminates the staircase that pure binary search leaves behind
+    float h_above_prev = max(prev_layer - prev_samp, 0.0f);
+    float h_below_cur  = max(cur_samp   - cur_layer, 0.0f);
+    float t            = h_above_prev / max(h_above_prev + h_below_cur, 1e-5f);
+    return lerp(prev_uv, cur_uv, t);
+}
+
 // compute grass blade color with variation
 float3 compute_grass_color(float height_percent, float variation)
 {
@@ -236,11 +323,44 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         TerrainAnalysis analysis = terrain_sample_analysis(material, position_world, analysis_lod);
         float slope_radians      = acos(saturate(dot(vertex.normal, float3(0.0f, 1.0f, 0.0f))));
         TerrainLayerPick pick    = terrain_pick_layers(material, analysis, position_world, vertex.normal, slope_radians);
+
+        // parallax on the dominant layer height map, the offset uv then feeds every pick so the layers
+        // stay registered with each other, a face pointing along world x has no planar frame so it is skipped
+        float pom_height_scale = terrain_pom_height_scale(pick);
+        if (pom_height_scale > 0.0f && abs(vertex.normal.x) < 0.95f)
+        {
+            // planar uv runs along world x and z, so the frame is built from those rather than the mesh tangent
+            float3x3 world_to_tangent = make_world_to_tangent_matrix(vertex.normal, float3(1.0f, 0.0f, 0.0f));
+            float3 v_tangent          = normalize(mul(-camera_to_pixel, world_to_tangent));
+            v_tangent.y               = -v_tangent.y; // the bitangent of that frame points down world z, planar v runs up it
+
+            float n_dot_v = saturate(v_tangent.z);
+            float fade    = parallax_fade(distance, n_dot_v);
+            if (fade > 0.0f)
+            {
+                MaterialParameters dominant = material_parameters[NonUniformResourceIndex(pick.index[0])];
+                float layer_scale           = dominant.terrain_tiling_scale;
+                float2 layer_uv             = parallax_occlusion_uv(
+                    pick.index[0] + material_texture_index_packed,
+                    uv * layer_scale,
+                    duvdx * layer_scale,
+                    duvdy * layer_scale,
+                    v_tangent,
+                    n_dot_v,
+                    pom_height_scale * POM_HEIGHT_SCALE * fade,
+                    vertex.position.xy
+                );
+                uv                = layer_uv / max(layer_scale, 1e-4f);
+                vertex.uv_misc.xy = uv;
+            }
+        }
+
         terrain = terrain_evaluate(
             material, pick, analysis, position_world, vertex.normal, uv, duvdx, duvdy, dpdx, dpdy, distance
         );
 
-        albedo.rgb     *= terrain.albedo;
+        // the layer albedo already carries the layer colour, the path tracer does the same
+        albedo.rgb      = terrain.albedo;
         normal          = terrain.normal;
         roughness       = terrain.roughness;
         metalness       = terrain.metalness;
@@ -253,76 +373,23 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float3x3 world_to_tangent = make_world_to_tangent_matrix(vertex.normal, vertex.tangent);
         float3 v_tangent          = normalize(mul(-camera_to_pixel, world_to_tangent));
 
-        float distance_fade = saturate((POM_FADE_END - distance) / (POM_FADE_END - POM_FADE_START));
-        float n_dot_v       = saturate(v_tangent.z);
-        float grazing_fade  = smoothstep(0.1f, 0.4f, n_dot_v);
-        float fade          = distance_fade * grazing_fade;
-
+        float n_dot_v = saturate(v_tangent.z);
+        float fade    = parallax_fade(distance, n_dot_v);
         if (fade > 0.0f)
         {
-            float max_disp  = material.height * POM_HEIGHT_SCALE * fade;
-            uint  num_steps = (uint)lerp(POM_MAX_STEPS, POM_MIN_STEPS, n_dot_v);
-
             float2 dx = ddx(vertex.uv_misc.xy);
             float2 dy = ddy(vertex.uv_misc.xy);
 
-            // offset limited delta_uv, total shift across the march is bounded by max_disp regardless of view angle
-            float2 delta_uv  = v_tangent.xy * max_disp / num_steps;
-            float  layer_h   = 1.0f / num_steps;
-            float2 cur_uv    = vertex.uv_misc.xy;
-            float  cur_layer = 1.0f;
-            float  cur_samp  = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), cur_uv, dx, dy).a;
-
-            // track the previous straddling sample so we can solve the exact intersection at the end
-            float2 prev_uv    = cur_uv;
-            float  prev_layer = cur_layer;
-            float  prev_samp  = cur_samp;
-
-            // shift the layer grid by a fraction of a step, taa averages the moving slices away
-            if (is_taa_enabled())
-            {
-                float dither = noise_interleaved_gradient(vertex.position.xy, false);
-                cur_uv    -= delta_uv * dither;
-                cur_layer -= layer_h * dither;
-                cur_samp   = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), cur_uv, dx, dy).a;
-            }
-
-            // steep parallax linear search
-            [loop]
-            while (cur_layer > cur_samp && cur_layer > 0.0f)
-            {
-                prev_uv    = cur_uv;
-                prev_layer = cur_layer;
-                prev_samp  = cur_samp;
-
-                cur_uv    -= delta_uv;
-                cur_layer -= layer_h;
-                cur_samp   = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), cur_uv, dx, dy).a;
-            }
-
-            // binary search refinement, narrows the bracket while preserving the above/below invariant
-            [unroll(POM_REFINE_ITERATIONS)]
-            for (uint i = 0; i < POM_REFINE_ITERATIONS; ++i)
-            {
-                float2 mid_uv    = (cur_uv + prev_uv)       * 0.5f;
-                float  mid_layer = (cur_layer + prev_layer) * 0.5f;
-                float  mid_samp  = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), mid_uv, dx, dy).a;
-                bool   above     = mid_layer > mid_samp;
-
-                cur_uv     = above ? mid_uv     : cur_uv;
-                cur_layer  = above ? mid_layer  : cur_layer;
-                cur_samp   = above ? mid_samp   : cur_samp;
-                prev_uv    = above ? prev_uv    : mid_uv;
-                prev_layer = above ? prev_layer : mid_layer;
-                prev_samp  = above ? prev_samp  : mid_samp;
-            }
-
-            // analytical intersection between the ray and the linear segment connecting the two samples,
-            // this is what eliminates the staircase that pure binary search leaves behind
-            float h_above_prev = max(prev_layer - prev_samp, 0.0f);
-            float h_below_cur  = max(cur_samp   - cur_layer, 0.0f);
-            float t            = h_above_prev / max(h_above_prev + h_below_cur, 1e-5f);
-            vertex.uv_misc.xy  = lerp(prev_uv, cur_uv, t);
+            vertex.uv_misc.xy = parallax_occlusion_uv(
+                pass_get_material_index() + material_texture_index_packed,
+                vertex.uv_misc.xy,
+                dx,
+                dy,
+                v_tangent,
+                n_dot_v,
+                material.height * POM_HEIGHT_SCALE * fade,
+                vertex.position.xy
+            );
         }
     }
 

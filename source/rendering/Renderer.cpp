@@ -2847,7 +2847,20 @@ namespace spartan
             {
                 Sb_Material& entry = properties[surface_index];
 
-                entry.terrain_world_mapping = terrain.world_mapping;
+                // the mapping is authored in terrain local xz and the shader samples with world xz,
+                // same shift the height mapping and the grass get, or the biomes slide off the ground
+                Vector4 world_mapping = terrain.world_mapping;
+                if (Terrain* terrain_component = Terrain::FindActive())
+                {
+                    if (Entity* entity = terrain_component->GetEntity())
+                    {
+                        const Vector3 translation = entity->GetMatrix().GetTranslation();
+                        world_mapping.x += translation.x;
+                        world_mapping.y += translation.z;
+                    }
+                }
+
+                entry.terrain_world_mapping = world_mapping;
                 entry.terrain_sea_level     = terrain.sea_level;
                 entry.terrain_snow_level    = terrain.snow_level;
                 entry.terrain_layer_base    = layer_base;

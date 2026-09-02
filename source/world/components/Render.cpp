@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include "Render.h"
 #include "Camera.h"
+#include "Physics.h"
 #include "../Entity.h"
 #include "../rhi/RHI_Buffer.h"
 #include "../rhi/RHI_Device.h"
@@ -823,6 +824,12 @@ namespace spartan
 
     void Render::SetInstances(const vector<Instance>& instances)
     {
+        // a scattered prop owns one physics actor per instance, the slot lookup is free when there is none
+        if (Physics* physics = GetEntity()->GetComponent<Physics>())
+        {
+            physics->OnInstancesChanged();
+        }
+
         if (instances.empty())
         {
             // offset 0 makes the draw read identity, the owned slot stays so a refill can reuse it

@@ -28,17 +28,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace spartan
 {
     #pragma pack(push, 1)
-    // one packed transform per instance, 12 bytes so the stride matches the shader side PackedInstance
+    // one packed transform per instance, 16 bytes so the stride matches the shader side PackedInstance
+    // positions stay full float, a half quantizes to a quarter metre a few hundred metres out and
+    // that is enough to float a tree off a tile or bury a rock in it
     struct Instance
     {
-        uint16_t position_x;  // 2 bytes
-        uint16_t position_y;  // 2 bytes
-        uint16_t position_z;  // 2 bytes
+        float position_x;     // 4 bytes
+        float position_y;     // 4 bytes
+        float position_z;     // 4 bytes
         uint16_t normal_oct;  // 2 bytes
         uint8_t yaw_packed;   // 1 byte
         uint8_t scale_packed; // 1 byte
-        uint16_t padding;     // 2 bytes, keeps stride at 12 to match shader PackedInstance (3xu32)
-                              // procedural grass uses Sb_GrassInstance instead, half-floats lose sub-cm precision a few hundred meters out
 
         math::Matrix GetMatrix() const;
         void SetMatrix(const math::Matrix& matrix);

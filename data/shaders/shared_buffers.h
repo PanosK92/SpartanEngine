@@ -194,7 +194,7 @@ struct FrameBufferData
 // push constant buffer - carries per-draw and per-pass data
 // draw_index indexes into the bindless draw data buffer for transforms and material info
 // material_index and is_transparent are pass-level state for compute shaders
-// values[] carries generic per-pass parameters (4 x float4)
+// values[] carries generic per-pass parameters (5 x float4)
 struct PassBufferData
 {
     SHARED_UINT draw_index     SHARED_DEFAULT(0);
@@ -204,8 +204,8 @@ struct PassBufferData
 
 #ifdef __cplusplus
     // c++ uses a flat float array with setter helpers
-    // the last float4 has no named setter, passes that need it write v[12..15] directly
-    float v[16] = {};
+    // the last two float4s have no named setter, passes that need them write v[12..19] directly
+    float v[20] = {};
 
     void set_f3_value(const spartan::math::Vector3& value) { v[0] = value.x; v[1] = value.y; v[2] = value.z; }
     void set_f3_value(float x, float y = 0.0f, float z = 0.0f) { v[0] = x; v[1] = y; v[2] = z; }
@@ -219,7 +219,7 @@ struct PassBufferData
     void set_f2_value(float x, float y) { v[3] = x; v[7] = y; }
 #else
     // hlsl uses float4 array with swizzle accessors
-    float4 values[4];
+    float4 values[5];
 #endif
 };
 
@@ -546,18 +546,18 @@ struct PulledVertex
     SHARED_UINT   tangent; // s16 oct.x | s16 oct.y
 };
 
-// vertex pulling - instance buffer exposed as packed uint data (10 bytes per instance)
+// vertex pulling - instance buffer, 16 bytes per instance, mirrors the cpu side Instance struct
+// positions are full float, a half quantizes to a quarter metre a few hundred metres from the
+// tile origin, which floats trees off the ground and buries rocks in it
 struct PackedInstance
 {
-    SHARED_UINT pos_xy;     // position_x (half16) | position_y (half16)
-    SHARED_UINT pos_z_norm; // position_z (half16) | normal_oct (uint16)
-    SHARED_UINT yaw_scale;  // yaw_packed (uint8) | scale_packed (uint8) | padding (uint16)
+    SHARED_FLOAT pos_x;
+    SHARED_FLOAT pos_y;
+    SHARED_FLOAT pos_z;
+    SHARED_UINT  norm_yaw_scale; // normal_oct (low 16) | yaw_packed (8) | scale_packed (high 8)
 };
 
-// 16-byte grass instance, dedicated grass-only format because grass needs sub-cm position
-// precision in world space, half-float positions in PackedInstance quantize to ~1m at
-// world distances of a few hundred meters and snap every blade onto a visible lattice
-// even when the populate compute emits perfectly random sub-meter offsets
+// 16-byte grass instance, written by the populate compute
 struct GrassInstance
 {
     SHARED_FLOAT pos_x;

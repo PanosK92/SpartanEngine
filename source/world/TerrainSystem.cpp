@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <cstring>
 #include <limits>
 #include <queue>
 #include <fstream>
@@ -409,21 +410,27 @@ namespace spartan
 
                         int32_t x = static_cast<int32_t>(index % width);
                         int32_t z = static_cast<int32_t>(index / width);
-                        if (x >= 1 && z >= 1 && x < last_x && z < last_z)
-                        {
-                            for (uint32_t n = 0; n < 8; n++)
-                            {
-                                size_t source = static_cast<size_t>(z + neighbor_z[n]) * width + (x + neighbor_x[n]);
-                                if (excess[source] <= 0.0f)
-                                {
-                                    continue;
-                                }
 
-                                float difference = heights[source] - heights[index] - talus * neighbor_dist[n];
-                                if (difference > 0.0f)
-                                {
-                                    h += outflow[source] * (difference / excess[source]);
-                                }
+                        // border cells never emit, their excess stays zero, but they still receive rim bound mass
+                        for (uint32_t n = 0; n < 8; n++)
+                        {
+                            int32_t sx = x + neighbor_x[n];
+                            int32_t sz = z + neighbor_z[n];
+                            if (sx < 0 || sz < 0 || sx > last_x || sz > last_z)
+                            {
+                                continue;
+                            }
+
+                            size_t source = static_cast<size_t>(sz) * width + sx;
+                            if (excess[source] <= 0.0f)
+                            {
+                                continue;
+                            }
+
+                            float difference = heights[source] - heights[index] - talus * neighbor_dist[n];
+                            if (difference > 0.0f)
+                            {
+                                h += outflow[source] * (difference / excess[source]);
                             }
                         }
 
@@ -462,28 +469,48 @@ namespace spartan
             float inv_budget   = 1.0f / max(budget, 1e-4f);
             uint32_t cells     = width * depth;
 
-            // droplets run in parallel and write to shared cells, the occasional lost update is
-            // far below the noise floor of the simulation and buys a linear speedup
-            auto simulate = [&](uint32_t start, uint32_t end)
+            // a land cell may never sink into the sea and a sea cell may never rise out of
+            // it, so the coastline the height map describes survives the whole simulation
+            auto floor_of = [&](size_t cell) -> float
             {
-                mt19937 rng(seed + start * 2654435761u + 1u);
+                return original[cell] > sea_level
+                    ? max(original[cell] - budget, sea_level + freeboard)
+                    : -numeric_limits<float>::max();
+            };
+
+            auto ceiling_of = [&](size_t cell) -> float
+            {
+                return original[cell] > sea_level
+                    ? original[cell] + budget
+                    : sea_level - freeboard;
+            };
+
+            // fixed chunks with private delta buffers, no shared writes, result independent of thread count
+            const uint32_t chunk_count      = 8;
+            const uint32_t droplets_chunk   = max((droplet_count + chunk_count - 1) / chunk_count, 1u);
+            vector<vector<float>> deltas(chunk_count);
+            for (uint32_t chunk = 0; chunk < chunk_count; chunk++)
+            {
+                deltas[chunk].assign(cells, 0.0f);
+            }
+
+            auto simulate_chunk = [&](uint32_t chunk)
+            {
+                vector<float>& delta_map = deltas[chunk];
+                const uint32_t start     = chunk * droplets_chunk;
+                const uint32_t end       = min(start + droplets_chunk, droplet_count);
+                if (start >= end)
+                {
+                    return;
+                }
+
+                mt19937 rng(seed + chunk * 2654435761u + 1u);
                 uniform_real_distribution<float> unit(0.0f, 1.0f);
                 uniform_real_distribution<float> spawn_angle(0.0f, 6.2831853f);
 
-                // a land cell may never sink into the sea and a sea cell may never rise out of
-                // it, so the coastline the height map describes survives the whole simulation
-                auto floor_of = [&](size_t cell) -> float
+                auto view = [&](size_t cell) -> float
                 {
-                    return original[cell] > sea_level
-                        ? max(original[cell] - budget, sea_level + freeboard)
-                        : -numeric_limits<float>::max();
-                };
-
-                auto ceiling_of = [&](size_t cell) -> float
-                {
-                    return original[cell] > sea_level
-                        ? original[cell] + budget
-                        : sea_level - freeboard;
+                    return heights[cell] + delta_map[cell];
                 };
 
                 for (uint32_t droplet = start; droplet < end; droplet++)
@@ -510,6 +537,26 @@ namespace spartan
                     int32_t cell_x = 0;
                     int32_t cell_z = 0;
 
+                    // raises a cell up to its ceiling, returns how much actually stuck
+                    auto deposit_at = [&](size_t cell, float amount) -> float
+                    {
+                        float before = view(cell);
+                        float after  = min(before + amount, ceiling_of(cell));
+                        float stuck  = max(after - before, 0.0f);
+                        delta_map[cell] += stuck;
+                        return stuck;
+                    };
+
+                    // lowers a cell down to its floor, returns how much was actually removed
+                    auto erode_at = [&](size_t cell, float amount) -> float
+                    {
+                        float before  = view(cell);
+                        float after   = max(before - amount, floor_of(cell));
+                        float removed = max(before - after, 0.0f);
+                        delta_map[cell] -= removed;
+                        return removed;
+                    };
+
                     // spreads whatever is still carried over the brush footprint
                     auto dump_sediment = [&](float amount)
                     {
@@ -528,7 +575,7 @@ namespace spartan
                             }
 
                             size_t cell = static_cast<size_t>(brush_z) * width + brush_x;
-                            heights[cell] = min(heights[cell] + amount * brush.weight[tap], ceiling_of(cell));
+                            deposit_at(cell, amount * brush.weight[tap]);
                         }
                     };
 
@@ -540,10 +587,10 @@ namespace spartan
                         float frac_z = position_z - static_cast<float>(cell_z);
                         size_t index = static_cast<size_t>(cell_z) * width + cell_x;
 
-                        float h00 = heights[index];
-                        float h10 = heights[index + 1];
-                        float h01 = heights[index + width];
-                        float h11 = heights[index + width + 1];
+                        float h00 = view(index);
+                        float h10 = view(index + 1);
+                        float h01 = view(index + width);
+                        float h11 = view(index + width + 1);
 
                         float height_here =
                             h00 * (1.0f - frac_x) * (1.0f - frac_z) +
@@ -591,10 +638,10 @@ namespace spartan
                         float next_fz  = position_z - static_cast<float>(next_z);
                         size_t next    = static_cast<size_t>(next_z) * width + next_x;
 
-                        float n00 = heights[next];
-                        float n10 = heights[next + 1];
-                        float n01 = heights[next + width];
-                        float n11 = heights[next + width + 1];
+                        float n00 = view(next);
+                        float n10 = view(next + 1);
+                        float n01 = view(next + width);
+                        float n11 = view(next + width + 1);
 
                         float height_next =
                             n00 * (1.0f - next_fx) * (1.0f - next_fz) +
@@ -612,18 +659,20 @@ namespace spartan
                                 ? min(delta, sediment)
                                 : (sediment - capacity) * settings.deposit_rate;
 
-                            amount    = max(amount, 0.0f);
-                            sediment -= amount;
+                            amount = max(amount, 0.0f);
 
                             float w00 = (1.0f - frac_x) * (1.0f - frac_z);
                             float w10 = frac_x * (1.0f - frac_z);
                             float w01 = (1.0f - frac_x) * frac_z;
                             float w11 = frac_x * frac_z;
 
-                            heights[index]             = min(heights[index]             + amount * w00, ceiling_of(index));
-                            heights[index + 1]         = min(heights[index + 1]         + amount * w10, ceiling_of(index + 1));
-                            heights[index + width]     = min(heights[index + width]     + amount * w01, ceiling_of(index + width));
-                            heights[index + width + 1] = min(heights[index + width + 1] + amount * w11, ceiling_of(index + width + 1));
+                            // only what the ceilings let stick leaves the droplet
+                            float stuck = 0.0f;
+                            stuck += deposit_at(index,             amount * w00);
+                            stuck += deposit_at(index + 1,         amount * w10);
+                            stuck += deposit_at(index + width,     amount * w01);
+                            stuck += deposit_at(index + width + 1, amount * w11);
+                            sediment = max(sediment - stuck, 0.0f);
                         }
                         else
                         {
@@ -632,15 +681,15 @@ namespace spartan
 
                             // erosion fades out as a cell spends its displacement budget, so the
                             // landform the height map describes is never washed away
-                            float spent  = fabsf(heights[index] - original[index]) * inv_budget;
+                            float spent  = fabsf(view(index) - original[index]) * inv_budget;
                             float left   = clamp(1.0f - spent * spent, 0.0f, 1.0f);
 
                             float soft   = erodibility[index] * strata * left;
                             float amount = min((capacity - sediment) * settings.erode_rate * soft, -delta);
-                            amount       = clamp(amount, 0.0f, max(heights[index] - floor_of(index), 0.0f));
+                            amount       = clamp(amount, 0.0f, max(view(index) - floor_of(index), 0.0f));
 
-                            sediment += amount;
-
+                            // only what the floors let go joins the load
+                            float removed = 0.0f;
                             for (size_t tap = 0; tap < brush_taps; tap++)
                             {
                                 int32_t brush_x = cell_x + brush.offset_x[tap];
@@ -650,9 +699,10 @@ namespace spartan
                                     continue;
                                 }
 
-                                size_t cell   = static_cast<size_t>(brush_z) * width + brush_x;
-                                heights[cell] = max(heights[cell] - amount * brush.weight[tap], floor_of(cell));
+                                size_t cell = static_cast<size_t>(brush_z) * width + brush_x;
+                                removed    += erode_at(cell, amount * brush.weight[tap]);
                             }
+                            sediment += removed;
                         }
 
                         speed = sqrtf(max(0.0f, speed * speed - delta * settings.gravity));
@@ -671,7 +721,36 @@ namespace spartan
                 }
             };
 
-            ThreadPool::ParallelLoop(simulate, droplet_count);
+            auto simulate = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t chunk = start; chunk < end; chunk++)
+                {
+                    simulate_chunk(chunk);
+                }
+            };
+            ThreadPool::ParallelLoop(simulate, chunk_count);
+
+            // chunks are summed in a fixed order per cell, so the merge is deterministic too
+            auto merge = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    float total = 0.0f;
+                    for (uint32_t chunk = 0; chunk < chunk_count; chunk++)
+                    {
+                        total += deltas[chunk][index];
+                    }
+
+                    if (total == 0.0f)
+                    {
+                        continue;
+                    }
+
+                    float h        = heights[index] + total;
+                    heights[index] = max(min(h, ceiling_of(index)), floor_of(index));
+                }
+            };
+            ThreadPool::ParallelLoop(merge, cells);
         }
 
         // keeps every cell inside its erosion budget and on the correct side of the shoreline
@@ -817,11 +896,18 @@ namespace spartan
             const uint32_t width  = height_texture->GetWidth();
             const uint32_t height = height_texture->GetHeight();
 
-            // map texture bytes to height values
-            uint32_t bytes_per_pixel = (height_texture->GetChannelCount() * height_texture->GetBitsPerChannel()) / 8;
+            // map texture bytes to height values, only the first channel is read
+            uint32_t bits_per_channel = height_texture->GetBitsPerChannel();
+            uint32_t channel_count    = max(height_texture->GetChannelCount(), 1u);
+            if (bits_per_channel != 16 && bits_per_channel != 32)
+            {
+                bits_per_channel = 8;
+            }
+            uint32_t bytes_per_pixel = max(channel_count * bits_per_channel / 8, 1u);
             uint32_t pixel_count     = width * height;
             // scanlines can be padded for alignment, so derive the stride instead of assuming it
             size_t row_stride        = height_data.size() / height;
+            const uint8_t* bytes     = reinterpret_cast<const uint8_t*>(height_data.data());
             height_data_out.resize(pixel_count);
 
             auto map_height = [&](uint32_t start_pixel, uint32_t end_pixel)
@@ -835,7 +921,21 @@ namespace spartan
                     // to front, taking them in order mirrors the terrain against its height map
                     size_t byte_index = static_cast<size_t>(height - 1 - y) * row_stride + static_cast<size_t>(x) * bytes_per_pixel;
 
-                    float normalized_value = static_cast<float>(height_data[byte_index]) / 255.0f;
+                    float normalized_value = 0.0f;
+                    if (bits_per_channel == 16)
+                    {
+                        uint16_t value   = static_cast<uint16_t>(bytes[byte_index]) | (static_cast<uint16_t>(bytes[byte_index + 1]) << 8);
+                        normalized_value = static_cast<float>(value) / 65535.0f;
+                    }
+                    else if (bits_per_channel == 32)
+                    {
+                        memcpy(&normalized_value, bytes + byte_index, sizeof(float));
+                    }
+                    else
+                    {
+                        normalized_value = static_cast<float>(bytes[byte_index]) / 255.0f;
+                    }
+
                     height_data_out[pixel] = min_y + normalized_value * (max_y - min_y);
                 }
             };
@@ -1215,11 +1315,22 @@ namespace spartan
                 nz *= inv_len;
                 vertices[vertex_idx].set_normal(Vector3(nx, ny, nz));
 
-                float proj      = nx;
-                float tx        = 1.0f - nx * proj;
-                float ty        = -ny * proj;
-                float tz        = -nz * proj;
-                float t_inv_len = 1.0f / sqrtf(tx * tx + ty * ty + tz * tz);
+                float proj = nx;
+                float tx   = 1.0f - nx * proj;
+                float ty   = -ny * proj;
+                float tz   = -nz * proj;
+                float t_sq = tx * tx + ty * ty + tz * tz;
+
+                // on a vertical face x lies along the normal, fall back to cross(n, z)
+                if (t_sq < 1e-8f)
+                {
+                    tx   = ny;
+                    ty   = -nx;
+                    tz   = 0.0f;
+                    t_sq = tx * tx + ty * ty;
+                }
+
+                float t_inv_len = 1.0f / sqrtf(max(t_sq, 1e-12f));
                 vertices[vertex_idx].set_tangent(Vector3(tx * t_inv_len, ty * t_inv_len, tz * t_inv_len));
             };
 
@@ -1359,6 +1470,10 @@ namespace spartan
             // it into new islands and applying it to the shore would break the coastline apart
             float shore_fade = max(amplitude * 4.0f, 1e-3f);
 
+            // sampled in world metres, frequency is cycles per 25 m base cell so density 1 keeps the old look
+            const float metres_per_reference_cell = 25.0f;
+            const float world_frequency           = frequency / metres_per_reference_cell;
+
             auto apply_noise = [&](uint32_t start_index, uint32_t end_index)
             {
                 for (uint32_t index = start_index; index < end_index; ++index)
@@ -1369,11 +1484,8 @@ namespace spartan
                         continue;
                     }
 
-                    uint32_t x = index % width;
-                    uint32_t z = index / width;
-
-                    float scaled_x          = static_cast<float>(x) * frequency;
-                    float scaled_z          = static_cast<float>(z) * frequency;
+                    float scaled_x          = positions[index].x * world_frequency;
+                    float scaled_z          = positions[index].z * world_frequency;
                     float noise_value       = 0.0f;
                     float current_amplitude = amplitude;
                     float current_frequency = 1.0f;
@@ -1471,12 +1583,14 @@ namespace spartan
             return 0.0f;
         }
 
-        float gx = (world_x + mapping.offset_x) / mapping.scale_x;
-        float gz = (world_z + mapping.offset_z) / mapping.scale_z;
+        float gx = (world_x + mapping.offset_x) / max(mapping.scale_x, epsilon);
+        float gz = (world_z + mapping.offset_z) / max(mapping.scale_z, epsilon);
+        gx       = clamp(gx, 0.0f, static_cast<float>(width - 1));
+        gz       = clamp(gz, 0.0f, static_cast<float>(height - 1));
         int ix   = clamp(static_cast<int>(floor(gx)), 0, static_cast<int>(width) - 2);
         int iz   = clamp(static_cast<int>(floor(gz)), 0, static_cast<int>(height) - 2);
-        float fx = gx - static_cast<float>(ix);
-        float fz = gz - static_cast<float>(iz);
+        float fx = clamp(gx - static_cast<float>(ix), 0.0f, 1.0f);
+        float fz = clamp(gz - static_cast<float>(iz), 0.0f, 1.0f);
 
         float h00 = positions[static_cast<size_t>(iz) * width + ix].y;
         float h10 = positions[static_cast<size_t>(iz) * width + ix + 1].y;
@@ -2063,12 +2177,19 @@ namespace spartan
                 return;
             }
 
-            vector<float> sorted = values;
-            sort(sorted.begin(), sorted.end());
+            // two partial selections instead of a full sort, same percentiles at a fraction of the cost
+            vector<float> scratch = values;
+            const size_t last     = scratch.size() - 1;
+            const size_t rank_low = static_cast<size_t>(percentile_low * static_cast<float>(last));
+            size_t rank_high      = static_cast<size_t>(percentile_high * static_cast<float>(last));
+            rank_high             = max(rank_high, rank_low);
 
-            const size_t last = sorted.size() - 1;
-            const float low   = sorted[static_cast<size_t>(percentile_low * static_cast<float>(last))];
-            const float high  = sorted[static_cast<size_t>(percentile_high * static_cast<float>(last))];
+            nth_element(scratch.begin(), scratch.begin() + rank_low, scratch.end());
+            const float low = scratch[rank_low];
+
+            // everything left of rank_low is already at or below it, so only the tail is searched
+            nth_element(scratch.begin() + rank_low, scratch.begin() + rank_high, scratch.end());
+            const float high  = scratch[rank_high];
             const float range = max(high - low, 1e-6f);
 
             auto stretch = [&values, low, range](uint32_t start, uint32_t end)
@@ -2094,9 +2215,10 @@ namespace spartan
             {
                 magnitudes[i] = fabsf(values[i]);
             }
-            sort(magnitudes.begin(), magnitudes.end());
+            const size_t rank = static_cast<size_t>(percentile * static_cast<float>(magnitudes.size() - 1));
+            nth_element(magnitudes.begin(), magnitudes.begin() + rank, magnitudes.end());
 
-            const float scale = max(magnitudes[static_cast<size_t>(percentile * static_cast<float>(magnitudes.size() - 1))], 1e-6f);
+            const float scale = max(magnitudes[rank], 1e-6f);
 
             auto stretch = [&values, scale](uint32_t start, uint32_t end)
             {
@@ -2268,9 +2390,13 @@ namespace spartan
                     }
 
                     // the epsilon keeps a gradient across the filled surface so routing still drains
-                    const float raised   = max(heights[neighbor_index], filled[current.index] + epsilon_slope);
-                    filled[neighbor_index] = raised;
-                    open.push({ raised, neighbor_index });
+                    // a cell already queued from a lower donor must never be raised by a higher one
+                    const float raised = max(heights[neighbor_index], filled[current.index] + epsilon_slope);
+                    if (raised < filled[neighbor_index])
+                    {
+                        filled[neighbor_index] = raised;
+                        open.push({ raised, neighbor_index });
+                    }
                 }
             }
 
@@ -2278,6 +2404,50 @@ namespace spartan
             {
                 heights[i] = filled[i] == numeric_limits<float>::max() ? heights[i] : filled[i];
             }
+        }
+
+        // analysis grid extents, both axes are downsampled by the same factor so the aspect survives
+        void analysis_extents(
+            uint32_t width,
+            uint32_t height,
+            uint32_t resolution_max,
+            uint32_t& analysis_width,
+            uint32_t& analysis_height
+        )
+        {
+            const uint32_t cap = max(resolution_max, 64u);
+            const float factor = max(static_cast<float>(max(width, height)) / static_cast<float>(cap), 1.0f);
+
+            analysis_width  = static_cast<uint32_t>(static_cast<float>(width)  / factor + 0.5f);
+            analysis_height = static_cast<uint32_t>(static_cast<float>(height) / factor + 0.5f);
+            analysis_width  = clamp(analysis_width,  8u, width);
+            analysis_height = clamp(analysis_height, 8u, height);
+        }
+
+        // metres per analysis cell on each axis, taken from the dense grid spacing
+        void analysis_cell_size(
+            const vector<Vector3>& positions,
+            uint32_t width,
+            uint32_t height,
+            uint32_t analysis_width,
+            uint32_t analysis_height,
+            float& cell_x,
+            float& cell_z
+        )
+        {
+            float dense_x = fabsf(positions[1].x - positions[0].x);
+            float dense_z = fabsf(positions[static_cast<size_t>(width)].z - positions[0].z);
+            if (dense_x < 1e-4f)
+            {
+                dense_x = 1.0f;
+            }
+            if (dense_z < 1e-4f)
+            {
+                dense_z = dense_x;
+            }
+
+            cell_x = dense_x * (static_cast<float>(width)  / static_cast<float>(analysis_width));
+            cell_z = dense_z * (static_cast<float>(height) / static_cast<float>(analysis_height));
         }
 
         // multiple flow direction accumulation, freeman 1991, weights proportional to (tan beta)^p
@@ -2288,7 +2458,8 @@ namespace spartan
             const vector<float>& heights,
             uint32_t width,
             uint32_t height,
-            float cell_size
+            float cell_x,
+            float cell_z
         )
         {
             const size_t cell_count = static_cast<size_t>(width) * height;
@@ -2304,8 +2475,8 @@ namespace spartan
 
             const int32_t neighbor_x[8]  = { -1, 0, 1, -1, 1, -1, 0, 1 };
             const int32_t neighbor_z[8]  = { -1, -1, -1, 0, 0, 1, 1, 1 };
-            const float   diagonal       = 1.41421356f;
-            const float   distances[8]   = { diagonal, 1.0f, diagonal, 1.0f, 1.0f, diagonal, 1.0f, diagonal };
+            const float   diagonal       = sqrtf(cell_x * cell_x + cell_z * cell_z);
+            const float   distances[8]   = { diagonal, cell_z, diagonal, cell_x, cell_x, diagonal, cell_z, diagonal };
             const float   exponent       = 1.1f;
 
             float weights[8];
@@ -2333,7 +2504,7 @@ namespace spartan
                         continue;
                     }
 
-                    weights[n]    = powf(drop / (distances[n] * cell_size), exponent);
+                    weights[n]    = powf(drop / distances[n], exponent);
                     weight_total += weights[n];
                 }
 
@@ -2361,14 +2532,18 @@ namespace spartan
             const vector<float>& heights,
             uint32_t width,
             uint32_t height,
-            float cell_size
+            float cell_x,
+            float cell_z
         )
         {
+            // scalar stand in where the formula wants one cell length, geometric mean of the two axes
+            const float cell_mean = sqrtf(cell_x * cell_z);
+
             vector<float> drained = heights;
-            fill_sinks(drained, width, height, cell_size * 1e-4f);
+            fill_sinks(drained, width, height, cell_mean * 1e-4f);
 
             vector<float> accumulation;
-            accumulate_flow(accumulation, drained, width, height, cell_size);
+            accumulate_flow(accumulation, drained, width, height, cell_x, cell_z);
 
             const uint32_t cell_count = width * height;
             flow_out.resize(cell_count);
@@ -2380,12 +2555,14 @@ namespace spartan
                     const int32_t z = static_cast<int32_t>(index / width);
 
                     const float dx = (sample_grid(heights, width, height, x + 1, z) -
-                                      sample_grid(heights, width, height, x - 1, z)) / (2.0f * cell_size);
+                                      sample_grid(heights, width, height, x - 1, z)) / (2.0f * cell_x);
                     const float dz = (sample_grid(heights, width, height, x, z + 1) -
-                                      sample_grid(heights, width, height, x, z - 1)) / (2.0f * cell_size);
+                                      sample_grid(heights, width, height, x, z - 1)) / (2.0f * cell_z);
 
                     const float tan_beta = max(sqrtf(dx * dx + dz * dz), 0.01f);
-                    const float alpha    = max(accumulation[index], 1.0f) * cell_size;
+
+                    // drained area over contour length, cell area divided by one mean cell length
+                    const float alpha = max(accumulation[index], 1.0f) * cell_mean;
 
                     flow_out[index] = logf(alpha / tan_beta);
                 }
@@ -2400,14 +2577,15 @@ namespace spartan
             const vector<float>& heights,
             uint32_t width,
             uint32_t height,
-            float cell_size
+            float cell_x,
+            float cell_z
         )
         {
             vector<float> drained = heights;
-            fill_sinks(drained, width, height, cell_size * 1e-4f);
+            fill_sinks(drained, width, height, sqrtf(cell_x * cell_z) * 1e-4f);
 
             vector<float> accumulation;
-            accumulate_flow(accumulation, drained, width, height, cell_size);
+            accumulate_flow(accumulation, drained, width, height, cell_x, cell_z);
 
             const uint32_t cell_count = width * height;
             channel_out.resize(cell_count);
@@ -2432,13 +2610,19 @@ namespace spartan
             int32_t z,
             float direction_x,
             float direction_z,
-            float cell_size,
+            float cell_x,
+            float cell_z,
             uint32_t steps
         )
         {
             const float center = heights[static_cast<size_t>(z) * width + x];
             float best         = 0.0f;
             float distance     = 1.0f;
+
+            // metres covered by one grid step along this direction
+            const float step_x = direction_x * cell_x;
+            const float step_z = direction_z * cell_z;
+            const float metres_per_step = max(sqrtf(step_x * step_x + step_z * step_z), 1e-4f);
 
             for (uint32_t step = 0; step < steps; step++)
             {
@@ -2452,7 +2636,7 @@ namespace spartan
                 const float rise = heights[static_cast<size_t>(sz) * width + sx] - center;
                 if (rise > 0.0f)
                 {
-                    best = max(best, rise / (distance * cell_size));
+                    best = max(best, rise / (distance * metres_per_step));
                 }
 
                 distance *= 1.42f;
@@ -2482,20 +2666,18 @@ namespace spartan
 
         // the analysis grid is capped, curvature at four meters per texel is still curvature and
         // the horizon marches are what dominate the bake time
-        const uint32_t analysis_width  = min(width,  max(resolution_max, 64u));
-        const uint32_t analysis_height = min(height, max(resolution_max, 64u));
-        const uint32_t cell_count      = analysis_width * analysis_height;
+        uint32_t analysis_width  = 0;
+        uint32_t analysis_height = 0;
+        analysis_extents(width, height, resolution_max, analysis_width, analysis_height);
+        const uint32_t cell_count = analysis_width * analysis_height;
 
         maps_out.width  = analysis_width;
         maps_out.height = analysis_height;
 
-        // horizontal spacing on the dense grid, scaled up to the analysis grid
-        float dense_cell = fabsf(positions[1].x - positions[0].x);
-        if (dense_cell < 1e-4f)
-        {
-            dense_cell = 1.0f;
-        }
-        const float cell_size = dense_cell * (static_cast<float>(width) / static_cast<float>(analysis_width));
+        // horizontal spacing on the dense grid, scaled up to the analysis grid per axis
+        float cell_x = 1.0f;
+        float cell_z = 1.0f;
+        analysis_cell_size(positions, width, height, analysis_width, analysis_height, cell_x, cell_z);
 
         vector<float> dense_heights(dense_count);
         {
@@ -2537,15 +2719,20 @@ namespace spartan
                     for (uint32_t octave = 0; octave < 3; octave++)
                     {
                         const int32_t r = radii[octave];
-                        const float laplacian =
+                        const float laplacian_x =
                             sample_grid(heights, analysis_width, analysis_height, x - r, z) +
-                            sample_grid(heights, analysis_width, analysis_height, x + r, z) +
+                            sample_grid(heights, analysis_width, analysis_height, x + r, z) -
+                            2.0f * center;
+                        const float laplacian_z =
                             sample_grid(heights, analysis_width, analysis_height, x, z - r) +
                             sample_grid(heights, analysis_width, analysis_height, x, z + r) -
-                            4.0f * center;
+                            2.0f * center;
 
-                        // divide by the octave span so the octaves are comparable before weighting
-                        total += scales[octave] * laplacian / (static_cast<float>(r) * cell_size);
+                        // divide by the octave span per axis so the octaves are comparable before weighting
+                        total += scales[octave] * (
+                            laplacian_x / (static_cast<float>(r) * cell_x) +
+                            laplacian_z / (static_cast<float>(r) * cell_z)
+                        );
                     }
 
                     maps_out.curvature[index] = total;
@@ -2556,7 +2743,7 @@ namespace spartan
         }
 
         // flow accumulation into a topographic wetness index
-        compute_flow_wetness(maps_out.flow, heights, analysis_width, analysis_height, cell_size);
+        compute_flow_wetness(maps_out.flow, heights, analysis_width, analysis_height, cell_x, cell_z);
 
         // sky occlusion and sun path insolation share the horizon marches
         {
@@ -2592,7 +2779,7 @@ namespace spartan
                     {
                         horizons[d] = horizon_angle(
                             heights, analysis_width, analysis_height,
-                            x, z, direction_x[d], direction_z[d], cell_size, march_steps
+                            x, z, direction_x[d], direction_z[d], cell_x, cell_z, march_steps
                         );
                         open_total += cosf(horizons[d]) * cosf(horizons[d]);
                     }
@@ -2600,9 +2787,9 @@ namespace spartan
 
                     // surface normal from the local gradient, needed for the incidence term
                     const float dx = (sample_grid(heights, analysis_width, analysis_height, x + 1, z) -
-                                      sample_grid(heights, analysis_width, analysis_height, x - 1, z)) / (2.0f * cell_size);
+                                      sample_grid(heights, analysis_width, analysis_height, x - 1, z)) / (2.0f * cell_x);
                     const float dz = (sample_grid(heights, analysis_width, analysis_height, x, z + 1) -
-                                      sample_grid(heights, analysis_width, analysis_height, x, z - 1)) / (2.0f * cell_size);
+                                      sample_grid(heights, analysis_width, analysis_height, x, z - 1)) / (2.0f * cell_z);
                     const float normal_length = sqrtf(dx * dx + 1.0f + dz * dz);
                     const float normal_x      = -dx / normal_length;
                     const float normal_y      = 1.0f / normal_length;
@@ -2667,9 +2854,9 @@ namespace spartan
                     const int32_t z = static_cast<int32_t>(index / analysis_width);
 
                     const float dx = (sample_grid(heights, analysis_width, analysis_height, x + 1, z) -
-                                      sample_grid(heights, analysis_width, analysis_height, x - 1, z)) / (2.0f * cell_size);
+                                      sample_grid(heights, analysis_width, analysis_height, x - 1, z)) / (2.0f * cell_x);
                     const float dz = (sample_grid(heights, analysis_width, analysis_height, x, z + 1) -
-                                      sample_grid(heights, analysis_width, analysis_height, x, z - 1)) / (2.0f * cell_size);
+                                      sample_grid(heights, analysis_width, analysis_height, x, z - 1)) / (2.0f * cell_z);
                     const float slope = atanf(sqrtf(dx * dx + dz * dz));
 
                     // gaussian centred on the repose angle
@@ -2680,12 +2867,13 @@ namespace spartan
                     float steepest_above = 0.0f;
                     for (int32_t r = 2; r <= 12; r += 2)
                     {
-                        const float up_x = sample_grid(heights, analysis_width, analysis_height, x + r, z) - heights[index];
-                        const float up_z = sample_grid(heights, analysis_width, analysis_height, x, z + r) - heights[index];
-                        const float dn_x = sample_grid(heights, analysis_width, analysis_height, x - r, z) - heights[index];
-                        const float dn_z = sample_grid(heights, analysis_width, analysis_height, x, z - r) - heights[index];
-                        const float rise = max(max(up_x, up_z), max(dn_x, dn_z));
-                        steepest_above   = max(steepest_above, atanf(rise / (static_cast<float>(r) * cell_size)));
+                        const float up_x   = sample_grid(heights, analysis_width, analysis_height, x + r, z) - heights[index];
+                        const float up_z   = sample_grid(heights, analysis_width, analysis_height, x, z + r) - heights[index];
+                        const float dn_x   = sample_grid(heights, analysis_width, analysis_height, x - r, z) - heights[index];
+                        const float dn_z   = sample_grid(heights, analysis_width, analysis_height, x, z - r) - heights[index];
+                        const float rise_x = max(up_x, dn_x) / (static_cast<float>(r) * cell_x);
+                        const float rise_z = max(up_z, dn_z) / (static_cast<float>(r) * cell_z);
+                        steepest_above     = max(steepest_above, atanf(max(rise_x, rise_z)));
                     }
 
                     const float cliff_above = clamp((steepest_above - repose) / (0.5f - repose + 0.5f), 0.0f, 1.0f);
@@ -2821,15 +3009,13 @@ namespace spartan
             return;
         }
 
-        const uint32_t analysis_width  = min(width,  max(resolution_max, 64u));
-        const uint32_t analysis_height = min(height, max(resolution_max, 64u));
+        uint32_t analysis_width  = 0;
+        uint32_t analysis_height = 0;
+        analysis_extents(width, height, resolution_max, analysis_width, analysis_height);
 
-        float dense_cell = fabsf(positions[1].x - positions[0].x);
-        if (dense_cell < 1e-4f)
-        {
-            dense_cell = 1.0f;
-        }
-        const float cell_size = dense_cell * (static_cast<float>(width) / static_cast<float>(analysis_width));
+        float cell_x = 1.0f;
+        float cell_z = 1.0f;
+        analysis_cell_size(positions, width, height, analysis_width, analysis_height, cell_x, cell_z);
 
         vector<float> dense_heights(dense_count);
         auto extract = [&](uint32_t start, uint32_t end)
@@ -2846,11 +3032,11 @@ namespace spartan
 
         if (signal == TerrainFlowSignal::Channel)
         {
-            compute_channel_mask(flow_out, heights, analysis_width, analysis_height, cell_size);
+            compute_channel_mask(flow_out, heights, analysis_width, analysis_height, cell_x, cell_z);
         }
         else
         {
-            compute_flow_wetness(flow_out, heights, analysis_width, analysis_height, cell_size);
+            compute_flow_wetness(flow_out, heights, analysis_width, analysis_height, cell_x, cell_z);
         }
 
         width_out  = analysis_width;
@@ -2970,16 +3156,14 @@ namespace spartan
             return;
         }
 
-        const uint32_t analysis_width  = min(width,  1024u);
-        const uint32_t analysis_height = min(height, 1024u);
-        const uint32_t cell_count      = analysis_width * analysis_height;
+        uint32_t analysis_width  = 0;
+        uint32_t analysis_height = 0;
+        analysis_extents(width, height, 1024u, analysis_width, analysis_height);
+        const uint32_t cell_count = analysis_width * analysis_height;
 
-        float dense_cell = fabsf(positions[1].x - positions[0].x);
-        if (dense_cell < 1e-4f)
-        {
-            dense_cell = 1.0f;
-        }
-        const float cell_size = dense_cell * (static_cast<float>(width) / static_cast<float>(analysis_width));
+        float cell_x = 1.0f;
+        float cell_z = 1.0f;
+        analysis_cell_size(positions, width, height, analysis_width, analysis_height, cell_x, cell_z);
 
         vector<float> dense_heights(dense_count);
         auto extract = [&](uint32_t start, uint32_t end)
@@ -2995,13 +3179,13 @@ namespace spartan
         resample_grid(heights, analysis_width, analysis_height, dense_heights, width, height);
 
         vector<float> drained = heights;
-        fill_sinks(drained, analysis_width, analysis_height, cell_size * 1e-4f);
+        fill_sinks(drained, analysis_width, analysis_height, sqrtf(cell_x * cell_z) * 1e-4f);
 
         vector<float> accumulation;
-        accumulate_flow(accumulation, drained, analysis_width, analysis_height, cell_size);
+        accumulate_flow(accumulation, drained, analysis_width, analysis_height, cell_x, cell_z);
 
         vector<float> channel;
-        compute_channel_mask(channel, heights, analysis_width, analysis_height, cell_size);
+        compute_channel_mask(channel, heights, analysis_width, analysis_height, cell_x, cell_z);
 
         const int32_t neighbor_x[8] = { -1, 0, 1, -1, 1, -1, 0, 1 };
         const int32_t neighbor_z[8] = { -1, -1, -1, 0, 0, 1, 1, 1 };

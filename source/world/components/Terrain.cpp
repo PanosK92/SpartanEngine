@@ -67,6 +67,109 @@ namespace spartan
 {
     namespace
     {
+        // cpu twin of noise_perlin in common.hlsl, the same texture read bilinear with wrap and the
+        // red channel mapped to -1..1, so the prop mask scores with the exact jitter the surface sees
+        struct perlin_sampler
+        {
+            const uint8_t* bytes = nullptr;
+            uint32_t width       = 0;
+            uint32_t height      = 0;
+            uint32_t stride      = 0;
+
+            bool valid() const
+            {
+                return bytes != nullptr && width > 0 && height > 0 && stride > 0;
+            }
+
+            float texel(int32_t x, int32_t y) const
+            {
+                x = ((x % static_cast<int32_t>(width))  + static_cast<int32_t>(width))  % static_cast<int32_t>(width);
+                y = ((y % static_cast<int32_t>(height)) + static_cast<int32_t>(height)) % static_cast<int32_t>(height);
+                return static_cast<float>(bytes[(static_cast<size_t>(y) * width + static_cast<size_t>(x)) * stride]) * (1.0f / 255.0f);
+            }
+
+            float sample(float u, float v) const
+            {
+                if (!valid())
+                {
+                    return 0.0f;
+                }
+
+                const float px = u * static_cast<float>(width) - 0.5f;
+                const float py = v * static_cast<float>(height) - 0.5f;
+                const int32_t x0 = static_cast<int32_t>(floorf(px));
+                const int32_t y0 = static_cast<int32_t>(floorf(py));
+                const float fx = px - static_cast<float>(x0);
+                const float fy = py - static_cast<float>(y0);
+
+                const float a = texel(x0, y0);
+                const float b = texel(x0 + 1, y0);
+                const float c = texel(x0, y0 + 1);
+                const float d = texel(x0 + 1, y0 + 1);
+                const float value = lerp(lerp(a, b, fx), lerp(c, d, fx), fy);
+                return value * 2.0f - 1.0f;
+            }
+
+            float noise(float x, float y) const
+            {
+                return sample(x * 0.1f, y * 0.1f);
+            }
+        };
+
+        perlin_sampler make_perlin_sampler()
+        {
+            perlin_sampler sampler;
+            RHI_Texture* texture = Renderer::GetStandardTexture(Renderer_StandardTexture::Noise_perlin);
+            if (!texture || !texture->HasData() || texture->GetBitsPerChannel() != 8)
+            {
+                return sampler;
+            }
+
+            RHI_Texture_Mip* mip = texture->GetMip(0, 0);
+            if (!mip || mip->bytes.empty())
+            {
+                return sampler;
+            }
+
+            sampler.bytes  = reinterpret_cast<const uint8_t*>(mip->bytes.data());
+            sampler.width  = texture->GetWidth();
+            sampler.height = texture->GetHeight();
+            sampler.stride = max(texture->GetChannelCount(), 1u);
+            if (mip->bytes.size() < static_cast<size_t>(sampler.width) * sampler.height * sampler.stride)
+            {
+                sampler = perlin_sampler();
+            }
+
+            return sampler;
+        }
+
+        // terrain_jitter in common_terrain.hlsl, the constants must move together
+        float terrain_jitter(const perlin_sampler& perlin, float world_x, float world_z, float seed)
+        {
+            const float px = world_x * 10.0f;
+            const float pz = world_z * 10.0f;
+            float n  = perlin.noise(px * (1.0f / 700.0f) + seed * 0.4f, pz * (1.0f / 700.0f) + seed * 0.4f) * 1.1f;
+            n       += perlin.noise(px * (1.0f / 250.0f) + seed,        pz * (1.0f / 250.0f) + seed);
+            n       += perlin.noise(px * (1.0f / 77.0f)  + seed * 1.7f, pz * (1.0f / 77.0f)  + seed * 1.7f) * 0.5f;
+            n       += perlin.noise(px * (1.0f / 24.0f)  + seed * 2.9f, pz * (1.0f / 24.0f)  + seed * 2.9f) * 0.25f;
+            return n / 2.85f;
+        }
+
+        // marks the calling thread as the one allowed to touch the heightfield while it is rebuilt
+        struct worker_scope
+        {
+            atomic<uint32_t>& busy;
+            worker_scope(atomic<uint32_t>& busy_flag, thread::id& worker_id) : busy(busy_flag)
+            {
+                worker_id = this_thread::get_id();
+                busy.fetch_add(1, memory_order_acq_rel);
+            }
+            ~worker_scope()
+            {
+                busy.fetch_sub(1, memory_order_acq_rel);
+            }
+        };
+
         bool is_entity_or_descendant(Entity* candidate, Entity* root)
         {
             if (!candidate || !root)
@@ -811,7 +914,7 @@ namespace spartan
             return false;
         }
 
-        bool platform_has_occupant(const TerrainPlatform& pad)
+        Entity* platform_find_occupant(const TerrainPlatform& pad)
         {
             for (Entity* entity : World::GetEntitiesWithRender())
             {
@@ -822,22 +925,34 @@ namespace spartan
 
                 if (mesh_sits_on_pad(entity, pad))
                 {
-                    return true;
+                    return entity;
                 }
             }
 
-            return false;
+            return nullptr;
         }
 
-        bool platform_occupant_alive(const TerrainPlatform& pad)
+        bool platform_occupant_alive(TerrainPlatform& pad)
         {
-            if (pad.entity_id == 0)
+            if (pad.entity_id != 0)
             {
-                return platform_has_occupant(pad);
+                Entity* entity = World::GetEntityById(pad.entity_id);
+                if (entity)
+                {
+                    return entity->GetActive();
+                }
             }
 
-            Entity* entity = World::GetEntityById(pad.entity_id);
-            return entity && entity->GetActive();
+            // no id or a stale one, a duplicated or reimported building keeps its pad by sitting on
+            // it, the pad rebinds to whatever it finds so the walk does not repeat every tick
+            Entity* occupant = platform_find_occupant(pad);
+            if (occupant)
+            {
+                pad.entity_id = occupant->GetObjectId();
+                return true;
+            }
+
+            return false;
         }
 
         TerrainPlatform platform_from_cluster(const vector<MeshFootprint*>& cluster)
@@ -1858,7 +1973,7 @@ namespace spartan
                     Vector3 v1_minus_v0           = v1 - v0;
                     Vector3 v2_minus_v0           = v2 - v0;
                     Vector3 normal                = Vector3::Cross(v1_minus_v0, v2_minus_v0).Normalized();
-                    float slope_radians           = acos(Vector3::Dot(normal, Vector3::Up));
+                    float slope_radians           = acos(clamp(Vector3::Dot(normal, Vector3::Up), -1.0f, 1.0f));
                     Quaternion rotation_to_normal = Quaternion::FromRotation(Vector3::Up, normal);
                     Vector3 centroid              = v0 + (v1_minus_v0 + v2_minus_v0) / 3.0f;
 
@@ -2161,12 +2276,13 @@ namespace spartan
             // place cluster centers
             auto place_cluster = [&](uint32_t start_index, uint32_t end_index)
             {
-                mt19937 generator(tile_index * 1000003u + start_index * 31u + layer.seed * 7919u + 12345u);
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
                 const uint32_t max_attempts = 50;
                 
                 for (uint32_t i = start_index; i < end_index; i++)
                 {
+                    // seeded per cluster, not per work chunk, so the layout does not follow the thread count
+                    mt19937 generator(tile_index * 1000003u + i * 31u + layer.seed * 7919u + 12345u);
                     Vector3 position;
                     uint32_t tri_idx;
                     uint32_t attempts = 0;
@@ -2181,7 +2297,7 @@ namespace spartan
                         float sqrt_r1 = sqrtf(r1);
                         float u       = 1.0f - sqrt_r1;
                         float v       = r2 * sqrt_r1;
-                        position      = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, layer.surface_offset, 0.0f);
+                        position      = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + tri.normal * layer.surface_offset;
                         attempts++;
                         
                         if (!has_safe_zone || clump_radius <= 0.0f)
@@ -2318,13 +2434,14 @@ namespace spartan
             // place instances within clusters
             auto place_mesh = [&](uint32_t start_index, uint32_t end_index)
             {
-                mt19937 generator(tile_index * 2000003u + start_index * 37u + layer.seed * 104729u + 67890u);
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
                 uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
                 uint32_t larger_cluster_size = base_instances_per_cluster + 1;
                 
                 for (uint32_t i = start_index; i < end_index; i++)
                 {
+                    mt19937 generator(tile_index * 2000003u + i * 37u + layer.seed * 104729u + 67890u);
+
                     // map instance to cluster
                     uint32_t cluster_idx;
                     if (i < remainder_instances * larger_cluster_size)
@@ -2356,8 +2473,9 @@ namespace spartan
                         float sqrt_r1 = sqrtf(r1);
                         float u       = 1.0f - sqrt_r1;
                         float v       = r2 * sqrt_r1;
+                        // along the face normal, the same axis the sink uses, so a lift on a slope stays a lift
                         position = candidate.v0 + u * candidate.v1_minus_v0 + v * candidate.v2_minus_v0
-                            + Vector3(0.0f, layer.surface_offset, 0.0f);
+                            + candidate.normal * layer.surface_offset;
 
                         if (layer.mask_channel < 0 || !ctx.sample_surface)
                         {
@@ -2480,6 +2598,13 @@ namespace spartan
 
     Terrain::~Terrain()
     {
+        // a regenerate on the thread pool holds a raw pointer to this, tearing the arrays down under
+        // it is a crash, wait it out
+        while (m_worker_busy.load(memory_order_acquire) > 0)
+        {
+            this_thread::sleep_for(chrono::milliseconds(1));
+        }
+
         FinishGenerate();
 
         Renderer::ClearTerrain(m_material.get());
@@ -2615,7 +2740,8 @@ namespace spartan
         params.map_b         = m_map_b.get();
         params.height_map    = m_height_map_gpu.get();
         params.world_mapping = m_world_mapping;
-        params.sea_level     = m_level_sea;
+        // the shader compares world y, so this is the world sea, the same one the cpu bakes with
+        params.sea_level     = ResolveSeaLevelWorld();
         params.snow_level    = m_level_snow;
         params.snow_amount   = m_snow_amount;
         params.wetness       = m_wetness;
@@ -3035,30 +3161,54 @@ namespace spartan
             hash *= 1099511628211ull; // fnv-1a prime
         };
 
+        // the exact bits, a cast to integer folds every value in a whole unit onto the same hash
+        // and negative levels wrap, so a sea moved by half a metre would still hit the old cache
+        auto hash_float = [&hash_combine](float value)
+        {
+            uint32_t bits = 0;
+            memcpy(&bits, &value, sizeof(bits));
+            hash_combine(bits);
+        };
+        auto hash_string = [&hash_combine](const string& text)
+        {
+            for (char c : text)
+            {
+                hash_combine(static_cast<uint64_t>(static_cast<uint8_t>(c)));
+            }
+            hash_combine(0xffu);
+        };
+
         // bump when cache format or the generation algorithms change so old caches get invalidated
-        const uint64_t cache_format_version = 13;
+        const uint64_t cache_format_version = 14;
         hash_combine(cache_format_version);
 
-        hash_combine(static_cast<uint64_t>(m_min_y * 1000));
-        hash_combine(static_cast<uint64_t>(m_max_y * 1000));
-        hash_combine(static_cast<uint64_t>(m_level_sea * 1000));
-        hash_combine(static_cast<uint64_t>(m_level_snow * 1000));
+        hash_float(m_min_y);
+        hash_float(m_max_y);
+        hash_float(m_level_snow);
+        hash_float(m_shore_width);
         hash_combine(m_smoothing);
         hash_combine(m_density);
         hash_combine(m_scale);
         hash_combine(m_tile_count);
         hash_combine(m_create_border ? 1 : 0);
+
+        // the sea the pipeline actually ran with, the water component wins over the terrain level,
+        // and the entity height since the positions are local and the sea is world
+        hash_float(GetSeaLevelLocal());
         
         if (m_height_map_seed)
         {
             hash_combine(m_height_map_seed->GetWidth());
             hash_combine(m_height_map_seed->GetHeight());
+            hash_combine(m_height_map_seed->GetBitsPerChannel());
+            hash_combine(m_height_map_seed->GetChannelCount());
 
-            // hash the file path (stable across runs) instead of object id (random per run)
+            // the path is stable across runs, the write time catches a repainted map at the same path
             const string& file_path = m_height_map_seed->GetResourceFilePath();
-            for (char c : file_path)
+            hash_string(file_path);
+            if (FileSystem::Exists(file_path))
             {
-                hash_combine(static_cast<uint64_t>(c));
+                hash_string(FileSystem::GetLastWriteTime(file_path));
             }
         }
 
@@ -3095,9 +3245,13 @@ namespace spartan
         return max(spacing * spacing * 0.5f, 1e-3f);
     }
 
-    float Terrain::GetSeaLevelLocal() const
+    bool Terrain::IsHeightfieldUnsafe() const
     {
-        // triangle heights are entity local, the levels are world
+        return m_worker_busy.load(memory_order_acquire) > 0 && this_thread::get_id() != m_worker_thread;
+    }
+
+    float Terrain::GetEntityY() const
+    {
         // during load the world matrix can still be identity, local y is already authored
         float terrain_y = 0.0f;
         if (Entity* entity = GetEntity())
@@ -3110,18 +3264,65 @@ namespace spartan
             }
         }
 
-        return m_level_sea - terrain_y;
+        return terrain_y;
+    }
+
+    float Terrain::ResolveSeaLevelWorld() const
+    {
+        // the water component is the sea the player sees, the terrain level is the fallback when
+        // there is none, both sides of the pipeline have to agree on which one is in charge
+        for (Entity* entity : World::GetEntities())
+        {
+            if (!entity)
+            {
+                continue;
+            }
+
+            if (Water* water = entity->GetComponent<Water>())
+            {
+                return water->GetSeaLevel();
+            }
+        }
+
+        return m_level_sea;
+    }
+
+    float Terrain::GetSeaLevelLocal() const
+    {
+        // triangle heights are entity local, the levels are world
+        return ResolveSeaLevelWorld() - GetEntityY();
+    }
+
+    float Terrain::GetSnowLevelLocal() const
+    {
+        return m_level_snow - GetEntityY();
+    }
+
+    Vector4 Terrain::GetMappingWorld() const
+    {
+        // the mapping is authored over the local positions, callers holding world xz shift it by
+        // the entity translation, the same thing the renderer does for the height and grass paths
+        Vector4 mapping = m_world_mapping;
+        if (Entity* entity = GetEntity())
+        {
+            const Vector3 translation = entity->GetMatrix().GetTranslation();
+            mapping.x += translation.x;
+            mapping.y += translation.z;
+        }
+
+        return mapping;
     }
 
     bool Terrain::SampleSurface(float world_x, float world_z, TerrainSurfaceSample& sample_out) const
     {
-        if (m_map_a_pixels.empty() || m_map_b_pixels.empty() || m_map_width == 0 || m_map_height == 0)
+        if (IsHeightfieldUnsafe() || m_map_a_pixels.empty() || m_map_b_pixels.empty() || m_map_width == 0 || m_map_height == 0)
         {
             return false;
         }
 
-        float u = (world_x - m_world_mapping.x) * m_world_mapping.z;
-        float v = (world_z - m_world_mapping.y) * m_world_mapping.w;
+        const Vector4 mapping = GetMappingWorld();
+        float u = (world_x - mapping.x) * mapping.z;
+        float v = (world_z - mapping.y) * mapping.w;
         u = clamp(u, 0.0f, 1.0f);
         v = clamp(v, 0.0f, 1.0f);
 
@@ -3169,10 +3370,15 @@ namespace spartan
         context.sea_local     = GetSeaLevelLocal();
         context.triangle_area = GetTriangleArea();
         context.tile_offset   = (tile_index < m_tile_offsets.size()) ? m_tile_offsets[tile_index] : Vector3::Zero;
-        // triangle centroids are tile local, the baked maps are authored in terrain xz
-        context.sample_surface = [this](float x, float z, TerrainSurfaceSample& out) -> bool
+        // triangle centroids plus the tile offset are terrain local, the sampler wants world xz
+        Vector3 translation = Vector3::Zero;
+        if (Entity* entity = GetEntity())
         {
-            return SampleSurface(x, z, out);
+            translation = entity->GetMatrix().GetTranslation();
+        }
+        context.sample_surface = [this, translation](float x, float z, TerrainSurfaceSample& out) -> bool
+        {
+            return SampleSurface(x + translation.x, z + translation.z, out);
         };
 
         placement::find_transforms(layer, context, tile_index, transforms_out, m_triangle_data, coverage_out);
@@ -3287,17 +3493,62 @@ namespace spartan
         file.read(reinterpret_cast<char*>(&triangle_data_count), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&offset_count), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&position_count), sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(&m_dense_width), sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(&m_dense_height), sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(&m_area_km2), sizeof(float));
+        uint32_t dense_width  = 0;
+        uint32_t dense_height = 0;
+        float area_km2        = 0.0f;
+        file.read(reinterpret_cast<char*>(&dense_width), sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(&dense_height), sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(&area_km2), sizeof(float));
 
-        if (tile_count > 10000 || offset_count > 10000)
+        // a truncated or hand edited cache must not leave half loaded arrays behind, every count has
+        // to agree with the grid the header describes before a single byte of payload is trusted
+        auto reject = [&](const char* reason)
         {
-            SP_LOG_ERROR("invalid tile_count (%u) or offset_count (%u), aborting load", tile_count, offset_count);
+            SP_LOG_ERROR("terrain cache rejected, %s, regenerating", reason);
             file.close();
+            m_height_data.clear();
+            m_vertices.clear();
+            m_indices.clear();
+            m_tile_vertices.clear();
+            m_tile_indices.clear();
+            m_tile_offsets.clear();
+            m_positions.clear();
+            m_triangle_data.clear();
+        };
+
+        if (!file.good())
+        {
+            reject("header truncated");
             return;
         }
-    
+
+        const uint64_t grid_count = static_cast<uint64_t>(dense_width) * dense_height;
+        if (dense_width < 2 || dense_height < 2 || grid_count > (1ull << 28))
+        {
+            reject("dense grid out of range");
+            return;
+        }
+
+        const uint64_t expected_indices = static_cast<uint64_t>(dense_width - 1) * (dense_height - 1) * 6;
+        if (position_count != grid_count || vertex_count != grid_count ||
+            height_data_size != grid_count || index_count != expected_indices)
+        {
+            reject("array sizes do not match the grid");
+            return;
+        }
+
+        const uint32_t expected_tiles = m_tile_count * m_tile_count;
+        if (tile_count > 10000 || offset_count != tile_count || tile_count != expected_tiles ||
+            triangle_data_count > tile_count)
+        {
+            reject("tile counts do not match");
+            return;
+        }
+
+        m_dense_width  = dense_width;
+        m_dense_height = dense_height;
+        m_area_km2     = area_km2;
+
         m_height_data.resize(height_data_size);
         m_vertices.resize(vertex_count);
         m_indices.resize(index_count);
@@ -3312,13 +3563,24 @@ namespace spartan
         file.read(reinterpret_cast<char*>(m_indices.data()), index_count * sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(m_tile_offsets.data()), offset_count * sizeof(Vector3));
         file.read(reinterpret_cast<char*>(m_positions.data()), position_count * sizeof(Vector3));
+        if (!file.good())
+        {
+            reject("payload truncated");
+            return;
+        }
     
         for (uint32_t i = 0; i < triangle_data_count; i++)
         {
-            uint64_t tile_id;
-            uint32_t triangle_count;
+            uint64_t tile_id        = 0;
+            uint32_t triangle_count = 0;
             file.read(reinterpret_cast<char*>(&tile_id), sizeof(uint64_t));
             file.read(reinterpret_cast<char*>(&triangle_count), sizeof(uint32_t));
+            if (!file.good() || tile_id >= tile_count || triangle_count > index_count / 3)
+            {
+                reject("triangle data out of range");
+                return;
+            }
+
             vector<TriangleData>& tile_triangles = m_triangle_data[tile_id];
             tile_triangles.resize(triangle_count);
             file.read(reinterpret_cast<char*>(tile_triangles.data()), triangle_count * sizeof(TriangleData));
@@ -3326,13 +3588,26 @@ namespace spartan
     
         for (uint32_t i = 0; i < tile_count; i++)
         {
-            uint32_t vertex_size, index_size;
+            uint32_t vertex_size = 0;
+            uint32_t index_size  = 0;
             file.read(reinterpret_cast<char*>(&vertex_size), sizeof(uint32_t));
             file.read(reinterpret_cast<char*>(&index_size), sizeof(uint32_t));
+            if (!file.good() || vertex_size > vertex_count || index_size > index_count)
+            {
+                reject("tile data out of range");
+                return;
+            }
+
             m_tile_vertices[i].resize(vertex_size);
             m_tile_indices[i].resize(index_size);
             file.read(reinterpret_cast<char*>(m_tile_vertices[i].data()), vertex_size * sizeof(RHI_Vertex_PosTexNorTan));
             file.read(reinterpret_cast<char*>(m_tile_indices[i].data()), index_size * sizeof(uint32_t));
+        }
+
+        if (!file.good())
+        {
+            reject("tile payload truncated");
+            return;
         }
     
         file.close();
@@ -3354,6 +3629,8 @@ namespace spartan
             m_is_generating.store(false);
             return;
         }
+
+        worker_scope worker(m_worker_busy, m_worker_thread);
 
         // min == max collapses every pixel to one height, looks like a flat plane
         if (abs(m_max_y - m_min_y) < epsilon)
@@ -3451,14 +3728,18 @@ namespace spartan
             TerrainSystem::GeneratePositions(m_positions, m_height_data, m_dense_width, m_dense_height, m_density, m_scale);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
+            // positions are entity local, so every step below gets the sea in the same frame the
+            // shoreline lock and the channel carve use, one sea for the whole pipeline
+            const float sea_local = GetSeaLevelLocal();
+
             // 3. apply perlin noise
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying perlin noise...");
-            TerrainSystem::ApplyPerlinNoise(m_positions, m_dense_width, m_dense_height, m_level_sea);
+            TerrainSystem::ApplyPerlinNoise(m_positions, m_dense_width, m_dense_height, sea_local);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
             // 4. apply erosion, keeping what it moved so the texturing can key off it
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying erosion...");
-            TerrainSystem::ApplyErosion(m_positions, m_dense_width, m_dense_height, m_level_sea, 1.0f, &m_erosion_maps);
+            TerrainSystem::ApplyErosion(m_positions, m_dense_width, m_dense_height, sea_local, 1.0f, &m_erosion_maps);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
             // lift the real coastline above the waves and cut a beach
@@ -3521,7 +3802,7 @@ namespace spartan
             RebuildMeshData(true);
         }
 
-        BakeTerrainMaps();
+        BakeTerrainMaps(!heights_changed);
         BakeHeightMapPixels();
         ReapplyPropMaskHoles();
 
@@ -3717,11 +3998,12 @@ namespace spartan
         Ray local_ray = ray;
         if (Entity* entity = GetEntity())
         {
+            // the direction is a vector, running it through the full matrix would add the translation
             Matrix inv = entity->GetMatrix().Inverted();
             Vector3 origin_local = inv * ray.GetStart();
-            Vector3 far_local    = inv * ray.GetDirection();
+            Vector3 far_local    = (inv * (ray.GetStart() + ray.GetDirection())) - origin_local;
             local_ray.m_origin    = origin_local;
-            local_ray.m_direction = far_local;
+            local_ray.m_direction = far_local.Normalized();
         }
 
         Vector3 local_hit;
@@ -3864,7 +4146,8 @@ namespace spartan
 
             if (Terrain* terrain = entity->GetComponent<Terrain>())
             {
-                if (terrain->HasHeightfield())
+                // not the guarded check, the renderer keeps pointing at the terrain while it regenerates
+                if (!terrain->m_positions.empty() && terrain->m_dense_width > 1 && terrain->m_dense_height > 1)
                 {
                     return terrain;
                 }
@@ -4489,10 +4772,11 @@ namespace spartan
             return static_cast<int>(clamp(u, 0.0f, 1.0f) * static_cast<float>(resolution - 1) + 0.5f);
         };
 
-        const int x0 = world_to_pixel(min_x, m_world_mapping.x, m_world_mapping.z, m_map_width);
-        const int x1 = world_to_pixel(max_x, m_world_mapping.x, m_world_mapping.z, m_map_width);
-        const int z0 = world_to_pixel(min_z, m_world_mapping.y, m_world_mapping.w, m_map_height);
-        const int z1 = world_to_pixel(max_z, m_world_mapping.y, m_world_mapping.w, m_map_height);
+        const Vector4 mapping = GetMappingWorld();
+        const int x0 = world_to_pixel(min_x, mapping.x, mapping.z, m_map_width);
+        const int x1 = world_to_pixel(max_x, mapping.x, mapping.z, m_map_width);
+        const int z0 = world_to_pixel(min_z, mapping.y, mapping.w, m_map_height);
+        const int z1 = world_to_pixel(max_z, mapping.y, mapping.w, m_map_height);
 
         const int x_min = min(x0, x1);
         const int x_max = max(x0, x1);
@@ -4502,11 +4786,11 @@ namespace spartan
         for (int z = z_min; z <= z_max; z++)
         {
             const float v       = static_cast<float>(z) / static_cast<float>(m_map_height - 1);
-            const float world_z = m_world_mapping.y + v / m_world_mapping.w;
+            const float world_z = mapping.y + v / mapping.w;
             for (int x = x_min; x <= x_max; x++)
             {
                 const float u       = static_cast<float>(x) / static_cast<float>(m_map_width - 1);
-                const float world_x = m_world_mapping.x + u / m_world_mapping.z;
+                const float world_x = mapping.x + u / mapping.z;
                 if (obb_outside_distance(world_x, world_z, center_x, center_z, half_x, half_z, yaw) > 0.0f)
                 {
                     continue;
@@ -4557,10 +4841,11 @@ namespace spartan
             return static_cast<int>(clamp(u, 0.0f, 1.0f) * static_cast<float>(resolution - 1) + 0.5f);
         };
 
-        const int x0 = world_to_pixel(min_x, m_world_mapping.x, m_world_mapping.z, m_map_width);
-        const int x1 = world_to_pixel(max_x, m_world_mapping.x, m_world_mapping.z, m_map_width);
-        const int z0 = world_to_pixel(min_z, m_world_mapping.y, m_world_mapping.w, m_map_height);
-        const int z1 = world_to_pixel(max_z, m_world_mapping.y, m_world_mapping.w, m_map_height);
+        const Vector4 mapping = GetMappingWorld();
+        const int x0 = world_to_pixel(min_x, mapping.x, mapping.z, m_map_width);
+        const int x1 = world_to_pixel(max_x, mapping.x, mapping.z, m_map_width);
+        const int z0 = world_to_pixel(min_z, mapping.y, mapping.w, m_map_height);
+        const int z1 = world_to_pixel(max_z, mapping.y, mapping.w, m_map_height);
 
         const int x_min = min(x0, x1);
         const int x_max = max(x0, x1);
@@ -4570,11 +4855,11 @@ namespace spartan
         for (int z = z_min; z <= z_max; z++)
         {
             const float v       = static_cast<float>(z) / static_cast<float>(m_map_height - 1);
-            const float world_z = m_world_mapping.y + v / m_world_mapping.w;
+            const float world_z = mapping.y + v / mapping.w;
             for (int x = x_min; x <= x_max; x++)
             {
                 const float u       = static_cast<float>(x) / static_cast<float>(m_map_width - 1);
-                const float world_x = m_world_mapping.x + u / m_world_mapping.z;
+                const float world_x = mapping.x + u / mapping.z;
                 if (obb_outside_distance(world_x, world_z, center_x, center_z, half_x, half_z, yaw) > 0.0f)
                 {
                     continue;
@@ -5733,6 +6018,24 @@ namespace spartan
         }
     }
 
+    void Terrain::EnsurePlacementData(const vector<uint32_t>& tile_indices)
+    {
+        // serial, the scatter jobs read the map from many threads right after this
+        vector<uint32_t> missing;
+        for (uint32_t tile_index : tile_indices)
+        {
+            if (m_triangle_data.find(tile_index) == m_triangle_data.end())
+            {
+                missing.push_back(tile_index);
+            }
+        }
+
+        if (!missing.empty())
+        {
+            RefreshPlacementData(missing);
+        }
+    }
+
     void Terrain::EnsureSculptGrid()
     {
         if (!HasHeightfield())
@@ -6040,8 +6343,9 @@ namespace spartan
             return static_cast<int>(clamp(u, 0.0f, 1.0f) * static_cast<float>(resolution - 1) + 0.5f);
         };
 
-        const float pixel_size_x = 1.0f / max(m_world_mapping.z * static_cast<float>(width - 1), 1e-6f);
-        const float pixel_size_z = 1.0f / max(m_world_mapping.w * static_cast<float>(height - 1), 1e-6f);
+        const Vector4 mapping    = GetMappingWorld();
+        const float pixel_size_x = 1.0f / max(mapping.z * static_cast<float>(width - 1), 1e-6f);
+        const float pixel_size_z = 1.0f / max(mapping.w * static_cast<float>(height - 1), 1e-6f);
         const float pixel_size   = max(pixel_size_x, pixel_size_z);
 
         int nx0 = static_cast<int>(width);
@@ -6059,8 +6363,8 @@ namespace spartan
 
         auto stamp_disk = [&](float world_x, float world_z, float radius)
         {
-            const int cx = world_to_pixel(world_x, m_world_mapping.x, m_world_mapping.z, width);
-            const int cz = world_to_pixel(world_z, m_world_mapping.y, m_world_mapping.w, height);
+            const int cx = world_to_pixel(world_x, mapping.x, mapping.z, width);
+            const int cz = world_to_pixel(world_z, mapping.y, mapping.w, height);
             const int r  = max(1, static_cast<int>(ceilf(radius / max(pixel_size, 1e-4f))) + 1);
             const int r2 = r * r;
             const int z0 = max(0, cz - r);
@@ -6300,7 +6604,7 @@ namespace spartan
         for (int z = uz0; z <= uz1; z++)
         {
             const float v       = static_cast<float>(z) / static_cast<float>(height - 1);
-            const float world_z = m_world_mapping.y + v / m_world_mapping.w;
+            const float world_z = mapping.y + v / mapping.w;
 
             for (int x = ux0; x <= ux1; x++)
             {
@@ -6334,7 +6638,7 @@ namespace spartan
                 }
 
                 const float u       = static_cast<float>(x) / static_cast<float>(width - 1);
-                const float world_x = m_world_mapping.x + u / m_world_mapping.z;
+                const float world_x = mapping.x + u / mapping.z;
                 if (on_pad(world_x, world_z))
                 {
                     m_prop_mask_pixels[offset + 0] = 0;
@@ -6353,10 +6657,10 @@ namespace spartan
         const float u1 = static_cast<float>(min(cx1 + 1, static_cast<int>(width) - 1)) / static_cast<float>(width - 1);
         const float v0 = static_cast<float>(max(cz0 - 1, 0)) / static_cast<float>(height - 1);
         const float v1 = static_cast<float>(min(cz1 + 1, static_cast<int>(height) - 1)) / static_cast<float>(height - 1);
-        const float world_min_x = m_world_mapping.x + u0 / m_world_mapping.z;
-        const float world_max_x = m_world_mapping.x + u1 / m_world_mapping.z;
-        const float world_min_z = m_world_mapping.y + v0 / m_world_mapping.w;
-        const float world_max_z = m_world_mapping.y + v1 / m_world_mapping.w;
+        const float world_min_x = mapping.x + u0 / mapping.z;
+        const float world_max_x = mapping.x + u1 / mapping.z;
+        const float world_min_z = mapping.y + v0 / mapping.w;
+        const float world_max_z = mapping.y + v1 / mapping.w;
 
         MarkPropMaskDirty(cx0, cz0, cx1, cz1);
         const bool mask_recreated = UploadPropMask();
@@ -6391,11 +6695,12 @@ namespace spartan
 
         const uint32_t width  = m_map_width;
         const uint32_t height = m_map_height;
+        const Vector4 map_uv  = GetMappingWorld();
 
         auto on_road = [&](float world_x, float world_z) -> bool
         {
-            const float u = (world_x - m_world_mapping.x) * m_world_mapping.z;
-            const float v = (world_z - m_world_mapping.y) * m_world_mapping.w;
+            const float u = (world_x - map_uv.x) * map_uv.z;
+            const float v = (world_z - map_uv.y) * map_uv.w;
             if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f)
             {
                 return false;
@@ -6552,6 +6857,36 @@ namespace spartan
 
             visit(child, false);
         }
+
+        // the seed holds the props at their original ground, a pad ring lowered or raised that ground
+        // and snapped them to it, the rewrite above put the seed back so snap the rings again
+        const float cell = max(max(mapping.scale_x, mapping.scale_z), 1.0f);
+        for (const TerrainPlatform& pad : m_platforms)
+        {
+            float deform_hx = 0.0f;
+            float deform_hz = 0.0f;
+            pad_deform_extents(pad, cell, deform_hx, deform_hz);
+
+            float pad_min_x = 0.0f;
+            float pad_min_z = 0.0f;
+            float pad_max_x = 0.0f;
+            float pad_max_z = 0.0f;
+            obb_write_aabb(pad.center_x, pad.center_z, deform_hx, deform_hz, pad.yaw, pad_min_x, pad_min_z, pad_max_x, pad_max_z);
+            if (pad_max_x < min_x || pad_min_x > max_x || pad_max_z < min_z || pad_min_z > max_z)
+            {
+                continue;
+            }
+
+            SnapPropsToSurface(
+                pad.center_x,
+                pad.center_z,
+                deform_hx,
+                deform_hz,
+                pad.half_x,
+                pad.half_z,
+                pad.yaw
+            );
+        }
     }
 
     void Terrain::RememberPlatform(const TerrainPlatform& platform)
@@ -6600,9 +6935,16 @@ namespace spartan
             remove_if(
                 m_platforms.begin(),
                 m_platforms.end(),
-                [](const TerrainPlatform& pad)
+                [](TerrainPlatform& pad)
                 {
-                    return !platform_has_occupant(pad);
+                    // geometry only, a pad whose building walked away is an orphan even if it is alive
+                    Entity* occupant = platform_find_occupant(pad);
+                    if (occupant)
+                    {
+                        pad.entity_id = occupant->GetObjectId();
+                    }
+
+                    return occupant == nullptr;
                 }
             ),
             m_platforms.end()
@@ -6777,6 +7119,12 @@ namespace spartan
         const int x1 = min(static_cast<int>(ceilf((max_x + mapping.offset_x) / step_x)), static_cast<int>(m_dense_width) - 1);
         const int z1 = min(static_cast<int>(ceilf((max_z + mapping.offset_z) / step_z)), static_cast<int>(m_dense_height) - 1);
 
+        // the pad writes straight from the seed, which has no road in it, so any road delta recorded
+        // on these cells is gone from the ground and must be forgotten too, otherwise the next road
+        // refresh subtracts a drop that is no longer there and the surface sinks twice
+        const bool has_road_delta = m_road_carve_delta.size() == m_positions.size();
+        bool road_touched         = false;
+
         for (int z = z0; z <= z1; z++)
         {
             for (int x = x0; x <= x1; x++)
@@ -6798,6 +7146,12 @@ namespace spartan
                     continue;
                 }
 
+                if (has_road_delta && m_road_carve_delta[index] != 0.0f)
+                {
+                    m_road_carve_delta[index] = 0.0f;
+                    road_touched              = true;
+                }
+
                 const float seed_y = m_positions_seed[index].y;
                 if (restore_only)
                 {
@@ -6816,8 +7170,27 @@ namespace spartan
             }
         }
 
+        if (road_touched)
+        {
+            MarkRoadCarvesDirtyInGridRect(x0, z0, x1, z1);
+        }
+
         // the flush repairs mesh, height texture and the flat height mirror for this rect only
         MarkHeightsDirty(x0, z0, x1, z1);
+    }
+
+    void Terrain::MarkRoadCarvesDirtyInGridRect(int32_t x0, int32_t z0, int32_t x1, int32_t z1)
+    {
+        // only the roads whose footprint overlaps the rect re-carve, the rest keep their delta
+        for (const auto& [id, bounds] : m_road_carve_bounds)
+        {
+            if (bounds[1] < x0 || bounds[0] > x1 || bounds[3] < z0 || bounds[2] > z1)
+            {
+                continue;
+            }
+
+            MarkSplineHeightCarvesDirty(id);
+        }
     }
 
     bool Terrain::SampleSeedMax(
@@ -7374,7 +7747,7 @@ namespace spartan
 
         vector<TerrainPlatform> gone;
         gone.reserve(m_platforms.size());
-        for (const TerrainPlatform& pad : m_platforms)
+        for (TerrainPlatform& pad : m_platforms)
         {
             if (!platform_occupant_alive(pad))
             {
@@ -7826,28 +8199,7 @@ namespace spartan
 
     float Terrain::ResolveSeaLevelLocal() const
     {
-        float sea_world = m_level_sea;
-        for (Entity* entity : World::GetEntities())
-        {
-            if (!entity)
-            {
-                continue;
-            }
-
-            if (Water* water = entity->GetComponent<Water>())
-            {
-                sea_world = water->GetSeaLevel();
-                break;
-            }
-        }
-
-        float entity_y = 0.0f;
-        if (Entity* entity = GetEntity())
-        {
-            entity_y = entity->GetPosition().y;
-        }
-
-        return sea_world - entity_y;
+        return GetSeaLevelLocal();
     }
 
     bool Terrain::ApplyShorelineLock()
@@ -7933,6 +8285,24 @@ namespace spartan
             if (index >= 0 && static_cast<uint32_t>(index) < tiles.size())
             {
                 tiles[static_cast<uint32_t>(index)] = child;
+            }
+        }
+
+        // rivers traced on the previous ground, a rebuild that kept its tiles keeps these too
+        for (Entity* tile : tiles)
+        {
+            if (!tile)
+            {
+                continue;
+            }
+
+            vector<Entity*> tile_children = tile->GetChildren();
+            for (Entity* child : tile_children)
+            {
+                if (child && child->GetObjectName().rfind("river_", 0) == 0)
+                {
+                    World::RemoveEntity(child);
+                }
             }
         }
 
@@ -8039,28 +8409,8 @@ namespace spartan
             return;
         }
 
-        float sea_world = m_level_sea;
-        for (Entity* entity : World::GetEntities())
-        {
-            if (!entity)
-            {
-                continue;
-            }
-
-            if (Water* water = entity->GetComponent<Water>())
-            {
-                sea_world = water->GetSeaLevel();
-                break;
-            }
-        }
-
         // local height at the rim so world y lands at sea level
-        float entity_y = 0.0f;
-        if (Entity* entity = GetEntity())
-        {
-            entity_y = entity->GetPosition().y;
-        }
-        const float edge_local = sea_world - entity_y;
+        const float edge_local = GetSeaLevelLocal();
 
         // shore must cover at least a couple of grid cells or the slope is invisible
         const TerrainGridMapping mapping = GetGridMapping();
@@ -8319,7 +8669,7 @@ namespace spartan
         file.write(reinterpret_cast<const char*>(m_prop_mask_pixels.data()), m_prop_mask_pixels.size());
     }
 
-    void Terrain::BakeTerrainMaps()
+    void Terrain::BakeTerrainMaps(bool allow_cache)
     {
         if (m_positions.empty() || m_dense_width < 16 || m_dense_height < 16)
         {
@@ -8348,7 +8698,9 @@ namespace spartan
             );
         }
 
-        if (!LoadTerrainMapsFromCache())
+        // the cache is keyed by the procedural inputs alone, ground that carries a sculpt or a pad
+        // is neither loaded from it nor written into it
+        if (!allow_cache || !LoadTerrainMapsFromCache())
         {
             TerrainAnalysisMaps analysis;
             TerrainSystem::ComputeAnalysisMaps(
@@ -8356,7 +8708,7 @@ namespace spartan
                 m_positions,
                 m_dense_width,
                 m_dense_height,
-                m_level_sea,
+                GetSeaLevelLocal(),
                 m_erosion_maps.IsValid(m_positions.size()) ? &m_erosion_maps : nullptr
             );
 
@@ -8394,7 +8746,10 @@ namespace spartan
             ThreadPool::ParallelLoop(encode, static_cast<uint32_t>(cell_count));
 
             BakePropMask();
-            SaveTerrainMapsToCache();
+            if (allow_cache)
+            {
+                SaveTerrainMapsToCache();
+            }
         }
         else
         {
@@ -8547,7 +8902,23 @@ namespace spartan
             return rise * fall;
         };
 
+        // the same threshold noise the surface shader applies, without it the mask edges trace
+        // contour lines while the texture edges grow fingers, and the props end up on the wrong side
+        const perlin_sampler perlin = make_perlin_sampler();
+        const float slope_jitter    = 0.22f;
+        const float height_jitter   = 4.0f;
+        const float sea_local       = GetSeaLevelLocal();
+        const float snow_local      = GetSnowLevelLocal();
+        const Vector3 wind          = World::GetWind();
+        const float wind_length     = wind.Length();
+        Vector3 translation         = Vector3::Zero;
+        if (Entity* entity = GetEntity())
+        {
+            translation = entity->GetMatrix().GetTranslation();
+        }
+
         auto layer_weight = [&](const TerrainLayerRule& rule, float height, float slope_rad,
+            const Vector3& normal, float jitter,
             float curvature, float flow, float occlusion, float deposition,
             float wear, float insolation, float talus) -> float
         {
@@ -8556,8 +8927,9 @@ namespace spartan
                 return 0.0f;
             }
 
-            // snow is driven by accumulation on the gpu, a height and slope stand-in is enough
-            // to keep grass and trees off the snow line in the prop mask
+            const float slope_jittered = slope_rad + jitter * slope_jitter;
+
+            // terrain_snow_weight, the accumulation model capped by the authored slope band
             if (rule.flags & TerrainLayerFlags_Snow)
             {
                 if (m_snow_amount <= 0.0f)
@@ -8565,25 +8937,41 @@ namespace spartan
                     return 0.0f;
                 }
 
-                const float altitude = height - m_level_snow;
+                const float snow_line = snow_local + jitter * 70.0f;
+                const float altitude  = height - snow_line;
                 float snow = saturate(altitude / 130.0f);
-                snow *= powf(saturate(cosf(slope_rad)), 2.5f);
+                snow *= powf(saturate(normal.y), 2.5f);
                 snow *= lerp(0.55f, 1.15f, curvature);
                 snow *= lerp(0.65f, 1.1f, 1.0f - occlusion);
-                return snow * m_snow_amount * rule.weight_bias;
+                if (wind_length > 0.001f)
+                {
+                    snow *= lerp(1.0f, 0.4f, saturate(Vector3::Dot(normal, wind / wind_length)));
+                }
+
+                const float slope_band = band(
+                    slope_jittered,
+                    rule.slope_min * math::deg_to_rad,
+                    rule.slope_max * math::deg_to_rad,
+                    slope_feather_max,
+                    slope_domain_min,
+                    slope_domain_max
+                );
+                return snow * m_snow_amount * slope_band;
             }
 
             const float height_for_band = (rule.flags & TerrainLayerFlags_BelowSea) ?
-                (height - m_level_sea) : height;
+                (height - sea_local) : height;
+            const float height_jittered = height_for_band + jitter * height_jitter;
 
             // altitude gained per metre travelled horizontally, a feather written in altitude covers
             // less and less ground as the slope steepens, which is what turns a boundary into a knife
             // edge, scaling by the gradient holds the width along the surface instead
-            const float gradient       = min(tanf(min(slope_rad, 1.5f)), gradient_max);
+            const float normal_y       = max(normal.y, 0.125f);
+            const float gradient       = min(sqrtf(saturate(1.0f - normal_y * normal_y)) / normal_y, gradient_max);
             const float height_feather = max(blend_width_world * gradient, height_feather_max * 0.25f);
 
             float weight = band(
-                slope_rad,
+                slope_jittered,
                 rule.slope_min * math::deg_to_rad,
                 rule.slope_max * math::deg_to_rad,
                 slope_feather_max,
@@ -8591,7 +8979,7 @@ namespace spartan
                 slope_domain_max
             );
             weight *= band(
-                height_for_band,
+                height_jittered,
                 rule.height_min,
                 rule.height_max,
                 height_feather,
@@ -8678,6 +9066,11 @@ namespace spartan
                 Vector3 normal = Vector3(-(y_r - y_c) / cell_x, 1.0f, -(y_u - y_c) / cell_z).Normalized();
                 const float slope = acosf(clamp(normal.y, -1.0f, 1.0f));
 
+                // the shader jitters in world xz
+                const float world_x = pos.x + translation.x;
+                const float world_z = pos.z + translation.z;
+                const float jitter  = terrain_jitter(perlin, world_x, world_z, 0.0f);
+
                 const size_t offset = static_cast<size_t>(i) * 4;
                 const float curvature   = m_map_a_pixels[offset + 0] * (1.0f / 255.0f);
                 const float flow        = m_map_a_pixels[offset + 1] * (1.0f / 255.0f);
@@ -8699,16 +9092,30 @@ namespace spartan
                     }
                     return layer_weight(
                         m_layer_rules[static_cast<size_t>(layer_index)],
-                        y_c, slope, curvature, flow, occlusion, deposition, wear, insolation, talus
+                        y_c, slope, normal, jitter,
+                        curvature, flow, occlusion, deposition, wear, insolation, talus
                     );
                 };
 
                 // same pick as the surface shader, sand dirt and snow keep their share so grass
-                // cannot inherit ground it does not own
+                // cannot inherit ground it does not own, the per layer breakup is seeded by the
+                // layer's position in the shader block, which only counts the enabled layers
                 float scores[terrain_layer_max];
+                uint32_t shader_index = 0;
                 for (uint32_t layer = 0; layer < terrain_layer_max; layer++)
                 {
                     scores[layer] = score(static_cast<int>(layer));
+                    if (!IsLayerEnabled(layer))
+                    {
+                        continue;
+                    }
+
+                    if (scores[layer] > 0.0f)
+                    {
+                        const float breakup = terrain_jitter(perlin, world_x, world_z, 3.1f + static_cast<float>(shader_index) * 2.3f);
+                        scores[layer]      *= lerp(0.55f, 1.45f, saturate(breakup * 0.5f + 0.5f));
+                    }
+                    shader_index++;
                 }
 
                 const uint32_t keep = clamp(m_layer_quality, 1u, 4u);
@@ -8766,8 +9173,8 @@ namespace spartan
                     };
 
                     const float slope_deg  = slope * math::rad_to_deg;
-                    const float above_sea  = y_c - m_level_sea;
-                    const float below_snow = m_level_snow - y_c;
+                    const float above_sea  = y_c - sea_local;
+                    const float below_snow = snow_local - y_c;
                     const float grass_w    = share(grass_i);
                     const float forest_w   = share(forest_i);
                     const float moss_w     = share(moss_i);
@@ -8784,7 +9191,7 @@ namespace spartan
 
                     const float shade = 1.0f - insolation;
                     const float altitude = saturate(
-                        (y_c - m_level_sea) / max(m_level_snow - m_level_sea, 1.0f)
+                        (y_c - sea_local) / max(snow_local - sea_local, 1.0f)
                     );
                     const float alpine    = saturate((altitude - 0.55f) / 0.45f);
                     const float tree_line = saturate(1.0f - alpine * 1.35f);
@@ -8943,13 +9350,14 @@ namespace spartan
 
     Vector3 Terrain::SamplePropMask(float world_x, float world_z) const
     {
-        if (m_prop_mask_pixels.empty() || m_map_width == 0 || m_map_height == 0)
+        if (IsHeightfieldUnsafe() || m_prop_mask_pixels.empty() || m_map_width == 0 || m_map_height == 0)
         {
             return Vector3::Zero;
         }
 
-        float u = (world_x - m_world_mapping.x) * m_world_mapping.z;
-        float v = (world_z - m_world_mapping.y) * m_world_mapping.w;
+        const Vector4 mapping = GetMappingWorld();
+        float u = (world_x - mapping.x) * mapping.z;
+        float v = (world_z - mapping.y) * mapping.w;
         u = clamp(u, 0.0f, 1.0f);
         v = clamp(v, 0.0f, 1.0f);
 
@@ -9165,7 +9573,8 @@ namespace spartan
         if (!preview)
         {
             BakeHeightMapTexture();
-            BakeTerrainMaps();
+            // a surface rebuild means the heights are no longer the procedural ones the cache describes
+            BakeTerrainMaps(false);
             ReapplyPropMaskHoles();
             UploadTerrainMaps();
         }
@@ -9204,10 +9613,12 @@ namespace spartan
         m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
         m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges), true);
 
+        // a committed rebuild gets the same lod chain generate builds, otherwise the terrain draws
+        // at full density everywhere until the next regenerate, previews stay cheap
         for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
         {
             uint32_t sub_mesh_index = 0;
-            m_mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], false, &sub_mesh_index);
+            m_mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], !preview, &sub_mesh_index);
         }
         m_mesh->CreateGpuBuffers();
 
@@ -9240,8 +9651,9 @@ namespace spartan
             RefreshLayers();
         }
         PushToRenderer();
-        if (!preview && !reuse_tiles)
+        if (!preview)
         {
+            // the channels moved with the ground, retrace them whether or not the tiles were reused
             SpawnFlowRivers();
         }
 
@@ -9266,6 +9678,8 @@ namespace spartan
             return;
         }
 
+        worker_scope worker(m_worker_busy, m_worker_thread);
+
         Clear();
         ClearRoadCarve();
 
@@ -9276,7 +9690,7 @@ namespace spartan
             base_height,
             m_density,
             m_scale,
-            m_level_sea
+            GetSeaLevelLocal()
         );
 
         m_width        = base_width;
@@ -9395,11 +9809,26 @@ namespace spartan
         m_indices.clear();
         m_tile_vertices.clear();
         m_tile_indices.clear();
+        m_tile_offsets.clear();
         m_triangle_data.clear();
+        m_positions.clear();
         m_positions_seed.clear();
+        m_height_data.clear();
+        m_erosion_maps = TerrainErosionMaps();
         m_prop_mask_seed.clear();
         m_prop_instance_seed.clear();
         m_prop_entity_seed.clear();
+        m_spline_carve_bits.clear();
+        m_spline_carve_spline_bounds.clear();
+        m_spline_carve_dirty_ids.clear();
+        m_spline_carve_dirty_all = true;
+        m_spline_carve_x1        = -1;
+        m_spline_carve_z1        = -1;
+        m_height_samples         = 0;
+        m_vertex_count           = 0;
+        m_index_count            = 0;
+        m_triangle_count         = 0;
+        m_area_km2               = 0.0f;
         m_live_pad_active    = false;
         m_live_pad_dirty     = false;
         m_live_pad           = {};
