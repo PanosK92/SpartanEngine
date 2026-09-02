@@ -494,6 +494,14 @@ namespace spartan
                             // this drives BC3 compression below, otherwise BC1 would silently drop the alpha
                             texture_color->SetFlag(RHI_Texture_Transparent, true);
                         }
+                        else if (!texture_color->IsSemiTransparent())
+                        {
+                            SP_LOG_WARNING(
+                                "material '%s': colour map '%s' was compressed before the alpha mask could be merged, alpha testing is lost",
+                                material->GetObjectName().c_str(),
+                                texture_color->GetObjectName().c_str()
+                            );
+                        }
                     }
                 }
         
@@ -974,9 +982,11 @@ namespace spartan
 
                 // by path first since paths are unique, names like normal collide and procedural textures have no file behind them
                 shared_ptr<RHI_Texture> texture;
+                // defer the upload like SetTexture(path) does, an eager load compresses the colour map to bc1
+                // before pack_textures can merge the alpha mask into it, which silently drops alpha testing
                 if (!tex_path.empty() && FileSystem::Exists(tex_path))
                 {
-                    texture = ResourceCache::Load<RHI_Texture>(tex_path);
+                    texture = ResourceCache::Load<RHI_Texture>(tex_path, RHI_Texture_Srv | RHI_Texture_DeferUpload);
                 }
 
                 if (!texture && !tex_name.empty())
