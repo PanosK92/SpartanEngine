@@ -357,6 +357,8 @@ namespace spartan
         at(blend_states, Renderer_BlendState::Premultiplied) = make_shared<RHI_BlendState>(true, RHI_Blend::One,       RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
         at(blend_states, Renderer_BlendState::Additive)      = make_shared<RHI_BlendState>(true, RHI_Blend::One,       RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 1.0f);
         at(blend_states, Renderer_BlendState::Multiply)      = make_shared<RHI_BlendState>(true, RHI_Blend::Dest_Color, RHI_Blend::Zero,         RHI_Blend_Operation::Add, RHI_Blend::Zero, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
+        // surface overlays blend coverage into albedo while preserving the receiver's opaque alpha
+        at(blend_states, Renderer_BlendState::SurfaceAlpha)  = make_shared<RHI_BlendState>(true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::Zero, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
     }
 
     void Renderer::CreateSamplers()
@@ -1063,6 +1065,7 @@ namespace spartan
             // g-buffer
             { Renderer_Shader::gbuffer_v,                             RHI_Shader_Type::Vertex,  "g_buffer.hlsl",                              RHI_Vertex_Type::PosUvNorTan  },
             { Renderer_Shader::gbuffer_p,                             RHI_Shader_Type::Pixel,   "g_buffer.hlsl"                                                              },
+            { Renderer_Shader::skid_marks_p,                          RHI_Shader_Type::Pixel,   "skid_marks.hlsl"                                                            },
 
             // tessellation
             { Renderer_Shader::tessellation_h,                        RHI_Shader_Type::Hull,    "common_tessellation.hlsl"                                                   },

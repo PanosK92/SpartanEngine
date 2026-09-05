@@ -71,8 +71,9 @@ namespace spartan
 
         PxTransform to_px(const Vector3& pos, const Quaternion& rot)
         {
+            const Vector3 local = PhysicsWorld::ToPhysicsPosition(pos);
             return PxTransform(
-                PxVec3(pos.x, pos.y, pos.z),
+                PxVec3(local.x, local.y, local.z),
                 PxQuat(rot.x, rot.y, rot.z, rot.w)
             );
         }
@@ -80,7 +81,7 @@ namespace spartan
         Matrix matrix_from_px(const PxTransform& pose)
         {
             return Matrix(
-                Vector3(pose.p.x, pose.p.y, pose.p.z),
+                PhysicsWorld::ToWorldPosition(Vector3(pose.p.x, pose.p.y, pose.p.z)),
                 Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w),
                 Vector3::One
             );
@@ -319,7 +320,7 @@ namespace spartan
                     static_cast<const PxCapsuleGeometry&>(shapes[i]->getGeometry());
                 const PxTransform world = actor->getGlobalPose() * shapes[i]->getLocalPose();
                 draw_debug_capsule(
-                    Vector3(world.p.x, world.p.y, world.p.z),
+                    PhysicsWorld::ToWorldPosition(Vector3(world.p.x, world.p.y, world.p.z)),
                     Quaternion(world.q.x, world.q.y, world.q.z, world.q.w),
                     capsule.radius,
                     capsule.halfHeight,
@@ -1527,10 +1528,7 @@ namespace spartan
         Quaternion frame_rot;
         frame_rot.FromAxes(axis_x, axis_y, axis_z);
 
-        const PxTransform world_frame(
-            PxVec3(anchor.x, anchor.y, anchor.z),
-            PxQuat(frame_rot.x, frame_rot.y, frame_rot.z, frame_rot.w)
-        );
+        const PxTransform world_frame = to_px(anchor, frame_rot);
         const PxTransform frame_a = pose_a.transformInv(world_frame);
         const PxTransform frame_b = pose_b.transformInv(world_frame);
 
@@ -1832,11 +1830,7 @@ namespace spartan
             float weight = 1.0f;
             if (have_hit)
             {
-                Vector3 to_body(
-                    pose.p.x - hit_position.x,
-                    pose.p.y - hit_position.y,
-                    pose.p.z - hit_position.z
-                );
+                Vector3 to_body = PhysicsWorld::ToWorldPosition(Vector3(pose.p.x, pose.p.y, pose.p.z)) - hit_position;
                 const float distance = to_body.Length();
                 weight = distance < 0.01f
                     ? 1.0f
@@ -2018,7 +2012,7 @@ namespace spartan
             }
 
             const PxTransform pose = body.actor->getGlobalPose();
-            points.emplace_back(pose.p.x, pose.p.y, pose.p.z);
+            points.push_back(PhysicsWorld::ToWorldPosition(Vector3(pose.p.x, pose.p.y, pose.p.z)));
         }
 
         if (points.empty())
@@ -2168,11 +2162,7 @@ namespace spartan
                 }
 
                 const PxTransform pose = body.actor->getGlobalPose();
-                Vector3 to_body(
-                    pose.p.x - hit_position.x,
-                    pose.p.y - hit_position.y,
-                    pose.p.z - hit_position.z
-                );
+                Vector3 to_body = PhysicsWorld::ToWorldPosition(Vector3(pose.p.x, pose.p.y, pose.p.z)) - hit_position;
                 const float distance = to_body.Length();
                 const float weight = distance < 0.01f
                     ? 1.0f

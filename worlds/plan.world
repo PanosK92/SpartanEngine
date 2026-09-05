@@ -13,7 +13,7 @@
    <car_reset spawn_point_entity_id="2411005043703651745" />
    <prefab_override path="vehicle" position="2.64551 -0.421448 -0.131348" rotation="0.0049826 -0.000140607 -0.00081406 0.999987" scale="1 1 1">
     <script file_path="../worlds/tire_smoke.lua" Tick="" />
-    <skid_marks slip_threshold="0.349999994" min_segment_distance="0.0500000007" max_segments="512" opacity="0.75" z_offset="0.0199999996" uv_tiling="2" fade_distance="0.5" />
+    <skid_marks slip_threshold="0.35" min_segment_distance="0.05" max_segments="4096" opacity="0.75" z_offset="0.02" uv_tiling="1.25" fade_distance="1.1" />
     <Entity name="headlight_left" id="1000000000000000010" active="true" position="-0.736877 0.0115197 1.71746" rotation="0 0 0 1" scale="1 1 1">
      <light flags="5" light_type="2" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="0" range="85" angle="0.419999987" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="45" cloud_coverage="0.379999995" />
     </Entity>

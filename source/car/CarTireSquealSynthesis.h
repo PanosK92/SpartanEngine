@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdint>
 //==========================================
 
-// stick-slip squeal, a pitched carcass scream near 1 khz over filtered noise layers, fading in with slip severity
+// Procedural tire friction: scrub grows into narrow-band squeal as adhesion breaks.
 
 namespace tire_squeal_sound
 {
@@ -37,46 +37,7 @@ namespace tire_squeal_sound
     namespace tuning
     {
         constexpr int sample_rate = 48000;
-
-        // main screech noise band (hz), sits between the tone harmonics
-        constexpr float screech_freq_low     = 800.0f;
-        constexpr float screech_freq_high    = 1800.0f;
-
-        // body - modest low-mid weight, not enough to become windy
-        constexpr float body_freq_low        = 500.0f;
-        constexpr float body_freq_high       = 900.0f;
-
-        // matched to a real screech, two inharmonic carcass modes at ratio 1.25 with energy spread over 500-2500 hz
-        constexpr float tone_freq_base       = 480.0f;
-        constexpr float tone_freq_speed      = 80.0f;
-        constexpr float tone_freq_intensity  = 120.0f;
-        constexpr float tone_mode2_ratio     = 1.25f;
-        constexpr float tone_mode2_level     = 0.8f;
-        // asymmetric shaping strength, produces the even harmonics of the reference
-        constexpr float tone_asym            = 0.70f;
-        constexpr float tone_lowpass_hz      = 4500.0f;
-        // random pitch wobble (fraction of f0), fast flutter and deep slow wah swell
-        constexpr float tone_vibrato_depth   = 0.08f;
-        constexpr float tone_flutter_depth   = 0.50f;
-        constexpr float tone_wah_depth       = 0.85f;
-        // tone fades in over this intensity range, light slip stays noisy scrub
-        constexpr float tone_onset_low       = 0.25f;
-        constexpr float tone_onset_high      = 0.65f;
-        constexpr float tone_level           = 0.55f;
-
-        // layer levels, reference has no energy above 4 khz so no sibilance layer
-        constexpr float screech_level        = 0.22f;
-        constexpr float body_level           = 0.12f;
-
-        // screech distortion - warm multi-stage tanh, not crispy hard-clip
-        constexpr float screech_drive_min    = 3.0f;
-        constexpr float screech_drive_max    = 8.0f;
-
-        // parameter smoothing (hz)
-        constexpr float intensity_smoothing  = 10.0f;
-        constexpr float speed_smoothing      = 6.0f;
     }
-
     // state variable filter
     struct svf_filter
     {
@@ -232,278 +193,155 @@ namespace tire_squeal_sound
         bool  initialized    = false;
     };
 
+    // Several sliding contact regions share a harmonic stick/release waveform.
+    // Each moves independently in pitch and pressure, as in the measured skid
+    // references listed in tools/audio_tests/README.md. No recorded samples.
     class synthesizer
     {
     public:
         void initialize(int sample_rate = tuning::sample_rate)
         {
-            m_sample_rate = (float)sample_rate;
-
-            // screech band
-            m_screech_pre_bp.set_params(2000.0f, 1.8f, m_sample_rate);
-            m_screech_post_bp.set_params(2000.0f, 1.2f, m_sample_rate);
-
-            // body - single band, modest contribution
-            m_body_bp.set_params(700.0f, 1.0f, m_sample_rate);
-
-            // tone rolloff, the reference has no energy above 3-4 khz
-            m_tone_lp.set_params(tuning::tone_lowpass_hz, 0.7f, m_sample_rate);
-
-            // output filters
-            m_output_hp.set_params(350.0f, 0.7f, m_sample_rate);
-            m_output_lp.set_params(8500.0f, 0.7f, m_sample_rate);
-
-            // parameter smoothing
-            m_intensity_smooth.set_cutoff(tuning::intensity_smoothing, m_sample_rate);
-            m_speed_smooth.set_cutoff(tuning::speed_smoothing, m_sample_rate);
-
-            // tone modulation smoothing
-            m_vib_smooth.set_cutoff(8.0f, m_sample_rate);
-            m_flut_smooth.set_cutoff(20.0f, m_sample_rate);
-            m_wah_smooth.set_cutoff(2.5f, m_sample_rate);
-
+            m_sample_rate = static_cast<float>(std::clamp(sample_rate, 8000, 192000));
+            m_intensity_smooth.set_cutoff(5.0f, m_sample_rate);
+            m_speed_smooth.set_cutoff(4.0f, m_sample_rate);
+            for (int patch = 0; patch < 4; patch++)
+            {
+                m_pitch_smooth[patch].set_cutoff(7.0f, m_sample_rate);
+                m_pressure_smooth[patch].set_cutoff(35.0f, m_sample_rate);
+                m_jitter_smooth[patch].set_cutoff(180.0f, m_sample_rate);
+            }
+            m_body_bp.set_params(650.0f, 0.8f, m_sample_rate);
+            m_scrub_bp.set_params(2200.0f, 0.7f, m_sample_rate);
+            m_output_hp.set_params(380.0f, 0.7f, m_sample_rate);
+            m_output_lp.set_params(3300.0f, 0.7f, m_sample_rate);
             m_initialized = true;
-            m_debug.initialized = true;
+            reset();
         }
 
         void set_parameters(float intensity, float speed_normalized)
         {
-            m_target_intensity  = std::clamp(intensity, 0.0f, 1.0f);
-            m_target_speed_norm = std::clamp(speed_normalized, 0.0f, 1.0f);
+            m_target_intensity = std::isfinite(intensity) ? std::clamp(intensity, 0.0f, 1.0f) : 0.0f;
+            m_target_speed = std::isfinite(speed_normalized) ? std::clamp(speed_normalized, 0.0f, 1.0f) : 0.0f;
         }
 
         void generate(float* output_buffer, int num_samples, bool stereo = true)
         {
+            if (!output_buffer || num_samples <= 0) return;
             if (!m_initialized)
             {
-                int total = stereo ? num_samples * 2 : num_samples;
-                for (int i = 0; i < total; i++)
-                    output_buffer[i] = 0.0f;
+                std::fill(output_buffer, output_buffer + num_samples * (stereo ? 2 : 1), 0.0f);
                 return;
             }
-
-            float screech_sum = 0.0f, body_sum = 0.0f, tone_sum = 0.0f;
-            float output_sum = 0.0f, peak = 0.0f;
-
+            float tone_sum = 0, scrub_sum = 0, body_sum = 0, output_sum = 0, peak = 0;
             for (int i = 0; i < num_samples; i++)
             {
-                float intensity  = m_intensity_smooth.process(m_target_intensity);
-                float speed_norm = m_speed_smooth.process(m_target_speed_norm);
-
-                if (intensity < 0.005f)
+                float intensity = m_intensity_smooth.process(m_target_intensity);
+                float speed = m_speed_smooth.process(m_target_speed);
+                float tone = 0.0f;
+                constexpr float ratios[4] = { 0.93f, 1.02f, 1.13f, 1.39f };
+                constexpr float weights[4] = { 0.40f, 0.32f, 0.18f, 0.10f };
+                for (int patch = 0; patch < 4; patch++)
                 {
-                    if (stereo)
+                    if (--m_pitch_count[patch] <= 0)
                     {
-                        output_buffer[i * 2]     = 0.0f;
-                        output_buffer[i * 2 + 1] = 0.0f;
+                        m_pitch_target[patch] = m_noise.white() * 0.16f;
+                        m_pitch_count[patch] = static_cast<int>(m_sample_rate * (0.035f + (m_noise.white() + 1.0f) * 0.045f));
                     }
-                    else
+                    if (--m_pressure_count[patch] <= 0)
                     {
-                        output_buffer[i] = 0.0f;
+                        m_pressure_target[patch] = m_noise.white();
+                        m_pressure_count[patch] = static_cast<int>(m_sample_rate * (0.009f + (m_noise.white() + 1.0f) * 0.018f));
                     }
-                    continue;
+                    float drift = m_pitch_smooth[patch].process(m_pitch_target[patch]);
+                    float pressure = m_pressure_smooth[patch].process(m_pressure_target[patch]);
+                    float jitter = m_jitter_smooth[patch].process(m_noise.white());
+                    float frequency = (940.0f + 140.0f * intensity + 35.0f * speed) * ratios[patch] * (1.0f + drift + jitter * 0.09f);
+                    m_phase[patch] += TWO_PI * frequency / m_sample_rate;
+                    if (m_phase[patch] >= TWO_PI) m_phase[patch] -= TWO_PI;
+                    float phase = m_phase[patch];
+                    // Phase-linked harmonics form the asymmetric rubber release.
+                    // Their moving sidebands are missing from bandpass white noise.
+                    float release = sinf(phase);
+                    for (int harmonic = 2; harmonic <= 4; harmonic++)
+                    {
+                        constexpr float levels[3] = { 0.45f, 0.12f, 0.035f };
+                        float nyquist_fade = std::clamp((m_sample_rate * 0.47f - frequency * harmonic) / (m_sample_rate * 0.08f), 0.0f, 1.0f);
+                        release += sinf(phase * harmonic + 0.35f * (harmonic - 1)) * levels[harmonic - 2] * (1.0f + pressure * 0.4f) * nyquist_fade;
+                    }
+                    tone += release * weights[patch] * (0.75f + pressure * 0.35f);
                 }
-
-                float noise_w = m_noise.white();
-                float noise_p = m_noise.pink();
-
-                // noise, bandpass, warm tanh saturation, bandpass, hard clipping would sound dry and papery
-                float screech_freq = tuning::screech_freq_low +
-                    (tuning::screech_freq_high - tuning::screech_freq_low) * (speed_norm * 0.4f + intensity * 0.6f);
-                m_screech_pre_bp.set_params(screech_freq, 1.8f + intensity * 0.5f, m_sample_rate);
-                float screech = m_screech_pre_bp.bandpass(noise_w);
-
-                float drive = tuning::screech_drive_min +
-                    (tuning::screech_drive_max - tuning::screech_drive_min) * intensity;
-
-                // stage 1: moderate tanh saturation
-                screech = tanhf(screech * drive);
-
-                // stage 2: softer saturation pass to compress and thicken
-                screech = screech * 1.8f / (1.0f + fabsf(screech) * 0.6f);
-
-                // post-filter keeps the spectral energy focused
-                m_screech_post_bp.set_params(screech_freq * 1.05f, 1.0f, m_sample_rate);
-                screech = m_screech_post_bp.bandpass(screech);
-
-                // ---- body layer ----
-                // modest low-mid weight so it doesn't sound thin, but not enough to get windy
-                float body_freq = tuning::body_freq_low +
-                    (tuning::body_freq_high - tuning::body_freq_low) * speed_norm;
-                m_body_bp.set_params(body_freq, 1.0f, m_sample_rate);
-                float body = m_body_bp.bandpass(noise_p);
-                body = tanhf(body * (2.0f + intensity * 2.0f));
-
-                // ---- squeal tone layer ----
-                // random-step vibrato, fast flutter and deep slow wah, smoothed, keep the scream organic
-                if (--m_vib_countdown <= 0)
-                {
-                    m_vib_countdown = (int)(m_sample_rate * 0.07f);
-                    m_vib_target    = m_noise.white() * tuning::tone_vibrato_depth;
-                }
-                if (--m_flut_countdown <= 0)
-                {
-                    m_flut_countdown = (int)(m_sample_rate * 0.04f);
-                    m_flut_target    = 1.0f - (m_noise.white() * 0.5f + 0.5f) * tuning::tone_flutter_depth;
-                }
-                if (--m_wah_countdown <= 0)
-                {
-                    m_wah_countdown = (int)(m_sample_rate * 0.35f);
-                    m_wah_target    = 1.0f - (m_noise.white() * 0.5f + 0.5f) * tuning::tone_wah_depth;
-                }
-                float vibrato = m_vib_smooth.process(m_vib_target);
-                float flutter = m_flut_smooth.process(m_flut_target);
-                float wah     = m_wah_smooth.process(m_wah_target);
-
-                float tone_freq = (tuning::tone_freq_base + tuning::tone_freq_speed * speed_norm + tuning::tone_freq_intensity * intensity) * (1.0f + vibrato);
-                m_tone_phase += TWO_PI * tone_freq / m_sample_rate;
-                if (m_tone_phase >= TWO_PI)
-                {
-                    m_tone_phase -= TWO_PI;
-                }
-                m_tone_phase2 += TWO_PI * tone_freq * tuning::tone_mode2_ratio / m_sample_rate;
-                if (m_tone_phase2 >= TWO_PI)
-                {
-                    m_tone_phase2 -= TWO_PI;
-                }
-
-                // two inharmonic carcass modes, asymmetric waveshaping yields the full
-                // harmonic stack with the strong 2nd of the reference, s*s mean removed for dc
-                float s    = sinf(m_tone_phase) + tuning::tone_mode2_level * sinf(m_tone_phase2);
-                float tone = tanhf((s + tuning::tone_asym * (s * s - 0.5f)) * (1.0f + intensity * 2.6f));
-                tone = m_tone_lp.lowpass(tone) * flutter * wah;
-
-                // smoothstep fade-in with slip severity, light slip stays as noisy scrub
-                float onset = std::clamp((intensity - tuning::tone_onset_low) / (tuning::tone_onset_high - tuning::tone_onset_low), 0.0f, 1.0f);
+                float noise = m_noise.white();
+                float body = m_body_bp.bandpass(noise);
+                float scrub = m_scrub_bp.bandpass(noise);
+                float onset = std::clamp((intensity - 0.08f) / 0.55f, 0.0f, 1.0f);
                 onset = onset * onset * (3.0f - 2.0f * onset);
                 tone *= onset;
-
-                // ---- mix ----
-                float output = 0.0f;
-                output += tone    * tuning::tone_level;
-                output += screech * tuning::screech_level;
-                output += body    * tuning::body_level;
-
-                // debug accumulation
-                tone_sum    += tone * tone;
-                screech_sum += screech * screech;
-                body_sum    += body * body;
-
-                // amplitude envelope
-                float envelope = intensity * intensity;
-                output *= envelope;
-
-                // random micro-variation (not periodic)
-                output *= 0.88f + m_noise.white() * 0.12f;
-
-                // output processing
-                output = m_dc_blocker.process(output);
-                output = m_output_hp.highpass(output);
-
-                // final soft limiter
-                output = tanhf(output * 1.3f) * 0.85f;
-                output = m_output_lp.lowpass(output);
-
-                output *= 0.7f;
-
+                float mix = tone * 0.85f + scrub * (0.16f - onset * 0.05f) + body * 0.17f;
+                mix = m_output_lp.lowpass(m_output_hp.highpass(mix));
+                // One envelope in the synth; the source applies only the mix gain.
+                float output = tanhf(mix) * 0.55f * intensity;
+                if (intensity < 1e-5f) output = 0.0f;
+                tone_sum += tone * tone;
+                scrub_sum += scrub * scrub;
+                body_sum += body * body;
                 output_sum += output * output;
-                if (fabsf(output) > peak)
-                {
-                    peak = fabsf(output);
-                }
-
+                peak = std::max(peak, fabsf(output));
                 if (stereo)
                 {
-                    float stereo_diff = m_noise.white() * 0.02f;
-                    output_buffer[i * 2]     = output * (1.0f + stereo_diff);
-                    output_buffer[i * 2 + 1] = output * (1.0f - stereo_diff);
+                    // Position is supplied by the audio source, not sample-wise pan noise.
+                    output_buffer[i * 2] = output_buffer[i * 2 + 1] = output;
                 }
-                else
-                {
-                    output_buffer[i] = output;
-                }
+                else output_buffer[i] = output;
             }
-
-            // update debug data
-            float inv_n = 1.0f / (float)num_samples;
-            m_debug.intensity     = m_intensity_smooth.z1;
-            m_debug.speed_norm    = m_speed_smooth.z1;
-            m_debug.tone_level    = sqrtf(tone_sum * inv_n);
-            m_debug.screech_level = sqrtf(screech_sum * inv_n);
-            m_debug.body_level    = sqrtf(body_sum * inv_n);
-            m_debug.output_level  = sqrtf(output_sum * inv_n);
-            m_debug.output_peak   = peak;
+            float inv_n = 1.0f / static_cast<float>(num_samples);
+            m_debug.intensity = m_intensity_smooth.z1;
+            m_debug.speed_norm = m_speed_smooth.z1;
+            m_debug.tone_level = sqrtf(tone_sum * inv_n);
+            m_debug.screech_level = sqrtf(scrub_sum * inv_n);
+            m_debug.body_level = sqrtf(body_sum * inv_n);
+            m_debug.output_level = sqrtf(output_sum * inv_n);
+            m_debug.output_peak = peak;
         }
 
         void reset()
         {
-            m_screech_pre_bp.reset();
-            m_screech_post_bp.reset();
+            for (int patch = 0; patch < 4; patch++)
+            {
+                m_pitch_smooth[patch].reset();
+                m_pressure_smooth[patch].reset();
+                m_jitter_smooth[patch].reset();
+                m_phase[patch] = static_cast<float>(patch);
+                m_pitch_count[patch] = m_pressure_count[patch] = 0;
+                m_pitch_target[patch] = m_pressure_target[patch] = 0.0f;
+            }
             m_body_bp.reset();
+            m_scrub_bp.reset();
             m_output_hp.reset();
             m_output_lp.reset();
-            m_dc_blocker.reset();
             m_intensity_smooth.reset();
             m_speed_smooth.reset();
-            m_tone_lp.reset();
-            m_vib_smooth.reset();
-            m_flut_smooth.reset();
-            m_wah_smooth.reset();
-            m_tone_phase     = 0.0f;
-            m_tone_phase2    = 0.0f;
-            m_vib_target     = 0.0f;
-            m_vib_countdown  = 0;
-            m_flut_target    = 1.0f;
-            m_flut_countdown = 0;
-            m_wah_target     = 1.0f;
-            m_wah_countdown  = 0;
+            m_noise = noise_gen();
+            m_target_intensity = m_target_speed = 0.0f;
+            m_debug = debug_data();
+            m_debug.initialized = m_initialized;
         }
 
         bool is_initialized() const { return m_initialized; }
         const debug_data& get_debug() const { return m_debug; }
 
     private:
-        bool  m_initialized = false;
+        bool m_initialized = false;
         float m_sample_rate = tuning::sample_rate;
-
-        float m_target_intensity  = 0.0f;
-        float m_target_speed_norm = 0.0f;
-
-        // screech: noise -> bandpass -> saturation -> bandpass
-        svf_filter m_screech_pre_bp;
-        svf_filter m_screech_post_bp;
-
-        // body: pink noise -> bandpass -> saturation
-        svf_filter m_body_bp;
-
-        // output
-        svf_filter m_output_hp;
-        svf_filter m_output_lp;
-        dc_blocker m_dc_blocker;
-
-        // parameter smoothing
-        one_pole m_intensity_smooth;
-        one_pole m_speed_smooth;
-
-        // squeal tone oscillators with random vibrato, flutter and wah
-        float      m_tone_phase     = 0.0f;
-        float      m_tone_phase2    = 0.0f;
-        svf_filter m_tone_lp;
-        float      m_vib_target     = 0.0f;
-        int        m_vib_countdown  = 0;
-        one_pole   m_vib_smooth;
-        float      m_flut_target    = 1.0f;
-        int        m_flut_countdown = 0;
-        one_pole   m_flut_smooth;
-        float      m_wah_target     = 1.0f;
-        int        m_wah_countdown  = 0;
-        one_pole   m_wah_smooth;
-
+        float m_target_intensity = 0.0f;
+        float m_target_speed = 0.0f;
+        float m_phase[4] = {}, m_pitch_target[4] = {}, m_pressure_target[4] = {};
+        int m_pitch_count[4] = {}, m_pressure_count[4] = {};
+        one_pole m_pitch_smooth[4], m_pressure_smooth[4], m_jitter_smooth[4];
+        svf_filter m_body_bp, m_scrub_bp, m_output_hp, m_output_lp;
+        one_pole m_intensity_smooth, m_speed_smooth;
         noise_gen m_noise;
-
         debug_data m_debug;
     };
-
     inline synthesizer& get_synthesizer()
     {
         static synthesizer instance;

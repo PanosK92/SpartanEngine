@@ -22,8 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "pch.h"
 #include "Car.h"
+#include "../physics/PhysicsWorld.h"
 #include "CarHud.h"
 #include "CarSimulation.h"
+#include "CarDebug.h"
 #include "CarEngineSoundSynthesis.h"
 #include "CarTireSquealSynthesis.h"
 #include "../input/Input.h"
@@ -742,21 +744,6 @@ namespace spartan
             return true;
         }
 
-        float get_actor_spin(physx::PxRigidDynamic* actor, const physx::PxVec3& axis_hint)
-        {
-            if (!actor)
-            {
-                return 0.0f;
-            }
-            physx::PxVec3 axis = axis_hint;
-            if (axis.normalize() < 1e-4f)
-            {
-                axis = actor->getGlobalPose().q.rotate(physx::PxVec3(1.0f, 0.0f, 0.0f));
-            }
-            // angle from the actor orientation projected onto the spin axis, good enough for stripes
-            const physx::PxQuat q = actor->getGlobalPose().q;
-            return 2.0f * atanf(q.x / std::max(q.w, 1e-6f));
-        }
     }
 
     Car* Car::Create(const Config& config)
@@ -1248,7 +1235,7 @@ namespace spartan
         }
 
         auto from_px = [](const physx::PxVec3& value) { return math::Vector3(value.x, value.y, value.z); };
-        auto to_render = [&](const physx::PxVec3& value) { return physics->TransformVehiclePointToRender(from_px(value)); };
+        auto to_render = [&](const physx::PxVec3& value) { return physics->TransformVehiclePointToRender(PhysicsWorld::ToWorldPosition(from_px(value))); };
         if (m_skeleton_show_collision)
         {
             draw_skeleton_actor_shapes(body, skeleton_color_collision, to_render);
@@ -1326,7 +1313,9 @@ namespace spartan
             wheel_local[i] = vehicle_rotation.Conjugate() * (wheel_world[i] - vehicle_position);
             const float wheel_radius = config.wheel_radius_for(i);
             const float wheel_half_width = config.wheel_width_for(i) * 0.5f;
-            const physx::PxQuat query_rotation = corner.upright->getGlobalPose().q;
+            // Use the wheel actor, so bearing-axis error is visible instead of
+            // replacing the wheel plane with the upright's expected plane.
+            const physx::PxQuat query_rotation = wheel_pose.q;
             const physx::PxVec3 wheel_axis = query_rotation.rotate(physx::PxVec3(1.0f, 0.0f, 0.0f));
             const physx::PxVec3 wheel_radial_y = query_rotation.rotate(physx::PxVec3(0.0f, 1.0f, 0.0f));
             const physx::PxVec3 wheel_radial_z = query_rotation.rotate(physx::PxVec3(0.0f, 0.0f, 1.0f));
@@ -1397,19 +1386,15 @@ namespace spartan
             const bool is_front_wheel = i < 2;
             const float axle_brake_share = is_front_wheel ? preset.brake_bias_front : 1.0f - preset.brake_bias_front;
             const float wheel_radius_for_brake = config.wheel_radius_for(i);
-            float applied_brake_torque = fabsf(wheel.brake_torque);
-            if (!is_front_wheel)
-            {
-                applied_brake_torque += preset.handbrake_torque * simulation->get_handbrake();
-            }
+            const float applied_brake_torque = fabsf(wheel.force_debug.brake_torque);
             const float brake_reference = std::max(preset.brake_force * wheel_radius_for_brake * axle_brake_share * 0.5f + (!is_front_wheel ? preset.handbrake_torque : 0.0f), 1.0f);
             const float brake_actuation = std::clamp(applied_brake_torque / brake_reference, 0.0f, 1.0f);
             const float caliper_size = 0.050f + brake_actuation * 0.016f;
-            Renderer::DrawSphere(to_render(wheel_pose.p + wheel_radial_y * brake_radius * 0.72f + wheel_radial_z * brake_radius * 0.45f), caliper_size, 6, brake_color);
+            const physx::PxTransform upright_pose = corner.upright->getGlobalPose();
+            Renderer::DrawSphere(to_render(upright_pose.transform(physx::PxVec3(0, brake_radius * 0.72f, brake_radius * 0.45f))), caliper_size, 6, brake_color);
 
             // the upright box is sized from the ball joint spread, drawing a fixed length rod here
             // hid every geometry change the preset made to it
-            const physx::PxTransform upright_pose = corner.upright->getGlobalPose();
             draw_skeleton_actor_shapes(corner.upright, skeleton_color_suspension, to_render);
             draw_skeleton_joint(to_render(upright_pose.transform(corner.upright_shock_anchor)), skeleton_color_suspension);
 
@@ -1454,7 +1439,13 @@ namespace spartan
                 // outboard is always a bearing, inboard is a rubber bush unless the preset disabled it
                 if (member.pivot_is_bushing && member.pivot_joint)
                 {
-                    draw_skeleton_bushing(member.pivot_joint, start, end, preset.bushing_max_deflection);
+                    physx::PxTransform fixed, moving;
+                    if (::car::joint_world_frames(member.pivot_joint, fixed, moving))
+                    {
+                        draw_skeleton_bushing(member.pivot_joint, to_render(fixed.p), end, preset.bushing_max_deflection);
+                        Renderer::DrawLine(to_render(fixed.p), to_render(moving.p), skeleton_color_torque, skeleton_color_torque);
+                        draw_skeleton_joint(to_render(moving.p), member_color);
+                    }
                 }
                 else
                 {
@@ -1470,7 +1461,7 @@ namespace spartan
             const math::Vector3 shock_mid = lerp_skeleton(shock_top, shock_bottom, 0.48f);
             const float suspension_force = simulation->get_wheel_suspension_force(i);
             const float spring_load = std::clamp(fabsf(suspension_force) / std::max(preset.max_susp_force, 1.0f), 0.0f, 1.0f);
-            const float damper_velocity = fabsf(wheel.compression_velocity) * config.suspension_travel;
+            const float damper_velocity = fabsf(corner.shock_velocity);
             const float damper_load = std::clamp(damper_velocity / std::max(preset.max_damper_velocity, 0.1f), 0.0f, 1.0f);
             const Color spring_color = tint_skeleton_color(skeleton_color_suspension, spring_load, 0.45f);
             const Color damper_color = tint_skeleton_color(skeleton_color_suspension, damper_load, 0.25f);
@@ -1498,11 +1489,12 @@ namespace spartan
             // the shock carries three separate stages and only the first was ever drawn, so a car sitting
             // on its packers looked identical to one riding on its springs
             const float current_compression = corner.shock_rest_length - corner.shock_length;
-            if (current_compression > config.suspension_travel * preset.bump_stop_threshold)
+            const float shock_travel = config.suspension_travel * corner.design_motion_ratio;
+            if (current_compression > shock_travel * preset.bump_stop_threshold)
             {
                 Renderer::DrawSphere(shock_bottom, 0.065f, 8, skeleton_color_torque);
             }
-            if (current_compression > config.suspension_travel * preset.packer_threshold)
+            if (current_compression > shock_travel * preset.packer_threshold)
             {
                 Renderer::DrawSphere(shock_bottom, 0.088f, 9, skeleton_color_long_force);
             }
@@ -1550,12 +1542,14 @@ namespace spartan
             // the tread rows the contact model actually loaded, the stalk length is that row's share of
             // the load so an uneven patch from camber or a kerb edge is visible rather than inferred
             const int contact_rows = simulation->get_debug_contact_rows(i);
+            physx::PxVec3 normal_force(0);
             for (int row = 0; row < contact_rows; row++)
             {
                 physx::PxVec3 row_point;
                 physx::PxVec3 row_normal;
                 float row_load = 0.0f;
                 simulation->get_debug_contact_row(i, row, row_point, row_normal, row_load);
+                normal_force += row_normal * row_load;
                 const math::Vector3 row_base = to_render(row_point);
                 const math::Vector3 row_tip  = to_render(row_point + row_normal * (row_load * 0.00006f));
                 Renderer::DrawLine(row_base, row_tip, skeleton_color_contact, skeleton_color_contact);
@@ -1568,13 +1562,11 @@ namespace spartan
                 {
                     wheel_forward = upright_pose.q.rotate(physx::PxVec3(0.0f, 0.0f, 1.0f));
                 }
-                const physx::PxVec3 wheel_lateral = wheel.contact_normal.cross(wheel_forward).getNormalized();
-                const physx::PxVec3 normal_endpoint = wheel.contact_point + wheel.contact_normal * (wheel.tire_load * 0.00002f);
-                const physx::PxVec3 longitudinal_endpoint = wheel.contact_point + wheel_forward * wheel.longitudinal_force * 0.00002f;
-                const physx::PxVec3 lateral_endpoint = wheel.contact_point + wheel_lateral * wheel.lateral_force * 0.00002f;
-                const float rolling_resistance_force = preset.rolling_resistance * wheel.tire_load;
-                const float rolling_direction = -std::clamp(corner.wheel_body->getLinearVelocity().dot(wheel_forward) / 0.5f, -1.0f, 1.0f);
-                const physx::PxVec3 rolling_endpoint = wheel.contact_point + wheel_forward * rolling_direction * rolling_resistance_force * 0.00004f;
+                const physx::PxVec3 normal_endpoint = wheel.contact_point + normal_force * 0.00002f;
+                const auto& forces = wheel.force_debug;
+                const physx::PxVec3 longitudinal_endpoint = forces.tire_point + forces.longitudinal * 0.00002f;
+                const physx::PxVec3 lateral_endpoint = forces.tire_point + forces.lateral * 0.00002f;
+                const physx::PxVec3 rolling_endpoint = forces.rolling_point + forces.rolling * 0.00004f;
                 const math::Vector3 contact = to_render(wheel.contact_point);
                 Color contact_color = skeleton_color_contact;
                 if (wheel.contact_surface == ::car::surface_gravel)
@@ -1599,9 +1591,9 @@ namespace spartan
                 }
                 Renderer::DrawSphere(contact, 0.045f, 8, contact_color);
                 Renderer::DrawLine(contact, to_render(normal_endpoint), skeleton_color_contact, skeleton_color_contact);
-                Renderer::DrawLine(contact, to_render(longitudinal_endpoint), skeleton_color_long_force, skeleton_color_long_force);
-                Renderer::DrawLine(contact, to_render(lateral_endpoint), skeleton_color_tire_force, skeleton_color_tire_force);
-                Renderer::DrawLine(contact, to_render(rolling_endpoint), skeleton_color_aero, skeleton_color_aero);
+                Renderer::DrawLine(to_render(forces.tire_point), to_render(longitudinal_endpoint), skeleton_color_long_force, skeleton_color_long_force);
+                Renderer::DrawLine(to_render(forces.tire_point), to_render(lateral_endpoint), skeleton_color_tire_force, skeleton_color_tire_force);
+                Renderer::DrawLine(to_render(forces.rolling_point), to_render(rolling_endpoint), skeleton_color_aero, skeleton_color_aero);
                 // the trail comes from the simulation, recomputing it here drew the curve fit result
                 // even when the brush model was the one steering the car
                 const float trail = simulation->get_wheel_pneumatic_trail(i);
@@ -1617,6 +1609,26 @@ namespace spartan
                     Renderer::DrawLine(to_render(wheel.contact_point - wheel_forward * patch_half), to_render(wheel.contact_point + wheel_forward * patch_half), skeleton_color_contact, skeleton_color_contact);
                 }
                 Renderer::DrawSphere(to_render(wheel.contact_point - wheel_forward * trail), 0.018f, 5, skeleton_color_steering);
+            }
+        }
+
+        // Draw both solved anchors of joints that should coincide. Separate
+        // markers and an error colour expose loose bearings and disconnected links.
+        for (int i = 0; i < multibody.joint_count; ++i)
+        {
+            const physx::PxJoint* joint = multibody.joints[i];
+            if (!joint || (!joint->is<physx::PxSphericalJoint>() && !joint->is<physx::PxRevoluteJoint>() && !joint->is<physx::PxFixedJoint>())) continue;
+            physx::PxTransform a, b;
+            if (!::car::joint_world_frames(joint, a, b)) continue;
+            const bool separated = (a.p - b.p).magnitude() > 0.001f;
+            const Color& color = separated ? skeleton_color_torque : skeleton_color_suspension;
+            Renderer::DrawLine(to_render(a.p), to_render(b.p), color, color);
+            Renderer::DrawSphere(to_render(a.p), separated ? 0.024f : 0.012f, 5, color);
+            Renderer::DrawSphere(to_render(b.p), 0.012f, 5, skeleton_color_steering);
+            if (joint->is<physx::PxRevoluteJoint>())
+            {
+                Renderer::DrawLine(to_render(a.p), to_render(a.transform(physx::PxVec3(0.12f, 0, 0))), color, color);
+                Renderer::DrawLine(to_render(b.p), to_render(b.transform(physx::PxVec3(0.12f, 0, 0))), skeleton_color_wheel, skeleton_color_wheel);
             }
         }
 
@@ -1926,9 +1938,6 @@ namespace spartan
         };
         auto draw_spinning_capsule = [&](
             physx::PxRigidDynamic* actor,
-            float rotation,
-            float twist,
-            float radius_scale,
             const Color& color
         )
         {
@@ -1938,19 +1947,16 @@ namespace spartan
             }
             physx::PxVec3 start, end;
             float radius = 0.04f;
+            draw_skeleton_actor_shapes(actor, color, to_render);
             if (get_capsule_endpoints(actor, start, end, radius))
             {
-                draw_skeleton_shaft(
-                    to_render(start),
-                    to_render(end),
-                    radius * radius_scale,
-                    rotation,
-                    twist,
-                    color);
-            }
-            else
-            {
-                draw_skeleton_actor_shapes(actor, color, to_render);
+                physx::PxShape* shape = nullptr;
+                actor->getShapes(&shape, 1);
+                const physx::PxTransform pose = actor->getGlobalPose() * shape->getLocalPose();
+                const physx::PxVec3 radial = pose.q.rotate(physx::PxVec3(0, radius, 0));
+                // A material stripe follows the actual actor frame. No invented
+                // wheel-speed rotation, torque twist, or enlarged collision radius.
+                Renderer::DrawLine(to_render(start + radial), to_render(end + radial), skeleton_color_wheel, skeleton_color_wheel);
             }
         };
 
@@ -1989,18 +1995,7 @@ namespace spartan
                 {
                     continue;
                 }
-                float pinion_rotation = 0.0f;
-                if (driveline.differential[i])
-                {
-                    const float axle_local_z =
-                        body_pose.transformInv(driveline.differential[i]->getGlobalPose().p).z;
-                    const bool front_axle = axle_local_z > 0.0f;
-                    pinion_rotation = front_axle
-                        ? (simulation->get_wheel_rotation(0) + simulation->get_wheel_rotation(1)) * 0.5f * preset.final_drive
-                        : (simulation->get_wheel_rotation(2) + simulation->get_wheel_rotation(3)) * 0.5f * preset.final_drive;
-                }
-                const float prop_radius_scale = drivetrain_type == 2 ? 1.15f : 1.45f;
-                draw_spinning_capsule(prop, pinion_rotation, driveshaft_twist, prop_radius_scale, loaded_drivetrain_color);
+                draw_spinning_capsule(prop, loaded_drivetrain_color);
             }
 
             for (int i = 0; i < driveline.differential_count; i++)
@@ -2026,13 +2021,7 @@ namespace spartan
                     continue;
                 }
                 const Color shaft_color = wheel_drivetrain_color(wheel_index);
-                const float wheel_twist = simulation->get_wheel_state(wheel_index).drive_torque * 0.00005f;
-                draw_spinning_capsule(
-                    shaft,
-                    simulation->get_wheel_rotation(wheel_index),
-                    wheel_twist,
-                    1.2f,
-                    shaft_color);
+                draw_spinning_capsule(shaft, shaft_color);
 
                 physx::PxVec3 shaft_start, shaft_end;
                 float shaft_radius = 0.04f;
@@ -2045,12 +2034,12 @@ namespace spartan
 
             if (driveline.gearbox_output && driveline.axle_input)
             {
-                draw_skeleton_shaft(
+                // Reduced-model power flow between mounted flanges, not a
+                // physical shaft with the engine's scalar torsional deflection.
+                Renderer::DrawLine(
                     to_render(driveline.gearbox_output->getGlobalPose().p),
                     to_render(driveline.axle_input->getGlobalPose().p),
-                    0.018f + torque_load * 0.012f,
-                    get_actor_spin(driveline.gearbox_output, physx::PxVec3(0.0f)),
-                    driveshaft_twist,
+                    loaded_drivetrain_color,
                     loaded_drivetrain_color);
             }
         }
@@ -2240,15 +2229,6 @@ namespace spartan
 
         ConfigureCameraForView();
 
-        // play engine start sound
-        if (Entity* sound_start = m_vehicle_entity ? m_vehicle_entity->GetChildByName("sound_start") : nullptr)
-        {
-            if (AudioSource* audio = sound_start->GetComponent<AudioSource>())
-            {
-                audio->PlayClip();
-            }
-        }
-
         // play door sound
         if (Entity* sound_door = m_vehicle_entity ? m_vehicle_entity->GetChildByName("sound_door") : nullptr)
         {
@@ -2356,7 +2336,7 @@ namespace spartan
             }
         }
 
-        // stop engine sound
+        // Release both shared synth streams before another car can take ownership.
         if (Entity* sound_engine = m_vehicle_entity ? m_vehicle_entity->GetChildByName("sound_engine") : nullptr)
         {
             if (AudioSource* audio = sound_engine->GetComponent<AudioSource>())
@@ -2364,6 +2344,14 @@ namespace spartan
                 audio->StopSynthesis();
             }
         }
+        if (Entity* sound_tire = m_vehicle_entity ? m_vehicle_entity->GetChildByName("sound_tire_squeal") : nullptr)
+        {
+            if (AudioSource* audio = sound_tire->GetComponent<AudioSource>())
+            {
+                audio->StopSynthesis();
+            }
+        }
+        m_tire_squeal_volume = 0.0f;
 
         // play door sound
         if (
@@ -3348,18 +3336,6 @@ namespace spartan
             tire_squeal_sound::initialize(48000);
         });
 
-        // engine start (still uses a sample for the starter motor sound)
-        {
-            Entity* sound = World::CreateEntity();
-            sound->SetObjectName("sound_start");
-            sound->SetParent(parent_entity);
-
-            AudioSource* audio_source = sound->AddComponent<AudioSource>();
-            audio_source->SetAudioClip("project/music/cars/car_start.wav");
-            audio_source->SetLoop(false);
-            audio_source->SetPlayOnStart(false);
-        }
-
         // engine sound (synthesized)
         {
             Entity* sound = World::CreateEntity();
@@ -3808,11 +3784,6 @@ namespace spartan
                 }
             }
 
-            if (!audio_engine->IsPlaying())
-            {
-                audio_engine->StartSynthesis();
-            }
-
             const car::car_preset& preset = simulation->get_spec();
             float torque_normalized = std::clamp(
                 simulation->get_engine_output_torque() /
@@ -3852,6 +3823,12 @@ namespace spartan
             const float effort = std::max(throttle, load);
             float volume = (0.65f + rpm_normalized * 0.15f + effort * 0.2f) * engine_volume_scale;
             audio_engine->SetVolume(volume);
+            if (!audio_engine->IsPlaying())
+            {
+                // Install this car's spec and live controls before the stream is primed.
+                engine_sound::start();
+                audio_engine->StartSynthesis();
+            }
         }
         else if (!m_is_occupied && audio_engine && audio_engine->IsPlaying())
         {
@@ -3859,52 +3836,43 @@ namespace spartan
         }
 
         // tire squeal
-        if (audio_tire && physics)
+        if (audio_tire && physics && m_is_occupied)
         {
             float speed_kmh = physics->GetLinearVelocity().Length() * 3.6f;
 
-            float max_slip_angle = 0.0f;
-            float max_slip_ratio = 0.0f;
-            int grounded_count   = 0;
+            float target_intensity = 0.0f;
+            float contact_speed = 0.0f;
+            car::Simulation* simulation = physics->GetVehicleSimulation();
 
             for (int i = 0; i < 4; i++)
             {
                 WheelIndex wheel = static_cast<WheelIndex>(i);
                 if (physics->IsWheelGrounded(wheel))
                 {
-                    grounded_count++;
-                    max_slip_angle = std::max(max_slip_angle, fabsf(physics->GetWheelSlipAngle(wheel)));
-                    max_slip_ratio = std::max(max_slip_ratio, fabsf(physics->GetWheelSlipRatio(wheel)));
+                    float radius = simulation ? simulation->get_wheel_effective_radius(i) : 0.34f;
+                    float tread_speed = fabsf(physics->GetWheelAngularVelocity(wheel)) * radius;
+                    float rolling_speed = std::max(speed_kmh / 3.6f, tread_speed);
+                    float angle = fabsf(physics->GetWheelSlipAngle(wheel));
+                    float ratio = fabsf(physics->GetWheelSlipRatio(wheel));
+                    float lateral = std::clamp((angle - 0.09f) / 0.35f, 0.0f, 1.0f);
+                    float longitudinal = std::clamp((ratio - 0.12f) / 0.65f, 0.0f, 1.0f);
+                    float motion = std::clamp((rolling_speed - 0.7f) / 4.0f, 0.0f, 1.0f);
+                    float load = std::clamp(physics->GetWheelTireLoad(wheel) / 1500.0f, 0.0f, 1.0f);
+                    target_intensity = std::max(target_intensity, std::max(lateral, longitudinal) * motion * load);
+                    contact_speed = std::max(contact_speed, rolling_speed);
                 }
             }
 
-            const float slip_angle_threshold = 0.35f;
-            const float slip_ratio_threshold = 0.28f;
-            const float min_speed_for_squeal = 20.0f;
-
-            float target_intensity = 0.0f;
-            if (speed_kmh > min_speed_for_squeal && grounded_count > 0)
-            {
-                float slip_angle_excess = max_slip_angle - slip_angle_threshold;
-                float slip_ratio_excess = max_slip_ratio - slip_ratio_threshold;
-
-                if (slip_angle_excess > 0.0f || slip_ratio_excess > 0.0f)
-                {
-                    float slip_angle_intensity = std::clamp(slip_angle_excess * 1.5f, 0.0f, 1.0f);
-                    float slip_ratio_intensity = std::clamp(slip_ratio_excess * 1.8f, 0.0f, 1.0f);
-                    target_intensity = std::max(slip_angle_intensity, slip_ratio_intensity);
-                }
-            }
-
-            // smooth the intensity to avoid abrupt changes
-            float fade_rate = (target_intensity > m_tire_squeal_volume) ? 0.04f : 0.025f;
-            m_tire_squeal_volume += (target_intensity - m_tire_squeal_volume) * fade_rate;
+            // Frame-rate-independent release keeps the stream alive through the DSP tail.
+            float dt = std::max(0.0f, static_cast<float>(Timer::GetDeltaTimeSec()));
+            float fade_rate = 1.0f - expf(-dt / 0.12f);
+            m_tire_squeal_volume = std::max(target_intensity, m_tire_squeal_volume * (1.0f - fade_rate));
 
             // feed parameters into the synthesizer
-            float speed_normalized = std::clamp(speed_kmh / 200.0f, 0.0f, 1.0f);
-            tire_squeal_sound::set_parameters(m_tire_squeal_volume, speed_normalized);
+            float speed_normalized = std::clamp(contact_speed / 55.0f, 0.0f, 1.0f);
+            tire_squeal_sound::set_parameters(target_intensity, speed_normalized);
 
-            if (m_tire_squeal_volume > 0.02f)
+            if (m_tire_squeal_volume > 0.001f)
             {
                 if (!audio_tire->IsSynthesisMode())
                 {
@@ -3916,11 +3884,11 @@ namespace spartan
 
                 if (!audio_tire->IsPlaying())
                 {
+                    tire_squeal_sound::reset();
+                    tire_squeal_sound::set_parameters(target_intensity, speed_normalized);
+                    audio_tire->SetVolume(0.3f);
                     audio_tire->StartSynthesis();
                 }
-
-                const float max_volume = 0.25f;
-                audio_tire->SetVolume(m_tire_squeal_volume * max_volume);
             }
             else
             {
@@ -3930,6 +3898,11 @@ namespace spartan
                     audio_tire->StopSynthesis();
                 }
             }
+        }
+        else if (audio_tire && audio_tire->IsPlaying())
+        {
+            audio_tire->StopSynthesis();
+            m_tire_squeal_volume = 0.0f;
         }
     }
 

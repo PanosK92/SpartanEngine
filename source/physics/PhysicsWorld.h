@@ -99,5 +99,9 @@ namespace spartan
 
         // serializes every PxScene, PxRigidActor and PxShape access, recursive so nested helpers can re-enter
         static std::recursive_mutex& GetMutex();
+        static math::Vector3 GetOrigin();
+        static math::Vector3 ToPhysicsPosition(const math::Vector3& world_position);
+        static math::Vector3 ToWorldPosition(const math::Vector3& physics_position);
+        static void RebaseOrigin(const math::Vector3& world_focus);
     };
 }

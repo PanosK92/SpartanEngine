@@ -111,6 +111,7 @@ namespace spartan
 
         // fft water buoyancy, runs once per fixed physics step for every dynamic body
         static void TickBuoyancy();
+        static void ShiftOrigin(const math::Vector3& shift);
 
         // mass
         constexpr static inline float mass_from_volume = FLT_MAX;
@@ -354,7 +355,7 @@ namespace spartan
         void CreateBodies();
         void RebuildInstanceActors();
         void CreateCloth();
-        // builds overlapping low poly convex proxies for the vehicle chassis
+        // fits at most six convex hulls to the chassis surface, cached across instances
         void BuildChassisConvexShapes(Entity* chassis_entity, const std::vector<Entity*>& entities_to_exclude);
 
         float m_mass                   = 1.0f;

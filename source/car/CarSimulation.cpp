@@ -935,9 +935,12 @@ namespace car
             float rr_direction = -PxClamp(forward_speed / 0.5f, -1.0f, 1.0f);
             for (int i = 0; i < wheel_count; i++)
             {
+                wheels[i].force_debug.rolling = PxVec3(0);
                 if (wheels[i].grounded && wheels[i].tire_load > 0.0f)
                 {
                     PxVec3 rr_force = local_fwd * rr_direction * spec.rolling_resistance * rr_pressure_scale * wheels[i].tire_load;
+                    wheels[i].force_debug.rolling_point = wheels[i].contact_point;
+                    wheels[i].force_debug.rolling = rr_force;
                     PxRigidDynamic* rr_body = multibody.corners[i].wheel_body ? multibody.corners[i].wheel_body : body;
                     safe_add_force_at_pos(rr_body, rr_force, wheels[i].contact_point);
                     if (const PxRigidDynamic* ground_actor = wheels[i].contact_actor ? wheels[i].contact_actor->is<PxRigidDynamic>() : nullptr)
@@ -1112,7 +1115,7 @@ namespace car
             actor->attachShape(*shape);
             shape->release();
             PxRigidBodyExt::setMassAndUpdateInertia(*actor, PxMax(mass, 0.1f));
-            actor->setSolverIterationCounts(16, 4);
+            actor->setSolverIterationCounts(suspension_position_iterations, suspension_velocity_iterations);
             actor->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
             multibody.scene->addActor(*actor);
             register_multibody_actor(actor);
@@ -1313,8 +1316,13 @@ namespace car
             }
 
             PxVec3 center = (inner_front + inner_rear + outer) / 3.0f;
-            PxVec3 extents = PxVec3(PxMax(fabsf(outer.x - inner_front.x) * 0.5f, 0.03f), 0.018f, PxMax(fabsf(inner_front.z - inner_rear.z) * 0.5f, 0.03f));
-            PxRigidDynamic* arm = create_mechanism_actor(PxTransform(center), PxBoxGeometry(extents), mass);
+            // Dimension the mass proxy in chassis coordinates, then rotate it
+            // with the car. World X/Z changed both inertia and shape on rebuild.
+            const PxQuat chassis_rotation = body->getGlobalPose().q;
+            const PxVec3 lateral_span = chassis_rotation.rotateInv(outer - inner_front);
+            const PxVec3 pivot_span = chassis_rotation.rotateInv(inner_front - inner_rear);
+            PxVec3 extents = PxVec3(PxMax(fabsf(lateral_span.x) * 0.5f, 0.03f), 0.018f, PxMax(fabsf(pivot_span.z) * 0.5f, 0.03f));
+            PxRigidDynamic* arm = create_mechanism_actor(PxTransform(center, chassis_rotation), PxBoxGeometry(extents), mass);
             if (!arm)
             {
                 return false;
@@ -2526,7 +2534,7 @@ namespace car
             multibody.physics = physics;
             multibody.scene = scene;
             body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, false);
-            body->setSolverIterationCounts(16, 4);
+            body->setSolverIterationCounts(suspension_position_iterations, suspension_velocity_iterations);
 
             for (int i = 0; i < wheel_count; i++)
             {
@@ -2568,6 +2576,30 @@ namespace car
             return true;
     }
 
+
+    void Simulation::shift_origin(const PxVec3& shift)
+    {
+        scene_origin += shift;
+        previous_position -= shift;
+        aero_debug.position -= shift;
+        aero_debug.front_aero_pos -= shift;
+        aero_debug.rear_aero_pos -= shift;
+        aero_debug.side_aero_pos -= shift;
+        for (int i = 0; i < wheel_count; ++i)
+        {
+            auto& w = wheels[i];
+            w.contact_point -= shift;
+            w.hub_position -= shift;
+            w.force_debug.tire_point -= shift;
+            w.force_debug.rolling_point -= shift;
+            for (auto& row : w.contacts) row.point -= shift;
+            debug_suspension_top[i] -= shift;
+            debug_suspension_bottom[i] -= shift;
+            debug_sweep[i].origin -= shift;
+            debug_sweep[i].hit_point -= shift;
+            for (int row = 0; row < debug_sweep[i].row_count; ++row) debug_sweep[i].row_point[row] -= shift;
+        }
+    }
 
     bool Simulation::rebuild_multibody(bool preserve_motion )
     {
@@ -2712,6 +2744,7 @@ namespace car
                 wheels[i].net_torque = 0.0f;
                 wheels[i].drive_torque = 0.0f;
                 wheels[i].brake_torque = 0.0f;
+                wheels[i].force_debug = wheel_force_debug();
             }
             driveshaft_twist = 0.0f;
             axle_drive_torque = 0.0f;
@@ -2989,7 +3022,9 @@ namespace car
                 PxRigidDynamic* wheel_actor = multibody.corners[i].wheel_body;
                 PxTransform wheel_pose = wheel_actor ? wheel_actor->getGlobalPose() : PxTransform(pose.transform(wheel_offsets[i]), pose.q);
                 PxVec3 wheel_center = wheel_pose.p;
-                PxQuat query_rotation = multibody.corners[i].upright ? multibody.corners[i].upright->getGlobalPose().q : pose.q;
+                // The contact envelope belongs to the wheel body, including any
+                // bearing error; tire forces use this same axle orientation.
+                PxQuat query_rotation = wheel_pose.q;
                 PxVec3 wheel_axis = query_rotation.rotate(PxVec3(1.0f, 0.0f, 0.0f));
 
                 // the probes belong in the wheel plane, so they measure against the chassis down with
@@ -3680,8 +3715,10 @@ namespace car
         axle_drive_torque = driveshaft_torque + electric_axle;
         engine_brake_torque = driveshaft_torque * wheel_speed < 0 ? fabsf(driveshaft_torque) : 0;
         PxVec3 crank(spec.engine_crank_axis_x, spec.engine_crank_axis_y, spec.engine_crank_axis_z);
-        if (clutch > 0.05f)
-            safe_add_torque(body, body->getGlobalPose().q.rotate(crank.getNormalized()) * (-(ie * (engine_speed - initial_engine_speed) + ig * (gearbox_input_angular_velocity - initial_gearbox_speed)) / dt));
+        // The engine mounts react rotor acceleration even with an open clutch
+        // (neutral revs and shifts). Clutch state controls torque transmission,
+        // not conservation of the engine/chassis angular momentum.
+        safe_add_torque(body, body->getGlobalPose().q.rotate(crank.getNormalized()) * (-(ie * (engine_speed - initial_engine_speed) + ig * (gearbox_input_angular_velocity - initial_gearbox_speed)) / dt));
         safe_add_torque(body, body->getGlobalPose().q.rotate(PxVec3(1, 0, 0)) * -axle_drive_torque);
         apply_drive_torque(axle_drive_torque, dt);
     }
@@ -3927,6 +3964,8 @@ namespace car
             {
                 wheel& w = wheels[i];
                 w.brake_efficiency = get_brake_efficiency(w.brake_temp);
+                w.force_debug.longitudinal = w.force_debug.lateral = PxVec3(0);
+                w.force_debug.brake_torque = 0;
                 const char* wheel_name = wheel_names[i];
                 PxRigidDynamic* wheel_actor = multibody.corners[i].wheel_body;
                 PxVec3 wheel_axis = wheel_actor ? wheel_actor->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f)) : chassis_right;
@@ -3974,6 +4013,7 @@ namespace car
                     }
                     float free_torque = w.drive_torque + drag_torque;
                     float brake_signed = PxClamp(-(w.angular_velocity * wmoi / dt + free_torque), -w.brake_torque, w.brake_torque);
+                    w.force_debug.brake_torque = brake_signed;
                     w.net_torque = free_torque + brake_signed;
                     float final_spin = w.angular_velocity + w.net_torque * dt / wmoi;
                     float brake_work = fabsf(brake_signed * (w.angular_velocity + final_spin) * 0.5f) * dt;
@@ -4195,6 +4235,7 @@ namespace car
                 float slip_v = sum_slip_speed * substep_inverse;
                 float pacejka_weight = sum_weight * substep_inverse;
                 float mean_brake = sum_brake * substep_inverse;
+                w.force_debug.brake_torque = mean_brake;
                 float wheel_speed = omega * wr_eff;
                 w.tire_saturation = sum_saturation * substep_inverse;
                 w.contact_patch_length = patch_half_length * 2.0f;
@@ -4278,6 +4319,9 @@ namespace car
 
                 PxVec3 fpos = w.grounded ? w.contact_point : world_pos;
                 PxVec3 tire_force = wheel_lat * lat_f + wheel_fwd * long_f;
+                w.force_debug.tire_point = force_point;
+                w.force_debug.longitudinal = wheel_fwd * long_f;
+                w.force_debug.lateral = wheel_lat * lat_f;
                 // same body as the normal force (wheel), so the suspension carries the wrench
                 // chassis-at-patch skipped anti-squat and invented wheelie pitch / yaw couples
                 PxRigidDynamic* force_body = wheel_actor ? wheel_actor : body;

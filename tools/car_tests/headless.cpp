@@ -2,6 +2,7 @@
 #include <new>
 #include "pch.h"
 #include "car/CarSimulation.h"
+#include "physics/PhysicsSceneConfig.h"
 #include <filesystem>
 #include <stdexcept>
 
@@ -39,6 +40,9 @@ void check(bool condition, const char* message)
 #include "chassis.h"
 #include "handling.h"
 #include "calibration.h"
+#include "suspension.h"
+#include "assembly.h"
+#include "large_world.h"
 
 void regression_checks(car::Simulation& sim, PxPhysics* physics, PxRigidStatic* plane)
 {
@@ -214,6 +218,8 @@ int main(int argc, char** argv)
     try
     {
         if (argc > 1 && std::string(argv[1]) == "--tire-evaluate") return evaluate_calibration(argc, argv);
+        const bool suspension_only = argc > 1 && std::string(argv[1]) == "--suspension-check";
+        const bool large_world_only = argc > 1 && std::string(argv[1]) == "--large-world-check";
         if (argc > 6) validation_hull_path = argv[6];
         PxDefaultAllocator allocator;
         PxDefaultErrorCallback errors;
@@ -225,13 +231,27 @@ int main(int argc, char** argv)
         desc.gravity = PxVec3(0, -9.81f, 0);
         desc.cpuDispatcher = dispatcher;
         desc.filterShader = vehicle_filter;
-        desc.solverType = PxSolverType::eTGS;
-        desc.flags |= PxSceneFlag::eENABLE_CCD;
+        spartan::ConfigurePhysicsScene(desc);
+        if ((suspension_only || large_world_only) && argc > 3 && std::string(argv[3]) == "pgs") desc.solverType = PxSolverType::ePGS;
         PxScene* scene = physics->createScene(desc);
         PxMaterial* material = physics->createMaterial(0.8f, 0.7f, 0.0f);
         PxRigidStatic* plane = PxCreatePlane(*physics, PxPlane(0, 1, 0, 0), *material);
         scene->addActor(*plane);
+        const auto* suspension_definition = car::load_car_file("worlds/cars/ferrari_laferrari.car");
+        check(suspension_definition != nullptr, "suspension preset loads");
+        if (large_world_only)
         {
+            large_world_checks(physics, scene, suspension_definition->performance, argc > 2 ? std::stof(argv[2]) : 0.005f, !(argc > 3 && std::string(argv[3]) == "unrebased"));
+            scene->release(); material->release(); dispatcher->release(); PxCloseExtensions(); physics->release(); foundation->release();
+            return 0;
+        }
+        assembly_frame_checks(physics, scene, suspension_definition->performance);
+        engine_reaction_checks(physics, scene, suspension_definition->performance);
+        debug_geometry_checks(physics, scene, suspension_definition->performance);
+        suspension_checks(physics, scene, suspension_definition->performance, argc > 2 ? std::stof(argv[2]) : 0.005f);
+        if (!suspension_only)
+        {
+            large_world_checks(physics, scene, suspension_definition->performance, argc > 2 ? std::stof(argv[2]) : 0.005f);
             for (const auto& entry : std::filesystem::directory_iterator("worlds/cars"))
                 if (entry.path().extension() == ".car") check(car::load_car_file(entry.path().string()) != nullptr, "preset validation");
             printf("validated %zu car presets\n", car::definitions.size());
@@ -313,9 +333,12 @@ int main(int argc, char** argv)
                 simulation.get_wheel_temperature(0), simulation.get_wheel_temperature(2),
                 simulation.get_wheel_core_temp(2), simulation.get_wheel_brake_temp(0));
         }
-        const float handling_dt = argc > 2 ? std::stof(argv[2]) : 0.005f;
-        contact_checks(physics, scene, plane, car::load_car_file("worlds/cars/ferrari_laferrari.car")->performance, handling_dt);
-        handling_checks(physics, scene, plane, car::load_car_file("worlds/cars/ferrari_laferrari.car")->performance, handling_dt);
+        if (!suspension_only)
+        {
+            const float handling_dt = argc > 2 ? std::stof(argv[2]) : 0.005f;
+            contact_checks(physics, scene, plane, car::load_car_file("worlds/cars/ferrari_laferrari.car")->performance, handling_dt);
+            handling_checks(physics, scene, plane, car::load_car_file("worlds/cars/ferrari_laferrari.car")->performance, handling_dt);
+        }
         scene->release();
         material->release();
         dispatcher->release();

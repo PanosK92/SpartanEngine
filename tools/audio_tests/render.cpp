@@ -1,5 +1,6 @@
 // Offline DSP regression and listening fixture; uses the production synthesizer.
 #include "CarEngineSoundSynthesis.h"
+#include "CarTireSquealSynthesis.h"
 #include "../../source/io/pugixml.hpp"
 #include <algorithm>
 #include <chrono>
@@ -153,6 +154,95 @@ void regressions()
     std::puts("PASS: block independence, mono, reset, silence, rates, spec sensitivity, firing timing, finite samples");
 }
 
+std::vector<float> startup(engine_config c, int block, int sr = rate)
+{
+    synthesizer s; s.initialize(sr); s.configure(c);
+    s.set_parameters(c.idle_rpm, .03f, .12f, 0, false, 1, false, listener_view::chase);
+    s.start();
+    std::vector<float> samples(sr * 4);
+    for (int offset = 0; offset < sr * 2; offset += block)
+        s.generate(samples.data() + offset * 2, std::min(block, sr * 2 - offset));
+    check(fabsf(s.get_debug().rpm - c.idle_rpm) < 1, "startup must hand over to live RPM");
+    for (float x : samples) check(std::isfinite(x) && fabsf(x) < .98f, "startup headroom");
+    return samples;
+}
+
+std::vector<float> tire_fixture(int block, bool stereo = true, int sr = rate)
+{
+    tire_squeal_sound::synthesizer s; s.initialize(sr);
+    std::vector<float> samples(sr * 4 * (stereo ? 2 : 1));
+    for (int second = 0; second < 4; second++)
+    {
+        // Silence, gentle scrub, full slide, release.
+        s.set_parameters(second == 1 ? .2f : second == 2 ? 1.0f : 0.0f, .5f);
+        for (int offset = 0; offset < sr; offset += block)
+            s.generate(samples.data() + (second * sr + offset) * (stereo ? 2 : 1), std::min(block, sr - offset), stereo);
+    }
+    return samples;
+}
+
+void effect_regressions()
+{
+    engine_config c;
+    check(startup(c, 127) == startup(c, 1024), "startup callback independence");
+    synthesizer s; s.initialize(); s.configure(c);
+    s.set_parameters(c.idle_rpm, .03f, .12f, 0, false, 1, false, listener_view::chase);
+    std::vector<float> a(rate * 4), b(rate * 4);
+    s.start(); s.generate(a.data(), rate * 2);
+    s.start(); s.generate(b.data(), rate * 2);
+    check(a == b, "re-entry must restart the complete startup sequence");
+    auto heavier = c; heavier.crank_inertia *= 2; heavier.compression_ratio += 2;
+    check(startup(heavier, 127) != a, "startup responds to engine specs");
+    auto tire = tire_fixture(127), chunks = tire_fixture(1024), mono = tire_fixture(239, false);
+    check(tire == chunks, "tire callback independence");
+    double scrub = 0, squeal = 0;
+    for (int i = 0; i < rate * 4; i++)
+    {
+        float x = mono[i];
+        check(x == tire[i * 2] && x == tire[i * 2 + 1], "tire mono/stereo consistency");
+        check(std::isfinite(x) && fabsf(x) < .71f, "tire headroom");
+        if (i < rate || i > rate * 7 / 2) check(x == 0, "no slip and released tires must be silent");
+        if (i >= rate && i < rate * 2) scrub += x * x;
+        if (i >= rate * 2 && i < rate * 3) squeal += x * x;
+    }
+    check(scrub > 0 && squeal > scrub * 4, "slip must grow from scrub into squeal");
+    tire_squeal_sound::synthesizer t; t.initialize();
+    t.set_parameters(1, 1); t.generate(a.data(), rate * 2);
+    t.reset(); t.generate(a.data(), rate * 2);
+    check(rms(a) == 0, "tire reset clears stale slip and resonances");
+    t.set_parameters(std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity());
+    t.generate(a.data(), rate * 2);
+    check(rms(a) == 0, "invalid tire telemetry stays silent");
+    t.generate(nullptr, 0); t.generate(nullptr, -1);
+    for (int sr : { 8000, 44100, 96000, 192000 })
+    {
+        startup(c, 251, sr);
+        for (float x : tire_fixture(251, true, sr))
+            check(std::isfinite(x) && fabsf(x) < .71f, "tire supported sample rates");
+    }
+    std::puts("PASS: startup handover, restart, spec sensitivity; tire silence, slip response, reset, rates, headroom, block independence");
+}
+
+void save_tire_preview(const std::filesystem::path& path)
+{
+    auto samples = tire_fixture(256);
+    FILE* file = nullptr;
+    check(fopen_s(&file, path.string().c_str(), "wb") == 0, "open tire preview");
+    const uint32_t bytes = static_cast<uint32_t>(samples.size() * 2), riff = 36 + bytes;
+    const uint32_t fmt_size = 16, hz = rate, byte_rate = rate * 4;
+    const uint16_t pcm = 1, channels = 2, align = 4, bits = 16;
+    fwrite("RIFF", 1, 4, file); fwrite(&riff, 4, 1, file); fwrite("WAVEfmt ", 1, 8, file);
+    fwrite(&fmt_size, 4, 1, file); fwrite(&pcm, 2, 1, file); fwrite(&channels, 2, 1, file);
+    fwrite(&hz, 4, 1, file); fwrite(&byte_rate, 4, 1, file); fwrite(&align, 2, 1, file); fwrite(&bits, 2, 1, file);
+    fwrite("data", 1, 4, file); fwrite(&bytes, 4, 1, file);
+    for (float x : samples)
+    {
+        int16_t value = static_cast<int16_t>(std::clamp(x, -1.0f, 1.0f) * 32767);
+        fwrite(&value, 2, 1, file);
+    }
+    check(fclose(file) == 0, "save tire preview");
+}
+
 int main(int argc, char** argv)
 try
 {
@@ -160,12 +250,15 @@ try
     std::filesystem::create_directories(output);
 #ifndef AUDIO_BASELINE
     regressions();
+    effect_regressions();
+    save_tire_preview(output / "tire_scrub_slide_release.wav");
 #endif
     for (const auto& entry : std::filesystem::directory_iterator("worlds/cars"))
     {
         if (entry.path().extension() != ".car") continue;
         auto c = read_config(entry.path());
         synthesizer s; s.initialize(); s.configure(c);
+        s.start();
         constexpr int seconds = 12, block = 256;
         check(s.begin_dump(seconds), "start WAV capture");
         std::vector<float> buffer(block * 2);

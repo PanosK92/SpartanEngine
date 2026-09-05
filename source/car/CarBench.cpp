@@ -405,6 +405,8 @@ namespace spartan::car_bench
                 return;
             }
             sim->clear_force_accumulators();
+            const PxVec3 world = sim->get_body()->getGlobalPose().p + sim->get_scene_origin();
+            PhysicsWorld::RebaseOrigin(math::Vector3(world.x, world.y, world.z));
             sim->tick(dt);
             scene->simulate(dt);
             scene->fetchResults(true);
@@ -488,7 +490,7 @@ namespace spartan::car_bench
             {
                 return;
             }
-            PxVec3 pos = body->getGlobalPose().p;
+            PxVec3 pos = body->getGlobalPose().p + sim->get_scene_origin();
             float speed = body_speed(sim);
             float up_y = body->getGlobalPose().q.rotate(PxVec3(0.0f, 1.0f, 0.0f)).y;
             if (!g_runner.settle_anchored)
@@ -564,7 +566,7 @@ namespace spartan::car_bench
         void sample_hard_brake(car::Simulation* sim, float t)
         {
             if (g_runner.phase == 0) return;
-            PxVec3 position = sim->get_body()->getGlobalPose().p;
+            PxVec3 position = sim->get_body()->getGlobalPose().p + sim->get_scene_origin();
             g_runner.brake_distance += (position - g_runner.brake_previous).magnitude();
             g_runner.brake_previous = position;
             if (!g_runner.performance_recorded && body_speed(sim) * 3.6f < 0.5f)
@@ -671,7 +673,7 @@ namespace spartan::car_bench
                     if (g_runner.phase == 0)
                     {
                         sim->set_validation_speed(100.0f / 3.6f);
-                        g_runner.brake_previous = sim->get_body()->getGlobalPose().p;
+                        g_runner.brake_previous = sim->get_body()->getGlobalPose().p + sim->get_scene_origin();
                         g_runner.phase = 1;
                         g_runner.phase_time = 0.0f;
                     }
@@ -820,6 +822,7 @@ namespace spartan::car_bench
         }
 
         g_runner.start_pose = sim->get_body()->getGlobalPose();
+        g_runner.start_pose.p += sim->get_scene_origin();
         g_runner.start_position = math::Vector3(
             g_runner.start_pose.p.x,
             g_runner.start_pose.p.y,

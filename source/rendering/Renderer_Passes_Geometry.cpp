@@ -1154,7 +1154,7 @@ namespace spartan
             const Renderer_DrawCall& draw_call = m_draw_calls[i];
             Render* render                     = draw_call.render;
             Material* material                 = render->GetMaterial();
-            if (!material || !draw_call.camera_visible)
+            if (!material || !draw_call.camera_visible || material->GetProperty(MaterialProperty::IsSkidMark) != 0.0f)
             {
                 continue;
             }
@@ -1213,6 +1213,55 @@ namespace spartan
         RHI_CommandList::EndTimeblock();
     }
 
+    void Renderer::Pass_SkidMarks()
+    {
+        // Blend rubber into the receiver before lighting. Zero coverage is a true no-op,
+        // and crossing ribbons never replace depth, normals, velocity or material IDs.
+        RHI_PipelineState pso;
+        pso.name = "skid_marks";
+        pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::gbuffer_v);
+        pso.shaders[RHI_Shader_Type::Pixel] = GetShader(Renderer_Shader::skid_marks_p);
+        pso.blend_state = GetBlendState(Renderer_BlendState::SurfaceAlpha);
+        pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid);
+        pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
+        pso.primitive_topology = RHI_PrimitiveTopology::TriangleList;
+        pso.render_target_color_textures[0] = GetRenderTarget(Renderer_RenderTarget::gbuffer_color);
+        pso.render_target_depth_texture = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+        pso.clear_color[0] = rhi_color_load;
+        pso.clear_depth = rhi_depth_load;
+        pso.resolution_scale = true;
+        pso.is_multiview = Xr::IsSessionRunning() && Xr::GetStereoMode();
+
+        bool pipeline_set = false;
+        for (uint32_t i = 0; i < m_draw_call_count; ++i)
+        {
+            const Renderer_DrawCall& draw = m_draw_calls[i];
+            Render* render = draw.render;
+            Material* material = render->GetMaterial();
+            if (!material || !draw.camera_visible || material->GetProperty(MaterialProperty::IsSkidMark) == 0.0f)
+                continue;
+
+            if (!pipeline_set)
+            {
+                RHI_CommandList::BeginTimeblock("skid_marks");
+                RHI_CommandList::SetPipelineState(pso);
+                RHI_CommandList::SetCullMode(RHI_CullMode::None);
+                pipeline_set = true;
+            }
+            m_pcb_pass_cpu.draw_index = draw.draw_data_index;
+            m_pcb_pass_cpu.material_index = material->GetIndex();
+            m_pcb_pass_cpu.is_transparent = 0;
+            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+            RHI_Buffer* instances = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
+            RHI_CommandList::SetBufferVertex(render->GetVertexBuffer(), instances);
+            RHI_CommandList::SetBufferIndex(render->GetIndexBuffer());
+            RHI_CommandList::DrawIndexed(render->GetIndexCount(draw.lod_index), render->GetIndexOffset(draw.lod_index),
+                render->GetVertexOffset(draw.lod_index), render->GetGlobalInstanceOffset() + draw.instance_index, draw.instance_count);
+        }
+        if (pipeline_set)
+            RHI_CommandList::EndTimeblock();
+    }
+
     void Renderer::Pass_GBuffer(const bool is_transparent_pass)
     {
         RHI_CommandList::BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
@@ -1225,6 +1274,9 @@ namespace spartan
             }
 
             Pass_GBuffer_TessellatedAndTransparent(is_transparent_pass);
+
+            if (!is_transparent_pass)
+                Pass_SkidMarks();
 
             if (!is_transparent_pass)
             {

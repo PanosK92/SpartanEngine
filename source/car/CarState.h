@@ -140,6 +140,16 @@ namespace car
         float         friction_scale = 1.0f;
     };
 
+    struct wheel_force_debug
+    {
+        PxVec3 tire_point = PxVec3(0);
+        PxVec3 longitudinal = PxVec3(0);
+        PxVec3 lateral = PxVec3(0);
+        PxVec3 rolling_point = PxVec3(0);
+        PxVec3 rolling = PxVec3(0);
+        float brake_torque = 0; // signed torque actually applied, after the stopping clamp
+    };
+
     struct wheel
     {
         float        compression          = 0.0f;
@@ -159,6 +169,7 @@ namespace car
         float        net_torque           = 0.0f;
         float        drive_torque         = 0.0f;
         float        brake_torque         = 0.0f;
+        wheel_force_debug force_debug;
         tire_thermal thermal;
         float        brake_temp           = 30.0f;
         float        wear                 = 0.0f;
@@ -230,14 +241,14 @@ namespace car
     // what the contact model found this step, kept purely so the debug skeleton can draw it
     struct debug_sweep_data
     {
-        PxVec3 origin;
-        PxVec3 hit_point;
-        bool   hit;
+        PxVec3 origin = PxVec3(0);
+        PxVec3 hit_point = PxVec3(0);
+        bool   hit = false;
         // every tread row that found ground, so the drawn patch is the one the solver was given
         PxVec3 row_point[max_tire_probe_rows];
         PxVec3 row_normal[max_tire_probe_rows];
         float  row_load[max_tire_probe_rows];
-        int    row_count;
+        int    row_count = 0;
     };
 
     // suspension queries skip the chassis while mechanism shapes remain query disabled

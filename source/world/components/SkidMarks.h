@@ -69,6 +69,12 @@ namespace spartan
             float u_b          = 0.0f;
             float intensity_a  = 1.0f;
             float intensity_b  = 1.0f;
+            float fade_a       = 0.0f;
+            float fade_b       = 0.0f;
+            float birth_time   = 0.0f;
+            float age_fade     = 1.0f;
+            uint64_t sequence  = 0;
+            bool occupied     = false;
         };
 
         // per-wheel growing ribbon, each segment is an independent quad so gaps never bridge
@@ -81,26 +87,35 @@ namespace spartan
             uint32_t head_quad            = 0; // next ring slot to write
             bool active                   = false;
             bool has_edge                 = false;
-            bool has_smooth               = false;
             math::Vector3 anchor_center   = math::Vector3::Zero;
-            math::Vector3 smooth_center   = math::Vector3::Zero; // jitter filtered contact point
             math::Vector3 edge_left       = math::Vector3::Zero;
             math::Vector3 edge_right      = math::Vector3::Zero;
             float u_accum                 = 0.0f; // distance since the strip started
-            float height_offset           = 0.0f; // per strip lift, breaks coplanar z-fighting
             float intensity_edge          = 1.0f; // slip intensity baked into the last deposited edge
-            uint32_t strip_index          = 0;     // increments per strip for height layering
             std::vector<RecentQuad> recent;        // trailing quads pending end fade
+            std::vector<RecentQuad> quads;         // CPU mirror for gradual age/capacity retirement
+            uint64_t quad_sequence        = 0;
+            float intensity               = 0.0f;
+            math::Vector3 edge_normal     = math::Vector3::Up;
+            math::Vector3 last_travel     = math::Vector3::Zero;
+            bool stationary_patch        = false;
+            uint32_t patch_slots[2]      = {};
+            float patch_deposit          = 0.0f;
         };
 
         void EnsureInitialized();
         void BuildTrailMesh(WheelTrail& trail, const std::string& name);
         void DepositQuad(WheelTrail& trail, const math::Vector3& bl, const math::Vector3& br, float u_a, float u_b, float fade_a, float fade_b, float intensity_a, float intensity_b, const math::Vector3& normal, const math::Vector3& tangent);
         void FadeStripEnd(WheelTrail& trail);
+        void AgeTrail(WheelTrail& trail);
+        void DepositStationaryPatch(WheelTrail& trail, const math::Vector3& center, const math::Vector3& right,
+            const math::Vector3& normal, float half_width, float patch_length, float dt);
+        void ValidateSettings();
         void CreateMaterial();
 
         Physics* m_physics  = nullptr;
         bool m_initialized  = false;
+        float m_time = 0.0f;
         WheelTrail m_trails[4];
         std::shared_ptr<Material> m_material;
         std::shared_ptr<RHI_Texture> m_texture;
@@ -108,12 +123,11 @@ namespace spartan
         // tunables
         float m_slip_threshold       = 0.35f; // combined slip magnitude needed to start marking
         float m_min_segment_distance = 0.05f; // minimum travel before a new quad is laid
-        uint32_t m_max_segments      = 512;   // ring buffer size per wheel  
-        float m_opacity              = 0.92f; // material alpha, below 1 so the ribbon uses the transparent pass
+        uint32_t m_max_segments      = 4096;  // bounded ring buffer per wheel
+        float m_opacity              = 0.75f; // maximum deposited coverage
         float m_z_offset             = 0.02f; // lift above ground to avoid z-fighting
         float m_uv_tiling            = 1.25f; // texture repeats per meter along travel
         float m_fade_distance        = 1.1f;  // length of the alpha fade in and fade out at each strip end, in meters
-        float m_center_smoothing     = 0.5f;  // contact point low pass, kills lateral jitter
         float m_width_scale          = 0.86f; // contact patch is narrower than the physical tire
     };
 }

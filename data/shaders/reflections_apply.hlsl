@@ -245,15 +245,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float4 sample_material = tex_material.SampleLevel(samplers[sampler_point_clamp], uv, 0);
     MaterialParameters mat = material_parameters[uint(sample_normal.a)];
     bool is_water_pixel    = (mat.flags & uint(1U << 13)) != 0;
-    bool is_skid_pixel     = (mat.flags & uint(1U << 20)) != 0
-        || tex_velocity.SampleLevel(samplers[sampler_point_clamp], uv, 0).a > 0.5f;
-    bool is_glass_pixel    = alpha > 0.0f && alpha < 1.0f && !is_skid_pixel;
-
-    // stain already multiplied into the frame, skip glass refraction and extra specular
-    if (is_skid_pixel)
-    {
-        return;
-    }
+    bool is_glass_pixel    = alpha > 0.0f && alpha < 1.0f;
 
     if (!is_water_pixel && !is_glass_pixel)
     {

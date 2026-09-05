@@ -385,6 +385,7 @@ namespace spartan
         void Pass_IndirectCull_Refine();
         void Pass_Depth_Prepass();
         void Pass_GBuffer(const bool is_transparent_pass);
+        void Pass_SkidMarks();
         void Pass_GBuffer_Indirect();
         void Pass_GBuffer_TessellatedAndTransparent(const bool is_transparent_pass);
         void Pass_MeshletVisualize();

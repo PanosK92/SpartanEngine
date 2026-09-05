@@ -203,7 +203,9 @@ namespace car
     void Simulation::write_telemetry_wheel_state(int i)
     {
                 const wheel& w = wheels[i];
-                fprintf(file, "%.6g,%.6g,%.6g,%.6g,%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g", w.rotation, w.drive_torque, w.brake_torque, w.compression_velocity, static_cast<int>(w.contact_surface), w.contact_point.x, w.contact_point.y, w.contact_point.z, w.contact_normal.x, w.contact_normal.z, w.dynamic_toe, w.bump_steer, w.motion_ratio, w.shock_length, w.shock_rest_length, w.shock_velocity, w.thermal.surface[0], w.thermal.surface[1], w.thermal.surface[2], w.condition_grip, w.condition_stiffness, w.condition_relaxation, wheel_moi[i], spring_stiffness[i], spring_damping[i]);
+                fprintf(file, "%.6g,%.6g,%.6g,%.6g,%d,%.6f,%.6f,%.6f,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g", w.rotation, w.drive_torque, w.brake_torque, w.compression_velocity, static_cast<int>(w.contact_surface),
+                    static_cast<double>(w.contact_point.x) + scene_origin.x, static_cast<double>(w.contact_point.y) + scene_origin.y, static_cast<double>(w.contact_point.z) + scene_origin.z,
+                    w.contact_normal.x, w.contact_normal.z, w.dynamic_toe, w.bump_steer, w.motion_ratio, w.shock_length, w.shock_rest_length, w.shock_velocity, w.thermal.surface[0], w.thermal.surface[1], w.thermal.surface[2], w.condition_grip, w.condition_stiffness, w.condition_relaxation, wheel_moi[i], spring_stiffness[i], spring_damping[i]);
             }
 
 
@@ -247,7 +249,7 @@ namespace car
 
                 fprintf(file,
                     "%d,%.3f,%.4f,\"%s\","
-                    "%.2f,%.2f,%.2f,"
+                    "%.6f,%.6f,%.6f,"
                     "%.2f,%.3f,%.3f,"
                     "%.4f,%.2f,"
                     "%.3f,%.3f,"
@@ -285,7 +287,9 @@ namespace car
                     "%.6g,%.6g,%.6g,%.6g,%.6g,"
                     "%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,",
                     frame_counter, elapsed_time, dt, spec.name ? spec.name : "",
-                    pose.p.x, pose.p.y, pose.p.z,
+                    static_cast<double>(pose.p.x) + scene_origin.x,
+                    static_cast<double>(pose.p.y) + scene_origin.y,
+                    static_cast<double>(pose.p.z) + scene_origin.z,
                     speed_kmh, forward_speed, lateral_speed,
                     yaw_rate, body_slip_deg,
                     longitudinal_accel, lateral_accel,
@@ -357,7 +361,9 @@ namespace car
                 }
                 for (int i = 0; i < wheel_count; i++)
                 {
-                    fprintf(file, ",%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g", wheels[i].hub_position.x, wheels[i].hub_position.y, wheels[i].hub_position.z, wheels[i].hub_linear_velocity.x, wheels[i].hub_linear_velocity.y, wheels[i].hub_linear_velocity.z, wheels[i].hub_angular_velocity.x, wheels[i].hub_angular_velocity.y, wheels[i].hub_angular_velocity.z);
+                    fprintf(file, ",%.6f,%.6f,%.6f,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g",
+                        static_cast<double>(wheels[i].hub_position.x) + scene_origin.x, static_cast<double>(wheels[i].hub_position.y) + scene_origin.y, static_cast<double>(wheels[i].hub_position.z) + scene_origin.z,
+                        wheels[i].hub_linear_velocity.x, wheels[i].hub_linear_velocity.y, wheels[i].hub_linear_velocity.z, wheels[i].hub_angular_velocity.x, wheels[i].hub_angular_velocity.y, wheels[i].hub_angular_velocity.z);
                 }
                 PxMat33 inertia = get_assembled_inertia();
                 fprintf(file, ",2,%s,%u,%u,%.9g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%d,%.9g,%.9g",

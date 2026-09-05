@@ -22,6 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "pch.h"
 #include "SkidMarks.h"
+#include "SkidMarkDynamics.h"
+#include "../../core/Timer.h"
+#include "../../car/CarSimulation.h"
+#include "../../physics/PhysicsWorld.h"
 #include "Physics.h"
 #include "Render.h"
 #include "../Entity.h"
@@ -32,10 +36,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../rendering/Material.h"
 #include "../../rendering/Color.h"
 #include "../../rendering/GeometryBuffer.h"
-#include "../../resource/ResourceCache.h"
+
 #include "../../rhi/RHI_Texture.h"
-#include "../../file_system/FileSystem.h"
-#include "../../resource/import/ImageImporter.h"
+
+
 #include <cmath>
 SP_WARNINGS_OFF
 #include "../../io/pugixml.hpp"
@@ -49,9 +53,6 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    // half-size of the bounding box anchor, keeps the ribbons from ever being frustum culled
-    static const float aabb_extent = 5000.0f;
-
     // eased 0..1 ramp, removes the visible line where a linear gradient would start
     static float smooth_fade(float t)
     {
@@ -177,7 +178,7 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_z_offset, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_uv_tiling, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_fade_distance, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_smoothing, float);
+
     }
 
     SkidMarks::~SkidMarks()
@@ -187,145 +188,179 @@ namespace spartan
 
     void SkidMarks::Tick()
     {
-        // editor idle must not spawn trail entities from settle slip
-        if (!Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused))
+        if (Engine::IsFlagSet(EngineMode::Paused))
+            return;
+
+        ValidateSettings();
+        if (m_material && m_material->GetProperty(MaterialProperty::ColorA) != m_opacity)
+            m_material->SetProperty(MaterialProperty::ColorA, m_opacity);
+
+        const float dt = static_cast<float>(Timer::GetDeltaTimeSec());
+        m_time += std::min(dt, 0.25f);
+        for (WheelTrail& trail : m_trails)
+            AgeTrail(trail);
+
+        if (!Engine::IsFlagSet(EngineMode::Playing))
         {
+            for (WheelTrail& trail : m_trails)
+            {
+                FadeStripEnd(trail);
+                trail.active = false;
+                trail.intensity = 0.0f;
+            }
             return;
         }
-
         if (!m_physics)
-        {
             m_physics = GetEntity()->GetComponent<Physics>();
-        }
-
-        if (!m_physics || m_physics->GetBodyType() != BodyType::Vehicle)
-        {
+        if (!m_physics || m_physics->GetBodyType() != BodyType::Vehicle || !m_physics->GetVehicleSimulation())
             return;
-        }
 
-        // the car lateral axis gives a stable strip width direction, free of per-segment contact jitter
-        Vector3 car_right = GetEntity()->GetRight();
-
-        // once a strip is going, keep it alive down to a lower threshold so it does not fragment into
-        // many short strips that each pop in and out, which is what kills the fade
-        float end_threshold = m_slip_threshold * 0.6f;
-
-        for (int i = 0; i < 4; i++)
+        auto* simulation = m_physics->GetVehicleSimulation();
+        for (int i = 0; i < 4; ++i)
         {
-            WheelTrail& trail   = m_trails[i];
-            WheelIndex wheel    = static_cast<WheelIndex>(i);
-            bool grounded       = m_physics->IsWheelGrounded(wheel);
-            float slip          = m_physics->GetWheelSlipMagnitude(wheel);
-            bool skidding       = trail.active ? (slip >= end_threshold) : (slip >= m_slip_threshold);
-
-            // not skidding, fade out the tail and stop the strip so the next one starts fresh
-            if (!grounded || !skidding)
+            WheelTrail& trail = m_trails[i];
+            const WheelIndex wheel_index = static_cast<WheelIndex>(i);
+            const auto& wheel = simulation->get_wheel_state(i);
+            auto* wheel_body = simulation->get_multibody_state().corners[i].wheel_body;
+            auto stop = [&]()
             {
-                if (trail.active)
+                FadeStripEnd(trail);
+                trail.active = false;
+                trail.has_edge = false;
+                trail.intensity = 0.0f;
+                trail.last_travel = Vector3::Zero;
+                trail.stationary_patch = false;
+                trail.patch_deposit = 0.0f;
+            };
+            if (!wheel.grounded || !wheel_body || wheel.tire_load <= 80.0f || !wheel.contact_point.isFinite() || !wheel.contact_normal.isFinite())
+            {
+                stop();
+                continue;
+            }
+
+            const auto pose = wheel_body->getGlobalPose();
+            auto ground_velocity = physx::PxVec3(0.0f);
+            if (const auto* ground = wheel.contact_actor ? wheel.contact_actor->is<physx::PxRigidDynamic>() : nullptr)
+            {
+                const auto com = ground->getGlobalPose().transform(ground->getCMassLocalPose().p);
+                ground_velocity = ground->getLinearVelocity() + ground->getAngularVelocity().cross(wheel.contact_point - com);
+                // World-space ribbons cannot remain attached to a moving receiver.
+                if (ground_velocity.magnitudeSquared() > 0.0225f)
                 {
-                    FadeStripEnd(trail);
+                    stop();
+                    continue;
                 }
-                trail.active     = false;
-                trail.has_smooth = false;
+            }
+            auto normal_px = wheel.contact_normal.getNormalized();
+            const float radius = std::max(wheel.effective_radius, 0.1f);
+            auto patch_velocity = wheel_body->getLinearVelocity() - ground_velocity +
+                wheel_body->getAngularVelocity().cross(-normal_px * radius);
+            patch_velocity -= normal_px * patch_velocity.dot(normal_px);
+            const float sliding_speed = patch_velocity.magnitude();
+            float target = skid::demand(wheel.slip_ratio, wheel.slip_angle, sliding_speed, wheel.tire_load, m_slip_threshold, trail.active);
+            // Loose/wet surfaces retain less visible rubber than dry pavement.
+            const float surface_strength[] = { 1.0f, 0.95f, 0.50f, 0.45f, 0.30f, 0.04f };
+            target *= surface_strength[std::clamp(static_cast<int>(wheel.contact_surface), 0, 5)];
+            trail.intensity = skid::follow(trail.intensity, target, dt);
+            if (trail.intensity < 0.006f && target < 0.006f)
+            {
+                stop();
                 continue;
             }
 
-            // create trail meshes only when a tire actually starts skidding
-            if (!m_initialized)
+            Vector3 normal(normal_px.x, normal_px.y, normal_px.z);
+            // The physical hub is stable and includes steering/camber; the visual mesh has offsets.
+            const auto hub_px = pose.p - normal_px * (pose.p - wheel.contact_point).dot(normal_px);
+            Vector3 center = PhysicsWorld::ToWorldPosition(Vector3(hub_px.x, hub_px.y, hub_px.z));
+            const auto axle_px = pose.q.rotate(physx::PxVec3(1.0f, 0.0f, 0.0f));
+            Vector3 right(axle_px.x, axle_px.y, axle_px.z);
+            right -= normal * Vector3::Dot(right, normal);
+            if (!center.IsFinite() || right.LengthSquared() < 0.0001f)
             {
-                EnsureInitialized();
-            }
-
-            Vector3 normal  = m_physics->GetWheelContactNormal(wheel);
-            Vector3 contact = m_physics->GetWheelContactPoint(wheel);
-
-            // placed under the hub projected onto the contact plane, the sweep contact jitters laterally and zigzags the mark
-            Vector3 ground_point = contact;
-            if (Entity* wheel_entity = m_physics->GetWheelEntity(wheel))
-            {
-                Vector3 hub  = wheel_entity->GetPosition();
-                ground_point = hub - normal * Vector3::Dot(hub - contact, normal);
-            }
-
-            if (!trail.has_smooth)
-            {
-                trail.smooth_center = ground_point;
-                trail.has_smooth    = true;
-            }
-            else
-            {
-                trail.smooth_center = Vector3::Lerp(trail.smooth_center, ground_point, m_center_smoothing);
-            }
-
-            // strip width comes from the physical tire, scaled to the contact patch
-            float half_width = m_physics->GetWheelWidth(wheel) * 0.5f * m_width_scale;
-            if (half_width <= 0.0f)
-            {
-                continue;
-            }
-
-            // width runs along the tire axle, projected onto the ground plane
-            Vector3 right = car_right - normal * Vector3::Dot(car_right, normal);
-            if (right.Length() < 0.0001f)
-            {
+                stop();
                 continue;
             }
             right.Normalize();
-
-            float slip_intensity = 0.40f + 0.60f * smooth_fade((slip - end_threshold) / 0.70f);
-
-            // start (or restart) a strip, no quad is laid until the wheel has moved
+            // Preserve vertex ordering across right-side wheel orientation and reversing.
+            if (Vector3::Dot(right, GetEntity()->GetRight()) < 0.0f)
+                right = -right;
+            const float half_width = m_physics->GetWheelWidth(wheel_index) * 0.5f * m_width_scale;
+            if (half_width <= 0.0f)
+            {
+                stop();
+                continue;
+            }
+            center += normal * m_z_offset;
+            float distance = Vector3::Distance(center, trail.anchor_center);
+            Vector3 travel = distance > 0.0001f ? (center - trail.anchor_center) / distance : trail.last_travel;
+            const float speed = (wheel_body->getLinearVelocity() - ground_velocity).magnitude();
+            if (trail.active && (fabsf(Vector3::Dot(center - trail.anchor_center, normal)) > 0.18f ||
+                skid::discontinuity(distance, Vector3::Dot(normal, trail.edge_normal),
+                    trail.last_travel.LengthSquared() > 0.0f ? Vector3::Dot(travel, trail.last_travel) : 1.0f, dt, speed)))
+            {
+                stop();
+                continue;
+            }
+            if (!m_initialized)
+                EnsureInitialized();
             if (!trail.active)
             {
-                trail.active         = true;
-                trail.has_edge       = false;
-                trail.strip_index++;
-                trail.intensity_edge = slip_intensity;
-                // each wheel and each successive pass sits at a slightly different height so stacked marks do not z-fight
-                trail.height_offset = m_z_offset + i * 0.0012f + (trail.strip_index % 6) * 0.0025f;
-                trail.anchor_center = trail.smooth_center + normal * trail.height_offset;
-                trail.recent.clear();
+                trail.active = true;
+                trail.has_edge = true;
+                trail.anchor_center = center;
+                trail.edge_left = center - right * half_width;
+                trail.edge_right = center + right * half_width;
+                trail.edge_normal = normal;
+                trail.intensity_edge = 0.0f;
+                trail.u_accum = 0.0f;
                 continue;
             }
-
-            Vector3 center = trail.smooth_center + normal * trail.height_offset;
-
-            float d = Vector3::Distance(center, trail.anchor_center);
-            if (d < m_min_segment_distance)
+            if (distance < m_min_segment_distance)
             {
+                if (speed < 0.3f && target > 0.02f)
+                    DepositStationaryPatch(trail, center, right, normal, half_width, wheel.contact_patch_length, dt);
                 continue;
             }
+            trail.stationary_patch = false;
+            trail.patch_deposit = 0.0f;
 
-            Vector3 travel = (center - trail.anchor_center) / d;
+            // A sliding tire can travel sideways. Its ribbon cross-section must stay
+            // perpendicular to travel instead of collapsing along the spinning axle.
+            right = Vector3::Cross(normal, travel).Normalized();
+            if (Vector3::Dot(right, trail.edge_right - trail.edge_left) < 0.0f)
+                right = -right;
 
-            // full width from the first cross section, fade is alpha not a width taper
-            if (!trail.has_edge)
+            // Subdivide long frame steps so fades have enough vertices even at highway speed.
+            const int steps = std::clamp(static_cast<int>(std::ceil(distance / 0.15f)), 1, 64);
+            const Vector3 left_start = trail.edge_left;
+            const Vector3 right_start = trail.edge_right;
+            const Vector3 left_end = center - right * half_width;
+            const Vector3 right_end = center + right * half_width;
+            const Vector3 normal_start = trail.edge_normal;
+            const float intensity_start = trail.intensity_edge;
+            for (int step = 1; step <= steps; ++step)
             {
-                trail.u_accum        = 0.0f;
-                trail.edge_left      = trail.anchor_center - right * half_width;
-                trail.edge_right     = trail.anchor_center + right * half_width;
-                trail.intensity_edge = slip_intensity;
-                trail.has_edge       = true;
+                float t = static_cast<float>(step) / steps;
+                Vector3 left = Vector3::Lerp(left_start, left_end, t);
+                Vector3 right_edge = Vector3::Lerp(right_start, right_end, t);
+                Vector3 edge_normal = Vector3::Lerp(normal_start, normal, t).Normalized();
+                float intensity = intensity_start + (trail.intensity - intensity_start) * t;
+                float u_a = trail.u_accum;
+                float u_b = u_a + distance / steps;
+                float fade_a = smooth_fade(u_a / m_fade_distance) * trail.intensity_edge;
+                float fade_b = smooth_fade(u_b / m_fade_distance) * intensity;
+                DepositQuad(trail, left, right_edge, u_a, u_b, fade_a, fade_b, trail.intensity_edge, intensity, edge_normal, travel);
+                trail.edge_left = left;
+                trail.edge_right = right_edge;
+                trail.edge_normal = edge_normal;
+                trail.intensity_edge = intensity;
+                trail.u_accum = u_b;
             }
-
-            Vector3 b_left  = center - right * half_width;
-            Vector3 b_right = center + right * half_width;
-            float u_a       = trail.u_accum;
-            float u_b       = trail.u_accum + d;
-            float fade_a    = smooth_fade(u_a / m_fade_distance) * trail.intensity_edge;
-            float fade_b    = smooth_fade(u_b / m_fade_distance) * slip_intensity;
-
-            DepositQuad(trail, b_left, b_right, u_a, u_b, fade_a, fade_b, trail.intensity_edge, slip_intensity, normal, travel);
-
-            // advance, the new edge becomes the start of the next quad for seamless continuity
-            trail.edge_left      = b_left;
-            trail.edge_right     = b_right;
-            trail.u_accum       += d;
-            trail.anchor_center  = center;
-            trail.intensity_edge = slip_intensity;
+            trail.anchor_center = center;
+            trail.last_travel = travel;
+            AgeTrail(trail);
         }
     }
-
     void SkidMarks::EnsureInitialized()
     {
         m_initialized = true;
@@ -342,11 +377,12 @@ namespace spartan
 
     void SkidMarks::BuildTrailMesh(WheelTrail& trail, const string& name)
     {
-        trail.capacity_quads = m_max_segments;
+        trail.capacity_quads = std::clamp(m_max_segments, 32u, 16384u);
         trail.head_quad      = 0;
+        trail.quads.resize(trail.capacity_quads);
 
         uint32_t quad_count   = trail.capacity_quads;
-        uint32_t vertex_count = quad_count * 4 + 2; // +2 anchors for a large, never-culled bounding box
+        uint32_t vertex_count = quad_count * 4;
         uint32_t index_count  = quad_count * 6;
 
         vector<RHI_Vertex_PosTexNorTan> vertices(vertex_count);
@@ -363,10 +399,6 @@ namespace spartan
             indices[q * 6 + 4] = base + 2;
             indices[q * 6 + 5] = base + 3;
         }
-
-        // anchors are never referenced by an index, they only stretch the bounding box
-        vertices[vertex_count - 2].set_position(Vector3( aabb_extent,  aabb_extent,  aabb_extent));
-        vertices[vertex_count - 1].set_position(Vector3(-aabb_extent, -aabb_extent, -aabb_extent));
 
         trail.mesh = make_shared<Mesh>();
         trail.mesh->SetObjectName(name);
@@ -394,8 +426,10 @@ namespace spartan
         uint32_t slot   = trail.head_quad % trail.capacity_quads;
         uint32_t offset = trail.global_vertex_offset + slot * 4;
 
-        float uv_a = u_a * m_uv_tiling;
-        float uv_b = u_b * m_uv_tiling;
+        // Half-float UVs otherwise lose the tread pattern on long uninterrupted skids.
+        const float uv_origin = floorf(u_a * m_uv_tiling / 32.0f) * 32.0f;
+        float uv_a = u_a * m_uv_tiling - uv_origin;
+        float uv_b = u_b * m_uv_tiling - uv_origin;
 
         // u tiles along travel, v spans the tire, fade lives in the tangent uint
         RecentQuad rq;
@@ -404,8 +438,13 @@ namespace spartan
         rq.u_b          = u_b;
         rq.intensity_a  = intensity_a;
         rq.intensity_b  = intensity_b;
-        rq.verts[0]     = RHI_Vertex_PosTexNorTan(trail.edge_left,  Vector2(uv_a, 0.0f), normal, tangent);
-        rq.verts[1]     = RHI_Vertex_PosTexNorTan(trail.edge_right, Vector2(uv_a, 1.0f), normal, tangent);
+        rq.fade_a       = fade_a;
+        rq.fade_b       = fade_b;
+        rq.birth_time   = m_time;
+        rq.sequence     = ++trail.quad_sequence;
+        rq.occupied     = true;
+        rq.verts[0]     = RHI_Vertex_PosTexNorTan(trail.edge_left,  Vector2(uv_a, 0.0f), trail.edge_normal, tangent);
+        rq.verts[1]     = RHI_Vertex_PosTexNorTan(trail.edge_right, Vector2(uv_a, 1.0f), trail.edge_normal, tangent);
         rq.verts[2]     = RHI_Vertex_PosTexNorTan(bl,               Vector2(uv_b, 0.0f), normal, tangent);
         rq.verts[3]     = RHI_Vertex_PosTexNorTan(br,               Vector2(uv_b, 1.0f), normal, tangent);
         pack_skid_fade(rq.verts[0], fade_a);
@@ -414,15 +453,17 @@ namespace spartan
         pack_skid_fade(rq.verts[3], fade_b);
 
         GeometryBuffer::UpdateVertices(rq.verts, offset, 4);
+        trail.quads[slot] = rq;
         trail.head_quad = (trail.head_quad + 1) % trail.capacity_quads;
 
         // keep enough trailing quads to cover the fade distance, plus margin for larger segments
-        uint32_t tail_quads = static_cast<uint32_t>(m_fade_distance / m_min_segment_distance) + 3;
-        trail.recent.push_back(rq);
-        if (trail.recent.size() > tail_quads)
+        // Remove records as soon as their slot is reused; an end fade must never
+        // resurrect old geometry over a newer strip after a ring-buffer wrap.
+        std::erase_if(trail.recent, [&](const RecentQuad& recent)
         {
-            trail.recent.erase(trail.recent.begin());
-        }
+            return recent.slot == slot || u_b - recent.u_b > m_fade_distance;
+        });
+        trail.recent.push_back(rq);
     }
 
     void SkidMarks::FadeStripEnd(WheelTrail& trail)
@@ -438,6 +479,13 @@ namespace spartan
         {
             float fade_a = smooth_fade(rq.u_a / m_fade_distance) * smooth_fade((u_end - rq.u_a) / m_fade_distance) * rq.intensity_a;
             float fade_b = smooth_fade(rq.u_b / m_fade_distance) * smooth_fade((u_end - rq.u_b) / m_fade_distance) * rq.intensity_b;
+            RecentQuad& stored = trail.quads[rq.slot];
+            if (stored.sequence != rq.sequence)
+                continue;
+            stored.fade_a = fade_a;
+            stored.fade_b = fade_b;
+            fade_a *= stored.age_fade;
+            fade_b *= stored.age_fade;
             pack_skid_fade(rq.verts[0], fade_a);
             pack_skid_fade(rq.verts[1], fade_a);
             pack_skid_fade(rq.verts[2], fade_b);
@@ -448,29 +496,90 @@ namespace spartan
         trail.recent.clear();
     }
 
+    void SkidMarks::AgeTrail(WheelTrail& trail)
+    {
+        BoundingBox bounds;
+        bool has_bounds = false;
+        for (RecentQuad& quad : trail.quads)
+        {
+            if (!quad.occupied)
+                continue;
+            bounds.Merge(BoundingBox(quad.verts, 4));
+            has_bounds = true;
+            const float age = m_time - quad.birth_time;
+            const float remaining = static_cast<float>(trail.capacity_quads - (trail.quad_sequence - quad.sequence));
+            const float fade = skid::retirement(age, remaining);
+            if (fabsf(fade - quad.age_fade) < 0.001f && fade != 0.0f)
+                continue;
+            pack_skid_fade(quad.verts[0], quad.fade_a * fade);
+            pack_skid_fade(quad.verts[1], quad.fade_a * fade);
+            pack_skid_fade(quad.verts[2], quad.fade_b * fade);
+            pack_skid_fade(quad.verts[3], quad.fade_b * fade);
+            GeometryBuffer::UpdateVertices(quad.verts, trail.global_vertex_offset + quad.slot * 4, 4);
+            quad.age_fade = fade;
+            if (fade == 0.0f)
+                quad.occupied = false;
+        }
+        // The old fixed +/-5 km bounds could cull marks at the player's 6 km spawn.
+        // Track the live geometry so culling works anywhere, including after origin shifts.
+        if (trail.entity && has_bounds)
+            trail.entity->GetComponent<Render>()->SetBoundingBoxOverride(bounds);
+    }
+
+    void SkidMarks::DepositStationaryPatch(WheelTrail& trail, const Vector3& center, const Vector3& right,
+        const Vector3& normal, float half_width, float patch_length, float dt)
+    {
+        // A stationary burnout deposits into one footprint, rather than adding a
+        // stack of coplanar quads every frame or waiting for the car to move.
+        if (!trail.stationary_patch)
+        {
+            const Vector3 forward = Vector3::Cross(right, normal).Normalized();
+            const float half_length = std::clamp(patch_length * 0.5f, 0.10f, 0.22f);
+            const Vector3 saved_left = trail.edge_left;
+            const Vector3 saved_right = trail.edge_right;
+            trail.edge_left = center - forward * half_length - right * half_width;
+            trail.edge_right = center - forward * half_length + right * half_width;
+            for (int i = 0; i < 2; ++i)
+            {
+                Vector3 end = center + forward * (i == 0 ? 0.0f : half_length);
+                trail.patch_slots[i] = trail.head_quad;
+                DepositQuad(trail, end - right * half_width, end + right * half_width,
+                    i * half_length, (i + 1) * half_length, 0, 0, 0, 0, normal, forward);
+                trail.edge_left = end - right * half_width;
+                trail.edge_right = end + right * half_width;
+            }
+            trail.edge_left = saved_left;
+            trail.edge_right = saved_right;
+            trail.recent.clear(); // the footprint already has feathered ends
+            trail.stationary_patch = true;
+        }
+        trail.patch_deposit = std::min(1.0f, trail.patch_deposit + trail.intensity * dt * 1.5f);
+        for (int i = 0; i < 2; ++i)
+        {
+            RecentQuad& quad = trail.quads[trail.patch_slots[i]];
+            quad.fade_a = i == 0 ? 0.0f : trail.patch_deposit;
+            quad.fade_b = i == 0 ? trail.patch_deposit : 0.0f;
+            quad.birth_time = m_time;
+            quad.age_fade = -1.0f; // force the changed coverage onto the GPU
+            quad.occupied = true;
+        }
+        AgeTrail(trail);
+    }
+
     void SkidMarks::CreateMaterial()
     {
-        const string texture_path = string(ResourceCache::GetProjectDirectory()) + "materials/skid_marks/stain.png";
-        if (!FileSystem::Exists(texture_path))
-        {
-            const uint32_t size = 256;
-            vector<uint8_t> pixels;
-            generate_skid_texture_rgba(pixels, size, size);
-            FileSystem::CreateDirectory_(FileSystem::GetDirectoryFromFilePath(texture_path));
-            ImageImporter::SaveSdrRgba8(texture_path, size, size, pixels.data());
-        }
-
-        if (FileSystem::Exists(texture_path))
-        {
-            m_texture = ResourceCache::Load<RHI_Texture>(texture_path);
-        }
-
-        if (m_texture)
-        {
-            // keep alpha for the stain mask, bc1 would drop it and leave a solid quad
-            m_texture->SetFlag(RHI_Texture_Transparent, true);
-        }
-
+        // Generated from code on each material creation: no stale PNG/cache can silently
+        // replace the alpha mask. Upload RGBA8 explicitly, with its mip chain and alpha intact.
+        constexpr uint32_t size = 256;
+        vector<uint8_t> pixels;
+        generate_skid_texture_rgba(pixels, size, size);
+        vector<RHI_Texture_Slice> slices(1);
+        slices[0].mips.resize(1);
+        slices[0].mips[0].bytes.resize(pixels.size());
+        memcpy(slices[0].mips[0].bytes.data(), pixels.data(), pixels.size());
+        m_texture = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, size, size, 1, 1,
+            RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv | RHI_Texture_Transparent,
+            "skid_rubber_mask", std::move(slices));
         m_material = make_shared<Material>();
         m_material->SetPersistent(false);
         m_material->SetResourceName("skidmarks" + string(EXTENSION_MATERIAL));
@@ -503,7 +612,27 @@ namespace spartan
                 World::RemoveEntity(m_trails[i].entity);
                 m_trails[i].entity = nullptr;
             }
+            m_trails[i] = WheelTrail{};
         }
+        m_initialized = false;
+        m_physics = nullptr;
+        m_material.reset();
+        m_texture.reset();
+    }
+
+    void SkidMarks::ValidateSettings()
+    {
+        auto finite_clamp = [](float value, float fallback, float low, float high)
+        {
+            return std::clamp(std::isfinite(value) ? value : fallback, low, high);
+        };
+        m_slip_threshold = finite_clamp(m_slip_threshold, 0.35f, 0.05f, 2.0f);
+        m_min_segment_distance = finite_clamp(m_min_segment_distance, 0.05f, 0.02f, 0.25f);
+        m_opacity = finite_clamp(m_opacity, 0.75f, 0.0f, 0.99f);
+        m_z_offset = finite_clamp(m_z_offset, 0.02f, 0.005f, 0.04f);
+        m_uv_tiling = finite_clamp(m_uv_tiling, 1.25f, 0.1f, 8.0f);
+        m_fade_distance = finite_clamp(m_fade_distance, 1.1f, 0.15f, 5.0f);
+        m_max_segments = std::clamp(m_max_segments, 32u, 16384u);
     }
 
     void SkidMarks::Save(pugi::xml_node& node)
@@ -521,10 +650,11 @@ namespace spartan
     {
         m_slip_threshold       = node.attribute("slip_threshold").as_float(0.35f);
         m_min_segment_distance = node.attribute("min_segment_distance").as_float(0.05f);
-        m_max_segments         = node.attribute("max_segments").as_uint(512);
-        m_opacity              = node.attribute("opacity").as_float(0.92f);
+        m_max_segments         = node.attribute("max_segments").as_uint(4096);
+        m_opacity              = node.attribute("opacity").as_float(0.75f);
         m_z_offset             = node.attribute("z_offset").as_float(0.02f);
         m_uv_tiling            = node.attribute("uv_tiling").as_float(1.25f);
         m_fade_distance        = node.attribute("fade_distance").as_float(1.1f);
+        ValidateSettings();
     }
 }

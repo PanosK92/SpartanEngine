@@ -142,6 +142,8 @@ namespace engine_sound
 
         void initialize(int sample_rate = tuning::sample_rate);
         void configure(const engine_config& config);
+        // Call before starting playback: crank, catch, flare, then follow live telemetry.
+        void start();
         void set_parameters(
             float rpm,
             float throttle,
@@ -174,6 +176,7 @@ namespace engine_sound
     synthesizer& get_synthesizer();
     void initialize(int sample_rate = tuning::sample_rate);
     void configure(const engine_config& config);
+    void start();
     void set_parameters(
         float rpm,
         float throttle,

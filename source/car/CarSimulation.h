@@ -93,6 +93,7 @@ namespace car
         double          gearbox_loss_j = 0;
         double          distance_m = 0;
         PxVec3          previous_position = PxVec3(0);
+        PxVec3          scene_origin = PxVec3(0); // physics positions + this = map positions
         bool            position_valid = false;
         PxVec3          contact_impulse = PxVec3(0);
         unsigned        event_flags = 0;
@@ -113,8 +114,8 @@ namespace car
         float           axle_drive_torque       = 0.0f;
         aero_debug_data aero_debug;
         debug_sweep_data debug_sweep[wheel_count];
-        PxVec3           debug_suspension_top[wheel_count];
-        PxVec3           debug_suspension_bottom[wheel_count];
+        PxVec3           debug_suspension_top[wheel_count] = {PxVec3(0), PxVec3(0), PxVec3(0), PxVec3(0)};
+        PxVec3           debug_suspension_bottom[wheel_count] = {PxVec3(0), PxVec3(0), PxVec3(0), PxVec3(0)};
         SelfFilterCallback self_filter;
         multibody_state multibody;
         bool simulation_enabled = true;
@@ -169,6 +170,9 @@ namespace car
         bool open_telemetry_if_needed();
         void write_telemetry_wheel_state(int i);
         void tick_telemetry(float dt, float speed_kmh);
+        void shift_origin(const PxVec3& shift); // call after PxScene::shiftOrigin, actors are already shifted
+        PxVec3 get_scene_origin() const { return scene_origin; }
+        double get_distance_m() const { return distance_m; }
 
         // rejects invalid vectors before physx api calls
         bool is_finite_vec(const PxVec3& v);

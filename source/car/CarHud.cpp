@@ -1052,6 +1052,8 @@ namespace spartan::car_hud
                     car_instance->SetSkeletonShowCollision(show_collision);
                 }
                 hud_tooltip("purple chassis collision shape, mesh stays hidden in skeleton mode");
+                ImGui::TextColored(imvec4_from_u32(text_dim), "Bodies include inertia proxies. Frame and engine internals are schematic.");
+                ImGui::TextColored(imvec4_from_u32(text_dim), "Paired red joints: >1 mm separation. Arrows: last physics step. 1 m = 50 kN; rolling 25 kN; tread rows 16.7 kN.");
                 ImGui::TextColored(imvec4_from_u32(text_dim), "steel frame  amber suspension  green steering  cyan drivetrain  pale wheels  purple collision  lime contact  orange long force  pink lat force  red torque  mint aero");
             }
 

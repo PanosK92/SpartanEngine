@@ -42,6 +42,8 @@ SP_WARNINGS_OFF
 #endif
 #define PX_PHYSX_STATIC_LIB
 #include <physx/PxPhysicsAPI.h>
+#include "PhysicsSceneConfig.h"
+#include "PhysicsSceneOrigin.h"
 SP_WARNINGS_ON
 //=====================================
 
@@ -56,6 +58,7 @@ namespace spartan
     namespace
     {
         recursive_mutex physx_mutex;
+        PhysicsSceneOrigin scene_origin;
     }
 
     namespace settings
@@ -98,7 +101,8 @@ namespace spartan
 
             // get picking ray
             Ray picking_ray = camera->ComputePickingRay();
-            PxVec3 origin(picking_ray.GetStart().x, picking_ray.GetStart().y, picking_ray.GetStart().z);
+            const Vector3 local_start = PhysicsWorld::ToPhysicsPosition(picking_ray.GetStart());
+            PxVec3 origin(local_start.x, local_start.y, local_start.z);
             PxVec3 direction(picking_ray.GetDirection().x, picking_ray.GetDirection().y, picking_ray.GetDirection().z);
 
             // normalize direction
@@ -126,7 +130,7 @@ namespace spartan
                                     hit.block.position.y,
                                     hit.block.position.z
                                 );
-                                if (!ragdoll->Wake(wake_pos, Vector3::Zero))
+                                if (!ragdoll->Wake(PhysicsWorld::ToWorldPosition(wake_pos), Vector3::Zero))
                                 {
                                     return;
                                 }
@@ -215,7 +219,8 @@ namespace spartan
             }
 
             Ray picking_ray = camera->ComputePickingRay();
-            PxVec3 origin(picking_ray.GetStart().x, picking_ray.GetStart().y, picking_ray.GetStart().z);
+            const Vector3 local_start = PhysicsWorld::ToPhysicsPosition(picking_ray.GetStart());
+            PxVec3 origin(local_start.x, local_start.y, local_start.z);
             PxVec3 direction(picking_ray.GetDirection().x, picking_ray.GetDirection().y, picking_ray.GetDirection().z);
 
             // normalize direction
@@ -335,7 +340,11 @@ namespace spartan
                     const PxU32 point_count = pair.extractContacts(points, 4);
                     if (point_count > 0)
                     {
-                        position = Vector3(points[0].position.x, points[0].position.y, points[0].position.z);
+                        // fetchResults can dispatch this callback on a worker
+                        // while the caller holds physx_mutex. The origin is
+                        // immutable for the whole simulate/fetch interval.
+                        const PxVec3 world = points[0].position + scene_origin.offset;
+                        position = Vector3(world.x, world.y, world.z);
                         normal = Vector3(points[0].normal.x, points[0].normal.y, points[0].normal.z);
                         impulse = Vector3(points[0].impulse.x, points[0].impulse.y, points[0].impulse.z);
                     }
@@ -464,6 +473,7 @@ namespace spartan
 
     void PhysicsWorld::Initialize()
     {
+        scene_origin = PhysicsSceneOrigin();
         // foundation
         foundation = PxCreateFoundation(PX_PHYSICS_VERSION, allocator, logger);
         SP_ASSERT(foundation);
@@ -478,8 +488,7 @@ namespace spartan
         scene_desc.cpuDispatcher           = PxDefaultCpuDispatcherCreate(2);
         scene_desc.filterShader            = collision_filter_shader;
         scene_desc.simulationEventCallback = &contact_callback;
-        scene_desc.flags                  |= PxSceneFlag::eENABLE_CCD; // enable continuous collision detection to reduce tunneling
-        scene_desc.ccdMaxPasses            = 4;
+        ConfigurePhysicsScene(scene_desc);
         scene                              = physics->createScene(scene_desc);
         SP_ASSERT(scene);
 
@@ -565,6 +574,7 @@ namespace spartan
                     lock_guard<recursive_mutex> lock(physx_mutex);
 
                     // snapshot entries so callback registration can change during an update
+                    if (Camera* camera = World::GetCamera()) RebaseOrigin(camera->GetEntity()->GetPosition());
                     vector<VehicleStepCallback> callbacks;
                     callbacks.reserve(vehicle_step_callbacks.size());
                     for (const VehicleStepCallback& entry : vehicle_step_callbacks)
@@ -648,7 +658,7 @@ namespace spartan
             Vector3 centre = Vector3::Zero;
             if (Camera* camera = World::GetCamera())
             {
-                centre = camera->GetEntity()->GetPosition();
+                centre = ToPhysicsPosition(camera->GetEntity()->GetPosition());
             }
 
             const float reach_horizontal = 80.0f;
@@ -673,7 +683,7 @@ namespace spartan
                 ((line.color0 >> 8) & 0xFF) / 255.0f,
                 (line.color0 & 0xFF) / 255.0f
             );
-            Renderer::DrawLine(start, end, color, color);
+            Renderer::DrawLine(ToWorldPosition(start), ToWorldPosition(end), color, color);
         }
     }
 
@@ -684,6 +694,23 @@ namespace spartan
             lock_guard<recursive_mutex> lock(physx_mutex);
             scene->addActor(*actor);
         }
+    }
+
+    Vector3 PhysicsWorld::GetOrigin()
+    {
+        lock_guard<recursive_mutex> lock(physx_mutex);
+        return Vector3(scene_origin.offset.x, scene_origin.offset.y, scene_origin.offset.z);
+    }
+
+    Vector3 PhysicsWorld::ToPhysicsPosition(const Vector3& position) { return position - GetOrigin(); }
+    Vector3 PhysicsWorld::ToWorldPosition(const Vector3& position) { return position + GetOrigin(); }
+
+    void PhysicsWorld::RebaseOrigin(const Vector3& focus)
+    {
+        lock_guard<recursive_mutex> lock(physx_mutex);
+        if (!scene) return;
+        const PxVec3 shift = scene_origin.Update(*scene, PxVec3(focus.x, focus.y, focus.z));
+        if (!shift.isZero()) Physics::ShiftOrigin(Vector3(shift.x, shift.y, shift.z));
     }
 
     void PhysicsWorld::RemoveActor(PxRigidActor* actor)
@@ -787,7 +814,9 @@ namespace spartan
             return false;
         }
 
-        PxVec3 px_origin(origin.x, origin.y, origin.z);
+        lock_guard<recursive_mutex> scene_lock(physx_mutex);
+        const Vector3 local_origin = ToPhysicsPosition(origin);
+        PxVec3 px_origin(local_origin.x, local_origin.y, local_origin.z);
         PxVec3 px_direction(direction.x, direction.y, direction.z);
         px_direction.normalize();
 
@@ -859,11 +888,11 @@ namespace spartan
             hit.hasBlock
         )
         {
-            hit_result.position = Vector3(
+            hit_result.position = ToWorldPosition(Vector3(
                 hit.block.position.x,
                 hit.block.position.y,
                 hit.block.position.z
-            );
+            ));
             hit_result.normal = Vector3(
                 hit.block.normal.x,
                 hit.block.normal.y,

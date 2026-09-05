@@ -8,6 +8,10 @@ namespace car
     static constexpr int max_suspension_joints  = 128;
     static constexpr int max_multibody_actors   = wheel_count * (max_suspension_members + 2) + 32;
     static constexpr float wheel_inertia_shape_radius_scale = 0.75f;
+    // The closed suspension loops need enough position iterations to keep ball
+    // joints within 1 mm under gear-change loads, without locking rear toe.
+    static constexpr PxU32 suspension_position_iterations = 64;
+    static constexpr PxU32 suspension_velocity_iterations = 4;
 
     struct anti_roll_bar
     {

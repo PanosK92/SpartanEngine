@@ -689,6 +689,8 @@ namespace engine_sound
             m_bov_bp.set_bandpass(3000.0f, 1.5f, m_sample_rate);
             m_hiss_bp.set_bandpass(4500.0f, 0.8f, m_sample_rate);
             m_tick_hp.set_highpass(3200.0f, 0.7f, m_sample_rate);
+            m_starter_bp.set_bandpass(950.0f, 0.7f, m_sample_rate);
+            m_starter_lp.set_lowpass(1800.0f, 0.7f, m_sample_rate);
             m_body_lp.set_lowpass(16000.0f, 0.6f, m_sample_rate);
             m_cabin_peak.set_peak(90.0f, 1.2f, 0.0f, m_sample_rate);
             m_output_hp.set_highpass(28.0f, 0.7f, m_sample_rate);
@@ -739,6 +741,12 @@ namespace engine_sound
             m_view.store(static_cast<int>(view), std::memory_order_relaxed);
         }
 
+        void start()
+        {
+            reset();
+            m_start_time = 0.0f;
+        }
+
         void generate(float* output_buffer, int num_samples, bool stereo)
         {
             if (!output_buffer || num_samples <= 0) return;
@@ -766,6 +774,9 @@ namespace engine_sound
             const float rpm_span    = std::max(cfg.redline_rpm - cfg.idle_rpm, 1.0f);
             const float boost_scale = cfg.turbo_enabled ? 1.0f / std::max(cfg.boost_max_pressure, 0.1f) : 0.0f;
             const float dt          = 1.0f / m_sample_rate;
+            // Acoustic startup timing: heavier, higher-compression engines crank longer.
+            const float crank_duration = std::clamp(0.28f + cfg.crank_inertia * 0.5f + cfg.compression_ratio * 0.012f, 0.35f, 0.75f);
+            const float crank_rpm = std::clamp(270.0f - cfg.displacement_l * 9.0f - cfg.compression_ratio * 2.0f, 140.0f, 260.0f);
 
             // listener weights, exhaust intake turbo mechanical
             float view_target[4] = { 1.0f, 0.45f, 0.55f, 0.3f };
@@ -798,10 +809,30 @@ namespace engine_sound
             for (int sample = 0; sample < num_samples * oversampling; sample++)
             {
                 // controls
-                const float rpm       = m_rpm_smooth.process(target_rpm);
-                const float throttle  = m_throttle_smooth.process(target_throttle);
-                const float load      = m_load_smooth.process(target_load);
-                const float boost     = m_boost_smooth.process(target_boost);
+                float acoustic_rpm = target_rpm;
+                float handover = 1.0f;
+                float starter_env = 0.0f;
+                float starter_click = 0.0f;
+                m_start_combustion = 1.0f;
+                if (m_start_time >= 0.0f)
+                {
+                    float t = m_start_time;
+                    float catch_progress = smoothstep(crank_duration, crank_duration + 0.24f, t);
+                    handover = smoothstep(crank_duration + 0.3f, crank_duration + 1.1f, t);
+                    m_start_combustion = catch_progress;
+                    float cranking = crank_rpm * smoothstep(0.0f, 0.09f, t);
+                    // Compression slows the starter at each cylinder's TDC.
+                    cranking *= 1.0f - 0.14f * sinf(model.crank_angle * pi / 360.0f * cfg.cylinder_count);
+                    acoustic_rpm = lerp(lerp(cranking, cfg.idle_rpm * 1.5f, catch_progress), target_rpm, handover);
+                    starter_env = smoothstep(0.0f, 0.018f, t) * (1.0f - smoothstep(crank_duration + 0.06f, crank_duration + 0.19f, t));
+                    starter_click = smoothstep(0.0f, 0.001f, t) * expf(-t / 0.009f);
+                    m_start_time += dt;
+                    if (t >= crank_duration + 1.1f) m_start_time = -1.0f;
+                }
+                const float rpm       = m_rpm_smooth.process(acoustic_rpm);
+                const float throttle  = m_throttle_smooth.process(lerp(0.08f * m_start_combustion, target_throttle, handover));
+                const float load      = m_load_smooth.process(lerp(0.28f * m_start_combustion, target_load, handover));
+                const float boost     = m_boost_smooth.process(target_boost * handover);
                 const float rpm_norm  = clamp01((rpm - cfg.idle_rpm) / rpm_span);
                 const float boost_norm = std::clamp(boost * boost_scale, 0.0f, 1.2f);
 
@@ -996,6 +1027,25 @@ namespace engine_sound
                     float whine = (sinf(m_whine_phase) + 0.4f * sinf(2.0f * m_whine_phase)) * (0.4f + 0.6f * load) * 0.006f * rpm_norm;
 
                     mech = (tick * tick_gain + whine) * p.mechanical_level * m_view_weight[3];
+                    // Measured starts have a broad gear/brush rasp, pulsed by
+                    // compression, rather than a single low electronic tone.
+                    if (starter_env > 0.0f || starter_click > 1e-5f)
+                    {
+                        // The pinion disengages as combustion catches; don't sweep
+                        // the motor whine up to idle RPM along with the engine.
+                        float motor_rpm = std::min(rpm, crank_rpm * 1.1f);
+                        m_starter_phase += two_pi * motor_rpm / 60.0f * 72.0f * dt;
+                        m_starter_phase = fmodf(m_starter_phase, two_pi);
+                        float compression = 0.25f + 0.75f * powf(0.5f + 0.5f * crank_ripple, 0.7f);
+                        float phase = m_starter_phase;
+                        float gear = 0.62f * sinf(phase) + 0.34f * sinf(2.0f * phase + 0.4f)
+                            + 0.38f * sinf(3.0f * phase + 0.8f) + 0.68f * sinf(4.0f * phase + 1.3f)
+                            + 0.25f * sinf(5.0f * phase + 1.7f);
+                        float brush = m_starter_bp.process(white);
+                        float starter = m_starter_lp.process((gear * 0.55f + brush * 1.6f) * compression * starter_env + brush * starter_click * 3.0f);
+                        mech += starter * 0.24f * p.mechanical_level * std::max(m_view_weight[3], 0.5f);
+                    }
+                    else m_starter_lp.process(0.0f);
                 }
 
                 // mix, body, limiter
@@ -1018,7 +1068,8 @@ namespace engine_sound
 
                 // A stopped engine is silent, including its intake and turbo layers.
                 m_model_gain = std::clamp(m_model_gain + (m_model_fading_out ? -dt : dt) / 0.012f, 0.0f, 1.0f);
-                float gain = m_master_smooth.process(p.master_gain) * smoothstep(40.0f, 300.0f, rpm) * m_model_gain;
+                float running_gain = smoothstep(40.0f, 300.0f, rpm);
+                float gain = m_master_smooth.process(p.master_gain) * std::max(running_gain, starter_env) * m_model_gain;
                 float out_l = (mono + wide) * gain;
                 float out_r = (mono - wide) * gain;
 
@@ -1091,6 +1142,9 @@ namespace engine_sound
 
         void reset()
         {
+            m_start_time = -1.0f;
+            m_start_combustion = 1.0f;
+            m_starter_phase = 0.0f;
             m_model_gain = 0.0f;
             swap_in_pending_model();
             if (m_model)
@@ -1110,6 +1164,8 @@ namespace engine_sound
             m_bov_bp.reset();
             m_hiss_bp.reset();
             m_tick_hp.reset();
+            m_starter_bp.reset();
+            m_starter_lp.reset();
             m_body_lp.reset();
             m_cabin_peak.reset();
             m_output_hp.reset();
@@ -1251,9 +1307,16 @@ namespace engine_sound
             c.pulse_amp   = cut ? 0.06f * model.pulse_energy : model.pulse_energy * load_amp * boost_amp * c.imbalance * jitter;
             c.pulse_sharp = model.sharpness_base + 1.5f * load + 0.6f * boost_norm;
             c.rasp_amp    = model.rasp_base * p.rasp * (0.25f + 0.75f * load) * (0.4f + 0.6f * rpm_norm);
+            if (m_start_combustion < 1.0f)
+            {
+                // Early cycles pump air; individual cylinders begin catching in firing order.
+                bool caught = m_start_combustion > 0.0f && m_event_rng.uniform() < m_start_combustion;
+                c.pulse_amp *= caught ? (0.45f + 0.55f * m_start_combustion) : 0.035f;
+                c.rasp_amp *= m_start_combustion;
+            }
 
             // raw charge meeting a hot pipe lights off behind the head
-            if (cut && m_event_rng.uniform() < 0.12f * clamp01(p.pop_rate))
+            if (m_start_combustion >= 1.0f && cut && m_event_rng.uniform() < 0.12f * clamp01(p.pop_rate))
             {
                 trigger_pop(model, c.bank, 0.6f + 0.6f * m_event_rng.uniform());
             }
@@ -1336,6 +1399,9 @@ namespace engine_sound
 
         float m_sample_rate = static_cast<float>(tuning::sample_rate);
         float m_output_sample_rate = static_cast<float>(tuning::sample_rate);
+        float m_start_time = -1.0f;
+        float m_start_combustion = 1.0f;
+        float m_starter_phase = 0.0f;
         decimator m_decimator;
         float m_model_gain = 0.0f;
         bool m_model_fading_out = false;
@@ -1379,6 +1445,8 @@ namespace engine_sound
         biquad m_bov_bp;
         biquad m_hiss_bp;
         biquad m_tick_hp;
+        biquad m_starter_bp;
+        biquad m_starter_lp;
         biquad m_body_lp;
         biquad m_cabin_peak;
         biquad m_output_hp;
@@ -1451,6 +1519,11 @@ namespace engine_sound
         m_implementation->reset();
     }
 
+    void synthesizer::start()
+    {
+        m_implementation->start();
+    }
+
     bool synthesizer::is_initialized() const
     {
         return m_implementation->is_initialized();
@@ -1510,6 +1583,11 @@ namespace engine_sound
     void reset()
     {
         get_synthesizer().reset();
+    }
+
+    void start()
+    {
+        get_synthesizer().start();
     }
 
     const debug_data& get_debug()
