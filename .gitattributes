@@ -1,47 +1,32 @@
-# Ensure LF line endings in the repository and proper handling on checkouts
+# normalize line endings, lf in the repository
 * text=auto
 
-# C++ source and header files
+# sources
 *.cpp text diff=cpp
 *.h text diff=cpp
 *.hpp text diff=cpp
-*.cxx text diff=cpp
-*.cc text diff=cpp
+*.hlsl text
+*.lua text
+*.md text
+*.txt text
+*.json text diff=json
+*.xml text diff=xml
 
-# Treat project files that are often not merge-friendly as binary to avoid merge conflicts
-*.sln binary
-*.vcxproj binary
-*.vcproj binary
-*.proj binary
-*.projitems binary
-*.filters binary
-
-# Treat build scripts and cmake configs as text
+# scripts keep their native line endings
 *.bat text eol=crlf
 *.sh text eol=lf
-CMakeLists.txt text
-*.cmake text
 
-# Image files are treated as binary to prevent corruption
+# binaries
 *.png binary
 *.jpg binary
 *.jpeg binary
 *.gif binary
 *.ico binary
-
-# Documentation and other text formats should have normalized line endings
-*.md text
-*.txt text
-*.rtf text
-
-# Lock binary files to avoid line ending modifications
+*.bmp binary
+*.wav binary
 *.exe binary
 *.dll binary
 *.so binary
+*.dylib binary
 *.lib binary
-*.obj binary
-*.o binary
-
-# Ensure that diffs for certain types of files are handled correctly
-*.json text diff=json
-*.xml text diff=xml
+*.7z binary

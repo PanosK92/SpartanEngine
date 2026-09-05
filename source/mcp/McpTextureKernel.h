@@ -166,6 +166,9 @@ namespace spartan::mcp_texture_kernel
         uint32_t seed      = 1337;
         bool seamless      = true;
         float normal_strength   = 1.0f;
+        // radius in texels at 512, scaled with resolution, that a hard relief edge is softened over
+        // before the normal is derived, 0 keeps every step as a one texel line
+        float normal_bevel      = 3.0f;
         float base_roughness    = 0.75f;
         float base_metalness    = 0.0f;
         std::string font_directory = "data/fonts";

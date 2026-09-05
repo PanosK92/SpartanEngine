@@ -47,16 +47,6 @@ namespace spartan
         {
             return global * parent_global.Inverted();
         }
-
-        Vector3 flatten_on_plane(const Vector3& v, const Vector3& normal)
-        {
-            Vector3 flat = v - normal * v.Dot(normal);
-            if (flat.LengthSquared() < k_epsilon)
-            {
-                return Vector3::Zero;
-            }
-            return flat.Normalized();
-        }
     }
 
     namespace animation_ik
@@ -188,25 +178,18 @@ namespace spartan
             vector<Matrix>& local_matrices,
             const uint32_t end_index,
             const Vector3& ground_normal_model,
-            const Vector3& toe_forward_model,
-            const Vector3& sole_up_local,
-            const Vector3& toe_fwd_local,
             const float weight
         )
         {
             if (weight <= 0.0f ||
                 local_matrices.size() != skeleton.joint_count ||
                 end_index >= skeleton.joint_count ||
-                ground_normal_model.LengthSquared() < k_epsilon ||
-                sole_up_local.LengthSquared() < k_epsilon ||
-                toe_fwd_local.LengthSquared() < k_epsilon)
+                ground_normal_model.LengthSquared() < k_epsilon)
             {
                 return false;
             }
 
             const float w = clamp(weight, 0.0f, 1.0f);
-            vector<Matrix> globals(skeleton.joint_count);
-            skeleton.ComputeGlobalPose(local_matrices, globals);
 
             Vector3 w_up = ground_normal_model.Normalized();
             // keep sole facing above the surface
@@ -215,23 +198,19 @@ namespace spartan
                 w_up = -w_up;
             }
 
+            // flat ground, the clip pose is already right
+            if (w_up.Dot(Vector3::Up) > 0.99999f)
+            {
+                return true;
+            }
+
+            vector<Matrix> globals(skeleton.joint_count);
+            skeleton.ComputeGlobalPose(local_matrices, globals);
+
+            // the slope is the only thing the clip does not know about, so the ground tilt is the
+            // whole correction, flattening the sole onto the ground would erase heel strike and toe off
             const Quaternion end_rot = globals[end_index].GetRotation();
-
-            // pitch/roll: minimal rotation so bind sole up meets ground normal
-            const Vector3 sole_up_model = (end_rot * sole_up_local.Normalized()).Normalized();
-            Quaternion planted = Quaternion::FromRotation(sole_up_model, w_up) * end_rot;
-
-            // yaw: align toe on the ground plane without tipping the sole
-            Vector3 w_fwd = flatten_on_plane(toe_forward_model, w_up);
-            if (w_fwd.LengthSquared() < k_epsilon)
-            {
-                w_fwd = flatten_on_plane(Vector3(0.0f, 0.0f, -1.0f), w_up);
-            }
-            Vector3 toe_now = flatten_on_plane(planted * toe_fwd_local.Normalized(), w_up);
-            if (w_fwd.LengthSquared() > k_epsilon && toe_now.LengthSquared() > k_epsilon)
-            {
-                planted = Quaternion::FromRotation(toe_now.Normalized(), w_fwd.Normalized()) * planted;
-            }
+            const Quaternion planted = Quaternion::FromRotation(Vector3::Up, w_up) * end_rot;
 
             const Quaternion end_rot_blend = Quaternion::Lerp(end_rot, planted, w);
 

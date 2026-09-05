@@ -18,19 +18,10 @@ fi
 
 lua="tools/premake.lua"
 
-run_choice() {
-    case "$1" in
-        1) $premake --file="$lua" vs2026 vulkan ;;
-        2) $premake --file="$lua" vs2026 d3d12 ;;
-        3) $premake --file="$lua" gmake2 vulkan ;;
-        0) exit 0 ;;
-        *) echo "invalid choice: $1"; exit 1 ;;
-    esac
-}
-
+# non interactive: generate_project_files.sh <action> <api>, e.g. gmake2 vulkan
 if [ -n "$1" ]; then
-    run_choice "$1"
-    exit 0
+    $premake --file="$lua" "$@"
+    exit $?
 fi
 
 cat <<'EOF'
@@ -46,4 +37,10 @@ cat <<'EOF'
 EOF
 
 read -rp "enter your choice: " choice
-run_choice "$choice"
+case "$choice" in
+    1) $premake --file="$lua" vs2026 vulkan ;;
+    2) $premake --file="$lua" vs2026 d3d12 ;;
+    3) $premake --file="$lua" gmake2 vulkan ;;
+    0) exit 0 ;;
+    *) echo "invalid choice: $choice"; exit 1 ;;
+esac

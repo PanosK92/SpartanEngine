@@ -1019,6 +1019,21 @@ namespace spartan
         }
     }
 
+    namespace world_clouds
+    {
+        // the cloud noise tiles every 60 km horizontally, so any offset inside that span picks a different cloudscape
+        constexpr float seed_span = 60000.0f;
+        Vector2 seed_offset       = Vector2::Zero;
+
+        void reroll_seed()
+        {
+            seed_offset = Vector2(
+                random<float>(0.0f, seed_span),
+                random<float>(0.0f, seed_span)
+            );
+        }
+    }
+
     namespace world_wind
     {
         Vector3 wind = Vector3::Zero;
@@ -1245,6 +1260,7 @@ namespace spartan
     {
         InitializeCoreLua();
         world_wind::initialize();
+        world_clouds::reroll_seed();
     }
 
     void World::Shutdown()
@@ -1370,6 +1386,9 @@ namespace spartan
         file_path.clear();
         world_name.clear();
         world_description.clear();
+
+        // every load passes through here, so the next world gets a fresh cloudscape
+        world_clouds::reroll_seed();
 
         // clear change tracking
         entity_states.clear();
@@ -3333,6 +3352,11 @@ namespace spartan
     void World::SetWind(const Vector3& wind)
     {
         world_wind::wind = wind;
+    }
+
+    const Vector2& World::GetCloudSeedOffset()
+    {
+        return world_clouds::seed_offset;
     }
 
     const string& World::GetDescription()

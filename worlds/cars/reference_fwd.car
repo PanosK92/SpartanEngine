@@ -16,6 +16,7 @@
         engine_sound_cylinders="4" engine_sound_banks="1"
         engine_displacement_l="2.0" engine_bore_mm="86" engine_stroke_mm="86" engine_compression_ratio="9.5"
         exhaust_primary_length_m="0.5" exhaust_collector_length_m="2.3"
+        engine_bank_angle_deg="0" exhaust_tailpipe_length_m="0.9" exhaust_muffler_level="0.95"
         engine_firing_order="0,2,3,1"
         engine_cylinder_bank="0,0,0,0"
         turbo_enabled="true" boost_max_pressure="1.0" boost_spool_rate="3" boost_wastegate_rpm="5800" boost_torque_mult="0.2" boost_min_rpm="2500" />

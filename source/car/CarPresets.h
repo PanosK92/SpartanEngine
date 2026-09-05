@@ -128,6 +128,8 @@ namespace car
             engine_compression_ratio = 10.0f;
             exhaust_primary_length_m = 0.45f;
             exhaust_collector_length_m = 2.0f;
+            exhaust_tailpipe_length_m = 0.6f;
+            exhaust_muffler_level = 1.0f;
             for (int i = 0; i < max_engine_cylinders; i++)
             {
                 engine_firing_order[i] = static_cast<float>(i);
@@ -212,6 +214,11 @@ namespace car
         float engine_compression_ratio;
         float exhaust_primary_length_m;
         float exhaust_collector_length_m;
+        // zero means derive from banks and cylinder count, 90 for a v8, 60 for a v12, 180 for a flat
+        float engine_bank_angle_deg;
+        float exhaust_tailpipe_length_m;
+        // one is a quiet stock muffler, zero is a straight pipe
+        float exhaust_muffler_level;
         float engine_firing_order[max_engine_cylinders];
         float engine_cylinder_bank[max_engine_cylinders];
 
@@ -415,6 +422,9 @@ namespace car
         int brakes_stage_max;
         int aero_stage_max;
         int weight_stage_max;
+        int exhaust_stage_max;
+        int intake_stage_max;
+        int turbo_stage_max;
 
         // driveshaft
         float driveshaft_stiffness;  // Nm/rad torsional compliance

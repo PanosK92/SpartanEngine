@@ -1221,6 +1221,9 @@ namespace spartan::car_hud
             draw_stages("Brk", upgrades.brakes, base_spec.brakes_stage_max);
             draw_stages("Aer", upgrades.aero, base_spec.aero_stage_max);
             draw_stages("Wgt", upgrades.weight, base_spec.weight_stage_max);
+            draw_stages("Exh", upgrades.exhaust, base_spec.exhaust_stage_max);
+            draw_stages("Int", upgrades.intake, base_spec.intake_stage_max);
+            draw_stages("Tur", upgrades.turbo, base_spec.turbo_stage_max);
             if (base_spec.engine_peak_torque > 0.0f)
             {
                 ImGui::TextColored(imvec4_from_u32(text_dim), "tq %.0f/%.0f",
@@ -1549,46 +1552,52 @@ namespace spartan::car_hud
             float mot_kw = simulation->get_motor_power_kw();
             ImGui::Text("ICE %.0f Nm  |  Motor %.0f Nm (%.0f kW)  |  Total %.0f Nm", ice_tq, mot_tq, mot_kw, ice_tq + mot_tq);
 
-            ImGui::TextColored(
-                imvec4_from_u32(text_dim),
-                "Ferrari 412 T2 upstream simulation and exhaust synthesis"
-            );
+            {
+                const engine_sound::engine_config& cfg = engine_sound::get_synthesizer().get_config();
+                const char* layout = cfg.bank_count >= 2 ? (cfg.bank_angle_deg >= 170.0f ? "flat" : "v") : "inline";
+                ImGui::TextColored(
+                    imvec4_from_u32(text_dim),
+                    "%s%d  bank %.0f deg  %s  %.1f l  muffler %.2f  %s",
+                    layout,
+                    cfg.cylinder_count,
+                    cfg.bank_angle_deg,
+                    dbg.odd_fire ? "odd fire" : "even fire",
+                    cfg.displacement_l,
+                    cfg.muffler_level,
+                    cfg.turbo_enabled ? "turbo" : "na"
+                );
+                ImGui::TextColored(
+                    imvec4_from_u32(text_dim),
+                    "stages  eng %.0f%%  exh %.0f%%  int %.0f%%  tur %.0f%%   firing %.0f hz   pops %d",
+                    cfg.engine_stage * 100.0f,
+                    cfg.exhaust_stage * 100.0f,
+                    cfg.intake_stage * 100.0f,
+                    cfg.turbo_stage * 100.0f,
+                    dbg.firing_freq,
+                    dbg.pops_fired
+                );
+            }
 
-            ImGui::TextColored(imvec4_from_u32(text_label), "Engine-sim exhaust");
+            ImGui::TextColored(imvec4_from_u32(text_label), "Layers");
             if (ImGui::BeginTable("##eng_layers", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoBordersInBody))
             {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                draw_level_bar("Exhaust", dbg.exhaust_level, IM_COL32(255, 180, 100, 255));
+                draw_level_bar("Exhaust", dbg.exhaust_level * 2.0f, IM_COL32(255, 180, 100, 255));
+                draw_level_bar("Intake",  dbg.intake_level * 4.0f,  IM_COL32(120, 200, 255, 255));
+                draw_level_bar("Pops",    dbg.pop_level * 2.0f,     IM_COL32(255, 120, 90, 255));
                 ImGui::TableNextColumn();
-                draw_level_bar("Gain", dbg.leveler_gain * 0.2f, IM_COL32(220, 130, 255, 255));
-                draw_level_bar("Peak", dbg.output_peak, IM_COL32(180, 100, 220, 255));
+                draw_level_bar("Turbo",   dbg.turbo_level * 4.0f,      IM_COL32(200, 255, 140, 255));
+                draw_level_bar("Mech",    dbg.mechanical_level * 8.0f, IM_COL32(220, 220, 220, 255));
+                draw_level_bar("Limiter", dbg.limiter_gain,            IM_COL32(220, 130, 255, 255));
                 ImGui::EndTable();
-            }
-
-            // silence the worker had to insert because it missed real time, this is what
-            // crackling sounds like, if it climbs the gas dynamics rate is too high
-            {
-                const double underrun_ratio =
-                    dbg.samples_generated > 0
-                        ? static_cast<double>(dbg.underrun_samples) /
-                            static_cast<double>(dbg.samples_generated)
-                        : 0.0;
-                ImGui::TextColored(
-                    imvec4_from_u32(
-                        dbg.underrun_samples > 0 ? accent_danger : text_dim
-                    ),
-                    "Underruns %llu (%.3f%% of samples silent)",
-                    static_cast<unsigned long long>(dbg.underrun_calls),
-                    underrun_ratio * 100.0
-                );
             }
 
             {
                 ImGui::TextColored(imvec4_from_u32(text_label), "Waveform");
                 ImGui::TextColored(
                     imvec4_from_u32(text_dim),
-                    "upstream mono output"
+                    "mono output, last 512 samples"
                 );
                 {
                     ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -1651,17 +1660,20 @@ namespace spartan::car_hud
             {
                 ImGui::TextColored(
                     imvec4_from_u32(text_dim),
-                    "Controls map directly to the upstream synthesizer."
+                    "Layer mix of the procedural engine, the character itself comes from the car spec and upgrades."
                 );
                 engine_sound::synthesizer& s = engine_sound::get_synthesizer();
-                ImGui::SliderFloat("convolution_wet", &s.params.convolution_wet,  0.0f, 1.0f, "%.3f");
-                ImGui::SliderFloat("df_f_mix",         &s.params.df_f_mix,         0.0f, 0.1f, "%.3f");
-                ImGui::SliderFloat("air_noise",        &s.params.air_noise,        0.0f, 1.0f, "%.3f");
-                ImGui::SliderFloat("leveler_target",   &s.params.leveler_target,   0.05f, 1.0f, "%.3f");
-                ImGui::SliderFloat("exhaust_tail_ms",  &s.params.impulse_window_ms, 2.0f, 250.0f, "%.1f ms");
+                ImGui::SliderFloat("exhaust",    &s.params.exhaust_level,    0.0f, 3.0f, "%.2f");
+                ImGui::SliderFloat("intake",     &s.params.intake_level,     0.0f, 4.0f, "%.2f");
+                ImGui::SliderFloat("turbo",      &s.params.turbo_level,      0.0f, 4.0f, "%.2f");
+                ImGui::SliderFloat("mechanical", &s.params.mechanical_level, 0.0f, 4.0f, "%.2f");
+                ImGui::SliderFloat("rasp",       &s.params.rasp,             0.0f, 3.0f, "%.2f");
+                ImGui::SliderFloat("pop_rate",   &s.params.pop_rate,         0.0f, 4.0f, "%.2f");
+                ImGui::SliderFloat("cabin_mix",  &s.params.cabin_mix,        0.0f, 1.0f, "%.2f");
+                ImGui::SliderFloat("master",     &s.params.master_gain,      0.0f, 2.0f, "%.2f");
                 ImGui::TextColored(
                     imvec4_from_u32(text_dim),
-                    "tail: short is dry and pulsed, long is resonant and boxy"
+                    "cabin_mix: how much the hood and wheel views muffle the exhaust"
                 );
                 if (ImGui::Button("Reset to defaults"))
                 {

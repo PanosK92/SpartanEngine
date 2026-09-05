@@ -2269,6 +2269,8 @@ namespace spartan
         m_is_occupied = false;
         m_externally_controlled = false;
         m_chase_camera.initialized = false;
+        // the synth is shared, the next car to be entered has to push its own spec
+        m_engine_sound_configured = false;
 
         // restore mouse cursor if orbit was active
         if (m_orbit_mouse_active)
@@ -3743,49 +3745,58 @@ namespace spartan
             float rpm_normalized = std::clamp((engine_rpm - idle_rpm) / (redline_rpm - idle_rpm), 0.0f, 1.0f);
             car::Simulation* simulation = physics->GetVehicleSimulation();
 
-            if (
-                !audio_engine->IsSynthesisMode() ||
-                !audio_engine->IsPlaying()
-            )
+            // the synth reads the effective spec so upgrades are heard, reconfigure only when it changes
             {
-                const car::car_preset& preset = simulation->get_spec();
+                const car::car_preset& preset          = simulation->get_spec();
+                const car::car_preset& base            = simulation->get_base_spec();
+                const car::active_upgrades& upgrades   = simulation->get_upgrades();
+                auto stage_fraction = [](int stage, int stage_max)
+                {
+                    return stage_max > 0 ? std::clamp(static_cast<float>(stage) / static_cast<float>(stage_max), 0.0f, 1.0f) : 0.0f;
+                };
+
                 engine_sound::engine_config config;
-                config.cylinder_count = preset.engine_sound_cylinders;
-                config.bank_count = preset.engine_sound_banks;
-                config.idle_rpm = preset.engine_idle_rpm;
-                config.redline_rpm = preset.engine_redline_rpm;
-                config.max_rpm = preset.engine_max_rpm;
-                config.displacement_l = preset.engine_displacement_l;
-                config.bore_mm = preset.engine_bore_mm;
-                config.stroke_mm = preset.engine_stroke_mm;
-                config.compression_ratio = preset.engine_compression_ratio;
-                config.primary_length_m = preset.exhaust_primary_length_m;
-                config.collector_length_m = preset.exhaust_collector_length_m;
+                config.cylinder_count      = preset.engine_sound_cylinders;
+                config.bank_count          = preset.engine_sound_banks;
+                config.bank_angle_deg      = preset.engine_bank_angle_deg;
+                config.idle_rpm            = preset.engine_idle_rpm;
+                config.redline_rpm         = preset.engine_redline_rpm;
+                config.max_rpm             = preset.engine_max_rpm;
+                config.displacement_l      = preset.engine_displacement_l;
+                config.bore_mm             = preset.engine_bore_mm;
+                config.stroke_mm           = preset.engine_stroke_mm;
+                config.compression_ratio   = preset.engine_compression_ratio;
+                config.primary_length_m    = preset.exhaust_primary_length_m;
+                config.collector_length_m  = preset.exhaust_collector_length_m;
+                config.tailpipe_length_m   = preset.exhaust_tailpipe_length_m;
+                config.muffler_level       = preset.exhaust_muffler_level;
+                config.turbo_enabled       = preset.turbo_enabled && preset.boost_max_pressure > 0.0f;
+                config.boost_max_pressure  = preset.boost_max_pressure;
+                config.boost_wastegate_rpm = preset.boost_wastegate_rpm;
+                config.engine_stage        = stage_fraction(upgrades.engine, base.engine_stage_max);
+                config.exhaust_stage       = stage_fraction(upgrades.exhaust, base.exhaust_stage_max);
+                config.intake_stage        = stage_fraction(upgrades.intake, base.intake_stage_max);
+                config.turbo_stage         = stage_fraction(upgrades.turbo, base.turbo_stage_max);
                 for (int i = 0; i < car::max_engine_cylinders; i++)
                 {
-                    config.firing_order[i] = static_cast<int>(
-                        preset.engine_firing_order[i]
-                    );
-                    config.cylinder_bank[i] = static_cast<int>(
-                        preset.engine_cylinder_bank[i]
-                    );
+                    config.firing_order[i]  = static_cast<int>(preset.engine_firing_order[i]);
+                    config.cylinder_bank[i] = static_cast<int>(preset.engine_cylinder_bank[i]);
                 }
-                engine_sound::configure(config);
+
+                if (!m_engine_sound_configured || config != m_engine_sound_config)
+                {
+                    engine_sound::configure(config);
+                    m_engine_sound_config     = config;
+                    m_engine_sound_configured = true;
+                }
 
                 if (!audio_engine->IsSynthesisMode())
                 {
                     audio_engine->SetSynthesisMode(
                         true,
-                        [](
-                            float* buffer,
-                            int num_samples
-                        )
+                        [](float* buffer, int num_samples)
                         {
-                            engine_sound::generate(
-                                buffer,
-                                num_samples,
-                                true
-                            );
+                            engine_sound::generate(buffer, num_samples, true);
                         }
                     );
                 }
@@ -3808,20 +3819,32 @@ namespace spartan
                 0.0f,
                 1.0f
             );
+
+            engine_sound::listener_view view = engine_sound::listener_view::chase;
+            if (m_current_view == CarView::Hood)
+            {
+                view = engine_sound::listener_view::hood;
+            }
+            else if (m_current_view == CarView::Wheel)
+            {
+                view = engine_sound::listener_view::cabin;
+            }
+
             engine_sound::set_parameters(
                 engine_rpm,
                 throttle,
                 load,
                 boost,
-                simulation->get_engine_rotation(),
-                torque_normalized,
-                simulation->get_rev_limiter_active()
+                simulation->get_rev_limiter_active(),
+                simulation->get_current_gear(),
+                simulation->get_is_shifting(),
+                view
             );
 
-            // the synth no longer reaches the rail on every firing pulse, so the level it delivers is
-            // lower by about the distortion that used to be filling the gap
-            const float engine_volume_scale = 0.45f;
-            float volume = (0.6f + rpm_normalized * 0.3f + throttle * 0.1f) * engine_volume_scale;
+            // the synth already breathes with load, this gain only adds the distance and the body
+            const float engine_volume_scale = 0.6f;
+            const float effort = std::max(throttle, load);
+            float volume = (0.65f + rpm_normalized * 0.15f + effort * 0.2f) * engine_volume_scale;
             audio_engine->SetVolume(volume);
         }
         else if (!m_is_occupied && audio_engine && audio_engine->IsPlaying())

@@ -1468,6 +1468,96 @@ namespace spartan::mcp_texture_kernel
             layer_index++;
         }
 
+        // a pattern with a hard edge, stripes, bricks, tiles, puts a step in the relief, and a step
+        // differentiated over one texel is a fully tilted normal along the whole boundary, which
+        // renders as a black hairline. softening the relief first turns the step into a short bevel
+        // that lights like a groove instead
+        const float bevel_texels =
+            std::max(0.0f, settings.normal_bevel) *
+            static_cast<float>(std::max(width, height)) /
+            512.0f;
+        if (bevel_texels >= 0.5f && pixel_count > 0)
+        {
+            const int radius = static_cast<int>(
+                std::ceil(bevel_texels * 2.0f)
+            );
+            std::vector<float> kernel(
+                static_cast<size_t>(radius) * 2 + 1
+            );
+            float kernel_sum = 0.0f;
+            for (int offset = -radius; offset <= radius; offset++)
+            {
+                const float weight = std::exp(
+                    -0.5f *
+                    static_cast<float>(offset * offset) /
+                    (bevel_texels * bevel_texels)
+                );
+                kernel[static_cast<size_t>(offset + radius)] = weight;
+                kernel_sum += weight;
+            }
+            for (float& weight : kernel)
+            {
+                weight /= kernel_sum;
+            }
+
+            // separable, wrapping so the bevel stays seamless across the tile edge
+            std::vector<float> blurred(pixel_count, 0.0f);
+            ThreadPool::ParallelLoop([&](
+                const uint32_t row_start,
+                const uint32_t row_end
+            )
+            {
+                for (uint32_t y = row_start; y < row_end; y++)
+                {
+                    for (uint32_t x = 0; x < width; x++)
+                    {
+                        float sum = 0.0f;
+                        for (int offset = -radius; offset <= radius; offset++)
+                        {
+                            const int sample_x = wrap_index(
+                                static_cast<int>(x) + offset,
+                                static_cast<int>(width)
+                            );
+                            sum +=
+                                relief[
+                                    static_cast<size_t>(y) * width +
+                                    sample_x
+                                ] *
+                                kernel[static_cast<size_t>(offset + radius)];
+                        }
+                        blurred[static_cast<size_t>(y) * width + x] = sum;
+                    }
+                }
+            }, height);
+            ThreadPool::ParallelLoop([&](
+                const uint32_t row_start,
+                const uint32_t row_end
+            )
+            {
+                for (uint32_t y = row_start; y < row_end; y++)
+                {
+                    for (uint32_t x = 0; x < width; x++)
+                    {
+                        float sum = 0.0f;
+                        for (int offset = -radius; offset <= radius; offset++)
+                        {
+                            const int sample_y = wrap_index(
+                                static_cast<int>(y) + offset,
+                                static_cast<int>(height)
+                            );
+                            sum +=
+                                blurred[
+                                    static_cast<size_t>(sample_y) * width +
+                                    x
+                                ] *
+                                kernel[static_cast<size_t>(offset + radius)];
+                        }
+                        relief[static_cast<size_t>(y) * width + x] = sum;
+                    }
+                }
+            }, height);
+        }
+
         // normal map from the accumulated relief, wrapping keeps tiles seamless
         float relief_min = relief.empty() ? 0.0f : relief[0];
         float relief_max = relief_min;
@@ -1539,6 +1629,20 @@ namespace spartan::mcp_texture_kernel
                     0.02f;
                 float normal_x = (left - right) * strength;
                 float normal_y = (top - bottom) * strength;
+
+                // a normal tilted past this reads as a black edge under any light, so the slope is
+                // capped rather than letting a steep bevel or a legacy hard step go flat
+                constexpr float maximum_tilt = 3.0f;
+                const float tilt = std::sqrt(
+                    normal_x * normal_x +
+                    normal_y * normal_y
+                );
+                if (tilt > maximum_tilt)
+                {
+                    normal_x *= maximum_tilt / tilt;
+                    normal_y *= maximum_tilt / tilt;
+                }
+
                 const float length = std::sqrt(
                     normal_x * normal_x +
                     normal_y * normal_y +

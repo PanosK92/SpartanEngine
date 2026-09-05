@@ -110,27 +110,21 @@ namespace spartan
             int32_t calf  = -1;
             int32_t foot  = -1;
             int32_t ball  = -1;
-            // bind-pose local directions, not cardinal axes (feet can sit at 45 deg)
-            math::Vector3 sole_up_local = math::Vector3::Up;
-            math::Vector3 toe_fwd_local = math::Vector3(0.0f, 0.0f, -1.0f);
-            // bind foot to ball on xz, used for plant yaw instead of animated toes
-            math::Vector3 toe_fwd_model_bind = math::Vector3(0.0f, 0.0f, -1.0f);
-            // bind-pose knee bend in model space, keeps ik from flipping backwards
+            // bind-pose knee bend in model space, pole when the animated leg is too straight to tell
             math::Vector3 knee_pole_bind = math::Vector3(0.0f, 0.0f, -1.0f);
-            // bind hip-to-ankle height, restores standing length when planting
-            float bind_hip_foot_y = 0.85f;
+            // ankle height above the sole with the foot flat, the clip lifting past it is a swing
             float ankle_height = 0.11f;
-            // smoothed in world space, model space moves with the character and adds plant lag
-            math::Vector3 smooth_target_world = math::Vector3::Zero;
-            math::Vector3 smooth_target = math::Vector3::Zero;
+            // the ik only adds the height difference between the clip floor and the real ground under
+            // the foot, on flat ground that is zero and the clip plays untouched, so heel strike, toe
+            // off and stride all keep their authored timing
+            float smooth_lift = 0.0f;
+            // 0..1, how planted the clip has this foot, read off its height not off a ray
+            float smooth_plant = 0.0f;
             math::Vector3 smooth_normal = math::Vector3::Up;
-            math::Vector3 smooth_forward = math::Vector3(0.0f, 0.0f, -1.0f);
-            float smooth_weight = 0.0f;
-            float contact_dy = 0.0f;
+            // clip foot position plus the smoothed lift, sampled before the pelvis moves
+            math::Vector3 target_model = math::Vector3::Zero;
             float ground_y_world = 0.0f;
             bool ground_hit = false;
-            bool use_for_pelvis = false;
-            bool contact_active = false;
             bool has_smooth = false;
         };
         struct BindEntityPose

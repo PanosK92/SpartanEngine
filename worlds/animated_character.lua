@@ -6,9 +6,15 @@ local model_path = "project/models/mannequiny/mannequiny.glb"
 
 
 
-local walk_speed = 2.5
+local walk_speed = 3.0
 
 local run_speed = 6.0
+
+-- ground speed baked into the mannequiny clips, the planted foot travels this fast in model
+-- space, playback is scaled by root speed over clip speed so the feet never slide
+local walk_clip_speed = 1.2
+
+local run_clip_speed = 6.1
 
 local turn_speed = 10.0
 
@@ -580,6 +586,9 @@ function animated_character.Tick(self, entity)
 
 
 
+    -- locomotion clips play at root speed over clip speed so the planted foot stays put
+    local clip_rate = 1.0
+
     if self.land_timer > 0.0 then
 
         self.land_timer = self.land_timer - dt
@@ -592,9 +601,17 @@ function animated_character.Tick(self, entity)
 
         play_clip(self, running and "run" or "walk", true)
 
+        clip_rate = speed / (running and run_clip_speed or walk_clip_speed)
+
     else
 
         play_clip(self, "idle", true)
+
+    end
+
+    if self.animator then
+
+        self.animator:SetSpeed(clip_rate)
 
     end
 

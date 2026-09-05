@@ -165,7 +165,7 @@ namespace car
                     "fl_spring_force,fr_spring_force,rl_spring_force,rr_spring_force,"
                     "fl_contact_ny,fr_contact_ny,rl_contact_ny,rr_contact_ny,"
                     // upgrades levels and key handling state that changes at runtime
-                    "eng_up,susp_up,tire_up,brake_up,aero_up,weight_up,"
+                    "eng_up,susp_up,tire_up,brake_up,aero_up,weight_up,exh_up,int_up,turbo_up,"
                     // per wheel brake and wear directly affect braking and grip
                     "fl_brake_temp,fr_brake_temp,rl_brake_temp,rr_brake_temp,"
                     "fl_wear,fr_wear,rl_wear,rr_wear,"
@@ -264,7 +264,7 @@ namespace car
                     "%.1f,%.1f,%.1f,%.1f,"
                     "%.3f,%.3f,%.3f,%.3f,"
                     // upgrades
-                    "%d,%d,%d,%d,%d,%d,"
+                    "%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                     // brake wear
                     "%.1f,%.1f,%.1f,%.1f,%.3f,%.3f,%.3f,%.3f,"
                     // thermals
@@ -317,6 +317,7 @@ namespace car
                     wheels[rear_left].contact_normal.y,     wheels[rear_right].contact_normal.y,
                     // upgrades
                     upgrades.engine, upgrades.suspension, upgrades.tires, upgrades.brakes, upgrades.aero, upgrades.weight,
+                    upgrades.exhaust, upgrades.intake, upgrades.turbo,
                     // brake temp wear
                     wheels[front_left].brake_temp, wheels[front_right].brake_temp, wheels[rear_left].brake_temp, wheels[rear_right].brake_temp,
                     wheels[front_left].wear,       wheels[front_right].wear,       wheels[rear_left].wear,       wheels[rear_right].wear,

@@ -24,6 +24,7 @@
         engine_sound_cylinders="12" engine_sound_banks="2"
         engine_displacement_l="6.262" engine_bore_mm="94" engine_stroke_mm="75.2" engine_compression_ratio="13.5"
         exhaust_primary_length_m="0.72" exhaust_collector_length_m="2.35"
+        engine_bank_angle_deg="65" exhaust_tailpipe_length_m="0.5" exhaust_muffler_level="0.45"
         engine_firing_order="0,11,4,7,2,9,5,6,1,10,3,8"
         engine_cylinder_bank="0,0,0,0,0,0,1,1,1,1,1,1"
         turbo_enabled="false" boost_max_pressure="0" boost_spool_rate="0" boost_wastegate_rpm="0" boost_torque_mult="0" boost_min_rpm="0"
@@ -120,6 +121,7 @@
 
     <upgrades
         engine_stage_max="1" suspension_stage_max="1" tires_stage_max="1"
-        brakes_stage_max="1" aero_stage_max="0" weight_stage_max="1" />
+        brakes_stage_max="1" aero_stage_max="0" weight_stage_max="1"
+        exhaust_stage_max="3" intake_stage_max="2" turbo_stage_max="2" />
 
 </car>

@@ -471,6 +471,61 @@ namespace spartan
             }
         }
 
+        void sanitize_vendor_upscaler_resolution()
+        {
+            const Renderer_AntiAliasing_Upsampling mode =
+                cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
+            if (mode != Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss &&
+                mode != Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
+            {
+                return;
+            }
+
+            const uint32_t out_w = static_cast<uint32_t>(Renderer::GetResolutionOutput().x);
+            const uint32_t out_h = static_cast<uint32_t>(Renderer::GetResolutionOutput().y);
+            const uint32_t in_w  = static_cast<uint32_t>(Renderer::GetResolutionRender().x);
+            const uint32_t in_h  = static_cast<uint32_t>(Renderer::GetResolutionRender().y);
+            if (out_w < 8 || out_h < 8 || in_w < 8 || in_h < 8)
+            {
+                return;
+            }
+
+            const float out_aspect = static_cast<float>(out_w) / static_cast<float>(out_h);
+            const float in_aspect  = static_cast<float>(in_w) / static_cast<float>(in_h);
+            const float scale      = static_cast<float>(in_w) / static_cast<float>(out_w);
+            // dlss ultra performance is 1/3, ngx rejects lower scales and mismatched aspects
+            const float min_scale      = 0.33f;
+            const float max_scale      = 1.0f;
+            const float aspect_epsilon = 0.01f;
+            const bool aspect_bad = abs(in_aspect / out_aspect - 1.0f) > aspect_epsilon;
+            const bool scale_bad  = scale < min_scale || scale > max_scale;
+            if (!aspect_bad && !scale_bad)
+            {
+                return;
+            }
+
+            const float fitted_scale = clamp(scale, min_scale, max_scale);
+            uint32_t new_w = static_cast<uint32_t>(static_cast<float>(out_w) * fitted_scale + 0.5f);
+            uint32_t new_h = static_cast<uint32_t>(static_cast<float>(out_h) * fitted_scale + 0.5f);
+            new_w = max(new_w, 64u) & ~1u;
+            new_h = max(new_h, 64u) & ~1u;
+            if (new_w == in_w && new_h == in_h)
+            {
+                return;
+            }
+
+            SP_LOG_INFO(
+                "vendor upscaler: render %ux%u is invalid for output %ux%u, using %ux%u",
+                in_w,
+                in_h,
+                out_w,
+                out_h,
+                new_w,
+                new_h
+            );
+            Renderer::SetResolutionRender(new_w, new_h);
+        }
+
         void tick_dynamic_resolution_scale()
         {
             if (cvar_dynamic_resolution.GetValue() == 0.0f)
@@ -650,6 +705,7 @@ namespace spartan
             Window::ProcessFullScreenToggle();
         }
 
+        sanitize_vendor_upscaler_resolution();
         RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), GetResolutionScale());
         tick_dynamic_resolution_scale();
         if (Debugging::IsBreadcrumbsEnabled())
@@ -1759,6 +1815,7 @@ namespace spartan
         m_cb_frame_cpu.restir_pt_light_count = static_cast<float>(m_count_active_lights);
         m_cb_frame_cpu.wind                  = World::GetWind();
         m_cb_frame_cpu.cloud_coverage        = World::GetDirectionalLight() ? World::GetDirectionalLight()->GetCloudCoverage() : 0.0f;
+        m_cb_frame_cpu.cloud_seed_offset     = World::GetCloudSeedOffset();
         {
             // match the directional light's day cycle source so stars lock to the same clock as the sun
             const bool use_real_world_time = World::GetDirectionalLight() && World::GetDirectionalLight()->GetFlag(LightFlags::RealTimeCycle);
@@ -4408,6 +4465,7 @@ namespace spartan
         const float light_intensity      = has_directional_light ? directional_light->GetIntensityPhotometric() : 0.0f;
         const float cloud_coverage       = has_directional_light ? directional_light->GetCloudCoverage() : 0.0f;
         const Vector3 wind               = World::GetWind();
+        const Vector2 cloud_seed_offset  = World::GetCloudSeedOffset();
         const double expected_time       = m_pass_state.cloud_time + static_cast<double>(m_cb_frame_cpu.delta_time);
         const bool time_discontinuous    = !m_pass_state.sky_first_frame && abs(m_cb_frame_cpu.time - expected_time) > 0.25;
         const bool camera_teleported     = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() > 250000.0f;
@@ -4416,7 +4474,8 @@ namespace spartan
                                            abs(light_intensity - m_pass_state.cloud_light_intensity) > 0.01f ||
                                            abs(cloud_coverage - m_pass_state.cloud_coverage) > 0.001f;
         const bool wind_changed          = (wind - m_pass_state.cloud_wind).LengthSquared() > 0.0001f;
-        const bool cloud_state_changed   = m_pass_state.sky_first_frame || light_changed || wind_changed || time_discontinuous || camera_teleported;
+        const bool seed_changed          = cloud_seed_offset != m_pass_state.cloud_seed_offset;
+        const bool cloud_state_changed   = m_pass_state.sky_first_frame || light_changed || wind_changed || seed_changed || time_discontinuous || camera_teleported;
         m_pass_state.sky_state_changed_this_frame =
             cloud_state_changed;
         if (cloud_state_changed)
@@ -4430,6 +4489,7 @@ namespace spartan
         m_pass_state.cloud_light_intensity = light_intensity;
         m_pass_state.cloud_coverage        = cloud_coverage;
         m_pass_state.cloud_wind            = wind;
+        m_pass_state.cloud_seed_offset     = cloud_seed_offset;
         m_pass_state.cloud_time            = m_cb_frame_cpu.time;
 
         // capture this frame's warmup status before we decrement, so Pass_Skysphere can pick

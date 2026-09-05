@@ -29,6 +29,7 @@ SOFTWARE.
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <utility>
 #include <memory>
@@ -43,6 +44,10 @@ namespace spartan
     class Entity;
     class RHI_Texture;
     enum class Renderer_SecondaryViewBackdrop;
+    namespace mcp_json
+    {
+        struct value;
+    }
 }
 
 class AssetViewer : public Widget
@@ -358,17 +363,45 @@ public:
     );
 
 private:
+    // a mesh file the optimize tools edit, a mesh asset is one of these and a prefab is every
+    // mesh file its parts reference, so the same tools work on a whole chair at once
+    struct WorkingMesh
+    {
+        std::shared_ptr<spartan::Mesh> mesh;
+        std::string path;
+    };
+
     // one editable copy per sub mesh, sub meshes cannot be merged into a single buffer and
     // simplified as one blob because each carries its own material
     struct WorkingSubMesh
     {
         std::vector<spartan::RHI_Vertex_PosTexNorTan> vertices;
         std::vector<uint32_t> indices;
+        // which working mesh file this belongs to
+        uint32_t source_mesh = 0;
         // the slot this came from, edits are written back into the same slot because prefabs and
         // material slots address sub meshes by index
         uint32_t source_sub_mesh = 0;
         uint32_t source_vertex_count = 0;
         uint32_t source_index_count = 0;
+    };
+
+    // a render component in the preview and the working geometry it draws, the render loses that
+    // mapping the moment it is repointed at a scratch mesh
+    struct PreviewRenderSlot
+    {
+        uint64_t entity_id = 0;
+        uint32_t mesh_index = 0;
+        uint32_t sub_mesh = 0;
+    };
+
+    // what collapsing a prefab's parts by material would do, or did
+    struct BakeSummary
+    {
+        uint32_t renderers_before = 0;
+        uint32_t renderers_after = 0;
+        uint32_t materials = 0;
+        uint32_t skipped = 0;
     };
 
     // what a library cleanup would remove, built before anything is touched
@@ -468,6 +501,30 @@ private:
     void OptimizeWorkingGeometry();
     void BuildWorkingLods();
     bool SaveWorkingGeometry();
+    // registers a mesh file with the optimize tools, a prefab calls this once per mesh its parts use
+    bool AddWorkingMesh(
+        const std::string& path,
+        bool force_reload
+    );
+    void CollectPrefabMeshes(
+        const std::string& path,
+        bool force_reload
+    );
+    // walks the preview hierarchy and records which render draws which working sub mesh
+    void CollectPreviewRenderSlots(spartan::Entity* root);
+    // collapses every part of the loaded prefab that shares a material into one sub mesh and
+    // rewrites the prefab, the report is what the confirmation and the status line show
+    bool BakePrefabByMaterial(bool generate_lods);
+    // what the bake would collapse, computed from the preview without touching anything
+    BakeSummary PreviewBakeSummary() const;
+    std::vector<spartan::Material*> PreviewMaterials() const;
+    // read, edit and atomically rewrite one catalog record
+    bool UpdateCatalogAsset(
+        const std::string& asset_id,
+        const std::function<void(spartan::mcp_json::value&)>& edit
+    );
+    void DrawPrefabOverview(const AssetEntry& asset);
+    void DrawBakeConfirmation();
     void CollectPrefabDependencies(const std::string& path);
     void RebuildPreviewScene();
     void PreviewEntity(spartan::Entity* entity);
@@ -535,18 +592,19 @@ private:
     bool m_rename_request_focus = false;
     std::unordered_set<std::string> m_expanded_assets;
     std::string m_loaded_write_time;
+    // the mesh a mesh asset previews, a prefab leaves this empty and fills m_working_meshes instead
     std::shared_ptr<spartan::Mesh> m_mesh;
+    // every mesh file the optimize tools currently edit
+    std::vector<WorkingMesh> m_working_meshes;
     // one scratch mesh per editable sub mesh, allocated once at the source size and then updated in
     // place, the global geometry buffer only ever appends so rebuilding them per edit would grow it
     // without bound
     std::vector<std::shared_ptr<spartan::Mesh>> m_preview_meshes;
     // what the pool was sized against, a scratch mesh can only ever be updated with geometry that
     // fits its original allocation
-    const spartan::Mesh* m_preview_meshes_source = nullptr;
+    std::vector<const spartan::Mesh*> m_preview_meshes_sources;
     uint64_t m_preview_meshes_capacity = 0;
-    // entity id to source sub mesh index, the render components lose that mapping the moment their
-    // sub mesh index is repointed at a scratch mesh
-    std::vector<std::pair<uint64_t, uint32_t>> m_preview_render_slots;
+    std::vector<PreviewRenderSlot> m_preview_render_slots;
     std::shared_ptr<spartan::Material> m_material;
     std::shared_ptr<spartan::RHI_Texture> m_texture;
     // the authoritative editable geometry, one entry per sub mesh
@@ -587,9 +645,14 @@ private:
     // the rows drawn last frame in the order they appeared, which is what select all and a shift range
     // both have to mean, the tree is filtered and collapsible so it is not the order of m_assets
     std::vector<int> m_visible_rows;
-    int m_type_filter = 0;
+    // prefabs by default, a generated asset is a prefab and its meshes, materials and textures hang
+    // off it, listing them all flat buried the thing the user actually made
+    int m_type_filter = 3;
     int m_sort_mode = 0;
     int m_inspector_tab = 0;
+    // the bake rewrites the prefab and its mesh files, so it is confirmed like a save
+    bool m_bake_confirmation_open = false;
+    bool m_bake_generate_lods = true;
     // section of the linked file panel, 0 is overview and 1 is the mesh optimize tools
     int m_dependency_tab = 0;
     int m_preview_mode = 0;

@@ -135,8 +135,8 @@ struct FrameBufferData
     SHARED_FLOAT3 camera_position_right;
     SHARED_FLOAT  camera_exposure_mode;
     SHARED_UINT   is_multiview;
-    SHARED_UINT   padding_mv0;
-    SHARED_UINT   padding_mv1;
+    // horizontal meters added to every cloud noise lookup, rerolled per world load so each level shows a different cloudscape
+    SHARED_FLOAT2 cloud_seed_offset;
     SHARED_UINT   padding_mv2;
 
     // clustered lighting, populated each frame from camera near/far and the grid constants

@@ -45,17 +45,14 @@ namespace spartan
             float weight
         );
 
-        // pitch/roll sole_up_local onto ground normal, then yaw toe_fwd_local onto toe forward
-        // local vectors come from bind pose (filled ibm or skeleton bind globals)
-        // toe locals are left alone, the toes ride the plant delta as part of the same sole
+        // tilt the foot by the ground slope only, model up onto the ground normal, so the heel and
+        // toe roll authored in the clip survive. flat ground is a no op
+        // toe locals are left alone, the toes ride the tilt as part of the same sole
         bool PlantFoot(
             const Skeleton& skeleton,
             std::vector<math::Matrix>& local_matrices,
             uint32_t end_index,
             const math::Vector3& ground_normal_model,
-            const math::Vector3& toe_forward_model,
-            const math::Vector3& sole_up_local,
-            const math::Vector3& toe_fwd_local,
             float weight
         );
     }

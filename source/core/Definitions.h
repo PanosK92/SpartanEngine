@@ -28,6 +28,16 @@ namespace spartan::version
     // helpers
     consteval int digit(char c) { return c - '0'; }
 
+#if defined(SP_BUILD_STAMP)
+    // ci passes yyyymmddhhmm via premake so the exe version matches the release tag exactly
+    inline constexpr long long stamp = SP_BUILD_STAMP;
+
+    consteval int year()   { return static_cast<int>(stamp / 100000000LL); }
+    consteval int month()  { return static_cast<int>(stamp / 1000000LL % 100); }
+    consteval int day()    { return static_cast<int>(stamp / 10000LL % 100); }
+    consteval int hour()   { return static_cast<int>(stamp / 100LL % 100); }
+    consteval int minute() { return static_cast<int>(stamp % 100); }
+#else
     consteval int year()
     {
         return digit(__DATE__[7]) * 1000 +
@@ -67,6 +77,7 @@ namespace spartan::version
     {
         return digit(__TIME__[3]) * 10 + digit(__TIME__[4]);
     }
+#endif
 
     // version as integers
     inline constexpr int major = year();

@@ -110,6 +110,7 @@ const engine_tool_names = new Set([
   "entity_find",
   "entity_resolve",
   "entity_get",
+  "entity_list_children",
   "selection_get",
   "entity_create_empty",
   "entity_create_light",
@@ -619,20 +620,17 @@ async function create_textured_material(run, args) {
     return material;
   }
 
+  // the engine resolves a bare file name into the mcp materials folder and reports the full path
+  // under material.resource.path, the bare name is not addressable afterwards
   const created_path =
+    material.material?.resource?.path ??
     material.resource?.path ??
     material.material?.path ??
     material_path;
-  const properties = await set_material_properties(
-    run,
-    created_path,
-    args,
-  );
-  if (!properties.ok)
-  {
-    return properties;
-  }
 
+  // roughness and metalness go into the maps, the scalars stay at 1 because attaching a roughness
+  // map resets the scalar to 1 and the shader multiplies the two, a 0.1 scalar over a 0.1 map is
+  // a mirror, not a glaze
   const texture = await run.tool(
     "texture_generate",
     {
@@ -644,10 +642,13 @@ async function create_textured_material(run, args) {
       seed: args.seed,
       seamless: args.seamless,
       normal_strength: args.normal_strength,
+      normal_bevel: args.normal_bevel,
       base_roughness:
         args.base_roughness ??
         args.roughness,
-      base_metalness: args.base_metalness,
+      base_metalness:
+        args.base_metalness ??
+        args.metalness,
       library_asset: args.library_asset,
       material_path: created_path,
     },
@@ -661,31 +662,140 @@ async function create_textured_material(run, args) {
     };
   }
 
-  const tiling = Number(args.tiling ?? 0);
-  if (tiling > 0)
+  // scalars land after the maps, texture attachment rewrites some of them and generation
+  // arguments such as width or seed are not material properties and used to fail the whole call
+  const scalars = textured_material_scalars(args);
+  const properties = await set_material_properties(
+    run,
+    created_path,
+    scalars,
+  );
+  if (!properties.ok)
   {
-    for (const property of [
-      "texture_tiling_x",
-      "texture_tiling_y",
-    ])
-    {
-      await run.tool(
-        "material_set_property",
-        {
-          path: created_path,
-          property,
-          value: tiling,
-        },
-      );
-    }
+    return {
+      ...properties,
+      material_path: created_path,
+      texture,
+    };
   }
 
+  const tiling = Number(args.tiling ?? 0);
   return {
     ok: true,
     material_path: created_path,
     texture,
     tiling: tiling > 0 ? tiling : 1,
+    applied_properties: properties.updated,
   };
+}
+
+// entity_get returns child ids only, agents building an asset keep asking for the parts by name
+// so this expands one level of children into id, name, components and local transform
+async function list_entity_children(run, args) {
+  const parent = await run.tool(
+    "entity_get",
+    {
+      id: args.id ?? args.entity_id ?? args.parent_id,
+      name: args.name ?? args.entity ?? args.parent,
+    },
+  );
+  if (!parent.ok)
+  {
+    return parent;
+  }
+  const ids = Array.isArray(parent.entity?.children)
+    ? parent.entity.children
+    : [];
+  const limit = Math.min(
+    Math.max(Number(args.limit ?? 64), 1),
+    256,
+  );
+  const children = [];
+  for (const id of ids.slice(0, limit))
+  {
+    const child = await run.tool(
+      "entity_get",
+      { id },
+    );
+    if (!child.ok || !child.entity)
+    {
+      continue;
+    }
+    const entity = child.entity;
+    children.push({
+      id: entity.id,
+      name: entity.name,
+      active: entity.active,
+      components: entity.components,
+      position_local: entity.position_local,
+      rotation_euler_local: entity.rotation_euler_local,
+      scale_local: entity.scale_local,
+      child_count: Array.isArray(entity.children)
+        ? entity.children.length
+        : 0,
+    });
+  }
+  return {
+    ok: true,
+    parent: {
+      id: parent.entity.id,
+      name: parent.entity.name,
+    },
+    count: children.length,
+    total: ids.length,
+    truncated: ids.length > limit,
+    children,
+  };
+}
+
+// the subset of material_textured_create arguments that are material properties, everything
+// else on the call describes the texture and must not reach material_set_property
+const textured_material_scalar_keys = new Set([
+  "color_r",
+  "color_g",
+  "color_b",
+  "color_a",
+  "normal",
+  "height",
+  "clearcoat",
+  "clearcoat_roughness",
+  "anisotropic",
+  "anisotropic_rotation",
+  "sheen",
+  "subsurface_scattering",
+  "ior",
+  "absorption",
+  "thickness",
+  "emissive_from_albedo",
+  "texture_tiling_x",
+  "texture_tiling_y",
+  "texture_offset_x",
+  "texture_offset_y",
+]);
+
+function textured_material_scalars(args) {
+  const scalars = {};
+  for (const [key, value] of Object.entries(args))
+  {
+    if (
+      textured_material_scalar_keys.has(key) &&
+      Number.isFinite(value)
+    )
+    {
+      scalars[key] = value;
+    }
+  }
+  if (Array.isArray(args.color) || Array.isArray(args.base_color))
+  {
+    scalars.color = args.color ?? args.base_color;
+  }
+  const tiling = Number(args.tiling ?? 0);
+  if (tiling > 0)
+  {
+    scalars.texture_tiling_x = tiling;
+    scalars.texture_tiling_y = tiling;
+  }
+  return scalars;
 }
 
 async function create_material_palette(run, args) {
@@ -1354,26 +1464,8 @@ function normalize_mesh_arguments(args) {
         : {}
     ),
   };
-  if (
-    normalized.shape === "curved_profile" &&
-    Array.isArray(normalized.profile) &&
-    normalized.profile.length >= 6
-  )
-  {
-    const profile = normalized.profile;
-    const last = profile.length - 2;
-    if (
-      profile[0] !== profile[last] ||
-      profile[1] !== profile[last + 1]
-    )
-    {
-      normalized.profile = [
-        ...profile,
-        profile[0],
-        profile[1],
-      ];
-    }
-  }
+  // closed outlines are implicit in the engine, a repeated first point used to be appended here
+  // and was then rejected as a zero length edge, the engine now strips one if the agent sends it
   return normalized;
 }
 
@@ -2368,6 +2460,60 @@ async function dispatch_assistant_command(
   {
     command = "prefab_save";
   }
+  // names agents reach for that logged as capability gaps, each maps onto what exists
+  if (
+    command === "entity_describe" ||
+    command === "entity_inspect"
+  )
+  {
+    command = "entity_get";
+  }
+  if (
+    command === "entity_list_children" ||
+    command === "entity_children" ||
+    command === "entity_get_children"
+  )
+  {
+    return list_entity_children(run, args);
+  }
+  if (
+    command === "agent_memory_update" ||
+    command === "agent_memory_write" ||
+    command === "agent_memory_add" ||
+    command === "agent_memory_note"
+  )
+  {
+    command = "agent_memory_append";
+  }
+  if (
+    command === "spartan_engine_command" ||
+    command === "engine_command"
+  )
+  {
+    const inner = String(
+      args.command ?? args.name ?? args.tool ?? "",
+    ).trim();
+    if (!inner)
+    {
+      return {
+        ok: false,
+        error: "spartan_engine_command needs a command name, pass {command, args}",
+        code: "invalid_arguments",
+      };
+    }
+    const inner_args =
+      args.args && typeof args.args === "object"
+        ? args.args
+        : args.arguments && typeof args.arguments === "object"
+          ? args.arguments
+          : Object.fromEntries(
+              Object.entries(args).filter(
+                ([key]) =>
+                  !["command", "name", "tool"].includes(key),
+              ),
+            );
+    return dispatch_assistant_command(context, inner, inner_args);
+  }
   if (command === "resource_read")
   {
     const has_name =
@@ -3225,12 +3371,28 @@ async function dispatch_assistant_command(
   }
   if (command === "agent_memory_append")
   {
+    // a note without a section is still worth keeping, corrections is where lessons go
+    const section = String(
+      args.section ?? args.heading ?? "Corrections",
+    ).replace(/^#+\s*/, "").trim() || "Corrections";
+    const note =
+      args.note ??
+      args.text ??
+      args.lesson ??
+      args.content ??
+      args.memory;
+    if (!note)
+    {
+      return {
+        ok: false,
+        error: "agent_memory_append needs a note, pass {section, note}",
+        code: "invalid_arguments",
+      };
+    }
     return {
       ok: true,
-      memory: await append_agent_memory(
-        args.section,
-        args.note ?? args.text,
-      ),
+      section,
+      memory: await append_agent_memory(section, note),
     };
   }
   if (command === "agent_memory_replace")
@@ -3322,6 +3484,24 @@ async function dispatch_assistant_command(
         alias_for: "prefab_save",
         note:
           "uses prefab_save arguments, focused runs defer this alias because the finalizer owns the only prefab save",
+      },
+      entity_list_children: {
+        required_one_of: ["id", "name"],
+        optional: ["limit"],
+        note:
+          "expands one level of children into id, name, components and local transform",
+      },
+      entity_describe: {
+        alias_for: "entity_get",
+      },
+      agent_memory_update: {
+        alias_for: "agent_memory_append",
+        note: "pass {section, note}, section defaults to Corrections",
+      },
+      spartan_engine_command: {
+        required: ["command"],
+        optional: ["args"],
+        note: "forwards {command, args} to the named engine command",
       },
       scene_benchmark_score: {
         required: ["result"],
@@ -5217,7 +5397,8 @@ function build_prompt(
       "For a focused single-asset request, build one current asset in isolation. There is no part, material, or triangle cap. Create every part and material the object needs.",
       "Begin editing the prepared asset root immediately. Do not spend multiple minutes narrating, repeating lookups, or redesigning the prepared baseline before the first mutation.",
       "Never move or capture the main scene viewport. The run finalizer performs the one Asset Viewer review.",
-      "Texture every material that represents a real surface. Use material_textured_create so the material and its color, roughness, normal and packed maps are made together.",
+      "Texture every material that represents a real surface. Use material_textured_create so the material and its color, roughness, normal and packed maps are made together. Its roughness and metalness go into the maps; for glaze, varnish, paint or lacquer also pass clearcoat 1, clearcoat_roughness 0.04 and ior 1.5 on the same call. It returns the resolved material_path, use that path afterwards.",
+      "Closed 2d profiles (curved_profile, loft, extruded_profile) are implicitly closed and any scale is fine, list the points once counter clockwise. A rejection names the exact problem, fix that instead of rescaling.",
       "For entity_add_component pass exactly id and a valid component type, for example {id, type: \"physics\"}; call component_types when the exact type is unknown.",
       "For material commands, pass the .material resource path returned by material creation or inspection as path, never an entity id or display name.",
       "material_set_texture requires {path, texture_type, texture_path}; slot is optional.",

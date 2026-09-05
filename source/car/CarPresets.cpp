@@ -180,6 +180,7 @@ namespace car
             require(preset.engine_sound_banks >= 1 && preset.engine_sound_banks <= 2, "engine_sound_banks");
             require(finite_range(preset.engine_displacement_l, 0.1f, 20.0f) && finite_range(preset.engine_bore_mm, 30.0f, 200.0f) && finite_range(preset.engine_stroke_mm, 30.0f, 200.0f) && finite_range(preset.engine_compression_ratio, 5.0f, 25.0f), "engine_sound_geometry");
             require(finite_range(preset.exhaust_primary_length_m, 0.05f, 3.0f) && finite_range(preset.exhaust_collector_length_m, 0.1f, 10.0f), "engine_sound_exhaust");
+            require(finite_range(preset.engine_bank_angle_deg, 0.0f, 180.0f) && finite_range(preset.exhaust_tailpipe_length_m, 0.05f, 5.0f) && finite_range(preset.exhaust_muffler_level, 0.0f, 1.0f), "engine_sound_layout");
             bool firing_order_used[max_engine_cylinders] = {};
             for (int i = 0; i < preset.engine_sound_cylinders; i++)
             {
@@ -409,6 +410,9 @@ namespace car
             READ_FLOAT(engine_compression_ratio);
             READ_FLOAT(exhaust_primary_length_m);
             READ_FLOAT(exhaust_collector_length_m);
+            READ_FLOAT(engine_bank_angle_deg);
+            READ_FLOAT(exhaust_tailpipe_length_m);
+            READ_FLOAT(exhaust_muffler_level);
             READ_ENGINE_ARRAY(engine_firing_order);
             READ_ENGINE_ARRAY(engine_cylinder_bank);
 
@@ -576,6 +580,9 @@ namespace car
             READ_INT(brakes_stage_max);
             READ_INT(aero_stage_max);
             READ_INT(weight_stage_max);
+            READ_INT(exhaust_stage_max);
+            READ_INT(intake_stage_max);
+            READ_INT(turbo_stage_max);
             READ_FLOAT(driveshaft_stiffness);
             READ_FLOAT(driveshaft_damping);
 
@@ -617,6 +624,21 @@ namespace car
 
     namespace
     {
+        // a v engine without an explicit bank angle gets the common one for its cylinder count
+        void derive_engine_layout(car_preset& preset)
+        {
+            if (preset.engine_bank_angle_deg <= 0.0f && preset.engine_sound_banks >= 2)
+            {
+                switch (preset.engine_sound_cylinders)
+                {
+                    case 6:
+                    case 12: preset.engine_bank_angle_deg = 60.0f; break;
+                    case 10: preset.engine_bank_angle_deg = 72.0f; break;
+                    default: preset.engine_bank_angle_deg = 90.0f; break;
+                }
+            }
+        }
+
         string normalize_path(const string& path)
         {
             string result = path;
@@ -714,6 +736,7 @@ namespace car
         load_suspension_geometry(root.child("rear_suspension"), definition.performance.rear_geometry);
         load_assists(root.child("assists"), definition.performance.assists);
         load_validation_targets(root.child("validation"), definition.performance.validation);
+        derive_engine_layout(definition.performance);
         if (!validate_preset(definition.performance, definition.name))
         {
             return nullptr;

@@ -35,6 +35,7 @@ SOFTWARE.
 #include "rendering/Renderer.h"
 #include "resource/ResourceCache.h"
 #include "world/Entity.h"
+#include "world/GameReady.h"
 #include "world/Prefab.h"
 #include "world/World.h"
 #include "core/Event.h"
@@ -1158,6 +1159,78 @@ namespace
         ImGui::EndChild();
         ImGui::PopStyleColor();
     }
+
+    // a labelled number in a box, the inspector shows the handful that decide whether an asset is
+    // game ready as a row of these rather than as a column of text
+    void draw_metric_card(
+        const char* label,
+        const string& value,
+        const float width,
+        const ImU32 accent = 0
+    )
+    {
+        const float scale = ui_scale();
+        const ImVec2 origin = ImGui::GetCursorScreenPos();
+        const ImVec2 size(width, 46.0f * scale);
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        const ImVec4 frame = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
+        draw_list->AddRectFilled(
+            origin,
+            ImVec2(origin.x + size.x, origin.y + size.y),
+            ImGui::ColorConvertFloat4ToU32(
+                ImVec4(frame.x, frame.y, frame.z, 0.45f)
+            ),
+            5.0f * scale
+        );
+        if (accent != 0)
+        {
+            draw_list->AddRectFilled(
+                origin,
+                ImVec2(origin.x + 3.0f * scale, origin.y + size.y),
+                accent,
+                2.0f * scale
+            );
+        }
+        draw_list->AddText(
+            ImVec2(origin.x + 9.0f * scale, origin.y + 6.0f * scale),
+            ImGui::GetColorU32(ImGuiCol_Text),
+            value.c_str()
+        );
+        draw_list->AddText(
+            ImVec2(origin.x + 9.0f * scale, origin.y + 25.0f * scale),
+            ImGui::GetColorU32(ImGuiCol_TextDisabled),
+            label
+        );
+        ImGui::Dummy(size);
+    }
+
+    void section_title(const char* title)
+    {
+        ImGui::Spacing();
+        ImGui::TextUnformatted(title);
+        ImGui::Separator();
+    }
+
+    // twelve hex characters, the same shape the generator gives its files so a baked mesh sits
+    // next to its siblings without looking foreign
+    string short_hash(const string& seed)
+    {
+        const uint64_t now = static_cast<uint64_t>(
+            chrono::steady_clock::now().time_since_epoch().count()
+        );
+        uint64_t value = std::hash<string>{}(seed) ^ (now * 1099511628211ull);
+        value ^= value >> 29;
+        value *= 0xbf58476d1ce4e5b9ull;
+        value ^= value >> 32;
+        char buffer[16] = {};
+        snprintf(
+            buffer,
+            sizeof(buffer),
+            "%012llx",
+            static_cast<unsigned long long>(value & 0xffffffffffffull)
+        );
+        return buffer;
+    }
 }
 
 AssetViewer::AssetViewer(Editor* editor) : Widget(editor)
@@ -1216,6 +1289,26 @@ void AssetViewer::OnVisible()
     else if (!PreviewRoot() && focused_workspace)
     {
         PreviewEntity(focused_workspace);
+    }
+    else if (!PreviewRoot() && m_selected_asset < 0)
+    {
+        // an empty viewport on open is a dead end, the first prefab is what the user most likely
+        // came to look at so it is up and expanded before they click anything
+        for (int index = 0; index < static_cast<int>(m_assets.size()); index++)
+        {
+            if (m_assets[index].type != "prefab")
+            {
+                continue;
+            }
+            m_selected_asset = index;
+            m_selected_assets.clear();
+            m_selected_assets.insert(m_assets[index].id);
+            m_selection_anchor = index;
+            m_expanded_assets.insert(m_assets[index].id);
+            m_inspector_tab = 0;
+            LoadSelectedAsset();
+            break;
+        }
     }
 }
 
@@ -1995,13 +2088,15 @@ void AssetViewer::ClearLoadedAsset()
     m_revision.candidate_previewed = false;
     DestroyPreviewScene();
     m_mesh.reset();
+    m_working_meshes.clear();
     m_preview_meshes.clear();
-    m_preview_meshes_source = nullptr;
+    m_preview_meshes_sources.clear();
     m_material.reset();
     m_texture.reset();
     m_loaded_path.clear();
     m_loaded_write_time.clear();
     m_prefab_entity_count = 0;
+    m_bake_confirmation_open = false;
     m_working_sub_meshes.clear();
     m_working_lods.clear();
     m_working_vertices.clear();
@@ -2053,21 +2148,14 @@ void AssetViewer::LoadSelectedAsset(
 
     if (asset.type == "mesh")
     {
-        m_mesh = ResourceCache::Load<Mesh>(asset.path);
-        if (m_mesh && force_reload)
+        if (!AddWorkingMesh(asset.path, force_reload))
         {
-            m_mesh->LoadFromFile(asset.path);
-        }
-        if (!m_mesh || m_mesh->GetVertexCount() == 0)
-        {
-            m_mesh.reset();
-            m_preview_meshes.clear();
-            m_preview_meshes_source = nullptr;
             m_status =
                 "Mesh could not be loaded: " +
                 asset.path;
             return;
         }
+        m_mesh = m_working_meshes.front().mesh;
         LoadWorkingGeometry();
     }
     else if (asset.type == "material")
@@ -2126,6 +2214,10 @@ void AssetViewer::LoadSelectedAsset(
             1 +
             count_prefab_entities(prefab);
         CollectPrefabDependencies(asset.path);
+        // the optimize tools see every mesh the prefab uses as one job, a chair is simplified as a
+        // chair rather than one plank at a time
+        CollectPrefabMeshes(asset.path, force_reload);
+        LoadWorkingGeometry();
     }
 
     m_loaded_path = asset.path;
@@ -2173,15 +2265,14 @@ void AssetViewer::LoadDependencyPreview(
     const string type = asset_type_from_path(path);
     if (type == "mesh")
     {
-        m_mesh = ResourceCache::Load<Mesh>(path);
-        if (!m_mesh || m_mesh->GetVertexCount() == 0)
+        if (!AddWorkingMesh(path, false))
         {
-            m_mesh.reset();
             m_status =
                 "Linked mesh could not be loaded: " +
                 path;
             return;
         }
+        m_mesh = m_working_meshes.front().mesh;
         LoadWorkingGeometry();
     }
     else if (type == "material")
@@ -2291,6 +2382,105 @@ void AssetViewer::CollectPrefabDependencies(const string& path)
             {
                 m_missing_dependencies.push_back(missing);
             }
+        }
+    }
+}
+
+bool AssetViewer::AddWorkingMesh(
+    const string& path,
+    const bool force_reload
+)
+{
+    for (const WorkingMesh& working : m_working_meshes)
+    {
+        if (normalized_path(working.path) == normalized_path(path))
+        {
+            return true;
+        }
+    }
+    if (!FileSystem::Exists(path))
+    {
+        return false;
+    }
+
+    shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>(path);
+    if (mesh && force_reload)
+    {
+        mesh->LoadFromFile(path);
+    }
+    if (!mesh || mesh->GetVertexCount() == 0)
+    {
+        return false;
+    }
+
+    WorkingMesh working;
+    working.mesh = move(mesh);
+    working.path = path;
+    m_working_meshes.emplace_back(move(working));
+    return true;
+}
+
+void AssetViewer::CollectPrefabMeshes(
+    const string& path,
+    const bool force_reload
+)
+{
+    // in the order the prefab references them so the sub mesh list reads top to bottom like the
+    // hierarchy does, a set would shuffle a chair's legs above its seat
+    const vector<string> mesh_paths =
+        collect_xml_references(path, "mesh_path");
+    for (const string& mesh_path : mesh_paths)
+    {
+        if (!path_is_in_viewer_roots(mesh_path))
+        {
+            continue;
+        }
+        AddWorkingMesh(mesh_path, force_reload);
+    }
+}
+
+void AssetViewer::CollectPreviewRenderSlots(Entity* root)
+{
+    m_preview_render_slots.clear();
+    if (!root)
+    {
+        return;
+    }
+
+    vector<Entity*> entities;
+    entities.push_back(root);
+    root->GetDescendants(&entities);
+    for (Entity* entity : entities)
+    {
+        Render* render =
+            entity ?
+            entity->GetComponent<Render>() :
+            nullptr;
+        if (!render || !render->GetMesh())
+        {
+            continue;
+        }
+
+        for (
+            uint32_t mesh_index = 0;
+            mesh_index < static_cast<uint32_t>(m_working_meshes.size());
+            mesh_index++
+        )
+        {
+            if (
+                m_working_meshes[mesh_index].mesh.get() !=
+                render->GetMesh()
+            )
+            {
+                continue;
+            }
+
+            PreviewRenderSlot slot;
+            slot.entity_id = entity->GetObjectId();
+            slot.mesh_index = mesh_index;
+            slot.sub_mesh = render->GetSubMeshIndex();
+            m_preview_render_slots.push_back(slot);
+            break;
         }
     }
 }
@@ -2751,6 +2941,8 @@ bool AssetViewer::LoadRevisionCandidate(string& error)
             1 +
             count_prefab_entities(prefab);
         CollectPrefabDependencies(m_revision.candidate_path);
+        CollectPrefabMeshes(m_revision.candidate_path, false);
+        LoadWorkingGeometry();
         m_loaded_path = m_revision.candidate_path;
         m_loaded_write_time =
             FileSystem::GetLastWriteTime(m_loaded_path);
@@ -2938,40 +3130,49 @@ void AssetViewer::LoadWorkingGeometry()
     m_working_editable = false;
     m_working_lods_attempted = false;
     m_preview_lod = 0;
-    if (!m_mesh)
+    if (m_working_meshes.empty())
     {
         return;
     }
 
     // only lod 0, the lods sit back to back with lod local indices so drawing them raw misplaces every triangle
     for (
-        uint32_t sub_mesh = 0;
-        sub_mesh < m_mesh->GetSubMeshCount();
-        sub_mesh++
+        uint32_t mesh_index = 0;
+        mesh_index < static_cast<uint32_t>(m_working_meshes.size());
+        mesh_index++
     )
     {
-        if (m_mesh->GetSubMesh(sub_mesh).lods.empty())
+        Mesh* mesh = m_working_meshes[mesh_index].mesh.get();
+        for (
+            uint32_t sub_mesh = 0;
+            sub_mesh < mesh->GetSubMeshCount();
+            sub_mesh++
+        )
         {
-            continue;
-        }
+            if (mesh->GetSubMesh(sub_mesh).lods.empty())
+            {
+                continue;
+            }
 
-        WorkingSubMesh working;
-        m_mesh->GetGeometry(
-            sub_mesh,
-            &working.indices,
-            &working.vertices
-        );
-        if (working.vertices.empty() || working.indices.size() < 3)
-        {
-            continue;
-        }
+            WorkingSubMesh working;
+            mesh->GetGeometry(
+                sub_mesh,
+                &working.indices,
+                &working.vertices
+            );
+            if (working.vertices.empty() || working.indices.size() < 3)
+            {
+                continue;
+            }
 
-        working.source_sub_mesh = sub_mesh;
-        working.source_vertex_count =
-            static_cast<uint32_t>(working.vertices.size());
-        working.source_index_count =
-            static_cast<uint32_t>(working.indices.size());
-        m_working_sub_meshes.emplace_back(move(working));
+            working.source_mesh = mesh_index;
+            working.source_sub_mesh = sub_mesh;
+            working.source_vertex_count =
+                static_cast<uint32_t>(working.vertices.size());
+            working.source_index_count =
+                static_cast<uint32_t>(working.indices.size());
+            m_working_sub_meshes.emplace_back(move(working));
+        }
     }
 
     m_working_editable = !m_working_sub_meshes.empty();
@@ -2987,22 +3188,28 @@ void AssetViewer::LoadExistingLods()
 {
     m_working_lods.clear();
     m_working_lods_built = false;
-    if (!m_mesh || m_working_sub_meshes.empty())
+    if (m_working_meshes.empty() || m_working_sub_meshes.empty())
     {
         return;
     }
 
+    const auto source_mesh =
+        [this](const WorkingSubMesh& working)
+        {
+            return m_working_meshes[working.source_mesh].mesh.get();
+        };
+
     // the chain is only as deep as the shallowest sub mesh, a level that exists for one part and not
     // another would silently drop the parts that ran out of levels
     uint32_t depth =
-        m_mesh->GetLodCount(
+        source_mesh(m_working_sub_meshes.front())->GetLodCount(
             m_working_sub_meshes.front().source_sub_mesh
         );
     for (const WorkingSubMesh& working : m_working_sub_meshes)
     {
         depth = min(
             depth,
-            m_mesh->GetLodCount(working.source_sub_mesh)
+            source_mesh(working)->GetLodCount(working.source_sub_mesh)
         );
     }
     if (depth < 2)
@@ -3017,11 +3224,12 @@ void AssetViewer::LoadExistingLods()
         for (const WorkingSubMesh& source : m_working_sub_meshes)
         {
             WorkingSubMesh working;
+            working.source_mesh = source.source_mesh;
             working.source_sub_mesh = source.source_sub_mesh;
             working.source_vertex_count = source.source_vertex_count;
             working.source_index_count = source.source_index_count;
             if (
-                !m_mesh->GetGeometryLod(
+                !source_mesh(source)->GetGeometryLod(
                     source.source_sub_mesh,
                     lod,
                     &working.indices,
@@ -3085,11 +3293,18 @@ bool AssetViewer::EnsurePreviewMeshes()
         required_capacity += working.source_vertex_count;
     }
 
+    vector<const Mesh*> sources;
+    sources.reserve(m_working_meshes.size());
+    for (const WorkingMesh& working : m_working_meshes)
+    {
+        sources.push_back(working.mesh.get());
+    }
+
     // the pool survives simplify, revert and lod switches, rebuilding it per edit would grow the
     // global geometry buffer without bound because it only ever appends
     if (
         m_preview_meshes.size() == m_working_sub_meshes.size() &&
-        m_preview_meshes_source == m_mesh.get() &&
+        m_preview_meshes_sources == sources &&
         m_preview_meshes_capacity >= required_capacity
     )
     {
@@ -3097,7 +3312,7 @@ bool AssetViewer::EnsurePreviewMeshes()
     }
 
     m_preview_meshes.clear();
-    m_preview_meshes_source = m_mesh.get();
+    m_preview_meshes_sources = sources;
     m_preview_meshes_capacity = required_capacity;
     for (const WorkingSubMesh& working : m_working_sub_meshes)
     {
@@ -3106,6 +3321,8 @@ bool AssetViewer::EnsurePreviewMeshes()
         shared_ptr<Mesh> scratch = make_shared<Mesh>();
         scratch->SetObjectName(
             "asset_viewer_working_" +
+            to_string(working.source_mesh) +
+            "_" +
             to_string(working.source_sub_mesh)
         );
 
@@ -3118,7 +3335,7 @@ bool AssetViewer::EnsurePreviewMeshes()
         // copy would allocate too little to ever revert back into
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
-        m_mesh->GetGeometry(
+        m_working_meshes[working.source_mesh].mesh->GetGeometry(
             working.source_sub_mesh,
             &indices,
             &vertices
@@ -3133,7 +3350,7 @@ bool AssetViewer::EnsurePreviewMeshes()
 
 void AssetViewer::RefreshPreviewMeshGeometry()
 {
-    if (!m_mesh || m_working_sub_meshes.empty())
+    if (m_working_meshes.empty() || m_working_sub_meshes.empty())
     {
         return;
     }
@@ -3146,25 +3363,28 @@ void AssetViewer::RefreshPreviewMeshGeometry()
         m_preview_lod > 0;
     if (!wants_scratch)
     {
-        for (
-            const pair<uint64_t, uint32_t>& slot :
-            m_preview_render_slots
-        )
+        for (const PreviewRenderSlot& slot : m_preview_render_slots)
         {
-            Entity* entity = World::GetEntityById(slot.first);
+            Entity* entity = World::GetEntityById(slot.entity_id);
             Render* render =
                 entity ?
                 entity->GetComponent<Render>() :
                 nullptr;
             if (
                 !render ||
-                render->GetMesh() == m_mesh.get()
+                slot.mesh_index >= m_working_meshes.size()
             )
             {
                 continue;
             }
 
-            render->SetMesh(m_mesh.get(), slot.second);
+            Mesh* source = m_working_meshes[slot.mesh_index].mesh.get();
+            if (render->GetMesh() == source)
+            {
+                continue;
+            }
+
+            render->SetMesh(source, slot.sub_mesh);
         }
         m_preview_dirty = true;
         return;
@@ -3206,12 +3426,9 @@ void AssetViewer::RefreshPreviewMeshGeometry()
 
     // repoint every render at its scratch mesh, the mapping is kept separately because the render
     // sub mesh index becomes zero the first time this runs
-    for (
-        const pair<uint64_t, uint32_t>& slot :
-        m_preview_render_slots
-    )
+    for (const PreviewRenderSlot& slot : m_preview_render_slots)
     {
-        Entity* entity = World::GetEntityById(slot.first);
+        Entity* entity = World::GetEntityById(slot.entity_id);
         Render* render =
             entity ?
             entity->GetComponent<Render>() :
@@ -3224,8 +3441,10 @@ void AssetViewer::RefreshPreviewMeshGeometry()
         for (size_t index = 0; index < m_working_sub_meshes.size(); index++)
         {
             if (
+                m_working_sub_meshes[index].source_mesh !=
+                    slot.mesh_index ||
                 m_working_sub_meshes[index].source_sub_mesh !=
-                slot.second
+                    slot.sub_mesh
             )
             {
                 continue;
@@ -3431,7 +3650,7 @@ void AssetViewer::BuildWorkingLods()
 bool AssetViewer::SaveWorkingGeometry()
 {
     if (
-        !m_mesh ||
+        m_working_meshes.empty() ||
         !m_working_editable ||
         m_loaded_path.empty() ||
         m_working_sub_meshes.empty()
@@ -3440,62 +3659,477 @@ bool AssetViewer::SaveWorkingGeometry()
         return false;
     }
 
-    // bake into a standalone mesh so the cached resource is untouched until the
-    // file is reloaded below, lods are rebuilt from the edited geometry
-    Mesh baked;
-    baked.SetObjectName(
-        FileSystem::GetFileNameWithoutExtensionFromFilePath(
-            m_loaded_path
-        )
-    );
-
-    // inherit the import flags so the rebuilt file keeps the behaviour the original was authored
-    // with, only the lod flag follows the checkbox
-    baked.SetFlags(m_mesh->GetFlags());
-    baked.SetFlag(
-        static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods),
-        m_working_generate_lods
-    );
-
-    // sub mesh order has to survive the bake, the prefab and the materials reference sub meshes by
-    // index, so slots are reserved up front and written in place
-    baked.ReserveSubMeshes(m_mesh->GetSubMeshCount());
-    for (const WorkingSubMesh& working : m_working_sub_meshes)
+    uint32_t files_written = 0;
+    string written_path;
+    for (
+        uint32_t mesh_index = 0;
+        mesh_index < static_cast<uint32_t>(m_working_meshes.size());
+        mesh_index++
+    )
     {
-        if (working.source_sub_mesh >= m_mesh->GetSubMeshCount())
+        const WorkingMesh& source = m_working_meshes[mesh_index];
+
+        // bake into a standalone mesh so the cached resource is untouched until the
+        // file is reloaded below, lods are rebuilt from the edited geometry
+        Mesh baked;
+        baked.SetObjectName(
+            FileSystem::GetFileNameWithoutExtensionFromFilePath(
+                source.path
+            )
+        );
+
+        // inherit the import flags so the rebuilt file keeps the behaviour the original was authored
+        // with, only the lod flag follows the checkbox
+        baked.SetFlags(source.mesh->GetFlags());
+        baked.SetFlag(
+            static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods),
+            m_working_generate_lods
+        );
+
+        // sub mesh order has to survive the bake, the prefab and the materials reference sub meshes by
+        // index, so slots are reserved up front and written in place
+        baked.ReserveSubMeshes(source.mesh->GetSubMeshCount());
+        uint32_t written = 0;
+        for (const WorkingSubMesh& working : m_working_sub_meshes)
+        {
+            if (
+                working.source_mesh != mesh_index ||
+                working.source_sub_mesh >= source.mesh->GetSubMeshCount()
+            )
+            {
+                continue;
+            }
+
+            vector<RHI_Vertex_PosTexNorTan> vertices = working.vertices;
+            vector<uint32_t> indices = working.indices;
+            baked.AddGeometry(
+                vertices,
+                indices,
+                m_working_generate_lods,
+                working.source_sub_mesh
+            );
+            written++;
+        }
+        if (written == 0)
         {
             continue;
         }
 
-        vector<RHI_Vertex_PosTexNorTan> vertices = working.vertices;
-        vector<uint32_t> indices = working.indices;
-        baked.AddGeometry(
-            vertices,
-            indices,
-            m_working_generate_lods,
-            working.source_sub_mesh
-        );
-    }
-    baked.SaveToFile(m_loaded_path);
-    if (!FileSystem::Exists(m_loaded_path))
-    {
-        m_status =
-            "Failed to write " +
-            m_loaded_path;
-        return false;
+        baked.SaveToFile(source.path);
+        if (!FileSystem::Exists(source.path))
+        {
+            m_status =
+                "Failed to write " +
+                source.path;
+            return false;
+        }
+        files_written++;
+        written_path = source.path;
     }
 
+    const uint64_t vertex_count = m_working_vertices.size();
     m_working_modified = false;
     m_loaded_write_time.clear();
-    LoadSelectedAsset(false, true);
+    if (m_selected_asset >= 0)
+    {
+        LoadSelectedAsset(false, true);
+    }
+    else
+    {
+        const string path = m_loaded_path;
+        LoadDependencyPreview(path);
+    }
     m_status =
         "Saved " +
-        FileSystem::GetFileNameFromFilePath(m_loaded_path) +
+        (
+            files_written == 1
+                ? FileSystem::GetFileNameFromFilePath(written_path)
+                : to_string(files_written) + " mesh files"
+        ) +
         " with " +
-        to_string(m_working_vertices.size()) +
+        compact_count(vertex_count) +
         " vertices";
     return true;
 }
+
+bool AssetViewer::UpdateCatalogAsset(
+    const string& asset_id,
+    const function<void(JsonValue&)>& edit
+)
+{
+    if (m_catalog_path.empty())
+    {
+        m_status = "No asset catalog to write to.";
+        return false;
+    }
+
+    const string catalog_write_time =
+        FileSystem::GetLastWriteTime(m_catalog_path);
+    string source;
+    if (!FileSystem::ReadFile(m_catalog_path, source))
+    {
+        m_status = "The asset catalog could not be read.";
+        return false;
+    }
+
+    JsonValue root;
+    string parse_error;
+    if (!mcp_json::parse(source, root, parse_error))
+    {
+        m_status = "The asset catalog is invalid: " + parse_error;
+        return false;
+    }
+
+    JsonValue* assets = json_object_find(root, "assets");
+    if (
+        root.type != mcp_json::kind::object ||
+        !assets ||
+        assets->type != mcp_json::kind::object
+    )
+    {
+        m_status = "The asset catalog has no assets object.";
+        return false;
+    }
+
+    JsonValue* asset_value = json_object_find(*assets, asset_id);
+    if (!asset_value)
+    {
+        m_status = "The asset is no longer in the catalog.";
+        return false;
+    }
+    edit(*asset_value);
+
+    // written beside the catalog and swapped in, a crash mid write must not leave half a catalog
+    const string temporary_path = m_catalog_path + ".update.tmp";
+    const string backup_path = m_catalog_path + ".update.backup";
+    FileSystem::Delete(temporary_path);
+    FileSystem::Delete(backup_path);
+    if (
+        !FileSystem::WriteFile(
+            temporary_path,
+            serialize_json(root) + "\n"
+        )
+    )
+    {
+        m_status = "The updated asset catalog could not be written.";
+        return false;
+    }
+    if (
+        FileSystem::GetLastWriteTime(m_catalog_path) !=
+        catalog_write_time
+    )
+    {
+        FileSystem::Delete(temporary_path);
+        m_status = "The catalog changed during the update, try again.";
+        return false;
+    }
+
+    error_code error;
+    filesystem::rename(m_catalog_path, backup_path, error);
+    if (error)
+    {
+        FileSystem::Delete(temporary_path);
+        m_status = "The asset catalog could not be backed up.";
+        return false;
+    }
+    filesystem::rename(temporary_path, m_catalog_path, error);
+    if (error)
+    {
+        filesystem::rename(backup_path, m_catalog_path, error);
+        FileSystem::Delete(temporary_path);
+        m_status = "The asset catalog could not be replaced.";
+        return false;
+    }
+    FileSystem::Delete(backup_path);
+    return true;
+}
+
+vector<Material*> AssetViewer::PreviewMaterials() const
+{
+    vector<Material*> materials;
+    if (m_material)
+    {
+        materials.push_back(m_material.get());
+        return materials;
+    }
+
+    vector<Entity*> entities;
+    CollectPreviewEntities(entities);
+    for (Entity* entity : entities)
+    {
+        Render* render =
+            entity ?
+            entity->GetComponent<Render>() :
+            nullptr;
+        Material* material =
+            render ? render->GetMaterial() : nullptr;
+        if (
+            !material ||
+            find(
+                materials.begin(),
+                materials.end(),
+                material
+            ) != materials.end()
+        )
+        {
+            continue;
+        }
+        materials.push_back(material);
+    }
+    return materials;
+}
+
+AssetViewer::BakeSummary AssetViewer::PreviewBakeSummary() const
+{
+    BakeSummary summary;
+    vector<Entity*> entities;
+    CollectPreviewEntities(entities);
+
+    // mirrors what game_ready groups on closely enough to promise a number, the merge itself is
+    // the one that decides and its report is what the status line quotes afterwards
+    vector<pair<Material*, uint32_t>> groups;
+    for (Entity* entity : entities)
+    {
+        Render* render =
+            entity ?
+            entity->GetComponent<Render>() :
+            nullptr;
+        if (
+            !render ||
+            !render->GetMesh() ||
+            render->GetIndexCount() == 0
+        )
+        {
+            continue;
+        }
+
+        summary.renderers_before++;
+        Material* material = render->GetMaterial();
+        if (
+            !material ||
+            render->GetMesh()->IsSkinned() ||
+            render->HasInstancing() ||
+            entity->GetComponentCount() > 1
+        )
+        {
+            summary.skipped++;
+            summary.renderers_after++;
+            continue;
+        }
+
+        const auto group = find_if(
+            groups.begin(),
+            groups.end(),
+            [material](const pair<Material*, uint32_t>& candidate)
+            {
+                return candidate.first == material;
+            }
+        );
+        if (group == groups.end())
+        {
+            groups.emplace_back(material, 1u);
+        }
+        else
+        {
+            group->second++;
+        }
+    }
+
+    summary.materials = static_cast<uint32_t>(groups.size());
+    summary.renderers_after += summary.materials;
+    return summary;
+}
+
+bool AssetViewer::BakePrefabByMaterial(const bool generate_lods)
+{
+    if (
+        m_selected_asset < 0 ||
+        m_selected_asset >= static_cast<int>(m_assets.size()) ||
+        m_assets[m_selected_asset].type != "prefab"
+    )
+    {
+        m_status = "Select a prefab to bake.";
+        return false;
+    }
+    if (m_working_modified || m_working_lods_built)
+    {
+        m_status =
+            "Save or revert the mesh changes before baking.";
+        return false;
+    }
+
+    // copied, the catalog refresh at the end rebuilds m_assets under the reference
+    const AssetEntry asset = m_assets[m_selected_asset];
+    const string prefab_path = asset.path;
+    if (!FileSystem::Exists(prefab_path))
+    {
+        m_status = "Prefab file not found: " + prefab_path;
+        return false;
+    }
+
+    // the merged mesh lives with the prefab's other files, next to the first mesh it already has
+    // or in its own dependency folder when it has none yet
+    string directory;
+    for (const string& dependency : asset.dependencies)
+    {
+        if (asset_type_from_path(dependency) == "mesh")
+        {
+            directory =
+                FileSystem::GetDirectoryFromFilePath(dependency);
+            break;
+        }
+    }
+    if (directory.empty())
+    {
+        const filesystem::path prefab_directory =
+            filesystem::path(
+                FileSystem::GetDirectoryFromFilePath(prefab_path)
+            ).parent_path();
+        directory =
+            (
+                prefab_directory.parent_path() /
+                "dependencies" /
+                asset.id
+            ).generic_string() + "/";
+    }
+    const string mesh_path =
+        directory +
+        sanitize_asset_name(asset.id) +
+        "_merged_" +
+        short_hash(prefab_path) +
+        ".mesh";
+
+    pugi::xml_document document;
+    document.load_file(prefab_path.c_str());
+    const string prefab_name =
+        document.child("Prefab").attribute("name").as_string(
+            asset.name.c_str()
+        );
+
+    // the bake runs on a private copy of the hierarchy so the rig never ends up inside the saved
+    // file, the preview is torn down first because both copies would carry the prefab's entity ids
+    DestroyPreviewScene();
+    Entity* root = World::CreateEntity();
+    if (!root)
+    {
+        m_status = "The bake could not create a working entity.";
+        return false;
+    }
+    root->SetObjectName(prefab_name);
+    root->SetTransient(true);
+    if (!Prefab::LoadFromFile(prefab_path, root))
+    {
+        World::RemoveEntityImmediate(root);
+        m_status = "Prefab could not be loaded for baking.";
+        return false;
+    }
+    World::ProcessPendingAdditions();
+
+    const game_ready::MergeReport report =
+        game_ready::MergeRenderersByMaterial(
+            root,
+            mesh_path,
+            generate_lods
+        );
+    if (!report.ok)
+    {
+        World::RemoveEntityImmediate(root);
+        m_status = "Bake failed: " + report.error;
+        return false;
+    }
+    if (report.groups.empty())
+    {
+        World::RemoveEntityImmediate(root);
+        m_status =
+            "Nothing to bake, every material already draws once.";
+        return true;
+    }
+
+    const bool saved = Prefab::SaveToFile(root, prefab_path);
+    World::RemoveEntityImmediate(root);
+    if (!saved)
+    {
+        m_status = "The baked prefab could not be written.";
+        return false;
+    }
+
+    // the catalog lists what the prefab depends on, the parts that were folded away are gone from
+    // the file so their mesh entries go too and the merged mesh takes their place
+    const vector<string> mesh_references =
+        collect_xml_references(prefab_path, "mesh_path");
+    const bool catalog_updated =
+        asset.disk_only ||
+        UpdateCatalogAsset(
+            asset.id,
+            [&](JsonValue& record)
+            {
+                JsonValue& dependencies =
+                    json_object_ensure(record, "dependencies");
+                vector<string> kept;
+                for (const string& dependency : json_strings(&dependencies))
+                {
+                    if (asset_type_from_path(dependency) != "mesh")
+                    {
+                        kept.push_back(dependency);
+                    }
+                }
+                for (const string& reference : mesh_references)
+                {
+                    if (
+                        find(kept.begin(), kept.end(), reference) ==
+                        kept.end()
+                    )
+                    {
+                        kept.push_back(reference);
+                    }
+                }
+                dependencies.type = mcp_json::kind::array;
+                dependencies.array_items.clear();
+                for (const string& dependency : kept)
+                {
+                    JsonValue item;
+                    item.type = mcp_json::kind::string;
+                    item.string_value = dependency;
+                    dependencies.array_items.push_back(move(item));
+                }
+            }
+        );
+
+    const string status =
+        "Baked " +
+        to_string(report.renderers_before) +
+        " parts into " +
+        to_string(report.renderers_after) +
+        " draw calls across " +
+        to_string(report.groups.size()) +
+        (report.groups.size() == 1 ? " material" : " materials") +
+        (
+            report.skipped.empty()
+                ? ""
+                : ", " + to_string(report.skipped.size()) + " left alone"
+        ) +
+        (
+            catalog_updated
+                ? ""
+                : ", the catalog could not be updated"
+        );
+
+    ClearLoadedAsset();
+    RefreshCatalog(true);
+    for (int index = 0; index < static_cast<int>(m_assets.size()); index++)
+    {
+        if (m_assets[index].id == asset.id)
+        {
+            m_selected_asset = index;
+            m_selected_dependency_path.clear();
+            LoadSelectedAsset(false, true);
+            break;
+        }
+    }
+    m_status = status;
+    return true;
+}
+
 Entity* AssetViewer::PreviewRoot() const
 {
     if (m_preview_root_id == 0)
@@ -3590,10 +4224,6 @@ void AssetViewer::RebuildPreviewScene()
             Render* render = root->AddComponent<Render>();
             render->SetMesh(mesh, 0);
             render->SetDefaultMaterial();
-            m_preview_render_slots.emplace_back(
-                root->GetObjectId(),
-                0u
-            );
         }
         else
         {
@@ -3608,14 +4238,11 @@ void AssetViewer::RebuildPreviewScene()
                 Render* render = part->AddComponent<Render>();
                 render->SetMesh(mesh, i);
                 render->SetDefaultMaterial();
-                m_preview_render_slots.emplace_back(
-                    part->GetObjectId(),
-                    i
-                );
             }
         }
 
         // the scratch meshes hold the edit in progress, the source is only the layout donor
+        CollectPreviewRenderSlots(root);
         RefreshPreviewMeshGeometry();
     }
     else if (m_material)
@@ -3635,6 +4262,13 @@ void AssetViewer::RebuildPreviewScene()
             "Prefab could not be loaded into the preview.";
         DestroyPreviewScene();
         return;
+    }
+    else
+    {
+        // the prefab's own parts are what the optimize tools preview through, so an edit to a leg
+        // shows on the leg rather than on a detached copy of the mesh
+        CollectPreviewRenderSlots(root);
+        RefreshPreviewMeshGeometry();
     }
 
     root->SetPosition(math::Vector3::Zero);
@@ -3907,8 +4541,15 @@ void AssetViewer::PreviewEntity(Entity* entity)
 
     DestroyPreviewScene();
     m_mesh.reset();
+    m_working_meshes.clear();
+    m_working_sub_meshes.clear();
+    m_working_lods.clear();
+    m_working_vertices.clear();
+    m_working_indices.clear();
+    m_working_editable = false;
+    m_working_modified = false;
     m_preview_meshes.clear();
-    m_preview_meshes_source = nullptr;
+    m_preview_meshes_sources.clear();
     m_material.reset();
     m_texture.reset();
     m_loaded_path.clear();
@@ -3939,24 +4580,25 @@ void AssetViewer::PreviewEntity(Entity* entity)
 pair<uint64_t, uint64_t>
 AssetViewer::GetPreviewGeometryCounts() const
 {
+    // the working copy is lod 0 of exactly what is being edited, the mesh totals below include every
+    // lod level and count a mesh once per part that draws it
+    if (
+        !m_working_vertices.empty() &&
+        m_working_indices.size() >= 3
+    )
+    {
+        return
+        {
+            static_cast<uint64_t>(
+                m_working_vertices.size()
+            ),
+            static_cast<uint64_t>(
+                m_working_indices.size()
+            )
+        };
+    }
     if (m_mesh)
     {
-        if (
-            !m_working_vertices.empty() &&
-            m_working_indices.size() >= 3
-        )
-        {
-            return
-            {
-                static_cast<uint64_t>(
-                    m_working_vertices.size()
-                ),
-                static_cast<uint64_t>(
-                    m_working_indices.size()
-                )
-            };
-        }
-
         return
         {
             static_cast<uint64_t>(
@@ -3991,10 +4633,10 @@ AssetViewer::GetPreviewGeometryCounts() const
             continue;
         }
         vertex_count += static_cast<uint64_t>(
-            mesh->GetVertices().size()
+            render->GetVertexCount()
         );
         index_count += static_cast<uint64_t>(
-            mesh->GetIndices().size()
+            render->GetIndexCount()
         );
     }
     return
@@ -6938,7 +7580,6 @@ void AssetViewer::DrawDetails(float height)
         // a mesh reached by expanding a prefab is still a mesh, without this the simplify and lod
         // controls are only reachable when the mesh happens to be a top level catalog entry
         const bool mesh_tools_available =
-            m_mesh &&
             m_working_editable &&
             !m_working_vertices.empty();
         if (mesh_tools_available)
@@ -6983,6 +7624,23 @@ void AssetViewer::DrawDetails(float height)
                 to_string(m_texture->GetChannelCount())
             );
         }
+        else if (type == "material" && m_material)
+        {
+            section_title("TEXTURES");
+            const vector<string> texture_paths =
+                m_material->GetTexturePaths();
+            if (texture_paths.empty())
+            {
+                ImGui::TextDisabled("No textures bound");
+            }
+            for (const string& texture_path : texture_paths)
+            {
+                ImGui::BulletText(
+                    "%s",
+                    FileSystem::GetFileNameFromFilePath(texture_path).c_str()
+                );
+            }
+        }
         else
         {
             const auto [vertex_count, index_count] =
@@ -6994,9 +7652,7 @@ void AssetViewer::DrawDetails(float height)
             );
         }
 
-        ImGui::Spacing();
-        ImGui::TextUnformatted("SOURCE");
-        ImGui::Separator();
+        section_title("SOURCE");
         ImGui::TextWrapped(
             "%s",
             m_selected_dependency_path.c_str()
@@ -7057,7 +7713,8 @@ void AssetViewer::DrawDetails(float height)
         return;
     }
 
-    const AssetEntry& asset = m_assets[m_selected_asset];
+    // a copy, an action drawn below can refresh the catalog and rebuild m_assets under a reference
+    const AssetEntry asset = m_assets[m_selected_asset];
 
     const string display_name =
         asset_display_name(asset.name);
@@ -7069,8 +7726,8 @@ void AssetViewer::DrawDetails(float height)
 
     ImGui::Spacing();
     const char* tabs[] = { "Overview", "Optimize" };
+    // a prefab is editable through every mesh it references, so the tab shows for it as well
     const int tab_count =
-        m_mesh &&
         m_working_editable &&
         !m_working_vertices.empty()
             ? 2
@@ -7094,6 +7751,54 @@ void AssetViewer::DrawDetails(float height)
 
     if (m_inspector_tab == 0)
     {
+        if (asset.type == "prefab")
+        {
+            DrawPrefabOverview(asset);
+        }
+        else
+        {
+            section_title("TECHNICAL");
+            if (asset.type == "texture")
+            {
+                detail_row(
+                    "Resolution",
+                    m_texture
+                        ? to_string(m_texture->GetWidth()) +
+                          " x " +
+                          to_string(m_texture->GetHeight())
+                        : "Unknown"
+                );
+                detail_row(
+                    "Channels",
+                    m_texture
+                        ? to_string(m_texture->GetChannelCount())
+                        : "Unknown"
+                );
+            }
+            else
+            {
+                const auto [vertex_count, index_count] =
+                    GetPreviewGeometryCounts();
+                detail_row("Vertices", compact_count(vertex_count));
+                detail_row(
+                    "Triangles",
+                    compact_count(index_count / 3)
+                );
+            }
+            if (asset.type == "material" && m_material)
+            {
+                const vector<string> texture_paths =
+                    m_material->GetTexturePaths();
+                detail_row(
+                    "Textures",
+                    texture_paths.empty()
+                        ? "None"
+                        : to_string(texture_paths.size())
+                );
+            }
+        }
+
+        section_title("CATALOG");
         detail_row("Asset ID", asset.id);
         detail_row(
             "Tags",
@@ -7107,87 +7812,6 @@ void AssetViewer::DrawDetails(float height)
                 ? "None"
                 : join_strings(asset.aliases, ", ")
         );
-        ImGui::Spacing();
-        ImGui::TextUnformatted("TECHNICAL");
-        ImGui::Separator();
-        if (asset.type == "texture")
-        {
-            detail_row(
-                "Resolution",
-                m_texture
-                    ? to_string(m_texture->GetWidth()) +
-                      " x " +
-                      to_string(m_texture->GetHeight())
-                    : "Unknown"
-            );
-            detail_row(
-                "Channels",
-                m_texture
-                    ? to_string(m_texture->GetChannelCount())
-                    : "Unknown"
-            );
-        }
-        else
-        {
-            const auto [vertex_count, index_count] =
-                GetPreviewGeometryCounts();
-            detail_row("Vertices", compact_count(vertex_count));
-            detail_row(
-                "Triangles",
-                compact_count(index_count / 3)
-            );
-        }
-        if (asset.type == "prefab")
-        {
-            detail_row(
-                "Entities",
-                to_string(m_prefab_entity_count)
-            );
-            detail_row(
-                "Dependencies",
-                m_missing_dependencies.empty()
-                    ? "All resolved"
-                    : to_string(m_missing_dependencies.size()) +
-                        " missing"
-            );
-
-            if (!m_missing_dependencies.empty())
-            {
-                const ImVec4 warning =
-                    ImGui::Style::color_warning;
-                ImGui::PushStyleColor(
-                    ImGuiCol_ChildBg,
-                    ImVec4(
-                        warning.x,
-                        warning.y,
-                        warning.z,
-                        0.1f
-                    )
-                );
-                ImGui::BeginChild(
-                    "##missing_dependencies",
-                    ImVec2(0.0f, 52.0f * scale),
-                    ImGuiChildFlags_Borders
-                );
-                ImGui::Text(
-                    "%zu missing dependenc%s",
-                    m_missing_dependencies.size(),
-                    m_missing_dependencies.size() == 1
-                        ? "y"
-                        : "ies"
-                );
-                ImGui::TextDisabled(
-                    "The preview may be incomplete"
-                );
-                ImGui::EndChild();
-                ImGui::PopStyleColor();
-            }
-
-            // a prefab can reference several meshes, so the geometry tools live on the mesh itself
-            ImGui::TextDisabled(
-                "Expand this prefab and pick a mesh to simplify it or build LODs"
-            );
-        }
         if (!asset.path.empty())
         {
             detail_row(
@@ -7201,9 +7825,7 @@ void AssetViewer::DrawDetails(float height)
             );
         }
 
-        ImGui::Spacing();
-        ImGui::TextUnformatted("SOURCE");
-        ImGui::Separator();
+        section_title("SOURCE");
         if (!asset.path.empty())
         {
             ImGui::TextWrapped("%s", asset.path.c_str());
@@ -7290,13 +7912,257 @@ void AssetViewer::DrawDetails(float height)
         ImGui::EndPopup();
     }
 
+    DrawBakeConfirmation();
+
     ImGui::EndChild();
+}
+
+void AssetViewer::DrawPrefabOverview(const AssetEntry& asset)
+{
+    const float scale = ui_scale();
+    const auto [vertex_count, index_count] =
+        GetPreviewGeometryCounts();
+    const BakeSummary bake = PreviewBakeSummary();
+    const vector<Material*> materials = PreviewMaterials();
+
+    // the numbers that decide whether the asset is affordable, read left to right like a scoreboard
+    const float gap = 6.0f * scale;
+    const float card_width =
+        (ImGui::GetContentRegionAvail().x - gap * 2.0f) / 3.0f;
+    const ImU32 accent = ImGui::ColorConvertFloat4ToU32(
+        ImGui::Style::color_accent_1
+    );
+    const ImU32 warning = ImGui::ColorConvertFloat4ToU32(
+        ImGui::Style::color_warning
+    );
+    ImGui::Spacing();
+    draw_metric_card(
+        "triangles",
+        compact_count(index_count / 3),
+        card_width
+    );
+    ImGui::SameLine(0.0f, gap);
+    draw_metric_card(
+        "draw calls",
+        to_string(bake.renderers_before),
+        card_width,
+        bake.renderers_before > bake.renderers_after ? warning : 0
+    );
+    ImGui::SameLine(0.0f, gap);
+    draw_metric_card(
+        "materials",
+        to_string(materials.size()),
+        card_width
+    );
+    ImGui::Spacing();
+    draw_metric_card(
+        "vertices",
+        compact_count(vertex_count),
+        card_width
+    );
+    ImGui::SameLine(0.0f, gap);
+    draw_metric_card(
+        "parts",
+        to_string(max(0, m_prefab_entity_count - 1)),
+        card_width
+    );
+    ImGui::SameLine(0.0f, gap);
+    draw_metric_card(
+        "mesh files",
+        to_string(m_working_meshes.size()),
+        card_width
+    );
+
+    if (!m_missing_dependencies.empty())
+    {
+        const ImVec4 warning_color = ImGui::Style::color_warning;
+        ImGui::Spacing();
+        ImGui::PushStyleColor(
+            ImGuiCol_ChildBg,
+            ImVec4(
+                warning_color.x,
+                warning_color.y,
+                warning_color.z,
+                0.1f
+            )
+        );
+        ImGui::BeginChild(
+            "##missing_dependencies",
+            ImVec2(0.0f, 52.0f * scale),
+            ImGuiChildFlags_Borders
+        );
+        ImGui::Text(
+            "%zu missing dependenc%s",
+            m_missing_dependencies.size(),
+            m_missing_dependencies.size() == 1
+                ? "y"
+                : "ies"
+        );
+        ImGui::TextDisabled(
+            "The preview may be incomplete"
+        );
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+    }
+
+    section_title("GAME READY");
+    const bool can_bake =
+        bake.renderers_before > bake.renderers_after &&
+        !m_working_modified &&
+        !m_working_lods_built &&
+        !asset.path.empty();
+    if (bake.renderers_before > bake.renderers_after)
+    {
+        ImGui::PushStyleColor(
+            ImGuiCol_ChildBg,
+            ImVec4(
+                ImGui::Style::color_accent_1.x,
+                ImGui::Style::color_accent_1.y,
+                ImGui::Style::color_accent_1.z,
+                0.1f
+            )
+        );
+        ImGui::BeginChild(
+            "##bake_hint",
+            ImVec2(0.0f, 50.0f * scale),
+            ImGuiChildFlags_Borders
+        );
+        ImGui::Text(
+            "%u parts share %u material%s",
+            bake.renderers_before - bake.skipped,
+            bake.materials,
+            bake.materials == 1 ? "" : "s"
+        );
+        ImGui::TextDisabled(
+            "Baking draws them in %u call%s instead of %u",
+            bake.renderers_after,
+            bake.renderers_after == 1 ? "" : "s",
+            bake.renderers_before
+        );
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+    }
+    else
+    {
+        ImGui::TextDisabled(
+            bake.renderers_before == 0
+                ? "No geometry is drawn yet"
+                : "One draw call per material, nothing left to bake"
+        );
+    }
+    if (m_working_modified || m_working_lods_built)
+    {
+        ImGui::TextDisabled(
+            "Save or revert the mesh changes in Optimize before baking"
+        );
+    }
+    if (!can_bake)
+    {
+        ImGui::BeginDisabled();
+    }
+    if (
+        ImGuiSp::button(
+            "Bake parts by material",
+            ImVec2(-1.0f, 0.0f)
+        )
+    )
+    {
+        m_bake_confirmation_open = true;
+    }
+    if (!can_bake)
+    {
+        ImGui::EndDisabled();
+    }
+    ImGuiSp::tooltip(
+        "Merges every part that shares a material into one mesh and rewrites the prefab, "
+        "the parts that were merged away are removed from it"
+    );
+    ImGui::TextDisabled(
+        "Simplify and LODs for the whole prefab live in the Optimize tab"
+    );
+
+    section_title("MATERIALS");
+    if (materials.empty())
+    {
+        ImGui::TextDisabled("No materials are previewed");
+    }
+    for (Material* material : materials)
+    {
+        const string normal_path = material->GetTexturePathByType(
+            MaterialTextureType::Normal
+        );
+        const size_t texture_count =
+            material->GetTexturePaths().size();
+        ImGui::BulletText(
+            "%s",
+            asset_display_name(material->GetObjectName()).c_str()
+        );
+        ImGui::SameLine();
+        ImGui::TextDisabled(
+            "%zu texture%s%s",
+            texture_count,
+            texture_count == 1 ? "" : "s",
+            normal_path.empty() ? "" : ", normal"
+        );
+    }
+}
+
+void AssetViewer::DrawBakeConfirmation()
+{
+    if (m_bake_confirmation_open)
+    {
+        ImGui::OpenPopup("Bake prefab?");
+        m_bake_confirmation_open = false;
+    }
+    if (
+        !ImGui::BeginPopupModal(
+            "Bake prefab?",
+            nullptr,
+            ImGuiWindowFlags_AlwaysAutoResize
+        )
+    )
+    {
+        return;
+    }
+
+    const BakeSummary bake = PreviewBakeSummary();
+    ImGui::TextUnformatted(
+        "Merge the parts that share a material and overwrite the prefab?"
+    );
+    ImGui::TextDisabled(
+        "%u draw calls become %u, the merged parts are removed from the prefab",
+        bake.renderers_before,
+        bake.renderers_after
+    );
+    if (bake.skipped > 0)
+    {
+        ImGui::TextDisabled(
+            "%u part%s carry other components and stay as they are",
+            bake.skipped,
+            bake.skipped == 1 ? "" : "s"
+        );
+    }
+    ImGui::Checkbox(
+        "Generate LODs for the merged mesh",
+        &m_bake_generate_lods
+    );
+    ImGui::Spacing();
+    if (ImGuiSp::button("Bake and overwrite"))
+    {
+        BakePrefabByMaterial(m_bake_generate_lods);
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGuiSp::button("Cancel"))
+    {
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
 }
 
 void AssetViewer::DrawMeshTools()
 {
     if (
-        !m_mesh ||
         !m_working_editable ||
         m_working_vertices.empty()
     )
@@ -7387,12 +8253,25 @@ void AssetViewer::DrawMeshTools()
     );
     detail_row(
         "Sub meshes",
-        to_string(m_working_sub_meshes.size())
+        m_working_meshes.size() > 1
+            ? to_string(m_working_sub_meshes.size()) +
+                " across " +
+                to_string(m_working_meshes.size()) +
+                " mesh files"
+            : to_string(m_working_sub_meshes.size())
     );
     ImGui::TextDisabled(
         "Current reduction %.1f%%",
         reduction * 100.0f
     );
+    if (m_working_meshes.size() > 1 || m_working_sub_meshes.size() > 1)
+    {
+        // one slider for the whole asset, each part keeps the same share of its own triangles so
+        // the small parts do not vanish before the large ones lose any detail
+        ImGui::TextDisabled(
+            "Every part is reduced together, each keeps the same share of its triangles"
+        );
+    }
 
     ImGui::Spacing();
     ImGui::TextUnformatted("1  REDUCE GEOMETRY");
@@ -7704,7 +8583,11 @@ void AssetViewer::DrawMeshTools()
     {
         // the lod picker only changes what is on screen, the bake always writes the working
         // geometry as lod 0 and derives the rest from it
-        ImGui::TextUnformatted("Overwrite the current mesh?");
+        ImGui::TextUnformatted(
+            m_working_meshes.size() > 1
+                ? "Overwrite the prefab's mesh files?"
+                : "Overwrite the current mesh?"
+        );
         ImGui::TextDisabled(
             "%llu to %llu triangles, %.1f%% reduction",
             static_cast<unsigned long long>(source_triangles),
@@ -7712,8 +8595,10 @@ void AssetViewer::DrawMeshTools()
             reduction * 100.0f
         );
         ImGui::TextDisabled(
-            "%zu sub meshes, LODs %s",
+            "%zu sub meshes in %zu file%s, LODs %s",
             m_working_sub_meshes.size(),
+            m_working_meshes.size(),
+            m_working_meshes.size() == 1 ? "" : "s",
             m_working_generate_lods ? "rebuilt" : "dropped"
         );
         ImGui::Spacing();
@@ -8798,7 +9683,7 @@ bool AssetViewer::SetDisplay(
 {
     if (request.preview_lod)
     {
-        if (!m_mesh || !m_working_editable)
+        if (!m_working_editable)
         {
             error = "a previewed editable mesh is required";
             return false;
@@ -8992,12 +9877,11 @@ bool AssetViewer::EditMesh(
 )
 {
     if (
-        !m_mesh ||
         !m_working_editable ||
         m_working_sub_meshes.empty()
     )
     {
-        error = "a previewed editable mesh is required";
+        error = "a previewed editable mesh or prefab is required";
         return false;
     }
     if (
@@ -9585,6 +10469,7 @@ bool AssetViewer::HasPreviewContent() const
 {
     return
         m_mesh ||
+        !m_working_meshes.empty() ||
         m_material ||
         m_texture ||
         PreviewRoot();

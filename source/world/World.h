@@ -126,6 +126,9 @@ namespace spartan
         static math::Vector3 SampleWind(const math::Vector3& position, float time);
         static void SetWind(const math::Vector3& wind);
 
+        // clouds, horizontal noise offset in meters, rerolled on every world load
+        static const math::Vector2& GetCloudSeedOffset();
+
         // world metadata
         static const std::string& GetDescription();
         static void SetDescription(const std::string& description);

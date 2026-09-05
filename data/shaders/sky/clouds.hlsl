@@ -268,12 +268,14 @@ float cloud_time()
 
 // horizontal drift applied to the cloud noise sampling positions. negative wind*time so a
 // positive wind vector translates the cloud field in the +wind direction over time. the
+// per-load seed offset rides along so every level load lands on a different cloudscape. the
 // returned offset is meant to be added to the position before any noise lookup, never to a
 // position used for height or shell intersection
 float3 cloud_wind_drift(float speed_mul)
 {
     float3 wind = buffer_frame.wind * speed_mul;
-    return -wind * cloud_time();
+    float3 seed = float3(buffer_frame.cloud_seed_offset.x, 0.0, buffer_frame.cloud_seed_offset.y);
+    return seed - wind * cloud_time();
 }
 
 // pure vertical drift through the cloud noise volume, used to morph cloud shapes in place

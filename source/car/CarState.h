@@ -212,6 +212,10 @@ namespace car
         int brakes = 0;
         int aero = 0;
         int weight = 0;
+        // audible parts, they also add a little torque
+        int exhaust = 0;
+        int intake = 0;
+        int turbo = 0;
     };
 
     // cooldown prevents automatic shift hunting

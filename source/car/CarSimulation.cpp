@@ -4839,6 +4839,33 @@ namespace car
                 float wm = 1.0f - 0.015f * ups.weight;
                 p.mass *= wm;
             }
+            if (ups.exhaust > 0 && base.exhaust_stage_max > 0)
+            {
+                // each stage frees flow and strips muffling, the last stage is close to a straight pipe
+                p.engine_peak_torque *= 1.0f + 0.02f * ups.exhaust;
+                float openness = static_cast<float>(ups.exhaust) / static_cast<float>(PxMax(base.exhaust_stage_max, 1));
+                p.exhaust_muffler_level = base.exhaust_muffler_level * (1.0f - 0.9f * openness);
+            }
+            if (ups.intake > 0 && base.intake_stage_max > 0)
+            {
+                p.engine_peak_torque *= 1.0f + 0.015f * ups.intake;
+            }
+            if (ups.turbo > 0 && base.turbo_stage_max > 0)
+            {
+                // a kit on a naturally aspirated car starts from a mild street setup
+                if (!base.turbo_enabled || base.boost_max_pressure <= 0.0f)
+                {
+                    p.turbo_enabled = true;
+                    p.boost_max_pressure = 0.6f;
+                    p.boost_spool_rate = 3.0f;
+                    p.boost_wastegate_rpm = PxMax(base.engine_redline_rpm - 800.0f, base.engine_idle_rpm + 1000.0f);
+                    p.boost_torque_mult = 0.25f;
+                    p.boost_min_rpm = base.engine_idle_rpm + 1500.0f;
+                }
+                float bm = 1.0f + 0.15f * ups.turbo;
+                p.boost_max_pressure *= bm;
+                p.boost_spool_rate *= 1.0f + 0.10f * ups.turbo;
+            }
 
             p.mass = PxMax(p.mass, 200.0f);
             p.engine_peak_torque = PxMax(p.engine_peak_torque, 10.0f);
@@ -4872,6 +4899,9 @@ namespace car
             clamp_upgrade_stage(upgrades.brakes, base_spec.brakes_stage_max);
             clamp_upgrade_stage(upgrades.aero, base_spec.aero_stage_max);
             clamp_upgrade_stage(upgrades.weight, base_spec.weight_stage_max);
+            clamp_upgrade_stage(upgrades.exhaust, base_spec.exhaust_stage_max);
+            clamp_upgrade_stage(upgrades.intake, base_spec.intake_stage_max);
+            clamp_upgrade_stage(upgrades.turbo, base_spec.turbo_stage_max);
 
             bool save_abs = spec.abs_enabled;
             bool save_tc = spec.tc_enabled;
@@ -4914,11 +4944,20 @@ namespace car
             spec.tc_power_reduction = save_tc_pwr;
             spec.tc_response_rate = save_tc_rate;
 
-            spec.boost_max_pressure = save_bst_max;
-            spec.boost_spool_rate = save_bst_spool;
-            spec.boost_wastegate_rpm = save_bst_waste;
-            spec.boost_torque_mult = save_bst_torq;
-            spec.boost_min_rpm = save_bst_min;
+            // a fitted turbo kit owns the boost setup, otherwise runtime hud edits survive the rebuild
+            bool turbo_kit = upgrades.turbo > 0 && base_spec.turbo_stage_max > 0;
+            if (turbo_kit)
+            {
+                spec.turbo_enabled = true;
+            }
+            else
+            {
+                spec.boost_max_pressure = save_bst_max;
+                spec.boost_spool_rate = save_bst_spool;
+                spec.boost_wastegate_rpm = save_bst_waste;
+                spec.boost_torque_mult = save_bst_torq;
+                spec.boost_min_rpm = save_bst_min;
+            }
             if (!rebuild_vehicle_geometry())
             {
                 spec = previous_spec;

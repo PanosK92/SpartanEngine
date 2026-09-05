@@ -3179,7 +3179,7 @@ namespace spartan
         };
 
         // bump when cache format or the generation algorithms change so old caches get invalidated
-        const uint64_t cache_format_version = 14;
+        const uint64_t cache_format_version = 15;
         hash_combine(cache_format_version);
 
         hash_float(m_min_y);
@@ -3399,27 +3399,19 @@ namespace spartan
             TerrainSystem::SyncHeightDataFromPositions(m_height_data, m_positions);
         }
     
-        uint32_t width               = GetWidth();
-        uint32_t height              = GetHeight();
-        uint32_t height_data_size    = static_cast<uint32_t>(m_height_data.size());
-        uint32_t vertex_count        = static_cast<uint32_t>(m_vertices.size());
-        uint32_t index_count         = static_cast<uint32_t>(m_indices.size());
-        uint32_t tile_count          = static_cast<uint32_t>(m_tile_vertices.size());
-        uint32_t triangle_data_count = static_cast<uint32_t>(m_triangle_data.size());
-        uint32_t offset_count        = static_cast<uint32_t>(m_tile_offsets.size());
-        uint32_t position_count      = static_cast<uint32_t>(m_positions.size());
-        uint64_t cache_hash          = ComputeCacheHash();
+        // only the eroded heightfield is stored, vertices, normals, tiles and placement data are
+        // derived from it in parallel on load faster than they can be read back from disk
+        uint32_t width            = GetWidth();
+        uint32_t height           = GetHeight();
+        uint32_t height_data_size = static_cast<uint32_t>(m_height_data.size());
+        uint32_t position_count   = static_cast<uint32_t>(m_positions.size());
+        uint64_t cache_hash       = ComputeCacheHash();
     
         // header
         file.write(reinterpret_cast<const char*>(&cache_hash), sizeof(uint64_t));
         file.write(reinterpret_cast<const char*>(&width), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&height), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&height_data_size), sizeof(uint32_t));
-        file.write(reinterpret_cast<const char*>(&vertex_count), sizeof(uint32_t));
-        file.write(reinterpret_cast<const char*>(&index_count), sizeof(uint32_t));
-        file.write(reinterpret_cast<const char*>(&tile_count), sizeof(uint32_t));
-        file.write(reinterpret_cast<const char*>(&triangle_data_count), sizeof(uint32_t));
-        file.write(reinterpret_cast<const char*>(&offset_count), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&position_count), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&m_dense_width), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&m_dense_height), sizeof(uint32_t));
@@ -3427,30 +3419,7 @@ namespace spartan
 
         // main data
         file.write(reinterpret_cast<const char*>(m_height_data.data()), height_data_size * sizeof(float));
-        file.write(reinterpret_cast<const char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
-        file.write(reinterpret_cast<const char*>(m_indices.data()), index_count * sizeof(uint32_t));
-        file.write(reinterpret_cast<const char*>(m_tile_offsets.data()), offset_count * sizeof(Vector3));
         file.write(reinterpret_cast<const char*>(m_positions.data()), position_count * sizeof(Vector3));
-    
-        // triangle data
-        for (const auto& [tile_id, tile_triangles] : m_triangle_data)
-        {
-            file.write(reinterpret_cast<const char*>(&tile_id), sizeof(uint64_t));
-            uint32_t triangle_count = static_cast<uint32_t>(tile_triangles.size());
-            file.write(reinterpret_cast<const char*>(&triangle_count), sizeof(uint32_t));
-            file.write(reinterpret_cast<const char*>(tile_triangles.data()), triangle_count * sizeof(TriangleData));
-        }
-    
-        // tile data
-        for (uint32_t i = 0; i < tile_count; i++)
-        {
-            uint32_t vertex_size = static_cast<uint32_t>(m_tile_vertices[i].size());
-            uint32_t index_size  = static_cast<uint32_t>(m_tile_indices[i].size());
-            file.write(reinterpret_cast<const char*>(&vertex_size), sizeof(uint32_t));
-            file.write(reinterpret_cast<const char*>(&index_size), sizeof(uint32_t));
-            file.write(reinterpret_cast<const char*>(m_tile_vertices[i].data()), vertex_size * sizeof(RHI_Vertex_PosTexNorTan));
-            file.write(reinterpret_cast<const char*>(m_tile_indices[i].data()), index_size * sizeof(uint32_t));
-        }
     
         file.close();
         SP_LOG_INFO("saved terrain cache: hash=%llu", cache_hash);
@@ -3476,26 +3445,16 @@ namespace spartan
             return;
         }
 
-        uint32_t height_data_size    = 0;
-        uint32_t vertex_count        = 0;
-        uint32_t index_count         = 0;
-        uint32_t tile_count          = 0;
-        uint32_t triangle_data_count = 0;
-        uint32_t offset_count        = 0;
-        uint32_t position_count      = 0;
+        uint32_t height_data_size = 0;
+        uint32_t position_count   = 0;
+        uint32_t dense_width      = 0;
+        uint32_t dense_height     = 0;
+        float area_km2            = 0.0f;
     
         file.read(reinterpret_cast<char*>(&m_width), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&m_height), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&height_data_size), sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(&vertex_count), sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(&index_count), sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(&tile_count), sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(&triangle_data_count), sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(&offset_count), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&position_count), sizeof(uint32_t));
-        uint32_t dense_width  = 0;
-        uint32_t dense_height = 0;
-        float area_km2        = 0.0f;
         file.read(reinterpret_cast<char*>(&dense_width), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&dense_height), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&area_km2), sizeof(float));
@@ -3507,13 +3466,7 @@ namespace spartan
             SP_LOG_ERROR("terrain cache rejected, %s, regenerating", reason);
             file.close();
             m_height_data.clear();
-            m_vertices.clear();
-            m_indices.clear();
-            m_tile_vertices.clear();
-            m_tile_indices.clear();
-            m_tile_offsets.clear();
             m_positions.clear();
-            m_triangle_data.clear();
         };
 
         if (!file.good())
@@ -3529,19 +3482,9 @@ namespace spartan
             return;
         }
 
-        const uint64_t expected_indices = static_cast<uint64_t>(dense_width - 1) * (dense_height - 1) * 6;
-        if (position_count != grid_count || vertex_count != grid_count ||
-            height_data_size != grid_count || index_count != expected_indices)
+        if (position_count != grid_count || height_data_size != grid_count)
         {
             reject("array sizes do not match the grid");
-            return;
-        }
-
-        const uint32_t expected_tiles = m_tile_count * m_tile_count;
-        if (tile_count > 10000 || offset_count != tile_count || tile_count != expected_tiles ||
-            triangle_data_count > tile_count)
-        {
-            reject("tile counts do not match");
             return;
         }
 
@@ -3550,63 +3493,13 @@ namespace spartan
         m_area_km2     = area_km2;
 
         m_height_data.resize(height_data_size);
-        m_vertices.resize(vertex_count);
-        m_indices.resize(index_count);
-        m_tile_vertices.resize(tile_count);
-        m_tile_indices.resize(tile_count);
-        m_tile_offsets.resize(offset_count);
         m_positions.resize(position_count);
-        m_triangle_data.clear();
     
         file.read(reinterpret_cast<char*>(m_height_data.data()), height_data_size * sizeof(float));
-        file.read(reinterpret_cast<char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
-        file.read(reinterpret_cast<char*>(m_indices.data()), index_count * sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(m_tile_offsets.data()), offset_count * sizeof(Vector3));
         file.read(reinterpret_cast<char*>(m_positions.data()), position_count * sizeof(Vector3));
         if (!file.good())
         {
             reject("payload truncated");
-            return;
-        }
-    
-        for (uint32_t i = 0; i < triangle_data_count; i++)
-        {
-            uint64_t tile_id        = 0;
-            uint32_t triangle_count = 0;
-            file.read(reinterpret_cast<char*>(&tile_id), sizeof(uint64_t));
-            file.read(reinterpret_cast<char*>(&triangle_count), sizeof(uint32_t));
-            if (!file.good() || tile_id >= tile_count || triangle_count > index_count / 3)
-            {
-                reject("triangle data out of range");
-                return;
-            }
-
-            vector<TriangleData>& tile_triangles = m_triangle_data[tile_id];
-            tile_triangles.resize(triangle_count);
-            file.read(reinterpret_cast<char*>(tile_triangles.data()), triangle_count * sizeof(TriangleData));
-        }
-    
-        for (uint32_t i = 0; i < tile_count; i++)
-        {
-            uint32_t vertex_size = 0;
-            uint32_t index_size  = 0;
-            file.read(reinterpret_cast<char*>(&vertex_size), sizeof(uint32_t));
-            file.read(reinterpret_cast<char*>(&index_size), sizeof(uint32_t));
-            if (!file.good() || vertex_size > vertex_count || index_size > index_count)
-            {
-                reject("tile data out of range");
-                return;
-            }
-
-            m_tile_vertices[i].resize(vertex_size);
-            m_tile_indices[i].resize(index_size);
-            file.read(reinterpret_cast<char*>(m_tile_vertices[i].data()), vertex_size * sizeof(RHI_Vertex_PosTexNorTan));
-            file.read(reinterpret_cast<char*>(m_tile_indices[i].data()), index_size * sizeof(uint32_t));
-        }
-
-        if (!file.good())
-        {
-            reject("tile payload truncated");
             return;
         }
     
@@ -3655,7 +3548,7 @@ namespace spartan
         bool loaded_from_cache  = false;
 
         LoadFromFile(cache_file.c_str());
-        if (!m_vertices.empty())
+        if (!m_positions.empty())
         {
             loaded_from_cache = true;
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("loaded from cache");
@@ -3665,42 +3558,12 @@ namespace spartan
             if (shoreline_moved)
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("locking shoreline...");
-            }
-
-            // cached meshes used unit-grid normals, rebuild so slope matches the heightfield
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("rebuilding normals...");
-            m_vertices.resize(m_dense_width * m_dense_height);
-            m_indices.resize((m_dense_width - 1) * (m_dense_height - 1) * 6);
-            TerrainSystem::GenerateVerticesAndIndices(
-                m_vertices,
-                m_indices,
-                m_positions,
-                m_dense_width,
-                m_dense_height
-            );
-            TerrainSystem::GenerateNormals(m_vertices, m_dense_width, m_dense_height);
-            geometry_processing::split_surface_into_tiles(
-                m_vertices,
-                m_indices,
-                m_tile_count,
-                m_tile_vertices,
-                m_tile_indices,
-                m_tile_offsets
-            );
-            if (shoreline_moved)
-            {
-                m_triangle_data.clear();
-                for (uint32_t tile_index = 0; tile_index < m_tile_vertices.size(); tile_index++)
-                {
-                    placement::compute_triangle_data(
-                        m_tile_vertices,
-                        m_tile_indices,
-                        tile_index,
-                        m_triangle_data
-                    );
-                }
                 SaveToFile(cache_file.c_str());
             }
+
+            // the cache only holds the heightfield, everything the mesh needs is derived here
+            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("building mesh data...");
+            RebuildMeshData(true);
 
             for (uint32_t i = 0; i < 8; i++)
             {
@@ -3763,7 +3626,7 @@ namespace spartan
     
             // 7. split into tiles
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("splitting into tiles...");
-            geometry_processing::split_surface_into_tiles(m_vertices, m_indices, m_tile_count, m_tile_vertices, m_tile_indices, m_tile_offsets);
+            geometry_processing::split_grid_into_tiles(m_vertices, m_dense_width, m_dense_height, m_tile_count, m_tile_vertices, m_tile_indices, m_tile_offsets);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
             // 8. compute triangle data for placement
@@ -5664,10 +5527,13 @@ namespace spartan
         const float tile_w = max(mapping.extent_x / static_cast<float>(n), 0.001f);
         const float tile_d = max(mapping.extent_z / static_cast<float>(n), 0.001f);
 
-        const int tx0 = max(static_cast<int>(floorf((local_min_x + mapping.offset_x) / tile_w)), 0);
-        const int tz0 = max(static_cast<int>(floorf((local_min_z + mapping.offset_z) / tile_d)), 0);
-        const int tx1 = min(static_cast<int>(floorf((local_max_x + mapping.offset_x) / tile_w)), static_cast<int>(n) - 1);
-        const int tz1 = min(static_cast<int>(floorf((local_max_z + mapping.offset_z) / tile_d)), static_cast<int>(n) - 1);
+        // tiles split on whole cells so their edges can sit up to a cell away from the even split, pad by one cell
+        const float pad_x = max(mapping.scale_x, 0.0f);
+        const float pad_z = max(mapping.scale_z, 0.0f);
+        const int tx0 = max(static_cast<int>(floorf((local_min_x - pad_x + mapping.offset_x) / tile_w)), 0);
+        const int tz0 = max(static_cast<int>(floorf((local_min_z - pad_z + mapping.offset_z) / tile_d)), 0);
+        const int tx1 = min(static_cast<int>(floorf((local_max_x + pad_x + mapping.offset_x) / tile_w)), static_cast<int>(n) - 1);
+        const int tz1 = min(static_cast<int>(floorf((local_max_z + pad_z + mapping.offset_z) / tile_d)), static_cast<int>(n) - 1);
 
         for (int tz = tz0; tz <= tz1; tz++)
         {
@@ -8173,9 +8039,10 @@ namespace spartan
             m_dense_height
         );
         TerrainSystem::GenerateNormals(m_vertices, m_dense_width, m_dense_height);
-        geometry_processing::split_surface_into_tiles(
+        geometry_processing::split_grid_into_tiles(
             m_vertices,
-            m_indices,
+            m_dense_width,
+            m_dense_height,
             m_tile_count,
             m_tile_vertices,
             m_tile_indices,
@@ -9552,9 +9419,10 @@ namespace spartan
         TerrainSystem::GenerateNormals(m_vertices, m_dense_width, m_dense_height);
 
         uint32_t tile_count = max(m_tile_count, 1u);
-        geometry_processing::split_surface_into_tiles(
+        geometry_processing::split_grid_into_tiles(
             m_vertices,
-            m_indices,
+            m_dense_width,
+            m_dense_height,
             tile_count,
             m_tile_vertices,
             m_tile_indices,

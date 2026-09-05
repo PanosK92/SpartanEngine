@@ -17,6 +17,9 @@
 -- IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+-- headers for xess, dlss and steamworks live in third_party, their libs and dlls ship in libraries.7z
+-- the only sdk fetched separately is the d3d12 agility sdk (nuget, not part of the archive)
+
 local setup = {}
 
 local PROJECT_ROOT     = path.getabsolute(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, ".."))
@@ -37,20 +40,6 @@ local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "nvngx_dlss.dll"),
 }
 
--- xess-sr overlay from github so upscaler stays current without libraries.7z churn
-local XESS_VERSION     = "3.0.2"
-local XESS_DIR         = path.join(PROJECT_ROOT, "third_party", "xess")
-local XESS_STAMP       = path.join(XESS_DIR, "version.txt")
-local XESS_URL         = "https://github.com/intel/xess/releases/download/v" .. XESS_VERSION .. "/XeSS_SDK_" .. XESS_VERSION .. ".zip"
-local XESS_ZIP         = path.join(PROJECT_ROOT, "third_party", "XeSS_SDK_" .. XESS_VERSION .. ".zip")
-
--- nvidia dlss ngx, static mt/mtd libs plus runtime dll
-local DLSS_VERSION     = "310.7.0"
-local DLSS_DIR         = path.join(PROJECT_ROOT, "third_party", "dlss")
-local DLSS_STAMP       = path.join(DLSS_DIR, "version.txt")
-local DLSS_URL         = "https://github.com/NVIDIA/DLSS/archive/refs/tags/v" .. DLSS_VERSION .. ".zip"
-local DLSS_ZIP         = path.join(PROJECT_ROOT, "third_party", "DLSS_" .. DLSS_VERSION .. ".zip")
-
 -- d3d12 agility sdk, downloaded on demand into third_party/d3d12_agility
 -- the middle number of the nuget version is the D3D12SDKVersion exported by the exe
 local AGILITY_VERSION     = "1.619.5"
@@ -65,12 +54,9 @@ local AGILITY_NUPKG       = path.join(PROJECT_ROOT, "third_party", "d3d12_agilit
 -- d3d12core.dll sits next to the exe, matching the exported D3D12SDKPath (".\\")
 local AGILITY_RUNTIME_DLLS = { "D3D12Core.dll", "d3d12SDKLayers.dll" }
 
--- steamworks sdk, downloaded on demand into third_party/steamworks
+-- steamworks sdk, committed in third_party/steamworks (headers and win64 redistributables)
 local STEAMWORKS_DIR   = path.join(PROJECT_ROOT, "third_party", "steamworks")
 local STEAM_DLL        = path.join(STEAMWORKS_DIR, "redistributable_bin", "win64", "steam_api64.dll")
-local STEAM_LIB        = path.join(STEAMWORKS_DIR, "redistributable_bin", "win64", "steam_api64.lib")
-local STEAMWORKS_URL   = "https://github.com/rlabrecque/SteamworksSDK/archive/refs/heads/main.zip"
-local STEAMWORKS_ZIP   = path.join(PROJECT_ROOT, "third_party", "steamworks_sdk.zip")
 local STEAM_APP_ID     = "480" -- valve spacewar test appid, replace with the real one
 
 local function is_windows()
@@ -351,258 +337,37 @@ local function stage_agility_runtime()
     end
 end
 
-local function ensure_xess_sdk()
-    if not is_windows() then
-        print("  not windows, skipping xess sdk")
+local function stage_steam_runtime()
+    if not file_exists(STEAM_DLL) then
+        print("  steamworks sdk not found, skipping steam staging")
         return
     end
 
-    local required = {
-        path.join(XESS_DIR, "xess", "xess.h"),
-        path.join(LIBRARIES_DIR, "libxess.lib"),
-        path.join(LIBRARIES_DIR, "libxess.dll"),
-    }
+    copy_file(STEAM_DLL, path.join(BINARIES_DIR, path.getname(STEAM_DLL)))
 
-    local present = read_text(XESS_STAMP) == XESS_VERSION
-    if present then
-        for _, p in ipairs(required) do
-            if not file_exists(p) then
-                present = false
-                break
-            end
-        end
+    local appid_path = path.join(BINARIES_DIR, "steam_appid.txt")
+    if not file_exists(appid_path) then
+        local f = io.open(appid_path, "wb")
+        f:write(STEAM_APP_ID)
+        f:close()
     end
-
-    if present then
-        print("xess sdk " .. XESS_VERSION .. " present, skipping download")
-        return
-    end
-
-    print("downloading xess sdk " .. XESS_VERSION .. "...")
-    os.mkdir(path.getdirectory(XESS_ZIP))
-
-    local result, code = download_with_progress(XESS_URL, XESS_ZIP)
-    if result ~= "OK" then
-        error(string.format("xess sdk download failed: %s (http %s)", tostring(result), tostring(code)))
-    end
-
-    local extract_root = path.join(PROJECT_ROOT, "third_party", "xess_sdk_extract")
-    if os.isdir(extract_root) then
-        os.rmdir(extract_root)
-    end
-
-    extract_zip(XESS_ZIP, extract_root)
-
-    local sdk_root = extract_root
-    if not os.isdir(path.join(sdk_root, "inc")) then
-        -- some zips nest one directory
-        for _, entry in ipairs(os.matchdirs(path.join(extract_root, "*"))) do
-            if os.isdir(path.join(entry, "inc")) then
-                sdk_root = entry
-                break
-            end
-        end
-    end
-
-    if not os.isdir(path.join(sdk_root, "inc")) then
-        error("unexpected xess sdk archive layout")
-    end
-
-    os.mkdir(XESS_DIR)
-    copy_dir(path.join(sdk_root, "inc", "xess"), path.join(XESS_DIR, "xess"))
-    copy_file(path.join(sdk_root, "lib", "libxess.lib"), path.join(LIBRARIES_DIR, "libxess.lib"))
-    copy_file(path.join(sdk_root, "bin", "libxess.dll"), path.join(LIBRARIES_DIR, "libxess.dll"))
-
-    local f = io.open(XESS_STAMP, "wb")
-    f:write(XESS_VERSION)
-    f:close()
-
-    os.rmdir(extract_root)
-    os.remove(XESS_ZIP)
-
-    print("xess sdk " .. XESS_VERSION .. " installed")
-end
-
-local function find_file(root, name)
-    local matches = os.matchfiles(path.join(root, "**/" .. name))
-    if matches and #matches > 0 then
-        return matches[1]
-    end
-    return nil
-end
-
-local function find_file_prefer(root, name, needle)
-    local matches = os.matchfiles(path.join(root, "**/" .. name))
-    if not matches or #matches == 0 then
-        return nil
-    end
-    needle = needle:gsub("\\", "/")
-    for _, m in ipairs(matches) do
-        local normalized = m:gsub("\\", "/")
-        if string.find(string.lower(normalized), string.lower(needle), 1, true) then
-            return m
-        end
-    end
-    return matches[1]
-end
-
-local function stamp_has_version(stamp, version)
-    local text = read_text(stamp)
-    return text ~= nil and string.find(text, version, 1, true) ~= nil
-end
-
-local function ensure_dlss_sdk()
-    if not is_windows() then
-        print("  not windows, skipping dlss sdk")
-        return
-    end
-
-    local required = {
-        path.join(DLSS_DIR, "nvsdk_ngx.h"),
-        path.join(LIBRARIES_DIR, "nvsdk_ngx_s.lib"),
-        path.join(LIBRARIES_DIR, "nvsdk_ngx_s_dbg.lib"),
-        path.join(LIBRARIES_DIR, "nvngx_dlss.dll"),
-    }
-
-    local present = stamp_has_version(DLSS_STAMP, DLSS_VERSION) and stamp_has_version(DLSS_STAMP, "rel")
-    if present then
-        for _, p in ipairs(required) do
-            if not file_exists(p) then
-                present = false
-                break
-            end
-        end
-    end
-
-    if present then
-        print("dlss sdk " .. DLSS_VERSION .. " present, skipping download")
-        return
-    end
-
-    print("downloading dlss sdk " .. DLSS_VERSION .. "...")
-    os.mkdir(path.getdirectory(DLSS_ZIP))
-
-    local result, code = download_with_progress(DLSS_URL, DLSS_ZIP)
-    if result ~= "OK" then
-        error(string.format("dlss sdk download failed: %s (http %s)", tostring(result), tostring(code)))
-    end
-
-    local extract_root = path.join(PROJECT_ROOT, "third_party", "dlss_sdk_extract")
-    if os.isdir(extract_root) then
-        os.rmdir(extract_root)
-    end
-
-    extract_zip(DLSS_ZIP, extract_root)
-
-    local header = find_file(extract_root, "nvsdk_ngx.h")
-    local lib_rel = find_file(extract_root, "nvsdk_ngx_s.lib")
-    local lib_dbg = find_file(extract_root, "nvsdk_ngx_s_dbg.lib")
-    local dll     = find_file_prefer(extract_root, "nvngx_dlss.dll", "/rel/")
-    if not header or not lib_rel or not lib_dbg or not dll then
-        error("unexpected dlss sdk archive layout")
-    end
-
-    os.mkdir(DLSS_DIR)
-    local header_dir = path.getdirectory(header)
-    for _, h in ipairs(os.matchfiles(path.join(header_dir, "*.h"))) do
-        copy_file(h, path.join(DLSS_DIR, path.getname(h)))
-    end
-    local license = find_file(extract_root, "LICENSE.txt")
-    if not license then
-        license = find_file(extract_root, "LICENSE")
-    end
-    if license then
-        copy_file(license, path.join(DLSS_DIR, "LICENSE.txt"))
-    end
-
-    copy_file(lib_rel, path.join(LIBRARIES_DIR, "nvsdk_ngx_s.lib"))
-    copy_file(lib_dbg, path.join(LIBRARIES_DIR, "nvsdk_ngx_s_dbg.lib"))
-    copy_file(dll, path.join(LIBRARIES_DIR, "nvngx_dlss.dll"))
-
-    local f = io.open(DLSS_STAMP, "wb")
-    f:write(DLSS_VERSION .. " static MT/MTd nvsdk_ngx_s rel")
-    f:close()
-
-    os.rmdir(extract_root)
-    os.remove(DLSS_ZIP)
-
-    print("dlss sdk " .. DLSS_VERSION .. " installed")
-end
-
-local function ensure_steamworks()
-    if file_exists(STEAM_DLL) and file_exists(STEAM_LIB) then
-        print("steamworks sdk present, skipping download")
-        return
-    end
-
-    print("downloading steamworks sdk...")
-    os.mkdir(path.getdirectory(STEAMWORKS_ZIP))
-
-    local result, code = download_with_progress(STEAMWORKS_URL, STEAMWORKS_ZIP)
-
-    if result ~= "OK" then
-        print(string.format("  steamworks download failed: %s (http %s)", tostring(result), tostring(code)))
-        return
-    end
-
-    local extract_root = path.join(PROJECT_ROOT, "third_party", "steamworks_extract")
-    if os.isdir(extract_root) then
-        os.rmdir(extract_root)
-    end
-
-    local ok, err = pcall(extract_zip, STEAMWORKS_ZIP, extract_root)
-    if not ok then
-        print("  steamworks extraction failed: " .. tostring(err))
-        return
-    end
-
-    local sdk_root = path.join(extract_root, "SteamworksSDK-main")
-    if not os.isdir(sdk_root) then
-        print("  unexpected steamworks archive layout")
-        return
-    end
-
-    if os.isdir(STEAMWORKS_DIR) then
-        os.rmdir(STEAMWORKS_DIR)
-    end
-    os.mkdir(STEAMWORKS_DIR)
-
-    copy_dir(path.join(sdk_root, "public"), path.join(STEAMWORKS_DIR, "public"))
-    copy_dir(path.join(sdk_root, "redistributable_bin"), path.join(STEAMWORKS_DIR, "redistributable_bin"))
-
-    os.rmdir(extract_root)
-    os.remove(STEAMWORKS_ZIP)
-
-    if file_exists(STEAM_DLL) and file_exists(STEAM_LIB) then
-        print("steamworks sdk installed")
-    else
-        print("  steamworks sdk install incomplete")
-    end
+    print("  staged steam_api64.dll and steam_appid.txt")
 end
 
 function setup.run()
-    print("\n[1/8] copying data files into binaries...")
+    print("\n[1/5] copying data files into binaries...")
     copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
 
-    print("\n[2/8] ensuring libraries archive is present...")
+    print("\n[2/5] ensuring libraries archive is present...")
     ensure_archive()
 
-    print("\n[3/8] extracting archive...")
+    print("\n[3/5] extracting archive...")
     extract_archive()
 
-    print("\n[4/8] ensuring xess sdk...")
-    ensure_xess_sdk()
-
-    print("\n[5/8] ensuring dlss sdk...")
-    ensure_dlss_sdk()
-
-    print("\n[6/8] ensuring d3d12 agility sdk...")
+    print("\n[4/5] ensuring d3d12 agility sdk...")
     ensure_agility_sdk()
 
-    print("\n[7/8] ensuring steamworks sdk...")
-    ensure_steamworks()
-
-    print("\n[8/8] copying runtime dlls into binaries...")
+    print("\n[5/5] copying runtime dlls into binaries...")
     for _, dll in ipairs(RUNTIME_DLLS) do
         if file_exists(dll) then
             copy_file(dll, path.join(BINARIES_DIR, path.getname(dll)))
@@ -612,20 +377,7 @@ function setup.run()
     end
 
     stage_agility_runtime()
-
-    if file_exists(STEAM_DLL) then
-        copy_file(STEAM_DLL, path.join(BINARIES_DIR, path.getname(STEAM_DLL)))
-
-        local appid_path = path.join(BINARIES_DIR, "steam_appid.txt")
-        if not file_exists(appid_path) then
-            local f = io.open(appid_path, "wb")
-            f:write(STEAM_APP_ID)
-            f:close()
-        end
-        print("  staged steam_api64.dll and steam_appid.txt")
-    else
-        print("  steamworks sdk not found, skipping steam staging")
-    end
+    stage_steam_runtime()
 
     print("\nsetup complete")
 end

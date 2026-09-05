@@ -492,124 +492,96 @@ namespace spartan::geometry_processing
         indices = std::move(repacked);
     }
 
-    void split_surface_into_tiles(
-        const std::vector<RHI_Vertex_PosTexNorTan>& terrain_vertices,
-        const std::vector<uint32_t>& terrain_indices,
+    void split_grid_into_tiles(
+        const std::vector<RHI_Vertex_PosTexNorTan>& grid_vertices,
+        const uint32_t grid_width,
+        const uint32_t grid_height,
         const uint32_t tile_count,
         std::vector<std::vector<RHI_Vertex_PosTexNorTan>>& tiled_vertices,
         std::vector<std::vector<uint32_t>>& tiled_indices,
         std::vector<math::Vector3>& tile_offsets
     )
     {
-        // find surface bounds
-        float min_x = std::numeric_limits<float>::max();
-        float max_x = std::numeric_limits<float>::lowest();
-        float min_z = std::numeric_limits<float>::max();
-        float max_z = std::numeric_limits<float>::lowest();
-        for (const auto& vertex : terrain_vertices)
-        {
-            min_x = std::min(min_x, vertex.pos[0]);
-            max_x = std::max(max_x, vertex.pos[0]);
-            min_z = std::min(min_z, vertex.pos[2]);
-            max_z = std::max(max_z, vertex.pos[2]);
-        }
+        SP_ASSERT_MSG(grid_width >= 2 && grid_height >= 2, "grid is too small to tile");
+        SP_ASSERT_MSG(grid_vertices.size() >= static_cast<size_t>(grid_width) * grid_height, "grid vertex count does not match its dimensions");
 
-        // calculate tile dimensions
-        float terrain_width = max_x - min_x;
-        float terrain_depth = max_z - min_z;
-        float tile_width    = terrain_width / static_cast<float>(tile_count);
-        float tile_depth    = terrain_depth / static_cast<float>(tile_count);
+        const uint32_t tiles_per_axis = std::max(1u, tile_count);
+        const uint32_t total_tiles    = tiles_per_axis * tiles_per_axis;
 
-        // onitialize output containers and mutexes
-        const uint32_t total_tiles = tile_count * tile_count;
+        tiled_vertices.clear();
+        tiled_indices.clear();
         tiled_vertices.resize(total_tiles);
         tiled_indices.resize(total_tiles);
-        tile_offsets.resize(total_tiles, math::Vector3::Zero);
-        std::vector<std::unordered_map<uint32_t, uint32_t>> global_to_local_indices(total_tiles);
-        std::vector<std::mutex> tile_mutexes(total_tiles);
+        tile_offsets.assign(total_tiles, math::Vector3::Zero);
 
-        // precompute tile offsets
-        for (uint32_t tz = 0; tz < tile_count; ++tz)
+        // same cell split the physics heightfield uses, neighbouring tiles share their boundary row and column
+        auto cell_range = [tiles_per_axis](const uint32_t tile, const uint32_t samples, uint32_t& start, uint32_t& count)
         {
-            for (uint32_t tx = 0; tx < tile_count; ++tx)
-            {
-                uint32_t tile_index = tz * tile_count + tx;
-                float tile_center_x = min_x + (tx + 0.5f) * tile_width;
-                float tile_center_z = min_z + (tz + 0.5f) * tile_depth;
-                tile_offsets[tile_index] = math::Vector3(tile_center_x, 0.0f, tile_center_z);
-            }
-        }
+            start = (tile * (samples - 1)) / tiles_per_axis;
+            count = ((tile + 1) * (samples - 1)) / tiles_per_axis - start + 1;
+        };
 
-        // calculate number of triangles
-        uint32_t triangle_count = static_cast<uint32_t>(terrain_indices.size()) / 3;
-
-        // parallel processing of triangles
-        auto process_triangles = [&terrain_vertices, &terrain_indices, tile_count, min_x, min_z, tile_width, tile_depth, &tiled_vertices, &tiled_indices, &global_to_local_indices, &tile_mutexes, &tile_offsets](uint32_t start_tri, uint32_t end_tri)
+        auto build_tile = [&](const uint32_t tile_begin, const uint32_t tile_end)
         {
-            const float epsilon = 1e-6f;
-            for (uint32_t tri = start_tri; tri < end_tri; ++tri)
+            for (uint32_t tile_index = tile_begin; tile_index < tile_end; tile_index++)
             {
-                // get starting index of the triangle
-                uint32_t i = tri * 3;
+                const uint32_t tx = tile_index % tiles_per_axis;
+                const uint32_t tz = tile_index / tiles_per_axis;
 
-                // get vertices
-                const auto& v0 = terrain_vertices[terrain_indices[i]];
-                const auto& v1 = terrain_vertices[terrain_indices[i + 1]];
-                const auto& v2 = terrain_vertices[terrain_indices[i + 2]];
+                uint32_t x_start = 0;
+                uint32_t z_start = 0;
+                uint32_t x_count = 0;
+                uint32_t z_count = 0;
+                cell_range(tx, grid_width, x_start, x_count);
+                cell_range(tz, grid_height, z_start, z_count);
 
-                // compute triangle bounds
-                float tri_min_x = std::min({v0.pos[0], v1.pos[0], v2.pos[0]});
-                float tri_max_x = std::max({v0.pos[0], v1.pos[0], v2.pos[0]});
-                float tri_min_z = std::min({v0.pos[2], v1.pos[2], v2.pos[2]});
-                float tri_max_z = std::max({v0.pos[2], v1.pos[2], v2.pos[2]});
+                // the offset is the centre of the tile footprint, vertices are stored relative to it
+                const RHI_Vertex_PosTexNorTan& corner_min = grid_vertices[static_cast<size_t>(z_start) * grid_width + x_start];
+                const RHI_Vertex_PosTexNorTan& corner_max = grid_vertices[static_cast<size_t>(z_start + z_count - 1) * grid_width + (x_start + x_count - 1)];
+                const float center_x                      = (corner_min.pos[0] + corner_max.pos[0]) * 0.5f;
+                const float center_z                      = (corner_min.pos[2] + corner_max.pos[2]) * 0.5f;
+                tile_offsets[tile_index]                  = math::Vector3(center_x, 0.0f, center_z);
 
-                // compute overlapping tile range
-                uint32_t tile_min_x = static_cast<uint32_t>(std::floor((tri_min_x - min_x) / tile_width));
-                uint32_t tile_max_x = std::min(tile_count - 1, static_cast<uint32_t>(std::floor((tri_max_x - min_x - epsilon) / tile_width)));
-                uint32_t tile_min_z = static_cast<uint32_t>(std::floor((tri_min_z - min_z) / tile_depth));
-                uint32_t tile_max_z = std::min(tile_count - 1, static_cast<uint32_t>(std::floor((tri_max_z - min_z - epsilon) / tile_depth)));
+                std::vector<RHI_Vertex_PosTexNorTan>& vertices = tiled_vertices[tile_index];
+                std::vector<uint32_t>& indices                 = tiled_indices[tile_index];
+                vertices.resize(static_cast<size_t>(x_count) * z_count);
+                indices.resize(static_cast<size_t>(x_count - 1) * (z_count - 1) * 6);
 
-                // add triangle to each overlapping tile
-                for (uint32_t tz = tile_min_z; tz <= tile_max_z; ++tz)
+                for (uint32_t z = 0; z < z_count; z++)
                 {
-                    for (uint32_t tx = tile_min_x; tx <= tile_max_x; ++tx)
+                    const size_t source_row = static_cast<size_t>(z_start + z) * grid_width + x_start;
+                    const size_t local_row  = static_cast<size_t>(z) * x_count;
+                    for (uint32_t x = 0; x < x_count; x++)
                     {
-                        uint32_t tile_index = tz * tile_count + tx;
-                        float tile_center_x = tile_offsets[tile_index].x;
-                        float tile_center_z = tile_offsets[tile_index].z;
+                        RHI_Vertex_PosTexNorTan& vertex = vertices[local_row + x];
+                        vertex                          = grid_vertices[source_row + x];
+                        vertex.pos[0]                  -= center_x;
+                        vertex.pos[2]                  -= center_z;
+                    }
+                }
 
-                        // lock the tile
-                        std::lock_guard<std::mutex> lock(tile_mutexes[tile_index]);
+                // same winding as the full grid so normals and culling agree with the ungrouped surface
+                size_t k = 0;
+                for (uint32_t z = 0; z + 1 < z_count; z++)
+                {
+                    for (uint32_t x = 0; x + 1 < x_count; x++)
+                    {
+                        const uint32_t bl = z * x_count + x;
+                        const uint32_t br = bl + 1;
+                        const uint32_t tl = bl + x_count;
+                        const uint32_t tr = tl + 1;
 
-                        // add vertices and indices
-                        auto& map = global_to_local_indices[tile_index];
-                        for (uint32_t j = 0; j < 3; ++j)
-                        {
-                            uint32_t global_idx = terrain_indices[i + j];
-                            uint32_t local_idx;
-                            auto it = map.find(global_idx);
-                            if (it != map.end())
-                            {
-                                local_idx = it->second;
-                            }
-                            else
-                            {
-                                RHI_Vertex_PosTexNorTan vertex_local = terrain_vertices[global_idx];
-                                vertex_local.pos[0] -= tile_center_x;
-                                vertex_local.pos[2] -= tile_center_z;
-                                tiled_vertices[tile_index].push_back(vertex_local);
-                                local_idx = static_cast<uint32_t>(tiled_vertices[tile_index].size() - 1);
-                                map[global_idx] = local_idx;
-                            }
-
-                            tiled_indices[tile_index].push_back(local_idx);
-                        }
+                        indices[k++] = br;
+                        indices[k++] = bl;
+                        indices[k++] = tl;
+                        indices[k++] = br;
+                        indices[k++] = tl;
+                        indices[k++] = tr;
                     }
                 }
             }
         };
 
-        // execute in parallel
-        ThreadPool::ParallelLoop(process_triangles, triangle_count);
+        ThreadPool::ParallelLoop(build_tile, total_tiles);
     }
 }

@@ -63,9 +63,12 @@ namespace spartan::geometry_processing
         math::BoundingBox& lod_aabb_out
     );
 
-    void split_surface_into_tiles(
-        const std::vector<RHI_Vertex_PosTexNorTan>& terrain_vertices,
-        const std::vector<uint32_t>& terrain_indices,
+    // splits a row major grid surface into tile_count x tile_count tiles, each tile is a rectangular
+    // block of cells so no hashing or locking is needed, vertices come out relative to the tile offset
+    void split_grid_into_tiles(
+        const std::vector<RHI_Vertex_PosTexNorTan>& grid_vertices,
+        const uint32_t grid_width,
+        const uint32_t grid_height,
         const uint32_t tile_count,
         std::vector<std::vector<RHI_Vertex_PosTexNorTan>>& tiled_vertices,
         std::vector<std::vector<uint32_t>>& tiled_indices,

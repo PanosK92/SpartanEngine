@@ -732,7 +732,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
         constexpr const char* api_url      = "https://api.github.com/repos/PanosK92/SpartanEngine/releases?per_page=1";
         constexpr const char* releases_url = "https://github.com/PanosK92/SpartanEngine/releases";
         constexpr const char* skip_file    = "spartan_update.txt";
-        constexpr int64_t grace_minutes    = 180;
 
         atomic<bool> visible{false};
         string remote_tag;
@@ -891,7 +890,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                     spartan::version::minute()
                 );
 
-                if (remote_minutes <= local_minutes + grace_minutes)
+                // ci builds carry the exact release stamp, so any newer tag is a real update
+                if (remote_minutes <= local_minutes)
                 {
                     return;
                 }

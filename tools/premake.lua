@@ -27,6 +27,9 @@ TARGET_DIR       = "../binaries"
 API_CPP_DEFINE   = ""
 ARG_API_GRAPHICS = _ARGS[1]
 
+-- ci sets SPARTAN_BUILD_STAMP (yyyymmddhhmm) so the exe version matches the release tag, local builds fall back to __DATE__/__TIME__
+BUILD_STAMP      = os.getenv("SPARTAN_BUILD_STAMP")
+
 local setup = dofile(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, "setup.lua"))
 
 newaction {
@@ -38,14 +41,6 @@ newaction {
 local generation_actions = { vs2026 = true, vs2022 = true, gmake2 = true, gmake = true, codelite = true, xcode4 = true }
 if generation_actions[_ACTION] then
     setup.run()
-end
-
--- evaluate after setup so a freshly downloaded sdk is linked
-STEAM_ENABLED = os.isfile(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, "../third_party/steamworks/redistributable_bin/win64/steam_api64.lib"))
-if STEAM_ENABLED then
-    print("steamworks: enabled")
-else
-    print("steamworks: disabled (sdk not found)")
 end
 
 AGILITY_SDK_VERSION = setup.agility_sdk_version
@@ -69,6 +64,37 @@ function configure_graphics_api()
 end
 
 local lzma_sdk = dofile(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, "lzma_sdk.lua"))
+
+-- third party libraries, debug builds link the same names with a _debug suffix
+local LIBS_COMMON = { "assimp", "FreeImageLib", "freetype", "SDL3", "meshoptimizer", "openxr_loader", "lua" }
+local LIBS_PHYSX  = {
+    "PhysX_static_64", "PhysXCommon_static_64", "PhysXFoundation_static_64", "PhysXExtensions_static_64",
+    "PhysXPvdSDK_static_64", "PhysXCooking_static_64", "PhysXVehicle_static_64", "PhysXCharacterKinematic_static_64"
+}
+local LIBS_SPIRV  = { "spirv-cross-c", "spirv-cross-core", "spirv-cross-cpp", "spirv-cross-glsl", "spirv-cross-hlsl" }
+-- nri.lib refs CreateDeviceVK, on d3d12 that is satisfied by a stub, not nri_vk (needs vma)
+local LIBS_NRD    = { "NRD", "NRI", "NRI_Shared", "NRI_D3D12", "NRI_Validation", "ShaderMakeBlob" }
+
+local function suffixed(names, suffix)
+    local out = {}
+    for _, name in ipairs(names) do
+        table.insert(out, name .. suffix)
+    end
+    return out
+end
+
+local function link_windows_libraries(configs, suffix)
+    filter { "system:windows", "configurations:" .. configs }
+        links { "dxcompiler", "libxess", "dxguid", "steam_api64" }
+        links { suffix == "" and "nvsdk_ngx_s" or "nvsdk_ngx_s_dbg" }
+        links(suffixed(LIBS_COMMON, suffix))
+        links(suffixed(LIBS_PHYSX, suffix))
+        links(suffixed(LIBS_NRD, suffix))
+        if ARG_API_GRAPHICS == "vulkan" then
+            links(suffixed(LIBS_SPIRV, suffix))
+            links(suffixed({ "NRI_VK" }, suffix))
+        end
+end
 
 function solution_configuration()
     solution(SOLUTION_NAME)
@@ -133,12 +159,14 @@ function spartan_project_configuration()
         defines { API_CPP_DEFINE }
         libdirs { LIBRARY_DIR }
 
+        if BUILD_STAMP and BUILD_STAMP ~= "" then
+            defines { "SP_BUILD_STAMP=" .. BUILD_STAMP .. "LL" }
+        end
+
         files {
             SOURCE_DIR .. "/**.h",   SOURCE_DIR .. "/**.cpp",
             SOURCE_DIR .. "/**.hpp", SOURCE_DIR .. "/**.inl",
-            SOURCE_DIR .. "/**.rc",
-            "../third_party/engine_sim/**.h",
-            "../third_party/engine_sim/**.cpp"
+            SOURCE_DIR .. "/**.rc"
         }
         files(lzma_sdk.sources())
 
@@ -173,7 +201,6 @@ function spartan_project_configuration()
 
         filter {}
 
-        -- Windows includes for all builds
         filter { "system:windows" }
             includedirs {
                 SOURCE_DIR, SOURCE_DIR .. "/core", SOURCE_DIR .. "/editor",
@@ -182,10 +209,11 @@ function spartan_project_configuration()
                 "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/openxr",
                 "../third_party/lua", "../third_party/lua/lua",
                 "../third_party/nrd/Include", "../third_party/nrd/Integration", "../third_party/nri/Include",
-                "../third_party/dlss",
-                "../third_party/lzma_sdk/spartan",
-                "../third_party/engine_sim", "../third_party/engine_sim/Core", "../third_party/engine_sim/Solver"
+                "../third_party/dlss", "../third_party/xess",
+                "../third_party/steamworks/public",
+                "../third_party/lzma_sdk/spartan"
             }
+            libdirs { "../third_party/steamworks/redistributable_bin/win64" }
             defines { "NRD_STATIC_LIBRARY", "NRI_STATIC_LIBRARY" }
             linkoptions {
                 "/LIBPATH:" .. path.getabsolute("../third_party/libraries"),
@@ -193,69 +221,32 @@ function spartan_project_configuration()
                 "/NODEFAULTLIB:MSVCPRT.lib"
             }
             links { "Ws2_32", "oleaut32", "ole32" }
-            if STEAM_ENABLED then
-                includedirs { "../third_party/steamworks/public" }
-                libdirs     { "../third_party/steamworks/redistributable_bin/win64" }
-                links       { "steam_api64" }
-            end
             buildoptions { "/bigobj" }
 
-        -- Linux includes
+            if ARG_API_GRAPHICS == "vulkan" then
+                includedirs { "../third_party/spirv_cross", "../third_party/vulkan", "../third_party/vulkan_memory_allocator" }
+            end
+
+            -- agility sdk headers must precede the windows sdk copies of d3d12.h and dxgiformat.h
+            if ARG_API_GRAPHICS == "d3d12" and AGILITY_ENABLED then
+                includedirs { "../third_party/d3d12_agility/include" }
+                defines { "SP_D3D12_AGILITY_SDK_VERSION=" .. AGILITY_SDK_VERSION }
+            end
+
         filter { "system:linux" }
             includedirs {
                 SOURCE_DIR, SOURCE_DIR .. "/core", SOURCE_DIR .. "/editor",
                 "/usr/include/SDL3", "/usr/include/assimp", "/usr/include/physx",
                 "/usr/include/freetype2", "/usr/include/renderdoc",
-                "../third_party/lzma_sdk/spartan",
-                "../third_party/engine_sim", "../third_party/engine_sim/Core", "../third_party/engine_sim/Solver"
+                "../third_party/lzma_sdk/spartan"
             }
+            links { "dxcompiler" }
+            links(LIBS_COMMON)
+            links(LIBS_PHYSX)
 
-        -- Vulkan-specific includes (Windows only)
-        filter { "system:windows" }
-            if ARG_API_GRAPHICS == "vulkan" then
-                includedirs {
-                    "../third_party/spirv_cross",
-                    "../third_party/vulkan",
-                    "../third_party/xess",
-                    "../third_party/vulkan_memory_allocator"
-                }
-            end
-
-        -- D3D12-specific includes (Windows only) - xess for the d3d12 upscaler path
-        filter { "system:windows" }
-            if ARG_API_GRAPHICS == "d3d12" then
-                includedirs {
-                    "../third_party/xess"
-                }
-
-                -- agility sdk headers must precede the windows sdk copies of d3d12.h and dxgiformat.h
-                if AGILITY_ENABLED then
-                    includedirs { "../third_party/d3d12_agility/include" }
-                    defines { "SP_D3D12_AGILITY_SDK_VERSION=" .. AGILITY_SDK_VERSION }
-                end
-            end
-
-        -- release and development share optimized third party libraries
         filter { "configurations:release or development" }
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
-            links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "meshoptimizer", "openxr_loader", "lua" }
-            links {
-                "PhysX_static_64", "PhysXCommon_static_64", "PhysXFoundation_static_64", "PhysXExtensions_static_64",
-                "PhysXPvdSDK_static_64", "PhysXCooking_static_64", "PhysXVehicle_static_64", "PhysXCharacterKinematic_static_64"
-            }
-
-            filter { "system:windows", "configurations:release or development" }
-                if ARG_API_GRAPHICS == "vulkan" then
-                    links {
-                        "spirv-cross-c", "spirv-cross-core", "spirv-cross-cpp", "spirv-cross-glsl", "spirv-cross-hlsl",
-                        "libxess", "nvsdk_ngx_s",
-                        "NRD", "NRI", "NRI_Shared", "NRI_VK", "NRI_D3D12", "NRI_Validation", "ShaderMakeBlob", "dxguid"
-                    }
-                elseif ARG_API_GRAPHICS == "d3d12" then
-                    -- nri.lib refs CreateDeviceVK, satisfied by stub, not nri_vk (needs vma)
-                    links { "libxess", "nvsdk_ngx_s", "NRD", "NRI", "NRI_Shared", "NRI_D3D12", "NRI_Validation", "ShaderMakeBlob", "dxguid" }
-                end
 
         filter { "configurations:release" }
             targetname(EXECUTABLE_NAME)
@@ -263,34 +254,17 @@ function spartan_project_configuration()
         filter { "configurations:development" }
             targetname(EXECUTABLE_NAME .. "_development")
 
-        -- Debug configuration
         filter { "configurations:debug" }
             targetname(EXECUTABLE_NAME .. "_debug")
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
-            links { "dxcompiler" }
             -- /DEBUG:FASTLINK speeds up debug links by emitting a partial pdb
             linkoptions { "/IGNORE:4099", "/DEBUG:FASTLINK" }
-            
-        filter { "configurations:debug", "system:windows" }
-            links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "meshoptimizer_debug", "openxr_loader_debug", "lua_debug" }
-            links {
-                "PhysX_static_64_debug", "PhysXCommon_static_64_debug", "PhysXFoundation_static_64_debug", "PhysXExtensions_static_64_debug",
-                "PhysXPvdSDK_static_64_debug", "PhysXCooking_static_64_debug", "PhysXVehicle_static_64_debug", "PhysXCharacterKinematic_static_64_debug"
-            }
-            if ARG_API_GRAPHICS == "vulkan" then
-                links {
-                    "spirv-cross-c_debug", "spirv-cross-core_debug", "spirv-cross-cpp_debug", "spirv-cross-glsl_debug", "spirv-cross-hlsl_debug",
-                    "libxess", "nvsdk_ngx_s_dbg",
-                    "NRD_debug", "NRI_debug", "NRI_Shared_debug", "NRI_VK_debug", "NRI_D3D12_debug", "NRI_Validation_debug", "ShaderMakeBlob_debug", "dxguid"
-                }
-            elseif ARG_API_GRAPHICS == "d3d12" then
-                links { "libxess", "nvsdk_ngx_s_dbg", "NRD_debug", "NRI_debug", "NRI_Shared_debug", "NRI_D3D12_debug", "NRI_Validation_debug", "ShaderMakeBlob_debug", "dxguid" }
-            end
 
-        filter { "configurations:debug", "system:linux" }
-            links { "assimp", "FreeImageLib", "freetype", "SDL3" }
+        link_windows_libraries("release or development", "")
+        link_windows_libraries("debug", "_debug")
 
+        filter {}
 end
 
 if generation_actions[_ACTION] then

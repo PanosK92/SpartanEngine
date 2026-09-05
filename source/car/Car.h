@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../math/BoundingBox.h"
 #include "../rendering/Material.h"
 #include "../world/components/Physics.h"
+#include "CarEngineSoundSynthesis.h"
 //======================================
 
 namespace pugi
@@ -247,6 +248,8 @@ namespace spartan
 
         // sound state
         float m_tire_squeal_volume = 0.0f;
+        engine_sound::engine_config m_engine_sound_config;
+        bool m_engine_sound_configured = false;
 
         // haptic feedback state
         float m_haptic_left  = 0.0f;

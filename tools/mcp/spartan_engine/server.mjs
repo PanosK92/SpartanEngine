@@ -760,7 +760,7 @@ const parametric_mesh_args = {
   radius: z.number().positive().optional(),
   bevel: z.number().positive().optional(),
   segments: z.number().int().min(1).max(64).optional().describe("rounded boxes allow 1 to 16, revolved profiles allow 3 to 64"),
-  profile: profile2d.optional().describe("simple counter clockwise x,y points for extrusion and sweeps or radius,y points for revolution"),
+  profile: profile2d.optional().describe("simple counter clockwise x,y points for extrusion and sweeps (implicitly closed, do not repeat the first point) or radius,y points for revolution; any scale works, tolerances follow the profile size"),
   depth: z.number().positive().optional(),
   height: z.number().positive().optional(),
   major_radius: z.number().positive().optional(),
@@ -905,21 +905,9 @@ function flatten_engine_points(value) {
 }
 
 function engine_mesh_args(args) {
-  let profile = args.profile;
-  if (
-    args.shape === "curved_profile" &&
-    Array.isArray(profile) &&
-    profile.length >= 3
-  )
-  {
-    profile = profile.map((point) => [...point]);
-    const first = profile[0];
-    const last = profile.at(-1);
-    if (first[0] !== last[0] || first[1] !== last[1])
-    {
-      profile.push([...first]);
-    }
-  }
+  // closed outlines are implicit in the engine, a repeated first point used to be appended here
+  // and was then rejected as a zero length edge, the engine now strips one if the agent sends it
+  const profile = args.profile;
   let loft_profiles = args.loft_profiles;
   let loft_profile_points = args.loft_profile_points;
   if (
@@ -969,6 +957,21 @@ function is_convex_counter_clockwise(profile) {
   {
     return false;
   }
+  // tolerance follows the profile size so millimeter scale parts are not read as degenerate
+  let extent = 0;
+  for (const point of profile)
+  {
+    for (const other of profile)
+    {
+      extent = Math.max(
+        extent,
+        Math.abs(point[0] - other[0]),
+        Math.abs(point[1] - other[1]),
+      );
+    }
+  }
+  const epsilon = Math.max(extent, 1e-6) * 1e-4;
+  const area_epsilon = epsilon * epsilon;
   let winding = 0;
   for (let index = 0; index < profile.length; index++)
   {
@@ -984,7 +987,7 @@ function is_convex_counter_clockwise(profile) {
         (third[1] - second[1]) -
       (second[1] - first[1]) *
         (third[0] - second[0]);
-    if (Math.abs(cross) <= 1e-7)
+    if (Math.abs(cross) <= area_epsilon)
     {
       continue;
     }
@@ -5510,6 +5513,7 @@ const texture_generate_args = {
   seed: z.number().int().min(0).optional(),
   seamless: z.boolean().optional(),
   normal_strength: z.number().min(0).max(8).optional(),
+  normal_bevel: z.number().min(0).max(16).optional(),
   base_roughness: z.number().min(0).max(1).optional(),
   base_metalness: z.number().min(0).max(1).optional(),
   library_asset: z.boolean().optional(),
@@ -5524,7 +5528,7 @@ register_tool(
     "Layers stack bottom to top. Use fill and noise for surfaces, bricks, tiles, stripes and checker for repeating structure, spots and scratches for wear, shape and text for labels and decals.",
     "Colors accept #rrggbb, #rrggbbaa, or rgba arrays in either zero to one or zero to 255 range. Give a layer color and color_b to tint it by its pattern value.",
     "Set relief for bumps, roughness and roughness_b for surface finish, and metalness for metal. Pass material_path to attach every generated map to that material.",
-    "For cloth, paper, leather and other continuous surfaces, relief must come from smooth noise. Never put relief on checker, tiles, bricks or stripes unless visible seams or grooves are explicitly required, because their periodic boundaries become grid lines in the normal map.",
+    "For cloth, paper, leather and other continuous surfaces, relief must come from smooth noise. Never put relief on checker, tiles, bricks or stripes unless visible seams or grooves are explicitly required, because their periodic boundaries become grooves in the normal map. Hard relief edges are softened over normal_bevel texels (at 512, default 3) so a groove lights as a bevel rather than a hairline, pass 0 for razor edges.",
     "The response reports mean color, contrast and seam_error so a tiling texture can be tuned without looking at it.",
   ].join(" "),
   texture_generate_args,
@@ -5535,7 +5539,12 @@ register_tool(
 register_local_tool(
   "material_textured_create",
   {
-    description: "Create a material and generate its textures in one call, attaching color, roughness, normal and packed maps and optional uv tiling.",
+    description: [
+      "Create a material and generate its textures in one call, attaching color, roughness, normal and packed maps.",
+      "roughness and metalness are baked into the maps (the material scalars stay 1 and multiply the maps).",
+      "clearcoat, clearcoat_roughness, ior, sheen and tiling are applied to the material after the maps are attached, so a glaze or varnish keeps its highlight.",
+      "Returns the resolved material_path, use that path for every later material call.",
+    ].join(" "),
     inputSchema: {
       name: z.string(),
       material_path: z.string().optional(),
@@ -5547,6 +5556,13 @@ register_local_tool(
       color_r: z.number().min(0).max(1).optional(),
       color_g: z.number().min(0).max(1).optional(),
       color_b: z.number().min(0).max(1).optional(),
+      color_a: z.number().min(0).max(1).optional(),
+      clearcoat: z.number().min(0).max(1).optional(),
+      clearcoat_roughness: z.number().min(0).max(1).optional(),
+      ior: z.number().min(1).max(3).optional(),
+      sheen: z.number().min(0).max(1).optional(),
+      anisotropic: z.number().min(0).max(1).optional(),
+      subsurface_scattering: z.number().min(0).max(1).optional(),
       ...texture_generate_args,
     },
     outputSchema: output_schemas.generic,
@@ -5565,7 +5581,10 @@ register_local_tool(
       return tool_result(material);
     }
 
+    // the engine resolves a bare file name into the mcp materials folder and reports the full
+    // path under material.resource.path, the bare name is not addressable afterwards
     const material_path =
+      material.material?.resource?.path ??
       material.resource?.path ??
       material.material?.path ??
       args.material_path ??
@@ -5581,19 +5600,82 @@ register_local_tool(
         seed: args.seed,
         seamless: args.seamless,
         normal_strength: args.normal_strength,
+        normal_bevel: args.normal_bevel,
         base_roughness:
           args.base_roughness ??
           args.roughness,
-        base_metalness: args.base_metalness,
+        base_metalness:
+          args.base_metalness ??
+          args.metalness,
         library_asset: args.library_asset,
         material_path,
       },
     );
+    if (!texture.ok)
+    {
+      return tool_result({
+        ok: false,
+        error: texture.error ?? "texture generation failed",
+        material_path,
+        texture,
+      });
+    }
+
+    // scalars go on after the maps, attaching a map rewrites its multiplier and only material
+    // properties may reach material_set_property, generation arguments are not
+    const scalars = {};
+    for (const key of [
+      "color_r",
+      "color_g",
+      "color_b",
+      "color_a",
+      "clearcoat",
+      "clearcoat_roughness",
+      "ior",
+      "sheen",
+      "anisotropic",
+      "subsurface_scattering",
+    ])
+    {
+      if (Number.isFinite(args[key]))
+      {
+        scalars[key] = args[key];
+      }
+    }
+    if (Number.isFinite(args.tiling) && args.tiling > 0)
+    {
+      scalars.texture_tiling_x = args.tiling;
+      scalars.texture_tiling_y = args.tiling;
+    }
+    const applied = [];
+    for (const [property, value] of Object.entries(scalars))
+    {
+      const result = await send_engine_command(
+        "material_set_property",
+        {
+          path: material_path,
+          property,
+          value,
+        },
+      );
+      if (!result.ok)
+      {
+        return tool_result({
+          ok: false,
+          error: `${property}: ${result.error ?? "material property failed"}`,
+          material_path,
+          texture,
+          applied_properties: applied,
+        });
+      }
+      applied.push(property);
+    }
 
     return tool_result({
-      ok: texture.ok,
+      ok: true,
       material_path,
       texture,
+      applied_properties: applied,
     });
   },
 );

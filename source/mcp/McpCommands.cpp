@@ -587,11 +587,92 @@ namespace spartan
             return true;
         }
 
+        // the largest side of the profile's bounding box, every profile tolerance is derived from
+        // it because a coffee mug handle is millimeters across and a building footprint is meters,
+        // fixed epsilons rejected the former as degenerate
+        float profile_extent(
+            const std::vector<math::Vector2>& profile
+        )
+        {
+            if (profile.empty())
+            {
+                return 0.0f;
+            }
+            math::Vector2 minimum = profile.front();
+            math::Vector2 maximum = profile.front();
+            for (const math::Vector2& point : profile)
+            {
+                minimum.x = std::min(minimum.x, point.x);
+                minimum.y = std::min(minimum.y, point.y);
+                maximum.x = std::max(maximum.x, point.x);
+                maximum.y = std::max(maximum.y, point.y);
+            }
+            return std::max(
+                maximum.x - minimum.x,
+                maximum.y - minimum.y
+            );
+        }
+
+        float profile_length_epsilon(
+            const std::vector<math::Vector2>& profile
+        )
+        {
+            return std::max(profile_extent(profile), 0.000001f) * 0.0001f;
+        }
+
+        float profile_area_epsilon(
+            const std::vector<math::Vector2>& profile
+        )
+        {
+            const float length = profile_length_epsilon(profile);
+            return length * length;
+        }
+
+        // agents describe a closed outline the way most formats do, with the first point repeated
+        // at the end, the generators treat the outline as implicitly closed so that repeat and any
+        // other consecutive duplicate would become a zero length edge and fail validation
+        void normalize_closed_profile(
+            std::vector<math::Vector2>& profile
+        )
+        {
+            const float epsilon = profile_length_epsilon(profile);
+            const float epsilon_squared = epsilon * epsilon;
+            std::vector<math::Vector2> cleaned;
+            cleaned.reserve(profile.size());
+            for (const math::Vector2& point : profile)
+            {
+                if (
+                    !cleaned.empty() &&
+                    (point - cleaned.back()).LengthSquared() <=
+                        epsilon_squared
+                )
+                {
+                    continue;
+                }
+                cleaned.push_back(point);
+            }
+            while (
+                cleaned.size() > 1 &&
+                (cleaned.back() - cleaned.front()).LengthSquared() <=
+                    epsilon_squared
+            )
+            {
+                cleaned.pop_back();
+            }
+            profile = std::move(cleaned);
+        }
+
         bool profile_has_distinct_neighbors(
             const std::vector<math::Vector2>& profile,
             bool closed
         )
         {
+            if (profile.size() < 2)
+            {
+                return false;
+            }
+            const float epsilon = profile_length_epsilon(profile);
+            const float epsilon_squared = epsilon * epsilon;
             const size_t edge_count =
                 closed ? profile.size() : profile.size() - 1;
             for (size_t i = 0; i < edge_count; i++)
@@ -601,7 +682,7 @@ namespace spartan
                     (
                         profile[next] -
                         profile[i]
-                    ).LengthSquared() <= 0.0000001f
+                    ).LengthSquared() <= epsilon_squared
                 )
                 {
                     return false;
@@ -611,16 +692,36 @@ namespace spartan
             return true;
         }
 
+        float profile_signed_area_twice(
+            const std::vector<math::Vector2>& profile
+        )
+        {
+            float signed_area_twice = 0.0f;
+            for (size_t i = 0; i < profile.size(); i++)
+            {
+                const math::Vector2& a = profile[i];
+                const math::Vector2& b =
+                    profile[(i + 1) % profile.size()];
+                signed_area_twice +=
+                    a.x * b.y -
+                    b.x * a.y;
+            }
+            return signed_area_twice;
+        }
+
         bool profile_is_convex_counter_clockwise(
             const std::vector<math::Vector2>& profile
         )
         {
-            if (!profile_has_distinct_neighbors(profile, true))
+            if (
+                profile.size() < 3 ||
+                !profile_has_distinct_neighbors(profile, true)
+            )
             {
                 return false;
             }
 
-            float signed_area_twice = 0.0f;
+            const float epsilon = profile_area_epsilon(profile);
             bool has_positive_turn = false;
             for (size_t i = 0; i < profile.size(); i++)
             {
@@ -629,23 +730,19 @@ namespace spartan
                     profile[(i + 1) % profile.size()];
                 const math::Vector2& c =
                     profile[(i + 2) % profile.size()];
-                signed_area_twice +=
-                    a.x * b.y -
-                    b.x * a.y;
-
                 const math::Vector2 edge_a = b - a;
                 const math::Vector2 edge_b = c - b;
                 const float turn =
                     edge_a.x * edge_b.y -
                     edge_a.y * edge_b.x;
-                if (turn < -0.00001f)
+                if (turn < -epsilon)
                 {
                     return false;
                 }
-                has_positive_turn |= turn > 0.00001f;
+                has_positive_turn |= turn > epsilon;
             }
 
-            return signed_area_twice > 0.00001f &&
+            return profile_signed_area_twice(profile) > epsilon &&
                 has_positive_turn;
         }
 
@@ -653,6 +750,10 @@ namespace spartan
             const std::vector<math::Vector2>& profile
         )
         {
+            const float length_epsilon =
+                profile_length_epsilon(profile);
+            const float area_epsilon =
+                profile_area_epsilon(profile);
             auto orientation = [](
                 const math::Vector2& a,
                 const math::Vector2& b,
@@ -663,17 +764,17 @@ namespace spartan
                     (b.x - a.x) * (c.y - a.y) -
                     (b.y - a.y) * (c.x - a.x);
             };
-            auto on_segment = [](
+            auto on_segment = [length_epsilon](
                 const math::Vector2& a,
                 const math::Vector2& b,
                 const math::Vector2& point
             )
             {
                 return
-                    point.x >= std::min(a.x, b.x) - 0.00001f &&
-                    point.x <= std::max(a.x, b.x) + 0.00001f &&
-                    point.y >= std::min(a.y, b.y) - 0.00001f &&
-                    point.y <= std::max(a.y, b.y) + 0.00001f;
+                    point.x >= std::min(a.x, b.x) - length_epsilon &&
+                    point.x <= std::max(a.x, b.x) + length_epsilon &&
+                    point.y >= std::min(a.y, b.y) - length_epsilon &&
+                    point.y <= std::max(a.y, b.y) + length_epsilon;
             };
             auto intersects = [&](
                 const math::Vector2& a,
@@ -688,40 +789,40 @@ namespace spartan
                 const float o4 = orientation(c, d, b);
                 if (
                     (
-                        (o1 > 0.00001f && o2 < -0.00001f) ||
-                        (o1 < -0.00001f && o2 > 0.00001f)
+                        (o1 > area_epsilon && o2 < -area_epsilon) ||
+                        (o1 < -area_epsilon && o2 > area_epsilon)
                     ) &&
                     (
-                        (o3 > 0.00001f && o4 < -0.00001f) ||
-                        (o3 < -0.00001f && o4 > 0.00001f)
+                        (o3 > area_epsilon && o4 < -area_epsilon) ||
+                        (o3 < -area_epsilon && o4 > area_epsilon)
                     )
                 )
                 {
                     return true;
                 }
                 if (
-                    std::abs(o1) <= 0.00001f &&
+                    std::abs(o1) <= area_epsilon &&
                     on_segment(a, b, c)
                 )
                 {
                     return true;
                 }
                 if (
-                    std::abs(o2) <= 0.00001f &&
+                    std::abs(o2) <= area_epsilon &&
                     on_segment(a, b, d)
                 )
                 {
                     return true;
                 }
                 if (
-                    std::abs(o3) <= 0.00001f &&
+                    std::abs(o3) <= area_epsilon &&
                     on_segment(c, d, a)
                 )
                 {
                     return true;
                 }
                 return
-                    std::abs(o4) <= 0.00001f &&
+                    std::abs(o4) <= area_epsilon &&
                     on_segment(c, d, b);
             };
 
@@ -762,6 +863,7 @@ namespace spartan
         )
         {
             if (
+                profile.size() < 3 ||
                 !profile_has_distinct_neighbors(profile, true) ||
                 !profile_is_simple(profile)
             )
@@ -769,17 +871,36 @@ namespace spartan
                 return false;
             }
 
-            float signed_area_twice = 0.0f;
-            for (size_t i = 0; i < profile.size(); i++)
+            return profile_signed_area_twice(profile) >
+                profile_area_epsilon(profile);
+        }
+
+        // empty when the outline is usable as a closed counter clockwise profile, otherwise the one
+        // thing the caller has to change, an opaque rejection cost an agent five calls of guessing
+        std::string closed_profile_problem(
+            const std::vector<math::Vector2>& profile
+        )
+        {
+            if (profile.size() < 3)
             {
-                const math::Vector2& a = profile[i];
-                const math::Vector2& b =
-                    profile[(i + 1) % profile.size()];
-                signed_area_twice +=
-                    a.x * b.y -
-                    b.x * a.y;
+                return "profile needs at least 3 distinct points";
             }
-            return signed_area_twice > 0.00001f;
+            if (!profile_has_distinct_neighbors(profile, true))
+            {
+                return "profile has consecutive duplicate points";
+            }
+            if (!profile_is_simple(profile))
+            {
+                return "profile edges cross each other, the outline must be simple";
+            }
+            if (
+                profile_signed_area_twice(profile) <=
+                profile_area_epsilon(profile)
+            )
+            {
+                return "profile is clockwise, reverse the point order";
+            }
+            return "";
         }
 
         bool profile_has_valid_revolve_tangents(
@@ -791,13 +912,15 @@ namespace spartan
                 return false;
             }
 
+            const float epsilon = profile_length_epsilon(profile);
+            const float epsilon_squared = epsilon * epsilon;
             for (size_t i = 1; i + 1 < profile.size(); i++)
             {
                 if (
                     (
                         profile[i + 1] -
                         profile[i - 1]
-                    ).LengthSquared() <= 0.0000001f
+                    ).LengthSquared() <= epsilon_squared
                 )
                 {
                     return false;
@@ -9813,12 +9936,13 @@ namespace spartan
             }
 
             std::string path_error;
-            const std::optional<std::string> path =
+            std::optional<std::string> path =
                 resolve_mcp_texture_path(request, path_error);
             if (!path)
             {
                 return json_error(path_error);
             }
+            const std::string requested_path = *path;
 
             const std::optional<std::string> layers_arg =
                 get_argument(request, "layers");
@@ -9879,6 +10003,7 @@ namespace spartan
             read_uint("height", settings.height);
             read_uint("seed", settings.seed);
             read_float("normal_strength", settings.normal_strength);
+            read_float("normal_bevel", settings.normal_bevel);
             read_float("base_roughness", settings.base_roughness);
             read_float("base_metalness", settings.base_metalness);
             if (!argument_error.empty())
@@ -9938,11 +10063,49 @@ namespace spartan
                 );
             }
 
-            const std::string stem =
+            // the resource cache keeps serving a texture it already loaded from a path, so writing
+            // over that file changes nothing on screen while the response still reports fresh stats,
+            // the maps move to the next free suffix instead and the response carries the real path
+            const std::string requested_stem =
                 (
                     color_path.parent_path() /
                     color_path.stem()
                 ).generic_string();
+            std::string stem = requested_stem;
+            std::string written_path = *path;
+            const auto any_map_cached = [](const std::string& candidate_stem)
+            {
+                for (
+                    const char* suffix :
+                    { ".png", "_normal.png", "_roughness.png", "_packed.png" }
+                )
+                {
+                    if (
+                        ResourceCache::GetByPath<RHI_Texture>(
+                            candidate_stem + suffix
+                        )
+                    )
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            };
+            bool relocated = false;
+            for (uint32_t attempt = 2; any_map_cached(stem); attempt++)
+            {
+                stem = requested_stem + "_" + std::to_string(attempt);
+                written_path = stem + ".png";
+                relocated = true;
+                if (attempt > 999)
+                {
+                    return json_error(
+                        "every texture path derived from " + *path +
+                        " is already loaded, pick a new name"
+                    );
+                }
+            }
+            path = written_path;
             const std::string normal_path    = stem + "_normal.png";
             const std::string roughness_path = stem + "_roughness.png";
             const std::string packed_path    = stem + "_packed.png";
@@ -10057,6 +10220,12 @@ namespace spartan
 
             std::string json = "{\"ok\":true,\"path\":";
             json += json_string(*path);
+            if (relocated)
+            {
+                json += ",\"requested_path\":" +
+                    json_string(requested_path);
+                json += ",\"note\":\"requested path was already loaded, maps were written to a new name and the material rebound to it\"";
+            }
             json += ",\"normal_path\":" +
                 json_string(write_normal ? normal_path : "");
             json += ",\"roughness_path\":" +
@@ -11331,12 +11500,22 @@ namespace spartan
                     std::vector<math::Vector2> profile;
                     if (
                         !profile_arg ||
-                        !parse_profile(*profile_arg, profile) ||
-                        !profile_is_counter_clockwise(profile)
+                        !parse_profile(*profile_arg, profile)
                     )
                     {
                         return json_error(
-                            "curved profile requires a valid closed profile"
+                            "curved profile requires 3 to 128 finite x,y points"
+                        );
+                    }
+                    normalize_closed_profile(profile);
+                    if (
+                        const std::string problem =
+                            closed_profile_problem(profile);
+                        !problem.empty()
+                    )
+                    {
+                        return json_error(
+                            "curved profile rejected: " + problem
                         );
                     }
                     geometry_generation::generate_swept_profile(
@@ -11386,21 +11565,27 @@ namespace spartan
                             "loft_profiles do not match the path"
                         );
                     }
-                    for (
-                        std::vector<math::Vector2>& profile :
-                        profiles
-                    )
+                    for (size_t i = 0; i < profiles.size(); i++)
                     {
+                        std::vector<math::Vector2>& profile = profiles[i];
+                        normalize_closed_profile(profile);
                         if (
-                            !profile_has_distinct_neighbors(
-                                profile,
-                                true
-                            ) ||
-                            !profile_is_counter_clockwise(profile)
+                            const std::string problem =
+                                closed_profile_problem(profile);
+                            !problem.empty()
                         )
                         {
                             return json_error(
-                                "loft profiles must be distinct and counter clockwise"
+                                "loft profile " +
+                                std::to_string(i) +
+                                " rejected: " +
+                                problem
+                            );
+                        }
+                        if (profile.size() != profiles.front().size())
+                        {
+                            return json_error(
+                                "loft profiles must all have the same number of distinct points"
                             );
                         }
                     }
@@ -11526,12 +11711,25 @@ namespace spartan
                 std::vector<math::Vector2> profile;
                 if (
                     !profile_arg ||
-                    !parse_profile(*profile_arg, profile) ||
-                    !profile_is_convex_counter_clockwise(profile)
+                    !parse_profile(*profile_arg, profile)
                 )
                 {
                     return json_error(
-                        "tapered extrusion requires a convex counter clockwise profile"
+                        "tapered extrusion requires 3 to 128 finite x,y points"
+                    );
+                }
+                normalize_closed_profile(profile);
+                if (!profile_is_convex_counter_clockwise(profile))
+                {
+                    const std::string problem =
+                        closed_profile_problem(profile);
+                    return json_error(
+                        "tapered extrusion rejected: " +
+                        (
+                            problem.empty()
+                                ? std::string("profile is concave, every turn must bend the same way")
+                                : problem
+                        )
                     );
                 }
                 float depth = size.z;
@@ -11608,10 +11806,15 @@ namespace spartan
 
                 if (shape == "extruded_profile")
                 {
-                    if (!profile_is_counter_clockwise(profile))
+                    normalize_closed_profile(profile);
+                    if (
+                        const std::string problem =
+                            closed_profile_problem(profile);
+                        !problem.empty()
+                    )
                     {
                         return json_error(
-                            "extruded profile must be simple and counter clockwise"
+                            "extruded profile rejected: " + problem
                         );
                     }
 

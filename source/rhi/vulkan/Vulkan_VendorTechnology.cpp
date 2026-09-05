@@ -99,10 +99,20 @@ namespace spartan
             settings.motionVectorScale[2] = 0.0f;
 
             // taa jitter is clip space xy, nrd wants uv space sample offset in [-0.5, 0.5]
-            settings.cameraJitter[0]     = cb_frame->taa_jitter_current.x * 0.5f;
-            settings.cameraJitter[1]     = -cb_frame->taa_jitter_current.y * 0.5f;
-            settings.cameraJitterPrev[0] = cb_frame->taa_jitter_previous.x * 0.5f;
-            settings.cameraJitterPrev[1] = -cb_frame->taa_jitter_previous.y * 0.5f;
+            auto clamp_nrd_jitter = [](float value) -> float
+            {
+                if (!std::isfinite(value))
+                {
+                    return 0.0f;
+                }
+
+                return (std::max)(-0.5f, (std::min)(value, 0.5f));
+            };
+
+            settings.cameraJitter[0]     = clamp_nrd_jitter(cb_frame->taa_jitter_current.x * 0.5f);
+            settings.cameraJitter[1]     = clamp_nrd_jitter(-cb_frame->taa_jitter_current.y * 0.5f);
+            settings.cameraJitterPrev[0] = clamp_nrd_jitter(cb_frame->taa_jitter_previous.x * 0.5f);
+            settings.cameraJitterPrev[1] = clamp_nrd_jitter(-cb_frame->taa_jitter_previous.y * 0.5f);
 
             settings.resourceSize[0]     = static_cast<uint16_t>(width);
             settings.resourceSize[1]     = static_cast<uint16_t>(height);
@@ -210,13 +220,16 @@ namespace spartan
         float resolution_scale                = 1.0f;
         Cb_Frame* cb_frame                    = nullptr;
 
+        constexpr uint32_t halton_sample_limit = 96;
+
         uint32_t get_upscaler_sample_count()
         {
             float render_w = static_cast<float>((std::max)(1u, resolution_render_width));
             float scale    = static_cast<float>(resolution_output_width) / render_w;
             float raw      = 8.0f * scale * scale;
             uint32_t count = static_cast<uint32_t>(std::ceil(raw));
-            return (std::max)(1u, count);
+            count          = (std::max)(1u, count);
+            return (std::min)(count, halton_sample_limit);
         }
 
         void write_projection_jitter(float pixel_x, float pixel_y, float* x, float* y)
@@ -372,6 +385,8 @@ namespace spartan
         bool sdk_ready                        = false;
         bool create_failed                    = false;
         bool pending_gpu_init                 = false;
+        bool logged_size_reject               = false;
+        bool logged_dispatch_error            = false;
         NVSDK_NGX_Parameter* parameters       = nullptr;
         NVSDK_NGX_Handle* handle              = nullptr;
         Vector2 jitter                        = Vector2::Zero;
@@ -452,8 +467,10 @@ namespace spartan
                 NVSDK_NGX_VULKAN_ReleaseFeature(handle);
                 handle = nullptr;
             }
-            create_failed    = false;
-            pending_gpu_init = false;
+            create_failed          = false;
+            pending_gpu_init       = false;
+            logged_size_reject     = false;
+            logged_dispatch_error  = false;
         }
 
         void sdk_shutdown()
@@ -580,10 +597,43 @@ namespace spartan
 
             uint32_t in_w = common::resolution_render_max_width;
             uint32_t in_h = common::resolution_render_max_height;
-            if (max_w != 0 && max_h != 0)
+            if (in_w < min_w || in_h < min_h)
             {
-                in_w = (std::min)((std::max)(in_w, min_w), max_w);
-                in_h = (std::min)((std::max)(in_h, min_h), max_h);
+                quality = NVSDK_NGX_PerfQuality_Value_UltraPerformance;
+                result  = NGX_DLSS_GET_OPTIMAL_SETTINGS(
+                    parameters,
+                    common::resolution_output_width,
+                    common::resolution_output_height,
+                    quality,
+                    &opt_w, &opt_h, &max_w, &max_h, &min_w, &min_h, &sharpness
+                );
+                if (NVSDK_NGX_FAILED(result))
+                {
+                    SP_LOG_WARNING("DLSS optimal settings failed: 0x%x", static_cast<unsigned int>(result));
+                    create_failed = true;
+                    return;
+                }
+            }
+
+            if ((min_w != 0 && in_w < min_w) || (min_h != 0 && in_h < min_h) ||
+                (max_w != 0 && in_w > max_w) || (max_h != 0 && in_h > max_h))
+            {
+                if (!logged_size_reject)
+                {
+                    SP_LOG_WARNING(
+                        "DLSS render %ux%u is outside [%u,%u]x[%u,%u] for output %ux%u",
+                        in_w,
+                        in_h,
+                        min_w,
+                        max_w,
+                        min_h,
+                        max_h,
+                        common::resolution_output_width,
+                        common::resolution_output_height
+                    );
+                    logged_size_reject = true;
+                }
+                return;
             }
 
             NVSDK_NGX_DLSS_Create_Params create = {};
@@ -955,19 +1005,24 @@ namespace spartan
 
         if (halton_points.empty())
         {
-            const uint32_t sample_limit = 96;
-            halton_points.reserve(sample_limit);
-            for (uint32_t i = 1; i < 1 + sample_limit; ++i)
+            halton_points.reserve(common::halton_sample_limit);
+            for (uint32_t i = 1; i < 1 + common::halton_sample_limit; ++i)
             {
                 halton_points.emplace_back(get_corput(i, 2) - 0.5f, get_corput(i, 3) - 0.5f);
             }
+        }
+
+        const uint32_t sample_count = common::get_upscaler_sample_count();
+        if (halton_index >= sample_count)
+        {
+            halton_index = 0;
         }
 
         auto sample = halton_points[halton_index];
         dlss::jitter.x = sample.first;
         dlss::jitter.y = sample.second;
         common::write_projection_jitter(sample.first, sample.second, x, y);
-        halton_index = (halton_index + 1) % common::get_upscaler_sample_count();
+        halton_index = (halton_index + 1) % sample_count;
     #endif
     }
 
@@ -1051,7 +1106,20 @@ namespace spartan
         NVSDK_NGX_Result result = NGX_VULKAN_EVALUATE_DLSS_EXT(vk_cmd, dlss::handle, dlss::parameters, &eval);
         if (NVSDK_NGX_FAILED(result))
         {
-            SP_LOG_WARNING("DLSS dispatch failed: 0x%x", static_cast<unsigned int>(result));
+            if (!dlss::logged_dispatch_error)
+            {
+                SP_LOG_WARNING(
+                    "DLSS dispatch failed: 0x%x, color %ux%u output %ux%u subrect %ux%u",
+                    static_cast<unsigned int>(result),
+                    tex_color->GetWidth(),
+                    tex_color->GetHeight(),
+                    tex_output->GetWidth(),
+                    tex_output->GetHeight(),
+                    eval.InRenderSubrectDimensions.Width,
+                    eval.InRenderSubrectDimensions.Height
+                );
+                dlss::logged_dispatch_error = true;
+            }
             cmd_list->AdoptComputeShaderResource(tex_color);
             cmd_list->AdoptComputeShaderResource(tex_velocity);
             cmd_list->AdoptComputeShaderResource(tex_depth);
