@@ -3561,10 +3561,6 @@ namespace spartan
                 SaveToFile(cache_file.c_str());
             }
 
-            // the cache only holds the heightfield, everything the mesh needs is derived here
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("building mesh data...");
-            RebuildMeshData(true);
-
             for (uint32_t i = 0; i < 8; i++)
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
@@ -3637,6 +3633,9 @@ namespace spartan
             }
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
+            // surface area is expensive, computed once here so the cache carries it and a hit skips it
+            m_area_km2 = TerrainSystem::ComputeSurfaceAreaKm2(m_vertices, m_indices);
+
             SaveToFile(cache_file.c_str());
         }
 
@@ -3659,9 +3658,11 @@ namespace spartan
             heights_changed = true;
         }
 
-        if (heights_changed)
+        // the cache only holds the heightfield, so a cache hit derives the mesh here, once, after the
+        // sculpt and pads have moved the heights they are going to move
+        if (heights_changed || loaded_from_cache)
         {
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying platforms...");
+            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("building mesh data...");
             RebuildMeshData(true);
         }
 
@@ -3678,12 +3679,6 @@ namespace spartan
         m_vertex_count   = static_cast<uint32_t>(m_vertices.size());
         m_index_count    = static_cast<uint32_t>(m_indices.size());
         m_triangle_count = m_index_count / 3;
-
-        // surface area is expensive to compute, only recompute on cache miss (cached value was read from disk)
-        if (!loaded_from_cache)
-        {
-            m_area_km2 = TerrainSystem::ComputeSurfaceAreaKm2(m_vertices, m_indices);
-        }
 
         ProgressTracker::GetProgress(ProgressType::Terrain).SetText("building mesh...");
 
@@ -3716,11 +3711,27 @@ namespace spartan
         m_mesh_pending->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
         m_mesh_pending->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges), true);
 
-        for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
+        BuildTileMesh(*m_mesh_pending, true);
+    }
+
+    void Terrain::BuildTileMesh(Mesh& mesh, const bool generate_lods)
+    {
+        const uint32_t tile_count = static_cast<uint32_t>(m_tile_vertices.size());
+        if (tile_count == 0)
         {
-            uint32_t sub_mesh_index = 0;
-            m_mesh_pending->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], true, &sub_mesh_index);
+            return;
         }
+
+        // lod simplification and meshlet building dominate terrain generation, every tile is
+        // independent so they run across the pool, the slot is reserved so tile i stays sub mesh i
+        mesh.ReserveSubMeshes(tile_count);
+        ThreadPool::ParallelLoop([this, &mesh, generate_lods](const uint32_t start, const uint32_t end)
+        {
+            for (uint32_t tile_index = start; tile_index < end; tile_index++)
+            {
+                mesh.AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], generate_lods, tile_index);
+            }
+        }, tile_count);
     }
 
     void Terrain::Tick()
@@ -9483,11 +9494,7 @@ namespace spartan
 
         // a committed rebuild gets the same lod chain generate builds, otherwise the terrain draws
         // at full density everywhere until the next regenerate, previews stay cheap
-        for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
-        {
-            uint32_t sub_mesh_index = 0;
-            m_mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], !preview, &sub_mesh_index);
-        }
+        BuildTileMesh(*m_mesh, !preview);
         m_mesh->CreateGpuBuffers();
 
         if (reuse_tiles)

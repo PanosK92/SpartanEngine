@@ -222,7 +222,6 @@ namespace spartan
             const SubMesh& sub = m_sub_meshes[sub_idx];
             uint32_t lod_count = static_cast<uint32_t>(sub.lods.size());
             outfile.write(reinterpret_cast<const char*>(&lod_count), sizeof(uint32_t));
-            SP_LOG_INFO("Mesh '%s' sub-mesh %u: saving %u LODs", m_object_name.c_str(), sub_idx, lod_count);
 
             for (const auto& lod : sub.lods)
             {
@@ -265,6 +264,7 @@ namespace spartan
         outfile.write(reinterpret_cast<const char*>(m_meshlet_micro_indices.data()), meshlet_micro_count * sizeof(uint32_t));
 
         outfile.close();
+        SP_LOG_INFO("Mesh '%s': saved %u sub-meshes, %u vertices, %u indices", m_object_name.c_str(), submesh_count, vertex_count, index_count);
     }
 
     void Mesh::LoadFromFile(const string& file_path)
@@ -317,7 +317,6 @@ namespace spartan
                 uint32_t lod_count;
                 infile.read(reinterpret_cast<char*>(&lod_count), sizeof(uint32_t));
                 sub.lods.resize(lod_count);
-                SP_LOG_INFO("Mesh '%s' sub-mesh %u: loaded %u LODs", m_object_name.c_str(), sub_idx, lod_count);
 
                 for (auto& lod : sub.lods)
                 {
@@ -391,6 +390,9 @@ namespace spartan
             }
 
             infile.close();
+
+            // one line per mesh, a line per sub mesh was a thousand lines on a large world
+            SP_LOG_INFO("Mesh '%s': loaded %u sub-meshes, %u vertices, %u indices", m_object_name.c_str(), submesh_count, vertex_count, index_count);
 
             CreateGpuBuffers();
 

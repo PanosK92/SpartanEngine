@@ -2652,6 +2652,12 @@ void Properties::ShowSpline(spartan::Spline* spline) const
             spline->SetResolution(static_cast<uint32_t>(resolution_f));
         }
 
+        float curve_alpha = spline->GetCurveAlpha();
+        if (property_float("Curve Alpha", &curve_alpha, 0.01f, 0.0f, 1.0f, "knot spacing, 0 uniform bulges between uneven points, 0.5 centripetal never loops, 1 chordal", "%.2f"))
+        {
+            spline->SetCurveAlpha(curve_alpha);
+        }
+
         layout::separator();
         layout::section_header("Attachment");
 
@@ -2767,6 +2773,26 @@ void Properties::ShowSpline(spartan::Spline* spline) const
             if (ImGuiSp::button("- Remove Last", ImVec2(button_width, 0)))
             {
                 spline->RemoveLastControlPoint();
+            }
+            ImGui::EndDisabled();
+
+            // bulk cleanup, so a traced or imported road never needs point by point editing
+            static float resample_spacing = 40.0f;
+            static float simplify_tolerance = 2.0f;
+            layout::group_spacing();
+            property_float("Spacing", &resample_spacing, 1.0f, 2.0f, 500.0f, "distance between control points after resampling, 40 suits roads", "%.0f m");
+            property_float("Tolerance", &simplify_tolerance, 0.1f, 0.0f, 50.0f, "points closer than this to the line through their neighbours are dropped", "%.1f m");
+
+            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - total_width) * 0.5f + ImGui::GetCursorPosX());
+            ImGui::BeginDisabled(point_count < 2);
+            if (ImGuiSp::button("Resample", ImVec2(button_width, 0)))
+            {
+                spline->ResampleControlPoints(resample_spacing);
+            }
+            ImGui::SameLine(0, design::spacing_md);
+            if (ImGuiSp::button("Simplify", ImVec2(button_width, 0)))
+            {
+                spline->SimplifyControlPoints(simplify_tolerance);
             }
             ImGui::EndDisabled();
         }

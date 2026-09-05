@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <memory>
 #include <array>
+#include <vector>
 #include "../resource/IResource.h"
 #include "Color.h"
 //================================
@@ -183,6 +184,7 @@ namespace spartan
         std::vector<std::string> GetTexturePaths();
         RHI_Texture* GetTexture(const MaterialTextureType texture_type, const uint8_t slot = 0);
         const std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture>& GetTextures() const { return m_textures; }
+        bool IsPackedFromDisk(const uint8_t slot) const { return m_packed_from_disk[slot]; }
 
         // index of refraction
         static float EnumToIor(const MaterialIor ior);
@@ -227,6 +229,10 @@ namespace spartan
         uint32_t m_revision     = 1; // bumps on texture/property edits so the renderer can skip full hashing
         inline static uint32_t m_global_revision = 1;
         bool m_needs_repack     = true; // starts true so first PrepareForGpu() packs textures
+        // per slot, the packed texture was loaded from disk and none of its sources changed since
+        std::array<bool, slots_per_texture> m_packed_from_disk = {};
+        // sources registered by path only, decoded on demand when a repack needs them
+        std::vector<std::shared_ptr<RHI_Texture>> m_deferred_textures;
         // recursive, PrepareForGpu holds this while pack_textures calls SetTexture
         // GetTexture stays unlocked, draw/sort call it every frame
         std::recursive_mutex m_mutex;

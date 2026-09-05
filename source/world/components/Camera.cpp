@@ -743,6 +743,9 @@ namespace spartan
                     continue;
                 }
 
+                // the spline caches its deck handles, snapping each one here would raycast per click
+                const vector<Vector3>& handles = spline->GetEditorHandlePositions();
+                size_t handle_index            = 0;
                 for (uint32_t i = 0; i < entity->GetChildrenCount(); i++)
                 {
                     Entity* point_entity = entity->GetChildByIndex(i);
@@ -756,7 +759,10 @@ namespace spartan
                         continue;
                     }
 
-                    Vector3 world_pos = Spline::GetEditorHandlePosition(point_entity);
+                    const size_t current_index = handle_index++;
+                    Vector3 world_pos = current_index < handles.size()
+                        ? handles[current_index]
+                        : point_entity->GetPosition();
 
                     // depth along the ray direction
                     float depth = (world_pos - ray_origin).Dot(ray_dir);

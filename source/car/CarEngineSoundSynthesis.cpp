@@ -627,7 +627,10 @@ namespace engine_sound
             m_limiter_release = expf(-1.0f / (0.12f * m_sample_rate));
             m_tick_decay      = expf(-1.0f / (0.0012f * m_sample_rate));
             m_bov_decay       = expf(-1.0f / (0.45f * m_sample_rate));
-            m_bov_sweep       = 1.0f - expf(-1.0f / (0.25f * m_sample_rate));
+            m_bov_sweep       = 1.0f - expf(-1.0f / (0.4f * m_sample_rate));
+            m_surge_decay       = expf(-1.0f / (0.8f * m_sample_rate));
+            m_surge_burst_decay = expf(-1.0f / (0.014f * m_sample_rate));
+            m_surge_rate_slew   = 1.0f - expf(-1.0f / (0.5f * m_sample_rate));
 
             m_noise.seed(0xA5A5F00Du);
             m_event_rng.seed(0x1234ABCDu);
@@ -686,6 +689,7 @@ namespace engine_sound
             const float target_load     = m_target_load.load(std::memory_order_relaxed);
             const float target_boost    = m_target_boost.load(std::memory_order_relaxed);
             const bool  fuel_cut        = m_fuel_cut.load(std::memory_order_relaxed);
+            const bool  shifting        = m_shifting.load(std::memory_order_relaxed);
             const int   gear            = m_gear.load(std::memory_order_relaxed);
             const listener_view view    = static_cast<listener_view>(m_view.load(std::memory_order_relaxed));
 
@@ -733,7 +737,7 @@ namespace engine_sound
 
                 if ((m_control_counter++ % control_interval) == 0)
                 {
-                    update_control(model, p, rpm, rpm_norm, throttle, load, boost_norm, fuel_cut, view_target, body_cutoff_target, cabin_gain_target);
+                    update_control(model, p, rpm, rpm_norm, throttle, load, boost_norm, fuel_cut, shifting, view_target, body_cutoff_target, cabin_gain_target);
                 }
 
                 // crank
@@ -828,6 +832,8 @@ namespace engine_sound
                 {
                     float shaft_target = 0.08f + 0.92f * sqrtf(clamp01(boost_norm));
                     shaft_target = std::max(shaft_target, 0.12f + 0.3f * throttle * rpm_norm);
+                    // a surging wheel is being slammed by its own charge and slows down fast
+                    shaft_target *= 1.0f - 0.55f * m_surge_env;
                     float shaft = m_shaft_smooth.process(shaft_target);
                     float freq  = 900.0f + 6500.0f * powf(shaft, 1.6f);
                     m_whistle_phase += two_pi * freq * dt;
@@ -851,15 +857,36 @@ namespace engine_sound
                     float flutter = 1.0f - 0.45f * m_flutter_amount * (0.5f + 0.5f * sinf(m_flutter_phase));
                     float hiss = m_hiss_bp.process(white) * (m_flutter_amount * (0.3f + 0.7f * (1.0f - flutter)) * 0.6f + boost_norm * 0.15f);
 
-                    float bov = 0.0f;
-                    if (m_bov_env > 1.0e-4f)
+                    // compressor surge, the trapped charge stalls the wheel in a train of chops that
+                    // slows and falls in pitch as the wheel spins down, the stutututu after a shift
+                    float bov   = 0.0f;
+                    float surge = 0.0f;
+                    if (m_bov_env > 1.0e-4f || m_surge_env > 1.0e-3f)
                     {
                         m_bov_freq += (700.0f - m_bov_freq) * m_bov_sweep;
-                        bov = m_bov_bp.process(white) * m_bov_env * 3.0f;
+                        float vent = m_bov_bp.process(white);
+                        bov = vent * m_bov_env * 2.0f;
                         m_bov_env *= m_bov_decay;
+
+                        m_surge_phase += m_surge_rate * dt;
+                        if (m_surge_phase >= 1.0f)
+                        {
+                            m_surge_phase -= 1.0f;
+                            m_surge_burst  = 0.7f + 0.3f * m_noise.uniform();
+                        }
+                        m_surge_rate += (11.0f - m_surge_rate) * m_surge_rate_slew;
+                        float chop = m_surge_burst * m_surge_env;
+                        surge = (vent * 3.0f + sinf(m_whistle_phase) * 0.6f) * chop;
+                        m_surge_burst *= m_surge_burst_decay;
+                        m_surge_env   *= m_surge_decay;
+                        whistle_gain  *= 1.0f - 0.6f * m_surge_env;
+                    }
+                    else
+                    {
+                        m_surge_env = 0.0f;
                     }
 
-                    turbo = (whistle * whistle_gain * flutter * 0.12f + hiss * 0.1f + bov * 0.5f) * p.turbo_level * m_view_weight[2];
+                    turbo = (whistle * whistle_gain * flutter * 0.12f + hiss * 0.1f + bov * 0.4f + surge * 0.55f) * p.turbo_level * m_view_weight[2];
                 }
 
                 // valvetrain ticks and a faint gear whine
@@ -996,6 +1023,9 @@ namespace engine_sound
             m_limiter_env    = 0.0f;
             m_tick_env       = 0.0f;
             m_bov_env        = 0.0f;
+            m_surge_env      = 0.0f;
+            m_surge_burst    = 0.0f;
+            m_prev_shifting  = false;
             m_flutter_amount = 0.0f;
             m_lift_time      = 10.0f;
             m_prev_throttle  = 0.0f;
@@ -1111,7 +1141,7 @@ namespace engine_sound
             m_debug.pops_fired++;
         }
 
-        void update_control(engine_model& model, const runtime_params& p, float rpm, float rpm_norm, float throttle, float load, float boost_norm, bool fuel_cut, const float* view_target, float body_cutoff_target, float cabin_gain_target)
+        void update_control(engine_model& model, const runtime_params& p, float rpm, float rpm_norm, float throttle, float load, float boost_norm, bool fuel_cut, bool shifting, const float* view_target, float body_cutoff_target, float cabin_gain_target)
         {
             const engine_config& cfg = model.config;
             const float block_dt = static_cast<float>(control_interval) / m_sample_rate;
@@ -1136,12 +1166,20 @@ namespace engine_sound
                 m_whistle_bp.set_bandpass(freq, 8.0f, m_sample_rate);
                 m_bov_bp.set_bandpass(m_bov_freq, 1.5f, m_sample_rate);
 
-                // lift off with the manifold pressurised vents the compressor
-                if (m_prev_throttle > 0.45f && throttle < 0.2f && boost_norm > 0.3f && m_bov_env < 0.2f)
+                // lift off or a shift with the manifold pressurised vents the compressor
+                bool lift        = m_prev_throttle > 0.45f && throttle < 0.2f;
+                bool shift_start = shifting && !m_prev_shifting;
+                if ((lift || shift_start) && boost_norm > 0.25f && m_surge_env < 0.3f)
                 {
-                    m_bov_env  = boost_norm * (0.6f + 0.4f * cfg.turbo_stage);
-                    m_bov_freq = 3200.0f + 800.0f * cfg.turbo_stage;
+                    float charge = clamp01(boost_norm);
+                    m_bov_env     = charge * (0.5f + 0.3f * cfg.turbo_stage);
+                    m_bov_freq    = 3200.0f + 800.0f * cfg.turbo_stage;
+                    m_surge_env   = charge * (0.7f + 0.3f * cfg.turbo_stage);
+                    m_surge_rate  = 24.0f + 10.0f * charge;
+                    m_surge_phase = 0.0f;
+                    m_surge_burst = 1.0f;
                 }
+                m_prev_shifting = shifting;
 
                 bool at_gate = cfg.boost_wastegate_rpm > 0.0f && rpm > cfg.boost_wastegate_rpm * 0.97f && boost_norm > 0.85f && throttle > 0.6f;
                 float flutter_target = at_gate ? 1.0f : 0.0f;
@@ -1218,6 +1256,14 @@ namespace engine_sound
         float m_bov_freq       = 3000.0f;
         float m_bov_decay      = 0.999f;
         float m_bov_sweep      = 0.001f;
+        float m_surge_env      = 0.0f;
+        float m_surge_phase    = 0.0f;
+        float m_surge_rate     = 24.0f;
+        float m_surge_burst    = 0.0f;
+        float m_surge_decay    = 0.999f;
+        float m_surge_burst_decay = 0.99f;
+        float m_surge_rate_slew   = 0.0001f;
+        bool  m_prev_shifting  = false;
         float m_tick_phase     = 0.0f;
         float m_tick_env       = 0.0f;
         float m_tick_decay     = 0.98f;

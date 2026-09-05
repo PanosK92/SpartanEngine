@@ -375,6 +375,7 @@ namespace spartan
         void BakeTerrainMaps(bool allow_cache);
         void UploadTerrainMaps();
         void BuildCpuMesh();
+        void BuildTileMesh(Mesh& mesh, const bool generate_lods);
         void CommitGpu();
         void CommitProps();
         void FinishGenerate();

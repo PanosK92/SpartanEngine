@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "pch.h"
+#include <cctype>
 #include <filesystem>
 #include "Material.h"
 #include "../resource/ResourceCache.h"
@@ -137,10 +138,77 @@ namespace spartan
             }
             return *it->second;
         }
+
+        // the world saves the packed texture next to the material, a material saved by this version
+        // records its path, older files are found by the naming the save used, duplicate material
+        // names in one directory make that ambiguous so those keep packing from source
+        string find_saved_packed_texture(const string& material_path, const string& recorded_path, const uint32_t slot)
+        {
+            if (!recorded_path.empty() && FileSystem::Exists(recorded_path))
+            {
+                return recorded_path;
+            }
+
+            const string directory = FileSystem::GetDirectoryFromFilePath(material_path);
+            const string stem      = FileSystem::GetFileNameWithoutExtensionFromFilePath(material_path);
+            if (directory.empty() || stem.empty())
+            {
+                return string();
+            }
+
+            if (FileSystem::Exists(directory + stem + "_2" + EXTENSION_MATERIAL))
+            {
+                return string();
+            }
+
+            const size_t underscore = stem.find_last_of('_');
+            if (underscore != string::npos && underscore + 1 < stem.size())
+            {
+                const string suffix = stem.substr(underscore + 1);
+                if (all_of(suffix.begin(), suffix.end(), [](unsigned char c) { return isdigit(c) != 0; }) &&
+                    FileSystem::Exists(directory + stem.substr(0, underscore) + EXTENSION_MATERIAL))
+                {
+                    return string();
+                }
+            }
+
+            const string base = directory + stem + "_packed_slot" + to_string(slot);
+            for (const string& candidate : { base + ".tex_packed" + EXTENSION_TEXTURE, base + EXTENSION_TEXTURE })
+            {
+                if (FileSystem::Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            return string();
+        }
     }
 
     namespace texture_processing
     {
+        // a source registered by path only holds no pixels, decode it now that a repack needs them
+        void hydrate_source(RHI_Texture* texture)
+        {
+            if (!texture || texture->HasData() || texture->GetRhiResource())
+            {
+                return;
+            }
+
+            const string& path = texture->GetResourceFilePath();
+            if (path.empty() || !FileSystem::IsSupportedImageFile(path) || !FileSystem::Exists(path))
+            {
+                return;
+            }
+
+            // two materials sharing the source can repack at the same time
+            lock_guard<mutex> guard(ResourceCache::GetInFlightMutex(path));
+            if (!texture->HasData())
+            {
+                texture->LoadFromFile(path);
+            }
+        }
+
         void pack_occlusion_roughness_metalness_height(
             const vector<byte>& occlusion,
             const vector<byte>& roughness,
@@ -369,6 +437,20 @@ namespace spartan
             RHI_Texture* texture_roughness  = material->GetTexture(MaterialTextureType::Roughness, slot);
             RHI_Texture* texture_metalness  = material->GetTexture(MaterialTextureType::Metalness, slot);
             RHI_Texture* texture_height     = material->GetTexture(MaterialTextureType::Height, slot);
+            RHI_Texture* texture_packed_now = material->GetTexture(MaterialTextureType::Packed, slot);
+
+            // a packed texture that came from disk already holds these channels, it stays until one of its
+            // sources is assigned or removed, a repack first pulls in any source registered by path only
+            const bool keep_packed =
+                material->IsPackedFromDisk(slot) &&
+                texture_packed_now && texture_packed_now->IsCompressedFormat() && texture_packed_now->HasData();
+            if (!keep_packed)
+            {
+                hydrate_source(texture_occlusion);
+                hydrate_source(texture_roughness);
+                hydrate_source(texture_metalness);
+                hydrate_source(texture_height);
+            }
         
             // check for normal_from_albedo flag
             if (material->GetProperty(MaterialProperty::NormalFromAlbedo) == 1.0f && texture_color && !texture_color->IsCompressedFormat())
@@ -506,6 +588,7 @@ namespace spartan
                 }
         
                 // step 2: pack occlusion, roughness, metalness, and height into a single texture
+                if (!keep_packed)
                 {
                     // helper to check if texture data is available for packing
                     auto has_packable_data = [](RHI_Texture* tex) -> bool
@@ -527,7 +610,14 @@ namespace spartan
                         texture_packed = nullptr;
                     }
 
-                    // always create packed texture - use material properties as fallback when texture data is unavailable
+                    // shaders only read the packed channels behind the has texture flags, a material without any
+                    // of the four sources never samples it, most materials are colour only so this skips a
+                    // texture creation and a gpu compression round trip for each of them
+                    if (!texture_occlusion && !texture_roughness && !texture_metalness && !texture_height)
+                    {
+                        material->SetTexture(MaterialTextureType::Packed, static_cast<RHI_Texture*>(nullptr), slot);
+                    }
+                    else
                     {
                         // create packed texture
                         string packed_name = tex_name + ".tex_packed";
@@ -600,9 +690,8 @@ namespace spartan
 
                         // Material::PrepareForGpu uploads after releasing m_mutex
                         texture_packed = ResourceCache::Cache<RHI_Texture>(texture_packed);
+                        material->SetTexture(MaterialTextureType::Packed, texture_packed, slot);
                     }
-        
-                    material->SetTexture(MaterialTextureType::Packed, texture_packed, slot);
                 }
             }
 
@@ -958,8 +1047,67 @@ namespace spartan
         }
         bump_revision();
     
-        // load textures (skip packed textures as they're regenerated from source textures during PrepareForGpu)
         pugi::xml_node textures_node = node_material.child("textures");
+        auto texture_path_of = [&textures_node](const MaterialTextureType type, const uint32_t slot)
+        {
+            const string node_name = "texture_" + to_string(static_cast<uint32_t>(type) * slots_per_texture + slot);
+            return string(textures_node.child(node_name.c_str()).attribute("texture_path").as_string());
+        };
+
+        // a packed texture saved with the world already holds the occlusion, roughness, metalness and height
+        // channels, when it is newer than every source those sources are registered by path only and pack_textures
+        // keeps the packed one, this skips the image decoding and the gpu compression that used to run on every load
+        array<bool, slots_per_texture> packed_reused = {};
+        for (uint32_t slot = 0; slot < slots_per_texture; ++slot)
+        {
+            const string packed_path = find_saved_packed_texture(file_path, texture_path_of(MaterialTextureType::Packed, slot), slot);
+            if (packed_path.empty())
+            {
+                continue;
+            }
+
+            error_code ec;
+            const filesystem::file_time_type packed_time = filesystem::last_write_time(packed_path, ec);
+            if (ec)
+            {
+                continue;
+            }
+
+            // a source edited after the packed texture was written has to be packed again, only image
+            // files count, a compressed source never contributes to packing so its time is irrelevant
+            bool fresh = true;
+            for (const MaterialTextureType type : { MaterialTextureType::Occlusion, MaterialTextureType::Roughness, MaterialTextureType::Metalness, MaterialTextureType::Height })
+            {
+                const string source_path = texture_path_of(type, slot);
+                if (source_path.empty() || !FileSystem::IsSupportedImageFile(source_path))
+                {
+                    continue;
+                }
+
+                const filesystem::file_time_type source_time = filesystem::last_write_time(source_path, ec);
+                if (ec || source_time > packed_time)
+                {
+                    fresh = false;
+                    break;
+                }
+            }
+
+            if (!fresh)
+            {
+                continue;
+            }
+
+            if (shared_ptr<RHI_Texture> texture_packed = ResourceCache::Load<RHI_Texture>(packed_path))
+            {
+                if (texture_packed->IsCompressedFormat() && texture_packed->HasData())
+                {
+                    SetTexture(MaterialTextureType::Packed, texture_packed.get(), slot, false);
+                    packed_reused[slot] = true;
+                }
+            }
+        }
+
+        // load textures, packed ones were resolved above
         for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); ++type)
         {
             if (static_cast<MaterialTextureType>(type) == MaterialTextureType::Packed)
@@ -986,7 +1134,26 @@ namespace spartan
                 // before pack_textures can merge the alpha mask into it, which silently drops alpha testing
                 if (!tex_path.empty() && FileSystem::Exists(tex_path))
                 {
-                    texture = ResourceCache::Load<RHI_Texture>(tex_path, RHI_Texture_Srv | RHI_Texture_DeferUpload);
+                    const bool source_of_packed =
+                        packed_reused[slot] &&
+                        type != static_cast<uint32_t>(MaterialTextureType::Color) &&
+                        IsPackableTextureType(static_cast<MaterialTextureType>(type)) &&
+                        type != static_cast<uint32_t>(MaterialTextureType::AlphaMask);
+
+                    // the packed texture already carries this channel, the source only needs to be known by
+                    // path so a later repack can decode it, another material may have loaded it for real already
+                    if (source_of_packed && !ResourceCache::GetByPath<RHI_Texture>(tex_path))
+                    {
+                        shared_ptr<RHI_Texture> placeholder = make_shared<RHI_Texture>();
+                        placeholder->SetResourceFilePath(tex_path);
+                        placeholder->SetFlag(RHI_Texture_Srv | RHI_Texture_DeferUpload);
+                        m_deferred_textures.push_back(placeholder);
+                        texture = placeholder;
+                    }
+                    else
+                    {
+                        texture = ResourceCache::Load<RHI_Texture>(tex_path, RHI_Texture_Srv | RHI_Texture_DeferUpload);
+                    }
                 }
 
                 if (!texture && !tex_name.empty())
@@ -1000,8 +1167,10 @@ namespace spartan
                 }
             }
         }
-    
-        m_object_size = sizeof(*this);
+
+        // set after the sources, SetTexture clears it for every packed source it assigns
+        m_packed_from_disk = packed_reused;
+        m_object_size      = sizeof(*this);
     }
     
     void Material::SaveToFile(const string& file_path)
@@ -1026,25 +1195,28 @@ namespace spartan
             material_node.append_child(attribute_name).text().set(m_properties[i]);
         }
 
-        // save textures (skip packed textures as they're regenerated from source textures during PrepareForGpu)
+        // save textures, the packed entry is a hint for LoadFromFile and is only written once the world has saved the file,
+        // a runtime packed texture has no file behind it and would show up as a missing dependency
         pugi::xml_node textures_node = material_node.append_child("textures");
         textures_node.append_attribute("count").set_value(static_cast<uint32_t>(m_textures.size()));
         for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); ++type)
         {
-            if (static_cast<MaterialTextureType>(type) == MaterialTextureType::Packed)
-            {
-                continue;
-            }
-
+            const bool is_packed = static_cast<MaterialTextureType>(type) == MaterialTextureType::Packed;
             for (uint32_t slot = 0; slot < slots_per_texture; ++slot)
             {
-                uint32_t index   = type * slots_per_texture + slot;
+                uint32_t index       = type * slots_per_texture + slot;
+                RHI_Texture* texture = m_textures[index];
+                if (is_packed && texture && !FileSystem::Exists(texture->GetResourceFilePath()))
+                {
+                    texture = nullptr;
+                }
+
                 string node_name = "texture_" + to_string(index);
                 pugi::xml_node texture_node = textures_node.append_child(node_name.c_str());
                 texture_node.append_attribute("texture_type").set_value(type);
                 texture_node.append_attribute("texture_slot").set_value(slot);
-                texture_node.append_attribute("texture_name").set_value(m_textures[index] ? m_textures[index]->GetObjectName().c_str() : "");
-                texture_node.append_attribute("texture_path").set_value(m_textures[index] ? m_textures[index]->GetResourceFilePath().c_str() : "");
+                texture_node.append_attribute("texture_name").set_value(texture ? texture->GetObjectName().c_str() : "");
+                texture_node.append_attribute("texture_path").set_value(texture ? texture->GetResourceFilePath().c_str() : "");
             }
         }
 
@@ -1096,6 +1268,12 @@ namespace spartan
             if (texture_changed && IsPackableTextureType(texture_type))
             {
                 m_needs_repack = true;
+
+                // a packed texture loaded from disk is only valid for the sources it was built from
+                if (texture_type != MaterialTextureType::Color && texture_type != MaterialTextureType::AlphaMask)
+                {
+                    m_packed_from_disk[slot] = false;
+                }
 
                 // if already prepared for gpu, schedule async repack outside the lock
                 if (m_resource_state == ResourceState::PreparedForGpu)

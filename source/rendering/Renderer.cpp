@@ -2815,10 +2815,20 @@ namespace spartan
             {
                 for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); type++)
                 {
+                    // shaders read these channels from the packed texture, the sources stay cpu only and never get an
+                    // srv, binding them kept the null srv retry below re-uploading every material on every frame
+                    const MaterialTextureType texture_type = static_cast<MaterialTextureType>(type);
+                    const bool cpu_only =
+                        texture_type == MaterialTextureType::Roughness ||
+                        texture_type == MaterialTextureType::Metalness ||
+                        texture_type == MaterialTextureType::Occlusion ||
+                        texture_type == MaterialTextureType::Height    ||
+                        texture_type == MaterialTextureType::AlphaMask;
+
                     for (uint32_t slot = 0; slot < Material::slots_per_texture; slot++)
                     {
                         uint32_t bindless_index = count + (type * Material::slots_per_texture) + slot;
-                        m_bindless_textures[bindless_index] = material->GetTexture(static_cast<MaterialTextureType>(type), slot);
+                        m_bindless_textures[bindless_index] = cpu_only ? nullptr : material->GetTexture(texture_type, slot);
                     }
                 }
             }

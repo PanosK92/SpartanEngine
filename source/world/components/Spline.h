@@ -106,8 +106,14 @@ namespace spartan
         std::vector<math::Vector3> GetControlPoints() const;
         // handle position on the road deck, stored y is left alone
         static math::Vector3 GetEditorHandlePosition(Entity* entity);
+        // cached deck positions for every control point, refreshed when the spline goes dirty
+        const std::vector<math::Vector3>& GetEditorHandlePositions() const { return m_handle_positions; }
         void AddControlPoint(const math::Vector3& local_position = math::Vector3::Zero);
         void RemoveLastControlPoint();
+        // replace the control points with evenly spaced ones along the current curve, keeps the shape
+        void ResampleControlPoints(float spacing_meters);
+        // drop control points that deviate less than the tolerance from the polyline through their neighbours
+        void SimplifyControlPoints(float tolerance_meters);
 
         // mesh generation - extrudes the current profile along the spline
         void GenerateRoadMesh();
@@ -130,6 +136,9 @@ namespace spartan
         void SetResolution(uint32_t resolution) { m_resolution = resolution; }
         float GetRoadWidth() const              { return m_road_width; }
         void SetRoadWidth(float width)          { m_road_width = width; }
+        // catmull-rom knot parametrization, 0 uniform, 0.5 centripetal, 1 chordal
+        float GetCurveAlpha() const             { return m_curve_alpha; }
+        void SetCurveAlpha(float alpha)         { m_curve_alpha = alpha; }
 
         // profile properties
         SplineProfile GetProfile() const              { return m_profile; }
@@ -290,19 +299,27 @@ namespace spartan
         // capture current property/control point state to compare against next tick
         void SnapshotState();
 
-        // catmull-rom interpolation between four points
+        // snapping every handle costs raycasts, do it once per change instead of once per frame
+        void RefreshHandlePositions();
+
+        // catmull-rom interpolation between four points, alpha controls the knot spacing
         static math::Vector3 CatmullRom(
             const math::Vector3& p0, const math::Vector3& p1,
             const math::Vector3& p2, const math::Vector3& p3,
-            float t
+            float t,
+            float alpha
         );
 
         // catmull-rom tangent (first derivative) between four points
         static math::Vector3 CatmullRomTangent(
             const math::Vector3& p0, const math::Vector3& p1,
             const math::Vector3& p2, const math::Vector3& p3,
-            float t
+            float t,
+            float alpha
         );
+
+        // the four control point indices that drive the given span
+        void GetSpanIndices(uint32_t span_index, size_t point_count, int32_t& i0, int32_t& i1, int32_t& i2, int32_t& i3) const;
 
         // evaluate spline position from an arbitrary set of control points
         math::Vector3 EvaluatePoint(const std::vector<math::Vector3>& points, float t) const;
@@ -315,6 +332,8 @@ namespace spartan
         bool m_closed_loop             = false;
         uint32_t m_resolution          = 20;
         float m_road_width             = 8.0f;
+        // uneven control point spacing makes the uniform form bulge and loop, centripetal never does
+        float m_curve_alpha            = 0.5f;
         bool m_needs_road_regeneration = false;
         bool m_mesh_enabled            = false;
 
@@ -355,6 +374,7 @@ namespace spartan
         float m_carve_cut_slope_degrees   = 45.0f;
         float m_carve_max_shoulder        = 60.0f;
         std::vector<SplineCarveSample> m_carve_samples;
+        std::vector<math::Vector3> m_handle_positions;
         // remembered so the destructor can release the carve without touching the dying entity
         uint64_t m_carve_entity_id        = 0;
 
@@ -398,6 +418,7 @@ namespace spartan
         bool m_prev_closed_loop                         = false;
         uint32_t m_prev_resolution                      = 0;
         float m_prev_road_width                         = 0.0f;
+        float m_prev_curve_alpha                        = 0.5f;
         float m_prev_road_width_end                     = 0.0f;
         SplineProfile m_prev_profile                    = SplineProfile::Road;
         float m_prev_height                             = 0.0f;

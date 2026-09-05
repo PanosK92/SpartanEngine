@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "pch.h"
 #include <algorithm>
+#include <deque>
 #include <fstream>
 #include <filesystem>
 #include <system_error>
@@ -37,18 +38,16 @@ namespace spartan
     namespace
     {
         vector<LogCmd> logs;
-        vector<LogCmd> history;
+        deque<LogCmd> history;
         string log_file_name = "log.txt";
         ILogger* logger      = nullptr;
         bool log_to_file     = true;
         mutex log_output_mutex;
         constexpr uint32_t history_max_count = 2000;
+        ofstream log_file;
 
-        void write_to_file(string text, const LogType type)
+        void write_to_file(const char* text, const LogType type)
         {
-            const string prefix = (type == LogType::Info) ? "Info:" : (type == LogType::Warning) ? "Warning:" : "Error:";
-            text = prefix + " " + text;
-
             // the log being replaced here is the only record of why the last run died, and the restart
             // after a gpu crash is what lands on this path, so it is rotated rather than deleted
             static bool is_first_log = true;
@@ -60,15 +59,20 @@ namespace spartan
                 is_first_log = false;
             }
 
-            // open/create a log file to write the log into
-            ofstream fout;
-            fout.open(log_file_name, ofstream::out | ofstream::app);
-
-            if (fout.is_open())
+            // the file stays open for the session, opening and closing it per line was a syscall
+            // storm during loading, the flush keeps every line on disk in case the run dies
+            if (!log_file.is_open())
             {
-                fout << text << endl;
-                fout.close();
+                log_file.open(log_file_name, ofstream::out | ofstream::app);
+                if (!log_file.is_open())
+                {
+                    return;
+                }
             }
+
+            const char* prefix = (type == LogType::Info) ? "Info: " : (type == LogType::Warning) ? "Warning: " : "Error: ";
+            log_file << prefix << text << '\n';
+            log_file.flush();
         }
     }
 
@@ -114,6 +118,12 @@ namespace spartan
         {
             // the log that gets truncated here is the only record of why the last run died, so it is kept as
             // log_previous.txt. a crash is only diagnosable if its log survives the restart that follows it
+            // the open handle has to go first, windows refuses to rename a file that is open
+            if (log_file.is_open())
+            {
+                log_file.close();
+            }
+
             error_code ignored;
             filesystem::rename(log_file_name, "log_previous.txt", ignored);
 
@@ -166,14 +176,20 @@ namespace spartan
             lock_guard<mutex> output_guard(log_output_mutex);
 
             history.emplace_back(buffer, type);
-            if (history.size() > history_max_count)
+            while (history.size() > history_max_count)
             {
-                history.erase(history.begin(), history.begin() + (history.size() - history_max_count));
+                history.pop_front();
+            }
+
+            // logs only buffers lines for a logger that is not attached yet, SetLogger replays and clears it,
+            // pushing into it while a logger was attached grew it for the whole session
+            if (!logger)
+            {
+                logs.emplace_back(buffer, type);
             }
 
             if (log_to_file || !logger || Debugging::IsLoggingToFileEnabled())
             {
-                logs.emplace_back(buffer, type);
                 write_to_file(buffer, type);
             }
 

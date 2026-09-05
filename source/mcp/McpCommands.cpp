@@ -5452,7 +5452,7 @@ namespace spartan
             }
             if (type == ComponentType::Spline)
             {
-                return "[\"generate_road_mesh\",\"clear_road_mesh\",\"spawn_instances\",\"clear_instances\"]";
+                return "[\"generate_road_mesh\",\"clear_road_mesh\",\"spawn_instances\",\"clear_instances\",\"resample_control_points\",\"simplify_control_points\"]";
             }
             if (type == ComponentType::ParticleSystem)
             {
@@ -9185,6 +9185,32 @@ namespace spartan
             else if (*type == ComponentType::Spline && action == "clear_instances")
             {
                 static_cast<Spline*>(component)->ClearInstances();
+            }
+            else if (*type == ComponentType::Spline && action == "resample_control_points")
+            {
+                // value is the spacing in meters, 40 suits roads, smaller keeps tight curves
+                const std::optional<std::string> value_arg = get_argument(request, "value");
+                float spacing = 40.0f;
+                if (value_arg && (!parse_float(*value_arg, spacing) || spacing <= 0.0f))
+                {
+                    return json_error("invalid spacing value");
+                }
+                Spline* spline = static_cast<Spline*>(component);
+                spline->ResampleControlPoints(spacing);
+                result_json = "{\"point_count\":" + std::to_string(spline->GetControlPointCount()) + "}";
+            }
+            else if (*type == ComponentType::Spline && action == "simplify_control_points")
+            {
+                // value is the tolerance in meters, points closer than this to the neighbour chord go
+                const std::optional<std::string> value_arg = get_argument(request, "value");
+                float tolerance = 2.0f;
+                if (value_arg && (!parse_float(*value_arg, tolerance) || tolerance < 0.0f))
+                {
+                    return json_error("invalid tolerance value");
+                }
+                Spline* spline = static_cast<Spline*>(component);
+                spline->SimplifyControlPoints(tolerance);
+                result_json = "{\"point_count\":" + std::to_string(spline->GetControlPointCount()) + "}";
             }
             else if (
                 *type == ComponentType::Text3D &&

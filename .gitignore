@@ -34,3 +34,7 @@
 node_modules/
 MCP_DEBUG.jsonl*
 **/_session*.jsonl
+
+# overpass downloads (tools/map/osm_roads.py)
+/tools/map/cache/
+/worlds/*.world.bak

@@ -610,8 +610,12 @@ namespace spartan
             "GetControlPointCount", &Spline::GetControlPointCount,
             "GetClosedLoop",        &Spline::GetClosedLoop,
             "GetRoadWidth",         &Spline::GetRoadWidth,
+            "GetCurveAlpha",        &Spline::GetCurveAlpha,
+            "SetCurveAlpha",        &Spline::SetCurveAlpha,
             "AddControlPoint",      &Spline::AddControlPoint,
             "RemoveLastControlPoint", &Spline::RemoveLastControlPoint,
+            "ResampleControlPoints", &Spline::ResampleControlPoints,
+            "SimplifyControlPoints", &Spline::SimplifyControlPoints,
             "GenerateRoadMesh",     &Spline::GenerateRoadMesh,
             "ClearRoadMesh",        &Spline::ClearRoadMesh
         );
@@ -627,6 +631,7 @@ namespace spartan
         m_prev_closed_loop        = m_closed_loop;
         m_prev_resolution         = m_resolution;
         m_prev_road_width         = m_road_width;
+        m_prev_curve_alpha        = m_curve_alpha;
         m_prev_road_width_end     = m_road_width_end;
         m_prev_profile            = m_profile;
         m_prev_height             = m_height;
@@ -715,6 +720,7 @@ namespace spartan
             bool dirty = (m_closed_loop                != m_prev_closed_loop)
                       || (m_resolution                 != m_prev_resolution)
                       || (m_road_width                 != m_prev_road_width)
+                      || (m_curve_alpha                != m_prev_curve_alpha)
                       || (m_road_width_end             != m_prev_road_width_end)
                       || (m_profile                    != m_prev_profile)
                       || (m_height                     != m_prev_height)
@@ -764,6 +770,7 @@ namespace spartan
                 }
 
                 SnapshotState();
+                RefreshHandlePositions();
             }
         }
         else if (m_mesh_enabled && !has_mesh_input && HasRoadMesh())
@@ -830,13 +837,13 @@ namespace spartan
                     float local_t = static_cast<float>(seg) / static_cast<float>(m_resolution);
 
                     // determine the four control points for this span
-                    int32_t point_count = static_cast<int32_t>(points.size());
-                    int32_t i1 = static_cast<int32_t>(span);
-                    int32_t i2 = m_closed_loop ? (i1 + 1) % point_count : min(i1 + 1, point_count - 1);
-                    int32_t i0 = m_closed_loop ? (i1 - 1 + point_count) % point_count : max(i1 - 1, 0);
-                    int32_t i3 = m_closed_loop ? (i2 + 1) % point_count : min(i2 + 1, point_count - 1);
+                    int32_t i0 = 0;
+                    int32_t i1 = 0;
+                    int32_t i2 = 0;
+                    int32_t i3 = 0;
+                    GetSpanIndices(span, points.size(), i0, i1, i2, i3);
 
-                    Vector3 current_point = CatmullRom(points[i0], points[i1], points[i2], points[i3], local_t);
+                    Vector3 current_point = CatmullRom(points[i0], points[i1], points[i2], points[i3], local_t, m_curve_alpha);
 
                     if (seg > 0)
                     {
@@ -848,18 +855,15 @@ namespace spartan
             }
         }
 
-        // draw markers at each control point
-        float marker_size = 0.15f;
-        const uint32_t child_count = m_entity_ptr ? m_entity_ptr->GetChildrenCount() : 0;
-        for (uint32_t i = 0; i < child_count; i++)
+        // draw markers at each control point, from the cache so no raycasts run per frame
+        if (m_handle_positions.size() != points.size())
         {
-            Entity* child = m_entity_ptr->GetChildByIndex(i);
-            if (!child || child->GetObjectName().find(prefix_control_point) != 0)
-            {
-                continue;
-            }
+            RefreshHandlePositions();
+        }
 
-            const Vector3 point = GetEditorHandlePosition(child);
+        float marker_size = 0.15f;
+        for (const Vector3& point : m_handle_positions)
+        {
             Renderer::DrawLine(point - Vector3(marker_size, 0, 0), point + Vector3(marker_size, 0, 0), color_point, color_point);
             Renderer::DrawLine(point - Vector3(0, marker_size, 0), point + Vector3(0, marker_size, 0), color_point, color_point);
             Renderer::DrawLine(point - Vector3(0, 0, marker_size), point + Vector3(0, 0, marker_size), color_point, color_point);
@@ -871,6 +875,7 @@ namespace spartan
         node.append_attribute("closed_loop")   = m_closed_loop;
         node.append_attribute("resolution")    = m_resolution;
         node.append_attribute("road_width")    = m_road_width;
+        node.append_attribute("curve_alpha")   = m_curve_alpha;
         node.append_attribute("mesh_enabled")  = m_mesh_enabled;
         node.append_attribute("has_road_mesh") = HasRoadMesh();
 
@@ -938,6 +943,7 @@ namespace spartan
         m_closed_loop             = node.attribute("closed_loop").as_bool(false);
         m_resolution              = node.attribute("resolution").as_uint(20);
         m_road_width              = node.attribute("road_width").as_float(8.0f);
+        m_curve_alpha             = clamp(node.attribute("curve_alpha").as_float(0.5f), 0.0f, 1.0f);
         m_needs_road_regeneration = node.attribute("has_road_mesh").as_bool(false);
         m_mesh_enabled            = node.attribute("mesh_enabled").as_bool(m_needs_road_regeneration);
 
@@ -1223,6 +1229,218 @@ namespace spartan
         {
             World::RemoveEntity(last_point);
         }
+    }
+
+    // rewrite the control point children so they match the given local positions, in order
+    static void set_control_points_local(Entity* parent, const vector<Vector3>& local_points)
+    {
+        vector<Entity*> existing;
+        const uint32_t child_count = parent->GetChildrenCount();
+        for (uint32_t i = 0; i < child_count; i++)
+        {
+            if (Entity* child = parent->GetChildByIndex(i))
+            {
+                if (child->GetObjectName().find(prefix_control_point) == 0)
+                {
+                    existing.push_back(child);
+                }
+            }
+        }
+
+        // surplus children go first so the naming below stays dense
+        for (size_t i = local_points.size(); i < existing.size(); i++)
+        {
+            World::RemoveEntity(existing[i]);
+        }
+
+        for (size_t i = 0; i < local_points.size(); i++)
+        {
+            Entity* point = nullptr;
+            if (i < existing.size())
+            {
+                point = existing[i];
+            }
+            else
+            {
+                point = World::CreateEntity();
+                point->SetParent(parent);
+            }
+
+            point->SetObjectName(prefix_control_point + to_string(i));
+            point->SetPositionLocal(local_points[i]);
+        }
+    }
+
+    void Spline::ResampleControlPoints(float spacing_meters)
+    {
+        if (!m_entity_ptr || IsAttached() || spacing_meters <= 0.0f)
+        {
+            return;
+        }
+
+        const vector<Vector3> points = GetControlPointsLocal();
+        if (points.size() < 2)
+        {
+            return;
+        }
+
+        // dense polyline of the current curve with cumulative arc length
+        const uint32_t span_count    = m_closed_loop ? static_cast<uint32_t>(points.size()) : static_cast<uint32_t>(points.size()) - 1;
+        const uint32_t total_samples = max(2u, span_count * 16u);
+        vector<Vector3> dense(total_samples + 1);
+        vector<float> arc(total_samples + 1, 0.0f);
+        for (uint32_t i = 0; i <= total_samples; i++)
+        {
+            const float t = static_cast<float>(i) / static_cast<float>(total_samples);
+            dense[i]      = EvaluatePoint(points, t);
+            if (i > 0)
+            {
+                arc[i] = arc[i - 1] + Vector3::Distance(dense[i - 1], dense[i]);
+            }
+        }
+
+        const float length = arc.back();
+        if (length <= spacing_meters * 0.5f)
+        {
+            return;
+        }
+
+        // whole number of equal spans so the ends stay where they are
+        const uint32_t new_span_count = max(m_closed_loop ? 3u : 1u, static_cast<uint32_t>(roundf(length / spacing_meters)));
+        const uint32_t new_point_count = m_closed_loop ? new_span_count : new_span_count + 1;
+        const float step               = length / static_cast<float>(new_span_count);
+
+        vector<Vector3> resampled;
+        resampled.reserve(new_point_count);
+        size_t cursor = 0;
+        for (uint32_t k = 0; k < new_point_count; k++)
+        {
+            const float target = min(step * static_cast<float>(k), length);
+            while (cursor + 1 < arc.size() && arc[cursor + 1] < target)
+            {
+                cursor++;
+            }
+
+            Vector3 position = dense[cursor];
+            if (cursor + 1 < arc.size())
+            {
+                const float segment = arc[cursor + 1] - arc[cursor];
+                const float blend   = segment > 1e-6f ? (target - arc[cursor]) / segment : 0.0f;
+                position            = dense[cursor] + (dense[cursor + 1] - dense[cursor]) * blend;
+            }
+            resampled.push_back(position);
+        }
+
+        // the original end points are exact, the dense walk only approximates them
+        resampled.front() = points.front();
+        if (!m_closed_loop)
+        {
+            resampled.back() = points.back();
+        }
+
+        set_control_points_local(m_entity_ptr, resampled);
+    }
+
+    // douglas peucker, marks the points that survive
+    static void simplify_polyline(const vector<Vector3>& points, size_t first, size_t last, float tolerance, vector<bool>& keep)
+    {
+        if (last <= first + 1)
+        {
+            return;
+        }
+
+        const Vector3 a       = points[first];
+        const Vector3 b       = points[last];
+        const Vector3 ab      = b - a;
+        const float ab_length = ab.LengthSquared();
+
+        float max_distance = -1.0f;
+        size_t max_index   = first;
+        for (size_t i = first + 1; i < last; i++)
+        {
+            const Vector3 ap = points[i] - a;
+            float distance   = 0.0f;
+            if (ab_length > 1e-8f)
+            {
+                const float projection = clamp(ap.Dot(ab) / ab_length, 0.0f, 1.0f);
+                distance               = Vector3::Distance(points[i], a + ab * projection);
+            }
+            else
+            {
+                distance = ap.Length();
+            }
+
+            if (distance > max_distance)
+            {
+                max_distance = distance;
+                max_index    = i;
+            }
+        }
+
+        if (max_distance > tolerance)
+        {
+            keep[max_index] = true;
+            simplify_polyline(points, first, max_index, tolerance, keep);
+            simplify_polyline(points, max_index, last, tolerance, keep);
+        }
+    }
+
+    void Spline::SimplifyControlPoints(float tolerance_meters)
+    {
+        if (!m_entity_ptr || IsAttached() || tolerance_meters < 0.0f)
+        {
+            return;
+        }
+
+        const vector<Vector3> points = GetControlPointsLocal();
+        if (points.size() < 3)
+        {
+            return;
+        }
+
+        vector<bool> keep(points.size(), false);
+        keep.front() = true;
+        keep.back()  = true;
+
+        if (m_closed_loop)
+        {
+            // split the loop at its farthest point from the start so both halves have a real chord
+            size_t far_index = 0;
+            float far_distance = -1.0f;
+            for (size_t i = 1; i < points.size(); i++)
+            {
+                const float distance = Vector3::Distance(points[0], points[i]);
+                if (distance > far_distance)
+                {
+                    far_distance = distance;
+                    far_index    = i;
+                }
+            }
+            keep[far_index] = true;
+            simplify_polyline(points, 0, far_index, tolerance_meters, keep);
+            simplify_polyline(points, far_index, points.size() - 1, tolerance_meters, keep);
+        }
+        else
+        {
+            simplify_polyline(points, 0, points.size() - 1, tolerance_meters, keep);
+        }
+
+        vector<Vector3> simplified;
+        simplified.reserve(points.size());
+        for (size_t i = 0; i < points.size(); i++)
+        {
+            if (keep[i])
+            {
+                simplified.push_back(points[i]);
+            }
+        }
+
+        if (simplified.size() == points.size())
+        {
+            return;
+        }
+
+        set_control_points_local(m_entity_ptr, simplified);
     }
 
     void Spline::GenerateRoadMesh()
@@ -1660,6 +1878,58 @@ namespace spartan
         );
 
         return world;
+    }
+
+    void Spline::RefreshHandlePositions()
+    {
+        m_handle_positions.clear();
+        if (!m_entity_ptr)
+        {
+            return;
+        }
+
+        vector<Entity*> points;
+        const uint32_t child_count = m_entity_ptr->GetChildrenCount();
+        points.reserve(child_count);
+        for (uint32_t i = 0; i < child_count; i++)
+        {
+            Entity* child = m_entity_ptr->GetChildByIndex(i);
+            if (child && child->GetObjectName().find(prefix_control_point) == 0)
+            {
+                points.push_back(child);
+            }
+        }
+
+        m_handle_positions.reserve(points.size());
+        const bool snap = m_conform_to_terrain && !IsAttached();
+        if (!snap)
+        {
+            for (Entity* point : points)
+            {
+                m_handle_positions.push_back(point->GetPosition());
+            }
+            return;
+        }
+
+        const GroundQuery query = make_ground_query(m_entity_ptr);
+        const float half_extent = spline_half_extent(this);
+        for (size_t index = 0; index < points.size(); index++)
+        {
+            Vector3 world      = points[index]->GetPosition();
+            const Vector3 prev = (index > 0) ? points[index - 1]->GetPosition() : world;
+            const Vector3 next = (index + 1 < points.size()) ? points[index + 1]->GetPosition() : world;
+
+            Vector3 right = Vector3::Right;
+            Vector3 tangent(next.x - prev.x, 0.0f, next.z - prev.z);
+            if (tangent.LengthSquared() > 1e-8f)
+            {
+                tangent.Normalize();
+                right = Vector3(-tangent.z, 0.0f, tangent.x);
+            }
+
+            world.y = snapped_control_point_y(world, right, half_extent, m_terrain_offset, query);
+            m_handle_positions.push_back(world);
+        }
     }
 
     vector<Vector3> Spline::GetControlPointsLocal() const
@@ -2484,30 +2754,84 @@ namespace spartan
             total_length);
     }
 
-    Vector3 Spline::CatmullRom(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t)
+    // knot intervals for the non uniform form, degenerate spans borrow from the middle one
+    static void catmull_rom_knots(
+        const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3,
+        float alpha,
+        float& dt0, float& dt1, float& dt2
+    )
     {
-        float t2 = t * t;
-        float t3 = t2 * t;
+        const float epsilon = 1e-4f;
+        alpha               = clamp(alpha, 0.0f, 1.0f);
 
-        // catmull-rom matrix form
-        return 0.5f * (
-            (2.0f * p1) +
-            (-p0 + p2) * t +
-            (2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3) * t2 +
-            (-p0 + 3.0f * p1 - 3.0f * p2 + p3) * t3
-        );
+        dt0 = powf(Vector3::Distance(p0, p1), alpha);
+        dt1 = powf(Vector3::Distance(p1, p2), alpha);
+        dt2 = powf(Vector3::Distance(p2, p3), alpha);
+
+        if (dt1 < epsilon)
+        {
+            dt1 = 1.0f;
+        }
+        if (dt0 < epsilon)
+        {
+            dt0 = dt1;
+        }
+        if (dt2 < epsilon)
+        {
+            dt2 = dt1;
+        }
     }
 
-    Vector3 Spline::CatmullRomTangent(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t)
+    // hermite tangents at p1 and p2 scaled to the span, with equal knots this is the classic matrix form
+    static void catmull_rom_hermite(
+        const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3,
+        float alpha,
+        Vector3& m1, Vector3& m2
+    )
     {
-        float t2 = t * t;
+        float dt0 = 1.0f;
+        float dt1 = 1.0f;
+        float dt2 = 1.0f;
+        catmull_rom_knots(p0, p1, p2, p3, alpha, dt0, dt1, dt2);
 
-        // first derivative of the catmull-rom formula
-        return 0.5f * (
-            (-p0 + p2) +
-            (4.0f * p0 - 10.0f * p1 + 8.0f * p2 - 2.0f * p3) * t +
-            (-3.0f * p0 + 9.0f * p1 - 9.0f * p2 + 3.0f * p3) * t2
-        );
+        m1 = ((p1 - p0) / dt0 - (p2 - p0) / (dt0 + dt1) + (p2 - p1) / dt1) * dt1;
+        m2 = ((p2 - p1) / dt1 - (p3 - p1) / (dt1 + dt2) + (p3 - p2) / dt2) * dt1;
+    }
+
+    Vector3 Spline::CatmullRom(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t, float alpha)
+    {
+        Vector3 m1;
+        Vector3 m2;
+        catmull_rom_hermite(p0, p1, p2, p3, alpha, m1, m2);
+
+        const float t2 = t * t;
+        const float t3 = t2 * t;
+
+        const Vector3 c2 = (p2 - p1) * 3.0f - m1 * 2.0f - m2;
+        const Vector3 c3 = (p1 - p2) * 2.0f + m1 + m2;
+
+        return p1 + m1 * t + c2 * t2 + c3 * t3;
+    }
+
+    Vector3 Spline::CatmullRomTangent(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t, float alpha)
+    {
+        Vector3 m1;
+        Vector3 m2;
+        catmull_rom_hermite(p0, p1, p2, p3, alpha, m1, m2);
+
+        const Vector3 c2 = (p2 - p1) * 3.0f - m1 * 2.0f - m2;
+        const Vector3 c3 = (p1 - p2) * 2.0f + m1 + m2;
+
+        return m1 + c2 * (2.0f * t) + c3 * (3.0f * t * t);
+    }
+
+    void Spline::GetSpanIndices(uint32_t span_index, size_t point_count_in, int32_t& i0, int32_t& i1, int32_t& i2, int32_t& i3) const
+    {
+        const int32_t point_count = static_cast<int32_t>(point_count_in);
+        i1 = static_cast<int32_t>(span_index);
+        i2 = m_closed_loop ? (i1 + 1) % point_count : min(i1 + 1, point_count - 1);
+        i0 = m_closed_loop ? (i1 - 1 + point_count) % point_count : max(i1 - 1, 0);
+        i3 = m_closed_loop ? (i2 + 1) % point_count : min(i2 + 1, point_count - 1);
     }
 
     Vector3 Spline::EvaluatePoint(const vector<Vector3>& points, float t) const
@@ -2525,13 +2849,13 @@ namespace spartan
         float local_t       = 0.0f;
         MapToSpan(t, points, span_index, local_t);
 
-        int32_t point_count = static_cast<int32_t>(points.size());
-        int32_t i1 = static_cast<int32_t>(span_index);
-        int32_t i2 = m_closed_loop ? (i1 + 1) % point_count : min(i1 + 1, point_count - 1);
-        int32_t i0 = m_closed_loop ? (i1 - 1 + point_count) % point_count : max(i1 - 1, 0);
-        int32_t i3 = m_closed_loop ? (i2 + 1) % point_count : min(i2 + 1, point_count - 1);
+        int32_t i0 = 0;
+        int32_t i1 = 0;
+        int32_t i2 = 0;
+        int32_t i3 = 0;
+        GetSpanIndices(span_index, points.size(), i0, i1, i2, i3);
 
-        return CatmullRom(points[i0], points[i1], points[i2], points[i3], local_t);
+        return CatmullRom(points[i0], points[i1], points[i2], points[i3], local_t, m_curve_alpha);
     }
 
     Vector3 Spline::EvaluateTangent(const vector<Vector3>& points, float t) const
@@ -2545,13 +2869,17 @@ namespace spartan
         float local_t       = 0.0f;
         MapToSpan(t, points, span_index, local_t);
 
-        int32_t point_count = static_cast<int32_t>(points.size());
-        int32_t i1 = static_cast<int32_t>(span_index);
-        int32_t i2 = m_closed_loop ? (i1 + 1) % point_count : min(i1 + 1, point_count - 1);
-        int32_t i0 = m_closed_loop ? (i1 - 1 + point_count) % point_count : max(i1 - 1, 0);
-        int32_t i3 = m_closed_loop ? (i2 + 1) % point_count : min(i2 + 1, point_count - 1);
+        int32_t i0 = 0;
+        int32_t i1 = 0;
+        int32_t i2 = 0;
+        int32_t i3 = 0;
+        GetSpanIndices(span_index, points.size(), i0, i1, i2, i3);
 
-        Vector3 tangent = CatmullRomTangent(points[i0], points[i1], points[i2], points[i3], local_t);
+        Vector3 tangent = CatmullRomTangent(points[i0], points[i1], points[i2], points[i3], local_t, m_curve_alpha);
+        if (tangent.LengthSquared() < 1e-12f)
+        {
+            tangent = points[i2] - points[i1];
+        }
         tangent.Normalize();
         return tangent;
     }

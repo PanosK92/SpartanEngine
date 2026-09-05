@@ -2674,24 +2674,42 @@ namespace spartan
                         {
                             enum class Type : uint8_t { Texture, Mesh } type;
                             string path;
+                            uint64_t size_bytes = 0;
                         };
 
                         vector<ResourceJob> jobs;
                         jobs.reserve(texture_paths.size() + mesh_paths.size());
+                        auto add_job = [&jobs](const ResourceJob::Type type, const string& path)
+                        {
+                            error_code ignored;
+                            const uint64_t size_bytes = filesystem::file_size(path, ignored);
+                            jobs.push_back({ type, path, ignored ? 0ull : size_bytes });
+                        };
                         for (const string& path : texture_paths)
                         {
-                            jobs.push_back({ ResourceJob::Type::Texture, path });
+                            add_job(ResourceJob::Type::Texture, path);
                         }
                         for (const string& path : mesh_paths)
                         {
-                            jobs.push_back({ ResourceJob::Type::Mesh, path });
+                            add_job(ResourceJob::Type::Mesh, path);
                         }
 
                         if (!jobs.empty())
                         {
-                            ThreadPool::ParallelLoop([&jobs, resource_count](uint32_t start, uint32_t end)
+                            // largest first, a 30 mb mesh picked up last would otherwise run alone at the end
+                            sort(jobs.begin(), jobs.end(), [](const ResourceJob& a, const ResourceJob& b)
                             {
-                                for (uint32_t i = start; i < end; i++)
+                                return a.size_bytes > b.size_bytes;
+                            });
+
+                            // the loop only decides how many workers take part, each one pulls the next job
+                            // from a shared counter so a worker that lands on small files keeps going while
+                            // another is still inside a big one, static ranges left most of the pool idle
+                            atomic<uint32_t> next_job = 0;
+                            const uint32_t job_count  = static_cast<uint32_t>(jobs.size());
+                            ThreadPool::ParallelLoop([&jobs, &next_job, job_count, resource_count](uint32_t, uint32_t)
+                            {
+                                for (uint32_t i = next_job.fetch_add(1, memory_order_relaxed); i < job_count; i = next_job.fetch_add(1, memory_order_relaxed))
                                 {
                                     if (jobs[i].type == ResourceJob::Type::Texture)
                                     {
@@ -2710,16 +2728,18 @@ namespace spartan
                                         ProgressTracker::GetProgress(ProgressType::World).JobDone();
                                     }
                                 }
-                            }, static_cast<uint32_t>(jobs.size()));
+                            }, job_count);
                         }
                     }
 
                     // pass 2, materials reference textures by path so they must run after the texture pass completes
                     if (!material_paths.empty())
                     {
-                        ThreadPool::ParallelLoop([&material_paths, resource_count](uint32_t start, uint32_t end)
+                        atomic<uint32_t> next_material = 0;
+                        const uint32_t material_count  = static_cast<uint32_t>(material_paths.size());
+                        ThreadPool::ParallelLoop([&material_paths, &next_material, material_count, resource_count](uint32_t, uint32_t)
                         {
-                            for (uint32_t i = start; i < end; i++)
+                            for (uint32_t i = next_material.fetch_add(1, memory_order_relaxed); i < material_count; i = next_material.fetch_add(1, memory_order_relaxed))
                             {
                                 ResourceCache::Load<Material>(material_paths[i]);
 
@@ -2728,7 +2748,7 @@ namespace spartan
                                     ProgressTracker::GetProgress(ProgressType::World).JobDone();
                                 }
                             }
-                        }, static_cast<uint32_t>(material_paths.size()));
+                        }, material_count);
                     }
                 }
             }

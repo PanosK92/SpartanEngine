@@ -740,6 +740,7 @@ namespace spartan::mcp_world_build
         json += ",\"point_count\":" + std::to_string(spline->GetControlPointCount());
         json += ",\"length\":" + std::to_string(spline->GetLength());
         json += ",\"road_width\":" + std::to_string(spline->GetRoadWidth());
+        json += ",\"curve_alpha\":" + std::to_string(spline->GetCurveAlpha());
         json += ",\"profile\":" + json_string(spline_profile_to_name(spline->GetProfile()));
         json += ",\"conform_to_terrain\":" + json_bool(spline->GetConformToTerrain());
         json += ",\"grade_limit_enabled\":" + json_bool(spline->GetGradeLimitEnabled());
@@ -778,6 +779,17 @@ namespace spartan::mcp_world_build
                 return false;
             }
             spline->SetRoadWidth(parsed);
+        }
+
+        if (const std::optional<std::string> curve_alpha = get_argument(request, "curve_alpha"))
+        {
+            float parsed = 0.0f;
+            if (!parse_float(*curve_alpha, parsed) || parsed < 0.0f || parsed > 1.0f)
+            {
+                error = "invalid curve_alpha";
+                return false;
+            }
+            spline->SetCurveAlpha(parsed);
         }
 
         if (const std::optional<std::string> conform_to_terrain = get_argument(request, "conform_to_terrain"))
