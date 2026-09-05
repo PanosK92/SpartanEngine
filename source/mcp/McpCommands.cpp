@@ -7742,6 +7742,19 @@ namespace spartan
             return car_status_json(car);
         }
 
+        std::string command_vehicle_export_hull(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading()) return json_error("world is loading");
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (!car) return json_error(error);
+            Entity* entity = car->GetRootEntity();
+            Physics* physics = entity ? entity->GetComponent<Physics>() : nullptr;
+            auto* sim = physics ? physics->GetVehicleSimulation() : nullptr;
+            if (!sim || !sim->export_chassis_hulls("car_validation_hulls.csv")) return json_error("no cooked chassis hulls available");
+            return "{\"ok\":true,\"path\":\"car_validation_hulls.csv\"}";
+        }
+
         std::string command_vehicle_telemetry(const McpRequest& request)
         {
             if (ProgressTracker::IsLoading())
@@ -13746,6 +13759,7 @@ namespace spartan
             { "vehicle_reset",                 command_vehicle_reset },
             { "vehicle_set_view",              command_vehicle_set_view },
             { "vehicle_telemetry",             command_vehicle_telemetry },
+            { "vehicle_export_hull",           command_vehicle_export_hull },
             { "prefab_types",                  [](const McpRequest&) { return command_prefab_types(); } },
             { "entity_make_game_ready",        command_entity_make_game_ready },
             { "prefab_save",                   command_prefab_save },

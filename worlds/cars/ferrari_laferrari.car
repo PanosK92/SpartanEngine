@@ -14,11 +14,16 @@
         mass="1430" length="4.702" width="1.992" height="1.116"
         wheelbase="2.65" track_front="1.656" track_rear="1.64"
         center_of_mass_x="0" center_of_mass_y="-0.28" center_of_mass_z="-0.238"
-        inertia_xx="520" inertia_yy="2150" inertia_zz="1720" />
+        inertia_xx="1720" inertia_yy="2150" inertia_zz="520" inertia_is_assembled="true" calibration_id="laferrari_estimated_v2" />
 
-    <!-- v12 hybrid, torque in nm -->
+    <!-- V12/hybrid. Curve and battery parameters are engineering estimates awaiting dyno/pack measurements. -->
     <engine
         engine_idle_rpm="1000" engine_redline_rpm="9250" engine_max_rpm="9500"
+        engine_map_count="8" engine_map_rpm="1000,2500,4000,5500,6750,8500,9250,9500"
+        engine_map_torque="385,480,565,650,700,650,600,0"
+        battery_capacity_kwh="1.5" battery_initial_soc="0.8" motor_efficiency="0.94" battery_efficiency="0.97"
+        battery_heat_capacity="45000" battery_cooling="40" battery_derate_temp="55" battery_cutoff_temp="75" regen_power_kw="60"
+        engine_stall_rpm="400" starter_torque="100"
         engine_peak_torque="700" engine_peak_torque_rpm="6750"
         engine_inertia="0.25" engine_friction="0.02" engine_rpm_smoothing="6" engine_crank_axis_x="0" engine_crank_axis_y="0" engine_crank_axis_z="1"
         engine_sound_cylinders="12" engine_sound_banks="2"
@@ -48,10 +53,9 @@
         halfshaft_mass="3.2" driveshaft_mass="8.5" differential_mass="18" />
 
     <!-- carbon ceramic discs, temps in celsius -->
-    <brakes
-        brake_force="12000" brake_bias_front="0.62" reverse_power_ratio="0.5"
-        brake_ambient_temp="30" brake_optimal_temp="400" brake_fade_temp="700" brake_max_temp="900"
-        brake_heat_coefficient="0.015" brake_cooling_base="8" brake_cooling_airflow="1.5" brake_thermal_mass="5"
+    <brakes yaw_control_enabled="true" yaw_control_gain="6"
+        brake_force="24000" brake_bias_front="0.62" reverse_power_ratio="0.5"
+        brake_ambient_temp="30" brake_optimal_temp="400" brake_fade_temp="700" brake_max_temp="900" brake_cooling_base="8" brake_cooling_airflow="1.5" brake_thermal_mass="5" brake_specific_heat="500"
         handbrake_torque="2500" />
 
     <!-- angles in radians -->
@@ -66,16 +70,42 @@
         bushing_stiffness_radial="30000000" bushing_stiffness_axial="10000000" bushing_damping="12000" bushing_max_deflection="0.001"
         front_camber="-0.0261799" rear_camber="-0.0174533" front_toe="0.00174533" rear_toe="0.00349066" />
 
-    <!-- sla, 2.0 m front swing arm for 0.29 deg/cm camber gain, roll centres 55 mm front and 80 mm rear -->
+    <!-- Estimated pickup geometry, not Ferrari measurements. Wheel-centred left points; X right, Y up, Z forward. Front caster and arm-axis rake are explicit. -->
     <front_suspension mechanism="double_wishbone"
         chassis_inset="0.306" upper_chassis_inset="0.448" lower_upright_inset="0.055" upper_upright_inset="0.135"
         upper_inner_y="0.125" lower_inner_y="-0.182" upper_upright_y="0.19" lower_upright_y="-0.18"
-        arm_span="0.24" strut_top_y="0.43" strut_top_inset="0.29" tie_rod_y="0.01" tie_rod_z="-0.15" link_spread_y="0.16" link_spread_z="0.22" />
+        arm_span="0.24" strut_top_y="0.43" strut_top_inset="0.29" tie_rod_y="0.01" tie_rod_z="-0.15" link_spread_y="0.16" link_spread_z="0.22"  explicit_hardpoints="true"
+        upper_front_inner="0.457056,0.129000,0.240000"
+        upper_front_outer="0.135000,0.190000,-0.025000"
+        upper_rear_inner="0.457056,0.121000,-0.240000"
+        upper_rear_outer="0.135000,0.190000,-0.025000"
+        lower_front_inner="0.574632,-0.178000,0.240000"
+        lower_front_outer="0.055000,-0.180000,0.000000"
+        lower_rear_inner="0.574632,-0.186000,-0.240000"
+        lower_rear_outer="0.055000,-0.180000,0.000000"
+        toe_inner="0.501099,0.010000,-0.150000"
+        toe_outer="0.096081,0.010000,-0.150000"
+        shock_top="0.290000,0.430000,0.000000"
+        shock_bottom="0.000000,-0.180000,0.000000"
+    />
 
     <rear_suspension mechanism="multi_link"
         chassis_inset="0.311" upper_chassis_inset="0.45" lower_upright_inset="0.055" upper_upright_inset="0.135"
         upper_inner_y="0.126" lower_inner_y="-0.162" upper_upright_y="0.18" lower_upright_y="-0.18"
-        arm_span="0.2" strut_top_y="0.41" strut_top_inset="0.3" tie_rod_y="0" tie_rod_z="0.13" link_spread_y="0.17" link_spread_z="0.24" />
+        arm_span="0.2" strut_top_y="0.41" strut_top_inset="0.3" tie_rod_y="0" tie_rod_z="0.13" link_spread_y="0.17" link_spread_z="0.24"  explicit_hardpoints="true"
+        upper_front_inner="0.451000,0.126000,0.240000"
+        upper_front_outer="0.135000,0.170000,0.108000"
+        upper_rear_inner="0.451000,0.126000,-0.240000"
+        upper_rear_outer="0.135000,0.170000,-0.108000"
+        lower_front_inner="0.564980,-0.162000,0.240000"
+        lower_front_outer="0.055000,-0.170000,0.108000"
+        lower_rear_inner="0.564980,-0.162000,-0.240000"
+        lower_rear_outer="0.055000,-0.170000,-0.108000"
+        toe_inner="0.500866,0.000000,0.130000"
+        toe_outer="0.095000,0.000000,0.130000"
+        shock_top="0.300000,0.410000,0.000000"
+        shock_bottom="0.000000,-0.180000,0.000000"
+    />
 
     <steering
         max_steer_angle="0.52" steering_rate="1.5"
@@ -90,13 +120,18 @@
         tire_friction="1.5" min_slip_speed="0.5" load_sensitivity="0.92" load_reference="4000" rear_grip_ratio="1.0"
         slip_angle_deadband="0" camber_thrust_coeff="0.015" max_slip_angle="1.2"
         tire_pressure="2.2" tire_pressure_optimal="2.2" tire_vertical_stiffness="180000" rolling_resistance="0.011"
-        tire_ambient_temp="50" tire_optimal_temp="90" tire_temp_range="50"
-        tire_heat_from_slip="25" tire_heat_from_rolling="0.15" tire_cooling_rate="2" tire_cooling_airflow="0.05"
+        tire_ambient_temp="20" tire_pressure_reference_temp="20" tire_damage_temp="180" tire_damage_energy="2000000" tire_hydroplaning_speed="28" tire_optimal_temp="90" tire_temp_range="50"
+        tire_surface_heat_capacity="1800" tire_core_heat_capacity="12000" tire_surface_core_conductance="60"
+        tire_heat_transfer_static="8" tire_heat_transfer_airflow="2"
         tire_grip_temp_factor="0.15" tire_min_temp="10" tire_max_temp="350"
-        tire_relaxation_length="0.3" tire_wear_rate="0.00001" tire_wear_heat_mult="2" tire_grip_wear_loss="0.3"
-        tire_core_transfer_rate="0.5" tire_surface_response="3" />
+        tire_relaxation_length="0.3" tire_wear_rate="0.00001" tire_wear_heat_mult="2" tire_grip_wear_loss="0.3" />
 
-    <aero
+    <!-- Separable aero correction maps are estimated, not wind-tunnel data. Heights m, angles radians, speed m/s. -->
+    <aero underfloor_y="-0.45"
+        aero_speed_count="4" aero_speed_x="0,30,60,100" aero_speed_scale="1,1,1,1"
+        aero_height_count="6" aero_height_x="0,0.04,0.08,0.12,0.25,3" aero_height_scale="0.6,1,1.4,1.3,1,1"
+        aero_pitch_count="5" aero_pitch_x="-0.15,-0.05,0,0.05,0.15" aero_front_scale="1.15,1.05,1,0.95,0.85" aero_rear_scale="0.85,0.95,1,1.05,1.15"
+        aero_yaw_count="4" aero_yaw_x="0,0.2,0.6,1.57" aero_yaw_scale="1,0.86,0.6,0.3" aero_drag_scale="1,1.1,1.35,1.6"
         drag_coeff="0.35" frontal_area="1.98" side_area="4"
         lift_coeff_front="-0.3" lift_coeff_rear="-0.45" drs_enabled="false" drs_rear_cl_factor="0.3"
         ground_effect_enabled="true" ground_effect_multiplier="1.5" ground_effect_height_ref="0.15" ground_effect_height_max="0.3"
@@ -106,7 +141,7 @@
 
     <assists
         abs_enabled="true" abs_slip_threshold="0.15" abs_release_rate="0.7" abs_pulse_frequency="15" abs_load_sensitivity="0.15"
-        tc_enabled="true" tc_slip_threshold="0.05" tc_power_reduction="0.8" tc_response_rate="30"
+        tc_enabled="true" tc_slip_threshold="0.1" tc_power_reduction="0.8" tc_response_rate="30"
         steering_speed_reduction="0.55" steering_speed_reference="55" abs_level="1" traction_control_level="1" />
 
     <input

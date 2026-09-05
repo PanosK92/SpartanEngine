@@ -61,9 +61,18 @@ namespace engine_sound
         float tailpipe_length_m = 0.6f;
         // one is a quiet stock muffler, zero is a straight pipe
         float muffler_level = 1.0f;
+        // Zero runner length derives an estimate from stroke. Angles are crank degrees.
+        float intake_runner_length_m = 0.0f;
+        float intake_valve_duration_deg = 220.0f;
+        float combustion_variation = 0.025f;
+        float crank_inertia = 0.2f;
+        // Intervals in firing-order sequence, totaling 720; all zero means even firing.
+        // Bank angle alone cannot tell us whether a crank uses split pins.
+        float firing_intervals_deg[tuning::max_cylinders] = {};
         int firing_order[tuning::max_cylinders] = {};
         int cylinder_bank[tuning::max_cylinders] = {};
         bool turbo_enabled = false;
+        bool turbo_bypass_valve = true; // a working bypass vents charge instead of compressor surge
         float boost_max_pressure = 0.0f;
         float boost_wastegate_rpm = 0.0f;
         // upgrade stages as a fraction of their maximum stage

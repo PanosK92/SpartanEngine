@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "pch.h"
+#include "Spline.h"
 #include <unordered_set>
 #include "Physics.h"
 #include "Render.h"
@@ -661,22 +662,11 @@ namespace spartan
             m_wheel_offsets_synced = true;
         }
 
-        // force model runs immediately before physx simulation for the same fixed step
+        // Classify each contact before its force is evaluated in this substep.
+        m_vehicle_simulation->surface_resolver = classify_ground_actor;
         m_vehicle_simulation->tick(dt);
-
-        // surface classification intentionally reaches tire forces one substep later
-        // actor caching avoids repeated entity name classification
-        for (int i = 0; i < car::wheel_count; i++)
-        {
-            const PxRigidActor* ground = m_vehicle_simulation->get_wheel_state(i).contact_actor;
-            if (ground != m_wheel_ground_actors[i])
-            {
-                m_wheel_ground_actors[i]   = ground;
-                m_wheel_ground_surfaces[i] = static_cast<uint8_t>(classify_ground_actor(ground));
-            }
-            m_vehicle_simulation->set_wheel_surface(i, static_cast<car::surface_type>(m_wheel_ground_surfaces[i]));
-        }
     }
+
 
     void Physics::TickVehicleCheapSubstep(float dt)
     {
@@ -2292,7 +2282,10 @@ namespace spartan
             if (vertices.size() > max_sample_verts && !indices.empty())
             {
                 const size_t target_index_count = min<size_t>(indices.size(), max_sample_verts * 3);
-                geometry_processing::simplify(indices, vertices, target_index_count, false, false);
+                // A generated road's collision must retain its junction mouths and graded deck.
+                // Independent simplification opens seams between otherwise coincident road meshes.
+                if (!GetEntity()->GetComponent<Spline>())
+                    geometry_processing::simplify(indices, vertices, target_index_count, false, false);
             }
 
             Vector3 ent_world_pos = ent->GetPosition();
@@ -4007,7 +4000,7 @@ namespace spartan
                 geometry_processing::simplify(indices, vertices, target_index_count, false, false);
 
                 // warn if we hit the complexity cap (original mesh was very detailed)
-                if (indices.size() > max_index_count && target_index_count == max_index_count)
+                if (!GetEntity()->GetComponent<Spline>() && indices.size() > max_index_count && target_index_count == max_index_count)
                 {
                     SP_LOG_WARNING("Mesh '%s' was simplified to %zu indices. It's still complex and may impact physics performance.", render->GetEntity()->GetObjectName().c_str(), target_index_count);
                 }

@@ -3770,6 +3770,11 @@ namespace spartan
                 config.collector_length_m  = preset.exhaust_collector_length_m;
                 config.tailpipe_length_m   = preset.exhaust_tailpipe_length_m;
                 config.muffler_level       = preset.exhaust_muffler_level;
+                config.intake_runner_length_m = preset.intake_runner_length_m;
+                config.intake_valve_duration_deg = preset.intake_valve_duration_deg;
+                config.combustion_variation = preset.engine_combustion_variation;
+                config.crank_inertia = preset.engine_inertia;
+                config.turbo_bypass_valve = preset.turbo_bypass_valve;
                 config.turbo_enabled       = preset.turbo_enabled && preset.boost_max_pressure > 0.0f;
                 config.boost_max_pressure  = preset.boost_max_pressure;
                 config.boost_wastegate_rpm = preset.boost_wastegate_rpm;
@@ -3781,6 +3786,7 @@ namespace spartan
                 {
                     config.firing_order[i]  = static_cast<int>(preset.engine_firing_order[i]);
                     config.cylinder_bank[i] = static_cast<int>(preset.engine_cylinder_bank[i]);
+                    config.firing_intervals_deg[i] = preset.engine_firing_intervals_deg[i];
                 }
 
                 if (!m_engine_sound_configured || config != m_engine_sound_config)

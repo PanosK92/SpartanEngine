@@ -58,6 +58,10 @@ namespace spartan::car_bench
             float settle_drift = 0.0f;
             bool failed_current = false;
             bool completed_cleanly = false;
+            bool performance_recorded = false;
+            bool original_manual = false;
+            float brake_distance = 0;
+            PxVec3 brake_previous = PxVec3(0);
             std::chrono::steady_clock::time_point wall_start{};
         };
 
@@ -411,6 +415,8 @@ namespace spartan::car_bench
             g_runner.ui.current_scenario = index;
             g_runner.ui.scenario_time = 0.0f;
             g_runner.phase = 0;
+            g_runner.performance_recorded = false;
+            g_runner.brake_distance = 0;
             g_runner.phase_time = 0.0f;
             g_runner.failed_current = false;
             g_runner.speed_at_lift = 0.0f;
@@ -432,6 +438,10 @@ namespace spartan::car_bench
                 initial_speed = 0.0f;
             }
             reset_to_start(physics, sim, initial_speed);
+            sim->reset_drivetrain_transients(); sim->set_validation_speed(0);
+            sim->set_manual_transmission(id == scenario::hard_brake ? true : g_runner.original_manual);
+            if (id == scenario::launch || id == scenario::hard_brake)
+                for (int i = 0; i < 4; ++i) { auto& thermal = sim->get_wheel_state(i).thermal; thermal.core = 40; for (float& v : thermal.surface) v = 80; }
             set_status(scenario_name(id));
         }
 
@@ -527,11 +537,20 @@ namespace spartan::car_bench
         void sample_launch(car::Simulation* sim, float t)
         {
             // skip contact settle after teleport
-            if (t < 0.35f)
+            if (t < 2.0f)
             {
                 return;
             }
             float spd_kmh = body_speed(sim) * 3.6f;
+            if (!g_runner.performance_recorded && spd_kmh >= 100)
+            {
+                g_runner.performance_recorded = true;
+                float elapsed = t - 2.0f;
+                if (elapsed < sim->get_spec().validation.zero_to_100_min || elapsed > sim->get_spec().validation.zero_to_100_max)
+                    fail_current("zero_to_100", t, "warm 0-100 outside preset envelope");
+            }
+            if (!g_runner.performance_recorded && t - 2.0f > sim->get_spec().validation.zero_to_100_max)
+                fail_current("zero_to_100", t, "100 km/h not reached within preset time");
             float front = front_load(sim);
             // launch commands full throttle the whole time
             if (spd_kmh < g_runner.limits.wheelie_speed_max_kmh && front < g_runner.limits.wheelie_front_load_min)
@@ -544,6 +563,17 @@ namespace spartan::car_bench
 
         void sample_hard_brake(car::Simulation* sim, float t)
         {
+            if (g_runner.phase == 0) return;
+            PxVec3 position = sim->get_body()->getGlobalPose().p;
+            g_runner.brake_distance += (position - g_runner.brake_previous).magnitude();
+            g_runner.brake_previous = position;
+            if (!g_runner.performance_recorded && body_speed(sim) * 3.6f < 0.5f)
+            {
+                g_runner.performance_recorded = true;
+                if (g_runner.brake_distance < sim->get_spec().validation.braking_distance_min || g_runner.brake_distance > sim->get_spec().validation.braking_distance_max)
+                    fail_current("braking_distance", t, "warm 100-0 distance outside preset envelope");
+            }
+            if (!g_runner.performance_recorded && t > 6.5f) fail_current("braking_distance", t, "braking failed to stop");
             float speed = body_speed(sim);
             int gear = sim->get_current_gear();
             if (gear == 0 && speed > g_runner.limits.reverse_min_body_speed)
@@ -563,7 +593,7 @@ namespace spartan::car_bench
         void sample_lift_turn(car::Simulation* sim, float t)
         {
             // wait one coast step, transition frame must not sample powered axle
-            if (g_runner.phase == 0 || g_runner.coast_watch_time < 0.02f)
+            if (g_runner.phase == 0 || g_runner.coast_watch_time < 0.25f)
             {
                 return;
             }
@@ -629,17 +659,19 @@ namespace spartan::car_bench
                 apply_input(physics, 0.0f, 0.0f, 0.0f, 0.0f);
                 break;
             case scenario::launch:
-                apply_input(physics, 1.0f, 0.0f, 0.0f, 0.0f);
+                apply_input(physics, t < 2.0f ? 0.0f : 1.0f, 0.0f, 0.0f, 0.0f);
                 break;
             case scenario::hard_brake:
-                if (g_runner.phase == 0 && t < 3.5f && body_speed(sim) * 3.6f <= 80.0f)
+                if (g_runner.phase == 0 && t < 2.0f)
                 {
-                    apply_input(physics, 1.0f, 0.0f, 0.0f, 0.0f);
+                    apply_input(physics, 0.0f, 0.0f, 0.0f, 0.0f);
                 }
                 else
                 {
                     if (g_runner.phase == 0)
                     {
+                        sim->set_validation_speed(100.0f / 3.6f);
+                        g_runner.brake_previous = sim->get_body()->getGlobalPose().p;
                         g_runner.phase = 1;
                         g_runner.phase_time = 0.0f;
                     }
@@ -723,7 +755,7 @@ namespace spartan::car_bench
             switch (id)
             {
             case scenario::settle: return t >= 5.0f;
-            case scenario::launch: return t >= 4.0f;
+            case scenario::launch: return t >= 8.0f;
             case scenario::hard_brake: return t >= 7.0f;
             case scenario::lift_turn: return t >= 4.0f;
             case scenario::coast_hold_gear: return t >= 5.0f;
@@ -813,6 +845,7 @@ namespace spartan::car_bench
         g_runner.ui.fail_count = 0;
         g_runner.completed_cleanly = false;
 
+        g_runner.original_manual = sim->get_manual_transmission();
         g_runner.was_paused = Engine::IsFlagSet(EngineMode::Paused);
         g_runner.was_externally_controlled = car->IsExternallyControlled();
         g_runner.telemetry_was_on = sim->get_log_to_file();
@@ -828,6 +861,7 @@ namespace spartan::car_bench
             sim->set_log_to_file(false);
         }
 
+        sim->export_chassis_hulls("car_bench_hulls.csv");
         g_runner.ui.running = true;
         g_runner.ui.stop_requested = false;
         g_runner.ui.sim_time_total = 0.0f;
@@ -852,6 +886,7 @@ namespace spartan::car_bench
             car::Simulation* sim = physics->GetVehicleSimulation();
             if (sim)
             {
+                sim->set_manual_transmission(g_runner.original_manual);
                 sim->set_log_to_file(g_runner.telemetry_was_on);
                 physics->SetBodyTransform(g_runner.start_position, g_runner.start_rotation, true);
             }

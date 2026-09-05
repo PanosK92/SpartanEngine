@@ -112,7 +112,7 @@ namespace car
 
     // tread elements enter the patch undeflected, bend as they travel and break away once local friction
     // runs out, so the curve and the friction ellipse come out of stiffness and mu, not shape factors
-    inline tire_force_result evaluate_brush_model(const car_preset& preset, const brush_tire_params& params, float slip_ratio, float slip_angle, float camber, float tire_load, float peak_force_longitudinal, float peak_force_lateral, float camber_thrust_sign, float& saturation)
+    inline tire_force_result evaluate_brush_model(const car_preset& preset, const brush_tire_params& params, float slip_ratio, float slip_angle, float camber, float tire_load, float peak_force_longitudinal, float peak_force_lateral, float camber_thrust_sign, float& saturation, float rolling_direction = 1.0f)
     {
         tire_force_result result;
         saturation = 0.0f;
@@ -120,11 +120,14 @@ namespace car
         // the brush measures deflection per unit distance the tread travels, so both axes have to be
         // referenced to the wheel surface speed rather than to the road speed the slip ratio used
         float practical_long = slip_ratio;
-        float lateral_scale  = 1.0f - slip_ratio;
-        if (slip_ratio < 0.0f)
+        // The stored slip is signed in the wheel's forward axis. Braking versus
+        // traction depends on travel direction, including when driving backwards.
+        float travel_slip = slip_ratio * rolling_direction;
+        float lateral_scale = PxMax(1.0f - travel_slip, 0.0f);
+        if (travel_slip < 0.0f)
         {
             // braking, the slip ratio is already referenced to the road so it converts across
-            float rolling = PxMax(1.0f + slip_ratio, 0.05f);
+            float rolling = PxMax(1.0f + travel_slip, 0.05f);
             practical_long = slip_ratio / rolling;
             lateral_scale  = 1.0f / rolling;
         }

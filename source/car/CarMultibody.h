@@ -68,6 +68,9 @@ namespace car
         float shock_rest_length = 0.0f;
         float shock_length = 0.0f;
         float shock_velocity = 0.0f;
+        float design_motion_ratio = 1.0f;
+        float shock_stiffness = 0.0f;
+        float shock_damping = 0.0f;
     };
 
     struct multibody_state

@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../world/Entity.h"
 #include "../world/components/Camera.h"
 #include "../world/components/Physics.h"
+#include "../car/CarSimulation.h"
 #include "../world/components/Ragdoll.h"
 #include "../world/World.h"
 SP_WARNINGS_OFF
@@ -300,10 +301,21 @@ namespace spartan
                 Entity* entity_b = pair_header.actors[1]
                     ? static_cast<Entity*>(pair_header.actors[1]->userData)
                     : nullptr;
-                if (!entity_a || !entity_b)
+                // Record the complete contact impulse for each vehicle even if
+                // the other actor has no entity (terrain/bench/static geometry).
+                PxVec3 vehicle_impulse(0);
+                for (PxU32 i = 0; i < pair_count; ++i)
                 {
-                    return;
+                    vector<PxContactPairPoint> contacts(pairs[i].contactCount);
+                    PxU32 count = contacts.empty() ? 0 : pairs[i].extractContacts(contacts.data(), static_cast<PxU32>(contacts.size()));
+                    for (PxU32 j = 0; j < count; ++j) vehicle_impulse += contacts[j].impulse;
                 }
+                auto record = [&](Entity* entity, const PxVec3& impulse) {
+                    if (entity) if (auto* component = entity->GetComponent<Physics>())
+                        if (auto* simulation = component->GetVehicleSimulation()) simulation->record_contact_impulse(impulse);
+                };
+                record(entity_a, vehicle_impulse); record(entity_b, -vehicle_impulse);
+                if (!entity_a || !entity_b) return;
 
                 for (PxU32 i = 0; i < pair_count; ++i)
                 {
@@ -401,7 +413,8 @@ namespace spartan
                 filter_data0.word2 == physics_collision_ragdoll ||
                 filter_data1.word2 == physics_collision_ragdoll;
 
-            if ((involves_pedestrian || involves_ragdoll) &&
+            const bool involves_vehicle = filter_data0.word2 == physics_collision_vehicle || filter_data1.word2 == physics_collision_vehicle;
+            if ((involves_pedestrian || involves_ragdoll || involves_vehicle) &&
                 !PxFilterObjectIsTrigger(attributes0) &&
                 !PxFilterObjectIsTrigger(attributes1))
             {

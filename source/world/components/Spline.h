@@ -117,6 +117,8 @@ namespace spartan
 
         // mesh generation - extrudes the current profile along the spline
         void GenerateRoadMesh();
+        // Resolve explicit road_node_* control point tags after every spline has sampled the terrain.
+        static void RebuildRoadJunctions();
         void ClearRoadMesh();
         bool HasRoadMesh() const { return m_mesh != nullptr; }
 
@@ -298,6 +300,7 @@ namespace spartan
 
         // capture current property/control point state to compare against next tick
         void SnapshotState();
+        std::string GetRoadNodeSignature() const;
 
         // snapping every handle costs raycasts, do it once per change instead of once per frame
         void RefreshHandlePositions();
@@ -410,6 +413,17 @@ namespace spartan
 
         // generated mesh
         std::shared_ptr<Mesh> m_mesh;
+        std::vector<SplineFrame> m_base_road_frames;
+        std::vector<bool> m_junction_segments;
+        struct JunctionPatch
+        {
+            math::Vector3 center;
+            std::vector<math::Vector3> boundary;
+        };
+        std::vector<JunctionPatch> m_junction_patches;
+        std::string m_prev_road_nodes;
+        bool m_prev_junction_active = true;
+        float m_prev_material_tiling_v = 1.0f;
 
         // event subscription handle for WorldLoaded
         subscription_handle m_world_loaded_handle = 0;

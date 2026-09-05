@@ -433,6 +433,7 @@ namespace spartan
 
     void AudioSource::StartSynthesis()
     {
+        if (m_is_playing) return;
         if (!m_synthesis_mode || !m_synthesis_callback)
         {
             SP_LOG_ERROR("synthesis mode not enabled or no callback set");
@@ -451,16 +452,17 @@ namespace spartan
             return;
         }
 
-        CHECK_SDL_ERROR(SDL_BindAudioStream(audio_device::id, m_stream));
-
         // initialize reverb buffers
         m_reverb_buffer_l.assign(reverb_buffer_size, 0.0f);
         m_reverb_buffer_r.assign(reverb_buffer_size, 0.0f);
         m_reverb_write_pos = 0;
 
-        // start playing
-        CHECK_SDL_ERROR(SDL_ResumeAudioStreamDevice(m_stream));
+        // Prime before binding: the device may already be playing other sources.
+        m_synthesis_gain_l = m_synthesis_gain_r = 0.0f;
         m_is_playing = true;
+        FeedSynthesizedChunk();
+        CHECK_SDL_ERROR(SDL_BindAudioStream(audio_device::id, m_stream));
+        CHECK_SDL_ERROR(SDL_ResumeAudioStreamDevice(m_stream));
     }
 
     void AudioSource::StopSynthesis()
@@ -490,8 +492,16 @@ namespace spartan
         // a single fixed-size chunk per tick underruns when the frame rate drops
         const int low_water_mark   = 16384; // bytes, ~43 ms of stereo float at 48 khz
         const uint32_t num_samples = 1024;
-        while (SDL_GetAudioStreamQueued(m_stream) < low_water_mark)
+        // Bound work if the device consumes faster than this producer can run.
+        for (int chunk = 0; chunk < 8; chunk++)
         {
+            int queued = SDL_GetAudioStreamQueued(m_stream);
+            if (queued < 0)
+            {
+                SP_LOG_ERROR("%s", SDL_GetError());
+                return;
+            }
+            if (queued >= low_water_mark) break;
             m_stereo_chunk.resize(num_samples * 2);
 
             // call the synthesis callback to generate samples
@@ -506,8 +516,12 @@ namespace spartan
 
             for (uint32_t i = 0; i < num_samples; ++i)
             {
-                m_stereo_chunk[2 * i]     *= left_gain;
-                m_stereo_chunk[2 * i + 1] *= right_gain;
+                // 5 ms gain slew prevents frame-rate volume/pan steps becoming clicks.
+                constexpr float slew = 0.004158f; // 1 - exp(-1 / (48000 * .005))
+                m_synthesis_gain_l += (left_gain - m_synthesis_gain_l) * slew;
+                m_synthesis_gain_r += (right_gain - m_synthesis_gain_r) * slew;
+                m_stereo_chunk[2 * i]     *= m_synthesis_gain_l;
+                m_stereo_chunk[2 * i + 1] *= m_synthesis_gain_r;
             }
 
             // apply reverb effect using a feedback delay network

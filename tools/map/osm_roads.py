@@ -556,6 +556,26 @@ def resample(points, spacing, min_spacing, sharp_degrees):
     return result
 
 
+def route_geometry(nodes, node_world, junction_nodes, tolerance, spacing, min_spacing, sharp_degrees):
+    # Junctions are graph constraints. Simplify/resample each interval separately so a
+    # through route cannot drift away from a branch that still ends on the OSM node.
+    anchors = [0] + [i for i in range(1, len(nodes) - 1) if nodes[i] in junction_nodes] + [len(nodes) - 1]
+    result = []
+    for a, b in zip(anchors, anchors[1:]):
+        piece = dedupe([node_world[n] for n in nodes[a:b + 1]])
+        piece = resample(douglas_peucker(piece, tolerance), spacing, min_spacing, sharp_degrees)
+        result.extend(piece if not result else piece[1:])
+    return result
+
+
+def road_node_tags(points_xyz, node_world, junction_nodes):
+    # Coordinates remain full precision until XML emission; use a millimetre key only
+    # to accommodate interpolation arithmetic, never join roads by proximity or crossing.
+    key = lambda x, z: (round(x, 3), round(z, 3))
+    lookup = {key(*node_world[n]): n for n in sorted(junction_nodes)}
+    return {i: f"road_node_{lookup[key(x, z)]}" for i, (x, _, z) in enumerate(points_xyz) if key(x, z) in lookup}
+
+
 def split_at_sea(points, heights, water_level):
     # a single wet point between dry ones is a fit error, two in a row is the sea
     wet = [h < water_level for h in heights]
@@ -673,9 +693,11 @@ def emit_route_xml(route, index, templates, indent):
         f"{pad_c}{spline}",
     ]
     for j, (x, y, z) in enumerate(points):
+        node_tag = route.get("node_tags", {}).get(j)
+        tag_attribute = f' tags="{node_tag}"' if node_tag else ""
         out.append(
             f'{pad_c}<Entity name="spline_point_{j}" id="{entity_id + 1 + j}" active="true" '
-            f'position="{fmt(x - ox)} {fmt(y - oy)} {fmt(z - oz)}" rotation="0 0 0 1" scale="1 1 1" />'
+            f'position="{fmt(x - ox)} {fmt(y - oy)} {fmt(z - oz)}" rotation="0 0 0 1" scale="1 1 1"{tag_attribute} />'
         )
     out.append(f"{pad_e}</Entity>")
     return out
@@ -1014,11 +1036,9 @@ def main():
     clipped = 0
     dropped_short = 0
     for raw in raw_routes:
-        points = dedupe([node_world[n] for n in raw["nodes"]])
+        points = route_geometry(raw["nodes"], node_world, junction_nodes, args.simplify, args.spacing, args.min_spacing, args.sharp_degrees)
         if len(points) < 2:
             continue
-        points = douglas_peucker(points, args.simplify)
-        points = resample(points, args.spacing, args.min_spacing, args.sharp_degrees)
         heights = [projection.sample_height(x, z) for x, z in points]
         pieces = split_at_sea(points, heights, args.water_level)
         if len(pieces) != 1 or len(pieces[0]) != len(points):
@@ -1036,6 +1056,7 @@ def main():
                     "width":      CLASS_WIDTH[raw["cls"]],
                     "length_m":   length,
                     "points_xyz": chunk,
+                    "node_tags":  road_node_tags(chunk, node_world, junction_nodes.intersection(raw["nodes"])),
                 })
 
     # main roads first, longest first, so the ids read like a road index

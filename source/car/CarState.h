@@ -129,6 +129,17 @@ namespace car
         float avg_surface() const { return (surface[0] + surface[1] + surface[2]) / 3.0f; }
     };
 
+    struct tire_probe_row
+    {
+        PxVec3        point       = PxVec3(0.0f);
+        PxVec3        normal      = PxVec3(0.0f, 1.0f, 0.0f);
+        PxRigidActor* actor       = nullptr;
+        float         penetration = 0.0f;
+        float         load        = 0.0f;
+        bool          hit         = false;
+        float         friction_scale = 1.0f;
+    };
+
     struct wheel
     {
         float        compression          = 0.0f;
@@ -176,20 +187,15 @@ namespace car
         float        contact_patch_length = 0.0f;
         // fraction of the available friction the patch is using, one means fully sliding
         float        tire_saturation      = 0.0f;
+        tire_probe_row contacts[max_tire_probe_rows];
+        float        pressure_bar         = 2.2f;
+        float        damage               = 0.0f;
+        float        water_depth          = 0.0f; // metres; environment/bench can author standing water
+        float        dissipated_energy_j  = 0.0f;
     };
 
     // one row is a slice of tread across the width, its columns straddle the contact arc so the
     // row rides an averaged ground plane instead of a single sample
-    struct tire_probe_row
-    {
-        PxVec3        point       = PxVec3(0.0f);
-        PxVec3        normal      = PxVec3(0.0f, 1.0f, 0.0f);
-        PxRigidActor* actor       = nullptr;
-        float         penetration = 0.0f;
-        float         load        = 0.0f;
-        bool          hit         = false;
-    };
-
     struct input_state
     {
         float throttle  = 0.0f;

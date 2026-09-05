@@ -132,6 +132,8 @@ namespace spartan
         // synthesis mode
         bool m_synthesis_mode                           = false;
         SynthesisCallback m_synthesis_callback          = nullptr;
+        float m_synthesis_gain_l = 0.0f;
+        float m_synthesis_gain_r = 0.0f;
 
         // reverb state
         bool m_reverb_enabled         = false;

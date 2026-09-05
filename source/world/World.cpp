@@ -1682,6 +1682,8 @@ namespace spartan
                 }
             }
 
+            Spline::RebuildRoadJunctions();
+
             // ragdoll hit capsules after scripts/pedestrians moved the bodies
             for (Entity* entity : entities_with_ragdoll)
             {

@@ -112,6 +112,10 @@ namespace car
             read_float(node, "tie_rod_z", geometry.tie_rod_z);
             read_float(node, "link_spread_y", geometry.link_spread_y);
             read_float(node, "link_spread_z", geometry.link_spread_z);
+            const char* names[12] = {"upper_front_inner", "upper_front_outer", "upper_rear_inner", "upper_rear_outer",
+                "lower_front_inner", "lower_front_outer", "lower_rear_inner", "lower_rear_outer", "toe_inner", "toe_outer", "shock_top", "shock_bottom"};
+            read_bool(node, "explicit_hardpoints", geometry.explicit_hardpoints);
+            for (int i = 0; i < 12; ++i) read_float_array(node, names[i], geometry.hardpoints[i], 3);
         }
 
         void load_assists(pugi::xml_node node, assist_settings& assists)
@@ -182,8 +186,33 @@ namespace car
             require(finite_range(preset.exhaust_primary_length_m, 0.05f, 3.0f) && finite_range(preset.exhaust_collector_length_m, 0.1f, 10.0f), "engine_sound_exhaust");
             require(finite_range(preset.engine_bank_angle_deg, 0.0f, 180.0f) && finite_range(preset.exhaust_tailpipe_length_m, 0.05f, 5.0f) && finite_range(preset.exhaust_muffler_level, 0.0f, 1.0f), "engine_sound_layout");
             bool firing_order_used[max_engine_cylinders] = {};
-            for (int i = 0; i < preset.engine_sound_cylinders; i++)
+            const int sound_cylinders = std::clamp(preset.engine_sound_cylinders, 1, max_engine_cylinders);
+            require(finite_range(preset.intake_runner_length_m, 0.0f, 2.0f) && finite_range(preset.intake_valve_duration_deg, 120.0f, 320.0f) && finite_range(preset.engine_combustion_variation, 0.0f, 0.2f), "engine_sound_intake_combustion");
+            float firing_interval_sum = 0.0f;
+            bool explicit_firing = false;
+            for (int i = 0; i < sound_cylinders; i++)
             {
+                float interval = preset.engine_firing_intervals_deg[i];
+                require(finite_range(interval, 0.0f, 720.0f), "engine_firing_intervals");
+                explicit_firing |= interval != 0.0f;
+                firing_interval_sum += interval;
+            }
+            if (explicit_firing)
+            {
+                require(fabsf(firing_interval_sum - 720.0f) < 0.1f, "engine_firing_intervals_sum");
+                for (int i = 0; i < sound_cylinders; i++)
+                    require(preset.engine_firing_intervals_deg[i] >= 1.0f, "engine_firing_interval_positive");
+            }
+            for (int i = 0; i < sound_cylinders; i++)
+            {
+                if (!finite_range(preset.engine_firing_order[i], 0.0f, static_cast<float>(sound_cylinders - 1)) ||
+                    !finite_range(preset.engine_cylinder_bank[i], 0.0f, 1.0f) ||
+                    floorf(preset.engine_firing_order[i]) != preset.engine_firing_order[i] ||
+                    floorf(preset.engine_cylinder_bank[i]) != preset.engine_cylinder_bank[i])
+                {
+                    require(false, "engine_firing_order_bank_indices");
+                    continue;
+                }
                 int cylinder = static_cast<int>(preset.engine_firing_order[i]);
                 int bank = static_cast<int>(preset.engine_cylinder_bank[i]);
                 require(cylinder >= 0 && cylinder < preset.engine_sound_cylinders && !firing_order_used[cylinder], "engine_firing_order");
@@ -210,6 +239,12 @@ namespace car
                 }
             }
             require(finite_range(preset.brake_thermal_mass, 0.1f, 100.0f), "brake_thermal_mass");
+            require(finite_range(preset.brake_specific_heat, 100.0f, 3000.0f), "brake_specific_heat");
+            require(finite_range(preset.tire_surface_heat_capacity, 100.0f, 100000.0f)
+                && finite_range(preset.tire_core_heat_capacity, 100.0f, 200000.0f), "tire_heat_capacity");
+            require(finite_range(preset.tire_surface_core_conductance, 0.0f, 10000.0f)
+                && finite_range(preset.tire_heat_transfer_static, 0.0f, 1000.0f)
+                && finite_range(preset.tire_heat_transfer_airflow, 0.0f, 100.0f), "tire_heat_transfer");
             require(finite_range(preset.brake_ambient_temp, 0.0f, 100.0f) && finite_range(preset.brake_optimal_temp, preset.brake_ambient_temp, 1000.0f) && finite_range(preset.brake_fade_temp, preset.brake_optimal_temp, 1500.0f) && finite_range(preset.brake_max_temp, preset.brake_fade_temp, 2000.0f), "brake_temperature_range");
             require(finite_range(preset.load_reference, 100.0f, 20000.0f), "load_reference");
             require(finite_range(preset.tire_temp_range, 1.0f, 300.0f), "tire_temp_range");
@@ -291,6 +326,17 @@ namespace car
             auto validate_geometry = [&](const suspension_geometry& geometry, float track, const char* field)
             {
                 bool geometry_valid = finite_range(geometry.chassis_inset, 0.1f, 0.9f) && finite_range(geometry.upper_chassis_inset, 0.1f, 0.95f) && finite_range(geometry.lower_upright_inset, 0.0f, 0.3f) && finite_range(geometry.upper_upright_inset, 0.0f, 0.4f) && finite_range(geometry.arm_span, 0.05f, 0.6f) && finite_range(geometry.strut_top_y, 0.1f, 1.2f) && finite_range(geometry.strut_top_inset, 0.05f, 0.8f) && geometry.upper_upright_y > geometry.lower_upright_y && geometry.upper_inner_y > geometry.lower_inner_y;
+                if (geometry.explicit_hardpoints)
+                {
+                    for (const auto& point : geometry.hardpoints)
+                        for (float coordinate : point) geometry_valid &= finite_range(coordinate, -2.0f, 2.0f);
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        float length2 = 0;
+                        for (int j = 0; j < 3; ++j) { float d = geometry.hardpoints[2*i][j] - geometry.hardpoints[2*i+1][j]; length2 += d*d; }
+                        geometry_valid &= length2 > 0.0025f;
+                    }
+                }
                 require(geometry_valid, field);
                 if (!geometry_valid || geometry.mechanism == suspension_mechanism::macpherson)
                 {
@@ -352,6 +398,24 @@ namespace car
             require(finite_range(preset.validation.zero_to_100_min, 0.5f, 30.0f) && finite_range(preset.validation.zero_to_100_max, 0.5f, 30.0f) && preset.validation.zero_to_100_min < preset.validation.zero_to_100_max, "zero_to_100_range");
             require(finite_range(preset.validation.braking_distance_min, 5.0f, 200.0f) && finite_range(preset.validation.braking_distance_max, 5.0f, 200.0f) && preset.validation.braking_distance_min < preset.validation.braking_distance_max, "braking_distance_range");
             require(finite_range(preset.validation.skidpad_g_min, 0.1f, 3.0f) && finite_range(preset.validation.skidpad_g_max, 0.1f, 3.0f) && preset.validation.skidpad_g_min < preset.validation.skidpad_g_max, "skidpad_range");
+            auto curve_valid = [&](const float* x, const float* y, int count) {
+                if (count == 0) return true;
+                if (count < 2 || count > 16) return false;
+                for (int i = 0; i < count; ++i)
+                    if (!std::isfinite(x[i]) || !finite_range(y[i], 0, 2000) || (i && x[i] <= x[i-1])) return false;
+                return true;
+            };
+            require(curve_valid(preset.engine_map_rpm, preset.engine_map_torque, preset.engine_map_count), "engine_map_torque");
+            require(curve_valid(preset.aero_speed_x, preset.aero_speed_scale, preset.aero_speed_count), "aero_speed_scale");
+            require(curve_valid(preset.aero_height_x, preset.aero_height_scale, preset.aero_height_count), "aero_height_scale");
+            require(curve_valid(preset.aero_pitch_x, preset.aero_front_scale, preset.aero_pitch_count), "aero_front_scale");
+            require(curve_valid(preset.aero_pitch_x, preset.aero_rear_scale, preset.aero_pitch_count), "aero_rear_scale");
+            require(curve_valid(preset.aero_yaw_x, preset.aero_yaw_scale, preset.aero_yaw_count), "aero_yaw_scale");
+            require(curve_valid(preset.aero_yaw_x, preset.aero_drag_scale, preset.aero_yaw_count), "aero_drag_scale");
+            require(finite_range(preset.tire_pressure_reference_temp, -50, 100) && finite_range(preset.tire_damage_energy, 1000, 1e9f) && finite_range(preset.tire_hydroplaning_speed, 1, 200), "tire_environment");
+            require(finite_range(preset.battery_capacity_kwh, 0.01f, 500) && finite_range(preset.battery_initial_soc, 0, 1), "battery_energy");
+            require(finite_range(preset.motor_efficiency, 0.1f, 1) && finite_range(preset.battery_efficiency, 0.1f, 1) && finite_range(preset.battery_heat_capacity, 100, 1e8f) && finite_range(preset.battery_cooling, 0, 1e5f), "battery_losses");
+            require(finite_range(preset.battery_derate_temp, 0, 150) && preset.battery_cutoff_temp > preset.battery_derate_temp && finite_range(preset.battery_cutoff_temp, 1, 200), "battery_thermal_limits");
             return valid;
         }
 
@@ -388,6 +452,50 @@ namespace car
             READ_FLOAT(inertia_xx);
             READ_FLOAT(inertia_yy);
             READ_FLOAT(inertia_zz);
+            READ_INT(aero_yaw_count);
+            read_float_array(node, "aero_yaw_x", preset.aero_yaw_x, 16);
+            read_float_array(node, "aero_yaw_scale", preset.aero_yaw_scale, 16);
+            read_float_array(node, "aero_drag_scale", preset.aero_drag_scale, 16);
+
+            READ_INT(aero_pitch_count);
+            read_float_array(node, "aero_pitch_x", preset.aero_pitch_x, 16);
+            read_float_array(node, "aero_front_scale", preset.aero_front_scale, 16);
+            read_float_array(node, "aero_rear_scale", preset.aero_rear_scale, 16);
+
+            READ_INT(aero_height_count);
+            read_float_array(node, "aero_height_x", preset.aero_height_x, 16);
+            read_float_array(node, "aero_height_scale", preset.aero_height_scale, 16);
+
+            READ_INT(aero_speed_count);
+            read_float_array(node, "aero_speed_x", preset.aero_speed_x, 16);
+            read_float_array(node, "aero_speed_scale", preset.aero_speed_scale, 16);
+
+            READ_INT(engine_map_count);
+            read_float_array(node, "engine_map_rpm", preset.engine_map_rpm, 16);
+            read_float_array(node, "engine_map_torque", preset.engine_map_torque, 16);
+
+            READ_FLOAT(underfloor_y);
+            READ_FLOAT(tire_pressure_reference_temp);
+            READ_FLOAT(tire_damage_energy);
+            READ_FLOAT(tire_damage_temp);
+            READ_FLOAT(tire_hydroplaning_speed);
+            READ_FLOAT(battery_capacity_kwh);
+            READ_FLOAT(battery_initial_soc);
+            READ_FLOAT(motor_efficiency);
+            READ_FLOAT(battery_efficiency);
+            READ_FLOAT(battery_heat_capacity);
+            READ_FLOAT(battery_cooling);
+            READ_FLOAT(battery_derate_temp);
+            READ_FLOAT(battery_cutoff_temp);
+            READ_FLOAT(regen_power_kw);
+            READ_FLOAT(engine_stall_rpm);
+            READ_FLOAT(starter_torque);
+            READ_BOOL(yaw_control_enabled); READ_FLOAT(yaw_control_gain);
+
+            READ_BOOL(inertia_is_assembled);
+            READ_FLOAT(inertia_xy); READ_FLOAT(inertia_xz); READ_FLOAT(inertia_yz);
+            if (node.attribute("calibration_id"))
+                snprintf(preset.calibration_id, sizeof(preset.calibration_id), "%s", node.attribute("calibration_id").as_string());
 
             READ_FLOAT(engine_idle_rpm);
             READ_FLOAT(engine_redline_rpm);
@@ -413,6 +521,11 @@ namespace car
             READ_FLOAT(engine_bank_angle_deg);
             READ_FLOAT(exhaust_tailpipe_length_m);
             READ_FLOAT(exhaust_muffler_level);
+            READ_FLOAT(intake_runner_length_m);
+            READ_FLOAT(intake_valve_duration_deg);
+            READ_FLOAT(engine_combustion_variation);
+            READ_BOOL(turbo_bypass_valve);
+            READ_ENGINE_ARRAY(engine_firing_intervals_deg);
             READ_ENGINE_ARRAY(engine_firing_order);
             READ_ENGINE_ARRAY(engine_cylinder_bank);
 
@@ -442,6 +555,7 @@ namespace car
             READ_FLOAT(brake_cooling_base);
             READ_FLOAT(brake_cooling_airflow);
             READ_FLOAT(brake_thermal_mass);
+            READ_FLOAT(brake_specific_heat);
 
             READ_FLOAT(throttle_smoothing);
             READ_FLOAT(brake_smoothing);
@@ -481,6 +595,11 @@ namespace car
             READ_FLOAT(tire_pressure_optimal);
 
             READ_FLOAT(tire_ambient_temp);
+            READ_FLOAT(tire_surface_heat_capacity);
+            READ_FLOAT(tire_core_heat_capacity);
+            READ_FLOAT(tire_surface_core_conductance);
+            READ_FLOAT(tire_heat_transfer_static);
+            READ_FLOAT(tire_heat_transfer_airflow);
             READ_FLOAT(tire_optimal_temp);
             READ_FLOAT(tire_temp_range);
             READ_FLOAT(tire_heat_from_slip);

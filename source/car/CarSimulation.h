@@ -24,6 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==========
 #include "CarState.h"
 #include "CarPacejka.h"
+#include "CarThermal.h"
+#include "CarKinematics.h"
+#include "CarInertia.h"
+#include "CarCalibration.h"
 #include "CarMultibody.h"
 //=====================
 
@@ -81,6 +85,18 @@ namespace car
         float           previous_automatic_throttle = 0.0f;
         float           boost_pressure          = 0.0f;
         float           motor_torque            = 0.0f;
+        hybrid_state    battery;
+        bool            engine_running = true;
+        bool            starter_requested = false;
+        float           regen_axle_torque = 0;
+        double          clutch_heat_j = 0;
+        double          gearbox_loss_j = 0;
+        double          distance_m = 0;
+        PxVec3          previous_position = PxVec3(0);
+        bool            position_valid = false;
+        PxVec3          contact_impulse = PxVec3(0);
+        unsigned        event_flags = 0;
+        unsigned        reset_count = 0;
         bool            rev_limiter_active      = false;
         float           downshift_blip_timer    = 0.0f;
         float           driveshaft_twist        = 0.0f;
@@ -106,6 +122,7 @@ namespace car
 
     public:
 
+        surface_type (*surface_resolver)(const PxRigidActor*) = nullptr;
         Simulation() = default;
         ~Simulation();
         Simulation(const Simulation&) = delete;
@@ -232,6 +249,8 @@ namespace car
         bool has_authored_inertia() const;
         void apply_chassis_mass_properties(float mass, const PxVec3& com_local);
         void update_assembled_center_of_mass();
+        PxMat33 get_assembled_inertia() const;
+        bool export_chassis_hulls(const std::string& path) const;
         bool create_suspension_corner(int wheel_index, const suspension_geometry& geometry);
         bool create_locked_differential(int left, int right);
         bool create_steering_rack();
@@ -249,7 +268,7 @@ namespace car
         void destroy_multibody();
         bool create_multibody(PxPhysics* physics, PxScene* scene, bool destroy_existing = true);
         bool rebuild_multibody(bool preserve_motion = true);
-        PxVec3 actor_point_velocity(PxRigidBody* actor, const PxVec3& world_point);
+        PxVec3 actor_point_velocity(const PxRigidBody* actor, const PxVec3& world_point);
         PxVec3 ground_point_velocity(const wheel& wheel_state);
         void refresh_wheel_actor_state();
         void wake_vehicle_assembly();
@@ -261,7 +280,7 @@ namespace car
         // one tread row, its columns straddle the contact arc and every hit is projected back to the
         // perpendicular height, so the row rides an averaged plane and spans a pothole instead of dropping in
         tire_probe_row probe_tread_row(PxScene* scene, const PxVec3& row_center, const PxVec3& plane_down, const PxVec3& wheel_axis, const PxVec3& local_up, float row_radius, float ray_length, float max_penetration, int column_count, float arc, const PxQueryFilterData& filter);
-        void update_suspension(PxScene* scene, float dt);
+        void update_suspension(PxScene* scene, float dt, bool apply_forces = true);
         float angular_velocity_to_rpm(float angular_velocity);
         float get_driven_wheel_radius();
         float get_average_driven_angular_velocity(bool absolute, int* count = nullptr);
@@ -425,6 +444,11 @@ namespace car
         bool get_vehicle_sleeping();
         float get_gearbox_input_angular_velocity();
         float get_motor_power_kw();
+        const hybrid_state& get_hybrid_state() const { return battery; }
+        bool get_engine_running() const { return engine_running; }
+        void set_starter(bool active) { starter_requested = active; wake_vehicle_assembly(); }
+        void record_contact_impulse(const PxVec3& impulse) { if (impulse.isFinite()) { contact_impulse += impulse; event_flags |= 4; } }
+        void record_reset() { event_flags |= 1; ++reset_count; position_valid = false; }
         float get_redline_rpm();
         float get_max_rpm();
         float get_idle_rpm();

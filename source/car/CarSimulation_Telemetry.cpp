@@ -124,7 +124,7 @@ namespace car
 
                 // log absolute path so the user can find the file
                 char abs_path[1024] = {};
-                if (_fullpath(abs_path, "car_telemetry.csv", sizeof(abs_path)))
+                if (_fullpath(abs_path, telemetry_path.c_str(), sizeof(abs_path)))
                 {
                     SP_LOG_INFO("car telemetry: writing to %s", abs_path);
                 }
@@ -190,7 +190,10 @@ namespace car
                     "fr_rotation,fr_drive_torque,fr_brake_torque,fr_comp_velocity,fr_surface,fr_contact_x,fr_contact_y,fr_contact_z,fr_contact_nx,fr_contact_nz,fr_dynamic_toe,fr_bump_steer,fr_motion_ratio,fr_shock_length,fr_shock_rest_length,fr_shock_velocity,fr_temp_inside,fr_temp_middle,fr_temp_outside,fr_condition_grip,fr_condition_stiffness,fr_condition_relaxation,fr_wheel_moi,fr_spring_stiffness,fr_spring_damping,"
                     "rl_rotation,rl_drive_torque,rl_brake_torque,rl_comp_velocity,rl_surface,rl_contact_x,rl_contact_y,rl_contact_z,rl_contact_nx,rl_contact_nz,rl_dynamic_toe,rl_bump_steer,rl_motion_ratio,rl_shock_length,rl_shock_rest_length,rl_shock_velocity,rl_temp_inside,rl_temp_middle,rl_temp_outside,rl_condition_grip,rl_condition_stiffness,rl_condition_relaxation,rl_wheel_moi,rl_spring_stiffness,rl_spring_damping,"
                     "rr_rotation,rr_drive_torque,rr_brake_torque,rr_comp_velocity,rr_surface,rr_contact_x,rr_contact_y,rr_contact_z,rr_contact_nx,rr_contact_nz,rr_dynamic_toe,rr_bump_steer,rr_motion_ratio,rr_shock_length,rr_shock_rest_length,rr_shock_velocity,rr_temp_inside,rr_temp_middle,rr_temp_outside,rr_condition_grip,rr_condition_stiffness,rr_condition_relaxation,rr_wheel_moi,rr_spring_stiffness,rr_spring_damping,"
-                    "fl_hub_x,fl_hub_y,fl_hub_z,fl_hub_vx,fl_hub_vy,fl_hub_vz,fl_hub_wx,fl_hub_wy,fl_hub_wz,fr_hub_x,fr_hub_y,fr_hub_z,fr_hub_vx,fr_hub_vy,fr_hub_vz,fr_hub_wx,fr_hub_wy,fr_hub_wz,rl_hub_x,rl_hub_y,rl_hub_z,rl_hub_vx,rl_hub_vy,rl_hub_vz,rl_hub_wx,rl_hub_wy,rl_hub_wz,rr_hub_x,rr_hub_y,rr_hub_z,rr_hub_vx,rr_hub_vy,rr_hub_vz,rr_hub_wx,rr_hub_wy,rr_hub_wz\n");
+                    "fl_hub_x,fl_hub_y,fl_hub_z,fl_hub_vx,fl_hub_vy,fl_hub_vz,fl_hub_wx,fl_hub_wy,fl_hub_wz,fr_hub_x,fr_hub_y,fr_hub_z,fr_hub_vx,fr_hub_vy,fr_hub_vz,fr_hub_wx,fr_hub_wy,fr_hub_wz,rl_hub_x,rl_hub_y,rl_hub_z,rl_hub_vx,rl_hub_vy,rl_hub_vz,rl_hub_wx,rl_hub_wy,rl_hub_wz,rr_hub_x,rr_hub_y,rr_hub_z,rr_hub_vx,rr_hub_vy,rr_hub_vz,rr_hub_wx,rr_hub_wy,rr_hub_wz");
+                fprintf(file, ",simulation_version,calibration_id,event_flags,reset_count,distance_m,contact_impulse_x,contact_impulse_y,contact_impulse_z,assembled_ixx,assembled_iyy,assembled_izz,assembled_ixy,assembled_ixz,assembled_iyz,battery_soc,battery_temp,battery_power_w,battery_loss_w,engine_running,clutch_heat_j,gearbox_loss_j");
+                for (const char* prefix : {"fl", "fr", "rl", "rr"}) fprintf(file, ",%s_pressure_bar,%s_damage,%s_water_depth,%s_slip_energy_j", prefix, prefix, prefix, prefix);
+                fputc('\n', file);
                 frame_counter = 0;
                 elapsed_time  = 0.0f;
                 return true;
@@ -209,6 +212,7 @@ namespace car
                 if (!log_to_file)
                 {
                     close_telemetry();
+                    event_flags = 0; contact_impulse = PxVec3(0);
                     return;
                 }
                 if (!open_telemetry_if_needed())
@@ -355,6 +359,14 @@ namespace car
                 {
                     fprintf(file, ",%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g", wheels[i].hub_position.x, wheels[i].hub_position.y, wheels[i].hub_position.z, wheels[i].hub_linear_velocity.x, wheels[i].hub_linear_velocity.y, wheels[i].hub_linear_velocity.z, wheels[i].hub_angular_velocity.x, wheels[i].hub_angular_velocity.y, wheels[i].hub_angular_velocity.z);
                 }
+                PxMat33 inertia = get_assembled_inertia();
+                fprintf(file, ",2,%s,%u,%u,%.9g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%d,%.9g,%.9g",
+                    spec.calibration_id, event_flags, reset_count, distance_m, contact_impulse.x, contact_impulse.y, contact_impulse.z,
+                    inertia.column0.x, inertia.column1.y, inertia.column2.z, inertia.column1.x, inertia.column2.x, inertia.column2.y,
+                    battery.energy_j / (spec.battery_capacity_kwh * 3600000.0f), battery.temperature, battery.electrical_power_w, battery.loss_power_w,
+                    engine_running ? 1 : 0, clutch_heat_j, gearbox_loss_j);
+                for (const auto& w : wheels) fprintf(file, ",%.6g,%.6g,%.6g,%.9g", w.pressure_bar, w.damage, w.water_depth, w.dissipated_energy_j);
+                event_flags = 0; contact_impulse = PxVec3(0);
                 fputc('\n', file);
 
                 if (frame_counter % 200 == 0)

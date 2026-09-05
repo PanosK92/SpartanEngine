@@ -44,6 +44,57 @@ namespace engine_sound
 
         // slow moving state such as filter cutoffs is refreshed every this many samples
         constexpr int control_interval = 64;
+        constexpr int oversampling = 2;
+
+        // Blackman-windowed sinc: retain the audible engine harmonics, reject the
+        // ultrasonic images before returning from 96 kHz to the 48 kHz device.
+        struct decimator
+        {
+            static constexpr int taps = 95;
+            float coefficients[taps] = {};
+            float history[2][taps] = {};
+            int position = 0;
+
+            void initialize()
+            {
+                float sum = 0.0f;
+                for (int i = 0; i < taps; i++)
+                {
+                    float x = static_cast<float>(i - (taps - 1) / 2);
+                    float w = two_pi * static_cast<float>(i) / static_cast<float>(taps - 1);
+                    float sinc = x == 0.0f ? 0.41f : sinf(pi * 0.41f * x) / (pi * x);
+                    coefficients[i] = sinc * (0.42f - 0.5f * cosf(w) + 0.08f * cosf(2.0f * w));
+                    sum += coefficients[i];
+                }
+                for (float& c : coefficients) c /= sum;
+                reset();
+            }
+
+            void push(float left, float right)
+            {
+                history[0][position] = left;
+                history[1][position] = right;
+                position = (position + 1) % taps;
+            }
+
+            float read(int channel) const
+            {
+                float result = 0.0f;
+                int index = position;
+                for (int i = 0; i < taps; i++)
+                {
+                    if (--index < 0) index = taps - 1;
+                    result += coefficients[i] * history[channel][index];
+                }
+                return result;
+            }
+
+            void reset()
+            {
+                std::memset(history, 0, sizeof(history));
+                position = 0;
+            }
+        };
 
         // how far past its nominal width a blowdown pulse is followed, in widths, until it has died out
         constexpr float pulse_window = 2.2f;
@@ -365,6 +416,8 @@ namespace engine_sound
             float sample_rate = 48000.0f;
             std::vector<cylinder> cylinders;
             std::vector<exhaust_bank> banks;
+            pipe intake_runner;
+            float intake_resonance_hz = 300.0f;
             int   next_event      = 0;
             float crank_angle     = 0.0f;
             float pulse_width_deg = 120.0f;
@@ -383,16 +436,21 @@ namespace engine_sound
                 int n     = std::clamp(config.cylinder_count, 1, tuning::max_cylinders);
                 int nb    = std::clamp(config.bank_count, 1, 2);
                 float spacing = 720.0f / static_cast<float>(n);
-                float beta    = config.bank_angle_deg;
-
-                // only the classic ninety degree v6 and the v twin keep their uneven crank timing,
-                // every other v engine offsets its pins to fire evenly
-                odd_fire = nb == 2 && ((n == 6 && fabsf(beta - 90.0f) < 15.0f) || n == 2);
-                float odd_offset = 0.0f;
-                if (odd_fire)
+                float interval_sum = 0.0f;
+                bool explicit_timing = true;
+                for (int k = 0; k < n; k++)
                 {
-                    odd_offset = beta - spacing * std::round(beta / spacing);
+                    float interval = config.firing_intervals_deg[k];
+                    explicit_timing &= std::isfinite(interval) && interval >= 1.0f;
+                    interval_sum += interval;
                 }
+                explicit_timing &= fabsf(interval_sum - 720.0f) < 0.1f;
+                odd_fire = false;
+                float event_angle = 0.0f;
+                float runner_length = config.intake_runner_length_m > 0.0f ? config.intake_runner_length_m : 0.08f + config.stroke_mm * 0.003f;
+                runner_length = std::clamp(runner_length, 0.08f, 2.0f);
+                intake_resonance_hz = 343.0f / (4.0f * runner_length);
+                intake_runner.configure(runner_length, 343.0f, -0.42f, 4500.0f, sample_rate);
 
                 float cc_per_cylinder = config.displacement_l * 1000.0f / static_cast<float>(n);
                 pulse_energy   = std::clamp(0.35f + 0.75f * (cc_per_cylinder / 500.0f), 0.4f, 1.6f);
@@ -402,7 +460,7 @@ namespace engine_sound
                 float bore_stroke = config.bore_mm / std::max(config.stroke_mm, 1.0f);
                 pulse_width_deg   = 140.0f - 40.0f * clamp01((bore_stroke - 0.85f) / 0.5f);
                 redline_factor    = clamp01((config.redline_rpm - 6000.0f) / 4000.0f);
-                rasp_base         = 0.25f + 0.25f * redline_factor + 0.2f * config.engine_stage;
+                rasp_base         = 0.018f + 0.025f * redline_factor + 0.02f * config.engine_stage;
                 openness          = std::clamp(1.1f - config.muffler_level, 0.1f, 1.0f);
 
                 float primary_loss_hz = 3500.0f + 3500.0f * redline_factor;
@@ -424,15 +482,12 @@ namespace engine_sound
 
                     cylinder& c  = cylinders[static_cast<size_t>(k)];
                     c.bank       = bank;
-                    c.fire_angle = static_cast<float>(k) * spacing;
-                    if (odd_fire && bank == 1)
-                    {
-                        c.fire_angle += odd_offset;
-                    }
-                    // manufacturing spread, no two cylinders breathe alike
-                    c.fire_angle += 0.6f * seed_rng.bipolar();
-                    c.fire_angle  = fmodf(c.fire_angle + 720.0f, 720.0f);
-                    c.imbalance   = 1.0f + 0.07f * seed_rng.bipolar();
+                    c.fire_angle = event_angle;
+                    float interval = explicit_timing ? config.firing_intervals_deg[k] : spacing;
+                    odd_fire |= fabsf(interval - spacing) > 0.1f;
+                    event_angle += interval;
+                    // A fixed crank geometry with small cylinder pressure differences.
+                    c.imbalance = 1.0f + config.combustion_variation * seed_rng.bipolar();
 
                     float length = config.primary_length_m * (1.0f + 0.04f * seed_rng.bipolar());
                     c.primary.configure(length, sound_speed_primary, -primary_feedback, primary_loss_hz, sample_rate);
@@ -456,6 +511,8 @@ namespace engine_sound
                     bank.collector.configure(collector_len, sound_speed_collector, 0.35f, collector_loss, sample_rate);
                     bank.can.configure(config.muffler_level, config.displacement_l, sample_rate);
                     bank.tailpipe.configure(config.tailpipe_length_m, sound_speed_tailpipe, 0.28f, 3500.0f, sample_rate);
+                    // Keep the bass cutoff in Hz when the internal sample rate changes.
+                    bank.dc.r = expf(-two_pi * 18.0f / sample_rate);
                     bank.pop_decay = expf(-1.0f / ((0.005f + 0.004f * openness) * sample_rate));
                 }
 
@@ -465,6 +522,7 @@ namespace engine_sound
 
             void reset()
             {
+                intake_runner.reset();
                 for (cylinder& c : cylinders)
                 {
                     c.pulse_phase = 1.0e9f;
@@ -491,7 +549,8 @@ namespace engine_sound
                 float v = (x - 0.45f) / 0.32f;
                 r = v * v * expf(2.0f * (1.0f - v));
             }
-            return p - 0.35f * r;
+            // Bring the tail to zero continuously instead of cutting the rarefaction.
+            return (p - 0.35f * r) * (1.0f - smoothstep(1.6f, pulse_window, x));
         }
 
         bool write_wav(const char* path, const float* interleaved, int frames, int sample_rate)
@@ -564,7 +623,12 @@ namespace engine_sound
             collector_length_m == other.collector_length_m &&
             tailpipe_length_m == other.tailpipe_length_m &&
             muffler_level == other.muffler_level &&
+            intake_runner_length_m == other.intake_runner_length_m &&
+            intake_valve_duration_deg == other.intake_valve_duration_deg &&
+            combustion_variation == other.combustion_variation &&
+            crank_inertia == other.crank_inertia &&
             turbo_enabled == other.turbo_enabled &&
+            turbo_bypass_valve == other.turbo_bypass_valve &&
             boost_max_pressure == other.boost_max_pressure &&
             boost_wastegate_rpm == other.boost_wastegate_rpm &&
             engine_stage == other.engine_stage &&
@@ -577,7 +641,7 @@ namespace engine_sound
         }
         for (int i = 0; i < tuning::max_cylinders; i++)
         {
-            if (firing_order[i] != other.firing_order[i] || cylinder_bank[i] != other.cylinder_bank[i])
+            if (firing_order[i] != other.firing_order[i] || cylinder_bank[i] != other.cylinder_bank[i] || firing_intervals_deg[i] != other.firing_intervals_deg[i])
             {
                 return false;
             }
@@ -597,7 +661,9 @@ namespace engine_sound
 
         void initialize(int sample_rate)
         {
-            m_sample_rate = static_cast<float>(sample_rate);
+            m_output_sample_rate = static_cast<float>(std::clamp(sample_rate, 8000, 192000));
+            m_sample_rate = m_output_sample_rate * oversampling;
+            m_decimator.initialize();
 
             m_rpm_smooth.set_cutoff(25.0f, m_sample_rate);
             m_throttle_smooth.set_cutoff(15.0f, m_sample_rate);
@@ -607,10 +673,14 @@ namespace engine_sound
             m_pulse_env_smooth.set_cutoff(400.0f, m_sample_rate);
             for (int i = 0; i < 4; i++)
             {
-                m_view_weight_smooth[i].set_cutoff(4.0f, m_sample_rate);
+                m_view_weight_smooth[i].set_cutoff(4.0f, m_sample_rate / control_interval);
+                m_view_weight_smooth[i].reset(m_view_weight[i]);
             }
-            m_body_cutoff_smooth.set_cutoff(4.0f, m_sample_rate);
-            m_cabin_gain_smooth.set_cutoff(4.0f, m_sample_rate);
+            m_body_cutoff_smooth.set_cutoff(4.0f, m_sample_rate / control_interval);
+            m_body_cutoff_smooth.reset(16000.0f);
+            m_cabin_gain_smooth.set_cutoff(4.0f, m_sample_rate / control_interval);
+            m_combustion_noise.set_cutoff(3500.0f, m_sample_rate);
+            m_master_smooth.set_cutoff(30.0f, m_sample_rate);
 
             m_intake_bp.set_bandpass(500.0f, 0.7f, m_sample_rate);
             m_intake_honk.set_bandpass(220.0f, 4.0f, m_sample_rate);
@@ -637,11 +707,10 @@ namespace engine_sound
 
             {
                 std::lock_guard<std::mutex> lock(m_model_mutex);
-                if (!m_model)
-                {
-                    m_model = std::make_unique<engine_model>();
-                    m_model->build(engine_config(), m_sample_rate);
-                }
+                engine_config config = m_model ? m_model->config : engine_config();
+                m_model = std::make_unique<engine_model>();
+                m_model->build(config, m_sample_rate);
+                if (m_pending) m_pending->build(m_pending->config, m_sample_rate);
             }
 
             m_initialized.store(true, std::memory_order_release);
@@ -660,10 +729,10 @@ namespace engine_sound
 
         void set_parameters(float rpm, float throttle, float load, float boost, bool fuel_cut, int gear, bool shifting, listener_view view)
         {
-            m_target_rpm.store(std::max(rpm, 0.0f), std::memory_order_relaxed);
-            m_target_throttle.store(clamp01(throttle), std::memory_order_relaxed);
-            m_target_load.store(clamp01(load), std::memory_order_relaxed);
-            m_target_boost.store(std::max(boost, 0.0f), std::memory_order_relaxed);
+            m_target_rpm.store(std::isfinite(rpm) ? std::clamp(rpm, 0.0f, 30000.0f) : 0.0f, std::memory_order_relaxed);
+            m_target_throttle.store(std::isfinite(throttle) ? clamp01(throttle) : 0.0f, std::memory_order_relaxed);
+            m_target_load.store(std::isfinite(load) ? clamp01(load) : 0.0f, std::memory_order_relaxed);
+            m_target_boost.store(std::isfinite(boost) ? std::clamp(boost, 0.0f, 10.0f) : 0.0f, std::memory_order_relaxed);
             m_fuel_cut.store(fuel_cut, std::memory_order_relaxed);
             m_gear.store(gear, std::memory_order_relaxed);
             m_shifting.store(shifting, std::memory_order_relaxed);
@@ -672,8 +741,9 @@ namespace engine_sound
 
         void generate(float* output_buffer, int num_samples, bool stereo)
         {
+            if (!output_buffer || num_samples <= 0) return;
             const int total = stereo ? num_samples * 2 : num_samples;
-            if (!m_initialized.load(std::memory_order_acquire) || num_samples <= 0)
+            if (!m_initialized.load(std::memory_order_acquire))
             {
                 std::fill(output_buffer, output_buffer + total, 0.0f);
                 return;
@@ -725,7 +795,7 @@ namespace engine_sound
             float sum_out = 0.0f, peak = 0.0f;
             float bank_out[2] = { 0.0f, 0.0f };
 
-            for (int i = 0; i < num_samples; i++)
+            for (int sample = 0; sample < num_samples * oversampling; sample++)
             {
                 // controls
                 const float rpm       = m_rpm_smooth.process(target_rpm);
@@ -741,7 +811,11 @@ namespace engine_sound
                 }
 
                 // crank
-                const float deg_per_sample = rpm / 60.0f * 360.0f * dt;
+                // Small torsional speed ripple from successive power strokes; the
+                // simulation's flywheel inertia damps it, without changing mean RPM.
+                float crank_ripple = sinf(model.crank_angle * pi / 360.0f * static_cast<float>(cfg.cylinder_count));
+                float ripple_amount = std::min(0.008f, 0.0006f / std::max(cfg.crank_inertia, 0.01f)) * (1.0f - 0.7f * rpm_norm);
+                const float deg_per_sample = rpm * (1.0f + crank_ripple * ripple_amount * load) * 6.0f * dt;
                 model.crank_angle += deg_per_sample;
                 const int n = static_cast<int>(model.cylinders.size());
                 for (int guard = 0; guard < n; guard++)
@@ -762,7 +836,9 @@ namespace engine_sound
 
                 // cylinders into their runners
                 const float white = m_noise.bipolar();
+                const float combustion_noise = m_combustion_noise.process(white);
                 float pulse_env = 0.0f;
+                float induction_pulses = 0.0f;
                 int nb = static_cast<int>(model.banks.size());
                 float bank_in[2] = { 0.0f, 0.0f };
                 for (cylinder& c : model.cylinders)
@@ -773,11 +849,18 @@ namespace engine_sound
                         float x = c.pulse_phase / model.pulse_width_deg;
                         float shape = blowdown_shape(x, c.pulse_sharp);
                         float positive = std::max(shape, 0.0f);
-                        excitation = c.pulse_amp * (shape + c.rasp_amp * positive * white);
+                        excitation = c.pulse_amp * (shape + c.rasp_amp * positive * combustion_noise);
                         pulse_env += positive * c.pulse_amp;
                         c.pulse_phase += deg_per_sample;
                     }
                     bank_in[c.bank] += c.primary.process(excitation);
+                    float intake_angle = fmodf(model.crank_angle - c.fire_angle + 1800.0f, 720.0f);
+                    float duration = std::clamp(cfg.intake_valve_duration_deg, 120.0f, 320.0f);
+                    if (intake_angle < duration)
+                    {
+                        float valve = sinf(pi * intake_angle / duration);
+                        induction_pulses += valve * valve * c.imbalance;
+                    }
                 }
                 const float pulse_env_smooth = m_pulse_env_smooth.process(pulse_env);
 
@@ -819,8 +902,10 @@ namespace engine_sound
                 // induction roar, gulps of air at the firing rate through a throttle plate
                 float intake = 0.0f;
                 {
-                    float breath = m_intake_bp.process(white) * (0.55f + 0.45f * std::min(pulse_env_smooth * 2.0f, 1.0f));
-                    breath += m_intake_honk.process(breath) * 0.8f * cfg.intake_stage;
+                    float flow = induction_pulses * sqrtf(6.0f / static_cast<float>(n));
+                    float breath = model.intake_runner.process(flow);
+                    breath += m_intake_honk.process(breath) * (0.6f + 0.8f * cfg.intake_stage);
+                    breath += m_intake_bp.process(white) * 0.045f * std::min(pulse_env_smooth, 1.0f);
                     breath = m_intake_hp.process(breath);
                     float gain = powf(throttle, 1.4f) * (0.3f + 0.7f * rpm_norm) * (0.25f + 0.75f * cfg.intake_stage);
                     intake = breath * gain * 0.4f * p.intake_level * m_view_weight[1];
@@ -846,7 +931,7 @@ namespace engine_sound
                     {
                         m_whistle_phase2 -= two_pi;
                     }
-                    float whistle = sinf(m_whistle_phase) * 0.6f + sinf(m_whistle_phase2) * 0.25f + m_whistle_bp.process(white) * 2.5f;
+                    float whistle = sinf(m_whistle_phase) * 0.6f + sinf(m_whistle_phase2) * 0.15f + m_whistle_bp.process(white) * 0.18f;
                     float whistle_gain = powf(shaft, 2.5f) * (0.35f + 0.65f * boost_norm) * (0.5f + 0.5f * cfg.turbo_stage) * (0.4f + 0.6f * throttle);
 
                     m_flutter_phase += two_pi * 27.0f * dt;
@@ -898,7 +983,7 @@ namespace engine_sound
                         m_tick_phase -= 1.0f;
                         m_tick_env = 0.6f + 0.4f * m_noise.uniform();
                     }
-                    float tick = m_tick_hp.process(white) * m_tick_env;
+                    float tick = m_tick_hp.process(white) * m_tick_env * 0.3f;
                     m_tick_env *= m_tick_decay;
                     float tick_gain = (0.9f - 0.6f * load) * (1.0f - 0.5f * rpm_norm) * 0.06f;
 
@@ -929,16 +1014,25 @@ namespace engine_sound
 
                 // a short cross delay widens the exhaust without smearing the pulses
                 m_width_delay.write(side);
-                float wide = side * 0.7f + m_width_delay.read(14.0f) * 0.3f;
+                float wide = side * 0.7f + m_width_delay.read(14.0f * m_sample_rate / 48000.0f) * 0.3f;
 
-                float out_l = (mono + wide) * p.master_gain;
-                float out_r = (mono - wide) * p.master_gain;
+                // A stopped engine is silent, including its intake and turbo layers.
+                m_model_gain = std::clamp(m_model_gain + (m_model_fading_out ? -dt : dt) / 0.012f, 0.0f, 1.0f);
+                float gain = m_master_smooth.process(p.master_gain) * smoothstep(40.0f, 300.0f, rpm) * m_model_gain;
+                float out_l = (mono + wide) * gain;
+                float out_r = (mono - wide) * gain;
 
                 float loud = std::max(fabsf(out_l), fabsf(out_r));
                 m_limiter_env = std::max(loud, m_limiter_env * m_limiter_release);
                 float limiter_gain = m_limiter_env > 0.85f ? 0.85f / m_limiter_env : 1.0f;
                 out_l = tanhf(out_l * limiter_gain * 1.15f) * 0.87f;
                 out_r = tanhf(out_r * limiter_gain * 1.15f) * 0.87f;
+
+                m_decimator.push(out_l, out_r);
+                if ((sample % oversampling) != oversampling - 1) continue;
+                const int i = sample / oversampling;
+                out_l = m_decimator.read(0);
+                out_r = m_decimator.read(1);
 
                 if (stereo)
                 {
@@ -958,7 +1052,7 @@ namespace engine_sound
                 sum_mech    += mech * mech;
                 sum_pop     += pop_mono * pop_mono;
                 sum_out     += out_mono * out_mono;
-                peak = std::max(peak, loud);
+                peak = std::max(peak, std::max(fabsf(out_l), fabsf(out_r)));
                 m_debug.waveform[m_debug.waveform_write_pos] = out_mono;
                 m_debug.waveform_write_pos = (m_debug.waveform_write_pos + 1) % debug_data::waveform_size;
                 m_debug.limiter_gain = limiter_gain;
@@ -997,6 +1091,7 @@ namespace engine_sound
 
         void reset()
         {
+            m_model_gain = 0.0f;
             swap_in_pending_model();
             if (m_model)
             {
@@ -1020,6 +1115,29 @@ namespace engine_sound
             m_output_hp.reset();
             m_side_lp.reset();
             m_width_delay.clear();
+            m_decimator.reset();
+            m_combustion_noise.reset();
+            m_master_smooth.reset();
+            m_noise.seed(0xA5A5F00Du);
+            m_event_rng.seed(0x1234ABCDu);
+            m_control_counter = 0;
+            m_whistle_phase = m_whistle_phase2 = m_flutter_phase = 0.0f;
+            m_tick_phase = m_whine_phase = m_surge_phase = 0.0f;
+            m_bov_freq = 3000.0f;
+            m_surge_rate = 24.0f;
+            m_lift_armed = false;
+            const float chase[4] = { 1.0f, 0.45f, 0.55f, 0.3f };
+            for (int i = 0; i < 4; i++)
+            {
+                m_view_weight[i] = chase[i];
+                m_view_weight_smooth[i].reset(chase[i]);
+            }
+            m_body_cutoff_smooth.reset(16000.0f);
+            m_cabin_gain_smooth.reset();
+            m_debug = debug_data();
+            m_debug.initialized = is_initialized();
+            m_dump_active = false;
+            m_dump_total = m_dump_progress = 0;
             m_limiter_env    = 0.0f;
             m_tick_env       = 0.0f;
             m_bov_env        = 0.0f;
@@ -1028,7 +1146,6 @@ namespace engine_sound
             m_prev_shifting  = false;
             m_flutter_amount = 0.0f;
             m_lift_time      = 10.0f;
-            m_prev_throttle  = 0.0f;
         }
 
         bool is_initialized() const
@@ -1048,11 +1165,11 @@ namespace engine_sound
 
         bool begin_dump(float seconds)
         {
-            if (m_dump_active || seconds <= 0.0f)
+            if (m_dump_active || !std::isfinite(seconds) || seconds <= 0.0f || seconds > 120.0f)
             {
                 return false;
             }
-            m_dump_total    = static_cast<int>(seconds * m_sample_rate);
+            m_dump_total    = static_cast<int>(seconds * m_output_sample_rate);
             m_dump_progress = 0;
             m_dump_buffer.assign(static_cast<size_t>(m_dump_total) * 2, 0.0f);
             m_debug.dump_total    = m_dump_total;
@@ -1073,7 +1190,7 @@ namespace engine_sound
             {
                 return false;
             }
-            bool result = write_wav(path, m_dump_buffer.data(), m_dump_total, static_cast<int>(m_sample_rate));
+            bool result = write_wav(path, m_dump_buffer.data(), m_dump_total, static_cast<int>(m_output_sample_rate));
             m_dump_buffer.clear();
             m_dump_total    = 0;
             m_dump_progress = 0;
@@ -1089,6 +1206,14 @@ namespace engine_sound
             std::lock_guard<std::mutex> lock(m_model_mutex);
             if (m_pending)
             {
+                // Empty pipe buffers must not replace a ringing engine at full gain.
+                // Fade down first, install between blocks, then fade back up.
+                if (m_model_gain > 0.0f)
+                {
+                    m_model_fading_out = true;
+                    return;
+                }
+                m_model_fading_out = false;
                 m_retired = std::move(m_model);
                 m_model   = std::move(m_pending);
                 if (m_retired)
@@ -1121,14 +1246,14 @@ namespace engine_sound
             bool cut = fuel_cut && m_event_rng.uniform() < 0.75f;
             float load_amp = 0.18f + 0.82f * load;
             // idle is lumpy, full throttle is steady
-            float jitter = 1.0f + 0.10f * m_event_rng.bipolar() * (1.0f - 0.6f * load);
+            float jitter = 1.0f + model.config.combustion_variation * m_event_rng.bipolar() * (1.0f - 0.6f * load);
             float boost_amp = 1.0f + 0.5f * boost_norm;
             c.pulse_amp   = cut ? 0.06f * model.pulse_energy : model.pulse_energy * load_amp * boost_amp * c.imbalance * jitter;
             c.pulse_sharp = model.sharpness_base + 1.5f * load + 0.6f * boost_norm;
             c.rasp_amp    = model.rasp_base * p.rasp * (0.25f + 0.75f * load) * (0.4f + 0.6f * rpm_norm);
 
             // raw charge meeting a hot pipe lights off behind the head
-            if (cut && m_event_rng.uniform() < 0.35f)
+            if (cut && m_event_rng.uniform() < 0.12f * clamp01(p.pop_rate))
             {
                 trigger_pop(model, c.bank, 0.6f + 0.6f * m_event_rng.uniform());
             }
@@ -1157,7 +1282,17 @@ namespace engine_sound
             m_side_lp.set_cutoff(std::min(cutoff, 6000.0f), m_sample_rate);
 
             m_intake_bp.set_bandpass(250.0f + 900.0f * rpm_norm, 0.7f, m_sample_rate);
-            m_intake_honk.set_bandpass(160.0f + 140.0f * cfg.intake_stage + 60.0f * rpm_norm, 4.0f, m_sample_rate);
+            m_intake_honk.set_bandpass(model.intake_resonance_hz * (1.0f + 0.15f * cfg.intake_stage), 2.0f, m_sample_rate);
+
+            // Hysteresis survives smoothed controls: a release crosses these
+            // thresholds over many control updates, never in a single step.
+            if (throttle > 0.45f) m_lift_armed = true;
+            bool lift = m_lift_armed && throttle < 0.2f;
+            if (lift)
+            {
+                m_lift_armed = false;
+                m_lift_time = 0.0f;
+            }
 
             if (cfg.turbo_enabled)
             {
@@ -1167,14 +1302,13 @@ namespace engine_sound
                 m_bov_bp.set_bandpass(m_bov_freq, 1.5f, m_sample_rate);
 
                 // lift off or a shift with the manifold pressurised vents the compressor
-                bool lift        = m_prev_throttle > 0.45f && throttle < 0.2f;
                 bool shift_start = shifting && !m_prev_shifting;
                 if ((lift || shift_start) && boost_norm > 0.25f && m_surge_env < 0.3f)
                 {
                     float charge = clamp01(boost_norm);
-                    m_bov_env     = charge * (0.5f + 0.3f * cfg.turbo_stage);
+                    m_bov_env     = cfg.turbo_bypass_valve ? charge * (0.35f + 0.25f * cfg.turbo_stage) : 0.0f;
                     m_bov_freq    = 3200.0f + 800.0f * cfg.turbo_stage;
-                    m_surge_env   = charge * (0.7f + 0.3f * cfg.turbo_stage);
+                    m_surge_env   = cfg.turbo_bypass_valve ? 0.0f : charge * (0.7f + 0.3f * cfg.turbo_stage);
                     m_surge_rate  = 24.0f + 10.0f * charge;
                     m_surge_phase = 0.0f;
                     m_surge_burst = 1.0f;
@@ -1187,10 +1321,6 @@ namespace engine_sound
             }
 
             // overrun, a closed throttle at speed keeps feeding a hot pipe
-            if (throttle < 0.1f && m_prev_throttle >= 0.3f)
-            {
-                m_lift_time = 0.0f;
-            }
             m_lift_time += block_dt;
             if (throttle < 0.1f && (fuel_cut || rpm_norm > 0.3f))
             {
@@ -1201,11 +1331,15 @@ namespace engine_sound
                     trigger_pop(model, bank, 0.8f + 0.8f * m_event_rng.uniform());
                 }
             }
-            m_prev_throttle = throttle;
             (void)load;
         }
 
         float m_sample_rate = static_cast<float>(tuning::sample_rate);
+        float m_output_sample_rate = static_cast<float>(tuning::sample_rate);
+        decimator m_decimator;
+        float m_model_gain = 0.0f;
+        bool m_model_fading_out = false;
+        bool m_lift_armed = false;
         std::atomic<bool> m_initialized { false };
         engine_config m_default_config;
 
@@ -1229,6 +1363,8 @@ namespace engine_sound
         one_pole m_boost_smooth;
         one_pole m_shaft_smooth;
         one_pole m_pulse_env_smooth;
+        one_pole m_combustion_noise;
+        one_pole m_master_smooth;
         one_pole m_view_weight_smooth[4];
         one_pole m_body_cutoff_smooth;
         one_pole m_cabin_gain_smooth;
@@ -1271,7 +1407,6 @@ namespace engine_sound
         float m_limiter_env    = 0.0f;
         float m_limiter_release = 0.999f;
         float m_lift_time      = 10.0f;
-        float m_prev_throttle  = 0.0f;
 
         rng m_noise;
         rng m_event_rng;

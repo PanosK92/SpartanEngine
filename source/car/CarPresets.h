@@ -73,6 +73,11 @@ namespace car
         float tie_rod_z                  = -0.14f;
         float link_spread_y              = 0.16f;
         float link_spread_z              = 0.22f;
+        // Optional wheel-centred hardpoints in metres at design ride height.
+        // Author the left corner (X left, Y up, Z forward); right mirrors X.
+        // Four inboard/outboard pairs, then toe inner/outer and shock top/bottom.
+        bool explicit_hardpoints = false;
+        float hardpoints[12][3] = {};
     };
 
     struct assist_settings
@@ -130,6 +135,9 @@ namespace car
             exhaust_collector_length_m = 2.0f;
             exhaust_tailpipe_length_m = 0.6f;
             exhaust_muffler_level = 1.0f;
+            intake_valve_duration_deg = 220.0f;
+            engine_combustion_variation = 0.025f;
+            turbo_bypass_valve = true;
             for (int i = 0; i < max_engine_cylinders; i++)
             {
                 engine_firing_order[i] = static_cast<float>(i);
@@ -150,6 +158,28 @@ namespace car
             tire_probe_arc = 0.32f;
             tire_crown_drop = 0.004f;
             tire_substeps = 4;
+            tire_surface_heat_capacity = 1800.0f;
+            tire_core_heat_capacity = 12000.0f;
+            tire_surface_core_conductance = 60.0f;
+            tire_heat_transfer_static = 8.0f;
+            tire_heat_transfer_airflow = 2.0f;
+            brake_specific_heat = 500.0f;
+            tire_pressure_reference_temp = 20.0f;
+            tire_damage_energy = 2000000.0f;
+            tire_damage_temp = 180.0f;
+            tire_hydroplaning_speed = 28.0f;
+            underfloor_y = -0.45f;
+            battery_capacity_kwh = 1.5f;
+            battery_initial_soc = 0.8f;
+            motor_efficiency = 0.94f;
+            battery_efficiency = 0.97f;
+            battery_heat_capacity = 45000.0f;
+            battery_cooling = 40.0f;
+            battery_derate_temp = 55.0f;
+            battery_cutoff_temp = 75.0f;
+            engine_stall_rpm = 400.0f;
+            starter_torque = 100.0f;
+            yaw_control_gain = 6.0f;
             bushing_stiffness_radial = 1.2e7f;
             bushing_stiffness_axial = 3.0e6f;
             bushing_damping = 8000.0f;
@@ -189,6 +219,27 @@ namespace car
         float inertia_xx;
         float inertia_yy;
         float inertia_zz;
+        // Tensor entries about the specified COM, actor axes X right/Y up/Z forward.
+        // False preserves legacy sprung-chassis semantics. True subtracts all
+        // mechanism tensors and parallel-axis terms from the assembled target.
+        bool inertia_is_assembled;
+        float inertia_xy, inertia_xz, inertia_yz;
+        char calibration_id[64];
+        // Piecewise-linear measured-data interfaces. Empty maps use legacy
+        // analytic coefficients; endpoints clamp, never extrapolate.
+        float engine_map_rpm[16], engine_map_torque[16];
+        int engine_map_count;
+        float aero_speed_x[16], aero_speed_scale[16]; int aero_speed_count;
+        float aero_height_x[16], aero_height_scale[16]; int aero_height_count;
+        float aero_pitch_x[16], aero_front_scale[16], aero_rear_scale[16]; int aero_pitch_count;
+        float aero_yaw_x[16], aero_yaw_scale[16], aero_drag_scale[16]; int aero_yaw_count;
+        float underfloor_y;
+        float tire_pressure_reference_temp, tire_damage_energy, tire_damage_temp, tire_hydroplaning_speed;
+        float battery_capacity_kwh, battery_initial_soc, motor_efficiency, battery_efficiency;
+        float battery_heat_capacity, battery_cooling, battery_derate_temp, battery_cutoff_temp, regen_power_kw;
+        float engine_stall_rpm, starter_torque;
+        bool yaw_control_enabled;
+        float yaw_control_gain;
         assist_settings assists;
         validation_targets validation;
 
@@ -219,6 +270,11 @@ namespace car
         float exhaust_tailpipe_length_m;
         // one is a quiet stock muffler, zero is a straight pipe
         float exhaust_muffler_level;
+        float intake_runner_length_m; // m, zero derives from stroke
+        float intake_valve_duration_deg; // crank degrees
+        float engine_combustion_variation; // fractional cycle pressure variation
+        bool turbo_bypass_valve; // false permits compressor surge on lift
+        float engine_firing_intervals_deg[max_engine_cylinders]; // zero means even firing; otherwise sum to 720
         float engine_firing_order[max_engine_cylinders];
         float engine_cylinder_bank[max_engine_cylinders];
 
@@ -248,10 +304,11 @@ namespace car
         float brake_optimal_temp;
         float brake_fade_temp;
         float brake_max_temp;
-        float brake_heat_coefficient;
+        float brake_heat_coefficient; // legacy XML compatibility; use mass * specific_heat
         float brake_cooling_base;
         float brake_cooling_airflow;
         float brake_thermal_mass;
+        float brake_specific_heat; // J/(kg K), thermal_mass is disc mass in kg
 
         // input: rise-rate (exp) for pedal inputs - release is always instantaneous
         // (presses smooth up, lift-offs snap down)
@@ -304,13 +361,18 @@ namespace car
         float tire_pressure_optimal;     // bar, ideal operating pressure
 
         // tire thermals
+        float tire_surface_heat_capacity;     // J/K, all three surface zones combined
+        float tire_core_heat_capacity;        // J/K
+        float tire_surface_core_conductance;  // W/K, all three zones combined
+        float tire_heat_transfer_static;      // W/K to surroundings
+        float tire_heat_transfer_airflow;     // W/(K m/s)
         float tire_ambient_temp;
         float tire_optimal_temp;
         float tire_temp_range;
-        float tire_heat_from_slip;
-        float tire_heat_from_rolling;
-        float tire_cooling_rate;
-        float tire_cooling_airflow;
+        float tire_heat_from_slip;    // legacy XML compatibility, no longer used
+        float tire_heat_from_rolling; // legacy XML compatibility, no longer used
+        float tire_cooling_rate;      // legacy XML compatibility, no longer used
+        float tire_cooling_airflow;   // legacy XML compatibility, no longer used
         float tire_grip_temp_factor;
         float tire_min_temp;
         float tire_max_temp;
@@ -318,8 +380,8 @@ namespace car
         float tire_wear_rate;
         float tire_wear_heat_mult;
         float tire_grip_wear_loss;
-        float tire_core_transfer_rate;   // heat transfer rate between surface and core
-        float tire_surface_response;     // surface temperature response multiplier (flash heat)
+        float tire_core_transfer_rate;   // legacy XML compatibility, use conductance
+        float tire_surface_response;     // legacy XML compatibility, use heat capacity
 
         // contact patch sampling, rows spread across the tread and columns along the arc so the
         // wheel spans a bump instead of dropping into it and one shoulder can carry more than another

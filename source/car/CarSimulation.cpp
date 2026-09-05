@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============
 #include "pch.h"
 #include "CarSimulation.h"
+#include <physx/cooking/PxCooking.h>
 //=======================
 
 namespace car
@@ -539,7 +540,7 @@ namespace car
             tire_condition_modifiers modifiers;
             float temperature_range = PxMax(spec.tire_temp_range, 1.0f);
             float core_deviation = PxClamp(fabsf(core_temperature - spec.tire_optimal_temp) / temperature_range, 0.0f, 1.5f);
-            float pressure_ratio = PxClamp(spec.tire_pressure / PxMax(spec.tire_pressure_optimal, 0.1f), 0.6f, 1.4f);
+            float pressure_ratio = PxClamp(hot_tire_pressure(spec, core_temperature, 0) / PxMax(spec.tire_pressure_optimal, 0.1f), 0.6f, 1.4f);
             float pressure_error = pressure_ratio - 1.0f;
             float pressure_grip = PxClamp(1.0f - pressure_error * pressure_error * 0.45f, 0.75f, 1.0f);
             float pressure_stiffness = powf(pressure_ratio, 0.55f);
@@ -820,13 +821,21 @@ namespace car
                 yaw_angle = acosf(fabsf(cos_yaw));
             }
 
-            float front_compression = (wheels[front_left].compression + wheels[front_right].compression) * 0.5f;
-            float rear_compression  = (wheels[rear_left].compression + wheels[rear_right].compression) * 0.5f;
-            float pitch_angle = (rear_compression - front_compression) * cfg.suspension_travel / PxMax(cfg.wheelbase, 0.1f);
-
-            // ride height estimates the current underbody gap
-            float avg_compression = (front_compression + rear_compression) * 0.5f;
-            float ride_height = cfg.suspension_height - avg_compression * cfg.suspension_travel;
+            // Measure the underfloor gap in metres at both axle stations.
+            // Suspension compression includes preload and is not a ride height.
+            PxQueryFilterData filter; filter.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC | PxQueryFlag::ePREFILTER;
+            self_filter.ignore = body;
+            auto floor_gap = [&](float z) {
+                PxVec3 floor = pose.transform(PxVec3(0, spec.underfloor_y, z));
+                PxRaycastBuffer hit;
+                if (body->getScene()->raycast(floor + local_up * 0.5f, -local_up, 3.5f, hit, PxHitFlag::eDEFAULT, filter, &self_filter))
+                    return PxMax(hit.block.distance - 0.5f, 0.0f);
+                return 3.0f;
+            };
+            float front_gap = floor_gap(cfg.wheelbase * 0.5f), rear_gap = floor_gap(-cfg.wheelbase * 0.5f);
+            float ride_height = (front_gap + rear_gap) * 0.5f;
+            float pitch_angle = atan2f(front_gap - rear_gap, cfg.wheelbase);
+            float speed_scale = sample_curve(spec.aero_speed_x, spec.aero_speed_scale, spec.aero_speed_count, speed, 1);
 
             // speed threshold avoids normalizing zero velocity
             PxVec3 drag_force_vec(0);
@@ -841,6 +850,7 @@ namespace car
                     yaw_drag_factor = 1.0f + yaw_factor * (spec.yaw_drag_multiplier - 1.0f);
                 }
 
+                yaw_drag_factor = sample_curve(spec.aero_yaw_x, spec.aero_drag_scale, spec.aero_yaw_count, yaw_angle, yaw_drag_factor);
                 drag_force_vec = -vel.getNormalized() * base_drag * yaw_drag_factor;
                 safe_add_force(body, drag_force_vec);
             }
@@ -898,6 +908,17 @@ namespace car
                     yaw_downforce_factor = PxMax(0.3f, 1.0f - sinf(yaw_angle) * 0.7f);
                 }
 
+                if (spec.aero_height_count > 0 && spec.ground_effect_enabled)
+                    ground_effect_factor = sample_curve(spec.aero_height_x, spec.aero_height_scale, spec.aero_height_count, ride_height, 1);
+                if (spec.aero_pitch_count > 0 && spec.pitch_aero_enabled)
+                {
+                    front_cl = spec.lift_coeff_front * sample_curve(spec.aero_pitch_x, spec.aero_front_scale, spec.aero_pitch_count, pitch_angle, 1);
+                    rear_cl = spec.lift_coeff_rear * sample_curve(spec.aero_pitch_x, spec.aero_rear_scale, spec.aero_pitch_count, pitch_angle, 1);
+                    if (spec.drs_enabled && drs_active) rear_cl *= spec.drs_rear_cl_factor;
+                }
+                if (spec.aero_yaw_count > 0 && spec.yaw_aero_enabled)
+                    yaw_downforce_factor = sample_curve(spec.aero_yaw_x, spec.aero_yaw_scale, spec.aero_yaw_count, yaw_angle, 1);
+                dyn_pressure *= speed_scale;
                 float front_downforce = front_cl * dyn_pressure * spec.frontal_area * ground_effect_factor * yaw_downforce_factor;
                 float rear_downforce  = rear_cl  * dyn_pressure * spec.frontal_area * ground_effect_factor * yaw_downforce_factor;
 
@@ -910,7 +931,7 @@ namespace car
 
             // per-wheel rolling resistance: higher pressure = lower rr
             // fade through zero speed, a hard sign flip pushes a parked car with a constant force
-            float rr_pressure_scale = 1.0f + (1.0f - spec.tire_pressure / PxMax(spec.tire_pressure_optimal, 0.1f)) * 0.3f;
+            float rr_pressure_scale = PxMax(1.0f + (1.0f - spec.tire_pressure / PxMax(spec.tire_pressure_optimal, 0.1f)) * 0.3f, 0.0f);
             float rr_direction = -PxClamp(forward_speed / 0.5f, -1.0f, 1.0f);
             for (int i = 0; i < wheel_count; i++)
             {
@@ -957,7 +978,7 @@ namespace car
 
             PxTransform chassis_pose = body->getGlobalPose();
             PxVec3 chassis_angular_velocity = body->getAngularVelocity();
-            PxVec3 chassis_point_velocity = body->getLinearVelocity() + chassis_angular_velocity.cross(actor->getGlobalPose().p - chassis_pose.p);
+            PxVec3 chassis_point_velocity = body->getLinearVelocity() + chassis_angular_velocity.cross(actor->getGlobalPose().transform(actor->getCMassLocalPose().p) - chassis_pose.transform(body->getCMassLocalPose().p));
             state.linear_velocity = chassis_pose.q.rotateInv(actor->getLinearVelocity() - chassis_point_velocity);
             state.angular_velocity = chassis_pose.q.rotateInv(actor->getAngularVelocity() - chassis_angular_velocity);
             state.valid = true;
@@ -976,7 +997,7 @@ namespace car
             PxTransform chassis_pose = body->getGlobalPose();
             PxVec3 chassis_angular_velocity = body->getAngularVelocity();
             PxVec3 chassis_point_velocity = body->getLinearVelocity()
-                + chassis_angular_velocity.cross(actor->getGlobalPose().p - chassis_pose.p);
+                + chassis_angular_velocity.cross(actor->getGlobalPose().transform(actor->getCMassLocalPose().p) - chassis_pose.transform(body->getCMassLocalPose().p));
             actor->setLinearVelocity(
                 chassis_point_velocity + chassis_pose.q.rotate(state.linear_velocity));
             actor->setAngularVelocity(
@@ -1507,8 +1528,8 @@ namespace car
                 return;
             }
 
-            float body_mass = body->getMass();
-            float total_mass = body_mass;
+            float mechanism_mass = 0.0f;
+            PxTransform chassis_pose = body->getGlobalPose();
             PxVec3 mechanism_moment = PxVec3(0.0f);
             for (int i = 0; i < multibody.actor_count; i++)
             {
@@ -1519,16 +1540,72 @@ namespace car
                 }
                 float actor_mass = actor->getMass();
                 PxVec3 actor_center = actor->getGlobalPose().transform(actor->getCMassLocalPose().p);
-                total_mass += actor_mass;
-                mechanism_moment += actor_center * actor_mass;
+                mechanism_mass += actor_mass;
+                mechanism_moment += chassis_pose.transformInv(actor_center) * actor_mass;
             }
 
-            PxTransform chassis_pose = body->getGlobalPose();
+            // Optional/short shafts and mass floors make the pre-build estimate
+            // differ from the actors actually created. Reconcile the curb mass.
+            float body_mass = PxMax(cfg.mass - mechanism_mass, 100.0f);
+            float total_mass = body_mass + mechanism_mass;
             PxVec3 target_local(spec.center_of_mass_x, spec.center_of_mass_y, spec.center_of_mass_z);
-            PxVec3 target_world = chassis_pose.transform(target_local);
-            PxVec3 chassis_center_world = (target_world * total_mass - mechanism_moment) / PxMax(body_mass, 1.0f);
-            PxVec3 chassis_center_local = chassis_pose.transformInv(chassis_center_world);
+            PxVec3 chassis_center_local = (target_local * total_mass - mechanism_moment) / PxMax(body_mass, 1.0f);
             apply_chassis_mass_properties(body_mass, chassis_center_local);
+            if (has_authored_inertia() && spec.inertia_is_assembled)
+            {
+                PxMat33 desired(PxVec3(spec.inertia_xx, spec.inertia_xy, spec.inertia_xz),
+                    PxVec3(spec.inertia_xy, spec.inertia_yy, spec.inertia_yz), PxVec3(spec.inertia_xz, spec.inertia_yz, spec.inertia_zz));
+                PxMat33 remaining = desired - parallel_axis(body_mass, chassis_center_local - target_local);
+                for (int i = 0; i < multibody.actor_count; ++i)
+                    if (multibody.actors[i]) remaining -= actor_inertia_about(*multibody.actors[i], chassis_pose, target_local);
+                PxVec3 principal; PxQuat axes;
+                if (physical_inertia(remaining, principal, axes))
+                {
+                    body->setCMassLocalPose(PxTransform(chassis_center_local, axes));
+                    body->setMassSpaceInertiaTensor(principal);
+                }
+                else
+                {
+                    SP_LOG_ERROR("Assembled inertia is incompatible with mechanism mass distribution; deriving chassis inertia from shape");
+                    PxRigidBodyExt::setMassAndUpdateInertia(*body, body_mass, &chassis_center_local);
+                }
+            }
+    }
+
+
+    bool Simulation::export_chassis_hulls(const std::string& path) const
+    {
+        if (!body) return false;
+        FILE* output = nullptr; fopen_s(&output, path.c_str(), "w");
+        if (!output) return false;
+        fprintf(output, "hull,x,y,z\n");
+        std::vector<PxShape*> shapes(body->getNbShapes());
+        body->getShapes(shapes.data(), static_cast<PxU32>(shapes.size()));
+        int count = 0;
+        for (auto* shape : shapes)
+        {
+            if (shape->getGeometry().getType() != PxGeometryType::eCONVEXMESH) continue;
+            const auto& convex = static_cast<const PxConvexMeshGeometry&>(shape->getGeometry());
+            for (PxU32 i = 0; i < convex.convexMesh->getNbVertices(); ++i)
+            {
+                PxVec3 point = shape->getLocalPose().transform(convex.scale.transform(convex.convexMesh->getVertices()[i]));
+                fprintf(output, "%d,%.9g,%.9g,%.9g\n", count, point.x, point.y, point.z);
+            }
+            ++count;
+        }
+        fclose(output); return count > 0;
+    }
+
+
+    PxMat33 Simulation::get_assembled_inertia() const
+    {
+        if (!body) return PxMat33(PxZero);
+        PxTransform frame = body->getGlobalPose();
+        PxVec3 origin(spec.center_of_mass_x, spec.center_of_mass_y, spec.center_of_mass_z);
+        PxMat33 tensor = actor_inertia_about(*body, frame, origin);
+        for (int i = 0; i < multibody.actor_count; ++i)
+            if (multibody.actors[i]) tensor += actor_inertia_about(*multibody.actors[i], frame, origin);
+        return tensor;
     }
 
 
@@ -1539,8 +1616,7 @@ namespace car
             PxVec3 wheel_local = wheel_offsets[wheel_index];
             PxVec3 wheel_world = hardpoint_world(chassis_pose, wheel_local);
             float side = wheel_local.x < 0.0f ? -1.0f : 1.0f;
-            float inner_x = wheel_local.x * geometry.chassis_inset;
-            float arm_span = PxMax(geometry.arm_span, 0.05f);
+            const suspension_pickups pickups = resolve_pickups(geometry, wheel_local);
             float camber = is_front(wheel_index) ? spec.front_camber : spec.rear_camber;
             float toe = is_front(wheel_index) ? spec.front_toe : spec.rear_toe;
             // negative camber must lean the wheel top inboard and positive toe must point the leading
@@ -1564,6 +1640,27 @@ namespace car
             corner.wheel_body->setMaxAngularVelocity(500.0f);
             // guard recovery is capped so deep contacts cannot launch the chassis
             corner.wheel_body->setMaxDepenetrationVelocity(2.0f);
+            PxVec3 rim_points[32];
+            for (int j = 0; j < 32; ++j)
+            {
+                float angle = PxTwoPi * static_cast<float>(j % 16) / 16;
+                float radius = cfg.wheel_radius_for(wheel_index) * 0.78f;
+                rim_points[j] = PxVec3((j < 16 ? -1.0f : 1.0f) * cfg.wheel_width_for(wheel_index) * 0.46f, radius * cosf(angle), radius * sinf(angle));
+            }
+            PxConvexMeshDesc rim_desc;
+            rim_desc.points.count = 32; rim_desc.points.stride = sizeof(PxVec3); rim_desc.points.data = rim_points;
+            rim_desc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
+            PxCookingParams cooking(multibody.physics->getTolerancesScale());
+            PxConvexMesh* rim_mesh = PxCreateConvexMesh(cooking, rim_desc, multibody.physics->getPhysicsInsertionCallback());
+            if (!rim_mesh) return false;
+            PxShape* rim = multibody.physics->createShape(PxConvexMeshGeometry(rim_mesh), *material);
+            rim_mesh->release();
+            if (!rim) return false;
+            rim->setFlag(PxShapeFlag::eSCENE_QUERY_SHAPE, false);
+            rim->setSimulationFilterData(PxFilterData(0, 0, 2, multibody_collision_group()));
+            rim->setContactOffset(0.005f);
+            corner.wheel_body->attachShape(*rim); rim->release();
+
 
             corner.wheel_joint = PxRevoluteJointCreate(*multibody.physics, corner.upright, PxTransform(PxIdentity), corner.wheel_body, PxTransform(PxIdentity));
             if (!corner.wheel_joint)
@@ -1571,70 +1668,30 @@ namespace car
                 return false;
             }
             corner.wheel_joint->setConstraintFlag(PxConstraintFlag::eENABLE_EXTENDED_LIMITS, true);
+            corner.wheel_joint->setConstraintFlag(PxConstraintFlag::eDRIVE_LIMITS_ARE_FORCES, true);
             register_multibody_joint(corner.wheel_joint);
             float steering_limit = is_front(wheel_index) ? PxClamp(fabsf(spec.max_steer_angle), 0.1f, 1.2f) : 0.0f;
-            if (!add_steering_stop(corner, corner.upright, chassis_pose, wheel_world, steering_limit))
+            if (is_front(wheel_index) && !add_steering_stop(corner, corner.upright, chassis_pose, wheel_world, steering_limit))
             {
                 return false;
             }
 
-            // short upper arm, long lower arm, the length difference is what pulls the top of the upright
-            // inboard as the wheel rises and recovers the camber the body loses in roll
-            float upper_inner_x = wheel_local.x * geometry.upper_chassis_inset;
-            float upper_outer_x = wheel_local.x - side * PxMax(geometry.upper_upright_inset, 0.0f);
-            float lower_outer_x = wheel_local.x - side * PxMax(geometry.lower_upright_inset, 0.0f);
-
-            PxVec3 upper_outer_local(upper_outer_x, wheel_local.y + geometry.upper_upright_y, wheel_local.z);
-            PxVec3 lower_outer_local(lower_outer_x, wheel_local.y + geometry.lower_upright_y, wheel_local.z);
-            PxVec3 upper_inner_front_local(upper_inner_x, wheel_local.y + geometry.upper_inner_y, wheel_local.z + arm_span);
-            PxVec3 upper_inner_rear_local(upper_inner_x, wheel_local.y + geometry.upper_inner_y, wheel_local.z - arm_span);
-            PxVec3 lower_inner_front_local(inner_x, wheel_local.y + geometry.lower_inner_y, wheel_local.z + arm_span);
-            PxVec3 lower_inner_rear_local(inner_x, wheel_local.y + geometry.lower_inner_y, wheel_local.z - arm_span);
-
             if (geometry.mechanism == suspension_mechanism::multi_link)
             {
-                float spread_y = PxMax(geometry.link_spread_y, 0.05f);
-                float spread_z = PxMax(geometry.link_spread_z, 0.05f);
-                // the upper pair is the short one, same reason as the wishbone case
-                const PxVec3 inner_points[4] =
-                {
-                    PxVec3(upper_inner_x, wheel_local.y + geometry.upper_inner_y, wheel_local.z + spread_z),
-                    PxVec3(upper_inner_x, wheel_local.y + geometry.upper_inner_y, wheel_local.z - spread_z),
-                    PxVec3(inner_x, wheel_local.y + geometry.lower_inner_y, wheel_local.z + spread_z),
-                    PxVec3(inner_x, wheel_local.y + geometry.lower_inner_y, wheel_local.z - spread_z)
-                };
-                const PxVec3 outer_points[4] =
-                {
-                    PxVec3(upper_outer_x, wheel_local.y + spread_y, wheel_local.z + spread_z * 0.45f),
-                    PxVec3(upper_outer_x, wheel_local.y + spread_y, wheel_local.z - spread_z * 0.45f),
-                    PxVec3(lower_outer_x, wheel_local.y - spread_y, wheel_local.z + spread_z * 0.45f),
-                    PxVec3(lower_outer_x, wheel_local.y - spread_y, wheel_local.z - spread_z * 0.45f)
-                };
-                for (int i = 0; i < 4; i++)
-                {
-                    if (!add_link_member(corner, hardpoint_world(chassis_pose, inner_points[i]), hardpoint_world(chassis_pose, outer_points[i]), spec.suspension_link_mass))
-                    {
-                        return false;
-                    }
-                }
+                for (int i = 0; i < 4; ++i)
+                    if (!add_link_member(corner, hardpoint_world(chassis_pose, pickups.inner[i]), hardpoint_world(chassis_pose, pickups.outer[i]), spec.suspension_link_mass)) return false;
             }
             else
             {
-                if (!add_wishbone(corner, hardpoint_world(chassis_pose, lower_inner_front_local), hardpoint_world(chassis_pose, lower_inner_rear_local), hardpoint_world(chassis_pose, lower_outer_local), spec.suspension_link_mass))
-                {
-                    return false;
-                }
-                if (geometry.mechanism == suspension_mechanism::double_wishbone)
-                {
-                    if (!add_wishbone(corner, hardpoint_world(chassis_pose, upper_inner_front_local), hardpoint_world(chassis_pose, upper_inner_rear_local), hardpoint_world(chassis_pose, upper_outer_local), spec.suspension_link_mass))
-                    {
-                        return false;
-                    }
-                }
+                if (!add_wishbone(corner, hardpoint_world(chassis_pose, pickups.inner[2]), hardpoint_world(chassis_pose, pickups.inner[3]), hardpoint_world(chassis_pose, pickups.outer[2]), spec.suspension_link_mass)) return false;
+                if (geometry.mechanism == suspension_mechanism::double_wishbone &&
+                    !add_wishbone(corner, hardpoint_world(chassis_pose, pickups.inner[0]), hardpoint_world(chassis_pose, pickups.inner[1]), hardpoint_world(chassis_pose, pickups.outer[0]), spec.suspension_link_mass)) return false;
             }
-
-            PxVec3 shock_top_local(side * (fabsf(wheel_local.x) - geometry.strut_top_inset), wheel_local.y + geometry.strut_top_y, wheel_local.z);
-            PxVec3 shock_bottom_local = wheel_local + PxVec3(0.0f, geometry.lower_upright_y, 0.0f);
+            // The fifth link determines rear toe through travel; a yaw lock
+            // would suppress both bump steer and compliant steer.
+            if (!is_front(wheel_index) && !add_link_member(corner, hardpoint_world(chassis_pose, pickups.toe_inner), hardpoint_world(chassis_pose, pickups.toe_outer), spec.suspension_link_mass)) return false;
+            PxVec3 shock_top_local = pickups.shock_top;
+            PxVec3 shock_bottom_local = pickups.shock_bottom;
             PxVec3 shock_top_world = hardpoint_world(chassis_pose, shock_top_local);
             PxVec3 shock_bottom_world = hardpoint_world(chassis_pose, shock_bottom_local);
             if (geometry.mechanism == suspension_mechanism::macpherson && !add_macpherson_strut(corner, shock_top_world, shock_bottom_world, spec.suspension_link_mass))
@@ -1647,8 +1704,18 @@ namespace car
                 * (is_front(wheel_index) ? get_weight_distribution_front() : 1.0f - get_weight_distribution_front())
                 * 0.5f
                 * 9.81f;
+            float motion_ratio = suspension_motion_ratio(pickups, wheel_local);
+            if (geometry.mechanism == suspension_mechanism::macpherson)
+                motion_ratio = (shock_top_world - shock_bottom_world).getNormalized().dot(chassis_pose.q.rotate(PxVec3(0, 1, 0)));
+            if (!std::isfinite(motion_ratio) || motion_ratio < 0.1f || motion_ratio > 3.0f) return false;
+            corner.design_motion_ratio = motion_ratio;
+            wheels[wheel_index].motion_ratio = motion_ratio;
+            corner.shock_stiffness = spring_stiffness[wheel_index] / (motion_ratio * motion_ratio);
+            corner.shock_damping = spring_damping[wheel_index] / (motion_ratio * motion_ratio);
+            // Virtual work: Fwheel = Fshock * ds/dz. Preload supports the
+            // requested wheel load at the authored design position.
             corner.shock_rest_length = (shock_top_world - shock_bottom_world).magnitude()
-                + static_load / PxMax(spring_stiffness[wheel_index], 1.0f);
+                + static_load / (motion_ratio * PxMax(corner.shock_stiffness, 1.0f));
             corner.shock_length = (shock_top_world - shock_bottom_world).magnitude();
 
             corner.travel_joint = nullptr;
@@ -1675,9 +1742,9 @@ namespace car
                     return false;
                 }
                 corner.travel_joint->setMinDistance(
-                    PxMax(corner.shock_rest_length - cfg.suspension_travel, 0.05f));
+                    PxMax(corner.shock_rest_length - (cfg.suspension_travel * corner.design_motion_ratio), 0.05f));
                 corner.travel_joint->setMaxDistance(
-                    corner.shock_rest_length + cfg.suspension_travel * 0.15f);
+                    corner.shock_rest_length + (cfg.suspension_travel * corner.design_motion_ratio) * 0.15f);
                 corner.travel_joint->setDistanceJointFlag(
                     PxDistanceJointFlag::eMIN_DISTANCE_ENABLED, true);
                 corner.travel_joint->setDistanceJointFlag(
@@ -1778,8 +1845,8 @@ namespace car
 
             float rest_length = corner.shock_rest_length;
             corner.coilover_unit.rest_length = rest_length;
-            float min_x = (rest_length - cfg.suspension_travel) - length;
-            float max_x = (rest_length + cfg.suspension_travel * 0.15f) - length;
+            float min_x = (rest_length - (cfg.suspension_travel * corner.design_motion_ratio)) - length;
+            float max_x = (rest_length + (cfg.suspension_travel * corner.design_motion_ratio) * 0.15f) - length;
             // slide on x only, lock swing so tube and rod stay coaxial like a real damper
             // twist stays free so the rod can spin in the tube, same as halfshaft plunge
             corner.coilover_unit.spring_joint->setMotion(PxD6Axis::eX, PxD6Motion::eLIMITED);
@@ -1870,6 +1937,14 @@ namespace car
             float tie_rod_upright_inset = half_track - lerp(lower_outer_x, upper_outer_x, outer_t);
             tie_rod_upright_inset = PxMax(tie_rod_upright_inset, 0.0f);
 
+            if (geometry.explicit_hardpoints)
+            {
+                const auto pickups = resolve_pickups(geometry, wheel_local);
+                rack_half_length = fabsf(pickups.toe_inner.x);
+                rack_y = pickups.toe_inner.y;
+                front_z = pickups.toe_inner.z;
+                multibody.rack_travel = PxClamp(tanf(fabsf(spec.max_steer_angle)) * fabsf(pickups.toe_outer.z - wheel_local.z), 0.03f, 0.20f);
+            }
             PxVec3 rack_world = hardpoint_world(chassis_pose, PxVec3(0.0f, rack_y, front_z));
             multibody.rack = create_mechanism_actor(PxTransform(rack_world, chassis_pose.q), PxBoxGeometry(rack_half_length, 0.025f, 0.025f), spec.steering_rack_mass);
             if (!multibody.rack)
@@ -1906,6 +1981,8 @@ namespace car
                 float side = wheel_index == front_left ? -1.0f : 1.0f;
                 PxVec3 rack_end_world = hardpoint_world(chassis_pose, PxVec3(side * rack_half_length, rack_y, front_z));
                 PxVec3 upright_anchor_world = hardpoint_world(chassis_pose, wheel_offsets[wheel_index] + PxVec3(-side * tie_rod_upright_inset, geometry.tie_rod_y, geometry.tie_rod_z));
+                if (geometry.explicit_hardpoints)
+                    upright_anchor_world = hardpoint_world(chassis_pose, resolve_pickups(geometry, wheel_offsets[wheel_index]).toe_outer);
                 if (!add_link_member(corner, rack_end_world, upright_anchor_world, spec.suspension_link_mass, multibody.rack))
                 {
                     return false;
@@ -2276,7 +2353,9 @@ namespace car
             }
 
             float driveline_inertia = PxMax(spec.driveline_inertia, 0.001f);
-            driveline.gearbox_output->setMassSpaceInertiaTensor(PxVec3(driveline_inertia, driveline_inertia * 0.35f, driveline_inertia * 0.35f));
+            // Principal moments must satisfy Ix <= Iy + Iz. A ring is the
+            // minimum transverse inertia consistent with the assigned spin inertia.
+            driveline.gearbox_output->setMassSpaceInertiaTensor(PxVec3(driveline_inertia, driveline_inertia * 0.5f, driveline_inertia * 0.5f));
             driveline.axle_input->setMassSpaceInertiaTensor(PxVec3(0.02f, 0.01f, 0.01f));
             driveline.gearbox_output->setMaxAngularVelocity(1000.0f);
             driveline.axle_input->setMaxAngularVelocity(1000.0f);
@@ -2290,7 +2369,7 @@ namespace car
                 PxTransform shaft_frame(
                     shaft->getGlobalPose().transformInv(world_pos),
                     (shaft->getGlobalPose().q.getConjugate() * shaft_rotation).getNormalized());
-                PxRevoluteJoint* bearing = PxRevoluteJointCreate(
+                PxFixedJoint* bearing = PxFixedJointCreate(
                     *multibody.physics,
                     body,
                     body_frame,
@@ -2516,16 +2595,28 @@ namespace car
     }
 
 
-    PxVec3 Simulation::actor_point_velocity(PxRigidBody* actor, const PxVec3& world_point)
+    PxVec3 Simulation::actor_point_velocity(const PxRigidBody* actor, const PxVec3& world_point)
     {
-            return actor->getLinearVelocity() + actor->getAngularVelocity().cross(world_point - actor->getGlobalPose().p);
+            // PhysX linear velocity belongs to the mass frame, which need not
+            // coincide with the actor origin (especially on the chassis).
+            PxVec3 center = actor->getGlobalPose().transform(actor->getCMassLocalPose().p);
+            return actor->getLinearVelocity() + actor->getAngularVelocity().cross(world_point - center);
     }
 
 
     PxVec3 Simulation::ground_point_velocity(const wheel& wheel_state)
     {
-            const PxRigidDynamic* ground = wheel_state.contact_actor ? wheel_state.contact_actor->is<PxRigidDynamic>() : nullptr;
-            return ground ? ground->getLinearVelocity() + ground->getAngularVelocity().cross(wheel_state.contact_point - ground->getGlobalPose().p) : PxVec3(0.0f);
+            PxVec3 velocity(0); float load = 0;
+            for (int i = 0; i < wheel_state.row_count; ++i)
+            {
+                const auto& row = wheel_state.contacts[i];
+                if (row.load <= 0) continue;
+                if (const auto* ground = row.actor ? row.actor->is<PxRigidDynamic>() : nullptr)
+                    velocity += actor_point_velocity(ground, row.point) * row.load;
+                load += row.load;
+            }
+            return load > 0 ? velocity / load : PxVec3(0);
+
     }
 
 
@@ -2570,7 +2661,7 @@ namespace car
             }
             for (int i = 0; i < wheel_count; i++)
             {
-                if (fabsf(wheels[i].angular_velocity) > 0.1f)
+                if (!wheels[i].grounded || fabsf(wheels[i].angular_velocity) > 0.1f)
                 {
                     return false;
                 }
@@ -2621,6 +2712,8 @@ namespace car
             driveshaft_twist = 0.0f;
             axle_drive_torque = 0.0f;
             prev_velocity = PxVec3(0.0f);
+            longitudinal_accel = 0.0f;
+            lateral_accel = 0.0f;
             vehicle_sleep_timer = 0.0f;
             vehicle_sleeping = true;
     }
@@ -2673,24 +2766,27 @@ namespace car
                     float target_motion_ratio = PxClamp(fabsf(relative_speed / wheel_vertical_speed), 0.25f, 2.0f);
                     wheels[i].motion_ratio = lerp(wheels[i].motion_ratio, target_motion_ratio, exp_decay(20.0f, delta_time));
                 }
-                float compression = PxClamp(corner.shock_rest_length - length, 0.0f, cfg.suspension_travel);
-                float damper = compute_damper_force(relative_speed, spring_damping[i]);
+                // Keep overtravel for bump stops and packers. Clamping at nominal
+                // travel made packer_threshold > 1 unreachable.
+                float compression = PxMax(corner.shock_rest_length - length, 0.0f);
+                float damper = compute_damper_force(relative_speed, corner.shock_damping);
                 float bump_extra = 0.0f;
-                float bump_start = cfg.suspension_travel * spec.bump_stop_threshold;
+                float shock_travel = cfg.suspension_travel * corner.design_motion_ratio;
+                float bump_start = shock_travel * spec.bump_stop_threshold;
                 if (compression > bump_start)
                 {
-                    float bump_travel = PxMax(cfg.suspension_travel - bump_start, 0.001f);
+                    float bump_travel = PxMax(shock_travel - bump_start, 0.001f);
                     float bump_compression = compression - bump_start;
                     float bump_progress = PxClamp(bump_compression / bump_travel, 0.0f, 1.0f);
                     bump_extra += bump_compression * spec.bump_stop_stiffness * (1.0f + spec.bump_stop_progression * bump_progress * bump_progress);
                 }
-                float packer_start = cfg.suspension_travel * spec.packer_threshold;
+                float packer_start = shock_travel * spec.packer_threshold;
                 if (compression > packer_start)
                 {
                     bump_extra += (compression - packer_start) * spec.packer_stiffness;
                 }
 
-                float force_magnitude = PxMax(spring_stiffness[i] * compression, 0.0f) - damper + bump_extra;
+                float force_magnitude = PxMax(corner.shock_stiffness * compression, 0.0f) - damper + bump_extra;
                 force_magnitude = PxClamp(force_magnitude, -spec.max_susp_force, spec.max_susp_force);
                 PxVec3 force = direction * force_magnitude;
                 PxRigidBodyExt::addForceAtPos(*body, force, top, PxForceMode::eFORCE);
@@ -2701,8 +2797,8 @@ namespace car
                 wheels[i].shock_length = corner.shock_length;
                 wheels[i].shock_rest_length = corner.shock_rest_length;
                 wheels[i].shock_velocity = corner.shock_velocity;
-                wheels[i].compression = PxClamp(compression / PxMax(cfg.suspension_travel, 0.01f), 0.0f, 1.5f);
-                wheels[i].compression_velocity = -corner.shock_velocity / PxMax(cfg.suspension_travel, 0.01f);
+                wheels[i].compression = PxClamp(compression / PxMax(shock_travel, 0.01f), 0.0f, 1.5f);
+                wheels[i].compression_velocity = -corner.shock_velocity / PxMax(shock_travel, 0.01f);
                 spring_force[i] = force_magnitude;
             }
 
@@ -2716,17 +2812,17 @@ namespace car
                 suspension_corner& left_corner = multibody.corners[left];
                 suspension_corner& right_corner = multibody.corners[right];
                 float left_compression = PxClamp(
-                    left_corner.shock_rest_length - left_corner.shock_length,
+                    (left_corner.shock_rest_length - left_corner.shock_length) / left_corner.design_motion_ratio,
                     -cfg.suspension_travel,
                     cfg.suspension_travel);
                 float right_compression = PxClamp(
-                    right_corner.shock_rest_length - right_corner.shock_length,
+                    (right_corner.shock_rest_length - right_corner.shock_length) / right_corner.design_motion_ratio,
                     -cfg.suspension_travel,
                     cfg.suspension_travel);
                 // shock_velocity > 0 on extension, compression rate delta matches the spring term sign
                 float compression_delta = left_compression - right_compression;
                 float compression_rate_delta =
-                    right_corner.shock_velocity - left_corner.shock_velocity;
+                    right_corner.shock_velocity / right_corner.design_motion_ratio - left_corner.shock_velocity / left_corner.design_motion_ratio;
                 float arb_mass = PxMax(spec.arb_mass, 1.0f);
                 float roll_mass = PxMax(cfg.mass * 0.05f, arb_mass);
                 float arb_damping = 2.0f * 0.4f * sqrtf(stiffness * roll_mass);
@@ -2777,8 +2873,10 @@ namespace car
                     continue;
                 }
 
-                PxRaycastBuffer probe;
-                if (!scene->raycast(row_center, direction, ray_length, probe, PxHitFlag::eNORMAL | PxHitFlag::ePOSITION, filter, &self_filter) || !probe.block.actor)
+                PxSweepBuffer probe;
+                const float envelope = 0.012f;
+                if (!scene->sweep(PxSphereGeometry(envelope), PxTransform(row_center), direction, ray_length - envelope,
+                    probe, PxHitFlag::eNORMAL | PxHitFlag::ePOSITION, filter, &self_filter) || !probe.block.actor)
                 {
                     continue;
                 }
@@ -2799,7 +2897,7 @@ namespace car
                     continue;
                 }
 
-                PxVec3 probe_point = row_center + direction * probe.block.distance;
+                PxVec3 probe_point = probe.block.position;
                 if (!is_finite_vec(probe_point))
                 {
                     continue;
@@ -2813,6 +2911,11 @@ namespace car
                 }
 
                 float weight = PxMax(cosf(theta), 0.05f);
+                if (row.actor && row.actor != probe.block.actor)
+                {
+                    if (weight <= best_weight) continue;
+                    height_sum = weight_sum = 0; normal_sum = point_sum = PxVec3(0);
+                }
                 height_sum += height * weight;
                 weight_sum += weight;
                 normal_sum += probe_normal * weight;
@@ -2821,6 +2924,9 @@ namespace car
                 {
                     best_weight = weight;
                     row.actor = probe.block.actor;
+                    if (surface_resolver) row.friction_scale = get_surface_friction(surface_resolver(row.actor));
+                    else if (const PxMaterial* ground_material = probe.block.shape->getMaterialFromInternalFaceIndex(probe.block.faceIndex)->is<PxMaterial>())
+                        row.friction_scale = PxClamp(ground_material->getDynamicFriction() / 0.7f, 0.0f, 2.0f);
                 }
             }
 
@@ -2853,7 +2959,7 @@ namespace car
     }
 
 
-    void Simulation::update_suspension(PxScene* scene, float dt)
+    void Simulation::update_suspension(PxScene* scene, float dt, bool apply_forces)
     {
             PxTransform pose = body->getGlobalPose();
             PxVec3 local_down = pose.q.rotate(PxVec3(0, -1, 0));
@@ -2905,6 +3011,7 @@ namespace car
                 for (int r = 0; r < max_tire_probe_rows; r++)
                 {
                     w.row_load[r] = 0.0f;
+                    w.contacts[r] = tire_probe_row();
                 }
                 sweep_distance[i] = ray_length - wheel_radius;
                 debug_sweep[i].origin = wheel_center;
@@ -2952,7 +3059,7 @@ namespace car
                     PxVec3 probe_velocity = wheel_actor ? actor_point_velocity(wheel_actor, row.point) : actor_point_velocity(body, row.point);
                     if (const PxRigidDynamic* ground_actor = row.actor ? row.actor->is<PxRigidDynamic>() : nullptr)
                     {
-                        probe_velocity -= ground_actor->getLinearVelocity() + ground_actor->getAngularVelocity().cross(row.point - ground_actor->getGlobalPose().p);
+                        probe_velocity -= actor_point_velocity(ground_actor, row.point);
                     }
                     // damping only exists while the tread is actually squashed, applying it on a grazing
                     // hit invents a force before the tire has touched anything
@@ -3013,15 +3120,19 @@ namespace car
 
                 for (int r = 0; r < row_count; r++)
                 {
+                    w.contacts[r] = rows[r];
                     const tire_probe_row& row = rows[r];
                     if (!row.hit || row.load <= 0.0f)
                     {
                         continue;
                     }
-                    safe_add_force_at_pos(wheel_actor ? wheel_actor : body, row.normal * row.load, row.point);
-                    if (PxRigidDynamic* ground_actor = row.actor ? row.actor->is<PxRigidDynamic>() : nullptr)
+                    if (apply_forces)
                     {
-                        safe_add_force_at_pos(ground_actor, -row.normal * row.load, row.point);
+                        safe_add_force_at_pos(wheel_actor ? wheel_actor : body, row.normal * row.load, row.point);
+                        if (PxRigidDynamic* ground_actor = row.actor ? row.actor->is<PxRigidDynamic>() : nullptr)
+                        {
+                            safe_add_force_at_pos(ground_actor, -row.normal * row.load, row.point);
+                        }
                     }
                     int slot = debug_sweep[i].row_count++;
                     debug_sweep[i].row_point[slot] = row.point;
@@ -3099,6 +3210,8 @@ namespace car
 
     float Simulation::get_engine_torque(float rpm)
     {
+            if (spec.engine_map_count >= 2)
+                return sample_curve(spec.engine_map_rpm, spec.engine_map_torque, spec.engine_map_count, rpm, 0);
             float idl = spec.engine_idle_rpm;
             float mx = spec.engine_max_rpm;
             if (idl > mx)
@@ -3431,7 +3544,9 @@ namespace car
                 float smooth_ramp = ramp * ramp * (3.0f - 2.0f * ramp);
                 float effective_delta = delta_w * smooth_ramp;
 
-                float lock_ratio = (axle_torque >= 0.0f) ? spec.lsd_lock_ratio_accel : spec.lsd_lock_ratio_decel;
+                float axle_speed = (w_left + w_right) * 0.5f;
+                float travel_direction = fabsf(axle_speed) > 0.1f ? axle_speed : (is_in_reverse() ? -1.0f : 1.0f);
+                float lock_ratio = (axle_torque * travel_direction >= 0.0f) ? spec.lsd_lock_ratio_accel : spec.lsd_lock_ratio_decel;
                 float torque_lock = lock_ratio * fabsf(axle_torque);
                 float viscous = fabsf(effective_delta) * spec.lsd_viscous;
                 float lock_torque = spec.lsd_preload * smooth_ramp + torque_lock * smooth_ramp + viscous;
@@ -3478,225 +3593,97 @@ namespace car
 
     void Simulation::integrate_powertrain(float dt)
     {
-            float ratio = is_in_neutral() ? 0.0f : spec.gear_ratios[current_gear] * spec.final_drive;
-            float wheel_angular_velocity = get_average_driven_angular_velocity(false);
-            const bool physical_driveline = has_physical_driveline();
-            if (physical_driveline && fabsf(ratio) > 0.001f)
+        const float ratio = is_in_neutral() ? 0.0f : spec.gear_ratios[current_gear] * spec.final_drive;
+        const float wheel_speed = get_average_driven_angular_velocity(false);
+        const float ie = PxMax(spec.engine_inertia, 0.01f), ig = PxMax(spec.driveline_inertia, 0.001f);
+        const float efficiency = PxClamp(spec.drivetrain_efficiency, 0.1f, 1.0f);
+        const float idle = spec.engine_idle_rpm * PxTwoPi / 60.0f;
+        float engine_speed = engine_rpm * PxTwoPi / 60.0f;
+        float demand = is_in_reverse() ? input.brake * spec.reverse_power_ratio : input.throttle;
+        if (downshift_blip_timer > 0) demand = PxMax(demand, spec.downshift_blip_amount);
+        bool starting = starter_requested || (!engine_running && demand > spec.input_deadzone && fabsf(wheel_speed) < 2);
+        const int steps = PxMax(1, static_cast<int>(ceilf(dt / 0.0005f)));
+        const float h = dt / steps;
+        float shaft_sum = 0, combustion_sum = 0;
+        float initial_engine_speed = engine_speed, initial_gearbox_speed = gearbox_input_angular_velocity;
+        for (int j = 0; j < steps; ++j)
+        {
+            float rpm = engine_speed * 60.0f / PxTwoPi;
+            if (engine_running && rpm < spec.engine_stall_rpm) engine_running = false;
+            if (!engine_running && rpm > spec.engine_idle_rpm * 0.7f) engine_running = true;
+            float combustion = engine_running && rpm < spec.engine_redline_rpm ? get_engine_torque(rpm) * (1.0f + boost_pressure * spec.boost_torque_mult) * demand * assisted_actuators.engine_torque_scale : 0;
+            float idle_torque = engine_running ? PxClamp((idle - engine_speed) * ie * spec.engine_rpm_smoothing, 0.0f, spec.engine_peak_torque * 0.35f) : 0;
+            float starter = starting && rpm < spec.engine_idle_rpm ? spec.starter_torque : 0;
+            float losses = spec.engine_friction * engine_speed + (1 - demand) * PxMax(engine_speed - idle, 0.0f) * spec.engine_peak_torque * 0.0004f;
+            engine_speed = PxMax(0.0f, engine_speed + h * (combustion + idle_torque + starter - losses) / ie);
+            combustion_sum += combustion + idle_torque;
+            bool connected = fabsf(ratio) > 0.001f && !is_shifting;
+            // Launch/anti-stall clutch controller modulates capacity, not RPM.
+            float launch = PxClamp((engine_speed - spec.engine_stall_rpm * PxTwoPi / 60) / PxMax(idle * 0.6f, 1.0f), 0.0f, 1.0f);
+            float capacity = connected ? spec.clutch_max_torque * clutch * launch : 0;
+            float slip = engine_speed - gearbox_input_angular_velocity;
+            float impulse = PxClamp(slip / (1 / ie + 1 / ig), -capacity * h, capacity * h);
+            float previous_slip = slip;
+            engine_speed -= impulse / ie;
+            gearbox_input_angular_velocity += impulse / ig;
+            clutch_heat_j += PxMax(impulse * (previous_slip + engine_speed - gearbox_input_angular_velocity) * 0.5f, 0.0f);
+            float shaft_torque = 0;
+            if (connected)
             {
-                // flanges live in axle space, reflected gearbox inertia changes with gear
-                float reflected = PxMax(spec.driveline_inertia, 0.001f) * ratio * ratio;
-                multibody.driveline.gearbox_output->setMassSpaceInertiaTensor(
-                    PxVec3(reflected, reflected * 0.35f, reflected * 0.35f));
-                gearbox_input_angular_velocity = read_driveline_gearbox_speed() * ratio;
-            }
-            if (!std::isfinite(engine_rpm) || !std::isfinite(gearbox_input_angular_velocity) || !std::isfinite(driveshaft_twist))
-            {
-                engine_rpm = spec.engine_idle_rpm;
-                gearbox_input_angular_velocity = ratio * wheel_angular_velocity;
-                driveshaft_twist = 0.0f;
-            }
-            float engine_angular_velocity = engine_rpm * PxPi * 2.0f / 60.0f;
-            float engine_inertia = PxMax(spec.engine_inertia, 0.01f);
-            float driveline_inertia = PxMax(spec.driveline_inertia, 0.001f);
-            float stiffness = PxMax(spec.driveshaft_stiffness, 0.0f);
-            float shaft_damping = PxMax(spec.driveshaft_damping, 0.0f);
-            float drive_input = is_in_reverse() ? input.brake * spec.reverse_power_ratio : input.throttle;
-            float blip = downshift_blip_timer > 0.0f ? spec.downshift_blip_amount * downshift_blip_timer / PxMax(spec.downshift_blip_duration, 0.001f) : 0.0f;
-            float effective_throttle = PxMax(drive_input, blip);
-            // pedal closed means coast, blip may still raise revs for a matched downshift
-            bool coasting = drive_input <= spec.input_deadzone;
-            float idle_angular_velocity = spec.engine_idle_rpm * PxPi * 2.0f / 60.0f;
-            float max_angular_velocity = PxMax(spec.engine_max_rpm * PxPi * 2.0f / 60.0f, idle_angular_velocity);
-            float clutch_capacity = PxMax(spec.clutch_max_torque, 10.0f);
-            float clutch_damping = clutch_capacity / 12.0f;
-            float electric_target = is_in_forward_gear() ? get_electric_motor_torque(engine_rpm, input.throttle) * assisted_actuators.engine_torque_scale : 0.0f;
-            float electric_rate = spec.electric_torque_response > 0.0f ? spec.electric_torque_response : 50.0f;
-            // snap motor off on lift, lerp decay was still shoving the axle after throttle closed
-            if (coasting)
-            {
-                motor_torque = 0.0f;
+                // Backward Euler spring/damper solve is passive for any step.
+                // Shaft energy is retained on lift and with the clutch open.
+                float k = PxMax(spec.driveshaft_stiffness, 1.0f), c = PxMax(spec.driveshaft_damping, 0.0f);
+                float a = c + h * k;
+                float direction_eff = driveshaft_twist * gearbox_input_angular_velocity / ratio >= 0 ? 1 / efficiency : efficiency;
+                float previous = gearbox_input_angular_velocity;
+                gearbox_input_angular_velocity = (ig * previous + h * direction_eff * (a * wheel_speed - k * driveshaft_twist) / ratio)
+                    / (ig + h * spec.bearing_friction * ig + h * direction_eff * a / (ratio * ratio));
+                float relative = gearbox_input_angular_velocity / ratio - wheel_speed;
+                driveshaft_twist += relative * h;
+                shaft_torque = k * driveshaft_twist + c * relative;
+                gearbox_loss_j += (c * relative * relative + fabsf(shaft_torque * gearbox_input_angular_velocity / ratio * (direction_eff - 1))) * h;
             }
             else
             {
-                motor_torque = lerp(motor_torque, electric_target, exp_decay(electric_rate, dt));
+                // Disengaging the gear dissipates residual synchronizer/shaft
+                // energy; record it instead of silently erasing the state.
+                gearbox_loss_j += 0.5f * spec.driveshaft_stiffness * driveshaft_twist * driveshaft_twist;
+                driveshaft_twist = 0;
+                gearbox_input_angular_velocity /= 1 + h * spec.bearing_friction;
             }
-            axle_drive_torque = 0.0f;
-            engine_brake_torque = 0.0f;
+            shaft_sum += shaft_torque;
+        }
+        engine_rpm = engine_speed * 60 / PxTwoPi;
 
-            // the clutch damper couples two small inertias, so the substep has to resolve it or the slip
-            // rings, damping times substep times the coupling compliance must stay at or under one
-            float coupling_compliance = 1.0f / engine_inertia + 1.0f / driveline_inertia;
-            float clutch_substep = 1.0f / PxMax(clutch_damping * coupling_compliance, 1e-6f);
-            float target_substep = PxMin(0.0025f, clutch_substep);
-            int substep_count = PxClamp(static_cast<int>(ceilf(dt / target_substep)), 1, 32);
-            float substep = dt / static_cast<float>(substep_count);
-            float accumulated_axle_torque = 0.0f;
-            float accumulated_powertrain_reaction = 0.0f;
-            float accumulated_engine_torque = 0.0f;
-            for (int step = 0; step < substep_count; step++)
-            {
-                if (physical_driveline && fabsf(ratio) > 0.001f)
-                {
-                    gearbox_input_angular_velocity = read_driveline_gearbox_speed() * ratio;
-                }
-                // torque follows rpm inside the loop, a value frozen for the whole step overshoots
-                // idle control and the torque curve whenever the engine accelerates hard
-                float substep_rpm = engine_angular_velocity * 60.0f / (PxPi * 2.0f);
-                float boosted_torque = get_engine_torque(substep_rpm) * (1.0f + boost_pressure * spec.boost_torque_mult);
-                float combustion_torque = rev_limiter_active ? 0.0f : boosted_torque * effective_throttle * assisted_actuators.engine_torque_scale;
-                float idle_torque = PxClamp((idle_angular_velocity - engine_angular_velocity) * engine_inertia * spec.engine_rpm_smoothing, 0.0f, spec.engine_peak_torque * 0.35f);
-                accumulated_engine_torque += combustion_torque + idle_torque;
-                float clutch_slip = engine_angular_velocity - gearbox_input_angular_velocity;
-                float clutch_torque = PxClamp(clutch_slip * clutch_damping, -clutch_capacity * clutch, clutch_capacity * clutch);
-                // a damper cannot pull the two speeds past each other in one substep, without this cap the
-                // explicit integration flipped the slip sign every substep and dragged the engine to a stall
-                float non_overshoot_torque = fabsf(clutch_slip) / PxMax(substep * coupling_compliance, 1e-6f);
-                clutch_torque = PxClamp(clutch_torque, -non_overshoot_torque, non_overshoot_torque);
-                float shaft_torque = 0.0f;
-                float shaft_speed_difference = 0.0f;
-                // open driveline during shifts or with clutch out, shaft must not keep shoving the axle
-                bool driveline_open = is_shifting || fabsf(ratio) <= 0.001f || clutch <= 0.05f;
-                if (physical_driveline)
-                {
-                    set_driveline_torsion_enabled(!driveline_open && fabsf(ratio) > 0.001f);
-                }
-                if (driveline_open)
-                {
-                    driveshaft_twist = 0.0f;
-                    clutch_torque = 0.0f;
-                    shaft_torque = 0.0f;
-                    if (fabsf(ratio) > 0.001f)
-                    {
-                        gearbox_input_angular_velocity = wheel_angular_velocity * ratio;
-                        if (physical_driveline)
-                        {
-                            sync_driveline_axle_speed(wheel_angular_velocity);
-                            PxVec3 axis = multibody.driveline.gearbox_output->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
-                            multibody.driveline.gearbox_output->setAngularVelocity(
-                                body->getAngularVelocity() + axis * wheel_angular_velocity);
-                        }
-                    }
-                }
-                else if (fabsf(ratio) > 0.001f)
-                {
-                    // clutch capacity caps shaft windup so a locked spinning wheel cannot store fake energy
-                    float max_shaft_torque = clutch_capacity * fabsf(ratio) * 1.25f;
-                    if (physical_driveline)
-                    {
-                        sync_driveline_axle_speed(wheel_angular_velocity);
-                        gearbox_input_angular_velocity = read_driveline_gearbox_speed() * ratio;
-                    }
-                    shaft_speed_difference = gearbox_input_angular_velocity / ratio - wheel_angular_velocity;
-                    driveshaft_twist += shaft_speed_difference * substep;
-                    if (stiffness > 0.0f)
-                    {
-                        float max_twist = max_shaft_torque / stiffness;
-                        driveshaft_twist = PxClamp(driveshaft_twist, -max_twist, max_twist);
-                        shaft_torque = driveshaft_twist * stiffness + shaft_speed_difference * shaft_damping;
-                    }
-                    else
-                    {
-                        driveshaft_twist = 0.0f;
-                        shaft_torque = clutch_torque * ratio * spec.drivetrain_efficiency;
-                    }
-                    shaft_torque = PxClamp(shaft_torque, -max_shaft_torque, max_shaft_torque);
-                    // closed pedal cannot propel in the selected gear direction
-                    if (coasting)
-                    {
-                        if (ratio >= 0.0f)
-                        {
-                            if (driveshaft_twist > 0.0f)
-                            {
-                                driveshaft_twist = 0.0f;
-                            }
-                            if (shaft_torque > 0.0f)
-                            {
-                                shaft_torque = 0.0f;
-                            }
-                        }
-                        else
-                        {
-                            if (driveshaft_twist < 0.0f)
-                            {
-                                driveshaft_twist = 0.0f;
-                            }
-                            if (shaft_torque < 0.0f)
-                            {
-                                shaft_torque = 0.0f;
-                            }
-                        }
-                    }
-                }
-
-                // closed throttle pumping losses, weak viscous friction alone leaves flywheel dump for seconds
-                float coast_factor = 1.0f - PxClamp(effective_throttle, 0.0f, 1.0f);
-                float rpm_above_idle = PxMax(engine_angular_velocity - idle_angular_velocity, 0.0f);
-                float pumping_torque = coast_factor * rpm_above_idle * spec.engine_peak_torque * 0.0004f;
-                float friction_torque = spec.engine_friction * engine_angular_velocity + pumping_torque;
-                float engine_acceleration = (combustion_torque + idle_torque - friction_torque - clutch_torque) / engine_inertia;
-                float previous_engine_angular_velocity = engine_angular_velocity;
-                // idle is the floor, the torque curve is only defined at or above it and there is no
-                // stall or restart model, so a dragged down engine could never come back
-                engine_angular_velocity = PxClamp(engine_angular_velocity + engine_acceleration * substep, idle_angular_velocity, max_angular_velocity);
-                engine_acceleration = (engine_angular_velocity - previous_engine_angular_velocity) / substep;
-
-                float efficiency = PxClamp(spec.drivetrain_efficiency, 0.1f, 1.0f);
-                float gearbox_output_angular_velocity = fabsf(ratio) > 0.001f ? gearbox_input_angular_velocity / ratio : 0.0f;
-                float efficiency_factor = shaft_torque * gearbox_output_angular_velocity >= 0.0f ? 1.0f / efficiency : efficiency;
-                float shaft_reaction = fabsf(ratio) > 0.001f ? shaft_torque * efficiency_factor / ratio : 0.0f;
-                float driveline_drag = gearbox_input_angular_velocity * spec.bearing_friction * driveline_inertia;
-                float gearbox_acceleration = 0.0f;
-                if (!driveline_open)
-                {
-                    if (physical_driveline && fabsf(ratio) > 0.001f)
-                    {
-                        // flange carries reflected inertia, shaft reaction is applied here
-                        float reflected = driveline_inertia * ratio * ratio;
-                        float axle_speed = read_driveline_gearbox_speed();
-                        float axle_clutch_torque = clutch_torque * ratio;
-                        float axle_drag = axle_speed * spec.bearing_friction * reflected;
-                        float axle_torque = axle_clutch_torque - shaft_torque * efficiency_factor - axle_drag;
-                        gearbox_acceleration = axle_torque / PxMax(reflected, 0.001f) / ratio;
-                        axle_speed += axle_torque / PxMax(reflected, 0.001f) * substep;
-                        PxVec3 axis = multibody.driveline.gearbox_output->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
-                        multibody.driveline.gearbox_output->setAngularVelocity(body->getAngularVelocity() + axis * axle_speed);
-                        gearbox_input_angular_velocity = axle_speed * ratio;
-                    }
-                    else
-                    {
-                        gearbox_acceleration = (clutch_torque - shaft_reaction - driveline_drag) / driveline_inertia;
-                        gearbox_input_angular_velocity += gearbox_acceleration * substep;
-                    }
-                }
-                accumulated_axle_torque += shaft_torque;
-                accumulated_powertrain_reaction -= engine_inertia * engine_acceleration + driveline_inertia * gearbox_acceleration;
-            }
-
-            engine_output_torque = accumulated_engine_torque / static_cast<float>(substep_count);
-            float mechanical_axle_torque = accumulated_axle_torque / static_cast<float>(substep_count);
-            float electric_axle_torque = motor_torque * spec.final_drive * spec.drivetrain_efficiency;
-            driveshaft_torque = mechanical_axle_torque;
-            axle_drive_torque = mechanical_axle_torque + electric_axle_torque;
-            // clutch out means engine is not loaded into the chassis, idle must not shake the body awake
-            if (clutch > 0.05f && !is_in_neutral())
-            {
-                PxVec3 crank_axis_local(spec.engine_crank_axis_x, spec.engine_crank_axis_y, spec.engine_crank_axis_z);
-                PxVec3 crank_axis = body->getGlobalPose().q.rotate(crank_axis_local.getNormalized());
-                safe_add_torque(body, crank_axis * (accumulated_powertrain_reaction / static_cast<float>(substep_count)));
-            }
-            if (input.throttle <= spec.input_deadzone && mechanical_axle_torque * wheel_angular_velocity < 0.0f)
-            {
-                engine_brake_torque = fabsf(mechanical_axle_torque);
-            }
-            // the final drive housing is bolted to the chassis so the axle torque reacts into the body,
-            // without it angular momentum is created from nothing and squat and lift are under predicted
-            if (fabsf(axle_drive_torque) > 0.0f)
-            {
-                PxVec3 axle_axis = body->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
-                safe_add_torque(body, axle_axis * -axle_drive_torque);
-            }
-            apply_drive_torque(axle_drive_torque, dt);
-            engine_rpm = engine_angular_velocity * 60.0f / (PxPi * 2.0f);
+        engine_output_torque = combustion_sum / steps;
+        driveshaft_torque = shaft_sum / steps;
+        float motor_speed = wheel_speed * spec.final_drive;
+        float thermal_limit = PxClamp((spec.battery_cutoff_temp - battery.temperature) / (spec.battery_cutoff_temp - spec.battery_derate_temp), 0.0f, 1.0f);
+        float target = is_in_forward_gear() ? get_electric_motor_torque(angular_velocity_to_rpm(fabsf(motor_speed)), input.throttle) * assisted_actuators.engine_torque_scale * thermal_limit : 0;
+        motor_torque = demand > spec.input_deadzone ? lerp(motor_torque, target, exp_decay(spec.electric_torque_response, dt)) : 0;
+        motor_torque = PxMin(motor_torque, target);
+        regen_axle_torque = 0;
+        if (spec.electric_enabled && is_in_forward_gear() && input.brake > 0 && input.throttle <= spec.input_deadzone && fabsf(motor_speed) > 10 && !burnout_active)
+        {
+            float abs_scale = 1;
+            for (int i = 0; i < wheel_count; ++i) if (is_driven(i)) abs_scale = PxMin(abs_scale, abs_active[i] ? 0.0f : assisted_actuators.brake_torque_scale[i]);
+            float demand_axle = spec.brake_force * get_driven_wheel_radius() * input.brake * (spec.drivetrain_type == 0 ? 1 - spec.brake_bias_front : spec.brake_bias_front);
+            float regen = PxMin(spec.regen_power_kw * 1000 / fabsf(motor_speed), demand_axle / (spec.final_drive * efficiency));
+            motor_torque = -copysignf(PxMin(regen, spec.electric_motor_torque) * abs_scale * thermal_limit, motor_speed);
+        }
+        float requested_power = motor_torque * motor_speed;
+        float delivered = integrate_hybrid(spec, battery, requested_power, dt, spec.brake_ambient_temp);
+        if (fabsf(motor_speed) > 0.01f) motor_torque = delivered / motor_speed;
+        else if (battery.energy_j <= 0) motor_torque = 0;
+        float electric_axle = motor_torque * spec.final_drive * efficiency;
+        if (electric_axle * wheel_speed < 0) regen_axle_torque = fabsf(electric_axle);
+        axle_drive_torque = driveshaft_torque + electric_axle;
+        engine_brake_torque = driveshaft_torque * wheel_speed < 0 ? fabsf(driveshaft_torque) : 0;
+        PxVec3 crank(spec.engine_crank_axis_x, spec.engine_crank_axis_y, spec.engine_crank_axis_z);
+        if (clutch > 0.05f)
+            safe_add_torque(body, body->getGlobalPose().q.rotate(crank.getNormalized()) * (-(ie * (engine_speed - initial_engine_speed) + ig * (gearbox_input_angular_velocity - initial_gearbox_speed)) / dt));
+        safe_add_torque(body, body->getGlobalPose().q.rotate(PxVec3(1, 0, 0)) * -axle_drive_torque);
+        apply_drive_torque(axle_drive_torque, dt);
     }
 
 
@@ -3775,10 +3762,26 @@ namespace car
 
                 float brake_efficiency = get_brake_efficiency(wheels[i].brake_temp);
                 t *= brake_efficiency * assisted_actuators.brake_torque_scale[i];
+                if (is_driven(i)) t = PxMax(t - regen_axle_torque * (spec.drivetrain_type == 2 ? 0.25f : 0.5f), 0.0f);
+                // Yaw stability control acts through the calipers. During split
+                // friction braking it releases the wheel whose brake moment
+                // drives the yaw error; it never injects a chassis yaw torque.
+                if (spec.yaw_control_enabled && fabsf(forward_speed_ms) > 5.0f && input.brake > 0.05f)
+                {
+                    float steer = (wheels[0].dynamic_toe + wheels[1].dynamic_toe) * 0.5f;
+                    float target_yaw = forward_speed_ms * tanf(steer) / PxMax(cfg.wheelbase, 0.1f);
+                    float yaw_limit = 1.2f * 9.81f / fabsf(forward_speed_ms);
+                    target_yaw = PxClamp(target_yaw, -yaw_limit, yaw_limit);
+                    float error = body->getAngularVelocity().dot(body->getGlobalPose().q.rotate(PxVec3(0, 1, 0))) - target_yaw;
+                    float brake_moment_sign = wheel_offsets[i].x * copysignf(1.0f, forward_speed_ms);
+                    if (error * brake_moment_sign > 0)
+                    {
+                        float inertia_y = spec.inertia_yy > 0 ? spec.inertia_yy : cfg.mass * cfg.wheelbase * cfg.wheelbase / 12;
+                        float release = fabsf(error) * spec.yaw_control_gain * inertia_y * cfg.wheel_radius_for(i) / PxMax(fabsf(wheel_offsets[i].x) * 2, 0.1f);
+                        t = PxMax(t - release, 0.0f);
+                    }
+                }
                 wheels[i].brake_torque = t;
-
-                float heat = fabsf(wheels[i].angular_velocity) * t * spec.brake_heat_coefficient * dt;
-                wheels[i].brake_temp = PxMin(wheels[i].brake_temp + heat, spec.brake_max_temp);
 
                 wheels[i].net_torque += brake_torque_sign(i) * t;
             }
@@ -3816,6 +3819,10 @@ namespace car
                 clutch = lerp(clutch, clutch_target, exp_decay(spec.clutch_engagement_rate, dt));
             }
 
+            // ABS must also release engine drag through the clutch. Caliper
+            // modulation alone cannot unlock an axle braked by the engine.
+            if (input.brake > 0.05f && input.throttle <= spec.input_deadzone)
+                for (int i = 0; i < wheel_count; ++i) if (is_driven(i) && abs_active[i]) clutch = 0;
             update_boost(input.throttle, engine_rpm, dt);
 
             if (engine_rpm >= spec.engine_redline_rpm)
@@ -3843,16 +3850,14 @@ namespace car
 
     void Simulation::update_handbrake()
     {
-            float brake_torque = spec.handbrake_torque * input.handbrake;
-            bool enabled = brake_torque > 0.0f;
+            // Handbrake shares the dissipative wheel/caliper integration with
+            // service brakes. A second joint drive would brake twice and hide heat.
             for (int i : { rear_left, rear_right })
             {
-                if (PxRevoluteJoint* wheel_joint = multibody.corners[i].wheel_joint)
-                {
-                    wheel_joint->setDriveVelocity(0.0f);
-                    wheel_joint->setDriveForceLimit(brake_torque);
-                    wheel_joint->setRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, enabled);
-                }
+                wheels[i].brake_torque += spec.handbrake_torque * input.handbrake;
+                if (auto* joint = multibody.corners[i].wheel_joint)
+                    if (joint->getRevoluteJointFlags().isSet(PxRevoluteJointFlag::eDRIVE_ENABLED))
+                        joint->setRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, false);
             }
     }
 
@@ -3863,7 +3868,8 @@ namespace car
             {
                 wheel& w = wheels[i];
                 tire_condition_modifiers condition = get_tire_condition_modifiers(w.thermal.avg_surface(), w.thermal.core, w.wear, w.tire_load);
-                w.condition_grip = condition.peak_grip;
+                w.pressure_bar = hot_tire_pressure(spec, w.thermal.core, w.damage);
+                w.condition_grip = condition.peak_grip * (1.0f - 0.8f * w.damage);
                 w.condition_stiffness = condition.stiffness;
                 w.condition_relaxation = condition.relaxation;
                 w.temperature_grip = condition.temperature_grip;
@@ -3960,45 +3966,36 @@ namespace car
                     }
                     w.slip_angle = w.slip_ratio = w.lateral_force = w.longitudinal_force = 0.0f;
 
-                    w.net_torque -= w.angular_velocity * spec.bearing_friction * wmoi;
+                    float drag_torque = -w.angular_velocity * spec.bearing_friction * wmoi;
                     float spin_retain = powf(PxClamp(spec.airborne_wheel_decay, 0.0f, 1.0f), dt * 200.0f);
                     if (dt > 1e-5f)
                     {
-                        w.net_torque += w.angular_velocity * (spin_retain - 1.0f) * wmoi / dt;
+                        drag_torque += w.angular_velocity * (spin_retain - 1.0f) * wmoi / dt;
                     }
+                    float free_torque = w.drive_torque + drag_torque;
+                    float brake_signed = PxClamp(-(w.angular_velocity * wmoi / dt + free_torque), -w.brake_torque, w.brake_torque);
+                    w.net_torque = free_torque + brake_signed;
+                    float final_spin = w.angular_velocity + w.net_torque * dt / wmoi;
+                    float brake_work = fabsf(brake_signed * (w.angular_velocity + final_spin) * 0.5f) * dt;
+                    w.brake_temp = PxMin(w.brake_temp + 0.9f * brake_work / PxMax(spec.brake_thermal_mass * spec.brake_specific_heat, 1.0f), spec.brake_max_temp);
                     if (wheel_actor)
                     {
                         // irs: only the brake caliper reacts on the upright, drive is internal to the chassis
-                        float brake_signed = brake_torque_sign(i) * w.brake_torque;
                         safe_add_torque(wheel_actor, wheel_axis * w.net_torque);
                         if (multibody.corners[i].upright)
                         {
-                            safe_add_torque(multibody.corners[i].upright, wheel_axis * (-brake_signed));
+                            safe_add_torque(multibody.corners[i].upright, wheel_axis * (-brake_signed - drag_torque));
                         }
                     }
 
-                    // airborne cooling: all zones cool at 3x rate
-                    for (int z = 0; z < 3; z++)
-                    {
-                        float s_above = w.thermal.surface[z] - spec.tire_ambient_temp;
-                        if (s_above > 0.0f)
-                        {
-                            w.thermal.surface[z] -= spec.tire_cooling_rate * 3.0f * s_above / 30.0f * dt;
-                        }
-                        w.thermal.surface[z] = PxMax(w.thermal.surface[z], spec.tire_ambient_temp);
-                    }
-                    float c_above = w.thermal.core - spec.tire_ambient_temp;
-                    if (c_above > 0.0f)
-                    {
-                        w.thermal.core -= spec.tire_cooling_rate * 1.0f * c_above / 30.0f * dt;
-                    }
-                    w.thermal.core = PxMax(w.thermal.core, spec.tire_ambient_temp);
+                    const float shares[3] = { 1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f };
+                    integrate_tire_thermal(w.thermal, spec, shares, 0.0f, 0.0f, body->getLinearVelocity().magnitude(), dt);
                     w.rotation += w.angular_velocity * dt;
                     continue;
                 }
 
                 PxVec3 world_pos = wheel_actor ? wheel_actor->getGlobalPose().p : pose.transform(wheel_offsets[i]);
-                PxVec3 wheel_vel = (wheel_actor ? wheel_actor->getLinearVelocity() : body->getLinearVelocity() + body->getAngularVelocity().cross(world_pos - pose.p)) - ground_point_velocity(w);
+                PxVec3 wheel_vel = (wheel_actor ? wheel_actor->getLinearVelocity() : actor_point_velocity(body, world_pos)) - ground_point_velocity(w);
                 wheel_vel -= w.contact_normal * wheel_vel.dot(w.contact_normal);
 
                 PxVec3 wheel_lat = wheel_axis;
@@ -4038,16 +4035,19 @@ namespace car
 
                 float base_grip      = spec.tire_friction * load_sensitive_grip(PxMax(w.tire_load, 0.0f));
                 float camber_factor  = get_camber_grip_factor(dyn_camb);
-                float surface_factor = get_surface_friction(w.contact_surface);
+                float surface_factor = 0, contact_load = 0;
+                for (int r = 0; r < w.row_count; ++r) { surface_factor += w.contacts[r].load * w.contacts[r].friction_scale; contact_load += w.contacts[r].load; }
+                surface_factor = contact_load > 0 ? surface_factor / contact_load : get_surface_friction(w.contact_surface);
+                if (surface_resolver && w.contact_actor) w.contact_surface = surface_resolver(w.contact_actor);
                 // rear grip ratio represents compound differences between axles
                 float axle_grip_scale = is_rear(i) ? spec.rear_grip_ratio : 1.0f;
                 // camber modifies lateral grip only
-                float shared_grip     = base_grip * surface_factor * axle_grip_scale;
+                float shared_grip     = base_grip * surface_factor * axle_grip_scale * water_grip(spec, ground_speed, w.pressure_bar, w.water_depth);
                 float long_grip_scale = w.condition_grip;
                 float lat_grip_scale  = w.condition_grip * camber_factor;
                 float peak_force_long = shared_grip * long_grip_scale * fabsf(spec.long_D);
                 float peak_force_lat  = shared_grip * lat_grip_scale * fabsf(spec.lat_D);
-                float pressure_ratio = spec.tire_pressure / PxMax(spec.tire_pressure_optimal, 0.1f);
+                float pressure_ratio = w.pressure_bar / PxMax(spec.tire_pressure_optimal, 0.1f);
 
                 if (log_pacejka)
                 {
@@ -4065,7 +4065,10 @@ namespace car
                 // the chassis cannot react inside the loop, so the rest state model still has to arrest a
                 // whole step of residual motion and not a fraction of one
                 const float inverse_dt = 1.0f / PxMax(dt, 0.001f);
-                const float corner_mass = PxMax(w.tire_load / 9.81f, 1.0f);
+                // The force acts on the unsprung wheel before the suspension
+                // constraints solve. Using Fz/g here over-corrected its velocity
+                // by an order of magnitude and excited alternating lateral grip.
+                const float corner_mass = wheel_actor ? wheel_actor->getMass() : PxMax(w.tire_load / 9.81f, 1.0f);
                 const float effective_longitudinal_mass = 1.0f / (1.0f / corner_mass + wr_eff * wr_eff / wmoi);
                 const float blend_lo = 0.5f;
                 const float blend_hi = PxMax(spec.min_slip_speed * 2.0f, 1.0f);
@@ -4073,14 +4076,26 @@ namespace car
                 // only the drive, the caliper in net_torque is signed against the step start spin and the
                 // loop resigns it every substep instead
                 const float drive_torque = w.drive_torque;
-                // used where the spin is too slow to have a meaningful direction
-                const float brake_fallback = brake_torque_sign(i);
+                const float rolling_direction = fabsf(vx) > 0.01f ? copysignf(1.0f, vx) : copysignf(1.0f, omega);
+                // Match the torque PhysX receives from the actual contact point,
+                // including camber and off-centre contact. Effective rolling radius
+                // describes slip; it is not necessarily the contact force lever arm.
+                PxVec3 mass_center = wheel_actor ? wheel_actor->getGlobalPose().transform(wheel_actor->getCMassLocalPose().p) : world_pos;
+                PxVec3 force_point(0); float force_weight = 0;
+                for (int r = 0; r < w.row_count; ++r) { float weight = w.contacts[r].load * w.contacts[r].friction_scale; force_point += w.contacts[r].point * weight; force_weight += weight; }
+                force_point = force_weight > 0 ? force_point / force_weight : w.contact_point;
+                PxVec3 contact_arm = force_point - mass_center;
+                float longitudinal_lever = contact_arm.cross(wheel_fwd).dot(wheel_axis);
+                float lateral_lever = contact_arm.cross(wheel_lat).dot(wheel_axis);
                 float sum_long = 0.0f;
                 float sum_lat = 0.0f;
                 float sum_slip_speed = 0.0f;
+                float sum_slip_power = 0.0f;
                 float sum_weight = 0.0f;
                 float sum_saturation = 0.0f;
                 float sum_brake = 0.0f;
+                float sum_bearing = 0.0f;
+                float brake_work = 0.0f;
                 float patch_half_length = 0.0f;
 
                 for (int step = 0; step < substep_count; step++)
@@ -4126,7 +4141,7 @@ namespace car
                     if (use_brush)
                     {
                         brush_tire_params brush = evaluate_brush_params(spec, wr_eff, tread_width, w.tire_load, w.condition_stiffness);
-                        dynamic_force = evaluate_brush_model(spec, brush, w.slip_ratio, curve_slip_angle, dyn_camb, w.tire_load, peak_force_long, peak_force_lat, camber_thrust_sign, saturation);
+                        dynamic_force = evaluate_brush_model(spec, brush, w.slip_ratio, curve_slip_angle, dyn_camb, w.tire_load, peak_force_long, peak_force_lat, camber_thrust_sign, saturation, rolling_direction);
                         patch_half_length = brush.patch_half_length;
                     }
                     else
@@ -4151,32 +4166,27 @@ namespace car
                     sum_long += substep_long;
                     sum_lat += substep_lat;
                     sum_slip_speed += substep_slip_v;
+                    // Friction work is force dotted with relative sliding velocity.
+                    // A stationary burnout still dissipates power at the tread.
+                    sum_slip_power += PxMax(substep_long * (wheel_speed - vx) - substep_lat * vy, 0.0f);
                     sum_weight += substep_weight;
                     sum_saturation += saturation;
 
                     // everything acting on the spin except the caliper, the patch torque included because
                     // the next substep reads its slip from this integration
-                    float free_torque = drive_torque - substep_long * wr_eff - omega * spec.bearing_friction * wmoi;
+                    float bearing_torque = -omega * spec.bearing_friction * wmoi;
+                    sum_bearing += bearing_torque;
+                    float free_torque = drive_torque + substep_long * longitudinal_lever + substep_lat * lateral_lever + bearing_torque;
 
                     // a caliper stops a wheel, it never drives one backwards, so it is capped at the torque
                     // that brings the spin to exactly zero. this is what removes lockup chatter
-                    float brake_signed = 0.0f;
-                    if (w.brake_torque > 0.0f)
-                    {
-                        float direction = fabsf(omega) > 0.1f ? (omega > 0.0f ? -1.0f : 1.0f) : brake_fallback;
-                        float stopping = -(omega * wmoi / substep + free_torque);
-                        if (direction > 0.0f)
-                        {
-                            brake_signed = PxMin(w.brake_torque, PxMax(stopping, 0.0f));
-                        }
-                        else if (direction < 0.0f)
-                        {
-                            brake_signed = -PxMin(w.brake_torque, PxMax(-stopping, 0.0f));
-                        }
-                    }
+                    float stopping = -(omega * wmoi / substep + free_torque);
+                    float brake_signed = PxClamp(stopping, -w.brake_torque, w.brake_torque);
                     sum_brake += brake_signed;
 
+                    float previous_omega = omega;
                     omega += (free_torque + brake_signed) / wmoi * substep;
+                    brake_work += fabsf(brake_signed * (previous_omega + omega) * 0.5f) * substep;
                     w.rotation += omega * substep;
                 }
 
@@ -4189,29 +4199,22 @@ namespace car
                 w.tire_saturation = sum_saturation * substep_inverse;
                 w.contact_patch_length = patch_half_length * 2.0f;
                 // physx gets what the caliper actually did, not what it was asked for
-                w.net_torque = drive_torque + mean_brake;
+                w.net_torque = drive_torque + mean_brake + sum_bearing * substep_inverse;
+                w.brake_temp = PxMin(w.brake_temp + 0.9f * brake_work / PxMax(spec.brake_thermal_mass * spec.brake_specific_heat, 1.0f), spec.brake_max_temp);
 
                 if (log_pacejka)
                 {
                     SP_LOG_INFO("[%s] blend=%.2f, lat_f=%.1f, long_f=%.1f", wheel_name, pacejka_weight, lat_f, long_f);
                 }
 
-                // carcass flex peaks below optimal pressure, clamp so over-inflation cannot make the friction-work term negative
-                float pressure_heat_mult = PxMax(1.0f + (1.0f - pressure_ratio) * 1.5f, 0.2f);
-                float rolling_heat = fabsf(wheel_speed) * spec.tire_heat_from_rolling * pressure_heat_mult;
-                float cooling_air = spec.tire_cooling_rate + ground_speed * spec.tire_cooling_airflow;
-                float force_magnitude = sqrtf(long_f * long_f + lat_f * lat_f);
-                float normalized_force = force_magnitude / PxMax(spec.load_reference, 1.0f);
-                float slip_ratio_eff = PxClamp(slip_v / PxMax(ground_speed, 0.5f), 0.0f, 2.0f);
-                float speed_heat_scale = PxClamp(ground_speed / 2.0f, 0.0f, 1.0f);
-                float friction_work = normalized_force * slip_ratio_eff * pacejka_weight * speed_heat_scale;
-                float base_heat = friction_work * spec.tire_heat_from_slip * pressure_heat_mult + rolling_heat;
+                float rolling_power = fabsf(wheel_speed) * spec.rolling_resistance * w.tire_load
+                    * PxMax(1.0f + (1.0f - pressure_ratio) * 0.3f, 0.0f);
 
                 // zone load comes from the tread rows the contact probes actually loaded, so where a tire
                 // cooks follows the measured patch rather than an estimate made from camber alone
                 float zone_load[3] = { 0.0f, 0.0f, 0.0f };
                 int zone_rows[3] = { 0, 0, 0 };
-                float zone_heat[3];
+                float zone_share[3];
                 {
                     int probe_rows = PxClamp(w.row_count, 1, max_tire_probe_rows);
                     // row zero sits at negative offset along the spin axis, which is the outboard shoulder
@@ -4248,31 +4251,15 @@ namespace car
                     float share_total = zone_load[0] + zone_load[1] + zone_load[2];
                     for (int z = 0; z < 3; z++)
                     {
-                        // shares average to one so the existing heat calibration is untouched when the
-                        // patch loads evenly
-                        float share = share_total > 1e-6f ? zone_load[z] * 3.0f / share_total : 1.0f;
-                        zone_heat[z] = base_heat * share;
+                        zone_share[z] = share_total > 1e-6f ? zone_load[z] / share_total : 1.0f / 3.0f;
                     }
                 }
 
-                float surface_resp = spec.tire_surface_response;
-                float core_rate = spec.tire_core_transfer_rate;
-                for (int z = 0; z < 3; z++)
-                {
-                    float s = w.thermal.surface[z];
-                    float s_delta = s - spec.tire_ambient_temp;
-                    float s_cooling = (s_delta > 0.0f) ? cooling_air * s_delta / 30.0f : 0.0f;
-                    float core_exchange = core_rate * (w.thermal.core - s);
-                    w.thermal.surface[z] += (zone_heat[z] * surface_resp - s_cooling + core_exchange) * dt;
-                    w.thermal.surface[z] = PxClamp(w.thermal.surface[z], spec.tire_min_temp, spec.tire_max_temp);
-                }
-
-                // core absorbs heat from surface average, cools slowly
-                float avg_surf = w.thermal.avg_surface();
-                float core_delta = w.thermal.core - spec.tire_ambient_temp;
-                float core_cooling = (core_delta > 0.0f) ? spec.tire_cooling_rate * 0.3f * core_delta / 30.0f : 0.0f;
-                w.thermal.core += (core_rate * (avg_surf - w.thermal.core) - core_cooling) * dt;
-                w.thermal.core = PxClamp(w.thermal.core, spec.tire_min_temp, spec.tire_max_temp);
+                float slip_energy = sum_slip_power * substep_inverse * dt;
+                w.dissipated_energy_j += slip_energy;
+                if (w.thermal.avg_surface() > spec.tire_damage_temp)
+                    w.damage = PxClamp(w.damage + slip_energy / spec.tire_damage_energy, 0.0f, 1.0f);
+                integrate_tire_thermal(w.thermal, spec, zone_share, sum_slip_power * substep_inverse, rolling_power, ground_speed, dt);
 
                 // --- tire wear (per-zone based on local temperature) ---
                 float total_wear = 0.0f;
@@ -4294,16 +4281,22 @@ namespace car
                 // same body as the normal force (wheel), so the suspension carries the wrench
                 // chassis-at-patch skipped anti-squat and invented wheelie pitch / yaw couples
                 PxRigidDynamic* force_body = wheel_actor ? wheel_actor : body;
-                safe_add_force_at_pos(force_body, tire_force, fpos);
-                if (w.contact_actor)
+                float friction_load = 0;
+                for (int r = 0; r < w.row_count; ++r) friction_load += w.contacts[r].load * w.contacts[r].friction_scale;
+                if (friction_load > 0)
                 {
-                    if (const PxRigidDynamic* ground_actor = w.contact_actor->is<PxRigidDynamic>())
+                    for (int r = 0; r < w.row_count; ++r)
                     {
-                        safe_add_force_at_pos(const_cast<PxRigidDynamic*>(ground_actor), -tire_force, fpos);
+                        const auto& row = w.contacts[r];
+                        float weight = row.load * row.friction_scale / friction_load;
+                        if (weight <= 0) continue;
+                        PxVec3 force = tire_force * weight;
+                        safe_add_force_at_pos(force_body, force, row.point);
+                        if (auto* ground = row.actor ? row.actor->is<PxRigidDynamic>() : nullptr)
+                            safe_add_force_at_pos(ground, -force, row.point);
                     }
                 }
-
-                w.net_torque -= w.angular_velocity * spec.bearing_friction * wmoi; // bearing drag
+                else safe_add_force_at_pos(force_body, tire_force, fpos);
 
                 if (wheel_actor)
                 {
@@ -4313,7 +4306,7 @@ namespace car
                     if (multibody.corners[i].upright)
                     {
                         // caliper on upright only, irs drive reaction must not pitch the knuckle
-                        safe_add_torque(multibody.corners[i].upright, wheel_axis * (-mean_brake));
+                        safe_add_torque(multibody.corners[i].upright, wheel_axis * (-mean_brake - sum_bearing * substep_inverse));
                     }
                 }
 
@@ -4345,8 +4338,7 @@ namespace car
                     continue;
                 }
 
-                float trail = get_wheel_pneumatic_trail(i);
-                PxVec3 torque = wheels[i].contact_normal * (-wheels[i].lateral_force * trail * spec.self_align_gain);
+                PxVec3 torque = wheels[i].contact_normal * get_wheel_self_aligning_torque(i);
                 safe_add_torque(multibody.corners[i].upright, torque);
                 if (const PxRigidDynamic* ground_actor = wheels[i].contact_actor ? wheels[i].contact_actor->is<PxRigidDynamic>() : nullptr)
                 {
@@ -4358,6 +4350,7 @@ namespace car
 
     void Simulation::set_validation_speed(float speed)
     {
+            event_flags |= 2;
             PxTransform pose = body->getGlobalPose();
             PxVec3 forward = pose.q.rotate(PxVec3(0.0f, 0.0f, 1.0f));
             body->setLinearVelocity(forward * speed);
@@ -4383,6 +4376,11 @@ namespace car
                     wheels[i].angular_velocity = angular_velocity;
                 }
             }
+            while (current_gear >= 2 && current_gear + 1 < spec.gear_count &&
+                angular_velocity_to_rpm(fabsf(get_average_driven_angular_velocity(false) * spec.gear_ratios[current_gear] * spec.final_drive)) > spec.engine_redline_rpm * 0.9f) ++current_gear;
+            gearbox_input_angular_velocity = get_average_driven_angular_velocity(false) * spec.gear_ratios[current_gear] * spec.final_drive;
+            engine_rpm = PxMax(spec.engine_idle_rpm, angular_velocity_to_rpm(fabsf(gearbox_input_angular_velocity)));
+            driveshaft_twist = 0;
             prev_velocity = forward * speed;
     }
 
@@ -4565,6 +4563,8 @@ namespace car
             body->setLinearDamping(spec.linear_damping);
             body->setAngularDamping(spec.angular_damping);
 
+            PxShape* chassis_shapes[16]; PxU32 shape_count = body->getShapes(chassis_shapes, 16);
+            for (PxU32 i = 0; i < shape_count; ++i) chassis_shapes[i]->setSimulationFilterData(PxFilterData(0, 0, 2, multibody_collision_group()));
             params.scene->addActor(*body);
 
             if (!params.vertices.empty())
@@ -4699,6 +4699,11 @@ namespace car
 
     void Simulation::reset_drivetrain_transients()
     {
+            record_reset();
+            battery.energy_j = spec.battery_capacity_kwh * 3600000.0f * spec.battery_initial_soc;
+            battery.temperature = spec.brake_ambient_temp;
+            engine_running = true;
+            regen_axle_torque = 0;
             engine_rpm = spec.engine_idle_rpm;
             engine_rotation = 0.0f;
             current_gear = (spec.gear_count > 2) ? 2 : 1;
@@ -4742,6 +4747,8 @@ namespace car
             {
                 wheels[i].brake_temp = PxMax(spec.brake_ambient_temp, 0.0f);
                 wheels[i].wear = 0.0f;
+                wheels[i].damage = 0;
+                wheels[i].dissipated_energy_j = 0;
                 wheels[i].thermal.surface[0] = PxMax(spec.tire_ambient_temp, 0.0f);
                 wheels[i].thermal.surface[1] = PxMax(spec.tire_ambient_temp, 0.0f);
                 wheels[i].thermal.surface[2] = PxMax(spec.tire_ambient_temp, 0.0f);
@@ -5101,16 +5108,27 @@ namespace car
 
     void Simulation::tick(float dt)
     {
-            if (!body)
+            if (!body || !std::isfinite(dt) || dt <= 0.0f)
             {
                 return;
             }
 
+            PxVec3 position = body->getGlobalPose().p;
+            if (position_valid && position.isFinite())
+            {
+                float distance = (position - previous_position).magnitude();
+                if (distance > PxMax(2.0f, body->getLinearVelocity().magnitude() * dt * 3)) event_flags |= 16;
+                else distance_m += distance;
+            }
+            previous_position = position; position_valid = true;
+            for (int i = 0; i < wheel_count; ++i)
+                if (multibody.corners[i].wheel_body) multibody.corners[i].wheel_body->userData = body->userData;
             // sanitize wheel state before it contaminates physx actors
             for (int i = 0; i < wheel_count; i++)
             {
                 if (sanitize_wheel_state(i))
                 {
+                    event_flags |= 8;
                     SP_LOG_WARNING("car::tick: scrubbed non finite state from wheel %d before tick", i);
                 }
             }
@@ -5146,7 +5164,6 @@ namespace car
 
             // caller supplies the fixed step duration
             update_input(dt);
-            update_handbrake();
             PxScene* scene = body->getScene();
             if (!scene)
             {
@@ -5154,17 +5171,40 @@ namespace car
             }
 
             bool steering_adjusting = fabsf(input_target.steering - input.steering) > 0.001f;
-            bool motion_requested = input.throttle > spec.input_deadzone || (is_in_reverse() && input.brake > spec.input_deadzone) || steering_adjusting;
+            // In automatic mode the brake pedal also requests reverse after a
+            // stop, so it must wake a car that is still in a forward gear.
+            bool motion_requested = input.throttle > spec.input_deadzone || input.brake > spec.input_deadzone || steering_adjusting;
             if (vehicle_sleeping)
             {
-                // only driver input wakes, contact solver must not clear park sleep
-                if (motion_requested)
+                // Tire actors use queries, not rigid collision contacts. PhysX
+                // cannot automatically wake them when a queried support moves.
+                update_suspension(scene, dt, false);
+                bool externally_awake = !body->isSleeping();
+                for (int i = 0; i < wheel_count; i++)
+                {
+                    externally_awake = externally_awake || !wheels[i].grounded
+                        || ground_point_velocity(wheels[i]).magnitudeSquared() > 0.0001f;
+                }
+                for (int i = 0; i < multibody.actor_count && !externally_awake; i++)
+                {
+                    PxRigidDynamic* actor = multibody.actors[i];
+                    externally_awake = actor && !actor->isSleeping();
+                }
+                // Collisions and moving supports must be able to wake a parked car.
+                if (motion_requested || externally_awake)
                 {
                     wake_vehicle_assembly();
                 }
                 else
                 {
-                    sleep_vehicle_assembly();
+                    const float shares[3] = { 1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f };
+                    for (int i = 0; i < wheel_count; i++)
+                    {
+                        integrate_tire_thermal(wheels[i].thermal, spec, shares, 0.0f, 0.0f, 0.0f, dt);
+                        float retention = expf(-spec.brake_cooling_base * dt / PxMax(spec.brake_thermal_mass * spec.brake_specific_heat, 1.0f));
+                        wheels[i].brake_temp = spec.brake_ambient_temp + (wheels[i].brake_temp - spec.brake_ambient_temp) * retention;
+                    }
+                    tick_telemetry(dt, body->getLinearVelocity().magnitude() * 3.6f);
                     return;
                 }
             }
@@ -5194,7 +5234,7 @@ namespace car
                 {
                     float h = spec.brake_cooling_base + airspeed * spec.brake_cooling_airflow;
                     float cooling_power = h * temp_above_ambient;
-                    float temp_drop = (cooling_power / PxMax(spec.brake_thermal_mass, 0.1f)) * dt;
+                    float temp_drop = (cooling_power / PxMax(spec.brake_thermal_mass * spec.brake_specific_heat, 1.0f)) * dt;
                     wheels[i].brake_temp -= temp_drop;
                     wheels[i].brake_temp = PxMax(wheels[i].brake_temp, spec.brake_ambient_temp);
                 }
@@ -5212,6 +5252,7 @@ namespace car
             update_suspension(scene, dt);
             update_tire_condition();
             apply_drivetrain(forward_speed * 3.6f, dt);
+            update_handbrake();
             engine_rotation = fmodf(engine_rotation + engine_rpm * PxPi * 2.0f / 60.0f * dt, PxPi * 2.0f);
             if (!std::isfinite(engine_rotation))
             {
@@ -5222,12 +5263,19 @@ namespace car
             apply_self_aligning_torque();
 
             apply_aero_and_resistance();
-            // park when the driver is idle and body crawl is tiny, do not wait forever on multibody jitter
+            // Keep the low-speed settling tolerance, but never park at a jump
+            // apex, during body rotation/wheelspin, or on a moving support.
             bool driver_idle = !motion_requested
                 && input.brake <= spec.input_deadzone
                 && fabsf(input.steering) <= spec.input_deadzone;
-            float park_speed = vel.magnitude();
-            if (driver_idle && (park_speed < 0.08f || vehicle_assembly_is_settled()))
+            bool supported_and_quiet = body->getAngularVelocity().magnitudeSquared() < 0.0025f;
+            for (int i = 0; i < wheel_count; i++)
+            {
+                supported_and_quiet = supported_and_quiet && wheels[i].grounded
+                    && fabsf(wheels[i].angular_velocity) < 0.5f
+                    && ground_point_velocity(wheels[i]).magnitudeSquared() < 0.0001f;
+            }
+            if (driver_idle && supported_and_quiet && (vel.magnitude() < 0.08f || vehicle_assembly_is_settled()))
             {
                 vehicle_sleep_timer += dt;
                 if (vehicle_sleep_timer >= 0.35f)
@@ -5287,7 +5335,17 @@ namespace car
             {
                 return 0.0f;
             }
-            return -wheels[i].lateral_force * get_wheel_pneumatic_trail(i) * spec.self_align_gain;
+            PxRigidDynamic* actor = multibody.corners[i].wheel_body;
+            if (!actor)
+            {
+                return 0.0f;
+            }
+            PxVec3 axis = actor->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
+            PxVec3 forward = axis.cross(wheels[i].contact_normal).getNormalized();
+            float speed = (actor->getLinearVelocity() - ground_point_velocity(wheels[i])).dot(forward);
+            // The force centroid trails the direction of travel, including reverse.
+            float direction = PxClamp(speed / 0.5f, -1.0f, 1.0f);
+            return -wheels[i].lateral_force * get_wheel_pneumatic_trail(i) * spec.self_align_gain * direction;
     }
 
 
@@ -5594,7 +5652,7 @@ namespace car
 
 
     float Simulation::get_motor_power_kw()
-    { float w = motor_torque * engine_rpm * (2.0f * 3.14159265f / 60.0f); return w / 1000.0f; }
+    { return motor_torque * fabsf(get_average_driven_angular_velocity(false) * spec.final_drive) / 1000.0f; }
 
 
     float Simulation::get_redline_rpm()
@@ -5689,6 +5747,8 @@ namespace car
             for (int i = 0; i < wheel_count; i++)
             {
                 wheels[i].wear = 0.0f;
+                wheels[i].damage = 0;
+                wheels[i].dissipated_energy_j = 0;
             }
     }
 
