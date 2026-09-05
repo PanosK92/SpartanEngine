@@ -1509,10 +1509,14 @@ namespace car
             {
                 body->setMass(safe_mass);
                 body->setCMassLocalPose(PxTransform(safe_com));
-                body->setMassSpaceInertiaTensor(PxVec3(
-                    PxMax(spec.inertia_xx, 0.1f),
-                    PxMax(spec.inertia_yy, 0.1f),
-                    PxMax(spec.inertia_zz, 0.1f)));
+                PxMat33 tensor(PxVec3(spec.inertia_xx, spec.inertia_xy, spec.inertia_xz), PxVec3(spec.inertia_xy, spec.inertia_yy, spec.inertia_yz), PxVec3(spec.inertia_xz, spec.inertia_yz, spec.inertia_zz));
+                PxVec3 principal; PxQuat axes;
+                if (physical_inertia(tensor, principal, axes))
+                {
+                    body->setCMassLocalPose(PxTransform(safe_com, axes));
+                    body->setMassSpaceInertiaTensor(principal);
+                }
+                else PxRigidBodyExt::setMassAndUpdateInertia(*body, safe_mass, &safe_com);
             }
             else
             {
@@ -3211,7 +3215,11 @@ namespace car
     float Simulation::get_engine_torque(float rpm)
     {
             if (spec.engine_map_count >= 2)
-                return sample_curve(spec.engine_map_rpm, spec.engine_map_torque, spec.engine_map_count, rpm, 0);
+            {
+                float map_peak = 1;
+                for (int i = 0; i < spec.engine_map_count; ++i) map_peak = PxMax(map_peak, spec.engine_map_torque[i]);
+                return sample_curve(spec.engine_map_rpm, spec.engine_map_torque, spec.engine_map_count, rpm, 0) * spec.engine_peak_torque / map_peak;
+            }
             float idl = spec.engine_idle_rpm;
             float mx = spec.engine_max_rpm;
             if (idl > mx)
@@ -3331,19 +3339,11 @@ namespace car
                 return;
             }
 
-            float next_ratio = gear == 1 ? 0.0f : spec.gear_ratios[gear] * spec.final_drive;
-            // always kill stored twist, ratio sign flips (e.g. into reverse) were detonating the shaft
+            // The disconnected gearbox rotor keeps its angular momentum.
+            // Synchronization is resolved by the shaft/clutch model on engagement.
+            gearbox_loss_j += 0.5f * spec.driveshaft_stiffness * driveshaft_twist * driveshaft_twist;
             driveshaft_twist = 0.0f;
             driveshaft_torque = 0.0f;
-            if (fabsf(next_ratio) > 0.001f)
-            {
-                // resync from the wheels, remapping through the old ratio keeps spin-state errors
-                gearbox_input_angular_velocity = get_average_driven_angular_velocity(false) * next_ratio;
-            }
-            else
-            {
-                gearbox_input_angular_velocity = 0.0f;
-            }
             current_gear = gear;
     }
 
@@ -3663,7 +3663,7 @@ namespace car
         motor_torque = demand > spec.input_deadzone ? lerp(motor_torque, target, exp_decay(spec.electric_torque_response, dt)) : 0;
         motor_torque = PxMin(motor_torque, target);
         regen_axle_torque = 0;
-        if (spec.electric_enabled && is_in_forward_gear() && input.brake > 0 && input.throttle <= spec.input_deadzone && fabsf(motor_speed) > 10 && !burnout_active)
+        if (spec.electric_enabled && is_in_forward_gear() && input.brake > 0 && input.throttle <= spec.input_deadzone && fabsf(motor_speed) > 10 && angular_velocity_to_rpm(fabsf(motor_speed)) < spec.electric_motor_max_rpm && !burnout_active)
         {
             float abs_scale = 1;
             for (int i = 0; i < wheel_count; ++i) if (is_driven(i)) abs_scale = PxMin(abs_scale, abs_active[i] ? 0.0f : assisted_actuators.brake_torque_scale[i]);
@@ -3672,7 +3672,7 @@ namespace car
             motor_torque = -copysignf(PxMin(regen, spec.electric_motor_torque) * abs_scale * thermal_limit, motor_speed);
         }
         float requested_power = motor_torque * motor_speed;
-        float delivered = integrate_hybrid(spec, battery, requested_power, dt, spec.brake_ambient_temp);
+        float delivered = integrate_hybrid(spec, battery, requested_power, dt, spec.brake_ambient_temp, sample_curve(spec.motor_efficiency_rpm, spec.motor_efficiency_value, spec.motor_efficiency_count, angular_velocity_to_rpm(fabsf(motor_speed)), spec.motor_efficiency));
         if (fabsf(motor_speed) > 0.01f) motor_torque = delivered / motor_speed;
         else if (battery.energy_j <= 0) motor_torque = 0;
         float electric_axle = motor_torque * spec.final_drive * efficiency;
@@ -4631,6 +4631,7 @@ namespace car
                     }
 
                     shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
+                    shape->setSimulationFilterData(PxFilterData(0, 0, 2, multibody_collision_group()));
                     body->attachShape(*shape);
                     shape->release();
                     shapes_attached++;
@@ -5173,7 +5174,7 @@ namespace car
             bool steering_adjusting = fabsf(input_target.steering - input.steering) > 0.001f;
             // In automatic mode the brake pedal also requests reverse after a
             // stop, so it must wake a car that is still in a forward gear.
-            bool motion_requested = input.throttle > spec.input_deadzone || input.brake > spec.input_deadzone || steering_adjusting;
+            bool motion_requested = input.throttle > spec.input_deadzone || input.brake > spec.input_deadzone || steering_adjusting || starter_requested;
             if (vehicle_sleeping)
             {
                 // Tire actors use queries, not rigid collision contacts. PhysX
@@ -5204,6 +5205,8 @@ namespace car
                         float retention = expf(-spec.brake_cooling_base * dt / PxMax(spec.brake_thermal_mass * spec.brake_specific_heat, 1.0f));
                         wheels[i].brake_temp = spec.brake_ambient_temp + (wheels[i].brake_temp - spec.brake_ambient_temp) * retention;
                     }
+                    integrate_hybrid(spec, battery, 0, dt, spec.brake_ambient_temp);
+                    update_tire_condition();
                     tick_telemetry(dt, body->getLinearVelocity().magnitude() * 3.6f);
                     return;
                 }

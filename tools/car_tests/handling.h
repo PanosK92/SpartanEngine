@@ -8,7 +8,7 @@ void handling_checks(PxPhysics* physics, PxScene* scene, PxRigidStatic* plane, c
         car::Simulation sim; sim.get_spec() = preset;
         car::setup_params params; params.physics = physics; params.scene = scene;
         check(sim.setup(params), "handling setup");
-        PxShape* shape; sim.get_body()->getShapes(&shape, 1); shape->setGeometry(PxBoxGeometry(0.8f, 0.15f, 2));
+        install_bench_chassis(sim, physics);
         sim.set_telemetry_path("binaries/car_tests/handling_" + std::to_string(scenario) + "_" + std::to_string(static_cast<int>(1 / dt)) + ".csv");
         sim.set_log_to_file(true);
         auto step = [&]() {
@@ -56,7 +56,7 @@ void handling_checks(PxPhysics* physics, PxScene* scene, PxRigidStatic* plane, c
             if (scenario == 6 && sim.get_speed_kmh() < 1) break;
         }
         printf("handling %d mean_g=%.3f mean_yaw=%.3f peak_yaw=%.3f distance=%.2f speed=%.1f\n", scenario, samples ? g_sum/samples : 0, samples ? yaw_sum/samples : 0, max_yaw, distance, sim.get_speed_kmh());
-        check(max_yaw < 3.0f, "bounded handling yaw rate");
+        check(max_yaw < (scenario == 6 ? 1.0f : 3.0f), "bounded handling yaw rate");
         if (scenario < 2)
         {
             skid_g[scenario] = g_sum / samples;

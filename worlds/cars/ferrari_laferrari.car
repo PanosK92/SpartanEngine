@@ -21,6 +21,7 @@
         engine_idle_rpm="1000" engine_redline_rpm="9250" engine_max_rpm="9500"
         engine_map_count="8" engine_map_rpm="1000,2500,4000,5500,6750,8500,9250,9500"
         engine_map_torque="385,480,565,650,700,650,600,0"
+        motor_efficiency_count="5" motor_efficiency_rpm="0,1000,3000,7000,9500" motor_efficiency_value="0.86,0.90,0.94,0.94,0.90"
         battery_capacity_kwh="1.5" battery_initial_soc="0.8" motor_efficiency="0.94" battery_efficiency="0.97"
         battery_heat_capacity="45000" battery_cooling="40" battery_derate_temp="55" battery_cutoff_temp="75" regen_power_kw="60"
         engine_stall_rpm="400" starter_torque="100"

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from scipy.optimize import lsq_linear
+from itertools import product
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("measurements", type=Path)
@@ -30,8 +30,21 @@ power = np.concatenate([0.9*slip, rolling])
 scale = np.linalg.norm(matrix, axis=0)
 if (scale < 1e-9).any() or np.linalg.matrix_rank(matrix/scale) < 5:
     raise ValueError("Heat/cool/airspeed excitation is insufficient to identify all five coefficients")
-fit = lsq_linear(matrix/scale, power, bounds=(np.array([100, 100, 0, 0, 0])*scale, np.array([1e6, 1e6, 1e4, 1e4, 1e3])*scale))
-coefficients = fit.x/scale
-report = {"source": str(args.measurements.resolve()), "samples": len(data), "converged": bool(fit.success), "power_rmse_w": float(np.sqrt(np.mean((matrix@coefficients-power)**2))), "condition_number": float(np.linalg.cond(matrix/scale)), "parameters": dict(zip(["tire_surface_heat_capacity", "tire_core_heat_capacity", "tire_surface_core_conductance", "tire_heat_transfer_static", "tire_heat_transfer_airflow"], map(float, coefficients))), "preset_modified": False}
+# Five unknowns: exhaustively enumerate active bounds, solving the free
+# columns with QR/SVD. This is a bounded convex least-squares problem.
+normalized = matrix/scale
+lower = np.array([100,100,0,0,0])*scale
+upper = np.array([1e6,1e6,1e4,1e4,1e3])*scale
+best_cost = np.inf; best = None
+for status in product((-1,0,1), repeat=5):
+    state = np.array(status); free = state == 0
+    candidate = np.where(state > 0, upper, np.where(state < 0, lower, 0))
+    if free.any(): candidate[free] = np.linalg.lstsq(normalized[:,free], power-normalized@candidate, rcond=None)[0]
+    if (candidate < lower-1e-6).any() or (candidate > upper+1e-6).any(): continue
+    cost = np.sum((normalized@candidate-power)**2)
+    if cost < best_cost: best_cost, best = cost, candidate
+if best is None: raise ValueError("No feasible thermal fit")
+coefficients = best/scale
+report = {"source": str(args.measurements.resolve()), "samples": len(data), "converged": True, "power_rmse_w": float(np.sqrt(best_cost/len(power))), "condition_number": float(np.linalg.cond(normalized)), "parameters": dict(zip(["tire_surface_heat_capacity", "tire_core_heat_capacity", "tire_surface_core_conductance", "tire_heat_transfer_static", "tire_heat_transfer_airflow"], map(float, coefficients))), "preset_modified": False}
 args.output.write_text(json.dumps(report, indent=2))
 print(json.dumps(report, indent=2))

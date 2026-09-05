@@ -36,6 +36,7 @@ void check(bool condition, const char* message)
     if (!condition) throw std::runtime_error(message);
 }
 
+#include "chassis.h"
 #include "handling.h"
 #include "calibration.h"
 
@@ -52,6 +53,14 @@ void regression_checks(car::Simulation& sim, PxPhysics* physics, PxRigidStatic* 
     actor->release();
 
     const auto spec = sim.get_spec();
+    sim.get_spec().engine_friction = 10;
+    for (int i = 0; i < 200; ++i) sim.integrate_powertrain(0.005f);
+    check(!sim.get_engine_running(), "engine can stall under mechanical drag");
+    sim.get_spec().engine_friction = spec.engine_friction; sim.set_starter(true);
+    for (int i = 0; i < 200; ++i) sim.integrate_powertrain(0.005f);
+    check(sim.get_engine_running() && sim.get_current_engine_rpm() > spec.engine_stall_rpm, "starter restarts a stalled engine");
+    sim.set_starter(false); sim.reset_drivetrain_transients(); sim.clear_force_accumulators();
+
     float map_x[3] = {0, 1, 2}, map_y[3] = {1, 2, 4};
     check(car::sample_curve(map_x, map_y, 3, 1.5f, 0) == 3 && car::sample_curve(map_x, map_y, 3, 5, 0) == 4, "calibration interpolation and endpoints");
     check(fabsf(car::hot_tire_pressure(spec, spec.tire_pressure_reference_temp, 0) - spec.tire_pressure) < 1e-5f, "cold gauge pressure reference");
@@ -88,6 +97,16 @@ void regression_checks(car::Simulation& sim, PxPhysics* physics, PxRigidStatic* 
         }
     }
     fclose(sweep);
+    // Parking caliper work must enter the same heat balance as service braking.
+    sim.set_handbrake(1); sim.update_input(0.005f);
+    sim.set_wheel_angular_velocity(2, 10);
+    sim.get_wheel_state(2).grounded = false;
+    float brake_before = sim.get_wheel_state(2).brake_temp;
+    sim.update_handbrake(); sim.apply_tire_forces(0.005f);
+    check(sim.get_wheel_state(2).brake_temp > brake_before, "handbrake dissipates rotor energy into brake heat");
+    sim.set_handbrake(0); sim.update_input(0.005f); sim.set_validation_speed(0); sim.clear_force_accumulators();
+    for (int i = 0; i < 4; ++i) { sim.get_wheel_state(i).brake_torque = 0; sim.get_wheel_state(i).net_torque = 0; }
+
 
     auto thermal_spec = spec;
     thermal_spec.tire_heat_transfer_static = 0;
@@ -195,6 +214,7 @@ int main(int argc, char** argv)
     try
     {
         if (argc > 1 && std::string(argv[1]) == "--tire-evaluate") return evaluate_calibration(argc, argv);
+        if (argc > 6) validation_hull_path = argv[6];
         PxDefaultAllocator allocator;
         PxDefaultErrorCallback errors;
         PxFoundation* foundation = PxCreateFoundation(PX_PHYSICS_VERSION, allocator, errors);
@@ -225,11 +245,7 @@ int main(int argc, char** argv)
             params.physics = physics;
             params.scene = scene;
             check(simulation.setup(params), "vehicle setup");
-            // The editor replaces its seed box with authored convex hulls. Use a low
-            // chassis proxy here so the full-height seed box cannot rest on the road.
-            PxShape* shape = nullptr;
-            simulation.get_body()->getShapes(&shape, 1);
-            shape->setGeometry(PxBoxGeometry(0.8f, 0.15f, 2.0f));
+            install_bench_chassis(simulation, physics);
             regression_checks(simulation, physics, plane);
             const float dt = argc > 2 ? std::stof(argv[2]) : 0.005f;
             if (argc > 1)
@@ -298,6 +314,7 @@ int main(int argc, char** argv)
                 simulation.get_wheel_core_temp(2), simulation.get_wheel_brake_temp(0));
         }
         const float handling_dt = argc > 2 ? std::stof(argv[2]) : 0.005f;
+        contact_checks(physics, scene, plane, car::load_car_file("worlds/cars/ferrari_laferrari.car")->performance, handling_dt);
         handling_checks(physics, scene, plane, car::load_car_file("worlds/cars/ferrari_laferrari.car")->performance, handling_dt);
         scene->release();
         material->release();

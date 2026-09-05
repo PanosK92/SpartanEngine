@@ -405,6 +405,9 @@ namespace car
                     if (!std::isfinite(x[i]) || !finite_range(y[i], 0, 2000) || (i && x[i] <= x[i-1])) return false;
                 return true;
             };
+            require(curve_valid(preset.motor_efficiency_rpm, preset.motor_efficiency_value, preset.motor_efficiency_count), "motor_efficiency_map");
+            for (int i = 0; i < std::clamp(preset.motor_efficiency_count, 0, 16); ++i) require(finite_range(preset.motor_efficiency_value[i], 0.1f, 1), "motor_efficiency_value");
+            require(finite_range(preset.yaw_control_gain, 0, 50) && finite_range(preset.regen_power_kw, 0, 1000) && finite_range(preset.starter_torque, 1, 1000) && finite_range(preset.engine_stall_rpm, 1, preset.engine_idle_rpm), "powertrain_control_limits");
             require(curve_valid(preset.engine_map_rpm, preset.engine_map_torque, preset.engine_map_count), "engine_map_torque");
             require(curve_valid(preset.aero_speed_x, preset.aero_speed_scale, preset.aero_speed_count), "aero_speed_scale");
             require(curve_valid(preset.aero_height_x, preset.aero_height_scale, preset.aero_height_count), "aero_height_scale");
@@ -482,6 +485,9 @@ namespace car
             READ_FLOAT(battery_capacity_kwh);
             READ_FLOAT(battery_initial_soc);
             READ_FLOAT(motor_efficiency);
+            READ_INT(motor_efficiency_count);
+            read_float_array(node, "motor_efficiency_rpm", preset.motor_efficiency_rpm, 16);
+            read_float_array(node, "motor_efficiency_value", preset.motor_efficiency_value, 16);
             READ_FLOAT(battery_efficiency);
             READ_FLOAT(battery_heat_capacity);
             READ_FLOAT(battery_cooling);
@@ -495,7 +501,10 @@ namespace car
             READ_BOOL(inertia_is_assembled);
             READ_FLOAT(inertia_xy); READ_FLOAT(inertia_xz); READ_FLOAT(inertia_yz);
             if (node.attribute("calibration_id"))
+            {
                 snprintf(preset.calibration_id, sizeof(preset.calibration_id), "%s", node.attribute("calibration_id").as_string());
+                for (char& c : preset.calibration_id) if (c && !isalnum(static_cast<unsigned char>(c)) && c != '_' && c != '-' && c != '.') c = '_';
+            }
 
             READ_FLOAT(engine_idle_rpm);
             READ_FLOAT(engine_redline_rpm);

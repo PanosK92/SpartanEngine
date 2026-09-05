@@ -31,10 +31,10 @@ namespace car
     };
     // Mechanical power is positive when motoring. Energy is a usable-energy
     // state, not a voltage/chemistry model; its SOC is energy based.
-    inline float integrate_hybrid(const car_preset& s, hybrid_state& b, float requested_power, float dt, float ambient)
+    inline float integrate_hybrid(const car_preset& s, hybrid_state& b, float requested_power, float dt, float ambient, float motor_efficiency = 0)
     {
         const float capacity = s.battery_capacity_kwh * 3600000.0f;
-        const float eta = s.motor_efficiency * s.battery_efficiency;
+        const float eta = (motor_efficiency > 0 ? motor_efficiency : s.motor_efficiency) * s.battery_efficiency;
         float power = requested_power >= 0 ? PxMin(requested_power, b.energy_j * eta / dt)
             : PxMax(requested_power, -(capacity - b.energy_j) / (eta * dt));
         b.electrical_power_w = power >= 0 ? power / eta : power * eta;

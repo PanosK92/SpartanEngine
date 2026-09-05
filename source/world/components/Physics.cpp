@@ -1979,6 +1979,7 @@ namespace spartan
         if (m_body_type == BodyType::Vehicle && vehicle_body)
         {
             PxTransform pose(PxVec3(position.x, position.y, position.z), PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
+            m_vehicle_simulation->record_reset();
             vehicle_body->setGlobalPose(pose);
             vehicle_body->setLinearVelocity(PxVec3(0, 0, 0));
             vehicle_body->setAngularVelocity(PxVec3(0, 0, 0));

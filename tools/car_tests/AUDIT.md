@@ -1,4 +1,6 @@
-# Ferrari simulation audit
+# Ferrari simulation audit — first pass
+
+**Historical first-pass report.** The follow-up requested for every realism category is documented in [REALISM.md](REALISM.md), which supersedes the remaining-work list and test results below.
 
 Audit date: 5 September 2026. Scope: the Ferrari LaFerrari prefab selected by `worlds/plan.world`, `worlds/cars/ferrari_laferrari.car`, the production car simulation, preset loading, tire model, telemetry, relevant physics integration, and the existing bench. The supplied driving CSV was treated as data and was not edited. Concurrent world, road, and spline changes were preserved.
 
@@ -58,7 +60,7 @@ The regression executable compiles the real simulation, preset loader, and telem
 
 The full editor was not launched, and the exact Ferrari mesh-derived hull and aerodynamic application points were not exercised. The existing in-editor bench also does not enforce the XML acceleration, stopping-distance, or skidpad ranges: its launch/braking scenarios primarily check other failure symptoms. The new headless tests explicitly enforce the first two ranges; skidpad remains unvalidated.
 
-## Remaining realism limits, in priority order
+## Original follow-up work list (see REALISM.md for implementation and current limits)
 
 **Suspension geometry and wheel rates.** The hardpoints are generated from a small number of offsets and fractions of track width, not measured 3D pickup coordinates. The front upper/lower outer points share longitudinal position, so meaningful authored caster and anti-dive geometry are absent from this construction. Rear yaw is restrained by a chassis-relative angular lock rather than a physical toe link. That limits toe compliance and bump-steer realism. Replace these approximations with explicit pickup coordinates and validate kinematics over bump, droop, roll, and steering before adding more mechanisms.
 

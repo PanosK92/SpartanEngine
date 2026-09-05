@@ -6161,6 +6161,15 @@ register_tool(
 
 register_tool(
   server,
+  "vehicle_export_hull",
+  "Export the selected car's cooked chassis hull vertices to car_validation_hulls.csv for repeatable headless physics validation.",
+  { id: z.string().optional() },
+  "vehicle_export_hull",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
   "vehicle_telemetry",
   [
     "Read car_telemetry.csv from the engine working directory (binary folder when launched from there).",

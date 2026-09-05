@@ -58,7 +58,7 @@ namespace car
         PxRevoluteJoint* wheel_joint = nullptr;
         PxDistanceJoint* travel_joint = nullptr;
         coilover coilover_unit;
-        // upright twist about the chassis vertical, its limit is the steering lock, zero on a rear corner
+        // Front steering lock only; rear toe is constrained by its physical fifth link.
         PxD6Joint* steering_stop = nullptr;
         float steering_limit = 0.0f;
         suspension_member members[max_suspension_members];

@@ -238,6 +238,7 @@ namespace car
         float battery_capacity_kwh, battery_initial_soc, motor_efficiency, battery_efficiency;
         float battery_heat_capacity, battery_cooling, battery_derate_temp, battery_cutoff_temp, regen_power_kw;
         float engine_stall_rpm, starter_torque;
+        float motor_efficiency_rpm[16], motor_efficiency_value[16]; int motor_efficiency_count;
         bool yaw_control_enabled;
         float yaw_control_gain;
         assist_settings assists;
