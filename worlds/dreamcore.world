@@ -1,35 +1,13 @@
 <?xml version="1.0"?>
-<World name="dreamcore" description="infinite fft ocean as far as the eye can see, 10x10 platform, player on it, looping ocean ambience">
+<World name="dreamcore" description="A pastel tile city above an endless ocean, nine dreamlike terraces joined by walkable causeways">
  <ConsoleVariables>
   <Variable name="r.grid" value="0.000000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="physics_body_camera" id="2001000000000000001" active="true" position="2.63746 3.44659 2.25604" rotation="0 0 0 1" scale="1 1 1">
+  <Entity name="physics_body_camera" id="2001000000000000001" active="true" position="0 3.44659 -5" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <Entity name="component_camera" id="2001000000000000002" active="true" position="0 0.77 0" rotation="-0.00610289 0.948524 -0.00790628 -0.316547" scale="1 1 1">
+   <Entity name="component_camera" id="2001000000000000002" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
     <camera aperture="11" shutter_speed="0.00400000019" iso="100" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="1" flags="17" />
-   </Entity>
-  </Entity>
-  <Entity name="platform" id="13024411762166032026" active="true" position="0 2 0" rotation="0 0 0 1" scale="1 1 1">
-   <Entity name="top" id="13832318846437840492" active="true" position="0 0 0" rotation="0 0 0 1" scale="10 1 10">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_pool" material_path="./project/dreamcore_resources/tile_pool.xml" material_default="false" ovr_uv_tiling_x="0.5" ovr_uv_tiling_y="0.5" ovr_uv_offset_x="0" ovr_uv_world_space="1" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="leg" id="9851024113933264188" active="true" position="-4.5 -1.5 4.5" rotation="0 0 0 1" scale="1 2 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_pool" material_path="./project/dreamcore_resources/tile_pool.xml" material_default="false" ovr_uv_tiling_x="0.5" ovr_uv_tiling_y="0.5" ovr_uv_world_space="1" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="leg_1" id="1499880595912066219" active="true" position="-4.5 -1.5 -4.5" rotation="0 0 0 1" scale="1 2 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_pool" material_path="./project/dreamcore_resources/tile_pool.xml" material_default="false" ovr_uv_tiling_x="0.5" ovr_uv_tiling_y="0.5" ovr_uv_world_space="1" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="leg_2" id="4611600256921265787" active="true" position="4.5 -1.5 -4.5" rotation="0 0 0 1" scale="1 2 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_pool" material_path="./project/dreamcore_resources/tile_pool.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="leg_3" id="6021555251481220681" active="true" position="4.5 -1.5 4.5" rotation="0 0 0 1" scale="1 2 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_pool" material_path="./project/dreamcore_resources/tile_pool.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
   </Entity>
   <Entity name="light_directional" id="2001000000000000003" active="true" position="0 2 0" rotation="0.00719141 0.350769 -0.00269378 0.93643" scale="1 1 1">
@@ -48,27 +26,8 @@
   <Entity name="ambient_music" id="2001000000000000007" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <audio_source path="project/music/soundtrack/leberch_meditative_ambient.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
   </Entity>
-  <Entity name="platform_1" id="17907731649294026939" active="true" position="-70.7327 2 -53.3227" rotation="0 0 0 1" scale="1 1 1">
-   <Entity name="top" id="17908225014493606013" active="true" position="0 0 0" rotation="0 0 0 1" scale="10 1 10">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_pool" material_path="./project/dreamcore_resources/tile_pool.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="leg" id="17907868194078522103" active="true" position="-4.5 -1.5 4.5" rotation="0 0 0 1" scale="1 2 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_pool" material_path="./project/dreamcore_resources/tile_pool.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="leg_1" id="17906577395692337323" active="true" position="-4.5 -1.5 -4.5" rotation="0 0 0 1" scale="1 2 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_pool" material_path="./project/dreamcore_resources/tile_pool.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="leg_2" id="17906521493434906405" active="true" position="4.5 -1.5 -4.5" rotation="0 0 0 1" scale="1 2 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_pool" material_path="./project/dreamcore_resources/tile_pool.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
-   <Entity name="leg_3" id="17906523667501094988" active="true" position="4.5 -1.5 4.5" rotation="0 0 0 1" scale="1 2 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_pool" material_path="./project/dreamcore_resources/tile_pool.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
-   </Entity>
+  <Entity name="dreamcore_generator" id="2001000000000000008" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <script file_path="../worlds/dreamcore.lua" seed="17" />
   </Entity>
  </Entities>
 </World>
