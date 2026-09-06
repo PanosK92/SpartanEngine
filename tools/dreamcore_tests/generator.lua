@@ -1,5 +1,5 @@
 -- Run from the repository root using Lua 5.4 (see README.md).
-local builder = dofile("worlds/dreamcore.lua")
+local builder = dofile("binaries/project/scripts/dreamcore.lua")
 local function upvalue(fn, key)
     for i = 1, 100 do
         local name, value = debug.getupvalue(fn, i)
@@ -123,7 +123,7 @@ local function entity()
             function c:SetMaterial(v)
                 if type(v) == "string" then
                     loads = loads + 1
-                    local file = assert(io.open("worlds/" .. v:match("worlds/(.+)")))
+                    local file = assert(io.open("binaries/" .. v))
                     file:close()
                     self.material = {path = v}
                 else assert(v and v.path); self.material = v end
@@ -157,13 +157,13 @@ end
 assert(geometry == #make_plan(17), "builder dropped planned geometry")
 builder:Initialize(host)
 assert(#nodes == count and loads == 5, "reinitialization duplicated the island")
-local reloaded = dofile("worlds/dreamcore.lua")
+local reloaded = dofile("binaries/project/scripts/dreamcore.lua")
 reloaded:Initialize(host)
 assert(removed == 1 and loads == 10, "script replacement did not replace old geometry")
 
 local file = assert(io.open("worlds/dreamcore.world"))
 local world = file:read("*a"); file:close()
-assert(world:find('file_path="../worlds/dreamcore.lua"', 1, true))
+assert(world:find('file_path="project/scripts/dreamcore.lua"', 1, true))
 assert(not world:find('<Entity name="platform', 1, true), "legacy platform still overlaps generated geometry")
 assert(world:find('position="0 3.44659 -5"', 1, true))
 assert(world:find('name="ocean"', 1, true) and world:find('name="ambient_music"', 1, true) and world:find('name="ocean_sound"', 1, true))

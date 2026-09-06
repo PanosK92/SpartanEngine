@@ -229,6 +229,7 @@ namespace spartan
 
 
         void SetPresentInRenderer(bool enabled);
+        void SetFrameCompletion(RHI_SyncPrimitive* timeline, uint64_t value);
         void BlitToXrSwapchain(RHI_Texture* texture);
         void EndXrFrame();
 

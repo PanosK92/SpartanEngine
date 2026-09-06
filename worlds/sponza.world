@@ -17,7 +17,7 @@
    <light flags="3" light_type="0" color_r="1" color_g="0.694902956" color_b="0.431047976" temperature="3000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
   </Entity>
   <Entity name="builder" id="1003000000000000006" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="../worlds/sponza.lua" Initialize="" />
+   <script file_path="project/scripts/sponza.lua" Initialize="" />
   </Entity>
   <Entity name="floor" id="1003000000000000005" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />

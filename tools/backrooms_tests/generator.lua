@@ -1,5 +1,5 @@
 -- Exercises the production generator without engine objects; no copied layout algorithm.
-local backrooms = dofile("worlds/backrooms.lua")
+local backrooms = dofile("binaries/project/scripts/backrooms.lua")
 local function upvalue(fn, wanted)
     for i = 1, 100 do
         local name, value = debug.getupvalue(fn, i)

@@ -30,10 +30,10 @@ what it does:
     2. builds the road graph, splits ways at junctions and chains them into continuous routes,
        a route continues straight through a junction, side roads end on it
     3. simplifies, resamples to an even spacing, projects to world space using the crs in
-       worlds/plan_map.json, reads the terrain height for every point and clips roads that run
+       binaries/project/maps/plan_map.json, reads the terrain height for every point and clips roads that run
        into the sea
     4. replaces the children of the roads entity in worlds/plan.world, backing the file up first
-    5. rewrites routes, junctions and stats in worlds/plan_map.json and regenerates plan_map.svg
+    5. rewrites routes, junctions and stats in binaries/project/maps/plan_map.json and regenerates plan_map.svg
 """
 
 import argparse
@@ -62,8 +62,9 @@ from PIL import Image
 REPO_ROOT       = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 CACHE_DIR       = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
 WORLD_PATH      = os.path.join(REPO_ROOT, "worlds", "plan.world")
-ATLAS_PATH      = os.path.join(REPO_ROOT, "worlds", "plan_map.json")
-SVG_PATH        = os.path.join(REPO_ROOT, "worlds", "plan_map.svg")
+ATLAS_PATH      = os.path.join(REPO_ROOT, "binaries", "project", "maps", "plan_map.json")
+SVG_PATH        = os.path.join(REPO_ROOT, "binaries", "project", "maps", "plan_map.svg")
+BACKUP_DIR      = os.path.join(REPO_ROOT, "binaries", "project", "backups")
 HEIGHTMAP_PATH  = os.path.join(REPO_ROOT, "binaries", "project", "height_maps", "zakynthos_heightmap.png")
 
 ISLAND_RELATION = 543822
@@ -742,7 +743,8 @@ def write_world(path, routes, dry_run):
         log(f"  dry run, would write {len(body)} lines into {path}")
         return
 
-    backup = path + ".bak"
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    backup = os.path.join(BACKUP_DIR, os.path.basename(path) + ".bak")
     shutil.copyfile(path, backup)
     with open(path, "w", encoding="utf-8", newline="") as f:
         f.write(newline.join(new_lines))

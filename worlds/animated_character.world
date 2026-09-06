@@ -9,7 +9,7 @@
   </Entity>
   <Entity name="light_directional" id="2001000000000000003" active="true" position="0 2 0" rotation="0.982287 0 0 0.187381" scale="1 1 1">
    <light flags="3" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="2" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.800000012" />
-   <script file_path="../worlds/sun.lua" rot_roll="0" Initialize="" rot_pitch="0" rot_yaw="0" volumetric="false" override_rotation="false" preset="dusk" />
+   <script file_path="project/scripts/sun.lua" rot_roll="0" Initialize="" rot_pitch="0" rot_yaw="0" volumetric="false" override_rotation="false" preset="dusk" />
   </Entity>
   <Entity name="step_1" id="2001000000000000010" active="true" position="3 0.25 2" rotation="0 0 0 1" scale="2 0.3 1.2">
    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0.100000001" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -28,7 +28,7 @@
    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="character_controller" id="2001000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="../worlds/animated_character.lua" grounded="true" ragdoll="" Stop="" vel_y="0" Tick="" Start="" current_clip="" character="" land_timer="0" height_offset="0" ground_y="0" spawn_pos="" animator="" yaw="0" Initialize="" />
+   <script file_path="project/scripts/animated_character.lua" grounded="true" ragdoll="" Stop="" vel_y="0" Tick="" Start="" current_clip="" character="" land_timer="0" height_offset="0" ground_y="0" spawn_pos="" animator="" yaw="0" Initialize="" />
   </Entity>
   <Entity name="floor" id="2001000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />

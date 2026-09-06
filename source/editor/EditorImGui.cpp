@@ -132,6 +132,7 @@ void editor_imgui::render()
         ImGui::RenderPlatformWindowsDefault();
     }
 
-    spartan::RHI_Device::EndFrame();
+    const spartan::RHI_Work submitted = spartan::RHI_Device::EndFrame();
+    spartan::Renderer::SetFrameCompletion(submitted.timeline, submitted.value);
     spartan::Renderer::FinalizeScreenshotReadback();
 }

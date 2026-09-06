@@ -266,7 +266,7 @@ int main(int argc, char** argv)
             PxCloseExtensions(); physics->release(); foundation->release();
             return 0;
         }
-        const auto* suspension_definition = car::load_car_file("worlds/cars/ferrari_laferrari.car");
+        const auto* suspension_definition = car::load_car_file("binaries/project/cars/ferrari_laferrari.car");
         check(suspension_definition != nullptr, "suspension preset loads");
         if (large_world_only)
         {
@@ -281,10 +281,10 @@ int main(int argc, char** argv)
         if (!suspension_only)
         {
             large_world_checks(physics, scene, suspension_definition->performance, argc > 2 ? std::stof(argv[2]) : 0.005f);
-            for (const auto& entry : std::filesystem::directory_iterator("worlds/cars"))
+            for (const auto& entry : std::filesystem::directory_iterator("binaries/project/cars"))
                 if (entry.path().extension() == ".car") check(car::load_car_file(entry.path().string()) != nullptr, "preset validation");
             printf("validated %zu car presets\n", car::definitions.size());
-            const auto* definition = car::load_car_file("worlds/cars/ferrari_laferrari.car");
+            const auto* definition = car::load_car_file("binaries/project/cars/ferrari_laferrari.car");
             check(definition != nullptr, "Ferrari preset must load");
             car::Simulation simulation;
             simulation.get_spec() = definition->performance;
@@ -365,8 +365,8 @@ int main(int argc, char** argv)
         if (!suspension_only)
         {
             const float handling_dt = argc > 2 ? std::stof(argv[2]) : 0.005f;
-            contact_checks(physics, scene, plane, car::load_car_file("worlds/cars/ferrari_laferrari.car")->performance, handling_dt);
-            handling_checks(physics, scene, plane, car::load_car_file("worlds/cars/ferrari_laferrari.car")->performance, handling_dt);
+            contact_checks(physics, scene, plane, car::load_car_file("binaries/project/cars/ferrari_laferrari.car")->performance, handling_dt);
+            handling_checks(physics, scene, plane, car::load_car_file("binaries/project/cars/ferrari_laferrari.car")->performance, handling_dt);
         }
         scene->release();
         material->release();

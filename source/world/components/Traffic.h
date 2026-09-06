@@ -177,7 +177,7 @@ namespace spartan
         std::vector<Driver> m_drivers;
         math::Vector3 m_bounds_min = math::Vector3(-220.0f, -10.0f, -380.0f);
         math::Vector3 m_bounds_max = math::Vector3(380.0f, 80.0f, 260.0f);
-        std::string m_car_file = "cars/ferrari_laferrari.car";
+        std::string m_car_file = "project/cars/ferrari_laferrari.car";
         uint32_t m_car_count = 20;
         float m_simulation_frequency = 50.0f;
         float m_physics_radius = 80.0f;

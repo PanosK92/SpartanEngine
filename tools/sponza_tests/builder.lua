@@ -55,7 +55,7 @@ ResourceCache = {
     end,
 }
 
-local builder = dofile('worlds/sponza.lua')
+local builder = dofile('binaries/project/scripts/sponza.lua')
 builder:Initialize({})
 assert(loads == 3, 'expected one import for each hierarchy')
 local main = assert(roots.sponza)

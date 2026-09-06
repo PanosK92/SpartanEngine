@@ -1,6 +1,6 @@
 # Dreamcore island generator
 
-Load `worlds/dreamcore.world` to build the island with `worlds/dreamcore.lua`.
+Load `worlds/dreamcore.world` to build the island with `binaries/project/scripts/dreamcore.lua`.
 No engine rebuild is needed. Its nine varied tile platforms connect through twelve
 4.4 metre causeways with parapets and open entrances. The spaces include arrival
 gates, a roofless bathhouse, an arcade, theatre terraces, a suspended ziggurat,
@@ -14,7 +14,7 @@ uses static box colliders, and is transient so saving does not bake hundreds of 
 into the world. Repeated initialization is guarded; replacing the script removes its
 previous generated root. World reload regenerates any manually edited generated parts.
 
-The five materials in `worlds/dreamcore_materials` reuse the installed
+The five materials in `binaries/project/dreamcore_materials` reuse the installed
 `project/materials/tile_white` textures with world-space UVs, pastel tints and a light
 ceramic clearcoat. They do not require new assets or modify the original tile material.
 

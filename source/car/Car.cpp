@@ -165,7 +165,7 @@ namespace spartan
 
         std::string resolve_car_file(const std::string& file)
         {
-            const std::string relative = file.empty() ? "cars/ferrari_laferrari.car" : file;
+            const std::string relative = file.empty() ? "project/cars/ferrari_laferrari.car" : file;
 
             // paths in world files are relative to the world file directory
             const std::string& world_path = World::GetFilePath();

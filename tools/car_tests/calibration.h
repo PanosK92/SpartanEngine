@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 int evaluate_calibration(int argc, char** argv)
 {
     check(argc == 7, "--tire-evaluate input.csv output.csv stiffness_long stiffness_lat mu");
-    auto* definition = car::load_car_file("worlds/cars/ferrari_laferrari.car");
+    auto* definition = car::load_car_file("binaries/project/cars/ferrari_laferrari.car");
     check(definition != nullptr, "calibration preset");
     auto spec = definition->performance;
     spec.tread_stiffness_long = std::stof(argv[4]); spec.tread_stiffness_lat = std::stof(argv[5]); spec.tire_friction = std::stof(argv[6]);

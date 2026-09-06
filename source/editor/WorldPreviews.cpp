@@ -202,9 +202,8 @@ namespace
 
     string get_authored_preview_path(const string& world_file_path)
     {
-        // Keep curated previews beside their worlds so they ship with the repository
-        // and can also be used directly by the README. Custom worlds retain the cache.
-        return spartan::FileSystem::GetDirectoryFromFilePath(world_file_path) + "previews/" +
+        // Curated previews ship with the project assets; worlds contain only world XML.
+        return get_preview_directory() + "/" +
             spartan::FileSystem::GetFileNameWithoutExtensionFromFilePath(world_file_path) + ".png";
     }
 

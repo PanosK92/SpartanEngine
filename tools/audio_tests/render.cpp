@@ -274,7 +274,7 @@ try
     effect_regressions();
     save_tire_preview(output / "tire_scrub_slide_release.wav");
 #endif
-    for (const auto& entry : std::filesystem::directory_iterator("worlds/cars"))
+    for (const auto& entry : std::filesystem::directory_iterator("binaries/project/cars"))
     {
         if (entry.path().extension() != ".car") continue;
         auto c = read_config(entry.path());

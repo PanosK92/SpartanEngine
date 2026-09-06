@@ -2,7 +2,7 @@
 
 **Historical first-pass report.** The follow-up requested for every realism category is documented in [REALISM.md](REALISM.md), which supersedes the remaining-work list and test results below.
 
-Audit date: 5 September 2026. Scope: the Ferrari LaFerrari prefab selected by `worlds/plan.world`, `worlds/cars/ferrari_laferrari.car`, the production car simulation, preset loading, tire model, telemetry, relevant physics integration, and the existing bench. The supplied driving CSV was treated as data and was not edited. Concurrent world, road, and spline changes were preserved.
+Audit date: 5 September 2026. Scope: the Ferrari LaFerrari prefab selected by `worlds/plan.world`, `binaries/project/cars/ferrari_laferrari.car`, the production car simulation, preset loading, tire model, telemetry, relevant physics integration, and the existing bench. The supplied driving CSV was treated as data and was not edited. Concurrent world, road, and spline changes were preserved.
 
 ## Assessment
 

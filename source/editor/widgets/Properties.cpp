@@ -3628,7 +3628,7 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
         ImGui::SameLine();
         if (ImGuiSp::button("Save Effect"))
         {
-            const string path = particle_system->GetEffectPath().empty() ? "worlds/custom.particle" : particle_system->GetEffectPath();
+            const string path = particle_system->GetEffectPath().empty() ? "project/particles/custom.particle" : particle_system->GetEffectPath();
             particle_system->SaveEffect(path);
             particle_system->SetEffectPath(path);
         }

@@ -12,7 +12,7 @@
   </Entity>
   <Entity name="light_directional" id="2001000000000000003" active="true" position="0 2 0" rotation="0.00719141 0.350769 -0.00269378 0.93643" scale="1 1 1">
    <light flags="7" light_type="0" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="1" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0" />
-   <script file_path="../worlds/sun.lua" rot_pitch="35" Initialize="" rot_yaw="45" preset="day" volumetric="true" rot_roll="0" override_rotation="true" />
+   <script file_path="project/scripts/sun.lua" rot_pitch="35" Initialize="" rot_yaw="45" preset="day" volumetric="true" rot_roll="0" override_rotation="true" />
   </Entity>
   <Entity name="ocean" id="2001000000000000006" active="true" position="2.5 0 2" rotation="0 0 0 1" scale="1 1 1">
    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="water_fft" material_path="./project/dreamcore_resources/water_fft.xml" material_default="false" flags="2" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
@@ -27,7 +27,7 @@
    <audio_source path="project/music/soundtrack/leberch_meditative_ambient.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
   </Entity>
   <Entity name="dreamcore_generator" id="2001000000000000008" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="../worlds/dreamcore.lua" seed="17" />
+   <script file_path="project/scripts/dreamcore.lua" seed="17" />
   </Entity>
  </Entities>
 </World>

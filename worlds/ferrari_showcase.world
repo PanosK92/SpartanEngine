@@ -55,7 +55,7 @@
    <light flags="1" light_type="0" color_r="1" color_g="0.949999988" color_b="0.850000024" temperature="5500" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
   </Entity>
   <Entity name="turntable" id="9100000000000000006" active="true" position="0 -0.1 0" rotation="0 0 0 1" scale="0.75 0.75 0.75">
-   <script file_path="../worlds/turntable.lua" />
+   <script file_path="project/scripts/turntable.lua" />
    <Entity name="disc" id="9100000000000000007" active="true" position="0 0.15 0" rotation="0 0 0 1" scale="5 0.3 5">
     <render mesh_name="standard_cylinder" sub_mesh_index="0" material_name="tile_black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />

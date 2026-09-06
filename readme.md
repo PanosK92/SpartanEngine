@@ -41,6 +41,12 @@ This is what a codebase looks like when a single person owns every line for a de
 
 ## Worlds
 
+The root `worlds/` directory contains `.world` XML files and its directory README. All supporting assets,
+including scripts, car definitions, materials, audio, previews, sequencer data, map
+exports and backups, live in `binaries/project/` and are excluded from Git. Runtime
+asset paths start with `project/` because the engine runs from `binaries/`.
+Include these assets when packaging the Dropbox `project.7z` download.
+
 Launch the engine and choose from a selection of default worlds. Nothing is a canned demo—every world is physics-enabled. Walk around, pick up objects with your mouse, or take a car for a spin.
 
 <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_selection_4.png"/>

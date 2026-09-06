@@ -141,7 +141,8 @@ def main():
     text, report = upgrade(original.decode("utf-8").replace("\r\n", "\n"), node_world, junctions, args.tolerance)
     print(json.dumps(report, indent=2))
     if args.apply and report["changed_lines"]:
-        backup = path.with_suffix(path.suffix + ".before_junctions.bak")
+        backup = Path(osm.BACKUP_DIR) / (path.name + ".before_junctions.bak")
+        backup.parent.mkdir(parents=True, exist_ok=True)
         with backup.open("xb") as f:
             f.write(original)
         path.write_bytes(text.replace("\n", newline).encode("utf-8"))

@@ -1,8 +1,8 @@
 # Backrooms generator checks
 
-`worlds/liminal_space.world` loads `worlds/backrooms.lua`. Reload the world to rebuild
-its streamed geometry after editing the script. No engine rebuild is required. The tracked
-materials in `worlds/liminal_space_materials` reuse the existing Backrooms textures.
+`worlds/liminal_space.world` loads `binaries/project/scripts/backrooms.lua`. Reload the world to rebuild
+its streamed geometry after editing the script. No engine rebuild is required. The project
+materials in `binaries/project/liminal_space_materials` reuse the existing Backrooms textures.
 
 The generator now groups chunks into architectural districts, with quiet maze areas
 between six room motifs:

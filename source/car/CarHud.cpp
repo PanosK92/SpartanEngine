@@ -885,6 +885,14 @@ namespace spartan::car_hud
             ImGuiWindowFlags_NoFocusOnAppearing;
         if (ImGui::Begin("Telemetry", p_open, flags))
         {
+            bool recording = simulation->get_log_to_file();
+            if (ImGui::Checkbox("Record CSV", &recording))
+                simulation->set_log_to_file(recording);
+            hud_tooltip("Start or stop CSV telemetry export. Starting a new recording replaces the previous CSV.");
+            ImGui::SameLine();
+            ImGui::TextDisabled("%s | CSV export", recording ? "Recording" : "Stopped");
+            hud_tooltip(simulation->get_telemetry_path().c_str());
+            ImGui::Separator();
             const ImVec2 content = ImGui::GetContentRegionAvail();
             const float footer_height = ImGui::GetFrameHeightWithSpacing() + 4;
             const float scale = std::max(0.01f, std::min(content.x / 1200, (content.y - footer_height) / telemetry::window_content_height));
@@ -917,12 +925,8 @@ namespace spartan::car_hud
             }
             ImGui::PopID();
             ImGui::PopID();
+            ImGui::SetCursorScreenPos(start);
             ImGui::Dummy(ImVec2(content.x, telemetry::window_content_height * scale));
-            bool recording = simulation->get_log_to_file();
-            if (ImGui::Checkbox("Record CSV", &recording))
-                simulation->set_log_to_file(recording);
-            hud_tooltip(simulation->get_telemetry_path().c_str());
-            ImGui::SameLine();
             ImGui::TextDisabled("I/C/O: tread zones | Blue: cold  Green: target  Amber: hot | Inputs: %%");
         }
         ImGui::End();

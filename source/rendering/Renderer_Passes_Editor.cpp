@@ -327,7 +327,26 @@ namespace spartan
     {
         RHI_Shader* shader_v  = GetShader(Renderer_Shader::line_v);
         RHI_Shader* shader_p  = GetShader(Renderer_Shader::line_p);
-        uint32_t vertex_count = static_cast<uint32_t>(m_lines_vertices.size());
+        FrameResource& frame = m_frame_resources[m_frame_resource_index];
+        auto& vertex_buffer = frame.lines_vertex_buffer;
+        if (!frame.lines_uploaded)
+        {
+            // RotateFrameBuffers waited for this slot's previous GPU submission.
+            // Upload once: both stereo eyes must read the same immutable vertices.
+            frame.lines_vertex_count = static_cast<uint32_t>(m_lines_vertices.size());
+            if (frame.lines_vertex_count != 0)
+            {
+                if (!vertex_buffer || frame.lines_vertex_count > vertex_buffer->GetElementCount())
+                {
+                    vertex_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex,
+                        sizeof(RHI_Vertex_PosCol), frame.lines_vertex_count, nullptr, true, "lines");
+                }
+                memcpy(vertex_buffer->GetMappedData(), m_lines_vertices.data(),
+                    frame.lines_vertex_count * sizeof(RHI_Vertex_PosCol));
+            }
+            frame.lines_uploaded = true;
+        }
+        const uint32_t vertex_count = frame.lines_vertex_count;
 
         if (vertex_count != 0)
         {
@@ -340,25 +359,10 @@ namespace spartan
                 RHI_CommandList::SetColorTarget(tex_out);
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
 
-                if (vertex_count > m_lines_vertex_buffer->GetElementCount())
-                {
-                    m_lines_vertex_buffer = make_shared<RHI_Buffer>(
-                        RHI_Buffer_Type::Vertex,
-                        sizeof(m_lines_vertices[0]),
-                        vertex_count,
-                        static_cast<void*>(&m_lines_vertices[0]),
-                        true,
-                        "lines"
-                    );
-                }
-
-                RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_lines_vertex_buffer->GetMappedData());
-                memset(buffer, 0, m_lines_vertex_buffer->GetObjectSize());
-                copy(m_lines_vertices.begin(), m_lines_vertices.end(), buffer);
-                RHI_CommandList::SetBufferVertex(m_lines_vertex_buffer.get());
+                RHI_CommandList::SetBufferVertex(vertex_buffer.get());
 
                 RHI_CommandList::SetCullMode(RHI_CullMode::None);
-                RHI_CommandList::Draw(static_cast<uint32_t>(m_lines_vertices.size()));
+                RHI_CommandList::Draw(vertex_count);
                 RHI_CommandList::SetCullMode(RHI_CullMode::Back);
             }
             RHI_CommandList::EndPass();

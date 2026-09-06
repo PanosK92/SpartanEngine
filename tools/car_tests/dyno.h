@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Exercises the same hub fixture used by the editor; no duplicate torque model.
 void dyno_checks(PxPhysics* physics, PxScene* scene)
 {
-    car::load_car_directory("worlds/cars");
+    car::load_car_directory("binaries/project/cars");
     const auto directory = std::filesystem::current_path();
     std::filesystem::current_path("binaries/car_tests");
     for (const auto& entry : car::preset_registry)

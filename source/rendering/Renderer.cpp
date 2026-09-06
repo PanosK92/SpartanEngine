@@ -663,7 +663,6 @@ namespace spartan
             DestroyResources();
             GeometryBuffer::Shutdown();
             RHI_Device::DestroySwapChain();
-            m_lines_vertex_buffer = nullptr;
             m_icons_vertex_buffer = nullptr;
             m_tlas                = nullptr;
             secondary_view_output.reset();

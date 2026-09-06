@@ -76,6 +76,9 @@ namespace spartan
 
         struct FrameResource
         {
+            std::shared_ptr<RHI_Buffer> lines_vertex_buffer;
+            uint32_t lines_vertex_count = 0;
+            bool lines_uploaded = false;
             std::shared_ptr<RHI_Buffer> indirect_draw_args;
             std::shared_ptr<RHI_Buffer> cpu_indirect_draw_args;
             std::shared_ptr<RHI_Buffer> indirect_draw_data;
@@ -202,7 +205,6 @@ namespace spartan
             Pcb_Pass m_pcb_pass_cpu;
             math::Matrix m_view_projection_previous_right;
             math::Matrix m_view_projection_previous_unjittered_left;
-            std::shared_ptr<RHI_Buffer> m_lines_vertex_buffer;
             std::vector<RHI_Vertex_PosCol> m_lines_vertices;
             std::vector<PersistentLine> m_persistent_lines;
             std::shared_ptr<RHI_Buffer> m_icons_vertex_buffer;
@@ -252,7 +254,6 @@ namespace spartan
         inline auto& m_pcb_pass_cpu = state().m_pcb_pass_cpu;
         inline auto& m_view_projection_previous_right = state().m_view_projection_previous_right;
         inline auto& m_view_projection_previous_unjittered_left = state().m_view_projection_previous_unjittered_left;
-        inline auto& m_lines_vertex_buffer = state().m_lines_vertex_buffer;
         inline auto& m_lines_vertices = state().m_lines_vertices;
         inline auto& m_persistent_lines = state().m_persistent_lines;
         inline auto& m_icons_vertex_buffer = state().m_icons_vertex_buffer;

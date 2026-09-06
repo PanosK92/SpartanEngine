@@ -56,7 +56,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - \`undo_redo\` routes editor undo and redo through the command stack.
 - \`viewport_frame\` frames complete descendant bounds from perspective, front, back, left, right, or top views without keyboard focus. Use \`camera_set_view\` for custom poses.
 - \`screenshot_take\` queues a renderer screenshot and can return the saved PNG as image content for visual inspection.
-- The editor sequencer (camera cut timeline) is controlled with \`sequencer_get\`, \`sequencer_set\`, \`sequencer_playback\`, \`sequencer_event_add\`, \`sequencer_event_update\`, and \`sequencer_event_remove\`; \`camera\` accepts an entity id or name, events re-sort by time, and state auto-saves to \`sequencer.xml\` next to the loaded world.
+- The editor sequencer (camera cut timeline) is controlled with \`sequencer_get\`, \`sequencer_set\`, \`sequencer_playback\`, \`sequencer_event_add\`, \`sequencer_event_update\`, and \`sequencer_event_remove\`; \`camera\` accepts an entity id or name, events re-sort by time, and state auto-saves to \`sequencer.xml\` under the project directory.
 
 ## Good Agent Strategies
 - Start engine tasks with \`spartan_status\` or \`context_snapshot\`.

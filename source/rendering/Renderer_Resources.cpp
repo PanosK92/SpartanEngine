@@ -1285,7 +1285,6 @@ namespace spartan
             standard_meshes[static_cast<uint8_t>(def.type)] = mesh;
         }
 
-        m_lines_vertex_buffer = make_shared<RHI_Buffer>();
     }
 
     void Renderer::CreateStandardTextures()
@@ -1553,6 +1552,15 @@ namespace spartan
         return buffers[static_cast<uint8_t>(type)].get();
     }
 
+    void Renderer::SetFrameCompletion(RHI_SyncPrimitive* timeline, uint64_t value)
+    {
+        // The editor submits the renderer's graphics work after drawing its UI.
+        // Record that submission so every frame slot waits before CPU uploads.
+        FrameResource& fr = m_frame_resources[m_frame_resource_index];
+        fr.completion_timeline = timeline;
+        fr.completion_value = value;
+    }
+
     void Renderer::RotateFrameBuffers()
     {
         m_frame_resource_index =
@@ -1579,6 +1587,9 @@ namespace spartan
             fr.completion_timeline = nullptr;
             fr.completion_value    = 0;
         }
+
+        fr.lines_uploaded = false;
+        fr.lines_vertex_count = 0;
 
         buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawArgs)]     = fr.indirect_draw_args;
         buffers[static_cast<uint8_t>(Renderer_Buffer::CpuIndirectDrawArgs)]  = fr.cpu_indirect_draw_args;

@@ -12,7 +12,7 @@
    </Entity>
   </Entity>
   <Entity name="light_directional" id="1002000000000000003" active="true" position="0 2 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="../worlds/sun.lua" preset="dusk" volumetric="false" override_rotation="true" rot_pitch="-30" rot_yaw="0" rot_roll="0" />
+   <script file_path="project/scripts/sun.lua" preset="dusk" volumetric="false" override_rotation="true" rot_pitch="-30" rot_yaw="0" rot_roll="0" />
   </Entity>
   <Entity name="floor" id="1002000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" body_type="2" />
@@ -21,7 +21,7 @@
    </render>
   </Entity>
   <Entity name="builder" id="1002000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="../worlds/light_test.lua" />
+   <script file_path="project/scripts/light_test.lua" />
   </Entity>
  </Entities>
 </World>

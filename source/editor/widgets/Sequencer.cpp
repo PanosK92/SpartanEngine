@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../imgui/ImGui_Extension.h"
 #include "../imgui/ImGui_Style.h"
 #include "file_system/FileSystem.h"
+#include "resource/ResourceCache.h"
 SP_WARNINGS_OFF
 #include "io/pugixml.hpp"
 SP_WARNINGS_ON
@@ -1457,7 +1458,7 @@ string Sequencer::GetFilePath() const
     {
         return "";
     }
-    return FileSystem::GetDirectoryFromFilePath(world_path) + "sequencer.xml";
+    return string(ResourceCache::GetProjectDirectory()) + "sequencer.xml";
 }
 
 Sequencer::State Sequencer::CaptureState() const

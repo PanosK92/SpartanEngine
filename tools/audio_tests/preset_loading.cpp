@@ -51,7 +51,7 @@ namespace spartan
 
 int main()
 {
-    for (const auto& entry : std::filesystem::directory_iterator("worlds/cars"))
+    for (const auto& entry : std::filesystem::directory_iterator("binaries/project/cars"))
     {
         if (entry.path().extension() != ".car") continue;
         const auto* definition = car::load_car_file(entry.path().string());
@@ -61,7 +61,7 @@ int main()
         printf("PASS preset: %s\n", entry.path().filename().string().c_str());
     }
     pugi::xml_document doc;
-    if (!doc.load_file("worlds/cars/ferrari_laferrari.car")) return 1;
+    if (!doc.load_file("binaries/project/cars/ferrari_laferrari.car")) return 1;
     auto engine = doc.child("car").child("engine");
     engine.append_attribute("intake_runner_length_m") = .55f;
     engine.append_attribute("intake_valve_duration_deg") = 240;
