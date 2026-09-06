@@ -7,8 +7,9 @@ in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
 copies of the Software, and to permit persons to whom the Software is furnished
 to do so, subject to the following conditions :
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
@@ -21,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "pch.h"
 #include "TerrainSystem.h"
+#include "TerrainPlacement.h"
 #include "../rhi/RHI_Texture.h"
 #include "../core/ThreadPool.h"
 #include <random>
@@ -1597,7 +1599,7 @@ namespace spartan
         float h01 = positions[static_cast<size_t>(iz + 1) * width + ix].y;
         float h11 = positions[static_cast<size_t>(iz + 1) * width + ix + 1].y;
 
-        return (h00 + fx * (h10 - h00)) + fz * ((h01 + fx * (h11 - h01)) - (h00 + fx * (h10 - h00)));
+        return terrain_placement::triangle_height(h00, h10, h01, h11, fx, fz);
     }
 
     Vector3 TerrainSystem::SampleNormal(
@@ -1617,6 +1619,12 @@ namespace spartan
         const float step_x = max(mapping.scale_x, epsilon);
         const float step_z = max(mapping.scale_z, epsilon);
 
+        // Clamped edge samples have a shorter baseline; dividing by two cells halves the slope.
+        const float left   = clamp(world_x - step_x, -mapping.offset_x, -mapping.offset_x + (width - 1) * step_x);
+        const float right  = clamp(world_x + step_x, -mapping.offset_x, -mapping.offset_x + (width - 1) * step_x);
+        const float bottom = clamp(world_z - step_z, -mapping.offset_z, -mapping.offset_z + (height - 1) * step_z);
+        const float top    = clamp(world_z + step_z, -mapping.offset_z, -mapping.offset_z + (height - 1) * step_z);
+
         const float h_left = SampleHeight(
             positions, width, height, world_x - step_x, world_z, mapping
         );
@@ -1630,8 +1638,8 @@ namespace spartan
             positions, width, height, world_x, world_z + step_z, mapping
         );
 
-        const float dh_dx = (h_right - h_left) / (2.0f * step_x);
-        const float dh_dz = (h_top - h_bottom) / (2.0f * step_z);
+        const float dh_dx = (h_right - h_left) / max(right - left, epsilon);
+        const float dh_dz = (h_top - h_bottom) / max(top - bottom, epsilon);
 
         Vector3 normal(-dh_dx, 1.0f, -dh_dz);
         if (normal.LengthSquared() < epsilon)

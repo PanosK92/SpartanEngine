@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "pch.h"
 #include "CarHud.h"
+#include "CarTelemetry.h"
 #include "Car.h"
 #include "CarBench.h"
 #include "CarState.h"
@@ -1741,7 +1742,7 @@ namespace spartan::car_hud
         car_bench::draw_window(car_instance, physics);
     }
 
-    void draw_telemetry_window(Car* car_instance, Physics* physics, bool* p_open)
+    static void draw_workshop_window(Car* car_instance, Physics* physics, bool* p_open)
     {
         if (!car_instance || !physics)
         {
@@ -1765,7 +1766,7 @@ namespace spartan::car_hud
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 6.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(8.0f, 5.0f));
 
-        if (ImGui::Begin("Telemetry", p_open, ImGuiWindowFlags_NoCollapse))
+        if (ImGui::Begin("Vehicle workshop", p_open, ImGuiWindowFlags_NoCollapse))
         {
             ImVec2 cur = ImGui::GetWindowSize();
             if (cur.x < 1180.0f)
@@ -1797,5 +1798,131 @@ namespace spartan::car_hud
         }
         ImGui::End();
         ImGui::PopStyleVar(4);
+    }
+
+    void draw_telemetry_window(Car* car_instance, Physics* physics, bool* p_open)
+    {
+        if (!car_instance || !physics || !physics->GetVehicleSimulation())
+            return;
+
+        car::Simulation* simulation = physics->GetVehicleSimulation();
+        const auto& spec = simulation->get_spec();
+        telemetry::snapshot s;
+        s.vehicle_id = physics->GetObjectId();
+        s.name = spec.name;
+        s.gear = physics->GetCurrentGearString();
+        s.differential = physics->GetDiffTypeName();
+        s.speed = physics->GetLinearVelocity().Length() * 3.6f;
+        s.rpm = physics->GetEngineRPM();
+        s.redline = physics->GetRedlineRPM();
+        s.boost = physics->GetBoostPressure();
+        s.boost_max = physics->GetBoostMaxPressure();
+        s.throttle = physics->GetVehicleThrottle();
+        s.brake = physics->GetVehicleBrake();
+        s.steering = physics->GetVehicleSteering();
+        s.handbrake = physics->GetVehicleHandbrake();
+        s.lateral_g = simulation->get_lateral_accel() / 9.81f;
+        s.longitudinal_g = simulation->get_longitudinal_accel() / 9.81f;
+        s.torque = simulation->get_engine_output_torque();
+        s.motor_kw = simulation->get_motor_power_kw();
+        s.clutch = simulation->get_clutch();
+        s.hybrid = spec.electric_enabled && spec.battery_capacity_kwh > 0;
+        const auto& battery = simulation->get_hybrid_state();
+        s.battery_soc = s.hybrid ? battery.energy_j / (spec.battery_capacity_kwh * 3600000.0f) : 0;
+        s.battery_temp = battery.temperature;
+        s.battery_kw = battery.electrical_power_w * 0.001f;
+        s.battery_hot = spec.battery_derate_temp;
+        const auto& aero = simulation->get_aero_debug();
+        s.aero_valid = aero.valid;
+        s.drag = aero.drag_force.magnitude();
+        s.front_downforce = aero.front_downforce.magnitude();
+        s.rear_downforce = aero.rear_downforce.magnitude();
+        s.ride_height = aero.ride_height;
+        s.optimal_temp = spec.tire_optimal_temp;
+        s.temp_range = spec.tire_temp_range;
+        s.tc_reduction = physics->GetTcReduction();
+        s.distance = simulation->get_distance_m();
+        s.abs_enabled = physics->GetAbsEnabled();
+        s.tc_enabled = physics->GetTcEnabled();
+        s.tc_active = physics->IsTcActive();
+        s.drs_enabled = physics->GetDrsEnabled();
+        s.drs_active = physics->GetDrsActive();
+        s.turbo = physics->GetTurboEnabled();
+        s.shifting = physics->IsShifting();
+        s.limiter = simulation->get_rev_limiter_active();
+        s.engine_running = simulation->get_engine_running();
+        s.full_simulation = car_instance->GetVehicleSimMode() == VehicleSimMode::Full;
+        const WheelIndex indices[] = {WheelIndex::FrontLeft, WheelIndex::FrontRight, WheelIndex::RearLeft, WheelIndex::RearRight};
+        for (int i = 0; i < 4; ++i)
+        {
+            auto& w = s.wheels[i];
+            const auto& physical = simulation->get_wheel_state(i);
+            const WheelIndex index = indices[i];
+            w.grounded = physics->IsWheelGrounded(index);
+            w.abs = physics->IsAbsActive(index);
+            for (int zone = 0; zone < 3; ++zone)
+                w.surface[zone] = physics->GetWheelSurfaceTemp(index, zone);
+            w.core = physics->GetWheelCoreTemp(index);
+            w.pressure = physical.pressure_bar;
+            w.wear = physics->GetWheelWear(index);
+            w.damage = physical.damage;
+            w.load = physics->GetWheelTireLoad(index);
+            w.saturation = physical.tire_saturation;
+            w.compression = physics->GetWheelCompression(index);
+            w.slip_ratio = physics->GetWheelSlipRatio(index);
+            w.slip_angle = physics->GetWheelSlipAngle(index) * 180.0f / pi;
+            w.brake_temp = physics->GetWheelBrakeTemp(index);
+            w.brake_efficiency = physics->GetWheelBrakeEfficiency(index);
+            w.road = simulation->get_surface_name(physical.contact_surface);
+        }
+
+        static telemetry::history history;
+        static bool workshop_open = false;
+        const double now = ImGui::GetTime();
+        history.update(s, now);
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        const ImVec2 available(viewport->WorkSize.x - 24, viewport->WorkSize.y - 24);
+        if (available.x < 200 || available.y < 200)
+            return;
+        const float default_scale = std::min({1.0f, (available.x - 24) / 1200, (available.y - 76) / 700});
+        const ImVec2 size(1200 * default_scale + 24, 700 * default_scale + 76);
+        ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + available.x - size.x + 12,
+            viewport->WorkPos.y + 12), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(std::min(960.0f, available.x), std::min(620.0f, available.y)), available);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12, 10));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.035f, 0.065f, 0.095f, 0.97f));
+        const ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoNavInputs |
+            ImGuiWindowFlags_NoFocusOnAppearing;
+        if (ImGui::Begin("Telemetry", p_open, flags))
+        {
+            const ImVec2 content = ImGui::GetContentRegionAvail();
+            const float footer_height = ImGui::GetFrameHeightWithSpacing() + 4;
+            const float scale = std::max(0.01f, std::min(content.x / 1200, (content.y - footer_height) / 700));
+            const ImVec2 start = ImGui::GetCursorScreenPos();
+            const ImVec2 origin(start.x + (content.x - 1200 * scale) * 0.5f, start.y);
+            const telemetry::painter painter{ImGui::GetWindowDrawList(), origin, scale};
+            telemetry::draw(painter, s, history, now);
+            ImGui::Dummy(ImVec2(content.x, 700 * scale));
+            bool recording = simulation->get_log_to_file();
+            if (ImGui::Checkbox("Record CSV", &recording))
+                simulation->set_log_to_file(recording);
+            hud_tooltip(simulation->get_telemetry_path().c_str());
+            ImGui::SameLine();
+            if (ImGui::Button("Workshop"))
+                workshop_open = !workshop_open;
+            ImGui::SameLine();
+            if (ImGui::Button("Bench"))
+                car_bench::open_window();
+            ImGui::SameLine();
+            ImGui::TextDisabled("I/C/O: tread zones | Blue: cold  Green: target  Amber: hot | Inputs: %%");
+        }
+        ImGui::End();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(2);
+        if (workshop_open)
+            draw_workshop_window(car_instance, physics, &workshop_open);
     }
 }

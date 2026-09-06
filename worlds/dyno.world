@@ -1,0 +1,200 @@
+<World name="Dyno" description="Drivetrain laboratory: all cars, RPM sweeps, power and torque graphs, gearing and CSV capture">
+  <Entities>
+    <Entity active="true" name="garage_floor" rotation="0 0 0 1" position="0 -0.2 0" id="9106000000000000001" scale="18 0.4 20">
+      <render material_path="../worlds/dyno_materials/concrete.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_concrete" />
+      <physics is_static="true" friction="0.8" mass="0" body_type="0" />
+    </Entity>
+    <Entity active="true" name="back_wall" rotation="0 0 0 1" position="0 2.8 8" id="9106000000000000002" scale="18 5.6 0.3">
+      <render material_path="../worlds/dyno_materials/wall.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_wall" />
+      <physics is_static="true" friction="0.8" mass="0" body_type="0" />
+    </Entity>
+    <Entity active="true" name="left_wall" rotation="0 0 0 1" position="-9 2.8 0" id="9106000000000000003" scale="0.3 5.6 16">
+      <render material_path="../worlds/dyno_materials/wall.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_wall" />
+      <physics is_static="true" friction="0.8" mass="0" body_type="0" />
+    </Entity>
+    <Entity active="true" name="right_wall" rotation="0 0 0 1" position="9 2.8 0" id="9106000000000000004" scale="0.3 5.6 16">
+      <render material_path="../worlds/dyno_materials/wall.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_wall" />
+      <physics is_static="true" friction="0.8" mass="0" body_type="0" />
+    </Entity>
+    <Entity active="true" name="ceiling" rotation="0 0 0 1" position="0 5.7 0" id="9106000000000000005" scale="18 0.2 16">
+      <render material_path="../worlds/dyno_materials/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity active="true" name="test_bed" rotation="0 0 0 1" position="0 0.12 0" id="9106000000000000006" scale="3.5 0.24 6.5">
+      <render material_path="../worlds/dyno_materials/blue.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_blue" />
+    </Entity>
+    <Entity active="true" name="safety_edge" rotation="0 0 0 1" position="-1.8 0.02 0" id="9106000000000000007" scale="0.09 0.035 7">
+      <render material_path="../worlds/dyno_materials/yellow.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_yellow" />
+    </Entity>
+    <Entity active="true" name="tie_down_post" rotation="0 0 0 1" position="-1.8 0.24 -3" id="9106000000000000008" scale="0.15 0.48 0.15">
+      <render material_path="../worlds/dyno_materials/yellow.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_yellow" />
+    </Entity>
+    <Entity active="true" name="tie_down_post" rotation="0 0 0 1" position="-1.8 0.24 3" id="9106000000000000009" scale="0.15 0.48 0.15">
+      <render material_path="../worlds/dyno_materials/yellow.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_yellow" />
+    </Entity>
+    <Entity active="true" name="safety_edge" rotation="0 0 0 1" position="1.8 0.02 0" id="9106000000000000010" scale="0.09 0.035 7">
+      <render material_path="../worlds/dyno_materials/yellow.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_yellow" />
+    </Entity>
+    <Entity active="true" name="tie_down_post" rotation="0 0 0 1" position="1.8 0.24 -3" id="9106000000000000011" scale="0.15 0.48 0.15">
+      <render material_path="../worlds/dyno_materials/yellow.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_yellow" />
+    </Entity>
+    <Entity active="true" name="tie_down_post" rotation="0 0 0 1" position="1.8 0.24 3" id="9106000000000000012" scale="0.15 0.48 0.15">
+      <render material_path="../worlds/dyno_materials/yellow.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_yellow" />
+    </Entity>
+    <Entity active="true" name="roller" rotation="0 0 0.70710678 0.70710678" position="0 0.22 -1.65" id="9106000000000000013" scale="0.18 2.9 0.18">
+      <render material_path="../worlds/dyno_materials/roller.xml" material_default="false" mesh_name="standard_cylinder" flags="1" material_name="dyno_roller" />
+    </Entity>
+    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="-1.55 0.25 -1.65" id="9106000000000000014" scale="0.18 0.4 0.5">
+      <render material_path="../worlds/dyno_materials/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="1.55 0.25 -1.65" id="9106000000000000015" scale="0.18 0.4 0.5">
+      <render material_path="../worlds/dyno_materials/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity active="true" name="roller" rotation="0 0 0.70710678 0.70710678" position="0 0.22 -1.15" id="9106000000000000016" scale="0.18 2.9 0.18">
+      <render material_path="../worlds/dyno_materials/roller.xml" material_default="false" mesh_name="standard_cylinder" flags="1" material_name="dyno_roller" />
+    </Entity>
+    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="-1.55 0.25 -1.15" id="9106000000000000017" scale="0.18 0.4 0.5">
+      <render material_path="../worlds/dyno_materials/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="1.55 0.25 -1.15" id="9106000000000000018" scale="0.18 0.4 0.5">
+      <render material_path="../worlds/dyno_materials/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity active="true" name="roller" rotation="0 0 0.70710678 0.70710678" position="0 0.22 1.15" id="9106000000000000019" scale="0.18 2.9 0.18">
+      <render material_path="../worlds/dyno_materials/roller.xml" material_default="false" mesh_name="standard_cylinder" flags="1" material_name="dyno_roller" />
+    </Entity>
+    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="-1.55 0.25 1.15" id="9106000000000000020" scale="0.18 0.4 0.5">
+      <render material_path="../worlds/dyno_materials/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="1.55 0.25 1.15" id="9106000000000000021" scale="0.18 0.4 0.5">
+      <render material_path="../worlds/dyno_materials/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity active="true" name="roller" rotation="0 0 0.70710678 0.70710678" position="0 0.22 1.65" id="9106000000000000022" scale="0.18 2.9 0.18">
+      <render material_path="../worlds/dyno_materials/roller.xml" material_default="false" mesh_name="standard_cylinder" flags="1" material_name="dyno_roller" />
+    </Entity>
+    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="-1.55 0.25 1.65" id="9106000000000000023" scale="0.18 0.4 0.5">
+      <render material_path="../worlds/dyno_materials/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="1.55 0.25 1.65" id="9106000000000000024" scale="0.18 0.4 0.5">
+      <render material_path="../worlds/dyno_materials/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity active="true" name="approach_ramp" rotation="-0.0654 0 0 0.99786" position="-1.3 0.1 -4" id="9106000000000000025" scale="0.65 0.12 1.7">
+      <render material_path="../worlds/dyno_materials/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity active="true" name="approach_ramp" rotation="-0.0654 0 0 0.99786" position="1.3 0.1 -4" id="9106000000000000026" scale="0.65 0.12 1.7">
+      <render material_path="../worlds/dyno_materials/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity active="true" name="operator_console" rotation="0 0 0 1" position="4 0.6 1" id="9106000000000000027" scale="1.6 1.2 0.8">
+      <render material_path="../worlds/dyno_materials/blue.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_blue" />
+    </Entity>
+    <Entity active="true" name="monitor_frame" rotation="0 0 0 1" position="4 1.7 1.2" id="9106000000000000028" scale="1.35 0.85 0.13">
+      <render material_path="../worlds/dyno_materials/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity active="true" name="monitor_glass" rotation="0 0 0 1" position="4 1.7 1.12" id="9106000000000000029" scale="1.2 0.7 0.035">
+      <render material_path="../worlds/dyno_materials/screen.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_screen" />
+    </Entity>
+    <Entity active="true" name="keyboard" rotation="0 0 0 1" position="4 1.23 0.8" id="9106000000000000030" scale="0.75 0.05 0.3">
+      <render material_path="../worlds/dyno_materials/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity active="true" name="workbench" rotation="0 0 0 1" position="-5 0.96 6" id="9106000000000000031" scale="5 0.15 1.2">
+      <render material_path="../worlds/dyno_materials/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity active="true" name="bench_leg" rotation="0 0 0 1" position="-7 0.45 6" id="9106000000000000032" scale="0.16 0.9 0.8">
+      <render material_path="../worlds/dyno_materials/blue.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_blue" />
+    </Entity>
+    <Entity active="true" name="bench_leg" rotation="0 0 0 1" position="-3 0.45 6" id="9106000000000000033" scale="0.16 0.9 0.8">
+      <render material_path="../worlds/dyno_materials/blue.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_blue" />
+    </Entity>
+    <Entity active="true" name="tool_cabinet" rotation="0 0 0 1" position="5.5 0.85 6.7" id="9106000000000000034" scale="2.2 1.7 0.8">
+      <render material_path="../worlds/dyno_materials/blue.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_blue" />
+    </Entity>
+    <Entity active="true" name="drawer_handle" rotation="0 0 0 1" position="5.5 0.3 6.25" id="9106000000000000035" scale="1.6 0.045 0.06">
+      <render material_path="../worlds/dyno_materials/roller.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_roller" />
+    </Entity>
+    <Entity active="true" name="drawer_handle" rotation="0 0 0 1" position="5.5 0.6 6.25" id="9106000000000000036" scale="1.6 0.045 0.06">
+      <render material_path="../worlds/dyno_materials/roller.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_roller" />
+    </Entity>
+    <Entity active="true" name="drawer_handle" rotation="0 0 0 1" position="5.5 0.9 6.25" id="9106000000000000037" scale="1.6 0.045 0.06">
+      <render material_path="../worlds/dyno_materials/roller.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_roller" />
+    </Entity>
+    <Entity active="true" name="drawer_handle" rotation="0 0 0 1" position="5.5 1.2 6.25" id="9106000000000000038" scale="1.6 0.045 0.06">
+      <render material_path="../worlds/dyno_materials/roller.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_roller" />
+    </Entity>
+    <Entity active="true" name="drawer_handle" rotation="0 0 0 1" position="5.5 1.5 6.25" id="9106000000000000039" scale="1.6 0.045 0.06">
+      <render material_path="../worlds/dyno_materials/roller.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_roller" />
+    </Entity>
+    <Entity active="true" name="extraction_duct" rotation="0.70710678 0 0 0.70710678" position="0 4.7 5" id="9106000000000000040" scale="0.7 5 0.7">
+      <render material_path="../worlds/dyno_materials/roller.xml" material_default="false" mesh_name="standard_cylinder" flags="1" material_name="dyno_roller" />
+    </Entity>
+    <Entity active="true" name="ceiling_strip" rotation="0 0 0 1" position="-4 5.5 -4" id="9106000000000000041" scale="0.4 0.1 2.5">
+      <render material_path="../worlds/dyno_materials/white.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_white" />
+    </Entity>
+    <Entity active="true" name="work_light" rotation="0 0 0 1" position="-4 4.9 -4" id="9106000000000000042" scale="1 1 1">
+      <light temperature="4500" flags="1" color_r="1" intensity="8" color_b="0.87" range="10" intensity_photometric="3200" preset="5" light_type="1" color_g="0.95" />
+    </Entity>
+    <Entity active="true" name="ceiling_strip" rotation="0 0 0 1" position="4 5.5 -4" id="9106000000000000043" scale="0.4 0.1 2.5">
+      <render material_path="../worlds/dyno_materials/white.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_white" />
+    </Entity>
+    <Entity active="true" name="work_light" rotation="0 0 0 1" position="4 4.9 -4" id="9106000000000000044" scale="1 1 1">
+      <light temperature="4500" flags="1" color_r="1" intensity="8" color_b="0.87" range="10" intensity_photometric="3200" preset="5" light_type="1" color_g="0.95" />
+    </Entity>
+    <Entity active="true" name="ceiling_strip" rotation="0 0 0 1" position="-4 5.5 0" id="9106000000000000045" scale="0.4 0.1 2.5">
+      <render material_path="../worlds/dyno_materials/white.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_white" />
+    </Entity>
+    <Entity active="true" name="work_light" rotation="0 0 0 1" position="-4 4.9 0" id="9106000000000000046" scale="1 1 1">
+      <light temperature="4500" flags="1" color_r="1" intensity="8" color_b="0.87" range="10" intensity_photometric="3200" preset="5" light_type="1" color_g="0.95" />
+    </Entity>
+    <Entity active="true" name="ceiling_strip" rotation="0 0 0 1" position="4 5.5 0" id="9106000000000000047" scale="0.4 0.1 2.5">
+      <render material_path="../worlds/dyno_materials/white.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_white" />
+    </Entity>
+    <Entity active="true" name="work_light" rotation="0 0 0 1" position="4 4.9 0" id="9106000000000000048" scale="1 1 1">
+      <light temperature="4500" flags="1" color_r="1" intensity="8" color_b="0.87" range="10" intensity_photometric="3200" preset="5" light_type="1" color_g="0.95" />
+    </Entity>
+    <Entity active="true" name="ceiling_strip" rotation="0 0 0 1" position="-4 5.5 4" id="9106000000000000049" scale="0.4 0.1 2.5">
+      <render material_path="../worlds/dyno_materials/white.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_white" />
+    </Entity>
+    <Entity active="true" name="work_light" rotation="0 0 0 1" position="-4 4.9 4" id="9106000000000000050" scale="1 1 1">
+      <light temperature="4500" flags="1" color_r="1" intensity="8" color_b="0.87" range="10" intensity_photometric="3200" preset="5" light_type="1" color_g="0.95" />
+    </Entity>
+    <Entity active="true" name="ceiling_strip" rotation="0 0 0 1" position="4 5.5 4" id="9106000000000000051" scale="0.4 0.1 2.5">
+      <render material_path="../worlds/dyno_materials/white.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_white" />
+    </Entity>
+    <Entity active="true" name="work_light" rotation="0 0 0 1" position="4 4.9 4" id="9106000000000000052" scale="1 1 1">
+      <light temperature="4500" flags="1" color_r="1" intensity="8" color_b="0.87" range="10" intensity_photometric="3200" preset="5" light_type="1" color_g="0.95" />
+    </Entity>
+    <Entity active="true" name="sun" rotation="0.7 0 0 0.7141428" position="0 5 0" id="9106000000000000053" scale="1 1 1">
+      <light flags="1" color_g="1" preset="5" light_type="0" intensity="8" color_b="1" color_r="1" intensity_photometric="15000" />
+    </Entity>
+    <Entity active="true" name="dyno_car" rotation="0 0 0 1" position="0 0.95 0" id="9106000000000000054" scale="1 1 1" tags="player_car,current_car,focal_point">
+      <prefab drivable="true" paint_color_r="0.39" paint_preset="metallic" file="cars/ferrari_laferrari.car" paint_color_b="0.01" paint_color_g="0.02" telemetry="false" type="car" camera_follows="false" dyno="true" />
+    </Entity>
+    <Entity active="true" name="inspection_camera" rotation="0.132 -0.293 0.041 0.946" position="5 3 -7" id="9106000000000000055" scale="1 1 1">
+      <camera exposure_mode="1" iso="800" projection="0" fov_horizontal="1.22" far_plane="200" auto_exposure_adaptation_speed="1" aperture="5.6" flags="17" preset="3" shutter_speed="0.008" near_plane="0.1" />
+    </Entity>
+    <Entity name="DYNO LAB sign" id="9106000000000000100" active="true" position="-5.8 3.5 7.6" rotation="0 0 0 1" scale="1 1 1">
+      <text_3d text="DYNO / DRIVETRAIN LAB" size="0.38" depth="0.01" font_path="../data/fonts/OpenSans/OpenSans-Medium.ttf" />
+    </Entity>
+    <Entity rotation="0 0 0 1" scale="17.7 0.3 0.06" position="0 1.1 7.81" id="9106000000000000111" active="true" name="back_wall_band">
+      <render material_default="false" mesh_name="standard_cube" material_path="../worlds/dyno_materials/blue.xml" flags="1" material_name="dyno_blue" />
+    </Entity>
+    <Entity rotation="0 0 0 1" scale="17.7 0.48 0.08" position="0 0.24 7.8" id="9106000000000000112" active="true" name="back_wall_base">
+      <render material_default="false" mesh_name="standard_cube" material_path="../worlds/dyno_materials/steel.xml" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity rotation="0 0 0 1" scale="0.06 0.3 16" position="-8.8 1.1 0" id="9106000000000000113" active="true" name="left_wall_band">
+      <render material_default="false" mesh_name="standard_cube" material_path="../worlds/dyno_materials/blue.xml" flags="1" material_name="dyno_blue" />
+    </Entity>
+    <Entity rotation="0 0 0 1" scale="0.06 0.3 16" position="8.8 1.1 0" id="9106000000000000114" active="true" name="right_wall_band">
+      <render material_default="false" mesh_name="standard_cube" material_path="../worlds/dyno_materials/blue.xml" flags="1" material_name="dyno_blue" />
+    </Entity>
+    <Entity rotation="0 0 0 1" scale="0.26 5.6 0.32" position="-8.65 2.8 4" id="9106000000000000115" active="true" name="column_left">
+      <render material_default="false" mesh_name="standard_cube" material_path="../worlds/dyno_materials/steel.xml" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity rotation="0 0 0 1" scale="0.25 5.6 0.25" position="-4.5 2.8 7.7" id="9106000000000000116" active="true" name="column_back_left">
+      <render material_default="false" mesh_name="standard_cube" material_path="../worlds/dyno_materials/steel.xml" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity rotation="0 0 0 1" scale="0.25 5.6 0.25" position="4.5 2.8 7.7" id="9106000000000000117" active="true" name="column_back_right">
+      <render material_default="false" mesh_name="standard_cube" material_path="../worlds/dyno_materials/steel.xml" flags="1" material_name="dyno_steel" />
+    </Entity>
+    <Entity rotation="0 0 0 1" scale="7 1.3 0.08" position="-3 3.7 7.75" id="9106000000000000118" active="true" name="sign_panel">
+      <render material_default="false" mesh_name="standard_cube" material_path="../worlds/dyno_materials/blue.xml" flags="1" material_name="dyno_blue" />
+    </Entity>
+  </Entities>
+</World>

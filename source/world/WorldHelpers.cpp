@@ -485,6 +485,19 @@ namespace spartan
             return material->HasTextureOfType(MaterialTextureType::AlphaMask);
         }
 
+        BoundingBox scatter_mesh_bounds(Mesh* mesh)
+        {
+            // Scatter resets the imported node transforms; use the same raw submesh space here.
+            BoundingBox bounds;
+            for (uint32_t i = 0; i < mesh->GetSubMeshCount(); ++i)
+            {
+                const auto& lods = mesh->GetSubMesh(i).lods;
+                if (!lods.empty())
+                    bounds.Merge(lods[0].aabb);
+            }
+            return bounds;
+        }
+
         uint32_t count_mesh_renderables(Entity* root)
         {
             if (!root)
@@ -777,6 +790,8 @@ namespace spartan
                             layer.blend_height * derive_terrain_blend(extent, terrain_band)
                         );
                         material->SetProperty(MaterialProperty::TerrainBlendSharpness, layer.blend_sharpness);
+                        material->SetProperty(MaterialProperty::TerrainCoating, foliage ? 0.0f : layer.coating);
+                        material->SetProperty(MaterialProperty::TerrainCoatingScale, layer.coating_scale);
                     }
 
                     render->SetInstances(transforms[tile_index]);
@@ -1051,6 +1066,7 @@ namespace spartan
             uint32_t slots_per_instance = 1;
             vector<vector<Matrix>> transforms;
             vector<float> coverage;
+            BoundingBox bounds;
             size_t placed               = 0;
             size_t placed_batch         = 0;
             float coverage_sum          = 0.0f;
@@ -1119,6 +1135,7 @@ namespace spartan
             scatter_job& job       = jobs.emplace_back();
             job.layer              = &layer;
             job.mesh               = mesh;
+            job.bounds             = scatter_mesh_bounds(mesh);
             job.slots_per_instance = count_mesh_renderables(mesh->GetRootEntity());
             job.transforms.resize(tile_count);
             job.coverage.resize(tile_count, 0.0f);
@@ -1161,7 +1178,8 @@ namespace spartan
                             tile_index,
                             *job.layer,
                             job.transforms[tile_index],
-                            &job.coverage[tile_index]
+                            &job.coverage[tile_index],
+                            &job.bounds
                         );
                     }
                 };
@@ -1340,6 +1358,7 @@ namespace spartan
         {
             TerrainScatterLayer* layer = nullptr;
             Mesh* mesh                 = nullptr;
+            BoundingBox bounds;
             vector<vector<Matrix>> transforms;
             size_t placed              = 0;
         };
@@ -1369,6 +1388,7 @@ namespace spartan
             scatter_job& job = jobs.emplace_back();
             job.layer        = &layer;
             job.mesh         = mesh;
+            job.bounds       = scatter_mesh_bounds(mesh);
             job.transforms.resize(tile_count);
         }
 
@@ -1391,7 +1411,7 @@ namespace spartan
                         continue;
                     }
 
-                    terrain->FindTransforms(tile_index, *job.layer, job.transforms[tile_index]);
+                    terrain->FindTransforms(tile_index, *job.layer, job.transforms[tile_index], nullptr, &job.bounds);
                 }
             };
             ThreadPool::ParallelLoop(place, order_count);

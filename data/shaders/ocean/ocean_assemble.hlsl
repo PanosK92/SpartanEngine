@@ -100,29 +100,34 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     // jacobian of the horizontal mapping, 1 is undeformed, below 1 is a compressed crest, 0 is a fold
     float jacobian = (1.0 + dDx_dx) * (1.0 + dDz_dz) - dDx_dz * dDz_dx;
 
-    // choppiness folds the surface horizontally, dividing the height gradient by the horizontal stretch
-    // sharpens normals on compressed crests and flattens stretched troughs, this is what makes choppiness read in the lighting
-    // the vertical displacement is scaled by disp_scale too, so the slope picks it up before the stretch division
-    float stretch_x = max(1.0 + dDx_dx, 0.1);
-    float stretch_z = max(1.0 + dDz_dz, 0.1);
-    slope_x         = slope_x * disp_scale / stretch_x;
-    slope_z         = slope_z * disp_scale / stretch_z;
+    // inverse-transpose of the full horizontal mapping. Ignoring the cross terms
+    // gave incorrect normals for diagonal waves. Bound the slope at folded crests.
+    float2 height_gradient = float2(slope_x, slope_z) * disp_scale;
+    slope_x = ((1.0 + dDz_dz) * height_gradient.x - dDz_dx * height_gradient.y) / max(jacobian, 0.1);
+    slope_z = ((1.0 + dDx_dx) * height_gradient.y - dDx_dz * height_gradient.x) / max(jacobian, 0.1);
 
-    // foam mask on the wind sea crest, a short persist lets it clump instead of flashing as a line
-    uint cascade_count = buffer_frame.ocean_cascade_count;
-    uint break_cascade = cascade_count > 1u ? cascade_count - 2u : 0u;
-    float foam         = 0.0;
-    if (cascade == break_cascade)
-    {
-        float h           = height * disp_scale;
-        float compression = saturate(1.0 - jacobian);
-        float inject      = saturate(compression / 0.2);
-        inject           *= h > 0.0 ? 1.0 : 0.0;
-        bool reset        = pass_get_f2_value().y > 0.5;
-        float prev        = reset ? 0.0 : saturate(tex_ocean_normal_uav[id].z);
-        float decay       = exp(-buffer_frame.delta_time * 2.5);
-        foam              = max(inject, prev * decay);
-    }
+    // Breaking follows the most compressed direction, on every wave band. The
+    // determinant alone can miss a crest compressed in one axis and stretched in the other.
+    float cross_gradient = 0.5 * (dDx_dz + dDz_dx);
+    float stretch_min = 1.0 + 0.5 * (dDx_dx + dDz_dz)
+        - sqrt(0.25 * (dDx_dx - dDz_dz) * (dDx_dx - dDz_dz) + cross_gradient * cross_gradient);
+    float inject = 1.0 - smoothstep(0.2, 0.65, stretch_min);
+    // The shortest ripples sharpen reflections but do not make persistent whitecaps.
+    inject *= smoothstep(2.0, 6.0, length_m * 0.1);
+    bool reset   = pass_get_f2_value().y > 0.5;
+    float2 history = reset ? float2(0.0, 0.0) : tex_ocean_normal_uav[id].zw;
+    float prev   = saturate(history.x);
+    float dt     = max(buffer_frame.delta_time, 0.0);
+    // Exact integration of production and dissipation avoids frame-rate-dependent
+    // coverage. Residual foam stays with the surface particles as the crest passes.
+    float production = inject * 4.0;
+    float rate       = production + 0.5;
+    float equilibrium = production / rate;
+    float foam = saturate(equilibrium + (prev - equilibrium) * exp(-rate * dt));
 
-    tex_ocean_normal_uav[id] = float4(slope_x, slope_z, foam, 0.0);
+    // A slow wave-energy envelope lets contact foam survive mean-level crossings,
+    // while genuinely still water stays clean. w stores mean squared height.
+    float h = height * disp_scale;
+    float energy = lerp(h * h, max(history.y, 0.0), exp(-dt));
+    tex_ocean_normal_uav[id] = float4(slope_x, slope_z, foam, energy);
 }

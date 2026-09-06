@@ -36,14 +36,7 @@ struct Vertex_PosUvNorTan
     uint   uv_packed;
     uint   normal_packed;
     uint   tangent_packed;
-    // full float, half-precision here quantizes world positions to a ~1m lattice past a few
-    // hundred meters from the origin and that snaps grass blades onto a visible doll-hair grid
-    float instance_position_x;
-    float instance_position_y;
-    float instance_position_z;
-    uint instance_normal_oct;
-    uint instance_yaw;
-    uint instance_scale;
+    float4x4 instance_transform;
 };
 
 // matches the engine's input layout for RHI_Vertex_Type::PosUvNorTan, 24 bytes
@@ -64,13 +57,25 @@ Vertex_PosUvNorTan to_full_vertex(Vertex_PosUvNorTan_Cpu cpu_input)
     v.uv_packed           = cpu_input.uv_packed;
     v.normal_packed       = cpu_input.normal_packed;
     v.tangent_packed      = cpu_input.tangent_packed;
-    v.instance_position_x = 0.0f;
-    v.instance_position_y = 0.0f;
-    v.instance_position_z = 0.0f;
-    v.instance_normal_oct = 0u;
-    v.instance_yaw        = 0u;
-    v.instance_scale      = 0u;
+    v.instance_transform = float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
     return v;
+}
+
+// CPU mesh instances retain independent scales and a high precision quaternion. The compact
+// procedural grass format remains separate. Rendering, depth and culling all use this decoder.
+float4x4 compose_packed_instance(PackedInstance instance)
+{
+    float4 q = normalize(float4(
+        (int(instance.rotation_xy << 16) >> 16), (int(instance.rotation_xy) >> 16),
+        (int(instance.rotation_zw << 16) >> 16), (int(instance.rotation_zw) >> 16)) / 32767.0f);
+    float xx = q.x * q.x, xy = q.x * q.y, xz = q.x * q.z, xw = q.x * q.w;
+    float yy = q.y * q.y, yz = q.y * q.z, yw = q.y * q.w;
+    float zz = q.z * q.z, zw = q.z * q.w;
+    return float4x4(
+        float4(float3(1.0f - 2.0f * (yy + zz), 2.0f * (xy + zw), 2.0f * (xz - yw)) * instance.scale_x, 0),
+        float4(float3(2.0f * (xy - zw), 1.0f - 2.0f * (xx + zz), 2.0f * (yz + xw)) * instance.scale_y, 0),
+        float4(float3(2.0f * (xz + yw), 2.0f * (yz - xw), 1.0f - 2.0f * (xx + yy)) * instance.scale_z, 0),
+        float4(instance.pos_x, instance.pos_y, instance.pos_z, 1));
 }
 
 Vertex_PosUvNorTan pull_vertex(uint vertex_id, uint instance_id, uint instance_offset)
@@ -79,21 +84,13 @@ Vertex_PosUvNorTan pull_vertex(uint vertex_id, uint instance_id, uint instance_o
 
     // slot 0 of the global instance pool is seeded with an identity instance, non-instanced renderables pass instance_offset=0 and read it
     PackedInstance pi = geometry_instances[instance_offset + instance_id];
-    uint nrm_oct      = pi.norm_yaw_scale & 0xFFFF;
-    uint yaw_p        = (pi.norm_yaw_scale >> 16) & 0xFF;
-    uint scale_p      = (pi.norm_yaw_scale >> 24) & 0xFF;
 
     Vertex_PosUvNorTan v;
     v.position            = pulled.position;
     v.uv_packed           = pulled.uv;
     v.normal_packed       = pulled.normal;
     v.tangent_packed      = pulled.tangent;
-    v.instance_position_x = pi.pos_x;
-    v.instance_position_y = pi.pos_y;
-    v.instance_position_z = pi.pos_z;
-    v.instance_normal_oct = nrm_oct;
-    v.instance_yaw        = yaw_p;
-    v.instance_scale      = scale_p;
+    v.instance_transform = compose_packed_instance(pi);
 
     return v;
 }
@@ -226,77 +223,12 @@ float4x4 compose_instance_transform(float instance_position_x, float instance_po
     );
 }
 
-// helper for non-vs paths (compute culling, etc.) that need the same per-instance world transform the vs builds
-// the early-out on instance_offset == 0 keeps non-instanced draws out of the geometry_instances read entirely
-// the body avoids the min16float param chain compose_instance_transform uses, that path is vs-specific
+// Culling must use exactly the same transform as the visible and depth geometry.
 float4x4 pull_instance_transform(uint instance_offset, uint instance_id)
 {
     if (instance_offset == 0u)
         return float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
-
-    PackedInstance pi = geometry_instances[instance_offset + instance_id];
-    uint nrm_oct      = pi.norm_yaw_scale & 0xFFFF;
-    uint yaw_p        = (pi.norm_yaw_scale >> 16) & 0xFF;
-    uint scale_p      = (pi.norm_yaw_scale >> 24) & 0xFF;
-
-    float3 instance_position = float3(pi.pos_x, pi.pos_y, pi.pos_z);
-
-    if (dot(instance_position, instance_position) < 1e-10f && nrm_oct == 0u && yaw_p == 0u && scale_p == 0u)
-        return float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
-
-    static const float rcp_255 = 1.0f / 255.0f;
-    float x            = (float(nrm_oct >> 8) * rcp_255) * 2.0f - 1.0f;
-    float y            = (float(nrm_oct & 0xFFu) * rcp_255) * 2.0f - 1.0f;
-    float3 n           = float3(x, y, 1.0f - abs(x) - abs(y));
-    float mask         = step(0.0f, n.z);
-    float2 adjusted_xy = (float2(1.0f, 1.0f) - abs(n.yx)) * sign(n.xy);
-    n.xy               = mask * n.xy + (1.0f - mask) * adjusted_xy;
-    float3 normal      = normalize(n);
-
-    static const float pi_2           = 6.28318530718f;
-    static const float scale_min_log2 = -6.643856f; // log2(0.01)
-    static const float scale_max_log2 =  6.643856f; // log2(100)
-    float yaw   = float(yaw_p) * rcp_255 * pi_2;
-    float scale = exp2(lerp(scale_min_log2, scale_max_log2, float(scale_p) * rcp_255));
-
-    static const float3 up = float3(0, 1, 0);
-    float up_dot_normal    = dot(up, normal);
-    float4 quat;
-    if (abs(up_dot_normal) >= 0.999999f)
-    {
-        quat = up_dot_normal > 0.0f ? float4(0, 0, 0, 1) : float4(1, 0, 0, 0);
-    }
-    else
-    {
-        float s = sqrt(2.0f + 2.0f * up_dot_normal);
-        quat    = float4(cross(up, normal) / s, s * 0.5f);
-    }
-    float yaw_half  = -yaw * 0.5f;
-    float cy        = cos(yaw_half);
-    float sy        = sin(yaw_half);
-    float4 quat_yaw = float4(0.0f, sy, 0.0f, cy);
-
-    float qx = quat.w * quat_yaw.x + quat.x * quat_yaw.w + quat.y * quat_yaw.z - quat.z * quat_yaw.y;
-    float qy = quat.w * quat_yaw.y - quat.x * quat_yaw.z + quat.y * quat_yaw.w + quat.z * quat_yaw.x;
-    float qz = quat.w * quat_yaw.z + quat.x * quat_yaw.y - quat.y * quat_yaw.x + quat.z * quat_yaw.w;
-    float qw = quat.w * quat_yaw.w - quat.x * quat_yaw.x - quat.y * quat_yaw.y - quat.z * quat_yaw.z;
-
-    float xx = qx * qx;
-    float xy = qx * qy;
-    float xz = qx * qz;
-    float xw = qx * qw;
-    float yy = qy * qy;
-    float yz = qy * qz;
-    float yw = qy * qw;
-    float zz = qz * qz;
-    float zw = qz * qw;
-
-    return float4x4(
-        float4((1.0f - 2.0f * (yy + zz)) * scale, 2.0f * (xy + zw) * scale, 2.0f * (xz - yw) * scale, 0.0f),
-        float4(2.0f * (xy - zw) * scale, (1.0f - 2.0f * (xx + zz)) * scale, 2.0f * (yz + xw) * scale, 0.0f),
-        float4(2.0f * (xz + yw) * scale, 2.0f * (yz - xw) * scale, (1.0f - 2.0f * (xx + yy)) * scale, 0.0f),
-        float4(instance_position, 1.0f)
-    );
+    return compose_packed_instance(geometry_instances[instance_offset + instance_id]);
 }
 
 float3x3 rotation_matrix(float3 axis, float angle)
@@ -670,7 +602,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex.width_percent = width_percent;
     
     // compose instance transform and apply to base transform
-    matrix instance = compose_instance_transform(input.instance_position_x, input.instance_position_y, input.instance_position_z, input.instance_normal_oct, input.instance_yaw, input.instance_scale);
+    matrix instance = input.instance_transform;
     transform = mul(instance, transform);
     matrix transform_previous = mul(instance, pass_get_transform_previous());
 
@@ -698,8 +630,13 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     }
     
     // transform normal and tangent to world space (extract 3x3 rotation/scale matrix)
-    vertex.normal  = normalize(mul(input_normal,  (float3x3)transform));
-    vertex.tangent = normalize(mul(input_tangent, (float3x3)transform));
+    // Inverse transpose via cofactors handles nonuniform scale and parent shear.
+    float3x3 cofactor = float3x3(cross(transform[1].xyz, transform[2].xyz),
+        cross(transform[2].xyz, transform[0].xyz), cross(transform[0].xyz, transform[1].xyz));
+    float orientation = dot(transform[0].xyz, cofactor[0]) < 0.0f ? -1.0f : 1.0f;
+    vertex.normal = normalize(mul(input_normal, cofactor) * orientation);
+    float3 tangent = mul(input_tangent, (float3x3)transform);
+    vertex.tangent = normalize(tangent - vertex.normal * dot(tangent, vertex.normal));
 
     // capture the undisplaced world xz before the ocean displacement shifts it, the fft normal and foam are indexed in this domain
     vertex.ocean_world_xz = position.xz;

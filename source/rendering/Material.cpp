@@ -110,6 +110,8 @@ namespace spartan
                 case MaterialProperty::IsSkidMark:                 return "is_skid_mark";
                 case MaterialProperty::TerrainBlend:               return "terrain_blend";
                 case MaterialProperty::TerrainBlendSharpness:      return "terrain_blend_sharpness";
+                case MaterialProperty::TerrainCoating:             return "terrain_coating";
+                case MaterialProperty::TerrainCoatingScale:        return "terrain_coating_scale";
         
                 // Render settings
                 case MaterialProperty::CullMode:                   return "cull_mode";
@@ -744,6 +746,8 @@ namespace spartan
         // before this property existed loads without the attribute and keeps this value
         SetProperty(MaterialProperty::TerrainBlend,          1.0f);
         SetProperty(MaterialProperty::TerrainBlendSharpness, 0.5f);
+        SetProperty(MaterialProperty::TerrainCoating,         0.0f);
+        SetProperty(MaterialProperty::TerrainCoatingScale,    3.0f);
     }
 
     void Material::ApplyPaintPreset(MaterialPaintPreset preset, const Color& color, bool save)

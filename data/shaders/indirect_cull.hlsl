@@ -7,8 +7,10 @@ in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
 copies of the Software, and to permit persons to whom the Software is furnished
 to do so, subject to the following conditions :
+
 The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
 FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
@@ -51,6 +53,7 @@ groupshared uint     gs_instance_index;
 groupshared DrawData gs_draw;
 groupshared float4x4 gs_world;
 groupshared float    gs_scale_max;
+groupshared bool     gs_cone_safe;
 groupshared bool     gs_skinned;
 groupshared bool     gs_skip_hiz;
 groupshared bool     gs_two_sided;
@@ -85,6 +88,15 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
             ? mul(pull_instance_transform(gs_draw.instance_offset, si.instance_index), gs_draw.transform)
             : gs_draw.transform;
         gs_scale_max          = max_world_scale(gs_world);
+        // A normal cone's opening angle is not preserved by nonuniform scale or shear.
+        // Keep these meshlets for the exact per-triangle test instead of dropping visible faces.
+        float3 r0 = gs_world[0].xyz, r1 = gs_world[1].xyz, r2 = gs_world[2].xyz;
+        float3 scales_sq = float3(dot(r0, r0), dot(r1, r1), dot(r2, r2));
+        float largest_sq = max(scales_sq.x, max(scales_sq.y, scales_sq.z));
+        float tolerance = largest_sq * 0.001f;
+        gs_cone_safe = largest_sq - min(scales_sq.x, min(scales_sq.y, scales_sq.z)) <= tolerance &&
+            abs(dot(r0, r1)) <= tolerance && abs(dot(r0, r2)) <= tolerance && abs(dot(r1, r2)) <= tolerance &&
+            dot(r0, cross(r1, r2)) > 0.0f;
         gs_skinned            = (gs_draw.flags & 1u) != 0u;
         gs_skip_hiz           = (gs_draw.flags & 32u) != 0u;
         gs_two_sided          = (gs_draw.flags & 8u) != 0u;
@@ -132,7 +144,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
                     is_visible = sphere_contributes(center_world, radius_world, CULL_CONTRIBUTION_MESHLET_PX);
 
                 // per-meshlet backface cone, skipped for two-sided materials and degenerate cones, sqrt-free form
-                if (is_visible && !gs_two_sided)
+                if (is_visible && !gs_two_sided && gs_cone_safe)
                 {
                     int4 cone = unpack_cone_axis_cutoff(mb.cone_axis_cutoff);
                     if (cone.w < 127)

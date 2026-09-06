@@ -5151,10 +5151,162 @@ namespace car
     }
 
 
+    void Simulation::mount_dyno(bool mounted)
+    {
+        if (dyno.mounted == mounted) return;
+        if (!mounted) stop_dyno();
+        dyno.mounted = mounted;
+        set_simulation_enabled(!mounted);
+        reset_drivetrain_transients();
+        input = {}; input_target = {};
+        for (auto& w : wheels) w.angular_velocity = 0;
+        if (mounted)
+        {
+            dyno.start_rpm = PxMax(spec.engine_idle_rpm * 1.5f, 1500.0f);
+            dyno.end_rpm = spec.engine_redline_rpm - 100;
+            dyno.gear = PxMin(4, spec.gear_count - 1);
+        }
+    }
+
+    bool Simulation::start_dyno()
+    {
+        if (!dyno.mounted || !body || dyno.running || dyno.gear < 2 || dyno.gear >= spec.gear_count
+            || !std::isfinite(dyno.start_rpm) || !std::isfinite(dyno.end_rpm)
+            || !std::isfinite(dyno.sweep_seconds) || !std::isfinite(dyno.throttle)
+            || dyno.start_rpm < spec.engine_idle_rpm || dyno.end_rpm <= dyno.start_rpm
+            || dyno.end_rpm >= spec.engine_redline_rpm || dyno.sweep_seconds < 1 || dyno.sweep_seconds > 120
+            || dyno.throttle < 0 || dyno.throttle > 1)
+        {
+            dyno.status = "Invalid test settings (RPM range, forward gear, duration or throttle)";
+            return false;
+        }
+        reset_drivetrain_transients();
+        input = {}; input_target = {};
+        current_gear = dyno.gear;
+        clutch = 1;
+        engine_rpm = dyno.start_rpm;
+        gearbox_input_angular_velocity = engine_rpm * PxTwoPi / 60;
+        dyno.car_name = spec.name;
+        dyno.run_gear = dyno.gear;
+        dyno.run_ratio = spec.gear_ratios[dyno.gear];
+        dyno.run_final_drive = spec.final_drive;
+        dyno.time = dyno.sample_clock = 0;
+        dyno.samples.clear();
+        dyno.samples.reserve(6200);
+        dyno.export_path.clear();
+        dyno.status = "Conditioning for 2 seconds";
+        dyno.running = true;
+        return true;
+    }
+
+    void Simulation::stop_dyno()
+    {
+        const bool was_running = dyno.running;
+        dyno.running = false;
+        input = {}; input_target = {};
+        reset_drivetrain_transients();
+        for (auto& w : wheels) { w.angular_velocity = 0; w.net_torque = w.drive_torque = 0; }
+        if (was_running)
+        {
+            dyno.status = "Stopped; partial run retained";
+            const auto stamp = std::chrono::system_clock::now().time_since_epoch().count();
+            export_dyno("car_dyno_" + std::to_string(stamp) + ".csv");
+        }
+    }
+
+    void Simulation::tick_dyno(float dt)
+    {
+        if (!dyno.running) return;
+        // Keep the fixture integration independent of the scene/render timestep.
+        const int steps = PxMax(1, static_cast<int>(ceilf(dt / 0.0005f)));
+        const float h = dt / steps;
+        for (int step = 0; step < steps && dyno.running; ++step)
+        {
+            dyno.time += h;
+            const float progress = PxClamp((dyno.time - 2.0f) / dyno.sweep_seconds, 0.0f, 1.0f);
+            const float target = dyno.start_rpm + (dyno.sweep ? progress : 0) * (dyno.end_rpm - dyno.start_rpm);
+            const float omega = target * PxTwoPi / (60 * spec.gear_ratios[dyno.gear] * spec.final_drive);
+            input = {}; input.throttle = dyno.throttle;
+            assisted_actuators = {}; assisted_actuators.engine_torque_scale = 1;
+            for (int i = 0; i < wheel_count; ++i)
+            {
+                auto& w = wheels[i];
+                w.angular_velocity = is_driven(i) ? omega : 0;
+                w.net_torque = w.drive_torque = 0;
+                // Actors are disabled on the stand, but their poses drive wheel visuals.
+                if (auto* actor = multibody.corners[i].wheel_body)
+                {
+                    auto pose = actor->getGlobalPose();
+                    pose.q = (body->getGlobalPose().q * PxQuat(w.angular_velocity * h, PxVec3(1, 0, 0))
+                        * body->getGlobalPose().q.getConjugate() * pose.q).getNormalized();
+                    actor->setGlobalPose(pose);
+                }
+            }
+            update_boost(input.throttle, engine_rpm, h);
+            integrate_powertrain(h);
+            engine_rotation = fmodf(engine_rotation + engine_rpm * PxTwoPi / 60 * h, PxTwoPi);
+            rev_limiter_active = engine_rpm >= spec.engine_redline_rpm;
+            dyno.sample_clock += h;
+            if (dyno.sample_clock >= 0.02f)
+            {
+                dyno.sample_clock -= 0.02f;
+                dyno_sample sample = {dyno.time, target, engine_rpm, omega * 60 / PxTwoPi, input.throttle,
+                    engine_output_torque, engine_output_torque * engine_rpm * PxTwoPi / 60000,
+                    axle_drive_torque, axle_drive_torque * omega / 1000, motor_torque,
+                    motor_torque * omega * spec.final_drive / 1000, boost_pressure,
+                    static_cast<float>(battery.energy_j / PxMax(spec.battery_capacity_kwh * 3600000.0f, 1.0f)),
+                    engine_rpm - gearbox_input_angular_velocity * 60 / PxTwoPi};
+                if (!std::isfinite(sample.rpm) || !std::isfinite(sample.axle_kw) || !std::isfinite(sample.combustion_kw))
+                {
+                    stop_dyno();
+                    dyno.status = "Aborted: non-finite drivetrain output";
+                    return;
+                }
+                dyno.samples.push_back(sample);
+            }
+            if (dyno.time >= 2) dyno.status = dyno.sweep ? "Sweeping" : "Holding shaft speed";
+            if (dyno.time >= dyno.sweep_seconds + 2)
+            {
+                stop_dyno();
+                if (!dyno.export_path.empty()) dyno.status = "Complete; CSV saved";
+            }
+        }
+    }
+
+    bool Simulation::export_dyno(const std::string& path)
+    {
+        FILE* output = nullptr;
+        if (dyno.samples.empty() || fopen_s(&output, path.c_str(), "w") != 0 || !output)
+        {
+            dyno.status = "CSV export failed (empty run or unwritable path)";
+            return false;
+        }
+        std::string quoted_name;
+        for (char c : dyno.car_name) { quoted_name += c; if (c == '"') quoted_name += '"'; }
+        fprintf(output, "car,fixture,gear,gear_ratio,final_drive,time_s,conditioning,target_rpm,engine_rpm,wheel_rpm,throttle,combustion_nm,combustion_kw,axle_nm,axle_kw,motor_nm,motor_kw,boost_bar,battery_soc,clutch_slip_rpm\n");
+        for (const auto& s : dyno.samples)
+            fprintf(output, "\"%s\",speed_controlled_hub,%d,%.6f,%.6f,%.4f,%d,%.3f,%.3f,%.3f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.5f,%.3f\n",
+                quoted_name.c_str(), dyno.run_gear - 1, dyno.run_ratio, dyno.run_final_drive,
+                s.time, s.time < 2 ? 1 : 0, s.target_rpm, s.rpm, s.wheel_rpm, s.throttle,
+                s.combustion_nm, s.combustion_kw, s.axle_nm, s.axle_kw, s.motor_nm, s.motor_kw,
+                s.boost_bar, s.battery_soc, s.clutch_slip_rpm);
+        const bool written = ferror(output) == 0;
+        const bool closed = fclose(output) == 0;
+        if (written && closed) { dyno.export_path = path; return true; }
+        dyno.status = "CSV write failed";
+        return false;
+    }
+
     void Simulation::tick(float dt)
     {
             if (!body || !std::isfinite(dt) || dt <= 0.0f)
             {
+                return;
+            }
+
+            if (dyno.mounted)
+            {
+                tick_dyno(dt);
                 return;
             }
 

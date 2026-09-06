@@ -76,6 +76,7 @@ namespace spartan
                 RHI_CommandList::SetShader(GetShader(Renderer_Shader::reflections_apply_c));
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_reflections);
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), tex_refraction_source);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3), GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows));
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex4), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_frame, rhi_all_mips, 0, true);
                 RHI_CommandList::Dispatch(tex_frame);

@@ -1,4 +1,5 @@
 /*
+Copyright(c) 2015-2026 Panos Karabelas
 Copyright(c) 2023 Fredrik Svantesson
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

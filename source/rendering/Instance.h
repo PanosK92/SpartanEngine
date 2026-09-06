@@ -28,7 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace spartan
 {
     #pragma pack(push, 1)
-    // one packed transform per instance, 16 bytes so the stride matches the shader side PackedInstance
+    // 32 bytes, mirrored by PackedInstance. Preserve all three scales: averaging them changes
+    // the rendered shape after placement has already seated it against the terrain.
     // positions stay full float, a half quantizes to a quarter metre a few hundred metres out and
     // that is enough to float a tree off a tile or bury a rock in it
     struct Instance
@@ -36,9 +37,11 @@ namespace spartan
         float position_x;     // 4 bytes
         float position_y;     // 4 bytes
         float position_z;     // 4 bytes
-        uint16_t normal_oct;  // 2 bytes
-        uint8_t yaw_packed;   // 1 byte
-        uint8_t scale_packed; // 1 byte
+        uint32_t rotation_xy; // signed normalized 16-bit quaternion components
+        uint32_t rotation_zw;
+        float scale_x;
+        float scale_y;
+        float scale_z;
 
         math::Matrix GetMatrix() const;
         void SetMatrix(const math::Matrix& matrix);
@@ -46,4 +49,5 @@ namespace spartan
         static Instance GetIdentity();
     };
     #pragma pack(pop)
+    static_assert(sizeof(Instance) == 32);
 }

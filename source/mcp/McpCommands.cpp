@@ -7503,6 +7503,77 @@ namespace spartan
             return car_status_json(car);
         }
 
+        std::string command_vehicle_dyno(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading()) return json_error("world is loading");
+            std::string error;
+            Car* vehicle = find_car_from_request(request, error);
+            if (!vehicle || !vehicle->GetRootEntity()) return json_error(error);
+            auto* physics = vehicle->GetRootEntity()->GetComponent<Physics>();
+            auto* simulation = physics ? physics->GetVehicleSimulation() : nullptr;
+            if (!simulation) return json_error("vehicle has no simulation");
+            auto& d = simulation->dyno;
+            const std::string action = get_argument(request, "action").value_or("status");
+            if (action == "stop")
+            {
+                if (!d.mounted) return json_error("vehicle is not mounted on the dyno");
+                simulation->stop_dyno();
+            }
+            else if (action == "start")
+            {
+                if (!d.mounted || !Engine::IsFlagSet(EngineMode::Playing)) return json_error("load Dyno world and enter play mode first");
+                if (d.running) return json_error("dyno is already running");
+                auto read = [&](const char* key, float& target)
+                {
+                    if (const auto value = get_argument(request, key)) return parse_float(*value, target) && std::isfinite(target);
+                    return true;
+                };
+                float start = d.start_rpm, end = d.end_rpm, seconds = d.sweep_seconds, throttle = d.throttle;
+                float gear = static_cast<float>(d.gear - 1);
+                bool sweep = d.sweep;
+                if (!read("start_rpm", start) || !read("end_rpm", end) || !read("seconds", seconds)
+                    || !read("throttle", throttle) || !read("gear", gear)
+                    || gear < 1 || gear > simulation->get_spec().gear_count - 2 || floorf(gear) != gear)
+                    return json_error("invalid dyno parameters");
+                if (const auto value = get_argument(request, "sweep"))
+                    if (!parse_bool(*value, sweep)) return json_error("invalid sweep boolean");
+                d.start_rpm = start; d.end_rpm = end; d.sweep_seconds = seconds; d.throttle = throttle;
+                d.gear = static_cast<int>(gear) + 1; d.sweep = sweep;
+                if (!simulation->start_dyno()) return json_error(d.status);
+            }
+            else if (action == "select")
+            {
+                if (!d.mounted || d.running) return json_error("select requires an idle mounted dyno");
+                const auto name = get_argument(request, "car");
+                const car::car_definition* definition = nullptr;
+                for (const auto& entry : car::preset_registry)
+                    if (name && *name == entry.name) definition = entry.definition;
+                if (!definition) return json_error("unknown car; use the exact catalog name");
+                if (definition != vehicle->GetDefinition())
+                {
+                    if (!d.samples.empty()) { d.previous_samples = d.samples; d.previous_car = d.car_name; }
+                    d.samples.clear();
+                    simulation->mount_dyno(false);
+                    vehicle->LoadDefinition(definition);
+                    simulation->mount_dyno(true);
+                    d.car_name = simulation->get_spec().name;
+                    d.export_path.clear(); d.status = "Ready";
+                }
+            }
+            else if (action != "status") return json_error("action must be status, start, stop or select");
+            std::string json = "{\"ok\":true,\"fixture\":\"speed_controlled_hub\",\"running\":" + std::string(d.running ? "true" : "false");
+            json += ",\"status\":" + json_string(d.status) + ",\"car\":" + json_string(d.car_name);
+            json += ",\"time_s\":" + std::to_string(d.time) + ",\"samples\":" + std::to_string(d.samples.size());
+            json += ",\"csv\":" + json_string(d.export_path);
+            if (!d.samples.empty())
+            {
+                const auto& s = d.samples.back();
+                json += ",\"rpm\":" + std::to_string(s.rpm) + ",\"axle_kw\":" + std::to_string(s.axle_kw);
+                json += ",\"axle_nm\":" + std::to_string(s.axle_nm) + ",\"combustion_kw\":" + std::to_string(s.combustion_kw);
+            }
+            return json + "}";
+        }
+
         std::string command_vehicle_enter(const McpRequest& request)
         {
             if (ProgressTracker::IsLoading())
@@ -13752,6 +13823,7 @@ namespace spartan
             { "physics_state",                 command_physics_state },
             { "vehicle_list",                  [](const McpRequest&) { return command_vehicle_list(); } },
             { "vehicle_get",                   command_vehicle_get },
+            { "vehicle_dyno",                  command_vehicle_dyno },
             { "vehicle_enter",                 command_vehicle_enter },
             { "vehicle_exit",                  command_vehicle_exit },
             { "vehicle_set_input",             command_vehicle_set_input },

@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CarInertia.h"
 #include "CarCalibration.h"
 #include "CarMultibody.h"
+#include "CarDyno.h"
 //=====================
 
 namespace car
@@ -128,6 +129,12 @@ namespace car
         ~Simulation();
         Simulation(const Simulation&) = delete;
         Simulation& operator=(const Simulation&) = delete;
+        dyno_state dyno;
+        void mount_dyno(bool mounted);
+        bool start_dyno();
+        void stop_dyno();
+        void tick_dyno(float dt);
+        bool export_dyno(const std::string& path);
         PxRigidDynamic* get_body() const;
         const config& get_config() const;
         config& get_config();

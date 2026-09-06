@@ -64,7 +64,9 @@ void main_cs(uint3 id : SV_DispatchThreadID)
         float k_high = 2.0 * OCEAN_PI * 10.0 / length_m;
         window      *= 1.0 - smoothstep(k_high, 2.0 * k_high, k_len);
     }
-    if (window <= 0.0)
+    // The Nyquist axes mirror onto themselves. Dropping these sub-pixel modes
+    // avoids an asymmetric directional spectrum violating Hermitian symmetry.
+    if (window <= 0.0 || id.x == 0u || id.y == 0u)
     {
         tex_ocean_spectrum_uav[id] = float4(0.0, 0.0, 0.0, 0.0);
         return;
@@ -119,21 +121,26 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     float2 h0         = seed.xy;
     float2 h0_minus_c = seed.zw;
 
-    float2 e      = float2(cos(w * t), sin(w * t));   // exp(+i w t)
-    float2 e_conj = float2(e.x, -e.y);                // exp(-i w t)
+    float2 e      = float2(cos(w * t), -sin(w * t));  // exp(-i w t), travels with the wind
+    float2 e_conj = float2(e.x, -e.y);                // exp(+i w t)
 
     // time-evolved height spectrum, conjugate-symmetric so the ifft is real
     float2 h_tilde = ocean_cmul(h0, e) + ocean_cmul(h0_minus_c, e_conj);
 
-    // horizontal displacement spectra, dx = -i * (kx/|k|) * h, dz = -i * (kz/|k|) * h
+    // positive choppiness must pull particles towards crests: with our positive-sign
+    // inverse FFT, i*k/|k| turns cos(k*x) into -sin(k*x), compressing the crest.
     float2 k_dir       = k_len > 1e-6 ? k / k_len : float2(0.0, 0.0);
-    float2 disp_x      = ocean_mul_neg_i(h_tilde) * k_dir.x;
-    float2 disp_z      = ocean_mul_neg_i(h_tilde) * k_dir.y;
+    // odd derivatives must vanish on the self-mirrored Nyquist axes to stay real.
+    k_dir.x = id.x == 0u ? 0.0 : k_dir.x;
+    k_dir.y = id.y == 0u ? 0.0 : k_dir.y;
+    float2 disp_x      = -ocean_mul_neg_i(h_tilde) * k_dir.x;
+    float2 disp_z      = -ocean_mul_neg_i(h_tilde) * k_dir.y;
 
     // analytic slope spectrum, slope_x = i*kx*h and slope_z = i*kz*h are both conjugate-symmetric
     // so packing them as slope_x + i*slope_z lets one ifft recover (slope_x, slope_z) in the real and imaginary parts
     float2 ih    = float2(-h_tilde.y, h_tilde.x); // i * h
-    float2 slope = k.x * ih - k.y * h_tilde;
+    float2 derivative_k = float2(id.x == 0u ? 0.0 : k.x, id.y == 0u ? 0.0 : k.y);
+    float2 slope = derivative_k.x * ih - derivative_k.y * h_tilde;
 
     // pack two complex fields per texture so a single ifft transforms them together
     tex_ocean_fft_a_uav[id] = float4(h_tilde, disp_x);

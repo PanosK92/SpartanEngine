@@ -154,6 +154,13 @@ float3 night_sky_radiance(float up_y)
 static const float3 ocean_scatter_albedo = float3(0.0f, 0.09f, 0.13f);                // deep blue-green in-scattering albedo, lit by the downwelling light
 static const float3 ocean_extinction     = float3(0.45f, 0.15f, 0.08f) * 0.45f;       // per channel beer lambert extinction, red dies first and blue persists
 
+float3 get_ocean_extinction()
+{
+    // Clear water still absorbs light; suspended particles increase extinction.
+    // At the legacy turbidity of one this retains the original coefficients.
+    return ocean_extinction * (0.5f + 0.5f * max(buffer_frame.ocean_turbidity, 0.0f));
+}
+
 // caustics as refracted ray density from the two finest slope cascades, the slope gradient is the jacobian of the sun ray footprint after travelling through the water, rays converge into bright ribbons where it shrinks and spread into soft dimming where it grows, the mean stays near one at any sea state so the pattern never washes to flat or clamps to black
 float get_ocean_caustic(float2 world_xz, float travel)
 {
@@ -316,7 +323,7 @@ float ocean_foam_noise(float2 p)
 }
 
 // carve the crest mask into lacy whitewater, holes and a denser core
-float shape_ocean_foam(float coverage, float2 grid_xz)
+float shape_ocean_foam(float coverage, float2 grid_xz, float footprint)
 {
     coverage = saturate(coverage);
     if (coverage <= 0.0f)
@@ -324,79 +331,74 @@ float shape_ocean_foam(float coverage, float2 grid_xz)
         return 0.0f;
     }
 
-    float n =
-        ocean_foam_noise(grid_xz * 3.5f) * 0.45f +
-        ocean_foam_noise(grid_xz * 11.0f) * 0.35f +
-        ocean_foam_noise(grid_xz * 29.0f) * 0.20f;
-    float body  = smoothstep(0.06f, 0.38f, coverage);
-    float lace  = saturate((n - 0.28f) / 0.5f);
-    float dense = smoothstep(0.4f, 0.75f, coverage) * saturate(n + 0.2f);
-    return saturate(max(body * lace, dense));
+    // Fade unresolved noise to its mean instead of shimmering at the shoreline.
+    float3 frequencies = float3(1.5f, 5.0f, 14.0f);
+    float3 detail = 1.0f - smoothstep(0.2f, 0.6f, footprint * frequencies);
+    float n = dot(float3(
+        lerp(0.5f, ocean_foam_noise(grid_xz * frequencies.x), detail.x),
+        lerp(0.5f, ocean_foam_noise(grid_xz * frequencies.y), detail.y),
+        lerp(0.5f, ocean_foam_noise(grid_xz * frequencies.z), detail.z)), float3(0.5f, 0.3f, 0.2f));
+    float lace = smoothstep(0.25f, 0.7f, n + coverage * 0.3f);
+    return coverage * lerp(1.0f, lace, detail.x);
 }
 
-// foam where the displaced surface almost touches the bed, densest at the waterline
-float get_ocean_shore_foam(float2 world_xz, float time)
+float ocean_foam_footprint(float view_distance)
+{
+    return 2.0f * view_distance / max(abs(buffer_frame.projection[1][1]) * buffer_frame.resolution_render.y, 1.0f);
+}
+
+// Evaluate the bed at the actual displaced surface position, never at the FFT grid.
+float get_ocean_shore_foam(float3 water_position, float footprint, float wave_activity)
 {
     float valid = 0.0f;
-    float terrain_y = sample_ocean_terrain_height(world_xz, valid);
+    float terrain_y = sample_ocean_terrain_height(water_position.xz, valid);
     if (valid < 0.5f)
     {
         return 0.0f;
     }
 
-    float water_y   = get_ocean_height(world_xz);
-    float clearance = water_y - terrain_y;
-    if (clearance > 2.5f || clearance < -0.5f)
+    float clearance = water_position.y - terrain_y;
+    if (clearance > 1.5f || clearance < 0.0f)
     {
         return 0.0f;
     }
-    float tongue = exp(-clearance * clearance * 28.0f);
-    float edge   = saturate(1.0f - abs(clearance) / 0.85f);
-    edge         = edge * edge;
-
-    float n =
-        ocean_foam_noise(world_xz * 22.0f + float2(time * 0.4f, 0.0f)) * 0.45f +
-        ocean_foam_noise(world_xz * 58.0f - float2(0.0f, time * 0.85f)) * 0.35f +
-        ocean_foam_noise(world_xz * 120.0f + float2(time * 0.2f, time * 0.15f)) * 0.20f;
-    float lace = lerp(0.62f, 1.0f, n);
-
-    return saturate(tongue * edge * lace * 0.42f);
+    float wave_height = wave_activity;
+    float activity = smoothstep(0.01f, 0.15f, wave_height);
+    float width = 0.18f + min(wave_height * 1.5f, 0.9f);
+    float edge = 1.0f - smoothstep(0.0f, width, clearance);
+    float2 drift = buffer_frame.wind.xz * (float)buffer_frame.time * 0.015f;
+    return shape_ocean_foam(edge * activity, water_position.xz - drift, footprint);
 }
 
-// compression from the swell cascades, gated by the summed crest so foam sits on the peak
-float get_ocean_foam(float2 grid_xz)
+// Residual whitewater survives in troughs; only production depends on compression.
+float get_ocean_foam(float2 grid_xz, float3 water_position, float view_distance, out float wave_activity)
 {
     float foam   = 0.0f;
-    float height = 0.0f;
+    float depth = get_ocean_water_depth(grid_xz);
+    wave_activity = 0.0f;
     uint cascades = buffer_frame.ocean_cascade_count;
     [loop] for (uint c = 0; c < cascades; ++c)
     {
         float2 uv = grid_xz / buffer_frame.ocean_cascade_length[c];
-        foam = max(
-            foam,
-            tex_ocean_normal.SampleLevel(
-                samplers[sampler_bilinear_wrap],
-                float3(uv, (float)c),
-                0.0f
-            ).z
-        );
-        height += tex_ocean_displacement.SampleLevel(
-            samplers[sampler_bilinear_wrap],
-            float3(uv, (float)c),
-            0.0f
-        ).y;
+        float4 sample_ocean = tex_ocean_normal.SampleLevel(samplers[sampler_bilinear_wrap], float3(uv, (float)c), 0.0f);
+        foam = max(foam, sample_ocean.z);
+        float scale = ocean_cascade_depth_scale(depth, buffer_frame.ocean_cascade_length[c]);
+        wave_activity += max(sample_ocean.w, 0.0f) * scale * scale;
     }
-    float shaped = shape_ocean_foam(foam, grid_xz) * (height > 0.0f ? 1.0f : 0.0f);
-    float shore  = get_ocean_shore_foam(grid_xz, (float)buffer_frame.time);
+    wave_activity = sqrt(wave_activity);
+    float footprint = ocean_foam_footprint(view_distance);
+    float shaped = shape_ocean_foam(foam, grid_xz, footprint);
+    float shore  = get_ocean_shore_foam(water_position, footprint, wave_activity);
     return saturate(max(shaped, shore));
 }
 
 // analytic fft slopes with distance fade, all cascades keep their ripple
-void sample_ocean_surface(float2 grid_xz, float view_distance, out float3 normal, out float foam)
+void sample_ocean_surface(float2 grid_xz, float3 water_position, float view_distance, out float3 normal, out float foam)
 {
     uint cascades = buffer_frame.ocean_cascade_count;
     float2 slope  = 0.0f;
-    float height  = 0.0f;
+    float depth   = get_ocean_water_depth(grid_xz);
+    float wave_energy = 0.0f;
     foam          = 0.0f;
 
     [loop] for (uint c = 0; c < cascades; ++c)
@@ -410,21 +412,17 @@ void sample_ocean_surface(float2 grid_xz, float view_distance, out float3 normal
             float3(uv, (float)c),
             0.0f
         );
-        slope  += slope_foam.xy * fade;
+        slope  += slope_foam.xy * fade * ocean_cascade_depth_scale(depth, L);
         foam    = max(foam, slope_foam.z);
-        height += tex_ocean_displacement.SampleLevel(
-            samplers[sampler_bilinear_wrap],
-            float3(uv, (float)c),
-            0.0f
-        ).y;
+        float scale = ocean_cascade_depth_scale(depth, L);
+        wave_energy += max(slope_foam.w, 0.0f) * scale * scale;
     }
 
-    float depth = get_ocean_water_depth(grid_xz);
-    float fade  = saturate(depth / 4.0f);
-    float str   = buffer_frame.ocean_normal_strength * lerp(0.45f, 1.0f, fade);
+    float str   = buffer_frame.ocean_normal_strength;
     normal      = normalize(float3(-slope.x * str, 1.0f, -slope.y * str));
-    foam        = shape_ocean_foam(foam, grid_xz) * (height > 0.0f ? 1.0f : 0.0f);
-    foam        = saturate(max(foam, get_ocean_shore_foam(grid_xz, (float)buffer_frame.time)));
+    float footprint = ocean_foam_footprint(view_distance);
+    foam = shape_ocean_foam(foam, grid_xz, footprint);
+    foam = saturate(max(foam, get_ocean_shore_foam(water_position, footprint, sqrt(wave_energy))));
 }
 
 // chromaticity preserving hdr clamp, the engine sky panorama is clamped to keep huge sun

@@ -7,8 +7,10 @@ in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
 copies of the Software, and to permit persons to whom the Software is furnished
 to do so, subject to the following conditions :
+
 The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
 FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
@@ -182,12 +184,8 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     // lod_base in values[0].z lets the same vs handle all three lod rings
     uint slot        = instance_id + (uint)buffer_pass.values[0].z;
     GrassInstance gi = grass_instances[slot];
-    input.instance_position_x = gi.pos_x;
-    input.instance_position_y = gi.pos_y;
-    input.instance_position_z = gi.pos_z;
-    input.instance_normal_oct = (gi.normal_yaw_scale >> 16) & 0xFFFFu;
-    input.instance_yaw        = (gi.normal_yaw_scale >> 8)  & 0xFFu;
-    input.instance_scale      =  gi.normal_yaw_scale        & 0xFFu;
+    input.instance_transform = compose_instance_transform(gi.pos_x, gi.pos_y, gi.pos_z,
+        (gi.normal_yaw_scale >> 16) & 0xFFFFu, (gi.normal_yaw_scale >> 8) & 0xFFu, gi.normal_yaw_scale & 0xFFu);
     // synthesize an identity per-renderable draw data, the instance carries the world transform
     _draw                    = (DrawData)0;
     _draw.transform          = float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
@@ -499,7 +497,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
     {
         float foam = 0.0f;
-        sample_ocean_surface(vertex.ocean_world_xz, distance, normal, foam);
+        sample_ocean_surface(vertex.ocean_world_xz, position_world, distance, normal, foam);
 
         // distance hides the sub-texel slope variance, lift roughness with distance so far water reads as a glitter sheet, not a sharp mirror
         float distance_fade = saturate(distance / 600.0f);
@@ -533,6 +531,17 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
     if (terrain_blendable)
     {
+        TerrainBlend coating = terrain_coating_evaluate(position_world, normalize(vertex.normal), normal,
+            dpdx_world, dpdy_world, distance, material.terrain_coating, material.terrain_coating_scale);
+        if (coating.weight > 0.0f)
+        {
+            albedo.rgb = lerp(albedo.rgb, coating.albedo, coating.weight);
+            roughness = lerp(roughness, coating.roughness, coating.weight);
+            metalness = lerp(metalness, coating.metalness, coating.weight);
+            occlusion = lerp(occlusion, coating.occlusion, coating.weight);
+            normal = terrain_blend_normal_arc(normal, coating.normal, coating.weight_normal);
+            emission = lerp(emission, 0.0f, coating.weight);
+        }
         float band = buffer_frame.terrain_blend_height * material.terrain_blend;
 
         TerrainBlend blend = terrain_blend_evaluate(

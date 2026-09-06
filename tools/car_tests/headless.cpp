@@ -1,3 +1,24 @@
+/*
+Copyright(c) 2015-2026 Panos Karabelas
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+copies of the Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions :
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
 // Compile the production vehicle and preset loader without starting the editor.
 #include <new>
 #include "pch.h"
@@ -43,6 +64,7 @@ void check(bool condition, const char* message)
 #include "suspension.h"
 #include "assembly.h"
 #include "large_world.h"
+#include "dyno.h"
 
 void regression_checks(car::Simulation& sim, PxPhysics* physics, PxRigidStatic* plane)
 {
@@ -237,6 +259,13 @@ int main(int argc, char** argv)
         PxMaterial* material = physics->createMaterial(0.8f, 0.7f, 0.0f);
         PxRigidStatic* plane = PxCreatePlane(*physics, PxPlane(0, 1, 0, 0), *material);
         scene->addActor(*plane);
+        if (argc > 1 && std::string(argv[1]) == "--dyno-check")
+        {
+            dyno_checks(physics, scene);
+            scene->release(); material->release(); dispatcher->release();
+            PxCloseExtensions(); physics->release(); foundation->release();
+            return 0;
+        }
         const auto* suspension_definition = car::load_car_file("worlds/cars/ferrari_laferrari.car");
         check(suspension_definition != nullptr, "suspension preset loads");
         if (large_world_only)

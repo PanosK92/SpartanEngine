@@ -46,6 +46,7 @@ namespace spartan
     namespace math
     {
         class Vector3;
+        class BoundingBox;
     }
 
     // everything the baked analysis knows about one point on the surface, every channel is 0 to 1
@@ -277,7 +278,8 @@ namespace spartan
             const uint32_t tile_index,
             const TerrainScatterLayer& layer,
             std::vector<math::Matrix>& transforms_out,
-            float* coverage_out = nullptr
+            float* coverage_out = nullptr,
+            const math::BoundingBox* mesh_bounds = nullptr
         );
 
         // sculpting

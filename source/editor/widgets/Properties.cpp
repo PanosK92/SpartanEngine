@@ -2358,35 +2358,20 @@ void Properties::ShowWater(spartan::Water* water) const
 
     if (component_begin("Water", design::accent_water(), water))
     {
-        float amplitude          = water->GetAmplitude();
-        float choppiness         = water->GetChoppiness();
-        float displacement_scale = water->GetDisplacementScale();
-        float normal_strength    = water->GetNormalStrength();
-        float sea_level          = water->GetSeaLevel();
-        float turbidity          = water->GetTurbidity();
-        float caustics_intensity = water->GetCausticsIntensity();
+        float wave_size = water->GetWaveSize();
+        float clarity   = water->GetClarity() * 100.0f;
+        float sea_level = water->GetSeaLevel();
 
-        uint32_t cascade_index = water->GetCascadeCount() - 1;
-        if (property_combo("Detail Cascades", { "1", "2", "3", "4" }, &cascade_index, "number of band-limited scales, more cascades adds finer microwaves"))
-        {
-            water->SetCascadeCount(cascade_index + 1);
-        }
+        layout::begin_property("Wave Size", "0 is flat water, 1 follows the world wind, 3 triples the wave height. Crest shape, foam and detail are automatic.");
+        ImGui::SliderFloat("##water_wave_size", &wave_size, 0.0f, 3.0f, "%.2f x", ImGuiSliderFlags_AlwaysClamp);
+        layout::begin_property("Water Clarity", "Higher values let you see farther through the water. Lower values add suspended particles and soften underwater sunlight.");
+        ImGui::SliderFloat("##water_clarity", &clarity, 0.0f, 100.0f, "%.0f %%", ImGuiSliderFlags_AlwaysClamp);
+        property_float("Sea Level", &sea_level, 0.1f, -1000.0f, 1000.0f,
+            "Height of the still water surface in world metres.", "%.1f m");
 
-        property_float("Amplitude",          &amplitude,          0.01f, 0.0f,    10.0f,    "linear wave height multiplier, 1 is the physical sea for the current wind");
-        property_float("Choppiness",         &choppiness,         0.01f, 0.0f,    4.0f,     "horizontal sharpening of the crests, high values fold the peak");
-        property_float("Displacement Scale", &displacement_scale, 0.01f, 0.0f,    4.0f,     "scales the simulated displacement");
-        property_float("Normal Strength",    &normal_strength,    0.01f, 0.0f,    4.0f,     "how steep the wave lighting reads, 1 matches the displaced surface");
-        property_float("Sea Level",          &sea_level,          0.1f,  -1000.0f, 1000.0f, "world height of the water surface", "%.1f m");
-        property_float("Turbidity",          &turbidity,          0.01f, 0.0f,    4.0f,     "suspended particle density, higher makes the underwater light shafts more vivid");
-        property_float("Caustics Intensity", &caustics_intensity, 0.01f, 0.0f,    4.0f,     "brightness of the sun caustics dancing on submerged geometry");
-
-        if (amplitude != water->GetAmplitude())                  { water->SetAmplitude(amplitude); }
-        if (choppiness != water->GetChoppiness())                { water->SetChoppiness(choppiness); }
-        if (displacement_scale != water->GetDisplacementScale()) { water->SetDisplacementScale(displacement_scale); }
-        if (normal_strength != water->GetNormalStrength())       { water->SetNormalStrength(normal_strength); }
-        if (sea_level != water->GetSeaLevel())                   { water->SetSeaLevel(sea_level); }
-        if (turbidity != water->GetTurbidity())                  { water->SetTurbidity(turbidity); }
-        if (caustics_intensity != water->GetCausticsIntensity()) { water->SetCausticsIntensity(caustics_intensity); }
+        if (wave_size != water->GetWaveSize()) { water->SetWaveSize(wave_size); }
+        if (clarity != water->GetClarity() * 100.0f) { water->SetClarity(clarity / 100.0f); }
+        if (sea_level != water->GetSeaLevel()) { water->SetSeaLevel(sea_level); }
     }
     component_end();
 }

@@ -7,8 +7,9 @@ in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
 copies of the Software, and to permit persons to whom the Software is furnished
 to do so, subject to the following conditions :
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
@@ -36,12 +37,12 @@ namespace spartan
             return rules;
         }
 
-        // layer 0, grass, the ground cover, rock only takes over once the slope is actually a face
+        // layer 0, ground cover yields to exposed stone on mountain shoulders
         {
             TerrainLayerRule& r     = rules[0];
             r.name                  = "whispy_grass_meadow";
             r.slope_min             = 0.0f;
-            r.slope_max             = 52.0f;
+            r.slope_max             = 38.0f;
             r.height_min            = 1.0f;
             r.flags                 = TerrainLayerFlags_BelowSea;
             r.insolation_influence  = 0.25f;
@@ -52,14 +53,14 @@ namespace spartan
             r.blend_contrast        = 0.45f;
             r.porosity              = 0.7f;
             r.macro_strength        = 1.0f;
-            r.weight_bias           = 1.35f;
+            r.weight_bias           = 1.1f;
         }
 
         // layer 1, rock, the cliff face, biplanar because planar xz smears on anything vertical
         {
             TerrainLayerRule& r    = rules[1];
             r.name                 = "rock";
-            r.slope_min            = 48.0f;
+            r.slope_min            = 28.0f;
             r.slope_max            = 90.0f;
             r.flags                = TerrainLayerFlags_Biplanar;
             r.curvature_influence  = -0.35f;
@@ -69,7 +70,7 @@ namespace spartan
             r.blend_contrast       = 0.4f;
             r.porosity             = 0.25f;
             r.macro_strength       = 0.6f;
-            r.weight_bias          = 0.8f;
+            r.weight_bias          = 1.3f;
         }
 
         // layer 2, sand, the shoreline and anything sitting at or below the water line
@@ -184,6 +185,9 @@ namespace spartan
             r.weight_bias          = 0.75f;
         }
 
+        for (TerrainLayerRule& rule : rules)
+            rule.surface_cover = rule.name != "rock" && rule.name != "gravel";
+
         built = true;
         return rules;
     }
@@ -232,24 +236,37 @@ namespace spartan
         {
             TerrainScatterLayer& s = layers[1];
             s.name                 = "boulders";
+            s.mountain_rocks       = true;
+            s.formation_spacing    = 300.0f;
+            s.formation_length     = 300.0f;
+            s.formation_width      = 130.0f;
+            s.formation_height     = 90.0f;
+            s.formation_jitter     = 15.0f;
+            s.embed_fraction       = 0.45f;
+            s.coating              = 0.65f;
             s.mesh_path            = "project/models/rock_2/model.obj";
             s.enabled              = true;
-            s.density              = 11.2f;
+            s.density              = 4.0f;
             s.max_per_tile         = 400;
-            s.slope_min            = 3.0f;
+            s.slope_min            = 22.0f;
             s.slope_max            = 80.0f;
             s.slope_bias           = 0.35f;
             s.height_min           = 40.0f;
             s.height_fade          = 70.0f;
             s.clump_radius         = 75.0f;
-            s.clump_count          = 4;
-            s.mesh_scale           = 200.0f;
-            s.size_min             = 0.53f;
-            s.size_max             = 1.44f;
+            s.clump_count          = 12;
+            s.mesh_scale           = 50.0f;
+            s.size_min             = 0.26f;
+            s.size_max             = 0.83f;
+            s.mask_channel         = 2;
+            s.mask_min             = 0.05f;
+            s.curvature_influence  = -0.25f;
+            s.wear_influence       = 0.25f;
+            s.deposition_influence = -0.2f;
             s.size_from_slope      = 0.35f;
             s.size_from_altitude   = 0.65f;
             s.altitude_span        = 415.0f;
-            s.align_to_normal      = 1.0f;
+            s.align_to_normal      = 0.65f;
             s.surface_offset       = 0.0f;
             s.sink                 = 0.10f;
             // ground washes a long way up a boulder and never on a level line, this is the softest

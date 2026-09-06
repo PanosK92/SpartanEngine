@@ -266,7 +266,7 @@ float terrain_layer_weight(
             terrain_slope_domain_min,
             terrain_slope_domain_max
         );
-        return terrain_snow_weight(surface, analysis, position_world, normal_world, jitter) * slope_band;
+        return terrain_snow_weight(surface, analysis, position_world, normal_world, jitter) * slope_band * layer.terrain_weight_bias;
     }
 
     // the height band is measured against sea level for the layers that care about the shore
@@ -1432,7 +1432,6 @@ float terrain_blend_ground(float2 world_xz, out float3 normal_out, out float val
     // one texel of the heightfield, a shorter step lands inside the same bilinear cell twice and
     // comes back flat
     float2 step_normalized = 1.0f / texels;
-    float2 step_world      = 1.0f / max(inv_size * texels, 1e-6f);
 
     // the normal stays on the filtered field, the terrain mesh carries smooth vertex normals so a per
     // triangle gradient here would facet the fillet at every cell border
@@ -1441,8 +1440,12 @@ float terrain_blend_ground(float2 world_xz, out float3 normal_out, out float val
     float h_back  = terrain_blend_fetch(normalized - float2(0.0f, step_normalized.y), size);
     float h_front = terrain_blend_fetch(normalized + float2(0.0f, step_normalized.y), size);
 
-    float slope_x = (h_right - h_left) / (2.0f * step_world.x);
-    float slope_z = (h_front - h_back) / (2.0f * step_world.y);
+    // Clamp reduces the baseline at the map edge. Match the CPU normal sampler instead of
+    // halving the slope there, which would flatten the last row of contact shading.
+    float2 span = (min(normalized + step_normalized, 1.0f) - max(normalized - step_normalized, 0.0f))
+        / max(inv_size, 1e-6f);
+    float slope_x = (h_right - h_left) / max(span.x, 1e-6f);
+    float slope_z = (h_front - h_back) / max(span.y, 1e-6f);
 
     normal_out = normalize(float3(-slope_x, 1.0f, -slope_z));
     return height;
@@ -1584,6 +1587,94 @@ TerrainBlend terrain_blend_evaluate(
         ground_normal, ground_surface.normal, smoothstep(0.0f, 0.2f, weight_material)
     );
 
+    return output;
+}
+
+// Cover is selected from the local biome, then deposited on the prop's own upward-facing ledges.
+// This is independent of the contact band and never bends a rock top toward the hillside normal.
+TerrainBlend terrain_coating_evaluate(
+    float3 position_world, float3 geometric_normal, float3 detail_normal,
+    float3 dpdx, float3 dpdy, float distance_to_camera, float amount, float patch_size)
+{
+    TerrainBlend output = terrain_blend_none();
+    float up = smoothstep(0.35f, 0.9f, geometric_normal.y);
+    if (amount <= 0.0f || up <= 0.0f || buffer_frame.terrain_height_enabled < 0.5f)
+        return output;
+
+    float valid;
+    float3 ground_normal;
+    float ground_y = terrain_blend_ground(position_world.xz, ground_normal, valid);
+    if (valid < 0.5f || position_world.y < ground_y - 0.1f)
+        return output;
+    MaterialParameters ground = material_parameters[NonUniformResourceIndex(buffer_frame.terrain_blend_material)];
+    if (ground.terrain_layer_count == 0 || ground_y <= ground.terrain_sea_level)
+        return output;
+
+    float3 ground_position = float3(position_world.x, ground_y, position_world.z);
+    TerrainAnalysis analysis = terrain_sample_analysis(ground, ground_position, 0.0f);
+    float jitter = terrain_jitter(position_world, 0.0f);
+    TerrainLayerPick pick;
+    pick.count = 0;
+    [unroll] for (uint clear = 0; clear < terrain_layer_pick_max; ++clear)
+    {
+        pick.index[clear] = 0;
+        pick.weight[clear] = 0.0f;
+    }
+    float rejected = 0.0f;
+    // Use the ledge slope for accumulation, but local altitude, moisture, shade and erosion for
+    // biome choice. Exposed bedrock/gravel cannot become a grass substitute when cover is absent.
+    [loop] for (uint i = 0; i < ground.terrain_layer_count; ++i)
+    {
+        uint index = ground.terrain_layer_base + i * ground.terrain_layer_stride;
+        MaterialParameters layer = material_parameters[NonUniformResourceIndex(index)];
+        if (!layer.terrain_layer_cover() || layer.terrain_weight_bias <= 0.0f)
+            continue;
+        float score = terrain_layer_weight(layer, ground, analysis, ground_position,
+            geometric_normal, acos(saturate(geometric_normal.y)), jitter);
+        score *= lerp(0.75f, 1.25f, saturate(terrain_jitter(position_world, 3.1f + i * 2.3f) * 0.5f + 0.5f));
+        if (score > pick.weight[0])
+        {
+            rejected = max(rejected, pick.weight[1]);
+            pick.index[1] = pick.index[0];
+            pick.weight[1] = pick.weight[0];
+            pick.index[0] = index;
+            pick.weight[0] = score;
+        }
+        else if (score > pick.weight[1])
+        {
+            rejected = max(rejected, pick.weight[1]);
+            pick.index[1] = index;
+            pick.weight[1] = score;
+        }
+        else rejected = max(rejected, score);
+    }
+    if (pick.weight[0] <= 0.0f)
+        return output;
+    pick.count = pick.weight[1] > 0.0f ? 2 : 1;
+    pick.weight[0] = max(pick.weight[0] - rejected, 1e-6f);
+    pick.weight[1] = max(pick.weight[1] - rejected, 0.0f);
+    float total = pick.weight[0] + pick.weight[1];
+    pick.weight[0] /= total;
+    pick.weight[1] /= total;
+
+    float2 p = position_world.xz * terrain_noise_rcp_scale / max(patch_size, 0.1f);
+    float noise = noise_perlin(p) * 0.65f + noise_perlin(p * 3.7f + 11.3f) * 0.35f;
+    float shelter = saturate(0.8f + analysis.deposition * 0.2f - analysis.wear * 0.2f);
+    float coverage = saturate(amount) * up * shelter;
+    float mask = smoothstep(0.26f, 0.62f, coverage + noise * 0.45f + (detail_normal.y - geometric_normal.y) * 0.2f);
+    // Keep the patch pattern at distance; reduce texture work through terrain_evaluate's existing LODs.
+    if (mask < 0.004f)
+        return output;
+    float2 tiling = buffer_frame.terrain_blend_tiling;
+    TerrainSurface cover = terrain_evaluate(ground, pick, analysis, position_world, geometric_normal,
+        position_world.xz * tiling, dpdx.xz * tiling, dpdy.xz * tiling, dpdx, dpdy, distance_to_camera);
+    output.weight = mask;
+    output.weight_normal = mask;
+    output.albedo = cover.albedo;
+    output.normal = cover.normal;
+    output.roughness = cover.roughness;
+    output.metalness = cover.metalness;
+    output.occlusion = cover.occlusion;
     return output;
 }
 

@@ -61,7 +61,7 @@ static const float g_refraction_step_length   = g_refraction_max_distance / (flo
 
 // contact foam only where opaque geometry sits within this 3d world distance of the water surface point,
 // vertical clearance alone foams every submerged wall seen through the water, full distance cannot
-static const float contact_foam_radius = 0.85f;
+static const float contact_foam_radius = 0.45f;
 
 // Compute Fresnel for dielectrics using Schlick approximation
 float3 compute_dielectric_fresnel(float cos_theta, float ior_outer, float ior_inner)
@@ -90,7 +90,7 @@ float3 glass_thin_film_fresnel(float3 fresnel, float n_dot_v, float absorption)
 // a separate scatter rate here made every channel converge to the body color at the same depth which read as flat milk
 float3 apply_water_absorption(float3 color, float depth, float3 body_radiance)
 {
-    float3 transmittance = exp(-ocean_extinction * depth);
+    float3 transmittance = exp(-get_ocean_extinction() * depth);
     return color * transmittance + body_radiance * (1.0f - transmittance);
 }
 
@@ -144,86 +144,43 @@ float2 compute_refraction_uv(float3 surface_pos_ws, float3 refracted_dir_ws, flo
     return uv;
 }
 
-float shoreline_intersection_mask(
-    float2 render_uv,
-    float3 water_position,
-    float3 terrain_position
-)
+// Search a projected world-space neighbourhood for geometry at the waterline.
+// Full 3D locality rejects distant silhouettes and deeply submerged walls.
+float ocean_contact_foam(float2 render_uv, float3 water_position, float water_depth, float footprint, float wave_activity)
 {
-    static const int2 offsets[8] =
-    {
-        int2(-3,  0),
-        int2( 3,  0),
-        int2( 0, -3),
-        int2( 0,  3),
-        int2(-3, -3),
-        int2( 3, -3),
-        int2(-3,  3),
-        int2( 3,  3)
+    static const float2 offsets[9] = {
+        float2(0, 0), float2(-1, 0), float2(1, 0), float2(0, -1), float2(0, 1),
+        float2(-0.707, -0.707), float2(0.707, -0.707), float2(-0.707, 0.707), float2(0.707, 0.707)
     };
-
-    uint output_width;
-    uint output_height;
-    tex4.GetDimensions(
-        output_width,
-        output_height
-    );
-    float2 output_resolution = float2(
-        output_width,
-        output_height
-    );
-    float2 screen_uv = render_uv_to_screen_uv(
-        render_uv
-    );
-
-    float intersection = 0.0f;
-    [unroll]
-    for (uint i = 0; i < 8; i++)
+    float2 screen_uv = render_uv_to_screen_uv(render_uv);
+    uint width, height;
+    tex4.GetDimensions(width, height);
+    float2 texel = 1.0f / float2(width, height);
+    float3 adjacent = get_position(water_depth, screen_uv + float2(texel.x, 0.0f));
+    float pixel_world = max(length(adjacent - water_position), 0.0001f);
+    float radius_pixels = clamp(contact_foam_radius * 0.5f / pixel_world, 1.0f, 32.0f);
+    float coverage = 0.0f;
+    [unroll] for (uint i = 0; i < 9; ++i)
     {
-        float2 sample_uv =
-            screen_uv +
-            float2(offsets[i]) /
-            output_resolution;
-        if (!is_valid_uv(sample_uv))
-        {
-            continue;
-        }
-
-        float depth_raw = tex4.SampleLevel(
-            samplers[sampler_point_clamp],
-            sample_uv,
-            0.0f
-        ).r;
-        if (depth_raw <= 1e-5f)
-        {
-            continue;
-        }
-
-        float3 neighbor_position = get_position(
-            depth_raw,
-            sample_uv
-        );
-        float crosses_surface = smoothstep(
-            water_position.y - 0.04f,
-            water_position.y + 0.08f,
-            neighbor_position.y
-        );
-        float horizontal_distance = length(
-            neighbor_position.xz -
-            terrain_position.xz
-        );
-        float is_local = 1.0f - smoothstep(
-            0.15f,
-            1.50f,
-            horizontal_distance
-        );
-        intersection = max(
-            intersection,
-            crosses_surface * is_local
-        );
+        float2 sample_uv = screen_uv + offsets[i] * radius_pixels * texel;
+        if (!is_valid_uv(sample_uv)) continue;
+        float depth = tex4.SampleLevel(samplers[sampler_point_clamp], sample_uv, 0.0f).r;
+        if (depth <= 1e-5f) continue;
+        float3 contact_position = get_position(depth, sample_uv);
+        float separation = length(contact_position - water_position);
+        float local = 1.0f - smoothstep(0.05f, contact_foam_radius, separation);
+        float waterline = 1.0f - smoothstep(0.04f, 0.22f, abs(contact_position.y - water_position.y));
+        coverage = max(coverage, local * waterline);
     }
-
-    return intersection;
+    // Calm water does not spontaneously generate a solid white outline.
+    float activity = smoothstep(0.01f, 0.15f, wave_activity);
+    float2 drift = buffer_frame.wind.xz * (float)buffer_frame.time * 0.015f;
+    // Break up the rim before shaping it; a fully covered search footprint makes
+    // rectangular pillars look surrounded by an inflated white collar.
+    float breakup = ocean_foam_noise((water_position.xz - drift) * 4.0f);
+    breakup = lerp(0.5f, breakup, 1.0f - smoothstep(0.2f, 0.6f, footprint * 4.0f));
+    coverage *= lerp(0.3f, 0.85f, smoothstep(0.25f, 0.75f, breakup));
+    return shape_ocean_foam(coverage * activity, water_position.xz - drift, footprint);
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -289,38 +246,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     {
         // recover the undisplaced fft grid so foam sits on the crest that produced it
         float2 grid_xz = get_ocean_grid_xz(surface.position.xz);
-        foam           = get_ocean_foam(grid_xz);
-
-        // contact foam, the opaque point behind this water pixel must sit right at the surface point in
-        // full 3d, a submerged wall seen through the water lies meters along the ray so it stays clean
-        float2 uv_foam          = (thread_id.xy + 0.5f) / resolution_out;
-        float2 uv_foam_screen   = render_uv_to_screen_uv(uv_foam);
-        float  depth_water      = linearize_depth(surface.depth);
-        float depth_opaque_raw = tex4.SampleLevel(
-            samplers[sampler_point_clamp],
-            uv_foam_screen,
-            0.0f
-        ).r;
-        float  depth_opaque     = linearize_depth(depth_opaque_raw);
-        if (depth_opaque > depth_water + 0.02f)
-        {
-            float3 opaque_pos = get_position(
-                depth_opaque_raw,
-                uv_foam_screen
-            );
-            float contact = saturate(
-                1.0f -
-                length(opaque_pos - surface.position) /
-                contact_foam_radius
-            );
-            float shoreline = shoreline_intersection_mask(
-                uv_foam,
-                surface.position,
-                opaque_pos
-            );
-            float contact_foam = contact * shoreline;
-            foam = saturate(max(foam, contact_foam));
-        }
+        float view_distance = length(surface.position - get_camera_position());
+        float wave_activity;
+        foam = get_ocean_foam(grid_xz, surface.position, view_distance, wave_activity);
+        float2 uv_foam = (thread_id.xy + 0.5f) / resolution_out;
+        foam = max(foam, ocean_contact_foam(uv_foam, surface.position, surface.depth, ocean_foam_footprint(view_distance), wave_activity));
     }
 
     // get background color
@@ -522,10 +452,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // must replace the reflection and refraction below rather than tint them, additive blending only desaturates the water
     if (foam > 0.0f)
     {
-        // whitewater receives the sun as a wrap-lit diffuse term plus the reflected sky as an ambient fill, near-white albedo
+        // whitewater receives the sun as a wrap-lit diffuse term plus diffuse skylight as an ambient fill, near-white albedo
         float  n_dot_l   = saturate(dot(surface.normal, -light_parameters[0].direction));
         float3 sun_diff  = get_sun_radiance() * (n_dot_l * 0.5f + 0.5f) * (1.0f / PI);
-        float3 sky       = tex[thread_id.xy].rgb;
+        float visibility = is_ray_traced_shadows_enabled()
+            ? saturate(tex3.SampleLevel(samplers[sampler_bilinear_clamp], surface.uv, 0.0f).r) : 1.0f;
+        sun_diff *= visibility;
+        float3 sky       = get_sky_fill_radiance() * (0.15f / PI);
         float3 incoming  = sun_diff + sky;
 
         // keep some of the water colour so foam is a veil, not a coat of paint
@@ -533,7 +466,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 foam_color = lerp(incoming, luma.xxx, 0.35f) * float3(0.96f, 0.97f, 1.0f) * 1.15f;
 
         float3 base  = tex_uav[thread_id.xy].rgb;
-        float  cover = saturate(foam * 0.55f);
+        float  cover = saturate(foam * 0.9f);
         tex_uav[thread_id.xy].rgb = lerp(base, foam_color, cover);
     }
 }

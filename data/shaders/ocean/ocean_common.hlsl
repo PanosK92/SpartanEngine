@@ -91,7 +91,7 @@ float2 ocean_gauss(uint seed)
 float ocean_phillips(float2 k, float2 wind_dir, float wind_speed, float amplitude)
 {
     float k2 = dot(k, k);
-    if (k2 < 1e-12)
+    if (k2 < 1e-12 || wind_speed <= 0.0001)
     {
         return 0.0;
     }

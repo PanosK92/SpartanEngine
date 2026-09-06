@@ -296,8 +296,8 @@ struct MaterialParameters
     SHARED_FLOAT terrain_blend           SHARED_DEFAULT(1.0f);
     // 0 is a long gradient up the surface, 1 is a hard waterline
     SHARED_FLOAT terrain_blend_sharpness SHARED_DEFAULT(0.5f);
-    SHARED_FLOAT padding_terrain_blend_a SHARED_DEFAULT(0.0f);
-    SHARED_FLOAT padding_terrain_blend_b SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT terrain_coating         SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT terrain_coating_scale   SHARED_DEFAULT(3.0f);
 
 #ifndef __cplusplus
     bool has_texture_albedo()    { return (flags & (1 << 2))  != 0; }
@@ -319,6 +319,7 @@ struct MaterialParameters
     bool terrain_layer_biplanar() { return (terrain_flags & (1 << 0)) != 0; }
     bool terrain_layer_pom()      { return (terrain_flags & (1 << 1)) != 0; }
     bool terrain_layer_snow()     { return (terrain_flags & (1 << 2)) != 0; }
+    bool terrain_layer_cover()    { return (terrain_flags & (1 << 5)) != 0; }
     bool terrain_layer_below_sea(){ return (terrain_flags & (1 << 3)) != 0; }
     bool terrain_has_maps()       { return (terrain_flags & (1 << 4)) != 0; }
     // on the surface material bits 8 to 11 hold how many layers to sample and 12 to 15 the debug view
@@ -546,7 +547,7 @@ struct PulledVertex
     SHARED_UINT   tangent; // s16 oct.x | s16 oct.y
 };
 
-// vertex pulling - instance buffer, 16 bytes per instance, mirrors the cpu side Instance struct
+// vertex pulling - instance buffer, 32 bytes per instance, mirrors the cpu side Instance struct
 // positions are full float, a half quantizes to a quarter metre a few hundred metres from the
 // tile origin, which floats trees off the ground and buries rocks in it
 struct PackedInstance
@@ -554,7 +555,11 @@ struct PackedInstance
     SHARED_FLOAT pos_x;
     SHARED_FLOAT pos_y;
     SHARED_FLOAT pos_z;
-    SHARED_UINT  norm_yaw_scale; // normal_oct (low 16) | yaw_packed (8) | scale_packed (high 8)
+    SHARED_UINT  rotation_xy; // signed normalized 16-bit quaternion components
+    SHARED_UINT  rotation_zw;
+    SHARED_FLOAT scale_x;
+    SHARED_FLOAT scale_y;
+    SHARED_FLOAT scale_z;
 };
 
 // 16-byte grass instance, written by the populate compute

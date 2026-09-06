@@ -120,7 +120,7 @@ float3 fog_evaluate_light(
             float water_y = get_ocean_height(caustic_xz);
             float sun_path = (water_y - sample_pos.y) / max(light_dir.y, 0.05f);
             float2 entry_xz = caustic_xz + light_dir.xz * sun_path;
-            tint = exp(-ocean_extinction * sun_path) * get_ocean_caustic(entry_xz, sun_path);
+            tint = exp(-get_ocean_extinction() * sun_path) * get_ocean_caustic(entry_xz, sun_path);
         }
     }
 
@@ -155,8 +155,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float water_sigma = 0.0f;
     if (in_water)
     {
-        water_sigma = dot(ocean_extinction, float3(0.2126f, 0.7152f, 0.0722f))
-            * buffer_frame.ocean_turbidity;
+        water_sigma = dot(get_ocean_extinction(), float3(0.2126f, 0.7152f, 0.0722f));
     }
     float sigma_s = max(height_sigma + water_sigma, 0.0f);
     float sigma_t = sigma_s;

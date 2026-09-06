@@ -7,8 +7,9 @@ in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
 copies of the Software, and to permit persons to whom the Software is furnished
 to do so, subject to the following conditions :
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
@@ -1082,6 +1083,7 @@ void TerrainEditor::DrawGroundLayer(Terrain* terrain, const uint32_t index)
         changed |= property_float("Blend",    &rule.blend_contrast, 0.01f, 0.01f, 1.0f, "height blend band width, smaller is a sharper interface with the neighbouring material", "%.2f");
         changed |= property_float("Porosity", &rule.porosity,       0.01f, 0.0f,  1.0f, "how much the material darkens when wet, sand is high and rock is low", "%.2f");
         changed |= property_float("Macro",    &rule.macro_strength, 0.01f, 0.0f,  1.0f, "large scale colour breakup amount", "%.2f");
+        changed |= property_toggle("Rock Cover", &rule.surface_cover, "allow this terrain material to accumulate on nearby rock ledges");
 
         auto flag_toggle = [&rule, &changed](const char* label, const uint32_t bit, const char* tooltip)
         {
@@ -1419,6 +1421,23 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
 
     if (!is_gpu)
     {
+        card_begin("Mountain Rocks", "overlapping cliff slabs, fractured shoulders and smaller fragments following the hillside");
+        changed |= property_toggle("Mountain Formations", &layer.mountain_rocks, "replace ordinary scatter with coherent rock bands; uses mesh bounds and footprint support to seat the rocks");
+        if (layer.mountain_rocks)
+        {
+            changed |= property_float("Formation Spacing", &layer.formation_spacing, 1.0f, 8.0f, 1000.0f, "distance between possible bands; density controls how many suitable bands are occupied", "%.0f m");
+            changed |= property_float("Formation Length", &layer.formation_length, 1.0f, 1.0f, 1000.0f, "bedrock span along the contour in metres; limited to 1.5 times spacing", "%.0f m");
+            changed |= property_float("Formation Width", &layer.formation_width, 1.0f, 1.0f, 500.0f, "bedrock depth across the hillside, limited to spacing", "%.1f m");
+            changed |= property_float("Slab Thickness", &layer.formation_height, 1.0f, 1.0f, 500.0f, "full cliff slab thickness before burial, in metres", "%.0f m");
+            changed |= property_uint("Rocks Per Formation", &layer.clump_count, 1.0f, 1, 32, "up to three overlapping slabs, three shoulders, then small fragments; ordinary size controls affect fragments");
+            changed |= property_float("Rotation Variation", &layer.formation_jitter, 0.5f, 0.0f, 90.0f, "degrees of variation around the shared rock orientation", "%.0f deg");
+            changed |= property_float("Embed Fraction", &layer.embed_fraction, 0.01f, 0.1f, 0.8f, "fraction of the mesh thickness buried, adjusted for ground support across the footprint", "%.2f");
+        }
+        card_end();
+    }
+
+    if (!is_gpu && !layer.mountain_rocks)
+    {
         card_begin("Grouping", "nature does not scatter evenly, a radius turns an even spread into patches");
         {
             changed |= property_float("Clump Radius", &layer.clump_radius, 0.5f, 0.0f, 500.0f, "0 scatters evenly instead of in patches", "%.1f m");
@@ -1427,7 +1446,7 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
         }
         card_end();
     }
-    else
+    else if (is_gpu)
     {
         card_begin("Grouping", "ground cover grows in pockets, and the ring budget the pockets free up is spent inside them, so less coverage is denser cover rather than less of it");
         {
@@ -1468,8 +1487,13 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
         }
 
         changed |= property_float("Surface Offset", &layer.surface_offset, 0.01f, -5.0f, 5.0f, "metres lifted off the ground, go negative to push the instance down into it", "%.2f m");
-
         if (!is_gpu)
+        {
+            changed |= property_float("Surface Coating", &layer.coating, 0.01f, 0.0f, 1.0f, "nearby grass, moss, soil or snow on upward-facing ledges; 0 disables coating", "%.2f");
+            changed |= property_float("Coating Patch Size", &layer.coating_scale, 0.1f, 0.1f, 30.0f, "metres per patch of cover; smaller breakup also follows the rock normal detail", "%.1f m");
+        }
+
+        if (!is_gpu && !layer.mountain_rocks)
         {
             changed |= property_float("Sink", &layer.sink, 0.01f, 0.0f, 1.0f, "fraction of the final size pushed into the ground, this is what stops a rock floating", "%.2f");
         }

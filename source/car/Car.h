@@ -75,6 +75,7 @@ namespace spartan
             bool          static_physics = false;  // kinematic physics on the body (for display)
             bool          show_telemetry = false;  // shows vehicle telemetry hud
             bool          camera_follows = false;  // attach camera to follow the car
+            bool          dyno = false; // secured hub dynamometer, controlled by its own panel
             bool          customize_materials = true;
             MaterialPaintPreset paint_preset = MaterialPaintPreset::Metallic;
             Color               paint_color  = Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f);
@@ -220,6 +221,7 @@ namespace spartan
         Entity*           m_body_entity     = nullptr;  // car body mesh entity
         Entity*           m_window_entity   = nullptr;  // car window entity (for hiding when inside)
         bool              m_is_occupied     = false;
+        bool              m_dyno = false;
         bool              m_show_telemetry  = false;
         bool              m_is_drivable     = false;
         bool              m_camera_follows  = false;    // auto-enter car when play mode starts

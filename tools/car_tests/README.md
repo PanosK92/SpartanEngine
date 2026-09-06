@@ -1,5 +1,38 @@
 # Car physics validation
 
+## Telemetry dashboard layout check
+
+The F3 dashboard uses `CarTelemetry.h` for presentation and a read-only snapshot from
+`CarHud.cpp`. All driving instruments fit on one surface without tabs or scrolling.
+Workshop retains the existing setup, upgrades and audio tools. The always-on cockpit
+HUD and the simulation are unchanged by the telemetry presentation.
+
+After a development build, render the production dashboard without starting a world:
+
+```powershell
+.\tools\car_tests\run_telemetry.cmd
+.\binaries\car_tests\telemetry_preview.exe binaries/car_tests/telemetry_compact.png 0.8 warnings
+.\binaries\car_tests\telemetry_preview.exe binaries/car_tests/telemetry_large.png 1.5
+.\binaries\car_tests\telemetry_preview.exe binaries/car_tests/telemetry_cheap.png 0.8 cheap
+```
+
+The preview links the engine's ImGui and FreeType objects, uses the editor's Inter font,
+and rasterizes the actual draw triangles into PNGs using illustrative fixture data.
+Set `SPARTAN_IMGUI_OBJECT_DIR` to the build's intermediate directory if it differs from
+`binaries/obj/x64/development`. This is a layout check, not a driving physics test.
+History assertions cover bounded storage, ordered timestamps, gaps, clock/odometer
+resets, vehicle and preset switches, and changes between full and cheap simulation.
+
+Histories show the last eight seconds while telemetry is open, sampled at up to 30 Hz.
+The G-force plot has a two-g radius and a two-second trail; values beyond the radius
+stay on its edge while the numeric readout remains exact. Tread colors use the preset's
+optimal temperature plus/minus half its temperature range. Brake fade warns below 80%
+efficiency; tire checks warn above 70% wear or 10% damage. Grip used is the simulation's
+tire saturation, rather than a temperature or wear multiplier. Cheap mode shows only
+speed and inputs because it does not update the full tire, powertrain or aero model.
+
+## Physics checks
+
 Run from the repository root with Visual Studio C++ tools and the engine's existing libraries:
 
 ```powershell

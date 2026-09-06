@@ -58,7 +58,7 @@ Texture2D<float> tex_effective_exposure : register(t28);
 Texture2D<float4> tex_wind_field : register(t29);
 
 // fft ocean cascades, one array slice per cascade
-// displacement.xyz = world-space offset, normal.xy = surface slope, normal.z = foam
+// displacement.xyz = world-space offset, normal.xy = surface slope, normal.z = foam, normal.w = mean squared wave height
 Texture2DArray<float4> tex_ocean_displacement : register(t30);
 Texture2DArray<float4> tex_ocean_normal       : register(t31);
 

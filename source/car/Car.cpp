@@ -762,6 +762,7 @@ namespace spartan
         Car* car = new Car();
         car->m_definition     = definition;
         car->m_show_telemetry = config.show_telemetry;
+        car->m_dyno = config.dyno;
         car->m_is_drivable    = config.drivable;
         car->m_paint_preset   = config.paint_preset;
         car->m_paint_color    = config.paint_color;
@@ -870,6 +871,7 @@ namespace spartan
         config.drivable       = node.attribute("drivable").as_bool(false);
         config.static_physics = node.attribute("static_physics").as_bool(false);
         config.show_telemetry = node.attribute("telemetry").as_bool(false);
+        config.dyno           = node.attribute("dyno").as_bool(false);
         config.camera_follows = node.attribute("camera_follows").as_bool(false);
         config.customize_materials = node.attribute("customize_materials").as_bool(true);
         config.paint_preset   = parse_paint_preset(node.attribute("paint_preset").as_string("metallic"));
@@ -1106,7 +1108,14 @@ namespace spartan
             }
         }
         const float target_height = ground_height + get_car_lower_extent(definition->performance) + car_spawn_margin;
-        const math::Vector3 target_position(current_position.x, std::max(current_position.y, target_height), current_position.z);
+        // A secured car cannot settle after the road spawn's one-metre safety lift.
+        // Preserve the stand's tire contact height when swapping vehicle geometry.
+        const auto wheel_extent = [](const car::car_preset& p)
+        {
+            return p.suspension_height + std::max(p.front_wheel_radius, p.rear_wheel_radius);
+        };
+        const float dyno_height = current_position.y - wheel_extent(m_definition->performance) + wheel_extent(definition->performance);
+        const math::Vector3 target_position(current_position.x, m_dyno ? dyno_height : std::max(current_position.y, target_height), current_position.z);
         const math::Quaternion target_rotation = math::Quaternion::FromEulerAngles(0.0f, current_rotation.Yaw(), 0.0f);
         physics->SetBodyTransform(target_position, target_rotation, false);
 
@@ -1142,7 +1151,27 @@ namespace spartan
             physics->SetChassisEntity(m_body_entity, excluded_wheel_entities);
         }
 
-        for (int i = 0; i < 4; i++)
+        if (m_dyno)
+        {
+            // Recreate visuals and their mesh-centre offsets for the new wheel asset.
+            // Resizing a previous car's wheels retains stale placement/centre data.
+            for (int i = 0; i < 4; ++i)
+            {
+                const auto index = static_cast<WheelIndex>(i);
+                if (auto* wheel = physics->GetWheelEntity(index))
+                {
+                    wheel->SetActive(false);
+                    World::RemoveEntity(wheel);
+                }
+                physics->SetWheelEntity(index, nullptr);
+            }
+            CreateWheels(m_vehicle_entity, physics, excluded_wheel_entities);
+            for (int i = 0; i < 4; ++i)
+                if (auto* wheel = physics->GetWheelEntity(static_cast<WheelIndex>(i))) mark_entity_tree_transient(wheel);
+            physics->SyncWheelOffsetsFromEntities();
+        }
+
+        for (int i = 0; !m_dyno && i < 4; i++)
         {
             const WheelIndex wheel_index = static_cast<WheelIndex>(i);
             if (Entity* wheel_entity = physics->GetWheelEntity(wheel_index))
@@ -3377,6 +3406,19 @@ namespace spartan
     {
         if (!m_body_entity)
         {
+            return;
+        }
+
+        if (m_dyno)
+        {
+            Physics* physics = m_vehicle_entity ? m_vehicle_entity->GetComponent<Physics>() : nullptr;
+            if (physics && physics->GetVehicleSimulation())
+            {
+                auto* simulation = physics->GetVehicleSimulation();
+                simulation->mount_dyno(Engine::IsFlagSet(EngineMode::Playing));
+                car_hud::draw_dyno_window(this, physics);
+                if (Engine::IsFlagSet(EngineMode::Playing)) TickSounds();
+            }
             return;
         }
 

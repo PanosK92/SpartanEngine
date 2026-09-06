@@ -7,8 +7,9 @@ in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
 copies of the Software, and to permit persons to whom the Software is furnished
 to do so, subject to the following conditions :
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
@@ -40,7 +41,8 @@ namespace spartan
         TerrainLayerFlags_Pom       = 1u << 1, // parallax occlusion march when this layer dominates up close
         TerrainLayerFlags_Snow      = 1u << 2, // driven by the snow accumulation model instead of the generic rule
         TerrainLayerFlags_BelowSea  = 1u << 3, // height range is measured against sea level, not absolute world y
-        TerrainLayerFlags_HasMaps   = 1u << 4  // set on the surface material once the analysis maps are baked
+        TerrainLayerFlags_HasMaps   = 1u << 4, // set on the surface material once the analysis maps are baked
+        TerrainLayerFlags_Cover     = 1u << 5  // may accumulate on upward-facing prop ledges
     };
 
     // viewport debug views, packed into bits 12 to 15 of the surface material's terrain_flags
@@ -91,6 +93,7 @@ namespace spartan
         float porosity       = 0.5f; // wet darkening amount
         float macro_strength = 1.0f; // large scale colour breakup amount
         float weight_bias    = 1.0f; // overall priority against the other layers
+        bool surface_cover   = false;
 
         uint32_t flags = TerrainLayerFlags_None;
     };
@@ -136,6 +139,17 @@ namespace spartan
         std::string material_folder;
         bool enabled                = false;
         TerrainScatterKind kind     = TerrainScatterKind::Mesh;
+
+        // opt-in bedrock formations; old worlds keep ordinary scatter until enabled
+        bool mountain_rocks         = false;
+        float formation_spacing     = 300.0f; // metres between possible formation centres
+        float formation_length      = 300.0f; // bedrock span along the hillside contour, in metres
+        float formation_width       = 130.0f; // bedrock depth across the contour, in metres
+        float formation_height      = 90.0f;  // full slab thickness before burial, in metres
+        float formation_jitter      = 15.0f;  // degrees of variation within a formation
+        float embed_fraction        = 0.45f; // fraction of the mesh thickness below the surface
+        float coating               = 0.0f;  // terrain material deposited on upward-facing rock ledges
+        float coating_scale         = 3.0f;  // metres per patch, independent of mesh units
 
         // how many, density is resolution independent so changing the mesh density does not change
         // the prop count, it is the count on ground the rules fully accept

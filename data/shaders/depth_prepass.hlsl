@@ -37,12 +37,8 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     // pull the per-instance transform from the dedicated procedural grass buffer
     uint slot        = instance_id + (uint)buffer_pass.values[0].z;
     GrassInstance gi = grass_instances[slot];
-    input.instance_position_x = gi.pos_x;
-    input.instance_position_y = gi.pos_y;
-    input.instance_position_z = gi.pos_z;
-    input.instance_normal_oct = (gi.normal_yaw_scale >> 16) & 0xFFFFu;
-    input.instance_yaw        = (gi.normal_yaw_scale >> 8)  & 0xFFu;
-    input.instance_scale      =  gi.normal_yaw_scale        & 0xFFu;
+    input.instance_transform = compose_instance_transform(gi.pos_x, gi.pos_y, gi.pos_z,
+        (gi.normal_yaw_scale >> 16) & 0xFFFFu, (gi.normal_yaw_scale >> 8) & 0xFFu, gi.normal_yaw_scale & 0xFFu);
     _draw                    = (DrawData)0;
     _draw.transform          = float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
     _draw.transform_previous = _draw.transform;

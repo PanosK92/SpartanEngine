@@ -45,46 +45,9 @@ namespace spartan
 {
     Water::Water(Entity* entity) : Component(entity)
     {
-        SP_REGISTER_ATTRIBUTE_VALUE_SET(
-            m_cascade_count,
-            SetCascadeCount,
-            uint32_t
-        );
-        SP_REGISTER_ATTRIBUTE_VALUE_SET(
-            m_amplitude,
-            SetAmplitude,
-            float
-        );
-        SP_REGISTER_ATTRIBUTE_VALUE_SET(
-            m_choppiness,
-            SetChoppiness,
-            float
-        );
-        SP_REGISTER_ATTRIBUTE_VALUE_SET(
-            m_displacement_scale,
-            SetDisplacementScale,
-            float
-        );
-        SP_REGISTER_ATTRIBUTE_VALUE_SET(
-            m_normal_strength,
-            SetNormalStrength,
-            float
-        );
-        SP_REGISTER_ATTRIBUTE_VALUE_SET(
-            m_sea_level,
-            SetSeaLevel,
-            float
-        );
-        SP_REGISTER_ATTRIBUTE_VALUE_SET(
-            m_turbidity,
-            SetTurbidity,
-            float
-        );
-        SP_REGISTER_ATTRIBUTE_VALUE_SET(
-            m_caustics_intensity,
-            SetCausticsIntensity,
-            float
-        );
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetWaveSize, SetWaveSize, float);
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetClarity, SetClarity, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_sea_level, SetSeaLevel, float);
     }
 
     Water::~Water()
@@ -185,14 +148,9 @@ namespace spartan
     void Water::Save(pugi::xml_node& node)
     {
         pugi::xml_node water = node.append_child("water");
-        water.append_attribute("cascade_count")     = m_cascade_count;
-        water.append_attribute("amplitude")         = m_amplitude;
-        water.append_attribute("choppiness")        = m_choppiness;
-        water.append_attribute("displacement_scale") = m_displacement_scale;
-        water.append_attribute("normal_strength")   = m_normal_strength;
-        water.append_attribute("sea_level")         = m_sea_level;
-        water.append_attribute("turbidity")         = m_turbidity;
-        water.append_attribute("caustics_intensity") = m_caustics_intensity;
+        water.append_attribute("wave_size") = GetWaveSize();
+        water.append_attribute("clarity")   = GetClarity();
+        water.append_attribute("sea_level") = m_sea_level;
     }
 
     void Water::Load(pugi::xml_node& node)
@@ -203,28 +161,17 @@ namespace spartan
             return;
         }
 
-        const uint32_t cascade_count =
-            water.attribute("cascade_count").as_uint(
-                m_cascade_count
-            );
-        m_cascade_count =
-            cascade_count < 1 ?
-            1 :
-            (
-                cascade_count > cascade_max ?
-                cascade_max :
-                cascade_count
-            );
-        m_amplitude          = water.attribute("amplitude").as_float(m_amplitude);
-        m_choppiness         = water.attribute("choppiness").as_float(m_choppiness);
-        m_displacement_scale = water.attribute("displacement_scale").as_float(m_displacement_scale);
-        m_normal_strength    = water.attribute("normal_strength").as_float(m_normal_strength);
-        m_sea_level          = water.attribute("sea_level").as_float(m_sea_level);
-        m_turbidity          = water.attribute("turbidity").as_float(m_turbidity);
-        m_caustics_intensity = water.attribute("caustics_intensity").as_float(m_caustics_intensity);
+        // Older worlds stored two height multipliers and several lighting overrides.
+        // Preserve their combined wave size and particle density while restoring
+        // consistent geometry, normals and automatic detail/caustics.
+        float legacy_size = water.attribute("amplitude").as_float(1.0f)
+            * water.attribute("displacement_scale").as_float(1.0f);
+        float legacy_clarity = 1.0f - water.attribute("turbidity").as_float(1.0f) / 4.0f;
+        SetWaveSize(water.attribute("wave_size").as_float(legacy_size));
+        SetClarity(water.attribute("clarity").as_float(legacy_clarity));
+        SetSeaLevel(water.attribute("sea_level").as_float(m_sea_level));
 
-        // rebuild so clipmap/skirt changes apply when the world reloads
-        BuildSurface();
+        // Initialize owns geometry creation; loading settings must also work before it.
         PushToRenderer(true);
     }
 }
