@@ -262,7 +262,7 @@ namespace spartan
             Pass_Screenshot(tex_pre_tonemap);
         }
 
-        Pass_PostProcess_DisplayEffects(tex_in, tex_out);
+        Pass_PostProcess_DisplayEffects(tex_in, tex_out, true, xr_stereo);
 
         if (tex_in != rt_frame_output)
         {
@@ -270,7 +270,7 @@ namespace spartan
         }
     }
 
-    void Renderer::Pass_PostProcess_DisplayEffects(RHI_Texture*& tex_in, RHI_Texture*& tex_out, bool apply_dithering)
+    void Renderer::Pass_PostProcess_DisplayEffects(RHI_Texture*& tex_in, RHI_Texture*& tex_out, bool apply_dithering, bool force_sdr)
     {
         auto run_effect = [&](const char* name, Renderer_Shader shader, auto setup)
         {
@@ -312,7 +312,10 @@ namespace spartan
 
         if (cvar_vhs.GetValueAs<bool>())
         {
-            run_effect("vhs", Renderer_Shader::vhs_c, nullptr);
+            run_effect("vhs", Renderer_Shader::vhs_c, [&]()
+            {
+                m_pcb_pass_cpu.set_f3_value(force_sdr ? 1.0f : 0.0f, 0.0f, 0.0f);
+            });
         }
     }
 

@@ -25,6 +25,28 @@ local cull_none = 2.0
 local position = Vector3(0.0, 1.5, 0.0)
 local scale    = Vector3(1.5, 1.5, 1.5)
 
+-- saved worlds already contain the imported hierarchy and its cached meshes
+local function load_or_get_root(name, path)
+    local root = World.GetEntityByName(name)
+    if root then
+        return root
+    end
+
+    -- the model's lights are disabled in the source asset; author only the lamps below
+    local mesh = ResourceCache.LoadMesh(path, Mesh.GetDefaultFlags())
+    if not mesh then
+        return nil
+    end
+
+    root = mesh:GetRootEntity()
+    if root then
+        root:SetName(name)
+        root:SetPosition(position)
+        root:SetScale(scale)
+    end
+    return root
+end
+
 local function set_cull_none(root, name)
     local node = root:GetDescendantByName(name)
     if not node then
@@ -55,7 +77,8 @@ local function enable_sponza_lights(root)
             if not light then
                 light = node:AddComponent(ComponentType.Light)
                 light:SetLightType(LightType.Point)
-                light:SetIntensity(LightIntensity.bulb_100_watt)
+                -- Lua numeric enums can select the float overload; use explicit lumens
+                light:SetIntensity(1600.0)
                 light:SetRange(10.0)
             end
 
@@ -68,15 +91,11 @@ end
 
 function sponza.Initialize(self, entity)
     World.SetWind(Vector3(0.0, 0.02, 0.1))
+    World.SetTimeOfDay(0.69)
 
-    -- main building, import authored lights so cluster shading can pick them up
-    local mesh_flags = Mesh.GetDefaultFlags() | MeshFlags.ImportLights
-    local mesh_main = ResourceCache.LoadMesh("project/models/sponza/main/new_sponza_main_blender_gltf.gltf", mesh_flags)
-    if mesh_main then
-        local main = mesh_main:GetRootEntity()
-        main:SetName("sponza")
-        main:SetPosition(position)
-        main:SetScale(scale)
+    -- main building
+    local main = load_or_get_root("sponza", "project/models/sponza/main/new_sponza_main_blender_gltf.gltf")
+    if main then
 
         -- disable bad decals
         local decals = { "decals_1st_floor", "decals_2nd_floor", "decals_3rd_floor" }
@@ -101,12 +120,8 @@ function sponza.Initialize(self, entity)
     end
 
     -- curtains
-    local mesh_curtains = ResourceCache.LoadMesh("project/models/sponza/curtains/new_sponza_curtains_gltf.gltf")
-    if mesh_curtains then
-        local curtains = mesh_curtains:GetRootEntity()
-        curtains:SetName("sponza_curtains")
-        curtains:SetPosition(position)
-        curtains:SetScale(scale)
+    local curtains = load_or_get_root("sponza_curtains", "project/models/sponza/curtains/new_sponza_curtains_gltf.gltf")
+    if curtains then
 
         local curtain_parts = { "curtain_03_2", "curtain_03_3", "curtain_hanging_06_3" }
         for i = 1, #curtain_parts do
@@ -115,12 +130,8 @@ function sponza.Initialize(self, entity)
     end
 
     -- ivy
-    local mesh_ivy = ResourceCache.LoadMesh("project/models/sponza/ivy/new_sponza_ivy_growth_gltf.gltf")
-    if mesh_ivy then
-        local ivy = mesh_ivy:GetRootEntity()
-        ivy:SetName("sponza_ivy")
-        ivy:SetPosition(position)
-        ivy:SetScale(scale)
+    local ivy = load_or_get_root("sponza_ivy", "project/models/sponza/ivy/new_sponza_ivy_growth_gltf.gltf")
+    if ivy then
 
         local leaves = ivy:GetDescendantByName("IvySim_Leaves")
         if leaves then

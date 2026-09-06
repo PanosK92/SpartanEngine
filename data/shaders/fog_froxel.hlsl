@@ -26,16 +26,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if defined(FOG_INJECT)
 
-float3 fog_sky_ambient(float3 ray_direction)
+float3 fog_sky_ambient(float3 sample_pos, float3 ray_direction)
 {
     const uint sky_mip = 7;
     float3 light_dir = float3(0.0f, 1.0f, 0.0f);
-    if (buffer_frame.cluster_light_count > 0u)
+    bool has_sun = buffer_frame.cluster_light_count > 0u &&
+        (light_parameters[0].flags & (1u << 0)) != 0u;
+    if (has_sun)
     {
         light_dir = normalize(-light_parameters[0].direction);
     }
 
-    float3 sun_sample_dir = normalize(float3(light_dir.x, max(light_dir.y, 0.0f), light_dir.z));
+    float3 sun_sample_dir = float3(light_dir.x, max(light_dir.y, 0.0f), light_dir.z);
+    sun_sample_dir = dot(sun_sample_dir, sun_sample_dir) > 1e-8f
+        ? normalize(sun_sample_dir) : float3(0.0f, 1.0f, 0.0f);
     float3 sky_sun = tex.SampleLevel(
         GET_SAMPLER(sampler_trilinear_clamp),
         direction_sphere_uv(sun_sample_dir),
@@ -52,6 +56,19 @@ float3 fog_sky_ambient(float3 ray_direction)
     sky_zenith = min(sky_zenith, sky_color_max);
 
     float sun_lobe = pow(saturate(dot(ray_direction, light_dir)), 4.0f);
+
+    // These low-frequency sky probes also need visibility. Without it every enclosed
+    // room receives blue outdoor inscattering, which auto exposure then amplifies.
+    // Keep directions deterministic so stationary fog does not introduce sampling noise.
+    #ifdef RAY_TRACING_ENABLED
+    if (is_ray_traced_shadows_enabled())
+    {
+        sky_zenith *= fog_trace_visibility(sample_pos, float3(0.0f, 1.0f, 0.0f), 10000.0f);
+        sky_sun = has_sun && sun_lobe > 0.0f
+            ? sky_sun * fog_trace_visibility(sample_pos, sun_sample_dir, 10000.0f)
+            : sky_zenith;
+    }
+    #endif
     return lerp(sky_zenith, sky_sun, sun_lobe);
 }
 
@@ -177,7 +194,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         }
         else
         {
-            scatter_rate += fog_sky_ambient(ray_direction) * height_sigma;
+            scatter_rate += fog_sky_ambient(sample_pos, ray_direction) * height_sigma;
         }
 
         if (buffer_frame.cluster_light_count > 0u)

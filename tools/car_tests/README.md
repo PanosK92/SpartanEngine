@@ -2,10 +2,16 @@
 
 ## Telemetry dashboard layout check
 
-The F3 dashboard uses `CarTelemetry.h` for presentation and a read-only snapshot from
+The F3 dashboard uses `CarTelemetry.h` for presentation and a snapshot from
 `CarHud.cpp`. All driving instruments fit on one surface without tabs or scrolling.
-Workshop retains the existing setup, upgrades and audio tools. The always-on cockpit
-HUD and the simulation are unchanged by the telemetry presentation.
+Its switch strip controls ABS, traction control, stability control, steering assist,
+automatic shifting, DRS and turbo directly. Each switch shows ON/OFF separately from
+active intervention. Steering assist remembers its configured strength when disabled.
+The strip above the instruments selects the registered car model, Full/Cheap simulation,
+Full car/Physics skeleton visualization and the collision hull. Enabling the collision
+hull also selects skeleton view. Car changes are applied after the UI finishes drawing
+so that rebuilding the vehicle cannot invalidate telemetry data in use by the window.
+The Workshop window and the in-editor Bench runner have been removed.
 
 After a development build, render the production dashboard without starting a world:
 
@@ -22,6 +28,10 @@ Set `SPARTAN_IMGUI_OBJECT_DIR` to the build's intermediate directory if it diffe
 `binaries/obj/x64/development`. This is a layout check, not a driving physics test.
 History assertions cover bounded storage, ordered timestamps, gaps, clock/odometer
 resets, vehicle and preset switches, and changes between full and cheap simulation.
+The fixture also clicks every assist switch in both states and verifies that cheap
+simulation disables the controls, using the real ImGui mouse press/release path.
+It also selects Mitsubishi/Porsche fixtures, switches simulation and visualization
+modes in both directions, and toggles the collision hull from full-car and skeleton views.
 
 Histories show the last eight seconds while telemetry is open, sampled at up to 30 Hz.
 The G-force plot has a two-g radius and a two-second trail; values beyond the radius
@@ -47,7 +57,7 @@ The harness compiles production C++ simulation, XML loading, and telemetry with 
 
 ## Actual plan car collision hull
 
-The in-editor Bench now writes `car_bench_hulls.csv`. The MCP `vehicle_export_hull` tool writes `car_validation_hulls.csv` for the selected car. It exports the actual cooked convex vertices, including each shape's local transform. Use that capture in the same fixtures:
+The MCP `vehicle_export_hull` tool writes `car_validation_hulls.csv` for the selected car. It exports the actual cooked convex vertices, including each shape's local transform. Use that capture in the same fixtures:
 
 ```powershell
 binaries\car_tests\headless.exe binaries/car_tests/hull_200.csv 0.005 24000 0.1 warm binaries/car_validation_hulls.csv

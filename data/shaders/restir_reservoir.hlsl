@@ -199,7 +199,9 @@ void sample_spherical_rectangle(
 }
 
 // arvo 1995 spherical triangle sampling, pbrt v4 formulation, uniform in solid angle
-// returns the unit direction from origin and the subtended solid angle, zero when degenerate
+// returns a unit direction and its inverse solid-angle pdf, zero when degenerate
+// small projected triangles use uniform area sampling: angle-sum cancellation in float32
+// otherwise invents solid angle and can send the sample far outside the actual emitter
 // area sampling of an emitter carries dist^2 / cos_e in the pdf, so a receiver near a large
 // triangle sees weights spanning orders of magnitude across one triangle, sampling the solid
 // angle directly makes the weight L * cos * omega with no distance term at all
@@ -210,14 +212,42 @@ void sample_spherical_triangle(
     float3 v2,
     float2 u,
     out float3 out_dir,
-    out float  out_solid_angle)
+    out float  out_inv_pdf)
 {
     out_dir         = float3(0.0f, 0.0f, 1.0f);
-    out_solid_angle = 0.0f;
+    out_inv_pdf = 0.0f;
 
-    float3 a = normalize(v0 - origin);
-    float3 b = normalize(v1 - origin);
-    float3 c = normalize(v2 - origin);
+    float3 va = v0 - origin;
+    float3 vb = v1 - origin;
+    float3 vc = v2 - origin;
+    float3 edge1 = v1 - v0;
+    float3 edge2 = v2 - v0;
+    float3 area_normal = cross(edge1, edge2);
+    float twice_area = length(area_normal);
+    float la = length(va), lb = length(vb), lc = length(vc);
+    if (twice_area <= 1e-12f || min(la, min(lb, lc)) <= 1e-6f)
+        return;
+
+    // van Oosterom-Strackee formula, using the original edges for the determinant
+    // avoids subtracting nearly equal normalized directions for distant triangles
+    float area = 2.0f * atan2(abs(dot(va, area_normal)),
+        la * lb * lc + dot(va, vb) * lc + dot(vb, vc) * la + dot(vc, va) * lb);
+    if (area < 0.001f || area > 6.0f)
+    {
+        float su = sqrt(u.x);
+        float3 emitter_pos = v0 + edge1 * (su * (1.0f - u.y)) + edge2 * (su * u.y);
+        float3 to = emitter_pos - origin;
+        float dist_sq = dot(to, to);
+        if (dist_sq <= 1e-12f)
+            return;
+        out_dir = to / sqrt(dist_sq);
+        out_inv_pdf = 0.5f * abs(dot(area_normal, -out_dir)) / dist_sq;
+        return;
+    }
+
+    float3 a = va / la;
+    float3 b = vb / lb;
+    float3 c = vc / lc;
 
     float3 n_ab = cross(a, b);
     float3 n_bc = cross(b, c);
@@ -231,16 +261,8 @@ void sample_spherical_triangle(
     n_ca = normalize(n_ca);
 
     float alpha = acos(clamp(dot(n_ab, -n_ca), -1.0f, 1.0f));
-    float beta  = acos(clamp(dot(n_bc, -n_ab), -1.0f, 1.0f));
-    float gamma = acos(clamp(dot(n_ca, -n_bc), -1.0f, 1.0f));
-
-    float area_pi = alpha + beta + gamma;
-    float area    = area_pi - PI;
-    if (area <= 1e-6f || isnan(area))
-    {
-        return;
-    }
-    out_solid_angle = area;
+    float area_pi = PI + area;
+    out_inv_pdf = area;
 
     // pick a sub triangle with a fraction u.x of the area, then locate its third vertex cp on arc ac
     float ap_pi     = lerp(PI, area_pi, u.x);
@@ -260,7 +282,7 @@ void sample_spherical_triangle(
     float3 c_perp = c - dot(c, a) * a;
     if (dot(c_perp, c_perp) < 1e-12f)
     {
-        out_solid_angle = 0.0f;
+        out_inv_pdf = 0.0f;
         return;
     }
     float3 cp = cos_bp * a + sin_bp * normalize(c_perp);
@@ -275,6 +297,16 @@ void sample_spherical_triangle(
         return;
     }
     out_dir = normalize(cos_theta * b + sin_theta * normalize(cp_perp));
+
+    // Bound rounding error to the emitter, as in PBRT's spherical-triangle sampler.
+    // Intersecting only its infinite plane could turn an off-triangle sample into a light.
+    float3 plane_point = origin + out_dir * (dot(va, area_normal) / dot(out_dir, area_normal));
+    float3 relative = plane_point - v0;
+    float normal_sq = dot(area_normal, area_normal);
+    float b1 = saturate(dot(cross(relative, edge2), area_normal) / normal_sq);
+    float b2 = saturate(dot(cross(edge1, relative), area_normal) / normal_sq);
+    float sum = max(b1 + b2, 1.0f);
+    out_dir = normalize(v0 + edge1 * (b1 / sum) + edge2 * (b2 / sum) - origin);
 }
 
 // path flags, pack_path_info stores these in a nibble so a fifth bit needs a layout change
@@ -751,11 +783,14 @@ bool is_neighbor_gbuffer_compatible(
         return false;
 
     float neighbor_linear_depth = linearize_depth(neighbor_depth);
+    // Pairing is reciprocal: both ends must agree on eligibility, otherwise one pass can
+    // use a pair whose reverse pre-pass was rejected. Base every gate on the same depth.
+    float pair_depth = min(center_linear_depth, neighbor_linear_depth);
 
     float adaptive_depth_threshold = lerp(RESTIR_DEPTH_THRESHOLD, RESTIR_DEPTH_THRESHOLD * 2.0f,
-                                           saturate(center_linear_depth / 200.0f));
+                                           saturate(pair_depth / 200.0f));
 
-    float depth_ratio = center_linear_depth / max(neighbor_linear_depth, 1e-6f);
+    float depth_ratio = max(center_linear_depth, neighbor_linear_depth) / max(pair_depth, 1e-6f);
     if (abs(depth_ratio - 1.0f) > adaptive_depth_threshold)
         return false;
 
@@ -763,14 +798,14 @@ bool is_neighbor_gbuffer_compatible(
     float normal_similarity = dot(center_normal, neighbor_normal);
 
     float adaptive_normal_threshold = lerp(RESTIR_NORMAL_THRESHOLD, 0.98f,
-                                            saturate(center_linear_depth / 150.0f));
+                                            saturate(pair_depth / 150.0f));
     if (normal_similarity < adaptive_normal_threshold)
         return false;
 
     // world distance gate scaled with depth, a 5cm floor, rejects crevices regardless of camera distance
     float3 neighbor_pos  = get_position(neighbor_uv);
     float  world_dist    = length(neighbor_pos - center_pos);
-    float  max_world_dist = max(center_linear_depth * 0.02f, 0.05f);
+    float  max_world_dist = max(pair_depth * 0.02f, 0.05f);
     if (world_dist > max_world_dist)
         return false;
 
@@ -1143,7 +1178,7 @@ float restir_primary_footprint_sq(float3 primary_pos, float3 primary_normal)
     float  dist_sq = dot(to_cam, to_cam);
     float  cos_cam = max(dot(primary_normal, normalize(to_cam)), 1e-3f);
 
-    return dist_sq / (cos_cam * 4.0f * PI);
+    return dist_sq / (cos_cam / (4.0f * PI));
 }
 
 struct ShiftResult
@@ -1402,12 +1437,11 @@ bool emtri_ris_pick(
             continue;
         }
 
-        // solid angle sampling, the direction is uniform over the triangle's projection so the
-        // weight below has no distance term, see sample_spherical_triangle
+        // The helper returns 1/pdf in solid angle, including its small-triangle area fallback.
         float3 dir;
-        float  solid_angle;
-        sample_spherical_triangle(pos, tri.v0, tri.v1, tri.v2, xi.yz, dir, solid_angle);
-        if (solid_angle <= 0.0f)
+        float  inverse_pdf;
+        sample_spherical_triangle(pos, tri.v0, tri.v1, tri.v2, xi.yz, dir, inverse_pdf);
+        if (inverse_pdf <= 0.0f)
         {
             continue;
         }
@@ -1429,8 +1463,8 @@ bool emtri_ris_pick(
 
         // unshadowed lambert target, the brdf albedo is a constant across candidates
         float target = luminance(tri.emission) * cos_l;
-        // solid angle pdf of the draw = pick_prob / omega
-        float pdf_sa = (tri.weight / total_weight) / solid_angle;
+        // solid angle pdf of the draw includes triangle selection and point sampling
+        float pdf_sa = (tri.weight / total_weight) / inverse_pdf;
         float w      = target / max(pdf_sa, RESTIR_MIN_PDF);
 
         weight_sum += w;
@@ -1648,7 +1682,14 @@ float3 direct_lighting_at_vertex(
 
             RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> probe_query;
             probe_query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, probe_ray);
-            probe_query.Proceed();
+            // Match TraceRay's surface-only transport (there is no any-hit transmission
+            // shader). A single Proceed can stop at a non-opaque candidate before a wall
+            // behind it is visited, so COMMITTED_NOTHING is not yet a sky miss.
+            while (probe_query.Proceed())
+            {
+                if (probe_query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+                    probe_query.CommitNonOpaqueTriangleHit();
+            }
 
             if (probe_query.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
             {
@@ -1770,7 +1811,11 @@ bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal)
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
-    query.Proceed();
+    while (query.Proceed())
+    {
+        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+            query.CommitNonOpaqueTriangleHit();
+    }
 
     return query.CommittedStatus() == COMMITTED_NOTHING;
 }
@@ -1875,7 +1920,11 @@ bool trace_shadow_ray(float3 origin, float3 direction, float max_dist)
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
-    query.Proceed();
+    while (query.Proceed())
+    {
+        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+            query.CommitNonOpaqueTriangleHit();
+    }
 
     return query.CommittedStatus() == COMMITTED_NOTHING;
 }

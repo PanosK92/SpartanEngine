@@ -162,7 +162,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                 tex_reservoir_prev4[prev_pixel]
             );
 
-            bool usable = is_reservoir_valid(temporal) && temporal.M > 0.0f && temporal.W > 0.0f;
+            // A valid zero-weight history is still a sampled technique. Dropping it based
+            // on its draw biases the blend toward the histories that happened to find light.
+            bool usable = is_reservoir_valid(temporal) && temporal.M > 0.0f;
 
             // the dual candidate skipped the reprojection gate, it is a neighbour on the same
             // surface or nothing, tested against the stored source primary like the spatial pass
@@ -178,6 +180,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
             if (usable)
             {
+                have_temporal = true;
                 // use the stored source primary g-buffer, correct even for moving objects
                 float3 src_primary_pos = temporal.sample.src_pos;
                 float3 src_normal_ws   = temporal.sample.src_normal;
@@ -192,7 +195,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                 // catches a light changing intensity or moving, which is the only thing that
                 // changes in a scene whose walls never move
                 uint refresh_period = get_restir_validation_period();
-                if (refresh_period > 0u)
+                if (refresh_period > 0u && temporal.W > 0.0f)
                 {
                     uint refresh_hash = (pixel.x * 73856093u) ^ (pixel.y * 19349663u);
                     if (((buffer_frame.frame + refresh_hash) % refresh_period) == 0u)
@@ -225,7 +228,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                     metallic
                 );
 
-                if (shift_t_to_c.ok)
+                if (temporal.W > 0.0f && shift_t_to_c.ok)
                 {
                     bool visible = trace_shift_visibility(temporal.sample, pos_ws, normal_ws);
                     if (visible)
@@ -233,23 +236,26 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                         target_temp   = target_scalar(shift_t_to_c.f_dst);
                         jacobian_temp = shift_t_to_c.jacobian;
                         f_temp        = shift_t_to_c.f_dst;
-
-                        // backward shift, canonical sample evaluated at the temporal pixel, for pairwise mis
-                        ShiftResult shift_c_to_t = try_reconnection_shift(
-                            current.sample,
-                            pos_ws,
-                            src_primary_pos,
-                            src_normal_ws,
-                            src_view_dir,
-                            src_albedo,
-                            src_roughness,
-                            src_metallic
-                        );
-                        target_cur_at_temp   = shift_c_to_t.ok ? target_scalar(shift_c_to_t.f_dst) : 0.0f;
-                        jacobian_cur_at_temp = shift_c_to_t.ok ? shift_c_to_t.jacobian             : 0.0f;
-
-                        have_temporal = (target_temp > 0.0f);
                     }
+                }
+
+                // Evaluate the backward density independently of the forward draw. It must
+                // include visibility too, just like the spatial pre-pass in both directions.
+                ShiftResult shift_c_to_t = try_reconnection_shift(
+                    current.sample,
+                    pos_ws,
+                    src_primary_pos,
+                    src_normal_ws,
+                    src_view_dir,
+                    src_albedo,
+                    src_roughness,
+                    src_metallic
+                );
+                if (current.W > 0.0f && shift_c_to_t.ok &&
+                    trace_shift_visibility(current.sample, src_primary_pos, src_normal_ws))
+                {
+                    target_cur_at_temp   = target_scalar(shift_c_to_t.f_dst);
+                    jacobian_cur_at_temp = shift_c_to_t.jacobian;
                 }
             }
         }

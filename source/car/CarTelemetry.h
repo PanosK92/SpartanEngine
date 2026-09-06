@@ -28,11 +28,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdint>
 #include <cfloat>
 #include <string>
+#include <vector>
 
 // Presentation only: a snapshot keeps drawing independent of the vehicle and makes
 // the exact dashboard usable in the offscreen layout check. Units are SI unless named.
 namespace spartan::car_hud::telemetry
 {
+    inline constexpr float design_height = 744.0f;
+    inline constexpr float vehicle_controls_height = 58.0f;
+    inline constexpr float window_content_height = design_height + vehicle_controls_height;
+    enum class control { none, abs, traction, stability, steering, automatic, drs, turbo };
+    struct vehicle_options
+    {
+        std::vector<std::string> names;
+        int selected = -1;
+        bool full_simulation = true, skeleton = false, collision = false;
+    };
     struct corner
     {
         bool grounded = false, abs = false;
@@ -54,6 +65,7 @@ namespace spartan::car_hud::telemetry
         float optimal_temp = 80, temp_range = 30, tc_reduction = 0;
         double distance = 0;
         bool abs_enabled = false, tc_enabled = false, tc_active = false;
+        bool stability_enabled = false, steering_enabled = false, automatic = false;
         bool drs_enabled = false, drs_active = false, turbo = false, hybrid = false;
         bool shifting = false, limiter = false, engine_running = false, aero_valid = false;
         bool full_simulation = true;
@@ -116,7 +128,7 @@ namespace spartan::car_hud::telemetry
 
     inline float unit(float x) { return std::isfinite(x) ? std::clamp(x, 0.0f, 1.0f) : 0.0f; }
 
-    // All coordinates use a 1200 x 700 design surface. Uniform scaling preserves
+    // All coordinates use a 1200 x 744 design surface. Uniform scaling preserves
     // circular instruments and guarantees that every card stays in the window.
     struct painter
     {
@@ -169,6 +181,113 @@ namespace spartan::car_hud::telemetry
             right(x + w - 9, y + 7, 12, color, state);
         }
     };
+
+    inline void draw_vehicle_options(const painter& p, vehicle_options& options)
+    {
+        const ImVec2 cursor = ImGui::GetCursorScreenPos();
+        ImGui::PushID("telemetry_vehicle_options");
+        ImGui::PushFont(nullptr, 14 * p.scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6 * p.scale, 3 * p.scale));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4 * p.scale);
+        p.rect(0, 0, 1200, 50, IM_COL32(20, 31, 43, 250), 9);
+        p.text(12, 5, 11, muted, "CAR MODEL");
+        ImGui::SetCursorScreenPos(p.point(12, 22));
+        ImGui::SetNextItemWidth(396 * p.scale);
+        const char* name = options.selected >= 0 && options.selected < static_cast<int>(options.names.size()) ?
+            options.names[options.selected].c_str() : "Current car";
+        if (ImGui::BeginCombo("##car", name))
+        {
+            for (int i = 0; i < static_cast<int>(options.names.size()); ++i)
+            {
+                ImGui::PushID(i);
+                const bool selected = i == options.selected;
+                if (ImGui::Selectable(options.names[i].c_str(), selected)) options.selected = i;
+                if (selected) ImGui::SetItemDefaultFocus();
+                ImGui::PopID();
+            }
+            ImGui::EndCombo();
+        }
+
+        p.text(430, 5, 11, muted, "SIMULATION MODE");
+        ImGui::SetCursorScreenPos(p.point(430, 22));
+        ImGui::SetNextItemWidth(210 * p.scale);
+        int mode = options.full_simulation ? 0 : 1;
+        if (ImGui::Combo("##simulation", &mode, "Full physics\0Cheap / traffic\0"))
+            options.full_simulation = mode == 0;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Full simulates the physical suspension and drivetrain. Cheap uses the simplified traffic model.");
+
+        p.text(664, 5, 11, muted, "VISUALIZATION");
+        ImGui::SetCursorScreenPos(p.point(664, 22));
+        ImGui::SetNextItemWidth(258 * p.scale);
+        int view = options.skeleton ? 1 : 0;
+        if (ImGui::Combo("##visualization", &view, "Full car\0Physics skeleton\0"))
+            options.skeleton = view == 1;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Skeleton hides the body mesh and shows physical bodies, joints and forces. Frame and engine internals are schematic.");
+
+        ImGui::SetCursorScreenPos(p.point(950, 22));
+        bool collision = options.skeleton && options.collision;
+        if (ImGui::Checkbox("Collision shape", &collision))
+        {
+            options.collision = collision;
+            if (collision) options.skeleton = true;
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Draw the chassis collision hull in purple. Enabling this also selects the physics skeleton view.");
+        ImGui::PopStyleVar(2);
+        ImGui::PopFont();
+        ImGui::PopID();
+        ImGui::SetCursorScreenPos(cursor);
+    }
+
+    inline control draw_controls(const painter& p, const snapshot& s)
+    {
+        control result = control::none;
+        const ImVec2 saved_cursor = ImGui::GetCursorScreenPos();
+        ImGui::PushID("telemetry_assists");
+        bool abs_active = false;
+        for (const corner& w : s.wheels) abs_active |= w.abs;
+        const auto toggle = [&](int index, control action, const char* title, bool enabled, bool active, const char* hint)
+        {
+            constexpr float width = (1200.0f - 6 * 8) / 7;
+            const float x = index * (width + 8);
+            const float y = 668;
+            ImGui::SetCursorScreenPos(p.point(x, y));
+            ImGui::BeginDisabled(!s.full_simulation);
+            const bool clicked = ImGui::InvisibleButton(title, ImVec2(width * p.scale, 36 * p.scale));
+            const bool hovered = ImGui::IsItemHovered();
+            ImGui::EndDisabled();
+            if (clicked)
+            {
+                result = action;
+                enabled = !enabled;
+            }
+            const ImU32 color = !s.full_simulation ? muted : enabled ? cyan : muted;
+            p.rect(x, y, width, 36, hovered ? IM_COL32(40, 61, 77, 255) : IM_COL32(25, 39, 51, 255), 5);
+            p.text(x + 10, y + 4, 12, color, title);
+            p.text(x + 10, y + 21, 10, color, !s.full_simulation ? "FULL SIM ONLY" :
+                enabled ? active ? "ON / ACTIVE" : "ON" : "OFF");
+            p.rect(x + width - 36, y + 12, 26, 13, enabled && s.full_simulation ? cyan : track, 7);
+            p.dl->AddCircleFilled(p.point(x + width - (enabled ? 16 : 30), y + 18.5f), 4.5f * p.scale,
+                enabled ? IM_COL32(18, 36, 46, 255) : muted);
+            if (hovered)
+            {
+                ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                ImGui::SetTooltip("%s\nClick to turn %s.", hint, enabled ? "off" : "on");
+            }
+        };
+        toggle(0, control::abs, "ABS", s.abs_enabled, abs_active, "Anti-lock braking prevents wheel lock under braking.");
+        toggle(1, control::traction, "TRACTION", s.tc_enabled, s.tc_active, "Traction control reduces power when driven wheels spin.");
+        toggle(2, control::stability, "STABILITY", s.stability_enabled, false, "Yaw control adjusts wheel braking to help stabilize the car.");
+        toggle(3, control::steering, "STEER ASSIST", s.steering_enabled, false, "Reduces steering sensitivity at speed; restores your configured strength when enabled.");
+        toggle(4, control::automatic, "AUTO SHIFT", s.automatic, false, "Automatic gear changes. When off, shift with PgUp/PgDn or L1/R1.");
+        toggle(5, control::drs, "DRS", s.drs_enabled, s.drs_active, "Allows the drag reduction system to open the rear wing.");
+        toggle(6, control::turbo, "TURBO", s.turbo, false, "Enables the car's configured turbocharger.");
+        ImGui::PopID();
+        ImGui::SetCursorScreenPos(saved_cursor);
+        return result;
+    }
 
     inline ImU32 heat(float temperature, const snapshot& s)
     {
@@ -230,7 +349,7 @@ namespace spartan::car_hud::telemetry
         }
     }
 
-    inline void draw(const painter& p, const snapshot& s, const history& h, double now)
+    inline control draw(const painter& p, const snapshot& s, const history& h, double now)
     {
         p.text(0, 2, 16, ink, "VEHICLE / TELEMETRY");
         // Clip arbitrary preset names without changing the rest of the header.
@@ -249,11 +368,11 @@ namespace spartan::car_hud::telemetry
             p.label(288, 60, 25, cyan, "THROTTLE %.0f%%", s.throttle * 100);
             p.label(600, 60, 25, red, "BRAKE %.0f%%", s.brake * 100);
             p.label(900, 60, 25, ink, "STEER %+.0f%%", s.steering * 100);
-            p.card(0, 147, 1200, 550, "LIMITED TELEMETRY");
+            p.card(0, 147, 1200, 508, "LIMITED TELEMETRY");
             p.text(48, 292, 28, ink, "Cheap simulation is active");
             p.text(48, 342, 17, muted, "Tire, G-force, powertrain and aero measurements require the full vehicle model.");
-            p.text(48, 383, 17, cyan, "Select Full under Sim mode in Workshop to enable the complete dashboard.");
-            return;
+            p.text(48, 383, 17, cyan, "Select Full physics above to enable all measurements and driving assists.");
+            return draw_controls(p, s);
         }
 
         p.card(0, 34, 1200, 101, "");
@@ -418,19 +537,17 @@ namespace spartan::car_hud::telemetry
             trace(p, h, now, 820, 589, 364, 42, 1, wheel_colors[i], [i](const sample& a) { return a.travel[i]; });
             p.rect(1086 + i * 27.0f, 576, 17, 2, wheel_colors[i], 1);
         }
-        bool abs_active = false, brake_fade = false, damage = false;
+        bool brake_fade = false, damage = false;
         for (const corner& w : s.wheels)
         {
-            abs_active |= w.abs;
             brake_fade |= w.brake_efficiency < 0.8f;
             damage |= w.damage > 0.1f || w.wear > 0.7f;
         }
-        p.pill(0, 668, 159, "ABS", abs_active ? "ACTIVE" : s.abs_enabled ? "READY" : "OFF", abs_active ? cyan : muted);
-        p.pill(169, 668, 159, "TCS", s.tc_active ? "ACTIVE" : s.tc_enabled ? "READY" : "OFF", s.tc_active ? amber : muted);
-        p.pill(338, 668, 159, "DRS", s.drs_active ? "OPEN" : s.drs_enabled ? "CLOSED" : "OFF", s.drs_active ? cyan : muted);
-        p.pill(507, 668, 179, "BRAKES", brake_fade ? "FADING" : "OK", brake_fade ? red : green);
-        p.pill(696, 668, 179, "TIRES", damage ? "CHECK" : "OK", damage ? amber : green);
-        p.label(897, 676, 12, muted, "TC CUT %.0f%%", s.tc_reduction * 100);
-        p.label(1075, 676, 12, muted, "%.2f km", s.distance * 0.001);
+        p.pill(0, 714, 179, "BRAKES", brake_fade ? "FADING" : "OK", brake_fade ? red : green);
+        p.pill(189, 714, 179, "TIRES", damage ? "CHECK" : "OK", damage ? amber : green);
+        p.text(390, 722, 12, muted, "CLICK SWITCHES TO TOGGLE");
+        p.label(897, 722, 12, muted, "TC CUT %.0f%%", s.tc_reduction * 100);
+        p.label(1075, 722, 12, muted, "%.2f km", s.distance * 0.001);
+        return draw_controls(p, s);
     }
 }

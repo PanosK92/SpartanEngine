@@ -34,7 +34,5 @@ namespace spartan
         // single glanceable dashboard, p_open is bound to the F3 toggle state
         void draw_telemetry_window(Car* car, Physics* physics, bool* p_open);
 
-        // car bench window opened from the telemetry bench button
-        void draw_car_bench_window(Car* car, Physics* physics);
     }
 }

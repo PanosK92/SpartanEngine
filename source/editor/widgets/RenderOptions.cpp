@@ -441,7 +441,7 @@ void RenderOptions::OnTickVisible()
                     option_check_box("Depth of field", "r.depth_of_field", "Cinematic auto focus, strength from aperture");
                     option_check_box("Film grain", "r.film_grain", "Simulates old film camera noise");
                     option_check_box("Chromatic aberration", "r.chromatic_aberration", "Lens color fringing effect");
-                    option_check_box("VHS effect", "r.vhs", "Retro VHS look");
+                    option_check_box("VHS playback", "r.vhs", "NTSC tape: colour bleed, line jitter, dropouts and head switching");
                     option_check_box("Dithering", "r.dithering", "Reduces color banding in gradients");
                 }
 

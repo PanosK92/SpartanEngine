@@ -449,7 +449,7 @@ namespace spartan
         void Pass_PostProcess(uint32_t eye_layer = rhi_all_mips);
         void Pass_PostProcess_Color(RHI_Texture*& tex_in, RHI_Texture*& tex_out, uint32_t eye_layer);
         void Pass_PostProcess_EditorOverlays(RHI_Texture* tex_out);
-        void Pass_PostProcess_DisplayEffects(RHI_Texture*& tex_in, RHI_Texture*& tex_out, bool apply_dithering = true);
+        void Pass_PostProcess_DisplayEffects(RHI_Texture*& tex_in, RHI_Texture*& tex_out, bool apply_dithering = true, bool force_sdr = false);
         void Pass_Tonemap(RHI_Texture* tex_in, RHI_Texture* tex_out, bool force_sdr = false);
         void Pass_Bloom(RHI_Texture* tex_in, RHI_Texture* tex_out);
         void Pass_AA_Upscale(uint32_t eye_layer = rhi_all_mips);

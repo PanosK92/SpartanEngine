@@ -116,6 +116,83 @@ void write_local_shadow(uint2 launch_id, uint slice, float visibility, float hit
     );
 }
 
+// Fixed stratified samples keep stationary shadows stable. Long showroom tubes need
+// most of the samples along their long axis, while panels sample both dimensions.
+static const uint AREA_SHADOW_SAMPLES = 8u;
+
+float2 area_shadow_rect_uv(uint sample_index, float width, float height)
+{
+    uint nx = width >= height ? 4u : 2u;
+    if (width >= height * 3.0f)
+        nx = AREA_SHADOW_SAMPLES;
+    else if (height >= width * 3.0f)
+        nx = 1u;
+    uint ny = AREA_SHADOW_SAMPLES / nx;
+    return (float2(sample_index % nx, sample_index / nx) + 0.5f) / float2(nx, ny) - 0.5f;
+}
+
+void trace_local_light_shadow(uint2 launch_id, uint slice, LightParameters light, float3 ray_origin)
+{
+    bool is_area = (light.flags & (1u << 6)) != 0u;
+    float3 to_light = light.position - ray_origin;
+    float dist_to_light = length(to_light);
+    if (dist_to_light < 0.001f)
+        return;
+
+    float3 area_right = float3(0.0f, 0.0f, 0.0f);
+    float3 area_up = float3(0.0f, 0.0f, 0.0f);
+    if (is_area)
+    {
+        // Area emitters are one-sided, matching Light::compute_attenuation_area.
+        if (dot(-to_light, light.direction) <= 0.0f)
+            return;
+        area_right = normalize(light.direction_right);
+        area_up = normalize(cross(light.direction, area_right));
+        float3 from_center = -to_light;
+        float3 closest = light.position
+            + area_right * clamp(dot(from_center, area_right), -light.area_width * 0.5f, light.area_width * 0.5f)
+            + area_up * clamp(dot(from_center, area_up), -light.area_height * 0.5f, light.area_height * 0.5f);
+        dist_to_light = length(closest - ray_origin);
+    }
+    if (dist_to_light >= light.range)
+        return;
+
+    // Stop before the fixture around the emitter, without ignoring nearby blockers
+    // at the receiver (car seats, body panels and tire contacts must still occlude).
+    float emitter_safety = is_area
+        ? min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f
+        : 0.01f;
+    uint sample_count = is_area ? AREA_SHADOW_SAMPLES : 1u;
+    float visibility_sum = 0.0f;
+    float hit_min = SHADOW_RAY_MAX_DISTANCE;
+    bool any_hit = false;
+    for (uint s = 0u; s < sample_count; s++)
+    {
+        float3 target = light.position;
+        if (is_area)
+        {
+            float2 rect_uv = area_shadow_rect_uv(s, light.area_width, light.area_height);
+            target += area_right * rect_uv.x * light.area_width + area_up * rect_uv.y * light.area_height;
+        }
+        float3 to_sample = target - ray_origin;
+        float distance = length(to_sample);
+        float2 vis = float2(1.0f, 0.0f);
+        if (distance > emitter_safety + 0.001f)
+        {
+            vis = trace_opaque_shadow(ray_origin, to_sample / distance,
+                min(distance - emitter_safety, SHADOW_RAY_MAX_DISTANCE));
+        }
+        visibility_sum += vis.x;
+        if (vis.x < 1.0f)
+        {
+            hit_min = min(hit_min, vis.y);
+            any_hit = true;
+        }
+    }
+    write_local_shadow(launch_id, slice, visibility_sum / float(sample_count),
+        any_hit ? hit_min : 0.0f, dist_to_light, is_area ? max(light.area_width, light.area_height) : 0.1f);
+}
+
 [shader("raygeneration")]
 void ray_gen()
 {
@@ -165,6 +242,18 @@ void ray_gen()
             float hit_dist    = vis.x < 1.0f ? vis.y : 0.0f;
             tex_uav[launch_id] = float4(visibility, hit_dist, 0.0f, 1.0f);
         }
+    }
+
+    // The lighting pass samples these slots instead of the shadow atlas. Every
+    // assigned local light must write its own visibility, even with no active sun.
+    for (uint light_i = 1u; light_i < buffer_frame.cluster_light_count; light_i++)
+    {
+        LightParameters light = light_parameters[light_i];
+        uint slot = (light.flags >> 8u) & 7u;
+        if (slot == 0u || slot > nrd_local_shadow_max || (light.flags & (1u << 3)) == 0u)
+            continue;
+        float local_offset = 0.001f + min(camera_distance * 0.00001f, 0.002f);
+        trace_local_light_shadow(launch_id, slot - 1u, light, pos_ws + normal_ws * local_offset);
     }
 }
 

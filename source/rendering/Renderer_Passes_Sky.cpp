@@ -57,9 +57,8 @@ namespace spartan
                 m_pass_state.sky_warmup_this_frame ||
                 (m_cb_frame_cpu.frame & 3u) == 0u;
 
-            // the sun always exists in light slot 0, either the world's directional light or the
-            // neutral default UpdateLights writes when the world has no lights, so the panorama is
-            // built unconditionally instead of falling back to black
+            // Slot 0 contains the authored sun, the empty editor's default light, or a
+            // zero-intensity sentinel when no lights are visible in a loaded world.
             {
                 // sky view lut, one small march per texel instead of integrating the atmosphere per panorama pixel
                 if (refresh_sky_view_lut)

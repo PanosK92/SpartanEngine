@@ -24,12 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CarHud.h"
 #include "CarTelemetry.h"
 #include "Car.h"
-#include "CarBench.h"
 #include "CarState.h"
 #include "CarSimulation.h"
 #include "CarPresets.h"
-#include "CarEngineSoundSynthesis.h"
-#include "CarTireSquealSynthesis.h"
 #include "../world/components/Physics.h"
 #include "imgui/source/imgui.h"
 #include "widgets/Viewport.h"
@@ -42,106 +39,10 @@ namespace spartan::car_hud
         // visual language shared by every panel in the hud
         constexpr float pi = 3.14159265f;
 
-        const ImU32 panel_bg       = IM_COL32(14, 17, 22, 215);
-        const ImU32 panel_shadow   = IM_COL32(0, 0, 0, 120);
-        const ImU32 panel_border   = IM_COL32(80, 95, 110, 90);
-        const ImU32 panel_inner    = IM_COL32(255, 255, 255, 14);
-        const ImU32 accent_info    = IM_COL32(90, 180, 255, 255);
         const ImU32 accent_warn    = IM_COL32(255, 180, 50, 255);
         const ImU32 accent_ok      = IM_COL32(80, 200, 110, 255);
         const ImU32 accent_danger  = IM_COL32(220, 70, 70, 255);
-        const ImU32 text_primary   = IM_COL32(232, 234, 238, 255);
-        const ImU32 text_dim       = IM_COL32(150, 160, 172, 255);
         const ImU32 text_label     = IM_COL32(120, 130, 142, 255);
-        const ImU32 track_dim      = IM_COL32(38, 44, 52, 255);
-
-        // helper: draw the unified panel background with a subtle drop shadow and inner hairline
-        void draw_panel_background(ImDrawList* dl, ImVec2 tl, ImVec2 br, float rounding = 8.0f)
-        {
-            // soft drop shadow under the panel
-            dl->AddRectFilled(ImVec2(tl.x + 2, tl.y + 4), ImVec2(br.x + 2, br.y + 4), panel_shadow, rounding);
-            // glass body
-            dl->AddRectFilled(tl, br, panel_bg, rounding);
-            // outer border
-            dl->AddRect(tl, br, panel_border, rounding, 1.0f);
-            // inner hairline highlight, 1px in
-            dl->AddRect(ImVec2(tl.x + 1, tl.y + 1), ImVec2(br.x - 1, br.y - 1), panel_inner, rounding, 1.0f);
-        }
-
-        // helper: arrow with a triangular head, used everywhere we visualise a force/direction
-        void draw_arrow(ImDrawList* dl, ImVec2 origin, float dx, float dy, ImU32 color, float thickness = 3.0f)
-        {
-            if (fabsf(dx) < 1.0f && fabsf(dy) < 1.0f)
-            {
-                return;
-            }
-
-            ImVec2 tip(origin.x + dx, origin.y + dy);
-            dl->AddLine(origin, tip, color, thickness);
-
-            float len = sqrtf(dx * dx + dy * dy);
-            if (len <= 5.0f)
-            {
-                return;
-            }
-
-            float nx        = dx / len;
-            float ny        = dy / len;
-            float half_size = std::min(len * 0.32f, 10.0f);
-            dl->AddTriangleFilled(tip,
-                ImVec2(tip.x - half_size * (nx + ny * 0.5f), tip.y - half_size * (ny - nx * 0.5f)),
-                ImVec2(tip.x - half_size * (nx - ny * 0.5f), tip.y - half_size * (ny + nx * 0.5f)),
-                color);
-        }
-
-        // build a colour from an rgb triple, used to compose ramps without ImU32 nesting
-        ImU32 col_rgb(int r, int g, int b, int a = 255)
-        {
-            return IM_COL32(std::clamp(r, 0, 255), std::clamp(g, 0, 255), std::clamp(b, 0, 255), std::clamp(a, 0, 255));
-        }
-
-        // gt style tire wear colour: blue -> green -> yellow -> red
-        ImU32 wear_color(float wear)
-        {
-            wear = std::clamp(wear, 0.0f, 1.0f);
-            int r, g, b;
-            if (wear < 0.4f)
-            {
-                float t = wear / 0.4f;
-                r = (int)(30  + t * (50  - 30));
-                g = (int)(80  + t * (200 - 80));
-                b = (int)(220 + t * (80  - 220));
-            }
-            else if (wear < 0.7f)
-            {
-                float t = (wear - 0.4f) / 0.3f;
-                r = (int)(50  + t * (220 - 50));
-                g = (int)(200 + t * (160 - 200));
-                b = (int)(80  + t * (30  - 80));
-            }
-            else
-            {
-                float t = (wear - 0.7f) / 0.3f;
-                r = (int)(220 + t * (200 - 220));
-                g = (int)(160 - t * 130);
-                b = (int)(30  - t * 10);
-            }
-            return col_rgb(r, g, b);
-        }
-
-        // colour ramp for tire surface and core temperatures
-        ImU32 temp_color(float t)
-        {
-            if (t > 110.0f)
-            {
-                return accent_warn;
-            }
-            if (t < 70.0f)
-            {
-                return accent_info;
-            }
-            return accent_ok;
-        }
 
         // status pill, only drawn when state >= 'idle'. cross fades alpha based on a static per-tag timer
         enum class pill_state { off, idle, active };
@@ -205,109 +106,6 @@ namespace spartan::car_hud
                 dl->AddRect(tl, br, IM_COL32(110, 120, 134, a), 4.0f, 1.0f);
                 dl->AddText(ImVec2(text_x, tl.y + pad_y), IM_COL32(200, 210, 220, a), text);
             }
-        }
-
-        // draws tire condition and force direction while the caller owns labels
-        void draw_tire_block(ImDrawList* dl, Physics* physics, WheelIndex wheel, ImVec2 tl, ImVec2 size, bool with_arrows)
-        {
-            bool  grounded = physics->IsWheelGrounded(wheel);
-            float wear     = physics->GetWheelWear(wheel);
-
-            ImU32 wc = wear_color(wear);
-            int   wr = (wc >> 0)  & 0xFF;
-            int   wg = (wc >> 8)  & 0xFF;
-            int   wb = (wc >> 16) & 0xFF;
-
-            const int strips = 8;
-            float strip_h    = size.y / strips;
-            ImVec2 br(tl.x + size.x, tl.y + size.y);
-
-            for (int s = 0; s < strips; ++s)
-            {
-                float dist = fabsf(s - (strips - 1) * 0.5f) / ((strips - 1) * 0.5f);
-                float brightness = 1.0f - dist * 0.4f;
-                int sr = (int)(wr * brightness);
-                int sg = (int)(wg * brightness);
-                int sb = (int)(wb * brightness);
-                if (!grounded)
-                {
-                    sr /= 2;
-                    sg /= 2;
-                    sb /= 2;
-                }
-                ImVec2 stl(tl.x, tl.y + s * strip_h);
-                ImVec2 sbr(br.x, tl.y + (s + 1) * strip_h);
-                float rounding = (s == 0 || s == strips - 1) ? 7.0f : 0.0f;
-                int flags = (s == 0) ? ImDrawFlags_RoundCornersTop : ((s == strips - 1) ? ImDrawFlags_RoundCornersBottom : 0);
-                dl->AddRectFilled(stl, sbr, col_rgb(sr, sg, sb), rounding, flags);
-            }
-
-            ImU32 border = grounded ? IM_COL32(160, 170, 180, 255) : IM_COL32(120, 70, 70, 255);
-            dl->AddRect(tl, br, border, 7.0f, 1.7f);
-
-            char pct[8];
-            snprintf(pct, sizeof(pct), "%.0f%%", wear * 100.0f);
-            ImVec2 ps = ImGui::CalcTextSize(pct);
-            ImVec2 center(tl.x + size.x * 0.5f, tl.y + size.y * 0.5f);
-            dl->AddText(ImVec2(center.x - ps.x * 0.5f, center.y - ps.y * 0.5f), IM_COL32(255, 255, 255, 230), pct);
-
-            if (with_arrows)
-            {
-                float lat   = physics->GetWheelLateralForce(wheel);
-                float lon   = physics->GetWheelLongitudinalForce(wheel);
-                float scale = 0.003f;
-                float max_arrow = std::min(size.x, size.y) * 0.95f;
-                float lat_a = std::clamp(lat * scale, -max_arrow, max_arrow);
-                float lon_a = std::clamp(-lon * scale, -max_arrow, max_arrow);
-
-                if (fabsf(lat_a) > 2.0f)
-                {
-                    draw_arrow(dl, center, lat_a, 0.0f, accent_info, 3.0f);
-                }
-                if (fabsf(lon_a) > 2.0f)
-                {
-                    draw_arrow(dl, center, 0.0f, lon_a, (lon > 0.0f) ? accent_ok : accent_danger, 3.0f);
-                }
-            }
-        }
-
-        // helper: a thin horizontal level meter used in the engine section
-        void draw_level_bar(const char* label, float level, ImU32 color)
-        {
-            ImGui::Text("  %s", label);
-            ImGui::SameLine(100);
-            ImVec2 pos = ImGui::GetCursorScreenPos();
-            float w = std::max(120.0f, ImGui::GetContentRegionAvail().x - 70.0f);
-            float h = 14.0f;
-            float fill = std::clamp(level * 5.0f, 0.0f, 1.0f);
-            ImDrawList* dl = ImGui::GetWindowDrawList();
-            dl->AddRectFilled(pos, ImVec2(pos.x + w, pos.y + h), track_dim, 3.0f);
-            dl->AddRectFilled(pos, ImVec2(pos.x + w * fill, pos.y + h), color, 3.0f);
-            dl->AddRect(pos, ImVec2(pos.x + w, pos.y + h), IM_COL32(70, 80, 92, 255), 3.0f, 1.0f);
-            ImGui::Dummy(ImVec2(w, h));
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.85f, 0.87f, 0.9f, 1.0f), "%.3f", level);
-        }
-
-        // legend item: filled rounded square + text
-        void draw_legend_item(ImU32 color, const char* text)
-        {
-            ImVec2 pos = ImGui::GetCursorScreenPos();
-            ImDrawList* dl = ImGui::GetWindowDrawList();
-            dl->AddRectFilled(pos, ImVec2(pos.x + 12, pos.y + 12), color, 3.0f);
-            ImGui::Dummy(ImVec2(16, 12));
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.78f, 0.82f, 0.88f, 1.0f), "%s", text);
-        }
-
-        // convert a 0..1 wear to a tinted ImVec4 for ImGui::TextColored
-        ImVec4 imvec4_from_u32(ImU32 c)
-        {
-            float r = ((c >> IM_COL32_R_SHIFT) & 0xFF) / 255.0f;
-            float g = ((c >> IM_COL32_G_SHIFT) & 0xFF) / 255.0f;
-            float b = ((c >> IM_COL32_B_SHIFT) & 0xFF) / 255.0f;
-            float a = ((c >> IM_COL32_A_SHIFT) & 0xFF) / 255.0f;
-            return ImVec4(r, g, b, a);
         }
 
         // tooltip with consistent formatting
@@ -974,832 +772,6 @@ namespace spartan::car_hud
         ImGui::PopStyleVar(2);
     }
 
-    // telemetry sections share one scrollable window
-
-    namespace
-    {
-        void section_header(const char* title)
-        {
-            ImDrawList* dl = ImGui::GetWindowDrawList();
-            ImVec2 pos = ImGui::GetCursorScreenPos();
-            float width = ImGui::GetContentRegionAvail().x;
-            dl->AddRectFilled(pos, ImVec2(pos.x + 3.0f, pos.y + 20.0f), accent_info, 2.0f);
-            dl->AddText(ImVec2(pos.x + 11.0f, pos.y + 2.0f), text_primary, title);
-            dl->AddLine(ImVec2(pos.x + 11.0f, pos.y + 20.0f), ImVec2(pos.x + width, pos.y + 20.0f), panel_border, 1.0f);
-            ImGui::Dummy(ImVec2(width, 27.0f));
-        }
-
-        void draw_telemetry_summary(Physics* physics)
-        {
-            car::Simulation* simulation = physics->GetVehicleSimulation();
-            ImDrawList* dl = ImGui::GetWindowDrawList();
-            ImVec2 tl = ImGui::GetCursorScreenPos();
-            float width = ImGui::GetContentRegionAvail().x;
-            const float height = 58.0f;
-            ImVec2 br(tl.x + width, tl.y + height);
-            draw_panel_background(dl, tl, br, 7.0f);
-
-            const float speed = physics->GetLinearVelocity().Length() * 3.6f;
-            const float rpm = physics->GetEngineRPM();
-            const float redline = std::max(physics->GetRedlineRPM(), 1.0f);
-            const float boost = physics->GetBoostPressure();
-            const char* gear = physics->GetCurrentGearString();
-            const float left_width = std::clamp(width * 0.30f, 250.0f, 390.0f);
-
-            dl->AddText(ImVec2(tl.x + 16.0f, tl.y + 10.0f), text_label, "ACTIVE CAR");
-            dl->AddText(ImVec2(tl.x + 16.0f, tl.y + 29.0f), text_primary, simulation->get_spec().name);
-
-            auto metric = [&](float x, const char* label, const char* value, ImU32 color)
-            {
-                dl->AddText(ImVec2(x, tl.y + 9.0f), text_label, label);
-                dl->AddText(ImVec2(x, tl.y + 28.0f), color, value);
-            };
-
-            char speed_text[24];
-            char rpm_text[24];
-            char boost_text[24];
-            snprintf(speed_text, sizeof(speed_text), "%.0f km/h", speed);
-            snprintf(rpm_text, sizeof(rpm_text), "%.0f rpm", rpm);
-            snprintf(boost_text, sizeof(boost_text), "%.2f bar", boost);
-            const float metric_width = (width - left_width - 24.0f) * 0.25f;
-            metric(tl.x + left_width, "SPEED", speed_text, text_primary);
-            metric(tl.x + left_width + metric_width, "GEAR", gear, physics->IsShifting() ? accent_warn : text_primary);
-            metric(tl.x + left_width + metric_width * 2.0f, "ENGINE", rpm_text, rpm >= redline ? accent_danger : accent_warn);
-            metric(tl.x + left_width + metric_width * 3.0f, "BOOST", boost_text, accent_info);
-
-            ImGui::Dummy(ImVec2(width, height + 6.0f));
-        }
-
-        void section_setup(Car* car_instance, Physics* physics)
-        {
-            section_header("Setup");
-            car::Simulation* simulation = physics->GetVehicleSimulation();
-            car::car_preset& spec = simulation->get_spec();
-            car::active_upgrades& upgrades = simulation->get_upgrades();
-            const car::car_preset& base_spec = simulation->get_base_spec();
-
-            int visualization_preset = static_cast<int>(car_instance->GetVisualizationPreset());
-            const char* visualization_presets[] = { "Full car", "Skeleton" };
-            ImGui::SetNextItemWidth(160.0f);
-            if (ImGui::Combo("View preset", &visualization_preset, visualization_presets, IM_ARRAYSIZE(visualization_presets)))
-            {
-                car_instance->SetVisualizationPreset(static_cast<CarVisualizationPreset>(visualization_preset));
-            }
-            if (visualization_preset == static_cast<int>(CarVisualizationPreset::Skeleton))
-            {
-                bool show_collision = car_instance->GetSkeletonShowCollision();
-                if (ImGui::Checkbox("Show collision hull", &show_collision))
-                {
-                    car_instance->SetSkeletonShowCollision(show_collision);
-                }
-                hud_tooltip("purple chassis collision shape, mesh stays hidden in skeleton mode");
-                ImGui::TextColored(imvec4_from_u32(text_dim), "Bodies include inertia proxies. Frame and engine internals are schematic.");
-                ImGui::TextColored(imvec4_from_u32(text_dim), "Paired red joints: >1 mm separation. Arrows: last physics step. 1 m = 50 kN; rolling 25 kN; tread rows 16.7 kN.");
-                ImGui::TextColored(imvec4_from_u32(text_dim), "steel frame  amber suspension  green steering  cyan drivetrain  pale wheels  purple collision  lime contact  orange long force  pink lat force  red torque  mint aero");
-            }
-
-            int sim_mode = static_cast<int>(car_instance->GetVehicleSimMode());
-            const char* sim_modes[] = { "Full", "Cheap" };
-            ImGui::SetNextItemWidth(160.0f);
-            if (ImGui::Combo("Sim mode", &sim_mode, sim_modes, IM_ARRAYSIZE(sim_modes)))
-            {
-                car_instance->SetVehicleSimMode(static_cast<VehicleSimMode>(sim_mode));
-            }
-            hud_tooltip("full is the real multibody car, cheap is arcade chassis plus four visual wheels for traffic and evaluation");
-
-            ImGui::SetNextItemWidth(260.0f);
-            if (ImGui::BeginCombo("Car", spec.name))
-            {
-                for (size_t i = 0; i < car::preset_registry.size(); ++i)
-                {
-                    bool selected = car::preset_registry[i].definition == car_instance->GetDefinition();
-                    if (ImGui::Selectable(car::preset_registry[i].name, selected))
-                    {
-                        car_instance->LoadDefinition(car::preset_registry[i].definition);
-                    }
-                    if (selected)
-                    {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                }
-                ImGui::EndCombo();
-            }
-            ImGui::SameLine();
-            if (ImGui::SmallButton("Reset stock"))
-            {
-                simulation->reset_upgrades();
-            }
-            hud_tooltip("removes all upgrades, restores base preset");
-            ImGui::SameLine();
-            if (ImGui::SmallButton("Bench"))
-            {
-                car_bench::open_window();
-            }
-            hud_tooltip("opens car bench, fast scripted stress of the current car");
-
-            bool write_telemetry = simulation->get_log_to_file();
-            if (ImGui::Checkbox("Write telemetry file", &write_telemetry))
-            {
-                simulation->set_log_to_file(write_telemetry);
-            }
-            hud_tooltip("writes a csv while driving, off by default, toggle here to start or stop");
-            if (write_telemetry)
-            {
-                ImGui::SameLine();
-                ImGui::TextColored(imvec4_from_u32(text_dim), "%s", simulation->get_telemetry_path().c_str());
-            }
-
-            bool abs_enabled  = physics->GetAbsEnabled();
-            bool tc_enabled   = physics->GetTcEnabled();
-            bool manual_trans = physics->GetManualTransmission();
-            bool drs_enabled  = physics->GetDrsEnabled();
-            bool turbo_on     = physics->GetTurboEnabled();
-            int  diff_type    = physics->GetDiffType();
-            const char* diff_items[] = { "Open", "Locked", "LSD" };
-
-            if (ImGui::BeginTable("##setup_assists", 6, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoBordersInBody))
-            {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                if (ImGui::Checkbox("ABS", &abs_enabled))
-                {
-                    physics->SetAbsEnabled(abs_enabled);
-                }
-                hud_tooltip("Anti-lock braking: prevents wheel lockup under hard braking.");
-                ImGui::TableNextColumn();
-                if (ImGui::Checkbox("TCS", &tc_enabled))
-                {
-                    physics->SetTcEnabled(tc_enabled);
-                }
-                hud_tooltip("Traction control: cuts throttle when driven wheels spin faster than the vehicle.");
-                ImGui::TableNextColumn();
-                if (ImGui::Checkbox("Manual", &manual_trans))
-                {
-                    physics->SetManualTransmission(manual_trans);
-                }
-                hud_tooltip("Manual transmission: disables auto shifts. Use PgUp/PgDn or L1/R1.");
-                ImGui::TableNextColumn();
-                if (ImGui::Checkbox("Turbo", &turbo_on))
-                {
-                    physics->SetTurboEnabled(turbo_on);
-                }
-                hud_tooltip("Forced induction. Boost spools with RPM and load.");
-                ImGui::TableNextColumn();
-                if (ImGui::Checkbox("DRS", &drs_enabled))
-                {
-                    physics->SetDrsEnabled(drs_enabled);
-                }
-                hud_tooltip("Drag reduction system: opens the rear wing on straights.");
-                ImGui::TableNextColumn();
-                ImGui::SetNextItemWidth(-FLT_MIN);
-                if (ImGui::Combo("##diff", &diff_type, diff_items, 3))
-                {
-                    physics->SetDiffType(diff_type);
-                }
-                hud_tooltip("Differential type: Open splits torque freely, Locked equalises wheel speed, LSD biases under load.");
-                ImGui::EndTable();
-            }
-            if (ImGui::BeginTable("##assist_levels", 3, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoBordersInBody))
-            {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::SliderFloat("Steering assist", &spec.assists.steering_speed_reduction, 0.0f, 0.9f, "%.2f");
-                ImGui::TableNextColumn();
-                ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::SliderFloat("ABS level", &spec.assists.abs_level, 0.0f, 1.0f, "%.2f");
-                ImGui::TableNextColumn();
-                ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::SliderFloat("TCS level", &spec.assists.traction_control_level, 0.0f, 1.0f, "%.2f");
-                ImGui::EndTable();
-            }
-
-            auto draw_stages = [&](const char* name, int& level, int maxs)
-            {
-                int before = level;
-                simulation->clamp_upgrade_stage(level, std::max(maxs, 0));
-                if (level != before)
-                {
-                    simulation->reapply_upgrades();
-                }
-                if (maxs <= 0)
-                {
-                    return;
-                }
-                ImGui::PushID(name);
-                ImGui::TextColored(imvec4_from_u32(text_label), "%s", name);
-                ImGui::SameLine();
-                for (int s = 0; s <= maxs; s++)
-                {
-                    if (s > 0)
-                    {
-                        ImGui::SameLine(0.0f, 4.0f);
-                    }
-                    ImGui::PushID(s);
-                    char lbl[2] = { (char)('0' + s), 0 };
-                    bool pushed = false;
-                    if (level == s)
-                    {
-                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.45f, 0.72f, 1.0f));
-                        pushed = true;
-                    }
-                    if (ImGui::SmallButton(lbl))
-                    {
-                        level = s;
-                        simulation->reapply_upgrades();
-                    }
-                    if (pushed)
-                    {
-                        ImGui::PopStyleColor();
-                    }
-                    ImGui::PopID();
-                }
-                ImGui::PopID();
-                ImGui::SameLine(0.0f, 16.0f);
-            };
-
-            draw_stages("Eng", upgrades.engine, base_spec.engine_stage_max);
-            draw_stages("Sus", upgrades.suspension, base_spec.suspension_stage_max);
-            draw_stages("Tir", upgrades.tires, base_spec.tires_stage_max);
-            draw_stages("Brk", upgrades.brakes, base_spec.brakes_stage_max);
-            draw_stages("Aer", upgrades.aero, base_spec.aero_stage_max);
-            draw_stages("Wgt", upgrades.weight, base_spec.weight_stage_max);
-            draw_stages("Exh", upgrades.exhaust, base_spec.exhaust_stage_max);
-            draw_stages("Int", upgrades.intake, base_spec.intake_stage_max);
-            draw_stages("Tur", upgrades.turbo, base_spec.turbo_stage_max);
-            if (base_spec.engine_peak_torque > 0.0f)
-            {
-                ImGui::TextColored(imvec4_from_u32(text_dim), "tq %.0f/%.0f",
-                    spec.engine_peak_torque, base_spec.engine_peak_torque);
-            }
-            ImGui::NewLine();
-        }
-
-        void section_chassis(Physics* physics)
-        {
-            section_header("Chassis");
-            car::Simulation* simulation = physics->GetVehicleSimulation();
-            const char* labels[4] = { "FL", "FR", "RL", "RR" };
-            const WheelIndex idx[4] = { WheelIndex::FrontLeft, WheelIndex::FrontRight, WheelIndex::RearLeft, WheelIndex::RearRight };
-            static constexpr int hist_n = 120;
-            static float history[4][hist_n] = {};
-            static int hist_pos = 0;
-            for (int i = 0; i < 4; ++i)
-            {
-                history[i][hist_pos] = physics->GetWheelCompression(idx[i]);
-            }
-            hist_pos = (hist_pos + 1) % hist_n;
-
-            if (ImGui::BeginTable("##corner_cards", 4, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_NoPadOuterX))
-            {
-                ImGui::TableNextRow();
-                for (int i = 0; i < 4; i++)
-                {
-                    ImGui::TableSetColumnIndex(i);
-                    ImGui::PushID(i);
-                    const float compression = physics->GetWheelCompression(idx[i]);
-                    const ImU32 compression_color = compression > 0.8f ? accent_danger : (compression > 0.5f ? accent_warn : accent_ok);
-                    ImGui::TextColored(imvec4_from_u32(text_primary), "%s", labels[i]);
-                    ImGui::SameLine();
-                    ImGui::TextColored(imvec4_from_u32(compression_color), "  suspension %.0f%%", compression * 100.0f);
-
-                    ImDrawList* dl = ImGui::GetWindowDrawList();
-                    ImVec2 tire_pos = ImGui::GetCursorScreenPos();
-                    float cell_width = ImGui::GetContentRegionAvail().x;
-                    const ImVec2 tire_size(42.0f, 68.0f);
-                    draw_tire_block(dl, physics, idx[i], ImVec2(tire_pos.x + 5.0f, tire_pos.y + 2.0f), tire_size, true);
-
-                    const float slip_angle = physics->GetWheelSlipAngle(idx[i]) * 57.2958f;
-                    const float slip_ratio = physics->GetWheelSlipRatio(idx[i]) * 100.0f;
-                    const float wear = physics->GetWheelWear(idx[i]) * 100.0f;
-                    const float core = physics->GetWheelCoreTemp(idx[i]);
-                    const float brake = physics->GetWheelBrakeTemp(idx[i]);
-                    const float grip = physics->GetWheelTempGripFactor(idx[i]) * 100.0f;
-                    const float text_x = tire_pos.x + 58.0f;
-                    dl->AddText(ImVec2(text_x, tire_pos.y + 2.0f), text_label, "SLIP");
-                    char value[48];
-                    snprintf(value, sizeof(value), "%+.1f deg  %+.0f%%", slip_angle, slip_ratio);
-                    dl->AddText(ImVec2(text_x, tire_pos.y + 18.0f), accent_warn, value);
-                    dl->AddText(ImVec2(text_x, tire_pos.y + 38.0f), text_label, "TIRE");
-                    snprintf(value, sizeof(value), "%.0f C  %.0f%% grip", core, grip);
-                    dl->AddText(ImVec2(text_x, tire_pos.y + 54.0f), temp_color(core), value);
-                    ImGui::Dummy(ImVec2(cell_width, tire_size.y + 7.0f));
-
-                    const float surface_in = physics->GetWheelSurfaceTemp(idx[i], 0);
-                    const float surface_mid = physics->GetWheelSurfaceTemp(idx[i], 1);
-                    const float surface_out = physics->GetWheelSurfaceTemp(idx[i], 2);
-                    ImGui::TextColored(imvec4_from_u32(text_label), "surface");
-                    ImGui::SameLine();
-                    ImGui::TextColored(imvec4_from_u32(temp_color(surface_mid)), "%.0f / %.0f / %.0f C", surface_in, surface_mid, surface_out);
-                    ImGui::TextColored(imvec4_from_u32(text_label), "wear");
-                    ImGui::SameLine();
-                    ImGui::TextColored(imvec4_from_u32(wear_color(wear * 0.01f)), "%.0f%%", wear);
-                    ImGui::SameLine(0.0f, 12.0f);
-                    ImGui::TextColored(imvec4_from_u32(text_label), "brake");
-                    ImGui::SameLine();
-                    ImGui::TextColored(imvec4_from_u32(brake > 700.0f ? accent_danger : (brake > 400.0f ? accent_warn : text_primary)), "%.0f C", brake);
-                    ImGui::TextColored(imvec4_from_u32(text_dim), "camber %+.2f  toe %+.2f  bump %+.2f", simulation->get_wheel_dynamic_camber(i) * 180.0f / pi, simulation->get_wheel_dynamic_toe(i) * 180.0f / pi, simulation->get_wheel_bump_steer(i) * 180.0f / pi);
-
-                    ImVec2 graph_tl = ImGui::GetCursorScreenPos();
-                    const float graph_width = std::max(80.0f, ImGui::GetContentRegionAvail().x - 4.0f);
-                    const float graph_height = 34.0f;
-                    ImVec2 graph_br(graph_tl.x + graph_width, graph_tl.y + graph_height);
-                    dl->AddRectFilled(graph_tl, graph_br, IM_COL32(18, 22, 28, 230), 4.0f);
-                    ImVec2 previous;
-                    for (int sample = 0; sample < hist_n; sample++)
-                    {
-                        const int history_index = (hist_pos + sample) % hist_n;
-                        const float value_y = std::clamp(history[i][history_index], 0.0f, 1.0f);
-                        const ImVec2 point(graph_tl.x + static_cast<float>(sample) / static_cast<float>(hist_n - 1) * graph_width, graph_br.y - value_y * (graph_height - 4.0f) - 2.0f);
-                        if (sample > 0)
-                        {
-                            dl->AddLine(previous, point, compression_color, 1.4f);
-                        }
-                        previous = point;
-                    }
-                    dl->AddRect(graph_tl, graph_br, panel_border, 4.0f, 1.0f);
-                    ImGui::Dummy(ImVec2(graph_width, graph_height + 3.0f));
-                    ImGui::PopID();
-                }
-                ImGui::EndTable();
-            }
-
-            float psi     = physics->GetTirePressure();
-            float psi_opt = physics->GetTirePressureOptimal();
-            float dpsi    = psi - psi_opt;
-            ImU32 pc = (fabsf(dpsi) < 0.1f) ? accent_ok : (fabsf(dpsi) < 0.3f ? accent_warn : accent_danger);
-            if (ImGui::BeginTable("##chassis_summary", 3, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoBordersInBody))
-            {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::TextColored(imvec4_from_u32(text_label), "ROLL STIFFNESS");
-                ImGui::TextColored(imvec4_from_u32(text_primary), "F %.0f  R %.0f Nm/rad", simulation->get_axle_roll_stiffness(true), simulation->get_axle_roll_stiffness(false));
-                ImGui::TableNextColumn();
-                ImGui::TextColored(imvec4_from_u32(text_label), "TIRE PRESSURE");
-                ImGui::TextColored(imvec4_from_u32(pc), "%.2f bar  %+.2f", psi, dpsi);
-                ImGui::TableNextColumn();
-                ImGui::TextColored(imvec4_from_u32(text_label), "RIDE HEIGHT");
-                if (simulation->get_aero_debug().valid)
-                {
-                    ImGui::TextColored(imvec4_from_u32(text_primary), "%.2f m", simulation->get_aero_debug().ride_height);
-                }
-                else
-                {
-                    ImGui::TextColored(imvec4_from_u32(text_dim), "n/a");
-                }
-                ImGui::EndTable();
-            }
-        }
-
-        void section_aero(Physics* physics)
-        {
-            ImDrawList* dl = ImGui::GetWindowDrawList();
-            section_header("Aerodynamics");
-            car::Simulation* simulation = physics->GetVehicleSimulation();
-
-            math::Vector3 velocity = physics->GetLinearVelocity();
-            float speed_kmh        = velocity.Length() * 3.6f;
-            float aero_speed_ms    = speed_kmh / 3.6f;
-
-            const car::aero_debug_data& aero = simulation->get_aero_debug();
-            float frontal_area = simulation->get_frontal_area();
-            float side_area    = simulation->get_side_area();
-            float drag_coeff   = simulation->get_drag_coeff();
-            const car::shape_2d& shape = simulation->get_shape_data();
-
-            const float avail_w = ImGui::GetContentRegionAvail().x;
-            const float side_view_w  = std::clamp(avail_w * 0.58f, 200.0f, 320.0f);
-            const float front_view_w = std::clamp(avail_w * 0.38f, 140.0f, 220.0f);
-            const float view_h       = 120.0f;
-
-            float shape_length = shape.max_z - shape.min_z;
-            float shape_width  = shape.max_x - shape.min_x;
-            float max_h        = std::max(shape_length, shape_width);
-            float ppm          = max_h > 0.01f ? (side_view_w * 0.90f) / max_h : 50.0f;
-
-            auto draw_profile = [&](const std::vector<std::pair<float, float>>& profile,
-                                    float min_axis, float max_axis, float min_y, float max_y,
-                                    float draw_x, float draw_y, float draw_w, float draw_h)
-            {
-                if (profile.size() < 3)
-                {
-                    return;
-                }
-                float axis_range = max_axis - min_axis;
-                float y_range    = max_y - min_y;
-                if (axis_range < 0.01f || y_range < 0.01f)
-                {
-                    return;
-                }
-                float scale_x = axis_range * ppm;
-                float scale_y = y_range * ppm;
-                float off_x   = draw_x + (draw_w - scale_x) * 0.5f;
-                float off_y   = draw_y + draw_h * 0.80f;
-                std::vector<ImVec2> pts;
-                pts.reserve(profile.size());
-                for (const auto& pt : profile)
-                {
-                    float nx = (pt.first - min_axis) / axis_range;
-                    float ny = (pt.second - min_y) / y_range;
-                    pts.push_back(ImVec2(off_x + nx * scale_x, off_y - ny * scale_y));
-                }
-                dl->AddConvexPolyFilled(pts.data(), (int)pts.size(), IM_COL32(40, 48, 60, 230));
-                dl->AddPolyline(pts.data(), (int)pts.size(), IM_COL32(80, 130, 180, 230), 2.0f, ImDrawFlags_Closed);
-            };
-
-            float drag_n = 0.0f, front_df_n = 0.0f, rear_df_n = 0.0f, side_n = 0.0f;
-            if (aero.valid && aero.drag_force.magnitude() > 0.1f)
-            {
-                drag_n     = aero.drag_force.magnitude();
-                front_df_n = aero.front_downforce.magnitude();
-                rear_df_n  = aero.rear_downforce.magnitude();
-                side_n     = aero.side_force.magnitude();
-            }
-            else if (aero_speed_ms > 0.5f)
-            {
-                float dyn_pressure      = 0.5f * car::tuning::air_density * aero_speed_ms * aero_speed_ms;
-                drag_n     = dyn_pressure * drag_coeff * frontal_area;
-                front_df_n = fabsf(simulation->get_lift_coeff_front() * dyn_pressure * frontal_area);
-                rear_df_n  = fabsf(simulation->get_lift_coeff_rear()  * dyn_pressure * frontal_area);
-            }
-            float total_df = front_df_n + rear_df_n;
-
-            const float fs      = 0.035f;
-            const float max_len = 60.0f;
-            auto arrow_with_label = [&](ImVec2 from, float dx, float dy, ImU32 color, float force_n)
-            {
-                draw_arrow(dl, from, dx, dy, color, 3.0f);
-                if (sqrtf(dx * dx + dy * dy) < 5.0f)
-                {
-                    return;
-                }
-                ImVec2 end(from.x + dx, from.y + dy);
-                char buf[16];
-                if (force_n >= 1000.0f)
-                {
-                    snprintf(buf, sizeof(buf), "%.1f kN", force_n / 1000.0f);
-                }
-                else
-                {
-                    snprintf(buf, sizeof(buf), "%.0f N", force_n);
-                }
-                dl->AddText(ImVec2(end.x + (dy != 0 ? 4.0f : -18.0f), end.y + (dx != 0 ? -14.0f : -4.0f)), color, buf);
-            };
-
-            if (ImGui::BeginTable("##aero_views", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersInnerV))
-            {
-                ImGui::TableSetupColumn("##side",  ImGuiTableColumnFlags_WidthFixed, side_view_w + 16.0f);
-                ImGui::TableSetupColumn("##front", ImGuiTableColumnFlags_WidthFixed, front_view_w + 16.0f);
-                ImGui::TableNextRow();
-
-                ImGui::TableNextColumn();
-                ImGui::TextColored(imvec4_from_u32(text_label), "Side");
-                {
-                    ImVec2 base = ImGui::GetCursorScreenPos();
-                    ImVec2 tl(base.x, base.y);
-                    ImVec2 br(tl.x + side_view_w, tl.y + view_h);
-                    draw_panel_background(dl, tl, br, 6.0f);
-                    if (shape.valid)
-                    {
-                        draw_profile(shape.side_profile, shape.min_z, shape.max_z, shape.min_y, shape.max_y, tl.x, tl.y, side_view_w, view_h);
-                    }
-                    if (drag_n > 10.0f)
-                    {
-                        arrow_with_label(ImVec2(tl.x + side_view_w * 0.06f, tl.y + view_h * 0.50f), -std::clamp(drag_n * fs, 10.0f, max_len), 0, accent_warn, drag_n);
-                    }
-                    if (front_df_n > 10.0f)
-                    {
-                        arrow_with_label(ImVec2(tl.x + side_view_w * 0.22f, tl.y + view_h * 0.10f), 0, std::clamp(front_df_n * fs, 10.0f, max_len), accent_info, front_df_n);
-                    }
-                    if (rear_df_n > 10.0f)
-                    {
-                        arrow_with_label(ImVec2(tl.x + side_view_w * 0.80f, tl.y + view_h * 0.10f), 0, std::clamp(rear_df_n * fs, 10.0f, max_len), accent_info, rear_df_n);
-                    }
-                    ImGui::Dummy(ImVec2(side_view_w, view_h + 4.0f));
-                }
-
-                ImGui::TableNextColumn();
-                ImGui::TextColored(imvec4_from_u32(text_label), "Front");
-                {
-                    ImVec2 base = ImGui::GetCursorScreenPos();
-                    ImVec2 tl(base.x, base.y);
-                    ImVec2 br(tl.x + front_view_w, tl.y + view_h);
-                    draw_panel_background(dl, tl, br, 6.0f);
-                    if (shape.valid)
-                    {
-                        draw_profile(shape.front_profile, shape.min_x, shape.max_x, shape.min_y, shape.max_y, tl.x, tl.y, front_view_w, view_h);
-                    }
-                    if (total_df > 10.0f)
-                    {
-                        arrow_with_label(ImVec2(tl.x + front_view_w * 0.5f, tl.y + view_h * 0.04f), 0, std::clamp(total_df * fs * 0.5f, 10.0f, max_len), accent_info, total_df);
-                    }
-                    if (side_n > 50.0f)
-                    {
-                        float dir = (aero.valid && aero.side_force.x < 0) ? -1.0f : 1.0f;
-                        arrow_with_label(ImVec2(tl.x + front_view_w * 0.5f, tl.y + view_h * 0.45f), dir * std::clamp(side_n * fs, 10.0f, max_len), 0, accent_warn, side_n);
-                    }
-                    ImGui::Dummy(ImVec2(front_view_w, view_h + 4.0f));
-                }
-                ImGui::EndTable();
-            }
-
-            if (ImGui::BeginTable("##aero_numbers", 4, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerV))
-            {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::TextColored(imvec4_from_u32(text_label), "Cd / Af / As");
-                ImGui::TextColored(imvec4_from_u32(text_primary), "%.2f / %.2f / %.2f", drag_coeff, frontal_area, side_area);
-                ImGui::TableNextColumn();
-                ImGui::TextColored(imvec4_from_u32(text_label), "drag");
-                ImGui::TextColored(imvec4_from_u32(accent_warn), "%.0f N", drag_n);
-                ImGui::TableNextColumn();
-                ImGui::TextColored(imvec4_from_u32(text_label), "front df");
-                ImGui::TextColored(imvec4_from_u32(accent_info), "%.0f N", front_df_n);
-                ImGui::TableNextColumn();
-                ImGui::TextColored(imvec4_from_u32(text_label), "rear df");
-                ImGui::TextColored(imvec4_from_u32(accent_info), "%.0f N", rear_df_n);
-                ImGui::EndTable();
-            }
-
-            if (total_df > 1.0f)
-            {
-                float balance = front_df_n / total_df * 100.0f;
-                ImGui::TextColored(imvec4_from_u32(text_primary), "df balance  F %.0f%%  R %.0f%%", balance, 100.0f - balance);
-                ImVec2 bar_tl = ImGui::GetCursorScreenPos();
-                float bw = std::min(ImGui::GetContentRegionAvail().x - 8.0f, 420.0f);
-                float bh = 8.0f;
-                dl->AddRectFilled(bar_tl, ImVec2(bar_tl.x + bw, bar_tl.y + bh), track_dim, 3.0f);
-                dl->AddRectFilled(bar_tl, ImVec2(bar_tl.x + bw * balance * 0.01f, bar_tl.y + bh), accent_info, 3.0f);
-                dl->AddRect(bar_tl, ImVec2(bar_tl.x + bw, bar_tl.y + bh), IM_COL32(70, 80, 92, 255), 3.0f, 1.0f);
-                ImGui::Dummy(ImVec2(bw, bh + 2.0f));
-                if (aero.valid && aero.ground_effect_factor > 1.01f)
-                {
-                    ImGui::TextColored(imvec4_from_u32(accent_ok), "ground effect +%.0f%%", (aero.ground_effect_factor - 1.0f) * 100.0f);
-                }
-            }
-        }
-
-        void section_engine(Physics* physics)
-        {
-            const engine_sound::debug_data& dbg = engine_sound::get_debug();
-            car::Simulation* simulation = physics->GetVehicleSimulation();
-
-            float ice_tq = simulation->get_engine_torque_current();
-            float mot_tq = simulation->get_motor_torque();
-            float rpm    = simulation->get_current_engine_rpm();
-            float boost  = simulation->get_boost_pressure();
-            float throt  = dbg.throttle;
-
-            section_header("Engine / sound");
-            ImGui::TextColored(imvec4_from_u32(accent_warn), "RPM %.0f  |  Throttle %.0f%%  |  Boost %.2f bar", rpm, throt * 100.0f, boost);
-            float mot_kw = simulation->get_motor_power_kw();
-            ImGui::Text("ICE %.0f Nm  |  Motor %.0f Nm (%.0f kW)  |  Total %.0f Nm", ice_tq, mot_tq, mot_kw, ice_tq + mot_tq);
-
-            {
-                const engine_sound::engine_config& cfg = engine_sound::get_synthesizer().get_config();
-                const char* layout = cfg.bank_count >= 2 ? (cfg.bank_angle_deg >= 170.0f ? "flat" : "v") : "inline";
-                ImGui::TextColored(
-                    imvec4_from_u32(text_dim),
-                    "%s%d  bank %.0f deg  %s  %.1f l  muffler %.2f  %s",
-                    layout,
-                    cfg.cylinder_count,
-                    cfg.bank_angle_deg,
-                    dbg.odd_fire ? "odd fire" : "even fire",
-                    cfg.displacement_l,
-                    cfg.muffler_level,
-                    cfg.turbo_enabled ? "turbo" : "na"
-                );
-                ImGui::TextColored(
-                    imvec4_from_u32(text_dim),
-                    "stages  eng %.0f%%  exh %.0f%%  int %.0f%%  tur %.0f%%   firing %.0f hz   pops %d",
-                    cfg.engine_stage * 100.0f,
-                    cfg.exhaust_stage * 100.0f,
-                    cfg.intake_stage * 100.0f,
-                    cfg.turbo_stage * 100.0f,
-                    dbg.firing_freq,
-                    dbg.pops_fired
-                );
-            }
-
-            ImGui::TextColored(imvec4_from_u32(text_label), "Layers");
-            if (ImGui::BeginTable("##eng_layers", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoBordersInBody))
-            {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                draw_level_bar("Exhaust", dbg.exhaust_level * 2.0f, IM_COL32(255, 180, 100, 255));
-                draw_level_bar("Intake",  dbg.intake_level * 4.0f,  IM_COL32(120, 200, 255, 255));
-                draw_level_bar("Pops",    dbg.pop_level * 2.0f,     IM_COL32(255, 120, 90, 255));
-                ImGui::TableNextColumn();
-                draw_level_bar("Turbo",   dbg.turbo_level * 4.0f,      IM_COL32(200, 255, 140, 255));
-                draw_level_bar("Mech",    dbg.mechanical_level * 8.0f, IM_COL32(220, 220, 220, 255));
-                draw_level_bar("Limiter", dbg.limiter_gain,            IM_COL32(220, 130, 255, 255));
-                ImGui::EndTable();
-            }
-
-            {
-                ImGui::TextColored(imvec4_from_u32(text_label), "Waveform");
-                ImGui::TextColored(
-                    imvec4_from_u32(text_dim),
-                    "mono output, last 512 samples"
-                );
-                {
-                    ImVec2 pos = ImGui::GetCursorScreenPos();
-                    float w = std::max(180.0f, ImGui::GetContentRegionAvail().x - 4.0f);
-                    float h = 80.0f;
-                    float cy = pos.y + h * 0.5f;
-                    ImDrawList* dl = ImGui::GetWindowDrawList();
-                    dl->AddRectFilled(pos, ImVec2(pos.x + w, pos.y + h), IM_COL32(20, 24, 30, 255), 4.0f);
-                    dl->AddLine(ImVec2(pos.x, cy), ImVec2(pos.x + w, cy), IM_COL32(70, 80, 92, 255));
-
-                    auto trace = [&](const float* buf, ImU32 c)
-                    {
-                        int n = engine_sound::debug_data::waveform_size;
-                        int start = dbg.waveform_write_pos;
-                        float peak = 1e-6f;
-                        for (int i = 0; i < n; ++i)
-                        {
-                            peak = std::max(peak, fabsf(buf[i]));
-                        }
-                        float scale = 0.45f / peak;
-                        float xs = w / (float)n;
-                        for (int i = 0; i < n - 1; ++i)
-                        {
-                            int i0 = (start + i) % n;
-                            int i1 = (start + i + 1) % n;
-                            ImVec2 p0(pos.x + i * xs,       cy - buf[i0] * h * scale);
-                            ImVec2 p1(pos.x + (i + 1) * xs, cy - buf[i1] * h * scale);
-                            dl->AddLine(p0, p1, c, 1.4f);
-                        }
-                    };
-                    trace(dbg.waveform,     IM_COL32(100, 255, 100, 255));
-                    dl->AddRect(pos, ImVec2(pos.x + w, pos.y + h), IM_COL32(70, 80, 92, 255), 4.0f, 1.0f);
-                    ImGui::Dummy(ImVec2(w, h));
-                }
-            }
-
-            const tire_squeal_sound::debug_data& tire_dbg = tire_squeal_sound::get_debug();
-            ImGui::TextColored(imvec4_from_u32(accent_info), "Squeal %.0f%%  speed %.0f%%", tire_dbg.intensity * 100.0f, tire_dbg.speed_norm * 100.0f);
-            if (ImGui::BeginTable("##eng_out", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoBordersInBody))
-            {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                draw_level_bar("Tone",    tire_dbg.tone_level,    IM_COL32(255, 160, 80, 255));
-                draw_level_bar("Screech", tire_dbg.screech_level, IM_COL32(255, 100, 180, 255));
-                draw_level_bar("Body",    tire_dbg.body_level,    IM_COL32(180, 180, 100, 255));
-                ImGui::TableNextColumn();
-                draw_level_bar("Engine",    dbg.output_level,      IM_COL32(100, 255, 100, 255));
-                draw_level_bar("Tire",      tire_dbg.output_level, IM_COL32(180, 100, 255, 255));
-                draw_level_bar("Eng peak",  dbg.output_peak,       IM_COL32(255, 255, 100, 255));
-                draw_level_bar("Tire peak", tire_dbg.output_peak,  IM_COL32(255, 200, 255, 255));
-                ImGui::EndTable();
-            }
-        }
-
-        void section_audio_tools()
-        {
-            section_header("Audio tools");
-
-            if (ImGui::CollapsingHeader("Sound tuning"))
-            {
-                ImGui::TextColored(
-                    imvec4_from_u32(text_dim),
-                    "Layer mix of the procedural engine, the character itself comes from the car spec and upgrades."
-                );
-                engine_sound::synthesizer& s = engine_sound::get_synthesizer();
-                ImGui::SliderFloat("exhaust",    &s.params.exhaust_level,    0.0f, 3.0f, "%.2f");
-                ImGui::SliderFloat("intake",     &s.params.intake_level,     0.0f, 4.0f, "%.2f");
-                ImGui::SliderFloat("turbo",      &s.params.turbo_level,      0.0f, 4.0f, "%.2f");
-                ImGui::SliderFloat("mechanical", &s.params.mechanical_level, 0.0f, 4.0f, "%.2f");
-                ImGui::SliderFloat("rasp",       &s.params.rasp,             0.0f, 3.0f, "%.2f");
-                ImGui::SliderFloat("pop_rate",   &s.params.pop_rate,         0.0f, 4.0f, "%.2f");
-                ImGui::SliderFloat("cabin_mix",  &s.params.cabin_mix,        0.0f, 1.0f, "%.2f");
-                ImGui::SliderFloat("master",     &s.params.master_gain,      0.0f, 2.0f, "%.2f");
-                ImGui::TextColored(
-                    imvec4_from_u32(text_dim),
-                    "cabin_mix: how much the hood and wheel views muffle the exhaust"
-                );
-                if (ImGui::Button("Reset to defaults"))
-                {
-                    s.params = engine_sound::runtime_params();
-                }
-            }
-
-            if (ImGui::CollapsingHeader("WAV dump"))
-            {
-                ImGui::TextColored(imvec4_from_u32(text_dim), "Captures live synth output to binaries/last_synth.wav.");
-                static double last_save_time = -1.0;
-                static bool   last_save_ok   = false;
-                double now = ImGui::GetTime();
-                engine_sound::synthesizer& s         = engine_sound::get_synthesizer();
-                const engine_sound::debug_data& dbg  = engine_sound::get_debug();
-
-                if (dbg.dump_ready)
-                {
-                    last_save_ok   = s.save_dump("last_synth.wav");
-                    last_save_time = now;
-                }
-
-                if (dbg.dump_total == 0)
-                {
-                    if (ImGui::Button("Dump 2s WAV"))
-                    {
-                        s.begin_dump(2.0f);
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::Button("Dump 5s WAV"))
-                    {
-                        s.begin_dump(5.0f);
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::Button("Dump 10s WAV"))
-                    {
-                        s.begin_dump(10.0f);
-                    }
-                }
-                else
-                {
-                    float pct = (float)dbg.dump_progress / (float)dbg.dump_total;
-                    ImGui::ProgressBar(pct, ImVec2(300, 0), "capturing...");
-                }
-
-                if (last_save_time > 0 && now - last_save_time < 6.0)
-                {
-                    if (last_save_ok)
-                    {
-                        ImGui::TextColored(imvec4_from_u32(accent_ok),     "saved binaries/last_synth.wav (%.1fs ago)", now - last_save_time);
-                    }
-                    else
-                    {
-                        ImGui::TextColored(imvec4_from_u32(accent_danger), "save FAILED (check working dir / permissions)");
-                    }
-                }
-            }
-        }
-    } // anonymous namespace
-
-    void draw_car_bench_window(Car* car_instance, Physics* physics)
-    {
-        car_bench::draw_window(car_instance, physics);
-    }
-
-    static void draw_workshop_window(Car* car_instance, Physics* physics, bool* p_open)
-    {
-        if (!car_instance || !physics)
-        {
-            return;
-        }
-
-        ImGuiIO& io = ImGui::GetIO();
-        if (io.DisplaySize.x < 200.0f || io.DisplaySize.y < 200.0f)
-        {
-            return;
-        }
-
-        const float win_w = std::clamp(io.DisplaySize.x * 0.68f, 1180.0f, 1560.0f);
-        const float win_h = std::clamp(io.DisplaySize.y * 0.88f, 760.0f, 1000.0f);
-        ImGui::SetNextWindowSizeConstraints(ImVec2(1180.0f, 700.0f), ImVec2(io.DisplaySize.x, io.DisplaySize.y));
-        ImGui::SetNextWindowSize(ImVec2(win_w, win_h), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - win_w - 16.0f, 36.0f), ImGuiCond_FirstUseEver);
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 5.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 6.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(8.0f, 5.0f));
-
-        if (ImGui::Begin("Vehicle workshop", p_open, ImGuiWindowFlags_NoCollapse))
-        {
-            ImVec2 cur = ImGui::GetWindowSize();
-            if (cur.x < 1180.0f)
-            {
-                ImGui::SetWindowSize(ImVec2(win_w, std::max(cur.y, win_h * 0.85f)));
-            }
-
-            draw_telemetry_summary(physics);
-            if (ImGui::BeginChild("##telemetry_funnel", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
-            {
-                section_setup(car_instance, physics);
-                section_chassis(physics);
-
-                if (ImGui::BeginTable("##aero_engine", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_NoPadOuterX))
-                {
-                    ImGui::TableSetupColumn("##aero", ImGuiTableColumnFlags_WidthStretch, 0.42f);
-                    ImGui::TableSetupColumn("##eng",  ImGuiTableColumnFlags_WidthStretch, 0.58f);
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    section_aero(physics);
-                    ImGui::TableNextColumn();
-                    section_engine(physics);
-                    ImGui::EndTable();
-                }
-
-                section_audio_tools();
-            }
-            ImGui::EndChild();
-        }
-        ImGui::End();
-        ImGui::PopStyleVar(4);
-    }
-
     void draw_telemetry_window(Car* car_instance, Physics* physics, bool* p_open)
     {
         if (!car_instance || !physics || !physics->GetVehicleSimulation())
@@ -1843,6 +815,9 @@ namespace spartan::car_hud
         s.tc_reduction = physics->GetTcReduction();
         s.distance = simulation->get_distance_m();
         s.abs_enabled = physics->GetAbsEnabled();
+        s.stability_enabled = spec.yaw_control_enabled;
+        s.steering_enabled = spec.assists.steering_speed_reduction > 0;
+        s.automatic = !physics->GetManualTransmission();
         s.tc_enabled = physics->GetTcEnabled();
         s.tc_active = physics->IsTcActive();
         s.drs_enabled = physics->GetDrsEnabled();
@@ -1877,15 +852,27 @@ namespace spartan::car_hud
         }
 
         static telemetry::history history;
-        static bool workshop_open = false;
+        telemetry::vehicle_options options;
+        std::vector<const car::car_definition*> definitions;
+        for (const auto& entry : car::preset_registry)
+        {
+            if (entry.definition == car_instance->GetDefinition())
+                options.selected = static_cast<int>(definitions.size());
+            options.names.emplace_back(entry.name);
+            definitions.push_back(entry.definition);
+        }
+        const int previous_selection = options.selected;
+        options.full_simulation = s.full_simulation;
+        options.skeleton = car_instance->GetVisualizationPreset() == CarVisualizationPreset::Skeleton;
+        options.collision = car_instance->GetSkeletonShowCollision();
         const double now = ImGui::GetTime();
         history.update(s, now);
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         const ImVec2 available(viewport->WorkSize.x - 24, viewport->WorkSize.y - 24);
         if (available.x < 200 || available.y < 200)
             return;
-        const float default_scale = std::min({1.0f, (available.x - 24) / 1200, (available.y - 76) / 700});
-        const ImVec2 size(1200 * default_scale + 24, 700 * default_scale + 76);
+        const float default_scale = std::min({1.0f, (available.x - 24) / 1200, (available.y - 76) / telemetry::window_content_height});
+        const ImVec2 size(1200 * default_scale + 24, telemetry::window_content_height * default_scale + 76);
         ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + available.x - size.x + 12,
             viewport->WorkPos.y + 12), ImGuiCond_FirstUseEver);
@@ -1900,29 +887,60 @@ namespace spartan::car_hud
         {
             const ImVec2 content = ImGui::GetContentRegionAvail();
             const float footer_height = ImGui::GetFrameHeightWithSpacing() + 4;
-            const float scale = std::max(0.01f, std::min(content.x / 1200, (content.y - footer_height) / 700));
+            const float scale = std::max(0.01f, std::min(content.x / 1200, (content.y - footer_height) / telemetry::window_content_height));
             const ImVec2 start = ImGui::GetCursorScreenPos();
             const ImVec2 origin(start.x + (content.x - 1200 * scale) * 0.5f, start.y);
-            const telemetry::painter painter{ImGui::GetWindowDrawList(), origin, scale};
-            telemetry::draw(painter, s, history, now);
-            ImGui::Dummy(ImVec2(content.x, 700 * scale));
+            telemetry::draw_vehicle_options({ImGui::GetWindowDrawList(), origin, scale}, options);
+            const telemetry::painter painter{ImGui::GetWindowDrawList(),
+                ImVec2(origin.x, origin.y + telemetry::vehicle_controls_height * scale), scale};
+            ImGui::PushID(physics);
+            ImGui::PushID(s.name.c_str());
+            // Remember the actual configured strength per car/preset, rather than
+            // replacing it with a generic value when the switch is re-enabled.
+            ImGuiStorage* storage = ImGui::GetStateStorage();
+            const ImGuiID steering_key = ImGui::GetID("steering_assist_strength");
+            if (s.steering_enabled)
+                storage->SetFloat(steering_key, spec.assists.steering_speed_reduction);
+            switch (telemetry::draw(painter, s, history, now))
+            {
+                case telemetry::control::abs: physics->SetAbsEnabled(!s.abs_enabled); break;
+                case telemetry::control::traction: physics->SetTcEnabled(!s.tc_enabled); break;
+                case telemetry::control::drs: physics->SetDrsEnabled(!s.drs_enabled); break;
+                case telemetry::control::turbo: physics->SetTurboEnabled(!s.turbo); break;
+                case telemetry::control::automatic: physics->SetManualTransmission(s.automatic); break;
+                case telemetry::control::stability: simulation->get_spec().yaw_control_enabled = !s.stability_enabled; break;
+                case telemetry::control::steering:
+                    simulation->get_spec().assists.steering_speed_reduction = s.steering_enabled ? 0.0f :
+                        storage->GetFloat(steering_key, car::assist_settings().steering_speed_reduction);
+                    break;
+                case telemetry::control::none: break;
+            }
+            ImGui::PopID();
+            ImGui::PopID();
+            ImGui::Dummy(ImVec2(content.x, telemetry::window_content_height * scale));
             bool recording = simulation->get_log_to_file();
             if (ImGui::Checkbox("Record CSV", &recording))
                 simulation->set_log_to_file(recording);
             hud_tooltip(simulation->get_telemetry_path().c_str());
-            ImGui::SameLine();
-            if (ImGui::Button("Workshop"))
-                workshop_open = !workshop_open;
-            ImGui::SameLine();
-            if (ImGui::Button("Bench"))
-                car_bench::open_window();
             ImGui::SameLine();
             ImGui::TextDisabled("I/C/O: tread zones | Blue: cold  Green: target  Amber: hot | Inputs: %%");
         }
         ImGui::End();
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(2);
-        if (workshop_open)
-            draw_workshop_window(car_instance, physics, &workshop_open);
+
+        // A model change rebuilds vehicle resources. Apply it only after drawing and
+        // do not use the old simulation/spec references again in this frame.
+        if (options.selected != previous_selection && options.selected >= 0 &&
+            options.selected < static_cast<int>(definitions.size()))
+            car_instance->LoadDefinition(definitions[options.selected]);
+        const VehicleSimMode mode = options.full_simulation ? VehicleSimMode::Full : VehicleSimMode::Cheap;
+        if (mode != car_instance->GetVehicleSimMode())
+            car_instance->SetVehicleSimMode(mode);
+        const CarVisualizationPreset view = options.skeleton ? CarVisualizationPreset::Skeleton : CarVisualizationPreset::Full;
+        if (view != car_instance->GetVisualizationPreset())
+            car_instance->SetVisualizationPreset(view);
+        if (options.collision != car_instance->GetSkeletonShowCollision())
+            car_instance->SetSkeletonShowCollision(options.collision);
     }
 }

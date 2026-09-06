@@ -924,8 +924,10 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
         float3 normal_sample = material_textures[normal_texture_index].SampleLevel(
             GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
 
-        normal_sample = normal_sample * 2.0f - 1.0f;
-        normal_sample.xy *= mat.normal;
+        // Same two-channel normal decode and strength as the raster G-buffer.
+        normal_sample = normalize(normal_sample * 2.0f - 1.0f);
+        normal_sample.z = sqrt(max(0.0f, 1.0f - dot(normal_sample.xy, normal_sample.xy)));
+        normal_sample.xy *= saturate(max(0.01f, mat.normal));
 
         float3 bitangent = normalize(cross(geometric_normal, tangent_world));
         float3x3 tbn     = float3x3(tangent_world, bitangent, geometric_normal);

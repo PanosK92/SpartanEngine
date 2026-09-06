@@ -3520,7 +3520,6 @@ namespace spartan
             {
                 car_hud::draw_telemetry_window(this, hud_physics, &m_show_telemetry);
             }
-            car_hud::draw_car_bench_window(this, hud_physics);
         }
 
         // osd controls cheat sheet, top left as tidy rows, each row reads action then keyboard or mouse then gamepad

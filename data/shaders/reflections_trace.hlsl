@@ -209,8 +209,11 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     
     // world space transform
     float3x3 obj_to_world = (float3x3)ObjectToWorld4x3();
-    float3 normal_world   = normalize(mul(normal_object, obj_to_world));
+    float3x3 world_to_obj = (float3x3)WorldToObject4x3();
+    float3 normal_world   = normalize(mul(normal_object, transpose(world_to_obj)));
     float3 tangent_world  = normalize(mul(tangent_object, obj_to_world));
+    if (dot(normal_world, WorldRayDirection()) > 0.0f)
+        normal_world = -normal_world;
     
     // world space uv, full uv state is per renderable from geometry_infos[InstanceIndex()]
     float3 hit_pos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
@@ -257,8 +260,14 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
         uint  normal_texture_index = material_index + material_texture_index_normal;
         float normal_mip           = clamp(distance_mip + lerp(1.5f, 0.0f, n_dot_v_hit), 0.0f, 5.0f);
         float3 normal_sample       = material_textures[normal_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, normal_mip).xyz;
-        normal_sample              = normal_sample * 2.0f - 1.0f;
+        // Match the G-buffer's BC5 decode. The texture's missing blue channel is zero,
+        // not a negative tangent-space Z; using it flips the normal behind the wall
+        // and makes the reflection's sky-visibility ray originate outside the room.
+        normal_sample = normalize(normal_sample * 2.0f - 1.0f);
+        normal_sample.z = sqrt(max(0.0f, 1.0f - dot(normal_sample.xy, normal_sample.xy)));
+        normal_sample.xy *= saturate(max(0.01f, mat.normal));
 
+        tangent_world = normalize(tangent_world - normal_world * dot(tangent_world, normal_world));
         float3 bitangent_world = normalize(cross(normal_world, tangent_world));
         float3x3 tbn           = float3x3(tangent_world, bitangent_world, normal_world);
         normal_world           = normalize(mul(normal_sample, tbn));

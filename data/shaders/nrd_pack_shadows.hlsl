@@ -85,13 +85,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         blocker_dist   = shadow.g;
     }
 
-    // acne self hits land at near zero t, treat them as unshadowed
-    const float k_self_hit = 0.08f;
-    if (is_local && visibility < 0.99f && blocker_dist < k_self_hit)
-    {
-        visibility = 1.0f;
-    }
-
+    // The shadow ray already offsets its origin. Close hits are real blockers
+    // (for example car trim and tire contacts), not evidence of an unoccluded ray.
     float distance_to_occluder = visibility >= 0.99f
         ? NRD_FP16_MAX
         : max(blocker_dist, 0.0f);

@@ -125,14 +125,11 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         if (!is_neighbor_gbuffer_compatible(neighbor_pixel, pos_ws, normal_ws, linear_depth, resolution))
             continue;
 
+        // Keep every compatible technique, including a zero or occluded draw. Selecting the
+        // neighbor set by its sampled radiance gives lucky bright paths extra MIS mass.
         // forward shift, the partner's path evaluated at this pixel, visibility already traced
         float4 forward = read_shift(t, neighbor_pixel);
-        if (forward.a <= 0.0f)
-            continue;
-
-        float target_j_at_c = target_scalar(forward.rgb);
-        if (target_j_at_c <= 0.0f)
-            continue;
+        float target_j_at_c = forward.a > 0.0f ? target_scalar(forward.rgb) : 0.0f;
 
         Reservoir neighbor = unpack_reservoir(
             tex_reservoir_prev0[neighbor_pixel],
@@ -142,14 +139,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             tex_reservoir_prev4[neighbor_pixel]
         );
 
-        if (!is_reservoir_valid(neighbor) || neighbor.M <= 0.0f || neighbor.W <= 0.0f)
-            continue;
-
-        // the partner already carries this pixel's path, merging a copy of the sample with
-        // itself adds no information and only compounds its confidence, which is how a single
-        // high energy path grows into a stable blob, dropping the pair keeps the mis weights
-        // normalized over the smaller neighbor set so the estimator stays unbiased
-        if (neighbor.sample.seed_path == center.sample.seed_path)
+        if (!is_reservoir_valid(neighbor) || neighbor.M <= 0.0f)
             continue;
 
         // backward shift, own sample evaluated at the partner, for pairwise mis, a failed
@@ -157,7 +147,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float4 backward       = read_shift(t, int2(pixel));
         float target_c_at_j   = backward.a > 0.0f ? target_scalar(backward.rgb) : 0.0f;
         float jacobian_c_to_j = backward.a > 0.0f ? backward.a                  : 0.0f;
-        float jacobian_j_to_c = forward.a;
+        float jacobian_j_to_c = max(forward.a, 0.0f);
 
         // pairwise mis shares, lin 2022 5.2, each share evaluates one sample under both
         // techniques, own domain target in the numerator, shifted target times the shift

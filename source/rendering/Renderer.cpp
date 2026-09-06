@@ -3189,10 +3189,12 @@ namespace spartan
             }
         }
 
-        // the atmosphere is driven entirely by slot 0, so a world with no lights at all leaves the
-        // sky panorama black, a neutral default sun keeps a viewport usable before anything is
-        // loaded, worlds that deliberately light with point lights only are left untouched
-        if (!first_directional && m_count_active_lights == 0)
+        // Keep the empty editor usable before a world is loaded. An empty visible-light list
+        // in an authored world is legitimate (all lights may be culled, disabled or absent).
+        // Adding an unshadowed sun there lights enclosed dark rooms and changes the sky as
+        // the camera turns away from the last visible local light.
+        if (World::GetFilePath().empty() && light_entities().empty() &&
+            !first_directional && m_count_active_lights == 0)
         {
             Sb_Light& sun         = m_bindless_lights[0];
             sun.color             = Color(1.0f, 1.0f, 1.0f, 1.0f);
@@ -3207,10 +3209,16 @@ namespace spartan
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
         buffer->ResetOffset();
         
-        if (m_count_active_lights > 0)
+        // Slot 0 is also read directly by the sky and primary-light shaders. Clear it on
+        // the GPU when the last light disappears instead of leaving the previous sun live.
+        if (m_count_active_lights == 0)
         {
-            buffer->Update(&m_bindless_lights[0], buffer->GetStride() * m_count_active_lights);
+            m_bindless_lights[0] = Sb_Light();
+            // Atmosphere shaders still use this direction even at zero intensity.
+            m_bindless_lights[0].direction       = Vector3(0.0f, -1.0f, 0.0f);
+            m_bindless_lights[0].direction_right = Vector3(1.0f, 0.0f, 0.0f);
         }
+        buffer->Update(&m_bindless_lights[0], buffer->GetStride() * max(m_count_active_lights, 1u));
 
         // upload the compact volumetric light index list, count flows through buffer_frame.volumetric_light_count
         m_volumetric_light_count = volumetric_count;
@@ -4340,7 +4348,7 @@ namespace spartan
 
             RHI_Texture* tex_in  = tex_sdr;
             RHI_Texture* tex_out = tex_ping;
-            Pass_PostProcess_DisplayEffects(tex_in, tex_out, false);
+            Pass_PostProcess_DisplayEffects(tex_in, tex_out, false, true);
 
             if (tex_in != tex_sdr)
             {

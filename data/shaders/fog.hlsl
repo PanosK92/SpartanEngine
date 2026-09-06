@@ -254,6 +254,24 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
 }
 
 #ifdef RAY_TRACING_ENABLED
+float fog_trace_visibility(float3 origin, float3 direction, float t_max)
+{
+    RayDesc ray;
+    ray.Origin    = origin;
+    ray.Direction = direction;
+    ray.TMin      = 0.001f;
+    ray.TMax      = t_max;
+
+    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
+    while (query.Proceed())
+    {
+        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+            query.CommitNonOpaqueTriangleHit();
+    }
+    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
+}
+
 float fog_trace_shadow(Light light, float3 sample_pos)
 {
     float3 light_dir;
@@ -290,16 +308,7 @@ float fog_trace_shadow(Light light, float3 sample_pos)
         t_max = max(dist - emitter_safety, 0.001f);
     }
 
-    RayDesc ray;
-    ray.Origin    = origin;
-    ray.Direction = direction;
-    ray.TMin      = 0.001f;
-    ray.TMax      = t_max;
-
-    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
-    query.Proceed();
-    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
+    return fog_trace_visibility(origin, direction, t_max);
 }
 #endif
 

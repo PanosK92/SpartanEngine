@@ -197,7 +197,7 @@ namespace spartan
     TConsoleVar<float> cvar_motion_blur                    ("r.motion_blur",                    1.0f,                                                    "motion blur");
     TConsoleVar<float> cvar_depth_of_field                 ("r.depth_of_field",                 1.0f,                                                    "depth of field");
     TConsoleVar<float> cvar_film_grain                     ("r.film_grain",                     0.0f,                                                    "film grain effect");
-    TConsoleVar<float> cvar_vhs                            ("r.vhs",                            0.0f,                                                    "vhs retro effect");
+    TConsoleVar<float> cvar_vhs                            ("r.vhs",                            0.0f,                                                    "NTSC VHS playback: tape jitter, colour bandwidth loss, dropouts and head switching");
     TConsoleVar<float> cvar_chromatic_aberration           ("r.chromatic_aberration",           0.0f,                                                    "chromatic aberration");
     TConsoleVar<float> cvar_dithering                      ("r.dithering",                      0.0f,                                                    "dithering to reduce banding");
     TConsoleVar<float> cvar_sharpness                      ("r.sharpness",                      0.0f,                                                    "sharpening intensity");

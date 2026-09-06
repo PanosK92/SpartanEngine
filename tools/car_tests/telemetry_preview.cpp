@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Render the production telemetry drawing code without a world, GPU or running editor.
 #include "car/CarTelemetry.h"
+#include "imgui/source/imgui_internal.h"
 #define FREEIMAGE_LIB
 #include "FreeImage/FreeImage.h"
 #include <cassert>
@@ -127,6 +128,103 @@ static void save_frame(const char* path, int width, int height)
     FreeImage_Unload(bitmap);
 }
 
+static control render_frame(const snapshot& s, const history& h, float scale, vehicle_options* edited_options = nullptr)
+{
+    ImGui::NewFrame();
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+    ImGui::Begin("Telemetry test", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground |
+        ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollWithMouse);
+    vehicle_options fixture_options;
+    fixture_options.names = {"Ferrari LaFerrari", "Mitsubishi Lancer Evolution IX", "Porsche 911 GT3"};
+    fixture_options.selected = 0;
+    fixture_options.full_simulation = s.full_simulation;
+    draw_vehicle_options({ImGui::GetWindowDrawList(), ImVec2(16, 16), scale},
+        edited_options ? *edited_options : fixture_options);
+    const control result = draw({ImGui::GetWindowDrawList(), ImVec2(16, 16 + vehicle_controls_height * scale), scale}, s, h, 8);
+    ImGui::End();
+    ImGui::Render();
+    for (ImTextureData* texture : ImGui::GetPlatformIO().Textures)
+    {
+        if (texture->Status == ImTextureStatus_WantCreate || texture->Status == ImTextureStatus_WantUpdates)
+        {
+            texture->SetTexID(static_cast<ImTextureID>(texture->UniqueID));
+            texture->SetStatus(ImTextureStatus_OK);
+        }
+    }
+    return result;
+}
+
+static void check_controls(snapshot s, const history& h, float scale)
+{
+    const control expected[] = {control::abs, control::traction, control::stability,
+        control::steering, control::automatic, control::drs, control::turbo};
+    ImGuiIO& io = ImGui::GetIO();
+    // Exercise real ImGui hit targets, releases and disabled states at each tested scale.
+    for (int mode = 0; mode < 3; ++mode)
+    {
+        s.full_simulation = mode != 2;
+        s.abs_enabled = s.tc_enabled = s.stability_enabled = s.steering_enabled =
+            s.automatic = s.drs_enabled = s.turbo = mode == 0;
+        for (int i = 0; i < 7; ++i)
+        {
+            constexpr float width = (1200.0f - 6 * 8) / 7;
+            io.AddMousePosEvent(16 + (i * (width + 8) + width * 0.5f) * scale,
+                16 + (686 + vehicle_controls_height) * scale);
+            assert(render_frame(s, h, scale) == control::none);
+            io.AddMouseButtonEvent(0, true);
+            assert(render_frame(s, h, scale) == control::none);
+            io.AddMouseButtonEvent(0, false);
+            assert(render_frame(s, h, scale) == (s.full_simulation ? expected[i] : control::none));
+        }
+    }
+    io.AddMousePosEvent(-100, -100);
+}
+
+static void check_vehicle_options(const snapshot& s, const history& h, float scale)
+{
+    vehicle_options options;
+    options.names = {"Ferrari LaFerrari", "Mitsubishi Lancer Evolution IX", "Porsche 911 GT3"};
+    options.selected = 0;
+    ImGuiIO& io = ImGui::GetIO();
+    const auto click = [&](float x, float y)
+    {
+        io.AddMousePosEvent(x, y);
+        render_frame(s, h, scale, &options);
+        io.AddMouseButtonEvent(0, true);
+        render_frame(s, h, scale, &options);
+        io.AddMouseButtonEvent(0, false);
+        render_frame(s, h, scale, &options);
+    };
+    const auto select = [&](float x, int index)
+    {
+        click(16 + x * scale, 16 + 32 * scale);
+        render_frame(s, h, scale, &options); // allow a newly opened popup to finish sizing
+        const ImGuiWindow* popup = ImGui::FindWindowByName("##Combo_00");
+        assert(popup && popup->Active);
+        const float row_height = 14 * scale + ImGui::GetStyle().ItemSpacing.y;
+        click(popup->DC.CursorStartPos.x + 20 * scale,
+            popup->DC.CursorStartPos.y + index * row_height + 7 * scale);
+    };
+    select(150, 1);
+    assert(options.selected == 1); // Mitsubishi
+    select(150, 2);
+    assert(options.selected == 2); // Porsche
+    select(500, 1);
+    assert(!options.full_simulation);
+    select(500, 0);
+    assert(options.full_simulation);
+    select(730, 1);
+    assert(options.skeleton);
+    select(730, 0);
+    assert(!options.skeleton);
+    click(16 + 960 * scale, 16 + 32 * scale);
+    assert(options.collision && options.skeleton);
+    click(16 + 960 * scale, 16 + 32 * scale);
+    assert(!options.collision && options.skeleton);
+    io.AddMousePosEvent(-100, -100);
+}
+
 int main(int argc, char** argv)
 {
     FreeImage_Initialise();
@@ -137,7 +235,7 @@ int main(int argc, char** argv)
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = nullptr;
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
-    io.DisplaySize = ImVec2(1200 * scale + 32, 700 * scale + 32);
+    io.DisplaySize = ImVec2(1200 * scale + 32, window_content_height * scale + 32);
     io.Fonts->AddFontFromFileTTF("data/fonts/Inter/Inter-Regular.ttf", 14);
     snapshot s;
     s.vehicle_id = 1; s.name = "Ferrari LaFerrari"; s.gear = "4"; s.differential = "LSD";
@@ -146,6 +244,7 @@ int main(int argc, char** argv)
     s.lateral_g = 0.82f; s.longitudinal_g = 0.34f; s.steering = 0.18f;
     s.hybrid = true; s.battery_soc = 0.76f; s.battery_temp = 38; s.battery_kw = 102;
     s.abs_enabled = s.tc_enabled = s.drs_enabled = s.aero_valid = true;
+    s.stability_enabled = s.steering_enabled = s.automatic = true;
     s.front_downforce = 650; s.rear_downforce = 1100; s.drag = 940; s.ride_height = 0.116f; s.distance = 7340;
     for (int i = 0; i < 4; ++i)
     {
@@ -175,11 +274,12 @@ int main(int argc, char** argv)
         for (int w = 0; w < 4; ++w) v.wheels[w].compression += std::sin(i * 0.16f + w) * 0.13f;
         h.update(v, i / 30.0);
     }
-    ImGui::NewFrame();
-    draw({ImGui::GetBackgroundDrawList(), ImVec2(16, 16), scale}, s, h, 8);
-    ImGui::Render();
+    render_frame(s, h, scale);
+    check_controls(s, h, scale);
+    check_vehicle_options(s, h, scale);
+    render_frame(s, h, scale);
     save_frame(argc > 1 ? argv[1] : "binaries/car_tests/telemetry.png", static_cast<int>(io.DisplaySize.x), static_cast<int>(io.DisplaySize.y));
     ImGui::DestroyContext();
     FreeImage_DeInitialise();
-    std::puts("Telemetry history checks and production dashboard render passed.");
+    std::puts("Telemetry history, assist switches, vehicle selectors, collision toggle and dashboard render passed.");
 }
