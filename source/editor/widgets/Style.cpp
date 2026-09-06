@@ -43,9 +43,8 @@ namespace
 Style::Style(Editor* editor) : Widget(editor)
 {
     m_title              = "Style";
-    m_size_initial       = Vector2(424, 600);
-    m_flags             |= ImGuiWindowFlags_NoScrollbar;
-    m_padding            = Vector2(8.0f);
+    m_size_initial       = Vector2(460, 760) * Window::GetDpiScale();
+    m_padding            = Vector2(12.0f) * Window::GetDpiScale();
     m_visible            = false;
     m_show_in_view_menu  = false;
 
@@ -60,6 +59,32 @@ Style::Style(Editor* editor) : Widget(editor)
         ImGui::Style::StyleSpartan();
         ImGui::Style::SetupImGuiColors();
         SaveStyleColors("imgui_style_user.bin");
+    }
+    else
+    {
+        // Upgrade the previous factory palette in memory. Keep the saved file intact
+        // until the user explicitly saves the new theme, including any fine-tuned colors.
+        const ImVec4 legacy[] = {
+            {0.082f, 0.090f, 0.102f, 1}, {0.137f, 0.153f, 0.176f, 1},
+            {0.945f, 0.953f, 0.961f, 1}, {0.588f, 0.627f, 0.678f, 1},
+            {0.208f, 0.725f, 0.914f, 1}, {0.129f, 0.494f, 0.667f, 1},
+            {0.353f, 0.769f, 0.514f, 1}, {0.588f, 0.753f, 0.933f, 1},
+            {0.941f, 0.678f, 0.306f, 1}, {0.925f, 0.361f, 0.373f, 1}
+        };
+        const ImVec4 current[] = {bg_color_1, bg_color_2, h_color_1, h_color_2,
+            color_accent_1, color_accent_2, color_ok, color_info, color_warning, color_error};
+        ImVec4 previous_blue[IM_ARRAYSIZE(legacy)];
+        memcpy(previous_blue, legacy, sizeof(legacy));
+        previous_blue[0] = {0.067f, 0.075f, 0.090f, 1};
+        previous_blue[1] = {0.125f, 0.141f, 0.169f, 1};
+        previous_blue[4] = {0.365f, 0.620f, 1.000f, 1};
+        previous_blue[5] = {0.153f, 0.365f, 0.745f, 1};
+        if (memcmp(legacy, current, sizeof(legacy)) == 0 || memcmp(previous_blue, current, sizeof(previous_blue)) == 0)
+        {
+            ImGui::Style::StyleSpartan();
+            ImGui::Style::SetupImGuiColors();
+            m_style_preset_id = 0;
+        }
     }
 
     ImGui::GetStyle().ScaleAllSizes(spartan::Window::GetDpiScale());
@@ -184,6 +209,8 @@ void Style::OnTickVisible()
                 ImGui::Style::SyncSemanticColorsFromImGui();
                 break;
         }
+        ImGui::GetStyle().ScaleAllSizes(spartan::Window::GetDpiScale());
+        m_unsaved_changes = true;
     }
 
     // color editors
@@ -212,8 +239,8 @@ void Style::OnTickVisible()
         color_edit("Error",        color_error);
 
         ImGui::PopStyleVar();
-        ImGui::EndChild();
     }
+    ImGui::EndChild();
 
     // save/reset buttons
     if (ImGui::Button("Save as User Theme"))
@@ -226,6 +253,9 @@ void Style::OnTickVisible()
     {
         ImGui::Style::StyleSpartan();
         ImGui::Style::SetupImGuiColors();
+        ImGui::GetStyle().ScaleAllSizes(spartan::Window::GetDpiScale());
+        m_style_preset_id = 0;
+        m_unsaved_changes = false;
         SaveStyleColors("imgui_style_user.bin");
     }
 

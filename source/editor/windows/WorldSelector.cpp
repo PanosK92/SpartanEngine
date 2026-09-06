@@ -99,10 +99,10 @@ namespace
 
     const char* world_recency_file = "spartan_worlds.xml";
 
-    const char* assets_url          = "https://www.dropbox.com/scl/fi/u5z7cwz3geeoui18pxr3d/project.7z?rlkey=9xjttf4vo2en60bcvue7pkezx&dl=1";
+    const char* assets_url          = "https://www.dropbox.com/scl/fi/pkh7ix0qm6rd747ym21pn/project.7z?rlkey=wdqf3qzmemjzirrvrk78043vp&dl=1";
     const char* assets_destination  = "project/project.7z";
     const char* assets_extract_dir  = "project/";
-    const char* assets_expected_sha = "00e540eb7ad742ac39ae6d051c65618847ad3a8175d39fba6fd0bee9537b78d8";
+    const char* assets_expected_sha = "a6d382683398cdce82748651c534ea0ea31ce733fdf6a6561ce2918a3027bdd3";
 
     float dpi()
     {
@@ -673,12 +673,27 @@ namespace
 
         if (preview_tex && preview_tex->GetRhiResource())
         {
+            // Fill cards and the larger detail preview without stretching the scene.
+            const float image_aspect = static_cast<float>(preview_tex->GetWidth()) / preview_tex->GetHeight();
+            const float frame_aspect = (max_pos.x - min_pos.x) / (max_pos.y - min_pos.y);
+            ImVec2 uv_min(0.0f, 0.0f);
+            ImVec2 uv_max(1.0f, 1.0f);
+            if (image_aspect > frame_aspect)
+            {
+                uv_min.x = (1.0f - frame_aspect / image_aspect) * 0.5f;
+                uv_max.x = 1.0f - uv_min.x;
+            }
+            else
+            {
+                uv_min.y = (1.0f - image_aspect / frame_aspect) * 0.5f;
+                uv_max.y = 1.0f - uv_min.y;
+            }
             draw_list->AddImageRounded(
                 reinterpret_cast<ImTextureID>(preview_tex),
                 min_pos,
                 max_pos,
-                ImVec2(0.0f, 0.0f),
-                ImVec2(1.0f, 1.0f),
+                uv_min,
+                uv_max,
                 IM_COL32(255, 255, 255, 255),
                 rounding
             );
@@ -848,16 +863,17 @@ namespace
     void draw_header(float content_w)
     {
         const float start_x = ImGui::GetCursorPosX();
+        ImGui::TextColored(ImGui::Style::color_accent_1, "SPARTAN ENGINE");
         if (Editor::font_bold)
         {
-            ImGui::PushFont(Editor::font_bold, 0.0f);
+            ImGui::PushFont(Editor::font_bold, scaled(26.0f));
         }
-        ImGui::TextUnformatted("Choose a world");
+        ImGui::TextUnformatted("Your worlds");
         if (Editor::font_bold)
         {
             ImGui::PopFont();
         }
-        ImGui::TextDisabled("Select a world to open in the editor");
+        ImGui::TextDisabled("Open a scene to explore, build and refine.");
 
         string count = search_filter.IsActive() ? to_string(visible_indices.size()) + " of " + to_string(world_files.size()) + " worlds" : to_string(world_files.size()) + " worlds";
         float count_w  = ImGui::CalcTextSize(count.c_str()).x + scaled(16.0f);
@@ -1049,13 +1065,17 @@ namespace
 
         update_colors();
 
-        ImGui::SetNextWindowSize(scaled_vec(1600.0f, 900.0f), ImGuiCond_Appearing);
-        ImGui::SetNextWindowSizeConstraints(scaled_vec(960.0f, 540.0f), scaled_vec(2400.0f, 1350.0f));
-        ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        const ImVec2 available(viewport->WorkSize.x * 0.92f, viewport->WorkSize.y * 0.92f);
+        // Fit the initial placement to the editor, then let ImGui preserve the user's
+        // position and size, including a detached platform window on another monitor.
+        ImGui::SetNextWindowSize(ImVec2(min(scaled(1440.0f), available.x), min(scaled(880.0f), available.y)), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSizeConstraints(scaled_vec(480.0f, 320.0f), ImVec2(FLT_MAX, FLT_MAX));
+        ImGui::SetNextWindowPos(viewport->GetWorkCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, scaled_vec(16.0f, 16.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, scaled(panel_rounding));
-        ImGuiWindowFlags flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
         if (ImGui::Begin("World Launcher", &visible_world_list, flags))
         {
             if (spartan::FileSystem::IsDirectoryEmpty(spartan::ResourceCache::GetProjectDirectory()))

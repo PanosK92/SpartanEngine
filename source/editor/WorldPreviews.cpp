@@ -200,6 +200,14 @@ namespace
         return string(spartan::ResourceCache::GetProjectDirectory()) + "/previews";
     }
 
+    string get_authored_preview_path(const string& world_file_path)
+    {
+        // Keep curated previews beside their worlds so they ship with the repository
+        // and can also be used directly by the README. Custom worlds retain the cache.
+        return spartan::FileSystem::GetDirectoryFromFilePath(world_file_path) + "previews/" +
+            spartan::FileSystem::GetFileNameWithoutExtensionFromFilePath(world_file_path) + ".png";
+    }
+
     bool ensure_preview_directory_exists()
     {
         const string directory = get_preview_directory();
@@ -219,7 +227,7 @@ namespace
         }
     }
 
-    spartan::RHI_Texture* get_texture(const string& preview_path)
+    spartan::RHI_Texture* get_texture(const string& preview_path, bool allow_delete)
     {
         if (!spartan::FileSystem::Exists(preview_path))
         {
@@ -230,7 +238,7 @@ namespace
         {
             preview_textures.erase(path);
 
-            if (spartan::FileSystem::Exists(path))
+            if (allow_delete && spartan::FileSystem::Exists(path))
             {
                 spartan::FileSystem::Delete(path);
             }
@@ -417,6 +425,12 @@ void WorldPreviews::RequestGeneration(const string& world_file_path)
 
 string WorldPreviews::GetPreviewPath(const string& world_file_path)
 {
+    const string authored_path = get_authored_preview_path(world_file_path);
+    if (spartan::FileSystem::Exists(authored_path))
+    {
+        return authored_path;
+    }
+
     const string normalized_path = normalize_path(world_file_path);
     const string world_name      = sanitize_name(spartan::FileSystem::GetFileNameWithoutExtensionFromFilePath(world_file_path));
     const string world_hash      = to_hex_string(compute_hash_fnv1a(normalized_path));
@@ -426,5 +440,7 @@ string WorldPreviews::GetPreviewPath(const string& world_file_path)
 
 spartan::RHI_Texture* WorldPreviews::GetTexture(const string& world_file_path)
 {
-    return get_texture(GetPreviewPath(world_file_path));
+    const string preview_path = GetPreviewPath(world_file_path);
+    // A corrupt generated cache entry can be rebuilt; never delete authored assets.
+    return get_texture(preview_path, preview_path != get_authored_preview_path(world_file_path));
 }

@@ -26,12 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace ImGui::Style
 {
-    inline ImVec4 bg_color_1     = {0.082f, 0.090f, 0.102f, 1.0f};
-    inline ImVec4 bg_color_2     = {0.137f, 0.153f, 0.176f, 1.0f};
+    inline ImVec4 bg_color_1     = {0.067f, 0.075f, 0.090f, 1.0f};
+    inline ImVec4 bg_color_2     = {0.125f, 0.141f, 0.169f, 1.0f};
     inline ImVec4 h_color_1      = {0.945f, 0.953f, 0.961f, 1.0f};
     inline ImVec4 h_color_2      = {0.588f, 0.627f, 0.678f, 1.0f};
-    inline ImVec4 color_accent_1 = {0.208f, 0.725f, 0.914f, 1.0f};
-    inline ImVec4 color_accent_2 = {0.129f, 0.494f, 0.667f, 1.0f};
+    inline ImVec4 color_accent_1 = {0.439f, 0.831f, 1.000f, 1.0f};
+    inline ImVec4 color_accent_2 = {0.196f, 0.525f, 0.690f, 1.0f};
 
     inline ImVec4 color_ok      = {0.353f, 0.769f, 0.514f, 1.0f};
     inline ImVec4 color_info    = {0.588f, 0.753f, 0.933f, 1.0f};
@@ -68,19 +68,19 @@ namespace ImGui::Style
     inline void SetupLayout()
     {
         ImGuiStyle& style          = ImGui::GetStyle();
-        style.WindowPadding        = ImVec2(8.0f, 6.0f);
-        style.FramePadding         = ImVec2(8.0f, 5.0f);
+        style.WindowPadding        = ImVec2(12.0f, 10.0f);
+        style.FramePadding         = ImVec2(9.0f, 5.0f);
         style.CellPadding          = ImVec2(8.0f, 4.0f);
         style.ItemSpacing          = ImVec2(8.0f, 6.0f);
         style.ItemInnerSpacing     = ImVec2(6.0f, 4.0f);
         style.IndentSpacing        = 20.0f;
         style.ColumnsMinSpacing    = 8.0f;
-        style.ScrollbarSize        = 12.0f;
+        style.ScrollbarSize        = 10.0f;
         style.GrabMinSize          = 9.0f;
         style.WindowBorderSize     = 1.0f;
         style.ChildBorderSize      = 1.0f;
         style.PopupBorderSize      = 1.0f;
-        style.FrameBorderSize      = 1.0f;
+        style.FrameBorderSize      = 0.0f;
         style.TabBorderSize        = 0.0f;
         style.TabBarBorderSize     = 1.0f;
         style.TabBarOverlineSize   = 2.0f;
@@ -90,8 +90,8 @@ namespace ImGui::Style
         style.PopupRounding        = 8.0f;
         style.ScrollbarRounding    = 6.0f;
         style.GrabRounding         = 4.0f;
-        style.TabRounding          = 5.0f;
-        style.TabMinWidthBase      = 72.0f;
+        style.TabRounding          = 3.0f;
+        style.TabMinWidthBase      = 88.0f;
         style.TabMinWidthShrink    = 48.0f;
         style.WindowMinSize        = ImVec2(32.0f, 32.0f);
         style.WindowTitleAlign     = ImVec2(0.0f, 0.5f);
@@ -104,12 +104,12 @@ namespace ImGui::Style
 
     inline void StyleSpartan()
     {
-        bg_color_1     = {0.082f, 0.090f, 0.102f, 1.0f};
-        bg_color_2     = {0.137f, 0.153f, 0.176f, 1.0f};
+        bg_color_1     = {0.067f, 0.075f, 0.090f, 1.0f};
+        bg_color_2     = {0.125f, 0.141f, 0.169f, 1.0f};
         h_color_1      = {0.945f, 0.953f, 0.961f, 1.0f};
         h_color_2      = {0.588f, 0.627f, 0.678f, 1.0f};
-        color_accent_1 = {0.208f, 0.725f, 0.914f, 1.0f};
-        color_accent_2 = {0.129f, 0.494f, 0.667f, 1.0f};
+        color_accent_1 = {0.439f, 0.831f, 1.000f, 1.0f};
+        color_accent_2 = {0.196f, 0.525f, 0.690f, 1.0f};
         color_ok       = {0.353f, 0.769f, 0.514f, 1.0f};
         color_info     = {0.588f, 0.753f, 0.933f, 1.0f};
         color_warning  = {0.941f, 0.678f, 0.306f, 1.0f};
@@ -194,16 +194,16 @@ namespace ImGui::Style
         style.Colors[ImGuiCol_TitleBg]               = color_panel;
         style.Colors[ImGuiCol_TitleBgActive]         = color_panel;
         style.Colors[ImGuiCol_TitleBgCollapsed]      = color_panel;
-        style.Colors[ImGuiCol_MenuBarBg]             = lerp(bg_color_1, bg_color_2, 0.35f);
+        style.Colors[ImGuiCol_MenuBarBg]             = color_canvas_deep;
         style.Colors[ImGuiCol_Tab]                   = color_panel;
         style.Colors[ImGuiCol_TabDimmed]             = color_panel;
         style.Colors[ImGuiCol_TabHovered]            = color_surface_hover;
 
-        ImVec4 tab_selected = lerp(color_canvas, color_surface, 0.38f);
+        ImVec4 tab_selected = color_canvas;
         style.Colors[ImGuiCol_TabSelected]           = tab_selected;
         style.Colors[ImGuiCol_TabDimmedSelected]     = tab_selected;
         style.Colors[ImGuiCol_TabSelectedOverline]   = color_accent_1;
-        style.Colors[ImGuiCol_TabDimmedSelectedOverline] = color_accent_1;
+        style.Colors[ImGuiCol_TabDimmedSelectedOverline] = color_border_strong;
 
         style.Colors[ImGuiCol_FrameBg]        = color_canvas_deep;
         style.Colors[ImGuiCol_FrameBgHovered] = lerp(
@@ -242,7 +242,7 @@ namespace ImGui::Style
             0.46f
         );
 
-        style.Colors[ImGuiCol_SliderGrab]       = color_surface_hover;
+        style.Colors[ImGuiCol_SliderGrab]       = color_accent_2;
         style.Colors[ImGuiCol_SliderGrabActive] = color_accent_1;
 
         style.Colors[ImGuiCol_Header]        = color_surface;
@@ -286,7 +286,7 @@ namespace ImGui::Style
         style.Colors[ImGuiCol_UnsavedMarker]          = color_warning;
         style.Colors[ImGuiCol_NavCursor]              = color_accent_1;
         style.Colors[ImGuiCol_NavWindowingHighlight]  = color_accent_1;
-        style.Colors[ImGuiCol_DockingPreview]         = color_accent_1;
+        style.Colors[ImGuiCol_DockingPreview]         = with_alpha(color_accent_1, 0.30f);
         style.Colors[ImGuiCol_DockingEmptyBg]         = color_canvas;
 
         style.Colors[ImGuiCol_TextSelectedBg]       = lerp(color_accent_1, {0, 0, 0, 1}, 0.6f);

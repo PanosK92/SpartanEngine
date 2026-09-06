@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileDialog.h"
 #include "Style.h"
 #include "../Editor.h"
+#include "../EditorLayout.h"
 #include "Engine.h"
 #include "resource/ResourceCache.h"
 #include "world/World.h"
@@ -306,6 +307,11 @@ namespace
         {
             if (ImGui::BeginMenu("View"))
             {
+                if (ImGui::MenuItem("Reset workspace layout"))
+                {
+                    editor_layout::reset();
+                }
+                ImGui::Separator();
                 bool* controls_visible = GeneralWindows::GetVisibilityWindowControls();
                 if (ImGui::MenuItem("Controls", "Ctrl+P", *controls_visible))
                 {
@@ -458,7 +464,7 @@ namespace
 
         float get_transport_width()
         {
-            return group_padding_x() * 2.0f + transport_button_width() * 2.0f + button_gap();
+            return group_padding_x() * 2.0f + 76.0f * dpi() + transport_button_width() + button_gap();
         }
 
         float icon_group_width(const float button_count)
@@ -803,6 +809,7 @@ namespace
                 tint.w = 0.45f;
             }
 
+            ImGui::BeginDisabled(!is_playing);
             const bool pressed = ImGuiSp::image_button(
                 spartan::IconType::Pause,
                 spartan::math::Vector2(
@@ -812,6 +819,7 @@ namespace
                 false,
                 tint
             );
+            ImGui::EndDisabled();
 
             ImGui::PopStyleColor(3);
             ImGui::PopStyleVar(2);
@@ -831,16 +839,14 @@ namespace
             ImGui::SetCursorPosY(centered_y(menubar_height, transport_button_height()));
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, transport_padding());
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
-            push_button_colors(is_playing && !is_paused);
-
-            const ImVec4 play_tint = (is_playing && !is_paused) ? ImGui::Style::color_accent_1 : ImVec4(0.90f, 0.90f, 0.90f, 1.0f);
-            if (ImGuiSp::image_button(spartan::IconType::Play, spartan::math::Vector2(transport_icon_size(), transport_icon_size()), false, play_tint))
+            ImGui::EditorUi::push_primary_button();
+            if (ImGui::Button(is_playing ? "Stop##transport" : "Play##transport", ImVec2(76.0f * dpi(), transport_button_height())))
             {
                 toggle_playing();
             }
             ImGuiSp::tooltip(is_playing ? "Stop (F5)" : "Play (F5)");
 
-            ImGui::PopStyleColor(3);
+            ImGui::EditorUi::pop_primary_button();
             ImGui::PopStyleVar(2);
 
             ImGui::SameLine(0, button_gap());
@@ -960,6 +966,45 @@ namespace
             }
         }
 
+        void draw_compact_tools(float menubar_height, float cursor_pos_x)
+        {
+            ImGui::SetCursorPos(ImVec2(cursor_pos_x, centered_y(menubar_height, tool_button_height())));
+            if (ImGui::Button("Tools", ImVec2(64.0f * dpi(), tool_button_height())))
+            {
+                ImGui::OpenPopup("##compact_tools");
+            }
+            if (ImGui::BeginPopup("##compact_tools"))
+            {
+                const auto operation = ImGui::TransformGizmo::operation();
+                if (ImGui::MenuItem("Translate", "W", operation == ::TransformGizmo::Operation::Translate))
+                    ImGui::TransformGizmo::set_operation(::TransformGizmo::Operation::Translate);
+                if (ImGui::MenuItem("Rotate", "E", operation == ::TransformGizmo::Operation::Rotate))
+                    ImGui::TransformGizmo::set_operation(::TransformGizmo::Operation::Rotate);
+                if (ImGui::MenuItem("Scale", "R", operation == ::TransformGizmo::Operation::Scale))
+                    ImGui::TransformGizmo::set_operation(::TransformGizmo::Operation::Scale);
+                if (ImGui::MenuItem("Universal", "T", operation == ::TransformGizmo::Operation::Universal))
+                    ImGui::TransformGizmo::set_operation(::TransformGizmo::Operation::Universal);
+                if (ImGui::MenuItem("World space", "X", ImGui::TransformGizmo::space() == ::TransformGizmo::Space::World))
+                    ImGui::TransformGizmo::toggle_space();
+                const bool snap = spartan::cvar_transform_snap.GetValueAs<bool>();
+                if (ImGui::MenuItem("Transform snapping", nullptr, snap))
+                    spartan::ConsoleRegistry::Get().SetValueFromString("r.transform_snap", snap ? "0" : "1");
+                ImGui::Separator();
+                if (ImGui::MenuItem("Worlds", nullptr, GeneralWindows::GetVisibilityWorlds()))
+                    GeneralWindows::SetVisibilityWorlds(!GeneralWindows::GetVisibilityWorlds());
+                if (McpAssistant* assistant = editor->GetWidget<McpAssistant>())
+                    menu_entry(assistant);
+                for (const auto& entry : widgets)
+                    menu_entry(entry.second);
+                ImGui::Separator();
+                if (ImGui::MenuItem("Screenshot"))
+                    spartan::Renderer::Screenshot();
+                if (ImGui::MenuItem("RenderDoc capture", nullptr, false, spartan::Debugging::IsRenderdocEnabled()))
+                    spartan::RenderDoc::FrameCapture();
+                ImGui::EndPopup();
+            }
+        }
+
         void tick(float menubar_height, float left_content_end_x)
         {
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -982,6 +1027,12 @@ namespace
             }
 
             const float transport_max_x  = right_start_x - transport_width - group_gap();
+            if (transport_min_x > transport_max_x)
+            {
+                draw_transport_group(menubar_height, transport_min_x);
+                draw_compact_tools(menubar_height, transport_min_x + transport_width + group_gap());
+                return;
+            }
             float transport_pos_x        = (size_avail_x - transport_width) * 0.5f;
 
             if (transport_min_x <= transport_max_x)
@@ -1171,7 +1222,7 @@ void MenuBar::Tick()
     // menu bar
     {
         ImGuiStyle& style = ImGui::GetStyle();
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(style.FramePadding.x, GetPaddingY()));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(style.FramePadding.x, GetPaddingY() * spartan::Window::GetDpiScale()));
 
         if (ImGui::BeginMainMenuBar())
         {
@@ -1227,15 +1278,17 @@ void MenuBar::Tick()
             }
             ImGui::SameLine(0, padding_x * 0.5f);
 
-            // engine name and version
-            static char title[64] = {};
-            if (title[0] == '\0')
-            {
-                snprintf(title, sizeof(title), "Spartan v%d.%d",
-                    spartan::version::major, spartan::version::minor);
-            }
+            // The wordmark is an entry point to engine information.
             ImGui::SetCursorPosY(menu_y);
-            ImGui::MenuItem(title, nullptr, false, false);
+            ImGui::PushFont(Editor::font_bold, 0.0f);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::Style::color_text);
+            if (ImGui::MenuItem("SPARTAN"))
+            {
+                *GeneralWindows::GetVisibilityWindowAbout() = true;
+            }
+            ImGui::PopStyleColor();
+            ImGui::PopFont();
+            ImGuiSp::tooltip("Spartan Engine by Panos Karabelas");
             ImGui::SameLine(0, padding_x * 2.0f);
 
             draw_separator();

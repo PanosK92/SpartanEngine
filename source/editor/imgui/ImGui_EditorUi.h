@@ -192,25 +192,31 @@ namespace ImGui::EditorUi
     {
         ImGui::PushStyleColor(
             ImGuiCol_Button,
-            Style::color_accent_2
+            Style::color_accent_1
         );
         ImGui::PushStyleColor(
             ImGuiCol_ButtonHovered,
-            Style::color_accent_1
+            Style::lerp(Style::color_accent_1, ImVec4(1, 1, 1, 1), 0.18f)
         );
         ImGui::PushStyleColor(
             ImGuiCol_ButtonActive,
             Style::lerp(
+                Style::color_accent_1,
                 Style::color_accent_2,
-                Style::color_canvas,
-                0.24f
+                0.20f
             )
         );
+        // Bright accents need dark labels; retain white labels for the darker presets.
+        const ImVec4 accent = Style::color_accent_1;
+        const float brightness = accent.x * 0.2126f + accent.y * 0.7152f + accent.z * 0.0722f;
+        ImGui::PushStyleColor(ImGuiCol_Text, brightness > 0.55f
+            ? ImVec4(0.035f, 0.080f, 0.120f, 1.0f)
+            : ImVec4(1, 1, 1, 1));
     }
 
     inline void pop_primary_button()
     {
-        ImGui::PopStyleColor(3);
+        ImGui::PopStyleColor(4);
     }
 
     inline void panel_header(

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Editor.h"
 #include "EditorLayout.h"
 #include "imgui/ImGui_Style.h"
+#include "core/Window.h"
 #include "imgui/source/imgui.h"
 #include "imgui/source/imgui_internal.h"
 //=====================================
@@ -31,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace
 {
     constexpr const char* root_window_name = "##main_window";
+    bool reset_requested = false;
 
     ImGuiID dock_id_for(const WidgetDock dock, const ImGuiID center, const ImGuiID right, const ImGuiID right_down, const ImGuiID down, const ImGuiID down_right)
     {
@@ -52,7 +54,9 @@ namespace
         ImGui::DockBuilderSetNodeSize(window_id, ImGui::GetMainViewport()->Size);
 
         ImGuiID dock_main_id       = window_id;
-        ImGuiID dock_right_id      = ImGui::DockBuilderSplitNode(dock_main_id,  ImGuiDir_Right, 0.17f, nullptr, &dock_main_id);
+        // Keep the inspector usable on laptops without consuming the viewport on large displays.
+        const float inspector_ratio = ImClamp(360.0f * spartan::Window::GetDpiScale() / ImGui::GetMainViewport()->WorkSize.x, 0.20f, 0.32f);
+        ImGuiID dock_right_id      = ImGui::DockBuilderSplitNode(dock_main_id,  ImGuiDir_Right, inspector_ratio, nullptr, &dock_main_id);
         ImGuiID dock_right_down_id = ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down,  0.6f,  nullptr, &dock_right_id);
         ImGuiID dock_down_id       = ImGui::DockBuilderSplitNode(dock_main_id,  ImGuiDir_Down,  0.22f, nullptr, &dock_main_id);
         ImGuiID dock_down_right_id = ImGui::DockBuilderSplitNode(dock_down_id,  ImGuiDir_Right, 0.3f,  nullptr, &dock_down_id);
@@ -73,7 +77,7 @@ namespace
             }
         });
 
-        ImGui::DockBuilderFinish(dock_main_id);
+        ImGui::DockBuilderFinish(window_id);
     }
 }
 
@@ -116,9 +120,10 @@ void editor_layout::begin_root(Editor* editor)
     if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
     {
         const ImGuiID window_id = ImGui::GetID(root_window_name);
-        if (!ImGui::DockBuilderGetNode(window_id))
+        if (reset_requested || !ImGui::DockBuilderGetNode(window_id))
         {
             apply_default_layout(editor, window_id);
+            reset_requested = false;
         }
 
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
@@ -134,4 +139,9 @@ void editor_layout::begin_root(Editor* editor)
 void editor_layout::end_root()
 {
     ImGui::End();
+}
+
+void editor_layout::reset()
+{
+    reset_requested = true;
 }

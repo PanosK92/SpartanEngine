@@ -40,7 +40,7 @@ namespace
 {
     // table
     const int column_count      = 2;
-    const ImGuiTableFlags flags = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg;
+    const ImGuiTableFlags flags = ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg;
 
     // misc
     vector<DisplayMode> display_modes;
@@ -275,6 +275,7 @@ void RenderOptions::OnVisible()
 void RenderOptions::OnTickVisible()
 {
     const float dpi = Window::GetDpiScale();
+    ImGui::EditorUi::panel_header("Rendering", "Lighting, image quality and the final look.", Editor::font_bold);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f * dpi);
     ImGui::SetNextItemWidth(-FLT_MIN);
     ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F, ImGuiInputFlags_Tooltip);

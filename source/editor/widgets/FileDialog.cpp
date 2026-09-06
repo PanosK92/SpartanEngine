@@ -432,6 +432,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
     float item_spacing   = ImGui::GetStyle().ItemSpacing.x;
     float controls_width = action_width + action_gap + grid_btn_w + item_spacing + list_btn_w + slider_gap + slider_width;
     float controls_x     = ImGui::GetWindowWidth() - controls_width - 8.0f;
+    const bool controls_on_new_line = controls_x < 220.0f * spartan::Window::GetDpiScale();
 
     // navigation buttons style
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
@@ -518,7 +519,8 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
     // breadcrumb navigation
     {
         ImVec2 clip_min = ImGui::GetCursorScreenPos();
-        ImVec2 clip_max = ImVec2(max(clip_min.x, ImGui::GetWindowPos().x + controls_x - 8.0f), clip_min.y + button_height);
+        const float breadcrumb_end = controls_on_new_line ? ImGui::GetWindowWidth() - 8.0f : controls_x - 8.0f;
+        ImVec2 clip_max = ImVec2(max(clip_min.x, ImGui::GetWindowPos().x + breadcrumb_end), clip_min.y + button_height);
         ImGui::PushClipRect(clip_min, clip_max, true);
 
         char accumulated_path[1024];
@@ -581,7 +583,11 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
 
     // right side: view toggle and size slider (snapped to right edge)
     {
-        ImGui::SetCursorPosX(controls_x);
+        if (controls_on_new_line)
+        {
+            ImGui::NewLine();
+        }
+        ImGui::SetCursorPosX(max(8.0f, controls_x));
 
         if (m_toolbar_action)
         {

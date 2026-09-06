@@ -222,6 +222,29 @@ void Viewport::OnTickVisible()
     ImVec2 image_rect_min = ImGui::GetItemRectMin();
     ImVec2 image_rect_max = ImGui::GetItemRectMax();
 
+    // Draw without submitting another item: picking and drops below belong to the viewport image.
+    if (!World::GetCamera())
+    {
+        ImDrawList* draw = ImGui::GetWindowDrawList();
+        draw->AddRectFilled(image_rect_min, image_rect_max, ImGui::EditorUi::color(ImGui::Style::color_canvas_deep));
+        const ImVec2 center((image_rect_min.x + image_rect_max.x) * 0.5f, (image_rect_min.y + image_rect_max.y) * 0.5f);
+        const float title_size = ImGui::EditorUi::scaled(28.0f);
+        ImFont* font = Editor::font_bold ? Editor::font_bold : ImGui::GetFont();
+        const ImVec2 title_extent = font->CalcTextSizeA(title_size, FLT_MAX, 0.0f, "SPARTAN");
+        const char* hint = "Open a world to start creating.";
+        const ImVec2 hint_extent = ImGui::CalcTextSize(hint);
+        if (image_rect_max.x - image_rect_min.x > hint_extent.x + ImGui::EditorUi::scaled(32.0f))
+        {
+            draw->AddLine(ImVec2(center.x - ImGui::EditorUi::scaled(18.0f), center.y - ImGui::EditorUi::scaled(36.0f)),
+                ImVec2(center.x + ImGui::EditorUi::scaled(18.0f), center.y - ImGui::EditorUi::scaled(36.0f)),
+                ImGui::EditorUi::color(ImGui::Style::color_accent_1), ImGui::EditorUi::scaled(2.0f));
+            draw->AddText(font, title_size, ImVec2(center.x - title_extent.x * 0.5f, center.y - title_extent.y),
+                ImGui::EditorUi::color(ImGui::Style::color_text), "SPARTAN");
+            draw->AddText(ImVec2(center.x - hint_extent.x * 0.5f, center.y + ImGui::EditorUi::scaled(12.0f)),
+                ImGui::EditorUi::color(ImGui::Style::color_text_muted), hint);
+        }
+    }
+
     if (Engine::IsFlagSet(EngineMode::Playing))
     {
         const bool paused = Engine::IsFlagSet(EngineMode::Paused);

@@ -539,6 +539,12 @@ Properties::Properties(Editor* editor) : Widget(editor)
 void Properties::OnTickVisible()
 {
     bool is_in_game_mode = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);
+    if (is_in_game_mode)
+    {
+        ImGui::TextColored(ImGui::Style::color_warning, "Read-only during playback");
+        ImGui::TextDisabled("Stop playback to edit components.");
+        ImGui::Separator();
+    }
     ImGui::BeginDisabled(is_in_game_mode);
     {
         uint32_t selected_count = get_selected_entity_count();
@@ -548,7 +554,7 @@ void Properties::OnTickVisible()
             // multiple entities selected - show summary
             ImGui::Dummy(ImVec2(0, design::spacing_md));
 
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.85f, 0.4f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::Style::color_accent_1);
             ImGui::PushFont(Editor::font_bold, 0.0f);
             char buf[64];
             std::snprintf(buf, sizeof(buf), "%d entities selected", selected_count);
@@ -616,12 +622,11 @@ void Properties::OnTickVisible()
         }
         else
         {
-            // empty state
-            ImGui::Dummy(ImVec2(0, design::spacing_xxl));
-            ImVec2 text_size = ImGui::CalcTextSize("Select an entity to view properties");
-            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - text_size.x) * 0.5f);
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-            ImGui::TextUnformatted("Select an entity to view properties");
+            ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(24.0f)));
+            ImGui::EditorUi::panel_header("Nothing selected", "Select an entity in the viewport or scene hierarchy to inspect its components.", Editor::font_bold);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::Style::color_text_muted);
+            ImGui::TextWrapped("Double-click an entity to focus it.");
+            ImGui::TextWrapped("Ctrl + click to select multiple entities.");
             ImGui::PopStyleColor();
         }
     }

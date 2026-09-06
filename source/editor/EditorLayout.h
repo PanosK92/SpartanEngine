@@ -27,4 +27,5 @@ namespace editor_layout
 {
     void begin_root(Editor* editor);
     void end_root();
+    void reset();
 }

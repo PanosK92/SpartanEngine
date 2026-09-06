@@ -445,10 +445,17 @@ void WorldViewer::OnTickVisible()
 void WorldViewer::DrawToolbar()
 {
     const string count_text = entity_filter.IsActive() ? to_string(filter_match_count) + (filter_match_count == 1 ? " result" : " results") : to_string(entity_count) + (entity_count == 1 ? " entity" : " entities");
-    const float count_width  = ImGui::CalcTextSize(count_text.c_str()).x;
-    const float search_width = max(120.0f, ImGui::GetContentRegionAvail().x - count_width - ImGui::GetStyle().ItemSpacing.x);
+    ImGui::PushFont(Editor::font_bold, 0.0f);
+    ImGui::TextUnformatted("Scene hierarchy");
+    ImGui::PopFont();
+    const float count_width = ImGui::CalcTextSize(count_text.c_str()).x;
+    if (ImGui::GetContentRegionAvail().x > ImGui::CalcTextSize("Scene hierarchy").x + count_width + 24.0f)
+    {
+        ImGui::SameLine(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - count_width);
+        ImGui::TextDisabled("%s", count_text.c_str());
+    }
 
-    ImGui::SetNextItemWidth(search_width);
+    ImGui::SetNextItemWidth(-FLT_MIN);
     ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F, ImGuiInputFlags_Tooltip);
     if (ImGui::InputTextWithHint("##hierarchy_search", "Search entities", entity_filter.InputBuf, IM_ARRAYSIZE(entity_filter.InputBuf), ImGuiInputTextFlags_EscapeClearsAll))
     {
@@ -456,8 +463,6 @@ void WorldViewer::DrawToolbar()
         prepare_entity_filter();
     }
 
-    ImGui::SameLine();
-    ImGui::TextDisabled("%s", count_text.c_str());
 }
 
 void WorldViewer::TreeShow()
