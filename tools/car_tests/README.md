@@ -43,6 +43,12 @@ speed and inputs because it does not update the full tire, powertrain or aero mo
 
 ## Physics checks
 
+Run `tools\car_tests\run.cmd --transmission-check` to check the Mitsubishi's
+automatic shift assistance at 200 and 400 Hz, manual shift inputs, and mode
+preservation across preset reloads. A preset's `manual_transmission` describes
+gearbox hardware; the player's Auto Shift setting is independent and defaults
+to on. Telemetry includes `auto_shift_enabled` so recordings expose this choice.
+
 Run from the repository root with Visual Studio C++ tools and the engine's existing libraries:
 
 ```powershell

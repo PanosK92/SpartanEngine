@@ -523,6 +523,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // rather than parked on top, grass and flowers are excluded because their whole height sits inside
     // the band and they would turn into ground
     bool terrain_blendable =
+        (vertex.draw_flags & (1u << 6)) == 0 &&
         !terrain_shaded           &&
         pass_is_opaque()          &&
         !surface.is_grass_blade() &&

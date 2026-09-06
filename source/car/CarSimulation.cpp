@@ -3405,7 +3405,7 @@ namespace car
                 return;
             }
 
-            if (spec.manual_transmission)
+            if (manual_shifting)
             {
                 return;
             }
@@ -3768,7 +3768,7 @@ namespace car
 
             // require true near-stop, forward-only gate was engaging reverse mid-spin
             float body_speed_ms = body ? body->getLinearVelocity().magnitude() : fabsf(forward_speed_ms);
-            bool reverse_conditions_met = !spec.manual_transmission
+            bool reverse_conditions_met = !manual_shifting
                 && body_speed_ms < 1.0f
                 && fabsf(forward_speed_ms) < 0.5f
                 && input.brake > 0.8f
@@ -4957,7 +4957,6 @@ namespace car
 
             bool save_abs = spec.abs_enabled;
             bool save_tc = spec.tc_enabled;
-            bool save_manual = spec.manual_transmission;
             bool save_turbo = spec.turbo_enabled;
             bool save_drs = spec.drs_enabled;
             int save_diff = spec.diff_type;
@@ -4982,7 +4981,6 @@ namespace car
 
             spec.abs_enabled = save_abs;
             spec.tc_enabled = save_tc;
-            spec.manual_transmission = save_manual;
             spec.turbo_enabled = save_turbo;
             spec.drs_enabled = save_drs;
             spec.diff_type = save_diff;
@@ -5742,11 +5740,11 @@ namespace car
 
 
     void Simulation::set_manual_transmission(bool enabled)
-    { spec.manual_transmission = enabled; }
+    { manual_shifting = enabled; }
 
 
     bool Simulation::get_manual_transmission()
-    { return spec.manual_transmission; }
+    { return manual_shifting; }
 
 
     void Simulation::begin_shift(int direction)
@@ -5759,7 +5757,7 @@ namespace car
 
     void Simulation::shift_up()
     {
-            if (!spec.manual_transmission || is_shifting || current_gear >= spec.gear_count - 1)
+            if (!manual_shifting || is_shifting || current_gear >= spec.gear_count - 1)
             {
                 return;
             }
@@ -5770,7 +5768,7 @@ namespace car
 
     void Simulation::shift_down()
     {
-            if (!spec.manual_transmission || is_shifting || current_gear <= 0)
+            if (!manual_shifting || is_shifting || current_gear <= 0)
             {
                 return;
             }
@@ -5785,7 +5783,7 @@ namespace car
 
     void Simulation::shift_to_neutral()
     {
-            if (!spec.manual_transmission || is_shifting)
+            if (!manual_shifting || is_shifting)
             {
                 return;
             }

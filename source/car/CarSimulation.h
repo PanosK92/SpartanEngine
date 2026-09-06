@@ -50,6 +50,8 @@ namespace car
     {
     private:
         car_preset spec = car_preset();
+        // Player shift assistance is independent of the vehicle's gearbox hardware.
+        bool manual_shifting = false;
         bool log_pacejka = false;
         bool log_telemetry = false;
         bool log_to_file = false;

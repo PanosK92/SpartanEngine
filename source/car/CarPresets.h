@@ -290,7 +290,7 @@ namespace car
         float clutch_max_torque;
         float driveline_inertia;
         float drivetrain_efficiency;
-        bool  manual_transmission;
+        bool  manual_transmission; // gearbox specification; does not disable player auto-shift assistance
 
         // shift speed thresholds (indexed by gear, km/h)
         float upshift_speed_base[max_gears];

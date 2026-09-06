@@ -235,6 +235,55 @@ PxFilterFlags vehicle_filter(PxFilterObjectAttributes a, PxFilterData fa, PxFilt
     return result;
 }
 
+void transmission_checks(PxPhysics* physics, PxScene* scene)
+{
+    const auto* definition = car::load_car_file("binaries/project/cars/mitsubishi_lancer_evo_ix.car");
+    check(definition && definition->performance.manual_transmission, "Mitsubishi retains its manual gearbox specification");
+    for (float dt : {0.005f, 0.0025f})
+    {
+        car::Simulation sim;
+        sim.get_spec() = definition->performance;
+        car::setup_params params;
+        params.physics = physics;
+        params.scene = scene;
+        check(sim.setup(params), "Mitsubishi transmission fixture setup");
+        install_bench_chassis(sim, physics);
+        check(!sim.get_manual_transmission(), "auto shift defaults on for a manual gearbox");
+        for (int i = 0; i < static_cast<int>(4 / dt); ++i)
+        {
+            sim.tick(dt); scene->simulate(dt); scene->fetchResults(true);
+        }
+        sim.set_telemetry_path("binaries/car_tests/mitsubishi_transmission_" + std::to_string(static_cast<int>(1 / dt)) + ".csv");
+        sim.set_log_to_file(true);
+        sim.set_handbrake(0);
+        sim.set_throttle(1);
+        int highest_gear = 0;
+        for (int i = 0; i < static_cast<int>(13.335f / dt); ++i)
+        {
+            sim.tick(dt);
+            scene->simulate(dt);
+            scene->fetchResults(true);
+            highest_gear = std::max(highest_gear, sim.get_current_gear());
+        }
+        printf("Mitsubishi %.0f Hz: highest gear index=%d, speed=%.2f km/h\n", 1 / dt, highest_gear, sim.get_speed_kmh());
+        check(highest_gear >= 4, "Mitsubishi accelerates through first and second with auto shift");
+        check(sim.get_speed_kmh() > 70, "Mitsubishi drives beyond its recorded first-gear speed limit");
+
+        sim.set_manual_transmission(true);
+        sim.reset_drivetrain_transients();
+        sim.update_automatic_gearbox(1, 1, 65.0f / 3.6f);
+        check(sim.get_current_gear() == 2, "manual input mode holds first above automatic shift threshold");
+        sim.shift_up();
+        check(sim.get_current_gear() == 3, "manual shift input selects second");
+        sim.load_car(definition->performance);
+        check(sim.get_manual_transmission(), "preset reload preserves manual input choice");
+        sim.set_manual_transmission(false);
+        sim.update_automatic_gearbox(1, 1, 65.0f / 3.6f);
+        check(sim.get_current_gear() == 3, "re-enabling auto shift shifts out of first");
+        check(sim.get_spec().manual_transmission, "shift assistance does not overwrite hardware specification");
+    }
+}
+
 int main(int argc, char** argv)
 {
     try
@@ -259,6 +308,13 @@ int main(int argc, char** argv)
         PxMaterial* material = physics->createMaterial(0.8f, 0.7f, 0.0f);
         PxRigidStatic* plane = PxCreatePlane(*physics, PxPlane(0, 1, 0, 0), *material);
         scene->addActor(*plane);
+        if (argc > 1 && std::string(argv[1]) == "--transmission-check")
+        {
+            transmission_checks(physics, scene);
+            scene->release(); material->release(); dispatcher->release();
+            PxCloseExtensions(); physics->release(); foundation->release();
+            return 0;
+        }
         if (argc > 1 && std::string(argv[1]) == "--dyno-check")
         {
             dyno_checks(physics, scene);

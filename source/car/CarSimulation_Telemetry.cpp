@@ -214,6 +214,7 @@ namespace car
                     "fl_hub_x,fl_hub_y,fl_hub_z,fl_hub_vx,fl_hub_vy,fl_hub_vz,fl_hub_wx,fl_hub_wy,fl_hub_wz,fr_hub_x,fr_hub_y,fr_hub_z,fr_hub_vx,fr_hub_vy,fr_hub_vz,fr_hub_wx,fr_hub_wy,fr_hub_wz,rl_hub_x,rl_hub_y,rl_hub_z,rl_hub_vx,rl_hub_vy,rl_hub_vz,rl_hub_wx,rl_hub_wy,rl_hub_wz,rr_hub_x,rr_hub_y,rr_hub_z,rr_hub_vx,rr_hub_vy,rr_hub_vz,rr_hub_wx,rr_hub_wy,rr_hub_wz");
                 fprintf(file, ",simulation_version,calibration_id,event_flags,reset_count,distance_m,contact_impulse_x,contact_impulse_y,contact_impulse_z,assembled_ixx,assembled_iyy,assembled_izz,assembled_ixy,assembled_ixz,assembled_iyz,battery_soc,battery_temp,battery_power_w,battery_loss_w,engine_running,clutch_heat_j,gearbox_loss_j");
                 for (const char* prefix : {"fl", "fr", "rl", "rr"}) fprintf(file, ",%s_pressure_bar,%s_damage,%s_water_depth,%s_slip_energy_j", prefix, prefix, prefix, prefix);
+                fputs(",auto_shift_enabled", file);
                 fputc('\n', file);
                 frame_counter = 0;
                 elapsed_time  = 0.0f;
@@ -393,6 +394,7 @@ namespace car
                     battery.energy_j / (spec.battery_capacity_kwh * 3600000.0f), battery.temperature, battery.electrical_power_w, battery.loss_power_w,
                     engine_running ? 1 : 0, clutch_heat_j, gearbox_loss_j);
                 for (const auto& w : wheels) fprintf(file, ",%.6g,%.6g,%.6g,%.9g", w.pressure_bar, w.damage, w.water_depth, w.dissipated_energy_j);
+                fprintf(file, ",%d", manual_shifting ? 0 : 1);
                 event_flags = 0; contact_impulse = PxVec3(0);
                 fputc('\n', file);
 

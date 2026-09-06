@@ -135,6 +135,7 @@ struct gbuffer_vertex
     // nointerpolation since these are constant per draw
     nointerpolation float4 uv_xform_ts  : TEXCOORD5; // xy = tiling, zw = offset
     nointerpolation float4 uv_xform_ir  : TEXCOORD6; // xy = invert, z = rotation, w = unused
+    nointerpolation uint draw_flags    : TEXCOORD8;
     float2 ocean_world_xz               : TEXCOORD7; // undisplaced clipmap world xz, fft normal/foam are indexed in this domain
 };
 
@@ -579,6 +580,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     float  uv_world_space = _draw.uv_world_space;
 
     // forward to the pixel shader, ir.w carries the world_space_uv flag
+    vertex.draw_flags = _draw.flags;
     vertex.uv_xform_ts = float4(uv_tiling, uv_offset);
     vertex.uv_xform_ir = float4(uv_invert, uv_rotation, uv_world_space);
 

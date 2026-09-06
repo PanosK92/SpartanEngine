@@ -33,34 +33,61 @@ let id = 100;
 const road = (name, width, points, tag) => `<Entity name="${name}" id="${id++}" position="0 0 0" active="true">
 <spline profile="0" mesh_enabled="true" has_road_mesh="true" resolution="40" road_width="${width}" road_width_end="${width}" conform_to_terrain="false" />
 <render material_name="road" material_path="./project/plan_resources/road.xml" material_default="false" />
-${points.map((p, i) => `<Entity name="spline_point_${i}" id="${id++}" position="${p.join(" ")}" tags="${i === tag ? "road_node_test" : ""}" />`).join("\n")}
+${points.map((p, i) => `<Entity name="spline_point_${i}" id="${id++}" position="${p.join(" ")}" tags="${typeof tag === "object" ? tag[i] ?? "" : i === tag ? "road_node_test" : ""}" />`).join("\n")}
 </Entity>`;
-const xml = `<World name="road_regression"><Entities>
+const cases = [
+  {name: "Compound staggered junction", roads: () =>
+    road("through", 12, [[-100, 0, 0], [-2, 0, 0], [2, 0, 0], [100, 0, 0]], {1: "road_node_a", 2: "road_node_b"}) +
+    road("south", 8, [[-2, 4, 0], [-2, 4, -100]], {0: "road_node_a"}) +
+    road("north", 8, [[2, 4, 0], [2, 4, 100]], {0: "road_node_b"}), height: 8 / 3,
+    probes: [[0, 0], [-8, 0], [8, 0], [-2, -10], [2, 10]]},
+  {name: "Short approach", roads: () => road("through", 12, [[-100, 0, 0], [0, 0, 0], [100, 0, 0]], 1) + road("short_branch", 8, [[0, 4, 0], [0, 4, -20]], 0), height: 2,
+    probes: [[0, 0], [-8, 0], [8, 0], [0, -6]]},
+  {name: "T junction", roads: () => road("through", 12, [[-100, 0, 0], [0, 0, 0], [100, 0, 0]], 1) + road("branch", 8, [[0, 4, 0], [0, 6, -100]], 0), height: 2,
+    probes: [[0, 0], [-10, 0], [10, 0], [0, -10], [-3, -6], [3, -6]], rounded: true},
+  {name: "X junction", roads: () => road("east_west", 12, [[-100, 0, 0], [0, 0, 0], [100, 0, 0]], 1) + road("north_south", 8, [[0, 4, -100], [0, 4, 0], [0, 4, 100]], 1), height: 2,
+    probes: [[0, 0], [-10, 0], [10, 0], [0, -10], [0, 10]]},
+  {name: "Oblique T junction", roads: () => road("through", 12, [[-100, 0, 0], [0, 0, 0], [100, 0, 0]], 1) + road("branch", 8, [[0, 4, 0], [70, 4, -100]], 0), height: 2,
+    probes: [[0, 0], [-8, 0], [8, 0], [4, -6]]},
+  {name: "Unconnected overpass", roads: () => road("lower", 12, [[-100, 0, 0], [0, 0, 0], [100, 0, 0]], -1) + road("upper", 8, [[0, 4, -100], [0, 4, 0], [0, 4, 100]], -1), height: 4,
+    probes: [[0, 0], [0, -10], [0, 10]]}
+];
+const fixture = path.resolve("binaries/road_regression.world");
+for (const test of cases) {
+  const xml = `<World name="road_regression"><Entities>
 <Entity name="camera" id="1" position="0 80 -40"><camera flags="17" far_plane="10000" /></Entity>
 <Entity name="sun" id="2" rotation="0.3826834 0 0 0.9238795"><light light_type="0" intensity="110000" color_r="1" color_g="1" color_b="1" /></Entity>
-${road("through", 12, [[-100, 0, 0], [0, 0, 0], [100, 0, 0]], 1)}
-${road("branch", 8, [[0, 4, 0], [0, 6, -100]], 0)}
+${test.roads()}
 </Entities></World>`;
-const fixture = path.resolve("binaries/road_regression.world");
-fs.writeFileSync(fixture, xml);
-assert.equal((await client.command("world_load", {path: fixture})).ok, true);
-for (let i = 0; i < 100; i++) {
-  await new Promise(r => setTimeout(r, 100));
-  const state = await client.command("context_snapshot");
-  if (state.status && !state.status.loading && state.world.name === "road_regression.world") break;
+  fs.writeFileSync(fixture, xml);
+  assert.equal((await client.command("world_load", {path: fixture})).ok, true);
+  for (let i = 0; i < 100; i++) {
+    await new Promise(r => setTimeout(r, 100));
+    const state = await client.command("context_snapshot");
+    if (state.status && !state.status.loading && state.world.name === "road_regression.world") break;
+  }
+  await client.command("camera_set_view", {position: [0, 10, -10], target: [0, 0, 0]});
+  await new Promise(r => setTimeout(r, 500));
+  const heights = [];
+  for (const [x, z] of test.probes) {
+    const hit = await client.command("world_raycast", {origin: [x, 30, z], direction: [0, -1, 0], max_distance: 50});
+    assert.equal(hit.hit, true, `missing road collision at ${x}, ${z}: ${JSON.stringify(hit)}`);
+    heights.push(hit.position[1]);
+  }
+  assert.ok(heights.every(h => Math.abs(h - test.height) < 0.01), `${test.name}: decks disagree: ${heights}`);
+  if (test.rounded) {
+    const outside = await client.command("world_raycast", {origin: [-8, 30, -8], direction: [0, -1, 0], max_distance: 50});
+    assert.equal(outside.hit, false, "rounded corner must follow the road edges instead of filling a diagonal slab");
+  }
+  if (test.rounded && process.env.ROAD_SCREENSHOT === "1") {
+    await client.command("camera_set_view", {position: [0, 70, -45], target: [0, 0, 0]});
+    const screenshot = path.resolve("binaries/road_junction_test/rounded_t.png");
+    const capture = await client.command("screenshot_take", {path: `rounded_t_${Date.now()}.png`});
+    assert.equal(capture.ok, true);
+    for (let i = 0; i < 100 && !fs.existsSync(capture.path); i++) await new Promise(r => setTimeout(r, 100));
+    assert.ok(fs.existsSync(capture.path), "junction screenshot completed");
+    fs.copyFileSync(capture.path, screenshot);
+  }
+  console.log(JSON.stringify({test: test.name, passed: true, collisionHeights: heights}));
 }
-// Physics deactivates distant static actors. Keep the camera within its activation radius.
-await client.command("camera_set_view", {position: [0, 10, -10], target: [0, 0, 0]});
-await new Promise(r => setTimeout(r, 500));
-const heights = [];
-for (const [x, z] of [[0, 0], [-10, 0], [10, 0], [0, -10], [-3, -6], [3, -6]]) {
-  const hit = await client.command("world_raycast", {origin: [x, 30, z], direction: [0, -1, 0], max_distance: 50});
-  assert.equal(hit.hit, true, `missing road collision at ${x}, ${z}: ${JSON.stringify(hit)}`);
-  heights.push(hit.position[1]);
-}
-assert.ok(Math.max(...heights) - Math.min(...heights) < 0.01, `junction decks disagree: ${heights}`);
-assert.ok(Math.abs(heights[0] - 2) < 0.01, `unexpected shared elevation: ${heights[0]}`);
-console.log(JSON.stringify({test: "T junction with unequal widths and elevations", passed: true, collisionHeights: heights}));
-await client.command("camera_set_view", {position: [0, 70, -45], target: [0, 0, 0]});
-console.log(await client.command("screenshot_take", {path: "project/mcp/blockout/thumbnails/road_regression.png"}));
 client.close();

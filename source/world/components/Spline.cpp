@@ -1493,8 +1493,8 @@ namespace spartan
             vector<float> distance;
             vector<size_t> nodes;
         };
-        struct Node { size_t road; size_t frame; };
-        struct Mouth { size_t road; size_t frame; Vector3 a; Vector3 b; };
+        struct Node { size_t road; size_t frame; size_t end; };
+        struct Mouth { size_t road; size_t frame; Vector3 a; Vector3 b; Vector3 inward; };
         struct Cut { size_t road; size_t lo; size_t hi; };
         struct Junction
         {
@@ -1538,7 +1538,7 @@ namespace spartan
                 for (const string& tag : child->GetTags())
                 {
                     if (tag.find("road_node_") != 0) continue;
-                    nodes[tag].push_back({roads.size(), frame});
+                    nodes[tag].push_back({roads.size(), frame, frame});
                     road.nodes.push_back(frame);
                     break;
                 }
@@ -1548,8 +1548,53 @@ namespace spartan
             roads.push_back(move(road));
         }
 
-        vector<Junction> junctions;
+        // Nearby graph nodes can describe a single traffic island or staggered junction.
+        // Combine only nodes sharing a road, never unrelated geometric crossings.
+        vector<string> node_names;
         for (const auto& [name, members] : nodes)
+        {
+            if (members.size() < 2) continue;
+            Vector3 anchor = Vector3::Zero;
+            for (const Node& node : members) anchor += roads[node.road].positions[node.frame];
+            anchor /= static_cast<float>(members.size());
+            const bool aligned = all_of(members.begin(), members.end(), [&](const Node& node)
+            {
+                const Vector3 d = roads[node.road].positions[node.frame] - anchor;
+                return d.x * d.x + d.z * d.z <= 0.25f;
+            });
+            if (aligned) node_names.push_back(name);
+            else SP_LOG_WARNING("road junction %s: control points no longer coincide, leaving approaches intact", name.c_str());
+        }
+        vector<size_t> parents(node_names.size());
+        for (size_t i = 0; i < parents.size(); i++) parents[i] = i;
+        auto root = [&](size_t i) { while (parents[i] != i) i = parents[i]; return i; };
+        for (size_t i = 0; i < node_names.size(); i++)
+        for (size_t j = i + 1; j < node_names.size(); j++)
+        {
+            for (const Node& a : nodes[node_names[i]])
+            for (const Node& b : nodes[node_names[j]])
+            {
+                if (a.road != b.road) continue;
+                const Road& road = roads[a.road];
+                const float width = max(road.spline->m_road_width, road.spline->m_road_width_end);
+                if (fabsf(road.distance[a.frame] - road.distance[b.frame]) < width)
+                    parents[root(j)] = root(i);
+            }
+        }
+        map<string, vector<Node>> groups;
+        for (size_t i = 0; i < node_names.size(); i++)
+        {
+            auto& group = groups[node_names[root(i)]];
+            for (const Node& node : nodes[node_names[i]])
+            {
+                auto found = find_if(group.begin(), group.end(), [&](const Node& n) { return n.road == node.road; });
+                if (found == group.end()) group.push_back(node);
+                else { found->frame = min(found->frame, node.frame); found->end = max(found->end, node.end); }
+            }
+        }
+
+        vector<Junction> junctions;
+        for (const auto& [name, members] : groups)
         {
             if (members.size() < 2) continue;
             Vector3 center = Vector3::Zero;
@@ -1557,15 +1602,16 @@ namespace spartan
             for (const Node& node : members)
             {
                 Road& road = roads[node.road];
-                center += road.positions[node.frame];
+                center += (road.positions[node.frame] + road.positions[node.end]) * 0.5f;
                 radius = max(radius, max(road.spline->m_road_width, road.spline->m_road_width_end));
             }
             center /= static_cast<float>(members.size());
+            const bool compound = any_of(members.begin(), members.end(), [](const Node& node) { return node.end != node.frame; });
             bool aligned = true;
             for (const Node& node : members)
             {
                 Vector3 d = roads[node.road].positions[node.frame] - center;
-                if (d.x * d.x + d.z * d.z > 0.25f) aligned = false;
+                if (!compound && d.x * d.x + d.z * d.z > 0.25f) aligned = false;
             }
             if (!aligned)
             {
@@ -1574,7 +1620,7 @@ namespace spartan
             }
 
             bool accepted = false;
-            for (uint32_t attempt = 0; attempt < 6 && !accepted; attempt++, radius *= 1.5f)
+            for (uint32_t attempt = 0; attempt < 12 && !accepted; attempt++, radius *= 1.5f)
             {
                 vector<Mouth> mouths;
                 vector<Cut> cuts;
@@ -1583,22 +1629,28 @@ namespace spartan
                 {
                     Road& road = roads[node.road];
                     size_t lo = node.frame;
-                    size_t hi = node.frame;
+                    size_t hi = node.end;
                     for (int direction : {-1, 1})
                     {
-                        if ((direction < 0 && node.frame == 0) || (direction > 0 && node.frame + 1 == road.frames.size())) continue;
+                        const size_t anchor = direction < 0 ? node.frame : node.end;
+                        if ((direction < 0 && anchor == 0) || (direction > 0 && anchor + 1 == road.frames.size())) continue;
                         size_t limit = direction < 0 ? 0 : road.frames.size() - 1;
                         for (size_t other : road.nodes)
                         {
                             if (direction < 0 && other < node.frame) limit = max(limit, other);
-                            if (direction > 0 && other > node.frame) limit = min(limit, other);
+                            if (direction > 0 && other > node.end) limit = min(limit, other);
                         }
-                        const float available = fabsf(road.distance[limit] - road.distance[node.frame]) * 0.45f;
-                        if (radius > available) { room = false; break; }
-                        size_t index = node.frame;
-                        while (fabsf(road.distance[index] - road.distance[node.frame]) < radius && index != limit)
+                        const bool next_junction = find(road.nodes.begin(), road.nodes.end(), limit) != road.nodes.end();
+                        const float available = fabsf(road.distance[limit] - road.distance[anchor]) * (next_junction ? 0.49f : 0.95f);
+                        // Short approaches need a smaller mouth, not a disconnected crossing.
+                        // Keep each cut within its share of the run to the next junction.
+                        const float cut_distance = min(radius, available);
+                        size_t index = anchor;
+                        while (fabsf(road.distance[index] - road.distance[anchor]) < cut_distance && index != limit)
                             index = direction < 0 ? index - 1 : index + 1;
-                        if (fabsf(road.distance[index] - road.distance[node.frame]) > available) { room = false; break; }
+                        if (fabsf(road.distance[index] - road.distance[anchor]) > available)
+                            index = direction < 0 ? index + 1 : index - 1;
+                        if (index == anchor) { room = false; break; }
                         if (direction < 0) lo = index; else hi = index;
                         const SplineFrame& f = road.frames[index];
                         const float half = (road.spline->m_road_width + (road.spline->m_road_width_end - road.spline->m_road_width) * f.t) * 0.5f;
@@ -1606,7 +1658,11 @@ namespace spartan
                         Vector3 a = matrix * (f.position - f.right * half);
                         Vector3 b = matrix * (f.position + f.right * half);
                         a.y = b.y = center.y;
-                        mouths.push_back({node.road, index, a, b});
+                        Vector3 inward = matrix * (f.position + f.tangent) - matrix * f.position;
+                        if (direction > 0) inward = -inward;
+                        inward.y = 0.0f;
+                        inward.Normalize();
+                        mouths.push_back({node.road, index, a, b, inward});
                     }
                     cuts.push_back({node.road, lo, hi});
                 }
@@ -1633,7 +1689,41 @@ namespace spartan
                 }
                 if (!valid) continue;
                 Junction junction{name, center, {}, cuts, radius};
-                for (const Corner& corner : corners) junction.boundary.push_back(corner.position);
+                for (size_t i = 0; i < corners.size(); i++)
+                {
+                    const Corner& a = corners[i];
+                    const Corner& b = corners[(i + 1) % corners.size()];
+                    junction.boundary.push_back(a.position);
+                    if (a.mouth == b.mouth) continue; // keep the road mouth an exact straight seam
+
+                    // Round the outside corners along the incoming road-edge tangents.
+                    // Parallel edges are already a continuous straight boundary.
+                    const Vector3 da = mouths[a.mouth].inward;
+                    const Vector3 db = mouths[b.mouth].inward;
+                    const float cross = da.x * db.z - da.z * db.x;
+                    if (fabsf(cross) < 0.001f) continue;
+                    const Vector3 delta = b.position - a.position;
+                    const float ta = (delta.x * db.z - delta.z * db.x) / cross;
+                    const float tb = (delta.x * da.z - delta.z * da.x) / cross;
+                    if (ta < 0 || tb < 0 || ta > radius * 4 || tb > radius * 4) continue;
+                    const Vector3 control = a.position + da * ta;
+                    vector<Vector3> curve;
+                    for (uint32_t step = 1; step < 12; step++)
+                    {
+                        const float t = static_cast<float>(step) / 12.0f;
+                        curve.push_back(a.position * ((1 - t) * (1 - t)) + control * (2 * t * (1 - t)) + b.position * (t * t));
+                    }
+                    // The center fan must remain inside every boundary edge.
+                    Vector3 previous = a.position - center;
+                    bool visible = true;
+                    for (size_t step = 0; step <= curve.size(); step++)
+                    {
+                        const Vector3 next = (step < curve.size() ? curve[step] : b.position) - center;
+                        if (previous.x * next.z - previous.z * next.x <= 0.001f) visible = false;
+                        previous = next;
+                    }
+                    if (visible) junction.boundary.insert(junction.boundary.end(), curve.begin(), curve.end());
+                }
                 junctions.push_back(move(junction));
                 accepted = true;
             }
@@ -3019,22 +3109,54 @@ namespace spartan
         // A junction is part of one participating road's render AND collision mesh.
         for (const JunctionPatch& patch : m_junction_patches)
         {
-            float radius = 0.001f;
-            for (const Vector3& p : patch.boundary) radius = max(radius, Vector3::Distance(p, patch.center));
+            // Tile a paint-free band at the same texel density as the approach deck.
+            // Clip at mirrored U repeats so interpolation never crosses lane markings.
+            const float width = max(fabsf(m_road_width), 0.001f);
+            const float strip_width = width * 0.24f;
+            auto clip_x = [](const vector<Vector3>& polygon, float x, bool keep_right)
+            {
+                vector<Vector3> result;
+                if (polygon.empty()) return result;
+                Vector3 previous = polygon.back();
+                bool previous_inside = keep_right ? previous.x >= x : previous.x <= x;
+                for (const Vector3& current : polygon)
+                {
+                    const bool inside = keep_right ? current.x >= x : current.x <= x;
+                    if (inside != previous_inside)
+                        result.push_back(previous + (current - previous) * ((x - previous.x) / (current.x - previous.x)));
+                    if (inside) result.push_back(current);
+                    previous = current;
+                    previous_inside = inside;
+                }
+                return result;
+            };
             for (size_t i = 0; i < patch.boundary.size(); i++)
             {
                 const Vector3 a = patch.boundary[i];
                 const Vector3 b = patch.boundary[(i + 1) % patch.boundary.size()];
-                Vector3 normal = (b - patch.center).Cross(a - patch.center).Normalized();
-                const uint32_t base = static_cast<uint32_t>(vertices.size());
-                // Sample the unmarked asphalt quarter of the legacy road atlas. Lane markings
-                // terminate at the mouths instead of crossing the intersection arbitrarily.
-                for (const Vector3& p : {patch.center, b, a})
+                const Vector3 normal = (b - patch.center).Cross(a - patch.center).Normalized();
+                const vector<Vector3> triangle = {patch.center, b, a};
+                const float min_x = min(patch.center.x, min(a.x, b.x));
+                const float max_x = max(patch.center.x, max(a.x, b.x));
+                const int first = static_cast<int>(floorf((min_x - patch.center.x) / strip_width));
+                const int last = static_cast<int>(floorf((max_x - patch.center.x) / strip_width));
+                for (int strip = first; strip <= last; strip++)
                 {
-                    const Vector3 d = p - patch.center;
-                    vertices.emplace_back(p, Vector2(0.27f + d.x / radius * 0.12f, 0.27f + d.z / radius * 0.12f), normal, Vector3::Right);
+                    const float x = patch.center.x + strip * strip_width;
+                    const vector<Vector3> polygon = clip_x(clip_x(triangle, x, true), x + strip_width, false);
+                    if (polygon.size() < 3) continue;
+                    const uint32_t base = static_cast<uint32_t>(vertices.size());
+                    const bool mirror = strip % 2 != 0;
+                    for (const Vector3& p : polygon)
+                    {
+                        float u = clamp((p.x - x) / strip_width, 0.0f, 1.0f);
+                        if (mirror) u = 1.0f - u;
+                        vertices.emplace_back(p, Vector2(0.15f + u * 0.24f, (p.z - patch.center.z) / width * m_uv_tiling_v),
+                            normal, mirror ? -Vector3::Right : Vector3::Right);
+                    }
+                    for (uint32_t k = 1; k + 1 < polygon.size(); k++)
+                        indices.insert(indices.end(), {base, base + k, base + k + 1});
                 }
-                indices.insert(indices.end(), {base, base + 1, base + 2});
             }
         }
 
@@ -3074,6 +3196,9 @@ namespace spartan
         {
             render->SetDefaultMaterial();
         }
+
+        // Asphalt and junctions sit on top of terrain; do not coat them in ground material.
+        render->SetFlag(RenderFlags::ExcludeFromTerrainBlend, m_profile == SplineProfile::Road);
 
         // disable face culling for profiles that are visible from both sides
         if (m_profile == SplineProfile::Wall || m_profile == SplineProfile::Fence || m_profile == SplineProfile::Tube)

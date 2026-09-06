@@ -464,7 +464,7 @@ namespace
 
         float get_transport_width()
         {
-            return group_padding_x() * 2.0f + 76.0f * dpi() + transport_button_width() + button_gap();
+            return group_padding_x() * 2.0f + transport_button_width() * 2.0f + button_gap();
         }
 
         float icon_group_width(const float button_count)
@@ -839,14 +839,16 @@ namespace
             ImGui::SetCursorPosY(centered_y(menubar_height, transport_button_height()));
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, transport_padding());
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
-            ImGui::EditorUi::push_primary_button();
-            if (ImGui::Button(is_playing ? "Stop##transport" : "Play##transport", ImVec2(76.0f * dpi(), transport_button_height())))
+            push_button_colors(is_playing && !is_paused);
+
+            const ImVec4 play_tint = (is_playing && !is_paused) ? ImGui::Style::color_accent_1 : ImVec4(0.90f, 0.90f, 0.90f, 1.0f);
+            if (ImGuiSp::image_button(spartan::IconType::Play, spartan::math::Vector2(transport_icon_size(), transport_icon_size()), false, play_tint))
             {
                 toggle_playing();
             }
             ImGuiSp::tooltip(is_playing ? "Stop (F5)" : "Play (F5)");
 
-            ImGui::EditorUi::pop_primary_button();
+            ImGui::PopStyleColor(3);
             ImGui::PopStyleVar(2);
 
             ImGui::SameLine(0, button_gap());

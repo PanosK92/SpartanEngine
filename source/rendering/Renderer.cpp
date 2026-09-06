@@ -2665,7 +2665,7 @@ namespace spartan
         entry.is_transparent     = is_transparent;
         entry.aabb_index         = 0;
         entry.lod_first_index    = 0;
-        entry.flags              = 0;
+        entry.flags              = render && render->HasFlag(RenderFlags::ExcludeFromTerrainBlend) ? (1u << 6) : 0u;
         entry.instance_offset    = 0;
         entry.instance_index     = 0;
         entry.lod_vertex_offset  = 0;
@@ -3547,6 +3547,9 @@ namespace spartan
                 base_flags |= 32u;
             }
 
+            if (render->HasFlag(RenderFlags::ExcludeFromTerrainBlend))
+                base_flags |= 1u << 6;
+
             const float max_distance    = render->GetMaxRenderDistance();
             const bool  finite_distance = max_distance > 0.0f && max_distance < numeric_limits<float>::max() * 0.5f;
             const float max_distance_sq = finite_distance ? (max_distance * max_distance) : 0.0f;
@@ -3927,17 +3930,8 @@ namespace spartan
                 return;
             }
 
-            // the player car moves every frame, a full rebuild of thousands of instances
-            // does not need to ride that, a one frame stale tlas is fine for shadows
-            if (!structural_tlas_rebuild && m_tlas)
-            {
-                static uint32_t tlas_transform_skip = 0;
-                tlas_transform_skip++;
-                if ((tlas_transform_skip & 1u) != 0u)
-                {
-                    return;
-                }
-            }
+            // moving geometry must match this frame's gbuffer: tracing against last frame's
+            // transforms causes alternating self-intersections in shadows and reflections.
         }
 
         // tlas

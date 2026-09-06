@@ -3055,6 +3055,13 @@ namespace spartan
         wheel_root->SetActive(false);
         wheel_root->SetTransient(true);
 
+        // Tires and rims stay clean even when their contact patch enters the terrain blend band.
+        std::vector<Entity*> wheel_parts = {wheel_base};
+        wheel_base->GetDescendants(&wheel_parts);
+        for (Entity* part : wheel_parts)
+            if (Render* render = part->GetComponent<Render>())
+                render->SetFlag(RenderFlags::ExcludeFromTerrainBlend);
+
         // wheel bounds must be measured at unit scale before absolute dimension scaling
         wheel_base->SetScale(1.0f);
 

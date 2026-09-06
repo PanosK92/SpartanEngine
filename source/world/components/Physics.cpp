@@ -3778,7 +3778,10 @@ namespace spartan
                 const size_t min_index_count    = min<size_t>(indices.size(), 256);
                 const size_t max_index_count    = 16'000;
                 const size_t target_index_count = clamp<size_t>(static_cast<size_t>(indices.size() * volume_factor), min_index_count, max_index_count);
-                geometry_processing::simplify(indices, vertices, target_index_count, false, false);
+                // Procedural road meshes share exact junction boundaries. Independent
+                // simplification can tear those seams and remove flat collision patches.
+                if (!GetEntity()->GetComponent<Spline>())
+                    geometry_processing::simplify(indices, vertices, target_index_count, false, false);
 
                 // warn if we hit the complexity cap (original mesh was very detailed)
                 if (!GetEntity()->GetComponent<Spline>() && indices.size() > max_index_count && target_index_count == max_index_count)
