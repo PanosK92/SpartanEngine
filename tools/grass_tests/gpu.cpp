@@ -82,7 +82,7 @@ struct Gpu
         b.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
         vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &b);
     }
-    Gpu()
+    Gpu(const char* shader_path = "binaries/grass_tests/grass_interaction_cs_SP_SHADER_STAGE_COMPUTE_vulkan.bin")
     {
         VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO}; app.apiVersion = VK_API_VERSION_1_3;
         VkInstanceCreateInfo info{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO}; info.pApplicationInfo = &app;
@@ -117,7 +117,7 @@ struct Gpu
             VkImageViewCreateInfo vi{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO}; vi.image = images[i]; vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = ii.format; vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
             check(vkCreateImageView(device, &vi, nullptr, &views[i]));
         }
-        buffer(4 * sizeof(Contact), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, contacts, contact_memory, mapped_contacts);
+        buffer(16384, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, contacts, contact_memory, mapped_contacts);
         buffer(size * size * sizeof(Pixel), VK_BUFFER_USAGE_TRANSFER_DST_BIT, readback, readback_memory, mapped_readback);
         VkDescriptorSetLayoutBinding bindings[] = {{0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr},
             {7, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr}, {61, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr}};
@@ -131,7 +131,7 @@ struct Gpu
         VkPushConstantRange range{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Push)};
         VkPipelineLayoutCreateInfo pl{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO}; pl.setLayoutCount = 1; pl.pSetLayouts = &layout; pl.pushConstantRangeCount = 1; pl.pPushConstantRanges = &range;
         check(vkCreatePipelineLayout(device, &pl, nullptr, &pipeline_layout));
-        std::ifstream file("binaries/grass_tests/grass_interaction_cs_SP_SHADER_STAGE_COMPUTE_vulkan.bin", std::ios::binary | std::ios::ate);
+        std::ifstream file(shader_path, std::ios::binary | std::ios::ate);
         require(file.good(), "Compile the production shaders first");
         size_t bytes = static_cast<size_t>(file.tellg()); std::vector<uint32_t> code(bytes / 4); file.seekg(0); file.read(reinterpret_cast<char*>(code.data()), bytes);
         VkShaderModuleCreateInfo sm{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO}; sm.codeSize = bytes; sm.pCode = code.data(); check(vkCreateShaderModule(device, &sm, nullptr, &shader));
@@ -147,14 +147,16 @@ struct Gpu
         }
         submit();
     }
-    std::vector<Pixel> run(Push push, const std::vector<Contact>& wheels = {})
+    std::vector<Pixel> run(Push push, const std::vector<Contact>& wheels = {}, const std::vector<std::array<float, 4>>& body_data = {})
     {
         require(wheels.size() <= 4, "Contact capacity");
         if (!wheels.empty()) std::memcpy(mapped_contacts, wheels.data(), wheels.size() * sizeof(Contact));
+        require(body_data.size() * sizeof(body_data[0]) <= 16384, "Body buffer capacity");
+        if (!body_data.empty()) std::memcpy(mapped_contacts, body_data.data(), body_data.size() * sizeof(body_data[0]));
         push.v[6] = static_cast<float>(wheels.size());
         uint32_t output = 1 - current;
         VkDescriptorImageInfo image_info[] = {{VK_NULL_HANDLE, views[output], VK_IMAGE_LAYOUT_GENERAL}, {VK_NULL_HANDLE, views[current], VK_IMAGE_LAYOUT_GENERAL}};
-        VkDescriptorBufferInfo buffer_info{contacts, 0, 4 * sizeof(Contact)};
+        VkDescriptorBufferInfo buffer_info{contacts, 0, 16384};
         VkWriteDescriptorSet writes[3]{};
         const uint32_t slots[] = {0, 7, 61};
         const VkDescriptorType types[] = {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
@@ -233,6 +235,127 @@ int main() try
         require(at(paused, 6000, 6002, p).pressure == at(settled, 6000, 6002, p).pressure, "Paused history changed");
     }
     std::cout << "PASS sweep continuity, tire width, direction/height, persistence, scrolling, reversal, recovery, reset, resting wheels at 30/60/144 Hz, pause\n";
+    Gpu body_gpu("binaries/grass_tests/body_cs_SP_SHADER_STAGE_COMPUTE_vulkan.bin");
+    for (bool rotated : {false, true})
+    {
+        // Compound yaw/pitch, plus the island's large world coordinates.
+        const float a = rotated ? 0.83f : 0.0f, b = rotated ? 0.25f : 0.0f;
+        Contact body{{6250, 18, -2840, 1},
+            {std::cos(a), 0, -std::sin(a), 1},
+            {std::sin(a) * std::sin(b), std::cos(b), std::cos(a) * std::sin(b), 0.5f},
+            {std::sin(a) * std::cos(b), -std::sin(b), std::cos(a) * std::cos(b), 2}};
+        for (int mode = 0; mode <= 7; ++mode)
+        {
+            Push test{}; test.v[0] = static_cast<float>(mode);
+            std::vector<std::array<float, 4>> body_data(4 + 6 + 6 * 48);
+            body_data[0] = body.start; body_data[1] = body.end; body_data[2] = body.direction; body_data[3] = body.normal;
+            body_data[4] = {0, mode == 7 ? 7.0f : 6.0f, 0, 0};
+            body_data[10] = {1, 0, 0, -1}; body_data[11] = {-1, 0, 0, -1};
+            body_data[12] = {0, 1, 0, -0.5f}; body_data[13] = {0, -1, 0, -0.5f};
+            body_data[14] = {0, 0, 1, -2}; body_data[15] = {0, 0, -1, -2};
+            body_data[16] = {0.70710678f, 0, 0.70710678f, -1.6f};
+            const auto result = body_gpu.run(test, {}, body_data);
+            for (uint32_t row = 0; row < size; ++row)
+            {
+                const float r = static_cast<float>(row) / (size - 1);
+                for (uint32_t column = 0; column < size; ++column)
+                {
+                    const float h = static_cast<float>(column) / (size - 1);
+                    const Pixel q = result[row * size + column];
+                    require(std::isfinite(q.x) && std::isfinite(q.y) && std::isfinite(q.pressure) && std::abs(q.height - 2) < 0.002f,
+                        "Body deformation produced a non-finite position or damaged the shading basis");
+                    require(mode == 7 || std::abs(q.x) >= 0.999f || std::abs(q.y) >= 0.499f || std::abs(q.pressure) >= 1.999f,
+                        "Blade penetrates the chassis");
+                    if (mode == 1) require(q.y <= -0.498f || std::abs(q.x) >= 0.998f || std::abs(q.pressure) >= 1.998f,
+                        "Underbody grass exceeds the chassis clearance");
+                    if ((mode >= 2 && mode <= 4) || mode == 6)
+                    {
+                        float x = mode == 2 ? -0.45f + r * 0.9f : 1.08f + r * 1.3f + (mode == 3 ? 5 : 0);
+                        float y = mode == 4 ? 1.0f : -0.9f;
+                        require(std::abs(q.x - (x - 0.55f * h * h)) < 0.002f &&
+                            std::abs(q.y - (y + h * (mode == 2 ? 0.05f : 1.2f))) < 0.002f,
+                            "Body changed a blade below, above or far from the car");
+                    }
+                    if (mode == 7) require(std::abs(q.x - (0.95f + r * 0.1f + 0.05f * h * h)) < 0.002f &&
+                        std::abs(q.y - (-0.9f + 1.2f * h)) < 0.002f, "Body cleared grass in the empty corner of its bounding box");
+                    float root_x = mode == 1 ? -0.95f + r * 1.9f : mode == 2 ? -0.45f + r * 0.9f :
+                        mode == 5 ? 0.3f : mode == 7 ? 0.95f + r * 0.1f : 1.08f + r * 1.3f + (mode == 3 ? 5.0f : 0.0f);
+                    float root_y = mode == 4 ? 1.0f : -0.9f;
+                    float root_z = mode == 5 ? 2.08f + r * 1.3f : mode == 6 ? 2.3f : mode == 7 ? 1.8f : 0.3f;
+                    float ox = (mode == 7 ? 0.05f : -0.55f) * h * h;
+                    float oy = h * (mode == 2 ? 0.05f : 1.2f);
+                    float oz = mode == 7 ? 0.0f : 0.015f * std::sin(r * 100.0f) * h;
+                    if (mode == 5) { oz = ox; ox = 0; }
+                    float original_length = std::sqrt(ox * ox + oy * oy + oz * oz);
+                    float dx = q.x - root_x, dy = q.y - root_y, dz = q.pressure - root_z;
+                    require(std::abs(std::sqrt(dx * dx + dy * dy + dz * dz) - original_length) < 0.003f,
+                        "Body contact shortened a blade instead of bending it");
+                    if (column == 0) require(std::abs(q.y - (mode == 4 ? 1.0f : -0.9f)) < 0.002f, "Body moved a planted root");
+                    if (column > 0)
+                    {
+                        const Pixel previous = result[row * size + column - 1];
+                        if (std::abs(q.x - previous.x) >= 0.035f || std::abs(q.y - previous.y) >= 0.035f || std::abs(q.pressure - previous.pressure) >= 0.035f)
+                            std::cerr << "Body discontinuity mode=" << mode << " row=" << row << " column=" << column << " from "
+                                << previous.x << ',' << previous.y << ',' << previous.pressure << " to " << q.x << ',' << q.y << ',' << q.pressure << '\n';
+                        require(std::abs(q.x - previous.x) < 0.035f && std::abs(q.y - previous.y) < 0.035f &&
+                            std::abs(q.pressure - previous.pressure) < 0.035f, "Body bend contains a discontinuity");
+                    }
+                    if (row > 0 && mode == 1)
+                    {
+                        const Pixel neighbour = result[(row - 1) * size + column];
+                        if (std::abs(q.x - neighbour.x) >= 0.04f || std::abs(q.y - neighbour.y) >= 0.04f)
+                            std::cerr << "Body neighbour mode=" << mode << " row=" << row << " column=" << column << " from "
+                                << neighbour.x << ',' << neighbour.y << ',' << neighbour.pressure << " to " << q.x << ',' << q.y << ',' << q.pressure << '\n';
+                        require(std::abs(q.x - neighbour.x) < 0.04f && std::abs(q.y - neighbour.y) < 0.04f,
+                            "Passing the lower body edge snapped the grass between sideways and downward bending");
+                    }
+                }
+            }
+            body_data[0][3] = 0;
+            const auto released = body_gpu.run(test, {}, body_data);
+            if (mode == 0) require(released[size - 1].x < 1.0f, "Body contact persisted after release");
+        }
+    }
+    std::cout << "PASS body clearance, preserved blade length, side/bumper bending, undertray, planted roots, continuity, rotated/sloped chassis, large coordinates, release, unaffected surrounding grass and empty hull corners\n";
+    Gpu distribution_gpu("binaries/grass_tests/distribution_cs_SP_SHADER_STAGE_COMPUTE_vulkan.bin");
+    for (uint32_t count : {1u, 2u, 3u, 6u, 7u, 13u, 31u, 257u, 2048u})
+    {
+        for (uint32_t symmetry = 0; symmetry < 8; ++symmetry)
+        {
+            Push test{}; test.v[0] = static_cast<float>(count); test.v[1] = static_cast<float>(symmetry);
+            auto points = distribution_gpu.run(test);
+            // The jitter margin guarantees separation within a cell, even for
+            // odd population budgets. Test positions produced by the GPU helper.
+            float separation = 0.1f / std::sqrt(static_cast<float>(count));
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                require(points[i].x > 0 && points[i].x < 1 && points[i].y > 0 && points[i].y < 1,
+                    "Grass placement escaped its cell");
+                for (uint32_t j = 0; j < i; ++j)
+                {
+                    float dx = points[i].x - points[j].x, dy = points[i].y - points[j].y;
+                    require(dx * dx + dy * dy > separation * separation, "Grass roots overlap or bunch up within a cell");
+                }
+            }
+            if (count == 257)
+            {
+                auto repeated = distribution_gpu.run(test);
+                require(std::memcmp(points.data(), repeated.data(), count * sizeof(Pixel)) == 0,
+                    "Grass placement changed between frames");
+                // Every quarter of the ground must receive its share of roots.
+                int quarters[4]{};
+                for (uint32_t i = 0; i < count; ++i) ++quarters[(points[i].x > 0.5f ? 1 : 0) + (points[i].y > 0.5f ? 2 : 0)];
+                for (int population : quarters) require(population >= 50 && population <= 79, "Grass distribution left a sparse ground quadrant");
+                test.v[2] = 4096;
+                auto narrow_fov = distribution_gpu.run(test);
+                test.v[0] = 280;
+                auto wide_fov = distribution_gpu.run(test);
+                require(std::memcmp(narrow_fov.data(), wide_fov.data(), count * sizeof(Pixel)) == 0,
+                    "Camera FOV changed existing grass positions");
+            }
+        }
+    }
+    std::cout << "PASS grass placement: separated roots, balanced coverage, arbitrary populations, scrambled cells, stable frames and changing FOV\n";
     return 0;
 }
 catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }

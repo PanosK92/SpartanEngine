@@ -1667,6 +1667,88 @@ namespace spartan
             history.vehicle_id = root->GetObjectId();
         }
 
+        history.body_data[1] = history.body_data[0];
+        if (!paused || !history.valid)
+        {
+            history.body_data[0] = {};
+            // Keep the fitted hulls separate: their combined box includes empty
+            // space around bumpers, sills and mirrors and would clear a rectangle.
+            lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
+            if (physx::PxRigidDynamic* chassis = simulation->get_body())
+            {
+                physx::PxBounds3 bounds = physx::PxBounds3::empty();
+                auto& data = history.body_data[0];
+                uint32_t hull_count = 0;
+                for (uint32_t i = 0; i < chassis->getNbShapes(); ++i)
+                {
+                    physx::PxShape* shape = nullptr;
+                    chassis->getShapes(&shape, 1, i);
+                    if (!shape || !(shape->getFlags() & physx::PxShapeFlag::eSIMULATION_SHAPE))
+                        continue;
+                    if (hull_count >= data.hulls.size())
+                        break;
+                    const auto& geometry = shape->getGeometry();
+                    const auto pose = shape->getLocalPose();
+                    physx::PxBounds3 shape_bounds;
+                    if (!physx::PxGeometryQuery::computeGeomBounds(shape_bounds, geometry, pose))
+                        continue;
+                    bounds.include(shape_bounds);
+                    const uint32_t first = hull_count * 48;
+                    uint32_t count = 0;
+                    if (geometry.getType() == physx::PxGeometryType::eCONVEXMESH)
+                    {
+                        const auto& convex = static_cast<const physx::PxConvexMeshGeometry&>(geometry);
+                        const auto* mesh = convex.convexMesh;
+                        if (mesh && mesh->getNbPolygons() <= 48)
+                        {
+                            const auto normal_matrix = convex.scale.toMat33().getInverse().getTranspose();
+                            for (uint32_t face = 0; face < mesh->getNbPolygons(); ++face)
+                            {
+                                physx::PxHullPolygon polygon;
+                                if (!mesh->getPolygonData(face, polygon))
+                                    continue;
+                                const auto n = pose.q.rotate(normal_matrix * physx::PxVec3(polygon.mPlane[0], polygon.mPlane[1], polygon.mPlane[2])).getNormalized();
+                                const auto vertex = mesh->getVertices()[mesh->getIndexBuffer()[polygon.mIndexBase]];
+                                const auto point = pose.transform(convex.scale.transform(vertex));
+                                data.planes[first + count++] = Vector4(n.x, n.y, n.z, -n.dot(point));
+                            }
+                        }
+                    }
+                    if (count == 0)
+                    {
+                        // Box primitives and unusually complex imported hulls.
+                        for (uint32_t axis = 0; axis < 3; ++axis)
+                        {
+                            Vector4 positive(axis == 0 ? 1.0f : 0.0f, axis == 1 ? 1.0f : 0.0f, axis == 2 ? 1.0f : 0.0f, -shape_bounds.maximum[axis]);
+                            Vector4 negative(-positive.x, -positive.y, -positive.z, shape_bounds.minimum[axis]);
+                            data.planes[first + count++] = positive;
+                            data.planes[first + count++] = negative;
+                        }
+                    }
+                    data.hulls[hull_count++] = Vector4(static_cast<float>(first), static_cast<float>(count), 0, 0);
+                }
+                if (!bounds.isEmpty() && bounds.isFinite())
+                {
+                    // TickVehicle extrapolates the visual chassis between fixed
+                    // steps. Follow that rendered pose so contact cannot lag the
+                    // visible panels at speed. Entity positions are already world-space.
+                    const Quaternion rotation = root->GetRotation();
+                    const physx::PxVec3 e = bounds.minimum.abs().maximum(bounds.maximum.abs());
+                    const auto axis = [&](const physx::PxVec3& v, float extent)
+                    {
+                        const Vector3 a = rotation * Vector3(v.x, v.y, v.z);
+                        return Vector4(a.x, a.y, a.z, extent);
+                    };
+                    data.center = Vector4(center, static_cast<float>(hull_count));
+                    data.right = axis(physx::PxVec3(1, 0, 0), e.x);
+                    data.up = axis(physx::PxVec3(0, 1, 0), e.y);
+                    data.forward = axis(physx::PxVec3(0, 0, 1), e.z);
+                }
+            }
+        }
+        if (!history.valid)
+            history.body_data[1] = history.body_data[0];
+
         const float frame_dt = static_cast<float>(Timer::GetDeltaTimeSec());
         const float dt = paused ? 0.0f : min(frame_dt, 0.1f);
         array<GrassWheelContact, 4> contacts{};
@@ -1828,7 +1910,13 @@ namespace spartan
         RHI_Buffer* binding1_instance = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
         RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::grass_instances), buf_instances);
 
-        const auto& tracks = m_pass_state.grass_interaction;
+        auto& tracks = m_pass_state.grass_interaction;
+        static_assert(sizeof(tracks.body_data[0]) == (4 + 6 + 6 * 48) * sizeof(Vector4));
+        if (!tracks.bodies)
+            tracks.bodies = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,
+                static_cast<uint32_t>(sizeof(Vector4)), static_cast<uint32_t>(sizeof(tracks.body_data) / sizeof(Vector4)), nullptr, false, "grass_bodies");
+        RHI_CommandList::UpdateBuffer(tracks.bodies.get(), 0, sizeof(tracks.body_data), tracks.body_data.data(), false);
+        RHI_CommandList::SetBuffer("grass_bodies", tracks.bodies.get());
         RHI_Texture* fallback = GetStandardTexture(Renderer_StandardTexture::Black);
         RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex),
             tracks.valid ? tracks.fields[tracks.current].get() : fallback);
@@ -1875,6 +1963,7 @@ namespace spartan
                     m_pcb_pass_cpu.v[base + 2] = 1.0f / grass_interaction_size;
                     m_pcb_pass_cpu.v[base + 3] = tracks.valid && (frame == 0 || tracks.previous_valid) ? 1.0f : 0.0f;
                 }
+                m_pcb_pass_cpu.v[12] = tracks.valid ? 1.0f : 0.0f;
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
                 // an empty ring bakes instance_count 0 into the args so the gpu skips it at near-zero cost

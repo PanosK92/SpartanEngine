@@ -158,6 +158,15 @@ namespace spartan
             {
                 std::shared_ptr<RHI_Texture> fields[2];
                 std::shared_ptr<RHI_Buffer> contacts;
+                std::shared_ptr<RHI_Buffer> bodies;
+                // Current/previous rendered chassis pose and fitted convex planes.
+                struct Body
+                {
+                    math::Vector4 center, right, up, forward;
+                    std::array<math::Vector4, 6> hulls{};
+                    std::array<math::Vector4, 6 * 48> planes{};
+                };
+                std::array<Body, 2> body_data{};
                 math::Vector2 origins[2] = {};
                 uint32_t current = 0;
                 bool valid = false;

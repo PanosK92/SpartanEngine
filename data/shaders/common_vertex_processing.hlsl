@@ -21,6 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include "common.hlsl"
+#if defined(GRASS_INSTANCED)
+#include "grass_body.hlsl"
+#endif
 //====================
 
 // - the functions are shared between depth_prepass.hlsl, g_buffer.hlsl and depth_light.hlsl
@@ -686,6 +689,16 @@ struct vertex_processing
             position_world  = instance_pos + mul(rot, offset);
             vertex.normal   = normalize(mul(rot, vertex.normal));
             vertex.tangent  = normalize(mul(rot, vertex.tangent));
+#if defined(GRASS_INSTANCED)
+            if (surface.is_grass_blade() && buffer_pass.values[3].x > 0.5f)
+            {
+                MaterialParameters grass_material = GetMaterial();
+                float blade_reach = grass_material.local_height * length(transform[1].xyz)
+                    + grass_material.local_width * length(transform[0].xyz);
+                bend_grass_around_body(grass_body_load(time_offset < 0.0f ? 1 : 0), instance_pos, blade_reach,
+                    position_world, vertex.normal, vertex.tangent);
+            }
+#endif
         }
         else if (surface.has_wind_animation())
         {

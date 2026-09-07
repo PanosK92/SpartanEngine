@@ -101,13 +101,13 @@ namespace spartan
     const uint32_t renderer_max_gpu_scatter_slots = 3;
     const uint32_t renderer_max_gpu_scatter_lods  = 3;
 
-    // a ring's cap and its cell size together decide instances per square metre, they are tuned as a
-    // pair so adjacent rings land within about 2x of each other, a bigger step than that and the ring
-    // boundary reads as a visible edge on the ground no matter how wide the crossfade is
+    // The populate shader distributes each ring's budget over its area; cell size only partitions
+    // that work. Spend most of the added density nearby, where gaps expose the ground;
+    // the overlapping ring fades carry the cover into cheaper distant geometry.
     constexpr std::array<std::array<uint32_t, renderer_max_gpu_scatter_lods>, renderer_max_gpu_scatter_slots>
     renderer_max_gpu_scatter_per_lod =
     {{
-        {{ 384u * 1024u, 512u * 1024u, 512u * 1024u }}, // grass, a blade every few centimetres out to half a kilometre
+        {{ 4608u * 1024u, 3072u * 1024u, 1536u * 1024u }}, // grass, 8x/4x/2x the previous budgets, 144 MiB total
         {{   6u * 1024u,  16u * 1024u,  24u * 1024u }}, // micro detail, ~5, ~2.6 and ~1.1 chips per square metre
         {{   6u * 1024u,  16u * 1024u,  24u * 1024u }}
     }};

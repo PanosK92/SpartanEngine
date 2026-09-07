@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "common.hlsl"
 #include "common_culling.hlsl"
+#include "grass_distribution.hlsl"
 //============================
 
 // conservative world-space bound used to cull an instance against the camera frustum and the occluder
@@ -419,13 +420,9 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     float2 camera_xz_anchor = get_camera_position().xz;
 
-    // stratified scatter: the world is divided into a grid of cells, each cell holds blades_per_cell
-    // blades, and each blade is placed at a uniformly random position INSIDE the cell, independently of
-    // every other blade. each cell is a stratum, blades inside a stratum are pure random scatter so
-    // there is no per-blade lattice, blades between strata add up to a globally uniform density so
-    // there is no per-cell lattice either, this is the cheapest stable approximation of a poisson disk
-    // distribution that produces even coverage at any view angle. blade_index lives in dispatch_thread_id.z
-    // so cells_per_axis stays a simple 2d grid sized to the ring
+    // Each grass blade gets a separate, jittered subcell. This spreads the budget
+    // over the ground instead of wasting nearby blades on random coincidences.
+    // blade_index lives in dispatch_thread_id.z; the enclosing cells stay snapped.
     uint cells_per_axis = (uint)(
         2.0f * ceil(ring_radius / cell_size)
     ) + 2u;
@@ -466,8 +463,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     int world_cell_z = (int)floor(camera_xz_anchor.y / cell_size) + cell_z_s;
 
     // hash combines the cell coordinates, the blade index inside the cell, and the lod seed,
-    // each (cell, blade) pair gets an independent stable hash, no two blades collide and there is
-    // no per-cell pattern because blade_index decorrelates blades that share a cell
+    // each (cell, blade) pair gets stable random dimensions, yaw and position jitter
     // the slot is part of the seed, otherwise every slot would stack its instances on the exact same
     // points and a pebble would be born inside every blade of grass
     uint blade_index = dispatch_thread_id.z;
@@ -487,11 +483,18 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float ys = hash_unit(h2);
     float sc = hash_unit(h3);
 
-    // uniform random position inside the cell, the cell is the stratum, every blade in a cell rolls
-    // its own jx/jz so the cell interior is filled with pure random scatter rather than a single
-    // jittered grid point, which is what kills the doll-hair look
+    float2 cell_position = float2(jx, jz);
+    if (slot_index == 0u)
+    {
+        uint seed = hash_u32((uint)world_cell_x, (uint)world_cell_z, lod_index * 2654435761u);
+        // Use the maximum FOV boost for the subdivision, not the current count.
+        // The chase camera varies FOV with speed; it must not move existing roots.
+        float maximum_boost = min(patch_boost / 0.18f, grass_max_boost);
+        uint capacity = max(1u, (uint)ceil(float(max_instances_per_lod) * GRASS_FILL_MARGIN * maximum_boost / max(cells_in_ring, 1.0f)));
+        cell_position = grass_stratified_position(blade_index, capacity, cell_position, seed);
+    }
     float2 cell_origin_xz = float2(world_cell_x, world_cell_z) * cell_size;
-    float2 world_xz       = cell_origin_xz + float2(jx, jz) * cell_size;
+    float2 world_xz       = cell_origin_xz + cell_position * cell_size;
 
     // wide overlapping fades, then warp the radius with low frequency noise so the lod
     // seam is a blob instead of a stamped circle
