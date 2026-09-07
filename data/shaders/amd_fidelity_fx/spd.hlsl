@@ -26,7 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define A_GPU
 #define A_HLSL
 #define SPD_NO_WAVE_OPERATIONS
+#if AVERAGE
 #define SPD_LINEAR_SAMPLER
+#endif
 
 #include "ffx_a.h"
 
@@ -36,8 +38,13 @@ groupshared AU1 spd_counter;
 AF4 SpdLoadSourceImage(ASU2 p, AU1 slice)
 {
     float2 resolution_out = pass_get_f3_value2().xy;
+#if AVERAGE
     float2 uv             = (p + 0.5f) / resolution_out;
     return tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
+#else
+    // Min/max reductions must include each source texel, never a filtered tap.
+    return tex.Load(int3(clamp(p, int2(0, 0), int2(resolution_out) - 1), 0));
+#endif
 }
 
 // Load from mip 5
@@ -105,6 +112,28 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     uint2 src_res;
     tex.GetDimensions(src_res.x, src_res.y);
 
+#if MIN || MAX
+    // Cover the destination's entire normalized footprint, including odd-sized
+    // source edges. Adjacent footprints may overlap; missing a sample would
+    // create false occluders. Each axis covers at most three source texels.
+    uint2 first = thread_id.xy * src_res / dst_res;
+    uint2 end = ((thread_id.xy + 1u) * src_res + dst_res - 1u) / dst_res;
+    AF4 reduced = tex.Load(int3(first, 0));
+    [loop] for (uint y = first.y; y < end.y; ++y)
+    {
+        [loop] for (uint x = first.x; x < end.x; ++x)
+        {
+            AF4 sample = tex.Load(int3(x, y, 0));
+#if MIN
+            reduced = min(reduced, sample);
+#else
+            reduced = max(reduced, sample);
+#endif
+        }
+    }
+    tex_uav[thread_id.xy] = reduced;
+#else
+
     int2 s   = int2(thread_id.xy) * 2;
     int2 s00 = s;
     int2 s10 = int2(min(s.x + 1, int(src_res.x) - 1), s.y);
@@ -117,6 +146,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     AF4 v11 = tex.Load(int3(s11, 0));
 
     tex_uav[thread_id.xy] = SpdReduce4(v00, v10, v01, v11);
+#endif
 }
 #else
 #include "ffx_spd.h"

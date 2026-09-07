@@ -52,6 +52,8 @@ namespace spartan
     {
         TConsoleVar<float> cvar_tree_wind_cache_entries("r.tree_wind_cache_entries", static_cast<float>(TREE_WIND_CACHE_CAPACITY),
             "visible-instance root wind cache entries; 0 uses the identical uncached path, never affects population");
+        TConsoleVar<float> cvar_hiz_depth_bias("r.hiz_depth_bias", 2e-7f,
+            "minimum reverse-Z mesh/meshlet occlusion margin; 0.01 reproduces the former permissive bias");
 
         struct IndexedBatchKey
         {
@@ -680,6 +682,7 @@ namespace spartan
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::instance_dispatch_args), GetBuffer(Renderer_Buffer::InstanceDispatchArgs));
 
             // f4_value: x = instance task count, y = max hiz mip, z = surviving instances cap (drop survivors past this)
+            m_pcb_pass_cpu.set_f3_value(clamp(cvar_hiz_depth_bias.GetValueAs<float>(), 0.0f, 1.0f), 0.0f, 0.0f);
             m_pcb_pass_cpu.set_f4_value(
                 static_cast<float>(m_cull_task_count),
                 max_hiz_mip,
@@ -725,6 +728,7 @@ namespace spartan
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::tree_wind_cache), GetBuffer(Renderer_Buffer::TreeWindCache));
 
             // f4_value: x = max hiz mip, y = meshlet instances cap, z = opaque/alpha region split, w = wind cache limit
+            m_pcb_pass_cpu.set_f3_value(clamp(cvar_hiz_depth_bias.GetValueAs<float>(), 0.0f, 1.0f), 0.0f, 0.0f);
             m_pcb_pass_cpu.set_f4_value(
                 max_hiz_mip,
                 static_cast<float>(GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount() / (use_mesh_shaders() ? 1u : 2u)),

@@ -117,7 +117,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
 
         if (survives)
         {
-            survives = skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level);
+            survives = skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, pass_get_f3_value().x);
         }
     }
 

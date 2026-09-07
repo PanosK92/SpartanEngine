@@ -692,7 +692,9 @@ namespace spartan
             const uint32_t width  = max(tex->GetWidth()  >> mip_start, 1u);
             const uint32_t height = max(tex->GetHeight() >> mip_start, 1u);
 
-            if (width > spd_max_size || height > spd_max_size)
+            // Conservative min/max pyramids use exact per-mip footprints.
+            // SPD's fixed 2x2 hierarchy does not cover normalized odd-size edges.
+            if (filter != Renderer_DownsampleFilter::Average || width > spd_max_size || height > spd_max_size)
             {
                 const uint32_t dst_w = max(width  >> 1, 1u);
                 const uint32_t dst_h = max(height >> 1, 1u);

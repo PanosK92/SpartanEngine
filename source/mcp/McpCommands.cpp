@@ -57,6 +57,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../geometry/GeometryGeneration.h"
 #include "../geometry/Mesh.h"
 #include "../rhi/RHI_Texture.h"
+#include "../rhi/RHI_Buffer.h"
+#include "../rhi/RHI_Device.h"
 #include "../rendering/Material.h"
 #include "../rendering/Renderer.h"
 #include "../math/Vector2.h"
@@ -3379,6 +3381,34 @@ namespace spartan
             }
             return "{\"ok\":true,\"recording\":" + json_bool(Profiler::IsRecording()) +
                 ",\"stopping\":" + json_bool(Profiler::IsRecordingStopping()) + "}";
+        }
+
+        std::string command_meshlet_snapshot(const McpRequest&)
+        {
+            // Explicit diagnostic only: never stall the GPU in normal rendering
+            // or contaminate an active timing capture with a synchronous read.
+            if (Profiler::IsRecording() || Profiler::IsRecordingStopping())
+                return json_error("stop profiler recording before reading meshlet counts");
+            RHI_Buffer* instances = Renderer::GetBuffer(Renderer_Buffer::InstanceDispatchArgs);
+            RHI_Buffer* meshlets = Renderer::GetBuffer(Renderer_Buffer::TriangleDispatchArgs);
+            RHI_Buffer* survivors = Renderer::GetBuffer(Renderer_Buffer::SurvivingInstances);
+            RHI_Buffer* meshlet_list = Renderer::GetBuffer(Renderer_Buffer::MeshletInstances);
+            if (!instances || !meshlets || !survivors || !meshlet_list ||
+                !instances->GetMappedData() || !meshlets->GetMappedData())
+                return json_error("GPU culling buffers are not ready");
+            RHI_Device::QueueWaitAll();
+            uint32_t instance_count = 0;
+            uint32_t opaque_count = 0;
+            uint32_t alpha_count = 0;
+            std::memcpy(&instance_count, instances->GetMappedData(), sizeof(uint32_t));
+            std::memcpy(&opaque_count, meshlets->GetMappedData(), sizeof(uint32_t));
+            std::memcpy(&alpha_count, static_cast<const uint8_t*>(meshlets->GetMappedData()) + meshlets->GetStride(), sizeof(uint32_t));
+            return "{\"ok\":true,\"sampled_after_gpu_wait\":true,\"frame\":" + std::to_string(Renderer::GetFrameNumber()) +
+                ",\"surviving_instances\":" + std::to_string(instance_count) +
+                ",\"opaque_meshlets\":" + std::to_string(opaque_count) +
+                ",\"alpha_meshlets\":" + std::to_string(alpha_count) +
+                ",\"instance_capacity\":" + std::to_string(survivors->GetElementCount()) +
+                ",\"meshlet_capacity_per_category\":" + std::to_string(meshlet_list->GetElementCount() / 2u) + "}";
         }
 
         std::string command_profiler_snapshot(const McpRequest& request)
@@ -13782,6 +13812,7 @@ namespace spartan
             { "engine_status",                 [](const McpRequest&) { return command_engine_status(); } },
             { "profiler_snapshot",             command_profiler_snapshot },
             { "profiler_record",               command_profiler_record },
+            { "meshlet_snapshot",              command_meshlet_snapshot },
             { "engine_set_mode",               command_engine_set_mode },
             { "undo_redo",                     command_undo_redo },
             { "cvar_list",                     [](const McpRequest&) { return command_cvar_list(); } },

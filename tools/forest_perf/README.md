@@ -211,3 +211,72 @@ and tree-collider activation/deactivation test passes. Production world hash
 and population remain the values recorded above; no production world was saved.
 `wind_cache_check.mjs` runs the bounded A/B and fallback checks on the disposable
 preview world. Keep that window unminimized until the captures finish.
+
+## Follow-up: make meshlet occlusion effective
+
+The pipeline already uses instance/meshlet frustum tests, meshlet normal cones,
+screen contribution tests, LOD selection, and a second cull against this frame's
+depth prepass. The main weakness found in this audit was its Hi-Z occlusion:
+
+- A constant 0.01 reverse-Z margin made occluders farther than roughly 10 m
+  ineffective with the default 0.1 m near plane. The mesh/meshlet margin now
+  scales with depth, with a 2e-7 absolute floor. Equal-depth surfaces survive.
+- The SPD linear-sampler shortcut bypassed the first 2x2 min/max reduction.
+  Min/max pyramids now use exact source loads and per-mip normalized footprints,
+  including every sample at odd-sized edges. Average-color downsampling is
+  unchanged. The extra dispatches cost a little more but make the depth evidence
+  conservative enough to use the tighter comparison safely.
+- The four-corner query expanded by a mip texel after selecting its level, so
+  it could skip interior cells. It now expands by one base pixel first, applies
+  the active-resolution scale, selects a level whose footprint fits in 2x2 cells,
+  and reads all those cells with integer loads and actual mip dimensions.
+
+Wind bounds, skinned/two-sided safeguards, population, LOD thresholds and draw
+distances are unchanged. The stronger depth test also rejects whole hidden
+instances before their meshlets are expanded. This follows the existing
+[meshoptimizer bounding-sphere/cone culling model](https://meshoptimizer.org/);
+no new task-shader stage is needed to reject those workgroups before mesh shading.
+
+The `r.hiz_depth_bias` cvar defaults to 2e-7. Set it to 0.01 to compare against
+the former permissive margin while retaining the corrected pyramid and gather.
+The explicit MCP `meshlet_snapshot` diagnostic waits for completed GPU work and
+reads the existing dispatch buffers; it adds no counter atomics or normal-frame
+readback. Use the mesh-shader path for its opaque/alpha counts. It refuses to run
+while a profiler recording is active so the wait does not contaminate timings.
+
+Matched ground camera (6292, 20.762285, -1962), looking +Z; development Vulkan,
+RTX 5070 Ti, render 1920x938 and output 3180x1555:
+- Permissive/precise culling submits 500655 -> 196636 meshlets (about 61% fewer).
+  Opaque counts are 237986 -> 92660; alpha counts are 262669 -> 103976.
+  Both are far below their 4194304-entry capacities; these reductions are not
+  capacity overflow. Counts are individual settled diagnostic samples.
+- `meshlet_ground_permissive.csv` / `meshlet_ground_precise.csv`, 29/37 fresh
+  GPU samples: indirect G-buffer 6.371 -> 3.202 ms, depth 2.819 -> 1.561 ms.
+  Total GPU busy time (sum of top-level scopes) is 17.843 -> 13.798 ms.
+  The refine scope grows from 0.171 to 0.494 ms and is included in the net result.
+- The open overview benefits much less: 7.321 -> 7.245 ms G-buffer, with about
+  9000 fewer submitted meshlets. Do not generalize the ground-view gain to every
+  camera or treat GPU busy time as an end-to-end frame-rate guarantee.
+
+Evidence: `meshlet_counts.json`, `meshlet_ground_counts.json`, the CSVs above,
+occlusion-off/on `meshlet_close_*` screenshots, and `meshlet_movement.json` with
+three route screenshots. Visual inspection found the same visible vegetation
+and terrain with occlusion on/off, and the 25-position render smoke test passed.
+This is not a pixel-exact comparison: wind, clouds and temporal rendering evolve.
+
+Validation commands:
+- `node tools/wind_tests/compile_shaders.mjs`: 17 Vulkan variants.
+- `node tools/forest_perf/compile_culling.mjs`: grass plus six pyramid variants,
+  each compiled and validated with SPIR-V tools.
+- `python tools/forest_perf/check_hiz_math.py`: 12800 CPU coverage-oracle queries
+  for odd/thin dimensions, resolution scaling and interior holes, plus reverse-Z
+  ordering checks. This is a reference-property test, not GPU execution.
+- `node tools/forest_perf/meshlet_check.mjs`: bounded overview A/B and close
+  occlusion-off/on captures. `--views-only` repeats only the visual checks.
+- `node tools/forest_perf/meshlet_movement.mjs`: the fixed moving-camera route.
+
+The development executable builds successfully. The production world hash is
+unchanged. Resolution-scale mutation is blocked by the engine MCP interface;
+scaled footprints were checked mathematically, not with a live scaled capture.
+The live 1920x938 pyramid itself includes odd-sized mip levels. The route uses
+known positions on the unchanged world and does not claim physics validation.

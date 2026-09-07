@@ -60,30 +60,29 @@ bool sphere_in_side_planes(float3 center, float radius, float4 plane_l, float4 p
     return min_dist >= -radius;
 }
 
-// shared mip pick + 4-corner depth gather, the box uvs are in full-texture [0,1] space, the scale by buffer_frame.resolution_scale
-// happens here so callers stay in canonical uv coordinates
-// dropping the center sample is safe because the chosen mip ensures the box fits in roughly one texel and the four corner
-// reads cover every texel the box can touch after the one-texel border expansion below
+// Expand in base-level pixels BEFORE selecting a mip. The resulting rectangle
+// spans at most two cells on either axis, so four integer loads cover every cell.
+// Expanding by a mip texel after choosing the level can skip interior cells.
 float hiz_min_depth_over_box(Texture2D hiz_tex, float2 min_uv, float2 max_uv, float max_mip_level)
 {
-    float2 render_size;
-    hiz_tex.GetDimensions(render_size.x, render_size.y);
+    uint width, height;
+    hiz_tex.GetDimensions(width, height);
+    float2 size = float2(width, height);
+    float2 uv_scale = get_render_uv_scale();
+    min_uv = saturate(min_uv * uv_scale - 1.0f / size);
+    max_uv = saturate(max_uv * uv_scale + 1.0f / size);
+    float2 size_px = (max_uv - min_uv) * size;
+    uint mip = (uint)clamp(ceil(log2(max(max(size_px.x, size_px.y), 1.0f))), 0.0f, max_mip_level);
 
-    float2 uv_extent = max_uv - min_uv;
-    float2 size_px   = uv_extent * render_size;
-    float  mip       = ceil(log2(max(max(size_px.x, size_px.y), 1.0f)));
-    mip              = clamp(mip, 0, max_mip_level);
-
-    float2 mip_texel = exp2(mip) / render_size;
-    min_uv = saturate(min_uv - mip_texel);
-    max_uv = saturate(max_uv + mip_texel);
-
-    float2 uv_scale   = get_render_uv_scale();
-    float4 scaled_uvs = float4(min_uv * uv_scale, max_uv * uv_scale);
-    float d0 = hiz_tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.xy, mip).r;
-    float d1 = hiz_tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.zy, mip).r;
-    float d2 = hiz_tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.xw, mip).r;
-    float d3 = hiz_tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.zw, mip).r;
+    uint mip_width, mip_height, levels;
+    hiz_tex.GetDimensions(mip, mip_width, mip_height, levels);
+    uint2 mip_size = uint2(mip_width, mip_height);
+    uint2 lo = min((uint2)(min_uv * mip_size), mip_size - 1u);
+    uint2 hi = min((uint2)(max_uv * mip_size), mip_size - 1u);
+    float d0 = hiz_tex.Load(int3(lo, mip)).r;
+    float d1 = hiz_tex.Load(int3(hi.x, lo.y, mip)).r;
+    float d2 = hiz_tex.Load(int3(lo.x, hi.y, mip)).r;
+    float d3 = hiz_tex.Load(int3(hi, mip)).r;
     return min(min(d0, d1), min(d2, d3));
 }
 
@@ -152,7 +151,7 @@ uint sphere_project_ndc(float3 center_world, float radius_world, out float2 min_
 }
 
 // fast analytical hi-z for a world-space sphere
-bool sphere_hiz_visible(Texture2D hiz_tex, float3 center_world, float radius_world, float max_mip_level)
+bool sphere_hiz_visible(Texture2D hiz_tex, float3 center_world, float radius_world, float max_mip_level, float bias_floor = 2e-7f)
 {
     float2 min_ndc, max_ndc;
     float  closest_box_z;
@@ -175,7 +174,11 @@ bool sphere_hiz_visible(Texture2D hiz_tex, float3 center_world, float radius_wor
     float2 max_uv = max(uv_a, uv_b);
 
     float furthest_z = hiz_min_depth_over_box(hiz_tex, min_uv, max_uv, max_mip_level);
-    return closest_box_z > furthest_z - 0.01f;
+    // Reverse-Z shrinks with distance: a fixed 0.01 bias made occluders beyond
+    // about 10 m ineffective with the default 0.1 m near plane. Retain a small
+    // relative/absolute precision margin and keep equal-depth surfaces.
+    float depth_bias = max(bias_floor, abs(closest_box_z) * 1e-4f);
+    return closest_box_z >= furthest_z - depth_bias;
 }
 
 // contribution thresholds in pixels

@@ -173,9 +173,10 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
                     }
                 }
 
-                // last frame hi-z is stale for movers, skip or the mesh pops for a frame
+                // The pyramid is rebuilt this frame; draws marked to bypass it
+                // still keep their conservative visibility policy.
                 if (is_visible && !gs_skip_hiz)
-                    is_visible = sphere_hiz_visible(tex, center_world, radius_world, max_mip_level);
+                    is_visible = sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, pass_get_f3_value().x);
             }
         }
 
