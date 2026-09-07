@@ -77,6 +77,11 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             radius_world        = draw.lod_aabb_diag * 0.5f * max_world_scale(world_xform);
         }
 
+        float lod_radius = radius_world;
+        bool wind_animated = (material_parameters[draw.material_index].flags & (1u << 9)) != 0u;
+        if (wind_animated)
+            radius_world += tree_wind_cull_padding(center_world, radius_world, world_xform[3].xyz);
+
         // closest point on the instance sphere, origin distance was dropping roads and buildings
         // whose entity pivot sat hundreds of metres away from the mesh in front of the camera
         bool passes_distance = true;
@@ -101,7 +106,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             if (lod_count > 1u)
             {
                 uint draw_lod = (draw.flags >> 8u) & 7u;
-                survives      = sphere_lod_index(center_world, radius_world, lod_count) == draw_lod;
+                survives      = sphere_lod_index(center_world, lod_radius, lod_count) == draw_lod;
             }
         }
 

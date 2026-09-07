@@ -41,7 +41,8 @@ namespace spartan
         CastsShadows         = 1U << 0,
         // skips blas builds and tlas registration, a per-blade blas for millions of grass instances buys nothing
         ExcludeFromRayTracing = 1U << 1,
-        ExcludeFromTerrainBlend = 1U << 2 // manufactured surfaces stay clean, independent of shared material
+        ExcludeFromTerrainBlend = 1U << 2, // manufactured surfaces stay clean, independent of shared material
+        PreserveCollisionGeometry = 1U << 3 // thin authored surfaces must survive physics cooking intact
     };
 
     // per-render uv overrides, each field defaults to nan meaning inherit from the material asset at draw time
@@ -77,6 +78,7 @@ namespace spartan
 
         // mesh
         void SetMesh(Mesh* mesh, const uint32_t sub_mesh_index = 0);
+        void SetOwnedMesh(const std::shared_ptr<Mesh>& mesh);
         void SetMesh(const MeshType type);
         void ClearMesh();
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
@@ -174,6 +176,7 @@ namespace spartan
 
         // geometry/mesh
         Mesh* m_mesh                          = nullptr;
+        std::shared_ptr<Mesh> m_owned_mesh; // lifetime of transient procedural geometry
         uint32_t m_sub_mesh_index             = 0;
         bool m_bounding_box_dirty             = true;
         bool m_bounding_box_override          = false;

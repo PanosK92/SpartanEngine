@@ -85,12 +85,44 @@ int main()
     for (const auto& a : bend.points)
         for (const auto& b : opposite.points)
             assert((a - b).Length() > 5.0f);
+    // A return loop shares its start/end node with the approach. Traffic takes
+    // the paved circuit instead of invoking the dead-end U-turn fallback.
+    Network turnaround;
+    turnaround.AddRoad(1, "approach", "mouth", line({0,0,-80}, {0,0,0}), 10);
+    Path circuit;
+    for (const Vector3& p : {Vector3(0,0,0), Vector3(22,0,22), Vector3(29,0,52),
+        Vector3(16,0,74), Vector3(0,0,80), Vector3(-16,0,74), Vector3(-29,0,52), Vector3(-22,0,22), Vector3(0,0,0)}) circuit.Add(p);
+    turnaround.AddRoad(2, "mouth", "mouth", circuit, 10);
+    for (uint32_t seed = 0; seed < 100; seed++)
+    {
+        uint32_t state = seed;
+        const size_t next = turnaround.ChooseExit(0, state);
+        assert(next == 2 || next == 3);
+        assert(turnaround.edges[next].to == turnaround.edges[0].to);
+        const auto& exits = turnaround.nodes[turnaround.edges[next].to].exits;
+        assert(std::find(exits.begin(), exits.end(), 1) != exits.end());
+    }
     Network pedestrians;
-    pedestrians.AddRoad(1, "a", "b", line({0,0,0}, {0,10,100}), 12, true);
+    assert(WalkingSegmentBlocked({0,0,0}, {10,0,0}, {4,0,-1}, {4.1f,3,1}));
+    assert(!WalkingSegmentBlocked({0,0,0}, {10,0,0}, {4,-2,-1}, {5,0,1})); // paving below feet
+    assert(!WalkingSegmentBlocked({0,0,2}, {10,0,2}, {4,0,-1}, {5,3,1}));
+    pedestrians.AddSidewalk(1, line({7,0.15f,0}, {7,10.15f,100}));
     const auto walking = pedestrians.edges[0].lane.Sample(20);
-    assert(fabsf(walking.position.x - 5.2f) < 0.01f);
+    assert(fabsf(walking.position.x - 7.0f) < 0.01f);
     assert(walking.position.y > 1.0f && walking.position.y < 4.0f);
-    assert(pedestrians.edges[1].lane.Sample(20).position.x < -5.1f);
+    assert(pedestrians.edges[1].lane.Sample(20).position.x == 7.0f);
+    pedestrians.AddSidewalk(1, line({-7,0.15f,0}, {-7,10.15f,100}));
+    assert(pedestrians.ChooseExit(0, random) == 1);
+    Path stroll = pedestrians.edges[0].lane;
+    pedestrians.AppendExit(stroll, 0, 1);
+    // Turning around must stay on the same raised sidewalk, never sweep over asphalt.
+    for (const auto& p : stroll.points)
+    {
+        assert(p.x == 7.0f);
+        assert(fabsf(p.y - (0.15f + p.z * 0.1f)) < 0.001f);
+    }
+    pedestrians.AddSidewalk(2, line({7,0,0}, {7,0,2}));
+    assert(pedestrians.edges.size() == 4); // reject fragments too short for walkers
     Path empty;
     assert(empty.Sample(10).position.IsFinite());
     Network invalid;

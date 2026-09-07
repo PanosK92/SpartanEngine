@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../imgui/ImGui_Style.h"
 #include "../widgets/Viewport.h"
 #include "core/ProgressTracker.h"
+#include <filesystem>
+#include <unordered_set>
 SP_WARNINGS_OFF
 #include "io/pugixml.hpp"
 SP_WARNINGS_ON
@@ -433,12 +435,18 @@ namespace
         return nullptr;
     }
 
-    void scan_directory_recursive(const string& directory)
+    void scan_directory_recursive(const string& directory, unordered_set<string>& visited)
     {
         if (!spartan::FileSystem::Exists(directory) || !spartan::FileSystem::IsDirectory(directory))
         {
             return;
         }
+
+        // Runtime asset junctions can point back into the project. Resolve them
+        // before descending so a cycle cannot grow paths until filesystem throws.
+        error_code error;
+        const auto canonical = filesystem::canonical(directory, error);
+        if (error || !visited.insert(canonical.generic_string()).second) return;
 
         vector<string> files = spartan::FileSystem::GetFilesInDirectory(directory);
         for (const string& file : files)
@@ -459,7 +467,7 @@ namespace
         vector<string> subdirectories = spartan::FileSystem::GetDirectoriesInDirectory(directory);
         for (const string& subdir : subdirectories)
         {
-            scan_directory_recursive(subdir);
+            scan_directory_recursive(subdir, visited);
         }
     }
 
@@ -473,15 +481,17 @@ namespace
 
         world_files.clear();
 
+        unordered_set<string> visited;
+
         string project_dir = spartan::ResourceCache::GetProjectDirectory();
-        scan_directory_recursive(project_dir);
+        scan_directory_recursive(project_dir, visited);
 
         vector<string> worlds_dirs = { "worlds", "../worlds" };
         for (const string& worlds_dir : worlds_dirs)
         {
             if (spartan::FileSystem::Exists(worlds_dir))
             {
-                scan_directory_recursive(worlds_dir);
+                scan_directory_recursive(worlds_dir, visited);
                 break;
             }
         }

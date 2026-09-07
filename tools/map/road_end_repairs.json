@@ -1,0 +1,1564 @@
+[
+  {
+    "kind": "join",
+    "road": "r000_zakynthos_keri",
+    "end": 0,
+    "target": "r113_tertiary",
+    "distance": 0.0,
+    "position": [
+      1424.0,
+      183.9,
+      -11538.699999999999
+    ],
+    "tag": "road_node_game_join_9004200000000000001"
+  },
+  {
+    "kind": "join",
+    "road": "r001_zakynthos_keri",
+    "end": 0,
+    "target": "r002_zakynthos_keri",
+    "distance": 117.8,
+    "position": [
+      7334.4,
+      -2.9,
+      -2120.9
+    ],
+    "tag": "road_node_game_join_9004200000000001001"
+  },
+  {
+    "kind": "join",
+    "road": "r001_zakynthos_keri",
+    "end": 40,
+    "target": "r191_agiou_athanasiou",
+    "distance": 31.62,
+    "position": [
+      8640.0,
+      -3.0,
+      -1309.8999999999999
+    ],
+    "tag": "road_node_game_join_9004200000000001039"
+  },
+  {
+    "kind": "join",
+    "road": "r003_zakynthos_keri",
+    "end": 0,
+    "target": "r210_agias_varvaras",
+    "distance": 124.86,
+    "position": [
+      8735.5,
+      -3.5,
+      -1392.7
+    ],
+    "tag": "road_node_game_join_9004200000000003001"
+  },
+  {
+    "kind": "join",
+    "road": "r003_zakynthos_keri",
+    "end": 7,
+    "target": "r044_zakynthos_tsivili",
+    "distance": 67.81,
+    "position": [
+      8895.5,
+      -2.4,
+      -1100.0
+    ],
+    "tag": "road_node_game_join_9004200000000003008"
+  },
+  {
+    "kind": "join",
+    "road": "r018_zakynthos_tsivili",
+    "end": 148,
+    "target": "r174_tertiary",
+    "distance": 102.57,
+    "position": [
+      7098.700000000001,
+      1.9,
+      2179.8
+    ],
+    "tag": "road_node_game_join_9004200000000018148"
+  },
+  {
+    "kind": "join",
+    "road": "r026_secondary",
+    "end": 0,
+    "target": "r145_agiou_athanasiou",
+    "distance": 7.93,
+    "position": [
+      9111.5,
+      -2.4,
+      -1696.9
+    ],
+    "tag": "road_node_game_join_9004200000000026001"
+  },
+  {
+    "kind": "join",
+    "road": "r027_laganas",
+    "end": 0,
+    "target": "r181_tertiary",
+    "distance": 71.05,
+    "position": [
+      5767.369,
+      -2.5,
+      -5900.252
+    ],
+    "tag": "road_node_642403187"
+  },
+  {
+    "kind": "join",
+    "road": "r040_laganas_kalamaki_road",
+    "end": 0,
+    "target": "r109_tertiary",
+    "distance": 12.95,
+    "position": [
+      9515.245,
+      7.3,
+      -4275.892
+    ],
+    "tag": "road_node_11159674814"
+  },
+  {
+    "kind": "join",
+    "road": "r044_zakynthos_tsivili",
+    "end": 28,
+    "target": "r070_lomvardou",
+    "distance": 5.3,
+    "position": [
+      8919.5,
+      -3.0,
+      -337.8
+    ],
+    "tag": "road_node_game_join_9004200000000044023"
+  },
+  {
+    "kind": "join",
+    "road": "r045_velousi_skoulikado",
+    "end": 21,
+    "target": "r092_tertiary",
+    "distance": 0.0,
+    "position": [
+      2227.7999999999997,
+      47.599999999999994,
+      1899.1
+    ],
+    "tag": "road_node_game_join_9004200000000045022"
+  },
+  {
+    "kind": "join",
+    "road": "r054_secondary",
+    "end": 0,
+    "target": "r029_laganas_kalamaki_road",
+    "distance": 37.11,
+    "position": [
+      6610.239142185738,
+      -4.010571477171819,
+      -5125.140000252002
+    ],
+    "tag": "road_node_game_join_9004200000000054001"
+  },
+  {
+    "kind": "join",
+    "road": "r057_zakynthos_aerodromio",
+    "end": 10,
+    "target": "r058_zakynthos_aerodromio",
+    "distance": 11.35,
+    "position": [
+      7831.742420712143,
+      -3.5252295817089747,
+      -3017.5097097931002
+    ],
+    "tag": "road_node_game_join_9004200000000057011"
+  },
+  {
+    "kind": "join",
+    "road": "r058_zakynthos_aerodromio",
+    "end": 0,
+    "target": "r057_zakynthos_aerodromio",
+    "distance": 12.9,
+    "position": [
+      7831.742420712143,
+      -3.5252295817089747,
+      -3017.5097097931002
+    ],
+    "tag": "road_node_game_join_9004200000000057011"
+  },
+  {
+    "kind": "join",
+    "road": "r059_zakynthos_aerodromio",
+    "end": 0,
+    "target": "r060_zakynthos_aerodromio",
+    "distance": 13.05,
+    "position": [
+      7677.8,
+      -3.1,
+      -2564.5
+    ],
+    "tag": "road_node_game_join_9004200000000059001"
+  },
+  {
+    "kind": "join",
+    "road": "r059_zakynthos_aerodromio",
+    "end": 8,
+    "target": "r060_zakynthos_aerodromio",
+    "distance": 31.61,
+    "position": [
+      7773.8,
+      -2.9,
+      -2826.5
+    ],
+    "tag": "road_node_game_join_9004200000000059009"
+  },
+  {
+    "kind": "join",
+    "road": "r064_zakynthos_aerodromio",
+    "end": 0,
+    "target": "r067_zakynthos_aerodromio",
+    "distance": 11.4,
+    "position": [
+      7443.7,
+      -2.9,
+      -2261.5
+    ],
+    "tag": "road_node_game_join_9004200000000064001"
+  },
+  {
+    "kind": "join",
+    "road": "r066_zakynthos_aerodromio",
+    "end": 0,
+    "target": "r068_zakynthos_aerodromio",
+    "distance": 12.61,
+    "position": [
+      7624.1,
+      -3.0,
+      -2452.8
+    ],
+    "tag": "road_node_game_join_9004200000000066001"
+  },
+  {
+    "kind": "join",
+    "road": "r066_zakynthos_aerodromio",
+    "end": 4,
+    "target": "r068_zakynthos_aerodromio",
+    "distance": 13.54,
+    "position": [
+      7546.5,
+      -3.4,
+      -2320.8
+    ],
+    "tag": "road_node_game_join_9004200000000066005"
+  },
+  {
+    "kind": "join",
+    "road": "r081_tertiary",
+    "end": 106,
+    "target": "r159_tertiary",
+    "distance": 0.1,
+    "position": [
+      -3639.0,
+      492.6,
+      -1841.5
+    ],
+    "tag": "road_node_game_join_9004200000000081106"
+  },
+  {
+    "kind": "join",
+    "road": "r083_tertiary",
+    "end": 103,
+    "target": "r180_tertiary",
+    "distance": 98.83,
+    "position": [
+      -1785.6,
+      -2.9,
+      4549.4
+    ],
+    "tag": "road_node_game_join_9004200000000083103"
+  },
+  {
+    "kind": "join",
+    "road": "r104_tertiary",
+    "end": 0,
+    "target": "r009_zakynthos_kato_gerakari",
+    "distance": 99.91,
+    "position": [
+      2978.5000000000005,
+      25.8,
+      978.2999999999997
+    ],
+    "tag": "road_node_game_join_9004200000000104001"
+  },
+  {
+    "kind": "join",
+    "road": "r114_tertiary",
+    "end": 44,
+    "target": "r183_tertiary",
+    "distance": 0.1,
+    "position": [
+      4386.0,
+      19.4,
+      -7524.8
+    ],
+    "tag": "road_node_game_join_9004200000000114045"
+  },
+  {
+    "kind": "join",
+    "road": "r124_koliva_n",
+    "end": 31,
+    "target": "r201_plateia_agiou_louka",
+    "distance": 97.06,
+    "position": [
+      8623.569,
+      0.4,
+      -710.225
+    ],
+    "tag": "road_node_1020823202"
+  },
+  {
+    "kind": "join",
+    "road": "r141_tertiary",
+    "end": 25,
+    "target": "r196_tertiary",
+    "distance": 100.08,
+    "position": [
+      9406.3,
+      -2.9,
+      -1649.9
+    ],
+    "tag": "road_node_game_join_9004200000000141024"
+  },
+  {
+    "kind": "join",
+    "road": "r145_agiou_athanasiou",
+    "end": 0,
+    "target": "r001_zakynthos_keri",
+    "distance": 56.21,
+    "position": [
+      8495.8,
+      -2.9,
+      -1281.7
+    ],
+    "tag": "road_node_game_join_9004200000000145001"
+  },
+  {
+    "kind": "join",
+    "road": "r154_tertiary",
+    "end": 0,
+    "target": "r171_tertiary",
+    "distance": 0.0,
+    "position": [
+      -1082.9,
+      33.1,
+      1185.3000000000002
+    ],
+    "tag": "road_node_game_join_9004200000000154001"
+  },
+  {
+    "kind": "join",
+    "road": "r157_andrea_kalvou",
+    "end": 23,
+    "target": "r198_tsoulati",
+    "distance": 3.71,
+    "position": [
+      8596.798,
+      6.4,
+      -631.09
+    ],
+    "tag": "road_node_913947268"
+  },
+  {
+    "kind": "join",
+    "road": "r191_agiou_athanasiou",
+    "end": 0,
+    "target": "r003_zakynthos_keri",
+    "distance": 13.19,
+    "position": [
+      8793.263137677326,
+      -1.5024275154814815,
+      -1288.4100698707625
+    ],
+    "tag": "road_node_game_join_9004200000000191001"
+  },
+  {
+    "kind": "join",
+    "road": "r191_agiou_athanasiou",
+    "end": 6,
+    "target": "r001_zakynthos_keri",
+    "distance": 37.66,
+    "position": [
+      8572.8,
+      -2.9,
+      -1284.6
+    ],
+    "tag": "road_node_game_join_9004200000000191007"
+  },
+  {
+    "kind": "join",
+    "road": "r193_tertiary",
+    "end": 0,
+    "target": "r058_zakynthos_aerodromio",
+    "distance": 85.04,
+    "position": [
+      7840.8,
+      -4.8,
+      -3042.2000000000003
+    ],
+    "tag": "road_node_game_join_9004200000000193001"
+  },
+  {
+    "kind": "join",
+    "road": "r203_tertiary",
+    "end": 4,
+    "target": "r000_zakynthos_keri",
+    "distance": 69.75,
+    "position": [
+      2308.2,
+      2.0999999999999943,
+      -9500.800000000001
+    ],
+    "tag": "road_node_game_join_9004200000000203005"
+  },
+  {
+    "kind": "join",
+    "road": "r207_martelaou",
+    "end": 0,
+    "target": "r209_martinegkou_elisavet",
+    "distance": 0.0,
+    "position": [
+      8552.800000000001,
+      10.5,
+      -471.7
+    ],
+    "tag": "road_node_game_join_9004200000000207001"
+  },
+  {
+    "kind": "join",
+    "road": "r210_agias_varvaras",
+    "end": 0,
+    "target": "r191_agiou_athanasiou",
+    "distance": 81.88,
+    "position": [
+      8681.099999999999,
+      -3.5999999999999996,
+      -1305.3
+    ],
+    "tag": "road_node_game_join_9004200000000210001"
+  },
+  {
+    "kind": "loop",
+    "road": "r000_zakynthos_keri",
+    "end": 418,
+    "position": [
+      6922.1,
+      -0.5999999999999943,
+      -2490.800000000001
+    ],
+    "tag": "road_node_game_return_9004200000000000403",
+    "entity": "9104300000000000003",
+    "terrain_error": 1.95,
+    "angle": -90,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r002_zakynthos_keri",
+    "end": 0,
+    "position": [
+      7016.7,
+      -2.9,
+      -2416.6
+    ],
+    "tag": "road_node_game_return_9004200000000002001",
+    "entity": "9104300000000000013",
+    "terrain_error": 1.21,
+    "angle": 90,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r004_zakynthou_volimon",
+    "end": 0,
+    "position": [
+      3812.2,
+      8.9,
+      -843.2
+    ],
+    "tag": "road_node_game_return_9004200000000004001",
+    "entity": "9104300000000000023",
+    "terrain_error": 0.77,
+    "angle": 0,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r007_zakynthos_vasilikos",
+    "end": 316,
+    "position": [
+      9966.900000000001,
+      -2.0,
+      -1653.8999999999996
+    ],
+    "tag": "road_node_game_return_9004200000000007314",
+    "entity": "9104300000000000033",
+    "terrain_error": 2.48,
+    "angle": 50,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r009_zakynthos_kato_gerakari",
+    "end": 0,
+    "position": [
+      -2042.3943363108808,
+      -2.919544694071372,
+      4214.419711251187
+    ],
+    "tag": "road_node_game_return_9004200000000009001",
+    "entity": "9104300000000000043",
+    "terrain_error": 2.56,
+    "angle": -50,
+    "scale": 0.65,
+    "retreat": 40.0
+  },
+  {
+    "kind": "loop",
+    "road": "r016_secondary",
+    "end": 0,
+    "position": [
+      -8462.481807032607,
+      -1.4919451870353462,
+      10462.997860947959
+    ],
+    "tag": "road_node_game_return_9004200000000016001",
+    "entity": "9104300000000000053",
+    "terrain_error": 3.74,
+    "angle": 25,
+    "scale": 0.65,
+    "retreat": 40.0
+  },
+  {
+    "kind": "loop",
+    "road": "r016_secondary",
+    "end": 166,
+    "position": [
+      -5998.000182764139,
+      2.7998644008005393,
+      7709.902364142564
+    ],
+    "tag": "road_node_game_return_9004200000000016168",
+    "entity": "9104300000000000063",
+    "terrain_error": 5.02,
+    "angle": 25,
+    "scale": 0.65,
+    "retreat": 40.0
+  },
+  {
+    "kind": "loop",
+    "road": "r018_zakynthos_tsivili",
+    "end": 0,
+    "position": [
+      9008.0,
+      -3.1,
+      -197.9
+    ],
+    "tag": "road_node_game_return_9004200000000018001",
+    "entity": "9104300000000000073",
+    "terrain_error": 2.18,
+    "angle": -70,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r022_secondary",
+    "end": 0,
+    "position": [
+      6515.608183838534,
+      -4.781153146663694,
+      -4563.426782370531
+    ],
+    "tag": "road_node_game_return_9004200000000022001",
+    "entity": "9104300000000000083",
+    "terrain_error": 2.51,
+    "angle": 0,
+    "scale": 0.65,
+    "retreat": 40.0
+  },
+  {
+    "kind": "loop",
+    "road": "r023_secondary",
+    "end": 0,
+    "position": [
+      -5993.868490585561,
+      -2.1848210815967892,
+      7521.170136703848
+    ],
+    "tag": "road_node_game_return_9004200000000023001",
+    "entity": "9104300000000000093",
+    "terrain_error": 3.07,
+    "angle": 0,
+    "scale": 0.65,
+    "retreat": 40.0
+  },
+  {
+    "kind": "loop",
+    "road": "r029_laganas_kalamaki_road",
+    "end": 0,
+    "position": [
+      8370.2,
+      -2.9,
+      -4339.1
+    ],
+    "tag": "road_node_game_return_9004200000000029001",
+    "entity": "9104300000000000103",
+    "terrain_error": 1.41,
+    "angle": -25,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r029_laganas_kalamaki_road",
+    "end": 54,
+    "position": [
+      6473.400000000001,
+      -3.0,
+      -5171.3
+    ],
+    "tag": "road_node_game_return_9004200000000029053",
+    "entity": "9104300000000000113",
+    "terrain_error": 2.06,
+    "angle": 90,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r031_secondary",
+    "end": 0,
+    "position": [
+      7141.6,
+      -3.0,
+      1561.8
+    ],
+    "tag": "road_node_game_return_9004200000000031001",
+    "entity": "9104300000000000123",
+    "terrain_error": 1.63,
+    "angle": -25,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r035_zakynthos_kato_gerakari",
+    "end": 39,
+    "position": [
+      -2713.5,
+      -3.499999999999999,
+      4577.8
+    ],
+    "tag": "road_node_game_return_9004200000000035040",
+    "entity": "9104300000000000133",
+    "terrain_error": 1.58,
+    "angle": -70,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r036_secondary",
+    "end": 36,
+    "position": [
+      -8186.137202778863,
+      17.18298586900243,
+      10682.419800988979
+    ],
+    "tag": "road_node_game_return_9004200000000036039",
+    "entity": "9104300000000000143",
+    "terrain_error": 5.56,
+    "angle": 90,
+    "scale": 0.65,
+    "retreat": 60.0
+  },
+  {
+    "kind": "loop",
+    "road": "r038_agiou_gerasimou",
+    "end": 31,
+    "position": [
+      8438.9,
+      -2.9,
+      -3176.3999999999996
+    ],
+    "tag": "road_node_game_return_9004200000000038029",
+    "entity": "9104300000000000153",
+    "terrain_error": 1.68,
+    "angle": 50,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r039_secondary",
+    "end": 0,
+    "position": [
+      6459.209507774277,
+      -2.950365025914255,
+      -3812.0518080290653
+    ],
+    "tag": "road_node_game_return_9004200000000039001",
+    "entity": "9104300000000000163",
+    "terrain_error": 2.03,
+    "angle": -25,
+    "scale": 0.65,
+    "retreat": 20.0
+  },
+  {
+    "kind": "loop",
+    "road": "r040_laganas_kalamaki_road",
+    "end": 35,
+    "position": [
+      8521.0,
+      -2.8999999999999995,
+      -4287.7
+    ],
+    "tag": "road_node_game_return_9004200000000040032",
+    "entity": "9104300000000000173",
+    "terrain_error": 0.83,
+    "angle": 0,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r047_zakynthos_vasilikos",
+    "end": 0,
+    "position": [
+      9625.4,
+      -3.0,
+      -1540.1
+    ],
+    "tag": "road_node_game_return_9004200000000047001",
+    "entity": "9104300000000000183",
+    "terrain_error": 1.69,
+    "angle": -50,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r047_zakynthos_vasilikos",
+    "end": 20,
+    "position": [
+      9010.077848302468,
+      -3.6553056442081773,
+      -1395.5397313911894
+    ],
+    "tag": "road_node_game_return_9004200000000047021",
+    "entity": "9104300000000000193",
+    "terrain_error": 1.89,
+    "angle": 0,
+    "scale": 0.65,
+    "retreat": 20.0
+  },
+  {
+    "kind": "loop",
+    "road": "r048_laganas_kalamaki_road",
+    "end": 0,
+    "position": [
+      6356.8,
+      -3.4,
+      -5196.9
+    ],
+    "tag": "road_node_game_return_9004200000000048001",
+    "entity": "9104300000000000203",
+    "terrain_error": 1.94,
+    "angle": -70,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r054_secondary",
+    "end": 11,
+    "position": [
+      6553.3,
+      -0.6000000000000001,
+      -4664.7
+    ],
+    "tag": "road_node_game_return_9004200000000054012",
+    "entity": "9104300000000000213",
+    "terrain_error": 2.2,
+    "angle": 90,
+    "scale": 0.85,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r055_secondary",
+    "end": 0,
+    "position": [
+      6813.6748615811175,
+      -3.5215332829813666,
+      -2864.3739005286957
+    ],
+    "tag": "road_node_game_return_9004200000000055001",
+    "entity": "9104300000000000223",
+    "terrain_error": 5.12,
+    "angle": 70,
+    "scale": 0.65,
+    "retreat": 100.0
+  },
+  {
+    "kind": "loop",
+    "road": "r061_akrotiriou",
+    "end": 0,
+    "position": [
+      6625.9,
+      -2.5,
+      2084.0
+    ],
+    "tag": "road_node_game_return_9004200000000061001",
+    "entity": "9104300000000000233",
+    "terrain_error": 1.25,
+    "angle": 25,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r062_secondary",
+    "end": 6,
+    "position": [
+      7020.799999999999,
+      -2.9000000000000004,
+      1586.4
+    ],
+    "tag": "road_node_game_return_9004200000000062007",
+    "entity": "9104300000000000243",
+    "terrain_error": 1.19,
+    "angle": 25,
+    "scale": 0.85,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r065_zakynthos_kato_gerakari",
+    "end": 0,
+    "position": [
+      -2610.2,
+      -1.3,
+      4502.6
+    ],
+    "tag": "road_node_game_return_9004200000000065001",
+    "entity": "9104300000000000253",
+    "terrain_error": 2.58,
+    "angle": 50,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r065_zakynthos_kato_gerakari",
+    "end": 4,
+    "position": [
+      -2480.8999999999996,
+      -3.0,
+      4405.6
+    ],
+    "tag": "road_node_game_return_9004200000000065005",
+    "entity": "9104300000000000263",
+    "terrain_error": 2.03,
+    "angle": -90,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r075_tertiary",
+    "end": 189,
+    "position": [
+      -14775.835949765327,
+      44.999187938427504,
+      2914.6574926823146
+    ],
+    "tag": "road_node_game_return_9004200000000075193",
+    "entity": "9104300000000000273",
+    "terrain_error": 19.45,
+    "angle": -25,
+    "scale": 0.65,
+    "retreat": 40.0
+  },
+  {
+    "kind": "loop",
+    "road": "r076_tertiary",
+    "end": 151,
+    "position": [
+      -15154.517057008345,
+      7.367656136584537,
+      3003.0725762529933
+    ],
+    "tag": "road_node_game_return_9004200000000076154",
+    "entity": "9104300000000000283",
+    "terrain_error": 7.8,
+    "angle": -25,
+    "scale": 0.85,
+    "retreat": 100.0
+  },
+  {
+    "kind": "loop",
+    "road": "r077_tertiary",
+    "end": 151,
+    "position": [
+      -8930.085162533805,
+      19.34222418235817,
+      -4457.697434741564
+    ],
+    "tag": "road_node_game_return_9004200000000077152",
+    "entity": "9104300000000000293",
+    "terrain_error": 7.19,
+    "angle": -70,
+    "scale": 0.65,
+    "retreat": 20.0
+  },
+  {
+    "kind": "loop",
+    "road": "r078_tertiary",
+    "end": 133,
+    "position": [
+      -8092.5,
+      9.300000000000011,
+      -5465.7
+    ],
+    "tag": "road_node_game_return_9004200000000078134",
+    "entity": "9104300000000000303",
+    "terrain_error": 2.72,
+    "angle": 90,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r082_tertiary",
+    "end": 111,
+    "position": [
+      -15598.080180008626,
+      217.81311332279105,
+      6417.9725732969155
+    ],
+    "tag": "road_node_game_return_9004200000000082111",
+    "entity": "9104300000000000313",
+    "terrain_error": 4.66,
+    "angle": 50,
+    "scale": 1.0,
+    "retreat": 20.0
+  },
+  {
+    "kind": "loop",
+    "road": "r084_tertiary",
+    "end": 0,
+    "position": [
+      -10874.0,
+      212.7,
+      -882.3
+    ],
+    "tag": "road_node_game_return_9004200000000084001",
+    "entity": "9104300000000000323",
+    "terrain_error": 4.26,
+    "angle": 70,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r089_tertiary",
+    "end": 0,
+    "position": [
+      13819.652514730364,
+      26.296960741648046,
+      -6112.120350829843
+    ],
+    "tag": "road_node_game_return_9004200000000089001",
+    "entity": "9104300000000000333",
+    "terrain_error": 10.21,
+    "angle": 90,
+    "scale": 0.65,
+    "retreat": 100.0
+  },
+  {
+    "kind": "loop",
+    "road": "r091_tertiary",
+    "end": 0,
+    "position": [
+      -3734.5,
+      -2.9,
+      4967.7
+    ],
+    "tag": "road_node_game_return_9004200000000091001",
+    "entity": "9104300000000000343",
+    "terrain_error": 1.45,
+    "angle": 25,
+    "scale": 0.85,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r093_tertiary",
+    "end": 73,
+    "position": [
+      5588.765891164414,
+      -0.3596644140310028,
+      -6735.134326003684
+    ],
+    "tag": "road_node_game_return_9004200000000093070",
+    "entity": "9104300000000000353",
+    "terrain_error": 4.3,
+    "angle": -50,
+    "scale": 0.65,
+    "retreat": 20.0
+  },
+  {
+    "kind": "loop",
+    "road": "r099_varvarigou_dionysiou",
+    "end": 54,
+    "position": [
+      1974.9129662904713,
+      85.8407839353853,
+      -4858.389570041664
+    ],
+    "tag": "road_node_game_return_9004200000000099055",
+    "entity": "9104300000000000363",
+    "terrain_error": 2.26,
+    "angle": 0,
+    "scale": 0.85,
+    "retreat": 40.0
+  },
+  {
+    "kind": "loop",
+    "road": "r102_tertiary",
+    "end": 0,
+    "position": [
+      16742.103525249942,
+      8.986432042471954,
+      -7312.652772782751
+    ],
+    "tag": "road_node_game_return_9004200000000102001",
+    "entity": "9104300000000000373",
+    "terrain_error": 0.91,
+    "angle": 0,
+    "scale": 0.65,
+    "retreat": 20.0
+  },
+  {
+    "kind": "loop",
+    "road": "r102_tertiary",
+    "end": 56,
+    "position": [
+      17086.112842146984,
+      4.122993852670432,
+      -6622.140634863491
+    ],
+    "tag": "road_node_game_return_9004200000000102058",
+    "entity": "9104300000000000383",
+    "terrain_error": 2.46,
+    "angle": -70,
+    "scale": 0.65,
+    "retreat": 20.0
+  },
+  {
+    "kind": "loop",
+    "road": "r105_tertiary",
+    "end": 61,
+    "position": [
+      -8898.1,
+      53.30000000000001,
+      12524.0
+    ],
+    "tag": "road_node_game_return_9004200000000105062",
+    "entity": "9104300000000000393",
+    "terrain_error": 0.81,
+    "angle": -50,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r113_tertiary",
+    "end": 0,
+    "position": [
+      737.3012222835396,
+      152.8509237361994,
+      -12057.863453297508
+    ],
+    "tag": "road_node_game_return_9004200000000113001",
+    "entity": "9104300000000000403",
+    "terrain_error": 3.78,
+    "angle": -25,
+    "scale": 0.65,
+    "retreat": 60.0
+  },
+  {
+    "kind": "loop",
+    "road": "r116_tertiary",
+    "end": 42,
+    "position": [
+      4791.6,
+      1.7999999999999998,
+      -7422.0
+    ],
+    "tag": "road_node_game_return_9004200000000116042",
+    "entity": "9104300000000000413",
+    "terrain_error": 0.96,
+    "angle": 0,
+    "scale": 0.85,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r120_tertiary",
+    "end": 0,
+    "position": [
+      -5441.043377301468,
+      109.55257984602754,
+      -5998.839334448964
+    ],
+    "tag": "road_node_game_return_9004200000000120001",
+    "entity": "9104300000000000423",
+    "terrain_error": 3.22,
+    "angle": 25,
+    "scale": 0.65,
+    "retreat": 60.0
+  },
+  {
+    "kind": "loop",
+    "road": "r120_tertiary",
+    "end": 40,
+    "position": [
+      -6245.400000000001,
+      53.49999999999999,
+      -6441.4
+    ],
+    "tag": "road_node_game_return_9004200000000120042",
+    "entity": "9104300000000000433",
+    "terrain_error": 6.48,
+    "angle": 0,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r122_tertiary",
+    "end": 0,
+    "position": [
+      -2340.1,
+      -3.4,
+      3172.6
+    ],
+    "tag": "road_node_game_return_9004200000000122001",
+    "entity": "9104300000000000443",
+    "terrain_error": 2.05,
+    "angle": 90,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r123_tertiary",
+    "end": 32,
+    "position": [
+      -2464.5482013382516,
+      -9.967395077081775e-05,
+      3940.4001993479014
+    ],
+    "tag": "road_node_game_return_9004200000000123033",
+    "entity": "9104300000000000453",
+    "terrain_error": 1.62,
+    "angle": 0,
+    "scale": 0.65,
+    "retreat": 20.0
+  },
+  {
+    "kind": "loop",
+    "road": "r139_tertiary",
+    "end": 0,
+    "position": [
+      5053.7,
+      -2.9,
+      -7139.6
+    ],
+    "tag": "road_node_game_return_9004200000000139001",
+    "entity": "9104300000000000463",
+    "terrain_error": 1.57,
+    "angle": 25,
+    "scale": 0.85,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r144_tertiary",
+    "end": 23,
+    "position": [
+      13787.6,
+      -1.1000000000000085,
+      -4227.9
+    ],
+    "tag": "road_node_game_return_9004200000000144024",
+    "entity": "9104300000000000473",
+    "terrain_error": 1.85,
+    "angle": -70,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r147_tertiary",
+    "end": 24,
+    "position": [
+      -1940.6,
+      175.89999999999998,
+      -666.5
+    ],
+    "tag": "road_node_game_return_9004200000000147025",
+    "entity": "9104300000000000483",
+    "terrain_error": 3.1,
+    "angle": -90,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r160_tertiary",
+    "end": 20,
+    "position": [
+      -3823.2000000000003,
+      -3.0,
+      4908.900000000001
+    ],
+    "tag": "road_node_game_return_9004200000000160021",
+    "entity": "9104300000000000493",
+    "terrain_error": 1.4,
+    "angle": 25,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r163_tertiary",
+    "end": 18,
+    "position": [
+      16699.3,
+      0.10000000000000142,
+      -5532.4
+    ],
+    "tag": "road_node_game_return_9004200000000163019",
+    "entity": "9104300000000000503",
+    "terrain_error": 1.27,
+    "angle": -25,
+    "scale": 0.85,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r168_tertiary",
+    "end": 0,
+    "position": [
+      9826.0,
+      -3.0,
+      -1654.7
+    ],
+    "tag": "road_node_game_return_9004200000000168001",
+    "entity": "9104300000000000513",
+    "terrain_error": 1.38,
+    "angle": 25,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r174_tertiary",
+    "end": 0,
+    "position": [
+      7153.6,
+      -2.1,
+      1786.5
+    ],
+    "tag": "road_node_game_return_9004200000000174001",
+    "entity": "9104300000000000523",
+    "terrain_error": 1.35,
+    "angle": 0,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r174_tertiary",
+    "end": 16,
+    "position": [
+      7072.700000000001,
+      -2.9000000000000004,
+      2234.7
+    ],
+    "tag": "road_node_game_return_9004200000000174016",
+    "entity": "9104300000000000533",
+    "terrain_error": 1.53,
+    "angle": -70,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r175_tertiary",
+    "end": 16,
+    "position": [
+      4930.599999999999,
+      -3.0,
+      -7133.1
+    ],
+    "tag": "road_node_game_return_9004200000000175017",
+    "entity": "9104300000000000543",
+    "terrain_error": 1.14,
+    "angle": 50,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r176_tertiary",
+    "end": 14,
+    "position": [
+      5060.6,
+      2.8,
+      -4065.9
+    ],
+    "tag": "road_node_game_return_9004200000000176015",
+    "entity": "9104300000000000553",
+    "terrain_error": 0.86,
+    "angle": 0,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r182_tertiary",
+    "end": 0,
+    "position": [
+      8500.1,
+      -3.0,
+      -4622.6
+    ],
+    "tag": "road_node_game_return_9004200000000182001",
+    "entity": "9104300000000000563",
+    "terrain_error": 1.42,
+    "angle": -25,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r184_tertiary",
+    "end": 0,
+    "position": [
+      165.9,
+      140.4,
+      2851.9
+    ],
+    "tag": "road_node_game_return_9004200000000184001",
+    "entity": "9104300000000000573",
+    "terrain_error": 1.59,
+    "angle": -25,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r186_tertiary",
+    "end": 0,
+    "position": [
+      6713.5,
+      -2.9,
+      1891.3
+    ],
+    "tag": "road_node_game_return_9004200000000186001",
+    "entity": "9104300000000000583",
+    "terrain_error": 0.79,
+    "angle": 0,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r187_tertiary",
+    "end": 7,
+    "position": [
+      8703.0,
+      -2.9000000000000004,
+      -4508.0
+    ],
+    "tag": "road_node_game_return_9004200000000187007",
+    "entity": "9104300000000000593",
+    "terrain_error": 1.58,
+    "angle": 25,
+    "scale": 0.85,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r188_tertiary",
+    "end": 0,
+    "position": [
+      -2607.3,
+      479.4,
+      -3915.0
+    ],
+    "tag": "road_node_game_return_9004200000000188001",
+    "entity": "9104300000000000603",
+    "terrain_error": 1.56,
+    "angle": 0,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r190_tertiary",
+    "end": 0,
+    "position": [
+      -3977.761121480661,
+      -2.9,
+      4573.744122862915
+    ],
+    "tag": "road_node_game_return_9004200000000190001",
+    "entity": "9104300000000000613",
+    "terrain_error": 2.11,
+    "angle": -50,
+    "scale": 0.65,
+    "retreat": 20.0
+  },
+  {
+    "kind": "loop",
+    "road": "r199_tertiary",
+    "end": 4,
+    "position": [
+      -1549.2,
+      -2.8999999999999995,
+      3595.0
+    ],
+    "tag": "road_node_game_return_9004200000000199005",
+    "entity": "9104300000000000623",
+    "terrain_error": 1.42,
+    "angle": 25,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r200_tertiary",
+    "end": 0,
+    "position": [
+      2693.6,
+      -2.9,
+      -9542.9
+    ],
+    "tag": "road_node_game_return_9004200000000200001",
+    "entity": "9104300000000000633",
+    "terrain_error": 1.67,
+    "angle": 50,
+    "scale": 0.85,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r200_tertiary",
+    "end": 4,
+    "position": [
+      2793.6,
+      -3.0,
+      -9630.6
+    ],
+    "tag": "road_node_game_return_9004200000000200005",
+    "entity": "9104300000000000643",
+    "terrain_error": 1.92,
+    "angle": -50,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r202_agias_varvaras",
+    "end": 0,
+    "position": [
+      8886.5,
+      -2.9,
+      -1423.1
+    ],
+    "tag": "road_node_game_return_9004200000000202001",
+    "entity": "9104300000000000653",
+    "terrain_error": 0.88,
+    "angle": -25,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r208_tertiary",
+    "end": 0,
+    "position": [
+      -2951.5,
+      -3.1,
+      4663.6
+    ],
+    "tag": "road_node_game_return_9004200000000208001",
+    "entity": "9104300000000000663",
+    "terrain_error": 1.81,
+    "angle": 70,
+    "scale": 0.65,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r208_tertiary",
+    "end": 2,
+    "position": [
+      -3003.957038856723,
+      -4.14482967816936,
+      4695.004371037515
+    ],
+    "tag": "road_node_game_return_9004200000000208003",
+    "entity": "9104300000000000673",
+    "terrain_error": 2.86,
+    "angle": -70,
+    "scale": 0.65,
+    "retreat": 20.0
+  },
+  {
+    "kind": "loop",
+    "road": "r210_agias_varvaras",
+    "end": 2,
+    "position": [
+      8773.300000000001,
+      -1.5999999999999999,
+      -1399.9
+    ],
+    "tag": "road_node_game_return_9004200000000210003",
+    "entity": "9104300000000000683",
+    "terrain_error": 1.87,
+    "angle": 50,
+    "scale": 0.85,
+    "retreat": 0.0
+  },
+  {
+    "kind": "loop",
+    "road": "r212_tertiary",
+    "end": 2,
+    "position": [
+      7160.400000000001,
+      -3.8,
+      1605.3000000000002
+    ],
+    "tag": "road_node_game_return_9004200000000212003",
+    "entity": "9104300000000000693",
+    "terrain_error": 1.97,
+    "angle": -70,
+    "scale": 0.65,
+    "retreat": 0.0
+  }
+]

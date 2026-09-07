@@ -15,6 +15,33 @@ namespace spartan::road_traffic
     using math::Vector3;
     constexpr size_t invalid = std::numeric_limits<size_t>::max();
 
+    // Sweep an upright pedestrian through a static obstacle's bounds. Include the
+    // entire segment so thin walls between spline samples cannot be skipped.
+    inline bool WalkingSegmentBlocked(const Vector3& a, const Vector3& b, Vector3 lo, Vector3 hi)
+    {
+        lo -= Vector3(0.45f, 1.8f, 0.45f);
+        hi += Vector3(0.45f, -0.25f, 0.45f);
+        float enter = 0.0f, leave = 1.0f;
+        const Vector3 d = b - a;
+        for (int axis = 0; axis < 3; ++axis)
+        {
+            const float origin = axis == 0 ? a.x : axis == 1 ? a.y : a.z;
+            const float delta = axis == 0 ? d.x : axis == 1 ? d.y : d.z;
+            const float minimum = axis == 0 ? lo.x : axis == 1 ? lo.y : lo.z;
+            const float maximum = axis == 0 ? hi.x : axis == 1 ? hi.y : hi.z;
+            if (fabsf(delta) < 0.000001f)
+            {
+                if (origin < minimum || origin > maximum) return false;
+                continue;
+            }
+            const float t0 = (minimum - origin) / delta, t1 = (maximum - origin) / delta;
+            enter = std::max(enter, std::min(t0, t1));
+            leave = std::min(leave, std::max(t0, t1));
+            if (enter > leave) return false;
+        }
+        return true;
+    }
+
     struct Pose { Vector3 position; Vector3 tangent; };
     struct Path
     {
@@ -72,6 +99,7 @@ namespace spartan::road_traffic
         size_t from = invalid, to = invalid, reverse = invalid;
         uint64_t road = 0;
         float width = 0.0f;
+        bool sidewalk = false;
         Path lane;
     };
     struct Node { Vector3 position; std::vector<size_t> exits; };
@@ -98,13 +126,13 @@ namespace spartan::road_traffic
             return id;
         }
 
-        void AddRoad(uint64_t road, const std::string& from, const std::string& to, const Path& center, float width, bool pedestrians = false)
+        void AddRoad(uint64_t road, const std::string& from, const std::string& to, const Path& center, float width)
         {
             if (center.Length() < 4.0f || width < 4.5f) return;
             const size_t a = NodeId(from, center.points.front());
             const size_t b = NodeId(to, center.points.back());
             const float trim = std::min(width * 0.8f, center.Length() * 0.2f);
-            const float offset = pedestrians ? width * 0.5f - 0.8f : std::min(width * 0.25f, width * 0.5f - 1.15f);
+            const float offset = std::min(width * 0.25f, width * 0.5f - 1.15f);
             const size_t first = edges.size();
             for (int direction : {1, -1})
             {
@@ -134,6 +162,30 @@ namespace spartan::road_traffic
             }
         }
 
+        // Each continuous sidewalk has two directions on the SAME surface.
+        // No inferred road-crossing curves at its ends or at unmarked junctions.
+        void AddSidewalk(uint64_t road, const Path& path)
+        {
+            if (path.Length() < 4.0f) return;
+            const size_t first = edges.size();
+            const std::string key = "sidewalk_" + std::to_string(first);
+            const size_t a = NodeId(key + "_a", path.points.front());
+            const size_t b = NodeId(key + "_b", path.points.back());
+            for (int direction : {1, -1})
+            {
+                Edge edge;
+                edge.road = road;
+                edge.sidewalk = true;
+                edge.from = direction == 1 ? a : b;
+                edge.to = direction == 1 ? b : a;
+                edge.reverse = direction == 1 ? first + 1 : first;
+                if (direction == 1) edge.lane = path;
+                else for (auto it = path.points.rbegin(); it != path.points.rend(); ++it) edge.lane.Add(*it);
+                nodes[edge.from].exits.push_back(edges.size());
+                edges.push_back(std::move(edge));
+            }
+        }
+
         size_t ChooseExit(size_t incoming, uint32_t& random) const
         {
             if (incoming >= edges.size()) return invalid;
@@ -150,6 +202,11 @@ namespace spartan::road_traffic
 
         void AppendExit(Path& path, size_t incoming, size_t outgoing) const
         {
+            if (edges[incoming].sidewalk)
+            {
+                for (const Vector3& p : edges[outgoing].lane.points) path.Add(p);
+                return;
+            }
             const Pose a = edges[incoming].lane.Sample(edges[incoming].lane.Length());
             const Pose b = edges[outgoing].lane.Sample(0.0f);
             auto curve = [&](const Pose& start, const Pose& end, float handle)

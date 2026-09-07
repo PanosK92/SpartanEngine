@@ -260,7 +260,7 @@ float3x3 rotation_matrix(float3 axis, float angle)
 static const float wind_world_period = 80.0f;
 static const float wind_flow_uv_per_second  = 0.03f;
 static const float wind_gust_uv_per_second  = 0.065f;
-static const float wind_micro_uv_per_second = 0.90f;
+static const float wind_micro_uv_per_second = 0.12f;
 
 // shared wind sample for grass, flowers, and trees
 // reading from the once-per-frame baked wind_field texture: rg = flow vector, b = gust pressure, a = micro turbulence
@@ -496,50 +496,72 @@ struct vertex_processing
             vertex.normal   = normalize(mul(rot, vertex.normal));
             vertex.tangent  = normalize(mul(rot, vertex.tangent));
         }
-        else if (surface.has_wind_animation()) // tree branch / leaf wind sway, fed by the same wind field
+        else if (surface.has_wind_animation())
         {
-            const float branch_amplitude = 0.18f;
-            const float leaf_amplitude   = 0.10f;
-            const float flutter_strength = 0.40f;
+            float response = saturate(length(buffer_frame.wind.xz) * 0.10f);
+            if (response <= 0.0f)
+                return;
 
-            wind_sample ws = evaluate_wind(
-                position_world,
-                time_offset
-            );
+            // All submeshes share the root sample and physical height: bark and foliage
+            // must agree even when their material bounds differ. No per-vertex gusts.
+            wind_sample ws = evaluate_wind(instance_pos, time_offset);
+            float2 inst = wind_instance_phase_freq(instance_pos);
+            float3 offset = position_world - instance_pos;
+            float height = max(0.0f, dot(offset, instance_up));
+            float flexible = height / (height + 8.0f);
+            float root_weight = smoothstep(0.0f, 1.5f, height);
+            float3 raw_axis = cross(instance_up, ws.bend_dir_world);
+            float axis_length_sq = dot(raw_axis, raw_axis);
+            float3 axis = axis_length_sq > 1e-8f ? raw_axis * rsqrt(axis_length_sq) : normalize(transform[0].xyz);
 
-            float h = saturate(vertex.uv_misc.z); // 0 at trunk, 1 at branch tips
+            // Low-frequency modes provide a gentle, irregular recovery around a
+            // prevailing lean. Gust pressure has limited authority over heavy wood.
+            float slow_time = time * (0.32f + inst.y * 0.065f);
+            float sway = sin(slow_time + inst.x) * 0.55f
+                       + sin(slow_time * 1.37f + inst.x * 2.17f) * 0.30f
+                       + sin(slow_time * 0.73f + inst.x * 0.61f) * 0.15f;
+            float trunk_angle = response * (0.8f + 0.45f * sway + 0.7f * ws.gust)
+                              * DEG_TO_RAD * flexible * root_weight;
+            float3x3 trunk_rotation = rotation_matrix(axis, trunk_angle);
 
-            // per-instance phase and frequency, branches sway slower than grass blades
-            float2 inst          = wind_instance_phase_freq(instance_pos);
-            float  instance_phase = inst.x;
-            float  branch_freq    = inst.y * 0.55f;
+            // Smooth spatial branch modes avoid hard sectors or random per-vertex
+            // phases, which tear leaf cards. Outer branches flex more than the core.
+            float3 radial = offset - instance_up * dot(offset, instance_up);
+            float radius = length(radial);
+            float branch_weight = smoothstep(0.3f, 3.0f, radius) * root_weight;
+            float branch_phase = inst.x + dot(offset, float3(0.37f, 0.19f, 0.29f));
+            float branch_wave = sin(time * (1.15f + inst.y * 0.14f) + branch_phase) * 0.65f
+                              + sin(time * (1.83f + inst.y * 0.11f) + branch_phase * 0.83f) * 0.35f;
+            float branch_angle = response * branch_weight
+                               * (0.35f + 0.65f * ws.gust + branch_wave * 0.45f)
+                               * DEG_TO_RAD;
+            float3x3 branch_rotation = rotation_matrix(axis, branch_angle);
+            float3 branch_pivot = instance_up * dot(offset, instance_up);
+            offset = branch_pivot + mul(branch_rotation, offset - branch_pivot);
+            vertex.normal = mul(branch_rotation, vertex.normal);
+            vertex.tangent = mul(branch_rotation, vertex.tangent);
 
-            // gusts modulate the branch sway, sin gives it a soft heartbeat-like response
-            float gust_pulse        = sin(time * branch_freq + instance_phase) * 0.5f + 0.5f;
-            float horizontal_wave   = ws.bend_strength * (0.65f + 0.35f * gust_pulse);
-            float3 horizontal_offset = ws.bend_dir_world * horizontal_wave * branch_amplitude * h;
-            position_world          += horizontal_offset;
-
-            // leaf flutter, faster than the branch sway, driven by the micro channel for spatial variation
-            float flutter_freq      = 3.5f + inst.y;
-            float vertical_wave     = sin(time * flutter_freq + instance_phase * 1.2f) * 0.6f
-                                    + ws.micro * 2.0f * flutter_strength;
-            float vertical_offset_y = vertical_wave * leaf_amplitude * h;
-            position_world.y       += vertical_offset_y;
-
-            // bend the normals and tangents to roughly match the displacement, scaled by height for canopy detail
-            float3 vertical_offset = float3(0.0f, vertical_offset_y, 0.0f);
-            float3 total_offset    = horizontal_offset + vertical_offset;
-
-            float offset_sq = dot(total_offset, total_offset);
-            if (offset_sq > 0.000001f)
+            if (surface.has_texture_alpha_mask())
             {
-                float  bend_amount = sqrt(offset_sq) * 0.5f * h;
-                float3 bend_dir    = total_offset * rsqrt(offset_sq);
-
-                vertex.normal  = normalize(vertex.normal  + bend_dir * bend_amount);
-                vertex.tangent = normalize(vertex.tangent + bend_dir * bend_amount * 0.5f);
+                // Centimetre-scale detail, never the old wind-independent canopy bob.
+                // Fade high frequencies continuously with distance to avoid shimmer.
+                // Use the corresponding camera for the motion-vector evaluation.
+                float3 camera = time_offset < 0.0f ? buffer_frame.camera_position_previous : buffer_frame.camera_position;
+                float detail = 1.0f - smoothstep(25.0f, 90.0f, length(camera - instance_pos));
+                float flutter = sin(time * 8.3f + branch_phase * 2.0f)
+                              * sin(time * 3.7f + branch_phase);
+                float flutter_angle = response * branch_weight * detail
+                                    * (0.35f + ws.gust * 0.65f)
+                                    * (flutter + ws.micro * 0.3f) * 0.018f / max(radius, 1.0f);
+                float3x3 leaf_rotation = rotation_matrix(axis, flutter_angle);
+                offset = branch_pivot + mul(leaf_rotation, offset - branch_pivot);
+                vertex.normal = mul(leaf_rotation, vertex.normal);
+                vertex.tangent = mul(leaf_rotation, vertex.tangent);
             }
+
+            position_world = instance_pos + mul(trunk_rotation, offset);
+            vertex.normal = normalize(mul(trunk_rotation, vertex.normal));
+            vertex.tangent = normalize(mul(trunk_rotation, vertex.tangent));
         }
     }
 };
@@ -599,7 +621,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     
     // compute width and height percent for grass blade positioning
     float width_percent  = saturate((input.position.x + material.local_width * 0.5f) / material.local_width);
-    float height_percent = saturate(input.position.y / material.local_height);
+    float height_percent = saturate(input.position.y / max(material.local_height, 1e-4f));
     vertex.uv_misc.z     = surface.is_skid_mark() ? saturate(unpack_vertex_uv(input.tangent_packed).x) : height_percent;
     vertex.width_percent = width_percent;
     

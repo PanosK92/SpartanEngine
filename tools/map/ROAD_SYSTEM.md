@@ -55,7 +55,7 @@ for ambiguous closely parallel roads. Future imports preserve actual graph ident
 
 ## Current limits
 
-- The junction pass supports open, unattached road strips without sidewalks. It reports
+- The junction pass supports open, unattached road strips, including localized sidewalks. It reports
   missing space, displaced anchors, and acute/overlapping approaches and leaves those
   approaches intact. Nodes separated by less than a road width along a shared spline
   are combined into one compound junction, including staggered intersections and small islands.
@@ -74,6 +74,21 @@ for ambiguous closely parallel roads. Future imports preserve actual graph ident
 - A complete visual and driving pass of the 427 km island has not been completed.
 
 ## Checks
+
+### Local sidewalks
+
+`plan.world` contains 94 sidewalk intervals on 76 roads around 40 town/service markers.
+`python tools/map/add_populated_sidewalks.py --apply` authors these intervals; the marker
+list and radii live in that script and exclude scenic and event-only locations.
+Each `<sidewalk_range start="0.2" end="0.4" />` is a normalized spline interval.
+Without ranges, the existing sidewalk toggle still covers the entire spline.
+Ranges taper at their ends, and explicit junction cutouts remain open to vehicles.
+The sidewalk is a transient child with its own paving material and exact collision mesh;
+it is regenerated on load and follows the road transform. Attached outer-edge splines
+and terrain carving use the local sidewalk width. Pedestrians follow continuous raised
+sections and turn back on the same side at gaps, without inferred road crossings.
+
+### Regression commands
 
     python -m unittest discover -s tools/map -p test_roads.py
 
@@ -102,3 +117,33 @@ regressions pass, the C++ UV regressions pass, and six live runtime fixtures ver
 unequal-height connections, rounded corners, short approaches, compound intersections,
 and unconnected overpasses. The island was also loaded and nearby junctions inspected;
 the five unsupported groups above remain explicit limitations.
+`tools/map/remove_road_blocking_buildings.py --apply` removes city building boxes that overlap sampled road and localized paving corridors (including the box-shaped city grid streets). It preserves unrelated XML and leaves 0.5 m clearance; 10 conflicting buildings were removed from plan.world.
+
+
+### Road end returns
+
+`python tools/map/repair_road_ends.py --apply` repairs the authored island, using the
+local heightmap and explicit node tags. The current pass resolves 121 unconnected
+ends with 33 nearby-road joins and 69 two-lane return loops. Paired endpoints count
+as two repaired ends. It backs up the input, preserves unrelated scene XML, and is
+idempotent. `road_end_repairs.json` records the authored changes. Short coastal
+approaches can retreat along their existing route to make room for a loop. Nearby
+joins reject backward extensions and interior anchors too close to a road end.
+Refresh localized paving with `add_populated_sidewalks.py --apply` after edits.
+
+The junction builder keeps distant visits to the same node separate on returning
+splines. Junction fans use the mouth centroid so elbows and asymmetric returns can
+be triangulated even when the original control point is outside the trimmed deck.
+The traffic graph can enter a return loop and choose the approach's outbound lane
+on its next visit to the junction; it does not teleport between the two ends.
+
+Validation: `test_road_ends.py` checks zero unconnected ends, shared anchors, loop
+closure, unique IDs, and idempotence. The traffic C++ checks exercise return-loop
+routing. `test_return_loop_fixture.mjs` checks both mouths and the circuit in a
+live disposable editor on port 47784; `test_road_runtime.mjs` also covers elbows.
+`audit_road_return_clearance.mjs` records high raycasts at the original anchors.
+A rounded bend can trim away that exact point, so a terrain hit is an inspection
+candidate, not proof of a gap in the lane. The existing raised airport ground,
+runway, and parking slabs still overlay some island roads at about 40 m elevation;
+this road-end repair does not reposition the airport. A complete driving and
+scene-clearance pass across the island remains separate from topology validation.

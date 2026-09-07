@@ -121,7 +121,7 @@ namespace spartan
     enum TerrainScatterFlags : uint32_t
     {
         TerrainScatterFlags_None           = 0,
-        TerrainScatterFlags_Wind           = 1u << 0, // wind animation on the alpha masked parts, leaves and twigs
+        TerrainScatterFlags_Wind           = 1u << 0, // anchored sway on all parts, fine flutter on alpha masked leaves
         TerrainScatterFlags_ColorVariation = 1u << 1, // tint each instance a little differently
         TerrainScatterFlags_Collision      = 1u << 2, // convex hull body on the opaque parts, trunks not leaves
         TerrainScatterFlags_CastShadows    = 1u << 3,

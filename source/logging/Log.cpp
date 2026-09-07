@@ -53,10 +53,13 @@ namespace spartan
             static bool is_first_log = true;
             if (is_first_log)
             {
+                is_first_log = false;
                 error_code ignored;
                 filesystem::rename(log_file_name, "log_previous.txt", ignored);
-                FileSystem::Delete(log_file_name);
-                is_first_log = false;
+                // Logging holds log_output_mutex here. FileSystem::Delete reports
+                // failures through Log, re-entering that mutex when another process
+                // has the file open. Rotation is best-effort and must never log.
+                filesystem::remove(log_file_name, ignored);
             }
 
             // the file stays open for the session, opening and closing it per line was a syscall

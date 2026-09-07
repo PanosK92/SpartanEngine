@@ -1044,7 +1044,7 @@ namespace spartan
         constexpr int curl_octaves        = 4;
         constexpr float curl_drift        = 0.03f;
         constexpr float gust_speed        = 0.07f;
-        constexpr float micro_speed       = 0.9f;
+        constexpr float micro_speed       = 0.12f;
         constexpr float life_rate         = 0.55f;
         constexpr float world_period      = 80.0f;
 

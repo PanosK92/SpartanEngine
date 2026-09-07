@@ -70,6 +70,7 @@ namespace spartan
     Render::Render(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_owned_mesh, shared_ptr<Mesh>);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material, Material*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh, Mesh*);
@@ -482,6 +483,7 @@ namespace spartan
             return;
         }
 
+        if (m_owned_mesh.get() != mesh) m_owned_mesh.reset();
         // set mesh
         m_mesh           = mesh;
         m_sub_mesh_index = sub_mesh_index;
@@ -498,6 +500,12 @@ namespace spartan
         Tick(); // update bounding boxes, frustum and distance culling
     }
 
+    void Render::SetOwnedMesh(const shared_ptr<Mesh>& mesh)
+    {
+        SetMesh(mesh.get());
+        m_owned_mesh = mesh;
+    }
+
     void Render::SetMesh(const MeshType type)
     {
         SetMesh(Renderer::GetStandardMesh(type).get());
@@ -506,6 +514,7 @@ namespace spartan
     void Render::ClearMesh()
     {
         m_mesh              = nullptr;
+        m_owned_mesh.reset();
         m_sub_mesh_index    = 0;
         m_bounding_box_mesh = BoundingBox::Unit;
         m_bounding_box_dirty = true;

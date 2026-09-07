@@ -58,6 +58,7 @@ groupshared bool     gs_skinned;
 groupshared bool     gs_skip_hiz;
 groupshared bool     gs_two_sided;
 groupshared bool     gs_is_alpha;
+groupshared bool     gs_wind;
 groupshared uint     gs_meshlet_offset;
 groupshared uint     gs_meshlet_count;
 
@@ -101,6 +102,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
         gs_skip_hiz           = (gs_draw.flags & 32u) != 0u;
         gs_two_sided          = (gs_draw.flags & 8u) != 0u;
         gs_is_alpha           = (gs_draw.flags & 16u) != 0u;
+        gs_wind               = (material_parameters[gs_draw.material_index].flags & (1u << 9)) != 0u;
         gs_meshlet_offset     = gs_draw.lod_meshlet_offset;
         gs_meshlet_count      = gs_draw.lod_meshlet_count;
     }
@@ -136,6 +138,8 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
                 float  radius_local = meshlet_decode_radius(mb, gs_draw.lod_aabb_diag);
                 float3 center_world = mul(float4(center_local, 1.0f), gs_world).xyz;
                 float  radius_world = radius_local * gs_scale_max;
+                if (gs_wind)
+                    radius_world += tree_wind_cull_padding(center_world, radius_world, gs_world[3].xyz);
 
                 is_visible = sphere_in_side_planes(center_world, radius_world, plane_l, plane_r, plane_b, plane_t);
 
@@ -144,7 +148,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
                     is_visible = sphere_contributes(center_world, radius_world, CULL_CONTRIBUTION_MESHLET_PX);
 
                 // per-meshlet backface cone, skipped for two-sided materials and degenerate cones, sqrt-free form
-                if (is_visible && !gs_two_sided && gs_cone_safe)
+                if (is_visible && !gs_two_sided && !gs_wind && gs_cone_safe)
                 {
                     int4 cone = unpack_cone_axis_cutoff(mb.cone_axis_cutoff);
                     if (cone.w < 127)

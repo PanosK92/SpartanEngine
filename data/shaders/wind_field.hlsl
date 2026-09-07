@@ -31,7 +31,7 @@ static const int   FREQ_MICRO     = 32;   // micro turbulence cycles across one 
 static const int   CURL_OCTAVES   = 4;    // 4 -> top freq 32 cycles per tile
 static const float CURL_DRIFT     = 0.03; // per-octave tile fraction drifted per second
 static const float GUST_SPEED     = 0.065; // average tile fractions per second
-static const float MICRO_SPEED    = 0.9;  // tile fractions per second the micro pattern slides
+static const float MICRO_SPEED    = 0.12;  // tile fractions per second the micro pattern slides
 static const float LIFE_RATE      = 0.55; // octave breathing rate, controls birth/death of features
 
 uint hash_u32(uint x)

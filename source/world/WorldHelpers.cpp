@@ -479,7 +479,7 @@ namespace spartan
             return material;
         }
 
-        // a cutout is what the importer bound, wind and no collision follow that map
+        // a cutout is what the importer bound, leaf detail and no collision follow that map
         bool is_foliage_material(Material* material)
         {
             return material->HasTextureOfType(MaterialTextureType::AlphaMask);
@@ -771,10 +771,13 @@ namespace spartan
                     {
                         foliage = is_foliage_material(material);
 
-                        if (foliage && (layer.flags & TerrainScatterFlags_Wind))
+                        // Wood and leaves share the same anchored sway. The shader adds
+                        // fine flutter only to cutouts, so the canopy stays attached.
+                        if (layer.flags & TerrainScatterFlags_Wind)
                         {
                             material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
-                            material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                            if (foliage)
+                                material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         }
 
                         if (layer.flags & TerrainScatterFlags_ColorVariation)

@@ -36,6 +36,8 @@ const road = (name, width, points, tag) => `<Entity name="${name}" id="${id++}" 
 ${points.map((p, i) => `<Entity name="spline_point_${i}" id="${id++}" position="${p.join(" ")}" tags="${typeof tag === "object" ? tag[i] ?? "" : i === tag ? "road_node_test" : ""}" />`).join("\n")}
 </Entity>`;
 const cases = [
+  {name: "Two-road elbow", roads: () => road("west", 12, [[-100, 0, 0], [0, 0, 0]], 1) + road("north", 8, [[0, 4, 0], [0, 4, 100]], 0), height: 2,
+    probes: [[0, 0], [-10, 0], [0, 10], [-4, 4]]},
   {name: "Compound staggered junction", roads: () =>
     road("through", 12, [[-100, 0, 0], [-2, 0, 0], [2, 0, 0], [100, 0, 0]], {1: "road_node_a", 2: "road_node_b"}) +
     road("south", 8, [[-2, 4, 0], [-2, 4, -100]], {0: "road_node_a"}) +

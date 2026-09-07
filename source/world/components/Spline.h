@@ -119,7 +119,7 @@ namespace spartan
         void GenerateRoadMesh();
         // Resolve explicit road_node_* control point tags after every spline has sampled the terrain.
         static void RebuildRoadJunctions();
-        void ClearRoadMesh();
+        void ClearRoadMesh(bool clear_sidewalk = true);
         bool HasRoadMesh() const { return m_mesh != nullptr; }
 
         // mesh generation toggle
@@ -166,6 +166,10 @@ namespace spartan
         bool GetSidewalkEnabled() const               { return m_sidewalk_enabled; }
         void SetSidewalkEnabled(bool enabled)         { m_sidewalk_enabled = enabled; }
         float GetSidewalkWidth() const                { return m_sidewalk_width; }
+        float GetSidewalkWidthAt(float t) const;
+        const std::vector<math::Vector2>& GetSidewalkRanges() const { return m_sidewalk_ranges; }
+        void SetSidewalkRanges(const std::vector<math::Vector2>& ranges) { m_sidewalk_ranges = ranges; }
+        bool IsJunctionSegment(size_t i) const { return i < m_junction_segments.size() && m_junction_segments[i]; }
         void SetSidewalkWidth(float width)            { m_sidewalk_width = width; }
         float GetCurbHeight() const                   { return m_curb_height; }
         void SetCurbHeight(float height)              { m_curb_height = height; }
@@ -359,6 +363,9 @@ namespace spartan
         bool m_sidewalk_enabled  = false;
         float m_sidewalk_width   = 2.0f;
         float m_curb_height      = 0.15f;
+        // Optional normalized spline intervals; empty means sidewalks along the whole road.
+        std::vector<math::Vector2> m_sidewalk_ranges;
+        float m_sidewalk_ramp_t = 0.001f;
 
         // terrain conforming
         bool m_conform_to_terrain = false;
@@ -446,6 +453,7 @@ namespace spartan
         float m_prev_uv_tiling_v                        = 0.0f;
         bool m_prev_sidewalk_enabled                    = false;
         float m_prev_sidewalk_width                     = 0.0f;
+        std::vector<math::Vector2> m_prev_sidewalk_ranges;
         float m_prev_curb_height                        = 0.0f;
         bool m_prev_conform_to_terrain                  = false;
         float m_prev_terrain_offset                     = 0.0f;

@@ -25,6 +25,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // shared gpu culling primitives, the hi-z helpers take the hi-z texture as a parameter so the meshlet cull
 // can pass its occluder hi-z (tex) and grass populate can pass the same occluder hi-z on a different slot (tex2)
 
+// Conservative envelope for tree rotations (under 4 degrees combined) and
+// centimetre leaf detail. Includes distance from the root for canopy-only bounds.
+float tree_wind_cull_padding(float3 center, float radius, float3 root)
+{
+    return (length(center - root) + radius) * 0.07f + 0.03f;
+}
+
 // extracts the four side planes of the camera frustum from view_projection in world space
 // only the side planes are used, near is unreliable on jittered projections and far is at infinity for reverse-z
 // row-vector convention places the camera world-space planes on the columns of view_projection

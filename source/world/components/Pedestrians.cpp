@@ -167,6 +167,11 @@ namespace spartan
             if (walker.entity)
             {
                 // drop raw mesh pointers before releasing the shared instance
+                // World::Tick also stops every walker later in its entity snapshot.
+                // Remove pose consumers while the mesh is alive so that second pass
+                // cannot use Animator's cached mesh after walker.mesh is released.
+                walker.entity->RemoveComponent<Ragdoll>();
+                walker.entity->RemoveComponent<Animator>();
                 vector<Entity*> nodes;
                 nodes.push_back(walker.entity);
                 walker.entity->GetDescendants(&nodes);

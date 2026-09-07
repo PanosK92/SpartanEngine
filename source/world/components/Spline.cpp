@@ -506,6 +506,7 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_uv_tiling_v, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sidewalk_enabled, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sidewalk_width, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sidewalk_ranges, vector<Vector2>);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_curb_height, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_conform_to_terrain, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_terrain_offset, float);
@@ -553,7 +554,7 @@ namespace spartan
             m_world_loaded_handle = 0;
         }
 
-        ClearRoadMesh();
+        ClearRoadMesh(false); // descendants may already have been destroyed during world teardown
 
         // the terrain still holds this road's cut and fill, tell it to hand that ground back
         if (m_carve_entity_id != 0)
@@ -648,6 +649,7 @@ namespace spartan
         m_prev_uv_tiling_v        = m_uv_tiling_v;
         m_prev_sidewalk_enabled   = m_sidewalk_enabled;
         m_prev_sidewalk_width     = m_sidewalk_width;
+        m_prev_sidewalk_ranges    = m_sidewalk_ranges;
         m_prev_curb_height        = m_curb_height;
         m_prev_conform_to_terrain = m_conform_to_terrain;
         m_prev_terrain_offset     = m_terrain_offset;
@@ -744,6 +746,7 @@ namespace spartan
                       || (m_uv_tiling_v                != m_prev_uv_tiling_v)
                       || (m_sidewalk_enabled           != m_prev_sidewalk_enabled)
                       || (m_sidewalk_width             != m_prev_sidewalk_width)
+                      || (m_sidewalk_ranges            != m_prev_sidewalk_ranges)
                       || (m_curb_height                != m_prev_curb_height)
                       || (m_conform_to_terrain         != m_prev_conform_to_terrain)
                       || (m_terrain_offset             != m_prev_terrain_offset)
@@ -908,6 +911,12 @@ namespace spartan
         node.append_attribute("sidewalk_enabled") = m_sidewalk_enabled;
         node.append_attribute("sidewalk_width")   = m_sidewalk_width;
         node.append_attribute("curb_height")      = m_curb_height;
+        for (const Vector2& range : m_sidewalk_ranges)
+        {
+            auto section = node.append_child("sidewalk_range");
+            section.append_attribute("start") = range.x;
+            section.append_attribute("end") = range.y;
+        }
 
         // terrain conforming
         node.append_attribute("conform_to_terrain") = m_conform_to_terrain;
@@ -976,6 +985,13 @@ namespace spartan
         m_sidewalk_enabled = node.attribute("sidewalk_enabled").as_bool(false);
         m_sidewalk_width   = node.attribute("sidewalk_width").as_float(2.0f);
         m_curb_height      = node.attribute("curb_height").as_float(0.15f);
+        m_sidewalk_ranges.clear();
+        for (auto section : node.children("sidewalk_range"))
+        {
+            const float start = clamp(section.attribute("start").as_float(), 0.0f, 1.0f);
+            const float end = clamp(section.attribute("end").as_float(), 0.0f, 1.0f);
+            if (end > start) m_sidewalk_ranges.emplace_back(start, end);
+        }
 
         // terrain conforming
         m_conform_to_terrain = node.attribute("conform_to_terrain").as_bool(false);
@@ -1072,7 +1088,6 @@ namespace spartan
                     default:                           side =  0.0f; break;
                 }
 
-                bool source_has_sidewalk = source->GetSidewalkEnabled() && source->GetProfile() == SplineProfile::Road;
                 float source_half_width  = (source->GetRoadWidth() + (source->GetRoadWidthEnd() - source->GetRoadWidth()) * t) * 0.5f;
                 float edge_offset        = 0.0f;
                 if (m_attach_mode == SplineAttachMode::LeftEdge || m_attach_mode == SplineAttachMode::RightEdge)
@@ -1081,7 +1096,7 @@ namespace spartan
                 }
                 else if (m_attach_mode == SplineAttachMode::LeftOuter || m_attach_mode == SplineAttachMode::RightOuter)
                 {
-                    edge_offset = source_half_width + (source_has_sidewalk ? source->GetSidewalkWidth() : 0.0f);
+                    edge_offset = source_half_width + source->GetSidewalkWidthAt(t);
                 }
 
                 float lateral = (m_attach_mode == SplineAttachMode::Centerline)
@@ -1591,7 +1606,16 @@ namespace spartan
             auto& group = groups[node_names[root(i)]];
             for (const Node& node : nodes[node_names[i]])
             {
-                auto found = find_if(group.begin(), group.end(), [&](const Node& n) { return n.road == node.road; });
+                // A returning road can visit the same junction at both ends.
+                // Merge only adjacent anchors: merging a whole loop would consume
+                // its two mouths and leave the approach with no junction surface.
+                auto found = find_if(group.begin(), group.end(), [&](const Node& n)
+                {
+                    if (n.road != node.road) return false;
+                    const Road& road = roads[node.road];
+                    const float gap = max(road.distance[node.frame] - road.distance[n.end], road.distance[n.frame] - road.distance[node.end]);
+                    return gap < max(road.spline->m_road_width, road.spline->m_road_width_end);
+                });
                 if (found == group.end()) group.push_back(node);
                 else { found->frame = min(found->frame, node.frame); found->end = max(found->end, node.end); }
             }
@@ -1671,6 +1695,11 @@ namespace spartan
                     cuts.push_back({node.road, lo, hi});
                 }
                 if (!room || mouths.size() < 2) break;
+                // Fan from the mouth centroid. At bends and asymmetric returns,
+                // the original control point can lie outside the trimmed polygon.
+                Vector3 polygon_center = Vector3::Zero;
+                for (const Mouth& mouth : mouths) polygon_center += mouth.a + mouth.b;
+                polygon_center /= static_cast<float>(mouths.size() * 2);
                 struct Corner { Vector3 position; size_t mouth; };
                 vector<Corner> corners;
                 for (size_t i = 0; i < mouths.size(); i++)
@@ -1680,19 +1709,19 @@ namespace spartan
                 }
                 sort(corners.begin(), corners.end(), [&](const Corner& a, const Corner& b)
                 {
-                    return atan2f(a.position.z - center.z, a.position.x - center.x) < atan2f(b.position.z - center.z, b.position.x - center.x);
+                    return atan2f(a.position.z - polygon_center.z, a.position.x - polygon_center.x) < atan2f(b.position.z - polygon_center.z, b.position.x - polygon_center.x);
                 });
                 bool valid = true;
                 for (size_t i = 0; i < corners.size(); i++)
                 {
                     const Corner& prev = corners[(i + corners.size() - 1) % corners.size()];
                     const Corner& next = corners[(i + 1) % corners.size()];
-                    Vector3 a = corners[i].position - center;
-                    Vector3 b = next.position - center;
+                    Vector3 a = corners[i].position - polygon_center;
+                    Vector3 b = next.position - polygon_center;
                     if (a.x * b.z - a.z * b.x <= 0.001f || (prev.mouth != corners[i].mouth && next.mouth != corners[i].mouth)) valid = false;
                 }
                 if (!valid) continue;
-                Junction junction{name, center, {}, cuts, radius};
+                Junction junction{name, polygon_center, {}, cuts, radius};
                 for (size_t i = 0; i < corners.size(); i++)
                 {
                     const Corner& a = corners[i];
@@ -1718,11 +1747,11 @@ namespace spartan
                         curve.push_back(a.position * ((1 - t) * (1 - t)) + control * (2 * t * (1 - t)) + b.position * (t * t));
                     }
                     // The center fan must remain inside every boundary edge.
-                    Vector3 previous = a.position - center;
+                    Vector3 previous = a.position - polygon_center;
                     bool visible = true;
                     for (size_t step = 0; step <= curve.size(); step++)
                     {
-                        const Vector3 next = (step < curve.size() ? curve[step] : b.position) - center;
+                        const Vector3 next = (step < curve.size() ? curve[step] : b.position) - polygon_center;
                         if (previous.x * next.z - previous.z * next.x <= 0.001f) visible = false;
                         previous = next;
                     }
@@ -1874,6 +1903,7 @@ namespace spartan
     {
         // build the dense list of frames either from own control points or from the source spline
         vector<SplineFrame> frames = SampleFrames(m_resolution);
+        m_sidewalk_ramp_t = frames.empty() ? 0.001f : 5.0f / max(frames.back().distance, 1.0f);
         if (frames.size() < 2)
         {
             SP_LOG_WARNING("need at least 2 sampled frames to generate a mesh");
@@ -1896,7 +1926,7 @@ namespace spartan
         ClearRoadMesh();
 
         // Raw, independently graded frames are immutable inputs to the shared junction pass.
-        if (m_profile == SplineProfile::Road && !IsAttached() && !m_sidewalk_enabled && !GetRoadNodeSignature().empty())
+        if (m_profile == SplineProfile::Road && !IsAttached() && !GetRoadNodeSignature().empty())
         {
             m_base_road_frames = frames;
             road_network_members.insert(this);
@@ -1957,13 +1987,21 @@ namespace spartan
 
             SplineCarveSample sample;
             sample.position   = world_matrix * frame.position;
-            sample.half_width = width * 0.5f + (m_sidewalk_enabled ? m_sidewalk_width : 0.0f);
+            sample.half_width = width * 0.5f + GetSidewalkWidthAt(frame.t);
             m_carve_samples.push_back(sample);
         }
     }
 
-    void Spline::ClearRoadMesh()
+    void Spline::ClearRoadMesh(bool clear_sidewalk)
     {
+        if (clear_sidewalk && m_entity_ptr)
+        {
+            if (Entity* sidewalk = m_entity_ptr->GetChildByName("spline_sidewalk"))
+            {
+                sidewalk->RemoveComponent<Physics>();
+                sidewalk->RemoveComponent<Render>();
+            }
+        }
         if (!m_base_road_frames.empty()) road_junctions_dirty = true;
         road_network_members.erase(this);
         m_base_road_frames.clear();
@@ -2411,6 +2449,22 @@ namespace spartan
         return GetProfilePointsForWidth(m_road_width);
     }
 
+    float Spline::GetSidewalkWidthAt(float t) const
+    {
+        if (!m_sidewalk_enabled || m_profile != SplineProfile::Road) return 0.0f;
+        if (m_sidewalk_ranges.empty()) return max(0.0f, m_sidewalk_width);
+        float coverage = 0.0f;
+        const float ramp = max(m_sidewalk_ramp_t, 0.000001f);
+        for (const Vector2& range : m_sidewalk_ranges)
+        {
+            if (t < range.x || t > range.y) continue;
+            const float enter = range.x == 0.0f ? 1.0f : (t - range.x) / ramp;
+            const float leave = range.y == 1.0f ? 1.0f : (range.y - t) / ramp;
+            coverage = max(coverage, clamp(min(enter, leave), 0.0f, 1.0f));
+        }
+        return max(0.0f, m_sidewalk_width) * coverage;
+    }
+
     vector<Vector2> Spline::GetProfilePointsForWidth(float width) const
     {
         vector<Vector2> profile;
@@ -2549,7 +2603,6 @@ namespace spartan
             }
 
             // does the source profile expose a sidewalk on its outer edge
-            bool source_has_sidewalk = source->GetSidewalkEnabled() && source->GetProfile() == SplineProfile::Road;
 
             // use source resolution unless the user pinned a sample count
             uint32_t source_point_count = source->GetControlPointCount();
@@ -2602,7 +2655,7 @@ namespace spartan
                 }
                 else if (m_attach_mode == SplineAttachMode::LeftOuter || m_attach_mode == SplineAttachMode::RightOuter)
                 {
-                    edge_offset = source_half_width + (source_has_sidewalk ? source->GetSidewalkWidth() : 0.0f);
+                    edge_offset = source_half_width + source->GetSidewalkWidthAt(t);
                 }
 
                 // outward push for non centerline modes, plain right shift for centerline
@@ -3018,6 +3071,7 @@ namespace spartan
         mix_f(source->GetRoadWidth());
         mix_f(source->GetRoadWidthEnd());
         mix_f(source->GetSidewalkWidth());
+        for (const Vector2& range : source->GetSidewalkRanges()) { mix_f(range.x); mix_f(range.y); }
         mix(source->GetSidewalkEnabled() ? 1ULL : 0ULL);
         mix(source->GetClosedLoop()      ? 1ULL : 0ULL);
         mix(static_cast<uint64_t>(source->GetProfile()));
@@ -3042,6 +3096,8 @@ namespace spartan
 
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
+        vector<RHI_Vertex_PosTexNorTan> sidewalk_vertices;
+        vector<uint32_t> sidewalk_indices;
 
         vertices.reserve(total_samples * profile_count * 4);
 
@@ -3081,6 +3137,21 @@ namespace spartan
             }
             uint32_t cur_profile_count = static_cast<uint32_t>(cur_profile.size());
 
+            if (m_profile == SplineProfile::Road && m_sidewalk_enabled)
+            {
+                const uint32_t first = embankment ? 1u : 0u;
+                const float width = GetSidewalkWidthAt(frame.t);
+                const float height = m_curb_height * width / max(m_sidewalk_width, 0.001f);
+                cur_profile[first].x = -current_width * 0.5f - width;
+                cur_profile[first + 5].x = current_width * 0.5f + width;
+                for (uint32_t k : {0u, 1u, 4u, 5u}) cur_profile[first + k].y = height;
+                if (embankment)
+                {
+                    cur_profile.front().x += m_sidewalk_width - width;
+                    cur_profile.back().x -= m_sidewalk_width - width;
+                }
+            }
+
             vector<float> u = spline_geometry::profile_u(cur_profile, m_profile == SplineProfile::Road, close_profile, current_width);
             if (i == 0)
             {
@@ -3101,7 +3172,13 @@ namespace spartan
             for (uint32_t j = 0; j < edge_count; j++)
             {
                 const uint32_t next = (j + 1) % cur_profile_count;
-                const uint32_t base = static_cast<uint32_t>(vertices.size());
+                const uint32_t first = embankment ? 1u : 0u;
+                const bool sidewalk = m_profile == SplineProfile::Road && m_sidewalk_enabled &&
+                    j >= first && j < first + 5 && j != first + 2;
+                if (sidewalk && GetSidewalkWidthAt(frames[i - 1].t) == 0.0f && GetSidewalkWidthAt(frame.t) == 0.0f) continue;
+                auto& target_vertices = sidewalk ? sidewalk_vertices : vertices;
+                auto& target_indices = sidewalk ? sidewalk_indices : indices;
+                const uint32_t base = static_cast<uint32_t>(target_vertices.size());
                 for (uint32_t row = 0; row < 2; row++)
                 {
                     const auto& section = row == 0 ? previous_profile : cur_profile;
@@ -3126,11 +3203,14 @@ namespace spartan
                             t.Normalize();
                         }
                         const float tex_u = (close_profile && side == 1 && next == 0) ? 1.0f : section_u[k];
-                        vertices.emplace_back(f.position + f.right * section[k].x + f.up * section[k].y,
+                        const float paving_v = f.distance * 0.5f;
+                        const float paving_origin = floorf(frames[i - 1].distance * 0.5f);
+                        target_vertices.emplace_back(f.position + f.right * section[k].x + f.up * section[k].y,
+                            sidewalk ? Vector2((section[k].x + section[k].y) * 0.5f, paving_v - paving_origin) :
                             Vector2(tex_u * m_uv_tiling_u, (row == 0 ? v0 : v1) - origin), n, t);
                     }
                 }
-                indices.insert(indices.end(), {base, base + 1, base + 2, base + 1, base + 3, base + 2});
+                target_indices.insert(target_indices.end(), {base, base + 1, base + 2, base + 1, base + 3, base + 2});
             }
             previous_profile = move(cur_profile);
             previous_u = move(u);
@@ -3191,6 +3271,47 @@ namespace spartan
         }
 
         float total_length = frames.back().distance;
+
+        Entity* sidewalk = m_entity_ptr->GetChildByName("spline_sidewalk");
+        if (sidewalk)
+        {
+            sidewalk->RemoveComponent<Physics>();
+            sidewalk->RemoveComponent<Render>();
+        }
+        if (!sidewalk_indices.empty())
+        {
+            if (!sidewalk)
+            {
+                sidewalk = World::CreateEntity();
+                sidewalk->SetObjectName("spline_sidewalk");
+                sidewalk->SetParent(m_entity_ptr);
+                sidewalk->SetPositionLocal(Vector3::Zero);
+                sidewalk->SetRotationLocal(Quaternion::Identity);
+                sidewalk->SetScaleLocal(Vector3::One);
+                sidewalk->SetTransient(true);
+            }
+            auto mesh = make_shared<Mesh>();
+            mesh->SetObjectName("sidewalk_" + to_string(m_entity_ptr->GetObjectId()));
+            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
+            mesh->AddGeometry(sidewalk_vertices, sidewalk_indices, false);
+            mesh->CreateGpuBuffers();
+            auto material = ResourceCache::GetByName<Material>("spline_concrete_pavers");
+            if (!material)
+            {
+                material = make_shared<Material>();
+                material->SetObjectName("spline_concrete_pavers");
+                material->SetProperty(MaterialProperty::Roughness, 0.92f);
+                material->SetProperty(MaterialProperty::Metalness, 0.0f);
+                material->SetTexture(MaterialTextureType::Color, "data/textures/sidewalk/concrete_pavers.png");
+            }
+            Render* paving = sidewalk->AddComponent<Render>();
+            paving->SetOwnedMesh(mesh);
+            paving->SetMaterial(material);
+            paving->SetFlag(RenderFlags::ExcludeFromTerrainBlend, true);
+            paving->SetFlag(RenderFlags::PreserveCollisionGeometry, true);
+            sidewalk->AddComponent<Physics>()->SetBodyType(BodyType::Mesh);
+        }
 
         // create the mesh
         m_mesh = make_shared<Mesh>();
