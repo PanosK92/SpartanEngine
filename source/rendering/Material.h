@@ -118,6 +118,8 @@ namespace spartan
     
         // render settings
         CullMode,                   // face culling mode
+
+        IsFoliage,                  // thin leaves/petals, allows light through the back side
     
         // sentinel
         Max                         // total number of properties

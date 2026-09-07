@@ -1061,6 +1061,15 @@ namespace spartan
             const bool is_gltf = (extension == ".gltf") || (extension == ".glb");
             bind_assimp_textures(ctx.model_directory, ctx.directory_files, material, material_assimp, is_gltf);
 
+            // Explicitly named leaf geometry also works when placed outside terrain scatter.
+            // Alpha masks alone are not sufficient here: fences and decals use them too.
+            if (name.find("_foliage") != string::npos)
+            {
+                material->SetProperty(MaterialProperty::IsFoliage, 1.0f);
+                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.35f);
+                material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+            }
+
             if (material->HasTextureOfType(MaterialTextureType::Color) &&
                 material->HasTextureOfType(MaterialTextureType::AlphaMask))
             {

@@ -460,6 +460,7 @@ namespace spartan
         grass_populate_c,
         grass_indirect_args_c,
         grass_gbuffer_v,
+        grass_interaction_c,
         // gpu texture compression
         texture_compress_bc1_c,
         texture_compress_bc3_c,

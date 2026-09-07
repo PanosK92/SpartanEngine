@@ -36,10 +36,13 @@ struct gbuffer
 static const float3 vegetation_greener  = float3(0.05f, 0.4f, 0.03f);
 static const float3 vegetation_yellower = float3(0.45f, 0.4f, 0.15f);
 static const float3 vegetation_browner  = float3(0.3f, 0.15f, 0.08f);
-static const float3 grass_base          = float3(0.018f, 0.060f, 0.010f);
-static const float3 grass_tip           = float3(0.055f, 0.180f, 0.025f);
-static const float3 grass_var1          = float3(0.140f, 0.115f, 0.025f);
-static const float3 grass_var2          = float3(0.015f, 0.045f, 0.008f);
+// Linear albedo: muted greens with olive and occasional dry straw, rather than
+// saturated lime tips. Sunlight and transmission supply the brightness naturally.
+static const float3 grass_base          = float3(0.016f, 0.027f, 0.012f);
+static const float3 grass_mature         = float3(0.040f, 0.062f, 0.025f);
+static const float3 grass_fresh          = float3(0.054f, 0.087f, 0.038f);
+static const float3 grass_olive          = float3(0.075f, 0.079f, 0.036f);
+static const float3 grass_straw          = float3(0.145f, 0.116f, 0.058f);
 static const float3 flower_base         = float3(0.05f, 0.07f, 0.03f);
 static const float3 flower_blue         = float3(0.529f, 0.808f, 0.922f);
 static const float3 flower_red          = float3(0.8f, 0.2f, 0.2f);
@@ -147,13 +150,12 @@ float2 parallax_occlusion_uv(
 // compute grass blade color with variation
 float3 compute_grass_color(float height_percent, float variation)
 {
-    float t           = smoothstep(0.2f, 1.0f, height_percent);
-    float3 grass_tint = lerp(grass_base, grass_tip, t);
-    
-    // branchless color variation
-    float3 var_color = lerp(grass_tint, grass_var1, step(0.33f, variation));
-    var_color        = lerp(var_color, grass_var2, step(0.66f, variation));
-    return lerp(grass_tint, var_color, 0.18f);
+    float t = smoothstep(0.2f, 1.0f, height_percent);
+    float3 leaf_tint = lerp(grass_mature, grass_fresh, smoothstep(0.0f, 0.45f, variation));
+    leaf_tint = lerp(leaf_tint, grass_olive, smoothstep(0.45f, 0.82f, variation));
+    leaf_tint = lerp(leaf_tint, grass_straw, smoothstep(0.82f, 1.0f, variation) * 0.7f);
+    float3 root_tint = grass_base * lerp(0.85f, 1.15f, variation);
+    return lerp(root_tint, leaf_tint, t);
 }
 
 // compute flower color with cluster-based hue
@@ -256,7 +258,9 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // camera regardless of which face is hit
     // Two-sided leaf cards and solid modelled leaves also need a lighting
     // normal on the visible side; otherwise their backs shade almost black.
-    if (!is_front_face && (pass_is_transparent() || material.is_alpha_tested() || material.subsurface_scattering > 0.0f))
+    // Procedural blades/petals flip after their curved normal is constructed below.
+    if (!is_front_face && !surface.is_grass_blade() && !surface.is_flower() &&
+        (pass_is_transparent() || material.is_alpha_tested() || surface.is_foliage() || material.subsurface_scattering > 0.0f))
     {
         vertex.normal  = -vertex.normal;
         vertex.tangent = -vertex.tangent;

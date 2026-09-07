@@ -486,6 +486,27 @@ struct vertex_processing
         float3 instance_up   = normalize(transform[1].xyz);
         float3 instance_pos  = float3(transform[3].x, transform[3].y, transform[3].z);
 
+        float3 grass_press = 0.0f;
+#ifdef GRASS_INSTANCED
+        if (surface.is_grass_blade())
+        {
+            float4 mapping = time_offset < 0.0f ? buffer_pass.values[2] : buffer_pass.values[1];
+            float2 uv = (instance_pos.xz - mapping.xy) * mapping.z;
+            if (mapping.w > 0.5f && all(uv > 0.0f) && all(uv < 1.0f))
+            {
+                float4 pressed;
+                if (time_offset < 0.0f)
+                    pressed = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0);
+                else
+                    pressed = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0);
+                // Premultiplied height stays correct when filtering against empty texels.
+                float height_weight = pressed.z > 0.0001f ?
+                    1.0f - smoothstep(0.25f, 0.65f, abs(pressed.w / pressed.z - instance_pos.y)) : 0.0f;
+                grass_press = pressed.xyz * height_weight;
+            }
+        }
+#endif
+
         // fft ocean, displace the camera-centered clipmap by the summed cascade displacement
         if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
         {
@@ -526,31 +547,34 @@ struct vertex_processing
             return;
         }
 
-        // camera-facing bias for grass (ghost of tsushima technique)
-        // rotates blades partially toward camera when edge-on to maintain visual density
+        // Broadside attraction: follow small view changes, then smoothly release toward
+        // edge-on at wider angles. The root supplies one rotation for the entire blade.
         if (surface.is_grass_blade())
         {
-            const float camera_bias_strength = 0.7f;
+            const float camera_bias_strength = 0.9f;
 
             float3 camera_position = time_offset < 0.0f ?
                 buffer_frame.camera_position_previous :
                 buffer_frame.camera_position;
-            float3 to_camera    = camera_position - position_world;
-            float3 to_camera_xz = normalize(float3(to_camera.x, 0.0f, to_camera.z));
+            float3 to_camera = camera_position - instance_pos;
+            float3 view_planar = to_camera - instance_up * dot(to_camera, instance_up);
+            float view_length_sq = dot(view_planar, view_planar);
+            view_planar *= rsqrt(max(view_length_sq, 1e-8f));
 
-            float3 blade_normal    = normalize(transform[2].xyz);
-            float3 blade_normal_xz = normalize(float3(blade_normal.x, 0.0f, blade_normal.z) + float3(1e-6f, 0.0f, 1e-6f));
+            float3 blade_normal = transform[2].xyz;
+            blade_normal -= instance_up * dot(blade_normal, instance_up);
+            blade_normal *= rsqrt(max(dot(blade_normal, blade_normal), 1e-8f));
 
-            float facing_dot  = abs(dot(blade_normal_xz, to_camera_xz));
-            float edge_factor = 1.0f - facing_dot;
-            float bias_amount = edge_factor * edge_factor * camera_bias_strength;
+            float facing_cos = clamp(dot(blade_normal, view_planar), -1.0f, 1.0f);
+            float facing_sin = dot(cross(blade_normal, view_planar), instance_up);
+            // bias = 0.45 * sin(2 * view_angle), bounded to about 26 degrees. Keeping
+            // the signed cosine makes both faces agree, with no flip at the blade edge.
+            // A 45-degree view stays about 19 degrees off broadside; a 90-degree view
+            // still sees the edge. Fade near overhead where the viewing azimuth vanishes.
+            float overhead_fade = saturate(view_length_sq / max(dot(to_camera, to_camera) * 0.04f, 1e-8f));
+            float bias_angle = camera_bias_strength * facing_sin * facing_cos * overhead_fade * (1.0f - grass_press.z);
 
-            float3 cross_result   = cross(blade_normal_xz, to_camera_xz);
-            float  rotation_sign  = sign(cross_result.y);
-            float  angle_to_camera = acos(saturate(facing_dot));
-            float  bias_angle     = angle_to_camera * bias_amount * rotation_sign;
-
-            float3x3 bias_rot = rotation_matrix(float3(0.0f, 1.0f, 0.0f), bias_angle);
+            float3x3 bias_rot = rotation_matrix(instance_up, bias_angle);
 
             float3 offset  = position_world - instance_pos;
             position_world = instance_pos + mul(bias_rot, offset);
@@ -614,6 +638,46 @@ struct vertex_processing
             float3 raw_axis      = cross(instance_up, ws.bend_dir_world);
             float  axis_length_sq = dot(raw_axis, raw_axis);
             float3 axis           = axis_length_sq > 0.0001f ? raw_axis * rsqrt(axis_length_sq) : float3(1.0f, 0.0f, 0.0f);
+
+            if (surface.is_grass_blade())
+            {
+                // Gravity gives every blade a gentle resting arch, even with no wind.
+                // Hash the root, not the transient instance slot, so neither repopulation
+                // nor camera motion changes its shape. Keep the lower stem relatively stiff.
+                float rest_heading = hash(instance_pos.xz + float2(17.3f, 91.7f)) * PI2;
+                float rest_angle = lerp(10.0f, 22.0f, hash(instance_pos.zx + float2(73.1f, 5.9f))) * DEG_TO_RAD * h_cantilever;
+                // Let the resting arch deepen and relax in the breeze. Keep its direction
+                // stable, and retain the exact resting pose at zero wind. Shared gusts drive
+                // the strength while each blade's phase/frequency keeps the flex from marching
+                // in unison. 'time' includes the previous-frame offset for motion vectors.
+                float rest_flex = sin(time * (1.3f + nat_freq * 0.2f) + instance_phase) * 0.65f +
+                                  sin(time * 0.93f + instance_phase * 1.7f) * 0.35f;
+                rest_angle *= 1.0f + rest_flex * wind_response * (0.10f + 0.14f * ws.gust);
+                float3 rest_direction = float3(cos(rest_heading), 0.0f, sin(rest_heading));
+                float3 rest_axis = cross(instance_up, rest_direction);
+                rest_axis *= rsqrt(max(dot(rest_axis, rest_axis), 1e-8f));
+                float3 rotation_vector = axis * angle + rest_axis * rest_angle;
+                float rotation_length = length(rotation_vector);
+                axis = rotation_length > 1e-6f ? rotation_vector / rotation_length : instance_up;
+                // Wind adds to the resting curve, while the existing slope limit keeps it
+                // above the ground. Tire pressure below replaces this relaxed pose entirely.
+                angle = min(rotation_length, max_allowed_angle);
+            }
+
+            if (grass_press.z > 0.0001f)
+            {
+                float3 direction = float3(grass_press.x, 0.0f, grass_press.y);
+                direction -= instance_up * dot(direction, instance_up);
+                float3 press_axis = cross(instance_up, direction);
+                press_axis *= rsqrt(max(dot(press_axis, press_axis), 0.000001f));
+                // A short curved root, with the rest of the blade laid almost flat on the
+                // terrain plane. Fade wind out as pressure takes over so tire marks stay put.
+                float press_angle = (86.0f * DEG_TO_RAD) * pow(h, 0.35f);
+                float3 rotation_vector = axis * angle * (1.0f - grass_press.z) +
+                    press_axis * press_angle * grass_press.z;
+                angle = length(rotation_vector);
+                axis = angle > 1e-6f ? rotation_vector / angle : instance_up;
+            }
 
             // each vertex rotates by angle * h^1.5, so the base stays put and the tip sweeps the full angle
             // produces the cantilever silhouette without per-vertex pivot bookkeeping
@@ -756,8 +820,11 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 
     if (surface.is_grass_blade())
     {
+        // Related colours in small tufts, with enough per-blade variation to avoid
+        // identical coloured blocks. Root-based hashes remain stable across frames/LODs.
         float2 grass_cell = floor(transform[3].xz * 2.0f);
-        vertex.uv_misc.w  = hash(grass_cell);
+        float blade_variation = hash(transform[3].xz + float2(31.7f, 83.1f));
+        vertex.uv_misc.w = lerp(hash(grass_cell), blade_variation, 0.35f);
     }
     
     // transform position to world space

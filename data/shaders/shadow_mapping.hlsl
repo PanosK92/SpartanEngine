@@ -213,7 +213,7 @@ float3 compute_normal_offset(Surface surface, Light light, uint cascade_index)
         ).x;
 
     // compute slope
-    float3 light_dir = light.is_directional() ? normalize(-light.forward.xyz) : normalize(surface.position - light.position);
+    float3 light_dir = light.is_directional() ? normalize(-light.forward.xyz) : normalize(light.position - surface.position);
     float n_dot_l    = dot(surface.normal, light_dir);
     float slope      = sqrt(saturate(1.0f - n_dot_l * n_dot_l));
 
@@ -221,7 +221,8 @@ float3 compute_normal_offset(Surface surface, Light light, uint cascade_index)
     float cascade_bias = (light.is_directional() && cascade_index == 1) ? 2.0f : 1.0f;
     float offset_amount = (g_base_bias_texels + (slope * g_slope_bias_texels)) * texel_size_world * cascade_bias;
     
-    return surface.normal * offset_amount;
+    float normal_sign = surface.is_foliage() && surface.subsurface_scattering > 0.0f && n_dot_l < 0.0f ? -1.0f : 1.0f;
+    return surface.normal * (offset_amount * normal_sign);
 }
 
 // main shadow computation function

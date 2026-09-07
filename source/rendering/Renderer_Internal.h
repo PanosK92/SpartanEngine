@@ -153,6 +153,20 @@ namespace spartan
             };
             std::array<GpuScatterSlot, renderer_max_gpu_scatter_slots> gpu_scatter{};
 
+            // World-space tire history survives scatter repopulation and camera movement.
+            struct GrassInteraction
+            {
+                std::shared_ptr<RHI_Texture> fields[2];
+                std::shared_ptr<RHI_Buffer> contacts;
+                math::Vector2 origins[2] = {};
+                uint32_t current = 0;
+                bool valid = false;
+                bool previous_valid = false;
+                uint64_t vehicle_id = 0;
+                std::array<math::Vector3, 4> wheel_positions{};
+                std::array<bool, 4> wheel_valid{};
+            } grass_interaction;
+
             bool          terrain_enabled = false;
             TerrainParams terrain;
 

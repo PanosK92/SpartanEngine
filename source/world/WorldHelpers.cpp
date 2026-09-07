@@ -443,6 +443,7 @@ namespace spartan
             if (mesh_path == "builtin/grass_blade")
             {
                 material->SetProperty(MaterialProperty::IsGrassBlade, 1.0f);
+                material->SetProperty(MaterialProperty::IsFoliage, 1.0f);
                 material->SetProperty(MaterialProperty::Roughness, 0.85f);
                 material->SetProperty(MaterialProperty::Clearcoat, 0.0f);
                 material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.5f);
@@ -468,10 +469,11 @@ namespace spartan
             else
             {
                 material->SetProperty(MaterialProperty::IsFlower, 1.0f);
+                material->SetProperty(MaterialProperty::IsFoliage, 1.0f);
                 material->SetProperty(MaterialProperty::Roughness, 1.0f);
                 material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
                 material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
-                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.35f);
                 material->SetObjectName("flower");
                 material->SetResourceName("flower" + string(EXTENSION_MATERIAL));
             }
@@ -487,7 +489,10 @@ namespace spartan
         {
             // Solid modelled leaves need the same wind, translucency and collision
             // treatment as cutouts. Our asset convention explicitly names these.
-            return material->HasTextureOfType(MaterialTextureType::AlphaMask) ||
+            return material->GetProperty(MaterialProperty::IsFoliage) != 0.0f ||
+                material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f ||
+                material->GetProperty(MaterialProperty::IsFlower) != 0.0f ||
+                material->HasTextureOfType(MaterialTextureType::AlphaMask) ||
                 material->GetObjectName().find("_foliage") != string::npos;
         }
 
@@ -801,15 +806,17 @@ namespace spartan
                     {
                         foliage = is_foliage_material(material);
                         if (foliage)
+                        {
                             material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                            material->SetProperty(MaterialProperty::IsFoliage, 1.0f);
+                            material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.35f);
+                        }
 
                         // Wood and leaves share the same anchored sway. The shader adds
                         // fine flutter only to cutouts, so the canopy stays attached.
                         if (layer.flags & TerrainScatterFlags_Wind)
                         {
                             material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
-                            if (foliage)
-                                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.35f);
                         }
 
                         material->SetProperty(MaterialProperty::ColorVariationFromInstance,
@@ -1565,6 +1572,7 @@ namespace spartan
             "TextureTilingY",             MaterialProperty::TextureTilingY,
             "IsTerrain",                  MaterialProperty::IsTerrain,
             "IsGrassBlade",               MaterialProperty::IsGrassBlade,
+            "IsFoliage",                  MaterialProperty::IsFoliage,
             "IsFlower",                   MaterialProperty::IsFlower,
             "WindAnimation",              MaterialProperty::WindAnimation,
             "ColorVariationFromInstance", MaterialProperty::ColorVariationFromInstance,

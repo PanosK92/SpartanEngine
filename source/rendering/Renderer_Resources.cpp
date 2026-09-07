@@ -1212,6 +1212,7 @@ namespace spartan
 
             // gpu procedural grass
             { Renderer_Shader::grass_populate_c,                      RHI_Shader_Type::Compute, "grass_populate.hlsl"                                                                              },
+            { Renderer_Shader::grass_interaction_c,                   RHI_Shader_Type::Compute, "grass_interaction.hlsl"                                                                           },
             { Renderer_Shader::grass_indirect_args_c,                 RHI_Shader_Type::Compute, "grass_indirect_args.hlsl"                                                                         },
             { Renderer_Shader::grass_gbuffer_v,                       RHI_Shader_Type::Vertex,  "g_buffer.hlsl",                              RHI_Vertex_Type::PosUvNorTan, "GRASS_INSTANCED"        },
 

@@ -1934,6 +1934,8 @@ namespace spartan
                 return "texture_slope_based";
             case MaterialProperty::IsGrassBlade:
                 return "is_grass_blade";
+            case MaterialProperty::IsFoliage:
+                return "is_foliage";
             case MaterialProperty::IsFlower:
                 return "is_flower";
             case MaterialProperty::WindAnimation:

@@ -103,6 +103,7 @@ namespace spartan
                 case MaterialProperty::IsTerrain:                  return "texture_slope_based";
                 case MaterialProperty::IsGrassBlade:               return "is_grass_blade";
                 case MaterialProperty::IsFlower:                   return "is_flower";
+                case MaterialProperty::IsFoliage:                   return "is_foliage";
                 case MaterialProperty::WindAnimation:              return "wind_animation";
                 case MaterialProperty::ColorVariationFromInstance: return "color_variation_from_instance";
                 case MaterialProperty::IsWater:                    return "vertex_animate_water";
@@ -1047,6 +1048,24 @@ namespace spartan
             if (pugi::xml_node property_node = node_material.child(attribute_name))
             {
                 m_properties[i] = property_node.text().as_float();
+            }
+        }
+        // Upgrade older vegetation materials loaded directly from a world, which
+        // never pass through the model importer or terrain scatter. A saved flag
+        // (including an explicit zero) takes precedence over the naming convention.
+        if (!node_material.child("is_foliage"))
+        {
+            const string material_name = filesystem::path(file_path).stem().string();
+            const bool foliage = material_name.find("_foliage") != string::npos ||
+                material_name.find("_flower") != string::npos ||
+                GetProperty(MaterialProperty::IsGrassBlade) != 0.0f ||
+                GetProperty(MaterialProperty::IsFlower) != 0.0f;
+            if (foliage)
+            {
+                m_properties[static_cast<uint32_t>(MaterialProperty::IsFoliage)] = 1.0f;
+                m_properties[static_cast<uint32_t>(MaterialProperty::SubsurfaceScattering)] =
+                    max(GetProperty(MaterialProperty::SubsurfaceScattering), 0.35f);
+                m_properties[static_cast<uint32_t>(MaterialProperty::CullMode)] = static_cast<float>(RHI_CullMode::None);
             }
         }
         bump_revision();

@@ -39,6 +39,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../rendering/Material.h"
 #include "../rendering/GeometryBuffer.h"
 #include "../xr/Xr.h"
+#include "../car/Car.h"
+#include "../car/CarSimulation.h"
+#include "../physics/PhysicsWorld.h"
+#include "../core/Engine.h"
+#include "../core/Timer.h"
 //=============================================
 
 //= NAMESPACES ===============
@@ -50,6 +55,23 @@ namespace spartan
 {
     namespace
     {
+        constexpr uint32_t grass_interaction_resolution = 512;
+        constexpr float grass_interaction_size = 32.0f;
+        TConsoleVar<float> cvar_grass_track_radius("r.grass_track_radius", 8.0f,
+            "distance from the car in metres within which pressed grass stays down (1 to 12)");
+        TConsoleVar<float> cvar_grass_track_recovery("r.grass_track_recovery", 1.5f,
+            "grass recovery rate after the car leaves, in inverse seconds");
+
+        // Matches GrassWheelContact in grass_interaction.hlsl.
+        struct GrassWheelContact
+        {
+            Vector4 start_width;
+            Vector4 end_length;
+            Vector4 direction_pressure;
+            Vector4 normal;
+        };
+        static_assert(sizeof(GrassWheelContact) == 64);
+
         TConsoleVar<float> cvar_tree_wind_cache_entries("r.tree_wind_cache_entries", static_cast<float>(TREE_WIND_CACHE_CAPACITY),
             "visible-instance root wind cache entries; 0 uses the identical uncached path, never affects population");
         TConsoleVar<float> cvar_hiz_depth_bias("r.hiz_depth_bias", 2e-7f,
@@ -1581,6 +1603,167 @@ namespace spartan
         RHI_CommandList::EndPass();
     }
 
+    void Renderer::Pass_Grass_Interaction()
+    {
+        if (IsSecondaryViewActive())
+            return;
+
+        auto& history = m_pass_state.grass_interaction;
+        const bool paused = Engine::IsFlagSet(EngineMode::Paused);
+        if (!IsGpuScatterEnabled() || (!Engine::IsFlagSet(EngineMode::Playing) && !paused))
+        {
+            history.valid = false;
+            history.wheel_valid.fill(false);
+            return;
+        }
+
+        // The occupied car owns the local field. On foot, use the nearest drivable car.
+        Car* vehicle = nullptr;
+        float nearest = numeric_limits<float>::max();
+        for (Car* candidate : Car::GetAll())
+        {
+            Entity* root = candidate->GetRootEntity();
+            if (!candidate->IsDrivable() || !root || !root->IsActive())
+                continue;
+            const float distance = Vector3::DistanceSquared(root->GetPosition(), m_cb_frame_cpu.camera_position);
+            if (candidate->IsOccupied() || distance < nearest)
+            {
+                vehicle = candidate;
+                nearest = distance;
+                if (candidate->IsOccupied())
+                    break;
+            }
+        }
+        Entity* root = vehicle ? vehicle->GetRootEntity() : nullptr;
+        Physics* physics = root ? root->GetComponent<Physics>() : nullptr;
+        auto* simulation = physics ? physics->GetVehicleSimulation() : nullptr;
+        RHI_Shader* shader = GetShader(Renderer_Shader::grass_interaction_c);
+        if (!simulation || !shader || !shader->IsCompiled())
+        {
+            history.valid = false;
+            history.wheel_valid.fill(false);
+            return;
+        }
+
+        if (!history.fields[0])
+        {
+            for (uint32_t i = 0; i < 2; ++i)
+                history.fields[i] = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,
+                    grass_interaction_resolution, grass_interaction_resolution, 1, 1,
+                    RHI_Format::R32G32B32A32_Float, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_ClearBlit,
+                    i == 0 ? "grass_tracks_a" : "grass_tracks_b");
+            history.contacts = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,
+                sizeof(GrassWheelContact), 4, nullptr, false, "grass_wheel_contacts");
+        }
+
+        const Vector3 center = root->GetPosition();
+        const float cell = grass_interaction_size / grass_interaction_resolution;
+        const Vector2 origin(floorf(center.x / cell) * cell - grass_interaction_size * 0.5f,
+                             floorf(center.z / cell) * cell - grass_interaction_size * 0.5f);
+        if (history.vehicle_id != root->GetObjectId())
+        {
+            history.valid = false;
+            history.wheel_valid.fill(false);
+            history.vehicle_id = root->GetObjectId();
+        }
+
+        const float frame_dt = static_cast<float>(Timer::GetDeltaTimeSec());
+        const float dt = paused ? 0.0f : min(frame_dt, 0.1f);
+        array<GrassWheelContact, 4> contacts{};
+        uint32_t count = 0;
+        for (uint32_t i = 0; i < 4; ++i)
+        {
+            const auto& wheel = simulation->get_wheel_state(i);
+            auto* body = simulation->get_multibody_state().corners[i].wheel_body;
+            if (paused || !wheel.grounded || !body || !isfinite(wheel.tire_load) || wheel.tire_load <= 80.0f ||
+                !wheel.contact_point.isFinite() || !wheel.contact_normal.isFinite())
+            {
+                history.wheel_valid[i] = false;
+                continue;
+            }
+            // Moving receivers are not part of the world-space terrain field.
+            if (const auto* ground = wheel.contact_actor ? wheel.contact_actor->is<physx::PxRigidDynamic>() : nullptr)
+            {
+                if (ground->getLinearVelocity().magnitudeSquared() > 0.01f || ground->getAngularVelocity().magnitudeSquared() > 0.01f)
+                {
+                    history.wheel_valid[i] = false;
+                    continue;
+                }
+            }
+            const auto pose = body->getGlobalPose();
+            const auto normal_px = wheel.contact_normal.getNormalized();
+            const auto hub = pose.p - normal_px * (pose.p - wheel.contact_point).dot(normal_px);
+            const Vector3 position = PhysicsWorld::ToWorldPosition(Vector3(hub.x, hub.y, hub.z));
+            const Vector3 normal(normal_px.x, normal_px.y, normal_px.z);
+            const auto axle = pose.q.rotate(physx::PxVec3(1, 0, 0));
+            Vector3 forward = Vector3::Cross(Vector3(axle.x, axle.y, axle.z), normal);
+            if (!position.IsFinite() || forward.LengthSquared() < 0.001f || normal.y < 0.2f)
+            {
+                history.wheel_valid[i] = false;
+                continue;
+            }
+            forward.Normalize();
+            if (Vector3::Dot(forward, root->GetForward()) < 0.0f)
+                forward = -forward;
+            const auto velocity_px = body->getLinearVelocity();
+            Vector3 velocity(velocity_px.x, velocity_px.y, velocity_px.z);
+            velocity -= normal * Vector3::Dot(velocity, normal);
+            // Follow travel during a slide and reverse; a resting wheel uses its steered heading.
+            Vector3 direction = velocity.LengthSquared() > 0.04f ? velocity.Normalized() : forward;
+            Vector3 start = history.wheel_positions[i];
+            const float distance = Vector3::Distance(start, position);
+            if (!history.valid || !history.wheel_valid[i] || frame_dt > 0.25f ||
+                distance > min(12.0f, max(1.0f, velocity.Length() * dt * 2.0f + 0.5f)) ||
+                abs(Vector3::Dot(position - start, normal)) > 0.5f)
+                start = position;
+
+            const float width = physics->GetWheelWidth(static_cast<WheelIndex>(i));
+            if (!isfinite(width) || width <= 0.0f)
+                continue;
+            auto& contact = contacts[count++];
+            contact.start_width = Vector4(start.x, start.y, start.z, width * 0.5f);
+            contact.end_length = Vector4(position.x, position.y, position.z, 0.22f);
+            contact.direction_pressure = Vector4(direction.x, direction.z, clamp(wheel.tire_load / 1500.0f, 0.0f, 1.0f), 0.0f);
+            contact.normal = Vector4(normal.x, normal.y, normal.z, 0.0f);
+            history.wheel_positions[i] = position;
+            history.wheel_valid[i] = true;
+        }
+
+        const uint32_t previous = history.current;
+        const uint32_t current = 1 - previous;
+        history.previous_valid = history.valid;
+        history.origins[current] = origin;
+        RHI_CommandList::BeginPass("grass_interaction");
+        {
+            if (!history.valid)
+                RHI_CommandList::ClearTexture(history.fields[previous].get(), Color(0, 0, 0, 0));
+            if (count)
+                RHI_CommandList::UpdateBuffer(history.contacts.get(), 0, count * sizeof(GrassWheelContact), contacts.data(), false);
+            RHI_CommandList::SetShader(shader);
+            RHI_CommandList::SetBuffer("grass_wheel_contacts", history.contacts.get());
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), history.fields[previous].get());
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), history.fields[current].get(), rhi_all_mips, 0, true);
+            m_pcb_pass_cpu = {};
+            m_pcb_pass_cpu.v[0] = origin.x;
+            m_pcb_pass_cpu.v[1] = origin.y;
+            m_pcb_pass_cpu.v[2] = cell;
+            m_pcb_pass_cpu.v[3] = history.valid ? 1.0f : 0.0f;
+            m_pcb_pass_cpu.v[4] = history.origins[previous].x;
+            m_pcb_pass_cpu.v[5] = history.origins[previous].y;
+            m_pcb_pass_cpu.v[6] = static_cast<float>(count);
+            m_pcb_pass_cpu.v[7] = dt;
+            m_pcb_pass_cpu.v[8] = center.x;
+            m_pcb_pass_cpu.v[9] = center.z;
+            m_pcb_pass_cpu.v[10] = clamp(cvar_grass_track_radius.GetValue(), 1.0f, 12.0f);
+            m_pcb_pass_cpu.v[11] = max(cvar_grass_track_recovery.GetValue(), 0.1f);
+            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+            RHI_CommandList::Dispatch(history.fields[current].get());
+        }
+        RHI_CommandList::EndPass();
+        history.current = current;
+        history.valid = true;
+    }
+
     void Renderer::Pass_Grass_Draw()
     {
         // gpu scatter raster, one DrawIndexedIndirect per slot per lod ring, runs once inside the
@@ -1645,6 +1828,13 @@ namespace spartan
         RHI_Buffer* binding1_instance = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
         RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::grass_instances), buf_instances);
 
+        const auto& tracks = m_pass_state.grass_interaction;
+        RHI_Texture* fallback = GetStandardTexture(Renderer_StandardTexture::Black);
+        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex),
+            tracks.valid ? tracks.fields[tracks.current].get() : fallback);
+        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2),
+            tracks.valid ? tracks.fields[1 - tracks.current].get() : fallback);
+
         const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
 
         for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
@@ -1676,6 +1866,15 @@ namespace spartan
                 m_pcb_pass_cpu.v[1] = 0.0f;
                 m_pcb_pass_cpu.v[2] = static_cast<float>(lod_base);
                 m_pcb_pass_cpu.v[3] = static_cast<float>(lod);
+                for (uint32_t frame = 0; frame < 2; ++frame)
+                {
+                    const Vector2 origin = tracks.origins[frame == 0 ? tracks.current : 1 - tracks.current];
+                    const uint32_t base = 4 + frame * 4;
+                    m_pcb_pass_cpu.v[base] = origin.x;
+                    m_pcb_pass_cpu.v[base + 1] = origin.y;
+                    m_pcb_pass_cpu.v[base + 2] = 1.0f / grass_interaction_size;
+                    m_pcb_pass_cpu.v[base + 3] = tracks.valid && (frame == 0 || tracks.previous_valid) ? 1.0f : 0.0f;
+                }
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
                 // an empty ring bakes instance_count 0 into the args so the gpu skips it at near-zero cost

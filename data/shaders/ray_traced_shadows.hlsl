@@ -215,10 +215,15 @@ void ray_gen()
 
     float3 pos_ws    = get_position(uv);
     float3 normal_ws = get_normal(uv);
+    float material_index = tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).a;
+    MaterialParameters material = material_parameters[material_index];
+    Surface receiver;
+    receiver.flags = material.flags;
+    bool has_scattering = material.subsurface_scattering > 0.0f;
+    bool thin_foliage = has_scattering && receiver.is_foliage();
 
     float camera_distance = length(get_camera_position() - pos_ws);
     float base_offset     = 0.01f + camera_distance * 0.0001f;
-    float3 ray_origin     = pos_ws + normal_ws * base_offset;
 
     float  frame_index = (float)buffer_frame.frame;
     float2 xi_base;
@@ -229,7 +234,7 @@ void ray_gen()
     {
         float3 light_dir = normalize(-light_parameters[0].direction);
         float n_dot_l    = dot(normal_ws, light_dir);
-        if (n_dot_l <= 0.0f)
+        if (n_dot_l <= 0.0f && !has_scattering)
         {
             tex_uav[launch_id] = float4(0.0f, 0.0f, 0.0f, 1.0f);
         }
@@ -237,6 +242,10 @@ void ray_gen()
         {
             float2 disk       = concentric_disk_sample(xi_base);
             float3 sample_dir = sample_sun_direction(light_dir, disk, SUN_ANGULAR_RADIUS);
+            // Start on the illuminated side of a thin sheet, otherwise a leaf
+            // hits itself before the ray can test the real blockers behind it.
+            float normal_sign = thin_foliage && dot(normal_ws, sample_dir) < 0.0f ? -1.0f : 1.0f;
+            float3 ray_origin = pos_ws + normal_ws * (base_offset * normal_sign);
             float2 vis        = trace_opaque_shadow(ray_origin, sample_dir, SHADOW_RAY_MAX_DISTANCE);
             float visibility  = vis.x;
             float hit_dist    = vis.x < 1.0f ? vis.y : 0.0f;
@@ -253,7 +262,8 @@ void ray_gen()
         if (slot == 0u || slot > nrd_local_shadow_max || (light.flags & (1u << 3)) == 0u)
             continue;
         float local_offset = 0.001f + min(camera_distance * 0.00001f, 0.002f);
-        trace_local_light_shadow(launch_id, slot - 1u, light, pos_ws + normal_ws * local_offset);
+        float normal_sign = thin_foliage && dot(normal_ws, light.position - pos_ws) < 0.0f ? -1.0f : 1.0f;
+        trace_local_light_shadow(launch_id, slot - 1u, light, pos_ws + normal_ws * (local_offset * normal_sign));
     }
 }
 

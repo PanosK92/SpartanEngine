@@ -429,6 +429,7 @@ namespace spartan
         // passes - gpu procedural grass
         // runs the placement compute + indirect args build, the draw is folded into the g-buffer pass via Pass_Grass_Draw
         void Pass_Grass_Populate();
+        void Pass_Grass_Interaction();
         void Pass_Grass_Draw();
         // passes - wind field
         void Pass_WindField();

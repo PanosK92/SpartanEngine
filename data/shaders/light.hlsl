@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "shadow_mapping.hlsl"
 #include "sky/clouds.hlsl"
 #include "light_cluster.hlsl"
+#include "subsurface_scattering.hlsl"
 //============================
 
 // samples the denoised half-res ray traced shadow with bilinear upsample
@@ -110,44 +111,13 @@ float sample_nrd_area_shadow(float2 uv, uint slot)
     return saturate(acc / max(weight_sum, 1e-4f));
 }
 
-// subsurface scattering with wrapped diffuse and thickness estimation
-float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_info)
+// Demodulated diffuse: composition applies the actual leaf/blade albedo once.
+float3 subsurface_scattering(Surface surface, Light light)
 {
-    const float wrap_factor        = 0.5f;
-    const float sss_scale          = 1.5f; // overall scattering strength
-    const float min_scatter        = 0.05f;
-
-    // light.to_pixel and surface.camera_to_pixel are pre-normalized by their builders
     float3 L = -light.to_pixel;
     float3 V = -surface.camera_to_pixel;
-    float3 N = surface.normal;
-
-    // wrapped diffuse for the front lit half, lets sun energy bleed past the n_dot_l terminator
-    float n_dot_l_wrapped = saturate((dot(N, L) + wrap_factor) / (1.0f + wrap_factor));
-    float wrapped_diffuse = n_dot_l_wrapped * n_dot_l_wrapped;
-
-    // back scatter translucency, gdc 2011 penner, light direction distorted toward the normal
-    const float distortion = 0.4f;
-    float3 L_distorted     = normalize(L + N * distortion);
-    float back_scatter     = saturate(dot(V, -L_distorted));
-    back_scatter           = back_scatter * back_scatter * back_scatter;
-
-    // combine forward and backward scattering, t crosses 0.5 at the terminator
-    float sss_term = lerp(back_scatter, wrapped_diffuse, saturate(dot(N, L) * 0.5f + 0.5f));
-    sss_term       = max(sss_term, min_scatter);
-
-    // thickness modulation, thin grazing edges scatter more, back lit surfaces scatter more
-    float n_dot_v             = saturate(dot(N, V));
-    float one_minus_nv        = 1.0f - n_dot_v;
-    float view_thickness      = one_minus_nv * sqrt(one_minus_nv);
-    float n_dot_l_clamped     = saturate(dot(N, L));
-    float light_thickness     = 1.0f - n_dot_l_clamped;
-    float thickness_modulation = saturate(view_thickness + light_thickness * 0.5f);
-
-    float  sss_strength = surface.subsurface_scattering * sss_scale;
-    float3 sss_color    = surface.albedo;
-
-    return light.radiance * sss_term * thickness_modulation * sss_strength * sss_color;
+    float response = subsurface_diffuse_response(dot(surface.normal, L), dot(V, -L), surface.is_foliage());
+    return light.radiance * response * surface.albedo;
 }
 
 // evaluates a single light against the surface, accumulates into the out parameters
@@ -173,6 +143,7 @@ void evaluate_light(
     float3 L_diffuse_term  = 0.0f;
     float3 L_subsurface    = 0.0f;
     float  micro_shadow    = 1.0f;
+    float  scattering_fraction = saturate(surface.subsurface_scattering);
 
     // brdf needs light.radiance, sss needs only raw energy, the gate admits either path
     // cull the inverse square tail clustering cannot, skip when the exposed contribution is sub perceptual
@@ -182,7 +153,7 @@ void evaluate_light(
         get_effective_exposure();
     bool light_can_contribute       = contribution_luminance > k_contribution_cull;
     bool has_brdf                   = any(light.radiance > 0.0f);
-    bool has_sss                    = surface.subsurface_scattering > 0.0f;
+    bool has_sss                    = scattering_fraction > 0.0f && surface.metallic < 1.0f;
 
     if (!surface.is_sky() && light_can_contribute && (has_brdf || has_sss))
     {
@@ -242,9 +213,10 @@ void evaluate_light(
 
         L_shadow = min(L_shadow_primary, L_shadow_contact);
 
-        // brdf gets the combined shadow, sss gets only the primary
+        // Transmission still needs a clear path to the light. Contact shadows also
+        // contain the vegetation that is absent from the ray tracing structure.
         light.radiance     *= L_shadow;
-        light_radiance_raw *= L_shadow_primary;
+        light_radiance_raw *= L_shadow;
 
         AngularInfo angular_info;
         angular_info.Build(light, surface);
@@ -289,7 +261,7 @@ void evaluate_light(
             // sss uses raw radiance so it can fire on back faced surfaces
             Light light_sss    = light;
             light_sss.radiance = light_radiance_raw;
-            L_subsurface += subsurface_scattering(surface, light_sss, angular_info);
+            L_subsurface += subsurface_scattering(surface, light_sss) * scattering_fraction;
         }
 
         L_specular_sum += L_specular_lobes;
@@ -299,13 +271,17 @@ void evaluate_light(
 
         if (has_brdf && !is_transparent)
         {
-            L_diffuse_term += BRDF_Diffuse(surface, angular_info);
+            L_diffuse_term += BRDF_Diffuse(surface, angular_info) * (1.0f - scattering_fraction);
         }
     }
 
     // micro_shadow defaults to 1 for sky and transparent paths
     // sss is not folded in since back lit surfaces have meaningless n_dot_l
-    out_diffuse  += (L_diffuse_term * light.radiance * diffuse_precomputed * surface.diffuse_energy) * micro_shadow + L_subsurface;
+    // Share the dielectric/coat diffuse budget instead of adding an unbounded glow.
+    // Backlit surfaces skip the specular BRDF, so explicitly retain its metal/Fresnel rejection.
+    float3 scattering_energy = has_brdf ? surface.diffuse_energy : (1.0f - surface.metallic) * (1.0f - surface.F0);
+    out_diffuse  += (L_diffuse_term * light.radiance * diffuse_precomputed * surface.diffuse_energy) * micro_shadow
+                 + L_subsurface * scattering_energy * surface.alpha;
     out_specular += (L_specular_sum * light.radiance * specular_precomputed) * micro_shadow;
 }
 
