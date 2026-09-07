@@ -173,6 +173,11 @@ def main(apply=False):
  if BEGIN in clean: clean=clean[:clean.index(BEGIN)]+clean[clean.index(END)+len(END)+1:]
  clean=re.sub(re.escape(PAD_BEGIN)+r'.*?'+re.escape(PAD_END),'',clean,flags=re.S)
  root=ET.fromstring(clean)
+ # Authored locations supersede their old blockouts. Preserve them when this
+ # island-wide prototype generator is rerun.
+ authored_sites={tag[9:] for e in root.iter('Entity')
+                 if 'authored_village' in e.get('tags','').split(',')
+                 for tag in e.get('tags','').split(',') if tag.startswith('location_')}
  pins={e.get('name','')[4:]:e for e in root.iter('Entity') if e.get('name','').startswith('pin_')}
  assert set(SITES)<=pins.keys()
  # Cached geometry is the eroded ground, before local road carving; use it when available.
@@ -218,6 +223,7 @@ def main(apply=False):
  group.set('tags','zakynthos_landmarks,blockout')
  manifest=[]; authored_pads=[]
  for key,(kind,description) in SITES.items():
+  if key in authored_sites:continue
   px,py,pz=map(float,pins[key].get('position').split()); choices=[]
   for radius in [45,70,100,140,190,260,350,470,600,800]:
    for angle in np.linspace(0,math.tau,40,endpoint=False):

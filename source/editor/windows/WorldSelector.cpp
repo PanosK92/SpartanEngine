@@ -104,7 +104,7 @@ namespace
     const char* assets_url          = "https://www.dropbox.com/scl/fi/pkh7ix0qm6rd747ym21pn/project.7z?rlkey=wdqf3qzmemjzirrvrk78043vp&dl=1";
     const char* assets_destination  = "project/project.7z";
     const char* assets_extract_dir  = "project/";
-    const char* assets_expected_sha = "a4617d72450dcc1f3293d61d65e381fd82fd1f132bae21af51a85623937493c0";
+    const char* assets_expected_sha = "0e9fc06fc3ee542057623abdc200fd0d6161ac28930be8ffdd51c17394df7813";
 
     float dpi()
     {

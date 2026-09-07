@@ -112,6 +112,8 @@ namespace car
         PxVec3          prev_velocity           = PxVec3(0);
         float           vehicle_sleep_timer     = 0.0f;
         bool            vehicle_sleeping        = false;
+        bool            parked                  = false;
+        PxRigidDynamicLockFlags parking_locks;
         float           engine_brake_torque     = 0.0f;
         float           engine_output_torque    = 0.0f;
         float           axle_drive_torque       = 0.0f;
@@ -386,6 +388,9 @@ namespace car
         void set_brake(float v);
         void set_steering(float v);
         void set_handbrake(float v);
+        void set_parked(bool enabled);
+        bool is_parked() const { return parked; }
+        void update_parking_hold();
         void update_input(float dt);
         void tick(float dt);
         float get_speed_kmh();

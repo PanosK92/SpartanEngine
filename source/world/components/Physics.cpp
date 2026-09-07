@@ -641,6 +641,11 @@ namespace spartan
             return;
         }
 
+        // Derive parking from ownership every physics step, including spawn,
+        // reset and driver exit. Traffic and external controllers own their inputs.
+        m_vehicle_simulation->set_parked(m_car && !m_car->IsOccupied()
+            && !m_car->IsExternallyControlled() && !m_vehicle_simulation->dyno.mounted);
+
         if (m_vehicle_simulation_interval > 0.0f)
         {
             m_vehicle_simulation_accumulator += dt;
@@ -755,6 +760,14 @@ namespace spartan
             body->setGlobalPose(
                 to_px_transform(position, rotation)
             );
+        }
+
+        if (m_vehicle_simulation->is_parked())
+        {
+            body->setLinearVelocity(PxVec3(0.0f));
+            body->setAngularVelocity(PxVec3(0.0f));
+            m_cheap_steer_angle = 0.0f;
+            return;
         }
 
         Vector3 forward = rotation * Vector3::Forward;

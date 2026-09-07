@@ -235,6 +235,63 @@ PxFilterFlags vehicle_filter(PxFilterObjectAttributes a, PxFilterData fa, PxFilt
     return result;
 }
 
+void parking_checks(PxPhysics* physics, PxScene* scene, PxRigidStatic* plane, const car::car_preset& preset, float dt)
+{
+    const PxTransform original_plane = plane->getGlobalPose();
+    for (float slope : {0.0f, 10.0f, -10.0f})
+    {
+        const PxQuat rotation(slope * PxPi / 180.0f, PxVec3(1, 0, 0));
+        plane->setGlobalPose(PxTransform(rotation) * original_plane);
+        scene->flushQueryUpdates();
+        car::Simulation sim;
+        sim.get_spec() = preset;
+        car::setup_params params; params.physics = physics; params.scene = scene;
+        check(sim.setup(params), "parking fixture setup");
+        install_bench_chassis(sim, physics);
+        sim.get_body()->setGlobalPose(PxTransform(PxVec3(0, 2, 0), rotation));
+        check(sim.rebuild_multibody(false), "parking drop assembly setup");
+        sim.set_parked(true);
+        auto step = [&]() { sim.tick(dt); scene->simulate(dt); scene->fetchResults(true); };
+        for (int i = 0; i < static_cast<int>(0.1f / dt); ++i) step();
+        check(!sim.get_vehicle_sleeping() && sim.get_body()->getLinearVelocity().y < -0.5f,
+            "empty car can fall before reaching the ground");
+        for (int i = 0; i < static_cast<int>(5 / dt); ++i) step();
+        printf("parking %.0f Hz slope=%.0f speed=%.6f sleeping=%d\n", 1 / dt, slope, sim.get_speed_kmh(), sim.get_vehicle_sleeping());
+        check(sim.get_vehicle_sleeping(), "empty car settles into parking hold on a slope");
+        const PxTransform parked_pose = sim.get_body()->getGlobalPose();
+        for (int i = 0; i < static_cast<int>(5 / dt); ++i) { sim.set_parked(true); step(); }
+        check((sim.get_body()->getGlobalPose().p - parked_pose.p).magnitude() < 0.001f,
+            "parked car does not creep after settling");
+        check(sim.get_vehicle_sleeping() && sim.get_handbrake() == 1.0f,
+            "parking stays asleep with the handbrake on across repeated ownership updates");
+        sim.set_parked(false);
+        check(!sim.get_body()->getRigidDynamicLockFlags(), "taking control removes parking constraints");
+        sim.set_throttle(0.5f);
+        for (int i = 0; i < static_cast<int>(2 / dt); ++i) step();
+        check(!sim.get_vehicle_sleeping() && sim.get_speed_kmh() > 5,
+            "taking control releases parking hold and allows driving");
+        check(sim.get_handbrake() == 0.0f, "taking control releases the automatic handbrake");
+
+        // Exit with pedals and steering still applied, including a reverse gear.
+        sim.set_active_gear(0);
+        sim.set_brake(1);
+        sim.set_steering(1);
+        sim.set_parked(true);
+        for (int i = 0; i < static_cast<int>(5 / dt); ++i) step();
+        check(sim.get_throttle() == 0 && sim.get_brake() == 0 && sim.get_steering() == 0 && sim.get_handbrake() == 1,
+            "exiting clears driving inputs without engaging reverse throttle");
+        check(sim.get_vehicle_sleeping(), "exiting a moving car brakes it to a stable parking hold");
+
+        plane->setGlobalPose(PxTransform(PxVec3(0, -5, 0)) * plane->getGlobalPose());
+        scene->flushQueryUpdates();
+        step();
+        check(!sim.get_vehicle_sleeping() && !sim.get_body()->getRigidDynamicLockFlags(),
+            "removing the ground releases parking constraints so the car can fall");
+    }
+    plane->setGlobalPose(original_plane);
+    scene->flushQueryUpdates();
+}
+
 void transmission_checks(PxPhysics* physics, PxScene* scene)
 {
     const auto* definition = car::load_car_file("binaries/project/cars/mitsubishi_lancer_evo_ix.car");
@@ -324,6 +381,12 @@ int main(int argc, char** argv)
         }
         const auto* suspension_definition = car::load_car_file("binaries/project/cars/ferrari_laferrari.car");
         check(suspension_definition != nullptr, "suspension preset loads");
+        if (argc > 1 && std::string(argv[1]) == "--parking-check")
+        {
+            parking_checks(physics, scene, plane, suspension_definition->performance, argc > 2 ? std::stof(argv[2]) : 0.005f);
+            scene->release(); material->release(); dispatcher->release(); PxCloseExtensions(); physics->release(); foundation->release();
+            return 0;
+        }
         if (large_world_only)
         {
             large_world_checks(physics, scene, suspension_definition->performance, argc > 2 ? std::stof(argv[2]) : 0.005f, !(argc > 3 && std::string(argv[3]) == "unrebased"));
@@ -336,6 +399,7 @@ int main(int argc, char** argv)
         suspension_checks(physics, scene, suspension_definition->performance, argc > 2 ? std::stof(argv[2]) : 0.005f);
         if (!suspension_only)
         {
+            parking_checks(physics, scene, plane, suspension_definition->performance, argc > 2 ? std::stof(argv[2]) : 0.005f);
             large_world_checks(physics, scene, suspension_definition->performance, argc > 2 ? std::stof(argv[2]) : 0.005f);
             for (const auto& entry : std::filesystem::directory_iterator("binaries/project/cars"))
                 if (entry.path().extension() == ".car") check(car::load_car_file(entry.path().string()) != nullptr, "preset validation");

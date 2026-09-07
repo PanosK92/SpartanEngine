@@ -3845,7 +3845,7 @@ namespace car
             {
                 clutch = 0.0f;
             }
-            else if (is_in_neutral())
+            else if (is_in_neutral() || parked)
             {
                 clutch = 0.0f;
             }
@@ -3889,8 +3889,11 @@ namespace car
     {
             // Handbrake shares the dissipative wheel/caliper integration with
             // service brakes. A second joint drive would brake twice and hide heat.
-            for (int i : { rear_left, rear_right })
+            // Empty cars hold every wheel without using the brake pedal, which
+            // doubles as reverse throttle. Driven cars retain rear-only handbraking.
+            for (int i = 0; i < wheel_count; ++i)
             {
+                if (!parked && is_front(i)) continue;
                 wheels[i].brake_torque += spec.handbrake_torque * input.handbrake;
                 if (auto* joint = multibody.corners[i].wheel_joint)
                     if (joint->getRevoluteJointFlags().isSet(PxRevoluteJointFlag::eDRIVE_ENABLED))
@@ -4518,6 +4521,7 @@ namespace car
             destroy_multibody();
             if (body)             { body->release();             body = nullptr; }
             if (material)         { material->release();         material = nullptr; }
+            parking_locks = PxRigidDynamicLockFlags();
     }
 
 
@@ -5132,8 +5136,70 @@ namespace car
     { input_target.handbrake = PxClamp(v, 0.0f, 1.0f); }
 
 
+    void Simulation::set_parked(bool enabled)
+    {
+        if (parked == enabled) return;
+        parked = enabled;
+        if (parked)
+        {
+            input_target = {};
+            input = {};
+            input.handbrake = 1.0f;
+            reverse_request_timer = 0.0f;
+        }
+        else
+        {
+            update_parking_hold();
+        }
+    }
+
+
+    void Simulation::update_parking_hold()
+    {
+        if (!body) return;
+
+        // Tire damping alone needs some slip to oppose gravity on a slope.
+        // Hold a slow, supported empty car in place while its suspension settles.
+        // Vertical travel, pitch and roll remain free, including during a spawn drop.
+        bool hold = parked && body->getLinearVelocity().magnitudeSquared() < 1.0f;
+        for (int i = 0; i < wheel_count; ++i)
+        {
+            hold = hold && wheels[i].grounded
+                && ground_point_velocity(wheels[i]).magnitudeSquared() < 0.0001f;
+        }
+        const PxRigidDynamicLockFlags original = body->getRigidDynamicLockFlags();
+        PxRigidDynamicLockFlags locks = original & ~parking_locks;
+        parking_locks = PxRigidDynamicLockFlags();
+        if (hold)
+        {
+            const PxRigidDynamicLockFlags hold_locks = PxRigidDynamicLockFlag::eLOCK_LINEAR_X
+                | PxRigidDynamicLockFlag::eLOCK_LINEAR_Z | PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
+            parking_locks = hold_locks & ~locks;
+            locks |= hold_locks;
+        }
+        if (locks != original)
+        {
+            body->setRigidDynamicLockFlags(locks);
+            if (hold)
+            {
+                const PxVec3 velocity = body->getLinearVelocity();
+                const PxVec3 angular_velocity = body->getAngularVelocity();
+                body->setLinearVelocity(PxVec3(0, velocity.y, 0));
+                body->setAngularVelocity(PxVec3(angular_velocity.x, 0, angular_velocity.z));
+            }
+        }
+    }
+
+
     void Simulation::update_input(float dt)
     {
+            if (parked)
+            {
+                input = {};
+                input.handbrake = 1.0f;
+                return;
+            }
+
             float steering_target = get_assisted_steering_target(input_target.steering);
             float diff = steering_target - input.steering;
             float max_change = spec.steering_rate * dt;
@@ -5374,6 +5440,7 @@ namespace car
                 // Tire actors use queries, not rigid collision contacts. PhysX
                 // cannot automatically wake them when a queried support moves.
                 update_suspension(scene, dt, false);
+                update_parking_hold();
                 bool externally_awake = !body->isSleeping();
                 for (int i = 0; i < wheel_count; i++)
                 {
@@ -5447,6 +5514,7 @@ namespace car
 
             update_multibody(dt);
             update_suspension(scene, dt);
+            update_parking_hold();
             update_tire_condition();
             apply_drivetrain(forward_speed * 3.6f, dt);
             update_handbrake();

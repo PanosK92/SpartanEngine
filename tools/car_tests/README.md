@@ -117,6 +117,31 @@ Longitudinal, lateral, and rolling-resistance arrows use captured world forces a
 
 The skeleton is a diagnostic view, not a CAD model: inertia/collision proxies are approximations, frame/engine internals remain schematic, and thermal colours/force arrows are scaled indicators. The HUD states these distinctions and arrow scales. PhysX validates rigid-body integration and constraints; it does not establish that the estimated hardpoints, tires, dampers, aero, or reduced drivetrain match a measured car. These changes have automated geometry/data checks and an editor build check, not screenshot-based rendering validation.
 
+## Unoccupied parking hold
+
+`run.cmd --parking-check` exercises an empty Ferrari dropped onto flat ground and
+10-degree slopes in both directions. Run
+`binaries\car_tests\headless.exe --parking-check 0.0025` for the 400 Hz check.
+Both verify that the car falls before
+landing, settles asleep, drifts less than 1 mm over five seconds, releases its
+handbrake and constraints when driving resumes, and stops after exiting with
+driving inputs still applied. Removing the supporting surface must release the
+hold and wake the car.
+
+Parking is derived from driver ownership each physics step. It clears the pedals,
+disengages the clutch, holds the wheels, and constrains horizontal movement and
+yaw only once the car is supported and slower than 1 m/s. Vertical suspension
+travel, pitch and roll remain free. Player handbraking while driving stays
+rear-only; external traffic controllers and the dynamometer retain control.
+
+The previous rear-only handbrake crept at 1.955 km/h on the uphill fixture after
+five seconds. The parking checks pass at 200 and 400 Hz. The full suite currently
+stops at the existing large-world trajectory comparison (0.541 m versus its
+0.5 m limit); an independently compiled, unchanged HEAD reproduces the same result.
+An isolated run of the remaining suite passes, including acceleration, braking,
+suspension, moving support and handling checks. The development engine build
+also passes.
+
 ## Large-world acceleration regression
 
 The September 5 recording `binaries/car_telemetry_15333242640187095602.csv` exposed a missing condition in the earlier suspension tests: the car was at approximately X=6276 m, Z=-2823 m. At those coordinates, 64 TGS position iterations made small per-iteration translations round away. Position stopped advancing along one map axis despite nonzero velocity, loading the suspension asymmetrically and turning the car under straight throttle. Increasing solver iterations alone was an incomplete fix.
