@@ -114,6 +114,28 @@ class Repair:
             r['p'][i].set('position',fmt(target-vec(r['e'])));r['xyz'][i]=target
             self.changed.update((r['e'].get('id'),other['e'].get('id')))
             self.report.append(dict(kind='join',road=r['e'].get('name'),end=i,target=other['e'].get('name'),distance=round(float(distance),2),position=target.tolist(),tag=tag))
+        # A short stub that folds back to an existing junction needs no new
+        # mini-loop. Trim it back to its first already-connected anchor.
+        for item in self.report:
+            if item['kind']!='join':continue
+            r=next(r for r in self.roads if r['e'].get('name')==item['road'])
+            endpoint=next((p for p in (r['p'][0],r['p'][-1]) if item['tag'] in tags(p)),None)
+            if endpoint is None:continue
+            i=r['p'].index(endpoint);order=list(range(len(r['p']))) if i==0 else list(reversed(range(len(r['p']))))
+            distance=0.;first=None;repeat=False
+            for a,b in zip(order,order[1:]):
+                distance+=float(np.linalg.norm(r['xyz'][b]-r['xyz'][a]))
+                if distance>80:break
+                if tags(r['p'][b]) and first is None:first=b
+                if item['tag'] in tags(r['p'][b]):repeat=True;break
+            if not repeat or first is None:continue
+            removed=order[:order.index(first)]
+            kept=r['p'][first];position=r['xyz'][first].copy()
+            for k in removed:r['e'].remove(r['p'][k])
+            r['p']=[p for k,p in enumerate(r['p']) if k not in removed]
+            for k,p in enumerate(r['p']):p.set('name',f'spline_point_{k}')
+            r['xyz']=np.array([vec(p)+vec(r['e']) for p in r['p']])
+            item.update(kind='trim',tag=tags(kept)[0],position=position.tolist(),removed_points=len(removed))
         for r,endpoint in [(r,r['p'][i]) for r,i in self.ends()]:
             i=r['p'].index(endpoint)
             origin=r['xyz'][i];forward=unit(origin-r['xyz'][1 if i==0 else -2]);width=float(r['s'].get('road_width','8'))

@@ -28,6 +28,12 @@ class RoadEndTests(unittest.TestCase):
         repair=Repair(source,None)
         self.assertEqual(repair.run(),[])
         self.assertEqual(repair.output(),source)
+    def test_endpoint_rejoins_a_distant_span_of_its_own_road(self):
+        repair=Repair(Path('worlds/plan.world').read_text(encoding='utf-8'),None)
+        road=next(r for r in repair.roads if r['e'].get('name')=='r004_zakynthou_volimon')
+        node=tags(road['p'][0])[0]
+        self.assertTrue(any(node in tags(p) for p in road['p'][4:-1]))
+        self.assertFalse(any(r['e'].get('name').startswith('return_loop_r004_') for r in repair.roads))
     def test_ids_are_unique(self):
         root=ET.parse('worlds/plan.world').getroot();ids=[e.get('id') for e in root.iter('Entity')]
         self.assertEqual(len(ids),len(set(ids)))

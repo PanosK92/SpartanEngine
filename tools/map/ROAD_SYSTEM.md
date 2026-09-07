@@ -59,7 +59,7 @@ for ambiguous closely parallel roads. Future imports preserve actual graph ident
   missing space, displaced anchors, and acute/overlapping approaches and leaves those
   approaches intact. Nodes separated by less than a road width along a shared spline
   are combined into one compound junction, including staggered intersections and small islands.
-  The current map builds 288 surfaces from 301 graph nodes (293 groups). Five groups
+  Before the end repairs, the map built 288 surfaces from 301 graph nodes (293 groups). Five groups
   still have overlapping approach mouths and remain unsupported: `1020823664`,
   `1020923060`, `273733874`, `926614157`, and `9755596181`. These need further
   road-layout/width repair; they are logged rather than silently generating invalid decks.
@@ -124,11 +124,13 @@ the five unsupported groups above remain explicit limitations.
 
 `python tools/map/repair_road_ends.py --apply` repairs the authored island, using the
 local heightmap and explicit node tags. The current pass resolves 121 unconnected
-ends with 33 nearby-road joins and 69 two-lane return loops. Paired endpoints count
+ends with 34 nearby-road joins, 69 two-lane return loops, and one short stub trimmed to its existing junction. Paired endpoints count
 as two repaired ends. It backs up the input, preserves unrelated scene XML, and is
 idempotent. `road_end_repairs.json` records the authored changes. Short coastal
 approaches can retreat along their existing route to make room for a loop. Nearby
 joins reject backward extensions and interior anchors too close to a road end.
+The search includes segment interiors and distant spans of the same spline; loop
+placement rejects overlaps with nearby road segments outside its shared mouth.
 Refresh localized paving with `add_populated_sidewalks.py --apply` after edits.
 
 The junction builder keeps distant visits to the same node separate on returning
@@ -147,3 +149,5 @@ candidate, not proof of a gap in the lane. The existing raised airport ground,
 runway, and parking slabs still overlay some island roads at about 40 m elevation;
 this road-end repair does not reposition the airport. A complete driving and
 scene-clearance pass across the island remains separate from topology validation.
+
+The final live pass builds 388 junction surfaces; four older overlapping groups remain logged (`1020923060`, `273733874`, `926614157`, `9755596181`). Fresh island loading, 20-car/100-pedestrian operation, all 100 pedestrian floor probes, and the local runtime fixtures passed. Repeated full-island reloads in one test process eventually hit the existing 25-bit meshlet arena limit; use a fresh process for full-island validation.
