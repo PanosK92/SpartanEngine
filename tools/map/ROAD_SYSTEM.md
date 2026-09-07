@@ -15,6 +15,16 @@ also set `ExcludeFromTerrainBlend`, so ground blending/coating cannot paint dirt
 over the deck; this is a per-object flag and leaves shared materials unchanged.
 Car wheel hierarchies use the same flag.
 
+Node edits compare the solved junction frames, cut segments, and patches with the
+previous result. Only changed splines rebuild meshes/collision; unchanged roads retain
+their GPU and physics resources. The shared grade solve still runs across the network
+so connected roads remain consistent. Each changed spline is still one mesh.
+Terrain carving retains the previous deck samples and invalidates only changed segments'
+old/new footprints, including shoulders. Disconnected dirty regions stay separate;
+overlapping roads are re-applied inside each region so moving/deleting a road restores
+the original ground correctly. Junction height changes do not invalidate vegetation
+along unrelated roads.
+
 Asphalt U coordinates span only the driving deck. Sidewalks and embankments cannot
 move its lane markings. The U tangent follows the cross-section and hard profile
 corners keep separate normals. Longitudinal coordinates are rebased by full material
@@ -71,10 +81,16 @@ for ambiguous closely parallel roads. Future imports preserve actual graph ident
 It checks deck UV invariance with varying embankments/curbs and half-precision detail
 at 30 km, including fractional material tiling.
 
+`test_road_edit_regions.cpp` is a standalone C++20 regression executable. It checks
+unchanged samples, endpoint/interior moves, inserted/removed samples, settings changes,
+road removal, and incremental restoration with an overlapping unchanged road.
+
 `node tools/map/test_road_runtime.mjs` loads disposable T, X, oblique, short-approach, compound, and overpass fixtures in an empty engine
 started with `--mcp-control --mcp-port=47779`. It checks collision at the center and
 mouths of roads with different widths and starting elevations, rounded corner cutouts,
-and separation of crossings that do not share a node. Do not run it in a
+separation of crossings that do not share a node, and a node edit that must preserve
+a distant road without generating the edited mesh twice. Set `ROAD_TEST_PORT` and
+`ROAD_TEST_RUNTIME_DIR` when using an isolated editor/runtime directory. Do not run it in a
 working editor containing a user scene. The built validation executable is
 `binaries/spartan_vulkan_development.exe` (use a separate copied executable and data/project
 links for testing). Copy changed shader sources to `binaries/data/shaders` before

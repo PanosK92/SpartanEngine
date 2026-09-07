@@ -221,14 +221,22 @@ float sample_ocean_terrain_height(float2 world_xz, out float valid)
         return 0.0f;
     }
 
-    float2 tex_size;
-    tex_terrain_height.GetDimensions(tex_size.x, tex_size.y);
-    float2 uv = (normalized * (tex_size - 1.0f) + 0.5f) / max(tex_size, 1.0f);
-    return tex_terrain_height.SampleLevel(
-        samplers[sampler_bilinear_clamp],
-        uv,
-        0.0f
-    ) + buffer_frame.terrain_height_y;
+    // Match TerrainPlacement::triangle_height and the rendered cell diagonal.
+    // Bilinear interpolation invents a curved bed between the triangles; on a
+    // 25 m cell its waterline can be metres away from the visible beach.
+    uint width, height;
+    tex_terrain_height.GetDimensions(width, height);
+    float2 p = normalized * float2(width - 1u, height - 1u);
+    int2 cell = min(int2(p), int2(width, height) - 2);
+    float2 f = p - cell;
+    float h00 = tex_terrain_height.Load(int3(cell, 0)).r;
+    float h10 = tex_terrain_height.Load(int3(cell + int2(1, 0), 0)).r;
+    float h01 = tex_terrain_height.Load(int3(cell + int2(0, 1), 0)).r;
+    float h11 = tex_terrain_height.Load(int3(cell + int2(1, 1), 0)).r;
+    float bed = f.x + f.y <= 1.0f
+        ? h00 + f.x * (h10 - h00) + f.y * (h01 - h00)
+        : h11 + (1.0f - f.x) * (h01 - h11) + (1.0f - f.y) * (h10 - h11);
+    return bed + buffer_frame.terrain_height_y;
 }
 
 // metres of water above the bed, large when there is no terrain
@@ -362,12 +370,17 @@ float get_ocean_shore_foam(float3 water_position, float footprint, float wave_ac
     {
         return 0.0f;
     }
-    float wave_height = wave_activity;
-    float activity = smoothstep(0.01f, 0.15f, wave_height);
-    float width = 0.18f + min(wave_height * 1.5f, 0.9f);
+    float activity = smoothstep(0.01f, 0.15f, wave_activity);
+    // A connected advancing lip, followed by a softer, lacy wash. Both use
+    // the moving surface/bed intersection, so there is only one shoreline.
+    float surge = saturate(0.5f + (water_position.y - buffer_frame.ocean_sea_level)
+        / max(4.0f * wave_activity, 0.08f));
+    float width = 0.35f + min(wave_activity, 0.55f) * lerp(0.65f, 1.5f, surge);
     float edge = 1.0f - smoothstep(0.0f, width, clearance);
+    float lip = 1.0f - smoothstep(0.0f, width * 0.22f, clearance);
     float2 drift = buffer_frame.wind.xz * (float)buffer_frame.time * 0.015f;
-    return shape_ocean_foam(edge * activity, water_position.xz - drift, footprint);
+    float wash = shape_ocean_foam(edge * activity, water_position.xz - drift, footprint);
+    return saturate(max(wash, lip * activity * 0.55f));
 }
 
 // Residual whitewater survives in troughs; only production depends on compression.
@@ -387,7 +400,10 @@ float get_ocean_foam(float2 grid_xz, float3 water_position, float view_distance,
     }
     wave_activity = sqrt(wave_activity);
     float footprint = ocean_foam_footprint(view_distance);
-    float shaped = shape_ocean_foam(foam, grid_xz, footprint);
+    // Offshore crest foam hands over to the wash as waves run onto the beach.
+    // Keeping both masks here produces a second white band behind the lip.
+    float coastal_fade = smoothstep(0.15f, 1.5f, max(get_ocean_water_depth(water_position.xz), 0.0f));
+    float shaped = shape_ocean_foam(foam * coastal_fade, grid_xz, footprint);
     float shore  = get_ocean_shore_foam(water_position, footprint, wave_activity);
     return saturate(max(shaped, shore));
 }
@@ -421,7 +437,8 @@ void sample_ocean_surface(float2 grid_xz, float3 water_position, float view_dist
     float str   = buffer_frame.ocean_normal_strength;
     normal      = normalize(float3(-slope.x * str, 1.0f, -slope.y * str));
     float footprint = ocean_foam_footprint(view_distance);
-    foam = shape_ocean_foam(foam, grid_xz, footprint);
+    float coastal_fade = smoothstep(0.15f, 1.5f, max(get_ocean_water_depth(water_position.xz), 0.0f));
+    foam = shape_ocean_foam(foam * coastal_fade, grid_xz, footprint);
     foam = saturate(max(foam, get_ocean_shore_foam(water_position, footprint, sqrt(wave_energy))));
 }
 

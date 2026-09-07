@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "pch.h"
 #include "Pedestrians.h"
+#include "../RoadTrafficWorld.h"
 #include "Animator.h"
 #include "Camera.h"
 #include "Ragdoll.h"
@@ -72,6 +73,7 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounds_max, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_model_file, string);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_count, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_follow_roads, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_animated, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_animation_radius, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_walk_speed, float);
@@ -136,6 +138,7 @@ namespace spartan
         m_next_spawn_index = 0;
         m_lod_timer = 0.0f;
         m_physics_ready = false;
+        if (m_follow_roads) m_road_network = road_traffic::BuildWorldNetwork(true);
         BeginSpawn();
     }
 
@@ -242,7 +245,11 @@ namespace spartan
             }
 
             // near animated walkers get path casts, far ones just glide
-            if (walker.animating)
+            if (m_follow_roads)
+            {
+                UpdateRoadWalker(walker, delta_time);
+            }
+            else if (walker.animating)
             {
                 UpdateWalker(walker, delta_time);
             }
@@ -417,7 +424,8 @@ namespace spartan
         }
 
         // wait until static geometry answers a probe, play-start can outrun physics
-        if (!m_physics_ready)
+        if (m_follow_roads && m_road_network.edges.empty()) return;
+        if (!m_follow_roads && !m_physics_ready)
         {
             Vector3 probe;
             const Vector3 city_center(
@@ -456,7 +464,12 @@ namespace spartan
 
         Vector3 position;
         Vector3 heading;
-        FindSpawnPosition(index, position, heading);
+        Walker walker;
+        if (m_follow_roads)
+        {
+            if (!FindRoadSpawn(index, walker, position, heading)) return false;
+        }
+        else if (!FindSpawnPosition(index, position, heading)) return false;
 
         // skeleton joints are dropped, a walker only needs its root and the skinned mesh nodes,
         // for the mannequiny that is 2 entities instead of 48
@@ -527,7 +540,6 @@ namespace spartan
             return false;
         }
 
-        Walker walker;
         walker.entity = entity;
         walker.animator = animator;
         walker.ragdoll = ragdoll;
@@ -541,6 +553,49 @@ namespace spartan
         walker.dead = false;
         m_walkers.push_back(move(walker));
         return true;
+    }
+
+    bool Pedestrians::FindRoadSpawn(uint32_t index, Walker& walker, Vector3& position, Vector3& heading)
+    {
+        const auto& edges = m_road_network.edges;
+        float total = 0.0f;
+        for (size_t i = 0; i < edges.size(); i += 2) total += edges[i].lane.Length();
+        if (total <= 0.0f) return false;
+        float d = total * (static_cast<float>(index) + 0.25f) / static_cast<float>(std::max(m_count, 1u));
+        size_t edge = 0;
+        while (edge + 2 < edges.size() && d > edges[edge].lane.Length()) { d -= edges[edge].lane.Length(); edge += 2; }
+        if (index % 2) { ++edge; d = edges[edge].lane.Length() - d; }
+        walker.road_edge = edge;
+        walker.road_path = edges[edge].lane;
+        walker.road_progress = std::clamp(d, 0.0f, edges[edge].lane.Length());
+        walker.route_random = 0x91e10da5u ^ ((index + 1u) * 2654435761u);
+        const auto pose = walker.road_path.Sample(walker.road_progress);
+        position = pose.position;
+        heading = planar_normalize(pose.tangent);
+        return true;
+    }
+
+    void Pedestrians::UpdateRoadWalker(Walker& walker, float delta_time)
+    {
+        auto& path = walker.road_path;
+        if (walker.road_edge >= m_road_network.edges.size() || path.points.size() < 2) return;
+        for (uint32_t i = 0; i < 4 && path.Length() - walker.road_progress < 12.0f; ++i)
+        {
+            const size_t next = m_road_network.ChooseExit(walker.road_edge, walker.route_random);
+            if (next == road_traffic::invalid) break;
+            m_road_network.AppendExit(path, walker.road_edge, next);
+            walker.road_edge = next;
+        }
+        // The authored road supplies height even when distant collision is unloaded.
+        // Both animation LODs use the same path, so approaching the crowd never reroutes it.
+        walker.road_progress = std::min(path.Length(), walker.road_progress + walker.speed * delta_time);
+        path.DiscardBehind(walker.road_progress);
+        const auto pose = path.Sample(walker.road_progress);
+        walker.heading = planar_normalize(pose.tangent);
+        walker.ground_y = pose.position.y;
+        walker.entity->SetPosition(pose.position + Vector3::Up * walker.height_offset);
+        walker.entity->SetRotation(Quaternion::Lerp(walker.entity->GetRotation(),
+            Quaternion::FromLookRotation(-walker.heading, Vector3::Up), std::min(1.0f, delta_time * turn_speed)));
     }
 
     bool Pedestrians::FindSpawnPosition(uint32_t index, Vector3& position, Vector3& heading)
@@ -887,6 +942,7 @@ namespace spartan
 
     void Pedestrians::Save(pugi::xml_node& node)
     {
+        node.append_attribute("follow_roads") = m_follow_roads;
         node.append_attribute("count") = m_count;
         node.append_attribute("model_file") = m_model_file.c_str();
         node.append_attribute("bounds_min_x") = m_bounds_min.x;
@@ -902,6 +958,7 @@ namespace spartan
 
     void Pedestrians::Load(pugi::xml_node& node)
     {
+        m_follow_roads = node.attribute("follow_roads").as_bool(false);
         m_count = node.attribute("count").as_uint(m_count);
         m_model_file = node.attribute("model_file").as_string(m_model_file.c_str());
         m_bounds_min.x = node.attribute("bounds_min_x").as_float(m_bounds_min.x);

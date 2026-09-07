@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Component.h"
 #include "../../math/Vector3.h"
 #include "../../math/Quaternion.h"
+#include "../RoadTraffic.h"
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -144,6 +145,10 @@ namespace spartan
             RecoveryState recovery = RecoveryState::None;
             bool physics_active = true;
             bool plan_initialized = false;
+            size_t road_edge = road_traffic::invalid;
+            road_traffic::Path road_path;
+            float road_progress = 0.0f;
+            uint32_t route_random = 1;
             std::unordered_map<uint64_t, uint16_t> visits;
         };
 
@@ -155,6 +160,9 @@ namespace spartan
         };
 
         void BeginSpawn();
+        void BuildRoadNetwork();
+        bool FindRoadSpawn(uint32_t index, Driver& driver, math::Vector3& position, math::Quaternion& rotation);
+        void UpdateRoadDriver(Driver& driver, float delta_time);
         void SpawnNext();
         bool SpawnCar(uint32_t index);
         void InitializeLimits(Driver& driver);
@@ -175,6 +183,8 @@ namespace spartan
         float GetNovelty(const Driver& driver, const math::Vector3& position) const;
 
         std::vector<Driver> m_drivers;
+        road_traffic::Network m_road_network;
+        bool m_follow_roads = false;
         math::Vector3 m_bounds_min = math::Vector3(-220.0f, -10.0f, -380.0f);
         math::Vector3 m_bounds_max = math::Vector3(380.0f, 80.0f, 260.0f);
         std::string m_car_file = "project/cars/ferrari_laferrari.car";

@@ -711,7 +711,45 @@ namespace spartan
         // snap height to the road so wheels sit on the surface
         Vector3 hit_position;
         const Vector3 ray_origin = position + Vector3::Up * 3.0f;
-        if (PhysicsWorld::RaycastStatic(ray_origin, Vector3::Down, 8.0f, hit_position))
+        if (m_vehicle_road_surface)
+        {
+            // Road traffic uses the authored surface even outside streamed collision.
+            // Keep chassis pitch/roll aligned to the grade so contact impulses cannot
+            // tip the cheap suspension-less body and wedge its nose into the asphalt.
+            const Vector3 normal = m_vehicle_road_normal;
+            Vector3 heading = rotation * Vector3::Forward;
+            heading.y = -(normal.x * heading.x + normal.z * heading.z) / std::max(normal.y, 0.1f);
+            rotation = Quaternion::Lerp(Quaternion::FromLookRotation(heading.Normalized(), normal),
+                Quaternion::FromLookRotation(m_vehicle_road_tangent, normal), std::min(dt * 8.0f, 1.0f));
+            const Vector3 offset = position - m_vehicle_road_position;
+            position.y = m_vehicle_road_position.y - (normal.x * offset.x + normal.z * offset.z) / std::max(normal.y, 0.1f) + ride_height;
+            // Overlapping graded approaches can sit slightly above the route's
+            // centre line. Support the whole chassis, not just its midpoint, so
+            // its bumper clears the next deck before reaching the seam.
+            Vector3 planar_heading(heading.x, 0.0f, heading.z);
+            planar_heading.Normalize();
+            const float route_ride_y = position.y;
+            const Vector3 across(planar_heading.z, 0.0f, -planar_heading.x);
+            for (float along : {-1.0f, 0.0f, 1.0f})
+            {
+                for (float side : {-1.0f, 0.0f, 1.0f})
+                {
+                    const Vector3 probe_offset = planar_heading * (along * (wheelbase * 0.5f + 1.5f))
+                        + across * (side * std::max(spec.width * 0.5f, 1.1f));
+                    Vector3 support;
+                    if (PhysicsWorld::RaycastStatic(position + probe_offset + Vector3::Up, Vector3::Down, 3.0f, support))
+                    {
+                        const float support_y = support.y + (normal.x * probe_offset.x + normal.z * probe_offset.z) / std::max(normal.y, 0.1f) + ride_height;
+                        if (support_y - position.y < 0.75f) position.y = std::max(position.y, support_y);
+                    }
+                }
+            }
+            // Allow the collision hull a little suspension travel over a raised
+            // seam; the visual wheel radius is not the hull's lowest corner.
+            if (position.y > route_ride_y + 0.02f) position.y += 0.2f;
+            body->setGlobalPose(to_px_transform(position, rotation));
+        }
+        else if (PhysicsWorld::RaycastStatic(ray_origin, Vector3::Down, 8.0f, hit_position))
         {
             position.y = hit_position.y + ride_height;
             body->setGlobalPose(
@@ -755,7 +793,7 @@ namespace spartan
         {
             drive -= brake * brake_decel * (forward_speed >= 0.0f ? 1.0f : -1.0f);
         }
-        else if (brake > throttle)
+        else if (brake > throttle && m_vehicle_brake_reverse_enabled)
         {
             // arcade reverse when nearly stopped
             drive = -brake * accel * 0.65f;
@@ -772,13 +810,27 @@ namespace spartan
 
         const float signed_speed = Vector3::Dot(velocity, forward);
         const float steer_speed_scale = std::clamp(fabsf(signed_speed) / 12.0f, 0.0f, 1.0f);
-        m_cheap_steer_angle = steer * max_steer * (0.35f + 0.65f * steer_speed_scale);
+        m_cheap_steer_angle = steer * max_steer * (m_vehicle_full_steering_lock ? 1.0f : 0.35f + 0.65f * steer_speed_scale);
         float yaw_rate = 0.0f;
         if (fabsf(signed_speed) > 0.2f)
         {
             yaw_rate = (signed_speed / wheelbase) * tanf(m_cheap_steer_angle);
         }
 
+        if (m_vehicle_road_surface)
+        {
+            // Ambient traffic follows the lane even through a tight elbow. Keep
+            // dynamic collision response, but remove accumulated lateral drift
+            // instead of letting the suspension-less bicycle cut road corners.
+            Vector3 lane_forward(m_vehicle_road_tangent.x, 0.0f, m_vehicle_road_tangent.z);
+            lane_forward.Normalize();
+            Vector3 error = m_vehicle_road_position - position;
+            error.y = 0.0f;
+            Vector3 correction = (error - lane_forward * Vector3::Dot(error, lane_forward)) * 6.0f;
+            if (correction.LengthSquared() > 4.0f) correction = correction.Normalized() * 2.0f;
+            velocity = lane_forward * std::max(signed_speed, 0.0f) + correction;
+            yaw_rate = 0.0f; // orientation follows the same graded lane above
+        }
         body->setLinearVelocity(PxVec3(velocity.x, 0.0f, velocity.z));
         body->setAngularVelocity(PxVec3(0.0f, yaw_rate, 0.0f));
         body->wakeUp();
@@ -3238,6 +3290,16 @@ namespace spartan
                 m_cheap_wheel_rest_captured[i] = true;
             }
         }
+    }
+
+    void Physics::UpdateTrafficWheels(float speed, float curvature, float delta_time)
+    {
+        if (m_vehicle_simulation_active || m_body_type != BodyType::Vehicle) return;
+        const auto& preset = EnsureVehicleSimulation()->get_spec();
+        const float radius = std::max((preset.front_wheel_radius + preset.rear_wheel_radius) * 0.5f, 0.2f);
+        m_cheap_wheel_roll = fmodf(m_cheap_wheel_roll + speed * delta_time / radius, math::pi * 2.0f);
+        m_cheap_steer_angle = std::clamp(atanf(curvature * preset.wheelbase), -preset.max_steer_angle, preset.max_steer_angle);
+        UpdateCheapWheelTransforms();
     }
 
     void Physics::UpdateCheapWheelTransforms()

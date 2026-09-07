@@ -202,6 +202,8 @@ namespace spartan
 
         // finished deck in world space, cached on the last mesh build, empty when the road cannot carve
         const std::vector<SplineCarveSample>& GetCarveSamples() const { return m_carve_samples; }
+        // Final rendered deck, including roads that do not carve terrain.
+        const std::vector<SplineFrame>& GetRoadFrames() const { return m_generated_road_frames; }
         bool CarvesTerrain() const;
 
         // embankment skirt, closes the gap between a raised deck and the ground
@@ -414,6 +416,8 @@ namespace spartan
         // generated mesh
         std::shared_ptr<Mesh> m_mesh;
         std::vector<SplineFrame> m_base_road_frames;
+        std::vector<SplineFrame> m_generated_road_frames;
+        std::vector<SplineFrame> m_junction_frames;
         std::vector<bool> m_junction_segments;
         struct JunctionPatch
         {

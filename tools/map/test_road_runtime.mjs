@@ -26,7 +26,7 @@ import path from "node:path";
 import assert from "node:assert/strict";
 import { EngineClient } from "../mcp/spartan_engine/engine_client.mjs";
 
-const client = new EngineClient({host: "127.0.0.1", port: 47779, timeout_ms: 30000});
+const client = new EngineClient({host: "127.0.0.1", port: Number(process.env.ROAD_TEST_PORT ?? 47779), timeout_ms: 30000});
 const initial = await client.command("context_snapshot");
 assert.ok(initial.world?.entity_count === 0 || initial.world?.name === "road_regression.world", `Runtime fixture requires an empty test editor: ${JSON.stringify(initial)}`);
 let id = 100;
@@ -52,7 +52,8 @@ const cases = [
   {name: "Unconnected overpass", roads: () => road("lower", 12, [[-100, 0, 0], [0, 0, 0], [100, 0, 0]], -1) + road("upper", 8, [[0, 4, -100], [0, 4, 0], [0, 4, 100]], -1), height: 4,
     probes: [[0, 0], [0, -10], [0, 10]]}
 ];
-const fixture = path.resolve("binaries/road_regression.world");
+const runtimeDir = path.resolve(process.env.ROAD_TEST_RUNTIME_DIR ?? "binaries");
+const fixture = path.join(runtimeDir, "road_regression.world");
 for (const test of cases) {
   const xml = `<World name="road_regression"><Entities>
 <Entity name="camera" id="1" position="0 80 -40"><camera flags="17" far_plane="10000" /></Entity>
@@ -90,4 +91,35 @@ ${test.roads()}
   }
   console.log(JSON.stringify({test: test.name, passed: true, collisionHeights: heights}));
 }
+// Moving an approach must leave an unrelated road's mesh/collision intact.
+id = 100;
+fs.writeFileSync(fixture, `<World name="road_regression"><Entities>
+<Entity name="camera" id="1" position="0 80 -40"><camera flags="17" far_plane="10000" /></Entity>
+${road("through", 12, [[-100, 0, 0], [0, 0, 0], [100, 0, 0]], 1)}
+${road("branch", 8, [[0, 4, 0], [0, 4, -100]], 0)}
+${road("distant", 8, [[1000, 0, 0], [1100, 0, 0]], {0: "road_node_distant"})}
+</Entities></World>`);
+assert.equal((await client.command("world_load", {path: fixture})).ok, true);
+for (let i = 0; i < 100; i++) {
+  await new Promise(r => setTimeout(r, 100));
+  const state = await client.command("context_snapshot");
+  if (state.status && !state.status.loading && state.world.name === "road_regression.world") break;
+}
+await new Promise(r => setTimeout(r, 500));
+const logPath = path.join(runtimeDir, "log.txt");
+const logStart = fs.readFileSync(logPath, "utf8").length;
+assert.equal((await client.command("entity_set_transform", {id: 106, position: [30, 4, -100]})).ok, true);
+await new Promise(r => setTimeout(r, 500));
+const editLog = fs.readFileSync(logPath, "utf8").slice(logStart);
+const rebuild = [...editLog.matchAll(/rebuilt (\d+) of 3 splines/g)];
+assert.equal(rebuild.length, 1, `expected one junction pass after the edit: ${editLog}`);
+assert.ok(Number(rebuild[0][1]) >= 1 && Number(rebuild[0][1]) <= 2, `distant road rebuilt: ${editLog}`);
+assert.equal((editLog.match(/generated spline mesh:/g) ?? []).length, Number(rebuild[0][1]), "edited road must be generated only once");
+// Static collision is streamed around the camera.
+await client.command("camera_set_view", {position: [1050, 10, -10], target: [1050, 0, 0]});
+await new Promise(r => setTimeout(r, 500));
+const distantHit = await client.command("world_raycast", {origin: [1050, 30, 0], direction: [0, -1, 0], max_distance: 50});
+assert.equal(distantHit.hit, true);
+assert.ok(Math.abs(distantHit.position[1]) < 0.01);
+console.log(JSON.stringify({test: "Local node edit preserves distant road", passed: true, rebuiltSplines: Number(rebuild[0][1]), totalSplines: 3}));
 client.close();

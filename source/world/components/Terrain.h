@@ -562,6 +562,18 @@ namespace spartan
         // height the roads added to the dense grid, subtracting it gives the untouched ground back
         std::vector<float> m_road_carve_delta;
         std::unordered_map<uint64_t, std::array<int32_t, 4>> m_road_carve_bounds;
+        struct RoadCarveJob
+        {
+            uint64_t id = 0;
+            std::vector<math::Vector3> points;
+            std::vector<float> half_widths;
+            float bed_drop = 0.0f;
+            float fill_slope = 0.0f;
+            float cut_slope = 0.0f;
+            float shoulder = 0.0f;
+            std::array<int32_t, 4> bounds = {0, -1, 0, -1};
+        };
+        std::unordered_map<uint64_t, RoadCarveJob> m_road_carve_jobs;
         std::unordered_set<uint64_t> m_road_carve_dirty_ids;
         bool m_road_carve_dirty     = false;
         bool m_road_carve_dirty_all = false;

@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Physics.h"
 #include "Water.h"
 #include "Spline.h"
+#include "RoadEditRegions.h"
 #include "Light.h"
 #include "Camera.h"
 #include "../Entity.h"
@@ -5254,6 +5255,7 @@ namespace spartan
     {
         m_road_carve_delta.clear();
         m_road_carve_bounds.clear();
+        m_road_carve_jobs.clear();
         m_road_carve_dirty_ids.clear();
         m_road_carve_dirty     = false;
         m_road_carve_dirty_all = false;
@@ -5302,19 +5304,6 @@ namespace spartan
         return true;
     }
 
-    // one road ready to be stamped into the dense grid, everything already in terrain local space
-    struct RoadCarveJob
-    {
-        uint64_t id = 0;
-        std::vector<Vector3> points;
-        std::vector<float> half_widths;
-        float bed_drop   = 0.0f;
-        float fill_slope = 0.0f;
-        float cut_slope  = 0.0f;
-        float shoulder   = 0.0f;
-        std::array<int32_t, 4> bounds = { 0, -1, 0, -1 };
-    };
-
     void Terrain::RefreshSplineHeightCarves()
     {
         m_road_carve_dirty = false;
@@ -5331,6 +5320,7 @@ namespace spartan
         {
             m_road_carve_delta.assign(cell_count, 0.0f);
             m_road_carve_bounds.clear();
+            m_road_carve_jobs.clear();
             m_road_carve_dirty_all = true;
         }
 
@@ -5422,11 +5412,7 @@ namespace spartan
 
         // the dirty region is wherever a road used to be plus wherever it is now, roads that vanished
         // only contribute their old footprint so the ground there springs back
-        int32_t rect_x0 = grid_max_x;
-        int32_t rect_x1 = 0;
-        int32_t rect_z0 = grid_max_z;
-        int32_t rect_z1 = 0;
-        bool has_rect   = false;
+        std::vector<std::array<int32_t, 4>> dirty_regions;
 
         auto grow_rect = [&](const std::array<int32_t, 4>& bounds)
         {
@@ -5435,167 +5421,209 @@ namespace spartan
                 return;
             }
 
-            rect_x0  = min(rect_x0, bounds[0]);
-            rect_x1  = max(rect_x1, bounds[1]);
-            rect_z0  = min(rect_z0, bounds[2]);
-            rect_z1  = max(rect_z1, bounds[3]);
-            has_rect = true;
+            auto merged = bounds;
+            // Separate edits must not invalidate the untouched island between them.
+            for (size_t i = 0; i < dirty_regions.size();)
+            {
+                const auto& region = dirty_regions[i];
+                if (merged[1] < region[0] || merged[0] > region[1] ||
+                    merged[3] < region[2] || merged[2] > region[3])
+                {
+                    ++i;
+                    continue;
+                }
+                merged = {min(merged[0], region[0]), max(merged[1], region[1]),
+                    min(merged[2], region[2]), max(merged[3], region[3])};
+                dirty_regions.erase(dirty_regions.begin() + i);
+                i = 0;
+            }
+            dirty_regions.push_back(merged);
         };
 
         std::unordered_map<uint64_t, std::array<int32_t, 4>> new_bounds;
+        auto grow_segment = [&](const RoadCarveJob& job, size_t i)
+        {
+            const Vector3& a = job.points[i];
+            const Vector3& b = job.points[i + 1];
+            const float reach = max(job.half_widths[i], job.half_widths[i + 1]) + job.shoulder;
+            grow_rect(to_grid_bounds(min(a.x, b.x) - reach, min(a.z, b.z) - reach,
+                max(a.x, b.x) + reach, max(a.z, b.z) + reach));
+        };
         for (const RoadCarveJob& job : jobs)
         {
             new_bounds[job.id] = job.bounds;
 
             if (m_road_carve_dirty_all || m_road_carve_dirty_ids.count(job.id) != 0)
             {
-                grow_rect(job.bounds);
+                const auto previous = m_road_carve_jobs.find(job.id);
+                if (m_road_carve_dirty_all || previous == m_road_carve_jobs.end())
+                {
+                    grow_rect(job.bounds);
+                    const auto old_bounds = m_road_carve_bounds.find(job.id);
+                    if (old_bounds != m_road_carve_bounds.end()) grow_rect(old_bounds->second);
+                    continue;
+                }
+                const RoadCarveJob& old = previous->second;
+                const bool settings_changed = old.bed_drop != job.bed_drop || old.fill_slope != job.fill_slope ||
+                    old.cut_slope != job.cut_slope || old.shoulder != job.shoulder;
+                road_edit::changed_segments(old.points, job.points,
+                    [&](size_t a, size_t b) { return old.points[a] == job.points[b] && old.half_widths[a] == job.half_widths[b]; },
+                    [&](size_t i) { grow_segment(old, i); }, [&](size_t i) { grow_segment(job, i); }, settings_changed);
             }
         }
 
         for (const auto& previous : m_road_carve_bounds)
         {
             const bool vanished = new_bounds.find(previous.first) == new_bounds.end();
-            if (vanished || m_road_carve_dirty_all || m_road_carve_dirty_ids.count(previous.first) != 0)
+            if (vanished || m_road_carve_dirty_all)
             {
                 grow_rect(previous.second);
             }
         }
 
         m_road_carve_bounds    = move(new_bounds);
+        m_road_carve_jobs.clear();
+        for (const RoadCarveJob& job : jobs) m_road_carve_jobs.emplace(job.id, job);
         m_road_carve_dirty_ids.clear();
         m_road_carve_dirty_all = false;
 
-        if (!has_rect)
+        if (dirty_regions.empty())
         {
             return;
         }
 
-        const uint32_t rect_width  = static_cast<uint32_t>(rect_x1 - rect_x0 + 1);
-        const uint32_t rect_height = static_cast<uint32_t>(rect_z1 - rect_z0 + 1);
-
-        // put the ground back the way it was before any road touched this region
-        for (int32_t z = rect_z0; z <= rect_z1; z++)
+        for (const auto& region : dirty_regions)
         {
-            const size_t row = static_cast<size_t>(z) * m_dense_width;
-            for (int32_t x = rect_x0; x <= rect_x1; x++)
-            {
-                const size_t index = row + static_cast<size_t>(x);
-                m_positions[index].y   -= m_road_carve_delta[index];
-                m_road_carve_delta[index] = 0.0f;
-            }
-        }
+            const int32_t rect_x0 = region[0];
+            const int32_t rect_x1 = region[1];
+            const int32_t rect_z0 = region[2];
+            const int32_t rect_z1 = region[3];
+            const uint32_t rect_width  = static_cast<uint32_t>(rect_x1 - rect_x0 + 1);
+            const uint32_t rect_height = static_cast<uint32_t>(rect_z1 - rect_z0 + 1);
 
-        // two envelopes, the highest fill cone and the lowest cut cone
-        // the cut cone holds a flat plateau one grid cell wide around every road point, which is what
-        // guarantees the carved surface can never interpolate up through the deck between vertices
-        const size_t scratch_count = static_cast<size_t>(rect_width) * rect_height;
-        std::vector<float> raise_to(scratch_count, -numeric_limits<float>::max());
-        std::vector<float> lower_to(scratch_count,  numeric_limits<float>::max());
-
-        for (const RoadCarveJob& job : jobs)
-        {
-            if (job.bounds[1] < rect_x0 || job.bounds[0] > rect_x1 ||
-                job.bounds[3] < rect_z0 || job.bounds[2] > rect_z1)
+            // put the ground back the way it was before any road touched this region
+            for (int32_t z = rect_z0; z <= rect_z1; z++)
             {
-                continue;
+                const size_t row = static_cast<size_t>(z) * m_dense_width;
+                for (int32_t x = rect_x0; x <= rect_x1; x++)
+                {
+                    const size_t index = row + static_cast<size_t>(x);
+                    m_positions[index].y   -= m_road_carve_delta[index];
+                    m_road_carve_delta[index] = 0.0f;
+                }
             }
 
-            for (size_t s = 0; s + 1 < job.points.size(); s++)
+            // two envelopes, the highest fill cone and the lowest cut cone
+            // the cut cone holds a flat plateau one grid cell wide around every road point, which is what
+            // guarantees the carved surface can never interpolate up through the deck between vertices
+            const size_t scratch_count = static_cast<size_t>(rect_width) * rect_height;
+            std::vector<float> raise_to(scratch_count, -numeric_limits<float>::max());
+            std::vector<float> lower_to(scratch_count,  numeric_limits<float>::max());
+
+            for (const RoadCarveJob& job : jobs)
             {
-                const Vector3& a = job.points[s];
-                const Vector3& b = job.points[s + 1];
-                const float half_a = job.half_widths[s];
-                const float half_b = job.half_widths[s + 1];
-                const float reach  = max(half_a, half_b) + job.shoulder;
-
-                const int32_t sx0 = max(static_cast<int32_t>(floorf((min(a.x, b.x) - reach + mapping.offset_x) / mapping.scale_x)), rect_x0);
-                const int32_t sx1 = min(static_cast<int32_t>(ceilf ((max(a.x, b.x) + reach + mapping.offset_x) / mapping.scale_x)), rect_x1);
-                const int32_t sz0 = max(static_cast<int32_t>(floorf((min(a.z, b.z) - reach + mapping.offset_z) / mapping.scale_z)), rect_z0);
-                const int32_t sz1 = min(static_cast<int32_t>(ceilf ((max(a.z, b.z) + reach + mapping.offset_z) / mapping.scale_z)), rect_z1);
-
-                if (sx1 < sx0 || sz1 < sz0)
+                if (job.bounds[1] < rect_x0 || job.bounds[0] > rect_x1 ||
+                    job.bounds[3] < rect_z0 || job.bounds[2] > rect_z1)
                 {
                     continue;
                 }
 
-                const float dx = b.x - a.x;
-                const float dz = b.z - a.z;
-                const float segment_length_sq = dx * dx + dz * dz;
-
-                for (int32_t z = sz0; z <= sz1; z++)
+                for (size_t s = 0; s + 1 < job.points.size(); s++)
                 {
-                    const size_t row        = static_cast<size_t>(z) * m_dense_width;
-                    const size_t scratch_row = static_cast<size_t>(z - rect_z0) * rect_width;
+                    const Vector3& a = job.points[s];
+                    const Vector3& b = job.points[s + 1];
+                    const float half_a = job.half_widths[s];
+                    const float half_b = job.half_widths[s + 1];
+                    const float reach  = max(half_a, half_b) + job.shoulder;
 
-                    for (int32_t x = sx0; x <= sx1; x++)
+                    const int32_t sx0 = max(static_cast<int32_t>(floorf((min(a.x, b.x) - reach + mapping.offset_x) / mapping.scale_x)), rect_x0);
+                    const int32_t sx1 = min(static_cast<int32_t>(ceilf ((max(a.x, b.x) + reach + mapping.offset_x) / mapping.scale_x)), rect_x1);
+                    const int32_t sz0 = max(static_cast<int32_t>(floorf((min(a.z, b.z) - reach + mapping.offset_z) / mapping.scale_z)), rect_z0);
+                    const int32_t sz1 = min(static_cast<int32_t>(ceilf ((max(a.z, b.z) + reach + mapping.offset_z) / mapping.scale_z)), rect_z1);
+
+                    if (sx1 < sx0 || sz1 < sz0)
                     {
-                        const size_t index = row + static_cast<size_t>(x);
-                        const Vector3& cell = m_positions[index];
+                        continue;
+                    }
 
-                        float t = 0.0f;
-                        if (segment_length_sq > 1e-8f)
+                    const float dx = b.x - a.x;
+                    const float dz = b.z - a.z;
+                    const float segment_length_sq = dx * dx + dz * dz;
+
+                    for (int32_t z = sz0; z <= sz1; z++)
+                    {
+                        const size_t row        = static_cast<size_t>(z) * m_dense_width;
+                        const size_t scratch_row = static_cast<size_t>(z - rect_z0) * rect_width;
+
+                        for (int32_t x = sx0; x <= sx1; x++)
                         {
-                            t = ((cell.x - a.x) * dx + (cell.z - a.z) * dz) / segment_length_sq;
-                            t = clamp(t, 0.0f, 1.0f);
+                            const size_t index = row + static_cast<size_t>(x);
+                            const Vector3& cell = m_positions[index];
+
+                            float t = 0.0f;
+                            if (segment_length_sq > 1e-8f)
+                            {
+                                t = ((cell.x - a.x) * dx + (cell.z - a.z) * dz) / segment_length_sq;
+                                t = clamp(t, 0.0f, 1.0f);
+                            }
+
+                            const float px = a.x + dx * t;
+                            const float pz = a.z + dz * t;
+                            const float ox = cell.x - px;
+                            const float oz = cell.z - pz;
+                            const float distance = sqrtf(ox * ox + oz * oz);
+
+                            const float half = half_a + (half_b - half_a) * t;
+                            if (distance > half + job.shoulder)
+                            {
+                                continue;
+                            }
+
+                            const size_t scratch = scratch_row + static_cast<size_t>(x - rect_x0);
+                            const float bed      = (a.y + (b.y - a.y) * t) - job.bed_drop;
+
+                            // fill cone, highest one wins so an embankment survives a neighbouring dip
+                            const float fill_over = max(0.0f, distance - half);
+                            raise_to[scratch] = max(raise_to[scratch], bed - fill_over * job.fill_slope);
+
+                            // cut cone, lowest one wins, the plateau keeps it at bed level for a whole grid
+                            // cell around the road so bilinear interpolation can never climb over the deck
+                            const float cut_over = max(0.0f, distance - half - plateau);
+                            lower_to[scratch] = min(lower_to[scratch], bed + cut_over * job.cut_slope);
                         }
-
-                        const float px = a.x + dx * t;
-                        const float pz = a.z + dz * t;
-                        const float ox = cell.x - px;
-                        const float oz = cell.z - pz;
-                        const float distance = sqrtf(ox * ox + oz * oz);
-
-                        const float half = half_a + (half_b - half_a) * t;
-                        if (distance > half + job.shoulder)
-                        {
-                            continue;
-                        }
-
-                        const size_t scratch = scratch_row + static_cast<size_t>(x - rect_x0);
-                        const float bed      = (a.y + (b.y - a.y) * t) - job.bed_drop;
-
-                        // fill cone, highest one wins so an embankment survives a neighbouring dip
-                        const float fill_over = max(0.0f, distance - half);
-                        raise_to[scratch] = max(raise_to[scratch], bed - fill_over * job.fill_slope);
-
-                        // cut cone, lowest one wins, the plateau keeps it at bed level for a whole grid
-                        // cell around the road so bilinear interpolation can never climb over the deck
-                        const float cut_over = max(0.0f, distance - half - plateau);
-                        lower_to[scratch] = min(lower_to[scratch], bed + cut_over * job.cut_slope);
                     }
                 }
             }
-        }
 
-        // resolve both envelopes against the untouched ground
-        for (int32_t z = rect_z0; z <= rect_z1; z++)
-        {
-            const size_t row         = static_cast<size_t>(z) * m_dense_width;
-            const size_t scratch_row = static_cast<size_t>(z - rect_z0) * rect_width;
-
-            for (int32_t x = rect_x0; x <= rect_x1; x++)
+            // resolve both envelopes against the untouched ground
+            for (int32_t z = rect_z0; z <= rect_z1; z++)
             {
-                const size_t scratch = scratch_row + static_cast<size_t>(x - rect_x0);
-                if (lower_to[scratch] == numeric_limits<float>::max())
+                const size_t row         = static_cast<size_t>(z) * m_dense_width;
+                const size_t scratch_row = static_cast<size_t>(z - rect_z0) * rect_width;
+
+                for (int32_t x = rect_x0; x <= rect_x1; x++)
                 {
-                    continue;
+                    const size_t scratch = scratch_row + static_cast<size_t>(x - rect_x0);
+                    if (lower_to[scratch] == numeric_limits<float>::max())
+                    {
+                        continue;
+                    }
+
+                    const size_t index = row + static_cast<size_t>(x);
+                    const float base   = m_positions[index].y;
+
+                    float target = max(base, raise_to[scratch]);
+                    target       = min(target, lower_to[scratch]);
+
+                    m_road_carve_delta[index] = target - base;
+                    m_positions[index].y      = target;
                 }
-
-                const size_t index = row + static_cast<size_t>(x);
-                const float base   = m_positions[index].y;
-
-                float target = max(base, raise_to[scratch]);
-                target       = min(target, lower_to[scratch]);
-
-                m_road_carve_delta[index] = target - base;
-                m_positions[index].y      = target;
             }
-        }
 
-        // repair only what moved, the flush adds the seam ring and patches the height texture in place
-        MarkHeightsDirty(rect_x0, rect_z0, rect_x1, rect_z1);
-        FlushHeightEdits(true);
+            // repair only what moved, the flush adds the seam ring and patches the height texture in place
+            MarkHeightsDirty(rect_x0, rect_z0, rect_x1, rect_z1);
+            FlushHeightEdits(true);
+        }
     }
 
     void Terrain::CollectTilesInRegion(
@@ -7140,6 +7168,8 @@ namespace spartan
             }
 
             MarkSplineHeightCarvesDirty(id);
+            // Terrain painting changes the base even if the deck samples are identical.
+            m_road_carve_jobs.erase(id);
         }
     }
 

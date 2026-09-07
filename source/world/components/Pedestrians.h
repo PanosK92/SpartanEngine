@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "Component.h"
+#include "../RoadTraffic.h"
 #include "../../math/Vector3.h"
 #include <atomic>
 #include <cstdint>
@@ -64,6 +65,10 @@ namespace spartan
             float ground_sample_timer = 0.0f;
             bool animating = false;
             bool dead = false;
+            size_t road_edge = road_traffic::invalid;
+            road_traffic::Path road_path;
+            float road_progress = 0.0f;
+            uint32_t route_random = 1;
         };
 
         struct PreloadState
@@ -87,10 +92,14 @@ namespace spartan
         void UpdateWalker(Walker& walker, float delta_time);
         void UpdateWalkerFar(Walker& walker, float delta_time);
         void UpdateAnimationLod();
+        bool FindRoadSpawn(uint32_t index, Walker& walker, math::Vector3& position, math::Vector3& heading);
+        void UpdateRoadWalker(Walker& walker, float delta_time);
         float NextFloat();
         uint32_t NextUInt();
 
         std::vector<Walker> m_walkers;
+        road_traffic::Network m_road_network;
+        bool m_follow_roads = false;
         std::shared_ptr<Mesh> m_source_mesh;
         math::Vector3 m_bounds_min = math::Vector3(454.5f, -10.0f, -793.9f);
         math::Vector3 m_bounds_max = math::Vector3(1414.5f, 80.0f, 166.1f);

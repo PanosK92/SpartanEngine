@@ -197,6 +197,17 @@ namespace spartan
         void SetVehicleHandbrake(float value);  // 0 to 1 (locks rear wheels for drifting)
         void SetVehicleSimulationActive(bool active);
         bool IsVehicleSimulationActive() const { return m_vehicle_simulation_active; }
+        void UpdateTrafficWheels(float speed, float curvature, float delta_time);
+        void SetVehicleBrakeReverseEnabled(bool enabled) { m_vehicle_brake_reverse_enabled = enabled; }
+        void SetVehicleFullSteeringLock(bool enabled) { m_vehicle_full_steering_lock = enabled; }
+        void SetVehicleRoadSurface(const math::Vector3& position, const math::Vector3& tangent)
+        {
+            m_vehicle_road_surface = true;
+            m_vehicle_road_position = position;
+            m_vehicle_road_tangent = tangent;
+            const math::Vector3 across(tangent.z, 0.0f, -tangent.x);
+            m_vehicle_road_normal = math::Vector3::Cross(tangent, across).Normalized();
+        }
         void SetVehicleSimMode(VehicleSimMode mode);
         VehicleSimMode GetVehicleSimMode() const { return m_vehicle_sim_mode; }
 
@@ -395,6 +406,12 @@ namespace spartan
         const void* m_wheel_ground_actors[static_cast<int>(WheelIndex::Count)] = {};
         uint8_t m_wheel_ground_surfaces[static_cast<int>(WheelIndex::Count)] = {};
         bool m_vehicle_simulation_active = true;
+        bool m_vehicle_brake_reverse_enabled = true;
+        bool m_vehicle_full_steering_lock = false;
+        bool m_vehicle_road_surface = false;
+        math::Vector3 m_vehicle_road_position = math::Vector3::Zero;
+        math::Vector3 m_vehicle_road_tangent = math::Vector3::Forward;
+        math::Vector3 m_vehicle_road_normal = math::Vector3::Up;
         VehicleSimMode m_vehicle_sim_mode = VehicleSimMode::Full;
         math::Vector3 m_cheap_wheel_local_pos[static_cast<int>(WheelIndex::Count)] = {};
         math::Quaternion m_cheap_wheel_local_rot[static_cast<int>(WheelIndex::Count)];

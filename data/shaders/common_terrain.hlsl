@@ -323,6 +323,16 @@ float terrain_layer_weight(
     return weight * exp2(clamp(push, -1.0f, 1.0f) * 1.25f) * layer.terrain_weight_bias;
 }
 
+// Sand stays visibly granular when wet. Flow-map basins at sea level must not
+// turn an entire beach into the same near-black mirror used for inland pools.
+float terrain_coastal_wetness(float3 position_world, float3 normal_world)
+{
+    if (buffer_frame.ocean_enabled < 0.5f) return 0.0f;
+    float altitude = position_world.y - buffer_frame.ocean_sea_level;
+    return (1.0f - smoothstep(0.15f, 1.25f, altitude))
+        * smoothstep(0.75f, 0.95f, normal_world.y);
+}
+
 struct TerrainLayerPick
 {
     uint  index[terrain_layer_pick_max];  // bindless material index of the layer
@@ -1151,8 +1161,11 @@ TerrainSurface terrain_evaluate(
     float pool = saturate(analysis.curvature) * saturate(analysis.flow * 1.6f - 0.4f) * pow(saturate(geometric_normal.y), 8.0f);
     wet        = saturate(max(wet, pool));
 
-    albedo.rgb *= lerp(1.0f, lerp(1.0f, 0.2f, saturate(porosity)), wet);
-    orm.g       = lerp(orm.g, 0.06f, wet * 0.9f);
+    float coastal = terrain_coastal_wetness(position_world, geometric_normal);
+    wet = max(wet, coastal * 0.8f);
+    pool *= 1.0f - coastal;
+    albedo.rgb *= lerp(1.0f, lerp(1.0f, lerp(0.2f, 0.55f, coastal), saturate(porosity)), wet);
+    orm.g       = lerp(orm.g, lerp(0.06f, 0.32f, coastal), wet * 0.9f);
 
     // wet ground is a plane, flatten the detail gradient in proportion
     gradient *= lerp(1.0f, 0.25f, pool);
@@ -1269,12 +1282,13 @@ TerrainSurface terrain_shade_lod(
     float variation = lerp(1.0f, terrain_macro_variation(position_world), saturate(layer.terrain_macro_strength));
     albedo.rgb     *= lerp(1.0f, variation, 0.45f);
 
-    float wet   = max(saturate(analysis.flow * 1.4f - 0.35f) * 0.7f, surface.terrain_wetness);
-    albedo.rgb *= lerp(1.0f, lerp(1.0f, 0.2f, saturate(layer.terrain_porosity)), wet);
+    float coastal = terrain_coastal_wetness(position_world, geometric_normal);
+    float wet   = saturate(max(max(saturate(analysis.flow * 1.4f - 0.35f) * 0.7f, surface.terrain_wetness), coastal * 0.8f));
+    albedo.rgb *= lerp(1.0f, lerp(1.0f, lerp(0.2f, 0.55f, coastal), saturate(layer.terrain_porosity)), wet);
 
     output.albedo    = albedo.rgb;
     output.occlusion = layer.has_texture_occlusion() ? packed.r : 1.0f;
-    output.roughness = saturate(lerp(layer.roughness * (layer.has_texture_roughness() ? packed.g : 1.0f), 0.06f, wet * 0.9f));
+    output.roughness = saturate(lerp(layer.roughness * (layer.has_texture_roughness() ? packed.g : 1.0f), lerp(0.06f, 0.32f, coastal), wet * 0.9f));
     output.metalness = saturate(layer.metalness * (layer.has_texture_metalness() ? packed.b : 1.0f));
     output.height    = packed.a;
     output.wetness   = wet;

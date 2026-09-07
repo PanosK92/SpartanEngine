@@ -1492,6 +1492,8 @@ namespace spartan
             vector<Vector3> positions;
             vector<float> distance;
             vector<size_t> nodes;
+            vector<bool> previous_segments;
+            vector<JunctionPatch> previous_patches;
         };
         struct Node { size_t road; size_t frame; size_t end; };
         struct Mouth { size_t road; size_t frame; Vector3 a; Vector3 b; Vector3 inward; };
@@ -1543,6 +1545,8 @@ namespace spartan
                     break;
                 }
             }
+            road.previous_segments = move(spline->m_junction_segments);
+            road.previous_patches = move(spline->m_junction_patches);
             spline->m_junction_segments.assign(road.frames.size() - 1, false);
             spline->m_junction_patches.clear();
             roads.push_back(move(road));
@@ -1835,17 +1839,35 @@ namespace spartan
             }
             owner.spline->m_junction_patches.push_back(move(patch));
         }
+        uint32_t rebuilt = 0;
         for (Road& road : roads)
         {
+            // Solving junction grades can propagate to a neighbour, but an unchanged result must
+            // not recook its collision, upload its mesh, or dirty its terrain footprint.
+            Spline* spline = road.spline;
+            const bool same_frames = road.frames.size() == spline->m_junction_frames.size() &&
+                equal(road.frames.begin(), road.frames.end(), spline->m_junction_frames.begin(), [](const SplineFrame& a, const SplineFrame& b)
+                {
+                    return a.position == b.position && a.tangent == b.tangent && a.right == b.right &&
+                        a.up == b.up && a.t == b.t && a.distance == b.distance &&
+                        a.fill_left == b.fill_left && a.fill_right == b.fill_right;
+                });
+            const bool same_patches = road.previous_patches.size() == spline->m_junction_patches.size() &&
+                equal(road.previous_patches.begin(), road.previous_patches.end(), spline->m_junction_patches.begin(), [](const JunctionPatch& a, const JunctionPatch& b)
+                {
+                    return a.center == b.center && a.boundary == b.boundary;
+                });
+            if (same_frames && same_patches && road.previous_segments == spline->m_junction_segments) continue;
+            spline->m_junction_frames = road.frames;
             road.spline->GenerateMesh(road.frames, road.spline->GetProfilePoints(), false);
+            rebuilt++;
             if (Terrain* terrain = Terrain::FindActive())
             {
                 const uint64_t id = road.spline->m_entity_ptr->GetObjectId();
                 terrain->MarkSplineHeightCarvesDirty(id);
-                terrain->MarkSplinePropCarvesDirty(id);
             }
         }
-        SP_LOG_INFO("rebuilt %u road junctions across %u splines", static_cast<uint32_t>(junctions.size()), static_cast<uint32_t>(roads.size()));
+        SP_LOG_INFO("solved %u road junctions, rebuilt %u of %u splines", static_cast<uint32_t>(junctions.size()), rebuilt, static_cast<uint32_t>(roads.size()));
     }
 
     void Spline::GenerateRoadMesh()
@@ -1879,6 +1901,11 @@ namespace spartan
             m_base_road_frames = frames;
             road_network_members.insert(this);
             road_junctions_dirty = true;
+            m_carve_entity_id = m_entity_ptr->GetObjectId();
+            if (Terrain* terrain = Terrain::FindActive())
+                terrain->MarkSplinePropCarvesDirty(m_carve_entity_id);
+            // Publish only the final junction-adjusted deck to terrain and collision.
+            if (!ProgressTracker::IsLoading()) return;
         }
 
         // resolve the profile and extrude it along the spline
@@ -1940,6 +1967,8 @@ namespace spartan
         if (!m_base_road_frames.empty()) road_junctions_dirty = true;
         road_network_members.erase(this);
         m_base_road_frames.clear();
+        m_generated_road_frames.clear();
+        m_junction_frames.clear();
         m_junction_segments.clear();
         m_junction_patches.clear();
         if (m_mesh)
@@ -2999,6 +3028,7 @@ namespace spartan
 
     void Spline::GenerateMesh(const vector<SplineFrame>& frames, const vector<Vector2>& profile_points, bool close_profile)
     {
+        if (m_profile == SplineProfile::Road) m_generated_road_frames = frames;
         if (frames.size() < 2 || profile_points.size() < 2)
         {
             return;

@@ -1076,10 +1076,10 @@
     </Entity>
    </Entity>
    <Entity name="traffic_manager" id="18446744073709551020" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-    <traffic car_count="20" car_file="project/cars/ferrari_laferrari.car" bounds_min_x="-220" bounds_min_y="-10" bounds_min_z="-380" bounds_max_x="380" bounds_max_y="80" bounds_max_z="260" simulation_frequency="50" physics_radius="80" physics_exit_radius="100" />
+    <traffic follow_roads="true" car_count="20" car_file="project/cars/ferrari_laferrari.car" bounds_min_x="-20000" bounds_min_y="-100" bounds_min_z="-16000" bounds_max_x="20000" bounds_max_y="900" bounds_max_z="16000" simulation_frequency="50" physics_radius="80" physics_exit_radius="100" />
    </Entity>
    <Entity name="pedestrian_manager" id="18446744073709551021" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-    <pedestrians count="100" model_file="project/models/mannequiny/mannequiny.glb" bounds_min_x="454.5" bounds_min_y="-10" bounds_min_z="-793.900024" bounds_max_x="1414.5" bounds_max_y="80" bounds_max_z="166.100006" max_animated="16" animation_radius="80" walk_speed="2.5" />
+    <pedestrians follow_roads="true" count="100" model_file="project/models/mannequiny/mannequiny.glb" bounds_min_x="-20000" bounds_min_y="-100" bounds_min_z="-16000" bounds_max_x="20000" bounds_max_y="900" bounds_max_z="16000" max_animated="16" animation_radius="80" walk_speed="2.5" />
    </Entity>
    <Entity name="airport" id="767181977370211419" active="true" position="7636.07 40.2 -3964.1" rotation="0 -0.258819 0 0.965926" scale="1 1 1" tags="landmark,airport">
     <Entity name="map_label" id="9003000000000000101" active="true" position="-1600 250 -100" rotation="0 0 0 1" scale="1 1 1">

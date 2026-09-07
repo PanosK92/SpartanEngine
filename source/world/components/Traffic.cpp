@@ -21,7 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "pch.h"
 #include "Traffic.h"
+#include "../RoadTrafficWorld.h"
 #include "Physics.h"
+#include "Spline.h"
 #include "../../car/Car.h"
 #include "../../car/CarPresets.h"
 #include "../../core/Engine.h"
@@ -103,6 +105,7 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_simulation_frequency, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_physics_radius, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_physics_exit_radius, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_follow_roads, bool);
     }
 
     Traffic::~Traffic()
@@ -129,6 +132,7 @@ namespace spartan
         }
         m_drivers.clear();
         m_next_spawn_index = 0;
+        if (m_follow_roads) BuildRoadNetwork();
         BeginSpawn();
     }
 
@@ -245,6 +249,12 @@ namespace spartan
 
             const bool physics_selected = physics_selected_set.find(&driver) != physics_selected_set.end();
             SetPhysicsActive(driver, physics_selected);
+
+            if (m_follow_roads)
+            {
+                UpdateRoadDriver(driver, delta_time);
+                continue;
+            }
 
             if (!driver.physics_active)
             {
@@ -363,7 +373,8 @@ namespace spartan
     {
         Vector3 position;
         Quaternion rotation;
-        if (!FindSpawnPosition(index, position, rotation))
+        Driver driver;
+        if (!(m_follow_roads ? FindRoadSpawn(index, driver, position, rotation) : FindSpawnPosition(index, position, rotation)))
         {
             SP_LOG_WARNING("Traffic could not find a safe spawn for car %u", index);
             return false;
@@ -400,12 +411,18 @@ namespace spartan
 
         entity->SetObjectName("traffic_car_" + to_string(index + 1));
         entity->SetTransient(true);
+        entity->SetPosition(position);
+        entity->SetRotation(rotation);
         physics->SetBodyTransform(position, rotation);
         physics->SetVehicleSimulationFrequency(m_simulation_frequency);
         physics->SetManualTransmission(false);
+        if (m_follow_roads)
+        {
+            physics->SetVehicleBrakeReverseEnabled(false);
+            physics->SetVehicleFullSteeringLock(true);
+        }
         car->SetExternallyControlled(true);
 
-        Driver driver;
         driver.car = car;
         driver.entity = entity;
         driver.physics = physics;
@@ -417,13 +434,138 @@ namespace spartan
         driver.decision_time = decision_interval * static_cast<float>(index % 20) / 20.0f;
         driver.last_position = position;
         driver.spline_speed = driver.cruise_speed;
+        if (m_follow_roads)
+        {
+            driver.cruise_speed = 11.0f + static_cast<float>(index % 7); // 40-61 km/h
+            driver.spline_speed = 0.0f;
+        }
         InitializeLimits(driver);
         const Vector3 initial_velocity =
             horizontal(entity->GetForward()) *
-            std::min(driver.cruise_speed, 10.0f);
+            (m_follow_roads ? 0.0f : std::min(driver.cruise_speed, 10.0f));
         physics->SetLinearVelocity(initial_velocity);
         m_drivers.push_back(std::move(driver));
         return true;
+    }
+
+    void Traffic::BuildRoadNetwork()
+    {
+        m_road_network = road_traffic::BuildWorldNetwork();
+    }
+
+    bool Traffic::FindRoadSpawn(uint32_t index, Driver& driver, Vector3& position, Quaternion& rotation)
+    {
+        const auto& edges = m_road_network.edges;
+        float total = 0.0f;
+        for (size_t i = 0; i < edges.size(); i += 2) total += edges[i].lane.Length();
+        if (total <= 0.0f) return false;
+        // Stratify by drivable road length so cars cover the whole island rather
+        // than clustering on short streets or in the old flat-map rectangle.
+        for (uint32_t attempt = 0; attempt < 64; ++attempt)
+        {
+            float d = fmodf(total * (static_cast<float>(index) + 0.5f) / static_cast<float>(std::max(m_car_count, 1u)) + attempt * 37.0f, total);
+            size_t edge = 0;
+            while (edge + 2 < edges.size() && d > edges[edge].lane.Length()) { d -= edges[edge].lane.Length(); edge += 2; }
+            if (index % 2) { ++edge; d = edges[edge].lane.Length() - d; }
+            d = std::clamp(d, 0.0f, edges[edge].lane.Length());
+            const auto pose = edges[edge].lane.Sample(d);
+            bool clear = true;
+            for (Car* car : Car::GetAll())
+            {
+                Entity* root = car ? car->GetRootEntity() : nullptr;
+                if (root && (root->GetPosition() - pose.position).LengthSquared() < spawn_separation * spawn_separation) { clear = false; break; }
+            }
+            if (!clear) continue;
+            driver.road_edge = edge;
+            driver.road_path = edges[edge].lane;
+            driver.road_progress = d;
+            driver.route_random = 0x6d2b79f5u ^ ((index + 1u) * 2654435761u);
+            position = pose.position + Vector3::Up * 0.65f;
+            rotation = Quaternion::FromLookRotation(pose.tangent);
+            return true;
+        }
+        return false;
+    }
+
+    void Traffic::UpdateRoadDriver(Driver& driver, float delta_time)
+    {
+        if (driver.road_edge >= m_road_network.edges.size() || driver.road_path.points.size() < 2) return;
+        auto& path = driver.road_path;
+        if (driver.physics_active)
+        {
+            UpdateTelemetry(driver, delta_time);
+            driver.spline_speed = driver.telemetry.speed;
+            driver.road_progress = path.Project(driver.entity->GetPosition(), std::max(0.0f, driver.road_progress - 4.0f),
+                std::min(path.Length(), driver.road_progress + std::max(driver.spline_speed * delta_time * 3.0f, 12.0f)));
+        }
+        // Commit one choice per junction approach. The stored path carries that
+        // choice through the intersection for both physical and distant cars.
+        for (uint32_t i = 0; i < 8 && path.Length() - driver.road_progress < 60.0f; ++i)
+        {
+            const size_t next = m_road_network.ChooseExit(driver.road_edge, driver.route_random);
+            if (next == road_traffic::invalid) break;
+            path.DiscardBehind(driver.road_progress);
+            m_road_network.AppendExit(path, driver.road_edge, next);
+            driver.road_edge = next;
+        }
+        const auto current = path.Sample(driver.road_progress);
+        driver.physics->SetVehicleRoadSurface(current.position, current.tangent);
+        const float lookahead = std::clamp(3.0f + driver.spline_speed * 0.35f, 3.0f, 8.0f);
+        const auto target = path.Sample(driver.road_progress + lookahead);
+        float target_speed = driver.cruise_speed;
+        // Brake before curves, including the connector through a junction.
+        for (float ahead = 3.0f; ahead <= 40.0f; ahead += 3.0f)
+        {
+            const auto a = path.Sample(driver.road_progress + ahead - 2.0f);
+            const auto b = path.Sample(driver.road_progress + ahead + 2.0f);
+            const float curvature = (horizontal(b.tangent) - horizontal(a.tangent)).Length() / 4.0f;
+            const float corner_speed = sqrtf(2.5f / std::max(curvature, 0.001f));
+            target_speed = std::min(target_speed, sqrtf(corner_speed * corner_speed + 4.0f * std::max(ahead - 5.0f, 0.0f)));
+        }
+        // Test the planned lane, not a straight ray that cuts a curved road.
+        // Headway includes the player and keeps distant traffic from overlapping.
+        const Vector3 position = driver.entity->GetPosition();
+        auto avoid = [&](const Vector3& obstacle, float speed)
+        {
+            const float extent = std::max(15.0f, driver.spline_speed * 2.5f);
+            if ((obstacle - position).LengthSquared() > (extent + 10.0f) * (extent + 10.0f)) return;
+            const float d = path.Project(obstacle, driver.road_progress, std::min(path.Length(), driver.road_progress + extent));
+            const auto contact = path.Sample(d);
+            const Vector3 separation = obstacle - contact.position;
+            const float gap = d - driver.road_progress;
+            if (gap > 0.5f && fabsf(separation.y) < 3.0f && planar(separation).LengthSquared() < 3.6f)
+                target_speed = std::min(target_speed, std::max(0.0f, speed + (gap - 7.0f - driver.spline_speed * 1.2f) * 0.6f));
+        };
+        for (const Driver& other : m_drivers)
+            if (&other != &driver && other.entity) avoid(other.entity->GetPosition(), other.spline_speed);
+        Vector3 player_position, player_velocity;
+        if (GetPlayerState(player_position, player_velocity)) avoid(player_position, std::max(0.0f, Vector3::Dot(player_velocity, current.tangent)));
+
+        if (driver.physics_active)
+        {
+            const Vector3 relative = target.position - position;
+            const float curvature = 2.0f * Vector3::Dot(horizontal(driver.entity->GetRight()), relative) / std::max(planar(relative).LengthSquared(), 1.0f);
+            // Traffic needs full steering lock for low-speed junction turns.
+            driver.steering = std::clamp(atanf(curvature * driver.limits.wheelbase) / driver.limits.max_steer_angle, -1.0f, 1.0f);
+            driver.throttle = std::clamp((target_speed - driver.spline_speed) * 0.3f, 0.0f, 0.65f);
+            driver.brake = std::clamp((driver.spline_speed - target_speed) * 0.4f, 0.0f, 1.0f);
+            if (target_speed < 0.1f) { driver.throttle = 0.0f; driver.brake = 1.0f; }
+            driver.car->SetSteering(driver.steering);
+            driver.car->SetThrottle(driver.throttle);
+            driver.car->SetBrake(driver.brake);
+            driver.car->SetHandbrake(0.0f);
+        }
+        else
+        {
+            driver.spline_speed += std::clamp(target_speed - driver.spline_speed, -4.0f * delta_time, 2.0f * delta_time);
+            driver.road_progress = std::min(driver.road_progress + driver.spline_speed * delta_time, path.Length());
+            const auto pose = path.Sample(driver.road_progress);
+            float ride = driver.limits.wheel_radius + 0.3f;
+            if (driver.car->GetDefinition()) ride = driver.limits.wheel_radius + std::max(driver.car->GetDefinition()->performance.suspension_height, 0.1f);
+            driver.entity->SetPosition(pose.position + Vector3::Up * ride);
+            driver.entity->SetRotation(Quaternion::FromLookRotation(pose.tangent));
+            driver.physics->UpdateTrafficWheels(driver.spline_speed, signed_angle(horizontal(current.tangent), horizontal(target.tangent)) / lookahead, delta_time);
+        }
     }
 
     void Traffic::InitializeLimits(Driver& driver)
@@ -574,7 +716,7 @@ namespace spartan
         {
             Vector3 velocity = driver.physics->GetLinearVelocity();
             velocity.y = 0.0f;
-            driver.spline_speed = std::clamp(velocity.Length(), 2.0f, driver.cruise_speed);
+            driver.spline_speed = std::clamp(velocity.Length(), m_follow_roads ? 0.0f : 2.0f, driver.cruise_speed);
             driver.throttle = 0.0f;
             driver.brake = 0.0f;
             driver.steering = 0.0f;
@@ -591,7 +733,14 @@ namespace spartan
             driver.physics->SetVehicleSimulationActive(true);
             Vector3 spawn_position = driver.entity->GetPosition();
             Vector3 ground;
-            if (SampleGround(spawn_position, ground))
+            bool has_ground = false;
+            if (m_follow_roads && driver.road_path.points.size() > 1)
+            {
+                ground = driver.road_path.Sample(driver.road_progress).position;
+                has_ground = true;
+            }
+            else has_ground = SampleGround(spawn_position, ground);
+            if (has_ground)
             {
                 // match cheap ride height, wheel radius plus suspension height above road
                 float ride = std::max(driver.limits.wheel_radius, 0.2f) + 0.3f;
@@ -1324,6 +1473,7 @@ namespace spartan
 
     void Traffic::Save(pugi::xml_node& node)
     {
+        node.append_attribute("follow_roads") = m_follow_roads;
         node.append_attribute("car_count") = m_car_count;
         node.append_attribute("car_file") = m_car_file.c_str();
         node.append_attribute("bounds_min_x") = m_bounds_min.x;
@@ -1339,6 +1489,7 @@ namespace spartan
 
     void Traffic::Load(pugi::xml_node& node)
     {
+        m_follow_roads = node.attribute("follow_roads").as_bool(false);
         m_car_count = node.attribute("car_count").as_uint(m_car_count);
         m_car_file = node.attribute("car_file").as_string(m_car_file.c_str());
         m_bounds_min.x = node.attribute("bounds_min_x").as_float(m_bounds_min.x);

@@ -35,5 +35,7 @@ link @binaries/ocean_tests/component_link.rsp
 if errorlevel 1 exit /b 1
 binaries\spartan_ocean_component_tests.exe
 if errorlevel 1 exit /b 1
+node tools/ocean_tests/shoreline.mjs
+if errorlevel 1 exit /b 1
 node tools/ocean_tests/compile_shaders.mjs
 exit /b %errorlevel%

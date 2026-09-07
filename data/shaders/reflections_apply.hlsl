@@ -170,6 +170,13 @@ float ocean_contact_foam(float2 render_uv, float3 water_position, float water_de
         float separation = length(contact_position - water_position);
         float local = 1.0f - smoothstep(0.05f, contact_foam_radius, separation);
         float waterline = 1.0f - smoothstep(0.04f, 0.22f, abs(contact_position.y - water_position.y));
+        if (local * waterline <= 0.0f) continue;
+        // Terrain already owns a world-space wash. Do not draw a second,
+        // camera-dependent contact rim on the same beach. Rocks and piers
+        // above the bed still receive object contact foam.
+        float bed_valid;
+        float bed = sample_ocean_terrain_height(contact_position.xz, bed_valid);
+        if (bed_valid > 0.5f && abs(contact_position.y - bed) < 0.15f) continue;
         coverage = max(coverage, local * waterline);
     }
     // Calm water does not spontaneously generate a solid white outline.
@@ -289,9 +296,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             {
                 // point sample, bilinear blends silhouette depths into values that land anywhere
                 float depth_background = linearize_depth(tex4.SampleLevel(samplers[sampler_point_clamp], uv, 0.0f).r);
-                // geometry in front leaking into this texel says nothing about the water column, a zero
-                // column shows the raw background as a bright halo, treat the column as deep instead
-                float thickness = depth_background > depth_transparent ? clamp(depth_background - depth_transparent, 0.0f, 10.0f) : 10.0f;
+                // At the beach, a foreground depth sample must not turn a
+                // centimetre of water into a ten-metre absorbing column.
+                float bed_valid;
+                float bed = sample_ocean_terrain_height(surface.position.xz, bed_valid);
+                float clearance = max(surface.position.y - bed, 0.0f);
+                float fallback_thickness = bed_valid > 0.5f
+                    ? min(clearance / max(abs(view_dir_normalized.y), 0.15f), 10.0f) : 10.0f;
+                float thickness = depth_background > depth_transparent
+                    ? clamp(depth_background - depth_transparent, 0.0f, 10.0f) : fallback_thickness;
 
                 // a physically bent ray shifts the whole underwater image systematically in one direction,
                 // and wherever the shifted sample is unavailable in screen space the pixel has to fall back
@@ -311,7 +324,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 for (int i = 0; i < 4; i++)
                 {
                     float2 uv_try   = uv + offset * scale;
-                    float depth_try = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], uv_try, 0.0f).r);
+                    float depth_try = linearize_depth(tex4.SampleLevel(samplers[sampler_point_clamp], uv_try, 0.0f).r);
                     if (depth_try > depth_transparent && all(uv_try == saturate(uv_try)))
                     {
                         refracted_uv = uv_try;
@@ -328,7 +341,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 refraction.b = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv + delta * (1.0f - chromatic_aberration), 0.0f).b;
 
                 // the body color is an albedo, light it with the downwelling sun and the reflected sky, a constant radiance glows at night and reads black at noon
-                float3 downwelling   = get_sun_radiance() * saturate(-light_parameters[0].direction.y) * (1.0f / PI) + tex[thread_id.xy].rgb;
+                // Downwelling light comes from the sky, not the view-dependent
+                // reflection (which often contains dark land at golden hour).
+                float3 downwelling   = get_sun_radiance() * saturate(-light_parameters[0].direction.y) * (1.0f / PI)
+                    + get_sky_fill_radiance() * (0.35f / PI);
                 float3 body_radiance = ocean_scatter_albedo * downwelling;
 
                 // absorption follows the water column of the sample actually shown so brightness stays consistent with the offset chosen above
@@ -458,7 +474,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float visibility = is_ray_traced_shadows_enabled()
             ? saturate(tex3.SampleLevel(samplers[sampler_bilinear_clamp], surface.uv, 0.0f).r) : 1.0f;
         sun_diff *= visibility;
-        float3 sky       = get_sky_fill_radiance() * (0.15f / PI);
+        float3 sky       = get_sky_fill_radiance() * (0.35f / PI);
         float3 incoming  = sun_diff + sky;
 
         // keep some of the water colour so foam is a veil, not a coat of paint
