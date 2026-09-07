@@ -32,10 +32,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // now scales with instance count instead of meshlets x instances so dense world-spanning entities stay cheap
 // the occluder hi-z arrives on the tex slot, frustum + hi-z helpers live in common_culling.hlsl
 
-[numthreads(256, 1, 1)]
-void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
+[numthreads(INSTANCE_CULL_BATCH_SIZE, 1, 1)]
+void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
 {
-    uint task_index = dispatch_thread_id.x;
+    uint task_index = group_id.x + group_id.y * INSTANCE_CULL_DISPATCH_WIDTH;
     uint task_count = (uint)pass_get_f4_value().x;
 
     // wave-uniform inputs, the planes are extracted once and the compiler scalarizes the load across the wave
@@ -47,9 +47,11 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     bool     survives = false;
     CullTask task     = (CullTask)0;
 
-    if (task_index < task_count)
+    if (task_index >= task_count) return; // uniform across the whole workgroup
+    task = cull_tasks[task_index];
+    if (thread_id.x < task.instance_count)
     {
-        task          = cull_tasks[task_index];
+        task.instance_index += thread_id.x;
         DrawData draw = indirect_draw_data[task.draw_index];
 
         bool skinned         = (draw.flags & 1u) != 0u;
@@ -72,9 +74,12 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         }
         else
         {
-            float3 center_local = draw.lod_aabb_min + draw.lod_aabb_extent * 0.5f;
+            // All LOD candidates must use the same sphere. Reduced bounds otherwise
+            // disagree at thresholds, causing missing or simultaneously drawn LODs.
+            DrawData reference = indirect_draw_data[task.lod_reference_draw_index];
+            float3 center_local = reference.lod_aabb_min + reference.lod_aabb_extent * 0.5f;
             center_world        = mul(float4(center_local, 1.0f), world_xform).xyz;
-            radius_world        = draw.lod_aabb_diag * 0.5f * max_world_scale(world_xform);
+            radius_world        = reference.lod_aabb_diag * 0.5f * max_world_scale(world_xform);
         }
 
         float lod_radius = radius_world;

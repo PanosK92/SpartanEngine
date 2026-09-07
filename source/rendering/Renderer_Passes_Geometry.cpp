@@ -50,6 +50,9 @@ namespace spartan
 {
     namespace
     {
+        TConsoleVar<float> cvar_tree_wind_cache_entries("r.tree_wind_cache_entries", static_cast<float>(TREE_WIND_CACHE_CAPACITY),
+            "visible-instance root wind cache entries; 0 uses the identical uncached path, never affects population");
+
         struct IndexedBatchKey
         {
             RHI_Buffer* vertex_buffer = nullptr;
@@ -232,6 +235,7 @@ namespace spartan
 
         void bind_mesh_shader_geometry()
         {
+            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::tree_wind_cache), Renderer::GetBuffer(Renderer_Buffer::TreeWindCache));
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::indirect_draw_data), Renderer::GetBuffer(Renderer_Buffer::IndirectDrawData));
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_instances), Renderer::GetBuffer(Renderer_Buffer::MeshletInstances));
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_bounds), GeometryBuffer::GetMeshletBoundsBuffer());
@@ -682,8 +686,9 @@ namespace spartan
                 static_cast<float>(GetBuffer(Renderer_Buffer::SurvivingInstances)->GetElementCount()),
                 0.0f);
 
-            uint32_t thread_group_count = (m_cull_task_count + 255) / 256;
-            RHI_CommandList::Dispatch(thread_group_count, 1, 1);
+            const uint32_t groups_x = min(m_cull_task_count, INSTANCE_CULL_DISPATCH_WIDTH);
+            const uint32_t groups_y = (m_cull_task_count + INSTANCE_CULL_DISPATCH_WIDTH - 1u) / INSTANCE_CULL_DISPATCH_WIDTH;
+            RHI_CommandList::Dispatch(groups_x, groups_y, 1);
         }
         RHI_CommandList::EndPass();
 
@@ -717,12 +722,14 @@ namespace spartan
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_instances), GetBuffer(Renderer_Buffer::MeshletInstances));
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::triangle_dispatch_args), GetBuffer(Renderer_Buffer::TriangleDispatchArgs));
 
-            // f4_value: x = max hiz mip, y = meshlet instances cap, z = opaque/alpha region split
+            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::tree_wind_cache), GetBuffer(Renderer_Buffer::TreeWindCache));
+
+            // f4_value: x = max hiz mip, y = meshlet instances cap, z = opaque/alpha region split, w = wind cache limit
             m_pcb_pass_cpu.set_f4_value(
                 max_hiz_mip,
-                static_cast<float>(GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount()),
-                0.0f,
-                0.0f);
+                static_cast<float>(GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount() / (use_mesh_shaders() ? 1u : 2u)),
+                use_mesh_shaders() ? 1.0f : 0.0f,
+                clamp(cvar_tree_wind_cache_entries.GetValueAs<float>(), 0.0f, static_cast<float>(TREE_WIND_CACHE_CAPACITY)));
 
             RHI_CommandList::DispatchIndirect(GetBuffer(Renderer_Buffer::InstanceDispatchArgs), 0);
         }
@@ -905,8 +912,8 @@ namespace spartan
                     {
                         bind_mesh_shader_geometry();
                         push_mesh_draw_constants(m_pcb_pass_cpu);
-                        // same survivor list as opaque, mesh shader filters alpha via push constants
-                        RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), 0);
+                        // Alpha work is compacted separately, with the original capacity for each category.
+                        RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), sizeof(Sb_IndirectDispatchArgs));
                     }
                     else
                     {
@@ -1048,6 +1055,7 @@ namespace spartan
         const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
         m_pcb_pass_cpu.is_transparent = 0;
 
+        RHI_CommandList::BeginTimeblock("g_buffer_indirect_opaque");
         // opaque half, reads the opaque depth the prepass wrote, clears the g-buffer targets
         // the clear runs unconditionally so the transparent ocean composites over a fresh g-buffer when no opaque geometry is visible
         RHI_CommandList::SetPipelineState(pso);
@@ -1072,6 +1080,8 @@ namespace spartan
                 RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), 0);
             }
 
+            RHI_CommandList::EndTimeblock();
+            RHI_CommandList::BeginTimeblock("g_buffer_indirect_alpha");
             // alpha-tested half, same equal-z pixel shader, loads the g-buffer so the opaque output survives
             pso.clear_color[0] = rhi_color_load;
             pso.clear_color[1] = rhi_color_load;
@@ -1090,7 +1100,7 @@ namespace spartan
             {
                 bind_mesh_shader_geometry();
                 push_mesh_draw_constants(m_pcb_pass_cpu);
-                RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), 0);
+                RHI_CommandList::DrawMeshTasksIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), sizeof(Sb_IndirectDispatchArgs));
             }
             else
             {
@@ -1104,6 +1114,7 @@ namespace spartan
             }
         }
 
+        RHI_CommandList::EndTimeblock();
         RHI_CommandList::EndTimeblock();
     }
 

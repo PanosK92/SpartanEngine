@@ -158,3 +158,9 @@ RWStructuredBuffer<uint>             particle_volume_density : register(u53);
 RWStructuredBuffer<uint>             particle_volume_color   : register(u54);
 
 #endif
+
+#if defined(SP_SHADER_STAGE_COMPUTE)
+RWStructuredBuffer<CachedTreeWind> tree_wind_cache : register(u60);
+#else
+StructuredBuffer<CachedTreeWind> tree_wind_cache : register(t60);
+#endif

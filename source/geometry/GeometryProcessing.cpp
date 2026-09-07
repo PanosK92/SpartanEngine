@@ -44,7 +44,8 @@ namespace spartan::geometry_processing
         std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         size_t target_index_count,
         const bool preserve_uvs,
-        const bool preserve_edges
+        const bool preserve_edges,
+        const bool prune_components
     )
     {
         size_t index_count  = indices.size();
@@ -131,7 +132,6 @@ namespace spartan::geometry_processing
 
         float lod_error        = 0.0f;
         size_t result_count    = index_count;
-        size_t best_count      = index_count;
         bool target_reached    = false;
 
         for (size_t i = 0; i < threshold_count && !target_reached; ++i)
@@ -150,31 +150,59 @@ namespace spartan::geometry_processing
                 locks,
                 target_index_count,
                 error_thresholds[i],
-                0,
+                prune_components && !preserve_edges ? meshopt_SimplifyPrune : 0,
                 &lod_error
             );
+
+            // Pruning may cross several disconnected components at once. Refine
+            // the error bound instead of accepting a nearly empty distant canopy.
+            if (prune_components && result_count < target_index_count * 4 / 5)
+            {
+                auto best_indices = indices_simplified;
+                size_t closest_count = result_count;
+                size_t closest_delta = target_index_count - result_count;
+                float lower_error = i > 0 ? error_thresholds[i - 1] : 0.0f;
+                float upper_error = error_thresholds[i];
+                for (uint32_t refinement = 0; refinement < 10; refinement++)
+                {
+                    const float error = (lower_error + upper_error) * 0.5f;
+                    const size_t count = meshopt_simplifyWithAttributes(
+                        indices_simplified.data(), indices.data(), index_count,
+                        &vertices[0].pos[0], vertex_count, sizeof(RHI_Vertex_PosTexNorTan),
+                        vertex_attributes, attr_stride, attr_weights, attr_count, locks,
+                        target_index_count, error, preserve_edges ? 0 : meshopt_SimplifyPrune, &lod_error);
+                    const size_t delta = count > target_index_count ? count - target_index_count : target_index_count - count;
+                    if (count > 0 && delta < closest_delta)
+                    {
+                        closest_delta = delta;
+                        closest_count = count;
+                        best_indices = indices_simplified;
+                    }
+                    if (count < target_index_count) upper_error = error;
+                    else lower_error = error;
+                }
+                indices_simplified = std::move(best_indices);
+                result_count = closest_count;
+                // Close above-target results are preferable to stripping extra detail.
+                target_reached = result_count <= target_index_count * 6 / 5;
+            }
 
             // check if we reached the target or made meaningful progress
             if (result_count <= target_index_count)
             {
                 target_reached = true;
             }
-            else if (result_count < best_count)
-            {
-                best_count = result_count;
-            }
-            else
-            {
-                // no progress at this error level, increasing error won't help
-                break;
-            }
+            // A plateau at one error bound does not prove a topology limit.
+            // Later bounds can permit collapses that the earlier bound rejected.
         }
 
-        // fallback: use sloppy simplification for aggressive reduction (ignores topology/attributes)
-        if (result_count > target_index_count && !preserve_edges && target_index_count >= 12)
+        // Sloppy reduction ignores UV seams and can join separate leaf cards into
+        // long triangles. Never use it when the caller requested UV preservation.
+        if (result_count > target_index_count && !preserve_uvs && !preserve_edges && target_index_count >= 12)
         {
+            std::vector<uint32_t> sloppy_indices(index_count);
             size_t sloppy_count = meshopt_simplifySloppy(
-                indices_simplified.data(),
+                sloppy_indices.data(),
                 indices.data(),
                 index_count,
                 &vertices[0].pos[0],
@@ -187,6 +215,7 @@ namespace spartan::geometry_processing
 
             if (sloppy_count > 0 && sloppy_count < result_count)
             {
+                indices_simplified.swap(sloppy_indices);
                 result_count = sloppy_count;
             }
         }

@@ -144,6 +144,7 @@ namespace spartan
         uint32_t GetInstanceCount()  const          { return m_instances.empty() ? 1 : static_cast<uint32_t>(m_instances.size()); }
         uint32_t GetGlobalInstanceOffset() const    { return m_global_instance_offset; }
         math::Matrix GetInstance(const uint32_t index, const bool to_world);
+        math::Vector3 GetInstancePosition(uint32_t index, const math::Matrix& world) const;
         void SetInstances(const std::vector<Instance>& instances);
         void SetInstances(const std::vector<math::Matrix>& transforms);
 

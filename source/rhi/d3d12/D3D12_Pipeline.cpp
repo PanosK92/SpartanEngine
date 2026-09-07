@@ -855,9 +855,9 @@ namespace spartan
         hit_group.ClosestHitShaderImport = L"ClosestHit";
         hit_group.IntersectionShaderImport = nullptr;
 
-        // 128 bytes covers the largest engine payload with headroom, attributes are the 8 byte triangle barycentrics
+        // Reflection/GI HitPayload is 16 bytes; shadows use 8. Triangle attributes remain 8 bytes.
         D3D12_RAYTRACING_SHADER_CONFIG shader_config = {};
-        shader_config.MaxPayloadSizeInBytes   = 128;
+        shader_config.MaxPayloadSizeInBytes   = 16;
         shader_config.MaxAttributeSizeInBytes = 8;
 
         // pipeline config: matches vulkan's maxPipelineRayRecursionDepth = 2 for second bounce gi

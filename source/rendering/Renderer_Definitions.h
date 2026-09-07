@@ -85,8 +85,9 @@ namespace spartan
     const uint32_t restir_pairing_element_count    = 254 * 254 + 230 * 230 + 210 * 210;
     const uint32_t renderer_draw_data_buffer_count = 4;       // matches command list pool size, avoids cpu-gpu memcpy races
     const uint32_t renderer_max_indirect_draws     = 131072;  // per render component lod draw data, cull shader clamps writes
-    // one cull task per (render, instance), so the budget scales with instance count, not geometry density
-    const uint32_t renderer_max_cull_tasks         = 8 * 1024 * 1024;
+    // Preserve the old instance budget, plus one partial batch per possible draw.
+    const uint32_t renderer_max_instance_cull_entries = 8 * 1024 * 1024;
+    const uint32_t renderer_max_cull_tasks = renderer_max_instance_cull_entries / 64 + renderer_max_indirect_draws;
     // meshlet cull survivors, bounded by the visible meshlets of the instance cull survivors
     const uint32_t renderer_max_meshlet_instances  = 4 * 1024 * 1024;
     // triangle cull survivors, packed (meshlet_instance, triangle), overflow silently drops late triangles
@@ -297,6 +298,7 @@ namespace spartan
         // meshlet unique vertex remaps + micro indices for mesh shaders
         meshlet_vertices       = 58,
         meshlet_micro_indices  = 59,
+        tree_wind_cache       = 60,
         // per-instance cull tasks for gpu-driven culling
         cull_tasks             = 44,
         // two-phase culling: phase a survivor list + its indirect dispatch args
@@ -619,6 +621,7 @@ namespace spartan
         VisibleTriangles,          // triangle-cull survivor list, one packed (meshlet_instance, triangle_in_meshlet) per entry
         TriangleDispatchArgs,      // vs: single-slot triangle cull dispatch, mesh: two-slot opaque/alpha mesh task counts
         CullTasks,                 // per (render, instance) cull tasks consumed by the instance cull compute shader (phase a)
+        TreeWindCache,            // optional per-visible-instance root wind
         SurvivingInstances,        // phase a survivor list, phase b dispatches one workgroup per entry
         InstanceDispatchArgs,      // single-slot indirect dispatch args buffer driving the meshlet cull pass (phase b)
         DrawData,                  // bindless per-draw data (transforms, material index, etc.)

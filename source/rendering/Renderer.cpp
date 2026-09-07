@@ -3437,7 +3437,7 @@ namespace spartan
     {
         // one draw entry per render lod, instanced meshes with several lods emit every lod and the
         // instance cull keeps each instance on the lod its screen coverage wants
-        // one instance cull task per (draw, instance), phase b expands the meshlets of the survivors
+        // one range task per 64 instances at a draw LOD, phase b expands surviving meshlets
         m_indirect_draw_count       = 0;
         m_indirect_render_count = 0;
         m_cull_task_count           = 0;
@@ -3506,7 +3506,7 @@ namespace spartan
                 continue;
             }
 
-            const uint32_t tasks_add = inst_n * lods_emit;
+            const uint32_t tasks_add = ((inst_n + INSTANCE_CULL_BATCH_SIZE - 1u) / INSTANCE_CULL_BATCH_SIZE) * lods_emit;
             if (m_indirect_draw_count + lods_emit > indirect_draw_capacity)
             {
                 continue;
@@ -3554,6 +3554,7 @@ namespace spartan
             const bool  finite_distance = max_distance > 0.0f && max_distance < numeric_limits<float>::max() * 0.5f;
             const float max_distance_sq = finite_distance ? (max_distance * max_distance) : 0.0f;
             const Matrix transform_prev = matrix_previous_for_velocity(entity);
+            const uint32_t lod_reference_draw_index = m_indirect_draw_count;
 
             for (uint32_t lod = lod_first; lod < lod_last; lod++)
             {
@@ -3588,13 +3589,13 @@ namespace spartan
 
                 m_indirect_renders[draw_idx] = render;
 
-                for (uint32_t inst = 0; inst < inst_n; inst++)
+                for (uint32_t inst = 0; inst < inst_n; inst += INSTANCE_CULL_BATCH_SIZE)
                 {
                     Sb_CullTask& task   = m_cull_tasks[m_cull_task_count++];
                     task.draw_index     = draw_idx;
-                    task.meshlet_index  = 0;
+                    task.lod_reference_draw_index = lod_reference_draw_index;
                     task.instance_index = inst;
-                    task.instance_count = 1;
+                    task.instance_count = min(INSTANCE_CULL_BATCH_SIZE, inst_n - inst);
                 }
             }
         }
@@ -4028,6 +4029,15 @@ namespace spartan
                 Sb_GeometryInfo geo_info = {};
                 geo_info.vertex_offset  = render->GetVertexOffset(0);
                 geo_info.index_offset   = render->GetIndexOffset(0);
+                geo_info.material_index = instance.instance_custom_index;
+                const Matrix inverse = m.Inverted();
+                geo_info.object_to_world_0 = Vector4(m.m00, m.m01, m.m02, 0.0f);
+                geo_info.object_to_world_1 = Vector4(m.m10, m.m11, m.m12, 0.0f);
+                geo_info.object_to_world_2 = Vector4(m.m20, m.m21, m.m22, 0.0f);
+                geo_info.world_to_object_0 = Vector4(inverse.m00, inverse.m01, inverse.m02, 0.0f);
+                geo_info.world_to_object_1 = Vector4(inverse.m10, inverse.m11, inverse.m12, 0.0f);
+                geo_info.world_to_object_2 = Vector4(inverse.m20, inverse.m21, inverse.m22, 0.0f);
+                static_assert(sizeof(Sb_GeometryInfo) == 144, "RT geometry buffer layout must match HLSL");
                 fill_uv_draw_fields_from_render(geo_info, render);
                 geometry_infos.push_back(geo_info);
             }

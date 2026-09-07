@@ -1129,6 +1129,7 @@ namespace spartan
             count = min(count, render->GetInstanceCount());
         }
 
+        const Matrix& world = GetEntity()->GetMatrix();
         for (uint32_t i = 0; i < count; i++)
         {
             PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[i]);
@@ -1139,7 +1140,7 @@ namespace spartan
 
             // compute distance to actor
             Vector3 closest_point = instanced
-                ? render->GetInstance(i, true).GetTranslation()
+                ? render->GetInstancePosition(i, world)
                 : render->GetBoundingBox().GetClosestPoint(camera_pos);
             const float distance_squared = Vector3::DistanceSquared(camera_pos, closest_point);
 
@@ -3949,10 +3950,22 @@ namespace spartan
                     mesh_desc.points.stride = sizeof(PxVec3);
                     mesh_desc.points.data   = px_vertices.data();
                     mesh_desc.flags         = PxConvexFlag::eCOMPUTE_CONVEX;
+                    // Instanced vegetation and rocks can have thousands of extreme
+                    // vertices. A bounded hull avoids PhysX's 255-polygon cooking
+                    // failure and keeps repeated prop colliders inexpensive.
+                    if (render->HasInstancing())
+                        mesh_desc.vertexLimit = 64;
 
                     // create
                     PxConvexMeshCookingResult::Enum condition;
                     m_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
+                    if (render->HasInstancing() && condition == PxConvexMeshCookingResult::ePOLYGONS_LIMIT_REACHED)
+                    {
+                        if (m_mesh) static_cast<PxConvexMesh*>(m_mesh)->release();
+                        mesh_desc.flags |= PxConvexFlag::eQUANTIZE_INPUT;
+                        mesh_desc.quantizedCount = 64;
+                        m_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
+                    }
                     if (!m_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
                     {
                         SP_LOG_ERROR("Failed to create convex mesh: %d", condition);

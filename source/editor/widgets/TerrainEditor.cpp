@@ -1293,6 +1293,20 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
             });
         }
 
+        if (!is_gpu)
+        {
+            property_input_text("Mesh Variants", &layer.mesh_variants, false,
+                "additional model paths separated by semicolons; all variants share this layer's density budget");
+            if (ImGui::IsItemDeactivatedAfterEdit()) changed = true;
+            int habitat = static_cast<int>(layer.habitat);
+            layout::begin_property("Habitat", "continuous patches across tile boundaries, combined with this layer's slope, altitude and surface rules");
+            if (ImGui::Combo("##habitat", &habitat, "Any\0Woodland\0Olive Grove\0Scrub\0Rock Bands\0"))
+            {
+                layer.habitat = static_cast<uint32_t>(habitat);
+                changed = true;
+            }
+        }
+
         property_input_text(
             "Material Folder",
             &layer.material_folder,

@@ -20,6 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========
+#define CACHE_MESH_TREE_WIND_CURRENT_ONLY
+#define CACHE_MESH_TREE_WIND
 #include "common.hlsl"
 //====================
 
@@ -66,8 +68,10 @@ void main_ms(
 )
 {
     const uint tid = thread_id.x;
-    // the cull keeps one contiguous survivor list, both halves walk it and filter on the material flag
-    const uint mi_idx = group_id.x;
+    // Each material category dispatches only its compacted half of the list.
+    uint meshlet_capacity, meshlet_stride;
+    meshlet_instances.GetDimensions(meshlet_capacity, meshlet_stride);
+    const uint mi_idx = group_id.x + (want_alpha ? meshlet_capacity / 2u : 0u);
 
     if (tid == 0)
     {
@@ -93,6 +97,7 @@ void main_ms(
                 gs_first_vertex   = meshlet_decode_first_vertex(gs_mb);
                 gs_first_micro    = gs_mb.first_micro;
                 gs_skip_backface  = ((gs_draw.flags & 1u) | (gs_draw.flags & 8u)) != 0u;
+                cache_mesh_tree_wind(gs_draw, gs_mi.instance_index, gs_mi.padding0);
             }
         }
     }

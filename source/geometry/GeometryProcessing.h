@@ -35,7 +35,8 @@ namespace spartan::geometry_processing
         std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         size_t target_index_count,
         const bool preserve_uvs,  // typically true, false for non-rendered geometry like physics meshes
-        const bool preserve_edges // for terrain tiles where edges must match neighboring tiles
+        const bool preserve_edges, // for terrain tiles where edges must match neighboring tiles
+        const bool prune_components = false // distance LODs may remove small disconnected details
     );
 
     void optimize(

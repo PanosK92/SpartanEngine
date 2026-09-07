@@ -831,6 +831,12 @@ namespace spartan
         return to_world ? m_instances[index].GetMatrix() * GetEntity()->GetMatrix() : m_instances[index].GetMatrix();
     }
 
+    Vector3 Render::GetInstancePosition(uint32_t index, const Matrix& world) const
+    {
+        const Instance& instance = m_instances[index];
+        return world * Vector3(instance.position_x, instance.position_y, instance.position_z);
+    }
+
     void Render::SetInstances(const vector<Instance>& instances)
     {
         // a scattered prop owns one physics actor per instance, the slot lookup is free when there is none

@@ -156,6 +156,7 @@ namespace spartan
             "PostProcessNormalizeScale",       MeshFlags::PostProcessNormalizeScale,
             "PostProcessOptimize",             MeshFlags::PostProcessOptimize,
             "PostProcessGenerateLods",         MeshFlags::PostProcessGenerateLods,
+            "PostProcessPreserveLod0",         MeshFlags::PostProcessPreserveLod0,
             "PostProcessPreserveTerrainEdges", MeshFlags::PostProcessPreserveTerrainEdges
         );
 
@@ -582,7 +583,12 @@ namespace spartan
             const bool is_skinned = m_skeleton != nullptr;
             if (!is_skinned && (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimize)))
             {
-                geometry_processing::optimize(vertices, indices);
+                // Authored game-ready props must not be reduced before distance
+                // LOD selection. Other imports retain their density reduction.
+                if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessPreserveLod0))
+                    geometry_processing::weld_and_optimize(vertices, indices);
+                else
+                    geometry_processing::optimize(vertices, indices);
             }
 
             // add the original geometry as lod 0
@@ -632,7 +638,9 @@ namespace spartan
                 // simplify geometry
                 bool preserve_uvs   = true;
                 bool preserve_edges = m_flags & static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges);
-                geometry_processing::simplify(lod_indices, lod_vertices, target_index_count, preserve_uvs, preserve_edges);
+                // Disconnected branches/cards need component pruning to form useful distance LODs.
+                // Keep terrain borders and the original LOD 0 untouched.
+                geometry_processing::simplify(lod_indices, lod_vertices, target_index_count, preserve_uvs, preserve_edges, !preserve_edges);
 
                 // stop unless this level is meaningfully cheaper than the one above it, a level that
                 // sheds a handful of triangles is a duplicate that still costs memory and a draw range

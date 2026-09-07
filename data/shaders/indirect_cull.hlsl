@@ -72,6 +72,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
     uint  max_meshlet_instances = (uint)pass_get_f4_value().y;
     bool  split_opaque_alpha    = pass_get_f4_value().z > 0.5f;
     uint  region_cap            = max_meshlet_instances / 2u;
+    uint  wind_cache_limit      = min((uint)max(pass_get_f4_value().w, 0.0f), TREE_WIND_CACHE_CAPACITY);
 
     // wave-uniform, the compiler scalarizes the plane extraction across the wave
     float4 plane_l, plane_r, plane_b, plane_t;
@@ -105,6 +106,13 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
         gs_wind               = (material_parameters[gs_draw.material_index].flags & (1u << 9)) != 0u;
         gs_meshlet_offset     = gs_draw.lod_meshlet_offset;
         gs_meshlet_count      = gs_draw.lod_meshlet_count;
+        if (split_opaque_alpha && gs_wind && surv_index < wind_cache_limit)
+        {
+            float4x4 instance = pull_instance_transform(gs_draw.instance_offset, si.instance_index);
+            TreeWindState current = evaluate_tree_wind(mul(instance, gs_draw.transform), 0.0f);
+            TreeWindState previous = evaluate_tree_wind(mul(instance, gs_draw.transform_previous), -buffer_frame.delta_time);
+            tree_wind_cache[surv_index] = pack_tree_wind(current, previous);
+        }
     }
     GroupMemoryBarrierWithGroupSync();
 
@@ -123,7 +131,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
             out_mi.draw_index     = gs_draw_index;
             out_mi.meshlet_index  = global_meshlet;
             out_mi.instance_index = gs_instance_index;
-            out_mi.padding0       = 0u;
+            out_mi.padding0       = split_opaque_alpha && gs_wind && surv_index < wind_cache_limit ? surv_index + 1u : 0u;
 
             if (gs_skinned)
             {

@@ -26,6 +26,6 @@ if not defined terrain_test_vs exit /b 1
 call "%terrain_test_vs%\VC\Auxiliary\Build\vcvars64.bat" >nul
 if errorlevel 1 exit /b 1
 if not exist "binaries\terrain_tests" mkdir "binaries\terrain_tests"
-cl /nologo /std:c++20 /EHsc /O2 /arch:AVX2 /MT /W3 /WX /Gy /I source /I source/core /Fo"binaries/terrain_tests/" /Fe"binaries/terrain_tests/terrain_tests.exe" tools/terrain_tests/terrain_tests.cpp tools/terrain_tests/adapters.cpp source/world/TerrainSystem.cpp source/rendering/Instance.cpp source/math/Vector2.cpp source/math/Vector3.cpp source/math/Vector4.cpp source/math/Quaternion.cpp source/math/Matrix.cpp source/math/BoundingBox.cpp source/rendering/Color.cpp /link /OPT:REF
+cl /nologo /std:c++20 /EHsc /O2 /arch:AVX2 /MT /W3 /WX /Gy /I source /I source/core /I third_party/meshoptimizer /Fo"binaries/terrain_tests/" /Fe"binaries/terrain_tests/terrain_tests.exe" tools/terrain_tests/terrain_tests.cpp tools/terrain_tests/adapters.cpp source/world/TerrainSystem.cpp source/rendering/Instance.cpp source/geometry/GeometryProcessing.cpp source/math/Vector2.cpp source/math/Vector3.cpp source/math/Vector4.cpp source/math/Quaternion.cpp source/math/Matrix.cpp source/math/BoundingBox.cpp source/rendering/Color.cpp /link /OPT:REF third_party/libraries/meshoptimizer.lib
 if errorlevel 1 exit /b 1
 binaries\terrain_tests\terrain_tests.exe

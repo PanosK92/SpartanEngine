@@ -7,15 +7,17 @@ fs.mkdirSync('binaries/wind_tests', {recursive: true});
 const cases = [
     ['wind_field', 'cs', ''],
     ['g_buffer', 'vs', ''], ['g_buffer', 'vs', 'INDEXED_MULTI_DRAW'],
+    ['g_buffer', 'vs', 'INDIRECT_DRAW'], ['g_buffer', 'ps', ''], ['g_buffer', 'ps', 'INDIRECT_DRAW'],
     ['depth_prepass', 'vs', 'GRASS_INSTANCED'], ['depth_prepass', 'vs', 'INDIRECT_DRAW'],
     ['depth_light', 'vs', ''], ['depth_light', 'vs', 'INDEXED_MULTI_DRAW'],
-    ['meshlet_mesh', 'ms', ''], ['meshlet_mesh_depth', 'ms', ''],
+    ['meshlet_mesh', 'ms', ''], ['meshlet_mesh', 'ms', 'GBUFFER_ALPHA'],
+    ['meshlet_mesh_depth', 'ms', ''], ['meshlet_mesh_depth', 'ms', 'DEPTH_ALPHA'],
     ['instance_cull', 'cs', ''], ['indirect_cull', 'cs', ''], ['indirect_cull_triangle', 'cs', '']
 ];
 for (const [shader, stage, define] of cases) {
     const args = ['-T', `${stage}_6_7`, '-E', `main_${stage}`, '-spirv',
         '-fspv-target-env=vulkan1.3', '-fvk-use-dx-layout',
-        '-Fo', `binaries/wind_tests/${shader}_${define}.spv`];
+        '-Fo', `binaries/wind_tests/${shader}_${stage}_${define}.spv`];
     if (stage === 'cs') args.push('-D', 'SP_SHADER_STAGE_COMPUTE=1');
     if (define) args.push('-D', define);
     args.push(`data/shaders/${shader}.hlsl`);

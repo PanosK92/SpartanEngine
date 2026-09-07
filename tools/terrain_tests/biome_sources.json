@@ -1,0 +1,425 @@
+[
+  {
+    "asset": "coast_land_rocks_02",
+    "page": "https://polyhaven.com/a/coast_land_rocks_02",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/coast_land_rocks_02/coast_land_rocks_02_1k.gltf",
+    "file": "binaries/project/models/island_biomes/sources/coast_land_rocks_02/coast_land_rocks_02.gltf",
+    "sha256": "f99e5073bf2df714da68e09d80d8546ded2aad0b73f50df8d48e732d4a452774",
+    "bytes": 2851
+  },
+  {
+    "asset": "coast_land_rocks_02",
+    "page": "https://polyhaven.com/a/coast_land_rocks_02",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/coast_land_rocks_02/coast_land_rocks_02_arm_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/coast_land_rocks_02/textures/coast_land_rocks_02_arm_1k.jpg",
+    "sha256": "08c0f171f23413d7e063f632a9789085d33e6c8b66aad26bfb463da1dfe3db44",
+    "bytes": 859245
+  },
+  {
+    "asset": "coast_land_rocks_02",
+    "page": "https://polyhaven.com/a/coast_land_rocks_02",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/coast_land_rocks_02/coast_land_rocks_02_diff_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/coast_land_rocks_02/textures/coast_land_rocks_02_diff_1k.jpg",
+    "sha256": "2223040a8b7327b8e8b6ae78960a92ea4e10a7d62f3114496851d37dfdc2aff2",
+    "bytes": 886282
+  },
+  {
+    "asset": "coast_land_rocks_02",
+    "page": "https://polyhaven.com/a/coast_land_rocks_02",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/coast_land_rocks_02/coast_land_rocks_02.bin",
+    "file": "binaries/project/models/island_biomes/sources/coast_land_rocks_02/coast_land_rocks_02.bin",
+    "sha256": "e981af395c1a546c2244d95954b8d4406bd11e26047975772b88418f3728adc6",
+    "bytes": 36700376
+  },
+  {
+    "asset": "coast_land_rocks_02",
+    "page": "https://polyhaven.com/a/coast_land_rocks_02",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/coast_land_rocks_02/coast_land_rocks_02_nor_gl_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/coast_land_rocks_02/textures/coast_land_rocks_02_nor_gl_1k.jpg",
+    "sha256": "3d0ecf09774581ac03b363b75a2430caaab5ed91895867dc83e06955ea71aaeb",
+    "bytes": 1163272
+  },
+  {
+    "asset": "coast_rocks_01",
+    "page": "https://polyhaven.com/a/coast_rocks_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/coast_rocks_01/coast_rocks_01_1k.gltf",
+    "file": "binaries/project/models/island_biomes/sources/coast_rocks_01/coast_rocks_01.gltf",
+    "sha256": "9d45b232fe8bfc8f9d84aaa900ba28f150764e4b40accf7d50fbb45a3de54c51",
+    "bytes": 2810
+  },
+  {
+    "asset": "coast_rocks_01",
+    "page": "https://polyhaven.com/a/coast_rocks_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/coast_rocks_01/coast_rocks_01.bin",
+    "file": "binaries/project/models/island_biomes/sources/coast_rocks_01/coast_rocks_01.bin",
+    "sha256": "3d1c33b18fdcf0efebab46526e94d17efccbc3c9a06dc14b89b04b93109fa3d2",
+    "bytes": 19320352
+  },
+  {
+    "asset": "coast_rocks_01",
+    "page": "https://polyhaven.com/a/coast_rocks_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/coast_rocks_01/coast_rocks_01_nor_gl_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/coast_rocks_01/textures/coast_rocks_01_nor_gl_1k.jpg",
+    "sha256": "848292bb5fd720fefd37fa94326071bc81e2290bbf409bb019efb6fb30399809",
+    "bytes": 918464
+  },
+  {
+    "asset": "coast_rocks_01",
+    "page": "https://polyhaven.com/a/coast_rocks_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/coast_rocks_01/coast_rocks_01_arm_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/coast_rocks_01/textures/coast_rocks_01_arm_1k.jpg",
+    "sha256": "13fddfb9051fa36720b5c35f4f52a49826b1e3a4063f66e440a7033dd90c30cc",
+    "bytes": 602817
+  },
+  {
+    "asset": "coast_rocks_01",
+    "page": "https://polyhaven.com/a/coast_rocks_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/coast_rocks_01/coast_rocks_01_diff_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/coast_rocks_01/textures/coast_rocks_01_diff_1k.jpg",
+    "sha256": "a6814ce9c023fc7c90eb38c2afe658a3076b94ed44d136c2dbd3605d18fade7b",
+    "bytes": 839761
+  },
+  {
+    "asset": "rock_07",
+    "page": "https://polyhaven.com/a/rock_07",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/rock_07/rock_07_1k.gltf",
+    "file": "binaries/project/models/island_biomes/sources/rock_07/rock_07.gltf",
+    "sha256": "efcc2dcaa133ff8ad5c865dc2135772e8f5dbc83fa38db2ee2cf25382436b6e6",
+    "bytes": 2979
+  },
+  {
+    "asset": "rock_07",
+    "page": "https://polyhaven.com/a/rock_07",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/rock_07/rock_07.bin",
+    "file": "binaries/project/models/island_biomes/sources/rock_07/rock_07.bin",
+    "sha256": "e4a532a6d6cf4a08c288f501b790f32cba0528136a29959ce774c3cd39369e7e",
+    "bytes": 468936
+  },
+  {
+    "asset": "rock_07",
+    "page": "https://polyhaven.com/a/rock_07",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/rock_07/rock_07_arm_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/rock_07/textures/rock_07_arm_1k.jpg",
+    "sha256": "1ed76e9a8542c76bdc6b7b018720ae1f52cd75d9f5ae719f613de3f5032cf4da",
+    "bytes": 309735
+  },
+  {
+    "asset": "rock_07",
+    "page": "https://polyhaven.com/a/rock_07",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/rock_07/rock_07_diff_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/rock_07/textures/rock_07_diff_1k.jpg",
+    "sha256": "8ff1965aa1664cc4abcc0131c44ee2b97ab14d6e131d7a51429ff261eeb101c8",
+    "bytes": 635452
+  },
+  {
+    "asset": "rock_07",
+    "page": "https://polyhaven.com/a/rock_07",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/rock_07/rock_07_nor_gl_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/rock_07/textures/rock_07_nor_gl_1k.jpg",
+    "sha256": "57cb2210951aeb376164fce5f7c65f03e5599def04873b56cad0f173c275d78d",
+    "bytes": 766986
+  },
+  {
+    "asset": "boulder_01",
+    "page": "https://polyhaven.com/a/boulder_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/boulder_01/boulder_01_1k.gltf",
+    "file": "binaries/project/models/island_biomes/sources/boulder_01/boulder_01.gltf",
+    "sha256": "51487934db898b4c24072780a451e34eca5c02e3ada24a62bbc600bbc4019e92",
+    "bytes": 2773
+  },
+  {
+    "asset": "boulder_01",
+    "page": "https://polyhaven.com/a/boulder_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/boulder_01/boulder_01_arm_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/boulder_01/textures/boulder_01_arm_1k.jpg",
+    "sha256": "c57187c5746b6be913fa53846cb44ff78743e7ca5000f131c9627b99563c2b87",
+    "bytes": 659386
+  },
+  {
+    "asset": "boulder_01",
+    "page": "https://polyhaven.com/a/boulder_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/boulder_01/boulder_01_diff_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/boulder_01/textures/boulder_01_diff_1k.jpg",
+    "sha256": "c38f0e918f6dc16b8d386ba3cdd89805c78320c119a1ceec85856f82b09a65b8",
+    "bytes": 987467
+  },
+  {
+    "asset": "boulder_01",
+    "page": "https://polyhaven.com/a/boulder_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/boulder_01/boulder_01.bin",
+    "file": "binaries/project/models/island_biomes/sources/boulder_01/boulder_01.bin",
+    "sha256": "7f5b06503d62bd95bfe9c6b8a354a5cc8ff04a4d271a8cf87a3e3125db4232d7",
+    "bytes": 2938808
+  },
+  {
+    "asset": "boulder_01",
+    "page": "https://polyhaven.com/a/boulder_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/boulder_01/boulder_01_nor_gl_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/boulder_01/textures/boulder_01_nor_gl_1k.jpg",
+    "sha256": "0810cf6e89d89bb6eb065b4d2e2855288f5dcbd2c15c6e40ab90d462021b50aa",
+    "bytes": 1183552
+  },
+  {
+    "asset": "rock_09",
+    "page": "https://polyhaven.com/a/rock_09",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/rock_09/rock_09_1k.gltf",
+    "file": "binaries/project/models/island_biomes/sources/rock_09/rock_09.gltf",
+    "sha256": "636e57eb0090889627da18edaec202ff9f65f83101b94f91b7da4d21dc080ab9",
+    "bytes": 2745
+  },
+  {
+    "asset": "rock_09",
+    "page": "https://polyhaven.com/a/rock_09",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/rock_09/rock_09_arm_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/rock_09/textures/rock_09_arm_1k.jpg",
+    "sha256": "594e2cec49e6bb40bd9bab2649e37dcc261079456cf4d6f680f56770c19db5ea",
+    "bytes": 322950
+  },
+  {
+    "asset": "rock_09",
+    "page": "https://polyhaven.com/a/rock_09",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/rock_09/rock_09_nor_gl_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/rock_09/textures/rock_09_nor_gl_1k.jpg",
+    "sha256": "2195b5c7da3a23af2a5f93dbb20f38bc069028509b106397bc8d2aee0bc55729",
+    "bytes": 757031
+  },
+  {
+    "asset": "rock_09",
+    "page": "https://polyhaven.com/a/rock_09",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/rock_09/rock_09_diff_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/rock_09/textures/rock_09_diff_1k.jpg",
+    "sha256": "afb7ae5ae82238d304aba589391ac6bc87f7cf1dbfe50980c21f762cfdd87efd",
+    "bytes": 595103
+  },
+  {
+    "asset": "rock_09",
+    "page": "https://polyhaven.com/a/rock_09",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/rock_09/rock_09.bin",
+    "file": "binaries/project/models/island_biomes/sources/rock_09/rock_09.bin",
+    "sha256": "780c37d6fc11ca3a01c3763535ef883908b6007271a46bd446d2289ded820751",
+    "bytes": 286592
+  },
+  {
+    "asset": "shrub_01",
+    "page": "https://polyhaven.com/a/shrub_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/shrub_01/shrub_01_1k.gltf",
+    "file": "binaries/project/models/island_biomes/sources/shrub_01/shrub_01.gltf",
+    "sha256": "c3bb3340687d46c684b9dab82f5b2f92b7b0fe761842423d3c9e19f59a839393",
+    "bytes": 2895
+  },
+  {
+    "asset": "shrub_01",
+    "page": "https://polyhaven.com/a/shrub_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/shrub_01/shrub_01_nor_gl_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/shrub_01/textures/shrub_01_nor_gl_1k.jpg",
+    "sha256": "076870a39a4e21a364cf94566e6dd1852a29045fdf1f23393637235b19d1c2e8",
+    "bytes": 746497
+  },
+  {
+    "asset": "shrub_01",
+    "page": "https://polyhaven.com/a/shrub_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/shrub_01/shrub_01.bin",
+    "file": "binaries/project/models/island_biomes/sources/shrub_01/shrub_01.bin",
+    "sha256": "a8646f51386c84b12a6be8324dd0c2357c393c9108aac911847a203cf490b426",
+    "bytes": 5239664
+  },
+  {
+    "asset": "shrub_01",
+    "page": "https://polyhaven.com/a/shrub_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/shrub_01/shrub_01_arm_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/shrub_01/textures/shrub_01_arm_1k.jpg",
+    "sha256": "8faecdc28d8f03ba0ac139be16e617e8bfd0778780ec1d7850812230378b89be",
+    "bytes": 386309
+  },
+  {
+    "asset": "shrub_01",
+    "page": "https://polyhaven.com/a/shrub_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/shrub_01/shrub_01_diff_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/shrub_01/textures/shrub_01_diff_1k.jpg",
+    "sha256": "fe60e639d694e1807c0a3ae97dd1d5a7e7b3f84e5fc32d0610b868ce48f36331",
+    "bytes": 502162
+  },
+  {
+    "asset": "shrub_02",
+    "page": "https://polyhaven.com/a/shrub_02",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/shrub_02/shrub_02_1k.gltf",
+    "file": "binaries/project/models/island_biomes/sources/shrub_02/shrub_02.gltf",
+    "sha256": "99de0a70fe88ad414615cc8d8e020617c8512e2abfe08b911b153a6fcc40d93e",
+    "bytes": 8083
+  },
+  {
+    "asset": "shrub_02",
+    "page": "https://polyhaven.com/a/shrub_02",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/shrub_02/shrub_02_arm_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/shrub_02/textures/shrub_02_arm_1k.jpg",
+    "sha256": "7186bf604d5c02f873aef6de2346cc06b6fa48f47d054edbef36d2c3772c0890",
+    "bytes": 313715
+  },
+  {
+    "asset": "shrub_02",
+    "page": "https://polyhaven.com/a/shrub_02",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/shrub_02/shrub_02_nor_gl_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/shrub_02/textures/shrub_02_nor_gl_1k.jpg",
+    "sha256": "54c24e433365d5410223b7ebd2b33042b80831f80976e10768114db5ef6911d7",
+    "bytes": 490815
+  },
+  {
+    "asset": "shrub_02",
+    "page": "https://polyhaven.com/a/shrub_02",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/shrub_02/shrub_02.bin",
+    "file": "binaries/project/models/island_biomes/sources/shrub_02/shrub_02.bin",
+    "sha256": "5c1b79da1cfdbac90599542ccd1f75ba433a3a4d356b1ea03655adb39b0e2c96",
+    "bytes": 758692
+  },
+  {
+    "asset": "shrub_02",
+    "page": "https://polyhaven.com/a/shrub_02",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/shrub_02/shrub_02_diff_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/shrub_02/textures/shrub_02_diff_1k.jpg",
+    "sha256": "9956eff294034d70516d867e9668428a23d782feb3d4c34061dce5e44bacd5a8",
+    "bytes": 395120
+  },
+  {
+    "asset": "shrub_04",
+    "page": "https://polyhaven.com/a/shrub_04",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/shrub_04/shrub_04_1k.gltf",
+    "file": "binaries/project/models/island_biomes/sources/shrub_04/shrub_04.gltf",
+    "sha256": "782832cbc57e96686b78c6ef9df6234c25f564f78421c8ed4bd42c3631f5aeae",
+    "bytes": 2882
+  },
+  {
+    "asset": "shrub_04",
+    "page": "https://polyhaven.com/a/shrub_04",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/shrub_04/shrub_04_nor_gl_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/shrub_04/textures/shrub_04_nor_gl_1k.jpg",
+    "sha256": "200d791e0474495bfc876ba1c289dade669c6a5b124647c55bc840a875f6b51c",
+    "bytes": 449241
+  },
+  {
+    "asset": "shrub_04",
+    "page": "https://polyhaven.com/a/shrub_04",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/shrub_04/shrub_04_diff_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/shrub_04/textures/shrub_04_diff_1k.jpg",
+    "sha256": "0b0fa0a474753d13f3093858cea79d0de05da1e6a0c5d6e181cd351080980b6c",
+    "bytes": 373350
+  },
+  {
+    "asset": "shrub_04",
+    "page": "https://polyhaven.com/a/shrub_04",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/shrub_04/shrub_04_arm_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/shrub_04/textures/shrub_04_arm_1k.jpg",
+    "sha256": "d1085df021928b29b0f38dde7e58e9a2e304c4e8d838e390b37cf57f8aa492e8",
+    "bytes": 332957
+  },
+  {
+    "asset": "shrub_04",
+    "page": "https://polyhaven.com/a/shrub_04",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/shrub_04/shrub_04.bin",
+    "file": "binaries/project/models/island_biomes/sources/shrub_04/shrub_04.bin",
+    "sha256": "cb442c39682e54cc63f912aa78ab17a03566f947a61adbbbaaa6473166744f01",
+    "bytes": 749084
+  },
+  {
+    "asset": "pine_tree_01",
+    "page": "https://polyhaven.com/a/pine_tree_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/1k/pine_tree_01/pine_tree_01_bark_diff_1k.png",
+    "file": "binaries/project/models/island_biomes/sources/pine_textures/bark_diff.png",
+    "sha256": "91e79e9bd1d5d68922262b4eee752808c49c55c2941b531a65b586dae8984bc9",
+    "bytes": 5568559
+  },
+  {
+    "asset": "pine_tree_01",
+    "page": "https://polyhaven.com/a/pine_tree_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/1k/pine_tree_01/pine_tree_01_bark_nor_gl_1k.png",
+    "file": "binaries/project/models/island_biomes/sources/pine_textures/bark_nor_gl.png",
+    "sha256": "d0cdc8ff2f74da8023a1f18512f9db643284d94a698a4ac491f63c4c11c95211",
+    "bytes": 5640903
+  },
+  {
+    "asset": "pine_tree_01",
+    "page": "https://polyhaven.com/a/pine_tree_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/1k/pine_tree_01/pine_tree_01_bark_rough_1k.png",
+    "file": "binaries/project/models/island_biomes/sources/pine_textures/bark_rough.png",
+    "sha256": "63c3785c47a2f4193e5054d9f8481da0bd41bc2bfc1a993cd8785fad6339fe97",
+    "bytes": 2488380
+  },
+  {
+    "asset": "pine_tree_01",
+    "page": "https://polyhaven.com/a/pine_tree_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/1k/pine_tree_01/pine_tree_01_twig_diff_1k.png",
+    "file": "binaries/project/models/island_biomes/sources/pine_textures/twig_diff.png",
+    "sha256": "d02c031de64b8ad671f3dd0da19870fa4783d912ae6674aeab0702871deeaeaa",
+    "bytes": 3208228
+  },
+  {
+    "asset": "pine_tree_01",
+    "page": "https://polyhaven.com/a/pine_tree_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/1k/pine_tree_01/pine_tree_01_twig_alpha_1k.png",
+    "file": "binaries/project/models/island_biomes/sources/pine_textures/twig_alpha.png",
+    "sha256": "6f91aa99f2c27108d6f817f874954aa7df8bfbb4dea2673e9322555a6ae79d99",
+    "bytes": 351928
+  },
+  {
+    "asset": "pine_tree_01",
+    "page": "https://polyhaven.com/a/pine_tree_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/1k/pine_tree_01/pine_tree_01_twig_nor_gl_1k.png",
+    "file": "binaries/project/models/island_biomes/sources/pine_textures/twig_nor_gl.png",
+    "sha256": "4b79eda7fe8843d71f9289bd0d3897a1b0a7310b1872b390a589a04b510b0597",
+    "bytes": 3021524
+  },
+  {
+    "asset": "pine_tree_01",
+    "page": "https://polyhaven.com/a/pine_tree_01",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/1k/pine_tree_01/pine_tree_01_twig_rough_1k.png",
+    "file": "binaries/project/models/island_biomes/sources/pine_textures/twig_rough.png",
+    "sha256": "c12da3dd6c1588f50307d96807d78115757f110bc562811369d90b86bd6fddc7",
+    "bytes": 1342516
+  }
+]

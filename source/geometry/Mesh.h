@@ -57,6 +57,7 @@ namespace spartan
         PostProcessOptimize             = 1 << 5,
         PostProcessGenerateLods         = 1 << 6,
         PostProcessPreserveTerrainEdges = 1 << 7,
+        PostProcessPreserveLod0         = 1 << 8, // keep authored detail, optimize layout without reducing geometry
     };
 
     enum class MeshType

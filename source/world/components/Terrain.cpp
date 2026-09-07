@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "pch.h"
+#include "../../profiling/Profiler.h"
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -28,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <functional>
 #include <unordered_set>
 #include "Terrain.h"
+#include "../TerrainHabitat.h"
 #include "Render.h"
 #include "Physics.h"
 #include "Water.h"
@@ -934,11 +936,11 @@ namespace spartan
             return nullptr;
         }
 
-        bool platform_occupant_alive(TerrainPlatform& pad)
+        bool platform_occupant_alive(TerrainPlatform& pad, Entity* known_occupant = nullptr)
         {
             if (pad.entity_id != 0)
             {
-                Entity* entity = World::GetEntityById(pad.entity_id);
+                Entity* entity = known_occupant ? known_occupant : World::GetEntityById(pad.entity_id);
                 if (entity)
                 {
                     return entity->GetActive();
@@ -2119,6 +2121,10 @@ namespace spartan
 
                 float weight = 1.0f;
 
+                if (!footprint)
+                    weight *= terrain_habitat::weight(layer.habitat,
+                        position.x + ctx.tile_offset.x, position.z + ctx.tile_offset.z);
+
                 if (!footprint && layer.height_fade > 0.0f)
                 {
                     weight *= saturate((height - layer.height_min) / layer.height_fade);
@@ -2854,6 +2860,8 @@ namespace spartan
 
             layer_node.append_attribute("name")                = layer.name.c_str();
             layer_node.append_attribute("mesh_path")            = layer.mesh_path.c_str();
+            layer_node.append_attribute("mesh_variants")        = layer.mesh_variants.c_str();
+            layer_node.append_attribute("habitat")              = layer.habitat;
             layer_node.append_attribute("material_folder")      = layer.material_folder.c_str();
             layer_node.append_attribute("enabled")              = layer.enabled;
             layer_node.append_attribute("kind")                 = static_cast<uint32_t>(layer.kind);
@@ -3037,6 +3045,8 @@ namespace spartan
 
                 layer.name                 = layer_node.attribute("name").as_string("");
                 layer.mesh_path            = layer_node.attribute("mesh_path").as_string("");
+                layer.mesh_variants        = layer_node.attribute("mesh_variants").as_string("");
+                layer.habitat              = layer_node.attribute("habitat").as_uint(0);
                 layer.material_folder      = layer_node.attribute("material_folder").as_string("");
                 layer.enabled              = layer_node.attribute("enabled").as_bool(false);
                 layer.mountain_rocks       = layer_node.attribute("mountain_rocks").as_bool(false);
@@ -3810,6 +3820,7 @@ namespace spartan
 
     void Terrain::Tick()
     {
+        SP_PROFILE_CPU();
         if (m_gpu_commit_pending.exchange(false, memory_order_acq_rel))
         {
             CommitGpu();
@@ -7725,11 +7736,29 @@ namespace spartan
             return;
         }
 
+        if (m_platforms.empty()) return;
+
+        // A dense island has tens of thousands of entities. Resolve all pad IDs
+        // in one pass instead of linearly searching the world once for every pad.
+        // This snapshot is used only during this main-thread call; nothing is
+        // cached across deletion, reimport or world reload. Missing IDs still
+        // use the existing pending-entity lookup and spatial rebinding below.
+        unordered_map<uint64_t, Entity*> occupants;
+        occupants.reserve(m_platforms.size());
+        for (const TerrainPlatform& pad : m_platforms)
+            if (pad.entity_id != 0) occupants.emplace(pad.entity_id, nullptr);
+        for (Entity* entity : World::GetEntities())
+        {
+            auto found = occupants.find(entity->GetObjectId());
+            if (found != occupants.end() && !found->second) found->second = entity;
+        }
+
         vector<TerrainPlatform> gone;
         gone.reserve(m_platforms.size());
         for (TerrainPlatform& pad : m_platforms)
         {
-            if (!platform_occupant_alive(pad))
+            auto found = occupants.find(pad.entity_id);
+            if (!platform_occupant_alive(pad, found != occupants.end() ? found->second : nullptr))
             {
                 gone.push_back(pad);
             }

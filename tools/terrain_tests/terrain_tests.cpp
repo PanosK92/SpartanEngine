@@ -28,9 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <vector>
 #include "../../source/world/TerrainPlacement.h"
+#include "../../source/world/TerrainHabitat.h"
 #include "../../source/world/TerrainSystem.h"
 #include "../../source/rendering/Instance.h"
 #include "../../source/rendering/Color.h"
+#include "../../source/geometry/GeometryProcessing.h"
 #include "../../data/shaders/shared_buffers.h"
 
 using namespace spartan;
@@ -207,5 +209,85 @@ int main()
     mountain_formations(layer, bounds, -400, -400, 400, 400, 0, Vector3::Zero, hillside, again);
     assert(again.empty());
 
-    std::cout << "Terrain regressions passed: height/normal sampling, tile seams, deterministic formations, scale hierarchy, connected slabs, asset units, footprint exclusions, budgets\n";
+    // Species partition one placement budget, independent of batching and tile refresh.
+    std::array<uint32_t,3> variants{};
+    for (uint32_t i=0;i<12000;++i)
+    {
+        const uint32_t choice=spartan::terrain_habitat::variant(37,i,3511,3);
+        assert(choice<3);
+        variants[choice]++;
+    }
+    for (uint32_t count:variants) assert(count>3700 && count<4300);
+    uint32_t clearings=0,dense=0;
+    for (int z=-3000;z<=3000;z+=30)
+    for (int x=-3000;x<=3000;x+=30)
+    {
+        const float w=spartan::terrain_habitat::weight(1,float(x),float(z));
+        clearings+=w<.05f; dense+=w>.8f;
+        for(uint32_t habitat=0;habitat<=4;++habitat)
+        {
+            const float a=spartan::terrain_habitat::weight(habitat,float(x)-.01f,float(z));
+            const float b=spartan::terrain_habitat::weight(habitat,float(x)+.01f,float(z));
+            assert(a>=0 && a<=1 && b>=0 && b<=1);
+            assert(std::abs(a-b)<.005f); // continuous through zero and all tile/grid seams
+        }
+    }
+    assert(clearings>1000 && dense>1000);
+    assert(spartan::terrain_habitat::weight(0,100,200)==1);
+    // A forest canopy is many separate textured cards. Reduction must not weld
+    // nearby cards into new triangles while claiming to preserve their UV seams.
+    std::vector<RHI_Vertex_PosTexNorTan> cards;
+    std::vector<uint32_t> card_indices;
+    std::mt19937 foliage_rng(713);
+    std::uniform_real_distribution<float> foliage_random(-1.0f,1.0f);
+    for (uint32_t card=0;card<256;++card)
+    {
+        const Vector3 centre(foliage_random(foliage_rng),foliage_random(foliage_rng),foliage_random(foliage_rng));
+        const Vector3 u(foliage_random(foliage_rng)*.2f,foliage_random(foliage_rng)*.2f,foliage_random(foliage_rng)*.2f);
+        const Vector3 v(foliage_random(foliage_rng)*.2f,foliage_random(foliage_rng)*.2f,foliage_random(foliage_rng)*.2f);
+        const uint32_t base=static_cast<uint32_t>(cards.size());
+        cards.emplace_back(centre-u-v,Vector2(0,0));
+        cards.emplace_back(centre+u-v,Vector2(1,0));
+        cards.emplace_back(centre+u+v,Vector2(1,1));
+        cards.emplace_back(centre-u+v,Vector2(0,1));
+        for (uint32_t index:{0u,1u,2u,0u,2u,3u}) card_indices.push_back(base+index);
+    }
+    const auto original_cards=cards;
+    geometry_processing::simplify(card_indices,cards,12,true,false);
+    assert(!card_indices.empty() && card_indices.size()%3==0);
+    const auto original_card=[&](uint32_t index)
+    {
+        assert(index<cards.size());
+        const auto p=cards[index].get_position();
+        for(size_t j=0;j<original_cards.size();++j)
+            if(original_cards[j].get_position()==p) return j/4;
+        assert(false); return size_t(0);
+    };
+    for (size_t i=0;i<card_indices.size();i+=3)
+    {
+        assert(original_card(card_indices[i])==original_card(card_indices[i+1]));
+        assert(original_card(card_indices[i])==original_card(card_indices[i+2]));
+    }
+    // Distance LOD pruning must still retain original card vertices and UVs,
+    // never invent triangles joining disconnected cards.
+    cards = original_cards;
+    card_indices.clear();
+    for (uint32_t base=0; base<cards.size(); base+=4)
+        for (uint32_t index:{0u,1u,2u,0u,2u,3u}) card_indices.push_back(base+index);
+    const size_t full_card_index_count = card_indices.size();
+    geometry_processing::simplify(card_indices,cards,96,true,false,true);
+    assert(!card_indices.empty() && card_indices.size()<full_card_index_count);
+    for (size_t i=0;i<card_indices.size();i+=3)
+    {
+        assert(original_card(card_indices[i])==original_card(card_indices[i+1]));
+        assert(original_card(card_indices[i])==original_card(card_indices[i+2]));
+    }
+    for (const auto& vertex:cards)
+    {
+        bool matched=false;
+        for (const auto& original:original_cards)
+            if(vertex.get_position()==original.get_position() && vertex.get_uv()==original.get_uv()) matched=true;
+        assert(matched);
+    }
+    std::cout << "Terrain regressions passed: sampling, seams, formations, footprints, budgets, habitats, variants and foliage UV preservation\n";
 }

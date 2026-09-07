@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============
 #include "pch.h"
 #include "TerrainLayer.h"
+#include "IslandScatterDefaults.h"
 //=======================
 
 using namespace std;
@@ -398,8 +399,9 @@ namespace spartan
             s.flags                  = TerrainScatterFlags_None;
         }
 
-        // slots 6 and 7 stay empty, they are there so a world can add its own scatter without
-        // touching the engine, point one at a mesh, name it and switch it on
+        // The project palette uses shared ecological patches and interchangeable
+        // models. Existing worlds retain their explicitly serialized rules.
+        ApplyIslandScatterDefaults(layers);
         built = true;
         return layers;
     }

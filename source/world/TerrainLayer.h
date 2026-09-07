@@ -135,6 +135,10 @@ namespace spartan
         std::string name;
         // mesh asset, or builtin/grass_blade and builtin/flower for the generated foliage meshes
         std::string mesh_path;
+        // Additional interchangeable meshes, separated by semicolons. The shared
+        // density budget is partitioned between them, never multiplied.
+        std::string mesh_variants;
+        uint32_t habitat            = 0; // 0 any, 1 woodland, 2 olive grove, 3 scrub, 4 rock band
         // optional folder under project/materials, when set it replaces the imported materials
         std::string material_folder;
         bool enabled                = false;

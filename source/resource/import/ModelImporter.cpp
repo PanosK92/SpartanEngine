@@ -636,11 +636,13 @@ namespace spartan
             return MaterialTextureType::Color;
         }
 
-        MaterialTextureType slot_from_assimp(aiTextureType type, const string& path)
+        MaterialTextureType slot_from_assimp(aiTextureType type, const string& path, bool typed_slots)
         {
             // fbx often stores an opacity map as a second diffuse, the filename is the source of truth
             const MaterialTextureType from_name = slot_from_texture_name(path);
-            if (from_name != MaterialTextureType::Color)
+            // glTF has explicit texture roles. A packed base colour may be named
+            // "diff-alpha", but its RGBA data still belongs in the colour slot.
+            if (!typed_slots && from_name != MaterialTextureType::Color)
             {
                 return from_name;
             }
@@ -681,7 +683,8 @@ namespace spartan
             const string& model_directory,
             const unordered_map<string, string>& directory_files,
             const shared_ptr<Material>& material,
-            const aiMaterial* material_assimp
+            const aiMaterial* material_assimp,
+            bool typed_slots
         )
         {
             for (int type = static_cast<int>(aiTextureType_NONE) + 1; type <= AI_TEXTURE_TYPE_MAX; type++)
@@ -702,7 +705,7 @@ namespace spartan
                         continue;
                     }
 
-                    const MaterialTextureType slot = slot_from_assimp(assimp_type, texture_path.data);
+                    const MaterialTextureType slot = slot_from_assimp(assimp_type, texture_path.data, typed_slots);
                     if (material->HasTextureOfType(slot))
                     {
                         continue;
@@ -1054,7 +1057,9 @@ namespace spartan
             }
             material->SetResourceFilePath(material_path);
 
-            bind_assimp_textures(ctx.model_directory, ctx.directory_files, material, material_assimp);
+            const string extension = FileSystem::GetExtensionFromFilePath(ctx.file_path);
+            const bool is_gltf = (extension == ".gltf") || (extension == ".glb");
+            bind_assimp_textures(ctx.model_directory, ctx.directory_files, material, material_assimp, is_gltf);
 
             if (material->HasTextureOfType(MaterialTextureType::Color) &&
                 material->HasTextureOfType(MaterialTextureType::AlphaMask))
@@ -1064,8 +1069,6 @@ namespace spartan
             }
 
             // gltf detection (including .glb binary format)
-            const string extension = FileSystem::GetExtensionFromFilePath(ctx.file_path);
-            const bool is_gltf = (extension == ".gltf") || (extension == ".glb");
             material->SetProperty(MaterialProperty::Gltf, is_gltf ? 1.0f : 0.0f);
 
             // color, prefer gltf base color when the exporter wrote both

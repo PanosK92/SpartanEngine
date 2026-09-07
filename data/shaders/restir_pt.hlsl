@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "common.hlsl"
+#include "common_ray_hit.hlsl"
 #include "restir_reservoir.hlsl"
 //==============================
 
@@ -31,17 +32,20 @@ static const uint  INITIAL_CANDIDATE_SAMPLES_MAX   = 8;
 static const uint  LIGHT_RIS_CANDIDATE_SAMPLES_MAX = 64;
 static const float MIN_COS_AT_PRIMARY              = 1e-3f;
 
-struct [raypayload] PathPayload
+struct PathSurface
 {
-    float3 hit_position     : read(caller) : write(closesthit);
-    float3 hit_normal       : read(caller) : write(closesthit);
-    float3 geometric_normal : read(caller) : write(closesthit);
-    float3 albedo           : read(caller) : write(closesthit);
-    float3 emission         : read(caller) : write(closesthit, miss);
-    float  roughness        : read(caller) : write(closesthit);
-    float  metallic         : read(caller) : write(closesthit);
-    bool   hit              : read(caller) : write(closesthit, miss);
+    float3 hit_position;
+    float3 hit_normal;
+    float3 geometric_normal;
+    float3 albedo;
+    float3 emission;
+    float  roughness;
+    float  metallic;
+    bool   hit;
 };
+
+// Read payload fields at the call site so DXC's payload-access analysis sees them.
+PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint primitive_index, uint barycentrics_packed, RayDesc ray);
 
 // power proportional light pick weight, lin 2022 6.1, all four light types are eligible
 float light_pick_weight(LightParameters l)
@@ -157,7 +161,7 @@ PathSample sample_emissive_tri_candidate(
 // throughput starts at 1/pdf_at_rc so the caller can re-multiply by f_rc at shift time
 // out_first_dir is the direction leaving rc into the suffix
 void trace_rc_suffix(
-    PathPayload rc,
+    PathSurface rc,
     float3 rc_view_dir,
     uint max_bounces_remaining,
     inout uint seed,
@@ -172,7 +176,7 @@ void trace_rc_suffix(
     if (max_bounces_remaining < 1)
         return;
 
-    PathPayload cur            = rc;
+    PathSurface cur            = rc;
     float3      view_dir       = rc_view_dir;
     float3      throughput     = float3(1, 1, 1);
     float       prev_brdf_pdf  = 0.0f;
@@ -222,9 +226,10 @@ void trace_rc_suffix(
         ray.TMin      = RESTIR_RAY_T_MIN;
         ray.TMax      = 1000.0f;
 
-        PathPayload next;
-        next.hit = false;
-        TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, next);
+        HitPayload hit_record;
+        TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, hit_record);
+        PathSurface next = reconstruct_path_surface(
+            hit_record.hit_distance, hit_record.instance_index, hit_record.primitive_index, hit_record.barycentrics_packed, ray);
 
         if (!next.hit)
         {
@@ -249,7 +254,7 @@ void trace_rc_suffix(
 
 // gathers the rc nee + emission (lambert only, view independent) and the suffix radiance past rc
 void accumulate_subpath_at_rc(
-    PathPayload rc,
+    PathSurface rc,
     float3 rc_view_dir,
     uint max_bounces,
     inout uint seed,
@@ -495,9 +500,10 @@ PathSample trace_path_from_primary(
     ray.TMin      = RESTIR_RAY_T_MIN;
     ray.TMax      = 1000.0f;
 
-    PathPayload hit;
-    hit.hit = false;
-    TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, hit);
+    HitPayload hit_record;
+    TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, hit_record);
+    PathSurface hit = reconstruct_path_surface(
+        hit_record.hit_distance, hit_record.instance_index, hit_record.primitive_index, hit_record.barycentrics_packed, ray);
 
     if (!hit.hit)
     {
@@ -755,7 +761,6 @@ void ray_gen()
     float w_clamp = get_w_clamp_for_sample(reservoir.sample);
     reservoir.W   = soft_clamp_w(reservoir.W, w_clamp);
 
-
     // stamp the source primary g-buffer onto the chosen sample, all candidates from this pixel
     // share the same primary surface so we only need to write it once after ris finalization
     // downstream passes read these instead of sampling the current g-buffer at a reprojected
@@ -792,18 +797,18 @@ void ray_gen()
     tex_uav[launch_id] = float4(canonical_gi, hit_dist);
 }
 
-[shader("closesthit")]
-void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint primitive_index, uint barycentrics_packed, RayDesc ray)
 {
-    payload.hit = true;
+    PathSurface payload = (PathSurface)0;
+    payload.hit = ray_t >= 0.0f;
+    if (!payload.hit)
+        return payload;
 
-    uint material_index    = InstanceID();
+    GeometryInfo geo = geometry_infos[instance_index];
+
+    uint material_index    = geo.material_index;
     MaterialParameters mat = material_parameters[material_index];
 
-    uint instance_index = InstanceIndex();
-    GeometryInfo geo    = geometry_infos[instance_index];
-
-    uint primitive_index = PrimitiveIndex();
     uint index_base      = geo.index_offset + primitive_index * 3;
     uint i0 = geometry_indices[index_base + 0];
     uint i1 = geometry_indices[index_base + 1];
@@ -813,8 +818,7 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     PulledVertex pv1 = geometry_vertices[geo.vertex_offset + i1];
     PulledVertex pv2 = geometry_vertices[geo.vertex_offset + i2];
 
-    float3 bary = float3(1.0f - attribs.barycentrics.x - attribs.barycentrics.y,
-                         attribs.barycentrics.x, attribs.barycentrics.y);
+    float3 bary = unpack_hit_barycentrics(barycentrics_packed);
 
     float3 n0 = unpack_vertex_oct(pv0.normal);
     float3 n1 = unpack_vertex_oct(pv1.normal);
@@ -830,13 +834,13 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     float3 tangent_object = normalize(t0 * bary.x + t1 * bary.y + t2 * bary.z);
     float2 texcoord       = uv0 * bary.x + uv1 * bary.y + uv2 * bary.z;
 
-    float3x3 obj_to_world = (float3x3)ObjectToWorld4x3();
-    float3x3 world_to_obj = (float3x3)WorldToObject4x3();
+    float3x3 obj_to_world = float3x3(geo.object_to_world_0.xyz, geo.object_to_world_1.xyz, geo.object_to_world_2.xyz);
+    float3x3 world_to_obj = float3x3(geo.world_to_object_0.xyz, geo.world_to_object_1.xyz, geo.world_to_object_2.xyz);
     float3 normal_world   = normalize(mul(normal_object, transpose(world_to_obj)));
     float3 tangent_world  = normalize(mul(tangent_object, obj_to_world));
 
     // full uv state is per-renderable, fetched from geometry_infos[InstanceIndex()]
-    float3 hit_position = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+    float3 hit_position = ray.Origin + ray.Direction * ray_t;
     if (mat.is_terrain())
     {
         // terrain maps planar world xz with tiling as repeats per meter, matches the raster path
@@ -851,7 +855,7 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     if (geo.uv_rotation != 0.0f)
         texcoord = rotate_uv_90(texcoord, geo.uv_rotation);
 
-    float dist      = RayTCurrent();
+    float dist      = ray_t;
     float mip_level = clamp(log2(max(dist * 0.5f, 1.0f)), 0.0f, 4.0f);
 
     // terrain, same layer weights as the raster path, one layer and no hex tiling because a
@@ -897,12 +901,12 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     }
     roughness = max(roughness, 0.04f);
 
-    float3x3 obj_to_world_3x3 = (float3x3)ObjectToWorld4x3();
+    float3x3 obj_to_world_3x3 = float3x3(geo.object_to_world_0.xyz, geo.object_to_world_1.xyz, geo.object_to_world_2.xyz);
     float3 edge1_world   = mul(pv1.position - pv0.position, obj_to_world_3x3);
     float3 edge2_world   = mul(pv2.position - pv0.position, obj_to_world_3x3);
     float3 geometric_normal = normalize(cross(edge1_world, edge2_world));
 
-    if (dot(geometric_normal, WorldRayDirection()) > 0.0f)
+    if (dot(geometric_normal, ray.Direction) > 0.0f)
         geometric_normal = -geometric_normal;
     if (dot(normal_world, geometric_normal) < 0.0f)
         normal_world = -normal_world;
@@ -967,11 +971,5 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     payload.emission         = emission;
     payload.roughness        = roughness;
     payload.metallic         = metallic;
-}
-
-[shader("miss")]
-void miss(inout PathPayload payload : SV_RayPayload)
-{
-    payload.hit      = false;
-    payload.emission = float3(0.0f, 0.0f, 0.0f);
+    return payload;
 }

@@ -3362,6 +3362,25 @@ namespace spartan
             }
         }
 
+        std::string command_profiler_record(const McpRequest& request)
+        {
+            const std::string action = get_argument(request, "action").value_or("status");
+            if (action == "start")
+            {
+                if (!Profiler::StartRecording()) return json_error("profiler is already recording or stopping");
+            }
+            else if (action == "stop")
+            {
+                Profiler::StopRecording();
+            }
+            else if (action != "status")
+            {
+                return json_error("action must be start, stop or status");
+            }
+            return "{\"ok\":true,\"recording\":" + json_bool(Profiler::IsRecording()) +
+                ",\"stopping\":" + json_bool(Profiler::IsRecordingStopping()) + "}";
+        }
+
         std::string command_profiler_snapshot(const McpRequest& request)
         {
             // optional filters, type is cpu, gpu or all, sort is duration or timeline
@@ -13762,6 +13781,7 @@ namespace spartan
             { "ping",                          [](const McpRequest&) { return command_ping(); } },
             { "engine_status",                 [](const McpRequest&) { return command_engine_status(); } },
             { "profiler_snapshot",             command_profiler_snapshot },
+            { "profiler_record",               command_profiler_record },
             { "engine_set_mode",               command_engine_set_mode },
             { "undo_redo",                     command_undo_redo },
             { "cvar_list",                     [](const McpRequest&) { return command_cvar_list(); } },

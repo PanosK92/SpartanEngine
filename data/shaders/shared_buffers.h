@@ -367,6 +367,17 @@ struct GeometryInfo
     SHARED_FLOAT2 uv_invert      SHARED_DEFAULT(spartan::math::Vector2::Zero);
     SHARED_FLOAT  uv_rotation    SHARED_DEFAULT(0.0f);
     SHARED_FLOAT  uv_world_space SHARED_DEFAULT(0.0f);
+
+    SHARED_UINT material_index;
+    SHARED_UINT padding_rt;
+    // Explicit rows of the CPU row-vector matrices, independent of HLSL matrix packing.
+    // Translation is reconstructed from the ray; only the linear transforms are needed.
+    SHARED_FLOAT4 object_to_world_0;
+    SHARED_FLOAT4 object_to_world_1;
+    SHARED_FLOAT4 object_to_world_2;
+    SHARED_FLOAT4 world_to_object_0;
+    SHARED_FLOAT4 world_to_object_1;
+    SHARED_FLOAT4 world_to_object_2;
 };
 
 // emissive triangle for the restir nee pool, 64 bytes
@@ -456,12 +467,14 @@ struct DrawData
     SHARED_FLOAT  max_render_distance_squared   SHARED_DEFAULT(0.0f);
 };
 
-// one cull task per (renderable lod, instance) tuple, the instance cull pass (phase a) dispatches over these
-// meshlet_index and instance_count are unused now, the meshlet range lives on DrawData and phase b expands it per survivor
+// One CPU record describes up to 64 consecutive instances at one LOD. GPU
+// lanes expand the range; this avoids per-instance CPU writes and uploads.
+#define INSTANCE_CULL_BATCH_SIZE 64u
+#define INSTANCE_CULL_DISPATCH_WIDTH 65535u
 struct CullTask
 {
     SHARED_UINT draw_index     SHARED_DEFAULT(0);
-    SHARED_UINT meshlet_index  SHARED_DEFAULT(0);
+    SHARED_UINT lod_reference_draw_index SHARED_DEFAULT(0);
     SHARED_UINT instance_index SHARED_DEFAULT(0);
     SHARED_UINT instance_count SHARED_DEFAULT(1);
 };
@@ -474,6 +487,16 @@ struct SurvivingInstance
     SHARED_UINT instance_index SHARED_DEFAULT(0);
 };
 
+// Optional root-wind cache. Overflow falls back to the identical mesh evaluator.
+#define TREE_WIND_CACHE_CAPACITY 65536u
+struct CachedTreeWind
+{
+    SHARED_FLOAT4 current_axis_drive;
+    SHARED_FLOAT4 current_phase_gust_micro;
+    SHARED_FLOAT4 previous_axis_drive;
+    SHARED_FLOAT4 previous_phase_gust_micro;
+};
+
 // emitted by the meshlet cull pass for every surviving (renderable lod, meshlet, instance) tuple
 // indexed by the triangle cull pass (one workgroup per surviving meshlet)
 struct MeshletInstance
@@ -481,7 +504,7 @@ struct MeshletInstance
     SHARED_UINT draw_index     SHARED_DEFAULT(0);
     SHARED_UINT meshlet_index  SHARED_DEFAULT(0);
     SHARED_UINT instance_index SHARED_DEFAULT(0);
-    SHARED_UINT padding0       SHARED_DEFAULT(0);
+    SHARED_UINT padding0       SHARED_DEFAULT(0); // root-wind cache slot + 1, zero uses the local evaluator
 };
 
 // per-meshlet bounding sphere and topology ranges
@@ -670,6 +693,8 @@ namespace spartan
     using Sb_CullTask          = CullTask;
     using Sb_SurvivingInstance = SurvivingInstance;
     using Sb_MeshletInstance   = MeshletInstance;
+    using Sb_CachedTreeWind    = CachedTreeWind;
+    static_assert(sizeof(Sb_CachedTreeWind) == 64);
     using Sb_Particle         = Particle;
     using Sb_EmitterParams    = EmitterParams;
     using Sb_GrassInstance    = GrassInstance;

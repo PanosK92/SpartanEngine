@@ -171,7 +171,7 @@ float3 compute_flower_color(float height_percent, uint instance_id)
 }
 
 #ifdef INDIRECT_DRAW
-gbuffer_vertex main_vs(uint vertex_id : SV_VertexID, uint view_id : SV_ViewID)
+gbuffer_indirect_vertex main_vs(uint vertex_id : SV_VertexID, uint view_id : SV_ViewID)
 {
     MeshletInstance mi;
     Vertex_PosUvNorTan input = pull_visible_triangle_vertex(vertex_id, mi);
@@ -223,11 +223,22 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index          = _draw.material_index;
-    return transform_to_clip_space(vertex, position_world, position_world_previous, view_id);
+    vertex = transform_to_clip_space(vertex, position_world, position_world_previous, view_id);
+#ifdef INDIRECT_DRAW
+    return pack_gbuffer_indirect(vertex, mi.draw_index);
+#else
+    return vertex;
+#endif
 }
 
+#ifdef INDIRECT_DRAW
+gbuffer main_ps(gbuffer_indirect_vertex packed, bool is_front_face : SV_IsFrontFace)
+{
+    gbuffer_vertex vertex = unpack_gbuffer_indirect(packed);
+#else
 gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 {
+#endif
     // restore material index from vertex output (works for both indirect and cpu-driven draws)
     pass_load_draw_data_from_vertex(vertex.material_index);
 
@@ -243,7 +254,9 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // the surface ends up looking opaque/mirror like instead of transparent, flipping
     // both normal and tangent here keeps the shading frame oriented towards the
     // camera regardless of which face is hit
-    if (pass_is_transparent() && !is_front_face)
+    // Two-sided leaf cards and solid modelled leaves also need a lighting
+    // normal on the visible side; otherwise their backs shade almost black.
+    if (!is_front_face && (pass_is_transparent() || material.is_alpha_tested() || material.subsurface_scattering > 0.0f))
     {
         vertex.normal  = -vertex.normal;
         vertex.tangent = -vertex.tangent;

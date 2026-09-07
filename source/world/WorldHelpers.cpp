@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "components/Terrain.h"
 #include "components/Water.h"
 #include "components/Camera.h"
+#include "TerrainHabitat.h"
 #include "../core/ThreadPool.h"
 #include "../core/Stopwatch.h"
 #include "../rendering/Renderer.h"
@@ -365,7 +366,9 @@ namespace spartan
                 return mesh.get();
             }
 
-            const uint32_t flags  = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
+            const uint32_t flags  = Mesh::GetDefaultFlags() |
+                static_cast<uint32_t>(MeshFlags::ImportCombineMeshes) |
+                static_cast<uint32_t>(MeshFlags::PostProcessPreserveLod0);
             shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>(path, flags);
 
             return mesh ? mesh.get() : nullptr;
@@ -482,7 +485,10 @@ namespace spartan
         // a cutout is what the importer bound, leaf detail and no collision follow that map
         bool is_foliage_material(Material* material)
         {
-            return material->HasTextureOfType(MaterialTextureType::AlphaMask);
+            // Solid modelled leaves need the same wind, translucency and collision
+            // treatment as cutouts. Our asset convention explicitly names these.
+            return material->HasTextureOfType(MaterialTextureType::AlphaMask) ||
+                material->GetObjectName().find("_foliage") != string::npos;
         }
 
         BoundingBox scatter_mesh_bounds(Mesh* mesh)
@@ -520,6 +526,30 @@ namespace spartan
             }
 
             return max(count, 1u);
+        }
+
+        vector<Mesh*> resolve_scatter_palette(Mesh* primary, const TerrainScatterLayer& layer)
+        {
+            vector<Mesh*> meshes = { primary };
+            size_t begin = 0;
+            while (begin < layer.mesh_variants.size())
+            {
+                const size_t end = layer.mesh_variants.find(';', begin);
+                string path = layer.mesh_variants.substr(begin, end == string::npos ? end : end-begin);
+                const size_t first = path.find_first_not_of(" \t\r\n");
+                if (first != string::npos)
+                {
+                    path = path.substr(first, path.find_last_not_of(" \t\r\n")-first+1);
+                    if (Mesh* mesh = resolve_scatter_mesh(path))
+                    {
+                        if (find(meshes.begin(), meshes.end(), mesh) == meshes.end()) meshes.push_back(mesh);
+                    }
+                    else SP_LOG_WARNING("terrain scatter '%s': variant missing at %s", layer.name.c_str(), path.c_str());
+                }
+                if (end == string::npos) break;
+                begin = end+1;
+            }
+            return meshes;
         }
 
         // clone the prototype onto every tile that has instances and hand that tile's transforms to
@@ -656,7 +686,7 @@ namespace spartan
             return owned;
         }
 
-        void attach_scatter_layer(
+        void attach_scatter_variant(
             Mesh* mesh,
             const TerrainScatterLayer& layer,
             const vector<Entity*>& tiles,
@@ -770,6 +800,8 @@ namespace spartan
                     if (Material* material = render->GetMaterial())
                     {
                         foliage = is_foliage_material(material);
+                        if (foliage)
+                            material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
 
                         // Wood and leaves share the same anchored sway. The shader adds
                         // fine flutter only to cutouts, so the canopy stays attached.
@@ -777,13 +809,11 @@ namespace spartan
                         {
                             material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                             if (foliage)
-                                material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.35f);
                         }
 
-                        if (layer.flags & TerrainScatterFlags_ColorVariation)
-                        {
-                            material->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
-                        }
+                        material->SetProperty(MaterialProperty::ColorVariationFromInstance,
+                            (layer.flags & TerrainScatterFlags_ColorVariation) ? 1.0f : 0.0f);
 
                         // how far the ground creeps over this prop, sized off this part's own mesh so a
                         // trunk gets the trunk's band and not the canopy's, the layer value trims it
@@ -828,6 +858,33 @@ namespace spartan
             if (prototype)
             {
                 prototype->SetActive(false);
+            }
+        }
+
+        void attach_scatter_layer(
+            const vector<Mesh*>& palette, const TerrainScatterLayer& layer,
+            const vector<Entity*>& tiles, const vector<vector<Matrix>>& transforms,
+            const vector<uint32_t>& tile_order, uint32_t order_begin, uint32_t order_end,
+            float terrain_band)
+        {
+            if (palette.size() == 1)
+            {
+                attach_scatter_variant(palette.front(), layer, tiles, transforms, tile_order, order_begin, order_end, terrain_band);
+                return;
+            }
+            // Place once, then assign each accepted instance to exactly one model.
+            // This preserves density and reproduces the same choices on tile refresh.
+            for (uint32_t variant = 0; variant < palette.size(); ++variant)
+            {
+                vector<vector<Matrix>> selected(transforms.size());
+                for (uint32_t order = order_begin; order < order_end; ++order)
+                {
+                    const uint32_t tile = tile_order[order];
+                    for (uint32_t i = 0; i < transforms[tile].size(); ++i)
+                        if (terrain_habitat::variant(tile, i, layer.seed, static_cast<uint32_t>(palette.size())) == variant)
+                            selected[tile].push_back(transforms[tile][i]);
+                }
+                attach_scatter_variant(palette[variant], layer, tiles, selected, tile_order, order_begin, order_end, terrain_band);
             }
         }
 
@@ -1066,6 +1123,7 @@ namespace spartan
         {
             TerrainScatterLayer* layer  = nullptr;
             Mesh* mesh                  = nullptr;
+            vector<Mesh*> palette;
             uint32_t slots_per_instance = 1;
             vector<vector<Matrix>> transforms;
             vector<float> coverage;
@@ -1138,8 +1196,12 @@ namespace spartan
             scatter_job& job       = jobs.emplace_back();
             job.layer              = &layer;
             job.mesh               = mesh;
-            job.bounds             = scatter_mesh_bounds(mesh);
-            job.slots_per_instance = count_mesh_renderables(mesh->GetRootEntity());
+            job.palette            = resolve_scatter_palette(mesh, layer);
+            for (Mesh* variant : job.palette)
+            {
+                job.bounds.Merge(scatter_mesh_bounds(variant));
+                job.slots_per_instance = max(job.slots_per_instance, count_mesh_renderables(variant->GetRootEntity()));
+            }
             job.transforms.resize(tile_count);
             job.coverage.resize(tile_count, 0.0f);
         }
@@ -1217,7 +1279,7 @@ namespace spartan
                 }
 
                 attach_scatter_layer(
-                    job.mesh,
+                    job.palette,
                     *job.layer,
                     tiles,
                     job.transforms,
@@ -1361,6 +1423,7 @@ namespace spartan
         {
             TerrainScatterLayer* layer = nullptr;
             Mesh* mesh                 = nullptr;
+            vector<Mesh*> palette;
             BoundingBox bounds;
             vector<vector<Matrix>> transforms;
             size_t placed              = 0;
@@ -1391,7 +1454,8 @@ namespace spartan
             scatter_job& job = jobs.emplace_back();
             job.layer        = &layer;
             job.mesh         = mesh;
-            job.bounds       = scatter_mesh_bounds(mesh);
+            job.palette      = resolve_scatter_palette(mesh, layer);
+            for (Mesh* variant : job.palette) job.bounds.Merge(scatter_mesh_bounds(variant));
             job.transforms.resize(tile_count);
         }
 
@@ -1436,7 +1500,7 @@ namespace spartan
             }
 
             attach_scatter_layer(
-                job.mesh,
+                job.palette,
                 *job.layer,
                 tiles,
                 job.transforms,

@@ -1624,6 +1624,7 @@ namespace spartan
         // during boot keep rendering, but skip sim ticks and the per entity change scan
         if (play_boot != play_boot_phase::starting)
         {
+            SP_PROFILE_CPU_START("world_pretick");
             for (Entity* entity : entities_with_pretick)
             {
                 if (entity->GetActive())
@@ -1632,6 +1633,8 @@ namespace spartan
                 }
             }
 
+            SP_PROFILE_CPU_END();
+            SP_PROFILE_CPU_START("world_render_tick");
             // renderables cover most of the scene, cull/lod in parallel then finish other components
             const uint32_t render_count = static_cast<uint32_t>(entities_with_render.size());
             if (render_count > 0)
@@ -1655,6 +1658,7 @@ namespace spartan
                         }
                     }, render_count);
 
+                    SP_PROFILE_CPU_START("world_post_render_tick");
                     for (Entity* entity : entities_with_render)
                     {
                         if (entity->GetActive())
@@ -1662,6 +1666,7 @@ namespace spartan
                             entity->TickAfterParallelRender();
                         }
                     }
+                    SP_PROFILE_CPU_END();
                 }
                 else
                 {
@@ -1674,6 +1679,8 @@ namespace spartan
                     }
                 }
             }
+            SP_PROFILE_CPU_END();
+            SP_PROFILE_CPU_START("world_logic_tick");
             for (Entity* entity : entities_with_logic)
             {
                 if (entity->GetActive())
@@ -1696,6 +1703,8 @@ namespace spartan
                 }
             }
 
+            SP_PROFILE_CPU_END();
+            SP_PROFILE_CPU_START("world_change_scan");
             // only entities marked dirty need the change scan, empty most frames
             if (!entity_states.empty())
             {
@@ -1768,6 +1777,7 @@ namespace spartan
                     state = new_state;
                 }
             }
+            SP_PROFILE_CPU_END();
         }
 
         ProcessPendingAdditions();

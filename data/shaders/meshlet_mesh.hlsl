@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========
+#define CACHE_MESH_TREE_WIND
 #include "common.hlsl"
 //====================
 
@@ -56,13 +57,15 @@ void main_ms(
     uint3 group_id : SV_GroupID,
     uint3 thread_id : SV_GroupThreadID,
     out indices uint3 out_indices[MESHLET_MAX_TRIANGLES],
-    out vertices gbuffer_vertex out_vertices[MESHLET_MAX_VERTICES],
+    out vertices gbuffer_indirect_vertex out_vertices[MESHLET_MAX_VERTICES],
     out primitives MeshPrimitive out_primitives[MESHLET_MAX_TRIANGLES]
 )
 {
     const uint tid = thread_id.x;
-    // the cull keeps one contiguous survivor list, both halves walk it and filter on the material flag
-    const uint mi_idx = group_id.x;
+    // Each material category dispatches only its compacted half of the list.
+    uint meshlet_capacity, meshlet_stride;
+    meshlet_instances.GetDimensions(meshlet_capacity, meshlet_stride);
+    const uint mi_idx = group_id.x + (want_alpha ? meshlet_capacity / 2u : 0u);
 
     if (tid == 0)
     {
@@ -88,6 +91,7 @@ void main_ms(
                 gs_first_vertex   = meshlet_decode_first_vertex(gs_mb);
                 gs_first_micro    = gs_mb.first_micro;
                 gs_skip_backface  = ((gs_draw.flags & 1u) | (gs_draw.flags & 8u)) != 0u;
+                cache_mesh_tree_wind(gs_draw, gs_mi.instance_index, gs_mi.padding0);
             }
         }
     }
@@ -121,7 +125,7 @@ void main_ms(
         gbuffer_vertex vertex          = transform_to_world_space(input, gs_mi.instance_index, gs_draw.transform, position_world, position_world_previous);
         vertex.material_index          = gs_draw.material_index;
         gbuffer_vertex clipped         = transform_to_clip_space(vertex, position_world, position_world_previous, 0);
-        out_vertices[v_index]          = clipped;
+        out_vertices[v_index]          = pack_gbuffer_indirect(clipped, gs_mi.draw_index);
         gs_world[v_index]              = position_world;
         gs_clip[v_index]               = clipped.position;
     }

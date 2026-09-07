@@ -19,27 +19,30 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#ifndef DEBUG_RAY_TRACING
+#define DEBUG_RAY_TRACING 0 // 1 = green hit, red miss, blue no geometry
+#endif
+
 //= INCLUDES =========
 #include "common.hlsl"
+#include "common_ray_hit.hlsl"
 //====================
-
-#define DEBUG_RAY_TRACING 0 // 1 = green hit, red miss, blue no geometry
 
 // upper bound on the ggx alpha for the reflection ray spread, caps divergence on rough surfaces
 static const float k_reflection_alpha_max = 0.6f;
 
-struct [raypayload] Payload
+struct ReflectionSurface
 {
-    float3 position       : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-    float  hit_distance   : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-    float3 normal         : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-    float  material_index : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-    float3 albedo         : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-    float  roughness      : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-#if DEBUG_RAY_TRACING == 1
-    bool hit              : read(caller) : write(closesthit, miss);
-#endif
+    float3 position;
+    float  hit_distance;
+    float3 normal;
+    float  material_index;
+    float3 albedo;
+    float  roughness;
 };
+
+// Read payload fields at the call site so DXC's payload-access analysis sees them.
+ReflectionSurface reconstruct_reflection_surface(float ray_t, uint instance_index, uint primitive_index, uint barycentrics_packed, RayDesc ray);
 
 [shader("raygeneration")]
 void ray_gen()
@@ -47,7 +50,7 @@ void ray_gen()
     uint2 launch_id   = DispatchRaysIndex().xy;
     uint2 launch_size = DispatchRaysDimensions().xy;
     float2 uv         = (launch_id + 0.5f) / launch_size;
-    
+
     // early out for sky
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     if (depth <= 0.0f)
@@ -61,7 +64,7 @@ void ray_gen()
 #endif
         return;
     }
-    
+
     // rt reflections own the full primary specular lobe, restir contributes diffuse only primary gi
     float3 pos_ws    = get_position(uv);
     float3 normal_ws = get_normal(uv);
@@ -109,82 +112,59 @@ void ray_gen()
     {
         R = reflect(-V, normal_ws);
     }
-    
+
     // ray origin offset scaled with camera distance, pushed along the reflection at grazing angles
     float camera_distance = length(get_camera_position() - pos_ws);
     float base_offset     = 0.001f + camera_distance * 0.0001f;
     float n_dot_v         = saturate(dot(normal_ws, V));
     float grazing_factor  = 1.0f - n_dot_v;
     float3 ray_origin     = pos_ws + normal_ws * base_offset + R * base_offset * grazing_factor * 2.0f;
-    
+
     RayDesc ray;
     ray.Origin    = ray_origin;
     ray.Direction = normalize(R);
     ray.TMin      = 0.0001f;
     ray.TMax      = 1000.0f;
-    
-    Payload payload;
-    payload.position       = float3(0, 0, 0);
-    payload.hit_distance   = 0.0f;
-    payload.normal         = float3(0, 0, 0);
-    payload.material_index = 0.0f;
-    payload.albedo         = float3(0, 0, 0);
-    payload.roughness      = 0.0f;
-#if DEBUG_RAY_TRACING == 1
-    payload.hit = false;
-#endif
-    
+
+    HitPayload hit_record;
+
     // ensure geometry_infos is in pipeline layout
     if (geometry_infos[0].vertex_offset == 0xFFFFFFFF)
         return;
-    
-    TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
-    
+
+    TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, hit_record);
+
 #if DEBUG_RAY_TRACING == 1
-    tex_uav[launch_id] = payload.hit ? float4(0, 1, 0, 1) : float4(1, 0, 0, 1);
+    tex_uav[launch_id] = hit_record.hit_distance >= 0.0f ? float4(0, 1, 0, 1) : float4(1, 0, 0, 1);
 #else
+    ReflectionSurface payload = reconstruct_reflection_surface(
+        hit_record.hit_distance, hit_record.instance_index, hit_record.primitive_index, hit_record.barycentrics_packed, ray);
     tex_uav[launch_id]  = float4(payload.position, payload.hit_distance);
     tex_uav2[launch_id] = float4(payload.normal, payload.material_index);
     tex_uav3[launch_id] = float4(payload.albedo, payload.roughness);
 #endif
 }
 
-[shader("miss")]
-void miss(inout Payload payload : SV_RayPayload)
+ReflectionSurface reconstruct_reflection_surface(float ray_t, uint instance_index, uint primitive_index, uint barycentrics_packed, RayDesc ray)
 {
-#if DEBUG_RAY_TRACING == 1
-    payload.hit = false;
-#endif
-    
-    // store ray direction for sky sampling
-    payload.position     = WorldRayDirection();
-    payload.hit_distance = 0.0f;
-    payload.normal       = float3(0, 0, 0);
-    payload.albedo       = float3(0, 0, 0);
-    payload.roughness    = 0.0f;
-}
+    ReflectionSurface payload = (ReflectionSurface)0;
+    if (ray_t < 0.0f)
+    {
+        // Preserve the output convention: zero distance and direction for sky sampling.
+        payload.position = ray.Direction;
+        return payload;
+    }
+    GeometryInfo geo = geometry_infos[instance_index];
 
-[shader("closesthit")]
-void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
-{
-#if DEBUG_RAY_TRACING == 1
-    payload.hit = true;
-    return;
-#endif
-    
-    uint material_index = InstanceID();
+    uint material_index = geo.material_index;
     MaterialParameters mat = material_parameters[material_index];
-    
-    uint instance_index = InstanceIndex();
-    GeometryInfo geo    = geometry_infos[instance_index];
-    
+
     // fetch triangle indices from the global index buffer
-    uint primitive_index = PrimitiveIndex();
     uint index_base      = geo.index_offset + primitive_index * 3;
     uint i0 = geometry_indices[index_base + 0];
     uint i1 = geometry_indices[index_base + 1];
     uint i2 = geometry_indices[index_base + 2];
-    
+
     // fetch vertex data from the global vertex buffer
     PulledVertex v0 = geometry_vertices[geo.vertex_offset + i0];
     PulledVertex v1 = geometry_vertices[geo.vertex_offset + i1];
@@ -199,24 +179,24 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     float2 v0_uv      = unpack_vertex_uv(v0.uv);
     float2 v1_uv      = unpack_vertex_uv(v1.uv);
     float2 v2_uv      = unpack_vertex_uv(v2.uv);
-    
+
     // barycentric interpolation
-    float3 bary = float3(1.0f - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
-    
+    float3 bary = unpack_hit_barycentrics(barycentrics_packed);
+
     float2 texcoord       = v0_uv * bary.x + v1_uv * bary.y + v2_uv * bary.z;
     float3 normal_object  = normalize(v0_normal * bary.x + v1_normal * bary.y + v2_normal * bary.z);
     float3 tangent_object = normalize(v0_tangent * bary.x + v1_tangent * bary.y + v2_tangent * bary.z);
-    
+
     // world space transform
-    float3x3 obj_to_world = (float3x3)ObjectToWorld4x3();
-    float3x3 world_to_obj = (float3x3)WorldToObject4x3();
+    float3x3 obj_to_world = float3x3(geo.object_to_world_0.xyz, geo.object_to_world_1.xyz, geo.object_to_world_2.xyz);
+    float3x3 world_to_obj = float3x3(geo.world_to_object_0.xyz, geo.world_to_object_1.xyz, geo.world_to_object_2.xyz);
     float3 normal_world   = normalize(mul(normal_object, transpose(world_to_obj)));
     float3 tangent_world  = normalize(mul(tangent_object, obj_to_world));
-    if (dot(normal_world, WorldRayDirection()) > 0.0f)
+    if (dot(normal_world, ray.Direction) > 0.0f)
         normal_world = -normal_world;
-    
+
     // world space uv, full uv state is per renderable from geometry_infos[InstanceIndex()]
-    float3 hit_pos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+    float3 hit_pos = ray.Origin + ray.Direction * ray_t;
     if (mat.is_terrain())
     {
         // terrain maps planar world xz with tiling as repeats per meter, matches the raster path
@@ -238,9 +218,9 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
 
     if (geo.uv_rotation != 0.0f)
         texcoord = rotate_uv_90(texcoord, geo.uv_rotation);
-    
-    float hit_distance      = RayTCurrent();
-    float n_dot_v_hit       = saturate(dot(normal_world, -WorldRayDirection()));
+
+    float hit_distance      = ray_t;
+    float n_dot_v_hit       = saturate(dot(normal_world, -ray.Direction));
     float grazing_mip_boost = lerp(2.5f, 0.0f, n_dot_v_hit);
     float distance_mip      = log2(max(hit_distance, 1.0f));
     float mip_level         = clamp(distance_mip + grazing_mip_boost, 0.0f, 7.0f);
@@ -272,7 +252,7 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
         float3x3 tbn           = float3x3(tangent_world, bitangent_world, normal_world);
         normal_world           = normalize(mul(normal_sample, tbn));
     }
-    
+
     // albedo, mip biased by hit distance and grazing angle to avoid texture moire
     float3 albedo = mat.color.rgb;
     if (terrain_shaded)
@@ -305,11 +285,12 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
         roughness *= packed.g;
     }
     roughness = max(roughness, 0.04f);
-    
+
     payload.position       = hit_pos;
-    payload.hit_distance   = RayTCurrent();
+    payload.hit_distance   = ray_t;
     payload.normal         = normal_world;
     payload.material_index = float(material_index);
     payload.albedo         = albedo;
     payload.roughness      = roughness;
+    return payload;
 }

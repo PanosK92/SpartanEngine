@@ -139,6 +139,56 @@ struct gbuffer_vertex
     float2 ocean_world_xz               : TEXCOORD7; // undisplaced clipmap world xz, fft normal/foam are indexed in this domain
 };
 
+// The indirect path exports one draw index instead of repeating immutable UV
+// transforms, material index and flags at every vertex. Pixel invocations fetch
+// those fields from the same draw record already used by geometry processing.
+struct gbuffer_indirect_vertex
+{
+    precise float4 position  : SV_POSITION;
+    float4 position_previous : POS_CLIP_PREVIOUS;
+    float3 normal            : NORMAL_WORLD;
+    float3 tangent           : TANGENT_WORLD;
+    float4 uv_misc           : TEXCOORD;
+    float width_percent      : TEXCOORD2;
+    nointerpolation uint draw_index : TEXCOORD3;
+    nointerpolation uint view_id    : TEXCOORD4;
+    float2 ocean_world_xz     : TEXCOORD7;
+};
+
+gbuffer_indirect_vertex pack_gbuffer_indirect(gbuffer_vertex vertex, uint draw_index)
+{
+    gbuffer_indirect_vertex packed;
+    packed.position = vertex.position;
+    packed.position_previous = vertex.position_previous;
+    packed.normal = vertex.normal;
+    packed.tangent = vertex.tangent;
+    packed.uv_misc = vertex.uv_misc;
+    packed.width_percent = vertex.width_percent;
+    packed.draw_index = draw_index;
+    packed.view_id = vertex.view_id;
+    packed.ocean_world_xz = vertex.ocean_world_xz;
+    return packed;
+}
+
+gbuffer_vertex unpack_gbuffer_indirect(gbuffer_indirect_vertex packed)
+{
+    _draw = indirect_draw_data[packed.draw_index];
+    gbuffer_vertex vertex;
+    vertex.position = packed.position;
+    vertex.position_previous = packed.position_previous;
+    vertex.normal = packed.normal;
+    vertex.tangent = packed.tangent;
+    vertex.uv_misc = packed.uv_misc;
+    vertex.width_percent = packed.width_percent;
+    vertex.material_index = _draw.material_index;
+    vertex.view_id = packed.view_id;
+    vertex.ocean_world_xz = packed.ocean_world_xz;
+    vertex.uv_xform_ts = float4(_draw.uv_tiling, _draw.uv_offset);
+    vertex.uv_xform_ir = float4(_draw.uv_invert, _draw.uv_rotation, _draw.uv_world_space);
+    vertex.draw_flags = _draw.flags;
+    return vertex;
+}
+
 // slim mesh-shader depth payload, opaque prepass uses position only via depth_mesh_position
 struct depth_mesh_position
 {
@@ -351,6 +401,83 @@ float2 wind_instance_phase_freq(float3 instance_pos)
     return float2(h * PI2, 2.0f + frac(h * 17.13f) * 1.5f);
 }
 
+// Root wind is identical for every vertex in one meshlet. Mesh shaders cache
+// both time samples; vertex-pull and shadow paths use the same evaluator.
+struct TreeWindState
+{
+    wind_sample wind;
+    float2 phase_freq;
+    float3 axis;
+    float response;
+    float trunk_drive;
+};
+
+TreeWindState evaluate_tree_wind(float4x4 transform, float time_offset)
+{
+    TreeWindState state;
+    float3 root = transform[3].xyz;
+    float3 up = normalize(transform[1].xyz);
+    state.wind = evaluate_wind(root, time_offset);
+    state.phase_freq = wind_instance_phase_freq(root);
+    state.response = saturate(length(buffer_frame.wind.xz) * 0.10f);
+    float3 raw_axis = cross(up, state.wind.bend_dir_world);
+    float axis_length_sq = dot(raw_axis, raw_axis);
+    state.axis = axis_length_sq > 1e-8f ? raw_axis * rsqrt(axis_length_sq) : normalize(transform[0].xyz);
+    float slow_time = ((float)buffer_frame.time + time_offset) * (0.32f + state.phase_freq.y * 0.065f);
+    float sway = sin(slow_time + state.phase_freq.x) * 0.55f
+               + sin(slow_time * 1.37f + state.phase_freq.x * 2.17f) * 0.30f
+               + sin(slow_time * 0.73f + state.phase_freq.x * 0.61f) * 0.15f;
+    state.trunk_drive = state.response * (0.8f + 0.45f * sway + 0.7f * state.wind.gust) * DEG_TO_RAD;
+    return state;
+}
+
+CachedTreeWind pack_tree_wind(TreeWindState current, TreeWindState previous)
+{
+    CachedTreeWind cached;
+    cached.current_axis_drive = float4(current.axis, current.trunk_drive);
+    cached.current_phase_gust_micro = float4(current.phase_freq, current.wind.gust, current.wind.micro);
+    cached.previous_axis_drive = float4(previous.axis, previous.trunk_drive);
+    cached.previous_phase_gust_micro = float4(previous.phase_freq, previous.wind.gust, previous.wind.micro);
+    return cached;
+}
+
+TreeWindState unpack_tree_wind(float4 axis_drive, float4 phase_gust_micro)
+{
+    TreeWindState state = (TreeWindState)0;
+    state.axis = axis_drive.xyz;
+    state.trunk_drive = axis_drive.w;
+    state.phase_freq = phase_gust_micro.xy;
+    state.wind.gust = phase_gust_micro.z;
+    state.wind.micro = phase_gust_micro.w;
+    return state;
+}
+
+#ifdef CACHE_MESH_TREE_WIND
+groupshared TreeWindState mesh_tree_wind_current;
+groupshared TreeWindState mesh_tree_wind_previous;
+void cache_mesh_tree_wind(DrawData draw, uint instance_index, uint cache_slot_plus_one)
+{
+    if ((material_parameters[draw.material_index].flags & (1u << 9)) != 0u)
+    {
+        if (cache_slot_plus_one != 0u)
+        {
+            CachedTreeWind cached = tree_wind_cache[cache_slot_plus_one - 1u];
+            mesh_tree_wind_current = unpack_tree_wind(cached.current_axis_drive, cached.current_phase_gust_micro);
+#ifndef CACHE_MESH_TREE_WIND_CURRENT_ONLY
+            mesh_tree_wind_previous = unpack_tree_wind(cached.previous_axis_drive, cached.previous_phase_gust_micro);
+#endif
+            return;
+        }
+        float4x4 instance = pull_instance_transform(draw.instance_offset, instance_index);
+        mesh_tree_wind_current = evaluate_tree_wind(mul(instance, draw.transform), 0.0f);
+#ifndef CACHE_MESH_TREE_WIND_CURRENT_ONLY
+        mesh_tree_wind_previous = evaluate_tree_wind(mul(instance, draw.transform_previous), -buffer_frame.delta_time);
+#endif
+    }
+}
+#endif
+
+
 struct vertex_processing
 {
     static void process_world_space(Surface surface, inout float3 position_world, inout gbuffer_vertex vertex, float3 position_local, float4x4 transform, uint instance_id, float time_offset)
@@ -504,24 +631,21 @@ struct vertex_processing
 
             // All submeshes share the root sample and physical height: bark and foliage
             // must agree even when their material bounds differ. No per-vertex gusts.
-            wind_sample ws = evaluate_wind(instance_pos, time_offset);
-            float2 inst = wind_instance_phase_freq(instance_pos);
+#ifdef CACHE_MESH_TREE_WIND
+            TreeWindState state;
+            if (time_offset < 0.0f) state = mesh_tree_wind_previous;
+            else state = mesh_tree_wind_current;
+#else
+            TreeWindState state = evaluate_tree_wind(transform, time_offset);
+#endif
+            wind_sample ws = state.wind;
+            float2 inst = state.phase_freq;
+            float3 axis = state.axis;
             float3 offset = position_world - instance_pos;
             float height = max(0.0f, dot(offset, instance_up));
             float flexible = height / (height + 8.0f);
             float root_weight = smoothstep(0.0f, 1.5f, height);
-            float3 raw_axis = cross(instance_up, ws.bend_dir_world);
-            float axis_length_sq = dot(raw_axis, raw_axis);
-            float3 axis = axis_length_sq > 1e-8f ? raw_axis * rsqrt(axis_length_sq) : normalize(transform[0].xyz);
-
-            // Low-frequency modes provide a gentle, irregular recovery around a
-            // prevailing lean. Gust pressure has limited authority over heavy wood.
-            float slow_time = time * (0.32f + inst.y * 0.065f);
-            float sway = sin(slow_time + inst.x) * 0.55f
-                       + sin(slow_time * 1.37f + inst.x * 2.17f) * 0.30f
-                       + sin(slow_time * 0.73f + inst.x * 0.61f) * 0.15f;
-            float trunk_angle = response * (0.8f + 0.45f * sway + 0.7f * ws.gust)
-                              * DEG_TO_RAD * flexible * root_weight;
+            float trunk_angle = state.trunk_drive * flexible * root_weight;
             float3x3 trunk_rotation = rotation_matrix(axis, trunk_angle);
 
             // Smooth spatial branch modes avoid hard sectors or random per-vertex

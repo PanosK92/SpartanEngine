@@ -93,7 +93,8 @@ namespace spartan
     {
         const bool capture_mode                  = Debugging::IsRenderdocEnabled();
         const uint32_t indirect_draw_capacity    = capture_mode ? 32 * 1024 : renderer_max_indirect_draws;
-        const uint32_t cull_task_capacity        = capture_mode ? 2 * 1024 * 1024 : renderer_max_cull_tasks;
+        const uint32_t survivor_capacity = capture_mode ? 2 * 1024 * 1024 : renderer_max_instance_cull_entries;
+        const uint32_t cull_task_capacity = capture_mode ? survivor_capacity / INSTANCE_CULL_BATCH_SIZE + renderer_max_indirect_draws : renderer_max_cull_tasks;
         const uint32_t meshlet_instance_capacity = capture_mode ? 1024 * 1024 : renderer_max_meshlet_instances;
         const uint32_t visible_triangle_capacity = capture_mode ? 8 * 1024 * 1024 : renderer_max_visible_triangles;
 
@@ -149,10 +150,11 @@ namespace spartan
                 (string("indirect_draw_data_") + to_string(i)).c_str()
             );
 
-            // meshlet-cull survivors, gpu-only (compute writes, vs reads), keep it off the host-visible heap
+            // Separate opaque/alpha meshlet regions retain the original capacity each.
+            // GPU-only (compute writes, geometry reads); keep this off the host-visible heap.
             fr.meshlet_instances = make_shared<RHI_Buffer>(
                 RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_MeshletInstance)),
-                meshlet_instance_capacity, nullptr, false,
+                meshlet_instance_capacity * 2u, nullptr, false,
                 (string("meshlet_instances_") + to_string(i)).c_str()
             );
 
@@ -179,8 +181,14 @@ namespace spartan
             // phase a survivors, gpu-only (compute writes, phase b reads), one entry per visible instance
             fr.surviving_instances = make_shared<RHI_Buffer>(
                 RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_SurvivingInstance)),
-                cull_task_capacity, nullptr, false,
+                survivor_capacity, nullptr, false,
                 (string("surviving_instances_") + to_string(i)).c_str()
+            );
+
+            fr.tree_wind_cache = make_shared<RHI_Buffer>(
+                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_CachedTreeWind)),
+                TREE_WIND_CACHE_CAPACITY, nullptr, false,
+                (string("tree_wind_cache_") + to_string(i)).c_str()
             );
 
             // single-slot indirect dispatch args for the meshlet cull pass, group_count_x is bumped atomically by the instance cull
@@ -201,6 +209,7 @@ namespace spartan
         at(buffers, Renderer_Buffer::TriangleDispatchArgs) = fr.triangle_dispatch_args;
         at(buffers, Renderer_Buffer::CullTasks)            = fr.cull_tasks;
         at(buffers, Renderer_Buffer::SurvivingInstances)   = fr.surviving_instances;
+        at(buffers, Renderer_Buffer::TreeWindCache)        = fr.tree_wind_cache;
         at(buffers, Renderer_Buffer::InstanceDispatchArgs) = fr.instance_dispatch_args;
 
         // grid holds (first_index, count) per cluster, one grid serves both vr eyes since they diverge by well under a tile
@@ -1599,6 +1608,7 @@ namespace spartan
         buffers[static_cast<uint8_t>(Renderer_Buffer::TriangleDispatchArgs)] = fr.triangle_dispatch_args;
         buffers[static_cast<uint8_t>(Renderer_Buffer::CullTasks)]            = fr.cull_tasks;
         buffers[static_cast<uint8_t>(Renderer_Buffer::SurvivingInstances)]   = fr.surviving_instances;
+        buffers[static_cast<uint8_t>(Renderer_Buffer::TreeWindCache)]        = fr.tree_wind_cache;
         buffers[static_cast<uint8_t>(Renderer_Buffer::InstanceDispatchArgs)] = fr.instance_dispatch_args;
         m_cpu_indirect_draw_arg_count = 0;
     }

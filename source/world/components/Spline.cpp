@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "pch.h"
+#include "../../profiling/Profiler.h"
 #include "Spline.h"
 #include "SplineMeshGeometry.h"
 #include "Physics.h"
@@ -687,6 +688,7 @@ namespace spartan
 
     void Spline::Tick()
     {
+        SP_PROFILE_CPU();
         if (ProgressTracker::IsLoading())
         {
             return;
@@ -709,12 +711,12 @@ namespace spartan
 
         // auto-regenerate mesh when any property/control point changes, or when mesh is enabled but missing
         if (!m_mesh_enabled && HasRoadMesh()) ClearRoadMesh();
-        uint32_t control_point_count = GetControlPointCount();
+        const vector<Vector3> current_points = GetControlPointsLocal();
+        const uint32_t control_point_count = static_cast<uint32_t>(current_points.size());
         bool has_mesh_input = IsAttached() ? (m_source_spline_entity != nullptr) : (control_point_count >= 2);
 
         if (has_mesh_input)
         {
-            vector<Vector3> current_points = GetControlPointsLocal();
             bool mesh_missing              = m_mesh_enabled && !HasRoadMesh();
             uint64_t source_hash           = ComputeSourceHash();
 
@@ -1201,10 +1203,10 @@ namespace spartan
 
         // count only children that are control points (not instances)
         uint32_t count       = 0;
-        uint32_t child_count = m_entity_ptr->GetChildrenCount();
-        for (uint32_t i = 0; i < child_count; i++)
+        const vector<Entity*> children = m_entity_ptr->GetChildren();
+        for (Entity* child : children)
         {
-            if (Entity* child = m_entity_ptr->GetChildByIndex(i))
+            if (child)
             {
                 if (child->GetObjectName().find(prefix_control_point) == 0)
                 {
@@ -1476,9 +1478,8 @@ namespace spartan
     {
         string signature;
         if (!m_entity_ptr) return signature;
-        for (uint32_t i = 0; i < m_entity_ptr->GetChildrenCount(); i++)
+        for (Entity* child : m_entity_ptr->GetChildren())
         {
-            Entity* child = m_entity_ptr->GetChildByIndex(i);
             if (!child || child->GetObjectName().find(prefix_control_point) != 0) continue;
             for (const string& tag : child->GetTags())
             {
@@ -2280,12 +2281,12 @@ namespace spartan
             return points;
         }
 
-        uint32_t child_count = m_entity_ptr->GetChildrenCount();
-        points.reserve(child_count);
+        const vector<Entity*> children = m_entity_ptr->GetChildren();
+        points.reserve(children.size());
 
-        for (uint32_t i = 0; i < child_count; i++)
+        for (Entity* child : children)
         {
-            if (Entity* child = m_entity_ptr->GetChildByIndex(i))
+            if (child)
             {
                 // only include control point children, not instances
                 if (child->GetObjectName().find(prefix_control_point) == 0)
@@ -2426,12 +2427,12 @@ namespace spartan
             return points;
         }
 
-        uint32_t child_count = m_entity_ptr->GetChildrenCount();
-        points.reserve(child_count);
+        const vector<Entity*> children = m_entity_ptr->GetChildren();
+        points.reserve(children.size());
 
-        for (uint32_t i = 0; i < child_count; i++)
+        for (Entity* child : children)
         {
-            if (Entity* child = m_entity_ptr->GetChildByIndex(i))
+            if (child)
             {
                 // only include control point children, not instances
                 if (child->GetObjectName().find(prefix_control_point) == 0)
