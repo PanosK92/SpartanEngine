@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= includes ===================================
 #include "Component.h"
 #include "../../math/BoundingBox.h"
+#include "../AudioRegion.h"
 #include <unordered_map>
 #include <string>
 //==============================================
@@ -59,6 +60,17 @@ namespace spartan
         bool GetReverbEnabled() const             { return m_reverb_enabled; }
         void SetReverbEnabled(const bool enabled) { m_reverb_enabled = enabled; }
 
+        // Optional footprint for listener-driven ambience. Render/reverb bounds stay unchanged.
+        float GetAudioWeight(const math::Vector3& listener) const;
+        const std::vector<audio_region::Point>& GetAudioPolygon() const { return m_audio_polygon; }
+        void SetAudioPolygon(const std::vector<audio_region::Point>& points) { m_audio_polygon = points; }
+        float GetAudioFadeDistance() const { return m_audio_fade_distance; }
+        void SetAudioFadeDistance(float value) { m_audio_fade_distance = std::isfinite(value) ? std::clamp(value, 0.01f, 10000.0f) : 50.0f; }
+        bool GetAudioBoundaryOnly() const { return m_audio_boundary_only; }
+        void SetAudioBoundaryOnly(bool value) { m_audio_boundary_only = value; }
+        const std::string& GetAudioGroup() const { return m_audio_group; }
+        void SetAudioGroup(const std::string& value) { m_audio_group = value; }
+
     private:
         // the shape of the volume
         math::BoundingBox m_bounding_box;
@@ -68,5 +80,9 @@ namespace spartan
 
         // audio reverb
         bool m_reverb_enabled = false;
+        std::vector<audio_region::Point> m_audio_polygon;
+        float m_audio_fade_distance = 50.0f;
+        bool m_audio_boundary_only = false;
+        std::string m_audio_group;
     };
 }

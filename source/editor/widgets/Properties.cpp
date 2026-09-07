@@ -3339,6 +3339,11 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
         layout::section_header("Spatialization");
 
         property_toggle("3D Sound", &is_3d, "position-based audio");
+        bool ambient = audio_source->GetAmbient();
+        if (property_toggle("Volume Ambience", &ambient, "stereo background blended by the Volume on this entity; active in play mode"))
+            audio_source->SetAmbient(ambient);
+        if (ambient)
+            ImGui::Text("Region blend: %.0f%%", audio_source->GetAmbientGain() * 100.0f);
 
         layout::separator();
         layout::section_header("Progress");
@@ -3513,6 +3518,20 @@ void Properties::ShowVolume(spartan::Volume* volume) const
         {
             volume->SetReverbEnabled(reverb_enabled);
         }
+
+        layout::separator();
+        layout::section_header("Soundscape");
+        float fade = volume->GetAudioFadeDistance();
+        bool boundary = volume->GetAudioBoundaryOnly();
+        if (property_float("Blend Distance", &fade, 1.0f, 0.01f, 10000.0f, "fade distance in local meters", "%.1f m"))
+            volume->SetAudioFadeDistance(fade);
+        if (property_toggle("Shoreline Only", &boundary, "play near the outline instead of throughout its interior"))
+            volume->SetAudioBoundaryOnly(boundary);
+        char group[128];
+        snprintf(group, sizeof(group), "%s", volume->GetAudioGroup().c_str());
+        layout::begin_property("Mix Group", "regions in the same group share the available volume when overlapping");
+        if (ImGui::InputText("##audio_group", group, sizeof(group))) volume->SetAudioGroup(group);
+        ImGui::Text("Footprint: %zu vertices (empty uses box)", volume->GetAudioPolygon().size());
     }
     component_end();
 }

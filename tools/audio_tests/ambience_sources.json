@@ -1,0 +1,92 @@
+[
+  {
+    "name": "cicadas",
+    "author": "dethrok",
+    "page": "https://freesound.org/people/dethrok/sounds/272168/",
+    "download": "https://cdn.freesound.org/previews/272/272168_3186672-hq.mp3",
+    "license": "CC0-1.0",
+    "file": "binaries/audio_tests/ambience_sources/cicadas0.mp3",
+    "sha256": "65a812f42a744dff895361197486c72751d11b84e8a44f6aed8d0cbc12092480",
+    "preview": true
+  },
+  {
+    "name": "birds",
+    "author": "vas_mous",
+    "page": "https://freesound.org/people/vas_mous/sounds/669800/",
+    "download": "https://cdn.freesound.org/previews/669/669800_11579718-hq.mp3",
+    "license": "CC0-1.0",
+    "file": "binaries/audio_tests/ambience_sources/birds0.mp3",
+    "sha256": "c52892450b0e74dca373cb7c7a47e9f31470a3ba3438e323ef448acb9488999c",
+    "preview": true
+  },
+  {
+    "name": "village",
+    "author": "The_Sound_Side",
+    "page": "https://freesound.org/people/The_Sound_Side/sounds/331442/",
+    "download": "https://cdn.freesound.org/previews/331/331442_989468-hq.mp3",
+    "license": "CC0-1.0",
+    "file": "binaries/audio_tests/ambience_sources/village0.mp3",
+    "sha256": "bdf49651518c3ecc864fddddb9ef707bb45a3a96e7cf25547d585b1b776380ae",
+    "preview": true
+  },
+  {
+    "name": "harbour",
+    "author": "ivolipa",
+    "page": "https://freesound.org/people/ivolipa/sounds/328808/",
+    "download": "https://cdn.freesound.org/previews/328/328808_3474310-hq.mp3",
+    "license": "CC0-1.0",
+    "file": "binaries/audio_tests/ambience_sources/harbour0.mp3",
+    "sha256": "9885f3d6e706ae62383fe9ab6534537350837aa3d79ca8200d36f05fda3aadbd",
+    "preview": true
+  },
+  {
+    "name": "wind",
+    "author": "Luke.RUSTLTD",
+    "page": "https://opengameart.org/content/wind1",
+    "download": "https://opengameart.org/sites/default/files/wind2.wav",
+    "license": "CC0-1.0",
+    "file": "binaries/audio_tests/ambience_sources/wind0.wav",
+    "sha256": "76a05480733ee021bdf7c255b44695b57fd0dedca09dccadccd2aaf67d32f127",
+    "preview": false
+  },
+  {
+    "name": "surf",
+    "author": "jasinski (excerpts by qubodup)",
+    "page": "https://opengameart.org/content/beach-ocean-waves",
+    "download": "https://opengameart.org/sites/default/files/wave_01_cc0-18363__jasinski__alkaibeach.flac",
+    "license": "CC0-1.0",
+    "file": "binaries/audio_tests/ambience_sources/surf0.flac",
+    "sha256": "fcfca178eca2eac536e8c2a4ed5cf8096e44c921acd587047b3d9f1d7845435c",
+    "preview": false
+  },
+  {
+    "name": "surf",
+    "author": "jasinski (excerpts by qubodup)",
+    "page": "https://opengameart.org/content/beach-ocean-waves",
+    "download": "https://opengameart.org/sites/default/files/wave_02_cc0-18363__jasinski__alkaibeach.flac",
+    "license": "CC0-1.0",
+    "file": "binaries/audio_tests/ambience_sources/surf1.flac",
+    "sha256": "53b5c28c0edc36f049e77e65f2cf8a86135103328c44c1507c416e6469d18096",
+    "preview": false
+  },
+  {
+    "name": "surf",
+    "author": "jasinski (excerpts by qubodup)",
+    "page": "https://opengameart.org/content/beach-ocean-waves",
+    "download": "https://opengameart.org/sites/default/files/wave_03_cc0-18363__jasinski__alkaibeach.flac",
+    "license": "CC0-1.0",
+    "file": "binaries/audio_tests/ambience_sources/surf2.flac",
+    "sha256": "fc795f95f352b354867d69a587daecb8815334e28e3b56a7798c5f3005349054",
+    "preview": false
+  },
+  {
+    "name": "surf",
+    "author": "jasinski (excerpts by qubodup)",
+    "page": "https://opengameart.org/content/beach-ocean-waves",
+    "download": "https://opengameart.org/sites/default/files/wave_04_cc0-18363__jasinski__alkaibeach.flac",
+    "license": "CC0-1.0",
+    "file": "binaries/audio_tests/ambience_sources/surf3.flac",
+    "sha256": "3c490e736365fdd617ce8405470d8878fc6146d9a8dba448d622addb01cfff3b",
+    "preview": false
+  }
+]

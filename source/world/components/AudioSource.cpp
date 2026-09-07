@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../World.h"
 #include "../../core/Engine.h"
+#include "../../commands/console/ConsoleCommands.h"
 #include "../../file_system/FileSystem.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
@@ -70,12 +71,13 @@ namespace audio_clip_cache
     unordered_map<string, weak_ptr<AudioClip>> cache;
     mutex cache_mutex;
 
-    shared_ptr<AudioClip> Get(const string& file_path)
+    shared_ptr<AudioClip> Get(const string& file_path, bool stereo = false)
     {
         // parallel entity loads can hit this together, the map is not thread safe without a lock
         lock_guard<mutex> lock(cache_mutex);
 
-        auto it = cache.find(file_path);
+        const string key = file_path + (stereo ? "#stereo" : "#mono");
+        auto it = cache.find(key);
         if (it != cache.end())
         {
             if (shared_ptr<AudioClip> existing = it->second.lock())
@@ -117,7 +119,7 @@ namespace audio_clip_cache
         SDL_AudioSpec target_spec = {};
         target_spec.freq          = source_spec.freq;
         target_spec.format        = SDL_AUDIO_F32;
-        target_spec.channels      = 1;
+        target_spec.channels      = stereo ? 2 : 1;
         uint8_t* target_buffer    = nullptr;
         int target_length         = 0;
         const bool converted      = SDL_ConvertAudioSamples(&source_spec, source_buffer, static_cast<int>(source_length), &target_spec, &target_buffer, &target_length);
@@ -140,7 +142,7 @@ namespace audio_clip_cache
         clip->length = static_cast<uint32_t>(target_length);
         clip->spec   = new SDL_AudioSpec(target_spec);
 
-        cache[file_path] = clip;
+        cache[key] = clip;
         return clip;
     }
 
@@ -193,6 +195,10 @@ namespace audio_device
 
 namespace spartan
 {
+    namespace
+    {
+        TConsoleVar<float> ambience_volume("audio.ambience_volume", 1.0f, "soundscape master volume, 0 to 1; leaves vehicles and other audio unchanged");
+    }
     AudioSource::AudioSource(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_GET_SET(GetAudioClipName, SetAudioClip, std::string);
@@ -206,6 +212,7 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_reverb_room_size, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_reverb_decay, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_reverb_wet, float);
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetAmbient, SetAmbient, bool);
 
         audio_device::acquire();
     }
@@ -253,6 +260,9 @@ namespace spartan
             "SetPlayOnStart",               &AudioSource::SetPlayOnStart,
             "GetIs3d",                      &AudioSource::GetIs3d,
             "SetIs3d",                      &AudioSource::SetIs3d,
+            "GetAmbient",                   &AudioSource::GetAmbient,
+            "SetAmbient",                   &AudioSource::SetAmbient,
+            "GetAmbientGain",               &AudioSource::GetAmbientGain,
             "GetReverbEnabled",             &AudioSource::GetReverbEnabled,
             "SetReverbEnabled",             &AudioSource::SetReverbEnabled,
             "GetReverbRoomSize",            &AudioSource::GetReverbRoomSize,
@@ -271,7 +281,7 @@ namespace spartan
 
     void AudioSource::Start()
     {
-        if (m_play_on_start)
+        if (m_play_on_start && !m_ambient)
         {
             PlayClip();
             m_auto_play_consumed = true;
@@ -282,6 +292,7 @@ namespace spartan
     {
         StopClip();
         m_auto_play_consumed = false;
+        m_ambient_gain = m_ambient_target = m_ambient_update_timer = 0.0f;
     }
 
     void AudioSource::Remove()
@@ -292,6 +303,11 @@ namespace spartan
     void AudioSource::Tick()
     {
         const bool in_play_mode = Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused);
+        if (m_ambient)
+        {
+            TickAmbient(in_play_mode);
+            return;
+        }
 
         // auto start playback when entering play mode, covers cases where Start was missed
         // due to async world load timing or entities arriving after the play transition
@@ -572,6 +588,76 @@ namespace spartan
         }
     }
 
+    void AudioSource::SetAmbient(bool value)
+    {
+        if (m_ambient == value) return;
+        StopClip();
+        m_ambient = value;
+        m_ambient_gain = m_ambient_target = m_ambient_update_timer = 0.0f;
+        if (!m_file_path.empty()) SetAudioClip(m_file_path);
+    }
+
+    void AudioSource::TickAmbient(bool in_play_mode)
+    {
+        // Never pause the shared SDL device: the car and other sounds use it too.
+        if (!in_play_mode || !m_play_on_start || !m_clip || !GetEntity()->GetActive())
+        {
+            StopClip();
+            m_ambient_gain = m_ambient_target = m_ambient_update_timer = 0.0f;
+            return;
+        }
+
+        m_ambient_update_timer -= static_cast<float>(Timer::GetDeltaTimeSec());
+        if (m_ambient_update_timer <= 0.0f)
+        {
+            m_ambient_update_timer = 0.1f;
+            Volume* region = GetEntity()->GetComponent<Volume>();
+            Camera* camera = World::GetCamera();
+            m_ambient_target = region && camera && !m_mute ? region->GetAudioWeight(camera->GetEntity()->GetPosition()) : 0.0f;
+            if (m_ambient_target > 0.0f)
+            {
+                const Vector3 listener = camera->GetEntity()->GetPosition();
+                float total = 0.0f;
+                bool indoors = false;
+                for (Entity* entity : World::GetEntities())
+                {
+                    if (!entity->GetActive()) continue;
+                    Volume* other = entity->GetComponent<Volume>();
+                    if (!other) continue;
+                    if (other->GetReverbEnabled() && (other->GetBoundingBox() * entity->GetMatrix()).Contains(listener)) indoors = true;
+                    AudioSource* source = entity->GetComponent<AudioSource>();
+                    if (!region->GetAudioGroup().empty() && other->GetAudioGroup() == region->GetAudioGroup() &&
+                        source && source->m_ambient && source->m_play_on_start && !source->m_mute && source->m_clip)
+                        total += other->GetAudioWeight(listener);
+                }
+                // Overlap does not raise the overall level. Isolated outer edges still fade to silence.
+                m_ambient_target /= std::max(1.0f, total);
+                if (indoors) m_ambient_target *= 0.2f;
+                const float master = ambience_volume.GetValue();
+                m_ambient_target *= std::isfinite(master) ? std::clamp(master, 0.0f, 1.0f) : 0.0f;
+            }
+        }
+
+        if (m_ambient_target <= 0.0001f && m_ambient_gain <= 0.0001f)
+        {
+            StopClip(); // distant regions have decoded shared clips, but no active streams or mixing work
+            m_ambient_gain = 0.0f;
+            return;
+        }
+        if (!m_is_playing)
+        {
+            PlayClip();
+            if (m_is_playing)
+            {
+                const uint32_t frames = m_clip->length / (m_clip->spec->channels * sizeof(float));
+                const auto elapsed = static_cast<uint64_t>(Timer::GetTimeSec() * m_clip->spec->freq);
+                m_position = static_cast<uint32_t>((elapsed + GetEntity()->GetObjectId()) % frames) * m_clip->spec->channels * sizeof(float);
+            }
+        }
+        // Refill enough frames even at low rendering frame rates, with a bounded queue.
+        for (int i = 0; i < 4 && m_is_playing; ++i) FeedAudioChunk();
+    }
+
     void AudioSource::Save(pugi::xml_node& node)
     {
         node.append_attribute("path")              = m_file_path.c_str();
@@ -585,6 +671,7 @@ namespace spartan
         node.append_attribute("reverb_room_size")  = m_reverb_room_size;
         node.append_attribute("reverb_decay")      = m_reverb_decay;
         node.append_attribute("reverb_wet")        = m_reverb_wet;
+        node.append_attribute("ambient")           = m_ambient;
     }
 
     void AudioSource::Load(pugi::xml_node& node)
@@ -600,6 +687,7 @@ namespace spartan
         m_reverb_room_size = node.attribute("reverb_room_size").as_float(0.5f);
         m_reverb_decay     = node.attribute("reverb_decay").as_float(0.5f);
         m_reverb_wet       = node.attribute("reverb_wet").as_float(0.3f);
+        m_ambient          = node.attribute("ambient").as_bool(false);
 
         SetAudioClip(m_file_path);
     }
@@ -611,18 +699,26 @@ namespace spartan
 
     void AudioSource::SetAudioClip(const string& file_path)
     {
+        const bool was_playing = m_is_playing;
+        StopClip();
         // store the filename from the provided path
         m_file_path = file_path;
         m_name      = FileSystem::GetFileNameFromFilePath(file_path);
-        m_clip      = audio_clip_cache::Get(file_path);
+        m_clip      = audio_clip_cache::Get(file_path, m_ambient);
         if (!m_clip)
         {
             SP_LOG_ERROR("Failed to load audio clip: %s", file_path.c_str());
+        }
+        else if (was_playing)
+        {
+            if (m_ambient) m_ambient_gain = 0.0f;
+            PlayClip();
         }
     }
 
     void AudioSource::PlayClip()
     {
+        if (m_is_playing) return;
         if (!m_clip || m_clip->length == 0)
         {
             SP_LOG_ERROR("No valid audio clip set");
@@ -650,7 +746,10 @@ namespace spartan
 
         // start playing
         CHECK_SDL_ERROR(SDL_ResumeAudioStreamDevice(m_stream));
-        m_position   = 0;
+        // Stagger regional recordings so overlapping copies do not reinforce one another.
+        const uint32_t frame_bytes = static_cast<uint32_t>(m_clip->spec->channels) * sizeof(float);
+        const uint32_t frames = m_clip->length / frame_bytes;
+        m_position   = m_ambient && frames ? static_cast<uint32_t>(GetEntity()->GetObjectId() % frames) * frame_bytes : 0;
         m_is_playing = true;
         SetPitch(m_pitch);
     }
@@ -738,7 +837,9 @@ namespace spartan
         }
 
         const uint32_t target_mono_samples = 2048;
-        uint32_t bytes_to_add = target_mono_samples * sizeof(float);
+        const uint32_t channels = static_cast<uint32_t>(m_clip->spec->channels);
+        const uint32_t frame_bytes = channels * sizeof(float);
+        uint32_t bytes_to_add = target_mono_samples * frame_bytes;
         if (m_position + bytes_to_add > m_clip->length)
         {
             bytes_to_add = m_clip->length - m_position;
@@ -749,7 +850,7 @@ namespace spartan
             if (m_loop)
             {
                 m_position = 0;
-                bytes_to_add = min<uint32_t>(target_mono_samples * sizeof(float), m_clip->length);
+                bytes_to_add = min<uint32_t>(target_mono_samples * frame_bytes, m_clip->length);
             }
             else
             {
@@ -758,7 +859,7 @@ namespace spartan
             }
         }
 
-        uint32_t num_samples = bytes_to_add / sizeof(float);
+        uint32_t num_samples = bytes_to_add / frame_bytes;
         float* mono_samples  = reinterpret_cast<float*>(m_clip->buffer + m_position);
         m_stereo_chunk.resize(num_samples * 2); // reuses capacity, no allocation if size fits
         float gain           = m_volume * m_attenuation * (m_mute ? 0.0f : 1.0f);
@@ -770,14 +871,24 @@ namespace spartan
         float right_gain     = gain * right_factor;
         for (uint32_t i = 0; i < num_samples; ++i)
         {
-            float sample = mono_samples[i];
-            m_stereo_chunk[2 * i] = sample * left_gain;
-            m_stereo_chunk[2 * i + 1]= sample * right_gain;
+            if (m_ambient)
+            {
+                m_ambient_gain = audio_region::slew(m_ambient_gain, m_ambient_target, static_cast<float>(m_clip->spec->freq), 0.5f);
+                const float ambient_gain = m_volume * m_ambient_gain;
+                m_stereo_chunk[2 * i] = mono_samples[i * channels] * ambient_gain;
+                m_stereo_chunk[2 * i + 1] = mono_samples[i * channels + channels - 1] * ambient_gain;
+            }
+            else
+            {
+                float sample = mono_samples[i * channels];
+                m_stereo_chunk[2 * i] = sample * left_gain;
+                m_stereo_chunk[2 * i + 1] = sample * right_gain;
+            }
         }
 
         // apply reverb effect using a feedback delay network
         // 6 taps with long delays for large-space character (tunnels, halls)
-        if (m_reverb_enabled && !m_reverb_buffer_l.empty())
+        if (!m_ambient && m_reverb_enabled && !m_reverb_buffer_l.empty())
         {
             const uint32_t base_delays[6] = { 4799, 6907, 8893, 10007, 11903, 13313 };
             const float room_scale        = 0.3f + m_reverb_room_size * 0.7f;

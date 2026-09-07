@@ -53,10 +53,11 @@ def strip_generated(text):
 
 def organize(text):
  root=parse(text);entities=root.find('Entities')
+ layered=any('world_layer' in e.get('tags','').split(',') for e in entities.findall('Entity'))
  parents={c:p for p in root.iter() for c in p}
  original={e.get('id'):dict(e.attrib) for e in root.iter('Entity')}
  locations={next(t[9:] for t in e.get('tags','').split(',') if t.startswith('location_') and t!='location_root'):e
-            for e in entities.findall('Entity') if is_location(e)}
+            for e in root.iter('Entity') if is_location(e)}
  keys=sorted(set(BELONGS_TO.get(k,k) for k in DESTINATIONS)|{'airport','player_home'})
  for i,key in enumerate(keys):
   if key not in locations:
@@ -80,7 +81,7 @@ def organize(text):
   previous.remove(e);destination.append(e);parents[e]=destination
  all_entities=list(root.iter('Entity'))
  systems=next(e for e in all_entities if e.get('id')=='9002000000000000001')
- systems.set('name','World Systems')
+ systems.set('name','Landscape' if layered else 'World Systems')
  for e in all_entities:
   name=e.get('name','')
   if name.startswith('pin_'):
@@ -106,7 +107,7 @@ def organize(text):
    if child.tag is ET.Comment and 'LANDMARK BLOCKOUT' in (child.text or ''):parent.remove(child)
  # Location roots first, in alphabetical display order, then shared/dynamic entities.
  ordered=sorted(locations.values(),key=lambda e:e.get('name'))
- entities[:]=ordered+[e for e in entities if e not in ordered]
+ if not layered:entities[:]=ordered+[e for e in entities if e not in ordered]
  current={e.get('id'):dict(e.attrib) for e in root.iter('Entity')}
  assert len(current)==len(list(root.iter('Entity'))),'Duplicate entity ID'
  for key,attributes in original.items():
@@ -115,7 +116,11 @@ def organize(text):
   if key==systems.get('id'):actual['name']=attributes['name']
   assert actual==attributes,f'Unexpected entity mutation: {attributes.get("name")}'
  # Pin and cluster positions are still world coordinates under identity parents.
- return serialize(root),{e.get('name'):[c.get('name') for c in e.findall('Entity')] for e in ordered}
+ result=serialize(root)
+ if layered:
+  from organize_world import organize as organize_layers
+  result,_=organize_layers(result)
+ return result,{e.get('name'):[c.get('name') for c in e.findall('Entity')] for e in ordered}
 
 def main():
  parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--apply',action='store_true');args=parser.parse_args()

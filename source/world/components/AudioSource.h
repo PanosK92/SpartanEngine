@@ -90,6 +90,11 @@ namespace spartan
         bool GetIs3d() const           { return m_is_3d; }
         void SetIs3d(const bool is_3d) { m_is_3d = is_3d; }
 
+        // Stereo ambience follows the listener's weight in the Volume on this entity.
+        bool GetAmbient() const { return m_ambient; }
+        void SetAmbient(bool value);
+        float GetAmbientGain() const { return m_ambient_gain; }
+
         float GetVolume() const { return m_volume; }
         void SetVolume(float volume);
 
@@ -109,6 +114,7 @@ namespace spartan
     private:
         void FeedAudioChunk();
         void FeedSynthesizedChunk();
+        void TickAmbient(bool in_play_mode);
 
         std::vector<float> m_stereo_chunk; // reused to avoid per-call allocation
         std::string m_name                             = "N/A";
@@ -128,6 +134,10 @@ namespace spartan
         math::Vector3 position_previous                = math::Vector3::Zero;
         std::shared_ptr<audio_clip_cache::AudioClip> m_clip = nullptr;
         std::string m_file_path;
+        bool m_ambient = false;
+        float m_ambient_gain = 0.0f;
+        float m_ambient_target = 0.0f;
+        float m_ambient_update_timer = 0.0f;
 
         // synthesis mode
         bool m_synthesis_mode                           = false;
