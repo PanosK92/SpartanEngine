@@ -19,85 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========
-#include "common.hlsl"
-//===================
-
-// keep in sync with renderer_fog_volume_* in Renderer_Definitions.h
-static const uint fog_width  = 384;
-static const uint fog_height = 216;
-static const uint fog_depth  = 128;
-static const float fog_underwater_far = 40.0f;
-static const float fog_air_far        = 6000.0f;
-static const float fog_scale_height   = 300.0f;
-static const float fog_density_scale  = 0.0004f;
-
-bool fog_camera_underwater()
-{
-    if (buffer_frame.ocean_enabled <= 0.5f || buffer_frame.ocean_turbidity <= 0.0f)
-    {
-        return false;
-    }
-
-    // sea level only, wave height must not be sampled per froxel
-    return get_camera_position().y < buffer_frame.ocean_sea_level;
-}
-
-float fog_volume_near()
-{
-    return max(buffer_frame.camera_near, 0.2f);
-}
-
-float fog_volume_far()
-{
-    if (fog_camera_underwater())
-    {
-        return fog_underwater_far;
-    }
-
-    return fog_air_far;
-}
-
-float fog_slice_to_distance(float slice_u)
-{
-    float n = fog_volume_near();
-    float f = max(fog_volume_far(), n + 0.1f);
-    float k = f / n;
-    float t = saturate(slice_u);
-    return (pow(k, t) - 1.0f) / (k - 1.0f) * f;
-}
-
-float fog_distance_to_slice(float dist)
-{
-    float n = fog_volume_near();
-    float f = max(fog_volume_far(), n + 0.1f);
-    float k = f / n;
-    return saturate(log(max(dist, 0.0f) / f * (k - 1.0f) + 1.0f) / log(k));
-}
-
-float3 fog_froxel_world(float3 voxel)
-{
-    float2 uv = (voxel.xy + 0.5f) / float2((float)fog_width, (float)fog_height);
-    // projection_inverted is unjittered, adding taa jitter crawls the grid
-    float2 ndc = uv_to_ndc(uv);
-    float4 view_far = mul(float4(ndc, 1.0f, 1.0f), get_projection_inverted());
-    float3 view_dir = normalize(view_far.xyz / view_far.w);
-    float3 world_dir = normalize(mul(float4(view_dir, 0.0f), get_view_inverted()).xyz);
-    float slice_u = (voxel.z + 0.5f) / (float)fog_depth;
-    float dist = fog_slice_to_distance(slice_u);
-    return get_camera_position() + world_dir * dist;
-}
-
-float4 sample_fog_volume(float2 uv, float distance_camera)
-{
-    float u = fog_distance_to_slice(distance_camera);
-    float w = (u * ((float)fog_depth - 1.0f) + 0.5f) / (float)fog_depth;
-    return tex3d.SampleLevel(
-        GET_SAMPLER(sampler_trilinear_clamp),
-        float3(uv, w),
-        0.0f
-    );
-}
+#ifndef SPARTAN_FOG_LIGHTING
+#define SPARTAN_FOG_LIGHTING
+#include "fog_volume.hlsl"
 
 // returns 1 if the world space position is lit by the light, 0 if occluded
 // directional picks a single cascade per sample instead of paying for both
@@ -350,3 +274,5 @@ Surface fog_build_surface(float3 position, float3 ray_direction, uint2 pixel, fl
     surface.diffuse_energy         = 1.0f;
     return surface;
 }
+
+#endif

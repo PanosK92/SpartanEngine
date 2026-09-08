@@ -117,6 +117,7 @@ namespace spartan
             TemporalPingPong cloud_history;
             TemporalPingPong ssao_history;
             TemporalPingPong fog_history;
+            Renderer_RenderTarget fog_source = Renderer_RenderTarget::fog_scatter;
             TemporalPingPong particle_volume_history;
             bool     cloud_environment_dirty   = true;
             uint32_t cloud_environment_strip   = 0;

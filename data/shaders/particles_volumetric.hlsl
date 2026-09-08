@@ -733,8 +733,11 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
             // the grid holds a scalar shade rather than three channels of colour, the smoke authored here
             // is neutral to within a couple of percent and the channels that buys pay for the age above
-            scattering += transmittance * sample.r * in_scatter;
-            transmittance *= exp(-optical_depth);
+            FogTransport fog = sample_fog_volume(uv, t);
+            float step_transmittance = exp(-optical_depth);
+            scattering += transmittance * (fog.transmittance * sample.r * in_scatter
+                + fog.scattering * (1.0f - step_transmittance));
+            transmittance *= step_transmittance;
         }
 
         t += fine_step;

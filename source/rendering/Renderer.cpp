@@ -4796,6 +4796,9 @@ namespace spartan
             Pass_Clouds(eye_layer, !xr_stereo || eye == Xr::eye_count - 1);
         }
 
+        // Compose camera transport once, including sky, clouds, IBL and reflections.
+        Pass_Fog_Composite(eye_layer);
+
         // particles remain foreground content and composite after world space clouds
         if (eye == 0)
         {

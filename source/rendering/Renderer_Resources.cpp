@@ -920,36 +920,19 @@ namespace spartan
         if (!at(render_targets, Renderer_RenderTarget::fog_scatter))
         {
             const uint32_t fog_flags = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing;
-            at(render_targets, Renderer_RenderTarget::fog_scatter) = make_shared<RHI_Texture>(
-                RHI_Texture_Type::Type3D,
-                renderer_fog_volume_width,
-                renderer_fog_volume_height,
-                renderer_fog_volume_depth,
-                1,
-                RHI_Format::R16G16B16A16_Float,
-                fog_flags,
-                "fog_scatter"
-            );
-            at(render_targets, Renderer_RenderTarget::fog_scatter_history) = make_shared<RHI_Texture>(
-                RHI_Texture_Type::Type3D,
-                renderer_fog_volume_width,
-                renderer_fog_volume_height,
-                renderer_fog_volume_depth,
-                1,
-                RHI_Format::R16G16B16A16_Float,
-                fog_flags,
-                "fog_scatter_history"
-            );
-            at(render_targets, Renderer_RenderTarget::fog_integrated) = make_shared<RHI_Texture>(
-                RHI_Texture_Type::Type3D,
-                renderer_fog_volume_width,
-                renderer_fog_volume_height,
-                renderer_fog_volume_depth,
-                1,
-                RHI_Format::R16G16B16A16_Float,
-                fog_flags,
-                "fog_integrated"
-            );
+            const auto create_fog = [&](Renderer_RenderTarget target, const char* name, bool integrated)
+            {
+                at(render_targets, target) = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type3D, renderer_fog_volume_width, renderer_fog_volume_height,
+                    renderer_fog_volume_depth + (integrated ? 1u : 0u), 1,
+                    target == Renderer_RenderTarget::fog_extinction ? RHI_Format::R16G16_Float : RHI_Format::R16G16B16A16_Float, fog_flags, name);
+            };
+            create_fog(Renderer_RenderTarget::fog_scatter, "fog_scatter", false);
+            create_fog(Renderer_RenderTarget::fog_scatter_history, "fog_scatter_history", false);
+            create_fog(Renderer_RenderTarget::fog_extinction, "fog_extinction", false);
+            create_fog(Renderer_RenderTarget::fog_water_source, "fog_water_source", false);
+            create_fog(Renderer_RenderTarget::fog_integrated, "fog_integrated", true);
+            create_fog(Renderer_RenderTarget::fog_transmittance, "fog_transmittance", true);
             m_pass_state.fog_history.Reset();
         }
 
@@ -1103,6 +1086,7 @@ namespace spartan
             { Renderer_Shader::light_composition_c,                   RHI_Shader_Type::Compute, "light_composition.hlsl"                                                     },
             { Renderer_Shader::fog_inject_c,                          RHI_Shader_Type::Compute, "fog_froxel.hlsl",                            RHI_Vertex_Type::Max, "FOG_INJECT"    },
             { Renderer_Shader::fog_integrate_c,                       RHI_Shader_Type::Compute, "fog_froxel.hlsl",                            RHI_Vertex_Type::Max, "FOG_INTEGRATE" },
+            { Renderer_Shader::fog_composite_c,                       RHI_Shader_Type::Compute, "fog_froxel.hlsl",                            RHI_Vertex_Type::Max, "FOG_COMPOSITE" },
             { Renderer_Shader::light_image_based_c,                   RHI_Shader_Type::Compute, "light_image_based.hlsl"                                                     },
 
             // blur
@@ -1147,7 +1131,6 @@ namespace spartan
             { Renderer_Shader::chromatic_aberration_c,                RHI_Shader_Type::Compute, "chromatic_aberration.hlsl"                                                  },
             { Renderer_Shader::vhs_c,                                 RHI_Shader_Type::Compute, "vhs.hlsl"                                                                   },
 
-            { Renderer_Shader::underwater_c,                          RHI_Shader_Type::Compute, "underwater.hlsl"                                                            },
             { Renderer_Shader::output_c,                              RHI_Shader_Type::Compute, "output.hlsl"                                                                },
             { Renderer_Shader::motion_blur_c,                         RHI_Shader_Type::Compute, "motion_blur.hlsl"                                                           },
             { Renderer_Shader::ssao_c,                                RHI_Shader_Type::Compute, "ssao.hlsl"                                                                  },

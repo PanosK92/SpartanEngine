@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============
 #include "fog.hlsl"
 #include "sky/clouds.hlsl"
+#include "fog_medium.hlsl"
 //=======================
 
 #if defined(FOG_INJECT)
@@ -63,10 +64,9 @@ float3 fog_sky_ambient(float3 sample_pos, float3 ray_direction)
     #ifdef RAY_TRACING_ENABLED
     if (is_ray_traced_shadows_enabled())
     {
-        sky_zenith *= fog_trace_visibility(sample_pos, float3(0.0f, 1.0f, 0.0f), 10000.0f);
-        sky_sun = has_sun && sun_lobe > 0.0f
-            ? sky_sun * fog_trace_visibility(sample_pos, sun_sample_dir, 10000.0f)
-            : sky_zenith;
+        float sky_visibility = fog_trace_visibility(sample_pos, float3(0.0f, 1.0f, 0.0f), 10000.0f);
+        sky_zenith *= sky_visibility;
+        sky_sun *= sky_visibility;
     }
     #endif
     return lerp(sky_zenith, sky_sun, sun_lobe);
@@ -79,8 +79,7 @@ float3 fog_evaluate_light(
     uint3 thread_id,
     float2 uv,
     bool in_water,
-    float2 caustic_xz,
-    float sigma_s
+    float3 sigma_s
 )
 {
     uint2 pixel = thread_id.xy;
@@ -100,19 +99,13 @@ float3 fog_evaluate_light(
         return 0.0f;
     }
 
-    float phase_g = light.is_directional() ? 0.4f : 0.6f;
-    float phase = henyey_greenstein_phase(dot(ray_direction, light_dir), phase_g);
     float visibility = 1.0f;
     if (light.has_shadows())
     {
     #ifdef RAY_TRACING_ENABLED
         if (is_ray_traced_shadows_enabled())
         {
-            // far froxels cover hundreds of meters, a shadow ray per voxel is wasted
-            if (thread_id.z < (fog_depth * 3u) / 4u)
-            {
-                visibility = fog_trace_shadow(light, sample_pos);
-            }
+            visibility = fog_trace_shadow(light, sample_pos);
         }
         else
     #endif
@@ -134,136 +127,119 @@ float3 fog_evaluate_light(
 
         if (in_water)
         {
-            float water_y = get_ocean_height(caustic_xz);
-            float sun_path = (water_y - sample_pos.y) / max(light_dir.y, 0.05f);
-            float2 entry_xz = caustic_xz + light_dir.xz * sun_path;
-            tint = exp(-get_ocean_extinction() * sun_path) * get_ocean_caustic(entry_xz, sun_path);
+            tint = get_ocean_sun_transmission(sample_pos, light_dir);
+            light_dir = -refract(-light_dir, float3(0.0f, 1.0f, 0.0f), 1.0f / 1.333f);
         }
     }
 
+    float phase_g = in_water ? 0.72f : (light.is_directional() ? 0.4f : 0.6f);
+    float phase = henyey_greenstein_phase(dot(ray_direction, light_dir), phase_g);
     return light.color * light.intensity * local_atten * visibility * phase * tint * sigma_s;
 }
 
+float3 fog_light_medium(float3 sample_pos, float3 ray_direction, uint3 thread_id, float2 uv, bool in_water, float3 sigma_s)
+{
+    if (!any(sigma_s > 0.0f)) return 0.0f;
+    float3 ambient = fog_sky_ambient(sample_pos, ray_direction);
+    if (in_water)
+    {
+        float depth = max(get_ocean_height(sample_pos.xz) - sample_pos.y, 0.0f);
+        ambient *= exp(-get_ocean_extinction() * depth);
+    }
+    float3 rate = ambient * sigma_s;
+    if (buffer_frame.cluster_light_count > 0u)
+        rate += fog_evaluate_light(0u, sample_pos, ray_direction, thread_id, uv, in_water, sigma_s);
+    [loop]
+    for (uint k = 0u; k < buffer_frame.volumetric_light_count; k++)
+        rate += fog_evaluate_light(volumetric_light_indices[k], sample_pos, ray_direction, thread_id, uv, in_water, sigma_s);
+    return rate;
+}
+
+// One density/lighting injection for both air and water. No camera-medium switch.
 [numthreads(8, 8, 4)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= fog_width || thread_id.y >= fog_height || thread_id.z >= fog_depth)
+    if (any(thread_id >= uint3(fog_width, fog_height, fog_depth)))
+        return;
+
+    float2 uv = (float2(thread_id.xy) + 0.5f) / float2(fog_width, fog_height);
+    float3 sample_pos = fog_froxel_world(float3(thread_id));
+    float3 ray_direction = fog_view_direction(uv);
+    float d0 = fog_slice_to_distance(float(thread_id.z) / float(fog_depth));
+    float d1 = fog_slice_to_distance(float(thread_id.z + 1u) / float(fog_depth));
+    // Nothing behind the farthest visible opaque depth in this tile can affect
+    // its transport. Include the complete boundary cell and neighbouring rays
+    // so silhouette edges and distorted water samples retain their media.
+    float visible_distance = 0.0f;
+    float opaque_distance = fog_far;
+    [unroll]
+    for (uint tap = 0u; tap < 5u; tap++)
     {
+        float2 offset = tap == 4u ? 0.0f : float2((tap & 1u) ? 1.0f : -1.0f, (tap & 2u) ? 1.0f : -1.0f);
+        float2 sample_uv = saturate(uv + offset / float2(fog_width, fog_height));
+        float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), sample_uv, 0.0f).r;
+        float distance_to_opaque = depth == 0.0f ? fog_far : length(get_position(depth, sample_uv) - get_camera_position());
+        visible_distance = max(visible_distance, distance_to_opaque);
+        if (tap == 4u) opaque_distance = distance_to_opaque;
+    }
+    if (d0 > visible_distance + (d1 - d0))
+    {
+        tex3d_uav[thread_id] = 0.0f;
+        tex_fog_extinction_uav[thread_id] = 0.0f;
+        tex_fog_water_source_uav[thread_id] = 0.0f;
         return;
     }
+    FogMedium medium = fog_sample_medium(sample_pos, get_camera_position().y + ray_direction.y * d0, get_camera_position().y + ray_direction.y * d1);
+    // Preserve both source terms in interface cells. Lighting the entire cell
+    // from its submerged centre makes the air above distant water alternate dark/light.
+    float water_length = (d1 - d0) * medium.water;
+    float air_length = (d1 - d0) - water_length;
+    bool water_first = ray_direction.y > 0.0f;
+    float air_start = d0 + (water_first ? water_length : 0.0f);
+    float water_start = d0 + (water_first ? 0.0f : air_length);
+    // Sample the visible part of a boundary cell. A midpoint behind a mountain
+    // or the seabed would incorrectly shadow the fog in front of that surface.
+    float air_visible = clamp(opaque_distance - air_start, 0.0f, air_length);
+    float water_visible = clamp(opaque_distance - water_start, 0.0f, water_length);
+    float air_distance = air_start + air_visible * 0.5f;
+    float water_distance = water_start + fog_segment_centroid(get_ocean_extinction().g, water_visible);
+    float3 air_position = get_camera_position() + ray_direction * air_distance;
+    medium.air_extinction = air_length > 0.0f ? fog_sample_medium(air_position, air_position.y, air_position.y).air_extinction : 0.0f;
+    float3 scatter_rate = air_length > 0.0f
+        ? fog_light_medium(get_camera_position() + ray_direction * air_distance, ray_direction,
+            thread_id, uv, false, (medium.air_extinction * 0.95f).xxx) : 0.0f;
+    float3 water_rate = water_length > 0.0f
+        ? fog_light_medium(get_camera_position() + ray_direction * water_distance, ray_direction,
+            thread_id, uv, true, get_ocean_scattering()) : 0.0f;
+    tex_fog_water_source_uav[thread_id] = float4(water_rate, 0.0f);
+    bool in_water = medium.water > 0.5f;
 
-    float3 sample_pos = fog_froxel_world(float3(thread_id));
-    float3 ray_direction = normalize(sample_pos - get_camera_position());
-    float2 uv = (float2(thread_id.xy) + 0.5f) / float2((float)fog_width, (float)fog_height);
-
-    bool camera_underwater = fog_camera_underwater();
-    float water_y = 0.0f;
-    bool in_water = false;
-    if (camera_underwater)
+    // Extinction always belongs to this frame. History filters lighting only,
+    // with signed optical density identifying water/air changes at moving waves.
+    float density = dot(lerp(medium.air_extinction.xxx, get_ocean_extinction(), medium.water), float3(0.2126f, 0.7152f, 0.0722f));
+    float metadata = in_water ? -density : density;
+    if (pass_get_f3_value().x < 0.5f && density > 0.0f)
     {
-        water_y = get_ocean_height(sample_pos.xz);
-        in_water = sample_pos.y < water_y;
-    }
-
-    float ground_y = buffer_frame.ocean_enabled > 0.5f ? buffer_frame.ocean_sea_level : 0.0f;
-    float height_world = max(sample_pos.y - ground_y, 0.0f);
-    float height_sigma = pass_get_f3_value().y * fog_density_scale
-        * exp(-height_world / fog_scale_height);
-    float water_sigma = 0.0f;
-    if (in_water)
-    {
-        water_sigma = dot(get_ocean_extinction(), float3(0.2126f, 0.7152f, 0.0722f));
-    }
-    float sigma_s = max(height_sigma + water_sigma, 0.0f);
-    float sigma_t = sigma_s;
-
-    float3 scatter_rate = 0.0f;
-    if (sigma_s > 0.0f)
-    {
-        if (in_water)
+        float4 previous = mul(float4(sample_pos, 1.0f), get_view_projection_previous_unjittered());
+        float previous_distance = length(sample_pos - buffer_frame.camera_position_previous);
+        float2 previous_uv = ndc_to_uv(previous.xy / max(previous.w, 1e-5f));
+        float previous_u = fog_distance_to_slice(previous_distance);
+        if (previous.w > 0.0f && is_valid_uv(previous_uv) && previous_distance < fog_far)
         {
-            float3 sky_down = tex.SampleLevel(
-                GET_SAMPLER(sampler_trilinear_clamp),
-                direction_sphere_uv(float3(0.0f, 1.0f, 0.0f)),
-                7.0f
-            ).rgb;
-            float3 downwelling = get_sun_radiance()
-                * saturate(-light_parameters[0].direction.y)
-                * (1.0f / PI) + sky_down;
-            scatter_rate += ocean_scatter_albedo * downwelling * water_sigma;
-        }
-        else
-        {
-            scatter_rate += fog_sky_ambient(sample_pos, ray_direction) * height_sigma;
-        }
-
-        if (buffer_frame.cluster_light_count > 0u)
-        {
-            scatter_rate += fog_evaluate_light(
-                0u,
-                sample_pos,
-                ray_direction,
-                thread_id,
-                uv,
-                in_water,
-                sample_pos.xz,
-                sigma_s
-            );
-        }
-
-        uint volumetric_count = buffer_frame.volumetric_light_count;
-        [loop]
-        for (uint k = 0u; k < volumetric_count; k++)
-        {
-            uint light_index = volumetric_light_indices[k];
-            scatter_rate += fog_evaluate_light(
-                light_index,
-                sample_pos,
-                ray_direction,
-                thread_id,
-                uv,
-                in_water,
-                sample_pos.xz,
-                sigma_s
-            );
+            float4 history = tex3d.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), float3(previous_uv, previous_u), 0.0f);
+            float density_change = abs(history.a - metadata) / max(density, 1e-5f);
+            float motion = length((previous_uv - uv) * float2(fog_width, fog_height));
+            float keep = exp(-max(buffer_frame.delta_time, 0.001f) / (in_water ? 0.012f : 0.12f));
+            keep *= saturate(1.0f - density_change * 4.0f) * exp(-motion * 0.35f);
+            // Reject newly lit/shadowed cells instead of dragging a beam behind a light.
+            float change = abs(luminance(history.rgb) - luminance(scatter_rate))
+                / max(max(luminance(history.rgb), luminance(scatter_rate)), 1e-6f);
+            keep *= saturate(1.0f - change);
+            scatter_rate = lerp(scatter_rate, history.rgb, keep);
         }
     }
-
-    float4 current = float4(scatter_rate, sigma_t);
-
-    bool reset_history = pass_get_f3_value().x > 0.5f;
-    float4 result = current;
-    if (!reset_history)
-    {
-        float4 prev_clip = mul(
-            float4(sample_pos, 1.0f),
-            get_view_projection_previous_unjittered()
-        );
-        if (prev_clip.w > 0.0f)
-        {
-            float3 prev_ndc = prev_clip.xyz / prev_clip.w;
-            float2 prev_uv = ndc_to_uv(prev_ndc.xy);
-            float prev_dist = length(sample_pos - buffer_frame.camera_position_previous);
-            float prev_u = fog_distance_to_slice(prev_dist);
-            float prev_w = (prev_u * ((float)fog_depth - 1.0f) + 0.5f) / (float)fog_depth;
-            if (is_valid_uv(prev_uv) && prev_u > 0.0f && prev_u < 1.0f)
-            {
-                float4 history = tex3d.SampleLevel(
-                    GET_SAMPLER(sampler_trilinear_clamp),
-                    float3(prev_uv, prev_w),
-                    0.0f
-                );
-                float2 uv_delta = prev_uv - uv;
-                float froxel_motion = length(
-                    uv_delta * float2((float)fog_width, (float)fog_height)
-                );
-                float keep = lerp(0.97f, 0.55f, saturate(froxel_motion * 0.5f));
-                result = lerp(current, history, keep);
-            }
-        }
-    }
-
-    tex3d_uav[thread_id] = result;
+    tex3d_uav[thread_id] = float4(scatter_rate, metadata);
+    tex_fog_extinction_uav[thread_id] = float4(medium.air_extinction, medium.water, 0.0f, 0.0f);
 }
 
 #elif defined(FOG_INTEGRATE)
@@ -272,31 +248,58 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     if (thread_id.x >= fog_width || thread_id.y >= fog_height)
-    {
         return;
-    }
-
-    float transmittance = 1.0f;
+    float3 transmittance = 1.0f;
     float3 inscatter = 0.0f;
-
+    tex_fog_scattering_uav[uint3(thread_id.xy, 0u)] = 0.0f;
+    tex_fog_transmittance_uav[uint3(thread_id.xy, 0u)] = 1.0f;
     [loop]
     for (uint z = 0u; z < fog_depth; z++)
     {
-        // inject already temporally filters, a 3x3 here is 9x the bandwidth
-        float4 scatter = tex3d[uint3(thread_id.xy, z)];
-        float u0 = (float)z / (float)fog_depth;
-        float u1 = (float)(z + 1u) / (float)fog_depth;
-        float d0 = fog_slice_to_distance(u0);
-        float d1 = fog_slice_to_distance(u1);
-        float dt = max(d1 - d0, 0.001f);
-
-        float sigma_t = scatter.a;
-        float3 scatter_rate = scatter.rgb;
-        float step_t = exp(-sigma_t * dt);
-        inscatter += transmittance * scatter_rate * dt;
+        float3 scatter = tex_fog_air_source[uint3(thread_id.xy, z)].rgb;
+        float2 material = max(tex_fog_extinction[uint3(thread_id.xy, z)].rg, 0.0f);
+        float air = material.r;
+        float water_fraction = saturate(material.g);
+        float3 water_extinction = get_ocean_extinction();
+        float3 water_scatter = tex_fog_water_source[uint3(thread_id.xy, z)].rgb;
+        bool water_first = fog_view_direction((float2(thread_id.xy) + 0.5f) / float2(fog_width, fog_height)).y > 0.0f;
+        float dt = fog_slice_to_distance(float(z + 1u) / float(fog_depth))
+                 - fog_slice_to_distance(float(z) / float(fog_depth));
+        float3 weight, step_t;
+        [unroll] for (uint channel = 0u; channel < 3u; channel++)
+        {
+            weight[channel] = fog_layered_weight(air, water_extinction[channel], scatter[channel],
+                water_scatter[channel], dt, water_fraction, water_first, dt);
+            step_t[channel] = fog_layered_transmittance(air, water_extinction[channel], dt,
+                water_fraction, water_first, dt);
+        }
+        inscatter += transmittance * weight;
         transmittance *= step_t;
-        tex3d_uav[uint3(thread_id.xy, z)] = float4(inscatter, transmittance);
+        tex_fog_scattering_uav[uint3(thread_id.xy, z + 1u)] = float4(inscatter, 0.0f);
+        tex_fog_transmittance_uav[uint3(thread_id.xy, z + 1u)] = float4(transmittance, 1.0f);
     }
 }
 
+#elif defined(FOG_COMPOSITE)
+
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
+{
+    float2 resolution;
+    tex_uav.GetDimensions(resolution.x, resolution.y);
+    if (any(thread_id.xy >= uint2(resolution)))
+        return;
+    Surface surface;
+    surface.Build(thread_id.xy, resolution, true, false);
+    FogTransport volume = sample_fog_volume(surface.uv, surface.is_sky() ? fog_far : surface.camera_to_pixel_length);
+    float4 color = tex_uav[thread_id.xy];
+    float mode = pass_get_f3_value().x;
+    if (mode < 0.5f)
+        color.rgb = color.rgb * volume.transmittance + volume.scattering;
+    else if (mode < 1.5f)
+        color.rgb = volume.scattering;
+    else if (mode < 2.5f)
+        color.rgb = volume.transmittance;
+    tex_uav[thread_id.xy] = validate_output(color);
+}
 #endif

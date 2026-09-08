@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====
 #include <array>
 #include <cstdint>
+#include "../../data/shaders/shared_fog.h"
 //================
 
 namespace spartan
@@ -164,10 +165,10 @@ namespace spartan
     const uint32_t renderer_particle_volume_width   = 160;
     const uint32_t renderer_particle_volume_height  = 90;
     const uint32_t renderer_particle_volume_depth   = 128;
-    // keep in sync with fog_width, fog_height, fog_depth in fog.hlsl
-    const uint32_t renderer_fog_volume_width        = 384;
-    const uint32_t renderer_fog_volume_height       = 216;
-    const uint32_t renderer_fog_volume_depth        = 128;
+    // Shared CPU/HLSL dimensions, integrated volumes contain depth + 1 boundaries.
+    const uint32_t renderer_fog_volume_width        = fog::fog_width;
+    const uint32_t renderer_fog_volume_height       = fog::fog_height;
+    const uint32_t renderer_fog_volume_depth        = fog::fog_depth;
 
     enum class Renderer_Tonemapping : uint32_t
     {
@@ -346,7 +347,6 @@ namespace spartan
         depth_of_field_c,
         chromatic_aberration_c,
         vhs_c,
-        underwater_c,
         bloom_prefilter_c,
         bloom_blend_frame_c,
         bloom_upsample_blend_mip_c,
@@ -362,6 +362,7 @@ namespace spartan
         light_composition_c,
         fog_inject_c,
         fog_integrate_c,
+        fog_composite_c,
         light_image_based_c,
         line_v,
         line_p,
@@ -502,6 +503,9 @@ namespace spartan
         fog_scatter,
         fog_scatter_history,
         fog_integrated,
+        fog_extinction,
+        fog_water_source,
+        fog_transmittance,
         particle_volume,
         particle_volume_history,
         frame_render,

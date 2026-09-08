@@ -150,9 +150,7 @@ float3 night_sky_radiance(float up_y)
     return lerp(night_sky_horizon_rad, night_sky_zenith_rad, h);
 }
 
-// fft ocean water body optics, shared by the refraction composite and the underwater ambient fill
-// so the water column and the objects submerged in it agree on the same color and falloff
-static const float3 ocean_scatter_albedo = float3(0.0f, 0.09f, 0.13f);                // deep blue-green in-scattering albedo, lit by the downwelling light
+// Water material coefficients shared by the volume and incident sunlight.
 static const float3 ocean_extinction     = float3(0.45f, 0.15f, 0.08f) * 0.45f;       // per channel beer lambert extinction, red dies first and blue persists
 
 float3 get_ocean_extinction()
@@ -160,6 +158,12 @@ float3 get_ocean_extinction()
     // Clear water still absorbs light; suspended particles increase extinction.
     // At the legacy turbidity of one this retains the original coefficients.
     return ocean_extinction * (0.5f + 0.5f * max(buffer_frame.ocean_turbidity, 0.0f));
+}
+
+float3 get_ocean_scattering()
+{
+    return min(get_ocean_extinction(), float3(0.008f, 0.018f, 0.025f)
+        * (0.25f + 0.75f * max(buffer_frame.ocean_turbidity, 0.0f)));
 }
 
 // caustics as refracted ray density from the two finest slope cascades, the slope gradient is the jacobian of the sun ray footprint after travelling through the water, rays converge into bright ribbons where it shrinks and spread into soft dimming where it grows, the mean stays near one at any sea state so the pattern never washes to flat or clamps to black
@@ -297,6 +301,25 @@ float get_ocean_height(float2 world_xz)
 {
     float2 grid_xz = get_ocean_grid_xz(world_xz);
     return buffer_frame.ocean_sea_level + get_ocean_displacement(grid_xz).y;
+}
+
+// One sunlight path for surface caustics and the participating water medium.
+// The wave slope Jacobian focuses the refracted beam; absorption removes light
+// along that same path. Apply this to incident light before the surface BRDF.
+float3 get_ocean_sun_transmission(float3 position, float3 to_sun)
+{
+    if (buffer_frame.ocean_enabled <= 0.5f)
+        return 1.0f;
+    float depth = get_ocean_height(position.xz) - position.y;
+    if (depth <= 0.0f)
+        return 1.0f;
+    if (to_sun.y <= 0.0f)
+        return 0.0f;
+    float3 refracted = -refract(-to_sun, float3(0.0f, 1.0f, 0.0f), 1.0f / 1.333f);
+    float travel = depth / max(refracted.y, 0.05f);
+    float2 entry = position.xz + refracted.xz * travel;
+    float focus = lerp(1.0f, get_ocean_caustic(entry, travel), saturate(buffer_frame.ocean_caustics_intensity));
+    return lerp(1.0f.xxx, exp(-get_ocean_extinction() * travel) * focus, saturate(depth / 0.08f));
 }
 
 // fast 1d hash

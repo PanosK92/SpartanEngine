@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include "common.hlsl"
+#include "fog_volume.hlsl"
 #include "brdf.hlsl"
 //====================
 
@@ -82,16 +83,6 @@ float3 glass_thin_film_fresnel(float3 fresnel, float n_dot_v, float absorption)
     float phase   = (1.0f - n_dot_v) * 14.0f;
     float3 irid   = 0.5f + 0.5f * float3(cos(phase), cos(phase + 2.094395f), cos(phase + 4.188790f));
     return lerp(fresnel, fresnel * lerp(1.0f, irid, 0.4f), clear * grazing);
-}
-
-// beer lambert water column, the closed form of single scattering in a homogeneous medium
-// one extinction drives both the transmitted background and the in-scatter fill, per channel,
-// so the fill takes over exactly as fast as the background fades, red dies first and blue persists,
-// a separate scatter rate here made every channel converge to the body color at the same depth which read as flat milk
-float3 apply_water_absorption(float3 color, float depth, float3 body_radiance)
-{
-    float3 transmittance = exp(-get_ocean_extinction() * depth);
-    return color * transmittance + body_radiance * (1.0f - transmittance);
 }
 
 // Compute refracted direction using Snell's law (returns zero if total internal reflection)
@@ -340,25 +331,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 refraction.g = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refracted_uv, 0.0f).g;
                 refraction.b = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv + delta * (1.0f - chromatic_aberration), 0.0f).b;
 
-                // the body color is an albedo, light it with the downwelling sun and the reflected sky, a constant radiance glows at night and reads black at noon
-                // Downwelling light comes from the sky, not the view-dependent
-                // reflection (which often contains dark land at golden hour).
-                float3 downwelling   = get_sun_radiance() * saturate(-light_parameters[0].direction.y) * (1.0f / PI)
-                    + get_sky_fill_radiance() * (0.35f / PI);
-                float3 body_radiance = ocean_scatter_albedo * downwelling;
-
-                // absorption follows the water column of the sample actually shown so brightness stays consistent with the offset chosen above
-                float water_depth = max(depth_shown - depth_transparent, 0.0f);
-
-                // warm the column where the visible water is thin, screen depth not the 25 m heightfield
-                float shallow = saturate(1.0f - water_depth / 2.4f);
-                shallow       = shallow * shallow;
-                body_radiance = lerp(
-                    body_radiance,
-                    body_radiance * float3(1.12f, 1.04f, 0.82f) + refraction * 0.12f,
-                    shallow * 0.65f
-                );
-                refraction = apply_water_absorption(refraction, water_depth, body_radiance);
+                // The same voxel field owns the submerged column seen from either side.
+                float3 background_position = get_position(tex4.SampleLevel(samplers[sampler_point_clamp], refracted_uv, 0.0f).r, refracted_uv);
+                float background_distance = length(background_position - get_camera_position());
+                // Match this UV's radial ray at the transparent surface's view depth.
+                float start_distance = depth_transparent / max(dot(fog_view_direction(refracted_uv), normalize(mul(float4(0.0f, 0.0f, 1.0f, 0.0f), get_view_inverted()).xyz)), 0.01f);
+                refraction = fog_transmit_segment(refraction, refracted_uv, start_distance, background_distance);
             }
             else
             {
@@ -409,6 +387,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 }
 
                 refraction = lerp(background, refraction, screen_fade(refracted_uv));
+                float background_depth = tex4.SampleLevel(samplers[sampler_point_clamp], refracted_uv, 0.0f).r;
+                float background_distance = length(get_position(background_depth, refracted_uv) - get_camera_position());
+                refraction = fog_transmit_segment(refraction, refracted_uv, surface.camera_to_pixel_length,
+                    background_depth == 0.0f ? fog_far : background_distance);
             }
         }
     }
@@ -450,7 +432,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     else if (surface.is_water())
     {
         // water has no diffuse layer, light_composition zeroed it, so the column below the surface
-        // has to be transmitted in here, the frame only holds its analytic specular and fog
+        // has to be transmitted in here, the frame only holds its analytic specular
         float3 kT            = float3(1.0f, 1.0f, 1.0f) - F;
         float3 surface_color = specular_reflection + refraction * kT;
         tex_uav[thread_id.xy] += float4(surface_color, 0.0f);

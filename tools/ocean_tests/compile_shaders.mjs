@@ -32,7 +32,7 @@ const cases = [
     ['ocean/ocean_assemble.hlsl', 'cs', ''], ['g_buffer.hlsl', 'ps', ''], ['g_buffer.hlsl', 'vs', ''],
     ['reflections_apply.hlsl', 'cs', ''], ['light_composition.hlsl', 'cs', ''],
     ['fog_froxel.hlsl', 'cs', 'FOG_INJECT'], ['fog_froxel.hlsl', 'cs', 'FOG_INTEGRATE'],
-    ['underwater.hlsl', 'cs', '']
+    ['fog_froxel.hlsl', 'cs', 'FOG_COMPOSITE']
 ];
 for (const [file, stage, define] of cases) {
     const args = ['-T', `${stage}_6_7`, '-E', `main_${stage}`, '-spirv', '-fspv-target-env=vulkan1.3',

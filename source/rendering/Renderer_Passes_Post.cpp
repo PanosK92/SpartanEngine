@@ -109,26 +109,7 @@ namespace spartan
     {
         RHI_Texture* rt_frame_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
 
-        // underwater tint and waterline meniscus, only runs when the camera is near or below the waves
-        if (Camera* camera = World::GetCamera())
-        {
-            const Vector3 camera_position = camera->GetEntity()->GetPosition();
-            float ocean_height            = 0.0f;
-            if (GetOceanHeight(camera_position.x, camera_position.z, ocean_height) && camera_position.y < ocean_height + 1.0f)
-            {
-                Renderer::BeginPass("underwater", eye_layer);
-                {
-                    RHI_CommandList::SetShader(GetShader(Renderer_Shader::underwater_c));
-                    RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_in);
-                    RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_out, rhi_all_mips, 0, true);
-                    RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), GetRenderTarget(Renderer_RenderTarget::skysphere));
-                    RHI_CommandList::Dispatch(tex_out);
-                }
-                RHI_CommandList::EndPass();
-                swap(tex_in, tex_out);
-            }
-        }
-
+        // Air/water transport and the displaced waterline are resolved before upscaling.
         if (cvar_depth_of_field.GetValueAs<bool>())
         {
             RHI_Texture* tex_dof_focus          = GetRenderTarget(Renderer_RenderTarget::dof_focus);
@@ -1104,6 +1085,11 @@ namespace spartan
 
             RHI_CommandList::SetPass("particle_render");
             RHI_CommandList::SetShaders(shader_render_v, shader_render_p);
+            RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
+            RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
+            RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(Renderer_RenderTarget::fog_water_source));
+            RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
+            RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
             RHI_CommandList::SetBlendState(GetBlendState(to_blend_state(emitters[i]->GetBlendMode())));
             RHI_CommandList::SetColorTarget(tex_render);
             RHI_CommandList::SetResolutionScale(true);
@@ -1182,6 +1168,11 @@ namespace spartan
             RHI_CommandList::BeginMarker("particle_volume_composite");
             {
                 RHI_CommandList::SetShader(shader_volume_composite, "particle_volume_composite");
+                RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
+                RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
+                RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(Renderer_RenderTarget::fog_water_source));
+                RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
+                RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_render, rhi_all_mips, 0, true);
                 if (RHI_Texture* tex_reactivity = GetRenderTarget(Renderer_RenderTarget::dlss_reactivity))
                 {

@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // = INCLUDES ========
 #include "common.hlsl"
-#include "fog.hlsl"
 //====================
 
 // catmull rom filtered sky panorama fetch, sky pixels magnify the 4k panorama ~2.5x at a
@@ -83,9 +82,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 light_diffuse       = 0.0f;
     float3 light_specular      = 0.0f;
     float3 light_emissive      = 0.0f;
-    float3 light_atmospheric   = 0.0f;
     float alpha                = 0.0f;
-    float distance_from_camera = 0.0f;
 
     // fill in the sky pixels
     if (surface.is_sky() && pass_is_opaque())
@@ -96,7 +93,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         view_dir_sky         = normalize(view_dir_sky);
         light_emissive       = sample_sky_catmull_rom(direction_sphere_uv(view_dir_sky));
         alpha                = 0.0f;
-        distance_from_camera = FLT_MAX_16;
     }
     // fill opaque and transparent pixels based on pass type
     else if ((pass_is_opaque() && surface.is_opaque()) || (pass_is_transparent() && surface.is_transparent()))
@@ -107,7 +103,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // reflectance: multiplying it by albedo changes both its color and energy.
         light_emissive       = surface.emissive;
         alpha                = surface.alpha;
-        distance_from_camera = surface.camera_to_pixel_length;
 
         // water and glass are shaded from reflection and transmission inside the refraction
         // composite, a lambert albedo layer on top double counts and washes the fresnel structure
@@ -117,58 +112,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             light_diffuse = 0.0f;
         }
 
-        // submerged geometry sits inside a glowing scattering medium but the refraction source is
-        // copied before ibl runs, so it only ever receives direct sun and faces away from it read
-        // pitch black through the surface, fill them with the water body radiance they are immersed
-        // in, same optics as the refraction composite so object and column agree, fading with depth
-        if (pass_is_opaque() && buffer_frame.ocean_enabled > 0.5f)
-        {
-            // actual displaced wave height above this point, not the flat sea level plane
-            float water_height = get_ocean_height(surface.position.xz);
-
-            float depth_below = water_height - surface.position.y;
-            if (depth_below > 0.0f)
-            {
-                float3 sky_down    = tex2.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(float3(0.0f, 1.0f, 0.0f)), 7).rgb;
-                float3 downwelling = get_sun_radiance() * saturate(-light_parameters[0].direction.y) * (1.0f / PI) + sky_down;
-                // ease in over the first 20cm so the waterline is a soft lap line instead of a hard cut
-                float lap_band     = saturate(depth_below / 0.2f);
-                light_diffuse     += ocean_scatter_albedo * downwelling * exp(-get_ocean_extinction() * depth_below) * lap_band;
-
-                // sun caustics, the wave focused beams land where the slant sun path meets the surface,
-                // extinction along that path kills them with depth and distance fades the sub texel sparkle
-                float3 to_sun = -light_parameters[0].direction;
-                if (buffer_frame.ocean_caustics_intensity > 0.0f && to_sun.y > 0.01f)
-                {
-                    float  sun_path      = depth_below / to_sun.y;
-                    float2 entry_xz      = surface.position.xz + to_sun.xz * sun_path;
-                    float  n_dot_l       = saturate(dot(surface.normal, to_sun));
-                    float  distance_fade = 1.0f - saturate(surface.camera_to_pixel_length / 200.0f);
-                    float3 sun_incident  = get_sun_radiance() * n_dot_l * (1.0f / PI) * exp(-get_ocean_extinction() * sun_path);
-                    light_diffuse       += sun_incident * get_ocean_caustic(entry_xz, sun_path) * buffer_frame.ocean_caustics_intensity * distance_fade * lap_band;
-                }
-            }
-        }
     }
-    
-    // froxel fog, inscatter and transmittance share one optical depth
-    {
-        float fog_distance = surface.is_sky() ? fog_volume_far() : distance_from_camera;
-        float4 fog = sample_fog_volume(surface.uv, fog_distance);
-        if (surface.is_sky())
-        {
-            // sky already integrates atmospheric scattering, only volume inscatter is additive
-            light_atmospheric = fog.rgb;
-        }
-        else
-        {
-            light_diffuse     *= fog.a;
-            light_specular    *= fog.a;
-            light_emissive    *= fog.a;
-            light_atmospheric  = fog.rgb;
-        }
-    }
+
+    // Camera transport is composed after all surface lighting.
 
     // each pixel reaches this point once per frame so a straight write is safe
-    tex_uav[thread_id.xy] = validate_output(float4(light_diffuse * surface.albedo + light_specular + light_emissive + light_atmospheric, alpha));
+    tex_uav[thread_id.xy] = validate_output(float4(light_diffuse * surface.albedo + light_specular + light_emissive, alpha));
 }

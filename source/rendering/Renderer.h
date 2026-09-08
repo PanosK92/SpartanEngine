@@ -92,6 +92,10 @@ namespace spartan
     extern TConsoleVar<float> cvar_light_flares_max_size_px;
     extern TConsoleVar<float> cvar_light_flares_occlusion;
     extern TConsoleVar<float> cvar_fog;
+    extern TConsoleVar<float> cvar_fog_debug;
+    extern TConsoleVar<float> cvar_fog_height;
+    extern TConsoleVar<float> cvar_fog_ground;
+    extern TConsoleVar<float> cvar_fog_variation;
     extern TConsoleVar<float> cvar_ssao;
     extern TConsoleVar<float> cvar_ray_traced_reflections;
     extern TConsoleVar<float> cvar_ray_traced_shadows;
@@ -419,6 +423,7 @@ namespace spartan
         void Pass_LightClusterVisualize();
         void Pass_LightFlares(uint32_t eye_layer = rhi_all_mips);
         void Pass_Fog(uint32_t eye, uint32_t eye_layer = rhi_all_mips);
+        void Pass_Fog_Composite(uint32_t eye_layer = rhi_all_mips);
         void Pass_Light(const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         void Pass_Light_Composition(const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         void Pass_Light_Ibl(uint32_t eye_layer = rhi_all_mips);

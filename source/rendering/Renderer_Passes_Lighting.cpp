@@ -74,6 +74,11 @@ namespace spartan
             RHI_CommandList::BeginMarker("apply");
             {
                 RHI_CommandList::SetShader(GetShader(Renderer_Shader::reflections_apply_c));
+                RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
+                RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
+                RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(Renderer_RenderTarget::fog_water_source));
+                RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
+                RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_reflections);
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), tex_refraction_source);
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3), GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows));
@@ -1242,7 +1247,10 @@ namespace spartan
         RHI_Texture* tex_scatter     = GetRenderTarget(Renderer_RenderTarget::fog_scatter);
         RHI_Texture* tex_history     = GetRenderTarget(Renderer_RenderTarget::fog_scatter_history);
         RHI_Texture* tex_integrated  = GetRenderTarget(Renderer_RenderTarget::fog_integrated);
-        if (!tex_scatter || !tex_history || !tex_integrated)
+        RHI_Texture* tex_water_source = GetRenderTarget(Renderer_RenderTarget::fog_water_source);
+        RHI_Texture* tex_extinction = GetRenderTarget(Renderer_RenderTarget::fog_extinction);
+        RHI_Texture* tex_transmittance = GetRenderTarget(Renderer_RenderTarget::fog_transmittance);
+        if (!tex_scatter || !tex_history || !tex_integrated || !tex_extinction || !tex_transmittance || !tex_water_source)
         {
             return;
         }
@@ -1251,7 +1259,10 @@ namespace spartan
             !shader_integrate || !shader_integrate->IsCompiled())
         {
             Renderer::BeginPass("fog_clear", eye_layer);
-            RHI_CommandList::ClearTexture(tex_integrated, Color(0.0f, 0.0f, 0.0f, 1.0f));
+            for (RHI_Texture* volume : { tex_scatter, tex_history, tex_extinction, tex_water_source, tex_integrated })
+                RHI_CommandList::ClearTexture(volume, Color(0.0f, 0.0f, 0.0f, 0.0f));
+            RHI_CommandList::ClearTexture(tex_transmittance, Color(1.0f, 1.0f, 1.0f, 1.0f));
+            m_pass_state.fog_history.Reset();
             RHI_CommandList::EndPass();
             return;
         }
@@ -1259,10 +1270,14 @@ namespace spartan
         const bool use_history =
             m_pass_state.fog_history.valid &&
             !IsSecondaryViewActive() &&
+            !(Xr::IsSessionRunning() && Xr::GetStereoMode()) &&
+            !m_pass_state.sky_state_changed_this_frame &&
+            (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() < 100.0f &&
             eye == 0;
 
         RHI_Texture* tex_write = m_pass_state.fog_history.SelectWrite(tex_scatter, tex_history);
         RHI_Texture* tex_read  = m_pass_state.fog_history.SelectRead(tex_scatter, tex_history);
+        m_pass_state.fog_source = tex_write == tex_scatter ? Renderer_RenderTarget::fog_scatter : Renderer_RenderTarget::fog_scatter_history;
 
         const uint32_t groups_x = (renderer_fog_volume_width + 7) / 8;
         const uint32_t groups_y = (renderer_fog_volume_height + 7) / 8;
@@ -1271,6 +1286,8 @@ namespace spartan
         Renderer::BeginPass("fog_inject", eye_layer);
         {
             RHI_CommandList::SetShader(shader_inject);
+            RHI_CommandList::SetTexture("tex_fog_water_source_uav", GetRenderTarget(Renderer_RenderTarget::fog_water_source));
+            RHI_CommandList::SetTexture("tex_fog_extinction_uav", tex_extinction);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3d), tex_write, rhi_all_mips, 0, true);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3d), tex_read);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), GetRenderTarget(Renderer_RenderTarget::skysphere));
@@ -1305,7 +1322,8 @@ namespace spartan
                 RHI_CommandList::SetTexture("tex_ocean_displacement", tex_ocean_disp);
             }
 
-            m_pcb_pass_cpu.set_f3_value(use_history ? 0.0f : 1.0f, cvar_fog.GetValue());
+            m_pcb_pass_cpu.set_f3_value(use_history ? 0.0f : 1.0f, max(cvar_fog.GetValue(), 0.0f));
+            m_pcb_pass_cpu.set_f3_value2(max(cvar_fog_height.GetValue(), 1.0f), max(cvar_fog_ground.GetValue(), 0.0f), clamp(cvar_fog_variation.GetValue(), 0.0f, 1.0f));
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
             RHI_CommandList::Dispatch(groups_x, groups_y, groups_z);
         }
@@ -1314,8 +1332,11 @@ namespace spartan
         Renderer::BeginPass("fog_integrate", eye_layer);
         {
             RHI_CommandList::SetShader(shader_integrate);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3d), tex_write);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3d), tex_integrated, rhi_all_mips, 0, true);
+            RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(Renderer_RenderTarget::fog_water_source));
+            RHI_CommandList::SetTexture("tex_fog_extinction", tex_extinction);
+            RHI_CommandList::SetTexture("tex_fog_transmittance_uav", tex_transmittance);
+            RHI_CommandList::SetTexture("tex_fog_air_source", tex_write);
+            RHI_CommandList::SetTexture("tex_fog_scattering_uav", tex_integrated);
             RHI_CommandList::Dispatch(groups_x, groups_y, 1);
         }
         RHI_CommandList::EndPass();
@@ -1324,6 +1345,29 @@ namespace spartan
         {
             m_pass_state.fog_history.Advance();
         }
+        else
+        {
+            m_pass_state.fog_history.Reset();
+        }
+    }
+
+    void Renderer::Pass_Fog_Composite(uint32_t eye_layer /*= rhi_all_mips*/)
+    {
+        Renderer::BeginPass("fog_composite", eye_layer);
+        {
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::fog_composite_c));
+            m_pcb_pass_cpu.set_f3_value(cvar_fog_debug.GetValue());
+            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+            RHI_Texture* frame = GetRenderTarget(Renderer_RenderTarget::frame_render);
+            RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
+            RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
+            RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(Renderer_RenderTarget::fog_water_source));
+            RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
+            RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), frame, rhi_all_mips, 0, true);
+            RHI_CommandList::Dispatch(frame, Renderer::GetResolutionScale());
+        }
+        RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_Light(const bool is_transparent_pass, uint32_t eye_layer /*= rhi_all_mips*/)
@@ -1373,7 +1417,6 @@ namespace spartan
         RHI_Texture* tex_skysphere     = GetRenderTarget(Renderer_RenderTarget::skysphere);
         RHI_Texture* tex_light_diffuse = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
         RHI_Texture* tex_light_specular = GetRenderTarget(Renderer_RenderTarget::light_specular);
-        RHI_Texture* tex_fog           = GetRenderTarget(Renderer_RenderTarget::fog_integrated);
 
         Renderer::BeginPass(is_transparent_pass ? "light_composition_transparent" : "light_composition", eye_layer);
         {
@@ -1390,10 +1433,6 @@ namespace spartan
                 {
                     RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_opaque);
                 }
-            }
-            if (tex_fog)
-            {
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3d), tex_fog);
             }
             RHI_CommandList::Dispatch(tex_out, Renderer::GetResolutionScale());
         }

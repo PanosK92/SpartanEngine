@@ -218,6 +218,13 @@ void evaluate_light(
         light.radiance     *= L_shadow;
         light_radiance_raw *= L_shadow;
 
+        if (light.is_directional() && surface.is_opaque() && buffer_frame.ocean_enabled > 0.5f)
+        {
+            float3 water_transmission = get_ocean_sun_transmission(surface.position, normalize(-light.forward));
+            light.radiance *= water_transmission;
+            light_radiance_raw *= water_transmission;
+        }
+
         AngularInfo angular_info;
         angular_info.Build(light, surface);
 

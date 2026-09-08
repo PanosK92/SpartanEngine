@@ -62,6 +62,17 @@ Texture2D<float4> tex_wind_field : register(t29);
 Texture2DArray<float4> tex_ocean_displacement : register(t30);
 Texture2DArray<float4> tex_ocean_normal       : register(t31);
 
+// Unified air/water transport, shared by scene composition and transparency.
+Texture3D<float4> tex_fog_extinction    : register(t35); // r = air extinction, g = water fraction of the cell
+Texture3D<float4> tex_fog_scattering    : register(t36);
+Texture3D<float4> tex_fog_transmittance : register(t37);
+Texture3D<float4> tex_fog_water_source  : register(t38);
+Texture3D<float4> tex_fog_air_source    : register(t39);
+[[vk::image_format("unknown")]] RWTexture3D<float4> tex_fog_water_source_uav : register(u27);
+[[vk::image_format("unknown")]] RWTexture3D<float4> tex_fog_scattering_uav : register(u28);
+[[vk::image_format("unknown")]] RWTexture3D<float4> tex_fog_extinction_uav    : register(u62);
+[[vk::image_format("unknown")]] RWTexture3D<float4> tex_fog_transmittance_uav : register(u63);
+
 // nrd sigma local lights, one array slice per light, r = visibility
 Texture2DArray<float4> tex_rt_shadows_local : register(t32);
 [[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_uav_rt_shadows_local : register(u26);

@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include "common.hlsl"
+#include "fog_volume.hlsl"
 #ifdef RENDER
 #include "brdf.hlsl"
 #include "shadow_mapping.hlsl"
@@ -1092,12 +1093,13 @@ float4 main_ps(ps_input input) : SV_Target0
     }
 
     float camera_distance = distance(input.position_world, get_camera_position());
-    float height_fade     = saturate((input.position_world.y + 20.0) / 80.0);
-    float fog_factor      = saturate((1.0 - exp(-camera_distance * 0.00005)) * (0.55 + height_fade * 0.2));
-    float3 fog_color      = lerp(float3(0.55, 0.58, 0.62), get_sun_color() * 0.12, height_fade);
-    lit_color = lerp(lit_color, fog_color, fog_factor);
-
+    float2 fog_resolution;
+    tex_depth.GetDimensions(fog_resolution.x, fog_resolution.y);
+    FogTransport fog = sample_fog_volume(input.position.xy / fog_resolution, camera_distance);
     uint blend_mode = (uint)round(input.render_params.x);
+    lit_color *= fog.transmittance;
+    if (blend_mode != particle_blend_additive)
+        lit_color += fog.scattering;
     if (blend_mode == particle_blend_additive)
     {
         return float4(lit_color * alpha, 0.0);
