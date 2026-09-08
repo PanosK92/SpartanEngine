@@ -851,6 +851,8 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
         texcoord = compute_world_space_uv(hit_position, normal_world);
     }
     texcoord = texcoord * geo.uv_tiling + geo.uv_offset;
+    if (!mat.is_terrain() && geo.uv_world_space > 0.0f)
+        texcoord = lerp(texcoord, 1.0f - frac(texcoord) + floor(texcoord), step(0.5f, geo.uv_invert));
 
     if (geo.uv_rotation != 0.0f)
         texcoord = rotate_uv_90(texcoord, geo.uv_rotation);
@@ -952,7 +954,7 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
         {
             emissive_sample = srgb_to_linear(emissive_sample);
         }
-        emission = luminance(emissive_sample) * albedo * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
+        emission = emissive_sample * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
     }
     if (mat.emissive_from_albedo())
     {

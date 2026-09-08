@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../../rendering/Renderer.h"
 #include "../../rhi/RHI_Texture.h"
+#include "../../../data/shaders/shared_lighting.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 #include "../io/pugixml.hpp"
@@ -70,8 +71,8 @@ namespace spartan
             }
             else if (type == LightType::Spot)
             {
-                const float solid_angle = 2.0f * pi * (1.0f - cos(max(angle_rad, 0.001f)));
-                const float candela     = max(photometric_intensity, 0.0f) / max(solid_angle, 0.001f);
+                const float solid_angle = lighting::lighting_spot_solid_angle(angle_rad);
+                const float candela     = max(photometric_intensity, 0.0f) / solid_angle;
                 return max(min_range, sqrt(candela / illuminance_cutoff_lux));
             }
             else if (type == LightType::Area)
@@ -241,7 +242,7 @@ namespace spartan
             intensity_attribute = node.attribute("intensity_lum");
         }
         m_intensity_photometric = intensity_attribute.as_float(m_intensity_photometric);
-        m_angle_rad            = node.attribute("angle").as_float(m_angle_rad);
+        m_angle_rad            = lighting::lighting_spot_half_angle(node.attribute("angle").as_float(m_angle_rad));
         m_range                = node.attribute("range").as_float(get_sensible_range(m_light_type, m_intensity_photometric, m_angle_rad));
         m_index                = node.attribute("index").as_uint(m_index);
         m_preset               = static_cast<LightPreset>(node.attribute("preset").as_int(static_cast<int>(m_preset)));
@@ -497,7 +498,13 @@ namespace spartan
     {
         if (m_light_type != LightType::Directional)
         {
-            return m_color_rgb;
+            // Color selects chromaticity; intensity owns the total lumens. Match
+            // the unit-luminance temperature colors for manually authored RGB too.
+            const float r = max(m_color_rgb.r, 0.0f);
+            const float g = max(m_color_rgb.g, 0.0f);
+            const float b = max(m_color_rgb.b, 0.0f);
+            const float luminance = 0.2126f * r + 0.7152f * g + 0.0722f * b;
+            return luminance > 0.0f ? Color(r / luminance, g / luminance, b / luminance, 1.0f) : Color::standard_black;
         }
 
         // atmosphere constants mirrored from skysphere.hlsl, the atmosphere is the single ground truth for sun color
@@ -552,6 +559,11 @@ namespace spartan
 
     void Light::SetIntensity(const LightIntensity intensity)
     {
+        if (intensity == LightIntensity::custom)
+        {
+            m_intensity = intensity;
+            return;
+        }
         const bool update_range = is_sensible_range(m_range, m_light_type, m_intensity_photometric, m_angle_rad);
         m_intensity = intensity;
 
@@ -681,9 +693,9 @@ namespace spartan
 
     float Light::GetIntensityRadiometric() const
     {
-        // use the same 683 lm/w white-light approximation that the display path uses.
-        // this keeps the engine's photometric authoring and shader radiometric math in sync.
-        const float luminous_efficacy = 683.0f;
+        // Inverse of the display conversion; this RGB storage scale is not a
+        // white-light spectral efficacy or a conversion from electrical watts.
+        const float luminous_efficacy = lighting::lighting_luminous_efficacy;
         const float photometric_intensity = max(m_intensity_photometric, 0.0f);
 
         if (m_light_type == LightType::Directional)
@@ -703,10 +715,8 @@ namespace spartan
 
         if (m_light_type == LightType::Spot)
         {
-            // spot lights store total beam flux in lumens.
-            // distribute that beam over the actual cone solid angle so narrowing the cone raises candela.
-            float solid_angle = 2.0f * pi * (1.0f - cos(max(m_angle_rad, 0.001f)));
-            return radiant_flux / max(solid_angle, 0.001f);
+            // Normalize the complete beam, including its soft angular falloff.
+            return radiant_flux / lighting::lighting_spot_solid_angle(m_angle_rad);
         }
 
         if (m_light_type == LightType::Area)
@@ -732,7 +742,7 @@ namespace spartan
 
     void Light::SetAngle(float angle)
     {
-        angle = clamp(angle, 0.0f, math::pi_2);
+        angle = lighting::lighting_spot_half_angle(angle);
         if (angle == m_angle_rad)
         {
             return;

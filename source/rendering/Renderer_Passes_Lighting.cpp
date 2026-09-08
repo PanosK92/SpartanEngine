@@ -153,6 +153,7 @@ namespace spartan
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex),  tex_reflections_position, rhi_all_mips, 0, true);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), tex_reflections_normal,   rhi_all_mips, 0, true);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3), tex_reflections_albedo,   rhi_all_mips, 0, true);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex4), GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_emissive), rhi_all_mips, 0, true);
 
             uint32_t width  = tex_reflections_position->GetWidth();
             uint32_t height = tex_reflections_position->GetHeight();
@@ -193,6 +194,7 @@ namespace spartan
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), tex_reflections_normal);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3), tex_reflections_albedo);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex4), tex_skysphere);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex5), GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_emissive));
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_reflections, rhi_all_mips, 0, true);
 
             // bind tlas for inline ray traced shadows at the hit, every light type uses this

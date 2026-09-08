@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // port of the c++ siggraph 2025 presentation code
 // ==============================================================================================
 
-// the input to this tonemapper is scene-linear where ~1.0 = white
+// The GT7 core takes framebuffer units, with 1.0 = 100 display nits.
 // in gran turismo, 1.0 in linear frame-buffer space = REFERENCE_LUMINANCE cd/m^2 (100 nits)
 // sdr paper white defines the target luminance for sdr tone mapping (250 nits)
 static const float gt7_sdr_paper_white = 250.0f; // cd/m^2
@@ -48,13 +48,13 @@ static const float3x3 gt7_rec2020_to_rec709 =
     { -0.0181508f, -0.1005789f, 1.1187297f }
 };
 
-// helper: scene-linear (1.0 = white) -> nits for pq math
+// helper: GT7 framebuffer units -> display nits for PQ math
 float gt7_fb_to_nits(float fb_value)
 {
     return fb_value * gt7_ref_luminance;
 }
 
-// helper: nits -> scene-linear
+// helper: display nits -> GT7 framebuffer units
 float gt7_nits_to_fb(float physical)
 {
     return physical / gt7_ref_luminance;
@@ -301,23 +301,25 @@ float3 agx(float3 color)
 {
     static const float3x3 agx_mat_inset =
     {
-        { 0.8566271533159880, 0.1373185106779920, 0.1118982129999500 },
-        { 0.0951212405381588, 0.7612419900249430, 0.0767997842235547 },
-        { 0.0482516061458523, 0.1014394992970650, 0.8113020027764950 }
+        { 0.856627153315983, 0.0951212405381588, 0.0482516061458583 },
+        { 0.137318972929847, 0.761241990602591, 0.101439036467562 },
+        { 0.111898212999950, 0.0767994186031903, 0.811302368396859 }
     };
 
     static const float3x3 agx_mat_outset =
     {
-        { 1.1271467782272380, -0.1468813165635330, -0.1255038609319300 },
-        { -0.0496500000000000, 1.1084784877776500, -0.0524964871144260 },
-        { -0.0774967775043101, -0.1468813165635330, 1.2244001486462500 }
+        { 1.1271005818144368, -0.11060664309660323, -0.016493938717834573 },
+        { -0.1413297634984383, 1.157823702216272, -0.016493938717834257 },
+        { -0.14132976349843826, -0.11060664309660294, 1.2519364065950405 }
     };
 
     // canonical agx log2 encoding range, places mid gray 0.18 at the reference position
     const float min_ev = -12.47393f;
     const float max_ev = 4.026069f;
 
-    color = mul(agx_mat_inset, color);
+    // These inset/outset matrices operate in Rec.2020. HLSL matrix * column
+    // vector requires rows, unlike the column constructors in the GLSL source.
+    color = mul(agx_mat_inset, gt7_to_rec2020(color));
     color = max(color, 1e-10f); // prevent log(0)
     color = log2(color);
     color = (color - min_ev) / (max_ev - min_ev);
@@ -329,8 +331,8 @@ float3 agx(float3 color)
     float3 x4 = x2 * x2;
     color = 15.5f * x4 * x2 - 40.14f * x4 * x + 31.96f * x4 - 6.868f * x2 * x + 0.4298f * x2 + 0.1191f * x - 0.00232f;
 
-    // agx look transform - restores saturation that log encoding removes
-    // without this, the image appears washed out (blender applies this by default)
+    // Authored look on top of AgX; these saturation/contrast choices are not
+    // part of the reference default transform.
     float3 lw          = float3(0.2126f, 0.7152f, 0.0722f);
     float luma         = dot(color, lw);
     float3 offset      = color - luma;
@@ -342,8 +344,9 @@ float3 agx(float3 color)
     color              = saturate(color);
 
     color = mul(agx_mat_outset, color);
-
-    return saturate(color);
+    // The sigmoid output is encoded. Linearize before the shared output OETF.
+    color = pow(max(color, 0.0f), 2.2f);
+    return saturate(gt7_to_rec709(color));
 }
 
 float3 reinhard(float3 hdr, float k = 1.0f)
@@ -427,7 +430,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             color.rgb = aces_nautilus(color.rgb);
             break;
         case 4: // gran turismo 7
-            color.rgb = gran_turismo_7(color.rgb, max_nits, is_hdr);
+            // Exposure produces relative RGB where 1 is paper white. GT7's
+            // reference framebuffer instead uses 1 = 100 nits and white = 250.
+            color.rgb = gran_turismo_7(color.rgb * gt7_nits_to_fb(gt7_sdr_paper_white), max_nits, is_hdr);
             break;
         default: // no tone mapping
             if (!is_hdr)
@@ -448,8 +453,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             if (tone_mapping == 4)
             {
                 // gt7 hdr returns rec.2020 fb units where 1.0 = 100 nits
-                // scale paper white to the os sdr white or the viewport looks dim next to ui
-                color.rgb = gt7_to_rec709(color.rgb) * (sdr_white_nits / 80.0f);
+                // Preserve absolute nits, exactly like the HDR10 path. Applying
+                // the OS SDR-white multiplier here also scales the mapped peak.
+                color.rgb = gt7_to_rec709(color.rgb) * (gt7_ref_luminance / 80.0f);
             }
             else
             {

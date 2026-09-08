@@ -224,23 +224,38 @@ namespace
         ImGui::PopID();
     }
 
-    uint32_t get_display_mode_index(const Vector2& resolution)
+    void option_resolution(const char* label, const Vector2& resolution,
+                           void (*set_resolution)(uint32_t, uint32_t, bool), const char* tooltip)
     {
-        uint32_t index = 0;
-
-        for (uint32_t i = 0; i < static_cast<uint32_t>(display_modes.size()); i++)
+        if (!option_visible(label))
+            return;
+        option_first_column();
+        ImGui::TextDisabled("%s", label);
+        ImGuiSp::tooltip(tooltip);
+        option_second_column();
+        ImGui::PushID(label);
+        ImGui::PushItemWidth(-FLT_MIN);
+        // Vendor upscalers fit the render aspect to the output/viewport. That can
+        // produce a custom size such as 1920x938. Display the actual dimensions;
+        // an unmatched monitor preset must never silently show entry zero (4K).
+        const string current = to_string(static_cast<uint32_t>(resolution.x)) + "x" +
+                               to_string(static_cast<uint32_t>(resolution.y));
+        if (ImGui::BeginCombo("##resolution", current.c_str()))
         {
-            const DisplayMode& display_mode = display_modes[i];
-
-            if (display_mode.width == resolution.x && display_mode.height == resolution.y)
+            for (uint32_t i = 0; i < static_cast<uint32_t>(display_modes.size()); i++)
             {
-                index = i;
-                break;
+                const DisplayMode& mode = display_modes[i];
+                const bool selected = mode.width == resolution.x && mode.height == resolution.y;
+                if (ImGui::Selectable(display_modes_string[i].c_str(), selected))
+                    set_resolution(mode.width, mode.height, true);
+                if (selected)
+                    ImGui::SetItemDefaultFocus();
             }
+            ImGui::EndCombo();
         }
-
-        return index;
-    };
+        ImGui::PopItemWidth();
+        ImGui::PopID();
+    }
 }
 
 RenderOptions::RenderOptions(Editor* editor) : Widget(editor)
@@ -261,9 +276,13 @@ void RenderOptions::OnVisible()
         display_modes_string.clear();
         for (const DisplayMode& display_mode : Display::GetDisplayModes())
         {
-            // only include resolutions that match the monitor's current refresh rate (with tolerance for floating-point quirks like 240 vs 239.8 Hz)
-            // quirks like that can exist for NVIDIA for example, but not for AMD, so it's important to be safe like that
-            if (fabs(display_mode.hz - Display::GetRefreshRate()) < 0.1f)
+            // These select texture dimensions, not monitor refresh modes. Keep
+            // each size once even when it is only advertised at another Hz.
+            const bool duplicate = any_of(display_modes.begin(), display_modes.end(), [&](const DisplayMode& mode)
+            {
+                return mode.width == display_mode.width && mode.height == display_mode.height;
+            });
+            if (!duplicate)
             {
                 display_modes.emplace_back(display_mode);
                 display_modes_string.emplace_back(to_string(display_mode.width) + "x" + to_string(display_mode.height));
@@ -303,20 +322,12 @@ void RenderOptions::OnTickVisible()
                 if (option_header("Resolution"))
                 {
                     // render resolution
-                    Vector2 res_render = Renderer::GetResolutionRender();
-                    uint32_t res_render_index = get_display_mode_index(res_render);
-                    if (option_combo_box("Render resolution", display_modes_string, res_render_index))
-                    {
-                        Renderer::SetResolutionRender(display_modes[res_render_index].width, display_modes[res_render_index].height);
-                    }
+                    option_resolution("Render resolution", Renderer::GetResolutionRender(), Renderer::SetResolutionRender,
+                        "Base rendering size. XeSS and DLSS fit its aspect ratio to the output size.");
 
                     // output resolution
-                    Vector2 res_output = Renderer::GetResolutionOutput();
-                    uint32_t res_output_index = get_display_mode_index(res_output);
-                    if (option_combo_box("Output resolution", display_modes_string, res_output_index))
-                    {
-                        Renderer::SetResolutionOutput(display_modes[res_output_index].width, display_modes[res_output_index].height);
-                    }
+                    option_resolution("Output resolution", Renderer::GetResolutionOutput(), Renderer::SetResolutionOutput,
+                        "Final image size after upscaling.");
 
                     option_check_box("Variable rate shading", "r.variable_rate_shading", "Improves performance by varying shading detail per pixel");
                     option_check_box("Dynamic resolution", "r.dynamic_resolution", "Scales render resolution automatically based on GPU load");
@@ -324,6 +335,15 @@ void RenderOptions::OnTickVisible()
                     ImGui::BeginDisabled(cvar_dynamic_resolution.GetValueAs<bool>());
                     option_value("Resolution scale", "r.resolution_scale", "Adjusts the percentage of the render resolution", 0.01f);
                     ImGui::EndDisabled();
+                    if (option_visible("Active render resolution"))
+                    {
+                        option_first_column();
+                        ImGui::TextDisabled("Active render resolution");
+                        option_second_column();
+                        const Vector2& base = Renderer::GetResolutionRender();
+                        ImGui::Text("%ux%u", Renderer::GetScaledDimension(static_cast<uint32_t>(base.x)),
+                                             Renderer::GetScaledDimension(static_cast<uint32_t>(base.y)));
+                    }
                 }
 
                 if (option_header("Anti-Aliasing & Upscaling"))
@@ -386,9 +406,13 @@ void RenderOptions::OnTickVisible()
                 if (option_header("Display"))
                 {
                     option_check_box("HDR", "r.hdr", "Enable high dynamic range output");
-                    ImGui::BeginDisabled(cvar_hdr.GetValueAs<bool>());
-                    option_value("Gamma", "r.gamma");
-                    ImGui::EndDisabled();
+                    if (option_visible("SDR transfer"))
+                    {
+                        option_first_column();
+                        ImGui::TextDisabled("SDR transfer");
+                        option_second_column();
+                        ImGui::TextUnformatted("sRGB");
+                    }
                 }
 
                 if (option_header("Tone Mapping"))
@@ -419,7 +443,8 @@ void RenderOptions::OnTickVisible()
 
                 if (option_header("Bloom"))
                 {
-                    option_value("Bloom intensity", "r.bloom", "Blend factor, set to 0 to disable", 0.01f);
+                    option_value("Bloom intensity", "r.bloom", "Light scattered into the glow; 1 is subtle, 0 disables bloom", 0.05f, 0.0f, 10.0f);
+                    option_value("Bloom spread", "r.bloom_scatter", "Higher values give a wider halo", 0.01f, 0.05f, 0.95f);
                 }
 
                 if (option_header("Light Flares"))

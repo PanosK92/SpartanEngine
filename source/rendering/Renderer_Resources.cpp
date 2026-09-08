@@ -478,12 +478,14 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "gbuffer_reflections_position");
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_normal)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_reflections_normal");
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_albedo)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_reflections_albedo");
+            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_emissive) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R11G11B10_Float, flags, "gbuffer_reflections_emissive");
         }
         else if (!need_rt_reflections && at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position))
         {
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position) = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_normal)   = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_albedo)   = nullptr;
+            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_emissive) = nullptr;
         }
         
         // restir, allocate or free both the reservoirs and the output ring together so the feature is fully on or fully off
@@ -570,6 +572,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_normal)              = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_normal_previous)     = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_material)            = nullptr;
+            at(render_targets, Renderer_RenderTarget::gbuffer_emissive)            = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_velocity)            = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_velocity_previous)   = nullptr;
             at(render_targets, Renderer_RenderTarget::dlss_reactivity)              = nullptr;
@@ -597,6 +600,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position)= nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_normal)  = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_albedo)  = nullptr;
+            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_emissive) = nullptr;
             at(render_targets, Renderer_RenderTarget::ray_traced_shadows)             = nullptr;
             at(render_targets, Renderer_RenderTarget::ray_traced_shadows_local)       = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_output)                   = nullptr;
@@ -688,6 +692,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_color)    = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_color");
             at(render_targets, Renderer_RenderTarget::gbuffer_normal)   = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_normal");
             at(render_targets, Renderer_RenderTarget::gbuffer_material) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_material");
+            at(render_targets, Renderer_RenderTarget::gbuffer_emissive) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R11G11B10_Float, flags, "gbuffer_emissive");
             // rgba: xy = ndc velocity, z = radial motion blur mask, w unused
             at(render_targets, Renderer_RenderTarget::gbuffer_velocity) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_velocity");
             at(render_targets, Renderer_RenderTarget::dlss_reactivity)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "dlss_reactivity");
@@ -805,7 +810,14 @@ namespace spartan
                 at(render_targets, Renderer_RenderTarget::frame_output_stereo) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_output, height_output, Xr::eye_count, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_output_stereo");
             }
 
-            at(render_targets, Renderer_RenderTarget::bloom)                       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, max(1u, width_output / 2), max(1u, height_output / 2), 1, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "bloom");
+            // Size the pyramid from its own half-resolution base, including tiny
+            // previews and non-power-of-two outputs. Keep the last short edge >= 8.
+            const uint32_t bloom_width = max(1u, width_output / 2);
+            const uint32_t bloom_height = max(1u, height_output / 2);
+            uint32_t bloom_mips = 1;
+            for (uint32_t edge = min(bloom_width, bloom_height); edge >= 16; edge /= 2)
+                bloom_mips++;
+            at(render_targets, Renderer_RenderTarget::bloom) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, bloom_width, bloom_height, 1, bloom_mips, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "bloom");
             at(render_targets, Renderer_RenderTarget::outline)                     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv,         "outline");
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_opaque_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::D32_Float,          RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,   "depth_opaque_output");
         };
@@ -1098,7 +1110,7 @@ namespace spartan
             { Renderer_Shader::blur_gaussian_bilateral_c,             RHI_Shader_Type::Compute, "blur.hlsl",                                  RHI_Vertex_Type::Max, "PASS_BLUR_GAUSSIAN_BILATERAL" },
 
             // bloom
-            { Renderer_Shader::bloom_luminance_c,                     RHI_Shader_Type::Compute, "bloom.hlsl",                                 RHI_Vertex_Type::Max, "LUMINANCE"           },
+            { Renderer_Shader::bloom_prefilter_c,                     RHI_Shader_Type::Compute, "bloom.hlsl",                                 RHI_Vertex_Type::Max, "PREFILTER"           },
             { Renderer_Shader::bloom_downsample_c,                    RHI_Shader_Type::Compute, "bloom.hlsl",                                 RHI_Vertex_Type::Max, "DOWNSAMPLE"          },
             { Renderer_Shader::bloom_upsample_blend_mip_c,            RHI_Shader_Type::Compute, "bloom.hlsl",                                 RHI_Vertex_Type::Max, "UPSAMPLE_BLEND_MIP"  },
             { Renderer_Shader::bloom_blend_frame_c,                   RHI_Shader_Type::Compute, "bloom.hlsl",                                 RHI_Vertex_Type::Max, "BLEND_FRAME"         },

@@ -282,6 +282,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 out_specular = 0.0f;
     
     // process all active lights with inline ray traced visibility
+    Surface hit_surface = (Surface)0;
+    hit_surface.position = position;
+    hit_surface.normal = normal;
     uint light_count = uint(pass_get_f3_value().x);
     for (uint i = 0; i < light_count; i++)
     {
@@ -293,45 +296,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         bool is_area        = (light_p.flags & uint(1U << 6)) != 0;
         bool has_shadows    = (light_p.flags & uint(1U << 3)) != 0;
         
-        // direction from hit toward the light (l) and attenuation
-        float3 to_light    = float3(0.0f, 0.0f, 0.0f);
-        float  attenuation = 0.0f;
-        float  light_distance = 10000.0f;
-        
-        if (is_directional)
-        {
-            to_light    = normalize(-light_p.direction.xyz);
-            attenuation = 1.0f;
-        }
-        else
-        {
-            float3 from_light = position - light_p.position.xyz;
-            float  d          = length(from_light);
-            light_distance    = d;
-            float3 to_pixel   = d > 0.0001f ? from_light / d : float3(0.0f, 1.0f, 0.0f);
-            to_light          = -to_pixel;
-            
-            // inverse square + range cutoff, matches Light::compute_attenuation_distance
-            float att_dist  = 1.0f / (d * d + 0.0001f);
-            float att_range = (light_p.range > 0.0f && d < light_p.range) ? 1.0f : 0.0f;
-            attenuation     = att_dist * att_range;
-            
-            if (is_spot)
-            {
-                float cos_outer   = cos(light_p.angle);
-                float cos_inner   = cos(light_p.angle * 0.9f);
-                float scale       = 1.0f / max(0.0001f, cos_inner - cos_outer);
-                float cd          = dot(to_pixel, light_p.direction.xyz);
-                float atten_angle = saturate((cd - cos_outer) * scale);
-                attenuation      *= atten_angle * atten_angle;
-            }
-            else if (is_area)
-            {
-                float emitter_area = 0.5f * max(light_p.area_width * light_p.area_height, 0.0001f);
-                float emission_cos = saturate(dot(light_p.direction.xyz, to_pixel));
-                attenuation       *= emission_cos * emitter_area;
-            }
-        }
+        // Share range, cone and area attenuation with primary surface lighting.
+        Light hit_light;
+        hit_light.Build(i, hit_surface);
+        float3 to_light = -hit_light.to_pixel;
+        float attenuation = hit_light.attenuation;
+        float light_distance = hit_light.distance_to_pixel;
         
         // n dot l at the hit
         float n_dot_l = saturate(dot(normal, to_light));
@@ -405,18 +375,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float2 env_brdf       = reflections_env_brdf_approx(env_roughness, n_dot_v_brdf);
     float3 ibl_specular   = env_spec * (F0 * env_brdf.x + env_brdf.y) * sky_visibility;
 
-    // emissive at the hit, the showroom is lit almost entirely by emissive light strips, without
-    // this the emitters never appear in reflections so reflective surfaces have nothing to show,
-    // the hdr boost mirrors light_composition so a reflected strip is as bright as the real one
-    float3 emission = 0.0f;
-    if (mat.emissive_from_albedo())
-    {
-        emission = albedo * 250.0f * mat.emissive_strength;
-    }
-    else if (mat.has_texture_emissive())
-    {
-        emission = mat.color.rgb * 25.0f;
-    }
+    // Sampled at the actual hit UV, in the same units as primary emission.
+    float3 emission = tex5[thread_id.xy].rgb;
     // rough lobes undersample small bright emitters, soft compress before the denoiser sees them
     float emission_knee = lerp(FLT_MAX_16U, 48.0f, rough_reflection);
     emission = reflections_compress_luminance(emission, emission_knee, emission_knee * 0.5f);

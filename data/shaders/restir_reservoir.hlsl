@@ -80,8 +80,8 @@ static const float RESTIR_TEMPORAL_DECAY     = 1.0f;
 static const float RESTIR_RAY_T_MIN          = 0.001f;
 
 // emissive nits calibration, must match light_composition or emitters glow on screen but bounce no light
-static const float RESTIR_EMISSIVE_NITS_FROM_ALBEDO = 100000.0f;
-static const float RESTIR_EMISSIVE_NITS_TEXTURE     = 10000.0f;
+static const float RESTIR_EMISSIVE_NITS_FROM_ALBEDO = lighting_emissive_nits_from_albedo;
+static const float RESTIR_EMISSIVE_NITS_TEXTURE     = lighting_emissive_nits_texture;
 
 // sky / environment, both bands derive from the surface w clamp so one knob scales the hdr range
 static const float RESTIR_SKY_RADIANCE_CLAMP_FACTOR = 4.0f;
@@ -150,6 +150,13 @@ void sample_spherical_rectangle(
     float x0 = dot(d, x);
     float y0 = dot(d, y);
     float z0 = dot(d, z);
+    if (abs(z0) < 1e-6f)
+    {
+        // Coplanar receivers see zero projected area; edge normals are undefined.
+        out_pos = rect_origin + xi.x * ex + xi.y * ey;
+        out_solid_angle = 0.0f;
+        return;
+    }
     if (z0 > 0.0f)
     {
         z0 = -z0;
@@ -169,10 +176,10 @@ void sample_spherical_rectangle(
     float3 n2 = normalize(cross(v11, v01));
     float3 n3 = normalize(cross(v01, v00));
 
-    float g0 = acos(clamp(-dot(n0, n1), -1.0f, 1.0f));
-    float g1 = acos(clamp(-dot(n1, n2), -1.0f, 1.0f));
-    float g2 = acos(clamp(-dot(n2, n3), -1.0f, 1.0f));
-    float g3 = acos(clamp(-dot(n3, n0), -1.0f, 1.0f));
+    float g0 = atan2(length(cross(n0, n1)), -dot(n0, n1));
+    float g1 = atan2(length(cross(n1, n2)), -dot(n1, n2));
+    float g2 = atan2(length(cross(n2, n3)), -dot(n2, n3));
+    float g3 = atan2(length(cross(n3, n0)), -dot(n3, n0));
 
     float b0 = n0.z;
     float b1 = n2.z;
@@ -181,7 +188,11 @@ void sample_spherical_rectangle(
     out_solid_angle = max(g0 + g1 - k, 0.0f);
 
     float au   = xi.x * out_solid_angle + k;
-    float fu   = (cos(au) * b0 - b1) / max(sin(au), 1e-7f);
+    // au crosses pi: preserving the sign of sin(au) is essential to sample
+    // both halves of the rectangle. A positive-only epsilon biases the light.
+    float sin_au = sin(au);
+    float denominator = (sin_au < 0.0f ? -1.0f : 1.0f) * max(abs(sin_au), 1e-7f);
+    float fu   = (cos(au) * b0 - b1) / denominator;
     float sgn  = fu > 0.0f ? 1.0f : -1.0f;
     float cu   = clamp(sgn / sqrt(fu * fu + b0 * b0), -1.0f, 1.0f);
 
@@ -1353,23 +1364,58 @@ bool is_emtri_pool_active()
     return buffer_frame.restir_pt_emissive_tri_count > 0.5f;
 }
 
-float3 probe_emission_estimate(MaterialParameters mat)
+float3 probe_emission(uint instance_index, uint primitive_index, float2 hit_bary, float3 hit_position, float ray_t)
 {
-    if (mat.emissive_from_albedo())
+    GeometryInfo geo = geometry_infos[instance_index];
+    uint material_index = geo.material_index;
+    MaterialParameters mat = material_parameters[material_index];
+    if ((!mat.emissive_from_albedo() && !mat.has_texture_emissive()) ||
+        (mat.emissive_from_albedo() && is_emtri_pool_active()))
+        return 0.0f;
+
+    // This is part of the radiance estimator, not just a sampling weight. Using
+    // material color here invents light for black emission maps and tints GI.
+    uint index_base = geo.index_offset + primitive_index * 3;
+    PulledVertex v0 = geometry_vertices[geo.vertex_offset + geometry_indices[index_base]];
+    PulledVertex v1 = geometry_vertices[geo.vertex_offset + geometry_indices[index_base + 1]];
+    PulledVertex v2 = geometry_vertices[geo.vertex_offset + geometry_indices[index_base + 2]];
+    float3 bary = float3(1.0f - hit_bary.x - hit_bary.y, hit_bary);
+    float2 uv = unpack_vertex_uv(v0.uv) * bary.x + unpack_vertex_uv(v1.uv) * bary.y + unpack_vertex_uv(v2.uv) * bary.z;
+    float3 normal_object = normalize(unpack_vertex_oct(v0.normal) * bary.x + unpack_vertex_oct(v1.normal) * bary.y + unpack_vertex_oct(v2.normal) * bary.z);
+    float3x3 world_to_object = float3x3(geo.world_to_object_0.xyz, geo.world_to_object_1.xyz, geo.world_to_object_2.xyz);
+    float3 normal_world = normalize(mul(normal_object, transpose(world_to_object)));
+    if (mat.is_terrain())
+        uv = hit_position.xz;
+    else if (geo.uv_world_space > 0.0f)
+        uv = compute_world_space_uv(hit_position, normal_world);
+    uv = uv * geo.uv_tiling + geo.uv_offset;
+    if (!mat.is_terrain() && geo.uv_world_space > 0.0f)
+        uv = lerp(uv, 1.0f - frac(uv) + floor(uv), step(0.5f, geo.uv_invert));
+    if (geo.uv_rotation != 0.0f)
+        uv = rotate_uv_90(uv, geo.uv_rotation);
+    float mip_level = clamp(log2(max(ray_t * 0.5f, 1.0f)), 0.0f, 4.0f);
+
+    if (!mat.emissive_from_albedo())
     {
-        // the nee pool owns authored emitters while it is active, mirrors closest_hit so the
-        // env probe and the brdf bounce agree on which strategy carries them
-        if (is_emtri_pool_active())
-        {
-            return float3(0.0f, 0.0f, 0.0f);
-        }
-        return mat.color.rgb * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
+        float3 emission = material_textures[material_index + material_texture_index_emission].SampleLevel(
+            GET_SAMPLER(sampler_bilinear_wrap), uv, mip_level).rgb;
+        if (mat.is_emissive_srgb())
+            emission = srgb_to_linear(emission);
+        return emission * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
     }
-    if (mat.has_texture_emissive())
+
+    float3 albedo = mat.color.rgb;
+    if (mat.is_terrain() && mat.terrain_layer_count > 0)
+        albedo = terrain_shade_lod(mat, hit_position, normal_world, uv, mip_level).albedo;
+    else if (mat.has_texture_albedo())
     {
-        return mat.color.rgb * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
+        float3 sample_albedo = material_textures[material_index + material_texture_index_albedo].SampleLevel(
+            GET_SAMPLER(sampler_bilinear_wrap), uv, mip_level).rgb;
+        if (mat.is_albedo_srgb())
+            sample_albedo = srgb_to_linear(sample_albedo);
+        albedo *= sample_albedo;
     }
-    return float3(0.0f, 0.0f, 0.0f);
+    return saturate(albedo) * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
 }
 
 // binary search over the cdf, returns the triangle whose cumulative weight first exceeds u
@@ -1569,8 +1615,9 @@ float3 direct_lighting_at_vertex(
         else if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
         {
             float3 light_normal = light.direction;
-            float3 light_right, light_up;
-            build_orthonormal_basis_fast(light_normal, light_right, light_up);
+            // Use the authored roll, matching the primary rectangle and shadows.
+            float3 light_right = normalize(light.direction_right);
+            float3 light_up = normalize(cross(light_normal, light_right));
 
             // urena 2013 spherical rectangle solid angle sampling
             float3 ex          = light_right * light.area_width;
@@ -1616,10 +1663,7 @@ float3 direct_lighting_at_vertex(
             if (is_spot)
             {
                 float cos_angle = dot(-light_dir, light.direction);
-                float cos_outer = cos(light.angle);
-                float cos_inner = cos(light.angle * 0.9f);
-                float spot      = saturate((cos_angle - cos_outer) / max(cos_inner - cos_outer, 1e-4f));
-                attenuation    *= spot * spot;
+                attenuation *= lighting_spot_attenuation(cos_angle, light.angle);
             }
         }
         else
@@ -1693,17 +1737,18 @@ float3 direct_lighting_at_vertex(
 
             if (probe_query.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
             {
-                uint probe_instance = probe_query.CommittedInstanceID();
-                MaterialParameters probe_mat = material_parameters[probe_instance];
-                float3 probe_emission = probe_emission_estimate(probe_mat);
+                float3 emission = probe_emission(
+                    probe_query.CommittedInstanceIndex(), probe_query.CommittedPrimitiveIndex(),
+                    probe_query.CommittedTriangleBarycentrics(),
+                    probe_ray.Origin + probe_ray.Direction * probe_query.CommittedRayT(), probe_query.CommittedRayT());
 
-                if (luminance(probe_emission) > 0.0f)
+                if (luminance(emission) > 0.0f)
                 {
                     float  brdf_pdf_probe;
                     float3 brdf_probe = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_probe, specular_blend);
 
                     float mis_weight = power_heuristic(env_pdf, brdf_pdf_probe);
-                    total += brdf_probe * probe_emission * mis_weight / env_pdf;
+                    total += brdf_probe * emission * mis_weight / env_pdf;
                 }
             }
             else

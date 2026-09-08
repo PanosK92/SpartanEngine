@@ -1068,7 +1068,8 @@ namespace spartan
             GetRenderTarget(Renderer_RenderTarget::gbuffer_color),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
             GetRenderTarget(Renderer_RenderTarget::gbuffer_material),
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive)
         );
         pso.SetDepthTarget(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
         pso.is_multiview                     = xr_multiview;
@@ -1077,6 +1078,7 @@ namespace spartan
         pso.clear_color[1]                   = Color::standard_transparent;
         pso.clear_color[2]                   = Color::standard_transparent;
         pso.clear_color[3]                   = Color::standard_transparent;
+        pso.clear_color[4]                   = Color::standard_transparent;
 
         const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
         m_pcb_pass_cpu.is_transparent = 0;
@@ -1113,6 +1115,7 @@ namespace spartan
             pso.clear_color[1] = rhi_color_load;
             pso.clear_color[2] = rhi_color_load;
             pso.clear_color[3] = rhi_color_load;
+            pso.clear_color[4] = rhi_color_load;
             // equal, not greater-equal, so only prepass survivors draw, otherwise cutouts render as solid quads
             pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);
             if (mesh_path)
@@ -1178,12 +1181,14 @@ namespace spartan
         pso.render_target_color_textures[1]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal);
         pso.render_target_color_textures[2]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_material);
         pso.render_target_color_textures[3]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
+        pso.render_target_color_textures[4]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive);
         pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
         pso.is_multiview                     = xr_multiview;
         pso.clear_color[0]                   = rhi_color_load;
         pso.clear_color[1]                   = rhi_color_load;
         pso.clear_color[2]                   = rhi_color_load;
         pso.clear_color[3]                   = rhi_color_load;
+        pso.clear_color[4]                   = rhi_color_load;
 
         bool pipeline_set = false;
         for (uint32_t i = 0; i < m_draw_call_count; i++)
@@ -1890,11 +1895,13 @@ namespace spartan
         pso.render_target_color_textures[1]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal);
         pso.render_target_color_textures[2]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_material);
         pso.render_target_color_textures[3]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
+        pso.render_target_color_textures[4]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive);
         pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
         pso.clear_color[0]                   = rhi_color_load;
         pso.clear_color[1]                   = rhi_color_load;
         pso.clear_color[2]                   = rhi_color_load;
         pso.clear_color[3]                   = rhi_color_load;
+        pso.clear_color[4]                   = rhi_color_load;
         pso.clear_depth                      = rhi_depth_load;
 
         RHI_CommandList::BeginTimeblock("g_buffer_grass");

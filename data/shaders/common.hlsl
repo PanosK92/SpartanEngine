@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include "common_resources.hlsl"
 #include "common_colorspace.hlsl"
+#include "shared_lighting.h"
 //===============================
 
 /*-----------------------------------------------------------------------------
@@ -45,7 +46,7 @@ static const uint  THREAD_GROUP_COUNT_X = 8;
 static const uint  THREAD_GROUP_COUNT_Y = 8;
 static const uint  THREAD_GROUP_COUNT   = 64;
 static const float DEG_TO_RAD           = PI / 180.0f;
-static const float LUMINOUS_EFFICACY_MAX = 683.0f;
+static const float LUMINOUS_EFFICACY_MAX = lighting_luminous_efficacy;
 
 float radiometric_to_photometric(float value)
 {
@@ -75,7 +76,7 @@ float get_effective_exposure()
     }
 
     float exposure = tex_effective_exposure.Load(int3(0, 0, 0)).r;
-    if (isnan(exposure) || exposure <= 0.0f)
+    if (!isfinite(exposure) || exposure <= 0.0f)
     {
         return buffer_frame.camera_exposure;
     }

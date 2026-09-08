@@ -117,12 +117,12 @@ void main_cs(uint group_index : SV_GroupIndex)
     float exposure_compensation = pass_get_f3_value().y;
 
     // map the metered average to the key in display units where 1 is paper white
-    float target_exposure = (key / avg_nits) * exp2(exposure_compensation);
-    // never lift darker than a physical night camera (~ev 2), stops night from becoming day
-    target_exposure = min(target_exposure, 0.30f);
+    // Limit the meter before compensation, so +1 stop always doubles exposure,
+    // including at night. 0.30 is an artistic adaptation limit (about EV 1.47).
+    float target_exposure = min(key / avg_nits, 0.30f) * exp2(exposure_compensation);
 
     float prev_exposure = tex2.Load(int3(0, 0, 0)).r;
-    if (isnan(prev_exposure) || prev_exposure <= 0.0f)
+    if (!isfinite(prev_exposure) || prev_exposure <= 0.0f)
     {
         // start from the target to avoid a first frame flash
         prev_exposure = target_exposure;

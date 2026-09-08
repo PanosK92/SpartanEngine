@@ -39,6 +39,7 @@ struct ReflectionSurface
     float  material_index;
     float3 albedo;
     float  roughness;
+    float3 emission;
 };
 
 // Read payload fields at the call site so DXC's payload-access analysis sees them.
@@ -142,6 +143,7 @@ void ray_gen()
     tex_uav[launch_id]  = float4(payload.position, payload.hit_distance);
     tex_uav2[launch_id] = float4(payload.normal, payload.material_index);
     tex_uav3[launch_id] = float4(payload.albedo, payload.roughness);
+    tex_uav4[launch_id] = float4(payload.emission, 0.0f);
 #endif
 }
 
@@ -285,6 +287,22 @@ ReflectionSurface reconstruct_reflection_surface(float ray_t, uint instance_inde
         roughness *= packed.g;
     }
     roughness = max(roughness, 0.04f);
+
+    // Evaluate the same emitter at the ray hit as at a primary raster hit.
+    if (mat.emissive_from_albedo())
+    {
+        payload.emission = albedo * mat.emissive_strength * photometric_to_radiometric(lighting_emissive_nits_from_albedo);
+    }
+    else if (mat.has_texture_emissive())
+    {
+        float3 emission = material_textures[material_index + material_texture_index_emission].SampleLevel(
+            GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
+        if (mat.is_emissive_srgb())
+        {
+            emission = srgb_to_linear(emission);
+        }
+        payload.emission = emission * photometric_to_radiometric(lighting_emissive_nits_texture);
+    }
 
     payload.position       = hit_pos;
     payload.hit_distance   = ray_t;

@@ -211,7 +211,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     );
     float3 multi_bounce = gtao_multi_bounce(ibl_visibility, surface.albedo.rgb);
     float3 bounce_boost = multi_bounce / ibl_visibility;
-    float3 diffuse_ibl  = diffuse_skysphere * bounce_boost * diffuse_energy * surface.albedo.rgb;
+    // SH convolution returns irradiance, so the Lambert BRDF still needs 1/pi.
+    float3 diffuse_ibl  = diffuse_skysphere * INV_PI * bounce_boost * diffuse_energy * surface.albedo.rgb;
     float3 specular_ibl = specular_skysphere * specular_energy * specular_occlusion;
 
     // transparents have no diffuse lobe, transmission is composited in reflections_apply, a sky

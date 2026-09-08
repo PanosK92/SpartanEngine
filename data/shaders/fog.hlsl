@@ -231,7 +231,7 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
 
         float dist_eff    = max(dist, soft_radius);
         float range_atten = light.compute_attenuation_range(dist);
-        float emitter_area = 0.5f * max(light.area_width * light.area_height, 0.0001f);
+        float emitter_area = max(light.area_width * light.area_height, 0.0001f);
         float emission_cos = saturate(dot(light.forward, -light_dir));
         local_atten        = min((range_atten / (dist_eff * dist_eff)) * emission_cos * emitter_area, PI);
         return;
@@ -249,7 +249,7 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
     {
         float cd = dot(-light_dir, light.forward);
         float t  = saturate((cd - light.cos_outer) * light.angle_scale);
-        local_atten *= t * t * (3.0f - 2.0f * t);
+        local_atten *= t * t;
     }
 }
 

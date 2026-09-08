@@ -82,6 +82,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_ragdoll;
     extern TConsoleVar<float> cvar_wireframe;
     extern TConsoleVar<float> cvar_bloom;
+    extern TConsoleVar<float> cvar_bloom_scatter;
     extern TConsoleVar<float> cvar_light_flares;
     extern TConsoleVar<float> cvar_light_flares_near_distance;
     extern TConsoleVar<float> cvar_light_flares_fade_length;

@@ -107,7 +107,7 @@ struct Surface
         alpha                 = sample_albedo.a;
         roughness             = sample_material.r;
         metallic              = sample_material.g;
-        emissive              = sample_material.b;
+        emissive              = tex_emissive.SampleLevel(samplers[sampler_point_clamp], uv, 0).rgb;
         // glass is always dielectric, force metallic 0 so f0 stays at the 0.04 dielectric value
         bool alpha_transparent = (alpha > 0.0f && alpha < 1.0f);
         metallic               = alpha_transparent ? 0.0f : metallic;
@@ -413,7 +413,7 @@ struct Light
         intensity                        = light.intensity;
         near                             = 0.01f;
         far                              = light.range;
-        angle                            = light.angle;
+        angle                            = lighting_spot_half_angle(light.angle);
         area_width                       = light.area_width;
         area_height                      = light.area_height;
         forward                          = (is_point() && !is_area()) ? float3(0.0f, 0.0f, 1.0f) : light.direction.xyz;
@@ -423,7 +423,7 @@ struct Light
         // precompute spot cone trig once per pixel per light, used by surface and volumetric paths
         cos_outer   = cos(angle);
         cos_inner   = cos(angle * 0.9f);
-        angle_scale = 1.0f / max(0.0001f, cos_inner - cos_outer);
+        angle_scale = 1.0f / max(0.000001f, cos_inner - cos_outer);
         
         // for area lights, point the brdf direction at the rectangle centroid so it stays
         // camera independent and produces a valid lambertian cosine even when the closest

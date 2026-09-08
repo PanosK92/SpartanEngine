@@ -67,11 +67,14 @@ namespace spartan
             hdr_metadata.displayPrimaryBlue.y      = 0.046f;
             hdr_metadata.whitePoint.x              = 0.3127f;
             hdr_metadata.whitePoint.y              = 0.3290f;
-            const float nits_to_lumin              = 10000.0f;
-            hdr_metadata.maxLuminance              = Display::GetLuminanceMax() * nits_to_lumin;
-            hdr_metadata.minLuminance              = 0.001f * nits_to_lumin;
-            hdr_metadata.maxContentLightLevel      = 2000.0f;
-            hdr_metadata.maxFrameAverageLightLevel = 500.0f;
+            // Vulkan takes floating-point nits, unlike DXGI's integer minimum
+            // mastering luminance field whose unit is 0.0001 nits.
+            hdr_metadata.maxLuminance              = Display::GetLuminanceMax();
+            // The black level and content statistics are not measured. Vulkan
+            // explicitly uses zero for unknown metadata; don't invent values.
+            hdr_metadata.minLuminance              = 0.0f;
+            hdr_metadata.maxContentLightLevel      = 0.0f;
+            hdr_metadata.maxFrameAverageLightLevel = 0.0f;
 
             PFN_vkSetHdrMetadataEXT pfnVkSetHdrMetadataEXT = (PFN_vkSetHdrMetadataEXT)vkGetDeviceProcAddr(RHI_Context::device , "vkSetHdrMetadataEXT");
             SP_ASSERT(pfnVkSetHdrMetadataEXT != nullptr);

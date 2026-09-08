@@ -179,7 +179,8 @@ namespace spartan
     TConsoleVar<float> cvar_ragdoll                        ("r.ragdoll",                        0.0f,                                                    "draw ragdoll capsules and joints in play mode");
     TConsoleVar<float> cvar_wireframe                      ("r.wireframe",                      0.0f,                                                    "render in wireframe mode");
     // post-processing
-    TConsoleVar<float> cvar_bloom                          ("r.bloom",                          1.0f,                                                    "bloom intensity, 0 to disable");
+    TConsoleVar<float> cvar_bloom                          ("r.bloom",                          1.0f,                                                    "lens scattering strength, 1 redistributes about 4 percent of light, 0 disables");
+    TConsoleVar<float> cvar_bloom_scatter                  ("r.bloom_scatter",                  0.7f,                                                    "bloom halo spread, 0.05 to 0.95, higher is wider");
     TConsoleVar<float> cvar_light_flares                   ("r.light_flares",                   1.0f,                                                    "distant light corona flares");
     TConsoleVar<float> cvar_light_flares_near_distance     ("r.light_flares_near_distance",     25.0f,                                                   "camera distance in meters where flares are fully gone");
     TConsoleVar<float> cvar_light_flares_fade_length       ("r.light_flares_fade_length",       20.0f,                                                   "meters over which flares fade from full to gone as they approach");
@@ -208,7 +209,7 @@ namespace spartan
     TConsoleVar<float> cvar_dlss_reactivity            ("r.dlss_reactivity",               1.0f,                                                    "dlss current-frame bias, 1 discards history on disocclusion and particles");
     // display
     TConsoleVar<float> cvar_hdr                            ("r.hdr",                            0.0f,                                                    "enable hdr output",                       on_hdr_change);
-    TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,                                                    "display gamma");
+    TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,                                                    "legacy display gamma metadata; SDR output uses the fixed sRGB transfer");
     TConsoleVar<float> cvar_vsync                          ("r.vsync",                          0.0f,                                                    "vertical sync",                           on_vsync_change);
     // resolution
     TConsoleVar<float> cvar_variable_rate_shading          ("r.variable_rate_shading",          0.0f,                                                    "variable rate shading",                   on_vrs_change);

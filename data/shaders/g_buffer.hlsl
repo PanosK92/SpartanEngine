@@ -30,6 +30,7 @@ struct gbuffer
     float4 normal   : SV_Target1;
     float4 material : SV_Target2;
     float4 velocity : SV_Target3; // xy = ndc velocity, z = radial motion blur mask
+    float3 emissive : SV_Target4; // scene-linear emitted radiance, independent of reflectance
 };
 
 // constants
@@ -271,7 +272,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float roughness = material.roughness;
     float metalness = material.metalness;
     float occlusion = 1.0f;
-    float emission  = 0.0f;
+    float3 emission = 0.0f;
 
     // velocity computation
     float2 position_ndc          = uv_to_ndc(vertex.position.xy / get_render_resolution_active());
@@ -455,8 +456,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         {
             emissive = srgb_to_linear(emissive);
         }
-        albedo.rgb     += emissive;
-        emission        = luminance(emissive);
+        emission = emissive;
     }
     // emissive_from_albedo strength is authored 0-1, composition maps 1.0 to the calibrated nits
     if (material.emissive_from_albedo())
@@ -603,7 +603,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     gbuffer g_buffer;
     g_buffer.albedo   = albedo;
     g_buffer.normal   = float4(normal, pass_get_material_index());
-    g_buffer.material = float4(roughness, metalness, emission, occlusion);
+    g_buffer.material = float4(roughness, metalness, 0.0f, occlusion);
     g_buffer.velocity = float4(velocity, material.is_motion_blur_radial() ? 1.0f : 0.0f, 0.0f);
+    g_buffer.emissive = material.emissive_from_albedo()
+        ? emission * albedo.rgb * photometric_to_radiometric(lighting_emissive_nits_from_albedo)
+        : emission * photometric_to_radiometric(lighting_emissive_nits_texture);
     return g_buffer;
 }

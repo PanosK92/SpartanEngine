@@ -345,80 +345,66 @@ namespace spartan
 
     void Renderer::Pass_Bloom(RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        RHI_Shader* shader_luminance          = GetShader(Renderer_Shader::bloom_luminance_c);
-        RHI_Shader* shader_upsample_blend_mip = GetShader(Renderer_Shader::bloom_upsample_blend_mip_c);
-        RHI_Shader* shader_blend_frame        = GetShader(Renderer_Shader::bloom_blend_frame_c);
-        RHI_Texture* tex_bloom                = GetRenderTarget(Renderer_RenderTarget::bloom);
-
-        // stop when dimensions drop below 32px to avoid instability
-        uint32_t bloom_mip_count = 0;
-        for (uint32_t i = 0; i < tex_bloom->GetMipCount(); i++)
+        RHI_Texture* pyramid = GetRenderTarget(Renderer_RenderTarget::bloom);
+        const uint32_t mip_count = pyramid->GetMipCount();
+        auto dispatch_mip = [pyramid](uint32_t mip)
         {
-            uint32_t mip_width  = tex_bloom->GetWidth() >> i;
-            uint32_t mip_height = tex_bloom->GetHeight() >> i;
-            
-            if (mip_width < 32 || mip_height < 32)
-            {
-                break;
-            }
-            
-            bloom_mip_count++;
-        }
-    
+            const uint32_t width = max(1u, pyramid->GetWidth() >> mip);
+            const uint32_t height = max(1u, pyramid->GetHeight() >> mip);
+            RHI_CommandList::Dispatch((width + 7) / 8, (height + 7) / 8);
+        };
+
         RHI_CommandList::BeginTimeblock("bloom");
-    
-        // luminance
-        RHI_CommandList::BeginMarker("luminance");
+
+        RHI_CommandList::BeginMarker("bloom_prefilter");
         {
-            RHI_CommandList::SetShader(shader_luminance, "bloom_luminance");
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_bloom, 0, 1, true);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_in);
-            RHI_CommandList::Dispatch(tex_bloom);
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_prefilter_c));
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_in, 0, 1);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), pyramid, 0, 1, true);
+            dispatch_mip(0);
         }
         RHI_CommandList::EndMarker();
-    
-        if (bloom_mip_count > 1)
-        {
-            Pass_Downscale(tex_bloom, Renderer_DownsampleFilter::Average);
-        }
-    
-        // upsample & blend chain
-        RHI_CommandList::BeginMarker("upsample_chain");
-        {
-            RHI_CommandList::SetShader(shader_upsample_blend_mip, "bloom_upsample_blend_mip");
 
-            for (int i = bloom_mip_count - 1; i > 0; i--)
+        // Every 2:1 reduction uses the overlapping bloom filter. Generic mip
+        // generation is a box reduction and exposes its grid under motion.
+        // Explicit, disjoint per-mip views let the RHI track each dependency.
+        RHI_CommandList::BeginMarker("bloom_downsample");
+        {
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_downsample_c));
+            for (uint32_t mip = 1; mip < mip_count; mip++)
             {
-                int small_mip_idx = i;
-                int big_mip_idx   = i - 1;
-                
-                uint32_t big_width  = tex_bloom->GetWidth() >> big_mip_idx;
-                uint32_t big_height = tex_bloom->GetHeight() >> big_mip_idx;
-
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_bloom, small_mip_idx, 1);
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_bloom, big_mip_idx, 1, true);
-
-                uint32_t thread_group_count = 8;
-                uint32_t dispatch_x = (big_width + thread_group_count - 1) / thread_group_count;
-                uint32_t dispatch_y = (big_height + thread_group_count - 1) / thread_group_count;
-                
-                RHI_CommandList::Dispatch(dispatch_x, dispatch_y);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), pyramid, mip - 1, 1);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), pyramid, mip, 1, true);
+                dispatch_mip(mip);
             }
         }
         RHI_CommandList::EndMarker();
-    
-        // composite
-        RHI_CommandList::BeginMarker("blend_with_frame");
+
+        RHI_CommandList::BeginMarker("bloom_reconstruct");
         {
-            RHI_CommandList::SetShader(shader_blend_frame, "bloom_blend_frame");
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_upsample_blend_mip_c));
+            m_pcb_pass_cpu.set_f3_value(cvar_bloom_scatter.GetValue(), 0.0f, 0.0f);
+            for (uint32_t mip = mip_count - 1; mip > 0; mip--)
+            {
+                // Each thread reads/writes only its own high-resolution texel;
+                // all filtered reads are from the completed, separate lower mip.
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), pyramid, mip, 1);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), pyramid, mip - 1, 1, true);
+                dispatch_mip(mip - 1);
+            }
+        }
+        RHI_CommandList::EndMarker();
+
+        RHI_CommandList::BeginMarker("bloom_composite");
+        {
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_blend_frame_c));
             m_pcb_pass_cpu.set_f3_value(cvar_bloom.GetValue(), 0.0f, 0.0f);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_in, 0, 1);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), pyramid, 0, 1);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_out, rhi_all_mips, 0, true);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_in);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), tex_bloom, 0, 1);
             RHI_CommandList::Dispatch(tex_out);
         }
         RHI_CommandList::EndMarker();
-    
         RHI_CommandList::EndTimeblock();
     }
 
@@ -434,6 +420,7 @@ namespace spartan
                 0.0f,
                 force_sdr ? 1.0f : 0.0f
             );
+            RHI_CommandList::SetTexture("tex_effective_exposure", GetRenderTarget(Renderer_RenderTarget::auto_exposure));
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_out, rhi_all_mips, 0, true);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_in);
             RHI_CommandList::Dispatch(tex_out);

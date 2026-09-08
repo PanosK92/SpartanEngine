@@ -19,200 +19,123 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= includes =========
 #include "common.hlsl"
-//====================
 
-// helper: get luminance
-// standard rec.709 luma coefficients
-float get_luminance(float3 color)
+// Normalized scene-linear lens scattering. No threshold or luminance-dependent
+// weights: a subpixel emitter must not change bloom energy as its coverage moves
+// between pixels. Input has already passed through temporal reconstruction.
+// Pyramid filtering: Jimenez, "Next Generation Post Processing", SIGGRAPH 2014.
+// Reconstruction: positive cubic B-spline, evaluated with four bilinear taps.
+
+float3 bloom_sample(Texture2D<float4> source, float2 uv)
 {
-    return dot(color, float3(0.2126f, 0.7152f, 0.0722f));
+    float3 color = source.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
+#if defined(PREFILTER)
+    // One invalid HDR value must not poison the pyramid. Finite input remains
+    // linear up to the representable range of the FP16 target.
+    color = float3(isfinite(color.r) ? color.r : 0.0f,
+                   isfinite(color.g) ? color.g : 0.0f,
+                   isfinite(color.b) ? color.b : 0.0f);
+    color = max(color, 0.0f);
+    float peak = max(color.r, max(color.g, color.b));
+    color *= min(1.0f, 65504.0f / max(peak, 1.0f));
+#endif
+    return color;
 }
 
-// helper: karis average
-// suppresses fireflies by weighting bright pixels less
-float get_karis_weight(float3 color)
+float3 bloom_downsample(Texture2D<float4> source, float2 uv, float2 texel)
 {
-    return 1.0f / (1.0f + get_luminance(color));
+    // Five overlapping boxes, 13 bilinear taps, sum of weights = 1.
+    // Axial taps fill the sparse diagonal footprint of the old nine-tap kernel.
+    float3 center = bloom_sample(source, uv);
+    float3 axial = bloom_sample(source, uv + texel * float2(-2, 0))
+                 + bloom_sample(source, uv + texel * float2( 2, 0))
+                 + bloom_sample(source, uv + texel * float2( 0,-2))
+                 + bloom_sample(source, uv + texel * float2( 0, 2));
+    float3 outer = bloom_sample(source, uv + texel * float2(-2,-2))
+                 + bloom_sample(source, uv + texel * float2( 2,-2))
+                 + bloom_sample(source, uv + texel * float2(-2, 2))
+                 + bloom_sample(source, uv + texel * float2( 2, 2));
+    float3 inner = bloom_sample(source, uv + texel * float2(-1,-1))
+                 + bloom_sample(source, uv + texel * float2( 1,-1))
+                 + bloom_sample(source, uv + texel * float2(-1, 1))
+                 + bloom_sample(source, uv + texel * float2( 1, 1));
+    return center * 0.125f + axial * 0.0625f + outer * 0.03125f + inner * 0.125f;
 }
 
-// helper: 13-tap downsample
-// ensures stability for thin geometry like tube lights
-float3 downsample_stable(Texture2D<float4> src, float2 uv, float2 texel_size)
+float3 bloom_upsample(Texture2D<float4> source, float2 uv)
 {
-    float2 d = texel_size.xy;
-
-    // center sample
-    float3 s0 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
-    
-    // inner box
-    float3 s1 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(-d.x, -d.y), 0).rgb;
-    float3 s2 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2( d.x, -d.y), 0).rgb;
-    float3 s3 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(-d.x,  d.y), 0).rgb;
-    float3 s4 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2( d.x,  d.y), 0).rgb;
-    
-    // outer box
-    float3 s5 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(-d.x * 2, -d.y * 2), 0).rgb;
-    float3 s6 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2( d.x * 2, -d.y * 2), 0).rgb;
-    float3 s7 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(-d.x * 2,  d.y * 2), 0).rgb;
-    float3 s8 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2( d.x * 2,  d.y * 2), 0).rgb;
-
-    // karis weights
-    float w0 = get_karis_weight(s0);
-    float w1 = get_karis_weight(s1);
-    float w2 = get_karis_weight(s2);
-    float w3 = get_karis_weight(s3);
-    float w4 = get_karis_weight(s4);
-    
-    // weighted sum
-    float3 m1 = s0 * w0 * 0.125f;
-    float3 m2 = (s1 * w1 + s2 * w2 + s3 * w3 + s4 * w4) * 0.125f;
-    float3 m3 = (s5 + s6 + s7 + s8) * 0.03125f;
-    
-    float w_sum = (w0 * 0.125f) + 
-                  ((w1 + w2 + w3 + w4) * 0.125f) + 
-                  (4.0f * 0.03125f);
-
-    return (m1 + m2 + m3) / max(w_sum, 0.00001f);
+    uint width, height;
+    source.GetDimensions(width, height);
+    float2 size = float2(width, height);
+    float2 position = uv * size - 0.5f;
+    float2 base = floor(position);
+    float2 f = position - base;
+    float2 f2 = f * f;
+    float2 f3 = f2 * f;
+    float2 w0 = (1.0f - 3.0f * f + 3.0f * f2 - f3) / 6.0f;
+    float2 w1 = (4.0f - 6.0f * f2 + 3.0f * f3) / 6.0f;
+    float2 w2 = (1.0f + 3.0f * f + 3.0f * f2 - 3.0f * f3) / 6.0f;
+    float2 w3 = f3 / 6.0f;
+    float2 g0 = w0 + w1;
+    float2 g1 = w2 + w3;
+    float2 p0 = (base - 0.5f + w1 / g0) / size;
+    float2 p1 = (base + 1.5f + w3 / g1) / size;
+    float3 a = bloom_sample(source, float2(p0.x, p0.y));
+    float3 b = bloom_sample(source, float2(p1.x, p0.y));
+    float3 c = bloom_sample(source, float2(p0.x, p1.y));
+    float3 d = bloom_sample(source, float2(p1.x, p1.y));
+    // Positive weights: no ringing, negative colors or bilinear cell boundaries.
+    return lerp(lerp(a, b, g1.x), lerp(c, d, g1.x), g1.y);
 }
 
-float3 threshold(float3 color)
-{
-    // threshold in display referred space, 1.0 is display white after exposure,
-    // so bloom always starts the same number of stops above white regardless of scene brightness
-    const float THRESHOLD = 1.0f;
-    const float KNEE      = THRESHOLD * 0.5f;
-
-    // use the active camera exposure, matching the light contribution cull
-    float brightness =
-        get_luminance(radiometric_to_photometric(color)) *
-        get_effective_exposure();
-
-    // soft knee curve
-    float soft = brightness - THRESHOLD + KNEE;
-    soft       = clamp(soft, 0.0f, 2.0f * KNEE);
-    soft       = soft * soft / (4.0f * KNEE + 0.00001f);
-    
-    float contribution = max(soft, brightness - THRESHOLD);
-    contribution      /= max(brightness, 0.00001f);
-    
-    return color * contribution;
-}
-
-float3 upsample_filter(Texture2D<float4> src, float2 uv, float2 texel_size)
-{
-    // config: radius
-    // 3.0 creates a smooth cinematic blur
-    const float RADIUS = 3.0f;
-    float4 d = texel_size.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f) * RADIUS;
-
-    // 9-tap tent filter
-    float3 s0 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + d.xy, 0).rgb;
-    float3 s1 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + d.zy, 0).rgb;
-    float3 s2 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + d.xw, 0).rgb;
-    float3 s3 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + d.zw, 0).rgb;
-    
-    float3 s4 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(0.0f, d.y), 0).rgb;
-    float3 s5 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(0.0f, d.w), 0).rgb;
-    float3 s6 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(d.x, 0.0f), 0).rgb;
-    float3 s7 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(d.z, 0.0f), 0).rgb;
-    
-    float3 s8 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
-
-    return (
-        (s0 + s1 + s2 + s3) * 1.0f +
-        (s4 + s5 + s6 + s7) * 2.0f +
-        s8                  * 4.0f
-    ) * (1.0f / 16.0f);
-}
-
-#if LUMINANCE
+#if defined(PREFILTER) || defined(DOWNSAMPLE)
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    float2 resolution_out;
-    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-    if (any(int2(thread_id.xy) >= resolution_out))
+    uint width, height;
+    tex_uav.GetDimensions(width, height);
+    if (any(thread_id.xy >= uint2(width, height)))
         return;
-    
-    float2 resolution_in;
-    tex.GetDimensions(resolution_in.x, resolution_in.y);
-    
-    float2 uv         = (thread_id.xy + 0.5f) / resolution_out;
-    float2 texel_size = 1.0f / resolution_in;
-
-    float3 color    = downsample_stable(tex, uv, texel_size);
-    float3 filtered = threshold(color);
-    
-    tex_uav[thread_id.xy] = float4(filtered, 1.0f);
+    uint source_width, source_height;
+    tex.GetDimensions(source_width, source_height);
+    float2 uv = (float2(thread_id.xy) + 0.5f) / float2(width, height);
+    float3 color = bloom_downsample(tex, uv, 1.0f / float2(source_width, source_height));
+    tex_uav[thread_id.xy] = float4(min(color, 65504.0f), 1.0f);
 }
 #endif
 
-#if DOWNSAMPLE
+#if defined(UPSAMPLE_BLEND_MIP)
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    float2 resolution_out;
-    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-    if (any(int2(thread_id.xy) >= resolution_out))
+    uint width, height;
+    tex_uav.GetDimensions(width, height);
+    if (any(thread_id.xy >= uint2(width, height)))
         return;
-
-    float2 resolution_in;
-    tex.GetDimensions(resolution_in.x, resolution_in.y);
-    
-    float2 uv         = (thread_id.xy + 0.5f) / resolution_out;
-    float2 texel_size = 1.0f / resolution_in;
-
-    float3 color = downsample_stable(tex, uv, texel_size);
-    
-    tex_uav[thread_id.xy] = float4(color, 1.0f);
+    float2 uv = (float2(thread_id.xy) + 0.5f) / float2(width, height);
+    float3 high = tex_uav[thread_id.xy].rgb;
+    float3 low = bloom_upsample(tex, uv);
+    float scatter = clamp(pass_get_f3_value().x, 0.05f, 0.95f);
+    // A normalized scale mixture keeps DC gain independent of the mip count.
+    tex_uav[thread_id.xy] = float4(lerp(high, low, scatter), 1.0f);
 }
 #endif
 
-#if UPSAMPLE_BLEND_MIP
+#if defined(BLEND_FRAME)
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    float2 resolution_out;
-    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-    if (any(int2(thread_id.xy) >= resolution_out))
+    uint width, height;
+    tex_uav.GetDimensions(width, height);
+    if (any(thread_id.xy >= uint2(width, height)))
         return;
-    
-    float2 uv         = (thread_id.xy + 0.5f) / resolution_out;
-    float2 texel_size = 1.0f / resolution_out;
-    
-    // 1. upsample the lower (blurrier) mip
-    float3 low_mip = upsample_filter(tex, uv, texel_size);
-    
-    // 2. get the current (sharper) mip
-    float3 high_mip = tex_uav[thread_id.xy].rgb;
-    
-    // 3. blend with spread factor
-    const float SPREAD_FACTOR = 1.0f;
-    float3 result = high_mip * SPREAD_FACTOR + low_mip;
-    
-    tex_uav[thread_id.xy] = float4(result, 1.0f);
-}
-#endif
-
-#if BLEND_FRAME
-[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void main_cs(uint3 thread_id : SV_DispatchThreadID)
-{
-    float2 resolution_out;
-    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-    if (any(int2(thread_id.xy) >= resolution_out))
-        return;
-    
-    // bloom can be half-res, sample by uv so it covers the full frame
-    float2 uv                        = (thread_id.xy + 0.5f) / resolution_out;
-    float4 color_frame               = tex[thread_id.xy];
-    float4 color_bloom               = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
-    const float INTENSITY_CORRECTION = 0.0025f;
-    float bloom_intensity            = pass_get_f3_value().x;
-    float3 result                    = color_frame.rgb + (color_bloom.rgb * INTENSITY_CORRECTION * bloom_intensity);
-    
-    tex_uav[thread_id.xy] = float4(result, color_frame.a);
+    float2 uv = (float2(thread_id.xy) + 0.5f) / float2(width, height);
+    float4 scene = tex[thread_id.xy];
+    float3 glow = bloom_upsample(tex2, uv);
+    // r.bloom = 1 redistributes about 4% of light into the halo. Exposure applies
+    // later to both terms together; constant scenes retain their brightness.
+    float amount = 1.0f - exp2(-0.06f * max(pass_get_f3_value().x, 0.0f));
+    tex_uav[thread_id.xy] = float4(lerp(scene.rgb, glow, amount), scene.a);
 }
 #endif

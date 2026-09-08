@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cmath>
 #include "Renderer_Internal.h"
 #include "Material.h"
+#include "../../data/shaders/shared_lighting.h"
 #include "GeometryBuffer.h"
 #include "ThreadPool.h"
 #include "../profiling/RenderDoc.h"
@@ -2188,15 +2189,26 @@ namespace spartan
                 continue;
             }
 
+            // This pool represents constant radiance on non-instanced meshes.
+            // When it cannot represent an emitter, leave all authored emission
+            // to BRDF/environment sampling, as with the pool-cap fallback below.
+            // A partial pool would suppress the missing emitter at ray hits.
+            if (material->HasTextureOfType(MaterialTextureType::Color) ||
+                material->GetProperty(MaterialProperty::IsTerrain) != 0.0f || render->HasInstancing())
+            {
+                m_cb_frame_cpu.restir_pt_emissive_tri_count = 0.0f;
+                return;
+            }
+
             Vector3 emission(
-                material->GetProperty(MaterialProperty::ColorR),
-                material->GetProperty(MaterialProperty::ColorG),
-                material->GetProperty(MaterialProperty::ColorB)
+                clamp(material->GetProperty(MaterialProperty::ColorR), 0.0f, 1.0f),
+                clamp(material->GetProperty(MaterialProperty::ColorG), 0.0f, 1.0f),
+                clamp(material->GetProperty(MaterialProperty::ColorB), 0.0f, 1.0f)
             );
 
             // nits calibration matching light_composition, otherwise emitters glow on screen but bounce no light
-            const float luminous_efficacy = 683.0f;
-            const float nits              = emissive_from_albedo * 100000.0f;
+            const float luminous_efficacy = lighting::lighting_luminous_efficacy;
+            const float nits              = emissive_from_albedo * lighting::lighting_emissive_nits_from_albedo;
             emission *= nits / luminous_efficacy;
 
             float emission_lum = 0.299f * emission.x + 0.587f * emission.y + 0.114f * emission.z;
@@ -2630,6 +2642,7 @@ namespace spartan
         RHI_CommandList::SetTexture("tex_albedo",   GetRenderTarget(Renderer_RenderTarget::gbuffer_color),    rhi_all_mips, 0, eye_layer);
         RHI_CommandList::SetTexture("tex_normal",   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),   rhi_all_mips, 0, eye_layer);
         RHI_CommandList::SetTexture("tex_material", GetRenderTarget(Renderer_RenderTarget::gbuffer_material), rhi_all_mips, 0, eye_layer);
+        RHI_CommandList::SetTexture("tex_emissive", GetRenderTarget(Renderer_RenderTarget::gbuffer_emissive), rhi_all_mips, 0, eye_layer);
         RHI_CommandList::SetTexture("tex_velocity", GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, eye_layer);
         RHI_CommandList::SetTexture("tex_depth",    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),    rhi_all_mips, 0, eye_layer);
 

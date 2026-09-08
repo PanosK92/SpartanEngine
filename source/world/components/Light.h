@@ -112,7 +112,7 @@ namespace spartan
         float GetTemperature() const { return m_temperature_kelvin; }
         void SetColor(const Color& rgb);
         const Color& GetColor() const { return m_color_rgb; }
-        // shading color, atmospheric sun transmittance for directional lights, authored color otherwise
+        // shading color: atmospheric sun transmittance, or unit-luminance local-light chromaticity
         Color GetColorEffective() const;
 
         // intensity
@@ -122,8 +122,10 @@ namespace spartan
         float GetIntensityLumens() const      { return m_intensity_photometric; } // legacy alias
         LightIntensity GetIntensity() const   { return m_intensity; }
         LightIntensityUnit GetIntensityUnit() const;
+        // GPU scale: lux/683 for directional, candela/683 for point/spot,
+        // nits/683 for area. These are different quantities, not electrical watts.
         float GetIntensityRadiometric() const;
-        float GetIntensityWatt() const { return GetIntensityRadiometric(); } // legacy alias
+        float GetIntensityWatt() const { return GetIntensityRadiometric(); } // legacy alias, not watts
 
         // preset
         void SetPreset(const LightPreset preset);

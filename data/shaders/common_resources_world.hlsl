@@ -50,7 +50,7 @@ Texture2D<float4> tex_reservoir_prev4 : register(t26);
 // fft ocean displacement history
 Texture2DArray<float4> tex_ocean_displacement_previous : register(t27);
 
-// exposure resolved by the camera on the previous frame
+// previous exposure during lighting, current exposure after metering for bloom/output
 Texture2D<float> tex_effective_exposure : register(t28);
 
 // wind field, baked once per frame, sampled by all wind-driven geometry

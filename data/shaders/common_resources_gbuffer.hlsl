@@ -28,6 +28,7 @@ Texture2D tex_normal   : register(t1);
 Texture2D tex_material : register(t2);
 Texture2D tex_velocity : register(t3);
 Texture2D tex_depth    : register(t4);
+Texture2D tex_emissive : register(t33);
 
 // ray-tracing, the declaration alone makes the spir-v require the ray query capability, even when unused,
 // because bindings are preserved, so it must not exist in modules built for devices without support
