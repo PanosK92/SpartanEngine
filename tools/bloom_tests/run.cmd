@@ -7,6 +7,12 @@ if errorlevel 1 exit /b 1
 cd /d "%~dp0\..\.."
 node tools\bloom_tests\generate.mjs
 if errorlevel 1 exit /b 1
+node tools\bloom_tests\generate_pass.mjs
+if errorlevel 1 exit /b 1
+cl /nologo /std:c++20 /EHsc /MT /O2 /Ibinaries\bloom_tests tools\bloom_tests\pass.cpp /Fobinaries\bloom_tests\pass.obj /Febinaries\bloom_tests\pass.exe
+if errorlevel 1 exit /b 1
+binaries\bloom_tests\pass.exe
+if errorlevel 1 exit /b 1
 cl /nologo /std:c++20 /EHsc /MT /O2 tools\bloom_tests\gpu.cpp /Fobinaries\bloom_tests\gpu.obj /Febinaries\bloom_tests\gpu.exe /link d3d11.lib d3dcompiler.lib dxgi.lib
 if errorlevel 1 exit /b 1
 binaries\bloom_tests\gpu.exe

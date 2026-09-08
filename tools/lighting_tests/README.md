@@ -69,6 +69,8 @@ The default absolute intermediate-directory build failed before compilation with
 
 `live.mjs` builds temporary materials/worlds under `binaries/lighting_tests` and controls a separately launched audit engine on port **47779**. It must be used with that isolated engine. Its runtime directory needs the engine DLLs, `data` resources and `project` resource directory, as usual. The audit used directory junctions for the latter two and copied the runtime DLLs; it did not replace an existing user world.
 
+Before launching an audit executable, copy `binaries/spartan.xml` to `binaries/lighting_tests/spartan.xml`. A separate executable directory alone does not isolate settings: without that local file, `Settings::resolve_file_path()` searches parent directories and can load/save the main editor's settings. Keep the copy next to the audit executable for all subsequent fixture runs.
+
 ```powershell
 node tools/lighting_tests/live.mjs load
 node tools/lighting_tests/live.mjs capture lighting_emission_fixture.png

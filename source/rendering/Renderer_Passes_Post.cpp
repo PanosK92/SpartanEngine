@@ -354,11 +354,14 @@ namespace spartan
             RHI_CommandList::Dispatch((width + 7) / 8, (height + 7) / 8);
         };
 
-        RHI_CommandList::BeginTimeblock("bloom");
+        // Establish a named pass: automatic exposure ends its pass immediately
+        // before bloom. A timing marker alone leaves the pending pipeline unnamed
+        // and prevents SetShader from replacing the previous compute pipeline.
+        RHI_CommandList::BeginPass("bloom");
 
         RHI_CommandList::BeginMarker("bloom_prefilter");
         {
-            RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_prefilter_c));
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_prefilter_c), "bloom_prefilter");
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_in, 0, 1);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), pyramid, 0, 1, true);
             dispatch_mip(0);
@@ -370,7 +373,7 @@ namespace spartan
         // Explicit, disjoint per-mip views let the RHI track each dependency.
         RHI_CommandList::BeginMarker("bloom_downsample");
         {
-            RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_downsample_c));
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_downsample_c), "bloom_downsample");
             for (uint32_t mip = 1; mip < mip_count; mip++)
             {
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), pyramid, mip - 1, 1);
@@ -382,7 +385,7 @@ namespace spartan
 
         RHI_CommandList::BeginMarker("bloom_reconstruct");
         {
-            RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_upsample_blend_mip_c));
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_upsample_blend_mip_c), "bloom_reconstruct");
             m_pcb_pass_cpu.set_f3_value(cvar_bloom_scatter.GetValue(), 0.0f, 0.0f);
             for (uint32_t mip = mip_count - 1; mip > 0; mip--)
             {
@@ -397,7 +400,7 @@ namespace spartan
 
         RHI_CommandList::BeginMarker("bloom_composite");
         {
-            RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_blend_frame_c));
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_blend_frame_c), "bloom_composite");
             m_pcb_pass_cpu.set_f3_value(cvar_bloom.GetValue(), 0.0f, 0.0f);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_in, 0, 1);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), pyramid, 0, 1);
@@ -405,7 +408,7 @@ namespace spartan
             RHI_CommandList::Dispatch(tex_out);
         }
         RHI_CommandList::EndMarker();
-        RHI_CommandList::EndTimeblock();
+        RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_Tonemap(RHI_Texture* tex_in, RHI_Texture* tex_out, bool force_sdr)

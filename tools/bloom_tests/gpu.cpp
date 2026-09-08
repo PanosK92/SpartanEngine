@@ -140,6 +140,34 @@ void timing(Gpu& gpu,unsigned w,unsigned h){
     UINT64 a,b;hr(gpu.context->GetData(start.Get(),&a,sizeof(a),0));hr(gpu.context->GetData(end.Get(),&b,sizeof(b),0));check(!data.Disjoint,"disjoint GPU timer");
     std::printf("GPU %ux%u FP16 bloom: %.4f ms (D3D11 harness, 32 chains)\n",w,h,(b-a)*1000./data.Frequency/32);
 }
+void chromaticity(Gpu& gpu){
+    constexpr unsigned n=256;Bloom bloom(gpu,n,n,false,true);double worst=0;
+    // The showroom's actual warm, red and cyan light chromaticities. Measure the
+    // halo itself before tone mapping, including the low-energy outer levels.
+    for(Pixel color:std::vector<Pixel>{{1,.653803825f,.342766613f,1},{1,.25f,.35f,1},{.3f,.75f,1,1}})
+    for(float strength:{1.f,1000.f,60000.f}){
+        auto input=point(n,127.375f,strength);
+        for(auto& p:input){float value=p.r;p.r=value*color.r;p.g=value*color.g;p.b=value*color.b;}
+        bloom.render(input);auto halo=gpu.read(bloom.pyramid);energy(halo);
+        double reference_sum=0,error_r=0,error_g=0,error_b=0;
+        for(auto p:halo){
+            // The tested colors have a unit peak channel. Use that channel so
+            // the metric does not amplify quantization by dividing by weak red.
+            double reference=color.r==1?p.r:p.b;
+            reference_sum+=reference;
+            error_r+=std::abs(p.r-reference*color.r);
+            error_g+=std::abs(p.g-reference*color.g);
+            error_b+=std::abs(p.b-reference*color.b);
+        }
+        double error=std::max({error_r,error_g,error_b});
+        // The dim-point tails reach FP16 subnormals. Allow one absolute half-float
+        // subnormal step per texel per filtering level, plus 0.2% relative error.
+        double subnormal_budget=halo.size()*bloom.levels*std::ldexp(1.0,-24);
+        check(error<=.002*reference_sum+subnormal_budget,"bloom halo lost source chromaticity");
+        if(strength>=1000)worst=std::max(worst,error/reference_sum);
+    }
+    std::printf("PASS warm/red/cyan halo chromaticity (FP16 precision), worst HDR channel-ratio error %.6f%%\n",worst*100);
+}
 int tests(){
     Gpu gpu;
     for(auto [w,h]:std::vector<std::pair<unsigned,unsigned>>{{1,1},{3,1},{31,19},{127,73},{256,256},{801,451}}){
@@ -153,6 +181,7 @@ int tests(){
     }
     std::puts("PASS DC gain, HDR range, alpha, disable, stale-frame reset, tiny/odd dimensions");
     movement(gpu,false);
+    chromaticity(gpu);
     if(std::filesystem::exists("binaries/bloom_tests/baseline_fixture.hlsl"))movement(gpu,true);
     // Colored lamps, a thin white tube, and a small specular highlight.
     const unsigned w=768,h=432;std::vector<Pixel> scene(w*h);

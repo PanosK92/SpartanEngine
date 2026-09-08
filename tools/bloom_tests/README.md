@@ -21,6 +21,8 @@ node tools/lighting_tests/compile_shaders.mjs
 
 `generate.mjs` extracts the production bloom HLSL. `gpu.cpp` executes it on a hardware D3D11 device, using an FP16 pyramid and actual per-mip views of one texture. Vulkan/SPIR-V compilation separately checks all four full production variants. Generated sources, executables and images are kept in ignored `binaries/bloom_tests`.
 
+`generate_pass.mjs` also extracts the production `Pass_Bloom` and RHI pass/pipeline selection functions. `pass.cpp` records their dispatch sequence after manual and automatic exposure, with one and seven mip levels. This integration check catches stale shader dispatch that isolated HLSL tests cannot detect.
+
 Recorded on RTX 5070 Ti:
 
 - Across 129 subpixel highlight positions, halo energy variation fell from **11.863774%** to **0.094026%** of its mean. The regression limit is 0.5%. The legacy comparison uses the saved previous shader and a 2x2 average equivalent to its generic mip generation on this even-sized fixture.
@@ -49,3 +51,19 @@ Allow rendered frames after loading or moving before capturing. The fixture requ
 Live Vulkan captures at 3180x1547 output show smooth colored halos around the panel, thin tube and pinpoint before and after a small camera translation. The bloom time block sampled approximately **0.16 ms** in this fixture. Capture is SDR even when the monitor uses HDR. Quantitative motion stability comes from the 129-position GPU test above, not two screenshots.
 
 Bloom cannot recover light that rasterization or an upstream temporal upscaler has already lost. Extremely thin geometry, unstable specular shading and path-tracing noise still need appropriate antialiasing or denoising. The filter itself has no temporal history and does not suppress such source noise through nonlinear weighting.
+
+## Showroom performance regression
+
+The first bloom integration used `BeginTimeblock` without establishing a named RHI pass. Automatic exposure calls `EndPass`, which clears the pending pipeline's name. The following unnamed bloom `SetShader` calls then failed the RHI's pipeline-readiness check, leaving the exposure compute shader bound. Bloom's image-sized dispatches repeatedly executed that expensive exposure shader. The manual-exposure live fixture did not exercise this transition.
+
+Bloom now uses `BeginPass`/`EndPass`, with explicit names for all four shader stages. The new production pass-sequence test fails against the previous implementation at the first bloom dispatch after automatic exposure and passes with the correction. The image filtering shader is unchanged.
+
+The actual `worlds/ferrari_showcase.world` reproduced the fault at roughly 1 FPS, with approximately 2,220 ms CPU waits for GPU completion. With the fix, the same camera, 1920x934 render size, 3180x1547 output, automatic exposure, TAAU, reflections and bloom enabled ran at approximately 217 FPS in the development build on RTX 5070 Ti. Existing GPU image/motion checks still pass. Performance depends on scene settings and hardware.
+
+## Showroom emitter colors
+
+The three colored analytic lights originally shared the white `ceiling_light` emissive material. Their visible cylinders therefore emitted white into primary rendering, reflections and bloom, independently of the light components' warm, red and cyan colors. The showroom now references three separate emitter materials whose linear RGB matches the corresponding lights. Emission strength and the bloom/tone-mapping shaders are unchanged.
+
+Run `node tools/bloom_tests/showroom_emitters.mjs` after downloading an older project asset package, or to regenerate these materials from the saved showroom light colors. It copies the existing ceiling material to `binaries/project/ferrari_showcase_resources/tube_*_emitter.xml` and assigns the matching RGB. The shared white material is retained for other users. These project assets follow the repository's normal exclusion from Git and must accompany the world when publishing a project asset package.
+
+Live showroom captures confirm cyan, warm and red/pink halos with the normal GT7 output. Very bright tube centers still approach display white, as expected from the highlight shoulder. The GPU suite additionally checks the three source chromaticities throughout the bloom pyramid at dim and HDR intensities, allowing FP16 rounding and subnormal precision. Worst measured HDR channel-ratio error was **0.031257%**; the bloom filter does not turn the colored input white.

@@ -19,3 +19,9 @@ or load it. Keep new assets out of Git, and include them in the Dropbox project
 package when publishing an asset update. A local move does not update that
 download automatically. Do not force-add assets or create resource subdirectories
 here; the Git ignore rules intentionally allow only `.world` files and this note.
+
+The Ferrari showroom's warm, red and cyan tubes use separate emissive materials.
+After downloading an older project package, run
+`node tools/bloom_tests/showroom_emitters.mjs` from the repository root to generate
+them from the saved light colors and the existing `ceiling_light.xml` material.
+Include the resulting `tube_*_emitter.xml` assets in the next project package.
