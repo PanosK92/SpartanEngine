@@ -505,6 +505,7 @@ namespace spartan
         fog_integrated,
         fog_extinction,
         fog_water_source,
+        fog_water_history,
         fog_transmittance,
         particle_volume,
         particle_volume_history,

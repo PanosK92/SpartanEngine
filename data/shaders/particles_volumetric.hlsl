@@ -657,7 +657,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     float transmittance = 1.0f;
     float3 scattering = 0.0f;
-    float3 scene_pos = get_position(depth_raw, uv);
+    float3 scene_pos = get_position(depth_raw, render_uv_to_screen_uv(uv));
     float3 ray_direction = normalize(scene_pos - get_camera_position());
     // the drift offset gets multiplied by the octave frequency, so an unwrapped clock runs out of
     // fractional precision after a while and the field starts to quantise, ten minutes is long enough
@@ -733,7 +733,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
             // the grid holds a scalar shade rather than three channels of colour, the smoke authored here
             // is neutral to within a couple of percent and the channels that buys pay for the age above
-            FogTransport fog = sample_fog_volume(uv, t);
+            FogTransport fog = sample_fog_volume(render_uv_to_screen_uv(uv), t);
             float step_transmittance = exp(-optical_depth);
             scattering += transmittance * (fog.transmittance * sample.r * in_scatter
                 + fog.scattering * (1.0f - step_transmittance));

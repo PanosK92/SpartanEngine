@@ -1095,7 +1095,7 @@ float4 main_ps(ps_input input) : SV_Target0
     float camera_distance = distance(input.position_world, get_camera_position());
     float2 fog_resolution;
     tex_depth.GetDimensions(fog_resolution.x, fog_resolution.y);
-    FogTransport fog = sample_fog_volume(input.position.xy / fog_resolution, camera_distance);
+    FogTransport fog = sample_fog_volume(render_uv_to_screen_uv(input.position.xy / fog_resolution), camera_distance);
     uint blend_mode = (uint)round(input.render_params.x);
     lit_color *= fog.transmittance;
     if (blend_mode != particle_blend_additive)

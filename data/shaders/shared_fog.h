@@ -17,10 +17,10 @@ using std::pow;
 #define FOG_INLINE
 #endif
 
-static const unsigned int fog_width = 384;
-static const unsigned int fog_height = 216;
-static const unsigned int fog_depth = 160;
-static const float fog_near_slices = 112.0f;
+static const unsigned int fog_width = 512;
+static const unsigned int fog_height = 288;
+static const unsigned int fog_depth = 192;
+static const float fog_near_slices = 144.0f;
 static const float fog_detail_far = 64.0f;
 static const float fog_far = 32000.0f;
 
@@ -66,6 +66,14 @@ FOG_INLINE float fog_segment_centroid(float extinction, float distance)
 FOG_INLINE float fog_reproject_height_distance(float distance, float ray_y, float tap_y)
 {
     return tap_y * ray_y > 0.0f && tap_y * tap_y > 1e-8f ? distance * ray_y / tap_y : distance;
+}
+
+// Ratio of constant-source scattering integrals after rescaling the optical
+// path. Evaluate in optical depth to avoid 0/0 at a clear horizon column.
+FOG_INLINE float fog_rescale_scattering(float transmittance, float scale)
+{
+    float tau = -log(clamp(transmittance, 1e-20f, 1.0f));
+    return fog_segment_weight(tau, max(scale, 0.0f)) / fog_segment_weight(tau, 1.0f);
 }
 
 // A cell crossed by the water surface contains two ordered media, not a blend.

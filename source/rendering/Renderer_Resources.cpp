@@ -925,12 +925,15 @@ namespace spartan
                 at(render_targets, target) = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type3D, renderer_fog_volume_width, renderer_fog_volume_height,
                     renderer_fog_volume_depth + (integrated ? 1u : 0u), 1,
-                    target == Renderer_RenderTarget::fog_extinction ? RHI_Format::R16G16_Float : RHI_Format::R16G16B16A16_Float, fog_flags, name);
+                    // A half-float interface fraction shifts the water boundary
+                    // by metres in far cells, producing moving horizon bands.
+                    target == Renderer_RenderTarget::fog_extinction ? RHI_Format::R32G32_Float : RHI_Format::R16G16B16A16_Float, fog_flags, name);
             };
             create_fog(Renderer_RenderTarget::fog_scatter, "fog_scatter", false);
             create_fog(Renderer_RenderTarget::fog_scatter_history, "fog_scatter_history", false);
             create_fog(Renderer_RenderTarget::fog_extinction, "fog_extinction", false);
             create_fog(Renderer_RenderTarget::fog_water_source, "fog_water_source", false);
+            create_fog(Renderer_RenderTarget::fog_water_history, "fog_water_history", false);
             create_fog(Renderer_RenderTarget::fog_integrated, "fog_integrated", true);
             create_fog(Renderer_RenderTarget::fog_transmittance, "fog_transmittance", true);
             m_pass_state.fog_history.Reset();
@@ -1488,6 +1491,9 @@ namespace spartan
 
     void Renderer::DestroyResources()
     {
+        // Pass-owned resources (including grass interaction fields/buffers) must
+        // release their GPU allocations while the device and deletion queue live.
+        m_pass_state.Reset();
         render_targets.fill(nullptr);
         shaders.fill(nullptr);
         samplers.fill(nullptr);

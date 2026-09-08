@@ -873,6 +873,13 @@ namespace spartan
         void destroy()
         {
             SP_ASSERT(allocator != nullptr);
+            for (const auto& [resource, allocation] : allocations)
+            {
+                VmaAllocationInfo info = {};
+                vmaGetAllocationInfo(allocator, allocation, &info);
+                SP_LOG_ERROR("GPU allocation still alive at shutdown: %s (%llu bytes)",
+                    info.pName ? info.pName : "unnamed", static_cast<unsigned long long>(info.size));
+            }
             SP_ASSERT_MSG(allocations.empty(), "There are still allocations");
             vmaDestroyAllocator(allocator);
             allocator = nullptr;

@@ -168,7 +168,7 @@ void evaluate_light(
 
             if (use_rt_shadow_texture)
             {
-                L_shadow_primary = sample_ray_traced_shadow(surface.uv);
+                L_shadow_primary = min(sample_ray_traced_shadow(surface.uv), compute_shadow(surface, light));
             }
             else if (use_nrd_local_shadow)
             {

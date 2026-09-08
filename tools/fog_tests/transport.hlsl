@@ -4,7 +4,16 @@ RWStructuredBuffer<float4> results : register(u0);
 void main_cs(uint3 id : SV_DispatchThreadID)
 {
     uint i = id.x;
-    if (i >= 12288u) return;
+    if (i >= 16384u) return;
+    if (i >= 12288u)
+    {
+        uint test = i - 12288u;
+        float tau = test == 0u ? 0.0f : exp2(float(test % 257u) * 0.07f - 20.0f);
+        float scale = exp2(float(test % 191u) * 0.08f - 6.0f);
+        float t = exp(-tau);
+        results[i] = float4(t, scale, fog_rescale_scattering(t, scale), pow(t, scale));
+        return;
+    }
     if (i >= 8192u)
     {
         uint test = i - 8192u;

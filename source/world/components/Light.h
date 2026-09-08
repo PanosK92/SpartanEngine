@@ -159,6 +159,7 @@ namespace spartan
 
         // frustum
         bool IsInViewFrustum(Render* render, const uint32_t array_index) const;
+        bool IsBoundsInViewFrustum(const math::BoundingBox& bounding_box, uint32_t array_index) const;
 
         // index
         void SetIndex(const uint32_t index) { m_index = index; }

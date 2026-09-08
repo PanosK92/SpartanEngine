@@ -332,11 +332,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 refraction.b = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv + delta * (1.0f - chromatic_aberration), 0.0f).b;
 
                 // The same voxel field owns the submerged column seen from either side.
-                float3 background_position = get_position(tex4.SampleLevel(samplers[sampler_point_clamp], refracted_uv, 0.0f).r, refracted_uv);
+                float background_depth = tex4.SampleLevel(samplers[sampler_point_clamp], refracted_uv, 0.0f).r;
+                float2 screen_uv = render_uv_to_screen_uv(refracted_uv);
+                float3 background_position = get_position(background_depth, screen_uv);
                 float background_distance = length(background_position - get_camera_position());
                 // Match this UV's radial ray at the transparent surface's view depth.
-                float start_distance = depth_transparent / max(dot(fog_view_direction(refracted_uv), normalize(mul(float4(0.0f, 0.0f, 1.0f, 0.0f), get_view_inverted()).xyz)), 0.01f);
-                refraction = fog_transmit_segment(refraction, refracted_uv, start_distance, background_distance);
+                float3 view_ray = normalize(get_position(surface.depth, screen_uv) - get_camera_position());
+                float start_distance = depth_transparent / max(dot(view_ray, normalize(mul(float4(0.0f, 0.0f, 1.0f, 0.0f), get_view_inverted()).xyz)), 0.01f);
+                refraction = fog_transmit_water_segment(refraction, screen_uv, start_distance,
+                    background_depth == 0.0f ? fog_far : max(start_distance, background_distance));
             }
             else
             {
@@ -388,8 +392,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
                 refraction = lerp(background, refraction, screen_fade(refracted_uv));
                 float background_depth = tex4.SampleLevel(samplers[sampler_point_clamp], refracted_uv, 0.0f).r;
-                float background_distance = length(get_position(background_depth, refracted_uv) - get_camera_position());
-                refraction = fog_transmit_segment(refraction, refracted_uv, surface.camera_to_pixel_length,
+                float2 screen_uv = render_uv_to_screen_uv(refracted_uv);
+                float background_distance = length(get_position(background_depth, screen_uv) - get_camera_position());
+                refraction = fog_transmit_segment(refraction, screen_uv, surface.camera_to_pixel_length,
                     background_depth == 0.0f ? fog_far : background_distance);
             }
         }

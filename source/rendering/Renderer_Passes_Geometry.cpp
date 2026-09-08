@@ -283,16 +283,10 @@ namespace spartan
             return;
         }
 
-        // shadow atlas is unused when full ray traced shadows own visibility, a secondary view
-        // never traces so it needs the atlas
-        const bool tlas_available =
-            RHI_Device::IsSupportedRayTracing() &&
-            GetTopLevelAccelerationStructure() != nullptr &&
-            !IsSecondaryViewActive();
-        if (cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available)
-        {
-            return;
-        }
+        // Ray tracing omits terrain scatter. Keep its alpha-tested shadow atlas
+        // as complementary visibility for both surfaces and participating media.
+        // Match the shader's readiness bit, including pending BLAS rebuilds.
+        const bool hybrid_shadows = (m_cb_frame_cpu.options & (1u << 2)) != 0;
 
         struct ShadowBatch
         {
@@ -348,6 +342,17 @@ namespace spartan
                         continue;
                     }
 
+                    // The near directional slice is complete so dense fog can
+                    // resolve its shadow samples without redundant TLAS rays.
+                    // Far directional rays already cover ordinary mesh entities.
+                    if (hybrid_shadows && light->GetLightType() == LightType::Directional &&
+                        array_index != 0 &&
+                        !render->HasFlag(RenderFlags::ExcludeFromRayTracing) &&
+                        render->GetAccelerationStructureDeviceAddress() != 0)
+                    {
+                        continue;
+                    }
+
                     const float shadow_distance = render->GetMaxShadowDistance();
                     if (draw_call.distance_squared > shadow_distance * shadow_distance)
                     {
@@ -368,7 +373,7 @@ namespace spartan
                     slice.visible_draws.push_back(&draw_call);
                     RHI_Buffer* vertex_buffer = render->GetVertexBuffer();
                     RHI_Buffer* index_buffer  = render->GetIndexBuffer();
-                    const bool alpha_tested   = array_index == 0 && light->GetLightType() == LightType::Directional && material->IsAlphaTested();
+                    const bool alpha_tested   = material->IsAlphaTested();
                     has_alpha_draws          |= alpha_tested;
                     const bool can_batch      = draw_call.instance_count == 1 && render->GetGlobalInstanceOffset() == 0 && vertex_buffer && index_buffer;
                     if (!can_batch)
@@ -483,9 +488,8 @@ namespace spartan
                 {
                     Render* render = draw_call.render;
                     Material* material = render->GetMaterial();
-                    const bool is_first_cascade = slice.array_index == 0 && light->GetLightType() == LightType::Directional;
                     RHI_Shader* vertex_shader   = use_batches ? multi_vertex_shader : GetShader(Renderer_Shader::depth_light_v);
-                    RHI_Shader* pixel_shader    = is_first_cascade && material->IsAlphaTested() ? (use_batches ? multi_pixel_shader : GetShader(Renderer_Shader::depth_light_alpha_color_p)) : nullptr;
+                    RHI_Shader* pixel_shader    = material->IsAlphaTested() ? (use_batches ? multi_pixel_shader : GetShader(Renderer_Shader::depth_light_alpha_color_p)) : nullptr;
                     if (pso.shaders[RHI_Shader_Type::Vertex] != vertex_shader || pso.shaders[RHI_Shader_Type::Pixel] != pixel_shader || pso.rasterizer_state != rasterizer_state)
                     {
                         pso.shaders[RHI_Shader_Type::Vertex] = vertex_shader;
@@ -511,7 +515,54 @@ namespace spartan
                     const uint32_t lod_index_bias   = light->GetLightType() == LightType::Directional ? 1 : 0;
                     const uint32_t lod_index_shadow = clamp(render->GetLodIndex() + lod_index_bias, 0u, render->GetLodCount() - 1);
                     const uint32_t lod_index        = close_to_shadow ? draw_call.lod_index : lod_index_shadow;
-                    RHI_CommandList::DrawIndexed(render->GetIndexCount(lod_index), render->GetIndexOffset(lod_index), render->GetVertexOffset(lod_index), render->GetGlobalInstanceOffset() + draw_call.instance_index, draw_call.instance_count);
+                    if (render->HasInstancing() && !render->HasBoundingBoxOverride())
+                    {
+                        // A tile may contain thousands of trees outside this
+                        // light slice. Cull instances before submitting vertices,
+                        // retaining their original indices, alpha and mesh LOD.
+                        const Vector3 camera = m_cb_frame_cpu.camera_position;
+                        const float max_distance = render->GetMaxShadowDistance();
+                        const bool wind = material->GetProperty(MaterialProperty::WindAnimation) > 0.0f;
+                        const uint32_t end = draw_call.instance_index + draw_call.instance_count;
+                        uint32_t run_start = draw_call.instance_index;
+                        uint32_t run_count = 0;
+                        const auto flush_run = [&]()
+                        {
+                            if (run_count == 0) return;
+                            RHI_CommandList::DrawIndexed(render->GetIndexCount(lod_index), render->GetIndexOffset(lod_index),
+                                render->GetVertexOffset(lod_index), render->GetGlobalInstanceOffset() + run_start, run_count);
+                            run_count = 0;
+                        };
+                        for (uint32_t instance = draw_call.instance_index; instance < end; ++instance)
+                        {
+                            const Matrix transform = render->GetInstance(instance, true);
+                            BoundingBox bounds = render->GetLodAabb(0) * transform;
+                            if (wind)
+                            {
+                                // Matches tree_wind_cull_padding in common_culling.hlsl.
+                                const float padding = ((bounds.GetCenter() - transform.GetTranslation()).Length()
+                                    + bounds.GetExtents().Length()) * 0.07f + 0.03f;
+                                const Vector3 extent(padding, padding, padding);
+                                bounds = BoundingBox(bounds.GetMin() - extent, bounds.GetMax() + extent);
+                            }
+                            const bool visible = Vector3::DistanceSquared(camera, bounds.GetClosestPoint(camera)) <= max_distance * max_distance
+                                && light->IsBoundsInViewFrustum(bounds, slice.array_index);
+                            if (visible)
+                            {
+                                if (run_count == 0) run_start = instance;
+                                ++run_count;
+                            }
+                            else
+                            {
+                                flush_run();
+                            }
+                        }
+                        flush_run();
+                    }
+                    else
+                    {
+                        RHI_CommandList::DrawIndexed(render->GetIndexCount(lod_index), render->GetIndexOffset(lod_index), render->GetVertexOffset(lod_index), render->GetGlobalInstanceOffset() + draw_call.instance_index, draw_call.instance_count);
+                    }
                 };
 
                 const vector<const Renderer_DrawCall*>& draws = use_batches ? slice.direct_draws : slice.visible_draws;

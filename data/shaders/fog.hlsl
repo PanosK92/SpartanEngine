@@ -56,13 +56,6 @@ float visible(float3 position, Light light, uint2 pixel_pos)
 
     if (light.is_directional())
     {
-    #ifdef RAY_TRACING_ENABLED
-        if (is_ray_traced_shadows_enabled())
-        {
-            return 1.0f;
-        }
-    #endif
-
         const uint near_cascade = 0;
         const uint far_cascade  = 1;
 
@@ -71,21 +64,12 @@ float visible(float3 position, Light light, uint2 pixel_pos)
             light_get_transform(light, near_cascade)
         );
         float2 projected_uv_near  = ndc_to_uv(projected_pos_near);
-        if (cascade_contains(projected_pos_near))
-        {
-            float shadowed = light_compare_depth(
-                light,
-                float3(projected_uv_near, (float)near_cascade),
-                projected_pos_near.z
-            );
-            return lerp(1.0f, shadowed, cascade_edge_fade(projected_pos_near));
-        }
-
         float3 projected_pos_far = world_to_ndc(
             position,
             light_get_transform(light, far_cascade)
         );
         float2 projected_uv_far  = ndc_to_uv(projected_pos_far);
+        float far_visibility = 1.0f;
         if (cascade_contains(projected_pos_far))
         {
             float shadowed = light_compare_depth(
@@ -93,10 +77,18 @@ float visible(float3 position, Light light, uint2 pixel_pos)
                 float3(projected_uv_far, (float)far_cascade),
                 projected_pos_far.z
             );
-            return lerp(1.0f, shadowed, cascade_edge_fade(projected_pos_far));
+            far_visibility = lerp(1.0f, shadowed, cascade_edge_fade(projected_pos_far));
         }
-
-        return 1.0f;
+        if (cascade_contains(projected_pos_near))
+        {
+            float near_visibility = light_compare_depth(light,
+                float3(projected_uv_near, (float)near_cascade), projected_pos_near.z);
+            // Transition to the actual far-cascade shadow, never an unshadowed
+            // ring which moves with the camera through the trees.
+            float blend = smoothstep(0.8f, 0.95f, max(abs(projected_pos_near.x), abs(projected_pos_near.y)));
+            return lerp(near_visibility, far_visibility, blend);
+        }
+        return far_visibility;
     }
 
     // spot or area light, both render a single perspective slice into the atlas

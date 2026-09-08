@@ -79,14 +79,18 @@ float3 fog_evaluate_light(
     uint3 thread_id,
     float2 uv,
     bool in_water,
-    float3 sigma_s
+    float3 sigma_s,
+    float footprint
 )
 {
     uint2 pixel = thread_id.xy;
     Surface surface = fog_build_surface(sample_pos, ray_direction, pixel, uv);
     Light light;
     light.Build(light_index, surface);
-    if (!light.is_volumetric())
+    // Water sunlight is part of the ocean transport, including caustic shafts.
+    // The light's optional atmospheric-fog flag must not turn the ocean black
+    // or remove its shafts (several worlds intentionally disable air beams).
+    if (!light.is_volumetric() && !(in_water && light.is_directional()))
     {
         return 0.0f;
     }
@@ -99,13 +103,35 @@ float3 fog_evaluate_light(
         return 0.0f;
     }
 
+    float3 tint = 1.0f;
+    if (in_water && light.is_directional())
+    {
+        // Sunlight cannot survive hundreds of optical depths. Avoid tracing
+        // shadows for deep cells whose incident energy is already negligible.
+        float depth = max(buffer_frame.ocean_sea_level - sample_pos.y, 0.0f);
+        if (depth * get_ocean_extinction().b > 12.0f) return 0.0f;
+        tint = get_ocean_sun_transmission(sample_pos, light_dir, footprint);
+    }
+
     float visibility = 1.0f;
     if (light.has_shadows())
     {
     #ifdef RAY_TRACING_ENABLED
         if (is_ray_traced_shadows_enabled())
         {
-            visibility = fog_trace_shadow(light, sample_pos);
+            float atlas_visibility = visible(sample_pos, light, pixel);
+            bool complete_near_shadow = false;
+            if (light.is_directional())
+            {
+                float3 projected = world_to_ndc(sample_pos, light_get_transform(light, 0u));
+                // The complete near atlas includes wind/alpha foliage and solid
+                // meshes. Trace only outside its interior, including the blend
+                // with the complementary far atlas. No occluders are omitted.
+                complete_near_shadow = cascade_contains(projected)
+                    && max(abs(projected.x), abs(projected.y)) < 0.8f;
+            }
+            visibility = complete_near_shadow ? atlas_visibility
+                : min(fog_trace_shadow(light, sample_pos), atlas_visibility);
         }
         else
     #endif
@@ -114,7 +140,6 @@ float3 fog_evaluate_light(
         }
     }
 
-    float3 tint = 1.0f;
     if (light.is_directional() && visibility > 0.0f)
     {
         visibility *= cloud_shadow_sample(
@@ -127,31 +152,38 @@ float3 fog_evaluate_light(
 
         if (in_water)
         {
-            tint = get_ocean_sun_transmission(sample_pos, light_dir);
             light_dir = -refract(-light_dir, float3(0.0f, 1.0f, 0.0f), 1.0f / 1.333f);
         }
     }
 
-    float phase_g = in_water ? 0.72f : (light.is_directional() ? 0.4f : 0.6f);
+    // Keep sun shafts visible from oblique underwater views as well as looking
+    // directly toward the sun; the previous narrow g=0.72 lobe hid most of them.
+    float phase_g = in_water || light.is_directional() ? 0.4f : 0.6f;
     float phase = henyey_greenstein_phase(dot(ray_direction, light_dir), phase_g);
     return light.color * light.intensity * local_atten * visibility * phase * tint * sigma_s;
 }
 
-float3 fog_light_medium(float3 sample_pos, float3 ray_direction, uint3 thread_id, float2 uv, bool in_water, float3 sigma_s)
+float3 fog_ambient_medium(float3 sample_pos, float3 ray_direction, bool in_water)
 {
-    if (!any(sigma_s > 0.0f)) return 0.0f;
-    float3 ambient = fog_sky_ambient(sample_pos, ray_direction);
+    float3 ambient_transmission = 1.0f;
     if (in_water)
     {
-        float depth = max(get_ocean_height(sample_pos.xz) - sample_pos.y, 0.0f);
-        ambient *= exp(-get_ocean_extinction() * depth);
+        float depth = max(buffer_frame.ocean_sea_level - sample_pos.y, 0.0f);
+        ambient_transmission = exp(-get_ocean_extinction() * depth);
     }
-    float3 rate = ambient * sigma_s;
+    return any(ambient_transmission > 1e-5f)
+        ? fog_sky_ambient(sample_pos, ray_direction) * ambient_transmission : 0.0f;
+}
+
+float3 fog_light_medium(float3 sample_pos, float3 ray_direction, uint3 thread_id, float2 uv, bool in_water, float3 sigma_s, float footprint = 0.0f)
+{
+    if (!any(sigma_s > 0.0f)) return 0.0f;
+    float3 rate = 0.0f;
     if (buffer_frame.cluster_light_count > 0u)
-        rate += fog_evaluate_light(0u, sample_pos, ray_direction, thread_id, uv, in_water, sigma_s);
+        rate += fog_evaluate_light(0u, sample_pos, ray_direction, thread_id, uv, in_water, sigma_s, footprint);
     [loop]
     for (uint k = 0u; k < buffer_frame.volumetric_light_count; k++)
-        rate += fog_evaluate_light(volumetric_light_indices[k], sample_pos, ray_direction, thread_id, uv, in_water, sigma_s);
+        rate += fog_evaluate_light(volumetric_light_indices[k], sample_pos, ray_direction, thread_id, uv, in_water, sigma_s, footprint);
     return rate;
 }
 
@@ -167,28 +199,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 ray_direction = fog_view_direction(uv);
     float d0 = fog_slice_to_distance(float(thread_id.z) / float(fog_depth));
     float d1 = fog_slice_to_distance(float(thread_id.z + 1u) / float(fog_depth));
-    // Nothing behind the farthest visible opaque depth in this tile can affect
-    // its transport. Include the complete boundary cell and neighbouring rays
-    // so silhouette edges and distorted water samples retain their media.
-    float visible_distance = 0.0f;
-    float opaque_distance = fog_far;
-    [unroll]
-    for (uint tap = 0u; tap < 5u; tap++)
-    {
-        float2 offset = tap == 4u ? 0.0f : float2((tap & 1u) ? 1.0f : -1.0f, (tap & 2u) ? 1.0f : -1.0f);
-        float2 sample_uv = saturate(uv + offset / float2(fog_width, fog_height));
-        float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), sample_uv, 0.0f).r;
-        float distance_to_opaque = depth == 0.0f ? fog_far : length(get_position(depth, sample_uv) - get_camera_position());
-        visible_distance = max(visible_distance, distance_to_opaque);
-        if (tap == 4u) opaque_distance = distance_to_opaque;
-    }
-    if (d0 > visible_distance + (d1 - d0))
-    {
-        tex3d_uav[thread_id] = 0.0f;
-        tex_fog_extinction_uav[thread_id] = 0.0f;
-        tex_fog_water_source_uav[thread_id] = 0.0f;
-        return;
-    }
     FogMedium medium = fog_sample_medium(sample_pos, get_camera_position().y + ray_direction.y * d0, get_camera_position().y + ray_direction.y * d1);
     // Preserve both source terms in interface cells. Lighting the entire cell
     // from its submerged centre makes the air above distant water alternate dark/light.
@@ -197,28 +207,80 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     bool water_first = ray_direction.y > 0.0f;
     float air_start = d0 + (water_first ? water_length : 0.0f);
     float water_start = d0 + (water_first ? 0.0f : air_length);
-    // Sample the visible part of a boundary cell. A midpoint behind a mountain
-    // or the seabed would incorrectly shadow the fog in front of that surface.
-    float air_visible = clamp(opaque_distance - air_start, 0.0f, air_length);
-    float water_visible = clamp(opaque_distance - water_start, 0.0f, water_length);
-    float air_distance = air_start + air_visible * 0.5f;
-    float water_distance = water_start + fog_segment_centroid(get_ocean_extinction().g, water_visible);
+    // Density and lighting belong to world-space media, independent of opaque
+    // screen depth. Clamping a column to its centre pixel imprints silhouettes
+    // into neighbouring rays and changes entire cells while approaching terrain.
+    float air_distance = air_start + air_length * 0.5f;
+    float water_distance = water_start + fog_segment_centroid(get_ocean_extinction().g, water_length);
+    float water_sample_start = water_start;
+    float water_sample_length = water_length;
+    // Limit the source sample to the physical water column, not the screen's
+    // opaque depth. A far cell can extend beneath the seabed by hundreds of
+    // metres; lighting it there makes alternating black coastal rings.
+    if (water_length > 0.0f && ray_direction.y < -0.001f)
+    {
+        float sea_entry = (buffer_frame.ocean_sea_level - get_camera_position().y) / ray_direction.y;
+        // Far cells can be wider than the entire optically visible water
+        // column. Anchor their representative lighting to the ocean entry,
+        // rather than letting the sample jump with the frustum's slice phase.
+        // Dense near-camera / underwater cells retain their local sampling.
+        bool distant_entry = get_camera_position().y > buffer_frame.ocean_sea_level && sea_entry > fog_detail_far;
+        float entry_distance = distant_entry ? sea_entry : water_start;
+        float column = distant_entry ? 8.0f / max(get_ocean_extinction().b, 1e-5f) : water_length;
+        float3 entry = get_camera_position() + ray_direction * entry_distance;
+        float valid;
+        float bed = sample_ocean_terrain_height(entry.xz, valid);
+        if (valid > 0.5f)
+            column = min(column, max(entry.y - bed, 0.0f) / -ray_direction.y);
+        water_distance = entry_distance + fog_segment_centroid(get_ocean_extinction().g, column);
+        water_sample_start = entry_distance;
+        water_sample_length = column;
+    }
     float3 air_position = get_camera_position() + ray_direction * air_distance;
-    medium.air_extinction = air_length > 0.0f ? fog_sample_medium(air_position, air_position.y, air_position.y).air_extinction : 0.0f;
-    float3 scatter_rate = air_length > 0.0f
-        ? fog_light_medium(get_camera_position() + ray_direction * air_distance, ray_direction,
-            thread_id, uv, false, (medium.air_extinction * 0.95f).xxx) : 0.0f;
-    float3 water_rate = water_length > 0.0f
-        ? fog_light_medium(get_camera_position() + ray_direction * water_distance, ray_direction,
-            thread_id, uv, true, get_ocean_scattering()) : 0.0f;
-    tex_fog_water_source_uav[thread_id] = float4(water_rate, 0.0f);
-    bool in_water = medium.water > 0.5f;
-
-    // Extinction always belongs to this frame. History filters lighting only,
-    // with signed optical density identifying water/air changes at moving waves.
-    float density = dot(lerp(medium.air_extinction.xxx, get_ocean_extinction(), medium.water), float3(0.2126f, 0.7152f, 0.0722f));
-    float metadata = in_water ? -density : density;
-    if (pass_get_f3_value().x < 0.5f && density > 0.0f)
+    float3 scatter_rate = 0.0f;
+    medium.air_extinction = 0.0f;
+    uint samples = air_length > 16.0f ? 4u : 2u;
+    float footprint = max(air_length / float(samples), air_distance / float(fog_height));
+    [loop] for (uint i = 0u; i < samples && air_length > 0.0f; i++)
+    {
+        float d = air_start + air_length * ((float(i) + 0.5f) / float(samples));
+        float3 p = get_camera_position() + ray_direction * d;
+        float extinction = fog_sample_medium(p, p.y, p.y, footprint).air_extinction;
+        medium.air_extinction += extinction / float(samples);
+        scatter_rate += fog_light_medium(p, ray_direction, thread_id, uv, false,
+            (extinction * 0.95f).xxx) / float(samples);
+    }
+    // Diffuse skylight is low frequency. Evaluate it once per cell; spend the
+    // extra spatial samples on shadowed direct light, which carries the shafts.
+    if (air_length > 0.0f)
+        scatter_rate += fog_ambient_medium(air_position, ray_direction, false) * (medium.air_extinction * 0.95f);
+    float3 water_position = get_camera_position() + ray_direction * water_distance;
+    float3 water_rate = 0.0f;
+    if (water_length > 0.0f)
+    {
+        float angular_footprint = max(
+            length(fog_view_direction(uv + float2(1.0f / float(fog_width), 0.0f)) - ray_direction),
+            length(fog_view_direction(uv + float2(0.0f, 1.0f / float(fog_height))) - ray_direction));
+        // Two spatial strata resolve variation along nearby cells as well as
+        // across their footprint. Distant interface samples retain the stable
+        // physical ocean-entry anchor above, including its seabed bound.
+        uint water_samples = d1 <= fog_detail_far ? 2u : 1u;
+        [loop] for (uint j = 0u; j < water_samples; ++j)
+        {
+            float offset = water_samples == 2u ? (float(j) * 2.0f - 1.0f) * 0.288675135f * water_sample_length : 0.0f;
+            float d = water_samples == 2u ? clamp(water_distance + offset, water_sample_start, water_sample_start + water_sample_length) : water_distance;
+            water_rate += fog_light_medium(get_camera_position() + ray_direction * d, ray_direction,
+                thread_id, uv, true, get_ocean_scattering(), max(angular_footprint * d, 0.03f)) / float(water_samples);
+        }
+        water_rate += fog_ambient_medium(water_position, ray_direction, true) * get_ocean_scattering();
+    }
+    // History texels represent cells, not their displaced lighting quadrature
+    // points. Reproject the grid centre so a stationary camera samples exactly
+    // the same texel each frame. Reprojecting the shortened air-segment midpoint
+    // repeatedly mixed neighbouring cells, accumulating coastal rings.
+    // Interface cells stay current; their split cannot be reprojected as air.
+    float density = medium.air_extinction;
+    if (pass_get_f3_value().x < 0.5f && density > 0.0f && medium.water < 0.001f)
     {
         float4 previous = mul(float4(sample_pos, 1.0f), get_view_projection_previous_unjittered());
         float previous_distance = length(sample_pos - buffer_frame.camera_position_previous);
@@ -227,18 +289,37 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         if (previous.w > 0.0f && is_valid_uv(previous_uv) && previous_distance < fog_far)
         {
             float4 history = tex3d.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), float3(previous_uv, previous_u), 0.0f);
-            float density_change = abs(history.a - metadata) / max(density, 1e-5f);
-            float motion = length((previous_uv - uv) * float2(fog_width, fog_height));
-            float keep = exp(-max(buffer_frame.delta_time, 0.001f) / (in_water ? 0.012f : 0.12f));
-            keep *= saturate(1.0f - density_change * 4.0f) * exp(-motion * 0.35f);
-            // Reject newly lit/shadowed cells instead of dragging a beam behind a light.
+            float density_change = abs(history.a - density) / max(density, 1e-5f);
+            float keep = exp(-max(buffer_frame.delta_time, 0.001f) / 0.18f);
+            keep *= 1.0f - smoothstep(0.25f, 0.75f, density_change);
+            // Reprojection already accounts for camera motion. Retain small
+            // shadow changes to filter grid aliasing; reject real light changes.
             float change = abs(luminance(history.rgb) - luminance(scatter_rate))
                 / max(max(luminance(history.rgb), luminance(scatter_rate)), 1e-6f);
-            keep *= saturate(1.0f - change);
+            keep *= 1.0f - smoothstep(0.5f, 1.0f, change);
             scatter_rate = lerp(scatter_rate, history.rgb, keep);
         }
     }
-    tex3d_uav[thread_id] = float4(scatter_rate, metadata);
+    if (pass_get_f3_value().x < 0.5f && medium.water > 0.999f && d1 <= fog_detail_far)
+    {
+        float4 previous = mul(float4(sample_pos, 1.0f), get_view_projection_previous_unjittered());
+        float previous_distance = length(sample_pos - buffer_frame.camera_position_previous);
+        float2 previous_uv = ndc_to_uv(previous.xy / max(previous.w, 1e-5f));
+        if (previous.w > 0.0f && is_valid_uv(previous_uv) && previous_distance < fog_detail_far)
+        {
+            float4 history = tex_fog_water_source.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp),
+                float3(previous_uv, fog_distance_to_slice(previous_distance)), 0.0f);
+            float keep = min(exp(-max(buffer_frame.delta_time, 0.001f) / 0.06f), 0.85f);
+            // Alpha is coverage, not luminance. Reject samples straddling air.
+            keep *= smoothstep(0.99f, 1.0f, history.a);
+            float change = abs(luminance(history.rgb) - luminance(water_rate))
+                / max(max(luminance(history.rgb), luminance(water_rate)), 1e-6f);
+            keep *= 1.0f - smoothstep(0.6f, 1.0f, change);
+            water_rate = lerp(water_rate, history.rgb, keep);
+        }
+    }
+    tex_fog_water_source_uav[thread_id] = float4(water_rate, water_length > 0.0f ? 1.0f : 0.0f);
+    tex3d_uav[thread_id] = float4(scatter_rate, density);
     tex_fog_extinction_uav[thread_id] = float4(medium.air_extinction, medium.water, 0.0f, 0.0f);
 }
 
@@ -291,7 +372,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         return;
     Surface surface;
     surface.Build(thread_id.xy, resolution, true, false);
-    FogTransport volume = sample_fog_volume(surface.uv, surface.is_sky() ? fog_far : surface.camera_to_pixel_length);
+    FogTransport volume = sample_fog_volume(render_uv_to_screen_uv(surface.uv), surface.is_sky() ? fog_far : surface.camera_to_pixel_length);
     float4 color = tex_uav[thread_id.xy];
     float mode = pass_get_f3_value().x;
     if (mode < 0.5f)

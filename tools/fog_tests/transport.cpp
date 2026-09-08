@@ -66,7 +66,7 @@ int main()
         ComPtr<ID3D11ComputeShader> shader;
         check(device->CreateComputeShader(code->GetBufferPointer(), code->GetBufferSize(), nullptr, &shader));
         D3D11_BUFFER_DESC desc = {};
-        desc.ByteWidth = 12288 * 16;
+        desc.ByteWidth = 16384 * 16;
         desc.Usage = D3D11_USAGE_DEFAULT;
         desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS;
         desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
@@ -75,7 +75,7 @@ int main()
         check(device->CreateBuffer(&desc, nullptr, &output));
         D3D11_UNORDERED_ACCESS_VIEW_DESC view = {};
         view.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
-        view.Buffer.NumElements = 12288;
+        view.Buffer.NumElements = 16384;
         ComPtr<ID3D11UnorderedAccessView> uav;
         check(device->CreateUnorderedAccessView(output.Get(), &view, &uav));
         desc.Usage = D3D11_USAGE_STAGING;
@@ -86,7 +86,7 @@ int main()
         context->CSSetShader(shader.Get(), nullptr, 0);
         ID3D11UnorderedAccessView* target = uav.Get();
         context->CSSetUnorderedAccessViews(0, 1, &target, nullptr);
-        context->Dispatch(192, 1, 1);
+        context->Dispatch(256, 1, 1);
         context->CopyResource(staging.Get(), output.Get());
         D3D11_MAPPED_SUBRESOURCE mapped;
         check(context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped));
@@ -124,8 +124,17 @@ int main()
             near_value(row[2], centroid, std::max(1e-6, centroid * 0.0003), "GPU contribution centroid");
             near_value(row[3], -d * 0.3, std::max(1e-6, d * 1e-6), "GPU water interface reconstruction");
         }
+        for (unsigned i = 0; i < 4096; ++i)
+        {
+            const float* row = values + (12288 + i) * 4;
+            double t = row[0], scale = row[1];
+            double expected = t == 1 ? scale : -std::expm1(std::log(t) * scale) / (1 - t);
+            near_value(row[2], expected, std::max(1e-5, expected * 0.0003), "GPU horizon path rescaling");
+            // A stored float T loses an ulp which large path scales amplify.
+            near_value(row[3], std::pow(t, scale), 8e-5, "GPU horizon transmittance");
+        }
         context->Unmap(staging.Get(), 0);
-        std::puts("PASS 16001 grid cases, 152 CPU transport cases, 12288 GPU transport cases");
+        std::puts("PASS 16001 grid cases, 152 CPU transport cases, 16384 GPU transport cases");
     }
     catch (const std::exception& e) { std::fprintf(stderr, "%s\n", e.what()); return 1; }
 }

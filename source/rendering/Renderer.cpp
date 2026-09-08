@@ -3314,16 +3314,9 @@ namespace spartan
 
     void Renderer::UpdateDrawCalls_CollectAndSort()
     {
-        const bool tlas_available =
-            RHI_Device::IsSupportedRayTracing() &&
-            GetTopLevelAccelerationStructure() != nullptr &&
-            !IsSecondaryViewActive();
-        const bool shadow_maps_required =
-            World::GetLightCount() > 0 &&
-            !(
-                cvar_ray_traced_shadows.GetValueAs<bool>() &&
-                tlas_available
-            );
+        // The atlas also supplies casters absent from the TLAS (instanced foliage).
+        // Keep off-screen casters: their shadows can enter the camera's fog volume.
+        const bool shadow_maps_required = World::GetLightCount() > 0;
 
         for (Entity* entity : render_entities())
         {
@@ -4902,15 +4895,9 @@ namespace spartan
             RHI_SyncPrimitive* compute_b_timeline = batch_b.timeline;
             const uint64_t compute_b_value        = batch_b.value;
 
-            const bool ray_traced_shadows =
-                cvar_ray_traced_shadows.GetValueAs<bool>();
-            const bool tlas_available =
-                RHI_Device::IsSupportedRayTracing() &&
-                GetTopLevelAccelerationStructure() != nullptr &&
-                !IsSecondaryViewActive();
-            const bool shadow_maps_required =
-                World::GetLightCount() > 0 &&
-                !(ray_traced_shadows && tlas_available && !m_pass_state.skip_rt_trace);
+            // Even with RT enabled, the atlas owns excluded foliage and local
+            // fallback lights. Submit it before either fog or surface lighting.
+            const bool shadow_maps_required = World::GetLightCount() > 0;
             RHI_Device::Bind(RHI_Frame_List::Graphics);
             if (shadow_maps_required)
             {

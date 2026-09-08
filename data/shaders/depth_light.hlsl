@@ -75,6 +75,9 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
             index_light
         ].transform[index_array]
     );
+    // This pass has light-space SV_POSITION, not camera-space depth. Carry the
+    // actual wind-displaced world position for the leaf alpha threshold.
+    vertex.position_previous = float4(position_world, 1.0f);
 
     return vertex;
 }
@@ -89,8 +92,7 @@ void main_ps(gbuffer_vertex vertex)
 #else
     const bool has_albedo       = pass_get_f3_value().x == 1.0f;
 #endif
-    const float2 screen_uv      = vertex.position.xy / buffer_frame.resolution_render;
-    const float3 position_world = get_position(vertex.position.z, screen_uv);
+    const float3 position_world = vertex.position_previous.xyz;
     float alpha_threshold       = get_alpha_threshold(position_world);
     
     if (has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a <= alpha_threshold)

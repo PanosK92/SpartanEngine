@@ -48,7 +48,8 @@ namespace spartan
         const float sun_illuminance_lux = 120000.0f;
 
         // directional matrix parameters
-        const float cascade_near_extent    = 20.0f;
+        // Keep leaf cutouts resolved throughout the dense 64 m fog region.
+        const float cascade_near_extent    = 64.0f;
         const float cascade_far_extent     = 2000.0f;
         const float cascade_depth_behind   = 2000.0f;
         const float cascade_depth_ahead    = 8000.0f;
@@ -1106,7 +1107,11 @@ namespace spartan
 
     bool Light::IsInViewFrustum(Render* render, const uint32_t array_index) const
     {
-        const BoundingBox& bounding_box = render->GetBoundingBox();
+        return IsBoundsInViewFrustum(render->GetBoundingBox(), array_index);
+    }
+
+    bool Light::IsBoundsInViewFrustum(const BoundingBox& bounding_box, uint32_t array_index) const
+    {
         if (bounding_box.IsInfinite())
         {
             return true;

@@ -306,11 +306,15 @@ float get_ocean_height(float2 world_xz)
 // One sunlight path for surface caustics and the participating water medium.
 // The wave slope Jacobian focuses the refracted beam; absorption removes light
 // along that same path. Apply this to incident light before the surface BRDF.
-float3 get_ocean_sun_transmission(float3 position, float3 to_sun)
+float3 get_ocean_sun_transmission(float3 position, float3 to_sun, float footprint = 0.0f)
 {
     if (buffer_frame.ocean_enabled <= 0.5f)
         return 1.0f;
-    float depth = get_ocean_height(position.xz) - position.y;
+    float wave_detail = 1.0f - smoothstep(0.5f, 2.0f, footprint);
+    float water_y = buffer_frame.ocean_sea_level;
+    if (wave_detail > 0.0f)
+        water_y = lerp(water_y, get_ocean_height(position.xz), wave_detail);
+    float depth = water_y - position.y;
     if (depth <= 0.0f)
         return 1.0f;
     if (to_sun.y <= 0.0f)
@@ -318,7 +322,31 @@ float3 get_ocean_sun_transmission(float3 position, float3 to_sun)
     float3 refracted = -refract(-to_sun, float3(0.0f, 1.0f, 0.0f), 1.0f / 1.333f);
     float travel = depth / max(refracted.y, 0.05f);
     float2 entry = position.xz + refracted.xz * travel;
-    float focus = lerp(1.0f, get_ocean_caustic(entry, travel), saturate(buffer_frame.ocean_caustics_intensity));
+    // Unresolved wave focus averages to one. Sampling centimetre caustics in
+    // kilometre-away fog cells creates flickering dots instead of light shafts.
+    float focus = 1.0f;
+    if (wave_detail > 0.0f)
+    {
+        float resolved_focus = 0.0f;
+        if (footprint <= 0.0f)
+        {
+            resolved_focus = get_ocean_caustic(entry, travel);
+        }
+        else
+        {
+            // Average irradiance, not wave slopes or the Jacobian: inversion is
+            // nonlinear and smoothing slopes alone destroys bright convergences.
+            // Integrate a stable disk over the voxel and the sun's angular size.
+            float radius = 0.5f * max(footprint, min(travel, 8.0f) * 0.0093f);
+            [unroll] for (uint tap = 0u; tap < 8u; ++tap)
+            {
+                float angle = float(tap) * 2.39996323f;
+                float2 offset = float2(cos(angle), sin(angle)) * sqrt((float(tap) + 0.5f) / 8.0f) * radius;
+                resolved_focus += get_ocean_caustic(entry + offset, travel) * 0.125f;
+            }
+        }
+        focus = lerp(1.0f, resolved_focus, saturate(buffer_frame.ocean_caustics_intensity) * wave_detail);
+    }
     return lerp(1.0f.xxx, exp(-get_ocean_extinction() * travel) * focus, saturate(depth / 0.08f));
 }
 

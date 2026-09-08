@@ -28535,7 +28535,7 @@
   </Entity>
   <Entity name="Lighting" id="9027000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="world_layer">
    <Entity name="light_directional" id="17063083112552285226" active="true" position="0 0 0" rotation="-0.464154 -0.0275096 0.88521 -0.0144243" scale="1 1 1">
-    <light flags="3" light_type="0" color_r="2.22046041" color_g="0.727859795" color_b="0.102005936" temperature="2400" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="4" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.689999998" />
+    <light flags="7" light_type="0" color_r="2.22046041" color_g="0.727859795" color_b="0.102005936" temperature="2400" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="4" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.689999998" />
    </Entity>
   </Entity>
   <Entity name="Soundscapes" id="9026000000000000000" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="island_soundscapes">

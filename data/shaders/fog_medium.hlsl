@@ -20,7 +20,7 @@ struct FogMedium
     float air_extinction;
 };
 
-FogMedium fog_sample_medium(float3 position, float y0, float y1)
+FogMedium fog_sample_medium(float3 position, float y0, float y1, float footprint = 0.0f)
 {
     FogMedium medium = (FogMedium)0;
     float terrain_valid;
@@ -44,8 +44,13 @@ FogMedium fog_sample_medium(float3 position, float y0, float y1)
     float ground_amount = max(pass_get_f3_value2().y, 0.0f);
     float breakup = saturate(pass_get_f3_value2().z);
     float3 advected = position - buffer_frame.wind * (float(buffer_frame.time) * 0.08f);
-    float noise = fog_noise(advected * float3(0.008f, 0.022f, 0.008f));
-    noise = noise * 0.7f + fog_noise(advected * 0.031f) * 0.3f;
+    // Filter unresolved density detail to its mean instead of letting a far
+    // voxel sample unrelated noise peaks as the camera moves through the grid.
+    float coarse = lerp(fog_noise(advected * float3(0.008f, 0.022f, 0.008f)), 0.5f,
+        smoothstep(20.0f, 100.0f, footprint));
+    float fine = lerp(fog_noise(advected * 0.031f), 0.5f,
+        smoothstep(8.0f, 32.0f, footprint));
+    float noise = coarse * 0.7f + fine * 0.3f;
     float structure = lerp(1.0f, smoothstep(0.18f, 0.82f, noise) * 1.8f, breakup);
     float wind_mixing = rcp(1.0f + length(buffer_frame.wind) * (1.0f - shelter) * 0.06f);
     float air = max(pass_get_f3_value().y, 0.0f) * (
