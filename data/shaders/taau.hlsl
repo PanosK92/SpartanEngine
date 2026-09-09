@@ -250,6 +250,7 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
     float4 current_linear = 0.0f.xxxx;
     float3 coverage_min = FLT_MAX_16U.xxx;
     float3 coverage_max = 0.0f.xxx;
+    float neighborhood_peak_tm = 0.0f;
     float  weight_sum     = 0.0f;
 
     int2  closest_px    = center;
@@ -302,6 +303,7 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
             // keep motion dilation local so distant surfaces do not steer reprojection.
             if (all(abs(tap - center) <= 1))
             {
+                neighborhood_peak_tm = max(neighborhood_peak_tm, ycocg.x + max(ycocg.z, abs(ycocg.y) - ycocg.z));
                 furthest_depth = min(furthest_depth, sample_data.w);
                 if (sample_data.w > closest_depth)
                 {
@@ -399,7 +401,12 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
         return float4(saturate_16(max(tonemap_for_taa_inv(current_rgb_tm), 0.0f.xxx)), 0.0f);
     }
 
-    float4 history_sample = sample_history(uv_prev, res_out, depth_edge);
+    float4 history_sample;
+    [branch]
+    if (all(velocity_uv == 0.0f.xx))
+        history_sample = tex[px_out];
+    else
+        history_sample = sample_history(uv_prev, res_out, depth_edge);
     float3 history_rgb = history_sample.rgb;
     if (any(isnan(history_sample)) || any(isinf(history_sample)))
     {
@@ -424,12 +431,20 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
         float3 coverage_center = current_linear.rgb / current_linear.a;
         float3 edge_min = lerp(coverage_min, coverage_center, 0.25f * clip_motion);
         float3 edge_max = lerp(coverage_max, coverage_center, 0.25f * clip_motion);
+        // preserve stationary highlights supported by nearby jitter samples without relaxing the dark silhouette bound.
+        float neighborhood_peak = neighborhood_peak_tm / max(1.0f - neighborhood_peak_tm, 1.0f / (1.0f + FLT_MAX_16U));
+        edge_max = lerp(edge_max, max(edge_max, min(history_rgb, neighborhood_peak.xxx)), 1.0f - motion);
         history_clipped_tm = tonemap_for_taa(clip_to_aabb(edge_min, edge_max, history_rgb));
         clipped_ycocg = to_ycocg(history_clipped_tm);
     }
     else
     {
-        clipped_ycocg = clip_to_aabb(box_min - clip_pad, box_max + clip_pad, history_ycocg);
+        float3 clip_min = box_min - clip_pad;
+        float3 clip_max = box_max + clip_pad;
+        // stationary chroma corrections must not drag valid grout luminance toward the box center.
+        clipped_ycocg = clip_to_aabb(clip_min, clip_max, history_ycocg);
+        if (!is_sky && !depth_edge)
+            clipped_ycocg.x = lerp(clamp(history_ycocg.x, clip_min.x, clip_max.x), clipped_ycocg.x, motion);
         history_clipped_tm = max(from_ycocg(clipped_ycocg), 0.0f.xxx);
     }
 
