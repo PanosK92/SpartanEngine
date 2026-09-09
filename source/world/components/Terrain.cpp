@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "pch.h"
+#include <filesystem>
+#include <cctype>
 #include "../../profiling/Profiler.h"
 #include <algorithm>
 #include <array>
@@ -2718,53 +2720,75 @@ namespace spartan
     {
         // a layer is only built when its folder holds an albedo, anything else it is missing just
         // falls back to a material property, so a partial folder still produces a usable layer
-        for (uint32_t i = 0; i < terrain_layer_max; i++)
+        // Texture decoding and packing are independent between folders. Keep
+        // duplicate folder rules together so shared texture bytes have one writer.
+        vector<vector<uint32_t>> groups;
+        unordered_map<string, size_t> group_by_folder;
+        for (uint32_t i = 0; i < terrain_layer_max; ++i)
         {
-            const TerrainLayerRule& rule = m_layer_rules[i];
-            const string folder          = "project/materials/" + rule.name + "/";
-            const string albedo          = folder + "albedo.png";
-
-            if (rule.name.empty() || !FileSystem::Exists(albedo))
+            string folder = filesystem::path("project/materials/" + m_layer_rules[i].name).lexically_normal().generic_string();
+            transform(folder.begin(), folder.end(), folder.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
+            auto [it, inserted] = group_by_folder.emplace(folder, groups.size());
+            if (inserted)
             {
-                m_layer_materials[i] = nullptr;
-                continue;
+                groups.emplace_back();
             }
-
-            if (!m_layer_materials[i])
-            {
-                m_layer_materials[i] = make_shared<Material>();
-            }
-
-            shared_ptr<Material>& layer = m_layer_materials[i];
-            layer->SetPersistent(false);
-            layer->SetObjectName("terrain_layer_" + rule.name);
-            layer->SetResourceName("terrain_layer_" + rule.name + EXTENSION_MATERIAL);
-            layer->SetProperty(MaterialProperty::IsTerrain, 1.0f);
-            // a fresh material defaults both of these to zero, which would flatten every layer
-            // normal and disable the parallax march, the layer rule carries the artistic control
-            layer->SetProperty(MaterialProperty::Normal, 1.0f);
-            layer->SetProperty(MaterialProperty::Height, 1.0f);
-
-            layer->SetTexture(MaterialTextureType::Color, albedo, 0);
-
-            auto set_optional = [&layer, &folder](MaterialTextureType type, const char* file)
-            {
-                const string path = folder + file;
-                if (FileSystem::Exists(path))
-                {
-                    layer->SetTexture(type, path, 0);
-                }
-            };
-
-            set_optional(MaterialTextureType::Normal,    "normal.png");
-            set_optional(MaterialTextureType::Roughness, "roughness.png");
-            set_optional(MaterialTextureType::Occlusion, "occlusion.png");
-            set_optional(MaterialTextureType::Height,    "height.png");
-
-            // no render component owns a layer, so nothing else would ever pack its orm, compress
-            // it or upload it, the call guards itself against a second pass
-            layer->PrepareForGpu();
+            groups[it->second].push_back(i);
         }
+        ThreadPool::ParallelLoop([this, &groups](uint32_t start, uint32_t end)
+        {
+            for (uint32_t group = start; group < end; ++group)
+            {
+                for (uint32_t i : groups[group])
+                {
+                    const TerrainLayerRule& rule = m_layer_rules[i];
+                    const string folder          = "project/materials/" + rule.name + "/";
+                    const string albedo          = folder + "albedo.png";
+
+                    if (rule.name.empty() || !FileSystem::Exists(albedo))
+                    {
+                        m_layer_materials[i] = nullptr;
+                        continue;
+                    }
+
+                    if (!m_layer_materials[i])
+                    {
+                        m_layer_materials[i] = make_shared<Material>();
+                    }
+
+                    shared_ptr<Material>& layer = m_layer_materials[i];
+                    layer->SetPersistent(false);
+                    layer->SetObjectName("terrain_layer_" + rule.name);
+                    layer->SetResourceName("terrain_layer_" + rule.name + EXTENSION_MATERIAL);
+                    layer->SetProperty(MaterialProperty::IsTerrain, 1.0f);
+                    // a fresh material defaults both of these to zero, which would flatten every layer
+                    // normal and disable the parallax march, the layer rule carries the artistic control
+                    layer->SetProperty(MaterialProperty::Normal, 1.0f);
+                    layer->SetProperty(MaterialProperty::Height, 1.0f);
+
+                    layer->SetTexture(MaterialTextureType::Color, albedo, 0);
+
+                    auto set_optional = [&layer, &folder](MaterialTextureType type, const char* file)
+                    {
+                        const string path = folder + file;
+                        if (FileSystem::Exists(path))
+                        {
+                            layer->SetTexture(type, path, 0);
+                        }
+                    };
+
+                    set_optional(MaterialTextureType::Normal,    "normal.png");
+                    set_optional(MaterialTextureType::Roughness, "roughness.png");
+                    set_optional(MaterialTextureType::Occlusion, "occlusion.png");
+                    set_optional(MaterialTextureType::Height,    "height.png");
+
+                    // no render component owns a layer, so nothing else would ever pack its orm, compress
+                    // it or upload it, the call guards itself against a second pass
+                    layer->PrepareForGpu();
+                }
+            }
+
+        }, static_cast<uint32_t>(groups.size()));
 
         PushToRenderer();
     }
@@ -3593,6 +3617,7 @@ namespace spartan
 
     void Terrain::Generate()
     {
+        const Stopwatch generation_timer;
         bool expected = false;
         if (!m_is_generating.compare_exchange_strong(expected, true))
         {
@@ -3750,7 +3775,8 @@ namespace spartan
             RebuildMeshData(true);
         }
 
-        BakeTerrainMaps(!heights_changed);
+        const float surface_ms = generation_timer.GetElapsedTimeMs();
+        BakeTerrainMaps(true);
         BakeHeightMapPixels();
         ReapplyPropMaskHoles();
 
@@ -3767,7 +3793,10 @@ namespace spartan
         ProgressTracker::GetProgress(ProgressType::Terrain).SetText("building mesh...");
 
         m_mesh_pending.reset();
+        const float maps_ms = generation_timer.GetElapsedTimeMs();
         BuildCpuMesh();
+        SP_LOG_INFO("Terrain load: surface %.2f ms, maps %.2f ms, mesh %.2f ms",
+            surface_ms, maps_ms - surface_ms, generation_timer.GetElapsedTimeMs() - maps_ms);
 
         m_gpu_commit_pending.store(true, memory_order_release);
     }
@@ -3783,6 +3812,7 @@ namespace spartan
 
         m_gpu_commit_pending.store(false, memory_order_release);
         m_props_commit_pending.store(false, memory_order_release);
+        m_props_population_step = {};
         m_mesh_pending.reset();
         ProgressTracker::GetProgress(ProgressType::Terrain).Complete();
         m_is_generating.store(false, memory_order_release);
@@ -3938,7 +3968,16 @@ namespace spartan
 
     void Terrain::CommitProps()
     {
-        WorldHelpers::PopulateTerrainBiomeProps(this);
+        if (!m_props_population_step)
+        {
+            m_props_population_step = WorldHelpers::BeginTerrainBiomeProps(this);
+        }
+        if (!m_props_population_step())
+        {
+            m_props_commit_pending.store(true, memory_order_release);
+            return;
+        }
+        m_props_population_step = {};
         m_is_generating.store(false, memory_order_release);
     }
 
@@ -8616,7 +8655,7 @@ namespace spartan
         return false;
     }
 
-    bool Terrain::LoadTerrainMapsFromCache()
+    bool Terrain::LoadTerrainMapsFromCache(uint64_t surface_hash)
     {
         ifstream file(get_terrain_maps_cache_path(), ios::binary);
         if (!file.is_open())
@@ -8631,7 +8670,7 @@ namespace spartan
         file.read(reinterpret_cast<char*>(&width),  sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&height), sizeof(uint32_t));
 
-        if (!file || stored_hash != ComputeCacheHash() || width == 0 || height == 0 || width > 8192 || height > 8192)
+        if (!file || stored_hash != surface_hash || width == 0 || height == 0 || width > 8192 || height > 8192)
         {
             return false;
         }
@@ -8657,7 +8696,7 @@ namespace spartan
         return true;
     }
 
-    void Terrain::SaveTerrainMapsToCache() const
+    void Terrain::SaveTerrainMapsToCache(uint64_t surface_hash) const
     {
         if (m_map_a_pixels.empty() || m_map_b_pixels.empty() || m_prop_mask_pixels.empty())
         {
@@ -8670,8 +8709,7 @@ namespace spartan
             return;
         }
 
-        const uint64_t hash = ComputeCacheHash();
-        file.write(reinterpret_cast<const char*>(&hash),         sizeof(uint64_t));
+        file.write(reinterpret_cast<const char*>(&surface_hash), sizeof(uint64_t));
         file.write(reinterpret_cast<const char*>(&m_map_width),  sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&m_map_height), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(m_map_a_pixels.data()), m_map_a_pixels.size());
@@ -8708,9 +8746,36 @@ namespace spartan
             );
         }
 
-        // the cache is keyed by the procedural inputs alone, ground that carries a sculpt or a pad
-        // is neither loaded from it nor written into it
-        if (!allow_cache || !LoadTerrainMapsFromCache())
+        // Key the analysis by its actual inputs, including sculpted heights and
+        // building pads. The procedural recipe alone cannot identify this surface.
+        // Keep live brush updates uncached; their regional repairs own the maps.
+        uint64_t surface_hash = ComputeCacheHash();
+        if (allow_cache)
+        {
+            auto hash_bytes = [&surface_hash](const void* data, size_t size)
+            {
+                const uint8_t* bytes = static_cast<const uint8_t*>(data);
+                for (size_t i = 0; i < size; ++i)
+                {
+                    surface_hash = (surface_hash ^ bytes[i]) * 1099511628211ull;
+                }
+            };
+            const uint32_t analysis_cache_version = 1;
+            const float sea_level = GetSeaLevelLocal();
+            hash_bytes(&analysis_cache_version, sizeof(analysis_cache_version));
+            hash_bytes(&m_dense_width, sizeof(m_dense_width));
+            hash_bytes(&m_dense_height, sizeof(m_dense_height));
+            hash_bytes(&sea_level, sizeof(sea_level));
+            hash_bytes(m_positions.data(), m_positions.size() * sizeof(Vector3));
+            const bool has_erosion = m_erosion_maps.IsValid(m_positions.size());
+            hash_bytes(&has_erosion, sizeof(has_erosion));
+            if (has_erosion)
+            {
+                hash_bytes(m_erosion_maps.wear.data(), m_erosion_maps.wear.size() * sizeof(float));
+                hash_bytes(m_erosion_maps.deposition.data(), m_erosion_maps.deposition.size() * sizeof(float));
+            }
+        }
+        if (!allow_cache || !LoadTerrainMapsFromCache(surface_hash))
         {
             TerrainAnalysisMaps analysis;
             TerrainSystem::ComputeAnalysisMaps(
@@ -8758,14 +8823,14 @@ namespace spartan
             BakePropMask();
             if (allow_cache)
             {
-                SaveTerrainMapsToCache();
+                SaveTerrainMapsToCache(surface_hash);
             }
         }
         else
         {
             // cached analysis, still rebake the mask so placement tracks the current layer rules
             BakePropMask();
-            SaveTerrainMapsToCache();
+            SP_LOG_INFO("Reused terrain surface analysis cache");
         }
 
         if (m_map_a_pixels.empty() || m_map_b_pixels.empty())
@@ -9792,6 +9857,11 @@ namespace spartan
 
     void Terrain::Clear()
     {
+        m_props_population_step = {};
+        if (m_props_commit_pending.exchange(false, memory_order_acq_rel))
+        {
+            m_is_generating.store(false, memory_order_release);
+        }
         // detach and queue tile removal before freeing geometry they pointed at
         ClearTileEntities();
 

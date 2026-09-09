@@ -164,12 +164,6 @@ namespace spartan
                 return nullptr;
             }
 
-            if (!FileSystem::Exists(file_path))
-            {
-                SP_LOG_ERROR("\"%s\" doesn't exist.", file_path.c_str());
-                return nullptr;
-            }
-
             // fast path, already cached
             if (std::shared_ptr<T> existing = GetByPath<T>(file_path))
                 return existing;
@@ -185,6 +179,14 @@ namespace spartan
             // re-check after taking the per-path lock, another thread may have completed the load while we waited
             if (std::shared_ptr<T> existing = GetByPath<T>(file_path))
                 return existing;
+
+            // Cached resources need no filesystem query. Check once, only for
+            // the thread that will actually read this file.
+            if (!FileSystem::Exists(file_path))
+            {
+                SP_LOG_ERROR("\"%s\" doesn't exist.", file_path.c_str());
+                return nullptr;
+            }
 
             // create new resource
             std::shared_ptr<T> resource = std::make_shared<T>();

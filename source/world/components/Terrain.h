@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <atomic>
 #include <algorithm>
 #include <array>
+#include <functional>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
@@ -386,8 +387,8 @@ namespace spartan
         bool BakePropMaskCells(int32_t mx0, int32_t mz0, int32_t mx1, int32_t mz1);
         // after a full bake, seed from the fresh pixels and punch the road and pad holes again
         void ReapplyPropMaskHoles();
-        bool LoadTerrainMapsFromCache();
-        void SaveTerrainMapsToCache() const;
+        bool LoadTerrainMapsFromCache(uint64_t surface_hash);
+        void SaveTerrainMapsToCache(uint64_t surface_hash) const;
         // sculpt layer plumbing, the lattice follows the dense grid so cell writes are exact
         void EnsureSculptGrid();
         // add the layer onto freshly generated ground, true when any cell moved
@@ -614,6 +615,7 @@ namespace spartan
         std::thread::id m_worker_thread;
         std::atomic<bool> m_gpu_commit_pending = false;
         std::atomic<bool> m_props_commit_pending = false;
+        std::function<bool()> m_props_population_step;
         std::shared_ptr<Mesh> m_mesh_pending;
         uint32_t m_height_samples         = 0;
         uint32_t m_vertex_count           = 0;

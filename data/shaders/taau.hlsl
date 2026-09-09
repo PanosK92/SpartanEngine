@@ -1,4 +1,4 @@
-: /*
+/*
 Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // roughly 73-78% less gpu time in that setup. reuses existing textures without a mono history copy.
 
 #include "common.hlsl"
-
 #include "shared_taau.h"
 
 static const uint tile_capacity = (TAAU_GROUP_X + 4) * (TAAU_GROUP_Y + 4);

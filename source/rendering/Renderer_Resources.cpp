@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "pch.h"
+#include "GeometryBuffer.h"
 #include "Window.h"
 #include "Renderer_Internal.h"
 #include "Material.h"
@@ -1293,6 +1294,18 @@ namespace spartan
             standard_meshes[static_cast<uint8_t>(def.type)] = mesh;
         }
 
+    }
+
+    void Renderer::ResetWorldGeometry()
+    {
+        // The global geometry arena is append-only within a world. Keeping it
+        // across loads retains every old road, terrain tile and instance, until
+        // packed meshlet offsets overflow. Only renderer-owned primitives survive
+        // world teardown; rebuild them against the empty arena.
+        RHI_Device::QueueWaitAll();
+        standard_meshes.fill(nullptr);
+        GeometryBuffer::Shutdown();
+        CreateStandardMeshes();
     }
 
     void Renderer::CreateStandardTextures()

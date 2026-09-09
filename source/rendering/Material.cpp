@@ -1596,7 +1596,12 @@ namespace spartan
 
     void Material::SetProperty(const MaterialProperty property_type, float value)
     {
-        SetPropertyInternal(property_type, value, true);
+        // Mesh dimensions are derived when a render binds this material (and again
+        // when the renderer resolves it). Shared materials can change dimensions
+        // thousands of times during a load; none of those updates is an asset edit.
+        const bool derived = property_type == MaterialProperty::WorldWidth ||
+                             property_type == MaterialProperty::WorldHeight;
+        SetPropertyInternal(property_type, value, !derived);
     }
 
     void Material::SetColor(const Color& color)

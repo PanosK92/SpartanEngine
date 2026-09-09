@@ -379,8 +379,27 @@ namespace spartan
         // deferred creation after loading (render component needs to be available first)
         if (m_needs_creation)
         {
+            // The editor can render and select meshes without cooked collision.
+            // Spread initial actor creation across frames instead of cooking the
+            // entire island in the first visible frame. Play still creates every
+            // required actor synchronously before the next simulation step.
+            static uint64_t creation_frame = UINT64_MAX;
+            static float creation_time_ms = 0.0f;
+            const uint64_t frame = Renderer::GetFrameNumber();
+            if (creation_frame != frame)
+            {
+                creation_frame = frame;
+                creation_time_ms = 0.0f;
+            }
+            if (!Engine::IsFlagSet(EngineMode::Playing) && creation_time_ms >= 2.0f)
+            {
+                return;
+            }
+
+            const Stopwatch creation_timer;
             m_needs_creation = false;
             Create();
+            creation_time_ms += creation_timer.GetElapsedTimeMs();
         }
 
         // a live drag rewrites the instance list many times a frame, the actors follow it once here

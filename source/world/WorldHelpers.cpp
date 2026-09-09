@@ -1082,9 +1082,17 @@ namespace spartan
 
     void WorldHelpers::PopulateTerrainBiomeProps(Terrain* terrain)
     {
+        auto step = BeginTerrainBiomeProps(terrain);
+        while (!step())
+        {
+        }
+    }
+
+    std::function<bool()> WorldHelpers::BeginTerrainBiomeProps(Terrain* terrain)
+    {
         if (!terrain || !terrain->GetEntity())
         {
-            return;
+            return [] { return true; };
         }
 
         Entity* terrain_entity = terrain->GetEntity();
@@ -1095,7 +1103,7 @@ namespace spartan
         if (!terrain->GetSpawnBiomeProps())
         {
             Renderer::DisableGpuScatter();
-            return;
+            return [] { return true; };
         }
 
         terrain->RebuildPropMask();
@@ -1115,13 +1123,11 @@ namespace spartan
 
         // resolved once, every layer walks the tiles in the same camera first order
         const vector<uint32_t> tile_order = build_tile_order(tiles);
-
-        array<TerrainScatterLayer, terrain_scatter_max>& layers = terrain->GetScatterLayers();
-
-        // grass owns slot 0 because its caps are the large ones, every detail layer claims the next
-        // slot in order, a world with more gpu layers than slots gets a warning and the extras stay off
-        bool gpu_slot_pushed[renderer_max_gpu_scatter_slots] = {};
-        uint32_t detail_slot_next                            = 1;
+        vector<uint64_t> tile_ids(tile_count, 0);
+        for (uint32_t i = 0; i < tile_count; ++i)
+        {
+            tile_ids[i] = tiles[i] ? tiles[i]->GetObjectId() : 0;
+        }
 
         // one of these per layer that has a mesh and passed its gates, placement only touches per tile
         // buckets so it parallelises, the entities it feeds are built on this thread so the scene graph
@@ -1142,202 +1148,214 @@ namespace spartan
         vector<scatter_job> jobs;
         jobs.reserve(terrain_scatter_max);
 
-        for (uint32_t layer_index = 0; layer_index < terrain_scatter_max; layer_index++)
+        // Each call resolves one palette or publishes four nearby tiles,
+        // then yields to the editor. The terrain owns and cancels this work.
+        return [terrain, tiles = std::move(tiles), tile_ids = std::move(tile_ids), tile_order, tile_count,
+                jobs = std::move(jobs), gpu_slot_pushed = std::array<bool, renderer_max_gpu_scatter_slots>{},
+                detail_slot_next = 1u, next_layer = 0u, order_done = 0u]() mutable -> bool
         {
-            TerrainScatterLayer& layer = layers[layer_index];
-            layer.instance_count       = 0;
-            layer.coverage             = 0.0f;
-
-            if (!terrain->IsScatterActive(layer))
+            if (!terrain->GetSpawnBiomeProps())
             {
-                continue;
+                RemoveTerrainProps();
+                Renderer::DisableGpuScatter();
+                return true;
             }
-
-            if (layer.kind == TerrainScatterKind::Grass || layer.kind == TerrainScatterKind::Detail)
+            if (next_layer < terrain_scatter_max)
             {
-                uint32_t slot = 0;
-                if (layer.kind == TerrainScatterKind::Detail)
+                TerrainScatterLayer& layer = terrain->GetScatterLayers()[next_layer++];
+                layer.instance_count       = 0;
+                layer.coverage             = 0.0f;
+
+                if (!terrain->IsScatterActive(layer))
                 {
-                    if (detail_slot_next >= renderer_max_gpu_scatter_slots)
-                    {
-                        SP_LOG_WARNING(
-                            "terrain scatter '%s': every gpu detail slot is taken, this layer stays off",
-                            layer.name.c_str()
-                        );
-                        continue;
-                    }
-                    slot = detail_slot_next++;
-                }
-                else if (gpu_slot_pushed[0])
-                {
-                    // two grass layers would fight over slot 0, the second one borrows a detail slot
-                    if (detail_slot_next >= renderer_max_gpu_scatter_slots)
-                    {
-                        SP_LOG_WARNING(
-                            "terrain scatter '%s': every gpu scatter slot is taken, this layer stays off",
-                            layer.name.c_str()
-                        );
-                        continue;
-                    }
-                    slot = detail_slot_next++;
+                    return false;
                 }
 
-                if (enable_gpu_scatter(terrain, layer, slot))
+                if (layer.kind == TerrainScatterKind::Grass || layer.kind == TerrainScatterKind::Detail)
                 {
-                    gpu_slot_pushed[slot] = true;
-                }
-                continue;
-            }
-
-            Mesh* mesh = resolve_scatter_mesh(layer.mesh_path);
-            if (!mesh)
-            {
-                SP_LOG_WARNING(
-                    "terrain scatter '%s': no mesh at %s",
-                    layer.name.c_str(),
-                    layer.mesh_path.c_str()
-                );
-                continue;
-            }
-
-            scatter_job& job       = jobs.emplace_back();
-            job.layer              = &layer;
-            job.mesh               = mesh;
-            job.palette            = resolve_scatter_palette(mesh, layer);
-            for (Mesh* variant : job.palette)
-            {
-                job.bounds.Merge(scatter_mesh_bounds(variant));
-                job.slots_per_instance = max(job.slots_per_instance, count_mesh_renderables(variant->GetRootEntity()));
-            }
-            job.transforms.resize(tile_count);
-            job.coverage.resize(tile_count, 0.0f);
-        }
-
-        // a batch of tiles is finished across every layer before the next batch starts and the first
-        // batch is tiny, so the ground the camera is on gets its trees and its rocks in a few
-        // milliseconds and the map grows outward from there, a pass per layer over every tile would
-        // leave the terrain bare until the last tile of the last layer was done
-        if (!jobs.empty())
-        {
-            vector<uint32_t> all_tiles(tile_count);
-            for (uint32_t i = 0; i < tile_count; i++)
-            {
-                all_tiles[i] = i;
-            }
-            terrain->EnsurePlacementData(all_tiles);
-        }
-
-        uint32_t order_done = 0;
-        uint32_t batch      = 4;
-        while (order_done < tile_count && !jobs.empty())
-        {
-            const uint32_t batch_size = min(batch, tile_count - order_done);
-            const uint32_t order_end  = order_done + batch_size;
-
-            for (scatter_job& job : jobs)
-            {
-                auto place = [&job, &tiles, &tile_order, terrain, order_done](uint32_t start_index, uint32_t end_index)
-                {
-                    for (uint32_t batch_index = start_index; batch_index < end_index; batch_index++)
+                    uint32_t slot = 0;
+                    if (layer.kind == TerrainScatterKind::Detail)
                     {
-                        const uint32_t tile_index = tile_order[order_done + batch_index];
-                        if (!tiles[tile_index])
+                        if (detail_slot_next >= renderer_max_gpu_scatter_slots)
                         {
-                            continue;
+                            SP_LOG_WARNING(
+                                "terrain scatter '%s': every gpu detail slot is taken, this layer stays off",
+                                layer.name.c_str()
+                            );
+                            return false;
                         }
-
-                        terrain->FindTransforms(
-                            tile_index,
-                            *job.layer,
-                            job.transforms[tile_index],
-                            &job.coverage[tile_index],
-                            &job.bounds
-                        );
+                        slot = detail_slot_next++;
                     }
-                };
-                ThreadPool::ParallelLoop(place, batch_size);
+                    else if (gpu_slot_pushed[0])
+                    {
+                        // two grass layers would fight over slot 0, the second one borrows a detail slot
+                        if (detail_slot_next >= renderer_max_gpu_scatter_slots)
+                        {
+                            SP_LOG_WARNING(
+                                "terrain scatter '%s': every gpu scatter slot is taken, this layer stays off",
+                                layer.name.c_str()
+                            );
+                            return false;
+                        }
+                        slot = detail_slot_next++;
+                    }
 
-                job.placed_batch = 0;
-                for (uint32_t order_index = order_done; order_index < order_end; order_index++)
-                {
-                    const uint32_t tile_index = tile_order[order_index];
-                    job.placed_batch         += job.transforms[tile_index].size();
-                    job.coverage_sum         += job.coverage[tile_index];
+                    if (enable_gpu_scatter(terrain, layer, slot))
+                    {
+                        gpu_slot_pushed[slot] = true;
+                    }
+                    return false;
                 }
-                job.placed += job.placed_batch;
+
+                Mesh* mesh = resolve_scatter_mesh(layer.mesh_path);
+                if (!mesh)
+                {
+                    SP_LOG_WARNING(
+                        "terrain scatter '%s': no mesh at %s",
+                        layer.name.c_str(),
+                        layer.mesh_path.c_str()
+                    );
+                    return false;
+                }
+
+                scatter_job& job       = jobs.emplace_back();
+                job.layer              = &layer;
+                job.mesh               = mesh;
+                job.palette            = resolve_scatter_palette(mesh, layer);
+                for (Mesh* variant : job.palette)
+                {
+                    job.bounds.Merge(scatter_mesh_bounds(variant));
+                    job.slots_per_instance = max(job.slots_per_instance, count_mesh_renderables(variant->GetRootEntity()));
+                }
+                job.transforms.resize(tile_count);
+                job.coverage.resize(tile_count, 0.0f);
+                return false;
             }
 
-            // the tiles done so far are a fair sample of the map, guessing the total from them keeps the
-            // instance buffer from growing once per batch, and the guess can never sit under what is
-            // already placed because there are always at least as many tiles left as sampled
-            uint32_t slots_projected = 1;
+            // a batch of tiles is finished across every layer before the next batch starts and the first
+            // batch is tiny, so the ground the camera is on gets its trees and its rocks in a few
+            // milliseconds and the map grows outward from there, a pass per layer over every tile would
+            // leave the terrain bare until the last tile of the last layer was done
+            if (order_done < tile_count && !jobs.empty())
+            {
+                const uint32_t batch_size = min(4u, tile_count - order_done);
+                const uint32_t order_end  = order_done + batch_size;
+
+                vector<uint32_t> batch_tiles(tile_order.begin() + order_done, tile_order.begin() + order_end);
+                // An editor deletion can occur between steps. Resolve only this
+                // batch's parents again before touching their scene nodes.
+                for (uint32_t tile_index : batch_tiles)
+                {
+                    tiles[tile_index] = tile_ids[tile_index] ? World::GetEntityById(tile_ids[tile_index]) : nullptr;
+                }
+                terrain->EnsurePlacementData(batch_tiles);
+
+                for (scatter_job& job : jobs)
+                {
+                    auto place = [&job, &tiles, &tile_order, terrain, order_done](uint32_t start_index, uint32_t end_index)
+                    {
+                        for (uint32_t batch_index = start_index; batch_index < end_index; batch_index++)
+                        {
+                            const uint32_t tile_index = tile_order[order_done + batch_index];
+                            if (!tiles[tile_index])
+                            {
+                                continue;
+                            }
+
+                            terrain->FindTransforms(
+                                tile_index,
+                                *job.layer,
+                                job.transforms[tile_index],
+                                &job.coverage[tile_index],
+                                &job.bounds
+                            );
+                        }
+                    };
+                    ThreadPool::ParallelLoop(place, batch_size);
+
+                    job.placed_batch = 0;
+                    for (uint32_t order_index = order_done; order_index < order_end; order_index++)
+                    {
+                        const uint32_t tile_index = tile_order[order_index];
+                        job.placed_batch         += job.transforms[tile_index].size();
+                        job.coverage_sum         += job.coverage[tile_index];
+                    }
+                    job.placed += job.placed_batch;
+                }
+
+                // the tiles done so far are a fair sample of the map, guessing the total from them keeps the
+                // instance buffer from growing once per batch, and the guess can never sit under what is
+                // already placed because there are always at least as many tiles left as sampled
+                uint32_t slots_projected = 1;
+                for (const scatter_job& job : jobs)
+                {
+                    const uint64_t projected = (static_cast<uint64_t>(job.placed) * tile_count) / order_end;
+                    slots_projected         += static_cast<uint32_t>(projected) * job.slots_per_instance;
+                }
+                GeometryBuffer::Reserve(0, 0, 0, 0, 0, slots_projected);
+
+                for (scatter_job& job : jobs)
+                {
+                    if (job.placed_batch == 0)
+                    {
+                        continue;
+                    }
+
+                    attach_scatter_layer(
+                        job.palette,
+                        *job.layer,
+                        tiles,
+                        job.transforms,
+                        tile_order,
+                        order_done,
+                        order_end,
+                        terrain->GetBlendHeight()
+                    );
+
+                    // the editor reads this while the scatter runs, keeping it live makes the props count
+                    // climb instead of jumping once at the end
+                    job.layer->instance_count = static_cast<uint32_t>(job.placed);
+                }
+
+                order_done += batch_size;
+                return false;
+            }
+
             for (const scatter_job& job : jobs)
             {
-                const uint64_t projected = (static_cast<uint64_t>(job.placed) * tile_count) / order_end;
-                slots_projected         += static_cast<uint32_t>(projected) * job.slots_per_instance;
-            }
-            GeometryBuffer::Reserve(0, 0, 0, 0, 0, slots_projected);
+                job.layer->instance_count = static_cast<uint32_t>(job.placed);
+                job.layer->coverage       = job.coverage_sum / static_cast<float>(tile_count);
 
-            for (scatter_job& job : jobs)
-            {
-                if (job.placed_batch == 0)
+                if (job.placed == 0)
                 {
+                    SP_LOG_WARNING(
+                        "terrain scatter '%s': the rules accepted no ground, loosen the slope, height or mask gates",
+                        job.layer->name.c_str()
+                    );
                     continue;
                 }
 
-                attach_scatter_layer(
-                    job.palette,
-                    *job.layer,
-                    tiles,
-                    job.transforms,
-                    tile_order,
-                    order_done,
-                    order_end,
-                    terrain->GetBlendHeight()
+                SP_LOG_INFO(
+                    "terrain scatter '%s': %zu instances, rules accepted %.1f%% of the surface",
+                    job.layer->name.c_str(),
+                    job.placed,
+                    job.layer->coverage * 100.0f
                 );
-
-                // the editor reads this while the scatter runs, keeping it live makes the props count
-                // climb instead of jumping once at the end
-                job.layer->instance_count = static_cast<uint32_t>(job.placed);
             }
 
-            order_done += batch_size;
-            batch       = min(batch * 2u, 64u);
-        }
-
-        for (const scatter_job& job : jobs)
-        {
-            job.layer->instance_count = static_cast<uint32_t>(job.placed);
-            job.layer->coverage       = job.coverage_sum / static_cast<float>(tile_count);
-
-            if (job.placed == 0)
+            // a slot nobody claimed this pass has to be switched off, otherwise it keeps drawing the mesh
+            // and the rules it was given the last time round
+            for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
             {
-                SP_LOG_WARNING(
-                    "terrain scatter '%s': the rules accepted no ground, loosen the slope, height or mask gates",
-                    job.layer->name.c_str()
-                );
-                continue;
+                if (!gpu_slot_pushed[slot])
+                {
+                    Renderer::DisableGpuScatter(slot);
+                }
             }
 
-            SP_LOG_INFO(
-                "terrain scatter '%s': %zu instances, rules accepted %.1f%% of the surface",
-                job.layer->name.c_str(),
-                job.placed,
-                job.layer->coverage * 100.0f
-            );
-        }
-
-        // a slot nobody claimed this pass has to be switched off, otherwise it keeps drawing the mesh
-        // and the rules it was given the last time round
-        for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
-        {
-            if (!gpu_slot_pushed[slot])
-            {
-                Renderer::DisableGpuScatter(slot);
-            }
-        }
-
-        terrain->OnBiomePropsPopulated();
+            terrain->OnBiomePropsPopulated();
+            return true;
+        };
     }
 
     void WorldHelpers::RepopulateTerrainProps(Terrain* terrain, const vector<uint32_t>& tile_indices)

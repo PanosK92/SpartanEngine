@@ -2558,6 +2558,11 @@ namespace spartan
         return true;
     }
 
+    bool World::IsLoadingFromFile()
+    {
+        return world_io_state.load(memory_order_acquire) == WorldIoState::Loading;
+    }
+
     void World::ProcessPendingLoad()
     {
         if (pending_load_path.empty())
@@ -2585,6 +2590,7 @@ namespace spartan
 
         // shutdown synchronously before async loading
         Shutdown();
+        Renderer::ResetWorldGeometry();
 
         // publish the loading state now so the progress ui shows this frame instead of only once the worker task starts
         ProgressTracker::SetGlobalLoadingState(true);
@@ -2765,6 +2771,8 @@ namespace spartan
                 }
             }
 
+            SP_LOG_INFO("World load: resources %.2f ms", timer.GetElapsedTimeMs());
+
             // load xml document, kept alive until main thread finishes deferred script init
             shared_ptr<pugi::xml_document> doc = make_shared<pugi::xml_document>();
             pugi::xml_parse_result result = doc->load_file(file_path.c_str());
@@ -2872,7 +2880,12 @@ namespace spartan
                     for (uint32_t i = 0; i < entity_count; i++)
                     {
                         Entity* entity = World::CreateEntity();
+                        const Stopwatch entity_timer;
                         entity->Load(flat_entities[i].node, false);
+                        if (entity_timer.GetElapsedTimeMs() > 100.0)
+                        {
+                            SP_LOG_INFO("World load: entity '%s' %.2f ms", entity->GetObjectName().c_str(), entity_timer.GetElapsedTimeMs());
+                        }
                         loaded_entities[i] = entity;
                         ProgressTracker::GetProgress(ProgressType::World).JobDone();
                     }

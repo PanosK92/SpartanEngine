@@ -240,6 +240,8 @@ namespace spartan
 
         // misc
         void SetStandardResources(RHI_CommandList* cmd_list = nullptr);
+        // Called after world entities and resources have been released.
+        void ResetWorldGeometry();
         uint64_t GetFrameNumber();
         RHI_Api_Type GetRhiApiType();
         bool Screenshot();

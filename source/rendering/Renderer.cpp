@@ -751,8 +751,10 @@ namespace spartan
                 secondary_view_recovery_frames--;
             }
 
-            // batch world geometry into one gpu upload after loading
-            if (!ProgressTracker::IsLoading())
+            // Batch the file load, then upload published geometry even while
+            // terrain preparation is pending. After an arena reset there are no
+            // old GPU buffers to render from during that first committed frame.
+            if (!World::IsLoadingFromFile())
             {
                 GeometryBuffer::BuildIfDirty();
             }
