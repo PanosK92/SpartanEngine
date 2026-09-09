@@ -64,6 +64,14 @@ float visible(float3 position, Light light, uint2 pixel_pos)
             light_get_transform(light, near_cascade)
         );
         float2 projected_uv_near  = ndc_to_uv(projected_pos_near);
+        // The blend is exactly zero here; the far cascade cannot contribute.
+        // Most detailed fog cells are in this interior, so avoid a second atlas lookup.
+        if (cascade_contains(projected_pos_near) &&
+            max(abs(projected_pos_near.x), abs(projected_pos_near.y)) <= 0.8f)
+        {
+            return light_compare_depth(light,
+                float3(projected_uv_near, (float)near_cascade), projected_pos_near.z);
+        }
         float3 projected_pos_far = world_to_ndc(
             position,
             light_get_transform(light, far_cascade)
@@ -178,7 +186,9 @@ float fog_trace_visibility(float3 origin, float3 direction, float t_max)
     ray.TMin      = 0.001f;
     ray.TMax      = t_max;
 
-    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+    // This visibility query already commits every non-opaque candidate. Let hardware
+    // perform the identical acceptance without yielding each candidate to the shader.
+    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_FORCE_OPAQUE> query;
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
     while (query.Proceed())
     {

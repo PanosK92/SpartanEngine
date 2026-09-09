@@ -145,6 +145,16 @@ namespace spartan
         uint32_t GetGlobalInstanceOffset() const    { return m_global_instance_offset; }
         math::Matrix GetInstance(const uint32_t index, const bool to_world);
         math::Vector3 GetInstancePosition(uint32_t index, const math::Matrix& world) const;
+        const math::BoundingBox& GetInstanceBounds(uint32_t index) const { return m_instance_bounds[index]; }
+        float GetInstanceWindPadding(uint32_t index) const { return m_instance_wind_padding[index]; }
+        struct InstanceBoundsGroup
+        {
+            math::BoundingBox bounds;
+            uint32_t offset;
+            uint32_t count;
+        };
+        const std::vector<InstanceBoundsGroup>& GetInstanceBoundsGroups() const { return m_instance_bounds_groups; }
+        uint32_t GetGroupedInstanceIndex(uint32_t index) const { return m_instance_bounds_order[index]; }
         void SetInstances(const std::vector<Instance>& instances);
         void SetInstances(const std::vector<math::Matrix>& transforms);
 
@@ -191,6 +201,12 @@ namespace spartan
 
         // instancing
         std::vector<Instance> m_instances;
+        // Updated with the aggregate AABB on instance, mesh or world-transform changes.
+        // Shadow slices reuse these exact bounds instead of unpacking every transform each frame.
+        std::vector<math::BoundingBox> m_instance_bounds;
+        std::vector<float> m_instance_wind_padding;
+        std::vector<InstanceBoundsGroup> m_instance_bounds_groups;
+        std::vector<uint32_t> m_instance_bounds_order;
         uint32_t m_global_instance_offset = 0; // 0 means non-instanced reads identity from slot 0 of the global instance pool
         // pool range this renderer appended once, later SetInstances calls that fit rewrite it instead of appending again
         uint32_t m_global_instance_slot          = 0;

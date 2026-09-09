@@ -365,6 +365,12 @@ namespace spartan
                         continue;
                     }
 
+                    // Grass casts through screen-space depth only, including authored mesh blades.
+                    if (material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f)
+                    {
+                        continue;
+                    }
+
                     if (!light->IsInViewFrustum(render, array_index))
                     {
                         continue;
@@ -533,29 +539,39 @@ namespace spartan
                                 render->GetVertexOffset(lod_index), render->GetGlobalInstanceOffset() + run_start, run_count);
                             run_count = 0;
                         };
-                        for (uint32_t instance = draw_call.instance_index; instance < end; ++instance)
+                        vector<uint32_t> visible_instances;
+                        for (const Render::InstanceBoundsGroup& group : render->GetInstanceBoundsGroups())
                         {
-                            const Matrix transform = render->GetInstance(instance, true);
-                            BoundingBox bounds = render->GetLodAabb(0) * transform;
-                            if (wind)
+                            if (Vector3::DistanceSquared(camera, group.bounds.GetClosestPoint(camera)) > max_distance * max_distance ||
+                                !light->IsBoundsInViewFrustum(group.bounds, slice.array_index))
                             {
-                                // Matches tree_wind_cull_padding in common_culling.hlsl.
-                                const float padding = ((bounds.GetCenter() - transform.GetTranslation()).Length()
-                                    + bounds.GetExtents().Length()) * 0.07f + 0.03f;
-                                const Vector3 extent(padding, padding, padding);
-                                bounds = BoundingBox(bounds.GetMin() - extent, bounds.GetMax() + extent);
+                                continue;
                             }
-                            const bool visible = Vector3::DistanceSquared(camera, bounds.GetClosestPoint(camera)) <= max_distance * max_distance
-                                && light->IsBoundsInViewFrustum(bounds, slice.array_index);
-                            if (visible)
+                            for (uint32_t j = group.offset; j < group.offset + group.count; ++j)
                             {
-                                if (run_count == 0) run_start = instance;
-                                ++run_count;
+                                const uint32_t instance = render->GetGroupedInstanceIndex(j);
+                                if (instance < draw_call.instance_index || instance >= end) continue;
+                                BoundingBox bounds = render->GetInstanceBounds(instance);
+                                if (wind)
+                                {
+                                    const float padding = render->GetInstanceWindPadding(instance);
+                                    const Vector3 extent(padding, padding, padding);
+                                    bounds = BoundingBox(bounds.GetMin() - extent, bounds.GetMax() + extent);
+                                }
+                                if (Vector3::DistanceSquared(camera, bounds.GetClosestPoint(camera)) <= max_distance * max_distance &&
+                                    light->IsBoundsInViewFrustum(bounds, slice.array_index))
+                                {
+                                    visible_instances.push_back(instance);
+                                }
                             }
-                            else
-                            {
-                                flush_run();
-                            }
+                        }
+                        // Preserve the original submission order and contiguous instance runs.
+                        sort(visible_instances.begin(), visible_instances.end());
+                        for (const uint32_t instance : visible_instances)
+                        {
+                            if (run_count != 0 && instance != run_start + run_count) flush_run();
+                            if (run_count == 0) run_start = instance;
+                            ++run_count;
                         }
                         flush_run();
                     }

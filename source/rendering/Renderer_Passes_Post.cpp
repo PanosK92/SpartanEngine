@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../rhi/RHI_Shader.h"
 #include "../rhi/RHI_VendorTechnology.h"
 #include "../xr/Xr.h"
+#include "../../data/shaders/shared_taau.h"
 //=============================================
 
 //= NAMESPACES ===============
@@ -518,7 +519,13 @@ namespace spartan
                     false,
                     eye_layer
                 );
-                m_pcb_pass_cpu.set_f3_value(m_taau_reset_history ? 1.0f : 0.0f, 0.0f, 0.0f);
+                m_pcb_pass_cpu.set_f3_value(m_taau_reset_history ? 1.0f : 0.0f, is_stereo ? 0.0f : 1.0f, 0.0f);
+                // stereo still needs a valid descriptor although its shader branch skips this write.
+                RHI_CommandList::SetTexture(
+                    static_cast<uint32_t>(Renderer_BindingsUav::tex2),
+                    GetRenderTarget(Renderer_RenderTarget::frame_output_2),
+                    rhi_all_mips, 0, true
+                );
 
                 RHI_CommandList::SetTexture(
                     static_cast<uint32_t>(Renderer_BindingsSrv::tex),
@@ -538,7 +545,11 @@ namespace spartan
                     eye_layer
                 );
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_out, rhi_all_mips, 0, true);
-                RHI_CommandList::Dispatch(tex_out);
+                RHI_CommandList::Dispatch(
+                    (tex_out->GetWidth() + TAAU_GROUP_X - 1) / TAAU_GROUP_X,
+                    (tex_out->GetHeight() + TAAU_GROUP_Y - 1) / TAAU_GROUP_Y,
+                    1
+                );
 
                 if (is_stereo)
                 {
@@ -550,7 +561,12 @@ namespace spartan
                 }
                 else
                 {
-                    RHI_CommandList::Copy(tex_out, tex_history, false);
+                    // protect the new history from post-processing; the old history becomes scratch.
+                    auto& targets = GetRenderTargets();
+                    std::swap(
+                        targets[static_cast<uint32_t>(Renderer_RenderTarget::taau_history)],
+                        targets[static_cast<uint32_t>(Renderer_RenderTarget::frame_output_2)]
+                    );
                     m_taau_reset_history = false;
                 }
             }

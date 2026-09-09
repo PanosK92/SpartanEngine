@@ -4007,9 +4007,15 @@ namespace spartan
 
                 RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
 
+                // Grass casts through screen-space depth only. Give authored blades their own
+                // mask so shadow rays skip them while reflection and GI surface rays still see them.
+                // GPU procedural grass has no entities and never enters this TLAS.
+                const uint32_t instance_mask = material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f
+                    ? 0x04 : (material->IsTransparent() ? 0x02 : 0x01);
+
                 RHI_AccelerationStructureInstance instance           = {};
                 instance.instance_custom_index                       = material->GetIndex();             // for hit shader material lookup
-                instance.mask                                        = material->IsTransparent() ? 0x02 : 0x01; // bit 0 = opaque, bit 1 = transparent, lets shadow rays exclude transparents
+                instance.mask                                        = instance_mask;                    // bit 0 = opaque, bit 1 = transparent, bit 2 = grass
                 instance.instance_shader_binding_table_record_offset = 0;                                // sbt hit group offset
                 instance.flags                                       = cull_mode == RHI_CullMode::None ? RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT : 0;
                 instance.device_address                              = device_address;

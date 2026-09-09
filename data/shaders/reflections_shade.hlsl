@@ -180,7 +180,8 @@ float reflections_trace_shadow(LightParameters light_p, float3 hit_position, flo
         ray.TMax      = max(t_max, 0.001f);
         
         RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-        query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
+        // Preserve opaque/glass blockers, but grass (0x04) casts only screen-space shadows.
+        query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x03, ray);
         query.Proceed();
         
         visibility_sum += query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
@@ -204,7 +205,7 @@ float reflections_trace_sky_visibility(float3 hit_position, float3 hit_normal, f
     ray.TMax      = 100.0f;
     
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
+    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x03, ray); // exclude grass from sky shadowing too
     query.Proceed();
     
     return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;

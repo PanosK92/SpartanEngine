@@ -85,6 +85,7 @@ float2 trace_opaque_shadow(float3 origin, float3 direction, float t_max)
     payload.shadow_alpha = 0.0f;
 
     // opaque instances only, glass is 0x02 and a layered walk against a car tlas tdrs on play
+    // grass is 0x04 and casts only through screen-space depth
     TraceRay(
         tlas,
         RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,

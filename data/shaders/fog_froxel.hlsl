@@ -110,7 +110,6 @@ float3 fog_evaluate_light(
         // shadows for deep cells whose incident energy is already negligible.
         float depth = max(buffer_frame.ocean_sea_level - sample_pos.y, 0.0f);
         if (depth * get_ocean_extinction().b > 12.0f) return 0.0f;
-        tint = get_ocean_sun_transmission(sample_pos, light_dir, footprint);
     }
 
     float visibility = 1.0f;
@@ -152,6 +151,11 @@ float3 fog_evaluate_light(
 
         if (in_water)
         {
+            // Occluded sunlight contributes exactly zero. Its expensive FFT
+            // caustic quadrature is only needed after visibility is known.
+            // In particular, cells below the island's seabed never need it.
+            if (visibility <= 0.0f) return 0.0f;
+            tint = get_ocean_sun_transmission(sample_pos, light_dir, footprint);
             light_dir = -refract(-light_dir, float3(0.0f, 1.0f, 0.0f), 1.0f / 1.333f);
         }
     }

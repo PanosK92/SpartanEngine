@@ -1964,7 +1964,8 @@ bool trace_shadow_ray(float3 origin, float3 direction, float max_dist)
     ray.TMax      = max(max_dist - epsilon, epsilon);
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
+    // Grass (0x04) remains visible to path rays, but casts only screen-space shadows.
+    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x03, ray);
     while (query.Proceed())
     {
         if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)

@@ -849,6 +849,10 @@ namespace spartan
         {
             // offset 0 makes the draw read identity, the owned slot stays so a refill can reuse it
             m_instances.clear();
+            m_instance_bounds.clear();
+            m_instance_wind_padding.clear();
+            m_instance_bounds_groups.clear();
+            m_instance_bounds_order.clear();
             m_global_instance_offset = 0;
             m_bounding_box_dirty     = true;
             return;
@@ -978,10 +982,58 @@ namespace spartan
             else // instanced
             {
                 m_bounding_box = BoundingBox(Vector3::Infinity, Vector3::InfinityNeg);
-                for (const Instance& instance : m_instances)
+                m_instance_bounds.resize(m_instances.size());
+                m_instance_wind_padding.resize(m_instances.size());
+                for (size_t i = 0; i < m_instances.size(); ++i)
                 {
-                    Matrix world_instance = instance.GetMatrix() * transform;
-                    m_bounding_box.Merge(m_bounding_box_mesh * world_instance);
+                    const Matrix world_instance = m_instances[i].GetMatrix() * transform;
+                    const BoundingBox bounds = m_bounding_box_mesh * world_instance;
+                    m_instance_bounds[i] = bounds;
+                    // Same conservative envelope as tree_wind_cull_padding in common_culling.hlsl.
+                    m_instance_wind_padding[i] = ((bounds.GetCenter() - world_instance.GetTranslation()).Length()
+                        + bounds.GetExtents().Length()) * 0.07f + 0.03f;
+                    m_bounding_box.Merge(bounds);
+                }
+
+                // Spatial groups accelerate shadow queries without reordering the
+                // authored instances, GPU pool or physics instance identifiers.
+                const auto spread_bits = [](uint32_t x)
+                {
+                    x = (x | (x << 16)) & 0x030000FFu;
+                    x = (x | (x << 8)) & 0x0300F00Fu;
+                    x = (x | (x << 4)) & 0x030C30C3u;
+                    return (x | (x << 2)) & 0x09249249u;
+                };
+                const Vector3 origin = m_bounding_box.GetMin();
+                const Vector3 size = m_bounding_box.GetSize();
+                vector<uint64_t> keys(m_instances.size());
+                for (uint32_t i = 0; i < m_instances.size(); ++i)
+                {
+                    const Vector3 p = m_instance_bounds[i].GetCenter() - origin;
+                    const uint32_t x = static_cast<uint32_t>(clamp(p.x / max(size.x, 0.001f), 0.0f, 1.0f) * 1023.0f);
+                    const uint32_t y = static_cast<uint32_t>(clamp(p.y / max(size.y, 0.001f), 0.0f, 1.0f) * 1023.0f);
+                    const uint32_t z = static_cast<uint32_t>(clamp(p.z / max(size.z, 0.001f), 0.0f, 1.0f) * 1023.0f);
+                    const uint32_t morton = spread_bits(x) | (spread_bits(y) << 1) | (spread_bits(z) << 2);
+                    keys[i] = (static_cast<uint64_t>(morton) << 32) | i;
+                }
+                sort(keys.begin(), keys.end());
+                m_instance_bounds_order.resize(keys.size());
+                m_instance_bounds_groups.clear();
+                constexpr uint32_t group_size = 32;
+                for (uint32_t begin = 0; begin < keys.size(); begin += group_size)
+                {
+                    const uint32_t count = min(group_size, static_cast<uint32_t>(keys.size()) - begin);
+                    BoundingBox group_bounds;
+                    for (uint32_t j = begin; j < begin + count; ++j)
+                    {
+                        const uint32_t i = static_cast<uint32_t>(keys[j]);
+                        m_instance_bounds_order[j] = i;
+                        const BoundingBox& bounds = m_instance_bounds[i];
+                        const float padding = m_instance_wind_padding[i];
+                        const Vector3 pad(padding, padding, padding);
+                        group_bounds.Merge(BoundingBox(bounds.GetMin() - pad, bounds.GetMax() + pad));
+                    }
+                    m_instance_bounds_groups.push_back({group_bounds, begin, count});
                 }
             }
             m_transform_previous = transform;
