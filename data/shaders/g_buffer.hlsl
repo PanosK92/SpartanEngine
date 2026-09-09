@@ -29,7 +29,7 @@ struct gbuffer
     float4 albedo   : SV_Target0;
     float4 normal   : SV_Target1;
     float4 material : SV_Target2;
-    float4 velocity : SV_Target3; // xy = ndc velocity, z = radial motion blur mask
+    float4 velocity : SV_Target3; // xy = ndc velocity, z = radial motion blur mask, w = previous linear depth
     float3 emissive : SV_Target4; // scene-linear emitted radiance, independent of reflectance
 };
 
@@ -604,7 +604,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     g_buffer.albedo   = albedo;
     g_buffer.normal   = float4(normal, pass_get_material_index());
     g_buffer.material = float4(roughness, metalness, 0.0f, occlusion);
-    g_buffer.velocity = float4(velocity, material.is_motion_blur_radial() ? 1.0f : 0.0f, 0.0f);
+    // previous surface depth lets temporal reconstruction validate object motion along the view axis.
+    float previous_depth = vertex.position_previous.w > 0.0f ?
+        min(linearize_depth(vertex.position_previous.z / vertex.position_previous.w), FLT_MAX_16U) : 0.0f;
+    g_buffer.velocity = float4(velocity, material.is_motion_blur_radial() ? 1.0f : 0.0f, previous_depth);
     g_buffer.emissive = material.emissive_from_albedo()
         ? emission * albedo.rgb * photometric_to_radiometric(lighting_emissive_nits_from_albedo)
         : emission * photometric_to_radiometric(lighting_emissive_nits_texture);

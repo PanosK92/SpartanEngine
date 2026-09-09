@@ -96,7 +96,10 @@ namespace spartan
             Settings::Initialize();
             SmokeTest::Initialize();
             McpServer::Initialize(args);
-            Steam::Initialize(); // must stay on the main thread, steam callbacks run here too
+            if (!HasArgument("--no-steam"))
+            {
+                Steam::Initialize(); // must stay on the main thread, steam callbacks run here too
+            }
 
             physics_future.get();
             icon_decode_future.get();
