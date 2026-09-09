@@ -1,4 +1,4 @@
-/*
+: /*
 Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// single-pass, phase-weighted taau with 2,304 bytes of lds per 8x8 group and five history samples.
+// single-pass, phase-weighted taau with 2,304 bytes of lds per 8x8 group and up to five history samples.
 // prior-revision user-reported profiler timings: 0.32-0.40 ms versus approximately 1.46 ms for xess/dlss, using
 // roughly 73-78% less gpu time in that setup. reuses existing textures without a mono history copy.
 
@@ -43,7 +43,6 @@ float reset_history() { return pass_get_f3_value().x; }
 
 static const float blend_static       = 1.0f / 32.0f;
 static const float blend_motion       = 1.0f / 4.0f;
-static const float motion_px_full     = 24.0f;
 static const float sky_depth          = 1e-7f;
 static const float reuse_depth_tol = 0.02f;
 
@@ -93,8 +92,13 @@ float max3(float3 c)
 }
 
 // five-tap catmull-rom approximation with omitted corners and renormalized weights.
-float4 sample_history(float2 uv, float2 res)
+float4 sample_history(float2 uv, float2 res, bool depth_edge)
 {
+    // signed reconstruction lobes must not pull a neighboring surface into the silhouette.
+    [branch]
+    if (depth_edge)
+        return tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f);
+
     float2 sample_pos = uv * res;
     float2 tc1        = floor(sample_pos - 0.5f) + 0.5f;
     float2 f          = sample_pos - tc1;
@@ -164,7 +168,7 @@ float2 compute_sky_velocity(float2 uv)
 }
 
 // velocity carries only xy; expected previous depth assumes no object motion in z.
-float compute_history_reuse(int2 px_render, float2 res_render, int2 px_render_max, float2 uv_prev, float depth_raw)
+float compute_history_reuse(int2 px_render, float2 res_render, int2 px_render_max, float2 uv_prev, float depth_raw, float moving)
 {
     bool is_sky = depth_raw <= sky_depth;
     float expected = 0.0f;
@@ -183,6 +187,7 @@ float compute_history_reuse(int2 px_render, float2 res_render, int2 px_render_ma
     int2 base = int2(floor(prev_pos));
     float2 f = frac(prev_pos);
     float reuse = 0.0f;
+    float coverage = 0.0f;
     [unroll]
     for (int y = 0; y < 2; ++y)
     {
@@ -202,13 +207,13 @@ float compute_history_reuse(int2 px_render, float2 res_render, int2 px_render_ma
                 match = 1.0f - smoothstep(reuse_depth_tol, 2.0f * reuse_depth_tol, error);
             }
             float2 w = float2(x == 0 ? 1.0f - f.x : f.x, y == 0 ? 1.0f - f.y : f.y);
-            // mixed depth coverage at a silhouette is not a disocclusion; retain
-            // history when a contributing tap still supports this surface.
+            coverage += w.x * w.y * match;
+            // stationary coverage can survive a jitter phase; moving coverage must actually match.
             if (w.x * w.y > 0.01f)
                 reuse = max(reuse, match);
         }
     }
-    return saturate(reuse);
+    return saturate(lerp(reuse, smoothstep(0.75f, 1.0f, coverage), moving));
 }
 
 float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, bool use_tile)
@@ -238,6 +243,8 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
 
     float3 color_min      =  FLT_MAX_16U.xxx;
     float3 color_max      = -FLT_MAX_16U.xxx;
+    float3 reconstruction_min = FLT_MAX_16U.xxx;
+    float3 reconstruction_max = -FLT_MAX_16U.xxx;
     float3 moment1        = 0.0f.xxx;
     float3 moment2        = 0.0f.xxx;
     float  sample_count   = 0.0f;
@@ -246,6 +253,7 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
 
     int2  closest_px    = center;
     float closest_depth = -1.0f;
+    float furthest_depth = 1.0f;
 
     [unroll]
     for (int oy = -1; oy <= 2; ++oy)
@@ -272,6 +280,11 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
             float w = wx[ox + 1] * wy[oy + 1];
             current_ycocg += ycocg * w;
             weight_sum += w;
+            if (ox >= 0 && ox <= 1 && oy >= 0 && oy <= 1)
+            {
+                reconstruction_min = min(reconstruction_min, ycocg);
+                reconstruction_max = max(reconstruction_max, ycocg);
+            }
 
             // keep rectification and motion dilation local despite the wider reconstruction filter.
             if (all(abs(tap - center) <= 1))
@@ -281,6 +294,7 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
                 moment1 += ycocg;
                 moment2 += ycocg * ycocg;
                 sample_count += 1.0f;
+                furthest_depth = min(furthest_depth, sample_data.w);
                 if (sample_data.w > closest_depth)
                 {
                     closest_depth = sample_data.w;
@@ -291,10 +305,15 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
     }
 
     bool current_valid = weight_sum > 1e-5f && sample_count > 0.0f;
-    current_ycocg = current_valid ? clamp(current_ycocg * rcp(weight_sum), color_min, color_max) : 0.0f.xxx;
+    // clamp to the interpolation footprint, not distant cubic taps that can create an outline.
+    if (reconstruction_min.x > reconstruction_max.x)
+    {
+        reconstruction_min = color_min;
+        reconstruction_max = color_max;
+    }
+    current_ycocg = current_valid ? clamp(current_ycocg * rcp(weight_sum), reconstruction_min, reconstruction_max) : 0.0f.xxx;
     float3 current_rgb_tm = max(from_ycocg(current_ycocg), 0.0f.xxx);
 
-    // use dilated motion for reprojection, but validate this pixel's own surface depth.
     float4 center_data;
     [branch]
     if (use_tile)
@@ -302,6 +321,8 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
     else
         center_data = load_current(center);
     float center_depth = center_data.w;
+    bool depth_edge = closest_depth - furthest_depth > max(closest_depth * reuse_depth_tol, sky_depth);
+    float2 closest_velocity = tex_velocity[closest_px].xy;
     bool   is_sky          = center_depth <= sky_depth;
     float2 velocity_ndc;
     if (is_sky)
@@ -312,7 +333,9 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
     }
     else
     {
-        velocity_ndc = tex_velocity[closest_px].xy;
+        // a background pixel must not follow the foreground object's motion.
+        velocity_ndc = closest_depth - center_depth > max(closest_depth * reuse_depth_tol, sky_depth) ?
+            tex_velocity[center].xy : closest_velocity;
     }
     float2 velocity_uv  = velocity_ndc * float2(0.5f, -0.5f);
     float2 uv_prev      = uv_out - velocity_uv;
@@ -332,7 +355,11 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
     }
 
     float motion_px = length(velocity_uv * res_out);
-    float motion    = saturate(motion_px * rcp(motion_px_full));
+    // stationary background can still be uncovered by a moving foreground edge.
+    if (depth_edge)
+        motion_px = max(motion_px, length(closest_velocity * float2(0.5f, -0.5f) * res_out));
+    float moving_coverage = saturate(motion_px * (depth_edge ? 8.0f : 2.0f));
+    float motion    = saturate(motion_px);
 
     float3 mean = moment1 / sample_count;
     float3 sigma = sqrt(max(moment2 / sample_count - mean * mean, 0.0f.xxx));
@@ -340,6 +367,12 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
     float gamma = lerp(2.5f, 1.0f, clip_motion);
     float3 box_min = max(color_min, mean - gamma * sigma);
     float3 box_max = min(color_max, mean + gamma * sigma);
+    // during motion, another surface cannot justify retaining its old color at this pixel.
+    if (depth_edge && center_data.x >= 0.0f)
+    {
+        box_min = lerp(box_min, max(box_min, min(center_data.xyz, current_ycocg)), moving_coverage);
+        box_max = lerp(box_max, min(box_max, max(center_data.xyz, current_ycocg)), moving_coverage);
+    }
     box_min = min(box_min, current_ycocg);
     box_max = max(box_max, current_ycocg);
 
@@ -351,13 +384,13 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
 
     // depth belongs to the selected render sample, not the output pixel between samples.
     float2 surface_uv_prev = uv_prev + (float2(center) + 0.5f - p_render) / active_render_f;
-    float reuse = compute_history_reuse(center, active_render_f, px_render_max, surface_uv_prev, center_depth);
+    float reuse = compute_history_reuse(center, active_render_f, px_render_max, surface_uv_prev, center_depth, moving_coverage);
     if (reuse <= 0.0f)
     {
         return float4(saturate_16(max(tonemap_for_taa_inv(current_rgb_tm), 0.0f.xxx)), 0.0f);
     }
 
-    float4 history_sample = sample_history(uv_prev, res_out);
+    float4 history_sample = sample_history(uv_prev, res_out, depth_edge);
     float3 history_rgb = history_sample.rgb;
     if (any(isnan(history_sample)) || any(isinf(history_sample)))
     {
@@ -388,9 +421,12 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
     float static_blend = sample_weight / max(total_weight, 1e-5f);
     float3 point_rgb_tm = max(from_ycocg(center_data.xyz), 0.0f.xxx);
     float3 static_result = lerp(history_tm, point_rgb_tm, static_blend);
+    // geometric coverage is linear radiance; compressed averaging darkens bright silhouettes.
+    if (depth_edge)
+        static_result = tonemap_for_taa(lerp(history_rgb, tonemap_for_taa_inv(point_rgb_tm), static_blend));
     // stationary detail can disappear from a jittered neighborhood; depth and motion
     // invalidate its history instead of clipping it to a poorly placed current sample.
-    float static_trust = (1.0f - saturate(motion_px * 2.0f)) * reuse;
+    float static_trust = (1.0f - moving_coverage) * reuse;
     static_trust *= center_data.x >= 0.0f ? 1.0f : 0.0f;
     float next_weight = min(total_weight, max_weight) * static_trust;
     // rebuild coverage after motion before trusting a single sharp but aliased point sample.
