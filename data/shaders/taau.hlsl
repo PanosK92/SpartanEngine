@@ -89,8 +89,13 @@ float max3(float3 c)
 }
 
 // five-tap catmull-rom approximation with omitted corners and renormalized weights.
-float4 sample_history(float2 uv, float2 res)
+float4 sample_history(float2 uv, float2 res, bool depth_edge)
 {
+    // positive weights prevent neighboring surfaces from ringing into a geometric silhouette.
+    [branch]
+    if (depth_edge)
+        return tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f);
+
     float2 sample_pos = uv * res;
     float2 tc1        = floor(sample_pos - 0.5f) + 0.5f;
     float2 f          = sample_pos - tc1;
@@ -242,6 +247,9 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
     float3 moment2        = 0.0f.xxx;
     float  sample_count   = 0.0f;
     float3 current_ycocg  = 0.0f.xxx;
+    float4 current_linear = 0.0f.xxxx;
+    float3 coverage_min = FLT_MAX_16U.xxx;
+    float3 coverage_max = 0.0f.xxx;
     float  weight_sum     = 0.0f;
 
     int2  closest_px    = center;
@@ -277,16 +285,23 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
             {
                 reconstruction_min = min(reconstruction_min, ycocg);
                 reconstruction_max = max(reconstruction_max, ycocg);
+                float coverage_weight = (ox == 0 ? 1.0f - f.x : f.x) * (oy == 0 ? 1.0f - f.y : f.y);
+                float3 sample_linear = tonemap_for_taa_inv(max(from_ycocg(ycocg), 0.0f.xxx));
+                current_linear += float4(sample_linear, 1.0f) * coverage_weight;
+                coverage_min = min(coverage_min, sample_linear);
+                coverage_max = max(coverage_max, sample_linear);
             }
 
-            // keep rectification and motion dilation local despite the wider reconstruction filter.
+            // rectification must see every sample used to reconstruct thin texture lines.
+            color_min = min(color_min, ycocg);
+            color_max = max(color_max, ycocg);
+            moment1 += ycocg;
+            moment2 += ycocg * ycocg;
+            sample_count += 1.0f;
+
+            // keep motion dilation local so distant surfaces do not steer reprojection.
             if (all(abs(tap - center) <= 1))
             {
-                color_min = min(color_min, ycocg);
-                color_max = max(color_max, ycocg);
-                moment1 += ycocg;
-                moment2 += ycocg * ycocg;
-                sample_count += 1.0f;
                 furthest_depth = min(furthest_depth, sample_data.w);
                 if (sample_data.w > closest_depth)
                 {
@@ -315,6 +330,12 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
         center_data = load_current(center);
     float center_depth = center_data.w;
     bool depth_edge = closest_depth - furthest_depth > max(closest_depth * reuse_depth_tol, sky_depth);
+    // resets and bootstrap must reconstruct geometric coverage before compressing radiance.
+    if (depth_edge && current_linear.a > 1e-5f)
+    {
+        current_rgb_tm = tonemap_for_taa(current_linear.rgb / current_linear.a);
+        current_ycocg = to_ycocg(current_rgb_tm);
+    }
     float4 center_velocity = tex_velocity[center];
     float2 closest_velocity = depth_edge ? tex_velocity[closest_px].xy : center_velocity.xy;
     bool   is_sky          = center_depth <= sky_depth;
@@ -366,7 +387,7 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
 
     float level = max3(current_rgb_tm);
     // allow static shadow noise to accumulate instead of clipping history to each new sample.
-    float noise_pad = max(0.0001f, 0.05f * level * (1.0f - level)) * (1.0f - clip_motion);
+    float noise_pad = depth_edge ? 0.0f : max(0.0001f, 0.05f * level * (1.0f - level)) * (1.0f - clip_motion);
     box_min.x -= noise_pad;
     box_max.x += noise_pad;
 
@@ -378,7 +399,7 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
         return float4(saturate_16(max(tonemap_for_taa_inv(current_rgb_tm), 0.0f.xxx)), 0.0f);
     }
 
-    float4 history_sample = sample_history(uv_prev, res_out);
+    float4 history_sample = sample_history(uv_prev, res_out, depth_edge);
     float3 history_rgb = history_sample.rgb;
     if (any(isnan(history_sample)) || any(isinf(history_sample)))
     {
@@ -392,11 +413,25 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
     float2 kernel = saturate(1.0f - distance_out);
     float sample_weight = kernel.x * kernel.y;
     float sample_area = max(scale.x * scale.y, 1.0f);
-    // widen the valid interval for poorly placed stationary samples, but always rectify history into it.
-    float phase_uncertainty = (1.0f - saturate(sample_weight * sample_area)) * (1.0f - motion);
-    float3 clip_pad = 0.25f * (box_max - box_min) * phase_uncertainty;
-    float3 clipped_ycocg = clip_to_aabb(box_min - clip_pad, box_max + clip_pad, history_ycocg);
-    float3 history_clipped_tm = max(from_ycocg(clipped_ycocg), 0.0f.xxx);
+    // stationary texture detail needs a variance margin independent of the current jitter phase.
+    // geometric edges keep strict bounds so this margin cannot preserve a neighboring surface's outline.
+    float3 clip_pad = depth_edge ? 0.0f.xxx : sigma * (1.0f - motion);
+    float3 clipped_ycocg;
+    float3 history_clipped_tm;
+    if (depth_edge && current_linear.a > 1e-5f)
+    {
+        // chroma-box rectification can darken valid mixed coverage; bound silhouettes in radiance instead.
+        float3 coverage_center = current_linear.rgb / current_linear.a;
+        float3 edge_min = lerp(coverage_min, coverage_center, 0.25f * clip_motion);
+        float3 edge_max = lerp(coverage_max, coverage_center, 0.25f * clip_motion);
+        history_clipped_tm = tonemap_for_taa(clip_to_aabb(edge_min, edge_max, history_rgb));
+        clipped_ycocg = to_ycocg(history_clipped_tm);
+    }
+    else
+    {
+        clipped_ycocg = clip_to_aabb(box_min - clip_pad, box_max + clip_pad, history_ycocg);
+        history_clipped_tm = max(from_ycocg(clipped_ycocg), 0.0f.xxx);
+    }
 
     float rejection = saturate(max3(abs(history_ycocg - clipped_ycocg)) /
                               max(max3(box_max - box_min), 0.02f));
@@ -408,12 +443,17 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
     float total_weight = retained_weight + sample_weight;
     float sample_blend = sample_weight / max(total_weight, 1e-5f);
     float3 point_rgb_tm = center_data.x >= 0.0f ? max(from_ycocg(center_data.xyz), 0.0f.xxx) : current_rgb_tm;
-    float3 accumulated_tm = lerp(history_clipped_tm, point_rgb_tm, sample_blend);
-    // geometric coverage is linear radiance; compressed averaging darkens bright silhouettes.
-    if (depth_edge)
-        accumulated_tm = tonemap_for_taa(lerp(tonemap_for_taa_inv(history_clipped_tm), tonemap_for_taa_inv(point_rgb_tm), sample_blend));
     // use reconstruction while the first few valid jitter samples establish coverage.
     float confidence = saturate(retained_weight * sample_area * 0.25f) * reuse;
+    // every coverage blend must use radiance, including bootstrap and confidence blending.
+    if (depth_edge)
+    {
+        float3 history_linear = tonemap_for_taa_inv(history_clipped_tm);
+        float3 accumulated_linear = lerp(history_linear, tonemap_for_taa_inv(point_rgb_tm), sample_blend);
+        float3 bootstrap_linear = lerp(history_linear, tonemap_for_taa_inv(current_rgb_tm), lerp(1.0f, 0.125f, reuse));
+        return float4(saturate_16(max(lerp(bootstrap_linear, accumulated_linear, confidence), 0.0f.xxx)), min(total_weight, max_weight));
+    }
+    float3 accumulated_tm = lerp(history_clipped_tm, point_rgb_tm, sample_blend);
     // uncovered pixels must recover even when this jitter phase contributes no point sample.
     float3 bootstrap_tm = lerp(history_clipped_tm, current_rgb_tm, lerp(1.0f, 0.125f, reuse));
     float3 result_rgb_tm = max(lerp(bootstrap_tm, accumulated_tm, confidence), 0.0f.xxx);
