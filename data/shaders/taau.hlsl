@@ -164,10 +164,10 @@ float2 compute_sky_velocity(float2 uv)
     return curr_clip.xy / max(curr_clip.w, 1e-6f) - prev_clip.xy / max(prev_clip.w, 1e-6f);
 }
 
-float compute_history_reuse(int2 px_render, float2 res_render, int2 px_render_max, float2 uv_prev, float depth_raw, float previous_depth, float moving)
+float compute_history_reuse(int2 px_render, float2 res_render, int2 px_render_max, float2 uv_prev, float depth_raw, float previous_depth, float moving, bool foliage_coverage, float2 depth_range)
 {
     bool is_sky = depth_raw <= sky_depth;
-    float expected = previous_depth;
+    float expected = abs(previous_depth);
     // older/custom velocity producers may not provide previous surface depth.
     if (!is_sky && (expected <= 0.0f || expected >= FLT_MAX_16U || isnan(expected) || isinf(expected)))
     {
@@ -203,6 +203,9 @@ float compute_history_reuse(int2 px_render, float2 res_render, int2 px_render_ma
                 float error = abs(linearize_depth(z) - expected) / max(expected, 1e-3f);
                 match = 1.0f - smoothstep(reuse_depth_tol, 2.0f * reuse_depth_tol, error);
             }
+            // cutout jitter alternates visible layers; validate their local depth range instead of one leaf.
+            if (foliage_coverage)
+                match = max(match, z >= depth_range.x && z <= depth_range.y ? 1.0f : 0.0f);
             float2 w = float2(x == 0 ? 1.0f - f.x : f.x, y == 0 ? 1.0f - f.y : f.y);
             coverage += w.x * w.y * match;
             // stationary coverage can survive a jitter phase; moving coverage must actually match.
@@ -251,6 +254,7 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
     float3 coverage_min = FLT_MAX_16U.xxx;
     float3 coverage_max = 0.0f.xxx;
     float neighborhood_peak_tm = 0.0f;
+    float neighborhood_floor_tm = 1.0f;
     float  weight_sum     = 0.0f;
 
     int2  closest_px    = center;
@@ -304,6 +308,7 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
             if (all(abs(tap - center) <= 1))
             {
                 neighborhood_peak_tm = max(neighborhood_peak_tm, ycocg.x + max(ycocg.z, abs(ycocg.y) - ycocg.z));
+                neighborhood_floor_tm = min(neighborhood_floor_tm, ycocg.x + min(ycocg.z, -abs(ycocg.y) - ycocg.z));
                 furthest_depth = min(furthest_depth, sample_data.w);
                 if (sample_data.w > closest_depth)
                 {
@@ -339,7 +344,8 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
         current_ycocg = to_ycocg(current_rgb_tm);
     }
     float4 center_velocity = tex_velocity[center];
-    float2 closest_velocity = depth_edge ? tex_velocity[closest_px].xy : center_velocity.xy;
+    float4 closest_velocity = depth_edge ? tex_velocity[closest_px] : center_velocity;
+    bool foliage_coverage = center_velocity.w < 0.0f || closest_velocity.w < 0.0f;
     bool   is_sky          = center_depth <= sky_depth;
     float2 velocity_ndc;
     if (is_sky)
@@ -373,7 +379,7 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
     float motion_px = length(velocity_uv * res_out);
     // stationary background can still be uncovered by a moving foreground edge.
     if (depth_edge)
-        motion_px = max(motion_px, length(closest_velocity * float2(0.5f, -0.5f) * res_out));
+        motion_px = max(motion_px, length(closest_velocity.xy * float2(0.5f, -0.5f) * res_out));
     float moving_coverage = saturate(motion_px * (depth_edge ? 8.0f : 2.0f));
     // subpixel motion also resamples history, so it needs a shorter accumulation window.
     float motion    = saturate(motion_px * 8.0f);
@@ -395,7 +401,7 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
 
     // depth belongs to the selected render sample, not the output pixel between samples.
     float2 surface_uv_prev = uv_prev + (float2(center) + 0.5f - p_render) / active_render_f;
-    float reuse = compute_history_reuse(center, active_render_f, px_render_max, surface_uv_prev, center_depth, center_velocity.w, moving_coverage);
+    float reuse = compute_history_reuse(center, active_render_f, px_render_max, surface_uv_prev, center_depth, center_velocity.w, moving_coverage, foliage_coverage, float2(furthest_depth, closest_depth));
     if (reuse <= 0.0f)
     {
         return float4(saturate_16(max(tonemap_for_taa_inv(current_rgb_tm), 0.0f.xxx)), 0.0f);
@@ -433,7 +439,13 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
         float3 edge_max = lerp(coverage_max, coverage_center, 0.25f * clip_motion);
         // preserve stationary highlights supported by nearby jitter samples without relaxing the dark silhouette bound.
         float neighborhood_peak = neighborhood_peak_tm / max(1.0f - neighborhood_peak_tm, 1.0f / (1.0f + FLT_MAX_16U));
-        edge_max = lerp(edge_max, max(edge_max, min(history_rgb, neighborhood_peak.xxx)), 1.0f - motion);
+        edge_max = lerp(edge_max, max(edge_max, min(history_rgb, neighborhood_peak.xxx)), 1.0f - (foliage_coverage ? clip_motion : motion));
+        if (foliage_coverage)
+        {
+            // a leaf can leave the central footprint for one jitter phase without leaving the pixel coverage.
+            float neighborhood_floor = max(neighborhood_floor_tm, 0.0f) / max(1.0f - neighborhood_floor_tm, 1.0f / (1.0f + FLT_MAX_16U));
+            edge_min = lerp(edge_min, min(edge_min, max(history_rgb, neighborhood_floor.xxx)), 1.0f - clip_motion);
+        }
         history_clipped_tm = tonemap_for_taa(clip_to_aabb(edge_min, edge_max, history_rgb));
         clipped_ycocg = to_ycocg(history_clipped_tm);
     }

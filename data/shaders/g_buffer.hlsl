@@ -607,6 +607,9 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // previous surface depth lets temporal reconstruction validate object motion along the view axis.
     float previous_depth = vertex.position_previous.w > 0.0f ?
         min(linearize_depth(vertex.position_previous.z / vertex.position_previous.w), FLT_MAX_16U) : 0.0f;
+    // the depth sign identifies cutout coverage without another mask texture.
+    if (material.is_alpha_tested() || surface.is_foliage())
+        previous_depth = -previous_depth;
     g_buffer.velocity = float4(velocity, material.is_motion_blur_radial() ? 1.0f : 0.0f, previous_depth);
     g_buffer.emissive = material.emissive_from_albedo()
         ? emission * albedo.rgb * photometric_to_radiometric(lighting_emissive_nits_from_albedo)
