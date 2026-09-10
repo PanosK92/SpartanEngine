@@ -112,7 +112,8 @@ namespace spartan
         at(buffers, Renderer_Buffer::MaterialParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Material)), rhi_max_array_size,                     nullptr,            true, "materials");
         at(buffers, Renderer_Buffer::LightParameters)    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Light)),    rhi_max_array_size,                     nullptr,            true, "lights");
         at(buffers, Renderer_Buffer::DummyInstance)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Instance, sizeof(Instance),                           static_cast<uint32_t>(identity.size()), &identity,          true, "dummy_instance_buffer");
-        at(buffers, Renderer_Buffer::GeometryInfo)       = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_GeometryInfo)), rhi_max_array_size,                     nullptr,            true, "geometry_info");
+        // one record per tlas instance, scattered foliage enters per instance so this outgrows the entity count
+        at(buffers, Renderer_Buffer::GeometryInfo)       = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_GeometryInfo)), rhi_max_array_size * 4,                 nullptr,            true, "geometry_info");
 
         // one buffer for every frame, each writes its own offset region so the bindless descriptors never change under in-flight commands
         at(buffers, Renderer_Buffer::DrawData) = make_shared<RHI_Buffer>(
@@ -937,6 +938,9 @@ namespace spartan
             create_fog(Renderer_RenderTarget::fog_water_history, "fog_water_history", false);
             create_fog(Renderer_RenderTarget::fog_integrated, "fog_integrated", true);
             create_fog(Renderer_RenderTarget::fog_transmittance, "fog_transmittance", true);
+            at(render_targets, Renderer_RenderTarget::fog_sky_visibility) = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type3D, renderer_fog_sky_width, renderer_fog_sky_height, renderer_fog_sky_depth, 1,
+                RHI_Format::R8_Unorm, fog_flags, "fog_sky_visibility");
             m_pass_state.fog_history.Reset();
         }
 
@@ -1088,6 +1092,7 @@ namespace spartan
             { Renderer_Shader::light_flare_v,                         RHI_Shader_Type::Vertex,  "light_flare.hlsl"                                                           },
             { Renderer_Shader::light_flare_p,                         RHI_Shader_Type::Pixel,   "light_flare.hlsl"                                                           },
             { Renderer_Shader::light_composition_c,                   RHI_Shader_Type::Compute, "light_composition.hlsl"                                                     },
+            { Renderer_Shader::fog_sky_visibility_c,                  RHI_Shader_Type::Compute, "fog_froxel.hlsl",                            RHI_Vertex_Type::Max, "FOG_SKY_VISIBILITY" },
             { Renderer_Shader::fog_inject_c,                          RHI_Shader_Type::Compute, "fog_froxel.hlsl",                            RHI_Vertex_Type::Max, "FOG_INJECT"    },
             { Renderer_Shader::fog_integrate_c,                       RHI_Shader_Type::Compute, "fog_froxel.hlsl",                            RHI_Vertex_Type::Max, "FOG_INTEGRATE" },
             { Renderer_Shader::fog_composite_c,                       RHI_Shader_Type::Compute, "fog_froxel.hlsl",                            RHI_Vertex_Type::Max, "FOG_COMPOSITE" },
@@ -1237,6 +1242,7 @@ namespace spartan
                 e.rt_only ||
                 e.id == Renderer_Shader::particle_render_p ||
                 e.id == Renderer_Shader::particle_volume_composite_c ||
+                e.id == Renderer_Shader::fog_sky_visibility_c ||
                 e.id == Renderer_Shader::fog_inject_c;
             const char* define_ext = (rt && needs_ray_tracing_define) ? "RAY_TRACING_ENABLED" : nullptr;
             compile_shader(e.id, e.stage, sd + e.file, e.async, e.vtype, e.define, define_ext, e.define2);

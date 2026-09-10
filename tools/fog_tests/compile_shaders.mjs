@@ -5,7 +5,7 @@ fs.mkdirSync('binaries/fog_tests', {recursive:true});
 const dxc = process.env.VULKAN_SDK ? path.join(process.env.VULKAN_SDK, 'Bin', 'dxc.exe') : 'dxc';
 for (const rt of [false, true]) {
     const cases = [
-        ['fog_froxel', 'cs', 'FOG_INJECT'], ['fog_froxel', 'cs', 'FOG_INTEGRATE'], ['fog_froxel', 'cs', 'FOG_COMPOSITE'],
+        ['fog_froxel', 'cs', 'FOG_SKY_VISIBILITY'], ['fog_froxel', 'cs', 'FOG_INJECT'], ['fog_froxel', 'cs', 'FOG_INTEGRATE'], ['fog_froxel', 'cs', 'FOG_COMPOSITE'],
         ['light', 'cs', ''], ['reflections_apply', 'cs', ''], ['light_composition', 'cs', ''],
         ['particles', 'ps', 'RENDER'], ['particles_volumetric', 'cs', 'VOLUME_COMPOSITE'],
         ['depth_light', 'vs', ''], ['depth_light', 'ps', ''],

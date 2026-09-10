@@ -109,6 +109,7 @@ namespace spartan
         // misc
         static const std::string& GetName();
         static const std::string& GetFilePath();
+        static void SetFilePath(const std::string& path);
         static math::BoundingBox& GetBoundingBox();
         static Camera* GetCamera();
         static void SetActiveCamera(Entity* entity);

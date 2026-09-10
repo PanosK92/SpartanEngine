@@ -357,6 +357,8 @@ namespace spartan
                 Renderer::SetPass("ray_traced_shadows", rhi_all_mips);
                 RHI_CommandList::SetShaders(shader_rgen, shader_miss, shader_hit);
                 RHI_CommandList::SetAccelerationStructure(static_cast<uint32_t>(Renderer_BindingsSrv::tlas), tlas);
+                // the raygen runs inline queries and alpha tests foliage through the hit records
+                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::geometry_info), GetBuffer(Renderer_Buffer::GeometryInfo));
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_shadows, rhi_all_mips, 0, true);
                 if (tex_shadows_local)
                 {
@@ -1242,6 +1244,7 @@ namespace spartan
 
     void Renderer::Pass_Fog(uint32_t eye, uint32_t eye_layer /*= rhi_all_mips*/)
     {
+        RHI_Shader* shader_sky       = GetShader(Renderer_Shader::fog_sky_visibility_c);
         RHI_Shader* shader_inject    = GetShader(Renderer_Shader::fog_inject_c);
         RHI_Shader* shader_integrate = GetShader(Renderer_Shader::fog_integrate_c);
         RHI_Texture* tex_scatter     = GetRenderTarget(Renderer_RenderTarget::fog_scatter);
@@ -1251,18 +1254,21 @@ namespace spartan
         RHI_Texture* tex_water_history = GetRenderTarget(Renderer_RenderTarget::fog_water_history);
         RHI_Texture* tex_extinction = GetRenderTarget(Renderer_RenderTarget::fog_extinction);
         RHI_Texture* tex_transmittance = GetRenderTarget(Renderer_RenderTarget::fog_transmittance);
-        if (!tex_scatter || !tex_history || !tex_integrated || !tex_extinction || !tex_transmittance || !tex_water_source || !tex_water_history)
+        RHI_Texture* tex_sky_visibility = GetRenderTarget(Renderer_RenderTarget::fog_sky_visibility);
+        if (!tex_scatter || !tex_history || !tex_integrated || !tex_extinction || !tex_transmittance || !tex_water_source || !tex_water_history || !tex_sky_visibility)
         {
             return;
         }
 
-        if (!shader_inject || !shader_inject->IsCompiled() ||
+        if (!shader_sky || !shader_sky->IsCompiled() ||
+            !shader_inject || !shader_inject->IsCompiled() ||
             !shader_integrate || !shader_integrate->IsCompiled())
         {
             Renderer::BeginPass("fog_clear", eye_layer);
             for (RHI_Texture* volume : { tex_scatter, tex_history, tex_extinction, tex_water_source, tex_water_history, tex_integrated })
                 RHI_CommandList::ClearTexture(volume, Color(0.0f, 0.0f, 0.0f, 0.0f));
             RHI_CommandList::ClearTexture(tex_transmittance, Color(1.0f, 1.0f, 1.0f, 1.0f));
+            RHI_CommandList::ClearTexture(tex_sky_visibility, Color(1.0f, 1.0f, 1.0f, 1.0f));
             m_pass_state.fog_history.Reset();
             RHI_CommandList::EndPass();
             return;
@@ -1287,9 +1293,37 @@ namespace spartan
         const uint32_t groups_y = (renderer_fog_volume_height + 7) / 8;
         const uint32_t groups_z = (renderer_fog_volume_depth + 3) / 4;
 
+        RHI_AccelerationStructure* tlas = nullptr;
+        if (RHI_Device::IsSupportedRayTracing())
+        {
+            tlas = GetTopLevelAccelerationStructure();
+            if (tlas && !tlas->GetRhiResource())
+            {
+                tlas = nullptr;
+            }
+        }
+
+        Renderer::BeginPass("fog_sky_visibility", eye_layer);
+        {
+            RHI_CommandList::SetShader(shader_sky);
+            RHI_CommandList::SetTexture("tex_fog_sky_visibility_uav", tex_sky_visibility);
+            if (tlas)
+            {
+                RHI_CommandList::SetAccelerationStructure(static_cast<uint32_t>(Renderer_BindingsSrv::tlas), tlas);
+                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::geometry_info), GetBuffer(Renderer_Buffer::GeometryInfo));
+            }
+            RHI_CommandList::Dispatch(
+                (renderer_fog_sky_width + 7) / 8,
+                (renderer_fog_sky_height + 7) / 8,
+                (renderer_fog_sky_depth + 3) / 4
+            );
+        }
+        RHI_CommandList::EndPass();
+
         Renderer::BeginPass("fog_inject", eye_layer);
         {
             RHI_CommandList::SetShader(shader_inject);
+            RHI_CommandList::SetTexture("tex_fog_sky_visibility", tex_sky_visibility);
             RHI_CommandList::SetTexture("tex_fog_water_source_uav", water_write);
             RHI_CommandList::SetTexture("tex_fog_water_source", water_read);
             RHI_CommandList::SetTexture("tex_fog_extinction_uav", tex_extinction);
@@ -1300,15 +1334,11 @@ namespace spartan
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex5), GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::volumetric_light_indices), GetBuffer(Renderer_Buffer::VolumetricLightIndices));
 
-            if (RHI_Device::IsSupportedRayTracing())
+            // shadow rays alpha test foliage through the hit records
+            if (tlas)
             {
-                if (RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure())
-                {
-                    if (tlas->GetRhiResource())
-                    {
-                        RHI_CommandList::SetAccelerationStructure(static_cast<uint32_t>(Renderer_BindingsSrv::tlas), tlas);
-                    }
-                }
+                RHI_CommandList::SetAccelerationStructure(static_cast<uint32_t>(Renderer_BindingsSrv::tlas), tlas);
+                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::geometry_info), GetBuffer(Renderer_Buffer::GeometryInfo));
             }
 
             if (RHI_Texture* tex_ocean_norm = GetRenderTarget(Renderer_RenderTarget::ocean_normal))
@@ -1397,7 +1427,7 @@ namespace spartan
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::cluster_light_grid), GetBuffer(Renderer_Buffer::ClusterLightGrid));
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::cluster_light_indices), GetBuffer(Renderer_Buffer::ClusterLightIndices));
 
-            // bind tlas for inline ray traced shadows when ray tracing is supported and the world has geometry
+            // tlas and hit records for the inline local light rays, they alpha test foliage
             if (RHI_Device::IsSupportedRayTracing())
             {
                 if (RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure())
@@ -1405,6 +1435,7 @@ namespace spartan
                     if (tlas->GetRhiResource())
                     {
                         RHI_CommandList::SetAccelerationStructure(static_cast<uint32_t>(Renderer_BindingsSrv::tlas), tlas);
+                        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::geometry_info), GetBuffer(Renderer_Buffer::GeometryInfo));
                     }
                 }
             }

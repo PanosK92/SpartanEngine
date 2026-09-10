@@ -26,7 +26,33 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sky/clouds.hlsl"
 #include "light_cluster.hlsl"
 #include "subsurface_scattering.hlsl"
+#include "rt_visibility.hlsl"
 //============================
+
+#ifdef RAY_TRACING_ENABLED
+// one alpha tested ray from the surface to the light, for local lights without a denoised slot
+float trace_local_light_visibility(Surface surface, Light light)
+{
+    float3 target = light.is_area()
+        ? light.compute_closest_point_on_area(surface.position)
+        : light.position;
+    float3 to_light = target - surface.position;
+    float distance  = length(to_light);
+    // stop before the fixture around the emitter, like the denoised local rays
+    float emitter_safety = light.is_area()
+        ? min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f
+        : 0.01f;
+    if (distance <= emitter_safety + 0.002f)
+    {
+        return 1.0f;
+    }
+
+    float3 direction = to_light / distance;
+    float offset     = 0.001f + min(surface.camera_to_pixel_length * 0.00001f, 0.002f);
+    float3 origin    = surface.position + surface.normal * offset;
+    return rt_trace_visibility(origin, direction, distance - emitter_safety);
+}
+#endif
 
 // samples the denoised half-res ray traced shadow with bilinear upsample
 float sample_ray_traced_shadow(float2 uv)
@@ -161,14 +187,17 @@ void evaluate_light(
         float L_shadow_contact = 1.0f;
 
         {
+            // ray traced shadows replace the atlas entirely, the tlas holds every caster
             const bool want_shadows          = light.has_shadows();
-            const bool use_rt_shadow_texture = want_shadows && is_ray_traced_shadows_enabled() && light.is_directional();
-            const bool use_nrd_local_shadow  = want_shadows && is_ray_traced_shadows_enabled() && light.nrd_local_shadow_slot() != 0u;
-            const bool use_shadow_maps       = want_shadows && !use_rt_shadow_texture && !use_nrd_local_shadow;
+            const bool ray_traced            = want_shadows && is_ray_traced_shadows_enabled();
+            const bool use_rt_shadow_texture = ray_traced && light.is_directional();
+            const bool use_nrd_local_shadow  = ray_traced && !light.is_directional() && light.nrd_local_shadow_slot() != 0u;
+            const bool use_rt_inline         = ray_traced && !use_rt_shadow_texture && !use_nrd_local_shadow;
+            const bool use_shadow_maps       = want_shadows && !ray_traced;
 
             if (use_rt_shadow_texture)
             {
-                L_shadow_primary = min(sample_ray_traced_shadow(surface.uv), compute_shadow(surface, light));
+                L_shadow_primary = sample_ray_traced_shadow(surface.uv);
             }
             else if (use_nrd_local_shadow)
             {
@@ -180,6 +209,13 @@ void evaluate_light(
                 {
                     L_shadow_primary = sample_nrd_local_shadow(surface.uv, light.nrd_local_shadow_slot());
                 }
+            }
+            else if (use_rt_inline)
+            {
+            #ifdef RAY_TRACING_ENABLED
+                // local lights beyond the denoised slots take one hard inline ray
+                L_shadow_primary = trace_local_light_visibility(surface, light);
+            #endif
             }
             else if (use_shadow_maps)
             {

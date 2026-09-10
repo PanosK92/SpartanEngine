@@ -283,10 +283,12 @@ namespace spartan
             return;
         }
 
-        // Ray tracing omits terrain scatter. Keep its alpha-tested shadow atlas
-        // as complementary visibility for both surfaces and participating media.
-        // Match the shader's readiness bit, including pending BLAS rebuilds.
-        const bool hybrid_shadows = (m_cb_frame_cpu.options & (1u << 2)) != 0;
+        // ray traced shadows replace the atlas, every caster is in the tlas and the shaders
+        // never read it, the readiness bit covers pending blas builds so there is no gap
+        if (IsRayTracedShadowsActive())
+        {
+            return;
+        }
 
         struct ShadowBatch
         {
@@ -338,17 +340,6 @@ namespace spartan
                     const Renderer_DrawCall& draw_call = m_draw_calls[i];
                     Render* render                     = draw_call.render;
                     if (!render->HasFlag(RenderFlags::CastsShadows))
-                    {
-                        continue;
-                    }
-
-                    // The near directional slice is complete so dense fog can
-                    // resolve its shadow samples without redundant TLAS rays.
-                    // Far directional rays already cover ordinary mesh entities.
-                    if (hybrid_shadows && light->GetLightType() == LightType::Directional &&
-                        array_index != 0 &&
-                        !render->HasFlag(RenderFlags::ExcludeFromRayTracing) &&
-                        render->GetAccelerationStructureDeviceAddress() != 0)
                     {
                         continue;
                     }

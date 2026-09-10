@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "brdf.hlsl"
 #include "shadow_mapping.hlsl"
 #include "light_cluster.hlsl"
+#include "rt_visibility.hlsl"
 #endif
 //====================
 
@@ -915,23 +916,13 @@ float trace_particle_shadow_ray(Light light, Surface surface)
         return 1.0;
     }
 
-    RayDesc ray;
-    ray.Origin    = origin;
-    ray.Direction = direction;
-    ray.TMin      = 0.001;
-    ray.TMax      = t_max;
-
-    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
-    query.Proceed();
-
-    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0 : 0.0;
+    return rt_trace_visibility(origin, direction, t_max);
 }
 #endif
 
 // a smoke quad covers a large part of the screen and puffs stack many deep, so a ray query per light
 // per pixel multiplies into billions of traversals, only the primary light is allowed to trace and
-// the local lights fall back to the shadow atlas
+// the local lights stay unshadowed, the atlas is not rendered with ray traced shadows
 float3 evaluate_particle_light(uint light_index, uint2 pixel, Surface surface, bool allow_ray_traced_shadow)
 {
     Light light;
@@ -941,9 +932,12 @@ float3 evaluate_particle_light(uint light_index, uint2 pixel, Surface surface, b
     {
         float shadow = 1.0;
     #ifdef RAY_TRACING_ENABLED
-        if (allow_ray_traced_shadow && is_ray_traced_shadows_enabled())
+        if (is_ray_traced_shadows_enabled())
         {
-            shadow = trace_particle_shadow_ray(light, surface);
+            if (allow_ray_traced_shadow)
+            {
+                shadow = trace_particle_shadow_ray(light, surface);
+            }
         }
         else
     #endif

@@ -1125,6 +1125,7 @@ namespace spartan
                     if (tlas->GetRhiResource())
                     {
                         RHI_CommandList::SetAccelerationStructure(static_cast<uint32_t>(Renderer_BindingsSrv::tlas), tlas);
+                        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::geometry_info), GetBuffer(Renderer_Buffer::GeometryInfo));
                     }
                 }
             }

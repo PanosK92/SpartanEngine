@@ -68,7 +68,9 @@ Texture3D<float4> tex_fog_scattering    : register(t36);
 Texture3D<float4> tex_fog_transmittance : register(t37);
 Texture3D<float4> tex_fog_water_source  : register(t38);
 Texture3D<float4> tex_fog_air_source    : register(t39);
+Texture3D<float>  tex_fog_sky_visibility : register(t40); // coarse grid, r = sky visibility
 [[vk::image_format("unknown")]] RWTexture3D<float4> tex_fog_water_source_uav : register(u27);
+[[vk::image_format("unknown")]] RWTexture3D<float> tex_fog_sky_visibility_uav : register(u64);
 [[vk::image_format("unknown")]] RWTexture3D<float4> tex_fog_scattering_uav : register(u28);
 [[vk::image_format("unknown")]] RWTexture3D<float4> tex_fog_extinction_uav    : register(u62);
 [[vk::image_format("unknown")]] RWTexture3D<float4> tex_fog_transmittance_uav : register(u63);

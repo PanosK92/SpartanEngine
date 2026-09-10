@@ -169,6 +169,9 @@ namespace spartan
     const uint32_t renderer_fog_volume_width        = fog::fog_width;
     const uint32_t renderer_fog_volume_height       = fog::fog_height;
     const uint32_t renderer_fog_volume_depth        = fog::fog_depth;
+    const uint32_t renderer_fog_sky_width           = fog::fog_width  / fog::fog_sky_visibility_divisor_xy;
+    const uint32_t renderer_fog_sky_height          = fog::fog_height / fog::fog_sky_visibility_divisor_xy;
+    const uint32_t renderer_fog_sky_depth           = fog::fog_depth  / fog::fog_sky_visibility_divisor_z;
 
     enum class Renderer_Tonemapping : uint32_t
     {
@@ -360,6 +363,7 @@ namespace spartan
         light_flare_v,
         light_flare_p,
         light_composition_c,
+        fog_sky_visibility_c,
         fog_inject_c,
         fog_integrate_c,
         fog_composite_c,
@@ -507,6 +511,7 @@ namespace spartan
         fog_water_source,
         fog_water_history,
         fog_transmittance,
+        fog_sky_visibility,
         particle_volume,
         particle_volume_history,
         frame_render,

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include <mutex>
 #include <unordered_set>
+#include <unordered_map>
 #include <future>
 #include <cmath>
 #include "Renderer_Internal.h"
@@ -1416,6 +1417,12 @@ namespace spartan
     bool Renderer::IsSecondaryViewActive()
     {
         return secondary_render_root_active != nullptr;
+    }
+
+    bool Renderer::IsRayTracedShadowsActive()
+    {
+        // same bit the shaders branch on, so cpu and gpu agree on which path owns the frame
+        return (m_cb_frame_cpu.options & (1u << 2)) != 0;
     }
 
     bool Renderer::IsSecondaryScreenshotPending()
@@ -3316,9 +3323,9 @@ namespace spartan
 
     void Renderer::UpdateDrawCalls_CollectAndSort()
     {
-        // The atlas also supplies casters absent from the TLAS (instanced foliage).
-        // Keep off-screen casters: their shadows can enter the camera's fog volume.
-        const bool shadow_maps_required = World::GetLightCount() > 0;
+        // the atlas needs off-screen casters, their shadows can enter the camera's fog volume,
+        // with ray traced shadows the tlas owns them and only visible draws are collected
+        const bool shadow_maps_required = World::GetLightCount() > 0 && !IsRayTracedShadowsActive();
 
         for (Entity* entity : render_entities())
         {
@@ -3767,6 +3774,147 @@ namespace spartan
         return true;
     }
 
+    // one tlas instance and its hit shader record for a world matrix
+    static void build_tlas_instance(
+        Render* render,
+        Material* material,
+        const Matrix& world,
+        uint64_t blas_address,
+        RHI_AccelerationStructureInstance& instance,
+        Sb_GeometryInfo& geometry_info
+    )
+    {
+        constexpr uint32_t RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT = 0x00000002; // VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR
+        constexpr uint32_t RHI_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT                 = 0x00000004; // VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR
+
+        const RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
+
+        // Grass casts through screen-space depth only. Give authored blades their own
+        // mask so shadow rays skip them while reflection and GI surface rays still see them.
+        // GPU procedural grass has no entities and never enters this TLAS.
+        const uint32_t instance_mask = material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f
+            ? 0x04 : (material->IsTransparent() ? 0x02 : 0x01);
+
+        // cutouts stay non opaque so inline shadow queries can alpha test them, everything else
+        // is force opaque and never yields a candidate to the shader
+        uint32_t flags = cull_mode == RHI_CullMode::None ? RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT : 0;
+        if (!material->IsAlphaTested())
+        {
+            flags |= RHI_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT;
+        }
+
+        instance                                             = {};
+        instance.instance_custom_index                       = material->GetIndex(); // for hit shader material lookup
+        instance.mask                                        = instance_mask;        // bit 0 = opaque, bit 1 = transparent, bit 2 = grass
+        instance.instance_shader_binding_table_record_offset = 0;                    // sbt hit group offset
+        instance.flags                                       = flags;
+        instance.device_address                              = blas_address;
+
+        // row-major 3x4 transform (transpose 3x3 because vulkan uses column vectors)
+        const Matrix& m = world;
+        instance.transform[0]  = m.m00; instance.transform[1]  = m.m10; instance.transform[2]  = m.m20; instance.transform[3]  = m.m30;
+        instance.transform[4]  = m.m01; instance.transform[5]  = m.m11; instance.transform[6]  = m.m21; instance.transform[7]  = m.m31;
+        instance.transform[8]  = m.m02; instance.transform[9]  = m.m12; instance.transform[10] = m.m22; instance.transform[11] = m.m32;
+
+        geometry_info                = {};
+        geometry_info.vertex_offset  = render->GetVertexOffset(0);
+        geometry_info.index_offset   = render->GetIndexOffset(0);
+        geometry_info.material_index = instance.instance_custom_index;
+        const Matrix inverse = m.Inverted();
+        geometry_info.object_to_world_0 = Vector4(m.m00, m.m01, m.m02, 0.0f);
+        geometry_info.object_to_world_1 = Vector4(m.m10, m.m11, m.m12, 0.0f);
+        geometry_info.object_to_world_2 = Vector4(m.m20, m.m21, m.m22, 0.0f);
+        geometry_info.world_to_object_0 = Vector4(inverse.m00, inverse.m01, inverse.m02, 0.0f);
+        geometry_info.world_to_object_1 = Vector4(inverse.m10, inverse.m11, inverse.m12, 0.0f);
+        geometry_info.world_to_object_2 = Vector4(inverse.m20, inverse.m21, inverse.m22, 0.0f);
+        static_assert(sizeof(Sb_GeometryInfo) == 144, "RT geometry buffer layout must match HLSL");
+        fill_uv_draw_fields_from_render(geometry_info, render);
+    }
+
+    // instanced renders (terrain scatter) enter the tlas one instance each, culled around the
+    // camera so a forest does not become hundreds of thousands of tlas entries. the culled set
+    // is cached, a tlas rebuild for a moving entity only copies it
+    struct InstancedTlasCache
+    {
+        Vector3 cull_center;
+        float cull_radius       = 0.0f;
+        uint64_t blas_address   = 0;
+        uint32_t material_index = 0;
+        uint32_t instance_count = 0;
+        uint32_t group_count    = 0;
+        Matrix entity_matrix;
+        bool touched            = false;
+        vector<RHI_AccelerationStructureInstance> instances;
+        vector<Sb_GeometryInfo> geometry_infos;
+    };
+    static unordered_map<const Render*, InstancedTlasCache> instanced_tlas_caches;
+
+    static bool refresh_instanced_tlas_cache(Render* render, Material* material, const Vector3& camera_position)
+    {
+        // scatter beyond its shadow distance casts nothing in either path, the margin lets the
+        // camera travel before the set has to be rebuilt
+        constexpr float hysteresis = 25.0f;
+        constexpr float radius_max = 500.0f;
+        const float radius = min(render->GetMaxShadowDistance(), radius_max);
+
+        Entity* entity               = render->GetEntity();
+        const uint64_t blas_address  = render->GetAccelerationStructureDeviceAddress();
+        InstancedTlasCache& cache    = instanced_tlas_caches[render];
+        cache.touched                = true;
+        const bool stale =
+            cache.blas_address != blas_address ||
+            cache.material_index != material->GetIndex() ||
+            cache.instance_count != render->GetInstanceCount() ||
+            cache.group_count != static_cast<uint32_t>(render->GetInstanceBoundsGroups().size()) ||
+            cache.cull_radius != radius ||
+            !cache.entity_matrix.Equals(entity->GetMatrix()) ||
+            Vector3::DistanceSquared(cache.cull_center, camera_position) > hysteresis * hysteresis;
+        if (!stale)
+        {
+            return false;
+        }
+
+        cache.cull_center    = camera_position;
+        cache.cull_radius    = radius;
+        cache.blas_address   = blas_address;
+        cache.material_index = material->GetIndex();
+        cache.instance_count = render->GetInstanceCount();
+        cache.group_count    = static_cast<uint32_t>(render->GetInstanceBoundsGroups().size());
+        cache.entity_matrix  = entity->GetMatrix();
+        cache.instances.clear();
+        cache.geometry_infos.clear();
+
+        const float cull_radius = radius + hysteresis;
+        const float cull_radius_squared = cull_radius * cull_radius;
+        for (const Render::InstanceBoundsGroup& group : render->GetInstanceBoundsGroups())
+        {
+            if (Vector3::DistanceSquared(camera_position, group.bounds.GetClosestPoint(camera_position)) > cull_radius_squared)
+            {
+                continue;
+            }
+
+            for (uint32_t j = group.offset; j < group.offset + group.count; ++j)
+            {
+                const uint32_t index      = render->GetGroupedInstanceIndex(j);
+                const BoundingBox& bounds = render->GetInstanceBounds(index);
+                if (Vector3::DistanceSquared(camera_position, bounds.GetClosestPoint(camera_position)) > cull_radius_squared)
+                {
+                    continue;
+                }
+
+                const Matrix world = render->GetInstance(index, true);
+                if (!is_transform_traceable(world) || !is_bounding_box_traceable(bounds))
+                {
+                    continue;
+                }
+
+                build_tlas_instance(render, material, world, blas_address, cache.instances.emplace_back(), cache.geometry_infos.emplace_back());
+            }
+        }
+
+        return true;
+    }
+
     void Renderer::UpdateAccelerationStructures()
     {
         SP_PROFILE_CPU();
@@ -3902,6 +4050,54 @@ namespace spartan
             materials_uploaded_this_frame = false;
 
             bool needs_tlas_rebuild = structural_tlas_rebuild;
+
+            // instanced renders are culled around the camera, a stale set is as good as a moved entity
+            {
+                const Vector3 camera_position = m_cb_frame_cpu.camera_position;
+                for (auto& entry : instanced_tlas_caches)
+                {
+                    entry.second.touched = false;
+                }
+
+                for (Entity* entity : render_entities())
+                {
+                    if (!entity || !entity->GetActive() || !is_secondary_view_entity(entity))
+                    {
+                        continue;
+                    }
+
+                    Render* render = entity->GetComponent<Render>();
+                    if (!render || !render->HasInstancing() || render->HasFlag(RenderFlags::ExcludeFromRayTracing))
+                    {
+                        continue;
+                    }
+
+                    Material* material = render->GetMaterial();
+                    if (!material || render->GetAccelerationStructureDeviceAddress() == 0)
+                    {
+                        continue;
+                    }
+
+                    if (refresh_instanced_tlas_cache(render, material, camera_position))
+                    {
+                        needs_tlas_rebuild = true;
+                    }
+                }
+
+                for (auto it = instanced_tlas_caches.begin(); it != instanced_tlas_caches.end();)
+                {
+                    if (!it->second.touched)
+                    {
+                        it = instanced_tlas_caches.erase(it);
+                        needs_tlas_rebuild = true;
+                    }
+                    else
+                    {
+                        ++it;
+                    }
+                }
+            }
+
             if (!needs_tlas_rebuild)
             {
                 const float move_window_sec = max(
@@ -3955,8 +4151,6 @@ namespace spartan
                 m_tlas = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Top, "world_tlas");
             }
 
-            constexpr uint32_t RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT = 0x00000002; // VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR
-
             static vector<RHI_AccelerationStructureInstance> instances; // static to avoid per-frame heap alloc
             static vector<Sb_GeometryInfo> geometry_infos;
             instances.clear();
@@ -4007,26 +4201,22 @@ namespace spartan
                     continue;
                 }
 
-                RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
-
-                // Grass casts through screen-space depth only. Give authored blades their own
-                // mask so shadow rays skip them while reflection and GI surface rays still see them.
-                // GPU procedural grass has no entities and never enters this TLAS.
-                const uint32_t instance_mask = material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f
-                    ? 0x04 : (material->IsTransparent() ? 0x02 : 0x01);
-
-                RHI_AccelerationStructureInstance instance           = {};
-                instance.instance_custom_index                       = material->GetIndex();             // for hit shader material lookup
-                instance.mask                                        = instance_mask;                    // bit 0 = opaque, bit 1 = transparent, bit 2 = grass
-                instance.instance_shader_binding_table_record_offset = 0;                                // sbt hit group offset
-                instance.flags                                       = cull_mode == RHI_CullMode::None ? RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT : 0;
-                instance.device_address                              = device_address;
-
-                // row-major 3x4 transform (transpose 3x3 because vulkan uses column vectors)
-                const Matrix& m = render->GetEntity()->GetMatrix();
+                // instanced renders were culled and cached above, the entity matrix alone would
+                // ghost a full size mesh at the tile origin
+                if (render->HasInstancing())
+                {
+                    auto it = instanced_tlas_caches.find(render);
+                    if (it != instanced_tlas_caches.end())
+                    {
+                        instances.insert(instances.end(), it->second.instances.begin(), it->second.instances.end());
+                        geometry_infos.insert(geometry_infos.end(), it->second.geometry_infos.begin(), it->second.geometry_infos.end());
+                    }
+                    continue;
+                }
 
                 // one bad matrix is enough to wreck traversal for the whole scene, drop the instance
                 // rather than let it into the tlas, the entity loses its ray traced shadow and nothing else
+                const Matrix& m = render->GetEntity()->GetMatrix();
                 if (!is_transform_traceable(m) || !is_bounding_box_traceable(render->GetBoundingBox()))
                 {
                     invalid_transforms++;
@@ -4037,26 +4227,7 @@ namespace spartan
                     continue;
                 }
 
-                instance.transform[0]  = m.m00; instance.transform[1]  = m.m10; instance.transform[2]  = m.m20; instance.transform[3]  = m.m30;
-                instance.transform[4]  = m.m01; instance.transform[5]  = m.m11; instance.transform[6]  = m.m21; instance.transform[7]  = m.m31;
-                instance.transform[8]  = m.m02; instance.transform[9]  = m.m12; instance.transform[10] = m.m22; instance.transform[11] = m.m32;
-
-                instances.push_back(instance);
-
-                Sb_GeometryInfo geo_info = {};
-                geo_info.vertex_offset  = render->GetVertexOffset(0);
-                geo_info.index_offset   = render->GetIndexOffset(0);
-                geo_info.material_index = instance.instance_custom_index;
-                const Matrix inverse = m.Inverted();
-                geo_info.object_to_world_0 = Vector4(m.m00, m.m01, m.m02, 0.0f);
-                geo_info.object_to_world_1 = Vector4(m.m10, m.m11, m.m12, 0.0f);
-                geo_info.object_to_world_2 = Vector4(m.m20, m.m21, m.m22, 0.0f);
-                geo_info.world_to_object_0 = Vector4(inverse.m00, inverse.m01, inverse.m02, 0.0f);
-                geo_info.world_to_object_1 = Vector4(inverse.m10, inverse.m11, inverse.m12, 0.0f);
-                geo_info.world_to_object_2 = Vector4(inverse.m20, inverse.m21, inverse.m22, 0.0f);
-                static_assert(sizeof(Sb_GeometryInfo) == 144, "RT geometry buffer layout must match HLSL");
-                fill_uv_draw_fields_from_render(geo_info, render);
-                geometry_infos.push_back(geo_info);
+                build_tlas_instance(render, material, m, device_address, instances.emplace_back(), geometry_infos.emplace_back());
             }
     
             // log only when the count moves so a persistent bad entity does not spam every frame
@@ -4132,6 +4303,7 @@ namespace spartan
         RHI_AccelerationStructure::FreeSharedBlasScratch();
 
         m_tlas = nullptr;
+        instanced_tlas_caches.clear();
 
         // every blas holds device addresses into the global buffers about to be freed, dedup by mesh since many renders share one
         std::unordered_set<Mesh*> meshes;
@@ -4903,9 +5075,9 @@ namespace spartan
             RHI_SyncPrimitive* compute_b_timeline = batch_b.timeline;
             const uint64_t compute_b_value        = batch_b.value;
 
-            // Even with RT enabled, the atlas owns excluded foliage and local
-            // fallback lights. Submit it before either fog or surface lighting.
-            const bool shadow_maps_required = World::GetLightCount() > 0;
+            // the atlas and ray traced shadows are mutually exclusive, with rays live the tlas
+            // owns every caster and this submit is skipped outright
+            const bool shadow_maps_required = World::GetLightCount() > 0 && !IsRayTracedShadowsActive();
             RHI_Device::Bind(RHI_Frame_List::Graphics);
             if (shadow_maps_required)
             {

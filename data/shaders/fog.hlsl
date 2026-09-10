@@ -22,9 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_FOG_LIGHTING
 #define SPARTAN_FOG_LIGHTING
 #include "fog_volume.hlsl"
+#include "rt_visibility.hlsl"
 
 // returns 1 if the world space position is lit by the light, 0 if occluded
 // directional picks a single cascade per sample instead of paying for both
+// raster atlas path only, ray traced shadows trace the tlas instead
 float visible(float3 position, Light light, uint2 pixel_pos)
 {
     if (light.is_point())
@@ -180,22 +182,7 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
 #ifdef RAY_TRACING_ENABLED
 float fog_trace_visibility(float3 origin, float3 direction, float t_max)
 {
-    RayDesc ray;
-    ray.Origin    = origin;
-    ray.Direction = direction;
-    ray.TMin      = 0.001f;
-    ray.TMax      = t_max;
-
-    // This visibility query already commits every non-opaque candidate. Let hardware
-    // perform the identical acceptance without yielding each candidate to the shader.
-    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_FORCE_OPAQUE> query;
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
-    while (query.Proceed())
-    {
-        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
-            query.CommitNonOpaqueTriangleHit();
-    }
-    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
+    return rt_trace_visibility(origin, direction, t_max);
 }
 
 float fog_trace_shadow(Light light, float3 sample_pos)

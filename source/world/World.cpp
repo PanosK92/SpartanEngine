@@ -3234,6 +3234,12 @@ namespace spartan
         return file_path;
     }
 
+    void World::SetFilePath(const string& path)
+    {
+        file_path  = path;
+        world_name = FileSystem::GetFileNameFromFilePath(file_path);
+    }
+
     BoundingBox& World::GetBoundingBox()
     {
         return bounding_box;

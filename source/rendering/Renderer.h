@@ -303,6 +303,8 @@ namespace spartan
         bool IsSecondaryViewReady();
         // true only while the frame currently being recorded belongs to a secondary view
         bool IsSecondaryViewActive();
+        // ray traced shadows are live this frame, the shadow atlas is neither rendered nor read
+        bool IsRayTracedShadowsActive();
         void InvalidateSecondaryView();
         // a capture is waiting on a secondary render, issuing a new request would change what it grabs
         bool IsSecondaryScreenshotPending();

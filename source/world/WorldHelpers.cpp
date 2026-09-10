@@ -638,6 +638,16 @@ namespace spartan
             return min(min(size.x, size.y), size.z) * instance_scale;
         }
 
+        // scatter shorter than this in every direction is tiny stuff, debris and flowers, it never
+        // enters the tlas and casts through screen space depth only
+        constexpr float scatter_ray_traced_extent_min = 1.5f;
+
+        float mesh_extent_max(const BoundingBox& aabb, const float instance_scale)
+        {
+            const Vector3 size = aabb.GetSize();
+            return max(max(size.x, size.y), size.z) * instance_scale;
+        }
+
         // two layers can point at one mesh at very different scales, boulders and rock debris both draw
         // rock_2 two hundred times apart, and a shared material means whichever attaches last decides the
         // ground band for both. the first layer keeps the imported material. cloning and pushing that
@@ -838,9 +848,14 @@ namespace spartan
                     render->SetMaxRenderDistance(render_distance);
                     render->SetMaxShadowDistance(layer.shadow_distance);
                     render->SetFlag(RenderFlags::CastsShadows, casts_shadows);
-                    // foliage instance counts blow the tlas, and the entity origin would ghost a
-                    // full size mesh at the tile center
-                    render->SetFlag(RenderFlags::ExcludeFromRayTracing, true);
+                    // trees and boulders enter the tlas per instance so ray traced shadows can replace
+                    // the atlas, tiny props are dense and read fine with screen space shadows alone
+                    const bool tiny = mesh_extent_max(render->GetLodAabb(0), scale_typical) < scatter_ray_traced_extent_min;
+                    const bool grass_like =
+                        render->GetMaterial() &&
+                        (render->GetMaterial()->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f ||
+                         render->GetMaterial()->GetProperty(MaterialProperty::IsFlower) != 0.0f);
+                    render->SetFlag(RenderFlags::ExcludeFromRayTracing, !casts_shadows || tiny || grass_like);
 
                     if (render->GetMeshletCount(0) == 0)
                     {

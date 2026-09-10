@@ -179,7 +179,8 @@ float reflections_trace_shadow(LightParameters light_p, float3 hit_position, flo
         ray.TMin      = 0.001f;
         ray.TMax      = max(t_max, 0.001f);
         
-        RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+        // force opaque, alpha tested foliage is non opaque in the tlas and a single proceed would stall on it
+        RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_FORCE_OPAQUE> query;
         // Preserve opaque/glass blockers, but grass (0x04) casts only screen-space shadows.
         query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x03, ray);
         query.Proceed();
@@ -204,7 +205,7 @@ float reflections_trace_sky_visibility(float3 hit_position, float3 hit_normal, f
     ray.TMin      = 0.001f;
     ray.TMax      = 100.0f;
     
-    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_FORCE_OPAQUE> query;
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x03, ray); // exclude grass from sky shadowing too
     query.Proceed();
     

@@ -19,9 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
+//= INCLUDES ===============
 #include "common.hlsl"
-//====================
+#include "rt_visibility.hlsl"
+//==========================
 
 static const float SUN_ANGULAR_RADIUS = 0.00465f;
 
@@ -72,36 +73,13 @@ float3 sample_sun_direction(float3 light_dir, float2 disk_sample, float penumbra
     return normalize(light_dir + tangent * offset.x + bitangent * offset.y);
 }
 
+// inline query so alpha tested foliage resolves its cutouts, the hit group below stays for the pipeline
 float2 trace_opaque_shadow(float3 origin, float3 direction, float t_max)
 {
-    RayDesc ray;
-    ray.Origin    = origin;
-    ray.Direction = direction;
-    ray.TMin      = 0.001f;
-    ray.TMax      = max(t_max, 0.001f);
-
-    ShadowPayload payload;
-    payload.hit_distance = -1.0f;
-    payload.shadow_alpha = 0.0f;
-
-    // opaque instances only, glass is 0x02 and a layered walk against a car tlas tdrs on play
-    // grass is 0x04 and casts only through screen-space depth
-    TraceRay(
-        tlas,
-        RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
-        0x01,
-        0,
-        1,
-        0,
-        ray,
-        payload
-    );
-
-    float local_hit_distance = payload.hit_distance;
-    float local_shadow_alpha = payload.shadow_alpha;
-    if (local_hit_distance >= 0.0f)
+    float hit_distance = rt_trace_occluder(origin, direction, 0.001f, max(t_max, 0.001f));
+    if (hit_distance >= 0.0f)
     {
-        return float2(saturate(1.0f - local_shadow_alpha), local_hit_distance);
+        return float2(0.0f, hit_distance);
     }
 
     return float2(1.0f, 0.0f);

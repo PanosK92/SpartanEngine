@@ -27,8 +27,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../imgui/ImGui_EditorUi.h"
 #include "../imgui/ImGui_Extension.h"
 #include "../imgui/ImGui_Style.h"
+#include "../imgui/source/imgui_stdlib.h"
 #include "../widgets/Viewport.h"
 #include "core/ProgressTracker.h"
+#include <cctype>
 #include <filesystem>
 #include <unordered_set>
 SP_WARNINGS_OFF
@@ -96,6 +98,16 @@ namespace
     float last_click_time    = -1.0f;
     int last_click_index     = -1;
     bool scroll_to_selection = false;
+
+    string rename_world_path;
+    string rename_buffer;
+    bool rename_request_focus = false;
+    string pending_rename_path;
+    string pending_rename_name;
+    string pending_delete_path;
+    string pending_duplicate_path;
+
+    void load_selected_world();
 
     unordered_map<string, int64_t> world_last_opened;
 
@@ -509,6 +521,558 @@ namespace
         }
     }
 
+    string sanitize_world_name(string name)
+    {
+        size_t start = 0;
+        while (
+            start < name.size() &&
+            isspace(static_cast<unsigned char>(name[start]))
+        )
+        {
+            start++;
+        }
+
+        size_t end = name.size();
+        while (
+            end > start &&
+            isspace(static_cast<unsigned char>(name[end - 1]))
+        )
+        {
+            end--;
+        }
+        name = name.substr(start, end - start);
+
+        string cleaned;
+        cleaned.reserve(name.size());
+        for (unsigned char character : name)
+        {
+            if (
+                character < 32 ||
+                character == '<' ||
+                character == '>' ||
+                character == ':' ||
+                character == '"' ||
+                character == '/' ||
+                character == '\\' ||
+                character == '|' ||
+                character == '?' ||
+                character == '*'
+            )
+            {
+                cleaned += '_';
+            }
+            else
+            {
+                cleaned += static_cast<char>(character);
+            }
+        }
+
+        while (
+            !cleaned.empty() &&
+            (cleaned.back() == '.' || cleaned.back() == ' ')
+        )
+        {
+            cleaned.pop_back();
+        }
+
+        return cleaned;
+    }
+
+    bool is_same_world_path(const string& a, const string& b)
+    {
+        return normalize_world_path(a) == normalize_world_path(b);
+    }
+
+    bool is_loaded_world(const string& path)
+    {
+        const string loaded = spartan::World::GetFilePath();
+        return !loaded.empty() && is_same_world_path(loaded, path);
+    }
+
+    string authored_preview_path(const string& world_file_path)
+    {
+        return string(spartan::ResourceCache::GetProjectDirectory()) +
+            "/previews/" +
+            spartan::FileSystem::GetFileNameWithoutExtensionFromFilePath(
+                world_file_path
+            ) +
+            ".png";
+    }
+
+    string unique_copy_world_path(const string& world_file_path)
+    {
+        const string directory =
+            spartan::FileSystem::GetDirectoryFromFilePath(world_file_path);
+        const string stem =
+            spartan::FileSystem::GetFileNameWithoutExtensionFromFilePath(
+                world_file_path
+            );
+
+        auto path_for = [&](const string& suffix)
+        {
+            return directory +
+                stem +
+                suffix +
+                string(spartan::EXTENSION_WORLD);
+        };
+
+        string candidate = path_for("_copy");
+        int index = 2;
+        while (spartan::FileSystem::Exists(candidate))
+        {
+            candidate = path_for("_copy" + to_string(index));
+            index++;
+        }
+
+        return candidate;
+    }
+
+    void copy_directory_if_exists(
+        const string& source,
+        const string& destination
+    )
+    {
+        if (
+            source.empty() ||
+            destination.empty() ||
+            !spartan::FileSystem::Exists(source)
+        )
+        {
+            return;
+        }
+
+        error_code error;
+        filesystem::copy(
+            source,
+            destination,
+            filesystem::copy_options::recursive |
+            filesystem::copy_options::overwrite_existing,
+            error
+        );
+        if (error)
+        {
+            SP_LOG_ERROR(
+                "Failed to copy %s to %s: %s",
+                source.c_str(),
+                destination.c_str(),
+                error.message().c_str()
+            );
+        }
+    }
+
+    bool write_world_display_name(
+        const string& world_file_path,
+        const string& name
+    )
+    {
+        pugi::xml_document doc;
+        if (!doc.load_file(world_file_path.c_str()))
+        {
+            SP_LOG_ERROR(
+                "Failed to load world for rename: %s",
+                world_file_path.c_str()
+            );
+            return false;
+        }
+
+        pugi::xml_node world_node = doc.child("World");
+        if (!world_node)
+        {
+            SP_LOG_ERROR(
+                "No World node in: %s",
+                world_file_path.c_str()
+            );
+            return false;
+        }
+
+        pugi::xml_attribute name_attr = world_node.attribute("name");
+        if (name_attr)
+        {
+            name_attr.set_value(name.c_str());
+        }
+        else
+        {
+            world_node.append_attribute("name").set_value(name.c_str());
+        }
+
+        if (!doc.save_file(world_file_path.c_str()))
+        {
+            SP_LOG_ERROR(
+                "Failed to save world name: %s",
+                world_file_path.c_str()
+            );
+            return false;
+        }
+
+        return true;
+    }
+
+    void relocate_world_recency(
+        const string& old_path,
+        const string& new_path
+    )
+    {
+        const string old_key = normalize_world_path(old_path);
+        const string new_key = normalize_world_path(new_path);
+        const auto it = world_last_opened.find(old_key);
+        if (it == world_last_opened.end())
+        {
+            return;
+        }
+
+        const int64_t last_opened = it->second;
+        world_last_opened.erase(it);
+        if (!new_path.empty())
+        {
+            world_last_opened[new_key] = last_opened;
+        }
+        save_world_recency();
+    }
+
+    void refresh_world_list(const string& select_path)
+    {
+        scan_for_world_files();
+        if (!select_path.empty())
+        {
+            const int index = world_index_from_path(select_path);
+            if (index >= 0)
+            {
+                selected_index = index;
+            }
+        }
+        rebuild_visible_indices();
+        scroll_to_selection = true;
+    }
+
+    void start_world_rename(int world_index)
+    {
+        if (
+            world_index < 0 ||
+            world_index >= static_cast<int>(world_files.size())
+        )
+        {
+            return;
+        }
+
+        const spartan::WorldMetadata& world = world_files[world_index];
+        rename_world_path = world.file_path;
+        rename_buffer = world.name.empty()
+            ? spartan::FileSystem::GetFileNameWithoutExtensionFromFilePath(
+                world.file_path
+            )
+            : world.name;
+        rename_request_focus = true;
+        select_visible_index(
+            visible_position_from_world_index(world_index)
+        );
+    }
+
+    void apply_world_rename(const string& old_path, const string& raw_name)
+    {
+        const string name = sanitize_world_name(raw_name);
+        if (name.empty())
+        {
+            SP_LOG_ERROR("World name cannot be empty");
+            return;
+        }
+
+        const string directory =
+            spartan::FileSystem::GetDirectoryFromFilePath(old_path);
+        const string new_path =
+            directory + name + string(spartan::EXTENSION_WORLD);
+
+        if (
+            !is_same_world_path(old_path, new_path) &&
+            spartan::FileSystem::Exists(new_path)
+        )
+        {
+            SP_LOG_ERROR(
+                "A world named %s already exists",
+                name.c_str()
+            );
+            return;
+        }
+
+        const string old_resources =
+            spartan::World::GetResourceDirectory(old_path);
+        const string new_resources =
+            spartan::World::GetResourceDirectory(new_path);
+        if (
+            !is_same_world_path(old_resources, new_resources) &&
+            spartan::FileSystem::Exists(old_resources)
+        )
+        {
+            if (spartan::FileSystem::Exists(new_resources))
+            {
+                SP_LOG_ERROR(
+                    "Resource folder already exists: %s",
+                    new_resources.c_str()
+                );
+                return;
+            }
+            spartan::FileSystem::Rename(old_resources, new_resources);
+        }
+
+        const string old_preview = authored_preview_path(old_path);
+        const string new_preview = authored_preview_path(new_path);
+        if (
+            !is_same_world_path(old_preview, new_preview) &&
+            spartan::FileSystem::Exists(old_preview)
+        )
+        {
+            spartan::FileSystem::Rename(old_preview, new_preview);
+        }
+
+        if (!is_same_world_path(old_path, new_path))
+        {
+            spartan::FileSystem::Rename(old_path, new_path);
+            if (!spartan::FileSystem::Exists(new_path))
+            {
+                SP_LOG_ERROR(
+                    "Failed to rename world to %s",
+                    new_path.c_str()
+                );
+                return;
+            }
+        }
+
+        write_world_display_name(new_path, name);
+        relocate_world_recency(old_path, new_path);
+
+        if (is_loaded_world(old_path))
+        {
+            spartan::World::SetFilePath(new_path);
+        }
+
+        refresh_world_list(new_path);
+    }
+
+    void apply_world_delete(const string& path)
+    {
+        if (path.empty() || !spartan::FileSystem::Exists(path))
+        {
+            return;
+        }
+
+        const string resources =
+            spartan::World::GetResourceDirectory(path);
+        const string preview = authored_preview_path(path);
+        const string generated_preview =
+            WorldPreviews::GetPreviewPath(path);
+
+        spartan::FileSystem::Delete(path);
+        if (
+            !resources.empty() &&
+            spartan::FileSystem::Exists(resources)
+        )
+        {
+            spartan::FileSystem::Delete(resources);
+        }
+        if (spartan::FileSystem::Exists(preview))
+        {
+            spartan::FileSystem::Delete(preview);
+        }
+        if (
+            !is_same_world_path(preview, generated_preview) &&
+            spartan::FileSystem::Exists(generated_preview)
+        )
+        {
+            spartan::FileSystem::Delete(generated_preview);
+        }
+
+        relocate_world_recency(path, "");
+        refresh_world_list("");
+    }
+
+    void apply_world_duplicate(const string& path)
+    {
+        if (path.empty() || !spartan::FileSystem::Exists(path))
+        {
+            return;
+        }
+
+        const string new_path = unique_copy_world_path(path);
+        if (!spartan::FileSystem::CopyFileFromTo(path, new_path))
+        {
+            SP_LOG_ERROR(
+                "Failed to duplicate world: %s",
+                path.c_str()
+            );
+            return;
+        }
+
+        const string new_name =
+            spartan::FileSystem::GetFileNameWithoutExtensionFromFilePath(
+                new_path
+            );
+        write_world_display_name(new_path, new_name);
+
+        copy_directory_if_exists(
+            spartan::World::GetResourceDirectory(path),
+            spartan::World::GetResourceDirectory(new_path)
+        );
+
+        const string old_preview = authored_preview_path(path);
+        const string new_preview = authored_preview_path(new_path);
+        if (spartan::FileSystem::Exists(old_preview))
+        {
+            spartan::FileSystem::CopyFileFromTo(old_preview, new_preview);
+        }
+
+        refresh_world_list(new_path);
+    }
+
+    void process_pending_world_actions()
+    {
+        if (!pending_rename_path.empty())
+        {
+            const string path = pending_rename_path;
+            const string name = pending_rename_name;
+            pending_rename_path.clear();
+            pending_rename_name.clear();
+            apply_world_rename(path, name);
+        }
+
+        if (!pending_duplicate_path.empty())
+        {
+            const string path = pending_duplicate_path;
+            pending_duplicate_path.clear();
+            apply_world_duplicate(path);
+        }
+    }
+
+    void draw_delete_confirmation()
+    {
+        if (pending_delete_path.empty())
+        {
+            return;
+        }
+
+        const char* title = "Delete world?";
+        if (!ImGui::IsPopupOpen(title))
+        {
+            ImGui::OpenPopup(title);
+        }
+
+        ImGui::SetNextWindowPos(
+            ImGui::GetMainViewport()->GetWorkCenter(),
+            ImGuiCond_Appearing,
+            ImVec2(0.5f, 0.5f)
+        );
+
+        if (
+            ImGui::BeginPopupModal(
+                title,
+                nullptr,
+                ImGuiWindowFlags_AlwaysAutoResize |
+                ImGuiWindowFlags_NoDocking
+            )
+        )
+        {
+            const string leaf =
+                spartan::FileSystem::GetFileNameFromFilePath(
+                    pending_delete_path
+                );
+            ImGui::Text("Delete %s from disk?", leaf.c_str());
+            ImGui::TextDisabled(
+                "The world file, preview and resources folder go with it."
+            );
+            if (is_loaded_world(pending_delete_path))
+            {
+                ImGui::Dummy(ImVec2(0.0f, scaled(4.0f)));
+                ImGui::TextDisabled(
+                    "This world is currently open. Saving will recreate it."
+                );
+            }
+
+            ImGui::Dummy(ImVec2(0.0f, scaled(8.0f)));
+            if (launcher_button("Delete", ImVec2(scaled(96.0f), 0.0f), true))
+            {
+                const string path = pending_delete_path;
+                pending_delete_path.clear();
+                ImGui::CloseCurrentPopup();
+                apply_world_delete(path);
+            }
+            ImGui::SameLine(0.0f, scaled(8.0f));
+            if (launcher_button("Cancel", ImVec2(scaled(96.0f), 0.0f)))
+            {
+                pending_delete_path.clear();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
+    }
+
+    void draw_world_context_menu(int world_index)
+    {
+        if (
+            world_index < 0 ||
+            world_index >= static_cast<int>(world_files.size())
+        )
+        {
+            return;
+        }
+
+        if (!ImGui::BeginPopupContextItem("##world_context"))
+        {
+            return;
+        }
+
+        const spartan::WorldMetadata& world = world_files[world_index];
+        select_visible_index(
+            visible_position_from_world_index(world_index)
+        );
+
+        ImGui::TextDisabled("%s", world.name.c_str());
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Open", "Enter"))
+        {
+            load_selected_world();
+        }
+        if (ImGui::MenuItem("Rename", "F2"))
+        {
+            start_world_rename(world_index);
+        }
+        if (ImGui::MenuItem("Duplicate"))
+        {
+            pending_duplicate_path = world.file_path;
+        }
+
+        ImGui::Separator();
+        if (ImGui::MenuItem("Copy path"))
+        {
+            ImGui::SetClipboardText(world.file_path.c_str());
+        }
+        if (ImGui::MenuItem("Show in explorer"))
+        {
+            error_code error;
+            const filesystem::path absolute = filesystem::absolute(
+                filesystem::path(
+                    spartan::FileSystem::GetDirectoryFromFilePath(
+                        world.file_path
+                    )
+                ),
+                error
+            );
+            if (!error)
+            {
+                spartan::FileSystem::OpenUrl(
+                    "file:///" + absolute.generic_string()
+                );
+            }
+        }
+
+        ImGui::Separator();
+        if (ImGui::MenuItem("Delete", "Del"))
+        {
+            pending_delete_path = world.file_path;
+        }
+
+        ImGui::EndPopup();
+    }
+
     void check_assets_outdated_async()
     {
         spartan::ThreadPool::AddTask([]()
@@ -735,12 +1299,20 @@ namespace
 
         ImVec2 card_min = ImGui::GetCursorScreenPos();
         ImVec2 card_max = ImVec2(card_min.x + card_w, card_min.y + card_h);
-        ImGui::InvisibleButton("##world_card", ImVec2(card_w, card_h));
+        ImGui::InvisibleButton(
+            "##world_card",
+            ImVec2(card_w, card_h),
+            ImGuiButtonFlags_MouseButtonLeft |
+            ImGuiButtonFlags_MouseButtonRight
+        );
         const ImGuiID card_id = ImGui::GetItemID();
+        const ImVec2 cursor_after_card = ImGui::GetCursorScreenPos();
 
         bool is_hovered  = ImGui::IsItemHovered();
         bool is_selected = selected_index == world_index;
         bool loaded      = false;
+        const bool renaming =
+            is_same_world_path(rename_world_path, world.file_path);
 
         if (is_selected && scroll_to_selection)
         {
@@ -748,7 +1320,17 @@ namespace
             scroll_to_selection = false;
         }
 
-        if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+        {
+            select_visible_index(
+                visible_position_from_world_index(world_index)
+            );
+        }
+
+        if (
+            !renaming &&
+            ImGui::IsItemClicked(ImGuiMouseButton_Left)
+        )
         {
             float now = static_cast<float>(ImGui::GetTime());
             if (last_click_index == world_index && (now - last_click_time) < 0.4f)
@@ -764,6 +1346,8 @@ namespace
                 select_visible_index(visible_position_from_world_index(world_index));
             }
         }
+
+        draw_world_context_menu(world_index);
 
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
         ImGui::EditorUi::draw_card(
@@ -790,7 +1374,54 @@ namespace
         float path_size    = ImGui::GetFontSize() * 0.72f;
         float title_y      = text_min.y;
 
-        draw_list->AddText(title_font, title_size, ImVec2(text_min.x, title_y), colors.text_primary, world.name.c_str());
+        if (renaming)
+        {
+            ImGui::SetCursorScreenPos(ImVec2(text_min.x, title_y));
+            ImGui::SetNextItemWidth(max(1.0f, text_max.x - text_min.x));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, scaled(3.0f));
+            ImGui::PushStyleVar(
+                ImGuiStyleVar_FramePadding,
+                scaled_vec(4.0f, 1.0f)
+            );
+            if (rename_request_focus)
+            {
+                ImGui::SetKeyboardFocusHere();
+                rename_request_focus = false;
+            }
+
+            const bool committed = ImGui::InputText(
+                "##world_rename",
+                &rename_buffer,
+                ImGuiInputTextFlags_EnterReturnsTrue |
+                ImGuiInputTextFlags_AutoSelectAll
+            );
+            const bool deactivated = ImGui::IsItemDeactivated();
+            const bool cancelled = ImGui::IsKeyPressed(ImGuiKey_Escape);
+            ImGui::PopStyleVar(2);
+
+            if (cancelled)
+            {
+                rename_world_path.clear();
+            }
+            else if (committed || deactivated)
+            {
+                pending_rename_path = world.file_path;
+                pending_rename_name = rename_buffer;
+                rename_world_path.clear();
+            }
+
+            ImGui::SetCursorScreenPos(cursor_after_card);
+        }
+        else
+        {
+            draw_list->AddText(
+                title_font,
+                title_size,
+                ImVec2(text_min.x, title_y),
+                colors.text_primary,
+                world.name.c_str()
+            );
+        }
 
         float desc_y = title_y + ImGui::GetTextLineHeightWithSpacing();
         const char* description = world.description.empty() ? "No description available." : world.description.c_str();
@@ -817,7 +1448,10 @@ namespace
             draw_list->AddText(ImVec2(chip_min.x + scaled(7.0f), chip_min.y + scaled(3.0f)), IM_COL32(0, 0, 0, 255), status);
         }
 
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+        if (
+            !renaming &&
+            ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)
+        )
         {
             ImGui::SetTooltip("%s\n%s", world.name.c_str(), world.file_path.c_str());
         }
@@ -1020,13 +1654,22 @@ namespace
             return;
         }
 
+        const bool renaming = !rename_world_path.empty();
+        const bool popup_open = ImGui::IsPopupOpen(
+            "",
+            ImGuiPopupFlags_AnyPopupId
+        );
+
         if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
         {
-            visible_world_list = false;
+            if (!renaming && !popup_open)
+            {
+                visible_world_list = false;
+            }
             return;
         }
 
-        if (ImGui::GetIO().WantTextInput)
+        if (renaming || popup_open || ImGui::GetIO().WantTextInput)
         {
             return;
         }
@@ -1058,6 +1701,24 @@ namespace
         {
             select_visible_index(target);
             scroll_to_selection = true;
+        }
+
+        if (ImGui::IsKeyPressed(ImGuiKey_F2, false))
+        {
+            start_world_rename(selected_index);
+            return;
+        }
+
+        if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
+        {
+            if (
+                selected_index >= 0 &&
+                selected_index < static_cast<int>(world_files.size())
+            )
+            {
+                pending_delete_path = world_files[selected_index].file_path;
+            }
+            return;
         }
 
         if (ImGui::IsKeyPressed(ImGuiKey_Enter, false) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter, false))
@@ -1131,6 +1792,9 @@ namespace
                 ImGui::Dummy(ImVec2(0.0f, scaled(section_spacing)));
                 draw_detail_panel(details_w, scaled(430.0f));
             }
+
+            process_pending_world_actions();
+            draw_delete_confirmation();
         }
         ImGui::End();
         ImGui::PopStyleVar(2);
