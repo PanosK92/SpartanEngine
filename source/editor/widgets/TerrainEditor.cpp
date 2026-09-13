@@ -1558,6 +1558,8 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
             flag_toggle("Collision",       TerrainScatterFlags_Collision,      "convex hull body on the solid parts, leaves stay walk through");
             flag_toggle("Tumble",          TerrainScatterFlags_Tumble,         "fully random rotation, for debris that has come to rest at any angle");
             flag_toggle("Log Size",        TerrainScatterFlags_LogSize,        "sample the size range logarithmically, a wide range reads better with many small and few large");
+            flag_toggle("Tree Canopy",     TerrainScatterFlags_Canopy,         "placed trees contribute to insects, birds and wind shelter, regardless of placement habitat");
+            flag_toggle("Shrub Cover",     TerrainScatterFlags_Scrub,          "placed shrubs contribute a quieter insect and bird layer; tree canopy takes precedence if both are enabled");
         }
         else
         {

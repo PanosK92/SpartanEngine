@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "../../source/world/TerrainPlacement.h"
 #include "../../source/world/TerrainHabitat.h"
+#include "../../source/world/TerrainAcoustics.h"
 #include "../../source/world/TerrainSystem.h"
 #include "../../source/rendering/Instance.h"
 #include "../../source/rendering/Color.h"
@@ -234,6 +235,29 @@ int main()
     }
     assert(clearings>1000 && dense>1000);
     assert(spartan::terrain_habitat::weight(0,100,200)==1);
+    // The exact CPU/HLSL function preserves clearings and responds to terrain.
+    using namespace spartan::terrain_habitat_shared;
+    float forest_min = 1.0f, forest_max = 0.0f;
+    for (int x = -2000; x <= 2000; x += 25)
+    {
+        const float forest = habitat_woodland(float(x), 170.0f, 80.0f, 10.0f, 0.4f, 0.6f);
+        forest_min = std::min(forest_min, forest); forest_max = std::max(forest_max, forest);
+        assert(habitat_woodland(float(x),170,0,10,.4f,.6f)==0); // shoreline
+        assert(habitat_woodland(float(x),170,80,55,.4f,.6f)==0); // exposed cliff
+        assert(habitat_grove(float(x),170,80,10,1)==0); // no groves in woodland core
+        assert(habitat_grove(float(x),170,400,10,0)==0);
+        assert(habitat_woodland(float(x),170,80,10,.2f,.8f) >= habitat_woodland(float(x),170,80,10,.8f,.2f));
+        assert(std::abs(forest-habitat_woodland(float(x)+.01f,170,80,10,.4f,.6f))<.005f);
+    }
+    assert(forest_min < .01f && forest_max > .95f);
+    using namespace spartan::terrain_acoustics;
+    assert(gain(1,0,0,1)==0 && gain(2,0,0,1)==0); // suitable bare ground stays quiet
+    assert(gain(0,0,0,0)==1); // ordinary regional audio is unchanged
+    assert(gain(3,1,0,1)<gain(3,0,0,1)); // real canopy shelters wind
+    assert(contribution(70,8,8,70)==0 && contribution(100,8,8,70)==0);
+    assert(contribution(20,8,8,70)>contribution(50,8,8,70));
+    assert(contribution(0,8,8,70)>contribution(0,2,2,70));
+    assert(contribution(69.99f,8,8,70)<.00001f); // no hard boundary
     // A forest canopy is many separate textured cards. Reduction must not weld
     // nearby cards into new triangles while claiming to preserve their UV seams.
     std::vector<RHI_Vertex_PosTexNorTan> cards;

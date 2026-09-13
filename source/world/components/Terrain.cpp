@@ -2080,7 +2080,7 @@ namespace spartan
             const float slope_min_rad = layer.slope_min * math::deg_to_rad;
             const float slope_max_rad = layer.slope_max * math::deg_to_rad;
             const float slope_range   = max(slope_max_rad - slope_min_rad, 1e-3f);
-            const bool reads_surface  = layer.ground_mask != 0 ||
+            const bool reads_surface  = (layer.habitat >= 1 && layer.habitat <= 3) || layer.ground_mask != 0 ||
                                         layer.mask_channel >= 0 ||
                                         layer.curvature_influence  != 0.0f ||
                                         layer.flow_influence       != 0.0f ||
@@ -2123,7 +2123,7 @@ namespace spartan
 
                 float weight = 1.0f;
 
-                if (!footprint)
+                if (!footprint && layer.habitat == 4)
                     weight *= terrain_habitat::weight(layer.habitat,
                         position.x + ctx.tile_offset.x, position.z + ctx.tile_offset.z);
 
@@ -2171,6 +2171,10 @@ namespace spartan
                         return weight;
 
                     // same push the surface rules use, so an influence reads the same on both sides
+                    if (layer.habitat == 1) weight *= sample.woodland;
+                    if (layer.habitat == 2) weight *= sample.grove;
+                    if (layer.habitat == 3) weight *= sample.scrub;
+
                     float push = 0.0f;
                     push += layer.curvature_influence  * (sample.curvature * 2.0f - 1.0f);
                     push += layer.flow_influence       * (sample.flow * 2.0f - 1.0f);
@@ -3409,7 +3413,7 @@ namespace spartan
 
     bool Terrain::SampleSurface(float world_x, float world_z, TerrainSurfaceSample& sample_out) const
     {
-        if (IsHeightfieldUnsafe() || m_map_a_pixels.empty() || m_map_b_pixels.empty() || m_map_width == 0 || m_map_height == 0)
+        if (IsHeightfieldUnsafe() || m_positions.empty() || !GetEntity() || m_map_a_pixels.empty() || m_map_b_pixels.empty() || m_map_width == 0 || m_map_height == 0)
         {
             return false;
         }
@@ -3417,6 +3421,8 @@ namespace spartan
         const Vector4 mapping = GetMappingWorld();
         float u = (world_x - mapping.x) * mapping.z;
         float v = (world_z - mapping.y) * mapping.w;
+        if (!std::isfinite(u) || !std::isfinite(v) || u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f)
+            return false;
         u = clamp(u, 0.0f, 1.0f);
         v = clamp(v, 0.0f, 1.0f);
 
@@ -3433,6 +3439,19 @@ namespace spartan
         sample_out.wear       = m_map_b_pixels[offset + 0] * inv;
         sample_out.insolation = m_map_b_pixels[offset + 1] * inv;
         sample_out.talus      = m_map_b_pixels[offset + 3] * inv;
+
+        const Vector3 local = GetEntity()->GetMatrix().Inverted() * Vector3(world_x, 0.0f, world_z);
+        const TerrainGridMapping grid = GetGridMapping();
+        const float height = TerrainSystem::SampleHeight(m_positions, m_dense_width, m_dense_height, local.x, local.z, grid);
+        const Vector3 normal = TerrainSystem::SampleNormal(m_positions, m_dense_width, m_dense_height, local.x, local.z, grid);
+        const float slope = acosf(clamp(normal.y, -1.0f, 1.0f)) * math::rad_to_deg;
+        sample_out.woodland = terrain_habitat_shared::habitat_woodland(world_x, world_z,
+            height - GetSeaLevelLocal(), slope, sample_out.insolation, sample_out.deposition);
+        sample_out.grove = terrain_habitat_shared::habitat_grove(world_x, world_z,
+            height - GetSeaLevelLocal(), slope, sample_out.woodland);
+        sample_out.scrub = (0.25f + 0.75f * (1.0f - sample_out.woodland))
+            * (1.0f - sample_out.grove * 0.65f)
+            * terrain_habitat::smooth((terrain_habitat::noise(world_x / 70.0f, world_z / 70.0f, 521u) - 0.25f) / 0.4f);
 
         if (m_prop_mask_pixels.size() > offset + 3)
         {
@@ -8992,7 +9011,7 @@ namespace spartan
             translation = entity->GetMatrix().GetTranslation();
         }
 
-        auto layer_weight = [&](const TerrainLayerRule& rule, float height, float slope_rad,
+        auto layer_weight = [&](const TerrainLayerRule& rule, float height, float slope_rad, float world_x, float world_z,
             const Vector3& normal, float jitter,
             float curvature, float flow, float occlusion, float deposition,
             float wear, float insolation, float talus) -> float
@@ -9075,6 +9094,13 @@ namespace spartan
             push += rule.deposition_influence * (deposition * 2.0f - 1.0f);
             push += rule.talus_influence      * (talus * 2.0f - 1.0f);
 
+            if (rule.flags & (TerrainLayerFlags_Woodland | TerrainLayerFlags_Open))
+            {
+                const float woodland = terrain_habitat_shared::habitat_woodland(world_x, world_z,
+                    height - sea_local, slope_rad * math::rad_to_deg, insolation, deposition);
+                if (rule.flags & TerrainLayerFlags_Woodland) weight *= woodland;
+                if (rule.flags & TerrainLayerFlags_Open) weight *= 1.0f - woodland * 0.8f;
+            }
             return weight * exp2f(clamp(push, -1.0f, 1.0f) * 1.25f) * rule.weight_bias;
         };
 
@@ -9150,7 +9176,7 @@ namespace spartan
                     }
                     return layer_weight(
                         m_layer_rules[static_cast<size_t>(layer_index)],
-                        y_c, slope, normal, jitter,
+                        y_c, slope, world_x, world_z, normal, jitter,
                         curvature, flow, occlusion, deposition, wear, insolation, talus
                     );
                 };
@@ -9252,13 +9278,13 @@ namespace spartan
                         (y_c - sea_local) / max(snow_local - sea_local, 1.0f)
                     );
                     const float alpine    = saturate((altitude - 0.55f) / 0.45f);
-                    const float tree_line = saturate(1.0f - alpine * 1.35f);
+                    const float tree_line = m_snow_amount > 0.0f ? saturate(1.0f - alpine * 1.35f) : 1.0f;
                     const float slope_soft = saturate(1.0f - slope_deg / 32.0f);
 
                     // grass only where living ground beats rock, dirt, sand and snow
                     float grass_raw = living - mineral * 1.2f - barren * 1.5f;
                     grass_raw *= slope_soft;
-                    if (above_sea < 1.0f || below_snow < 2.0f)
+                    if (above_sea < 1.0f || (m_snow_amount > 0.0f && below_snow < 2.0f))
                     {
                         grass_raw = 0.0f;
                     }
@@ -9275,7 +9301,7 @@ namespace spartan
                     tree_raw *= tree_line;
                     tree_raw *= saturate(1.0f - mineral * 1.35f);
                     tree_raw *= saturate(1.0f - barren * 2.0f);
-                    if (above_sea < 2.0f || below_snow < 6.0f)
+                    if (above_sea < 2.0f || (m_snow_amount > 0.0f && below_snow < 6.0f))
                     {
                         tree_raw = 0.0f;
                     }

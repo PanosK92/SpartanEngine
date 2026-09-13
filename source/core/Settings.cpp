@@ -145,14 +145,26 @@ namespace spartan
                 {
                     if (name.size() >= 2 && name[0] == 'r' && name[1] == '.')
                     {
-                        float value = get<float>(*cvar.m_value_ptr);
-
+                        pugi::xml_text text = root.append_child(cvar_name_to_xml(string(name).c_str()).c_str()).text();
                         if (name == "r.resolution_scale" && cvar_dynamic_resolution.GetValueAs<bool>())
                         {
-                            value = 1.0f;
+                            text.set(1.0f);
                         }
-
-                        root.append_child(cvar_name_to_xml(string(name).c_str()).c_str()).text().set(value);
+                        else
+                        {
+                            // render cvars can hold any of the supported console variable types
+                            visit([&text](const auto& value)
+                            {
+                                if constexpr (is_same_v<decay_t<decltype(value)>, string>)
+                                {
+                                    text.set(value.c_str());
+                                }
+                                else
+                                {
+                                    text.set(value);
+                                }
+                            }, *cvar.m_value_ptr);
+                        }
                     }
                 }
 

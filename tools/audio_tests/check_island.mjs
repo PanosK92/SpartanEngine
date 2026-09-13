@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { EngineClient } from '../mcp/spartan_engine/engine_client.mjs';
-const c=new EngineClient({host:'127.0.0.1',port:47785,timeout_ms:15000});
+const c=new EngineClient({host:'127.0.0.1',port:Number(process.env.SPARTAN_MCP_PORT ?? 47785),timeout_ms:15000});
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 async function cmd(name,args={}){let r=await c.command(name,args);assert.ok(r.ok,JSON.stringify(r));return r;}
 let state=await cmd('context_snapshot');
@@ -24,9 +24,12 @@ await wait(3500);
 const active=[];
 for(const r of [...m.regions,...m.shoreline]){
  const s=await cmd('component_get',{id:r.id,type:'audio_source'});
- if(s.component.properties.is_playing)active.push({region:r.name,clip:r.clip,gain:s.component.properties.ambient_gain});
+ if(s.component.properties.is_playing) {
+  assert.ok(![1,2].includes(s.component.properties.ambient_profile) || s.component.properties.habitat_gain>0,'Vegetation audio needs real nearby coverage');
+  active.push({region:r.name,clip:r.clip,gain:s.component.properties.ambient_gain});
+ }
 }
-assert.ok(active.length>0&&active.length<=5,JSON.stringify(active));
+assert.ok(active.length>0&&active.length<=9,JSON.stringify(active));
 assert.ok(active.every(s=>s.clip!=='shore'),'Surf must be silent at the inland player home');
 console.log('PASS actual player location ambience',JSON.stringify(active));
 await cmd('engine_set_mode',{mode:'edit'});

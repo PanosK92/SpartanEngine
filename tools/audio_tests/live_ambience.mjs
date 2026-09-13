@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { EngineClient } from '../mcp/spartan_engine/engine_client.mjs';
-const client = new EngineClient({host:'127.0.0.1',port:47785,timeout_ms:30000});
+const client = new EngineClient({host:'127.0.0.1',port:Number(process.env.SPARTAN_MCP_PORT ?? 47785),timeout_ms:30000});
 const wait = ms => new Promise(resolve=>setTimeout(resolve,ms));
 const command = async(name,args={})=>{let r=await client.command(name,args);if(!r.ok&&['context_snapshot','component_get'].includes(name)){await wait(500);r=await client.command(name,args);}assert.ok(r.ok,`${name}: ${JSON.stringify(r)}`);return r;};
 const root=path.resolve('binaries/project/soundscapes');
@@ -29,7 +29,7 @@ async function read(){const result=[];for(const r of regions){const s=await comm
 let states=await read();
 assert.ok(states.every(s=>s.ambient&&!s.is_playing),'loads silent in editor');
 console.log('PASS all volumes and stereo ambient sources load, silent in edit mode');
-const probes=['plain','north','vasilikos','keri','town'].map(clip=>[clip,manifest.regions.filter(r=>r.clip===clip).sort((a,b)=>b.area-a.area)[0].test_position]);
+const probes=['plain','north','vasilikos','keri','town'].map(district=>[district,manifest.regions.filter(r=>r.district===district && r.clip==='wind').sort((a,b)=>b.area-a.area)[0].test_position]);
 const crs=manifest.projection;
 const [ax,bx]=crs.lonlat_to_pixel['px = ax*lon + bx'];
 const [az,bz]=crs.lonlat_to_pixel['py = az*lat + bz'];
@@ -43,7 +43,8 @@ for(const [clip,p] of probes){
  states=await read();
  const active=states.filter(s=>s.is_playing);
  const dominant=states.reduce((a,b)=>a.ambient_gain>b.ambient_gain?a:b);
- assert.equal(dominant.clip,clip+'.wav',JSON.stringify(active));
+ assert.equal(dominant.clip,'wind.wav',JSON.stringify(active));
+ assert.ok(states.filter(s=>s.ambient_profile===1 || s.ambient_profile===2).every(s=>!s.is_playing),'A district without vegetation must not play insects or woodland birds');
  assert.ok(dominant.ambient_gain>.85,`dominant region ${clip}`);
  assert.ok(active.length<=5,`distant streams virtualize: ${active.length}`);
  console.log(`PASS ${clip}: ${active.length} active streams, gain ${dominant.ambient_gain}`);

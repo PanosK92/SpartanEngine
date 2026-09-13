@@ -48,9 +48,21 @@ def fetch(source):
     print(name, len(records), flush=True)
     return records
 
+def fetch_locked(entry):
+    path = ROOT / entry['file']
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        request = urllib.request.Request(entry['download'], headers={'User-Agent': 'Mozilla/5.0'})
+        path.write_bytes(urllib.request.urlopen(request, timeout=90).read())
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == entry['sha256'], f"Source changed: {entry['download']}"
+    return entry
+
 if __name__ == '__main__':
     CACHE.mkdir(parents=True, exist_ok=True)
     records = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
-        for result in pool.map(fetch, SOURCES): records.extend(result)
+        if LOCK.exists():
+            records = list(pool.map(fetch_locked, json.loads(LOCK.read_text())))
+        else:
+            for result in pool.map(fetch, SOURCES): records.extend(result)
     (CACHE / 'sources.json').write_text(json.dumps(records, indent=2), encoding='utf-8')

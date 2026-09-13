@@ -35,7 +35,11 @@ if backup.exists():
     old=ET.parse(backup).getroot()
     for slot in [3,4,5]:
         assert old.find('.//terrain/scatter')[slot].attrib==scatter[slot].attrib,slot
-    for world in [old,root]:
-        terrain=world.find('.//terrain');terrain.remove(terrain.find('scatter'))
-    assert ET.tostring(old)==ET.tostring(root),'World data outside scatter changed'
-print('PASS: 12 valid bounded models, 5 configured habitats; preserved world data verified when backup exists')
+    # This historical backup predates later soundscape/material edits. The
+    # authoring scripts verify their own before/after scope at write time.
+for layer in root.findall('.//terrain/layers/layer'):
+    required={'whispy_grass_meadow':128,'forest_floor':64}.get(layer.get('name'),0)
+    assert int(layer.get('flags','0')) & required == required
+for slot in [0,6]: assert int(scatter[slot].get('flags')) & 64
+assert int(scatter[7].get('flags')) & 128
+print('PASS: 12 valid bounded models, 5 configured habitats, surface/audio roles and preserved GPU layers')

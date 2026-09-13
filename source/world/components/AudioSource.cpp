@@ -24,6 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AudioSource.h"
 #include "Camera.h"
 #include "Volume.h"
+#include "Terrain.h"
+#include "Render.h"
+#include "../TerrainAcoustics.h"
 #include "../Entity.h"
 #include "../World.h"
 #include "../../core/Engine.h"
@@ -213,6 +216,7 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_reverb_decay, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_reverb_wet, float);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetAmbient, SetAmbient, bool);
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetAmbientProfile, SetAmbientProfile, uint32_t);
 
         audio_device::acquire();
     }
@@ -263,6 +267,9 @@ namespace spartan
             "GetAmbient",                   &AudioSource::GetAmbient,
             "SetAmbient",                   &AudioSource::SetAmbient,
             "GetAmbientGain",               &AudioSource::GetAmbientGain,
+            "GetAmbientProfile",            &AudioSource::GetAmbientProfile,
+            "SetAmbientProfile",            &AudioSource::SetAmbientProfile,
+            "GetHabitatGain",               &AudioSource::GetHabitatGain,
             "GetReverbEnabled",             &AudioSource::GetReverbEnabled,
             "SetReverbEnabled",             &AudioSource::SetReverbEnabled,
             "GetReverbRoomSize",            &AudioSource::GetReverbRoomSize,
@@ -617,21 +624,69 @@ namespace spartan
             if (m_ambient_target > 0.0f)
             {
                 const Vector3 listener = camera->GetEntity()->GetPosition();
-                float total = 0.0f;
-                bool indoors = false;
-                for (Entity* entity : World::GetEntities())
+                // All ambient sources share one 10 Hz environmental query. The
+                // existing instance spatial groups track placement, carving and
+                // transforms; neither frustum visibility nor LOD affects sound.
+                static double sampled_at = -1.0;
+                static Vector3 sampled_position = Vector3::Infinity;
+                static unordered_map<string, float> group_weights;
+                static bool indoors = false;
+                static float canopy = 0.0f, scrub = 0.0f, exposure = 1.0f;
+                const double now = Timer::GetTimeSec();
+                if (now - sampled_at >= 0.1 || Vector3::DistanceSquared(sampled_position, listener) > 25.0f)
                 {
-                    if (!entity->GetActive()) continue;
-                    Volume* other = entity->GetComponent<Volume>();
-                    if (!other) continue;
-                    if (other->GetReverbEnabled() && (other->GetBoundingBox() * entity->GetMatrix()).Contains(listener)) indoors = true;
-                    AudioSource* source = entity->GetComponent<AudioSource>();
-                    if (!region->GetAudioGroup().empty() && other->GetAudioGroup() == region->GetAudioGroup() &&
-                        source && source->m_ambient && source->m_play_on_start && !source->m_mute && source->m_clip)
-                        total += other->GetAudioWeight(listener);
+                    sampled_at = now;
+                    sampled_position = listener;
+                    group_weights.clear();
+                    indoors = false;
+                    canopy = scrub = 0.0f;
+                    exposure = 1.0f;
+                    for (Entity* entity : World::GetEntities())
+                    {
+                        if (!entity->GetActive()) continue;
+                        if (Volume* other = entity->GetComponent<Volume>())
+                        {
+                            if (other->GetReverbEnabled() && (other->GetBoundingBox() * entity->GetMatrix()).Contains(listener)) indoors = true;
+                            AudioSource* source = entity->GetComponent<AudioSource>();
+                            if (source && source->m_ambient && source->m_play_on_start && !source->m_mute && source->m_clip)
+                                group_weights[other->GetAudioGroup()] += other->GetAudioWeight(listener);
+                        }
+                        if (Terrain* terrain = entity->GetComponent<Terrain>())
+                        {
+                            TerrainSurfaceSample surface;
+                            if (terrain->SampleSurface(listener.x, listener.z, surface))
+                                exposure = clamp(surface.occlusion * 0.7f + surface.insolation * 0.3f, 0.0f, 1.0f);
+                        }
+                        const bool tree = entity->HasTag("terrain_canopy");
+                        const bool bush = entity->HasTag("terrain_scrub");
+                        if (!tree && !bush) continue;
+                        Render* render = entity->GetComponent<Render>();
+                        // An emptied scatter renderer is not a plant at its tile origin.
+                        if (!render || !render->HasInstancing()) continue;
+                        render->UpdateAabb();
+                        const float radius = tree ? 70.0f : 35.0f;
+                        if (Vector3::DistanceSquared(listener, render->GetBoundingBox().GetClosestPoint(listener)) >= radius * radius) continue;
+                        for (const Render::InstanceBoundsGroup& group : render->GetInstanceBoundsGroups())
+                        {
+                            if (Vector3::DistanceSquared(listener, group.bounds.GetClosestPoint(listener)) >= radius * radius) continue;
+                            for (uint32_t j = 0; j < group.count; ++j)
+                            {
+                                const BoundingBox& bounds = render->GetInstanceBounds(render->GetGroupedInstanceIndex(group.offset + j));
+                                const Vector3 size = bounds.GetSize();
+                                const float distance = (listener - bounds.GetClosestPoint(listener)).Length();
+                                const float area = terrain_acoustics::contribution(distance, size.x, size.z, radius);
+                                (tree ? canopy : scrub) += area;
+                            }
+                        }
+                    }
+                    canopy = clamp(canopy / 600.0f, 0.0f, 1.0f);
+                    scrub = clamp(scrub / 160.0f, 0.0f, 1.0f);
                 }
                 // Overlap does not raise the overall level. Isolated outer edges still fade to silence.
+                const float total = region->GetAudioGroup().empty() ? 0.0f : group_weights[region->GetAudioGroup()];
                 m_ambient_target /= std::max(1.0f, total);
+                m_habitat_gain = terrain_acoustics::gain(m_ambient_profile, canopy, scrub, exposure);
+                m_ambient_target *= m_habitat_gain;
                 if (indoors) m_ambient_target *= 0.2f;
                 const float master = ambience_volume.GetValue();
                 m_ambient_target *= std::isfinite(master) ? std::clamp(master, 0.0f, 1.0f) : 0.0f;
@@ -672,6 +727,7 @@ namespace spartan
         node.append_attribute("reverb_decay")      = m_reverb_decay;
         node.append_attribute("reverb_wet")        = m_reverb_wet;
         node.append_attribute("ambient")           = m_ambient;
+        node.append_attribute("ambient_profile")   = m_ambient_profile;
     }
 
     void AudioSource::Load(pugi::xml_node& node)
@@ -688,6 +744,7 @@ namespace spartan
         m_reverb_decay     = node.attribute("reverb_decay").as_float(0.5f);
         m_reverb_wet       = node.attribute("reverb_wet").as_float(0.3f);
         m_ambient          = node.attribute("ambient").as_bool(false);
+        SetAmbientProfile(node.attribute("ambient_profile").as_uint(0));
 
         SetAudioClip(m_file_path);
     }

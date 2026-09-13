@@ -1,7 +1,7 @@
 """Apply the shared biome tuning to engine defaults and plan's scatter rules.
 
-Only five scatter slots change; terrain, grass, detail rings, roads and world
-entities retain their existing data. Run after building the model exports.
+Five scatter slots, meadow/woodland habitat flags and summer snow coverage change.
+Grass, detail rings, sculpt, roads and world entities retain their data.
 """
 import argparse
 import json
@@ -49,10 +49,24 @@ def main(apply):
     header.write_text('\n'.join(cpp),encoding='utf-8')
     block=ET.tostring(scatter,encoding='unicode').strip()
     updated=re.sub(r'<scatter>.*?</scatter>',lambda _:block,text,count=1,flags=re.S)
+    # The authored island and its ambience are summer. Keep the snowline for
+    # seasonal editing, but disable snow coverage and its vegetation exclusion.
+    updated=re.sub(r'(<terrain\b[^>]*\bsnow_amount=")[^"]*',r'\g<1>0',updated,count=1)
+    for name, flag in [('whispy_grass_meadow',128), ('forest_floor',64)]:
+        pattern=rf'<layer\b[^>]*name="{name}"[^>]*/>'
+        def habitat_layer(match):
+            layer=ET.fromstring(match.group())
+            layer.set('flags',str(int(layer.get('flags','0')) | flag))
+            return ET.tostring(layer,encoding='unicode')
+        updated=re.sub(pattern,habitat_layer,updated,count=1)
     old=ET.fromstring(text);new=ET.fromstring(updated)
+    old.find('.//terrain').set('snow_amount','0')
+    for layer in old.findall('.//terrain/layers/layer'):
+        flag={'whispy_grass_meadow':128,'forest_floor':64}.get(layer.get('name'),0)
+        if flag: layer.set('flags',str(int(layer.get('flags','0')) | flag))
     for r in [old,new]:
         terrain=r.find('.//terrain');terrain.remove(terrain.find('scatter'))
-    assert ET.tostring(old)==ET.tostring(new),'Changed data outside scatter'
+    assert ET.tostring(old)==ET.tostring(new),'Changed data outside scatter, surface habitat flags and summer snow coverage'
     if apply:
         backup=ROOT/'binaries/project/backups/plan_before_biomes.world'
         backup.parent.mkdir(parents=True,exist_ok=True)

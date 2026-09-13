@@ -94,6 +94,10 @@ namespace spartan
         bool GetAmbient() const { return m_ambient; }
         void SetAmbient(bool value);
         float GetAmbientGain() const { return m_ambient_gain; }
+        // 0 region only, 1 cicadas, 2 vegetation birds, 3 exposed wind.
+        uint32_t GetAmbientProfile() const { return m_ambient_profile; }
+        void SetAmbientProfile(uint32_t value) { m_ambient_profile = value <= 3 ? value : 0; }
+        float GetHabitatGain() const { return m_habitat_gain; }
 
         float GetVolume() const { return m_volume; }
         void SetVolume(float volume);
@@ -135,6 +139,8 @@ namespace spartan
         std::shared_ptr<audio_clip_cache::AudioClip> m_clip = nullptr;
         std::string m_file_path;
         bool m_ambient = false;
+        uint32_t m_ambient_profile = 0;
+        float m_habitat_gain = 1.0f;
         float m_ambient_gain = 0.0f;
         float m_ambient_target = 0.0f;
         float m_ambient_update_timer = 0.0f;

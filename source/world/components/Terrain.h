@@ -64,6 +64,9 @@ namespace spartan
         float mask_grass      = 0.0f;
         float mask_trees      = 0.0f;
         float mask_rocks      = 0.0f;
+        float woodland        = 0.0f;
+        float grove           = 0.0f;
+        float scrub           = 0.0f;
         // which surface layer won this point, matches the layer rule index
         uint32_t dominant_layer = 0;
     };

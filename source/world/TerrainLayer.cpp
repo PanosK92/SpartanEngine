@@ -45,7 +45,7 @@ namespace spartan
             r.slope_min             = 0.0f;
             r.slope_max             = 38.0f;
             r.height_min            = 1.0f;
-            r.flags                 = TerrainLayerFlags_BelowSea;
+            r.flags                 = TerrainLayerFlags_BelowSea | TerrainLayerFlags_Open;
             r.insolation_influence  = 0.25f;
             r.occlusion_influence   = -0.15f;
             r.curvature_influence   = -0.1f;
@@ -155,7 +155,7 @@ namespace spartan
             r.slope_min            = 0.0f;
             r.slope_max            = 35.0f;
             r.height_min           = 4.0f;
-            r.flags                = TerrainLayerFlags_BelowSea;
+            r.flags                = TerrainLayerFlags_BelowSea | TerrainLayerFlags_Woodland;
             r.insolation_influence = -0.5f;
             r.occlusion_influence  = 0.3f;
             r.curvature_influence  = 0.2f;

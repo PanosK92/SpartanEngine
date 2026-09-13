@@ -2,29 +2,37 @@
 
 `biome_layers.json` is the shared tuning source for the new terrain defaults and
 the five mesh scatter layers in `worlds/plan.world`. The existing grass, flowers,
-GPU pebbles, terrain materials, sculpt, roads, buildings and soundscapes are kept.
+GPU pebbles, sculpt, roads and buildings are kept. Meadow and forest-floor
+materials share their habitat boundary with the vegetation rules.
+The summer island disables snow coverage. An inactive snow layer no longer
+imposes a treeline or removes grass; species altitude limits still apply.
 
 - **Pine woodland:** three branch/crown shapes, clustered on eligible hillsides
-  from 35–520 m, with broad clearings and irregular edges.
-- **Olive groves:** three tree shapes on gentle lower ground from 3–180 m,
+  from 4–700 m, with a soft coastal exclusion, broad clearings and irregular edges.
+- **Olive groves:** three tree shapes on gentle lower ground from 3–280 m (fading above 180 m),
   favouring openings outside the pine woodland.
 - **Maquis scrub:** two assembled scanned shrub forms, in patches and woodland
   fringes. These have no collision.
 - **Limestone outcrops:** two rock silhouettes used in buried hillside formations;
-  nominal formations are 48 × 25 × 14 m before relief and burial vary them.
+  nominal formations are 60 × 30 × 16 m before relief and burial vary them.
 - **Loose stones:** three shapes shared between small rocks and larger fragments,
   with mineral masks, scree/deposition preferences and smaller clusters.
 
 These are procedural habitat rules, not surveyed land-cover boundaries. Shared
-continuous fields in `TerrainHabitat.h` define habitat patches across tile edges.
-Existing slope, elevation, terrain material and exclusion masks constrain them.
-Pines, scrub and rocks now use Any habitat: their local clumps and surface masks
-already provide variation, without an extra noise field removing whole regions.
-Olives retain their open-country preference. The coverage revision increases
-densities and altitude/slope ranges while retaining road/water exclusion masks.
-The smaller clumps create local spacing within those larger patches. Mesh variants
+functions in `data/shaders/terrain_habitat.h` are compiled by both C++ and HLSL.
+Slope, elevation, insolation and deposition shape woodland patches. Forest-floor
+cover follows those patches and meadow cover recedes inside them. Pines use this
+woodland weight, olives favour gentle openings, and scrub fills suitable soil
+and woodland fringes. Road, building and water exclusions still apply.
+Peak densities are 220 pines, 100 olives and 180 shrubs per hectare of fully
+accepted ground; canopy dimensions and clump spacing preserve open gaps. Mesh variants
 divide one placement budget; adding a model does not multiply the density.
 Seeds reproduce placements and model choices when a tile is regenerated.
+
+Tree Canopy and Shrub Cover scatter flags identify acoustic vegetation independently
+of the placement habitat. The largest horizontal mesh part represents each plant
+once; its live instances feed the soundscape after road and building exclusions.
+Changing a tree layer to Any habitat does not make its canopy acoustically disappear.
 
 In **Terrain Editor → Props**, select a layer to adjust its Habitat, Mesh Variants
 (semicolon-separated paths), density, height/slope limits and clumping. Habitat
@@ -56,8 +64,9 @@ python tools/terrain_tests/fetch_biome_assets.py
 python tools/terrain_tests/author_island_biomes.py --apply
 ```
 
-The last step regenerates `IslandScatterDefaults.h` and updates only five scatter
-slots in the island. It creates `binaries/project/backups/plan_before_biomes.world`
+The last step regenerates `IslandScatterDefaults.h` and updates five scatter slots,
+the meadow/forest-floor habitat flags, and summer snow coverage in the island.
+It creates `binaries/project/backups/plan_before_biomes.world`
 on the first application. Without `--apply`, it only regenerates the header.
 Rebuild the engine after changing the generated defaults or scatter code.
 

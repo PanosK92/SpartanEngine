@@ -173,12 +173,11 @@ def build(apply):
     land, districts, terrain_provenance = geometry(projection,terrain)
     sounds, records = load_sources()
     files = []
-    for index, r in enumerate(REGIONS):
-        frames = RATE * (47 + index*2)
-        mix = np.zeros((frames,2))
-        for key, gain in r[4].items():
-            mix += tile_loop(sounds[key][0],frames, index*RATE*3)*gain
-        files.append(write_loop(OUT/(r[0]+'.wav'), mix))
+    # Keep stems independent: a regional mix cannot remove its baked-in insects
+    # when the listener walks out of the grove. Gains belong to the emitters.
+    profiles = {'wind': 3, 'cicadas': 1, 'birds': 2, 'village': 0}
+    for index, key in enumerate(profiles):
+        files.append(write_loop(OUT/(key+'.wav'), tile_loop(sounds[key][0], RATE * (47 + index*2))))
     surf = np.concatenate(sounds['surf'])
     files.append(write_loop(OUT/'shore.wav',tile_loop(surf,RATE*53)*.65))
     files.append(write_loop(OUT/'harbour.wav',tile_loop(sounds['harbour'][0],RATE*59)*.40))
@@ -186,22 +185,29 @@ def build(apply):
     holder = ET.Element('Entity',name='Island Soundscapes',id='9026000000000000000',active='true',position='0 0 0',rotation='0 0 0 1',scale='1 1 1',tags='island_soundscapes')
     manifest = dict(description='Eight authored acoustic districts, separate processed-terrain ocean shoreline. Boundaries are sound design, not administrative borders.', projection=atlas['crs'], terrain=terrain_provenance, sources=records, audio=files, regions=[], shoreline=[])
     next_id = 9026000000000000001
-    def add_region(shape, name, clip, group, fade, boundary=False):
+    def add_region(shape, name, clip, group, fade, boundary=False, gain=1.0, profile=0, district=''):
         nonlocal next_id
         for part in parts(shape):
             if part.area < 1000: continue
             # Shared borders retain identical vertices; individual simplification would open gaps.
             outline = [[round(x,2),round(z,2)] for x,z in list(part.exterior.coords)[:-1]]
             e = ET.SubElement(holder,'Entity',name=name,id=str(next_id),active='true',position='0 0 0',rotation='0 0 0 1',scale='1 1 1',tags='soundscape_region')
+            if district: e.set('tags', 'soundscape_region,soundscape_district_' + district)
             next_id += 1
             x0,z0,x1,z1 = part.bounds
             volume = ET.SubElement(e,'volume',bb_min_x=str(x0),bb_min_y='-12',bb_min_z=str(z0),bb_max_x=str(x1),bb_max_y='90' if boundary else '1000',bb_max_z=str(z1),audio_fade_distance=str(fade),audio_boundary_only=str(boundary).lower(),audio_group=group,reverb_enabled='false')
             polygon = ET.SubElement(volume,'AudioPolygon')
             for x,z in outline: ET.SubElement(polygon,'Point',x=str(x),z=str(z))
-            ET.SubElement(e,'audio_source',path=f'project/soundscapes/{clip}.wav',ambient='true',is_3d='false',loop='true',play_on_start='true',volume='0.55' if boundary else '0.48',pitch='1',reverb_enabled='false')
+            ET.SubElement(e,'audio_source',path=f'project/soundscapes/{clip}.wav',ambient='true',ambient_profile=str(profile),is_3d='false',loop='true',play_on_start='true',volume=str((0.55 if boundary else 0.48)*gain),pitch='1',reverb_enabled='false')
             probe = part.representative_point()
-            manifest['shoreline' if boundary else 'regions'].append(dict(id=e.get('id'),name=name,clip=clip,polygon=outline,fade=fade,area=part.area,test_position=[probe.x,30,probe.y]))
-    for r, district in zip(REGIONS,districts): add_region(district,r[1],r[0],'island_bed',180)
+            manifest['shoreline' if boundary else 'regions'].append(dict(id=e.get('id'),name=name,clip=clip,profile=profile,district=district,gain=gain,polygon=outline,fade=fade,area=part.area,test_position=[probe.x,30,probe.y]))
+    for r, district in zip(REGIONS,districts):
+        for key, gain in r[4].items():
+            if key == 'village': continue # people belong near settlements, not across the olive plain
+            add_region(district,r[1],key,'island_'+key,180,gain=gain,profile=profiles[key],district=r[0])
+    for pin in atlas['pins']:
+        if pin['name'] in ('Volimes', 'Keri', 'Alykes', 'Zakynthos Town'):
+            add_region(Point(pin['x'],pin['z']).buffer(140,quad_segs=12),pin['name']+' village detail','village','island_village',80,gain=0.12)
     add_region(land,'Coastal surf','shore','island_shore',180,True)
     port = next(p for p in atlas['pins'] if p['id']=='port')
     add_region(Point(port['x'],port['z']).buffer(420,quad_segs=12),'Zakynthos harbour detail','harbour','island_detail',160)

@@ -793,6 +793,9 @@ namespace spartan
                     parts.push_back(entity);
                 }
 
+                // One representative canopy per plant, never one per submesh.
+                Entity* acoustic_part = nullptr;
+                float acoustic_area = 0.0f;
                 for (Entity* part : parts)
                 {
                     Render* render = part->GetComponent<Render>();
@@ -845,6 +848,16 @@ namespace spartan
                     }
 
                     render->SetInstances(transforms[tile_index]);
+                    if (layer.flags & (TerrainScatterFlags_Canopy | TerrainScatterFlags_Scrub))
+                    {
+                        const Vector3 size = render->GetBoundingBoxMesh().GetSize();
+                        const float area = size.x * size.z;
+                        if (area > acoustic_area)
+                        {
+                            acoustic_area = area;
+                            acoustic_part = part;
+                        }
+                    }
                     render->SetMaxRenderDistance(render_distance);
                     render->SetMaxShadowDistance(layer.shadow_distance);
                     render->SetFlag(RenderFlags::CastsShadows, casts_shadows);
@@ -874,6 +887,8 @@ namespace spartan
                         physics->SetBodyType(BodyType::Mesh);
                     }
                 }
+                if (acoustic_part)
+                    acoustic_part->AddTag((layer.flags & TerrainScatterFlags_Canopy) ? "terrain_canopy" : "terrain_scrub");
             }
 
             // the prototype stays in the world as a template, hide it so it does not draw at the origin

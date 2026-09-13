@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include "../../data/shaders/terrain_habitat.h"
 
 namespace spartan::terrain_habitat
 {

@@ -5409,6 +5409,8 @@ namespace spartan
                 json += ",\"is_3d\":" + json_bool(audio_source->GetIs3d());
                 json += ",\"ambient\":" + json_bool(audio_source->GetAmbient());
                 json += ",\"ambient_gain\":" + std::to_string(audio_source->GetAmbientGain());
+                json += ",\"ambient_profile\":" + std::to_string(audio_source->GetAmbientProfile());
+                json += ",\"habitat_gain\":" + std::to_string(audio_source->GetHabitatGain());
                 json += ",\"is_playing\":" + json_bool(audio_source->IsPlaying());
                 json += ",\"volume\":" + std::to_string(audio_source->GetVolume());
                 json += ",\"pitch\":" + std::to_string(audio_source->GetPitch());
@@ -5482,7 +5484,7 @@ namespace spartan
             }
             if (type == ComponentType::AudioSource)
             {
-                return "[\"clip\",\"mute\",\"play_on_start\",\"loop\",\"is_3d\",\"ambient\",\"volume\",\"pitch\",\"reverb_enabled\",\"reverb_room_size\",\"reverb_decay\",\"reverb_wet\"]";
+                return "[\"clip\",\"mute\",\"play_on_start\",\"loop\",\"is_3d\",\"ambient\",\"ambient_profile\",\"volume\",\"pitch\",\"reverb_enabled\",\"reverb_room_size\",\"reverb_decay\",\"reverb_wet\"]";
             }
             if (type == ComponentType::Script)
             {
@@ -8807,6 +8809,13 @@ namespace spartan
 
         bool set_audio_source_property(AudioSource* audio_source, const std::string& property, const std::string& value, std::string& error)
         {
+            if (property == "ambient_profile")
+            {
+                if (value != "0" && value != "1" && value != "2" && value != "3")
+                { error = "ambient_profile must be 0 (region), 1 (cicadas), 2 (birds) or 3 (wind)"; return false; }
+                audio_source->SetAmbientProfile(static_cast<uint32_t>(value[0] - '0'));
+                return true;
+            }
             if (property == "ambient")
             {
                 bool parsed = false;

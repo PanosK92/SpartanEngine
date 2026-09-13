@@ -9,8 +9,8 @@ traffic, and the player's home are unchanged.
 The eight districts are Vrachionas and the western villages; Volimes and Skinari;
 Alykes, Tragaki and Tsilivi; the central olive plain; Laganas, Kalamaki and the
 airport plain; Skopos and Vasilikos; Keri and the southwest; Zakynthos Town and
-Bochali. Their individual mixes use different proportions of wind, cicadas,
-birds and rural atmosphere. Harbour activity is confined to the port rather
+Bochali. Their independent stems use different proportions of wind, cicadas,
+and birds. Village detail is confined to settlement volumes. Harbour activity is confined to the port rather
 than spread across the entire town district. This is a summer daytime/dusk
 palette; it does not yet switch to separate nighttime or weather recordings.
 
@@ -57,6 +57,15 @@ Ambience is silent in edit mode. Stop the car engine to hear the quiet layers.
 Each source uses an ordinary **Audio Source** plus a **Volume** on the same entity:
 
 - Enable **Volume Ambience** to use listener-driven, stereo region playback.
+- **Habitat** selects region-only playback, cicadas, vegetation birds or exposed
+  wind. Cicadas and birds require actual nearby scattered vegetation. One tagged
+  canopy renderer per plant is queried through its existing spatial instance
+  groups, after exclusions; camera direction and LOD never affect the result.
+  Trees contribute within 70 m and scrub within 35 m, weighted by canopy area
+  and smooth distance falloff. Empty ground beyond those ranges is silent.
+  Wind responds to terrain exposure and shelter from real canopy cover.
+  Serialized `ambient_profile` values are 0, 1, 2 and 3 respectively; old sources
+  default to region-only. The inspector and MCP expose habitat and mixed gains.
 - **Volume** sets the layer level; **Mute** disables it with a fade.
 - **Blend Distance** feathers boundaries in local meters (180 m on the island).
 - **Mix Group** caps overlapping region gains to prevent volume buildup.
@@ -79,7 +88,9 @@ that is an indoor approximation, not acoustic occlusion through arbitrary walls.
 
 ## Assets and reproduction
 
-Ten PCM stereo WAV loops live in `binaries/project/soundscapes` (about 67 MB).
+Six independent PCM stereo WAV loops are used in `binaries/project/soundscapes`
+(about 38 MB): wind, cicadas, birds, village, shore and harbour. Older regional
+mix files may remain locally but are no longer referenced by the island.
 They are ready for local playback. As with other project assets, `binaries/` is
 Git-ignored. A clean checkout needs the existing terrain/map assets. Load plan
 in the engine first to generate its processed terrain cache, then use the

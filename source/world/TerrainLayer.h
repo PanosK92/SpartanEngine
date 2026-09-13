@@ -42,7 +42,9 @@ namespace spartan
         TerrainLayerFlags_Snow      = 1u << 2, // driven by the snow accumulation model instead of the generic rule
         TerrainLayerFlags_BelowSea  = 1u << 3, // height range is measured against sea level, not absolute world y
         TerrainLayerFlags_HasMaps   = 1u << 4, // set on the surface material once the analysis maps are baked
-        TerrainLayerFlags_Cover     = 1u << 5  // may accumulate on upward-facing prop ledges
+        TerrainLayerFlags_Cover     = 1u << 5, // may accumulate on upward-facing prop ledges
+        TerrainLayerFlags_Woodland  = 1u << 6, // shared terrain-derived woodland footprint
+        TerrainLayerFlags_Open      = 1u << 7  // meadow cover recedes inside woodland
     };
 
     // viewport debug views, packed into bits 12 to 15 of the surface material's terrain_flags
@@ -126,7 +128,9 @@ namespace spartan
         TerrainScatterFlags_Collision      = 1u << 2, // convex hull body on the opaque parts, trunks not leaves
         TerrainScatterFlags_CastShadows    = 1u << 3,
         TerrainScatterFlags_Tumble         = 1u << 4, // fully random rotation, debris that has come to rest
-        TerrainScatterFlags_LogSize        = 1u << 5  // sample size logarithmically, wide ranges read better
+        TerrainScatterFlags_LogSize        = 1u << 5, // sample size logarithmically, wide ranges read better
+        TerrainScatterFlags_Canopy         = 1u << 6, // tree canopy contributes to local soundscape coverage
+        TerrainScatterFlags_Scrub          = 1u << 7  // shrub coverage, independent of its placement habitat
     };
 
     // one prop scatter rule, everything the placer needs to answer where, how many, how big

@@ -92,7 +92,9 @@ def organize(text):
         audio=e.find('audio_source');volume=e.find('volume')
         if audio is None or volume is None:continue
         clip=Path(audio.get('path')).stem
-        if volume.get('audio_group')=='island_bed':
+        district=next((t.removeprefix('soundscape_district_') for t in e.get('tags','').split(',') if t.startswith('soundscape_district_')),None)
+        if district or volume.get('audio_group')=='island_bed':
+            clip=district or clip
             if clip not in district_groups:district_groups[clip]=group(110+clips.index(clip),e.get('name'),beds)
             move(e,district_groups[clip])
         elif volume.get('audio_boundary_only')=='true':move(e,shore)

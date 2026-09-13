@@ -19,6 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#include "terrain_habitat.h"
+
 // terrain surface evaluator
 //
 // the layer set lives in the bindless material table as a contiguous block, the surface material
@@ -304,6 +306,15 @@ float terrain_layer_weight(
     if (weight <= 0.0f)
     {
         return 0.0f;
+    }
+
+    if ((layer.terrain_flags & 192u) != 0u)
+    {
+        float woodland = habitat_woodland(position_world.x, position_world.z,
+            position_world.y - surface.terrain_sea_level, slope_radians * 57.2957795f,
+            analysis.insolation, analysis.deposition);
+        if ((layer.terrain_flags & 64u) != 0u) weight *= woodland;
+        if ((layer.terrain_flags & 128u) != 0u) weight *= 1.0f - woodland * 0.8f;
     }
 
     // every influence is a signed push around neutral, summed then applied multiplicatively so a

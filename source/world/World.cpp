@@ -2620,14 +2620,81 @@ namespace spartan
             // start timing
             const Stopwatch timer;
 
+            // load xml document, kept alive until main thread finishes deferred script init
+            shared_ptr<pugi::xml_document> doc = make_shared<pugi::xml_document>();
+            pugi::xml_parse_result result = doc->load_file(file_path.c_str());
+            if (!result)
+            {
+                SP_LOG_ERROR("Failed to load XML file: %s", result.description());
+                finish();
+                return;
+            }
+            deferred_load_document = doc;
+
+            // get world node
+            pugi::xml_node world_node = doc->child("World");
+            if (!world_node)
+            {
+                SP_LOG_ERROR("No 'World' node found.");
+                deferred_load_document.reset();
+                finish();
+                return;
+            }
+
             // deserialize the resources before loading the world (XML), as it references them
             {
                 string directory = world_file_path_to_resource_directory(file_path);
 
-                // only load resources if the directory exists (worlds in "worlds/" folder may not have local resources yet)
-                if (FileSystem::Exists(directory) && FileSystem::IsDirectory(directory))
                 {
-                    vector<string> files = FileSystem::GetFilesInDirectory(directory);
+                    vector<string> files;
+                    if (FileSystem::IsDirectory(directory))
+                    {
+                        files = FileSystem::GetFilesInDirectory(directory);
+                    }
+
+                    // Shared libraries can live outside the world's resource directory.
+                    // Load their native render dependencies here too, rather than stalling
+                    // the sequential entity pass on each first use. Keep the directory
+                    // scan for older worlds which reference resources only by name.
+                    unordered_set<string> resource_paths;
+                    auto path_key = [](const string& path)
+                    {
+                        return filesystem::absolute(path).lexically_normal().generic_string();
+                    };
+                    for (const string& path : files)
+                    {
+                        resource_paths.insert(path_key(path));
+                    }
+                    auto add_dependency = [&](const string& path, bool native)
+                    {
+                        if (native && resource_paths.insert(path_key(path)).second && FileSystem::IsFile(path))
+                        {
+                            files.push_back(path);
+                        }
+                    };
+                    function<void(pugi::xml_node)> collect_dependencies = [&](pugi::xml_node parent)
+                    {
+                        for (pugi::xml_node entity : parent.children("Entity"))
+                        {
+                            if (pugi::xml_node render = entity.child("render"))
+                            {
+                                const string mesh_path = render.attribute("mesh_path").as_string();
+                                const string mesh_name = render.attribute("mesh_name").as_string();
+                                if (mesh_name.rfind("standard_", 0) != 0 && mesh_name != "ocean")
+                                {
+                                    add_dependency(mesh_path, FileSystem::IsEngineMeshFile(mesh_path));
+                                }
+                                if (!render.attribute("material_default").as_bool(true) &&
+                                    render.attribute("material_name").as_string()[0] != '\0')
+                                {
+                                    const string material_path = render.attribute("material_path").as_string();
+                                    add_dependency(material_path, FileSystem::IsEngineMaterialFile(material_path));
+                                }
+                            }
+                            collect_dependencies(entity);
+                        }
+                    };
+                    collect_dependencies(world_node.child("Entities"));
 
                     // bucket files by type so we can fan each bucket out across the thread pool
                     // sequential loads here used to dominate world load time on texture heavy scenes
@@ -2772,27 +2839,6 @@ namespace spartan
             }
 
             SP_LOG_INFO("World load: resources %.2f ms", timer.GetElapsedTimeMs());
-
-            // load xml document, kept alive until main thread finishes deferred script init
-            shared_ptr<pugi::xml_document> doc = make_shared<pugi::xml_document>();
-            pugi::xml_parse_result result = doc->load_file(file_path.c_str());
-            if (!result)
-            {
-                SP_LOG_ERROR("Failed to load XML file: %s", result.description());
-                finish();
-                return;
-            }
-            deferred_load_document = doc;
-
-            // get world node
-            pugi::xml_node world_node = doc->child("World");
-            if (!world_node)
-            {
-                SP_LOG_ERROR("No 'World' node found.");
-                deferred_load_document.reset();
-                finish();
-                return;
-            }
 
             // read metadata
             world_description = world_node.attribute("description").as_string();

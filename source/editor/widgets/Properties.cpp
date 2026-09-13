@@ -3343,7 +3343,13 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
         if (property_toggle("Volume Ambience", &ambient, "stereo background blended by the Volume on this entity; active in play mode"))
             audio_source->SetAmbient(ambient);
         if (ambient)
-            ImGui::Text("Region blend: %.0f%%", audio_source->GetAmbientGain() * 100.0f);
+        {
+            int profile = static_cast<int>(audio_source->GetAmbientProfile());
+            layout::begin_property("Habitat", "vegetation layers follow actual nearby props; wind follows terrain exposure and canopy shelter");
+            if (ImGui::Combo("##ambient_profile", &profile, "Region only\0Cicadas\0Vegetation birds\0Exposed wind\0"))
+                audio_source->SetAmbientProfile(static_cast<uint32_t>(profile));
+            ImGui::Text("Habitat: %.0f%%, mixed gain: %.0f%%", audio_source->GetHabitatGain() * 100.0f, audio_source->GetAmbientGain() * 100.0f);
+        }
 
         layout::separator();
         layout::section_header("Progress");
