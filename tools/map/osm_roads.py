@@ -76,10 +76,11 @@ OVERPASS_URLS   = [
 
 DEFAULT_CLASSES = ["primary", "secondary", "tertiary"]
 
-# road width in meters and the gameplay tier per osm highway class
+# Gameplay widths: main routes have four 3.5 m lanes plus two 0.5 m margins.
+# Keep in sync with source/world/RoadCrossSection.h.
 CLASS_WIDTH = {
-    "primary":       12.0,
-    "secondary":     10.0,
+    "primary":       15.0,
+    "secondary":     15.0,
     "tertiary":       8.0,
     "unclassified":   6.0,
     "residential":    5.0,

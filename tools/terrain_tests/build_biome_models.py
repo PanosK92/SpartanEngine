@@ -94,7 +94,7 @@ def tree(kind,index):
     foliage=material(kind+'_foliage',(.22,.285,.13),
         SOURCE/'pine_textures/twig_diff.png' if kind=='pine' else None,
         SOURCE/'pine_textures/twig_alpha.png' if kind=='pine' else None)
-    height=12+index*1.3 if kind=='pine' else 6+index*.45
+    height=(7.0 if index==3 else 12+index*1.3) if kind=='pine' else (3.8 if index==3 else 6+index*.45)
     trunk_height=height*(.9 if kind=='pine' else .38)
     def trunk_at(t):return Vector((math.sin(t*3+index)*t*(1.1 if index==2 else .35),math.sin(t*5+index)*t*.3,trunk_height*t))
     for j in range(12):
@@ -183,13 +183,15 @@ def export(name,normalize=None,budget=None):
     for m in data.get('materials',[]):
         if m.get('alphaMode')=='BLEND':m['alphaMode']='MASK';m['alphaCutoff']=.45;m['doubleSided']=True
     p.write_text(json.dumps(data,separators=(',',':')))
+    # Export may discard degenerate faces from a simplified scan. Record the actual file.
+    triangles=sum(data['accessors'][p['indices']]['count']//3 for m in data['meshes'] for p in m['primitives'])
     REPORT.append(dict(name=name,path=p.relative_to(ROOT/'binaries').as_posix(),triangles=triangles,source_dimensions=list(hi-lo),scale=factor))
     print('BIOME_ASSET',REPORT[-1],flush=True)
 
 for kind in ['pine','olive']:
-    for i in range(3):
+    for i in range(4):
         if not ONLY or ONLY in [kind,f'{kind}_{i+1:02}']:tree(kind,i)
-for source,name,budget in [('coast_land_rocks_02','limestone_slab',4500),('boulder_01','limestone_boulder',3200),('rock_07','weathered_stone',1400),('rock_09','angular_stone',1600),('shrub_04','scrub_01',5500),('shrub_04','scrub_02',3500)]:
+for source,name,budget in [('coast_land_rocks_02','limestone_slab',4500),('boulder_01','limestone_boulder',3200),('rock_07','weathered_stone',1400),('rock_09','angular_stone',1600),('shrub_04','scrub_01',5500),('shrub_04','scrub_02',3500),('shrub_01','scrub_03',4500),('shrub_02','scrub_04',4500),('shrub_03','scrub_05',4500)]:
     if ONLY and ONLY!=name:continue
     clear();bpy.ops.import_scene.gltf(filepath=str(SOURCE/source/(source+'.gltf')))
     if 'scrub' in name:

@@ -7,11 +7,11 @@ materials share their habitat boundary with the vegetation rules.
 The summer island disables snow coverage. An inactive snow layer no longer
 imposes a treeline or removes grass; species altitude limits still apply.
 
-- **Pine woodland:** three branch/crown shapes, clustered on eligible hillsides
+- **Pine woodland:** four branch/crown shapes, including younger trees, clustered on eligible hillsides
   from 4–700 m, with a soft coastal exclusion, broad clearings and irregular edges.
-- **Olive groves:** three tree shapes on gentle lower ground from 3–280 m (fading above 180 m),
+- **Olive groves:** four tree shapes on gentle lower ground from 3–280 m (fading above 180 m),
   favouring openings outside the pine woodland.
-- **Maquis scrub:** two assembled scanned shrub forms, in patches and woodland
+- **Maquis scrub:** five assembled scanned shrub forms, in patches and woodland
   fringes. These have no collision.
 - **Limestone outcrops:** two rock silhouettes used in buried hillside formations;
   nominal formations are 60 × 30 × 16 m before relief and burial vary them.
@@ -24,7 +24,7 @@ Slope, elevation, insolation and deposition shape woodland patches. Forest-floor
 cover follows those patches and meadow cover recedes inside them. Pines use this
 woodland weight, olives favour gentle openings, and scrub fills suitable soil
 and woodland fringes. Road, building and water exclusions still apply.
-Peak densities are 220 pines, 100 olives and 180 shrubs per hectare of fully
+Peak densities are 360 pines, 160 olives and 720 shrubs per hectare of fully
 accepted ground; canopy dimensions and clump spacing preserve open gaps. Mesh variants
 divide one placement budget; adding a model does not multiply the density.
 Seeds reproduce placements and model choices when a tile is regenerated.
@@ -48,7 +48,7 @@ by Git like the rest of the project assets. Preserve this directory with the gam
 asset backup. The tracked scripts and `biome_sources.json` retain the preparation
 recipe, download URLs, CC0 source pages, sizes and SHA-256 hashes.
 
-The twelve exports comprise three procedural pines, three procedural olives, two
+The seventeen exports comprise four procedural pines, four procedural olives, five
 assembled shrubs and four scanned rock forms. Tree geometry is authored by the
 generator; bark/needle textures and rock/shrub scans are from
 [Poly Haven](https://polyhaven.com), whose assets are [CC0](https://polyhaven.com/license).
@@ -110,3 +110,54 @@ Allow the engine bridge to finish starting before running the script.
 the builder to produce a neutral-light palette image in `binaries/terrain_tests`.
 Visual island checks complement these tests; the tests do not certify every tree
 placement, collision shape or camera view across the entire island.
+
+## Island wildlife
+
+`source/world/IslandWildlife.h` adds a transient population only while playing
+`plan`: 12 songbirds, 12 coastal gulls, 12 squirrel placeholders, 12 martens,
+12 lizards and 12 butterflies. Animals are assembled from coloured cubes with
+animated wings, heads, tails and legs; squirrels are an artistic placeholder,
+not a claim about the island's species distribution. Martens, lizards and
+butterflies are documented by [NECCA](https://necca.gov.gr/mdpp/m-d-ethnikon-parkon-zakynthou-ainou-kai-prostatevomenon-periochon-ionion-nison/).
+
+The pool reuses animals within 180 m of the camera, creates at most two per frame,
+and retries unsuitable ground at bounded intervals. Gulls prefer the coast;
+ground animals reject steep slopes, water, roads, building masks and physical
+obstacles. Animals forage around their home patches, rest, and flee nearby
+players. Ground movement follows the terrain slope and checks escape routes before
+turning. Turns are rate-limited; blocked animals wait between route probes and
+do not play walking animation without actual travel. Squirrels and martens cycle
+through roaming, foraging, sniffing and resting. Birds share patches in groups of
+four, approach checked landing spots, fold their wings and peck on the ground,
+then take off again. A close approach scatters nearby flockmates with staggered
+reaction times. Running increases the alarm radius; a quiet approach lets ground
+animals pause and watch for 2-4 seconds, with a cooldown before watching again.
+Squirrels and martens leave alternating paw prints on gentle, sparse ground.
+The transient print pool is capped at 96, renders within 35 m, and fades after
+75 seconds before expiring at 90 seconds. Night lengthens perching and resting except for martens.
+The population is illustrative ambient life, not a navigation or ecology simulation.
+It has no colliders, no ray-tracing instances, and nearby-only shadows. Stop and
+world unload remove all runtime animals without serializing them into the island.
+
+New shrub exports use Poly Haven's CC0 shrub_01, shrub_02 and shrub_03 sources,
+with URLs and content hashes retained in biome_sources.json. Runtime files stay
+in the existing ignored asset directory; reproduce them with the commands above.
+
+The island UFO uses the tracked `data/scripts/ufo_hover.lua`. It observes from
+roughly 1.7 km away and 650 m above the player, with a 1.1 km inner distance
+threshold. It hovers with subtle pitch, roll and vertical wobble, then repositions
+in a roughly 0.16-second burst after 12-24 seconds or when the player moves away.
+Being watched for 0.7 seconds triggers a farther, roughly 2.8 km vantage. Jumps
+follow an arc rather than crossing directly over the player and sample terrain
+for clearance. This is cinematic behaviour, not a physical simulation. Play start
+acquires a high position outside the camera's forward view; edit mode keeps the
+authored transform. All settings are exposed on the island's UFO script.
+
+During island play, a four-minute cloud-cover cycle smoothly builds a cloud bank
+and clears back to the authored coverage. Existing cloud advection and shadows
+carry its movement; this pass does not add precipitation. Pausing freezes the
+cycle, and stopping restores the authored coverage.
+
+The shared wind field uses advected, domain-warped gradient noise at three
+scales instead of elliptical gust stamps. Independently drifting detail changes
+the fronts' outlines as they travel, while periodic sampling preserves tile seams.

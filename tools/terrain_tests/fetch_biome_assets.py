@@ -10,7 +10,7 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT/'binaries/project/models/island_biomes/sources'
-MODELS = ['coast_land_rocks_02','coast_rocks_01','rock_07','boulder_01','rock_09','shrub_01','shrub_02','shrub_04']
+MODELS = ['coast_land_rocks_02','coast_rocks_01','rock_07','boulder_01','rock_09','shrub_01','shrub_02','shrub_03','shrub_04']
 
 def fetch(url, target, md5=None):
     target.parent.mkdir(parents=True,exist_ok=True)

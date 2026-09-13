@@ -10,8 +10,8 @@ inline void ApplyIslandScatterDefaults(std::array<TerrainScatterLayer, terrain_s
         s.name = "pine_woodland";
         s.habitat = 1;
         s.enabled = true;
-        s.density = 220.0f;
-        s.max_per_tile = 4000;
+        s.density = 360.0f;
+        s.max_per_tile = 6500;
         s.seed = 1147;
         s.height_min = 4.0f;
         s.height_max = 700.0f;
@@ -23,15 +23,15 @@ inline void ApplyIslandScatterDefaults(std::array<TerrainScatterLayer, terrain_s
         s.clump_count = 10;
         s.clump_raggedness = 0.8f;
         s.mesh_scale = 1.0f;
-        s.size_min = 0.8f;
-        s.size_max = 1.15f;
+        s.size_min = 0.65f;
+        s.size_max = 1.25f;
         s.align_to_normal = 0.0f;
         s.surface_offset = -0.05f;
         s.render_distance = 3200.0f;
         s.shadow_distance = 220.0f;
         s.flags = 109;
         s.mesh_path = "project/models/island_biomes/pine_01/pine_01.gltf";
-        s.mesh_variants = "project/models/island_biomes/pine_02/pine_02.gltf;project/models/island_biomes/pine_03/pine_03.gltf";
+        s.mesh_variants = "project/models/island_biomes/pine_02/pine_02.gltf;project/models/island_biomes/pine_03/pine_03.gltf;project/models/island_biomes/pine_04/pine_04.gltf";
     }
     {
         auto& s = layers[1];
@@ -105,8 +105,8 @@ inline void ApplyIslandScatterDefaults(std::array<TerrainScatterLayer, terrain_s
         s.name = "olive_groves";
         s.habitat = 2;
         s.enabled = true;
-        s.density = 100.0f;
-        s.max_per_tile = 2200;
+        s.density = 160.0f;
+        s.max_per_tile = 3500;
         s.seed = 3511;
         s.height_min = 3.0f;
         s.height_max = 280.0f;
@@ -118,15 +118,15 @@ inline void ApplyIslandScatterDefaults(std::array<TerrainScatterLayer, terrain_s
         s.clump_count = 10;
         s.clump_raggedness = 0.65f;
         s.mesh_scale = 1.0f;
-        s.size_min = 0.78f;
-        s.size_max = 1.15f;
+        s.size_min = 0.65f;
+        s.size_max = 1.3f;
         s.align_to_normal = 0.0f;
         s.surface_offset = -0.04f;
         s.render_distance = 2600.0f;
         s.shadow_distance = 200.0f;
         s.flags = 109;
         s.mesh_path = "project/models/island_biomes/olive_01/olive_01.gltf";
-        s.mesh_variants = "project/models/island_biomes/olive_02/olive_02.gltf;project/models/island_biomes/olive_03/olive_03.gltf";
+        s.mesh_variants = "project/models/island_biomes/olive_02/olive_02.gltf;project/models/island_biomes/olive_03/olive_03.gltf;project/models/island_biomes/olive_04/olive_04.gltf";
     }
     {
         auto& s = layers[7];
@@ -134,8 +134,8 @@ inline void ApplyIslandScatterDefaults(std::array<TerrainScatterLayer, terrain_s
         s.name = "maquis_scrub";
         s.habitat = 3;
         s.enabled = true;
-        s.density = 180.0f;
-        s.max_per_tile = 3500;
+        s.density = 720.0f;
+        s.max_per_tile = 12000;
         s.seed = 6173;
         s.height_min = 2.0f;
         s.height_max = 800.0f;
@@ -146,19 +146,19 @@ inline void ApplyIslandScatterDefaults(std::array<TerrainScatterLayer, terrain_s
         s.deposition_influence = 0.15f;
         s.mask_channel = -1;
         s.mask_min = 0.01f;
-        s.clump_radius = 18.0f;
-        s.clump_count = 8;
+        s.clump_radius = 12.0f;
+        s.clump_count = 14;
         s.clump_raggedness = 0.95f;
         s.mesh_scale = 1.0f;
-        s.size_min = 0.65f;
-        s.size_max = 1.4f;
+        s.size_min = 0.4f;
+        s.size_max = 1.55f;
         s.align_to_normal = 0.1f;
         s.surface_offset = -0.03f;
         s.render_distance = 1100.0f;
         s.shadow_distance = 90.0f;
         s.flags = 137;
         s.mesh_path = "project/models/island_biomes/scrub_01/scrub_01.gltf";
-        s.mesh_variants = "project/models/island_biomes/scrub_02/scrub_02.gltf";
+        s.mesh_variants = "project/models/island_biomes/scrub_02/scrub_02.gltf;project/models/island_biomes/scrub_03/scrub_03.gltf;project/models/island_biomes/scrub_04/scrub_04.gltf;project/models/island_biomes/scrub_05/scrub_05.gltf";
     }
 }
 }

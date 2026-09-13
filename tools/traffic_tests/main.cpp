@@ -10,6 +10,17 @@ Path line(Vector3 a, Vector3 b)
 }
 int main()
 {
+    // Four marked lanes must not put ambient traffic on the internal divider.
+    // A 2.2 m wide car has clearance to both lines of the 3.5 m outer lane.
+    Network racing;
+    racing.AddRoad(99,"a","b",line({0,0,0},{100,0,0}),15);
+    const float outer=spartan::road_cross_section::TrafficOffset(15);
+    assert(fabsf(outer-5.25f)<.001f);
+    assert(outer-1.1f>spartan::road_cross_section::DividerOffset(15));
+    assert(outer+1.1f<spartan::road_cross_section::EdgeOffset(15));
+    assert(fabsf(racing.edges[0].lane.Sample(20).position.z+5.25f)<.001f);
+    assert(fabsf(racing.edges[1].lane.Sample(20).position.z-5.25f)<.001f);
+    assert(!spartan::road_cross_section::FourLanes(8));
     Network network;
     network.AddRoad(1, "west", "junction", line({-100, 0, 0}, {0, 10, 0}), 10);
     network.AddRoad(2, "junction", "east", line({0, 10, 0}, {100, 20, 0}), 10);

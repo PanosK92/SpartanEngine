@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include "common.hlsl"
+#include "common_road.hlsl"
 #include "common_ray_hit.hlsl"
 //====================
 
@@ -304,6 +305,7 @@ ReflectionSurface reconstruct_reflection_surface(float ray_t, uint instance_inde
         payload.emission = emission * photometric_to_radiometric(lighting_emissive_nits_texture);
     }
 
+    road_weathering(mat.flags,hit_pos,albedo,roughness,exp2(mip_level)*3.0/4096.0);
     payload.position       = hit_pos;
     payload.hit_distance   = ray_t;
     payload.normal         = normal_world;

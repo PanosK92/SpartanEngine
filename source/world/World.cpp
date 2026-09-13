@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Entity.h"
 #include "Prefab.h"
 #include "WorldHelpers.h"
+#include "IslandWildlife.h"
+#include "IslandRoadDetails.h"
 #include "../car/Car.h"
 #include "../profiling/Profiler.h"
 #include "../core/ProgressTracker.h"
@@ -1372,6 +1374,8 @@ namespace spartan
             }
         }
 
+        island_wildlife::Clear(false);
+        island_road_details::Clear();
         WorldHelpers::Clear();                        // release long lived builder meshes and materials
         SP_FIRE_EVENT(EventType::WorldUnloading);    // editor drops thumbnail pointers before the cache frees them
         ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
@@ -1498,6 +1502,7 @@ namespace spartan
         // stop
         if (stopped)
         {
+            island_wildlife::Clear(true);
             play_boot = play_boot_phase::idle;
             play_start_queue.clear();
             play_start_cursor = 0;
@@ -1624,6 +1629,9 @@ namespace spartan
         // during boot keep rendering, but skip sim ticks and the per entity change scan
         if (play_boot != play_boot_phase::starting)
         {
+            if (Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused))
+                island_wildlife::Tick(static_cast<float>(Timer::GetDeltaTimeSec()));
+
             SP_PROFILE_CPU_START("world_pretick");
             for (Entity* entity : entities_with_pretick)
             {
@@ -1690,6 +1698,8 @@ namespace spartan
             }
 
             Spline::RebuildRoadJunctions();
+            if (!ProgressTracker::IsLoading())
+                island_road_details::Tick(static_cast<float>(Timer::GetDeltaTimeSec()));
 
             // ragdoll hit capsules after scripts/pedestrians moved the bodies
             for (Entity* entity : entities_with_ragdoll)

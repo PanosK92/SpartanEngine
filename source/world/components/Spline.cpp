@@ -45,6 +45,8 @@ using namespace std;
 using namespace spartan::math;
 //============================
 
+#include "IslandRoadSurface.h"
+
 namespace spartan
 {
     // prefix used to identify control point child entities
@@ -1936,7 +1938,10 @@ namespace spartan
             if (Terrain* terrain = Terrain::FindActive())
                 terrain->MarkSplinePropCarvesDirty(m_carve_entity_id);
             // Publish only the final junction-adjusted deck to terrain and collision.
-            if (!ProgressTracker::IsLoading()) return;
+            // Loading also waits for the shared solve. Uploading a provisional
+            // island deck duplicates hundreds of kilometres of geometry in the
+            // append-only buffers, including all four-lane paint ribbons.
+            return;
         }
 
         // resolve the profile and extrude it along the spline
@@ -1997,7 +2002,8 @@ namespace spartan
     {
         if (clear_sidewalk && m_entity_ptr)
         {
-            if (Entity* sidewalk = m_entity_ptr->GetChildByName("spline_sidewalk"))
+            for (const char* name:{"spline_sidewalk","spline_road_paint","spline_road_shoulder"})
+            if (Entity* sidewalk = m_entity_ptr->GetChildByName(name))
             {
                 sidewalk->RemoveComponent<Physics>();
                 sidewalk->RemoveComponent<Render>();
@@ -3091,6 +3097,7 @@ namespace spartan
 
         bool width_varies     = (m_road_width_end != m_road_width);
         const bool embankment = UsesEmbankment();
+        const bool island_finish = m_profile==SplineProfile::Road && island_road_surface::Enabled(m_entity_ptr);
 
         uint32_t total_samples = static_cast<uint32_t>(frames.size()) - 1;
         uint32_t profile_count = static_cast<uint32_t>(profile_points.size()) + (embankment ? 2u : 0u);
@@ -3099,6 +3106,8 @@ namespace spartan
         vector<uint32_t> indices;
         vector<RHI_Vertex_PosTexNorTan> sidewalk_vertices;
         vector<uint32_t> sidewalk_indices;
+        vector<RHI_Vertex_PosTexNorTan> shoulder_vertices,paint_vertices;
+        vector<uint32_t> shoulder_indices,paint_indices;
 
         vertices.reserve(total_samples * profile_count * 4);
 
@@ -3137,6 +3146,14 @@ namespace spartan
                 cur_profile = width_varies ? GetProfilePointsForWidth(current_width) : profile_points;
             }
             uint32_t cur_profile_count = static_cast<uint32_t>(cur_profile.size());
+
+            if (island_finish && embankment)
+            {
+                // A low, irregular gravel verge, not an asphalt-coated cliff.
+                const float verge=.85f+.08f*sinf(frame.distance*.047f)+.035f*sinf(frame.distance*.119f);
+                cur_profile.front().x-=verge;
+                cur_profile.back().x+=verge;
+            }
 
             if (m_profile == SplineProfile::Road && m_sidewalk_enabled)
             {
@@ -3177,8 +3194,9 @@ namespace spartan
                 const bool sidewalk = m_profile == SplineProfile::Road && m_sidewalk_enabled &&
                     j >= first && j < first + 5 && j != first + 2;
                 if (sidewalk && GetSidewalkWidthAt(frames[i - 1].t) == 0.0f && GetSidewalkWidthAt(frame.t) == 0.0f) continue;
-                auto& target_vertices = sidewalk ? sidewalk_vertices : vertices;
-                auto& target_indices = sidewalk ? sidewalk_indices : indices;
+                const bool shoulder=island_finish && embankment && (j==0 || next==cur_profile_count-1);
+                auto& target_vertices = sidewalk ? sidewalk_vertices : shoulder ? shoulder_vertices : vertices;
+                auto& target_indices = sidewalk ? sidewalk_indices : shoulder ? shoulder_indices : indices;
                 const uint32_t base = static_cast<uint32_t>(target_vertices.size());
                 for (uint32_t row = 0; row < 2; row++)
                 {
@@ -3206,13 +3224,19 @@ namespace spartan
                         const float tex_u = (close_profile && side == 1 && next == 0) ? 1.0f : section_u[k];
                         const float paving_v = f.distance * 0.5f;
                         const float paving_origin = floorf(frames[i - 1].distance * 0.5f);
+                        const float repeat=shoulder ? 2.0f : 3.0f;
+                        const Vector2 finish_uv(section[k].x/repeat,
+                            f.distance/repeat-floorf(frames[i-1].distance/repeat));
                         target_vertices.emplace_back(f.position + f.right * section[k].x + f.up * section[k].y,
                             sidewalk ? Vector2((section[k].x + section[k].y) * 0.5f, paving_v - paving_origin) :
-                            Vector2(tex_u * m_uv_tiling_u, (row == 0 ? v0 : v1) - origin), n, t);
+                            island_finish ? finish_uv : Vector2(tex_u * m_uv_tiling_u, (row == 0 ? v0 : v1) - origin), n, t);
                     }
                 }
                 target_indices.insert(target_indices.end(), {base, base + 1, base + 2, base + 1, base + 3, base + 2});
             }
+            if (island_finish)
+                island_road_surface::Markings(frames[i-1],frame,
+                    m_road_width+(m_road_width_end-m_road_width)*frames[i-1].t,current_width,paint_vertices,paint_indices);
             previous_profile = move(cur_profile);
             previous_u = move(u);
         }
@@ -3220,6 +3244,22 @@ namespace spartan
         // A junction is part of one participating road's render AND collision mesh.
         for (const JunctionPatch& patch : m_junction_patches)
         {
+            if (island_finish)
+            {
+                // Same unpainted aggregate as the deck: no atlas mirroring or
+                // stripes leaking into the junction. Rebase before half packing.
+                const Vector2 origin(floorf(patch.center.x/3),floorf(patch.center.z/3));
+                for (size_t i=0;i<patch.boundary.size();++i)
+                {
+                    const Vector3 a=patch.boundary[i],b=patch.boundary[(i+1)%patch.boundary.size()];
+                    const Vector3 normal=(b-patch.center).Cross(a-patch.center).Normalized();
+                    const uint32_t base=static_cast<uint32_t>(vertices.size());
+                    for (const Vector3 p:{patch.center,b,a})
+                        vertices.emplace_back(p,Vector2(p.x/3-origin.x,p.z/3-origin.y),normal,Vector3::Right);
+                    indices.insert(indices.end(),{base,base+1,base+2});
+                }
+                continue;
+            }
             // Tile a paint-free band at the same texel density as the approach deck.
             // Clip at mirrored U repeats so interpolation never crosses lane markings.
             const float width = max(fabsf(m_road_width), 0.001f);
@@ -3272,6 +3312,17 @@ namespace spartan
         }
 
         float total_length = frames.back().distance;
+
+        if (island_finish)
+        {
+            island_road_surface::SetLayer(m_entity_ptr,"spline_road_paint",paint_vertices,paint_indices,1);
+            island_road_surface::SetLayer(m_entity_ptr,"spline_road_shoulder",shoulder_vertices,shoulder_indices,2);
+        }
+        else
+        {
+            for (const char* name:{"spline_road_paint","spline_road_shoulder"})
+                if (Entity* child=m_entity_ptr->GetChildByName(name)) World::RemoveEntity(child);
+        }
 
         Entity* sidewalk = m_entity_ptr->GetChildByName("spline_sidewalk");
         if (sidewalk)
@@ -3348,6 +3399,8 @@ namespace spartan
         {
             render->SetDefaultMaterial();
         }
+
+        if (island_finish) render->SetMaterial(island_road_surface::MaterialFor(0));
 
         // Asphalt and junctions sit on top of terrain; do not coat them in ground material.
         render->SetFlag(RenderFlags::ExcludeFromTerrainBlend, m_profile == SplineProfile::Road);

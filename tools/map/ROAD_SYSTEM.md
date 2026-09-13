@@ -55,29 +55,65 @@ for ambiguous closely parallel roads. Future imports preserve actual graph ident
 
 ## Current limits
 
-- The junction pass supports open, unattached road strips, including localized sidewalks. It reports
-  missing space, displaced anchors, and acute/overlapping approaches and leaves those
-  approaches intact. Nodes separated by less than a road width along a shared spline
-  are combined into one compound junction, including staggered intersections and small islands.
-  Before the end repairs, the map built 288 surfaces from 301 graph nodes (293 groups). Five groups
-  still have overlapping approach mouths and remain unsupported: `1020823664`,
-  `1020923060`, `273733874`, `926614157`, and `9755596181`. These need further
-  road-layout/width repair; they are logged rather than silently generating invalid decks.
-- Junction asphalt currently samples the unmarked region of the existing road texture.
-  The paint-free band is mirrored at the approach texture scale, with geometry split
-  at repeat boundaries to keep paint out of the junction. This assumes the Zakynthos road atlas layout; a separate asphalt material and road
-  marking layer are still needed for arbitrary materials and detailed intersection markings.
+- The junction pass supports open, unattached road strips, including localized
+  sidewalks. Nearby graph nodes on a shared spline can form a compound junction.
+  The current island builds 364 junction surfaces; the previously unsupported
+  overlapping approaches were corrected in the road overhaul. Arbitrary future
+  layouts can still exceed this simple junction solver's geometric limits.
+- Island roads use separate asphalt, paint, and gravel shoulder materials. Generic
+  spline fixtures retain the legacy atlas UV mapping and paint-free junction band.
+  Detailed intersection markings still require authoring.
 - Shared grades take priority at connections; the network solve does not enforce each
   road's excavation budget. Inspect mountainous intersections for excessive cut/fill.
 - Bridges, tunnels, banking, and tight hairpin offset self-intersections require additional
   authoring and meshing work. This is a repair foundation, not a finished road editor.
-- A complete visual and driving pass of the 427 km island has not been completed.
+- A complete visual and driving pass of the 450 km island has not been completed.
 
 ## Checks
 
+### Island road presentation
+
+The racing cross-sections are authored with `python -B tools/map/tune_racing_roads.py --apply`
+(omit `--apply` to inspect). Main routes and their matching airport links
+use 15 m of continuous asphalt: four 3.5 m lanes and 0.5 m paved margins. The
+remaining technical routes use 8 m. Tags `racing_main` and `racing_technical`
+identify the groups for future track layouts; they do not create race events.
+The importer uses the same main-road width for future primary/secondary routes.
+
+`RoadCrossSection.h` keeps lane paint and ambient traffic offsets consistent.
+Wide roads have two same-direction dashed dividers and a double painted centre,
+without a physical median. Ambient traffic follows the outer lane in each
+direction, preserving its paired routing edges; this does not implement racing
+opponents or lane-changing AI. Junctions, shoulders, sidewalks, vegetation
+clearance and furniture rebuild from the authored road widths.
+Closely staggered four-lane connections share a junction deck when their mouths
+would overlap. Connected roads upload geometry after the shared junction solve,
+including during loading, avoiding duplicate provisional decks in scene buffers.
+
+`python -B tools/map/fetch_road_materials.py` installs the unmodified CC0
+Poly Haven Asphalt Track (4K) and Gravel Road (2K) color, normal, roughness and
+occlusion maps. `road_surface_assets.json` records URLs, licences and checksums.
+The downloaded maps belong in `binaries/project/materials/island_roads`, alongside
+the island's other external assets. Run this installer on a fresh checkout.
+
+`IslandRoadSurface.h` opts the `plan.world` roads hierarchy into separate layers:
+three-metre asphalt repeats, fixed-width off-white paint, and two-metre gravel
+repeats on wider, gently irregular shoulders. Paint is clipped against solved
+junction segments and does not affect collision. Shoulders retain their own mesh
+collision and allow terrain blending; the asphalt stays free of terrain coating.
+The world uses 16 samples per control-point span for smoother road silhouettes.
+
+`common_road.hlsl` adds low-contrast weathering in world coordinates and fine paint
+wear. Raster and reflection/GI ray hits use the same evaluator; subpixel paint
+grain fades with footprint to avoid distant shimmer. This is dry asphalt, without
+an artificial clearcoat. Surface flags default off for all other materials.
+
+Road furniture still follows the resulting spline frames. Supporting render
+layers are transient and regenerated after edits; the saved road graph is unchanged.
+
 ### Local sidewalks
 
-`plan.world` contains 94 sidewalk intervals on 76 roads around 40 town/service markers.
+`plan.world` contains 93 sidewalk intervals on 73 roads around 40 town/service markers.
 `python tools/map/add_populated_sidewalks.py --apply` authors these intervals; the marker
 list and radii live in that script and exclude scenic and event-only locations.
 Each `<sidewalk_range start="0.2" end="0.4" />` is a normalized spline interval.
@@ -120,34 +156,54 @@ the five unsupported groups above remain explicit limitations.
 `tools/map/remove_road_blocking_buildings.py --apply` removes city building boxes that overlap sampled road and localized paving corridors (including the box-shaped city grid streets). It preserves unrelated XML and leaves 0.5 m clearance; 10 conflicting buildings were removed from plan.world.
 
 
-### Road end returns
+### Island road overhaul
 
-`python tools/map/repair_road_ends.py --apply` repairs the authored island, using the
-local heightmap and explicit node tags. The current pass resolves 121 unconnected
-ends with 34 nearby-road joins, 69 two-lane return loops, and one short stub trimmed to its existing junction. Paired endpoints count
-as two repaired ends. It backs up the input, preserves unrelated scene XML, and is
-idempotent. `road_end_repairs.json` records the authored changes. Short coastal
-approaches can retreat along their existing route to make room for a loop. Nearby
-joins reject backward extensions and interior anchors too close to a road end.
-The search includes segment interiors and distant spans of the same spline; loop
-placement rejects overlaps with nearby road segments outside its shared mouth.
-Refresh localized paving with `add_populated_sidewalks.py --apply` after edits.
+The old end-return migration is superseded by `overhaul_roads.py`. The initial
+island contained 282 splines in nine disconnected networks, including 69 artificial
+return loops. The revised roads hierarchy has 204 splines in one connected network,
+with no unconnected endpoints or artificial return loops. Simple joins are merged
+into continuous splines; short duplicate strips and reversing junction hooks are
+removed. Shared node identities still define traffic and mesh connections.
 
-The junction builder keeps distant visits to the same node separate on returning
-splines. Junction fans use the mouth centroid so elbows and asymmetric returns can
-be triangulated even when the original control point is outside the trimmed deck.
-The traffic graph can enter a return loop and choose the approach's outbound lane
-on its next visit to the junction; it does not teleport between the two ends.
+The migration uses the local atlas coastline as well as elevation. Zero-valued
+heightmap cells occur inside the coastal plain; treating every such cell as open
+sea was preventing legitimate connections. New connections use checked straight
+corridors or terrain-cost pathfinding. All new at-grade crossings receive shared
+anchors. Tight junction approaches have explicit space for their road mouths.
 
-Validation: `test_road_ends.py` checks zero unconnected ends, shared anchors, loop
-closure, unique IDs, and idempotence. The traffic C++ checks exercise return-loop
-routing. `test_return_loop_fixture.mjs` checks both mouths and the circuit in a
-live disposable editor on port 47784; `test_road_runtime.mjs` also covers elbows.
-`audit_road_return_clearance.mjs` records high raycasts at the original anchors.
-A rounded bend can trim away that exact point, so a terrain hit is an inspection
-candidate, not proof of a gap in the lane. The existing raised airport ground,
-runway, and parking slabs still overlay some island roads at about 40 m elevation;
-this road-end repair does not reposition the airport. A complete driving and
-scene-clearance pass across the island remains separate from topology validation.
+Roads covered by the raised airport ground are removed or clipped back to a new
+perimeter route. A graded, two-way terminal access loop connects two points of
+that route and meets the airport service road between the runways. Its heights
+are explicit to match the airport platform. The east fence has an opening for
+both access lanes. The airport buildings and runway transforms are preserved.
 
-The final live pass builds 388 junction surfaces; four older overlapping groups remain logged (`1020923060`, `273733874`, `926614157`, `9755596181`). Fresh island loading, 20-car/100-pedestrian operation, all 100 pedestrian floor probes, and the local runtime fixtures passed. Repeated full-island reloads in one test process eventually hit the existing 25-bit meshlet arena limit; use a fresh process for full-island validation.
+Run from the repository root:
+
+    python -B tools/map/overhaul_roads.py
+    python -B tools/map/overhaul_roads.py --apply
+    python -B tools/map/add_populated_sidewalks.py --apply
+
+Dry-run validates and reports without writing. The current migration is
+idempotent. It changes the roads hierarchy and the airport fence opening; other
+world content is preserved. `road_overhaul.json` records the current topology
+and continuous routes. The earlier `road_end_repairs.json` is a historical record
+of the superseded return-loop pass.
+
+`source/world/IslandRoadDetails.h` builds road furniture from the final generated
+road frames in edit and play modes: yield signs on smaller-road approaches,
+chevrons on sharp bends, delineator posts, and short outside guardrails. Junction
+clearances keep the repeated furniture away from crossing mouths. Posts and
+rails use merged meshes per road and material; signs remain individually selectable.
+Everything is transient, with shared meshes/materials and bounded render/shadow
+ranges. One road is processed per frame; frame/transform changes rebuild its
+furniture and deleted roads relinquish theirs.
+
+Validation: ten topology/airport/width tests and four importer regressions pass.
+The C++ traffic suite checks the four-lane offsets and 100,000 route traversal
+steps. A fresh widened-island load builds all 360 junction surfaces without
+unsupported-junction warnings. Four current lane-centre collision probes on
+`r000_zakynthos_keri` hit the road. One unidentified PhysX mesh-cooking warning
+remains in the scene log; scene-wide collision is not fully verified.
+The earlier 99 collision probes and four sidewalk
+regressions covered the pre-widening network; they are not a driving survey of
+every metre of the widened island.

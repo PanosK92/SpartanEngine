@@ -2,6 +2,7 @@
 // Distributed under the repository's MIT license.
 #pragma once
 #include "../math/Vector3.h"
+#include "RoadCrossSection.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -132,7 +133,7 @@ namespace spartan::road_traffic
             const size_t a = NodeId(from, center.points.front());
             const size_t b = NodeId(to, center.points.back());
             const float trim = std::min(width * 0.8f, center.Length() * 0.2f);
-            const float offset = std::min(width * 0.25f, width * 0.5f - 1.15f);
+            const float offset = road_cross_section::TrafficOffset(width);
             const size_t first = edges.size();
             for (int direction : {1, -1})
             {

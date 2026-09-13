@@ -120,6 +120,8 @@ namespace spartan
         CullMode,                   // face culling mode
 
         IsFoliage,                  // thin leaves/petals, allows light through the back side
+        IsRoadSurface,              // subtle world-space asphalt weathering
+        IsRoadPaint,                // worn mineral road paint
     
         // sentinel
         Max                         // total number of properties

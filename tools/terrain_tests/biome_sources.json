@@ -315,6 +315,51 @@
     "bytes": 395120
   },
   {
+    "asset": "shrub_03",
+    "page": "https://polyhaven.com/a/shrub_03",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/shrub_03/shrub_03_1k.gltf",
+    "file": "binaries/project/models/island_biomes/sources/shrub_03/shrub_03.gltf",
+    "sha256": "b76d7c14bc027e834e82d3f984c32b5d060e62908aa90ff9420a637ca253a8ea",
+    "bytes": 7296
+  },
+  {
+    "asset": "shrub_03",
+    "page": "https://polyhaven.com/a/shrub_03",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/shrub_03/shrub_03.bin",
+    "file": "binaries/project/models/island_biomes/sources/shrub_03/shrub_03.bin",
+    "sha256": "bf4df21e6d2a2bc5f00b4c9142f776171fe7da00cf960001825748067af542b6",
+    "bytes": 238684
+  },
+  {
+    "asset": "shrub_03",
+    "page": "https://polyhaven.com/a/shrub_03",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/shrub_03/shrub_03_arm_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/shrub_03/textures/shrub_03_arm_1k.jpg",
+    "sha256": "3e2b16812a623037138eedace958210c5f3443a827bbe69663045bba5612f815",
+    "bytes": 396238
+  },
+  {
+    "asset": "shrub_03",
+    "page": "https://polyhaven.com/a/shrub_03",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/shrub_03/shrub_03_diff_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/shrub_03/textures/shrub_03_diff_1k.jpg",
+    "sha256": "3cadc7aba46d3aabbd7d6d2b1d04aa32e2a7da0bc87c2d38ef3cb1ee42cb03ec",
+    "bytes": 481841
+  },
+  {
+    "asset": "shrub_03",
+    "page": "https://polyhaven.com/a/shrub_03",
+    "license": "CC0-1.0",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/shrub_03/shrub_03_nor_gl_1k.jpg",
+    "file": "binaries/project/models/island_biomes/sources/shrub_03/textures/shrub_03_nor_gl_1k.jpg",
+    "sha256": "ff856bacfce859b8a7555dd9a3b92fbd36b2e775d486be71df485afb4235d6c9",
+    "bytes": 504734
+  },
+  {
     "asset": "shrub_04",
     "page": "https://polyhaven.com/a/shrub_04",
     "license": "CC0-1.0",

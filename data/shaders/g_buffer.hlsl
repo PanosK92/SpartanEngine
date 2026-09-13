@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "common.hlsl"
 #include "common_tessellation.hlsl"
+#include "common_road.hlsl"
 //=================================
 
 struct gbuffer
@@ -527,6 +528,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         roughness    *= lerp(1.0f, packed.g, (float)material.has_texture_roughness());
         metalness    *= lerp(1.0f, packed.b, (float)material.has_texture_metalness());
     }
+
+    road_weathering(material.flags,position_world,albedo.rgb,roughness,max(length(dpdx_world),length(dpdy_world)));
 
     // fft ocean shading, normal from the displaced surface so lighting follows the swell
     if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)

@@ -2834,6 +2834,8 @@ namespace spartan
                 properties[count].flags |= material->GetProperty(MaterialProperty::MotionBlurRadial)          ? (1U << 19) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsSkidMark)                ? (1U << 20) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsFoliage)                 ? (1U << 21) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::IsRoadSurface)             ? (1U << 22) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::IsRoadPaint)               ? (1U << 23) : 0;
                 // keep in sync with Surface struct in common_structs.hlsl
             }
     

@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 
 static const int   FREQ_CURL_BASE = 4;    // base octave cycles across one tile
-static const int   GUST_PACKET_COUNT = 48;
 static const int   FREQ_MICRO     = 32;   // micro turbulence cycles across one tile
 static const int   CURL_OCTAVES   = 4;    // 4 -> top freq 32 cycles per tile
 static const float CURL_DRIFT     = 0.03; // per-octave tile fraction drifted per second
@@ -132,112 +131,20 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float  flow_y = fbm_evolving(uv + flow_advect - warp.yx, t * 1.07, 2.71);
     float2 flow   = clamp(float2(flow_x, flow_y) * 1.6, -1.0, 1.0);
 
-    // build soft isolated gust packets
-    float gust = 0.0f;
-    float2 wind_perpendicular = float2(
-        -wind_dir.y,
-        wind_dir.x
+    // Advected, domain-warped pressure fronts. Independent octave drift changes
+    // their silhouette continuously instead of carrying fixed elliptical stamps.
+    float2 gust_uv = uv - wind_dir * t * GUST_SPEED;
+    float2 distortion = float2(
+        gnoise_tiled(gust_uv * 4.0 + float2(t * 0.041, -t * 0.023), 4),
+        gnoise_tiled(gust_uv * 4.0 + float2(-t * 0.027, t * 0.037) + 7.3, 4)
     );
-    [loop]
-    for (int i = 0; i < GUST_PACKET_COUNT; i++)
-    {
-        float2 random_position = hash22(
-            int2(i * 17 + 3, i * 31 + 11)
-        ) * 0.5f + 0.5f;
-        float2 random_shape = hash22(
-            int2(i * 43 + 19, i * 59 + 7)
-        ) * 0.5f + 0.5f;
-        float2 random_motion = hash22(
-            int2(i * 71 + 23, i * 89 + 29)
-        ) * 0.5f + 0.5f;
-        float phase = random_motion.y * PI2;
-        float speed = lerp(
-            0.045f,
-            0.085f,
-            random_motion.x
-        );
-        float meander = sin(
-            t * lerp(0.18f, 0.38f, random_shape.y) +
-            phase
-        ) * lerp(0.010f, 0.025f, random_shape.x);
-        float2 center = frac(
-            random_position +
-            wind_dir * t * speed +
-            wind_perpendicular * meander
-        );
-
-        float2 delta = uv - center;
-        delta -= round(delta);
-
-        float orientation = (
-            random_shape.x -
-            0.5f
-        ) * (20.0f * DEG_TO_RAD) + sin(
-            t * 0.16f +
-            phase
-        ) * (18.0f * DEG_TO_RAD);
-        float orientation_cos = cos(orientation);
-        float orientation_sin = sin(orientation);
-        float2 packet_direction =
-            wind_dir * orientation_cos +
-            wind_perpendicular * orientation_sin;
-        float2 packet_perpendicular = float2(
-            -packet_direction.y,
-            packet_direction.x
-        );
-        float along = dot(
-            delta,
-            packet_direction
-        );
-        float across = dot(
-            delta,
-            packet_perpendicular
-        );
-        float breathing = 1.0f + sin(
-            t * lerp(0.20f, 0.42f, random_motion.x) +
-            phase
-        ) * 0.18f;
-        float radius_along = lerp(
-            0.025f,
-            0.055f,
-            random_shape.x
-        ) * breathing;
-        float radius_across = lerp(
-            0.016f,
-            0.038f,
-            random_shape.y
-        ) * breathing;
-        float distance_packet =
-            (along * along) /
-            (radius_along * radius_along) +
-            (across * across) /
-            (radius_across * radius_across);
-        float packet = exp(-distance_packet * 0.65f);
-        packet *= lerp(
-            0.75f,
-            1.10f,
-            random_motion.y
-        ) * (
-            0.88f +
-            sin(t * 0.29f + phase) * 0.12f
-        );
-        gust = max(
-            gust,
-            packet
-        );
-    }
-
-    float2 gust_advect = -wind_dir * t * GUST_SPEED;
-    float breakup = gnoise_tiled(
-        (uv + gust_advect) * 12.0f,
-        12
-    ) * 0.5f + 0.5f;
-    gust *= lerp(
-        0.78f,
-        1.12f,
-        breakup
-    );
-    gust = saturate(gust * 1.25f);
+    float2 pressure_uv = gust_uv + distortion * 0.13 + warp * 0.35;
+    float broad = gnoise_tiled(pressure_uv * 6.0, 6);
+    float detail = gnoise_tiled(pressure_uv * 12.0 + float2(t * 0.053, -t * 0.031), 12);
+    float wisps = gnoise_tiled(pressure_uv * 24.0 + float2(-t * 0.047, t * 0.061), 24);
+    float pressure = broad * 0.68 + detail * 0.24 + wisps * 0.08;
+    float gust = smoothstep(-0.16, 0.30, pressure);
+    gust *= 0.78 + 0.22 * (0.5 + 0.5 * sin(t * 0.19 + distortion.x * 5.0));
 
     // micro turbulence - high frequency, fast, no preferred direction
     float2 micro_advect = float2(0.31, -0.27) * t * MICRO_SPEED * float(FREQ_MICRO);

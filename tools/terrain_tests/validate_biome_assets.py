@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 ROOT=Path(__file__).resolve().parents[2]
 ASSETS=ROOT/'binaries/project/models/island_biomes'
 models=json.loads((ASSETS/'models.json').read_text())
-assert len(models)==12 and len({m['name'] for m in models})==12
+assert len(models)==17 and len({m['name'] for m in models})==17
 for model in models:
     path=ROOT/'binaries'/model['path'];gltf=json.loads(path.read_text())
     for node in gltf.get('nodes',[]):
@@ -26,20 +26,17 @@ config=json.loads(Path(__file__).with_name('biome_layers.json').read_text())
 for slot,rule in config.items():
     layer=scatter[int(slot)]
     assert layer.get('name')==rule['name'] and int(layer.get('habitat'))==rule['habitat']
+    for field in ['density','max_per_tile','size_min','size_max']:
+        assert abs(float(layer.get(field))-rule[field])<1e-5,(slot,field)
     paths=[layer.get('mesh_path')]+layer.get('mesh_variants','').split(';')
     assert len(paths)==len(rule['assets']) and len(set(paths))==len(paths)
     for path in paths:assert (ROOT/'binaries'/path).is_file(),path
 
-backup=ROOT/'binaries/project/backups/plan_before_biomes.world'
-if backup.exists():
-    old=ET.parse(backup).getroot()
-    for slot in [3,4,5]:
-        assert old.find('.//terrain/scatter')[slot].attrib==scatter[slot].attrib,slot
-    # This historical backup predates later soundscape/material edits. The
-    # authoring scripts verify their own before/after scope at write time.
+# Historical backups can predate user edits to grass/flowers. The authoring
+# command verifies preservation against the current world before writing it.
 for layer in root.findall('.//terrain/layers/layer'):
     required={'whispy_grass_meadow':128,'forest_floor':64}.get(layer.get('name'),0)
     assert int(layer.get('flags','0')) & required == required
 for slot in [0,6]: assert int(scatter[slot].get('flags')) & 64
 assert int(scatter[7].get('flags')) & 128
-print('PASS: 12 valid bounded models, 5 configured habitats, surface/audio roles and preserved GPU layers')
+print('PASS: 17 valid bounded models, 5 configured habitats, surface/audio roles and authored density/size budgets')
