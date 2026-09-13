@@ -9,9 +9,11 @@ for (const api of ['vulkan', 'd3d12']) {
         ['grass_interaction', 'cs', 'SP_SHADER_STAGE_COMPUTE=1'],
         ['body', 'cs', 'SP_SHADER_STAGE_COMPUTE=1'],
         ['distribution', 'cs', 'SP_SHADER_STAGE_COMPUTE=1'],
+        ['g_buffer', 'ps', 'GRASS_SPECIALIZED'],
         ['grass_populate', 'cs', 'SP_SHADER_STAGE_COMPUTE=1'],
         ['grass_indirect_args', 'cs', 'SP_SHADER_STAGE_COMPUTE=1'],
         ['g_buffer', 'vs', 'GRASS_INSTANCED'],
+        ['g_buffer', 'vs', 'GRASS_INSTANCED;GRASS_SPECIALIZED'],
         ['depth_prepass', 'vs', 'GRASS_INSTANCED'],
         ['g_buffer', 'vs', 'INDIRECT_DRAW'],
         ['g_buffer', 'ps', ''],
@@ -25,9 +27,9 @@ for (const api of ['vulkan', 'd3d12']) {
         if (stage === 'lib') args.push('-D', 'RAY_TRACING_ENABLED');
         if (api === 'vulkan') args.push('-spirv', '-fspv-target-env=vulkan1.3', '-fvk-use-dx-layout');
         else args.push('-D', 'API_D3D12', '-Wno-ignored-attributes');
-        if (define) args.push('-D', define);
+        for (const item of define.split(';').filter(Boolean)) args.push('-D', item);
         const source = ['body', 'distribution'].includes(file) ? `tools/grass_tests/${file}.hlsl` : `data/shaders/${file}.hlsl`;
-        args.push('-Fo', `binaries/grass_tests/${file}_${entry ?? stage}_${define.split('=')[0]}_${api}.bin`, source);
+        args.push('-Fo', `binaries/grass_tests/${file}_${entry ?? stage}_${define.split('=')[0].replaceAll(';', '_')}_${api}.bin`, source);
         const result = spawnSync(dxc, args, {encoding: 'utf8'});
         if (result.status !== 0) throw new Error(result.error ?? result.stderr);
         console.log(`PASS ${api} ${file} ${entry ?? stage} ${define}`);

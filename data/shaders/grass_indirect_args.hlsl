@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include "common.hlsl"
+#include "grass_lod_allocation.hlsl"
 //====================
 
 // gpu procedural grass indirect args builder
@@ -56,8 +57,11 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     // clamp the atomic counter so the raster never tries to draw more instances than the range can hold
     uint entry          = slot_base + lod;
-    uint instance_count = min(grass_count[entry], max_instances_per_lod);
+    // Total allocation is capped before either dense draw list is allocated.
+    // The two lists grow from opposite ends of the original instance range.
+    uint2 counts = grass_detail_counts(entry, max_instances_per_lod);
 
     // only the instance_count is dynamic, the rest of the args stay frozen at the values the cpu wrote
-    grass_indirect_args[entry].instance_count = instance_count;
+    grass_indirect_args[entry].instance_count = counts.x;
+    grass_indirect_args[entry + grass_ring_count].instance_count = counts.y;
 }

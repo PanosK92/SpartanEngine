@@ -192,6 +192,43 @@ gbuffer_vertex unpack_gbuffer_indirect(gbuffer_indirect_vertex packed)
     return vertex;
 }
 
+// Scatter draw constants are uniform, so they do not need vertex exports.
+struct gbuffer_scatter_vertex
+{
+    precise float4 position : SV_POSITION;
+    float4 position_previous : POS_CLIP_PREVIOUS;
+    float3 normal : NORMAL_WORLD;
+    float3 tangent : TANGENT_WORLD;
+    float4 uv_misc : TEXCOORD;
+    float width_percent : TEXCOORD2;
+};
+
+gbuffer_scatter_vertex pack_gbuffer_scatter(gbuffer_vertex vertex)
+{
+    gbuffer_scatter_vertex packed;
+    packed.position = vertex.position;
+    packed.position_previous = vertex.position_previous;
+    packed.normal = vertex.normal;
+    packed.tangent = vertex.tangent;
+    packed.uv_misc = vertex.uv_misc;
+    packed.width_percent = vertex.width_percent;
+    return packed;
+}
+
+gbuffer_vertex unpack_gbuffer_scatter(gbuffer_scatter_vertex packed)
+{
+    gbuffer_vertex vertex = (gbuffer_vertex)0;
+    vertex.position = packed.position;
+    vertex.position_previous = packed.position_previous;
+    vertex.normal = packed.normal;
+    vertex.tangent = packed.tangent;
+    vertex.uv_misc = packed.uv_misc;
+    vertex.width_percent = packed.width_percent;
+    vertex.material_index = buffer_pass.material_index;
+    vertex.uv_xform_ts = float4(1, 1, 0, 0);
+    return vertex;
+}
+
 // slim mesh-shader depth payload, opaque prepass uses position only via depth_mesh_position
 struct depth_mesh_position
 {
@@ -771,7 +808,11 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 {
     MaterialParameters material = GetMaterial();
     Surface surface;
+#ifdef GRASS_SPECIALIZED
+    surface.flags = 1u << 11; // this pipeline is exclusively grass blades
+#else
     surface.flags = material.flags;
+#endif
 
     gbuffer_vertex vertex;
     vertex.uv_misc.w = instance_id;

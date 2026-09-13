@@ -329,13 +329,16 @@ namespace spartan
             RHI_Buffer_Type::Instance, static_cast<uint32_t>(sizeof(Sb_GrassInstance)),
             renderer_max_gpu_scatter_instances, nullptr, false, "grass_instances"
         );
+        at(buffers, Renderer_Buffer::GrassLodParameters) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, sizeof(Vector4), renderer_max_gpu_scatter_slots + 1, nullptr, false, "grass_lod_parameters"
+        );
         at(buffers, Renderer_Buffer::GrassCount) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
-            renderer_max_gpu_scatter_args, nullptr, true, "grass_count"
+            renderer_max_gpu_scatter_args * 3, nullptr, true, "grass_count"
         );
         at(buffers, Renderer_Buffer::GrassIndirectArgs) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
-            renderer_max_gpu_scatter_args, nullptr, true, "grass_indirect_args"
+            renderer_max_gpu_scatter_args * 2, nullptr, true, "grass_indirect_args"
         );
     }
 
@@ -1219,6 +1222,8 @@ namespace spartan
             { Renderer_Shader::grass_interaction_c,                   RHI_Shader_Type::Compute, "grass_interaction.hlsl"                                                                           },
             { Renderer_Shader::grass_indirect_args_c,                 RHI_Shader_Type::Compute, "grass_indirect_args.hlsl"                                                                         },
             { Renderer_Shader::grass_gbuffer_v,                       RHI_Shader_Type::Vertex,  "g_buffer.hlsl",                              RHI_Vertex_Type::PosUvNorTan, "GRASS_INSTANCED"        },
+            { Renderer_Shader::grass_blade_v,                         RHI_Shader_Type::Vertex, "g_buffer.hlsl", RHI_Vertex_Type::PosUvNorTan, "GRASS_INSTANCED", true, false, "GRASS_SPECIALIZED" },
+            { Renderer_Shader::grass_gbuffer_p,                       RHI_Shader_Type::Pixel, "g_buffer.hlsl", RHI_Vertex_Type::Max, "GRASS_SPECIALIZED"                                        },
 
             // gpu texture compression, synchronous so encode-on-load can wait
             { Renderer_Shader::texture_compress_bc1_c,                RHI_Shader_Type::Compute, "texture_compress_bc1.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         false },

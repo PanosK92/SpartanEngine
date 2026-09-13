@@ -173,8 +173,8 @@ struct Gpu
         VkBufferImageCopy copy{}; copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1}; copy.imageExtent = {size, size, 1};
         vkCmdCopyImageToBuffer(cmd, images[output], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, readback, 1, &copy);
         barrier(images[output], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
-        VkMemoryBarrier host{VK_STRUCTURE_TYPE_MEMORY_BARRIER}; host.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; host.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
-        vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, 0, 1, &host, 0, nullptr, 0, nullptr);
+        VkMemoryBarrier host{VK_STRUCTURE_TYPE_MEMORY_BARRIER}; host.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT; host.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+        vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_HOST_BIT, 0, 1, &host, 0, nullptr, 0, nullptr);
         submit(); current = output;
         auto* data = static_cast<Pixel*>(mapped_readback); return {data, data + size * size};
     }
@@ -318,6 +318,32 @@ int main() try
     }
     std::cout << "PASS body clearance, preserved blade length, side/bumper bending, undertray, planted roots, continuity, rotated/sloped chassis, large coordinates, release, unaffected surrounding grass and empty hull corners\n";
     Gpu distribution_gpu("binaries/grass_tests/distribution_cs_SP_SHADER_STAGE_COMPUTE_vulkan.bin");
+    for (uint32_t ring = 0; ring < 9; ++ring)
+    for (uint32_t capacity : {0u, 1u, 7u, 257u, 4096u})
+    for (uint32_t mode = 0; mode < 3; ++mode)
+    {
+        Push test{}; test.v[0] = static_cast<float>(capacity); test.v[1] = static_cast<float>(ring);
+        test.v[2] = static_cast<float>(mode); test.v[4] = 1.0f;
+        std::vector<std::array<float, 4>> zero_counts(8);
+        auto result = distribution_gpu.run(test, {}, zero_counts);
+        std::vector<bool> seen(capacity, false);
+        uint32_t fine = 0, coarse = 0;
+        for (const Pixel& pixel : result)
+        {
+            if (pixel.x == 0) continue;
+            uint32_t address = static_cast<uint32_t>(pixel.x) - 1;
+            require(address < capacity && !seen[address], "Grass detail bins overlap or exceed their allocation");
+            seen[address] = true;
+            if (pixel.y > 0.5f) ++coarse; else ++fine;
+        }
+        require(fine + coarse == capacity, "Grass detail selection lost accepted blades");
+        const auto* counters = static_cast<const uint32_t*>(distribution_gpu.mapped_contacts);
+        require(counters[ring + 9] == fine && counters[ring + 18] == coarse, "Grass draw counts disagree with allocated blades");
+        for (uint32_t i = 0; i < capacity; ++i) require(seen[i], "Grass draw lists contain a hole");
+        if (mode == 0) require(coarse == 0, "Disabled detail selection generated coarse blades");
+        if (mode == 1) require(fine == 0, "All-coarse selection generated detailed blades");
+    }
+    std::cout << "PASS grass detail allocation: all rings, full/coarse/mixed lists, zero capacity, overflow, unique addresses and unchanged counts\n";
     for (uint32_t count : {1u, 2u, 3u, 6u, 7u, 13u, 31u, 257u, 2048u})
     {
         for (uint32_t symmetry = 0; symmetry < 8; ++symmetry)

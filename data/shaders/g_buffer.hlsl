@@ -180,12 +180,18 @@ gbuffer_indirect_vertex main_vs(uint vertex_id : SV_VertexID, uint view_id : SV_
     Vertex_PosUvNorTan input = pull_visible_triangle_vertex(vertex_id, mi);
     uint instance_id         = mi.instance_index;
 #elif defined(GRASS_INSTANCED)
+#ifdef GRASS_SPECIALIZED
+gbuffer_scatter_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_InstanceID, uint view_id : SV_ViewID)
+#else
 gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_InstanceID, uint view_id : SV_ViewID)
+#endif
 {
     Vertex_PosUvNorTan input = to_full_vertex(cpu_input);
     // pull the per-instance transform from the dedicated procedural grass buffer
     // lod_base in values[0].z lets the same vs handle all three lod rings
-    uint slot        = instance_id + (uint)buffer_pass.values[0].z;
+    // Coarse blades occupy the same allocation from its end, in reverse order.
+    uint reverse_count = (uint)buffer_pass.values[0].y;
+    uint slot = (uint)buffer_pass.values[0].z + (reverse_count > 0u ? reverse_count - 1u - instance_id : instance_id);
     GrassInstance gi = grass_instances[slot];
     input.instance_transform = compose_instance_transform(gi.pos_x, gi.pos_y, gi.pos_z,
         (gi.normal_yaw_scale >> 16) & 0xFFFFu, (gi.normal_yaw_scale >> 8) & 0xFFu, gi.normal_yaw_scale & 0xFFu);
@@ -227,14 +233,20 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index          = _draw.material_index;
     vertex = transform_to_clip_space(vertex, position_world, position_world_previous, view_id);
-#ifdef INDIRECT_DRAW
+#if defined(GRASS_SPECIALIZED) && defined(GRASS_INSTANCED)
+    return pack_gbuffer_scatter(vertex);
+#elif defined(INDIRECT_DRAW)
     return pack_gbuffer_indirect(vertex, mi.draw_index);
 #else
     return vertex;
 #endif
 }
 
-#ifdef INDIRECT_DRAW
+#ifdef GRASS_SPECIALIZED
+gbuffer main_ps(gbuffer_scatter_vertex packed, bool is_front_face : SV_IsFrontFace)
+{
+    gbuffer_vertex vertex = unpack_gbuffer_scatter(packed);
+#elif defined(INDIRECT_DRAW)
 gbuffer main_ps(gbuffer_indirect_vertex packed, bool is_front_face : SV_IsFrontFace)
 {
     gbuffer_vertex vertex = unpack_gbuffer_indirect(packed);
@@ -248,7 +260,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // material setup
     MaterialParameters material = GetMaterial();
     Surface surface;
+#ifdef GRASS_SPECIALIZED
+    // Grass cannot enter the terrain, water or prop-coating paths. Keep authored
+    // texture flags; eliminating those unrelated branches also reduces registers.
+    surface.flags = (material.flags & (0xFFu | (1u << 21))) | (1u << 11);
+#else
     surface.flags               = material.flags;
+#endif
 
     // two sided transparents (glass, water) render with cull none so the back face of
     // the shell is rasterized when the camera is on the other side, the geometric

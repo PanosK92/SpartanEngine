@@ -465,6 +465,8 @@ namespace spartan
         grass_populate_c,
         grass_indirect_args_c,
         grass_gbuffer_v,
+        grass_blade_v,
+        grass_gbuffer_p,
         grass_interaction_c,
         // gpu texture compression
         texture_compress_bc1_c,
@@ -658,6 +660,7 @@ namespace spartan
         ParticleVolumeColor,
         // gpu scatter, grass and micro detail, one range per slot per lod, fed by Renderer::EnableGpuScatter
         GrassInstances,            // ring buffer of GrassInstance entries
+        GrassLodParameters,        // per-slot screen error and protected vehicle region
         GrassCount,                // one uint per slot per lod, bumped atomically by the populate shader
         GrassIndirectArgs,         // one DrawIndexedIndirect entry per slot per lod, written by the args build shader
         Max

@@ -23,7 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 #include "common_culling.hlsl"
 #include "grass_distribution.hlsl"
+#include "grass_lod_allocation.hlsl"
 //============================
+
+// Per-slot: blade height at unit scale, output-pixel budget.
+// Last element protects the live car and its recent tire-pressure field.
+StructuredBuffer<float4> grass_lod_parameters : register(t62);
 
 // conservative world-space bound used to cull an instance against the camera frustum and the occluder
 // hi-z, covers the tallest scaled instance plus wind sway and the intra-cell scatter, generous enough
@@ -52,7 +57,7 @@ static const float grass_cull_radius      = 1.5f;
 //   values[1] = (height_min, height_max, max_slope_cos, inner_radius)
 //   values[2] = (map_origin_x, map_origin_z, map_inv_size_x, map_inv_size_z)
 //   values[3] = (patch_size_m, patch_coverage, patch_edge, ground_mask bits)
-//   values[4] = (min_slope_cos, slope_bias, height_fade, unused)
+//   values[4] = (min_slope_cos, slope_bias, height_fade, optional grass root radius)
 // a patch size of zero spreads the slot evenly, which is what this pass did before patches existed,
 // and a negative one inverts the field so a slot takes the ground the others left bare
 // the first four float4s are taken, so the rest travels in the bits of draw_index:
@@ -415,8 +420,11 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // the cull sphere has to grow with the instance, compose_instance_transform maps the packed scale
     // logarithmically over 0.01 to 100 and the raster will unpack it exactly the same way
     float largest_scale = exp2(lerp(-6.643856f, 6.643856f, scale_01_max));
-    float cull_radius   = grass_cull_radius * largest_scale;
-    float cull_height   = grass_cull_half_height * largest_scale;
+    // Grass bends rotate about its planted root, preserving radial length.
+    // Zero retains the general scatter bound for stones and custom materials.
+    float root_radius = buffer_pass.values[4].w;
+    float cull_radius = (root_radius > 0.0f ? root_radius : grass_cull_radius) * largest_scale;
+    float cull_height = root_radius > 0.0f ? 0.0f : grass_cull_half_height * largest_scale;
 
     float2 camera_xz_anchor = get_camera_position().xz;
 
@@ -714,12 +722,54 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // atomic-allocate a slot inside this lod's section, bail out cleanly once full
     // blades_per_cell was sized from cells_in_ring with floor() so the upper bound on writes is
     // floor(cap / cells_in_ring) * cells_in_ring <= cap, the clamp here is just a defensive guard
-    uint local_slot;
-    InterlockedAdd(grass_count[count_index], 1u, local_slot);
-    if (local_slot >= max_instances_per_lod)
+    if (!grass_reserve_instance(count_index, max_instances_per_lod))
         return;
 
-    uint global_slot = lod_base + local_slot;
+    bool coarse = false;
+    float4 detail = grass_lod_parameters[slot_index];
+    if (lod_index == 0u && detail.x > 0.0f && abs(buffer_frame.projection[3][3]) < 0.5f)
+    {
+        float3 root = float3(world_xz.x, world_y, world_xz.y);
+        float4 contact = grass_lod_parameters[3];
+        float3 to_contact = root - contact.xyz;
+        float4 clip = mul(float4(root, 1.0f), buffer_frame.view_projection_unjittered);
+        float scale = exp2(lerp(-6.643856f, 6.643856f, round(saturate(scale_01) * 255.0f) / 255.0f));
+        float focal_pixels = 0.5f * max(abs(buffer_frame.projection[0][0]) * buffer_frame.resolution_output.x,
+                                      abs(buffer_frame.projection[1][1]) * buffer_frame.resolution_output.y);
+        // Use both views so approaching a blade or changing FOV cannot simplify
+        // the previous geometry beyond the same motion-vector error budget.
+        float4 previous_clip = mul(float4(root, 1.0f), buffer_frame.view_projection_previous_unjittered);
+        float previous_focal = 0.5f * max(abs(buffer_frame.projection_previous[0][0]) * buffer_frame.resolution_output.x,
+                                        abs(buffer_frame.projection_previous[1][1]) * buffer_frame.resolution_output.y);
+        float pixels_per_height = detail.x * scale * max(
+            focal_pixels / max(clip.w - cull_radius, 0.001f),
+            previous_focal / max(previous_clip.w - cull_radius, 0.001f));
+        // A stable root hash spreads transitions; the budget is never exceeded.
+        float budget = detail.y * lerp(0.85f, 1.0f, hash_unit(hash_mix(h0 ^ 0x41c64e6du)));
+        coarse = pixels_per_height * 0.025f < budget && clip.w > 15.0f &&
+                 (contact.w <= 0.0f || dot(to_contact, to_contact) > contact.w * contact.w);
+        if (coarse)
+        {
+            wind_sample current_wind = evaluate_wind(root, 0.0f);
+            wind_sample previous_wind = evaluate_wind(root, -buffer_frame.delta_time);
+            float response = saturate(length(buffer_frame.wind.xz) * 0.10f);
+            float pressure = max(current_wind.bend_strength, previous_wind.bend_strength);
+            float gust = max(current_wind.gust, previous_wind.gust);
+            // Upper envelope includes spring, ambient wobble, micro flutter and the
+            // largest resting arch, at both motion-vector times. Clamping the bend
+            // introduces a kink, so use a larger error envelope in that case.
+            float angle = pressure * (1.03f * 55.0f * DEG_TO_RAD + 0.0175f) +
+                          response * 2.3f * DEG_TO_RAD +
+                          22.0f * DEG_TO_RAD * (1.0f + response * (0.10f + 0.14f * gust));
+            float limit = max(0.0f, 75.0f * DEG_TO_RAD - acos(saturate(surface_normal.y)));
+            // Cantilever r(t)=t*R(A*t^1.5): chord error <= max|r''|/72
+            // for three segments. Padding covers the prebend and ribbon taper.
+            float error_fraction = angle >= limit ? 0.15f :
+                0.05208334f * angle + 0.03125f * angle * angle + 0.015f;
+            coarse = pixels_per_height * error_fraction < budget;
+        }
+    }
+    uint global_slot = lod_base + grass_allocate_detail_bin(count_index, max_instances_per_lod, coarse);
     grass_instances[global_slot] = build_grass_instance(
         float3(world_xz.x, world_y, world_xz.y),
         surface_normal,

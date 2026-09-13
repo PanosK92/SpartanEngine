@@ -55,6 +55,10 @@ namespace spartan
 {
     namespace
     {
+        TConsoleVar<bool> cvar_grass_specialized("r.grass_specialized", true,
+            "use grass-only shading, compact vertex exports and mesh bounds; disable for comparison");
+        TConsoleVar<float> cvar_grass_lod_pixels("r.grass_lod_pixels", 1.0f,
+            "estimated blade simplification error in output pixels; zero keeps authored mesh detail");
         constexpr uint32_t grass_interaction_resolution = 512;
         constexpr float grass_interaction_size = 32.0f;
         TConsoleVar<float> cvar_grass_track_radius("r.grass_track_radius", 8.0f,
@@ -1429,6 +1433,46 @@ namespace spartan
             return;
         }
 
+        static_assert(renderer_max_gpu_scatter_args == 9 && renderer_max_gpu_scatter_slots == 3);
+        std::array<Vector4, renderer_max_gpu_scatter_slots + 1> detail_parameters{};
+        for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; ++slot)
+        {
+            const auto& state = m_pass_state.gpu_scatter[slot];
+            if (gpu_scatter_ready(state) && state.material && state.mesh->GetObjectName() == "grass_blade" &&
+                state.mesh->GetLodCount(0) == 3 && !Xr::IsSessionRunning() &&
+                state.material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f &&
+                state.material->GetProperty(MaterialProperty::IsWater) == 0.0f &&
+                state.material->GetProperty(MaterialProperty::IsSkidMark) == 0.0f)
+            {
+                const auto& bounds = state.mesh->GetSubMesh(0).lods[0].aabb;
+                detail_parameters[slot] = Vector4(bounds.GetSize().y,
+                    clamp(cvar_grass_lod_pixels.GetValue(), 0.0f, 2.0f), 0.0f, 0.0f);
+                if (detail_parameters[slot].y == 0.0f)
+                    detail_parameters[slot].x = 0.0f;
+            }
+        }
+        Car* detail_car = nullptr;
+        float detail_distance = numeric_limits<float>::max();
+        for (Car* candidate : Car::GetAll())
+        {
+            Entity* root = candidate->GetRootEntity();
+            if (!candidate->IsDrivable() || !root || !root->IsActive())
+                continue;
+            float distance = Vector3::DistanceSquared(root->GetPosition(), m_cb_frame_cpu.camera_position);
+            if (candidate->IsOccupied() || distance < detail_distance)
+            {
+                detail_car = candidate;
+                detail_distance = distance;
+                if (candidate->IsOccupied()) break;
+            }
+        }
+        if (detail_car)
+        {
+            const Vector3 position = detail_car->GetRootEntity()->GetPosition();
+            detail_parameters.back() = Vector4(position.x, position.y, position.z, 32.0f);
+        }
+        RHI_Buffer* detail_buffer = GetBuffer(Renderer_Buffer::GrassLodParameters);
+        RHI_CommandList::UpdateBuffer(detail_buffer, 0, sizeof(detail_parameters), detail_parameters.data(), false);
         RHI_CommandList::BeginPass("gpu_scatter_populate");
         {
             RHI_Buffer* buf_instances = GetBuffer(Renderer_Buffer::GrassInstances);
@@ -1452,11 +1496,16 @@ namespace spartan
                     &state.indirect_args_static[0],
                     false
                 );
+                std::array<Sb_IndirectDrawArgs, renderer_max_gpu_scatter_lods> coarse_args = state.indirect_args_static;
+                coarse_args[0] = state.indirect_args_static[1];
+                RHI_CommandList::UpdateBuffer(buf_args,
+                    (renderer_max_gpu_scatter_args + renderer_gpu_scatter_arg_index(slot, 0)) * sizeof(Sb_IndirectDrawArgs),
+                    sizeof(coarse_args), coarse_args.data(), false);
                 state.args_baked = true;
             }
 
             // clear every counter on the gpu timeline, a mapped cpu memcpy races the in flight previous frame and drops a frame of scatter
-            uint32_t zero_counts[renderer_max_gpu_scatter_args] = {};
+            uint32_t zero_counts[renderer_max_gpu_scatter_args * 3] = {};
             RHI_CommandList::UpdateBuffer(buf_count, 0, sizeof(zero_counts), &zero_counts[0], false);
 
             // the terrain frame is shared, every slot scatters onto the same surface
@@ -1467,6 +1516,7 @@ namespace spartan
 
             // populate dispatches, one per slot per lod ring, each fills its own range of grass_instances
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::grass_populate_c));
+            RHI_CommandList::SetBuffer("grass_lod_parameters", detail_buffer);
 
             for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
             {
@@ -1563,7 +1613,7 @@ namespace spartan
                     // values[0] = (cell_size, ring_radius, lod_base, max_instances_per_lod)
                     // values[1] = (height_min, height_max, max_slope_cos, inner_radius)
                     // values[2] = (map_origin_x, map_origin_z, map_inv_x, map_inv_z)
-                    // values[4] = (min_slope_cos, slope_bias, height_fade, unused)
+                    // values[4] = (min_slope_cos, slope_bias, height_fade, optional grass root radius)
                     // heightmap is r32 local y, material_index bitcast is the entity y plus the layer's
                     // seating offset
                     // is_transparent bitcast carries biome_min_weight, negative disables the mask gate
@@ -1597,6 +1647,18 @@ namespace spartan
                     m_pcb_pass_cpu.v[17] = state.params.slope_bias;
                     m_pcb_pass_cpu.v[18] = state.params.height_fade;
                     m_pcb_pass_cpu.v[19] = 0.0f;
+                    if (cvar_grass_specialized.GetValue() && state.material &&
+                        state.material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f &&
+                        state.material->GetProperty(MaterialProperty::IsWater) == 0.0f &&
+                        state.material->GetProperty(MaterialProperty::IsSkidMark) == 0.0f)
+                    {
+                        // Every grass deformation preserves distance from the root, including
+                        // tire and chassis bending. Bound any rotation of the actual mesh;
+                        // the shader applies the maximum packed instance scale separately.
+                        const auto& lods = state.mesh->GetSubMesh(0).lods;
+                        const auto& bounds = lods[lod < lods.size() ? lod : 0u].aabb;
+                        m_pcb_pass_cpu.v[19] = bounds.GetCenter().Length() + bounds.GetExtents().Length() + 0.001f;
+                    }
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
                     // one cell per thread, dispatch z carries the instance index inside the cell, the
@@ -1963,17 +2025,14 @@ namespace spartan
         pso.clear_depth                      = rhi_depth_load;
 
         RHI_CommandList::BeginTimeblock("g_buffer_grass");
-        RHI_CommandList::SetPipelineState(pso);
 
         // grass blades are double sided and a stone chip is closed, but both are cheap enough that one
         // raster state for every slot is not worth a second pipeline
-        RHI_CommandList::SetCullMode(RHI_CullMode::None);
 
         // the scatter vs never reads the per-instance stream, it is bound to the global instance buffer only to keep the vertex layout uniform
         RHI_Buffer* buf_instances     = GetBuffer(Renderer_Buffer::GrassInstances);
         RHI_Buffer* buf_args          = GetBuffer(Renderer_Buffer::GrassIndirectArgs);
         RHI_Buffer* binding1_instance = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
-        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::grass_instances), buf_instances);
 
         auto& tracks = m_pass_state.grass_interaction;
         static_assert(sizeof(tracks.body_data[0]) == (4 + 6 + 6 * 48) * sizeof(Vector4));
@@ -1981,12 +2040,10 @@ namespace spartan
             tracks.bodies = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,
                 static_cast<uint32_t>(sizeof(Vector4)), static_cast<uint32_t>(sizeof(tracks.body_data) / sizeof(Vector4)), nullptr, false, "grass_bodies");
         RHI_CommandList::UpdateBuffer(tracks.bodies.get(), 0, sizeof(tracks.body_data), tracks.body_data.data(), false);
-        RHI_CommandList::SetBuffer("grass_bodies", tracks.bodies.get());
         RHI_Texture* fallback = GetStandardTexture(Renderer_StandardTexture::Black);
-        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex),
-            tracks.valid ? tracks.fields[tracks.current].get() : fallback);
-        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2),
-            tracks.valid ? tracks.fields[1 - tracks.current].get() : fallback);
+
+        RHI_Shader* grass_vertex = GetShader(Renderer_Shader::grass_blade_v);
+        RHI_Shader* grass_pixel = GetShader(Renderer_Shader::grass_gbuffer_p);
 
         const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
 
@@ -2004,12 +2061,29 @@ namespace spartan
                 continue;
             }
 
-            RHI_CommandList::SetBufferVertex(mesh->GetVertexBuffer(), binding1_instance);
-            RHI_CommandList::SetBufferIndex(mesh->GetIndexBuffer());
-
             for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
             {
                 const uint32_t lod_base = renderer_gpu_scatter_base(slot, lod);
+                const bool grass_specialized = cvar_grass_specialized.GetValue() && !xr_multiview &&
+                    grass_vertex && grass_vertex->IsCompiled() && grass_pixel && grass_pixel->IsCompiled() &&
+                    state.params.uv_patch == 0.0f &&
+                    state.material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f &&
+                    state.material->GetProperty(MaterialProperty::IsTerrain) == 0.0f &&
+                    state.material->GetProperty(MaterialProperty::IsWater) == 0.0f &&
+                    state.material->GetProperty(MaterialProperty::IsFlower) == 0.0f &&
+                    state.material->GetProperty(MaterialProperty::IsSkidMark) == 0.0f;
+                pso.shaders[RHI_Shader_Type::Vertex] = grass_specialized ? grass_vertex : GetShader(Renderer_Shader::grass_gbuffer_v);
+                pso.shaders[RHI_Shader_Type::Pixel] = grass_specialized ? grass_pixel : GetShader(Renderer_Shader::gbuffer_p);
+                RHI_CommandList::SetPipelineState(pso);
+                RHI_CommandList::SetCullMode(RHI_CullMode::None);
+                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::grass_instances), buf_instances);
+                RHI_CommandList::SetBuffer("grass_bodies", tracks.bodies.get());
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex),
+                    tracks.valid ? tracks.fields[tracks.current].get() : fallback);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2),
+                    tracks.valid ? tracks.fields[1 - tracks.current].get() : fallback);
+                RHI_CommandList::SetBufferVertex(mesh->GetVertexBuffer(), binding1_instance);
+                RHI_CommandList::SetBufferIndex(mesh->GetIndexBuffer());
 
                 // values[0] = (uv_patch, 0, lod_base, lod_index), the scatter vs reads lod_base from values[0].z
                 m_pcb_pass_cpu.draw_index     = 0;
@@ -2033,6 +2107,13 @@ namespace spartan
 
                 // an empty ring bakes instance_count 0 into the args so the gpu skips it at near-zero cost
                 RHI_CommandList::DrawIndexedIndirect(buf_args, renderer_gpu_scatter_arg_index(slot, lod) * arg_stride);
+                if (lod == 0)
+                {
+                    m_pcb_pass_cpu.v[1] = static_cast<float>(gpu_scatter_lod_cap(slot, lod, state.params.density));
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                    RHI_CommandList::DrawIndexedIndirect(buf_args,
+                        (renderer_max_gpu_scatter_args + renderer_gpu_scatter_arg_index(slot, lod)) * arg_stride);
+                }
             }
         }
 
