@@ -118,7 +118,7 @@ namespace spartan
         D3D12_COMMAND_LIST_TYPE cmd_list_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         if (queue_type == RHI_Queue_Type::Compute)
         {
-            cmd_list_type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+            cmd_list_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         }
         else if (queue_type == RHI_Queue_Type::Copy)
         {

@@ -271,6 +271,7 @@ namespace spartan
             std::vector<D3D12_RESOURCE_BARRIER> pending_barriers;
             // staging buffers acquired during recording, released on next Begin once gpu execution has finished
             std::vector<void*> staging_buffers_in_flight;
+            std::vector<ID3D12Resource*> readback_scratch;
             // snapshotted from the global tracker on first use, so concurrent recording still emits a correct StateBefore
             std::unordered_map<ID3D12Resource*, ResourceStateInfo> resource_states;
         };
@@ -315,6 +316,9 @@ namespace spartan
                 RHI_Device::StagingBufferRelease(sb);
             }
             b.staging_buffers_in_flight.clear();
+            for (ID3D12Resource* resource : b.readback_scratch)
+                resource->Release();
+            b.readback_scratch.clear();
         }
 
         // total subresource count from the create-time cache, never call getdesc here, it avs mismatched d3d12SDKLayers
@@ -377,7 +381,7 @@ namespace spartan
                     state_info.uniform_state = target;
                 }
 
-                d3d12_state::SetState(kv.first, state_info.uniform_state);
+                d3d12_state::SetState(kv.first, d3d12_state::DecaysToCommon(kv.first) ? D3D12_RESOURCE_STATE_COMMON : state_info.uniform_state);
             }
             if (!unify.empty())
             {
@@ -997,7 +1001,7 @@ namespace spartan
 
         if (b.srv_dirty)
         {
-            uint32_t base = d3d12_descriptors::AllocateRing(d3d12_root_slot::srv_space0_count);
+            uint32_t base = d3d12_descriptors::AllocateRing(cmd_list, d3d12_root_slot::srv_space0_count);
             array<D3D12_CPU_DESCRIPTOR_HANDLE, d3d12_root_slot::srv_space0_count> sources = {};
             for (uint32_t i = 0; i < d3d12_root_slot::srv_space0_count; i++)
             {
@@ -1033,7 +1037,7 @@ namespace spartan
 
         if (b.uav_dirty)
         {
-            uint32_t base = d3d12_descriptors::AllocateRing(d3d12_root_slot::uav_space0_count);
+            uint32_t base = d3d12_descriptors::AllocateRing(cmd_list, d3d12_root_slot::uav_space0_count);
             array<D3D12_CPU_DESCRIPTOR_HANDLE, d3d12_root_slot::uav_space0_count> sources = {};
             for (uint32_t i = 0; i < d3d12_root_slot::uav_space0_count; i++)
             {
@@ -1082,7 +1086,7 @@ namespace spartan
         D3D12_COMMAND_LIST_TYPE cmd_list_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         if (queue->GetType() == RHI_Queue_Type::Compute)
         {
-            cmd_list_type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+            cmd_list_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         }
         else if (queue->GetType() == RHI_Queue_Type::Copy)
         {
@@ -1119,9 +1123,12 @@ namespace spartan
     RHI_CommandList::~RHI_CommandList()
     {
         RHI_Device::QueueWaitAll();
+        d3d12_descriptors::ReleaseRing(static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource));
 
         cmd_state::PendingBindings& bindings =
             cmd_state::get(this);
+        for (ID3D12Resource* resource : bindings.readback_scratch)
+            resource->Release();
         for (void* staging_buffer :
             bindings.staging_buffers_in_flight)
         {
@@ -1168,6 +1175,7 @@ namespace spartan
     {
         SP_ASSERT(m_rhi_resource != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
+        d3d12_descriptors::ReleaseRing(static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource));
 
         ID3D12CommandAllocator* allocator = static_cast<ID3D12CommandAllocator*>(m_rhi_cmd_pool_resource);
         SP_ASSERT_MSG(d3d12_utility::error::check(allocator->Reset()), "Failed to reset command allocator");
@@ -1180,8 +1188,8 @@ namespace spartan
 
         cmd_state::reset(this);
         ResetTrackedResources();
-        // record the queue type so push_transition can mask compute-invalid state bits when recording on a compute queue
-        cmd_state::get(this).is_compute_queue = (m_queue && m_queue->GetType() == RHI_Queue_Type::Compute);
+        // Both rendering queues use DIRECT lists so the asynchronous phase can clear depth and blit.
+        cmd_state::get(this).is_compute_queue = false;
 
         // pull fresh query results from the previous submission before resetting the index
         // d3d12 query data lives in a readback buffer that's safe to read once the cmd list fence has signaled
@@ -1681,6 +1689,8 @@ namespace spartan
         // handled in RenderPassBegin
     }
 
+    static D3D12_CPU_DESCRIPTOR_HANDLE create_transient_mip_view(RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, bool uav, uint32_t array_layer);
+
     void RHI_CommandList::clear_texture(RHI_Texture* texture, const Color& clear_color, const float clear_depth, const uint32_t clear_stencil)
     {
         if (!texture)
@@ -1692,7 +1702,36 @@ namespace spartan
         auto& b = cmd_state::get(this);
         ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture->GetRhiResource());
 
-        if (texture->IsDepthStencilFormat() && texture->GetRhiDsv(0))
+        if (texture->IsUav())
+        {
+            if (clear_color == rhi_color_load || clear_color == rhi_color_dont_care)
+                return;
+
+            PrepareForExternalWrite(texture, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute);
+            cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            cmd_state::flush(cmd_list, b);
+            const float values[4] = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
+            for (uint32_t mip = 0; mip < texture->GetMipCount(); mip++)
+            {
+                const auto cpu = create_transient_mip_view(texture, mip, 1, true, rhi_all_mips);
+                const uint32_t slot = d3d12_descriptors::AllocateRing(cmd_list, 1);
+                RHI_Context::device->CopyDescriptorsSimple(1, d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(slot), cpu, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+                const RHI_Format format = texture->GetFormat();
+                if (format == RHI_Format::R8_Uint || format == RHI_Format::R16_Uint || format == RHI_Format::R32_Uint)
+                {
+                    const UINT uint_values[4] = { static_cast<UINT>(values[0]), static_cast<UINT>(values[1]), static_cast<UINT>(values[2]), static_cast<UINT>(values[3]) };
+                    cmd_list->ClearUnorderedAccessViewUint(d3d12_descriptors::GetCbvSrvUavGpuHandle(slot), cpu, resource, uint_values, 0, nullptr);
+                }
+                else
+                {
+                    cmd_list->ClearUnorderedAccessViewFloat(d3d12_descriptors::GetCbvSrvUavGpuHandle(slot), cpu, resource, values, 0, nullptr);
+                }
+            }
+            cmd_state::push_uav_barrier(b, resource);
+            SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::General);
+            TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute, RHI_Resource_Usage::Shader);
+        }
+        else if (texture->IsDepthStencilFormat() && texture->GetRhiDsv(0))
         {
             PrepareForExternalWrite(texture, RHI_Image_Layout::General, RHI_Barrier_Scope::Graphics);
             // ClearDepthStencilView requires the resource to be in depth_write state
@@ -1701,7 +1740,7 @@ namespace spartan
             cmd_state::flush(cmd_list, b);
 
             D3D12_CPU_DESCRIPTOR_HANDLE dsv = {};
-            dsv.ptr = reinterpret_cast<SIZE_T>(texture->GetRhiDsv(0));
+            dsv.ptr = reinterpret_cast<SIZE_T>(texture->GetRhiDsvMultiview() ? texture->GetRhiDsvMultiview() : texture->GetRhiDsv(0));
             D3D12_CLEAR_FLAGS flags = D3D12_CLEAR_FLAG_DEPTH;
             if (texture->IsStencilFormat())
             {
@@ -1728,7 +1767,7 @@ namespace spartan
             cmd_state::flush(cmd_list, b);
 
             D3D12_CPU_DESCRIPTOR_HANDLE rtv = {};
-            rtv.ptr = reinterpret_cast<SIZE_T>(texture->GetRhiRtv(0));
+            rtv.ptr = reinterpret_cast<SIZE_T>(texture->GetRhiRtvMultiview() ? texture->GetRhiRtvMultiview() : texture->GetRhiRtv(0));
             float c[4] = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
             cmd_list->ClearRenderTargetView(rtv, c, 0, nullptr);
             cmd_state::push_transition(b, resource, d3d12_general_state(false));
@@ -2281,14 +2320,18 @@ namespace spartan
         for (uint32_t mip = 0; mip < mip_count; mip++)
         {
             // source srv, per-mip when blitting the chain so the shader's SampleLevel 0 reads the matching source mip
-            void* src_srv_ptr = blit_mips ? source->GetRhiSrvMip(mip) : source->GetRhiSrv();
-            if (!src_srv_ptr)
+            D3D12_CPU_DESCRIPTOR_HANDLE src_srv = {};
+            if (blit_mips)
+                src_srv = create_transient_mip_view(source, mip, 1, false, rhi_all_mips);
+            else
+                src_srv.ptr = reinterpret_cast<SIZE_T>(source->GetRhiSrv());
+            if (!src_srv.ptr)
             {
                 continue;
             }
 
             d3d12_blit::BlitParams params    = {};
-            params.source_srv_cpu_handle.ptr = reinterpret_cast<SIZE_T>(src_srv_ptr);
+            params.source_srv_cpu_handle = src_srv;
 
             // mip 0 uses the cached view, deeper mips need a transient view that targets the specific mip slice
             if (dst_is_depth)
@@ -2346,6 +2389,11 @@ namespace spartan
             params.source_uv_scale_y     = resolution_scale;
 
             d3d12_blit::blit(cmd_list, params);
+            if (mip != 0)
+            {
+                if (dst_is_depth) d3d12_descriptors::FreeDsv(reinterpret_cast<void*>(params.destination_dsv_handle.ptr));
+                else d3d12_descriptors::FreeRtv(reinterpret_cast<void*>(params.destination_rtv_handle.ptr));
+            }
         }
 
         // the blit changed the bound root signature and pipeline, mark cmd_state so the next graphics call rebinds
@@ -2527,6 +2575,7 @@ namespace spartan
                 params.source_uv_scale_y         = 1.0f;
 
                 d3d12_blit::blit(cmd_list, params);
+                d3d12_descriptors::FreeRtv(reinterpret_cast<void*>(rtv.ptr));
 
                 b.has_root_signature_graphics = false;
             }
@@ -2611,6 +2660,7 @@ namespace spartan
                 D3D12_CPU_DESCRIPTOR_HANDLE rtv         = d3d12_descriptors::GetRtvHandle(idx);
                 RHI_Context::device->CreateRenderTargetView(xr_image, &rtv_desc, rtv);
                 cmd_list->ClearRenderTargetView(rtv, clear_color, 0, nullptr);
+                d3d12_descriptors::FreeRtv(reinterpret_cast<void*>(rtv.ptr));
             }
         }
 
@@ -2649,6 +2699,7 @@ namespace spartan
             params.source_uv_scale_y         = 1.0f;
 
             d3d12_blit::blit(cmd_list, params);
+            d3d12_descriptors::FreeRtv(reinterpret_cast<void*>(rtv.ptr));
         }
 
         // the blit swapped in its own root signature and pso, force the next graphics bind to restore the bindless layout
@@ -3071,7 +3122,7 @@ namespace spartan
                 uav_desc.ViewDimension         = D3D12_UAV_DIMENSION_TEXTURE3D;
                 uav_desc.Texture3D.MipSlice    = mip_index;
                 uav_desc.Texture3D.FirstWSlice = 0;
-                uav_desc.Texture3D.WSize       = texture->GetDepth();
+                uav_desc.Texture3D.WSize       = std::max(1u, texture->GetDepth() >> mip_index);
             }
             else
             {
@@ -3206,6 +3257,20 @@ namespace spartan
             else
             {
                 SetTrackedTextureLayout(texture, covers_all_mips ? 0u : mip_index, covers_all_mips ? total_mips : effective_mip_range, RHI_Image_Layout::General);
+            }
+
+            // A UAV exposes one mip. A mip range (SPD) is an array of descriptors,
+            // occupying consecutive u registers, rather than a single ranged view.
+            if (mip_specified && effective_mip_range > 1)
+            {
+                SP_ASSERT(slot + effective_mip_range <= d3d12_root_slot::uav_space0_count);
+                SP_ASSERT(mip_index + effective_mip_range <= total_mips);
+                for (uint32_t i = 0; i < effective_mip_range; i++)
+                {
+                    b.uav[slot + i] = create_transient_mip_view(texture, mip_index + i, 1, true, array_layer);
+                }
+                b.uav_dirty = true;
+                return;
             }
 
             D3D12_CPU_DESCRIPTOR_HANDLE h = {};
@@ -3947,6 +4012,29 @@ namespace spartan
         UINT64 total_bytes = 0;
         RHI_Context::device->GetCopyableFootprints(&src_desc, 0, subres_count, 0, footprints.data(), num_rows.data(), row_sizes.data(), &total_bytes);
 
+        // The RHI exposes tightly packed pixels. D3D12 texture copies require 256-byte rows
+        // and 512-byte subresource offsets, so pack from a temporary GPU buffer afterward.
+        UINT64 packed_bytes = 0;
+        for (uint32_t i = 0; i < subres_count; i++)
+            packed_bytes += row_sizes[i] * num_rows[i] * footprints[i].Footprint.Depth;
+        SP_ASSERT(packed_bytes <= destination->GetObjectSize());
+        D3D12_HEAP_PROPERTIES heap = {};
+        heap.Type = D3D12_HEAP_TYPE_DEFAULT;
+        D3D12_RESOURCE_DESC scratch_desc = {};
+        scratch_desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        scratch_desc.Width = total_bytes;
+        scratch_desc.Height = 1;
+        scratch_desc.DepthOrArraySize = 1;
+        scratch_desc.MipLevels = 1;
+        scratch_desc.SampleDesc.Count = 1;
+        scratch_desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        ID3D12Resource* scratch = nullptr;
+        if (!d3d12_utility::error::check(RHI_Context::device->CreateCommittedResource(
+            &heap, D3D12_HEAP_FLAG_NONE, &scratch_desc, D3D12_RESOURCE_STATE_COMMON,
+            nullptr, IID_PPV_ARGS(&scratch))))
+            return;
+        b.readback_scratch.push_back(scratch);
+
         cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
         cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
         cmd_state::flush(cmd_list, b);
@@ -3959,11 +4047,30 @@ namespace spartan
             src_loc.SubresourceIndex = i;
 
             D3D12_TEXTURE_COPY_LOCATION dst_loc = {};
-            dst_loc.pResource       = dst;
+            dst_loc.pResource       = scratch;
             dst_loc.Type            = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
             dst_loc.PlacedFootprint = footprints[i];
 
             cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, nullptr);
+        }
+
+        D3D12_RESOURCE_BARRIER barrier = {};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Transition.pResource = scratch;
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+        d3d12_barriers::Submit(cmd_list, &barrier, 1);
+        UINT64 packed_offset = 0;
+        for (uint32_t i = 0; i < subres_count; i++)
+        {
+            const UINT64 rows = static_cast<UINT64>(num_rows[i]) * footprints[i].Footprint.Depth;
+            for (UINT64 row = 0; row < rows; row++)
+            {
+                cmd_list->CopyBufferRegion(dst, packed_offset, scratch,
+                    footprints[i].Offset + row * footprints[i].Footprint.RowPitch, row_sizes[i]);
+                packed_offset += row_sizes[i];
+            }
         }
     }
 

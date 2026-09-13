@@ -447,7 +447,7 @@ namespace spartan
 
     void RHI_Buffer::Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size)
     {
-        if (!data_cpu || size == 0)
+        if (!data_cpu)
         {
             return;
         }
@@ -463,13 +463,10 @@ namespace spartan
             else
             {
                 m_offset += m_stride;
-                if (m_offset + m_stride > m_object_size)
-                {
-                    m_offset = 0;
-                }
             }
 
-            const uint64_t upload_size = (size != 0) ? static_cast<uint64_t>(size) : static_cast<uint64_t>(m_stride);
+            // The default copies one CPU element, excluding D3D12's CBV alignment padding.
+            const uint64_t upload_size = (size != 0) ? static_cast<uint64_t>(size) : static_cast<uint64_t>(m_stride_unaligned);
             SP_ASSERT_MSG(
                 static_cast<uint64_t>(m_offset) + upload_size <= m_object_size,
                 ("buffer \"" + GetObjectName() + "\" was handed more data than it can hold").c_str()
@@ -482,7 +479,7 @@ namespace spartan
 
         // unmapped path, storage buffers live on the default heap so route through cmd-list staging
         SP_ASSERT(cmd_list);
-        cmd_list->update_buffer(this, 0, size, data_cpu);
+        cmd_list->update_buffer(this, 0, size != 0 ? size : m_stride_unaligned, data_cpu);
     }
 
     void RHI_Buffer::UpdateHandles(RHI_CommandList* cmd_list)

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include <atomic>
+#include <bitset>
 #include <unordered_map>
 #include "RHI_Definitions.h"
 #include "RHI_PipelineState.h"
@@ -472,8 +473,8 @@ namespace spartan
         uint32_t m_push_constant_size = 0;
         bool m_constant_buffer_bound = false;
         mutable uint64_t m_texture_bindings_hash = 0;
-        mutable uint64_t m_texture_bindings_srv = 0;
-        mutable uint64_t m_texture_bindings_uav = 0;
+        mutable std::bitset<rhi_max_resource_slots> m_texture_bindings_srv;
+        mutable std::bitset<rhi_max_resource_slots> m_texture_bindings_uav;
         bool m_batch_barrier_flush = false;
         bool m_flushing_barriers = false;
         RHI_PipelineState m_pso;
@@ -482,7 +483,7 @@ namespace spartan
         RHI_Queue* m_queue = nullptr;
         bool m_load_depth_render_target = false;
         std::array<bool, rhi_max_render_target_count> m_load_color_render_targets = { false };
-        static constexpr uint32_t m_max_tracked_resource_slots = 64;
+        static constexpr uint32_t m_max_tracked_resource_slots = rhi_max_resource_slots;
         std::array<RHI_Tracked_Texture_Binding, m_max_tracked_resource_slots> m_tracked_textures_srv;
         std::array<RHI_Tracked_Texture_Binding, m_max_tracked_resource_slots> m_tracked_textures_uav;
         std::array<RHI_Tracked_Texture_Binding, rhi_max_render_target_count + 2> m_tracked_attachments;

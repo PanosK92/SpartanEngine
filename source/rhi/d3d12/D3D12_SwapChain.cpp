@@ -56,9 +56,6 @@ namespace spartan::d3d12_descriptors
 
 namespace spartan
 {
-    // local storage for rtv indices (not exposed in header)
-    static std::array<uint32_t, RHI_SwapChain::buffer_count> s_rtv_indices = { 0 };
-
     // helper to get native hwnd from sdl_window
     static HWND get_hwnd_from_sdl_window(void* sdl_window)
     {
@@ -365,9 +362,6 @@ namespace spartan
         factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
 
         // create render target views for each backbuffer
-        ID3D12DescriptorHeap* rtv_heap = d3d12_descriptors::GetRtvHeap();
-        uint32_t rtv_descriptor_size = d3d12_descriptors::GetRtvDescriptorSize();
-
         for (uint32_t i = 0; i < m_buffer_count; i++)
         {
             // get backbuffer
@@ -379,11 +373,13 @@ namespace spartan
             }
 
             // allocate rtv slot
-            uint32_t rtv_index = d3d12_descriptors::AllocateRtv();
+            if (!m_rhi_rtv[i])
+            {
+                m_rhi_rtv[i] = reinterpret_cast<void*>(d3d12_descriptors::GetRtvHandle(d3d12_descriptors::AllocateRtv()).ptr);
+            }
             
             // create rtv
-            D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle = rtv_heap->GetCPUDescriptorHandleForHeapStart();
-            rtv_handle.ptr += rtv_index * rtv_descriptor_size;
+            D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle{ reinterpret_cast<SIZE_T>(m_rhi_rtv[i]) };
 
             RHI_Context::device->CreateRenderTargetView(backbuffer, nullptr, rtv_handle);
 
@@ -392,8 +388,7 @@ namespace spartan
             d3d12_state::SetSubresourceCount(backbuffer, 1);
 
             // store backbuffer and rtv info
-            m_rhi_rt[i]       = backbuffer;
-            s_rtv_indices[i]  = rtv_index;
+            m_rhi_rt[i] = backbuffer;
         }
 
         // fences so the present queue can wait for graphics to finish writing the backbuffer
@@ -417,6 +412,7 @@ namespace spartan
 
     RHI_SwapChain::~RHI_SwapChain()
     {
+        for (void* rtv : m_rhi_rtv) d3d12_descriptors::FreeRtv(rtv);
         SP_UNSUBSCRIBE_FROM_EVENT(EventType::WindowResized, m_window_resize_event_handle);
         m_window_resize_event_handle = 0;
 
@@ -478,9 +474,6 @@ namespace spartan
         }
 
         // recreate render target views
-        ID3D12DescriptorHeap* rtv_heap = d3d12_descriptors::GetRtvHeap();
-        uint32_t rtv_descriptor_size = d3d12_descriptors::GetRtvDescriptorSize();
-
         for (uint32_t i = 0; i < m_buffer_count; i++)
         {
             // get backbuffer
@@ -492,8 +485,7 @@ namespace spartan
             }
 
             // create rtv at the same index
-            D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle = rtv_heap->GetCPUDescriptorHandleForHeapStart();
-            rtv_handle.ptr += s_rtv_indices[i] * rtv_descriptor_size;
+            D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle{ reinterpret_cast<SIZE_T>(m_rhi_rtv[i]) };
 
             RHI_Context::device->CreateRenderTargetView(backbuffer, nullptr, rtv_handle);
 
@@ -621,8 +613,8 @@ namespace spartan
         }
 
         // recreate rtvs at the same indices
-        ID3D12DescriptorHeap* rtv_heap = d3d12_descriptors::GetRtvHeap();
-        uint32_t rtv_descriptor_size = d3d12_descriptors::GetRtvDescriptorSize();
+
+
         for (uint32_t i = 0; i < m_buffer_count; i++)
         {
             ID3D12Resource* backbuffer = nullptr;
@@ -632,8 +624,7 @@ namespace spartan
                 return;
             }
 
-            D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle = rtv_heap->GetCPUDescriptorHandleForHeapStart();
-            rtv_handle.ptr += s_rtv_indices[i] * rtv_descriptor_size;
+            D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle{ reinterpret_cast<SIZE_T>(m_rhi_rtv[i]) };
             RHI_Context::device->CreateRenderTargetView(backbuffer, nullptr, rtv_handle);
             d3d12_state::SetState(backbuffer, D3D12_RESOURCE_STATE_PRESENT);
             d3d12_state::SetSubresourceCount(backbuffer, 1);
@@ -657,8 +648,7 @@ namespace spartan
                 ID3D12Resource* backbuffer = nullptr;
                 if (SUCCEEDED(dxgi->GetBuffer(i, IID_PPV_ARGS(&backbuffer))))
                 {
-                    D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle = rtv_heap->GetCPUDescriptorHandleForHeapStart();
-                    rtv_handle.ptr += s_rtv_indices[i] * rtv_descriptor_size;
+                    D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle{ reinterpret_cast<SIZE_T>(m_rhi_rtv[i]) };
                     RHI_Context::device->CreateRenderTargetView(backbuffer, nullptr, rtv_handle);
                     d3d12_state::SetState(backbuffer, D3D12_RESOURCE_STATE_PRESENT);
                     d3d12_state::SetSubresourceCount(backbuffer, 1);
@@ -718,6 +708,6 @@ namespace spartan
     // helper function to get rtv handle for a swapchain image (used by command list)
     D3D12_CPU_DESCRIPTOR_HANDLE get_swapchain_rtv_handle(const RHI_SwapChain* swapchain)
     {
-        return d3d12_descriptors::GetRtvHandle(s_rtv_indices[swapchain->GetImageIndex()]);
+        return D3D12_CPU_DESCRIPTOR_HANDLE{ reinterpret_cast<SIZE_T>(swapchain->GetRhiRtv()) };
     }
 }

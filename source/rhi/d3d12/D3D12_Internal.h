@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <cstdint>
 #include <d3d12.h>
+#include "../RHI_Definitions.h"
 #include "../../memory/GpuMemory.h"
 
 namespace spartan
@@ -99,12 +100,15 @@ namespace spartan::d3d12_descriptors
     // allocators
     uint32_t AllocateRtv();
     uint32_t AllocateDsv();
+    void FreeRtv(void* handle);
+    void FreeDsv(void* handle);
     uint32_t AllocateCbvSrvUavCpu();          // monotonic, for static views (texture/buffer init)
     uint32_t AllocateCbvSrvUavCpuTransient(); // wraps inside a dedicated transient zone, for per-frame transient views
     uint32_t AllocateSamplerCpu();
     void     FreeSamplerCpu(uint32_t index);
     uint32_t SamplerHandleToIndex(SIZE_T handle_ptr);
-    uint32_t AllocateRing(uint32_t count); // index in shader-visible cbv/srv/uav heap
+    uint32_t AllocateRing(ID3D12GraphicsCommandList* owner, uint32_t count);
+    void ReleaseRing(ID3D12GraphicsCommandList* owner); // only after the owner's fence completes
 
     // queue resources
     ID3D12CommandAllocator* GetGraphicsAllocator();
@@ -119,12 +123,12 @@ namespace spartan::d3d12_descriptors
 namespace spartan::d3d12_root_slot
 {
     // buffers bound through Renderer_BindingsUav are declared as t registers in the stages that only read them, so the srv table must span the same index range as the uav table
-    constexpr uint32_t srv_space0_count   = 60; // t0..t59
-    constexpr uint32_t uav_space0_count   = 60; // u0..u59
+    constexpr uint32_t srv_space0_count   = rhi_max_resource_slots;
+    constexpr uint32_t uav_space0_count   = rhi_max_resource_slots;
     constexpr uint32_t cbv_frame          = 0;  // CBV b0 space0
     constexpr uint32_t push_constants     = 1;  // 32-bit root constants b1 space0
-    constexpr uint32_t srv_table_space0   = 2;  // t0..t56 space0
-    constexpr uint32_t uav_table_space0   = 3;  // u0..u56 space0
+    constexpr uint32_t srv_table_space0   = 2;  // per-pass SRVs in space0
+    constexpr uint32_t uav_table_space0   = 3;  // per-pass UAVs in space0
     constexpr uint32_t srv_material_tex   = 4;  // t15 space1 unbounded
     constexpr uint32_t srv_material_param = 5;  // t16 space2
     constexpr uint32_t srv_light_param    = 6;  // t17 space3

@@ -352,7 +352,7 @@ float main_ps_depth(VsOut v) : SV_Depth
 
         // allocate a transient ring slot in the shader-visible cbv/srv/uav heap and copy the source srv into it
         // the source texture's existing srv lives in the cpu-only staging heap, so it can't be referenced directly by the gpu
-        uint32_t slot                            = d3d12_descriptors::AllocateRing(1);
+        uint32_t slot                            = d3d12_descriptors::AllocateRing(cmd_list, 1);
         D3D12_CPU_DESCRIPTOR_HANDLE dst_cpu      = d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(slot);
         D3D12_GPU_DESCRIPTOR_HANDLE dst_gpu      = d3d12_descriptors::GetCbvSrvUavGpuHandle(slot);
         RHI_Context::device->CopyDescriptorsSimple(1, dst_cpu, params.source_srv_cpu_handle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);

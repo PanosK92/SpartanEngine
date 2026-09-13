@@ -351,7 +351,7 @@ namespace spartan
         // heap sizes
         constexpr uint32_t rtv_heap_size            = 512;
         constexpr uint32_t dsv_heap_size            = 256;
-        constexpr uint32_t cbv_srv_uav_heap_size    = 100000;
+        constexpr uint32_t cbv_srv_uav_heap_size    = 1000000;
         constexpr uint32_t sampler_heap_size        = 512;
 
         // bindless zone sizes within cbv_srv_uav heap
@@ -401,6 +401,14 @@ namespace spartan
         uint32_t zone_ring_base                = 0;
         uint32_t zone_ring_size                = 0;
         atomic<uint32_t> zone_ring_offset      = 0;
+        constexpr uint32_t ring_page_size = 4096;
+        struct RingPage { uint32_t offset; uint32_t used; };
+        unordered_map<ID3D12GraphicsCommandList*, vector<RingPage>> ring_pages;
+        vector<uint32_t> ring_free_pages;
+        mutex ring_mutex;
+        mutex attachment_mutex;
+        vector<uint32_t> free_rtvs;
+        vector<uint32_t> free_dsvs;
 
         uint32_t zone_samplers_compare_base    = 0;
         uint32_t zone_samplers_base            = 0;
@@ -412,6 +420,12 @@ namespace spartan
         void destroy()
         {
             pipelines.clear();
+            ring_pages.clear();
+            ring_free_pages.clear();
+            free_rtvs.clear();
+            free_dsvs.clear();
+            rtv_offset = 0;
+            dsv_offset = 0;
             if (heap_rtv)             { heap_rtv->Release();             heap_rtv = nullptr; }
             if (heap_dsv)             { heap_dsv->Release();             heap_dsv = nullptr; }
             if (heap_cbv_srv_uav)     { heap_cbv_srv_uav->Release();     heap_cbv_srv_uav = nullptr; }
@@ -793,7 +807,9 @@ namespace spartan
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&queues::present))),
                 "Failed to create present queue");
 
-            queue_desc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+            // The asynchronous rendering phase includes depth clears and graphics blits.
+            // Keep a separate queue for overlap, but accept the full RHI command set.
+            queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&queues::compute))),
                 "Failed to create compute queue");
 
@@ -817,7 +833,7 @@ namespace spartan
                 "Failed to create graphics command allocator");
 
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandAllocator(
-                D3D12_COMMAND_LIST_TYPE_COMPUTE, IID_PPV_ARGS(&queues::allocator_compute))),
+                D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&queues::allocator_compute))),
                 "Failed to create compute command allocator");
 
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandAllocator(
@@ -933,9 +949,6 @@ namespace spartan
 
     void RHI_Device::Tick(const uint64_t frame_count)
     {
-        // wrap the per-frame ring on each tick to avoid unbounded growth
-        descriptors::zone_ring_offset.store(0);
-
         // retire any deletion queue entries old enough to be safe (gpu has finished using them)
         DeletionQueueParse();
     }
@@ -1295,8 +1308,53 @@ namespace spartan::d3d12_descriptors
         return handle;
     }
 
-    uint32_t AllocateRtv()             { return spartan::descriptors::rtv_offset.fetch_add(1); }
-    uint32_t AllocateDsv()             { return spartan::descriptors::dsv_offset.fetch_add(1); }
+    uint32_t AllocateRtv()
+    {
+        using namespace spartan::descriptors;
+        lock_guard<mutex> lock(attachment_mutex);
+        if (!free_rtvs.empty())
+        {
+            uint32_t index = free_rtvs.back();
+            free_rtvs.pop_back();
+            return index;
+        }
+        uint32_t index = rtv_offset.fetch_add(1);
+        SP_ASSERT_MSG(index < rtv_heap_size, "RTV descriptor heap exhausted");
+        return index;
+    }
+
+    uint32_t AllocateDsv()
+    {
+        using namespace spartan::descriptors;
+        lock_guard<mutex> lock(attachment_mutex);
+        if (!free_dsvs.empty())
+        {
+            uint32_t index = free_dsvs.back();
+            free_dsvs.pop_back();
+            return index;
+        }
+        uint32_t index = dsv_offset.fetch_add(1);
+        SP_ASSERT_MSG(index < dsv_heap_size, "DSV descriptor heap exhausted");
+        return index;
+    }
+
+    void FreeRtv(void* handle)
+    {
+        if (!handle) return;
+        using namespace spartan::descriptors;
+        lock_guard<mutex> lock(attachment_mutex);
+        if (!heap_rtv) return;
+        free_rtvs.push_back(static_cast<uint32_t>((reinterpret_cast<SIZE_T>(handle) - heap_rtv->GetCPUDescriptorHandleForHeapStart().ptr) / rtv_descriptor_size));
+    }
+
+    void FreeDsv(void* handle)
+    {
+        if (!handle) return;
+        using namespace spartan::descriptors;
+        lock_guard<mutex> lock(attachment_mutex);
+        if (!heap_dsv) return;
+        free_dsvs.push_back(static_cast<uint32_t>((reinterpret_cast<SIZE_T>(handle) - heap_dsv->GetCPUDescriptorHandleForHeapStart().ptr) / dsv_descriptor_size));
+    }
 
     // monotonic allocator for static cpu staging descriptors, used by texture/buffer init
     // never wraps, sized large enough to hold all long-lived views
@@ -1348,22 +1406,47 @@ namespace spartan::d3d12_descriptors
         return static_cast<uint32_t>((handle_ptr - base) / spartan::descriptors::sampler_descriptor_size);
     }
 
-    // ring allocator inside the shader-visible cbv/srv/uav heap; wraps once full
-    uint32_t AllocateRing(uint32_t count)
+    // Descriptor tables live until their command list completes, including across CPU frames.
+    uint32_t AllocateRing(ID3D12GraphicsCommandList* owner, uint32_t count)
     {
-        if (count == 0)
+        using namespace spartan::descriptors;
+        SP_ASSERT(owner && count > 0 && count <= ring_page_size);
+        lock_guard<mutex> lock(ring_mutex);
+        auto& pages = ring_pages[owner];
+        if (pages.empty() || pages.back().used + count > ring_page_size)
         {
-            return spartan::descriptors::zone_ring_base;
+            uint32_t offset;
+            if (!ring_free_pages.empty())
+            {
+                offset = ring_free_pages.back();
+                ring_free_pages.pop_back();
+            }
+            else
+            {
+                offset = zone_ring_offset.fetch_add(ring_page_size);
+                SP_ASSERT_MSG(offset + ring_page_size <= zone_ring_size, "Shader-visible descriptor heap exhausted");
+            }
+            pages.push_back({ offset, 0 });
         }
-        const uint32_t ring_size = spartan::descriptors::zone_ring_size;
-        uint32_t prev = spartan::descriptors::zone_ring_offset.fetch_add(count);
-        if (prev + count > ring_size)
+        auto& page = pages.back();
+        const uint32_t result = zone_ring_base + page.offset + page.used;
+        page.used += count;
+        return result;
+    }
+
+    void ReleaseRing(ID3D12GraphicsCommandList* owner)
+    {
+        using namespace spartan::descriptors;
+        lock_guard<mutex> lock(ring_mutex);
+        auto it = ring_pages.find(owner);
+        if (it != ring_pages.end())
         {
-            // wrap (simple, racey but acceptable: gpu may still be reading old content; ring is huge enough)
-            spartan::descriptors::zone_ring_offset.store(count);
-            prev = 0;
+            for (const auto& page : it->second)
+            {
+                ring_free_pages.push_back(page.offset);
+            }
+            ring_pages.erase(it);
         }
-        return spartan::descriptors::zone_ring_base + prev;
     }
 
     ID3D12CommandAllocator* GetGraphicsAllocator() { return spartan::queues::allocator_graphics; }

@@ -401,7 +401,7 @@ namespace spartan
                 )
                 {
                     uint32_t binding_slot = 0;
-                    uint64_t* binding_mask = nullptr;
+                    std::bitset<rhi_max_resource_slots>* binding_mask = nullptr;
                     if (
                         descriptor.IsBindless()
                     )
@@ -435,8 +435,7 @@ namespace spartan
                             m_max_tracked_resource_slots
                     )
                     {
-                        *binding_mask |=
-                            uint64_t(1) << binding_slot;
+                        binding_mask->set(binding_slot);
                     }
                 }
             }
@@ -447,14 +446,11 @@ namespace spartan
             return false;
         }
 
-        const uint64_t binding_mask =
+        const auto& binding_mask =
             storage
                 ? m_texture_bindings_uav
                 : m_texture_bindings_srv;
-        return (
-            binding_mask &
-            (uint64_t(1) << slot)
-        ) != 0;
+        return binding_mask.test(slot);
     }
 
     RHI_Resource_Access RHI_CommandList::GetBufferAccess(uint32_t slot) const

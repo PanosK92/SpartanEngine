@@ -1274,30 +1274,30 @@ namespace spartan
         }
 
         // geometry buffers, vertex pulling via bindless structured buffers
-        static RHI_Buffer* last_vertex_buffer = nullptr;
-        if (RHI_Buffer* current_vertex = GeometryBuffer::GetVertexBuffer(); current_vertex && current_vertex != last_vertex_buffer)
+        static uint64_t last_vertex_buffer_id = 0;
+        if (RHI_Buffer* current_vertex = GeometryBuffer::GetVertexBuffer(); current_vertex && current_vertex->GetObjectId() != last_vertex_buffer_id)
         {
             RHI_Device::UpdateBindlessGeometryVertices(current_vertex);
-            last_vertex_buffer = current_vertex;
+            last_vertex_buffer_id = current_vertex->GetObjectId();
         }
-        static RHI_Buffer* last_index_buffer = nullptr;
-        if (RHI_Buffer* current_index = GeometryBuffer::GetIndexBuffer(); current_index && current_index != last_index_buffer)
+        static uint64_t last_index_buffer_id = 0;
+        if (RHI_Buffer* current_index = GeometryBuffer::GetIndexBuffer(); current_index && current_index->GetObjectId() != last_index_buffer_id)
         {
             RHI_Device::UpdateBindlessGeometryIndices(current_index);
-            last_index_buffer = current_index;
+            last_index_buffer_id = current_index->GetObjectId();
         }
 
         // global instance buffer for instanced indirect draws, falls back to dummy until the global buffer exists
-        static RHI_Buffer* last_instance_buffer = nullptr;
+        static uint64_t last_instance_buffer_id = 0;
         RHI_Buffer* current_instance            = GeometryBuffer::GetInstanceBuffer();
         if (!current_instance)
         {
             current_instance = GetBuffer(Renderer_Buffer::DummyInstance);
         }
-        if (current_instance != last_instance_buffer)
+        if (current_instance && current_instance->GetObjectId() != last_instance_buffer_id)
         {
             RHI_Device::UpdateBindlessInstances(current_instance);
-            last_instance_buffer = current_instance;
+            last_instance_buffer_id = current_instance->GetObjectId();
         }
 
         // two slot indirect draw args, slot 0 opaque slot 1 alpha-tested, layout matches VkDrawIndirectCommand on the first 16 bytes

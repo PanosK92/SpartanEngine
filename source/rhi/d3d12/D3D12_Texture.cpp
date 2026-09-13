@@ -387,7 +387,9 @@ namespace spartan
                                 {
                                     uint8_t* dest = static_cast<uint8_t*>(mapped_data) + layouts[subresource].Offset;
                                     const uint8_t* src = reinterpret_cast<const uint8_t*>(mip_data.data());
-                                    for (uint32_t row = 0; row < num_rows[subresource]; row++)
+                                    const uint64_t rows = static_cast<uint64_t>(num_rows[subresource]) * layouts[subresource].Footprint.Depth;
+                                    SP_ASSERT(rows * row_sizes[subresource] <= mip_data.size());
+                                    for (uint64_t row = 0; row < rows; row++)
                                     {
                                         memcpy(dest + row * layouts[subresource].Footprint.RowPitch,
                                                src + row * row_sizes[subresource],
@@ -707,9 +709,11 @@ namespace spartan
         m_rhi_srv = nullptr;
         for (auto& v : m_rhi_srv_mips) v = nullptr;
         for (auto& v : m_rhi_srv_layers) v = nullptr;
-        for (auto& v : m_rhi_rtv) v = nullptr;
-        for (auto& v : m_rhi_dsv) v = nullptr;
+        for (auto& v : m_rhi_rtv) { d3d12_descriptors::FreeRtv(v); v = nullptr; }
+        for (auto& v : m_rhi_dsv) { d3d12_descriptors::FreeDsv(v); v = nullptr; }
+        d3d12_descriptors::FreeRtv(m_rhi_rtv_multiview);
         m_rhi_rtv_multiview = nullptr;
+        d3d12_descriptors::FreeDsv(m_rhi_dsv_multiview);
         m_rhi_dsv_multiview = nullptr;
     }
 
@@ -728,9 +732,11 @@ namespace spartan
         m_rhi_srv = nullptr;
         for (auto& v : m_rhi_srv_mips) v = nullptr;
         for (auto& v : m_rhi_srv_layers) v = nullptr;
-        for (auto& v : m_rhi_rtv) v = nullptr;
-        for (auto& v : m_rhi_dsv) v = nullptr;
+        for (auto& v : m_rhi_rtv) { d3d12_descriptors::FreeRtv(v); v = nullptr; }
+        for (auto& v : m_rhi_dsv) { d3d12_descriptors::FreeDsv(v); v = nullptr; }
+        d3d12_descriptors::FreeRtv(m_rhi_rtv_multiview);
         m_rhi_rtv_multiview = nullptr;
+        d3d12_descriptors::FreeDsv(m_rhi_dsv_multiview);
         m_rhi_dsv_multiview = nullptr;
     }
 }
