@@ -34,14 +34,14 @@ RATE = 32000
 # Design regions, not administrative boundaries. Lon/lat anchors are registered
 # through the existing atlas so its compressed north/south scale is respected.
 REGIONS = [
-    ('highlands', 'Vrachionas and western villages', 20.735, 37.815, {'wind': .62, 'cicadas': .19, 'birds': .06}),
-    ('north', 'Volimes and Skinari', 20.690, 37.901, {'wind': .72, 'cicadas': .09, 'birds': .05}),
-    ('east', 'Alykes, Tragaki and Tsilivi', 20.810, 37.842, {'wind': .22, 'cicadas': .40, 'birds': .16}),
-    ('plain', 'Central olive plain', 20.814, 37.772, {'wind': .18, 'cicadas': .55, 'birds': .19, 'village': .06}),
-    ('south', 'Laganas, Kalamaki and airport plain', 20.882, 37.744, {'wind': .30, 'cicadas': .25, 'birds': .09}),
-    ('vasilikos', 'Skopos and Vasilikos', 20.978, 37.720, {'wind': .20, 'cicadas': .44, 'birds': .24}),
-    ('keri', 'Keri and the southwest', 20.816, 37.675, {'wind': .47, 'cicadas': .30, 'birds': .12}),
-    ('town', 'Zakynthos Town and Bochali', 20.898, 37.786, {'wind': .14, 'birds': .07}),
+    ('highlands', 'Vrachionas and western villages', 20.735, 37.815, {'wind': 0.0775, 'cicadas': .19, 'birds': .06}),
+    ('north', 'Volimes and Skinari', 20.690, 37.901, {'wind': 0.09, 'cicadas': .09, 'birds': .05}),
+    ('east', 'Alykes, Tragaki and Tsilivi', 20.810, 37.842, {'wind': 0.0275, 'cicadas': .40, 'birds': .16}),
+    ('plain', 'Central olive plain', 20.814, 37.772, {'wind': 0.0225, 'cicadas': .55, 'birds': .19, 'village': .06}),
+    ('south', 'Laganas, Kalamaki and airport plain', 20.882, 37.744, {'wind': 0.0375, 'cicadas': .25, 'birds': .09}),
+    ('vasilikos', 'Skopos and Vasilikos', 20.978, 37.720, {'wind': 0.025, 'cicadas': .44, 'birds': .24}),
+    ('keri', 'Keri and the southwest', 20.816, 37.675, {'wind': 0.05875, 'cicadas': .30, 'birds': .12}),
+    ('town', 'Zakynthos Town and Bochali', 20.898, 37.786, {'wind': 0.0175, 'birds': .07}),
 ]
 
 def parts(geometry):
@@ -74,8 +74,13 @@ def tile_loop(data, frames, offset=0):
     loop = np.concatenate([data[-cross:] * (1-fade) + data[:cross] * fade, data[cross:-cross]])
     return loop[(np.arange(frames) + offset) % len(loop)]
 
-def write_loop(path, data):
+def write_loop(path, data, wind_lulls=False):
     data = tile_loop(data, len(data) - 2 * RATE)
+    if wind_lulls:
+        # A slow swell with long, nearly silent lulls; periodic at the loop seam.
+        phase = np.arange(len(data), dtype=float) / len(data)
+        envelope = .08 + .92 * (.5 - .5 * np.cos(2 * np.pi * phase)) ** 3
+        data *= envelope[:, None]
     assert np.isfinite(data).all() and np.max(np.abs(data)) < .95
     sf.write(path, data, RATE, subtype='PCM_16')
     return dict(file=path.name, seconds=round(len(data)/RATE, 3), peak_db=round(20*np.log10(max(np.abs(data).max(),1e-9)), 2), rms_db=round(20*np.log10(np.sqrt(np.mean(data*data))), 2), sha256=hashlib.sha256(path.read_bytes()).hexdigest())
@@ -177,7 +182,7 @@ def build(apply):
     # when the listener walks out of the grove. Gains belong to the emitters.
     profiles = {'wind': 3, 'cicadas': 1, 'birds': 2, 'village': 0}
     for index, key in enumerate(profiles):
-        files.append(write_loop(OUT/(key+'.wav'), tile_loop(sounds[key][0], RATE * (47 + index*2))))
+        files.append(write_loop(OUT/(key+'.wav'), tile_loop(sounds[key][0], RATE * (47 + index*2)), wind_lulls=key=='wind'))
     surf = np.concatenate(sounds['surf'])
     files.append(write_loop(OUT/'shore.wav',tile_loop(surf,RATE*53)*.65))
     files.append(write_loop(OUT/'harbour.wav',tile_loop(sounds['harbour'][0],RATE*59)*.40))
