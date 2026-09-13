@@ -816,6 +816,7 @@ namespace spartan::car_hud
         s.distance = simulation->get_distance_m();
         s.abs_enabled = physics->GetAbsEnabled();
         s.stability_enabled = spec.yaw_control_enabled;
+        s.stability_active = simulation->get_assist_state().stability_active;
         s.steering_enabled = spec.assists.steering_speed_reduction > 0;
         s.automatic = !physics->GetManualTransmission();
         s.tc_enabled = physics->GetTcEnabled();
@@ -849,6 +850,9 @@ namespace spartan::car_hud
             w.brake_temp = physics->GetWheelBrakeTemp(index);
             w.brake_efficiency = physics->GetWheelBrakeEfficiency(index);
             w.road = simulation->get_surface_name(physical.contact_surface);
+            w.surface_grip = physical.surface_grip;
+            w.surface_rolling = physical.surface_rolling;
+            w.mixed_surface = physical.mixed_surface;
         }
 
         static telemetry::history history;

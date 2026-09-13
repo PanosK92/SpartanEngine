@@ -51,6 +51,8 @@ namespace spartan::car_hud::telemetry
         float load = 0, saturation = 0, compression = 0, slip_ratio = 0, slip_angle = 0;
         float brake_temp = 0, brake_efficiency = 1;
         std::string road = "--";
+        float surface_grip = 0, surface_rolling = 0;
+        bool mixed_surface = false;
     };
 
     struct snapshot
@@ -65,7 +67,7 @@ namespace spartan::car_hud::telemetry
         float optimal_temp = 80, temp_range = 30, tc_reduction = 0;
         double distance = 0;
         bool abs_enabled = false, tc_enabled = false, tc_active = false;
-        bool stability_enabled = false, steering_enabled = false, automatic = false;
+        bool stability_enabled = false, stability_active = false, steering_enabled = false, automatic = false;
         bool drs_enabled = false, drs_active = false, turbo = false, hybrid = false;
         bool shifting = false, limiter = false, engine_running = false, aero_valid = false;
         bool full_simulation = true;
@@ -279,7 +281,7 @@ namespace spartan::car_hud::telemetry
         };
         toggle(0, control::abs, "ABS", s.abs_enabled, abs_active, "Anti-lock braking prevents wheel lock under braking.");
         toggle(1, control::traction, "TRACTION", s.tc_enabled, s.tc_active, "Traction control reduces power when driven wheels spin.");
-        toggle(2, control::stability, "STABILITY", s.stability_enabled, false, "Yaw control adjusts wheel braking to help stabilize the car.");
+        toggle(2, control::stability, "STABILITY", s.stability_enabled, s.stability_active, "Stability control adjusts wheel braking and power to limit oversteer.");
         toggle(3, control::steering, "STEER ASSIST", s.steering_enabled, false, "Reduces steering sensitivity at speed; restores your configured strength when enabled.");
         toggle(4, control::automatic, "AUTO SHIFT", s.automatic, false, "Automatic gear changes. When off, shift with PgUp/PgDn or L1/R1.");
         toggle(5, control::drs, "DRS", s.drs_enabled, s.drs_active, "Allows the drag reduction system to open the rear wing.");
@@ -323,9 +325,12 @@ namespace spartan::car_hud::telemetry
         p.label(x + 15, y + 110, 12, ink, "%.2f kN", w.load * 0.001f);
         p.label(x + 112, y + 110, 12, status, "GRIP USED %.0f%%", w.saturation * 100);
         p.bar(x + 15, y + 130, 211, 5, w.saturation, status);
-        p.label(x + 15, y + 144, 12, muted, "SLIP %+.0f%% / %+.1f deg", w.slip_ratio * 100, w.slip_angle);
-        p.label(x + 15, y + 165, 11, muted, "TRAVEL %.0f%%", w.compression * 100);
-        p.right(x + 229, y + 165, 11, muted, w.grounded ? w.road.c_str() : "NO CONTACT");
+        p.label(x + 15, y + 141, 11, muted, "SLIP %+.0f%% / %+.1f deg", w.slip_ratio * 100, w.slip_angle);
+        p.right(x + 229, y + 141, 10, muted, ("TRAVEL " + std::to_string(static_cast<int>(w.compression * 100)) + "%").c_str());
+        p.label(x + 15, y + 157, 11, w.surface_grip < 0.8f ? amber : ink, "%s%s",
+            w.grounded ? w.road.c_str() : "NO CONTACT", w.grounded && w.mixed_surface ? " / MIXED" : "");
+        if (w.grounded)
+            p.label(x + 15, y + 173, 10, muted, "SURFACE GRIP %.0f%%   ROLL x%.1f", w.surface_grip * 100, w.surface_rolling);
     }
 
     template<typename Value>

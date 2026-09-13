@@ -233,6 +233,18 @@ namespace spartan
         size_t play_start_cursor = 0;
         constexpr double play_start_budget_ms = 4.0;
 
+        // Start is spread across frames. Deletions must invalidate this queue
+        // while its pointers are still alive, without shifting the cursor.
+        void cancel_pending_starts(const set<uint64_t>& ids)
+        {
+            for (size_t i = play_start_cursor; i < play_start_queue.size(); ++i)
+            {
+                Entity*& entity = play_start_queue[i];
+                if (entity && ids.count(entity->GetObjectId()) != 0)
+                    entity = nullptr;
+            }
+        }
+
         bool entity_has_play_priority(Entity* entity)
         {
             if (!entity)
@@ -1179,6 +1191,9 @@ namespace spartan
         {
             return;
         }
+
+        // Also covers removals queued in edit mode before the play queue existed.
+        cancel_pending_starts(pending_remove);
 
         // unlink doomed entities from survivors first, everything is still alive
         // here so no surviving entity is left holding a freed parent or child
@@ -3042,6 +3057,7 @@ namespace spartan
 
             // defer removal
             pending_remove.insert(ids_to_remove.begin(), ids_to_remove.end());
+            cancel_pending_starts(ids_to_remove);
 
             // detach from parent so it won't hold a dangling pointer after deferred deletion
             if (Entity* parent = entity_to_remove->GetParent())
@@ -3065,6 +3081,11 @@ namespace spartan
         vector<Entity*> entities_to_remove;
         entities_to_remove.push_back(entity_to_remove);
         entity_to_remove->GetDescendants(&entities_to_remove);
+
+        set<uint64_t> ids_to_remove;
+        for (Entity* entity : entities_to_remove)
+            ids_to_remove.insert(entity->GetObjectId());
+        cancel_pending_starts(ids_to_remove);
 
         // detach from the parent before deleting, re-acquiring here would keep the
         // doomed entity in the list because it is still part of the world

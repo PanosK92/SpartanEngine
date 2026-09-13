@@ -1598,7 +1598,7 @@ namespace spartan
                 const physx::PxVec3 rolling_endpoint = forces.rolling_point + forces.rolling * 0.00004f;
                 const math::Vector3 contact = to_render(wheel.contact_point);
                 Color contact_color = skeleton_color_contact;
-                if (wheel.contact_surface == ::car::surface_gravel)
+                if (wheel.contact_surface == ::car::surface_gravel || wheel.contact_surface == ::car::surface_dirt)
                 {
                     contact_color = Color(0.76f, 0.56f, 0.28f, 1.0f);
                 }

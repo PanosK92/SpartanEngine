@@ -63,6 +63,7 @@ namespace car
         constexpr float surface_friction_gravel      = 0.6f;
         constexpr float surface_friction_grass       = 0.4f;
         constexpr float surface_friction_ice         = 0.1f;
+        constexpr float surface_friction_dirt        = 0.65f; // compacted dry dirt, road tires
 // file telemetry opens lazily in the working directory
 }
 
@@ -95,7 +96,7 @@ namespace car
 
     enum wheel_id { front_left = 0, front_right = 1, rear_left = 2, rear_right = 3, wheel_count = 4 };
     inline constexpr const char* wheel_names[] = { "FL", "FR", "RL", "RR" };
-    enum surface_type { surface_asphalt = 0, surface_concrete, surface_wet_asphalt, surface_gravel, surface_grass, surface_ice, surface_count };
+    enum surface_type { surface_asphalt = 0, surface_concrete, surface_wet_asphalt, surface_gravel, surface_grass, surface_ice, surface_dirt, surface_count };
 
     struct config
     {
@@ -138,6 +139,8 @@ namespace car
         float         load        = 0.0f;
         bool          hit         = false;
         float         friction_scale = 1.0f;
+        surface_type  surface = surface_asphalt;
+        float         rolling_scale = 1.0f;
     };
 
     struct wheel_force_debug
@@ -174,6 +177,9 @@ namespace car
         float        brake_temp           = 30.0f;
         float        wear                 = 0.0f;
         surface_type contact_surface      = surface_asphalt;
+        float        surface_grip         = 0.0f; // load-weighted multiplier relative to dry asphalt
+        float        surface_rolling      = 0.0f; // load-weighted rolling resistance multiplier
+        bool         mixed_surface        = false;
         float        effective_radius     = 0.0f;
         float        dynamic_camber       = 0.0f;
         float        dynamic_toe          = 0.0f;
@@ -219,6 +225,9 @@ namespace car
     {
         float engine_torque_scale = 1.0f;
         float brake_torque_scale[wheel_count] = { 1.0f, 1.0f, 1.0f, 1.0f };
+        float stability_brake_torque[wheel_count] = {};
+        float target_yaw_rate = 0.0f;
+        bool stability_active = false;
     };
 
     struct active_upgrades

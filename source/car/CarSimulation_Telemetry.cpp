@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "pch.h"
 #include "CarSimulation.h"
+#include <deque>
+#include <fstream>
 
 namespace car
 {
@@ -76,10 +78,7 @@ namespace car
                 out_text.clear();
                 out_path = get_telemetry_path();
                 out_total_lines = 0;
-                if (!log_to_file)
-                {
-                    return false;
-                }
+                const bool was_writing = file != nullptr;
                 flush_telemetry();
                 if (file)
                 {
@@ -87,47 +86,40 @@ namespace car
                     file = nullptr;
                 }
 
-                FILE* read_file = nullptr;
-                fopen_s(&read_file, telemetry_path.c_str(), "r");
-                if (!read_file)
+                std::ifstream read_file(telemetry_path);
+                if (!read_file.is_open())
                 {
-                    reopen_telemetry_append();
+                    if (was_writing) reopen_telemetry_append();
                     return false;
                 }
 
-                std::vector<std::string> lines;
-                char buffer[8192];
-                while (fgets(buffer, sizeof(buffer), read_file))
+                // Headers and rows can exceed 8 KiB. Read logical CSV lines, and
+                // keep only the requested tail even for a long driving session.
+                std::string header, line;
+                std::deque<std::string> tail;
+                if (std::getline(read_file, header))
                 {
-                    lines.emplace_back(buffer);
-                }
-                fclose(read_file);
-                out_total_lines = static_cast<int>(lines.size());
-
-                if (lines.empty())
-                {
-                    reopen_telemetry_append();
-                    return true;
-                }
-
-                // always keep header, then the last max_rows data rows
-                out_text = lines[0];
-                if (!out_text.empty() && out_text.back() != '\n')
-                {
-                    out_text.push_back('\n');
-                }
-                const int data_count = std::max(0, out_total_lines - 1);
-                const int start = 1 + std::max(0, data_count - std::max(max_rows, 0));
-                for (int i = start; i < out_total_lines; i++)
-                {
-                    out_text += lines[static_cast<size_t>(i)];
-                    if (!out_text.empty() && out_text.back() != '\n')
+                    out_total_lines = 1;
+                    while (std::getline(read_file, line))
                     {
-                        out_text.push_back('\n');
+                        ++out_total_lines;
+                        if (max_rows > 0)
+                        {
+                            tail.push_back(line);
+                            if (tail.size() > static_cast<size_t>(max_rows)) tail.pop_front();
+                        }
                     }
                 }
+                read_file.close();
 
-                return reopen_telemetry_append();
+                if (out_total_lines > 0)
+                {
+                    out_text = header + '\n';
+                    for (const auto& row : tail) out_text += row + '\n';
+                }
+                // A read before the first sample must not create an empty append
+                // stream: that used to skip the CSV header on the first tick.
+                return !was_writing || reopen_telemetry_append();
             }
 
 
@@ -215,6 +207,9 @@ namespace car
                 fprintf(file, ",simulation_version,calibration_id,event_flags,reset_count,distance_m,contact_impulse_x,contact_impulse_y,contact_impulse_z,assembled_ixx,assembled_iyy,assembled_izz,assembled_ixy,assembled_ixz,assembled_iyz,battery_soc,battery_temp,battery_power_w,battery_loss_w,engine_running,clutch_heat_j,gearbox_loss_j");
                 for (const char* prefix : {"fl", "fr", "rl", "rr"}) fprintf(file, ",%s_pressure_bar,%s_damage,%s_water_depth,%s_slip_energy_j", prefix, prefix, prefix, prefix);
                 fputs(",auto_shift_enabled", file);
+                for (const char* prefix : {"fl", "fr", "rl", "rr"})
+                    fprintf(file, ",%s_surface_name,%s_surface_grip,%s_surface_rolling,%s_surface_mixed", prefix, prefix, prefix, prefix);
+                fputs(",stability_active,target_yaw_rate,fl_stability_brake_torque,fr_stability_brake_torque,rl_stability_brake_torque,rr_stability_brake_torque", file);
                 fputc('\n', file);
                 frame_counter = 0;
                 elapsed_time  = 0.0f;
@@ -395,6 +390,13 @@ namespace car
                     engine_running ? 1 : 0, clutch_heat_j, gearbox_loss_j);
                 for (const auto& w : wheels) fprintf(file, ",%.6g,%.6g,%.6g,%.9g", w.pressure_bar, w.damage, w.water_depth, w.dissipated_energy_j);
                 fprintf(file, ",%d", manual_shifting ? 0 : 1);
+                for (const auto& w : wheels)
+                    fprintf(file, ",%s,%.6g,%.6g,%d", w.grounded ? get_surface_name(w.contact_surface) : "Air",
+                        w.surface_grip, w.surface_rolling, w.mixed_surface ? 1 : 0);
+                fprintf(file, ",%d,%.6g,%.6g,%.6g,%.6g,%.6g", assisted_actuators.stability_active ? 1 : 0,
+                    assisted_actuators.target_yaw_rate, assisted_actuators.stability_brake_torque[0],
+                    assisted_actuators.stability_brake_torque[1], assisted_actuators.stability_brake_torque[2],
+                    assisted_actuators.stability_brake_torque[3]);
                 event_flags = 0; contact_impulse = PxVec3(0);
                 fputc('\n', file);
 

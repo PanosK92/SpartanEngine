@@ -7902,6 +7902,10 @@ namespace spartan
                 return json_error("target car has no vehicle simulation");
             }
             ::car::Simulation* simulation = physics->GetVehicleSimulation();
+            if (!simulation)
+            {
+                return json_error("target car has no vehicle simulation");
+            }
 
             int max_rows = 200;
             if (const std::optional<std::string> rows_arg = get_argument(request, "max_rows"))
@@ -7926,6 +7930,14 @@ namespace spartan
             std::string csv_text;
             std::string path;
             int total_lines = 0;
+            if (const auto value = get_argument(request, "recording"))
+            {
+                bool recording = false;
+                if (!parse_bool(*value, recording)) return json_error("invalid recording");
+                simulation->set_log_to_file(recording);
+                if (recording && !simulation->open_telemetry_if_needed())
+                    return json_error("failed to open telemetry recording");
+            }
             const bool ok = simulation->snapshot_telemetry_tail(max_rows, csv_text, path, total_lines);
 
             std::string json = "{\"ok\":true";

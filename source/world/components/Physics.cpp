@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../geometry/Mesh.h"
 #include "../../geometry/GeometryProcessing.h"
 #include "../../rendering/Renderer.h"
+#include "../../rendering/Material.h"
 #include "../../rendering/GeometryBuffer.h"
 #include "../../core/ProgressTracker.h"
 SP_WARNINGS_OFF
@@ -89,7 +90,7 @@ namespace spartan
             vector<Physics*> bodies;               // guarded by the physx mutex
         }
 
-        // classify a ground actor into a car surface type from its entity name
+        // Resolve generated collision entities before the legacy name fallback.
         car::surface_type classify_ground_actor(const PxRigidActor* actor)
         {
             if (!actor || !actor->userData)
@@ -97,7 +98,26 @@ namespace spartan
                 return car::surface_asphalt;
             }
 
-            string name = static_cast<Entity*>(actor->userData)->GetObjectName();
+            Entity* entity = static_cast<Entity*>(actor->userData);
+            const Physics* physics = entity->GetComponent<Physics>();
+            if (entity->GetComponent<Terrain>() || (physics && physics->GetBodyType() == BodyType::Heightfield))
+            {
+                return car::surface_dirt;
+            }
+            if (entity->GetObjectName() == "spline_road_shoulder")
+                return car::surface_gravel;
+            if (entity->GetObjectName() == "spline_sidewalk")
+                return car::surface_concrete;
+            if (Render* render = entity->GetComponent<Render>())
+            {
+                if (Material* material = render->GetMaterial())
+                {
+                    if (material->GetProperty(MaterialProperty::IsRoadSurface) > 0.0f)
+                        return car::surface_asphalt;
+                }
+            }
+
+            string name = entity->GetObjectName();
             for (char& c : name)
             {
                 if (c >= 'A' && c <= 'Z')
@@ -114,7 +134,11 @@ namespace spartan
             {
                 return car::surface_grass;
             }
-            if (name.find("gravel") != string::npos || name.find("dirt") != string::npos || name.find("sand") != string::npos)
+            if (name.find("dirt") != string::npos)
+            {
+                return car::surface_dirt;
+            }
+            if (name.find("gravel") != string::npos || name.find("sand") != string::npos)
             {
                 return car::surface_gravel;
             }

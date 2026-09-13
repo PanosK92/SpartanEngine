@@ -27,7 +27,7 @@ namespace spartan
 {
     // PhysX integrates TGS poses once per position iteration. At kilometre
     // coordinates, those small increments round away even at driving speeds.
-    // Keep the active area local, shifting only when it crosses a 64 m boundary.
+    // Keep the active area local, shifting when it crosses a 16 m boundary.
     // Elevation stays in world space; all translations here are horizontal.
     class PhysicsSceneOrigin
     {
@@ -38,8 +38,11 @@ namespace spartan
         {
             using namespace physx;
             const PxVec3 local = world_focus - offset;
-            if (!local.isFinite() || (fabsf(local.x) <= 64 && fabsf(local.z) <= 64)) return PxVec3(0);
-            const PxVec3 shift(64 * std::round(local.x / 64), 0, 64 * std::round(local.z / 64));
+            if (!local.isFinite() || (fabsf(local.x) <= 16 && fabsf(local.z) <= 16)) return PxVec3(0);
+            // Center the focus itself. Grid snapping left up to 32 m of residual
+            // coordinates even immediately after a rebase, enough to perturb
+            // the small TGS suspension/steering increments at high tick rates.
+            const PxVec3 shift(local.x, 0, local.z);
             scene.shiftOrigin(shift);
             offset += shift;
             return shift;

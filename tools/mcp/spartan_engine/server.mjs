@@ -6211,16 +6211,18 @@ register_tool(
   server,
   "vehicle_telemetry",
   [
-    "Read car_telemetry.csv from the engine working directory (binary folder when launched from there).",
+    "Read the selected car's telemetry CSV from the engine working directory (binary folder when launched from there).",
     "Returns the absolute path plus the csv header and the last max_rows data rows for handling diagnosis.",
     "Not an Excel file; it is a per-physics-tick csv written while a drivable car simulates with log_to_file enabled.",
+    "Set recording to start or stop export. Starting after a stop replaces the previous recording, as in the F3 dashboard.",
   ].join(" "),
   {
     max_rows: z.number().int().min(1).max(5000).optional(),
     include_csv: z.boolean().optional(),
+    recording: z.boolean().optional(),
   },
   "vehicle_telemetry",
-  { annotations: read_only },
+  { annotations: edit_tool },
 );
 
 register_tool(

@@ -421,21 +421,26 @@ namespace car
             tc_active = false;
             if (traction_requested && !burnout_active && spec.tc_enabled && spec.assists.traction_control_level > 0.0f)
             {
-                float max_slip = 0.0f;
+                float excess_slip = 0.0f;
                 for (int i = 0; i < wheel_count; i++)
                 {
                     if (is_driven(i) && wheels[i].grounded)
                     {
-                        max_slip = PxMax(max_slip, wheels[i].slip_ratio);
+                        // The brush reaches its peak at less slip on a low-mu
+                        // surface. An asphalt-only threshold spends the lateral
+                        // friction budget before TC intervenes on dirt.
+                        const float surface = wheels[i].surface_grip > 0 ? wheels[i].surface_grip : get_surface_friction(wheels[i].contact_surface);
+                        const float threshold = spec.tc_slip_threshold * PxClamp(surface, 0.25f, 1.0f);
+                        excess_slip = PxMax(excess_slip, wheels[i].slip_ratio - threshold);
                     }
                 }
                 float target_reduction = 0.0f;
-                if (max_slip > spec.tc_slip_threshold)
+                if (excess_slip > 0.0f)
                 {
                     tc_active = true;
                     float reduction_limit = spec.tc_power_reduction * spec.assists.traction_control_level;
                     // a soft gain let the rears settle far past the threshold where lateral grip is already gone
-                    target_reduction = PxClamp((max_slip - spec.tc_slip_threshold) * 20.0f, 0.0f, reduction_limit);
+                    target_reduction = PxClamp(excess_slip * 20.0f, 0.0f, reduction_limit);
                 }
                 // cut fast, restore slowly, the reverse let the slip spike again the moment torque came back
                 float rate = target_reduction > tc_reduction ? spec.tc_response_rate * 2.0f : spec.tc_response_rate * 0.5f;
@@ -446,6 +451,7 @@ namespace car
                 tc_reduction = lerp(tc_reduction, 0.0f, exp_decay(spec.tc_response_rate, dt));
             }
             assisted_actuators.engine_torque_scale = 1.0f - tc_reduction;
+            update_stability_controller();
 
             if (!braking_requested)
             {
@@ -473,6 +479,58 @@ namespace car
             }
     }
 
+
+    void Simulation::update_stability_controller()
+    {
+        // Service-brake yaw release remains in apply_service_brakes. This is
+        // the missing power-on/coast intervention, through real tire/caliper
+        // forces and the powertrain torque request, never a chassis yaw lock.
+        if (!body || !spec.yaw_control_enabled || burnout_active || input.handbrake > 0.1f || parked)
+            return;
+        const PxTransform pose = body->getGlobalPose();
+        const PxVec3 velocity = pose.q.rotateInv(body->getLinearVelocity());
+        if (velocity.z <= 5.0f || pose.q.rotate(PxVec3(0, 1, 0)).y < 0.5f) return;
+        int contacts = 0;
+        float friction_load = 0, load = 0;
+        for (const auto& w : wheels)
+        {
+            if (!w.grounded || w.tire_load <= 0) continue;
+            ++contacts;
+            load += w.tire_load;
+            friction_load += w.tire_load * w.surface_grip * w.condition_grip * spec.tire_friction;
+        }
+        if (contacts < 3 || load <= 0) return;
+        const float curved = copysignf(powf(fabsf(input.steering), spec.steering_linearity), input.steering);
+        const float steer = atanf(curved * tanf(spec.max_steer_angle));
+        const float yaw_limit = friction_load / load * 9.81f / velocity.z;
+        const float target_yaw = PxClamp(velocity.z * tanf(steer) / PxMax(cfg.wheelbase, 0.1f), -yaw_limit, yaw_limit);
+        assisted_actuators.target_yaw_rate = target_yaw;
+        const float yaw = pose.q.rotateInv(body->getAngularVelocity()).y;
+        const float beta = atan2f(velocity.x, velocity.z);
+        const float yaw_error = yaw - target_yaw;
+        const float slip_error = copysignf(PxMax(fabsf(beta) - 0.06f, 0.0f), beta);
+        const float rate_error = copysignf(PxMax(fabsf(yaw_error) - 0.08f, 0.0f), yaw_error);
+        // Allow ordinary cornering slip and deliberate handbrake turns. Act
+        // when yaw exceeds the requested turn or the rear is stepping out.
+        if (rate_error * yaw <= 0 && slip_error * yaw >= 0) return;
+        float correction = -rate_error + 2.0f * slip_error;
+        if (fabsf(correction) < 0.01f) return;
+        const float inertia = spec.inertia_yy > 0 ? spec.inertia_yy : cfg.mass * cfg.wheelbase * cfg.wheelbase / 12;
+        const float moment = spec.yaw_control_gain * inertia * correction;
+        const int i = moment < 0 ? front_left : front_right;
+        const auto& w = wheels[i];
+        if (!w.grounded || w.tire_load < 200) return;
+        assisted_actuators.engine_torque_scale *= 1.0f - PxClamp(fabsf(slip_error) * 4.0f + fabsf(rate_error) * 0.5f, 0.0f, 0.8f);
+        assisted_actuators.stability_active = true;
+        // During service braking, release the destabilizing side instead of
+        // adding to an already saturated brake demand. ABS may always release.
+        if (input.brake > 0.05f || (spec.abs_enabled && -w.slip_ratio > spec.abs_slip_threshold)) return;
+        const float radius = cfg.wheel_radius_for(i);
+        const float lever = PxMax(fabsf(wheel_offsets[i].x - spec.center_of_mass_x), 0.1f);
+        const float available = w.tire_load * w.surface_grip * w.condition_grip * spec.tire_friction * radius * 0.7f;
+        const float capacity = spec.brake_force * spec.brake_bias_front * 0.5f * radius * w.brake_efficiency;
+        assisted_actuators.stability_brake_torque[i] = PxMin(fabsf(moment) * radius / lever, PxMin(available, capacity));
+    }
 
     void Simulation::update_burnout(float forward_speed_ms)
     {
@@ -565,7 +623,8 @@ namespace car
                 tuning::surface_friction_wet_asphalt,
                 tuning::surface_friction_gravel,
                 tuning::surface_friction_grass,
-                tuning::surface_friction_ice
+                tuning::surface_friction_ice,
+                tuning::surface_friction_dirt
             };
             return (surface >= 0 && surface < surface_count) ? friction[surface] : 1.0f;
     }
@@ -938,7 +997,7 @@ namespace car
                 wheels[i].force_debug.rolling = PxVec3(0);
                 if (wheels[i].grounded && wheels[i].tire_load > 0.0f)
                 {
-                    PxVec3 rr_force = local_fwd * rr_direction * spec.rolling_resistance * rr_pressure_scale * wheels[i].tire_load;
+                    PxVec3 rr_force = local_fwd * rr_direction * spec.rolling_resistance * rr_pressure_scale * wheels[i].tire_load * wheels[i].surface_rolling;
                     wheels[i].force_debug.rolling_point = wheels[i].contact_point;
                     wheels[i].force_debug.rolling = rr_force;
                     PxRigidDynamic* rr_body = multibody.corners[i].wheel_body ? multibody.corners[i].wheel_body : body;
@@ -1981,7 +2040,18 @@ namespace car
             // force drive must out-stiff tire sat through the tie rods, soft accel drive let the rack steer itself into a brake weave
             const float rack_mass = PxMax(spec.steering_rack_mass, 0.5f);
             const float rack_hold_stiffness = 500000.0f;
-            const float rack_hold_damping = 2.0f * sqrtf(rack_hold_stiffness * rack_mass);
+            // The rack also turns both upright/wheel assemblies through the tie rods.
+            // Damping only its own mass leaves that reflected inertia underdamped:
+            // landing forces can ring the rack and steer the car with zero input.
+            float effective_rack_mass = rack_mass;
+            for (int i : { front_left, front_right })
+            {
+                const auto& corner = multibody.corners[i];
+                const float arm = PxMax(fabsf(geometry.tie_rod_z), 0.05f);
+                effective_rack_mass += (corner.wheel_body->getMassSpaceInertiaTensor().y
+                    + corner.upright->getMassSpaceInertiaTensor().y) / (arm * arm);
+            }
+            const float rack_hold_damping = 2.0f * sqrtf(rack_hold_stiffness * effective_rack_mass);
             multibody.rack_joint->setDrive(
                 PxD6Drive::eX,
                 PxD6JointDrive(rack_hold_stiffness, rack_hold_damping, PX_MAX_F32, false));
@@ -2892,6 +2962,13 @@ namespace car
     }
 
 
+    float Simulation::get_surface_rolling_resistance(surface_type surface)
+    {
+        // Relative to the preset's asphalt Crr; compact dirt deforms under the tread.
+        static constexpr float scale[] = { 1.0f, 1.0f, 1.0f, 3.0f, 4.0f, 1.0f, 2.5f };
+        return (surface >= 0 && surface < surface_count) ? scale[surface] : 1.0f;
+    }
+
     tire_probe_row Simulation::probe_tread_row(PxScene* scene, const PxVec3& row_center, const PxVec3& plane_down, const PxVec3& wheel_axis, const PxVec3& local_up, float row_radius, float ray_length, float max_penetration, int column_count, float arc, const PxQueryFilterData& filter)
     {
             tire_probe_row row;
@@ -2961,7 +3038,12 @@ namespace car
                 {
                     best_weight = weight;
                     row.actor = probe.block.actor;
-                    if (surface_resolver) row.friction_scale = get_surface_friction(surface_resolver(row.actor));
+                    if (surface_resolver)
+                    {
+                        row.surface = surface_resolver(row.actor);
+                        row.friction_scale = get_surface_friction(row.surface);
+                        row.rolling_scale = get_surface_rolling_resistance(row.surface);
+                    }
                     else if (const PxMaterial* ground_material = probe.block.shape->getMaterialFromInternalFaceIndex(probe.block.faceIndex)->is<PxMaterial>())
                         row.friction_scale = PxClamp(ground_material->getDynamicFriction() / 0.7f, 0.0f, 2.0f);
                 }
@@ -3043,6 +3125,9 @@ namespace car
                 float crown = PxClamp(spec.tire_crown_drop, 0.0f, wheel_radius * 0.15f);
 
                 w.grounded = false;
+                w.surface_grip = 0.0f;
+                w.surface_rolling = 0.0f;
+                w.mixed_surface = false;
                 w.tire_load = 0.0f;
                 w.contact_actor = nullptr;
                 w.contact_normal = local_up;
@@ -3150,6 +3235,28 @@ namespace car
                 }
 
                 w.grounded = true;
+                float surface_load[surface_count] = {};
+                for (int r = 0; r < row_count; ++r)
+                {
+                    const auto& row = rows[r];
+                    w.surface_grip += row.load * row.friction_scale;
+                    w.surface_rolling += row.load * row.rolling_scale;
+                    if (row.surface >= 0 && row.surface < surface_count)
+                        surface_load[row.surface] += row.load;
+                }
+                w.surface_grip /= load_sum;
+                w.surface_rolling /= load_sum;
+                if (surface_resolver)
+                {
+                    int dominant = 0, loaded_surfaces = 0;
+                    for (int surface = 0; surface < surface_count; ++surface)
+                    {
+                        if (surface_load[surface] > 0.0f) ++loaded_surfaces;
+                        if (surface_load[surface] > surface_load[dominant]) dominant = surface;
+                    }
+                    w.contact_surface = static_cast<surface_type>(dominant);
+                    w.mixed_surface = loaded_surfaces > 1;
+                }
                 w.contact_point = aggregate_point;
                 w.contact_normal = aggregate_normal;
                 w.tire_load = PxMax(total_force.dot(aggregate_normal), 0.0f);
@@ -3815,6 +3922,7 @@ namespace car
                     {
                         float inertia_y = spec.inertia_yy > 0 ? spec.inertia_yy : cfg.mass * cfg.wheelbase * cfg.wheelbase / 12;
                         float release = fabsf(error) * spec.yaw_control_gain * inertia_y * cfg.wheel_radius_for(i) / PxMax(fabsf(wheel_offsets[i].x) * 2, 0.1f);
+                        if (release > 0.0f && t > 0.0f) assisted_actuators.stability_active = true;
                         t = PxMax(t - release, 0.0f);
                     }
                 }
@@ -3873,6 +3981,12 @@ namespace car
 
             integrate_powertrain(dt);
             apply_service_brakes(forward_speed_ms, dt);
+            for (int i = 0; i < wheel_count; ++i)
+            {
+                const float torque = assisted_actuators.stability_brake_torque[i];
+                wheels[i].brake_torque += torque;
+                wheels[i].net_torque += brake_torque_sign(i) * torque;
+            }
     }
 
 
@@ -4081,7 +4195,6 @@ namespace car
                 float surface_factor = 0, contact_load = 0;
                 for (int r = 0; r < w.row_count; ++r) { surface_factor += w.contacts[r].load * w.contacts[r].friction_scale; contact_load += w.contacts[r].load; }
                 surface_factor = contact_load > 0 ? surface_factor / contact_load : get_surface_friction(w.contact_surface);
-                if (surface_resolver && w.contact_actor) w.contact_surface = surface_resolver(w.contact_actor);
                 // rear grip ratio represents compound differences between axles
                 float axle_grip_scale = is_rear(i) ? spec.rear_grip_ratio : 1.0f;
                 // camber modifies lateral grip only
@@ -4251,7 +4364,7 @@ namespace car
                     SP_LOG_INFO("[%s] blend=%.2f, lat_f=%.1f, long_f=%.1f", wheel_name, pacejka_weight, lat_f, long_f);
                 }
 
-                float rolling_power = fabsf(wheel_speed) * spec.rolling_resistance * w.tire_load
+                float rolling_power = fabsf(wheel_speed) * spec.rolling_resistance * w.tire_load * w.surface_rolling
                     * PxMax(1.0f + (1.0f - pressure_ratio) * 0.3f, 0.0f);
 
                 // zone load comes from the tread rows the contact probes actually loaded, so where a tire
@@ -6045,7 +6158,7 @@ namespace car
 
     const char* Simulation::get_surface_name(surface_type surface)
     {
-            static constexpr const char* names[] = { "Asphalt", "Concrete", "Wet", "Gravel", "Grass", "Ice" };
+            static constexpr const char* names[] = { "Asphalt", "Concrete", "Wet", "Gravel", "Grass", "Ice", "Dirt" };
             return (surface >= 0 && surface < surface_count) ? names[surface] : "Unknown";
     }
 

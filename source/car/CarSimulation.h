@@ -129,6 +129,7 @@ namespace car
     public:
 
         surface_type (*surface_resolver)(const PxRigidActor*) = nullptr;
+        static float get_surface_rolling_resistance(surface_type surface);
         Simulation() = default;
         ~Simulation();
         Simulation(const Simulation&) = delete;
@@ -211,6 +212,8 @@ namespace car
         const char* get_wheel_name(int i);
         void clear_abs_state();
         float get_assisted_steering_target(float raw_input);
+        void update_stability_controller();
+        const assist_command& get_assist_state() const { return assisted_actuators; }
         void update_assist_controller(bool traction_requested, bool braking_requested, float dt);
         void update_burnout(float forward_speed_ms);
 
