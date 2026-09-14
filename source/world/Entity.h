@@ -71,6 +71,9 @@ namespace spartan
 
         // active
         bool GetActive();
+        // Inherited mobility, independent of current velocity or play state.
+        // Script-driven movers without physics can declare the "dynamic" tag.
+        bool IsDynamic() const;
         void SetActive(const bool active);
 
         Component* GetComponentByType(ComponentType Type) const;

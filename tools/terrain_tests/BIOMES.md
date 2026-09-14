@@ -64,6 +64,12 @@ python tools/terrain_tests/fetch_biome_assets.py
 python tools/terrain_tests/author_island_biomes.py --apply
 ```
 
+To rebuild just the five bushes, append `-- --only=scrub` to the Blender
+builder command. Branch assembly assigns connected mesh pieces (including
+duplicated seam vertices) to one transform. Per-vertex strip assignment can
+stretch faces across branch boundaries; the builder asserts that no face is
+split between assignments. Reload the island to use rebuilt model files.
+
 The last step regenerates `IslandScatterDefaults.h` and updates five scatter slots,
 the meadow/forest-floor habitat flags, and summer snow coverage in the island.
 It creates `binaries/project/backups/plan_before_biomes.world`

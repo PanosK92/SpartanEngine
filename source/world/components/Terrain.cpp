@@ -3817,6 +3817,7 @@ namespace spartan
         SP_LOG_INFO("Terrain load: surface %.2f ms, maps %.2f ms, mesh %.2f ms",
             surface_ms, maps_ms - surface_ms, generation_timer.GetElapsedTimeMs() - maps_ms);
 
+        ProgressTracker::GetProgress(ProgressType::Terrain).SetText("waiting for scene preparation...");
         m_gpu_commit_pending.store(true, memory_order_release);
     }
 
@@ -3910,6 +3911,7 @@ namespace spartan
 
     void Terrain::CommitGpu()
     {
+        const Stopwatch commit_timer;
         ProgressTracker::GetProgress(ProgressType::Terrain).SetText("uploading gpu mesh...");
 
         DetachTileMeshes();
@@ -3945,6 +3947,7 @@ namespace spartan
         m_props_dirty.Clear();
 
         CreateTileEntities();
+        ProgressTracker::GetProgress(ProgressType::Terrain).SetText("preparing terrain collision...");
         RefreshPhysics();
         RefreshLayers();
         PushToRenderer();
@@ -3952,6 +3955,8 @@ namespace spartan
         DestroyPadOverlays();
         DestroyAllPadRefines();
         RebuildCommittedRefines();
+        const float terrain_ms = commit_timer.GetElapsedTimeMs();
+        ProgressTracker::GetProgress(ProgressType::Terrain).SetText("preparing terrain-conforming roads...");
         for (Entity* entity : World::GetEntities())
         {
             if (!entity)
@@ -3968,6 +3973,7 @@ namespace spartan
             }
         }
 
+        SP_LOG_INFO("Terrain commit: terrain %.2f ms, roads %.2f ms", terrain_ms, commit_timer.GetElapsedTimeMs() - terrain_ms);
         ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         ProgressTracker::GetProgress(ProgressType::Terrain).Complete();
 

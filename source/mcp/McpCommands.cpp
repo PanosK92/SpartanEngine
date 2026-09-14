@@ -10778,7 +10778,115 @@ namespace spartan
                 }
             }
 
-            if (shape == "rounded_box" || shape == "beveled_box")
+            if (shape == "box" || shape == "cube" || shape == "plane" || shape == "quad")
+            {
+                if (shape == "plane" || shape == "quad")
+                    geometry_generation::generate_quad(&vertices, &indices);
+                else
+                    geometry_generation::generate_cube(&vertices, &indices);
+                for (auto& vertex : vertices)
+                {
+                    vertex.pos[0] *= size.x;
+                    vertex.pos[1] *= size.y;
+                    vertex.pos[2] *= size.z;
+                }
+            }
+            else if (shape == "arc" || shape == "sector" || shape == "ring" || shape == "tube" || shape == "disk")
+            {
+                const bool upright = shape == "arc" || shape == "sector";
+                float radius = std::min(size.x, upright ? size.y : size.z) * 0.5f;
+                float inner_radius = (shape == "sector" || shape == "disk") ? 0.0f : radius * 0.75f;
+                float depth = shape == "disk" ? 0.0f : (upright ? size.z : size.y);
+                float start_degrees = 0.0f;
+                float sweep_degrees = (shape == "arc" || shape == "sector") ? 90.0f : 360.0f;
+                const auto read = [&](const char* key, float& value)
+                {
+                    const auto argument = get_argument(request, key);
+                    return !argument || (parse_float(*argument, value) && std::isfinite(value));
+                };
+                if (!read("radius", radius))
+                    return json_error("invalid radius");
+                inner_radius = (shape == "sector" || shape == "disk") ? 0.0f : radius * 0.75f;
+                if (!read("inner_radius", inner_radius) || !read("depth", depth) ||
+                    !read("start_degrees", start_degrees) || !read("sweep_degrees", sweep_degrees))
+                    return json_error("invalid arc dimensions or angles");
+                if (!get_argument(request, "segments"))
+                    segments = 32;
+                if (radius <= 0 || radius > 1000 || inner_radius < 0 || inner_radius >= radius ||
+                    depth < 0 || depth > 1000 || sweep_degrees <= 0 || sweep_degrees > 360 ||
+                    std::abs(start_degrees) > 3600 || segments < 3 || segments > 64)
+                    return json_error("arc requires 0 <= inner_radius < radius <= 1000, depth 0..1000, sweep (0,360], start [-3600,3600], segments 3..64");
+                geometry_generation::generate_arc(&vertices, &indices, radius, inner_radius, depth,
+                    start_degrees * math::deg_to_rad, sweep_degrees * math::deg_to_rad, segments);
+                // Arcs stand in XY; disks, rings and tubes lie in XZ with their axis along Y.
+                if (shape == "ring" || shape == "tube" || shape == "disk")
+                {
+                    for (auto& vertex : vertices)
+                    {
+                        const auto rotate = [](const math::Vector3& value)
+                        {
+                            return math::Vector3(value.x, value.z, -value.y);
+                        };
+                        vertex.set_position(rotate(vertex.get_position()));
+                        vertex.set_normal(rotate(vertex.get_normal()));
+                        vertex.set_tangent(rotate(vertex.get_tangent()));
+                    }
+                }
+            }
+            else if (shape == "sphere" || shape == "ellipsoid" || shape == "hemisphere" ||
+                     shape == "cylinder" || shape == "cone" || shape == "frustum")
+            {
+                float radius = std::min(size.x, size.z) * 0.5f;
+                float height = size.y;
+                const auto read = [&](const char* key, float& value)
+                {
+                    const auto argument = get_argument(request, key);
+                    return !argument || (parse_float(*argument, value) && std::isfinite(value));
+                };
+                if (!read("radius", radius) || !read("height", height))
+                    return json_error("invalid radius or height");
+                float radius_top = shape == "cone" ? 0.0f : (shape == "frustum" ? radius * 0.5f : radius);
+                if (!read("radius_top", radius_top))
+                    return json_error("invalid radius_top");
+                if (!get_argument(request, "segments"))
+                    segments = 32;
+                if (radius <= 0 || radius > 1000 || height <= 0 || height > 1000 ||
+                    radius_top < 0 || radius_top > 1000 || segments < 3 || segments > 64)
+                    return json_error("radius and height must be (0,1000], radius_top [0,1000], segments 3..64");
+                if (shape == "sphere" || shape == "ellipsoid")
+                {
+                    geometry_generation::generate_sphere(&vertices, &indices, radius, segments, segments);
+                    if (shape == "ellipsoid")
+                    {
+                        const math::Vector3 scale = size * (0.5f / radius);
+                        for (auto& vertex : vertices)
+                        {
+                            for (uint32_t i = 0; i < 3; i++)
+                                vertex.pos[i] *= i == 0 ? scale.x : (i == 1 ? scale.y : scale.z);
+                            const math::Vector3 normal = vertex.get_normal();
+                            const math::Vector3 tangent = vertex.get_tangent();
+                            vertex.set_normal(math::Vector3(normal.x / scale.x, normal.y / scale.y, normal.z / scale.z).Normalized());
+                            vertex.set_tangent(math::Vector3(tangent.x * scale.x, tangent.y * scale.y, tangent.z * scale.z).Normalized());
+                        }
+                    }
+                }
+                else if (shape == "hemisphere")
+                {
+                    std::vector<math::Vector2> profile;
+                    profile.emplace_back(0.0f, 0.0f);
+                    for (uint32_t i = 0; i <= segments; i++)
+                    {
+                        const float angle = static_cast<float>(i) / static_cast<float>(segments) * math::pi * 0.5f;
+                        profile.emplace_back(i == segments ? 0.0f : radius * std::cos(angle), radius * std::sin(angle));
+                    }
+                    geometry_generation::generate_revolved_profile(&vertices, &indices, profile, segments);
+                }
+                else
+                {
+                    geometry_generation::generate_cylinder(&vertices, &indices, radius_top, radius, height, segments, 1);
+                }
+            }
+            else if (shape == "rounded_box" || shape == "beveled_box")
             {
                 const float max_radius = std::min(
                     { size.x, size.y, size.z }
@@ -12216,6 +12324,14 @@ namespace spartan
                 {
                     return json_error("invalid mirror_axis");
                 }
+                bool mirror_copy = false;
+                if (const auto copy = get_argument(request, "mirror_copy"))
+                {
+                    if (!parse_bool(*copy, mirror_copy))
+                        return json_error("invalid mirror_copy");
+                }
+                const auto original_vertices = mirror_copy ? vertices : std::vector<RHI_Vertex_PosTexNorTan>();
+                const auto original_indices = mirror_copy ? indices : std::vector<uint32_t>();
                 const auto result = mcp_geometry_kernel::mirror(
                     vertices,
                     indices,
@@ -12229,6 +12345,13 @@ namespace spartan
                     );
                 }
                 applied_modifiers.emplace_back("mirror");
+                if (mirror_copy)
+                {
+                    const auto appended = mcp_geometry_kernel::append_mesh(original_vertices, original_indices, vertices, indices);
+                    if (!appended.succeeded())
+                        return json_error("mirror copy failed, " + appended.message);
+                    applied_modifiers.emplace_back("mirror_copy");
+                }
             }
 
             if (
@@ -12625,46 +12748,19 @@ namespace spartan
                 return json_error("count must be between 1 and 32");
             }
 
-            const std::vector<std::string> keys =
-            {
-                "shape",
-                "path",
-                "size",
-                "radius",
-                "bevel",
-                "segments",
-                "profile",
-                "depth",
-                "height",
-                "major_radius",
-                "minor_radius",
-                "minor_segments",
-                "bevel_segments",
-                "path_points",
-                "thickness",
-                "border",
-                "inset",
-                "scale_start",
-                "scale_end",
-                "reuse_existing"
-            };
-
             std::string generated_json = "[";
             uint32_t generated_count = 0;
             for (uint64_t i = 0; i < count; i++)
             {
                 McpRequest item_request;
                 item_request.command = "mesh_generate";
-                for (const std::string& key : keys)
+                // Forward the complete per-item argument set so batch generation has the same
+                // shape, opening, modifier and UV capabilities as a single generation call.
+                const std::string prefix = "item_" + std::to_string(i) + "_";
+                for (const auto& [key, value] : request.arguments)
                 {
-                    const std::string batch_key =
-                        "item_" + std::to_string(i) + "_" + key;
-                    const auto it =
-                        request.arguments.find(batch_key);
-                    if (it != request.arguments.end())
-                    {
-                        item_request.arguments[key] = it->second;
-                    }
+                    if (key.rfind(prefix, 0) == 0)
+                        item_request.arguments[key.substr(prefix.size())] = value;
                 }
 
                 const std::string item_result =

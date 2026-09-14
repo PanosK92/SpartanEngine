@@ -70,6 +70,7 @@ namespace spartan
 
     struct ImportContext
     {
+        bool report_progress = false;
         string file_path;
         string model_name;
         string model_directory;
@@ -85,6 +86,10 @@ namespace spartan
 
     namespace
     {
+        // The UI has one importer progress slot. Only its owner may reset or
+        // increment it; other imports still run concurrently without reporting.
+        std::mutex progress_owner_mutex;
+
         // each ModelImporter::Load builds its own Assimp::Importer so concurrent imports are safe
         // and we don't need a global import lock anymore
 
@@ -1933,7 +1938,9 @@ namespace spartan
         }
 
         // initialize import context
+        std::unique_lock<std::mutex> progress_owner(progress_owner_mutex, std::try_to_lock);
         ImportContext ctx;
+        ctx.report_progress = progress_owner.owns_lock();
         ctx.file_path       = file_path;
         ctx.model_name      = FileSystem::ToSnakeCase(
             FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path)
@@ -1956,7 +1963,7 @@ namespace spartan
 
             // enable progress tracking
             importer.SetPropertyBool(AI_CONFIG_GLOB_MEASURE_TIME, true);
-            importer.SetProgressHandler(new AssimpProgress(file_path));
+            if (ctx.report_progress) importer.SetProgressHandler(new AssimpProgress(file_path));
         }
 
         // import flags
@@ -2011,7 +2018,7 @@ namespace spartan
             }
         }
 
-        ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(1, "Loading model from drive...");
+        if (ctx.report_progress) ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(1, "Loading model from drive...");
 
         // read the 3d model file from drive
         ctx.scene = importer.ReadFile(file_path, import_flags);
@@ -2022,7 +2029,7 @@ namespace spartan
 
             // update progress tracking
             const uint32_t job_count = compute_node_count(ctx.scene->mRootNode);
-            ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(job_count, "Parsing model...");
+            if (ctx.report_progress) ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(job_count, "Parsing model...");
 
             // recursively parse nodes (sequential, just creates entities and collects mesh jobs)
             ParseNode(ctx, ctx.scene->mRootNode);
@@ -2057,7 +2064,7 @@ namespace spartan
         }
 
         // always clear importer progress so a missed JobDone cannot wedge IsLoading forever
-        ProgressTracker::GetProgress(ProgressType::ModelImporter).Complete();
+        if (ctx.report_progress) ProgressTracker::GetProgress(ProgressType::ModelImporter).Complete();
 
         importer.FreeScene();
     }
@@ -2080,7 +2087,7 @@ namespace spartan
         entity->SetObjectName(node_name);
 
         // update progress tracking
-        ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetObjectName());
+        if (ctx.report_progress) ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetObjectName());
 
         // set parent
         entity->SetParent(parent_entity);
@@ -2107,7 +2114,7 @@ namespace spartan
         }
 
         // update progress tracking
-        ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
+        if (ctx.report_progress) ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
     }
 
     void ModelImporter::ParseNodeMeshes(ImportContext& ctx, const aiNode* assimp_node, Entity* node_entity)

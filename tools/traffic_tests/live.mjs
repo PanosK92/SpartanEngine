@@ -26,10 +26,10 @@ fs.writeFileSync(fixture, `<World name="traffic_regression"><Entities>
 <Entity name="sun" id="2" rotation="0.3826834 0 0 0.9238795"><light light_type="0" intensity="110000" color_r="1" color_g="1" color_b="1" /></Entity>
 <Entity name="parked_player" id="3" position="30 1 30"><prefab type="car" file="project/cars/ferrari_laferrari.car" drivable="false" /></Entity>
 <Entity name="traffic" id="4"><traffic follow_roads="true" car_count="4" car_file="project/cars/ferrari_laferrari.car" physics_radius="300" physics_exit_radius="350" /></Entity>
-${road('road_south', [0,0,0], [60,0,0], 'a','b')}
-${road('road_east', [60,0,0], [60,5,60], 'b','c')}
-${road('road_north', [60,5,60], [0,5,60], 'c','d')}
-${road('road_west', [0,5,60], [0,0,0], 'd','a')}
+${road('road_south', [0,0,0], [600,0,0], 'a','b')}
+${road('road_east', [600,0,0], [600,5,600], 'b','c')}
+${road('road_north', [600,5,600], [0,5,600], 'c','d')}
+${road('road_west', [0,5,600], [0,0,0], 'd','a')}
 </Entities></World>`);
 await command('world_load', {path: fixture});
 for (let i = 0; i < 120; i++) {

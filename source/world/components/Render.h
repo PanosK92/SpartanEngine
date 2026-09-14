@@ -173,6 +173,7 @@ namespace spartan
 
         // flags
         bool HasFlag(const RenderFlags flag) const { return m_flags & flag; }
+        bool ExcludesTerrainBlend() const;
         void SetFlag(const RenderFlags flag, const bool enable = true);
 
         // previous lights tracking

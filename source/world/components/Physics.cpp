@@ -78,6 +78,18 @@ namespace spartan
 
         PxControllerManager* controller_manager = nullptr;
 
+        bool outside_collision_prepare_range(Entity* entity)
+        {
+            Camera* camera = World::GetCamera();
+            Render* render = entity->GetComponent<Render>();
+            if (!camera || !render)
+            {
+                return false;
+            }
+            const Vector3 position = camera->GetEntity()->GetPosition();
+            return Vector3::DistanceSquared(position, render->GetBoundingBox().GetClosestPoint(position)) > distance_deactivate_squared;
+        }
+
         // fft water buoyancy, applied once per fixed physics step to every submerged dynamic body
         namespace buoyancy
         {
@@ -403,16 +415,25 @@ namespace spartan
         // deferred creation after loading (render component needs to be available first)
         if (m_needs_creation)
         {
+            // Match static collision streaming before cooking, not only after
+            // allocating actors for the entire island. Prepare at the outer
+            // radius so collision is ready before the 40 m activation boundary.
+            if (m_is_static && m_body_type == BodyType::Mesh && outside_collision_prepare_range(GetEntity()))
+            {
+                return;
+            }
             // The editor can render and select meshes without cooked collision.
             // Spread initial actor creation across frames instead of cooking the
             // entire island in the first visible frame. Play still creates every
             // required actor synchronously before the next simulation step.
-            static uint64_t creation_frame = UINT64_MAX;
+            // Rendering can stop while the editor is minimized or resources are
+            // preparing. The engine clock still advances once per world tick.
+            static double creation_tick_ms = -1.0;
             static float creation_time_ms = 0.0f;
-            const uint64_t frame = Renderer::GetFrameNumber();
-            if (creation_frame != frame)
+            const double tick_ms = Timer::GetTimeMs();
+            if (creation_tick_ms != tick_ms)
             {
-                creation_frame = frame;
+                creation_tick_ms = tick_ms;
                 creation_time_ms = 0.0f;
             }
             if (!Engine::IsFlagSet(EngineMode::Playing) && creation_time_ms >= 2.0f)
@@ -1722,6 +1743,16 @@ namespace spartan
         if (m_body_type == BodyType::Vehicle)
         {
             EnsureVehicleSimulation();
+        }
+        // Procedural roads and sidewalks set their type during the main-thread
+        // world commit. Let PreTick prepare their collision near the camera,
+        // instead of blocking the loading frame on every distant road.
+        if (m_is_static && m_body_type == BodyType::Mesh &&
+            (ProgressTracker::IsLoading() || outside_collision_prepare_range(GetEntity())))
+        {
+            Remove();
+            m_needs_creation = true;
+            return;
         }
         Create();
     }

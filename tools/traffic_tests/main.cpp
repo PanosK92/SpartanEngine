@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstdio>
 #include "../../source/world/RoadTraffic.h"
+#include "../../source/world/RoadPopulation.h"
 using namespace spartan::road_traffic;
 
 Path line(Vector3 a, Vector3 b)
@@ -10,6 +11,36 @@ Path line(Vector3 a, Vector3 b)
 }
 int main()
 {
+    // Long roads crossing the local bubble must work even with both endpoints
+    // outside it. Sampling must follow the player and never choose remote roads.
+    {
+    Network local_network;
+    local_network.AddRoad(101,"a","b",line({-2000,0,0},{2000,0,0}),15);
+    local_network.AddRoad(102,"c","d",line({-2000,0,2000},{2000,0,2000}),8);
+    LocalPopulation population;
+    population.Build(local_network,{0,0,0},{1,0,0},500);
+    uint32_t seed=19;
+    size_t selected;float progress;
+    unsigned ahead_count=0;
+    for (int i=0;i<2000;++i)
+    {
+        assert(population.Sample(seed,selected,progress));
+        const auto point=local_network.edges[selected].lane.Sample(progress).position;
+        assert(selected<2 && point.Length()<500.01f);
+        ahead_count+=point.x>0;
+    }
+    // Direction bias should not starve the roads behind the player.
+    assert(ahead_count>1100 && ahead_count<1600);
+    population.Build(local_network,{0,0,2000},{1,0,0},240);
+    for (int i=0;i<100;++i)
+    {
+        assert(population.Sample(seed,selected,progress));
+        assert(selected>=2);
+        assert((local_network.edges[selected].lane.Sample(progress).position-Vector3(0,0,2000)).Length()<240.01f);
+    }
+    population.Build(local_network,{0,0,10000},{1,0,0},240);
+    assert(!population.Sample(seed,selected,progress));
+    }
     // Four marked lanes must not put ambient traffic on the internal divider.
     // A 2.2 m wide car has clearance to both lines of the 3.5 m outer lane.
     Network racing;

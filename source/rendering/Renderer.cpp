@@ -2689,7 +2689,7 @@ namespace spartan
         entry.is_transparent     = is_transparent;
         entry.aabb_index         = 0;
         entry.lod_first_index    = 0;
-        entry.flags              = render && render->HasFlag(RenderFlags::ExcludeFromTerrainBlend) ? (1u << 6) : 0u;
+        entry.flags              = render && render->ExcludesTerrainBlend() ? (1u << 6) : 0u;
         entry.instance_offset    = 0;
         entry.instance_index     = 0;
         entry.lod_vertex_offset  = 0;
@@ -3260,6 +3260,7 @@ namespace spartan
 
     void Renderer::UpdateBoundingBoxes()
     {
+        SP_ASSERT(m_draw_calls_prepass_count + m_indirect_render_count <= renderer_max_aabbs);
         static uint32_t prev_aabb_count = 0;
         for (uint32_t i = 0; i < prev_aabb_count; i++)
         {
@@ -3279,7 +3280,7 @@ namespace spartan
 
         // indirect draw aabbs, the slot is taken straight from m_indirect_draw_data[].aabb_index so the writes
         // here always land on the slot the cull shader will read for that draw, no filter divergence can drift it
-        const uint32_t aabb_frame_offset = m_frame_resource_index * rhi_max_array_size;
+        const uint32_t aabb_frame_offset = m_frame_resource_index * renderer_max_aabbs;
         for (uint32_t i = 0; i < m_indirect_draw_count; i++)
         {
             Render* render                   = m_indirect_renders[i];
@@ -3290,7 +3291,7 @@ namespace spartan
                 continue;
             }
             const uint32_t aabb_slot = aabb_slot_global - aabb_frame_offset;
-            if (aabb_slot >= rhi_max_array_size)
+            if (aabb_slot >= renderer_max_aabbs)
             {
                 continue;
             }
@@ -3304,7 +3305,7 @@ namespace spartan
         if (total_aabb_count > 0)
         {
             RHI_Buffer* buffer         = GetBuffer(Renderer_Buffer::AABBs);
-            uint32_t frame_byte_offset = m_frame_resource_index * rhi_max_array_size * static_cast<uint32_t>(sizeof(Sb_Aabb));
+            uint32_t frame_byte_offset = m_frame_resource_index * renderer_max_aabbs * static_cast<uint32_t>(sizeof(Sb_Aabb));
             uint32_t upload_size       = static_cast<uint32_t>(sizeof(Sb_Aabb)) * total_aabb_count;
             RHI_CommandList::UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_bindless_aabbs[0]);
         }
@@ -3461,7 +3462,7 @@ namespace spartan
         m_indirect_draw_count       = 0;
         m_indirect_render_count = 0;
         m_cull_task_count           = 0;
-        const uint32_t aabb_frame_offset = m_frame_resource_index * rhi_max_array_size;
+        const uint32_t aabb_frame_offset = m_frame_resource_index * renderer_max_aabbs;
         const uint32_t indirect_draw_capacity = GetBuffer(Renderer_Buffer::IndirectDrawData)->GetElementCount();
         const uint32_t cull_task_capacity = GetBuffer(Renderer_Buffer::CullTasks)->GetElementCount();
         const uint32_t meshlet_instance_capacity = GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount();
@@ -3567,7 +3568,7 @@ namespace spartan
                 base_flags |= 32u;
             }
 
-            if (render->HasFlag(RenderFlags::ExcludeFromTerrainBlend))
+            if (render->ExcludesTerrainBlend())
                 base_flags |= 1u << 6;
 
             const float max_distance    = render->GetMaxRenderDistance();

@@ -216,6 +216,7 @@ namespace spartan
             return;
         }
 
+        UpdatePopulation(static_cast<float>(Timer::GetDeltaTimeSec()));
         SpawnNext();
         if (m_walkers.empty())
         {
@@ -328,6 +329,7 @@ namespace spartan
         m_random_state = 0x6d2b79f5;
         m_next_spawn_index = 0;
         m_physics_ready = false;
+        m_population.Clear();m_population_timer=10.0f;m_recycle_timer=0.0f;
         m_walkers.reserve(m_count);
 
         if (m_count == 0 || m_model_file.empty())
@@ -562,22 +564,59 @@ namespace spartan
 
     bool Pedestrians::FindRoadSpawn(uint32_t index, Walker& walker, Vector3& position, Vector3& heading)
     {
-        const auto& edges = m_road_network.edges;
-        float total = 0.0f;
-        for (size_t i = 0; i < edges.size(); i += 2) total += edges[i].lane.Length();
-        if (total <= 0.0f) return false;
-        float d = total * (static_cast<float>(index) + 0.25f) / static_cast<float>(std::max(m_count, 1u));
-        size_t edge = 0;
-        while (edge + 2 < edges.size() && d > edges[edge].lane.Length()) { d -= edges[edge].lane.Length(); edge += 2; }
-        if (index % 2) { ++edge; d = edges[edge].lane.Length() - d; }
-        walker.road_edge = edge;
-        walker.road_path = edges[edge].lane;
-        walker.road_progress = std::clamp(d, 0.0f, edges[edge].lane.Length());
-        walker.route_random = 0x91e10da5u ^ ((index + 1u) * 2654435761u);
-        const auto pose = walker.road_path.Sample(walker.road_progress);
-        position = pose.position;
-        heading = planar_normalize(pose.tangent);
-        return true;
+        Camera* camera=World::GetCamera();
+        if (!camera) return false;
+        const Vector3 focus=camera->GetEntity()->GetPosition();
+        for (uint32_t attempt=0;attempt<96;++attempt)
+        {
+            size_t edge;float progress;
+            if (!m_population.Sample(m_random_state,edge,progress)) return false;
+            const auto pose=m_road_network.edges[edge].lane.Sample(progress);
+            const float distance=(pose.position-focus).Length();
+            if (distance<25 || distance>240) continue;
+            if (distance<140 && camera->IsInViewFrustum(BoundingBox(pose.position-Vector3(1,0,1),pose.position+Vector3(1,2,1)))) continue;
+            bool clear=true;
+            for (const Walker& other:m_walkers)
+                if (other.entity && other.entity!=walker.entity && (other.entity->GetPosition()-pose.position).LengthSquared()<9) {clear=false;break;}
+            if (!clear) continue;
+            walker.road_edge=edge;walker.road_path=m_road_network.edges[edge].lane;
+            walker.road_progress=progress;walker.route_random=m_random_state | 1u;
+            position=pose.position;heading=planar_normalize(pose.tangent);
+            return true;
+        }
+        return false;
+    }
+
+    void Pedestrians::UpdatePopulation(float delta_time)
+    {
+        if (!m_follow_roads) return;
+        Camera* camera=World::GetCamera();
+        if (!camera) return;
+        const Vector3 focus=camera->GetEntity()->GetPosition();
+        m_population_timer+=delta_time;m_recycle_timer+=delta_time;
+        if (m_population_timer>=1.0f)
+        {
+            m_population.Build(m_road_network,focus,camera->GetEntity()->GetForward(),240);
+            m_population_timer=0;
+        }
+        if (m_recycle_timer<.1f) return;
+        m_recycle_timer=0;
+        for (Walker& walker:m_walkers)
+        {
+            if (!walker.entity) continue;
+            const Vector3 old=walker.entity->GetPosition();
+            const float distance=(old-focus).Length();
+            if (distance<330 || (distance<650 && camera->IsInViewFrustum(BoundingBox(old-Vector3(1),old+Vector3(1,2,1))))) continue;
+            Vector3 position,heading;
+            if (!FindRoadSpawn(m_random_state,walker,position,heading)) continue;
+            if (walker.ragdoll) {walker.ragdoll->SetHitBodyEnabled(false);walker.ragdoll->Stop();}
+            walker.dead=false;walker.heading=heading;walker.ground_y=position.y;
+            walker.entity->SetPosition(position+Vector3::Up*walker.height_offset);
+            walker.entity->SetRotation(Quaternion::FromLookRotation(-heading,Vector3::Up));
+            if (walker.animator) walker.animator->Pause();
+            walker.animating=false;walker.blocked_timer=0;
+            break;
+        }
     }
 
     void Pedestrians::UpdateRoadWalker(Walker& walker, float delta_time)
@@ -593,7 +632,22 @@ namespace spartan
         }
         // The authored road supplies height even when distant collision is unloaded.
         // Both animation LODs use the same path, so approaching the crowd never reroutes it.
-        walker.road_progress = std::min(path.Length(), walker.road_progress + walker.speed * delta_time);
+        float speed=walker.speed;
+        if (walker.animating)
+        {
+            const auto ahead=path.Sample(walker.road_progress+look_ahead);
+            if (!IsPathClear(walker.entity->GetPosition(),ahead.position-walker.entity->GetPosition(),look_ahead)) speed=0;
+            for (const Walker& other:m_walkers)
+            {
+                if (&other==&walker || !other.entity) continue;
+                const Vector3 offset=other.entity->GetPosition()-walker.entity->GetPosition();
+                // Queue behind walkers travelling the same way. Opposing
+                // walkers must not form a permanent mutual-stop deadlock.
+                if (Vector3::Dot(other.heading,walker.heading)>.5f &&
+                    offset.LengthSquared()<2.25f && Vector3::Dot(offset,walker.heading)>.2f) {speed=0;break;}
+            }
+        }
+        walker.road_progress = std::min(path.Length(), walker.road_progress + speed * delta_time);
         path.DiscardBehind(walker.road_progress);
         const auto pose = path.Sample(walker.road_progress);
         walker.heading = planar_normalize(pose.tangent);
@@ -870,7 +924,13 @@ namespace spartan
             Vector3 offset = walker.entity->GetPosition() - camera_pos;
             offset.y = 0.0f;
             const float distance_squared = offset.LengthSquared();
-            if (distance_squared <= m_animation_radius * m_animation_radius)
+            if (walker.ragdoll)
+            {
+                const float radius=walker.ragdoll->IsHitBodyEnabled() ? 75.0f : 55.0f;
+                walker.ragdoll->SetHitBodyEnabled(distance_squared<=radius*radius);
+            }
+            const float animation_radius=m_animation_radius+(walker.animating ? 20.0f : 0.0f);
+            if (distance_squared <= animation_radius * animation_radius)
             {
                 candidates.emplace_back(distance_squared, &walker);
             }
@@ -880,10 +940,6 @@ namespace spartan
                 {
                     walker.animator->Pause();
                     walker.animating = false;
-                }
-                if (walker.ragdoll)
-                {
-                    walker.ragdoll->SetHitBodyEnabled(false);
                 }
             }
         }
@@ -907,10 +963,6 @@ namespace spartan
                     walker->animator->Pause();
                     walker->animating = false;
                 }
-                if (walker->ragdoll)
-                {
-                    walker->ragdoll->SetHitBodyEnabled(false);
-                }
             }
             candidates.resize(m_max_animated);
         }
@@ -922,10 +974,6 @@ namespace spartan
             {
                 walker->animator->Resume();
                 walker->animating = true;
-            }
-            if (walker->ragdoll)
-            {
-                walker->ragdoll->SetHitBodyEnabled(true);
             }
         }
     }

@@ -36,7 +36,10 @@ def main():
     for m in manifest['meshes']:
         group=m['group']
         if group not in groups:groups[group]=entity(home,group.replace('_',' ').title(),(9,2.93,-2) if group=='fan' else (0,0,0))
-        e=entity(groups[group],m['name'])
+        e=entity(groups[group],m['name'],m.get('position',(0,0,0)))
+        if m.get('rotation'):
+            rx,ry,rz=[math.radians(v)/2 for v in m['rotation']];cx,sx=math.cos(rx),math.sin(rx);cy,sy=math.cos(ry),math.sin(ry);cz,sz=math.cos(rz),math.sin(rz)
+            e.set('rotation',' '.join(map(str,(sx*cy*cz-cx*sy*sz,cx*sy*cz+sx*cy*sz,cx*cy*sz-sx*sy*cz,cx*cy*cz+sx*sy*sz))))
         ET.SubElement(e,'render',mesh_name=m['name'],mesh_path=m['mesh_path'],sub_mesh_index='0',material_name='home_'+m['material'],material_path='project/home_garage/materials/home_'+m['material']+'.xml',material_default='false',flags='13',max_render_distance='650' if group in ('foundation','workshop','roof','lounge','garden') else '110',max_shadow_distance='90')
         if group not in ('fan','fan_mount','lighting','lettering') and m['material'] not in ('leaf','flower','amber','mint_glow'):
             ET.SubElement(e,'physics',mass='0',is_static='true',is_kinematic='false',friction='.85',restitution='0',body_type='4')
@@ -75,7 +78,7 @@ def main():
     assert WORLD.read_text(encoding='utf-8')==source,'World changed during installation'
     WORLD.write_text(updated,encoding='utf-8')
     (OUT/'sources/home.xml').write_text(serial(home,0),encoding='utf-8')
-    for name in ('build_home_garage.py','install_home_garage.py','import_home_garage.mjs','preview_home_garage.py'):
+    for name in ('build_home_garage.py','install_home_garage.py','import_home_garage.mjs','preview_home_garage.py','upgrade_home_garage.mjs'):
         src=ROOT/'tools/map'/name
         if src.exists():shutil.copy2(src,OUT/'sources'/name)
     print('HOME INSTALLED:',len(list(home.iter('Entity'))),'entities; spawn preserved; unique IDs and asset references verified')

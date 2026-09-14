@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).parent))
 import build_exo_chora as g
 OUT = ROOT / 'binaries/project/home_garage'
+NATIVE=json.loads((OUT/'sources/native_upgrades.json').read_text()) if (OUT/'sources/native_upgrades.json').exists() else None
 for folder in ('meshes', 'materials', 'sources', 'packets', 'previews', 'audio'):
     (OUT / folder).mkdir(parents=True, exist_ok=True)
 g.groups.clear()
@@ -80,7 +81,8 @@ def lamp(name,p,power=650):
     lights.append(dict(name=name,position=[x,y-.13,z],lumens=power,range=8))
 
 def pot(x,z,s=1):
-    lathe('roof',(x,.03,z),[(.19*s,0),(.29*s,.43*s),(.32*s,.45*s),(.32*s,.50*s),(.25*s,.5*s),(.24*s,.40*s)],20)
+    if not (NATIVE and (x,z) in [(5.6,6.5),(15.5,6.5)]):
+        lathe('roof',(x,.03,z),[(.19*s,0),(.29*s,.43*s),(.32*s,.45*s),(.32*s,.50*s),(.25*s,.5*s),(.24*s,.40*s)],20)
     lathe('soil',(x,.43*s,z),[(0,0),(.25*s,0)],20)
     for i in range(14):
         a=rng.random()*math.tau;r=rng.uniform(.12,.38)*s
@@ -90,6 +92,7 @@ def pot(x,z,s=1):
         if i%3==0:lathe('flower',(end[0],end[1]+.12*s,end[2]),[(0,0),(.075*s,.025*s),(0,.06*s)],7)
 
 def chair(x,z):
+    if NATIVE:return
     for a in [-.29,.29]:
         for b in [-.28,.28]:tube('wood',(x+a,.06,z+b),(x+a,.52,z+b),.035)
     box('oxblood',(x,.52,z),(.7,.17,.72))
@@ -175,8 +178,9 @@ def build_geometry():
     # Tires on wall rack, compressor, floor jack, oil and workshop clutter.
     for y in [.03,.26,.49]:
         lathe('rubber',(-10.5,y,-3.8),[(.20,0),(.34,.035),(.35,.19),(.30,.23),(.20,.23),(.20,0)],32)
-    lathe('oxblood',(-10.4,.10,-1.9),[(.22,0),(.32,.12),(.32,.8),(.17,.91)],24)
-    box('metal',(-10.4,1.13,-1.9),(.4,.3,.35))
+    if not NATIVE:
+        lathe('oxblood',(-10.4,.10,-1.9),[(.22,0),(.32,.12),(.32,.8),(.17,.91)],24)
+        box('metal',(-10.4,1.13,-1.9),(.4,.3,.35))
     for i in range(7):
         x=-9.3+i*.38;box('sage' if i%2 else 'cream',(x,1.27,-9.5),(.20,.35,.15))
         box('metal',(x,1.48,-9.5),(.10,.065,.10))
@@ -193,7 +197,7 @@ def build_geometry():
         box('oak',(12.5,y,-9.85),(5.7,.075,.5))
         for i in range(10):
             x=10+i*.49;lathe('sage' if i%3 else 'brass',(x,y+.04,-9.78),[(.055,0),(.057,.21),(.025,.25),(.025,.35)],12)
-    for x in [10.3,12.3,14.3]:
+    for x in ([] if NATIVE else [10.3,12.3,14.3]):
         lathe('metal',(x,.05,-5.55),[(.26,0),(.26,.055),(.035,.12),(.035,.70)],20)
         lathe('oxblood',(x,.75,-5.55),[(0,0),(.31,0),(.31,.14),(0,.14)],24)
     sign('THE LONG WAY HOME',(12.45,2.95,-10.02),.28)
@@ -204,8 +208,9 @@ def build_geometry():
     for x in [6.03,10.17]:box('cream',(x,.075,1),(.025,.003,3.9))
     for z in [-.94,2.94]:box('cream',(8.1,.075,z),(4.15,.003,.025))
     for x in [7,8.1,9.2]:chair(x,-.7)
-    box('wood',(8.1,.30,1.1),(2.55,.13,1.0))
-    for x in [7.1,9.1]:box('wood',(x,.14,1.1),(.12,.3,.65))
+    if not NATIVE:
+        box('wood',(8.1,.30,1.1),(2.55,.13,1.0))
+        for x in [7.1,9.1]:box('wood',(x,.14,1.1),(.12,.3,.65))
     box('paper',(7.8,.39,1.2),(.47,.025,.33));box('oxblood',(8.35,.42,1.05),(.32,.04,.32))
     for x in [7.1,8.8]:lathe('cream',(x,.39,1),[(.075,0),(.08,.12),(.065,.14),(.065,.02)],16)
     # Record cabinet and old hi-fi, with sleeves collected over the years.
@@ -417,7 +422,7 @@ def hero_details():
     lathe('brass',(6,0,-.6),[(.25,0),(.25,.055),(.025,.10),(.025,1.65)],24)
     lathe('linen',(6,1.45,-.6),[(.30,0),(.19,.4),(.17,.4),(.28,0)],32)
     lights.append(dict(name='Reading lamp',position=[6,1.55,-.6],lumens=230,range=4))
-    for x in [7,8.1,9.2]:
+    for x in ([] if NATIVE else [7,8.1,9.2]):
         for dx in [-.29,.29]:tube('linen',(x+dx,.63,-.918),(x+dx,1.10,-.918),.004,n=5)
         for yy in [.75,.96]:tube('linen',(x-.29,yy,-.918),(x+.29,yy,-.918),.004,n=5)
     for x in np.arange(6.2,10,.13):
@@ -477,6 +482,11 @@ def materials():
         em=1.6 if name in ('amber','mint_glow') else 0
         bs.inputs['Emission Color'].default_value=(*rgb,1);bs.inputs['Emission Strength'].default_value=em
         root=copy.deepcopy(template)
+        # Do not inherit presets or texture slots from the template material.
+        for tex in root.find('textures'):
+            tex.set('texture_name','');tex.set('texture_path','')
+        for key in ('paint_preset','surface_preset'):
+            root.find(key).text='0'
         for key,val in dict(zip(['color_r','color_g','color_b'],rgb),roughness=rough,metalness=metal,normal=.55 if texture else 0,emissive_from_albedo=em,cull_mode=0).items():root.find(key).text=str(val)
         paths=[]
         if texture:
@@ -495,6 +505,26 @@ def materials():
                 node=m.node_tree.nodes.new('ShaderNodeTexImage');node.image=bpy.data.images.load(str(p));m.node_tree.links.new(node.outputs['Color'],bs.inputs['Base Color'])
         ET.ElementTree(root).write(OUT/'materials'/f'home_{name}.xml',encoding='utf-8',xml_declaration=True)
         result[name]=m
+    if NATIVE:
+        for name,entry in NATIVE['surfaces'].items():
+            source=Path(entry['file']);root=ET.parse(source).getroot()
+            # Keep editable engine-generated finishes authoritative on rebuild.
+            (OUT/'materials'/f'home_detail_{name}.xml').write_bytes(source.read_bytes())
+            m=bpy.data.materials.new('home_finish_'+name);m.use_nodes=True
+            nodes=m.node_tree.nodes;links=m.node_tree.links;bs=nodes.get('Principled BSDF')
+            bs.inputs['Base Color'].default_value=(1,1,1,1)
+            for prop,target in [('clearcoat','Coat Weight'),('clearcoat_roughness','Coat Roughness'),('sheen','Sheen Weight'),('anisotropic','Anisotropic')]:
+                bs.inputs[target].default_value=float(root.findtext(prop,'0'))
+            for slot,target in [(0,'Base Color'),(4,'Roughness'),(12,'Normal')]:
+                node=root.find(f'textures/texture_{slot}');p=node.get('texture_path','') if node is not None else ''
+                if not p:continue
+                tex=nodes.new('ShaderNodeTexImage');tex.image=bpy.data.images.load(str(ROOT/'binaries'/p),check_existing=True)
+                if slot:tex.image.colorspace_settings.name='Non-Color'
+                if slot==12:
+                    normal=nodes.new('ShaderNodeNormalMap');normal.inputs['Strength'].default_value=float(root.findtext('normal','1'));links.new(tex.outputs['Color'],normal.inputs['Color']);links.new(normal.outputs[0],bs.inputs[target])
+                else:links.new(tex.outputs['Color'],bs.inputs[target])
+            bs.inputs['Metallic'].default_value=1 if name=='chrome' else .9 if name=='brass' else 0
+            result['detail_'+name]=m
     return result
 
 def prints():
@@ -538,7 +568,11 @@ def music():
 
 def main():
     bpy.ops.object.select_all(action='SELECT');bpy.ops.object.delete(use_global=False)
-    prints();music();build_geometry();mats=materials();objects=list(bpy.context.scene.objects)
+    prints();music();build_geometry()
+    if NATIVE:
+        for key in list(g.groups):
+            if key[0]=='jukebox':del g.groups[key]
+    mats=materials();objects=list(bpy.context.scene.objects)
     for ob in objects:ob.data.materials.append(mats[ob['material']])
     for (group,mat),(vv,ff) in g.groups.items():
         mesh=bpy.data.meshes.new(group+'_'+mat);mesh.from_pydata([(x,-z,y) for x,y,z in vv],[],ff);mesh.update()
@@ -560,6 +594,8 @@ def main():
             for li in (tuple(reversed(tri.loops)) if ob.matrix_world.determinant()<0 else tri.loops):
                 co=ob.matrix_world@mesh.vertices[mesh.loops[li].vertex_index].co;no=ob.matrix_world.to_3x3()@mesh.corner_normals[li].vector
                 t=mesh.uv_layers.active.data[li].uv[:] if mesh.uv_layers.active else (0,0)
+                # Engine image UVs start at the top; Blender image UVs start at the bottom.
+                if ob['material'].startswith('print_'):t=(t[0],1-t[1])
                 key=tuple(round(v,5) for v in (co.x,co.z,-co.y,no.x,no.z,-no.y,*t))
                 if key not in lookup:lookup[key]=len(p)//3;p.extend(key[:3]);norm.extend(key[3:6]);uv.extend(key[6:])
                 idx.append(lookup[key])
@@ -572,6 +608,23 @@ def main():
     # Fan is local geometry at origin in engine; place it for the Blender preview only.
     for ob in objects:
         if ob['group']=='fan':ob.location=(9,2,2.93)
+    if NATIVE:
+        # Native meshes stay native in the world; raw readback is only for visual QA.
+        from mathutils import Matrix, Euler
+        basis=Matrix(((1,0,0),(0,0,-1),(0,1,0)))
+        for item in NATIVE['objects']:
+            entry=json.loads(Path(item['source']).read_text());raw=entry['raw'];pos=raw['positions'];indices=raw['indices']
+            mesh=bpy.data.meshes.new(item['name']);mesh.from_pydata([(pos[i],-pos[i+2],pos[i+1]) for i in range(0,len(pos),3)],[],[indices[i:i+3] for i in range(0,len(indices),3)]);mesh.update()
+            ob=bpy.data.objects.new(item['name'],mesh);bpy.context.collection.objects.link(ob);ob.data.materials.append(mats['detail_'+item['material']] if item['material'] in NATIVE['surfaces'] else mats[item['material']])
+            x,y,z=item['position'];ob.location=(x,-z,y)
+            rot=Euler(tuple(math.radians(v) for v in item.get('rotation',[0,0,0])),'XYZ').to_matrix();ob.rotation_euler=(basis@rot@basis.inverted()).to_euler()
+            uv=mesh.uv_layers.new()
+            for poly in mesh.polygons:
+                poly.use_smooth=True
+                for li in poly.loop_indices:
+                    vi=mesh.loops[li].vertex_index;uv.data[li].uv=raw['uv0'][vi*2:vi*2+2]
+            if raw.get('normals'):mesh.normals_split_custom_set_from_vertices([(raw['normals'][i],-raw['normals'][i+2],raw['normals'][i+1]) for i in range(0,len(raw['normals']),3)])
+            packets.append(dict(item,material='detail_'+item['material'] if item['material'] in NATIVE['surfaces'] else item['material']))
     (OUT/'manifest.json').write_text(json.dumps(dict(meshes=packets,lights=lights),indent=2))
     bpy.ops.wm.save_as_mainfile(filepath=str(OUT/'sources/home_garage.blend'))
     print('HOME BUILT',len(packets),'meshes',sum(m['triangles'] for m in packets),'triangles')

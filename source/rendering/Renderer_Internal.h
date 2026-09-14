@@ -224,7 +224,7 @@ namespace spartan
             bool m_draw_data_gpu_synced;
             std::array<RHI_Texture*, rhi_max_array_size> m_bindless_textures;
             std::array<Sb_Light, rhi_max_array_size> m_bindless_lights;
-            std::array<Sb_Aabb, rhi_max_array_size> m_bindless_aabbs;
+            std::array<Sb_Aabb, renderer_max_aabbs> m_bindless_aabbs;
             bool m_bindless_samplers_dirty = true;
             PassState m_pass_state;
             Cb_Frame m_cb_frame_cpu;

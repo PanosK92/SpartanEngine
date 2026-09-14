@@ -2,6 +2,21 @@
 
 Spartan exposes engine-aware tools to MCP clients through a Node adapter and the in-engine TCP bridge.
 
+## Procedural building blocks
+
+`mesh_generate`, `mesh_generate_batch` and `compound_create` share the same geometry controls. Use `mesh_geometry_capabilities` for the full list and `spartan://engine/parametric-modeling` for dimensions and coordinate conventions.
+
+- Basic solids and sheets: box/cube, plane/quad, sphere, ellipsoid, hemisphere, cylinder, cone, frustum.
+- Circular construction: arc, sector, disk, ring, tube, torus, capsule and rounded cylinder.
+- Custom construction: extruded and revolved profiles, lofts, swept profiles, pipes, arches, wall openings and raw vertex/index meshes.
+- Composition: per-part materials and transforms, taper, bend, shell, linear/radial arrays, UV projection, and `mirror_copy: true` to retain both halves when mirroring. Mirrored copies are separate surfaces, with no welding or boolean union.
+
+For example, `mesh_generate` with `shape: "arc", radius: 3, inner_radius: 2.7, depth: 0.4, start_degrees: 0, sweep_degrees: 180, segments: 32` and a new mesh `path` makes a capped semicircular arch in XY, extruded along Z. Use `ring` or `tube` for the Y-axis version; use `depth: 0` for a sheet. Bind the mesh with `render_set_mesh` or generate it directly as a `compound_create` part. Built-in `entity_create_primitive` names remain discoverable through `primitive_types`.
+
+`material_textured_create` supports layered color/normal/roughness/metalness textures together with glass, emission, clearcoat, anisotropy, sheen, subsurface scattering, flakes, pearl, coat tint, and texture transforms. Its `height` is texture resolution in pixels; `displacement_height` is the material displacement multiplier. Roughness and metalness go into the maps; finish controls apply after texture binding. Use `material_set_property` and `material_set_texture` for subsequent changes or imported textures.
+
+The shape inventory and textured-material property selection are shared in `building_blocks.mjs` by the MCP server and editor assistant. Native changes require rebuilding the engine and restarting the bridge.
+
 ## Architecture
 
 - `server.mjs` is the MCP server used by Cursor and other MCP clients over stdio.

@@ -896,6 +896,11 @@ namespace spartan::car_hud
             ImGui::SameLine();
             ImGui::TextDisabled("%s | CSV export", recording ? "Recording" : "Stopped");
             hud_tooltip(simulation->get_telemetry_path().c_str());
+            ImGui::SameLine();
+            bool wind_shake = car_instance->GetCameraWindShake();
+            if (ImGui::Checkbox("Experimental wind shake", &wind_shake))
+                car_instance->SetCameraWindShake(wind_shake);
+            hud_tooltip("Subtle chase-camera wind buffeting above 54 km/h, increasing with speed. Disable for a steady view.");
             ImGui::Separator();
             const ImVec2 content = ImGui::GetContentRegionAvail();
             const float footer_height = ImGui::GetFrameHeightWithSpacing() + 4;

@@ -41,6 +41,13 @@ namespace spartan::geometry_generation
     void generate_sphere(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, int slices = 20, int stacks = 20);
     void generate_cylinder(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius_top = 1.0f, float radius_bottom = 1.0f, float height = 1.0f, int slices = 64, int stacks = 1);
     void generate_cone(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, float height = 2.0f);
+    // XY annular sector, extruded along Z. Zero depth produces a single +Z face.
+    void generate_arc(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        float radius, float inner_radius, float depth,
+        float start_radians, float sweep_radians, uint32_t segments
+    );
     void generate_rounded_box(
         std::vector<RHI_Vertex_PosTexNorTan>* vertices,
         std::vector<uint32_t>* indices,

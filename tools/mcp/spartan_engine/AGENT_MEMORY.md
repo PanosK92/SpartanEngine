@@ -26,6 +26,18 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - `spline_distribute` takes optional `edge_offset` (signed meters beyond the road edge, positive = right of travel, tracks varying road width), `lateral_offset` (signed meters from centerline), and `height` (meters above the road); requests like move cameras to the side of the road are one call, use `edge_offset` 2 so they clear the asphalt regardless of road width.
 - Spline followers move at constant world speed (progress is arc-length based), so `pass_time_seconds` from `spline_query` is exact.
 
+- `resource_read` is an assistant alias: material path or name reads use `material_get`; list queries use `resource_list`.
+- `prefab_create` is an assistant alias for `prefab_save`. Focused assets still allow only the finalizer to save the prefab.
+- `async_task_start`, `async_task_get`, and `async_task_list` are available through both the MCP server and Cursor custom bridge; nested async tasks are rejected.
+- `scene_benchmark_score` executes locally in the Cursor bridge and must not be forwarded to C++.
+- `scene_quality_audit` supports the canonical `prop` profile. It requires one renderable material and skips scene lights, scene-scale counts, advanced-mesh pressure, per-part collision, and spatial-layout checks.
+- Focused assets use one construction pass, one game-ready pass, one stable catalog upsert, and one Asset Viewer screenshot. There is no version or promotion stage.
+- Focused runs stop after the first bridge failure and never automatically retry a timed-out mutation.
+- Engine clients use separate connection and command timeouts. A command timeout closes the socket and rejects pending requests. Queued MCP jobs expire after 25 seconds, but an executing main-thread handler cannot be preempted.
+- Catalog writes use process-local serialization, a cross-process lock, staged files, backups, and rollback.
+- Glass materials use `color_a`, `ior`, `absorption`, and `thickness`. `transmission` and `transparency` alias inverted `color_a`.
+- `entity_describe` (alias of `entity_get`), `entity_list_children` (one level of children with name, components and local transform), `agent_memory_update` (alias of `agent_memory_append`, section defaults to Corrections) and `spartan_engine_command` (`{command, args}` forwarder) are bridge aliases now.
+
 ## Good Agent Strategies
 - Start engine tasks with `spartan_status` or `context_snapshot`.
 - Use `debug_log_read` after failures to inspect actual engine command inputs and outputs.
@@ -42,6 +54,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Use `material_textured_create` for any real surface; it creates the material and generates and attaches its color, normal, and packed maps in one call.
 - `texture_generate` composites layers: fill, linear_gradient, radial_gradient, noise, checker, stripes, bricks, tiles, spots, scratches, shape, text. Layer `relief` drives the normal map, `roughness`/`roughness_b`/`metalness`/`occlusion` drive the packed map.
 - Texture responses report mean color, contrast, and `seam_error`; tune tiling textures from those numbers instead of guessing. Labels and decals should set `seamless` false.
+- Parametric shapes include box/cube, plane/quad, sphere, ellipsoid, hemisphere, cylinder, cone, frustum, arc, sector, disk, ring and tube, alongside lofts/sweeps and the existing architectural shapes. Read `spartan://engine/parametric-modeling` for axes and dimensions.
 - Use resource lifecycle tools for asset cache load/reload/save/remove and new material creation.
 - Use `viewport_frame` and `camera_set_view` before manual camera transform scripts.
 - Use `renderer_debug_set` and `physics_state` for visual debugging and vehicle/rigid body inspection.
@@ -63,7 +76,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Do not route delete plus rebuild prompts to `entity_delete`; preserve materials first, then rebuild through a complex scene path.
 - Simple primitive creation, such as `create a physics cone`, should route directly to `entity_create_primitive`.
 - User convention, `physics <primitive>` means dynamic non-static physics unless static, fixed, or immovable is explicitly requested.
-- For repeated scene work, prefer `entity_create_primitive_batch` or one focused `execute_lua` script.
+- For repeated scene work, prefer `entity_create_primitive_batch` for built-ins, or `mesh_generate_batch` / `compound_create` for parametric shapes. Batches retain profiles, openings, modifiers and UV controls.
 - For blockouts, resolve or create the parent first, then build with `entity_create_primitive_batch` and `entity_create_light`; do not probe Lua APIs.
 - For repositioning many entities, use `entity_set_transform_batch` instead of one `entity_set_transform` call per entity.
 - For source questions, use `search_codebase`, then `read_source_file` for focused context.
@@ -87,7 +100,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 ## Verified Patterns
 - A parent entity plus a single batch or Lua script is usually better than many individual entity tool calls.
 - A small receipt after each meaningful engine action helps the editor assistant UI stay understandable.
-- To make a surface emissive white, create a material with material_create (defaults to white albedo), set emissive_from_albedo to 1 with material_set_property, then assign it via component_set property material on the render component; the albedo color drives the emissive color.
+- `material_textured_create` accepts `emissive_from_albedo: 1` directly; the albedo color drives emission. Use `entity_create_light` separately when an actual scene light is needed.
 - To sync sequencer cuts to a spline follower, set the follower speed, run `spline_query` for per camera `pass_time_seconds`, then place each cut at the midpoint between consecutive pass times; every camera then sees the car arrive, pass centered in its shot, and leave before the next cut.
 - Gas-station style blockouts succeed with `entity_resolve` then one `entity_create_primitive_batch`; dockyard failed when the agent fell into Lua API probing instead.
 - Dockyard lights were hand-rolled at 25-55 lumens and looked invisible; always use `entity_create_light`, which calibrates photometric intensity and related properties.
@@ -96,8 +109,8 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 
 ## Corrections
 - Add corrections here when a previous note turns out to be wrong or incomplete.
-- `mesh_generate` `mirror_axis` reflects the mesh in place, it does not union the original with its reflection, so a symmetric pair needs `linear_count` 2 with a `linear_step` across the pair, or one mesh instanced onto several entities. Vertex count in the response confirms which happened.
-- `material_textured_create` accepts texture arguments (`width`, `height`, `seed`, `normal_strength`, `tiling`) and material scalars together; only real material properties reach `material_set_property`, and they are applied after the maps are attached.
+- `mesh_generate` `mirror_axis` reflects in place by default. Set `mirror_copy: true` to keep the original plus its reflection for symmetric pairs; this does not weld or boolean-union the surfaces.
+- `material_textured_create` accepts texture and material controls together on both bridges. `height` is texture pixels; `displacement_height` sets material displacement. Glass, emission, flakes/pearl/coat tint, anisotropy and texture transforms are applied after attaching maps.
 - `texture_generate` at a path that is already loaded writes the maps to the next free suffix (`name_2.png`) and rebinds `material_path` to it, because the resource cache keeps serving the texture it already has. Read `path` from the response, it may differ from what was asked for; `requested_path` and `note` are present when it moved.
 - `mesh_generate` `uv_projection` box normalizes each axis over the whole mesh bounds, so one `uv_scale` cannot serve faces whose in-plane extents differ wildly. Keep arrayed copies out of the axes the visible faces project along, or instance a single-copy mesh.
 - `spline_distribute` `edge_offset` 2 is too wide on roads with side walls (plan.world); cameras land outside the walls looking at them, use `edge_offset` 1 there.
@@ -126,14 +139,3 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Keep MCP schemas close to engine component metadata so tool descriptions do not drift.
 - Log only unknown commands as capability gaps. Treat connection and command timeouts as bridge-health failures, and never store prompt snippets here.
 - Rebuild the engine and restart the assistant bridge when deploying new native MCP commands.
-- `resource_read` is an assistant alias: material path or name reads use `material_get`; list queries use `resource_list`.
-- `prefab_create` is an assistant alias for `prefab_save`. Focused assets still allow only the finalizer to save the prefab.
-- `async_task_start`, `async_task_get`, and `async_task_list` are available through both the MCP server and Cursor custom bridge; nested async tasks are rejected.
-- `scene_benchmark_score` executes locally in the Cursor bridge and must not be forwarded to C++.
-- `scene_quality_audit` supports the canonical `prop` profile. It requires one renderable material and skips scene lights, scene-scale counts, advanced-mesh pressure, per-part collision, and spatial-layout checks.
-- Focused assets use one construction pass, one game-ready pass, one stable catalog upsert, and one Asset Viewer screenshot. There is no version or promotion stage.
-- Focused runs stop after the first bridge failure and never automatically retry a timed-out mutation.
-- Engine clients use separate connection and command timeouts. A command timeout closes the socket and rejects pending requests. Queued MCP jobs expire after 25 seconds, but an executing main-thread handler cannot be preempted.
-- Catalog writes use process-local serialization, a cross-process lock, staged files, backups, and rollback.
-- Glass materials use `color_a`, `ior`, `absorption`, and `thickness`. `transmission` and `transparency` alias inverted `color_a`.
-- `entity_describe` (alias of `entity_get`), `entity_list_children` (one level of children with name, components and local transform), `agent_memory_update` (alias of `agent_memory_append`, section defaults to Corrections) and `spartan_engine_command` (`{command, args}` forwarder) are bridge aliases now; the old capability gap notes for them are resolved.

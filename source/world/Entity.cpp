@@ -325,6 +325,7 @@ namespace spartan
             "IsActive",                 &Entity::IsActive,
             "GetActive",                &Entity::GetActive,
             "SetActive",                &Entity::SetActive,
+            "IsDynamic",                &Entity::IsDynamic,
             "GetChildren", [](Entity* Self) -> sol::table
             {
                 sol::state_view lua = World::GetLuaState();
@@ -384,6 +385,23 @@ namespace spartan
                 component->Start();
             }
         }
+    }
+
+    bool Entity::IsDynamic() const
+    {
+        for (const Entity* entity = this; entity; entity = entity->m_parent)
+        {
+            if (entity->HasTag("dynamic") || entity->GetComponentByType(ComponentType::Animator))
+                return true;
+            if (const Physics* physics = static_cast<const Physics*>(entity->GetComponentByType(ComponentType::Physics)))
+            {
+                const BodyType type = physics->GetBodyType();
+                if (!physics->IsStatic() || physics->IsKinematic() ||
+                    type == BodyType::Controller || type == BodyType::Vehicle || type == BodyType::Cloth)
+                    return true;
+            }
+        }
+        return false;
     }
 
     void Entity::Stop()

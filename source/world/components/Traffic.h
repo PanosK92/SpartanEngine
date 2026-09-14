@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../math/Vector3.h"
 #include "../../math/Quaternion.h"
 #include "../RoadTraffic.h"
+#include "../RoadPopulation.h"
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -161,6 +162,7 @@ namespace spartan
 
         void BeginSpawn();
         void BuildRoadNetwork();
+        void UpdatePopulation(float delta_time);
         bool FindRoadSpawn(uint32_t index, Driver& driver, math::Vector3& position, math::Quaternion& rotation);
         void UpdateRoadDriver(Driver& driver, float delta_time);
         void SpawnNext();
@@ -184,6 +186,9 @@ namespace spartan
 
         std::vector<Driver> m_drivers;
         road_traffic::Network m_road_network;
+        road_traffic::LocalPopulation m_population;
+        float m_population_timer = 0.0f;
+        float m_recycle_timer = 0.0f;
         bool m_follow_roads = false;
         math::Vector3 m_bounds_min = math::Vector3(-220.0f, -10.0f, -380.0f);
         math::Vector3 m_bounds_max = math::Vector3(380.0f, 80.0f, 260.0f);

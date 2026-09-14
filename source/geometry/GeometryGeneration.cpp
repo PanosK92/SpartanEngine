@@ -30,6 +30,76 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan::geometry_generation
 {
+    void generate_arc(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        float radius, float inner_radius, float depth,
+        float start_radians, float sweep_radians, uint32_t segments
+    )
+    {
+        using namespace math;
+        // Independent faces preserve hard rim edges; radial faces have smooth normals.
+        float u_start = 0.0f, u_end = 1.0f;
+        const auto face = [&](const Vector3& a, const Vector3& b, const Vector3& c, const Vector3& d,
+                              const Vector3& na, const Vector3& nb, const Vector3& nc, const Vector3& nd)
+        {
+            const uint32_t base = static_cast<uint32_t>(vertices->size());
+            const Vector3 positions[] = { a, b, c, d };
+            const Vector3 normals[] = { na, nb, nc, nd };
+            const Vector2 uvs[] = { {u_start, 0.0f}, {u_end, 0.0f}, {u_end, 1.0f}, {u_start, 1.0f} };
+            for (uint32_t i = 0; i < 4; i++)
+            {
+                const Vector3 reference = std::abs(normals[i].z) < 0.9f ? Vector3(0, 0, 1) : Vector3(0, 1, 0);
+                const Vector2 uv = std::abs(normals[i].z) > 0.9f ?
+                    Vector2(0.5f + positions[i].x / (2.0f * radius), 0.5f + positions[i].y / (2.0f * radius)) : uvs[i];
+                vertices->emplace_back(positions[i], uv, normals[i], Vector3::Cross(reference, normals[i]).Normalized());
+            }
+            for (uint32_t i = 1; i < 3; i++)
+            {
+                const Vector3 cross = Vector3::Cross(positions[i] - a, positions[i + 1] - a);
+                if (cross.LengthSquared() == 0.0f)
+                    continue; // sector center collapses one of the two triangles
+                indices->push_back(base);
+                const bool forward = Vector3::Dot(cross, na) > 0.0f;
+                indices->push_back(base + (forward ? i : i + 1));
+                indices->push_back(base + (forward ? i + 1 : i));
+            }
+        };
+        const Vector3 front(0, 0, 1), back(0, 0, -1);
+        const float half_depth = depth * 0.5f;
+        const bool closed = std::abs(sweep_radians - pi_2) < 0.000001f;
+        for (uint32_t i = 0; i < segments; i++)
+        {
+            u_start = static_cast<float>(i) / static_cast<float>(segments);
+            u_end = static_cast<float>(i + 1) / static_cast<float>(segments);
+            const float angle0 = start_radians + sweep_radians * static_cast<float>(i) / static_cast<float>(segments);
+            const float angle1 = closed && i + 1 == segments ? start_radians :
+                start_radians + sweep_radians * static_cast<float>(i + 1) / static_cast<float>(segments);
+            const Vector3 n0(std::cos(angle0), std::sin(angle0), 0);
+            const Vector3 n1(std::cos(angle1), std::sin(angle1), 0);
+            const Vector3 o0 = n0 * radius, o1 = n1 * radius;
+            const Vector3 i0 = n0 * inner_radius, i1 = n1 * inner_radius;
+            const Vector3 z(0, 0, half_depth);
+            face(i0 + z, o0 + z, o1 + z, i1 + z, front, front, front, front);
+            if (depth == 0.0f)
+                continue;
+            face(i0 - z, o0 - z, o1 - z, i1 - z, back, back, back, back);
+            face(o0 - z, o1 - z, o1 + z, o0 + z, n0, n1, n1, n0);
+            if (inner_radius > 0.0f)
+                face(i0 - z, i1 - z, i1 + z, i0 + z, -n0, -n1, -n1, -n0);
+            if (!closed && i == 0)
+            {
+                const Vector3 normal(n0.y, -n0.x, 0);
+                face(i0 - z, o0 - z, o0 + z, i0 + z, normal, normal, normal, normal);
+            }
+            if (!closed && i + 1 == segments)
+            {
+                const Vector3 normal(-n1.y, n1.x, 0);
+                face(i1 - z, o1 - z, o1 + z, i1 + z, normal, normal, normal, normal);
+            }
+        }
+    }
+
     void generate_cube(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices)
     {
 

@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../rendering/Material.h"
 #include "../world/components/Physics.h"
 #include "CarEngineSoundSynthesis.h"
+#include "CarChaseCamera.h"
 //======================================
 
 namespace pugi
@@ -147,6 +148,9 @@ namespace spartan
         VehicleSimMode GetVehicleSimMode() const;
         void LoadDefinition(const car::car_definition* definition);
 
+        void SetCameraWindShake(bool enabled) { m_camera_wind_shake = enabled; }
+        bool GetCameraWindShake() const { return m_camera_wind_shake; }
+
         // camera orbit (right stick control)
         void AddCameraOrbitYaw(float delta);
         void AddCameraOrbitPitch(float delta);
@@ -182,33 +186,7 @@ namespace spartan
         // restore=false when the cached entities are about to be destroyed
         void ClearBodyRenderStates(bool restore);
 
-        // chase camera - gt7 style
-        struct ChaseCameraState
-        {
-            math::Vector3 position     = math::Vector3::Zero;
-            math::Vector3 velocity     = math::Vector3::Zero;
-            float         yaw          = 0.0f;
-            float         yaw_bias     = 0.0f;
-            float         pitch_bias   = 0.0f;
-            float         speed_factor = 0.0f;
-            bool          initialized  = false;
-        };
-
-        static math::Vector3 SmoothDamp(const math::Vector3& current, const math::Vector3& target, 
-                                        math::Vector3& velocity, float smooth_time, float dt);
-        static float LerpAngle(float a, float b, float t);
-
-        // chase camera tuning
-        static constexpr float chase_distance_base      = 5.0f;
-        static constexpr float chase_distance_min       = 4.0f;
-        static constexpr float chase_height_base        = 1.5f;
-        static constexpr float chase_height_min         = 1.2f;
-        static constexpr float chase_position_smoothing = 0.15f;
-        static constexpr float chase_rotation_smoothing = 4.0f;
-        static constexpr float chase_speed_smoothing    = 2.0f;
-        static constexpr float chase_look_offset_up     = 0.6f;
-        static constexpr float chase_look_ahead_amount  = 2.5f;
-        static constexpr float chase_speed_reference    = 50.0f;
+        // Chase camera input tuning
         static constexpr float orbit_bias_speed         = 1.5f;
         static constexpr float pitch_bias_max           = 1.5f;
         // mouse orbit (right_click drag) tuning, radians per pixel
@@ -234,7 +212,8 @@ namespace spartan
         Color             m_paint_color     = Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f);
         bool              m_customize_materials = true;
         bool              m_spawn_error_logged = false;
-        ChaseCameraState  m_chase_camera;
+        car_camera::ChaseState m_chase_camera;
+        bool m_camera_wind_shake = true;
 
         struct BodyRenderState
         {

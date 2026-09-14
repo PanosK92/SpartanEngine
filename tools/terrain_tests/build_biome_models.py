@@ -24,6 +24,33 @@ def clear():
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete(use_global=False)
 
+def branch_groups(mesh, lo, width, groups):
+    # A branch library is laid out in strips, but leaves can cross strip edges.
+    # Assign whole connected pieces, never individual vertices, to a branch.
+    parents=list(range(len(mesh.vertices)))
+    def root(i):
+        while parents[i]!=i:
+            parents[i]=parents[parents[i]];i=parents[i]
+        return i
+    def join(a,b):parents[root(b)]=root(a)
+    for edge in mesh.edges:join(*edge.vertices)
+    # UV/normal seams may duplicate vertices on the same connected surface.
+    positions={}
+    for v in mesh.vertices:
+        key=tuple(v.co)
+        if key in positions:join(v.index,positions[key])
+        else:positions[key]=v.index
+    pieces={}
+    for v in mesh.vertices:pieces.setdefault(root(v.index),[]).append(v.index)
+    result=[0]*len(mesh.vertices)
+    for indices in pieces.values():
+        x=sum(mesh.vertices[i].co.x for i in indices)/len(indices)
+        group=max(0,min(groups-1,int((x-lo)/width)))
+        for i in indices:result[i]=group
+    # A face must remain rigid during assembly; otherwise it becomes a spike.
+    assert all(len({result[i] for i in face.vertices})==1 for face in mesh.polygons)
+    return result
+
 def material(name,color,texture=None,alpha=None,normal=None):
     mat=bpy.data.materials.new(name);mat.use_nodes=True
     shader=mat.node_tree.nodes.get('Principled BSDF')
@@ -192,7 +219,7 @@ for kind in ['pine','olive']:
     for i in range(4):
         if not ONLY or ONLY in [kind,f'{kind}_{i+1:02}']:tree(kind,i)
 for source,name,budget in [('coast_land_rocks_02','limestone_slab',4500),('boulder_01','limestone_boulder',3200),('rock_07','weathered_stone',1400),('rock_09','angular_stone',1600),('shrub_04','scrub_01',5500),('shrub_04','scrub_02',3500),('shrub_01','scrub_03',4500),('shrub_02','scrub_04',4500),('shrub_03','scrub_05',4500)]:
-    if ONLY and ONLY!=name:continue
+    if ONLY and ONLY!=name and not name.startswith(ONLY+'_'):continue
     clear();bpy.ops.import_scene.gltf(filepath=str(SOURCE/source/(source+'.gltf')))
     if 'scrub' in name:
         # These source files are branch libraries laid out in a row. Assemble
@@ -207,8 +234,9 @@ for source,name,budget in [('coast_land_rocks_02','limestone_slab',4500),('bould
         groups=4 if source=='shrub_04' else 8
         width=(hi-lo)/groups
         for o in objects:
+            assignments=branch_groups(o.data,lo,width,groups)
             for v in o.data.vertices:
-                group=min(groups-1,int((v.co.x-lo)/width))
+                group=assignments[v.index]
                 spreading=name=='scrub_02'
                 a=group*(2.1 if spreading else 2.39996)+(.73 if spreading else 0)
                 x=v.co.x-(lo+(group+.5)*width);y=v.co.y

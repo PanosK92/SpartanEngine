@@ -123,7 +123,7 @@ namespace spartan
         );
         at(buffers, Renderer_Buffer::AABBs) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_Aabb)),
-            rhi_max_array_size * renderer_draw_data_buffer_count, nullptr, true,
+            renderer_max_aabbs * renderer_draw_data_buffer_count, nullptr, true,
             "aabbs"
         );
 

@@ -19,6 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+import { parametric_shapes, textured_material_scalars } from "./building_blocks.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -767,56 +768,6 @@ async function list_entity_children(run, args) {
     truncated: ids.length > limit,
     children,
   };
-}
-
-// the subset of material_textured_create arguments that are material properties, everything
-// else on the call describes the texture and must not reach material_set_property
-const textured_material_scalar_keys = new Set([
-  "color_r",
-  "color_g",
-  "color_b",
-  "color_a",
-  "normal",
-  "height",
-  "clearcoat",
-  "clearcoat_roughness",
-  "anisotropic",
-  "anisotropic_rotation",
-  "sheen",
-  "subsurface_scattering",
-  "ior",
-  "absorption",
-  "thickness",
-  "emissive_from_albedo",
-  "texture_tiling_x",
-  "texture_tiling_y",
-  "texture_offset_x",
-  "texture_offset_y",
-]);
-
-function textured_material_scalars(args) {
-  const scalars = {};
-  for (const [key, value] of Object.entries(args))
-  {
-    if (
-      textured_material_scalar_keys.has(key) &&
-      Number.isFinite(value)
-    )
-    {
-      scalars[key] = value;
-    }
-  }
-  if (Array.isArray(args.color) || Array.isArray(args.base_color))
-  {
-    scalars.color = args.color ?? args.base_color;
-  }
-  const tiling = Number(args.tiling ?? 0);
-  if (tiling > 0)
-  {
-    scalars.texture_tiling_x = tiling;
-    scalars.texture_tiling_y = tiling;
-  }
-  return scalars;
 }
 
 async function create_material_palette(run, args) {
@@ -1610,27 +1561,7 @@ async function bind_generated_mesh(run, args) {
 }
 
 function normalized_mesh_arguments(args) {
-  const known_shapes = new Set([
-    "beveled_box",
-    "rounded_box",
-    "wedge",
-    "wall_opening",
-    "wall_openings",
-    "extruded_profile",
-    "revolved_profile",
-    "torus",
-    "capsule",
-    "rounded_cylinder",
-    "pipe",
-    "curved_profile",
-    "loft",
-    "arch",
-    "inset_panel",
-    "tapered_extrusion",
-    "grid",
-    "grass_blade",
-    "flower",
-  ]);
+  const known_shapes = new Set(parametric_shapes);
   const nested =
     (
       typeof args.shape === "object" ?
@@ -3577,27 +3508,7 @@ async function dispatch_assistant_command(
   {
     return {
       ok: true,
-      generators: [
-        "beveled_box",
-        "rounded_box",
-        "wedge",
-        "wall_opening",
-        "wall_openings",
-        "extruded_profile",
-        "revolved_profile",
-        "torus",
-        "capsule",
-        "rounded_cylinder",
-        "pipe",
-        "curved_profile",
-        "loft",
-        "arch",
-        "inset_panel",
-        "tapered_extrusion",
-        "grid",
-        "grass_blade",
-        "flower",
-      ],
+      generators: parametric_shapes,
       modifiers: [
         "taper",
         "bend",
@@ -5213,7 +5124,7 @@ function focused_asset_quality_prompt_lines(
     "Do not call prefab_save, world_asset_register, scene_visual_review, screenshot_take, or asset_viewer_screenshot. The run finalizer performs one game-ready pass, one final prefab save, one current-asset catalog registration, and one perspective Asset Viewer screenshot review.",
     "Saving the prefab merges every part that shares a material into one mesh, so splitting a surface off for a genuine material change is cheap. Split as often as the object needs distinct materials or construction.",
     "Never generate the same part twice. Before adding a part, check whether you already made it. A regenerated duplicate leaves two copies of the same geometry in the asset.",
-    "Author repetition as one mesh instead of one mesh per copy. When the same shape repeats in the same material, generate it once with the array and mirror modifiers on that mesh_generate call: radial_count with radial_axis, radial_radius and radial_step_degrees for spokes, castors, legs, bolts, flutes and anything arranged around an axis; linear_count with linear_step for slats, ribs, treads, rungs and rows; mirror_axis with mirror_plane for a symmetric pair such as two armrests. A five-spoke base is one call, not five. This is identical geometry at a fraction of the parts, so prefer it over generating each copy separately.",
+    "Author repetition as one mesh instead of one mesh per copy. When the same shape repeats in the same material, generate it once with the array and mirror modifiers on that mesh_generate call: radial_count with radial_axis, radial_radius and radial_step_degrees for spokes, castors, legs, bolts, flutes and anything arranged around an axis; linear_count with linear_step for slats, ribs, treads, rungs and rows; mirror_axis with mirror_plane and mirror_copy true for a symmetric pair such as two armrests. A five-spoke base is one call, not five. This is identical geometry at a fraction of the parts, so prefer it over generating each copy separately.",
     "Give a part its own entity whenever it needs its own material or its own geometry. Keep a collider, light, or sound on the functional entity it belongs to rather than on a part that exists only to be drawn.",
     "Assemble the asset as you go, one part at a time. The prepared root already exists and is previewing, so every part you make is joined to the asset the moment you make it: generate the part, parent it to the root, give it its material, and place it against the parts that are already there. Do not author a batch of loose meshes and materials with the intention of assembling them later.",
     "Work outward from the part that fixes the asset's scale and orientation, usually the primary body or the base, because every later part is positioned against what is already standing. Finish and place each part before starting the next one.",

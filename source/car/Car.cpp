@@ -2245,7 +2245,7 @@ namespace spartan
         }
 
         m_is_occupied = true;
-        m_chase_camera.initialized = false;
+        m_chase_camera = {};
 
         // disable player physics controller so it doesn't interfere with driving
         if (default_camera)
@@ -2277,7 +2277,7 @@ namespace spartan
 
         m_is_occupied = false;
         m_externally_controlled = false;
-        m_chase_camera.initialized = false;
+        m_chase_camera = {};
         // the synth is shared, the next car to be entered has to push its own spec
         m_engine_sound_configured = false;
 
@@ -2496,7 +2496,7 @@ namespace spartan
 
         spawn_point->Place(m_vehicle_entity);
         m_spawn_error_logged = false;
-        m_chase_camera.initialized = false;
+        m_chase_camera = {};
     }
 
     void Car::SummonToPlayer()
@@ -2553,7 +2553,7 @@ namespace spartan
         }
         m_vehicle_entity->SetPosition(position);
         m_vehicle_entity->SetRotation(rotation);
-        m_chase_camera.initialized = false;
+        m_chase_camera = {};
     }
 
     void Car::SummonPlayerCar()
@@ -2632,7 +2632,7 @@ namespace spartan
             {
                 camera->SetParent(default_camera);
             }
-            m_chase_camera.initialized = false;
+            m_chase_camera = {};
         }
         else if (m_current_view == CarView::Hood)
         {
@@ -2701,29 +2701,6 @@ namespace spartan
     {
         m_chase_camera.pitch_bias += delta;
         m_chase_camera.pitch_bias = std::clamp(m_chase_camera.pitch_bias, -pitch_bias_max, pitch_bias_max);
-    }
-
-    // private helpers
-
-    math::Vector3 Car::SmoothDamp(const math::Vector3& current, const math::Vector3& target, 
-                                   math::Vector3& velocity, float smooth_time, float dt)
-    {
-        // critically damped spring, exp_factor is a rational approximation of exp(-omega * dt)
-        float omega            = 2.0f / std::max(smooth_time, 0.0001f);
-        float x                = omega * dt;
-        float exp_factor       = 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
-        math::Vector3 delta    = current - target;
-        math::Vector3 momentum = (velocity + omega * delta) * dt;
-
-        velocity = (velocity - omega * momentum) * exp_factor;
-
-        return target + (delta + momentum) * exp_factor;
-    }
-
-    float Car::LerpAngle(float a, float b, float t)
-    {
-        float diff = fmodf(b - a + math::pi * 3.0f, math::pi * 2.0f) - math::pi;
-        return a + diff * t;
     }
 
     math::BoundingBox Car::GetCarAABB() const
@@ -3972,7 +3949,7 @@ namespace spartan
             if (camera)
             {
                 camera->SetParent(default_camera);
-                m_chase_camera.initialized = false;
+                m_chase_camera = {};
             }
         }
 
@@ -3982,90 +3959,14 @@ namespace spartan
         }
 
         Physics* car_physics = m_vehicle_entity->GetComponent<Physics>();
-        float dt = static_cast<float>(Timer::GetDeltaTimeSec());
-
-        math::Vector3 car_position = m_vehicle_entity->GetPosition();
-        math::Vector3 car_forward  = m_vehicle_entity->GetForward();
-        math::Vector3 car_right    = m_vehicle_entity->GetRight();
-        math::Vector3 car_velocity = car_physics ? car_physics->GetLinearVelocity() : math::Vector3::Zero;
-        float car_speed = car_velocity.Length();
-
-        float target_yaw = atan2f(car_forward.x, car_forward.z);
-
-        float target_speed_factor = std::clamp(car_speed / chase_speed_reference, 0.0f, 1.0f);
-        m_chase_camera.speed_factor += (target_speed_factor - m_chase_camera.speed_factor) * 
-            std::min(1.0f, chase_speed_smoothing * dt);
-
-        float dynamic_distance = chase_distance_base - 
-            (chase_distance_base - chase_distance_min) * m_chase_camera.speed_factor;
-        float dynamic_height = chase_height_base - 
-            (chase_height_base - chase_height_min) * m_chase_camera.speed_factor;
-
-        if (!m_chase_camera.initialized)
-        {
-            m_chase_camera.yaw          = target_yaw;
-            m_chase_camera.yaw_bias     = 0.0f;
-            m_chase_camera.pitch_bias   = 0.0f;
-            m_chase_camera.speed_factor = target_speed_factor;
-            m_chase_camera.position     = car_position - math::Vector3(sinf(target_yaw), 0.0f, cosf(target_yaw)) * dynamic_distance
-                                        + math::Vector3::Up * dynamic_height;
-            m_chase_camera.velocity     = math::Vector3::Zero;
-            m_chase_camera.initialized  = true;
-        }
-
-        float rotation_speed = chase_rotation_smoothing * (1.0f + m_chase_camera.speed_factor * 0.5f);
-        m_chase_camera.yaw = LerpAngle(m_chase_camera.yaw, target_yaw, 1.0f - expf(-rotation_speed * dt));
-
-        float effective_yaw   = m_chase_camera.yaw + m_chase_camera.yaw_bias;
-        float effective_pitch = m_chase_camera.pitch_bias;
-
-        float horizontal_scale = cosf(effective_pitch);
-        float vertical_offset  = sinf(effective_pitch) * dynamic_distance;
-
-        math::Vector3 offset_direction = math::Vector3(sinf(effective_yaw), 0.0f, cosf(effective_yaw));
-        math::Vector3 target_position  = car_position 
-                                       - offset_direction * dynamic_distance * horizontal_scale
-                                       + math::Vector3::Up * (dynamic_height + vertical_offset);
-
-        float slip_intensity = 0.0f;
-        if (car_physics)
-        {
-            for (uint32_t i = 0; i < 4; i++)
-            {
-                WheelIndex wheel = static_cast<WheelIndex>(i);
-                float slip_angle = fabsf(car_physics->GetWheelSlipAngle(wheel));
-                float slip_ratio = fabsf(car_physics->GetWheelSlipRatio(wheel));
-                slip_intensity = std::max(slip_intensity, std::max(slip_angle * 0.9f, slip_ratio * 0.7f));
-            }
-            slip_intensity = std::clamp(slip_intensity, 0.0f, 1.0f);
-        }
-
-        float shake_phase = static_cast<float>(Timer::GetTimeSec()) * (16.0f + m_chase_camera.speed_factor * 16.0f);
-        float shake_strength = slip_intensity * 0.055f + m_chase_camera.speed_factor * 0.01f;
-        target_position += car_right * sinf(shake_phase) * shake_strength;
-        target_position += math::Vector3::Up * cosf(shake_phase * 1.37f) * shake_strength * 0.55f;
-
-        float position_smooth = chase_position_smoothing * (1.0f - m_chase_camera.speed_factor * 0.3f);
-        m_chase_camera.position = SmoothDamp(m_chase_camera.position, target_position, 
-                                             m_chase_camera.velocity, position_smooth, dt);
-
-        math::Vector3 velocity_xz = math::Vector3(car_velocity.x, 0.0f, car_velocity.z);
-        float velocity_xz_len = velocity_xz.Length();
-        math::Vector3 look_ahead = math::Vector3::Zero;
-        if (velocity_xz_len > 2.0f)
-        {
-            look_ahead = (velocity_xz / velocity_xz_len) * chase_look_ahead_amount * m_chase_camera.speed_factor;
-        }
-        math::Vector3 look_at = car_position + math::Vector3::Up * chase_look_offset_up + look_ahead;
+        const float speed = car_physics ? car_physics->GetLinearVelocity().Length() : 0.0f;
+        m_chase_camera.Update(m_vehicle_entity->GetPosition(), m_vehicle_entity->GetForward(),
+            speed, static_cast<float>(Timer::GetDeltaTimeSec()), m_camera_wind_shake);
 
         camera->SetPosition(m_chase_camera.position);
         if (Camera* camera_component = camera->GetComponent<Camera>())
-        {
-            float fov = 90.0f + m_chase_camera.speed_factor * 5.0f + slip_intensity * 1.5f;
-            camera_component->SetFovHorizontalDeg(fov);
-        }
-
-        math::Vector3 look_direction = (look_at - m_chase_camera.position).Normalized();
+            camera_component->SetFovHorizontalDeg(90.0f);
+        const math::Vector3 look_direction = (m_chase_camera.look_at - m_chase_camera.position).Normalized();
         camera->SetRotation(math::Quaternion::FromLookRotation(look_direction, math::Vector3::Up));
     }
 

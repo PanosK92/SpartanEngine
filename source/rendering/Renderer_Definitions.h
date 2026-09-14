@@ -72,6 +72,8 @@ namespace spartan
 
     // world draw entries plus imgui draw cmds share this buffer, leave headroom for the editor ui
     const uint32_t renderer_max_draw_calls         = 32768;
+    // One bound per prepass draw and one per indirect render in each frame slot.
+    const uint32_t renderer_max_aabbs              = renderer_max_draw_calls * 2;
     const uint32_t renderer_max_cpu_indirect_draws = renderer_max_draw_calls * 8;
     const uint32_t renderer_max_instance_count     = 1024;
     const uint32_t renderer_editor_icon_size_px    = 48;

@@ -48,6 +48,11 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    bool Render::ExcludesTerrainBlend() const
+    {
+        return HasFlag(RenderFlags::ExcludeFromTerrainBlend) || m_entity_ptr->IsDynamic();
+    }
+
     namespace
     {
         const MeshLod* get_mesh_lod(Mesh* mesh, uint32_t sub_mesh_index, uint32_t lod)

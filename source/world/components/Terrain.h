@@ -256,6 +256,7 @@ namespace spartan
         // hand the current layer set, analysis maps and world mapping to the renderer
         void PushToRenderer() const;
         bool IsGenerating() const { return m_is_generating.load(); }
+        bool IsMeshCommitPending() const { return m_gpu_commit_pending.load(std::memory_order_acquire); }
         void Tick() override;
 
         // generation

@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "pch.h"
 #include "Traffic.h"
+#include "Camera.h"
 #include "../RoadTrafficWorld.h"
 #include "Physics.h"
 #include "Spline.h"
@@ -50,7 +51,7 @@ namespace spartan
         constexpr float visit_cell_size = 18.0f;
         constexpr float spawn_separation = 12.0f;
         constexpr float decision_interval = 0.1f;
-        constexpr uint32_t max_physics_cars = 4;
+
         constexpr float steering_samples[] = { -1.0f, -0.72f, -0.48f, -0.3f, -0.18f, -0.08f, 0.0f, 0.08f, 0.18f, 0.3f, 0.48f, 0.72f, 1.0f };
 
         Physics* find_physics(Entity* entity)
@@ -171,6 +172,7 @@ namespace spartan
             return;
         }
 
+        UpdatePopulation(static_cast<float>(Timer::GetDeltaTimeSec()));
         SpawnNext();
         if (m_drivers.empty())
         {
@@ -228,10 +230,6 @@ namespace spartan
                 return a.first < b.first;
             }
         );
-        if (physics_candidates.size() > max_physics_cars)
-        {
-            physics_candidates.resize(max_physics_cars);
-        }
 
         unordered_set<Driver*> physics_selected_set;
         physics_selected_set.reserve(physics_candidates.size() * 2 + 1);
@@ -359,8 +357,7 @@ namespace spartan
 
         if (m_next_spawn_index < m_car_count)
         {
-            SpawnCar(m_next_spawn_index);
-            m_next_spawn_index++;
+            if (SpawnCar(m_next_spawn_index)) m_next_spawn_index++;
         }
 
         if (m_next_spawn_index >= m_car_count)
@@ -376,7 +373,7 @@ namespace spartan
         Driver driver;
         if (!(m_follow_roads ? FindRoadSpawn(index, driver, position, rotation) : FindSpawnPosition(index, position, rotation)))
         {
-            SP_LOG_WARNING("Traffic could not find a safe spawn for car %u", index);
+            if (!m_follow_roads) SP_LOG_WARNING("Traffic could not find a safe spawn for car %u", index);
             return false;
         }
 
@@ -451,40 +448,72 @@ namespace spartan
     void Traffic::BuildRoadNetwork()
     {
         m_road_network = road_traffic::BuildWorldNetwork();
+        m_population.Clear();
+        m_population_timer = 10.0f;
+        m_recycle_timer = 0.0f;
     }
 
     bool Traffic::FindRoadSpawn(uint32_t index, Driver& driver, Vector3& position, Quaternion& rotation)
     {
-        const auto& edges = m_road_network.edges;
-        float total = 0.0f;
-        for (size_t i = 0; i < edges.size(); i += 2) total += edges[i].lane.Length();
-        if (total <= 0.0f) return false;
-        // Stratify by drivable road length so cars cover the whole island rather
-        // than clustering on short streets or in the old flat-map rectangle.
-        for (uint32_t attempt = 0; attempt < 64; ++attempt)
+        Vector3 focus, velocity;
+        if (!GetPlayerState(focus,velocity)) return false;
+        Camera* camera=World::GetCamera();
+        const auto& edges=m_road_network.edges;
+        for (uint32_t attempt=0;attempt<96;++attempt)
         {
-            float d = fmodf(total * (static_cast<float>(index) + 0.5f) / static_cast<float>(std::max(m_car_count, 1u)) + attempt * 37.0f, total);
-            size_t edge = 0;
-            while (edge + 2 < edges.size() && d > edges[edge].lane.Length()) { d -= edges[edge].lane.Length(); edge += 2; }
-            if (index % 2) { ++edge; d = edges[edge].lane.Length() - d; }
-            d = std::clamp(d, 0.0f, edges[edge].lane.Length());
-            const auto pose = edges[edge].lane.Sample(d);
-            bool clear = true;
-            for (Car* car : Car::GetAll())
+            size_t edge;float d;
+            if (!m_population.Sample(m_random_state,edge,d)) return false;
+            const auto pose=edges[edge].lane.Sample(d);
+            const float distance=(pose.position-focus).Length();
+            if (distance<65 || distance>500) continue;
+            if (camera && distance<300 && camera->IsInViewFrustum(BoundingBox(pose.position-Vector3(4),pose.position+Vector3(4)))) continue;
+            bool clear=true;
+            for (Car* car:Car::GetAll())
             {
-                Entity* root = car ? car->GetRootEntity() : nullptr;
-                if (root && (root->GetPosition() - pose.position).LengthSquared() < spawn_separation * spawn_separation) { clear = false; break; }
+                Entity* root=car ? car->GetRootEntity() : nullptr;
+                if (root && root!=driver.entity && (root->GetPosition()-pose.position).LengthSquared()<25.0f*25.0f) {clear=false;break;}
             }
             if (!clear) continue;
-            driver.road_edge = edge;
-            driver.road_path = edges[edge].lane;
-            driver.road_progress = d;
-            driver.route_random = 0x6d2b79f5u ^ ((index + 1u) * 2654435761u);
-            position = pose.position + Vector3::Up * 0.65f;
-            rotation = Quaternion::FromLookRotation(pose.tangent);
+            driver.road_edge=edge;driver.road_path=edges[edge].lane;driver.road_progress=d;
+            driver.route_random=m_random_state | 1u;
+            position=pose.position+Vector3::Up*.65f;
+            rotation=Quaternion::FromLookRotation(pose.tangent);
             return true;
         }
         return false;
+    }
+
+    void Traffic::UpdatePopulation(float delta_time)
+    {
+        if (!m_follow_roads) return;
+        Vector3 focus,velocity;
+        if (!GetPlayerState(focus,velocity)) return;
+        m_population_timer+=delta_time;m_recycle_timer+=delta_time;
+        Camera* camera=World::GetCamera();
+        if (m_population_timer>=1.0f)
+        {
+            Vector3 forward=velocity.LengthSquared()>4 ? velocity.Normalized() :
+                camera ? camera->GetEntity()->GetForward() : Vector3::Forward;
+            m_population.Build(m_road_network,focus,forward,500);
+            m_population_timer=0;
+        }
+        if (m_recycle_timer<.1f) return;
+        m_recycle_timer=0;
+        for (Driver& driver:m_drivers)
+        {
+            if (!driver.entity || !driver.physics) continue;
+            const Vector3 old=driver.entity->GetPosition();
+            const float distance=(old-focus).Length();
+            if (distance<650 || (distance<1200 && camera && camera->IsInViewFrustum(BoundingBox(old-Vector3(4),old+Vector3(4))))) continue;
+            Vector3 position;Quaternion rotation;
+            if (!FindRoadSpawn(m_random_state,driver,position,rotation)) continue;
+            SetPhysicsActive(driver,false);
+            driver.entity->SetPosition(position);driver.entity->SetRotation(rotation);
+            driver.physics->SetBodyTransform(position,rotation);
+            driver.spline_speed=driver.cruise_speed;driver.transition_time=2.0f;
+            driver.last_position=position;driver.visits.clear();
+            break; // recycle one existing car, never rebuild the entire pool
+        }
     }
 
     void Traffic::UpdateRoadDriver(Driver& driver, float delta_time)
@@ -562,8 +591,10 @@ namespace spartan
             const auto pose = path.Sample(driver.road_progress);
             float ride = driver.limits.wheel_radius + 0.3f;
             if (driver.car->GetDefinition()) ride = driver.limits.wheel_radius + std::max(driver.car->GetDefinition()->performance.suspension_height, 0.1f);
-            driver.entity->SetPosition(pose.position + Vector3::Up * ride);
-            driver.entity->SetRotation(Quaternion::FromLookRotation(pose.tangent));
+            driver.transition_time += delta_time;
+            const float blend=driver.transition_time<2.0f ? 1.0f-expf(-3.0f*delta_time) : 1.0f;
+            driver.entity->SetPosition(Vector3::Lerp(driver.entity->GetPosition(),pose.position+Vector3::Up*ride,blend));
+            driver.entity->SetRotation(Quaternion::Lerp(driver.entity->GetRotation(),Quaternion::FromLookRotation(pose.tangent),blend));
             driver.physics->UpdateTrafficWheels(driver.spline_speed, signed_angle(horizontal(current.tangent), horizontal(target.tangent)) / lookahead, delta_time);
         }
     }
@@ -687,20 +718,10 @@ namespace spartan
             }
         }
 
-        for (Car* car : cars)
+        if (Camera* camera=World::GetCamera())
         {
-            if (!car || !car->GetRootEntity())
-            {
-                continue;
-            }
-            const bool is_traffic = any_of(m_drivers.begin(), m_drivers.end(), [car](const Driver& driver) { return driver.car == car; });
-            if (!is_traffic)
-            {
-                position = car->GetRootEntity()->GetPosition();
-                Physics* physics = car->GetRootEntity()->GetComponent<Physics>();
-                velocity = physics ? planar(physics->GetLinearVelocity()) : Vector3::Zero;
-                return true;
-            }
+            position=camera->GetEntity()->GetPosition();velocity=Vector3::Zero;
+            return true;
         }
         return false;
     }

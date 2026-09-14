@@ -593,7 +593,14 @@ namespace spartan
             bool has_input = IsAttached() ? (m_source_spline_entity != nullptr) : (GetControlPointCount() >= 2);
             if (m_mesh_enabled && has_input)
             {
-                GenerateRoadMesh();
+                // Terrain::CommitGpu regenerates conforming splines after its
+                // surface is installed. Avoid sampling and uploading them here
+                // as well; on an island this repeats hundreds of kilometres.
+                Terrain* terrain = m_conform_to_terrain ? Terrain::FindActive() : nullptr;
+                if (!terrain || !terrain->IsMeshCommitPending())
+                {
+                    GenerateRoadMesh();
+                }
                 SnapshotState();
             }
         }

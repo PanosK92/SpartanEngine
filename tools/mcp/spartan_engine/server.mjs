@@ -20,6 +20,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+import { parametric_shapes, textured_material_scalar_keys, textured_material_scalars } from "./building_blocks.mjs";
 import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -741,32 +742,16 @@ const light_create_args = {
   calibrated: z.boolean().optional().describe("default true; set false only for intentionally weak lights"),
   ...entity_identity_args,
 };
-const parametric_shape = z.enum([
-  "beveled_box",
-  "rounded_box",
-  "wedge",
-  "wall_opening",
-  "wall_openings",
-  "extruded_profile",
-  "revolved_profile",
-  "torus",
-  "capsule",
-  "rounded_cylinder",
-  "pipe",
-  "curved_profile",
-  "loft",
-  "arch",
-  "inset_panel",
-  "tapered_extrusion",
-  "grid",
-  "grass_blade",
-  "flower",
-]);
+const parametric_shape = z.enum(parametric_shapes);
 const profile2d = z.array(
   z.array(z.number()).length(2),
 ).min(3).max(128);
 const parametric_mesh_args = {
   shape: parametric_shape,
+  radius_top: z.number().min(0).max(1000).optional().describe("frustum/cone top radius; radius is the bottom radius"),
+  inner_radius: z.number().min(0).max(1000).optional().describe("arc/ring/tube inner radius; zero produces a solid sector"),
+  start_degrees: z.number().min(-3600).max(3600).optional(),
+  sweep_degrees: z.number().positive().max(360).optional().describe("arc sweep, default 90 degrees; ring/tube/disk default 360"),
   path: z.string().describe("immutable mesh cache key, use a new path when geometry parameters change"),
   size: vector3.optional().describe("full width, height, and depth in meters"),
   opening_size: vector2.optional().describe("wall opening width and height in meters"),
@@ -781,7 +766,7 @@ const parametric_mesh_args = {
   bevel: z.number().positive().optional(),
   segments: z.number().int().min(1).max(64).optional().describe("rounded boxes allow 1 to 16, revolved profiles allow 3 to 64"),
   profile: profile2d.optional().describe("simple counter clockwise x,y points for extrusion and sweeps (implicitly closed, do not repeat the first point) or radius,y points for revolution; any scale works, tolerances follow the profile size"),
-  depth: z.number().positive().optional(),
+  depth: z.number().min(0).max(1000).optional(),
   height: z.number().positive().optional(),
   major_radius: z.number().positive().optional(),
   minor_radius: z.number().positive().optional(),
@@ -813,6 +798,7 @@ const parametric_mesh_args = {
   bend_degrees: z.number().min(-360).max(360).optional(),
   mirror_axis: geometry_axis.optional(),
   mirror_plane: z.number().optional(),
+  mirror_copy: z.boolean().optional().describe("keep the original plus its reflection; default false reflects in place, without welding or boolean union"),
   shell_thickness: z.number().positive().max(1000).optional(),
   linear_count: z.number().int().min(1).max(128).optional(),
   linear_step: vector3.optional(),
@@ -831,73 +817,13 @@ const parametric_mesh_args = {
   uv_split_seams: z.boolean().optional(),
   reuse_existing: z.boolean().optional().describe("load the existing path instead of validating new parameters"),
 };
+const { path: mesh_output_path_schema, ...compound_geometry_args } = parametric_mesh_args;
 const compound_part_args = {
+  ...compound_geometry_args,
   name: z.string(),
   mesh: z.string().optional().describe("cached mesh name or mesh file path"),
   shape: parametric_shape.optional(),
-  mesh_path: z.string().optional(),
-  size: vector3.optional(),
-  opening_size: vector2.optional(),
-  opening_center: vector2.optional(),
-  openings: z.array(
-    z.object({
-      size: vector2,
-      center: vector2,
-    }),
-  ).min(1).max(16).optional(),
-  radius: z.number().positive().optional(),
-  bevel: z.number().positive().optional(),
-  segments: z.number().int().min(1).max(64).optional(),
-  profile: profile2d.optional(),
-  depth: z.number().positive().optional(),
-  height: z.number().positive().optional(),
-  major_radius: z.number().positive().optional(),
-  minor_radius: z.number().positive().optional(),
-  minor_segments: z.number().int().min(3).max(48).optional(),
-  bevel_segments: z.number().int().min(1).max(16).optional(),
-  path_points: z.array(vector3).min(2).max(64).optional(),
-  loft_profiles: z.array(profile2d).min(2).max(64).optional(),
-  sweep_scales: z.array(
-    z.number().positive().max(100),
-  ).min(2).max(64).optional(),
-  sweep_twists_degrees: z.array(
-    z.number().min(-3600).max(3600),
-  ).min(2).max(64).optional(),
-  thickness: z.number().positive().optional(),
-  border: z.number().positive().optional(),
-  inset: z.number().positive().optional(),
-  scale_start: z.number().positive().optional(),
-  scale_end: z.number().positive().optional(),
-  grid_points: z.number().int().min(2).max(256).optional(),
-  extent: z.number().positive().max(10000).optional(),
-  petal_count: z.number().int().min(3).max(64).optional(),
-  petal_segments: z.number().int().min(2).max(32).optional(),
-  modifier_pivot: vector3.optional(),
-  taper_axis: geometry_axis.optional(),
-  taper_start: z.number().positive().max(100).optional(),
-  taper_end: z.number().positive().max(100).optional(),
-  bend_axis: geometry_axis.optional(),
-  bend_radial_axis: geometry_axis.optional(),
-  bend_degrees: z.number().min(-360).max(360).optional(),
-  mirror_axis: geometry_axis.optional(),
-  mirror_plane: z.number().optional(),
-  shell_thickness: z.number().positive().max(1000).optional(),
-  linear_count: z.number().int().min(1).max(128).optional(),
-  linear_step: vector3.optional(),
-  radial_count: z.number().int().min(1).max(128).optional(),
-  radial_axis: geometry_axis.optional(),
-  radial_radius: z.number().min(0).max(10000).optional(),
-  radial_step_degrees: z.number().min(-360).max(360).optional(),
-  uv_projection: z.enum([
-    "planar",
-    "box",
-    "cylindrical",
-  ]).optional(),
-  uv_axis: geometry_axis.optional(),
-  uv_scale: vector2.optional(),
-  uv_offset: vector2.optional(),
-  uv_split_seams: z.boolean().optional(),
-  reuse_existing: z.boolean().optional(),
+  mesh_path: mesh_output_path_schema.optional(),
   position: vector3.optional(),
   rotation_euler: vector3.optional(),
   scale: vector3.optional(),
@@ -3857,7 +3783,7 @@ register_local_tool(
   "mesh_generate",
   {
     title: "mesh generate",
-    description: "Generate, modify, save, and cache one bounded procedural mesh. Supports multiple architectural openings, concave profiles, variable lofts and sweeps, shell, arrays, deformations, and UV projection.",
+    description: "Generate, modify, save, and cache one bounded procedural mesh. Includes boxes, planes, spheres, ellipsoids, hemispheres, cylinders, cones, frustums, arcs, sectors, disks, rings, tubes, architectural openings, profiles, lofts and sweeps, shell, arrays, deformations, and UV projection.",
     inputSchema: parametric_mesh_args,
     annotations: edit_tool,
     outputSchema: output_schemas.parametric_mesh,
@@ -3918,31 +3844,15 @@ register_local_tool(
     }
 
     const args = { count: items.length };
-    const keys = [
-      ...Object.keys(parametric_mesh_args),
-      "opening_count",
-      "opening_sizes",
-      "opening_centers",
-      "loft_profile_points",
-    ];
-    for (let i = 0; i < items.length; i++)
+    for (const [index, item] of items.entries())
     {
-      for (const key of keys)
+      for (const [key, value] of Object.entries(engine_mesh_args(item)))
       {
-        if (items[i][key] !== undefined && items[i][key] !== null)
-        {
-          args[`item_${i}_${key}`] = items[i][key];
-        }
+        if (value !== undefined && value !== null)
+          args[`item_${index}_${key}`] = value;
       }
     }
-
-    const result = await send_engine_command(
-      "mesh_generate_batch",
-      {
-        ...args,
-        items: args.items.map(engine_mesh_args),
-      },
-    );
+    const result = await send_engine_command("mesh_generate_batch", args);
     if (result.ok)
     {
       const generated_items =
@@ -4251,61 +4161,11 @@ register_local_tool(
       let generated = null;
       if (part.shape)
       {
-        const signature = {
-          shape: part.shape,
-          size: part.size,
-          opening_size: part.opening_size,
-          opening_center: part.opening_center,
-          openings: part.openings,
-          opening_count: part.opening_count,
-          opening_sizes: part.opening_sizes,
-          opening_centers: part.opening_centers,
-          radius: part.radius,
-          bevel: part.bevel,
-          segments: part.segments,
-          profile: part.profile,
-          depth: part.depth,
-          height: part.height,
-          major_radius: part.major_radius,
-          minor_radius: part.minor_radius,
-          minor_segments: part.minor_segments,
-          bevel_segments: part.bevel_segments,
-          path_points: part.path_points,
-          loft_profiles: part.loft_profiles,
-          loft_profile_points: part.loft_profile_points,
-          sweep_scales: part.sweep_scales,
-          sweep_twists_degrees:
-            part.sweep_twists_degrees,
-          thickness: part.thickness,
-          border: part.border,
-          inset: part.inset,
-          scale_start: part.scale_start,
-          scale_end: part.scale_end,
-          grid_points: part.grid_points,
-          extent: part.extent,
-          petal_count: part.petal_count,
-          petal_segments: part.petal_segments,
-          modifier_pivot: part.modifier_pivot,
-          taper_axis: part.taper_axis,
-          taper_start: part.taper_start,
-          taper_end: part.taper_end,
-          bend_axis: part.bend_axis,
-          bend_radial_axis: part.bend_radial_axis,
-          bend_degrees: part.bend_degrees,
-          mirror_axis: part.mirror_axis,
-          mirror_plane: part.mirror_plane,
-          shell_thickness: part.shell_thickness,
-          linear_count: part.linear_count,
-          linear_step: part.linear_step,
-          radial_count: part.radial_count,
-          radial_axis: part.radial_axis,
-          radial_step_degrees: part.radial_step_degrees,
-          uv_projection: part.uv_projection,
-          uv_axis: part.uv_axis,
-          uv_scale: part.uv_scale,
-          uv_offset: part.uv_offset,
-          uv_split_seams: part.uv_split_seams,
-        };
+        const signature = Object.fromEntries(
+          Object.keys(compound_geometry_args)
+            .filter((key) => key !== "reuse_existing")
+            .map((key) => [key, part[key]]),
+        );
         try
         {
           validate_parametric_mesh_args(signature);
@@ -4327,12 +4187,12 @@ register_local_tool(
           `${directory}/${safe_asset_name(name)}_${i}_${safe_asset_name(part.name)}_${short_hash(signature)}.mesh`;
         generated = await send_engine_command(
           "mesh_generate",
-          {
+          engine_mesh_args({
             ...signature,
             path,
             reuse_existing: uses_generated_path ||
               Boolean(part.reuse_existing),
-          },
+          }),
         );
         if (!generated.ok)
         {
@@ -5566,9 +5426,17 @@ register_local_tool(
       "Create a material and generate its textures in one call, attaching color, roughness, normal and packed maps.",
       "roughness and metalness are baked into the maps (the material scalars stay 1 and multiply the maps).",
       "clearcoat, clearcoat_roughness, ior, sheen and tiling are applied to the material after the maps are attached, so a glaze or varnish keeps its highlight.",
+      "Also supports glass absorption/thickness, emission, anisotropy rotation, flakes/pearl/coat tint and texture transforms. height is texture pixels; displacement_height controls material displacement.",
       "Returns the resolved material_path, use that path for every later material call.",
     ].join(" "),
     inputSchema: {
+      ...texture_generate_args,
+      ...Object.fromEntries([...textured_material_scalar_keys]
+        .filter((key) => key !== "height")
+        .map((key) => [key, z.number().optional()])),
+      displacement_height: z.number().min(0).optional().describe("material displacement multiplier; height is texture pixel height"),
+      color: vector4.optional().describe("linear RGBA albedo multipliers"),
+      base_color: vector4.optional(),
       name: z.string(),
       material_path: z.string().optional(),
       texture_name: z.string().optional(),
@@ -5586,7 +5454,6 @@ register_local_tool(
       sheen: z.number().min(0).max(1).optional(),
       anisotropic: z.number().min(0).max(1).optional(),
       subsurface_scattering: z.number().min(0).max(1).optional(),
-      ...texture_generate_args,
     },
     outputSchema: output_schemas.generic,
     annotations: edit_tool,
@@ -5646,30 +5513,7 @@ register_local_tool(
 
     // scalars go on after the maps, attaching a map rewrites its multiplier and only material
     // properties may reach material_set_property, generation arguments are not
-    const scalars = {};
-    for (const key of [
-      "color_r",
-      "color_g",
-      "color_b",
-      "color_a",
-      "clearcoat",
-      "clearcoat_roughness",
-      "ior",
-      "sheen",
-      "anisotropic",
-      "subsurface_scattering",
-    ])
-    {
-      if (Number.isFinite(args[key]))
-      {
-        scalars[key] = args[key];
-      }
-    }
-    if (Number.isFinite(args.tiling) && args.tiling > 0)
-    {
-      scalars.texture_tiling_x = args.tiling;
-      scalars.texture_tiling_y = args.tiling;
-    }
+    const scalars = textured_material_scalars(args);
     const applied = [];
     for (const [property, value] of Object.entries(scalars))
     {

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Component.h"
 #include "../RoadTraffic.h"
+#include "../RoadPopulation.h"
 #include "../../math/Vector3.h"
 #include <atomic>
 #include <cstdint>
@@ -84,6 +85,7 @@ namespace spartan
         bool FinishPreloadOnMainThread();
         void AdoptTemplateRoot();
         void SpawnNext();
+        void UpdatePopulation(float delta_time);
         bool SpawnWalker(uint32_t index);
         bool FindSpawnPosition(uint32_t index, math::Vector3& position, math::Vector3& heading);
         bool SampleGround(const math::Vector3& position, math::Vector3& ground_position) const;
@@ -99,6 +101,9 @@ namespace spartan
 
         std::vector<Walker> m_walkers;
         road_traffic::Network m_road_network;
+        road_traffic::LocalPopulation m_population;
+        float m_population_timer = 0.0f;
+        float m_recycle_timer = 0.0f;
         bool m_follow_roads = false;
         std::shared_ptr<Mesh> m_source_mesh;
         math::Vector3 m_bounds_min = math::Vector3(454.5f, -10.0f, -793.9f);

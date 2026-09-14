@@ -143,6 +143,7 @@ namespace spartan::island_wildlife
         }
         Entity* entity = World::CreateEntity();
         entity->SetObjectName(std::string("wildlife_") + names[species]);
+        entity->AddTag("dynamic"); // transform-driven mobility, inherited by every body part
         entity->SetTransient(true);
         entity->SetParent(root);
         entity->SetActive(false);
