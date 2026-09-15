@@ -104,6 +104,9 @@ private:
 
     // sculpting
     spartan::TerrainBrush m_brush;
+    std::unique_ptr<spartan::TerrainSculptLayer> m_sculpt_before;
+    uint64_t m_sculpt_entity_id = 0;
+    uint64_t m_sculpt_epoch = 0;
     bool m_sculpt_enabled       = false;
     bool m_heights_dirty        = false;
     uint32_t m_flat_resolution  = 128;

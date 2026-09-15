@@ -41,6 +41,8 @@ namespace spartan
         if (!optional_undo_command.has_value()) return;
         shared_ptr<Command> undo_command = optional_undo_command.value();
 
+        if (!undo_command->CanExecute()) { m_undo_buffer.Push(undo_command); SP_LOG_WARNING("Undo is waiting for terrain work to finish; retry when generation completes."); return; }
+        ++m_revision;
         // undo
         undo_command->OnRevert();
 
@@ -55,6 +57,8 @@ namespace spartan
         if (!optional_redo_command.has_value()) return;
         shared_ptr<Command> redo_command = optional_redo_command.value();
 
+        if (!redo_command->CanExecute()) { m_redo_buffer.Push(redo_command); SP_LOG_WARNING("Redo is waiting for terrain work to finish; retry when generation completes."); return; }
+        ++m_revision;
         // redo
         redo_command->OnApply();
 

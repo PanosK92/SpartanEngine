@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CommandEntityDelete.h"
 #include "../world/Entity.h"
 #include "../world/World.h"
+#include "../world/components/Terrain.h"
 SP_WARNINGS_OFF
 #include "../io/pugixml.hpp"
 SP_WARNINGS_ON
@@ -44,6 +45,12 @@ namespace spartan
         }
 
         m_entity_id = entity->GetObjectId();
+        std::vector<Entity*> descendants;
+        entity->GetDescendants(&descendants);
+        descendants.push_back(entity);
+        for (auto child : descendants)
+            if (auto terrain = child->GetComponent<Terrain>())
+                m_sculpt_snapshots[child->GetObjectId()] = terrain->GetSculptSnapshot();
 
         // store parent id for restoring hierarchy
         if (Entity* parent = entity->GetParent())
@@ -73,6 +80,14 @@ namespace spartan
 
     void CommandEntityDelete::OnRevert()
     {
+        // A delete followed by undo in the same frame has not destroyed anything
+        // yet. Cancel that removal instead of creating a second entity with the same id.
+        if (Entity* existing = World::GetEntityById(m_entity_id); existing && World::CancelPendingRemoval(existing))
+        {
+            existing->SetParent(nullptr);
+            existing->SetParent(World::GetEntityById(m_parent_id));
+            return;
+        }
         // parse xml
         pugi::xml_document doc;
         pugi::xml_parse_result result = doc.load_string(m_entity_xml.c_str());
@@ -85,7 +100,7 @@ namespace spartan
         // create entity and load from xml
         Entity* entity = World::CreateEntity();
         pugi::xml_node entity_node = doc.child("Entity");
-        entity->Load(entity_node);
+        entity->Load(entity_node, true, &m_sculpt_snapshots);
 
         // restore parent relationship
         if (m_parent_id != 0)

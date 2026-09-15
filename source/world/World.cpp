@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "pch.h"
+#include "commands/CommandStack.h"
 #include <unordered_set>
 #include "World.h"
 #include "Entity.h"
@@ -406,10 +407,23 @@ namespace spartan
             const string& directory
         )
         {
+            // Generated resources may not have a file yet. They belong to no directory.
+            if (path.empty() || directory.empty())
+            {
+                return false;
+            }
+
             filesystem::path normalized_path =
                 filesystem::absolute(path).lexically_normal();
             filesystem::path normalized_directory =
                 filesystem::absolute(directory).lexically_normal();
+
+            // Directory names commonly end in a separator, which produces an empty
+            // final component and would otherwise reject every file inside them.
+            if (normalized_directory.filename().empty() && normalized_directory.has_relative_path())
+            {
+                normalized_directory = normalized_directory.parent_path();
+            }
 
             auto path_it = normalized_path.begin();
             auto directory_it = normalized_directory.begin();
@@ -1157,6 +1171,24 @@ namespace spartan
             return;
         }
 
+        // Undo can remove an entity before the next frame publishes it. Move only
+        // those doomed additions into the removal pass; otherwise clearing the
+        // removal queue would let them appear later and survive their own undo.
+        for (auto it = entities_pending.begin(); it != entities_pending.end(); )
+        {
+            Entity* entity = *it;
+            if (entity && pending_remove.count(entity->GetObjectId()))
+            {
+                entities.push_back(entity);
+                entities_by_id[entity->GetObjectId()] = entity;
+                it = entities_pending.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
         // Also covers removals queued in edit mode before the play queue existed.
         cancel_pending_starts(pending_remove);
 
@@ -1249,6 +1281,7 @@ namespace spartan
 
     void World::Shutdown()
     {
+        CommandStack::Clear();
         Engine::SetFlag(EngineMode::Playing, false); // stop simulation
 
         // stop background world jobs before tearing down resources they may still touch
@@ -2047,7 +2080,16 @@ namespace spartan
         }
 
         SaveStateReset reset;
-        return SaveToFileInternal(move(file_path), false);
+        try
+        {
+            return SaveToFileInternal(file_path, false);
+        }
+        catch (const exception& error)
+        {
+            SP_LOG_ERROR("Failed to save world '%s': %s", file_path.c_str(), error.what());
+            ProgressTracker::GetProgress(ProgressType::World).Complete();
+            return false;
+        }
     }
 
     bool World::SaveToFileAsync(string file_path)
@@ -2065,13 +2107,21 @@ namespace spartan
         }
 
         // snapshot live world state on the caller, only the xml write runs on a worker
-        if (!SaveToFileInternal(move(file_path), true))
+        try
         {
-            world_io_state.store(WorldIoState::Idle, memory_order_release);
-            return false;
+            if (SaveToFileInternal(file_path, true))
+            {
+                return true; // the worker now owns resetting the save state
+            }
+        }
+        catch (const exception& error)
+        {
+            SP_LOG_ERROR("Failed to save world '%s': %s", file_path.c_str(), error.what());
+            ProgressTracker::GetProgress(ProgressType::World).Complete();
         }
 
-        return true;
+        world_io_state.store(WorldIoState::Idle, memory_order_release);
+        return false;
     }
 
     bool World::IsSaving()
@@ -2083,6 +2133,12 @@ namespace spartan
 
     bool World::SaveToFileInternal(string file_path, bool defer_xml_write)
     {
+        if (file_path.empty())
+        {
+            SP_LOG_ERROR("Cannot save a world without a file path");
+            return false;
+        }
+
         if (FileSystem::GetExtensionFromFilePath(file_path) != EXTENSION_WORLD)
         {
             file_path += string(EXTENSION_WORLD);
@@ -3124,6 +3180,19 @@ namespace spartan
         }
 
         resolve = true;
+    }
+
+    bool World::CancelPendingRemoval(Entity* entity)
+    {
+        if (!entity) return false;
+        lock_guard<mutex> lock(entity_access_mutex);
+        if (!pending_remove.count(entity->GetObjectId())) return false;
+        vector<Entity*> descendants;
+        entity->GetDescendants(&descendants);
+        descendants.push_back(entity);
+        for (auto descendant : descendants) pending_remove.erase(descendant->GetObjectId());
+        resolve = true;
+        return true;
     }
 
     void World::RemoveEntityImmediate(Entity* entity_to_remove)

@@ -274,6 +274,9 @@ namespace spartan
         // saved next to the world, brush strokes record into it, pads and roads stay derived
         const TerrainSculptLayer& GetSculptLayer() const { return m_sculpt; }
         void ClearSculptLayer();
+        void RestoreSculptLayer(const TerrainSculptLayer& layer);
+        void LoadEditorState(pugi::xml_node& node, const TerrainSculptLayer* sculpt = nullptr);
+        std::shared_ptr<const TerrainSculptLayer> GetSculptSnapshot() const;
         void SaveSculptLayer(const std::string& directory) const;
         // tile_N child -> 0-based index, or -1
         static int ParseTileIndex(Entity* entity);
@@ -397,6 +400,7 @@ namespace spartan
         bool LoadTerrainMapsFromCache(uint64_t surface_hash);
         void SaveTerrainMapsToCache(uint64_t surface_hash) const;
         // sculpt layer plumbing, the lattice follows the dense grid so cell writes are exact
+        void LoadState(pugi::xml_node& node, bool load_sculpt);
         void EnsureSculptGrid();
         // add the layer onto freshly generated ground, true when any cell moved
         bool ApplySculptLayer();
@@ -656,6 +660,7 @@ namespace spartan
         std::vector<math::Vector3> m_positions_seed;
         // hand sculpting, survives generate, saved with the world, never cleared by Clear()
         TerrainSculptLayer m_sculpt;
+        mutable std::shared_ptr<const TerrainSculptLayer> m_sculpt_snapshot;
         // pads under buildings, replayed after generate from the seed heightfield
         std::vector<TerrainPlatform> m_platforms;
         bool m_live_pad_active           = false;

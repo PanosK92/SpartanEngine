@@ -698,7 +698,7 @@ namespace spartan
         }
     }
 
-    void Entity::Load(pugi::xml_node& node, bool load_children)
+    void Entity::Load(pugi::xml_node& node, bool load_children, const TerrainSculptSnapshots* sculpt_snapshots)
     {
         // self
         {
@@ -818,7 +818,11 @@ namespace spartan
                 {
                     if (Component* component = AddComponent(type))
                     {
-                        component->Load(component_node);
+                        auto sculpt = sculpt_snapshots ? sculpt_snapshots->find(GetObjectId()) : TerrainSculptSnapshots::const_iterator();
+                        if (type == ComponentType::Terrain && sculpt_snapshots && sculpt != sculpt_snapshots->end())
+                            static_cast<Terrain*>(component)->LoadEditorState(component_node, sculpt->second.get());
+                        else
+                            component->Load(component_node);
                     }
                 }
             }
@@ -830,7 +834,7 @@ namespace spartan
             for (pugi::xml_node child_node = node.child("Entity"); child_node; child_node = child_node.next_sibling("Entity"))
             {
                 Entity* child = World::CreateEntity();
-                child->Load(child_node);
+                child->Load(child_node, true, sculpt_snapshots);
                 child->SetParent(this);
             }
         }

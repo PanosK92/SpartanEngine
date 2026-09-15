@@ -917,7 +917,7 @@ namespace spartan
         default_camera = nullptr;
 
         // stop any vibration
-        Input::GamepadVibrate(0.0f, 0.0f);
+        Input::GamepadStopFeedback();
     }
 
     std::vector<Car*> Car::GetAll()
@@ -1057,6 +1057,8 @@ namespace spartan
 
     void Car::PrepareForPlayStop()
     {
+        if (m_is_occupied) Input::GamepadStopFeedback();
+        m_haptic_initialized = false;
         if (m_visualization_preset == CarVisualizationPreset::Skeleton)
         {
             SetVisualizationPreset(CarVisualizationPreset::Full);
@@ -2247,6 +2249,8 @@ namespace spartan
         }
 
         m_is_occupied = true;
+        m_haptic_initialized = false;
+        m_haptic_left = m_haptic_right = m_haptic_shift = 0.0f;
         m_chase_camera = {};
 
         // disable player physics controller so it doesn't interfere with driving
@@ -2417,7 +2421,7 @@ namespace spartan
         }
 
         // stop vibration
-        Input::GamepadVibrate(0.0f, 0.0f);
+        Input::GamepadStopFeedback();
     }
 
     void Car::SetThrottle(float value)
@@ -2496,6 +2500,9 @@ namespace spartan
             return;
         }
 
+        m_haptic_initialized = false;
+        m_haptic_left = m_haptic_right = m_haptic_shift = 0.0f;
+        if (m_is_occupied) Input::GamepadStopFeedback();
         spawn_point->Place(m_vehicle_entity);
         m_spawn_error_logged = false;
         m_chase_camera = {};
@@ -3520,7 +3527,10 @@ namespace spartan
                 "Brake\tDown\tL2\n"
                 "Steer\tL/R\tLStick\n"
                 "Hbrk\tSpace\tCircle\n"
-                "Shift\tPgUp/Dn\tL1/R1\n"
+                "Shift\tPgUp/Dn\tR1/L1\n"
+                "Auto/Man\t-\tDpadLeft\n"
+                "Telemetry\tF3\tTouchpad\n"
+                "Feedback\t-\tCreate\n"
                 "Light\tL\tDpadUp\n"
                 "View\tV\tTri\n"
                 "ReCam\tC\tR3\n"
@@ -3664,67 +3674,114 @@ namespace spartan
         }
 
         // toggle telemetry window
-        if (Input::GetKeyDown(KeyCode::F3))
+        if (Input::GetKeyDown(KeyCode::F3) || Input::GetKeyDown(KeyCode::Touchpad))
         {
             m_show_telemetry = !m_show_telemetry;
         }
 
+        if (Input::GetKeyDown(KeyCode::Back))
+        {
+            m_controller_feedback_enabled = !m_controller_feedback_enabled;
+        }
+        if (!m_externally_controlled && Input::GetKeyDown(KeyCode::DPad_Left))
+        {
+            if (auto* simulation = physics->GetVehicleSimulation())
+                simulation->set_manual_transmission(!simulation->get_manual_transmission());
+        }
+
         // manual gear shifting (gran turismo style: L1/pgdn down, R1/pgup up)
-        if (!m_externally_controlled && (Input::GetKeyDown(KeyCode::Left_Shoulder) || Input::GetKeyDown(KeyCode::Page_Down)))
+        if (!m_externally_controlled && (Input::GetKeyDown(KeyCode::Left_Shoulder) || Input::GetKeyDown(KeyCode::Paddle2) || Input::GetKeyDown(KeyCode::Page_Down)))
         {
             physics->ShiftDown();
         }
-        if (!m_externally_controlled && (Input::GetKeyDown(KeyCode::Right_Shoulder) || Input::GetKeyDown(KeyCode::Page_Up)))
+        if (!m_externally_controlled && (Input::GetKeyDown(KeyCode::Right_Shoulder) || Input::GetKeyDown(KeyCode::Paddle1) || Input::GetKeyDown(KeyCode::Page_Up)))
         {
             physics->ShiftUp();
         }
 
-        // haptic feedback
-        if (is_gamepad_connected)
+        TickControllerFeedback(physics, dt);
+    }
+
+    void Car::TickControllerFeedback(Physics* physics, float dt)
+    {
+        auto* simulation = physics->GetVehicleSimulation();
+        if (!simulation || !Input::IsGamepadConnected() || Input::IsBlockedByUi() ||
+            m_externally_controlled || !m_controller_feedback_enabled)
         {
-            float left_motor  = 0.0f;
-            float right_motor = 0.0f;
-
-            float max_slip_ratio = 0.0f;
-            float max_slip_angle = 0.0f;
-            for (int i = 0; i < 4; i++)
-            {
-                WheelIndex wheel = static_cast<WheelIndex>(i);
-                max_slip_ratio = std::max(max_slip_ratio, fabsf(physics->GetWheelSlipRatio(wheel)));
-                max_slip_angle = std::max(max_slip_angle, fabsf(physics->GetWheelSlipAngle(wheel)));
-            }
-
-            if (max_slip_ratio > 0.15f)
-            {
-                float slip_intensity = std::clamp((max_slip_ratio - 0.15f) * 1.5f, 0.0f, 1.0f);
-                left_motor += slip_intensity * 0.5f;
-            }
-
-            if (max_slip_angle > 0.15f)
-            {
-                float drift_intensity = std::clamp((max_slip_angle - 0.15f) * 2.0f, 0.0f, 1.0f);
-                left_motor  += drift_intensity * 0.3f;
-                right_motor += drift_intensity * 0.2f;
-            }
-
-            if (physics->IsAbsActiveAny())
-            {
-                static float abs_pulse = 0.0f;
-                abs_pulse += dt * 25.0f;
-                float pulse_value = (sinf(abs_pulse * math::pi * 2.0f) + 1.0f) * 0.5f;
-                right_motor += pulse_value * 0.6f;
-                left_motor  += pulse_value * 0.3f;
-            }
-
-            if (brake > 0.8f && !physics->IsAbsActiveAny())
-            {
-                right_motor += (brake - 0.8f) * 0.4f;
-            }
-
-            left_motor  = std::clamp(left_motor, 0.0f, 1.0f);
-            right_motor = std::clamp(right_motor, 0.0f, 1.0f);
-            Input::GamepadVibrate(left_motor, right_motor);
+            Input::GamepadStopFeedback();
+            m_haptic_initialized = false;
+            m_haptic_left = m_haptic_right = m_haptic_shift = 0.0f;
+            return;
         }
+
+        // Discontinuities (reset, pause, long frame) must not feel like a landing.
+        if (dt <= 0.0f || dt > 0.1f)
+        {
+            Input::GamepadStopFeedback();
+            m_haptic_initialized = false;
+            m_haptic_left = m_haptic_right = m_haptic_shift = 0.0f;
+            return;
+        }
+        const float speed = physics->GetLinearVelocity().Length();
+        const float motion = std::clamp(speed / 6.0f, 0.0f, 1.0f);
+        float slip = 0.0f;
+        float drift = 0.0f;
+        float road = 0.0f;
+        float bump = 0.0f;
+        bool grounded = false;
+        for (int i = 0; i < 4; ++i)
+        {
+            const float compression = simulation->get_wheel_compression(i);
+            const bool contact = simulation->is_wheel_grounded(i);
+            if (contact)
+            {
+                grounded = true;
+                const float load = std::clamp(physics->GetWheelTireLoad(static_cast<WheelIndex>(i)) / 1500.0f, 0.0f, 1.0f);
+                const float tread_speed = fabsf(simulation->get_wheel_angular_velocity(i)) * simulation->get_wheel_effective_radius(i);
+                const float tire_motion = std::clamp((std::max(speed, tread_speed) - 0.5f) / 3.0f, 0.0f, 1.0f);
+                slip = std::max(slip, std::clamp((fabsf(physics->GetWheelSlipRatio(static_cast<WheelIndex>(i))) - 0.12f) * 1.5f, 0.0f, 1.0f) * load * tire_motion);
+                drift = std::max(drift, std::clamp((fabsf(physics->GetWheelSlipAngle(static_cast<WheelIndex>(i))) - 0.09f) * 2.0f, 0.0f, 1.0f) * load * motion);
+                if (m_haptic_initialized)
+                    bump = std::max(bump, std::clamp(fabsf(compression - m_haptic_compression[i]) / dt * 0.25f, 0.0f, 0.65f) * load);
+                const auto surface = simulation->get_wheel_surface(i);
+                float roughness = 0.015f;
+                if (surface == car::surface_gravel) roughness = 0.18f;
+                if (surface == car::surface_dirt) roughness = 0.12f;
+                if (surface == car::surface_grass) roughness = 0.09f;
+                road += roughness * motion * load * 0.25f;
+            }
+            m_haptic_compression[i] = compression;
+        }
+
+        const int gear = simulation->get_current_gear();
+        if (m_haptic_initialized && gear != m_haptic_gear)
+            m_haptic_shift = 0.4f;
+        m_haptic_gear = gear;
+        m_haptic_initialized = true;
+        m_haptic_shift *= expf(-dt / 0.065f);
+        m_haptic_phase = fmodf(m_haptic_phase + dt, 10.0f);
+
+        const float throttle = physics->GetVehicleThrottle();
+        const float brake = physics->GetVehicleBrake();
+        const float rpm = std::clamp((physics->GetEngineRPM() - physics->GetIdleRPM()) /
+            std::max(physics->GetRedlineRPM() - physics->GetIdleRPM(), 1.0f), 0.0f, 1.0f);
+        const float load = std::clamp(fabsf(simulation->get_engine_output_torque()) /
+            std::max(simulation->get_spec().engine_peak_torque, 1.0f), 0.0f, 1.0f);
+        const bool abs = grounded && brake > 0.01f && simulation->is_abs_active_any();
+        const bool tc = grounded && throttle > 0.01f && simulation->is_tc_active();
+        const bool limiter = simulation->get_rev_limiter_active();
+        const float pulse = 0.5f + 0.5f * sinf(m_haptic_phase * 25.0f * math::pi * 2.0f);
+        const float engine = simulation->get_engine_running() ? (0.015f + load * 0.055f) * (0.6f + rpm * 0.4f) : 0.0f;
+        const float texture = road * (0.55f + 0.45f * sinf(m_haptic_phase * 43.0f * math::pi * 2.0f));
+        const float low = std::clamp(engine + bump + texture + drift * 0.2f + m_haptic_shift, 0.0f, 0.85f);
+        const float high = std::clamp(slip * 0.3f + drift * 0.15f + texture + bump * 0.35f +
+            (abs ? pulse * 0.35f : 0.0f) + (tc ? pulse * 0.2f : 0.0f) + (limiter ? pulse * 0.15f : 0.0f), 0.0f, 0.85f);
+        // Fast attack and a short release preserve impacts without frame-to-frame buzzing.
+        m_haptic_left = std::max(low, m_haptic_left * expf(-dt / 0.045f));
+        m_haptic_right = std::max(high, m_haptic_right * expf(-dt / 0.045f));
+        Input::GamepadDrivingFeedback(m_haptic_left, m_haptic_right,
+            grounded ? 0.25f + brake * 0.4f : 0.1f,
+            0.12f + load * 0.25f, abs, tc, rpm, limiter);
     }
 
     void Car::TickSounds()

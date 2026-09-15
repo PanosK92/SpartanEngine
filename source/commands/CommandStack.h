@@ -43,13 +43,19 @@ public:
 
         // Make sure to clear the redo buffer if you apply a new command, to preserve the time continuum.
         m_redo_buffer.Clear();
+        ++m_revision;
     }
 
     // push an already-created command to the undo stack
     static void Push(std::shared_ptr<Command> command) {
         m_undo_buffer.Push(command);
         m_redo_buffer.Clear();
+        ++m_revision;
     }
+
+    static uint64_t Revision() { return m_revision; }
+    static uint64_t Epoch() { return m_epoch; }
+    static void Clear() { m_undo_buffer.Clear(); m_redo_buffer.Clear(); ++m_revision; ++m_epoch; }
 
     /** Undoes the latest applied command */
     static void Undo();
@@ -58,6 +64,8 @@ public:
     static void Redo();
 
 protected:
+    inline static uint64_t m_revision = 0;
+    inline static uint64_t m_epoch = 0;
     static spartan::CircularStack<std::shared_ptr<Command>> m_undo_buffer;
     static spartan::CircularStack<std::shared_ptr<Command>> m_redo_buffer;
 };

@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "pch.h"
 #include "SmokeTest.h"
+// history validation includes
+#include "../editor/EditorHistory.h"
+#include "../core/Window.h"
 #include "../core/Engine.h"
 #include "../core/Timer.h"
 #include "../logging/Log.h"
@@ -75,6 +78,102 @@ namespace spartan
 
     void SmokeTest::OnFirstFrameCompleted()
     {
+        // BEGIN temporary history validation
+        if (Engine::HasArgument("-ci_test_editor_history"))
+        {
+            Window::Hide();
+            Engine::SetFlag(EngineMode::Playing, false);
+            CommandStack::Clear();
+            std::ofstream result("editor_history_test.txt");
+            auto check = [&](bool passed, const char* label) { result << (passed ? "PASS " : "FAIL ") << label << std::endl; };
+            auto entity = World::CreateEntity();
+            entity->SetPositionLocal(math::Vector3(3, 4, 5));
+            { editor_history::EntityScope edit(entity, true); entity->SetPositionLocal(math::Vector3(10, 20, 30)); entity->SetScaleLocal(math::Vector3(2, 3, 4)); }
+            CommandStack::Undo(); check(entity->GetPositionLocal() == math::Vector3(3, 4, 5) && entity->GetScaleLocal() == math::Vector3::One, "transform undo");
+            CommandStack::Redo(); check(entity->GetPositionLocal() == math::Vector3(10, 20, 30) && entity->GetScaleLocal() == math::Vector3(2, 3, 4), "transform redo");
+            { editor_history::EntityScope edit(entity, true); entity->AddComponent<Light>()->SetIntensity(1234.0f); }
+            CommandStack::Undo(); check(!entity->GetComponent<Light>(), "component add undo");
+            CommandStack::Redo(); check(entity->GetComponent<Light>() && entity->GetComponent<Light>()->GetIntensityPhotometric() == 1234.0f, "component add redo");
+            { editor_history::EntityScope edit(entity, true); entity->GetComponent<Light>()->SetIntensity(5678.0f); }
+            CommandStack::Undo(); check(entity->GetComponent<Light>()->GetIntensityPhotometric() == 1234.0f, "component property undo");
+            CommandStack::Redo(); check(entity->GetComponent<Light>()->GetIntensityPhotometric() == 5678.0f, "component property redo");
+            { editor_history::EntityScope edit(entity, true); entity->RemoveComponent<Light>(); }
+            CommandStack::Undo(); check(entity->GetComponent<Light>() && entity->GetComponent<Light>()->GetIntensityPhotometric() == 5678.0f, "component remove undo");
+            CommandStack::Redo(); check(!entity->GetComponent<Light>(), "component remove redo");
+            auto material = std::make_shared<Material>(); material->SetProperty(MaterialProperty::Roughness, 0.7f);
+            { editor_history::MaterialScope edit(material.get()); material->SetProperty(MaterialProperty::Roughness, 0.2f); }
+            CommandStack::Undo(); check(material->GetProperty(MaterialProperty::Roughness) == 0.7f, "material undo");
+            CommandStack::Redo(); check(material->GetProperty(MaterialProperty::Roughness) == 0.2f, "material redo");
+            auto terrain_entity = World::CreateEntity(); auto terrain = terrain_entity->AddComponent<Terrain>();
+            terrain->SetSpawnBiomeProps(false); terrain->SetTileCountAxis(1); terrain->CreateFlat(9, 9);
+            float original = 0, sculpted = 0, undone = 0, redone = 0;
+            terrain->SampleHeight(0, 0, original);
+            auto before = terrain->GetSculptLayer(); TerrainBrush brush; brush.radius = 60; brush.strength = 2;
+            terrain->ApplyBrush(math::Vector3(0, original, 0), brush); terrain->FlushHeightEdits(true); terrain->SampleHeight(0, 0, sculpted);
+            editor_history::Sculpt(terrain, before);
+            CommandStack::Undo(); terrain->SampleHeight(0, 0, undone);
+            check(sculpted > original && std::abs(undone - original) < 0.0001f, "sculpt undo");
+            CommandStack::Redo(); terrain->SampleHeight(0, 0, redone); check(std::abs(redone - sculpted) < 0.0001f, "sculpt redo");
+            auto clear_before = terrain->GetSculptLayer(); terrain->ClearSculptLayer(); editor_history::Sculpt(terrain, clear_before);
+            CommandStack::Undo(); terrain->SampleHeight(0, 0, undone); check(std::abs(undone - sculpted) < 0.0001f, "clear sculpt undo");
+            CommandStack::Redo(); terrain->SampleHeight(0, 0, redone); check(std::abs(redone - original) < 0.0001f, "clear sculpt redo");
+            // Separate gestures on the same control must not merge with one another.
+            auto& context = *ImGui::GetCurrentContext();
+            const auto saved_id = context.ActiveId; const auto saved_timer = context.ActiveIdTimer; const auto saved_time = context.Time;
+            CommandStack::Clear();
+            auto start_position = entity->GetPositionLocal();
+            context.ActiveId = 1234; context.Time = 10; context.ActiveIdTimer = 0.1f;
+            { editor_history::EntityScope edit(entity, true); entity->SetPositionLocal(math::Vector3(40, 0, 0)); }
+            context.Time = 10.1; context.ActiveIdTimer = 0.2f;
+            { editor_history::EntityScope edit(entity, true); entity->SetPositionLocal(math::Vector3(50, 0, 0)); }
+            CommandStack::Undo(); check(entity->GetPositionLocal() == start_position, "continuous drag groups into one undo");
+            CommandStack::Redo(); check(entity->GetPositionLocal() == math::Vector3(50, 0, 0), "continuous drag redo uses final value");
+            context.Time = 20; context.ActiveIdTimer = 0.1f;
+            { editor_history::EntityScope edit(entity, true); entity->SetPositionLocal(math::Vector3(60, 0, 0)); }
+            context.Time = 30; context.ActiveIdTimer = 0.1f;
+            { editor_history::EntityScope edit(entity, true); entity->SetPositionLocal(math::Vector3(70, 0, 0)); }
+            CommandStack::Undo(); check(entity->GetPositionLocal() == math::Vector3(60, 0, 0), "consecutive separate drags do not merge");
+            CommandStack::Undo(); check(entity->GetPositionLocal() == math::Vector3(50, 0, 0), "separate drag keeps separate undo step");
+            context.ActiveId = saved_id; context.ActiveIdTimer = saved_timer; context.Time = saved_time;
+            auto revision = CommandStack::Revision(); { editor_history::EntityScope edit(entity, true); }
+            check(CommandStack::Revision() == revision, "unchanged inspector does not create history");
+            CommandStack::Clear();
+            auto parent = World::CreateEntity(); parent->SetObjectName("history parent");
+            auto child = World::CreateEntity(); child->SetObjectName("history child"); child->SetParent(parent);
+            auto parent_id = parent->GetObjectId(); auto child_id = child->GetObjectId();
+            editor_history::Deleted({parent, child}); CommandStack::Undo(); World::Tick();
+            check(World::GetEntityById(parent_id) == parent && World::GetEntityById(child_id) == child, "delete undo in same frame preserves entity identities");
+            CommandStack::Clear();
+            World::ProcessPendingAdditions();
+            editor_history::Deleted({parent, child}); World::Tick();
+            check(!World::GetEntityById(parent_id) && !World::GetEntityById(child_id), "delete selected parent and child");
+            CommandStack::Undo(); parent = World::GetEntityById(parent_id); child = World::GetEntityById(child_id);
+            check(parent && child && child->GetParent() == parent && parent->GetChildrenCount() == 1, "one undo restores hierarchy without duplicate children");
+            CommandStack::Redo(); World::Tick(); check(!World::GetEntityById(parent_id), "hierarchy delete redo");
+            auto created = World::CreateEntity(); created->SetObjectName("created history entity");
+            created->AddComponent<Light>()->SetIntensity(2468.0f); const auto created_id = created->GetObjectId();
+            editor_history::Created(created); CommandStack::Undo(); World::Tick(); check(!World::GetEntityById(created_id), "creation undo");
+            CommandStack::Redo(); created = World::GetEntityById(created_id);
+            check(created && created->GetComponent<Light>() && created->GetComponent<Light>()->GetIntensityPhotometric() == 2468.0f, "creation redo preserves configuration");
+            terrain->ApplyBrush(math::Vector3(0, original, 0), brush); terrain->FlushHeightEdits(true); terrain->SampleHeight(0, 0, sculpted);
+            const auto terrain_id = terrain_entity->GetObjectId();
+            { editor_history::EntityScope edit(terrain_entity, true); terrain_entity->RemoveComponent<Terrain>(); }
+            CommandStack::Undo(); terrain = terrain_entity->GetComponent<Terrain>(); terrain->SampleHeight(0, 0, undone);
+            check(std::abs(undone - sculpted) < 0.0001f, "terrain component undo preserves unsaved sculpt");
+            CommandStack::Clear(); editor_history::Deleted({terrain_entity}); World::Tick();
+            CommandStack::Undo(); terrain_entity = World::GetEntityById(terrain_id); terrain = terrain_entity ? terrain_entity->GetComponent<Terrain>() : nullptr;
+            if (terrain) terrain->SampleHeight(0, 0, undone);
+            check(terrain && std::abs(undone - sculpted) < 0.0001f, "terrain entity undo preserves unsaved sculpt");
+            check(!World::SaveToFileAsync("") && !World::IsSaving(), "empty save fails without leaving busy state");
+            check(World::SaveToFile("project/history_save_validation.world"), "save with generated resources succeeds");
+            check(World::SaveToFileAsync("project/history_save_validation.world"), "async save with generated resources succeeds");
+            for (int i = 0; i < 1000 && World::IsSaving(); ++i) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            pugi::xml_document saved_world;
+            check(!World::IsSaving() && saved_world.load_file("project/history_save_validation.world") && saved_world.child("World"), "async save writes valid world and clears busy state");
+            CommandStack::Clear(); result << "COMPLETE" << std::endl; result.close(); Window::Close(); return;
+        }
+        // END temporary history validation
+
         if (Engine::HasArgument("-ci_test"))
         {
             RunInitialTests();

@@ -176,6 +176,7 @@ namespace spartan
 
         // tick helpers
         void TickInput();
+        void TickControllerFeedback(Physics* physics, float dt);
         void TickSounds();
         void TickChaseCamera();
         void TickEnterExit();
@@ -235,6 +236,12 @@ namespace spartan
         // haptic feedback state
         float m_haptic_left  = 0.0f;
         float m_haptic_right = 0.0f;
+        float m_haptic_shift = 0.0f;
+        float m_haptic_phase = 0.0f;
+        float m_haptic_compression[4] = {};
+        int m_haptic_gear = 0;
+        bool m_haptic_initialized = false;
+        bool m_controller_feedback_enabled = true;
 
         // static registry of all cars
         static std::vector<Car*> s_cars;

@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "pch.h"
+#include "../EditorHistory.h"
 #include "Viewport.h"
 #include "AssetBrowser.h"
 #include "WorldViewer.h"
@@ -384,6 +385,7 @@ void Viewport::OnTickVisible()
 
                 // snapshot the loaded hierarchy as the prefab base so later edits persist as overrides
                 entity->MarkPrefabBaseline();
+                editor_history::Created(entity);
             }
             else
             {
@@ -398,6 +400,17 @@ void Viewport::OnTickVisible()
     {
         if (preview_entity_id != 0)
         {
+            if (auto entity = World::GetEntityById(preview_entity_id))
+            {
+                auto render = entity->GetComponent<Render>();
+                if (render && render->GetMaterial())
+                {
+                    auto material = std::static_pointer_cast<Material>(render->GetMaterial()->shared_from_this());
+                    revert_material_preview();
+                    editor_history::EntityScope history(entity, true);
+                    render->SetMaterial(material);
+                }
+            }
             clear_preview_state();
         }
         else if (payload->path[0] != '\0')
@@ -454,6 +467,10 @@ void Viewport::OnTickVisible()
             {
                 if (entity)
                 {
+                    bool selected_ancestor = false;
+                    for (auto parent = entity->GetParent(); parent; parent = parent->GetParent())
+                        if (std::find(selected_entities.begin(), selected_entities.end(), parent) != selected_entities.end()) { selected_ancestor = true; break; }
+                    if (selected_ancestor) continue;
                     Entity* cloned = entity->Clone();
                     if (cloned)
                     {
@@ -462,6 +479,7 @@ void Viewport::OnTickVisible()
                 }
             }
 
+            editor_history::Created(cloned_entities);
             // select the cloned entities instead
             if (!cloned_entities.empty())
             {

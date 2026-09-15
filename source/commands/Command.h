@@ -31,6 +31,8 @@ namespace spartan
     class Command
     {
     public:
+        virtual ~Command() = default;
+        virtual bool CanExecute() const { return true; }
         virtual void OnApply()  = 0;
         virtual void OnRevert() = 0;
     };

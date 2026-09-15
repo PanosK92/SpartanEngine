@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "pch.h"
 #include "TerrainEditor.h"
+#include "../EditorHistory.h"
 #include "Viewport.h"
 #include "FileDialog.h"
 #include "../Editor.h"
@@ -263,6 +264,7 @@ TerrainEditor::~TerrainEditor() = default;
 void TerrainEditor::OnTick()
 {
     // the base widget pushes this as the window alpha, -1 means leave the style alone
+    editor_history::terrain_jobs = m_scatter_running;
     m_alpha = m_opacity < 1.0f ? m_opacity : k_widget_default_property;
 
     s_sculpt_active = m_visible && m_sculpt_enabled;
@@ -282,6 +284,8 @@ void TerrainEditor::OnTickVisible()
         return;
     }
 
+    editor_history::EntityScope history(terrain->GetEntity(), true);
+    ImGui::BeginDisabled(!editor_history::Ready(terrain->GetEntity()->GetObjectId()));
     DrawSummary(terrain);
     DrawActionBar(terrain);
 
@@ -306,6 +310,7 @@ void TerrainEditor::OnTickVisible()
         }
     }
     ImGui::EndChild();
+    ImGui::EndDisabled();
 
     TickBrowse();
 }
@@ -515,6 +520,7 @@ void TerrainEditor::DrawNoTerrain()
             if (Terrain* terrain = entity->AddComponent<Terrain>())
             {
                 terrain->CreateFlat(max(m_flat_resolution, 2u), max(m_flat_resolution, 2u));
+                editor_history::Created(entity);
             }
         }
         ImGuiSp::tooltip("spawns a terrain entity with a flat heightfield at sea level, ready to sculpt");
@@ -564,7 +570,7 @@ void TerrainEditor::TickScatter()
     }
 
     Terrain* terrain = ResolveTerrain();
-    if (!terrain || !terrain->HasHeightfield() || terrain->IsGenerating())
+    if (!terrain || !terrain->HasHeightfield() || !editor_history::Ready(terrain->GetEntity()->GetObjectId()))
     {
         return;
     }
@@ -836,7 +842,8 @@ void TerrainEditor::DrawSculpt(Terrain* terrain)
                 snprintf(label, sizeof(label), "Reset tile_%d", tile + 1);
                 if (ImGuiSp::button(label, ImVec2(-1.0f, 0.0f)))
                 {
-                    terrain->RegenerateTile(static_cast<uint32_t>(tile));
+                    auto before = terrain->GetSculptLayer();
+                    if (terrain->RegenerateTile(static_cast<uint32_t>(tile))) editor_history::Sculpt(terrain, std::move(before));
                     m_heights_dirty = false;
                 }
                 ImGuiSp::tooltip("remove the sculpt layer from this one tile, the procedural ground comes back");
@@ -890,7 +897,9 @@ void TerrainEditor::DrawSculpt(Terrain* terrain)
         ImGui::BeginDisabled(sculpt.IsEmpty() || terrain->IsGenerating());
         if (ImGuiSp::button("Clear Sculpt Layer", ImVec2(-1.0f, 0.0f)))
         {
+            auto before = terrain->GetSculptLayer();
             terrain->ClearSculptLayer();
+            editor_history::Sculpt(terrain, std::move(before));
             m_heights_dirty = false;
             MarkScatterDirty();
         }
@@ -1788,6 +1797,24 @@ void TerrainEditor::DrawBrushRing(const Vector3& hit) const
 
 void TerrainEditor::TickSculpting()
 {
+    if (m_sculpt_epoch != CommandStack::Epoch()) m_sculpt_before.reset();
+    // Finish even if the brush leaves the terrain, the window closes or selection changes.
+    Terrain* selected_terrain = ResolveTerrain();
+    if (m_sculpt_before && (!Input::GetKey(KeyCode::Click_Left) || !m_sculpt_enabled || !m_visible ||
+        !selected_terrain || selected_terrain->GetEntity()->GetObjectId() != m_sculpt_entity_id))
+    {
+        if (auto entity = World::GetEntityById(m_sculpt_entity_id))
+            if (auto terrain = entity->GetComponent<Terrain>())
+            {
+                terrain->FlushHeightEdits(true);
+                terrain->FlushPendingProps();
+                editor_history::Sculpt(terrain, std::move(*m_sculpt_before));
+            }
+        m_sculpt_before.reset();
+        m_heights_dirty = false;
+        m_rebuild_timer = 0.0f;
+    }
+
     if (!m_sculpt_enabled || !m_visible)
     {
         s_sculpt_active = false;
@@ -1795,7 +1822,7 @@ void TerrainEditor::TickSculpting()
     }
 
     Terrain* terrain = ResolveTerrain();
-    if (!terrain || !terrain->HasHeightfield() || terrain->IsGenerating())
+    if (!terrain || !terrain->HasHeightfield() || !editor_history::Ready(terrain->GetEntity()->GetObjectId()))
     {
         return;
     }
@@ -1832,6 +1859,12 @@ void TerrainEditor::TickSculpting()
         TerrainBrush stroke = m_brush;
         const float dt      = static_cast<float>(Timer::GetDeltaTimeSec());
         stroke.strength     = m_strength_per_second * dt;
+        if (!m_sculpt_before)
+        {
+            m_sculpt_before = std::make_unique<TerrainSculptLayer>(terrain->GetSculptLayer());
+            m_sculpt_entity_id = terrain->GetEntity()->GetObjectId();
+            m_sculpt_epoch = CommandStack::Epoch();
+        }
         terrain->ApplyBrush(hit, stroke);
         m_heights_dirty = true;
 

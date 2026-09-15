@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Definitions.h"
 #include "../commands/Command.h"
 #include <string>
+#include "../world/Entity.h"
 //==============================
 
 namespace spartan
@@ -43,5 +44,6 @@ namespace spartan
         uint64_t m_entity_id    = 0;
         uint64_t m_parent_id    = 0;
         std::string m_entity_xml;
+        TerrainSculptSnapshots m_sculpt_snapshots;
     };
 }

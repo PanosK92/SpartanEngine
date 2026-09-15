@@ -2982,6 +2982,18 @@ namespace spartan
 
     void Terrain::Load(pugi::xml_node& node)
     {
+        LoadState(node, true);
+    }
+
+    void Terrain::LoadEditorState(pugi::xml_node& node, const TerrainSculptLayer* sculpt)
+    {
+        if (sculpt) { m_sculpt = *sculpt; m_sculpt_snapshot.reset(); }
+        LoadState(node, false);
+    }
+
+    void Terrain::LoadState(pugi::xml_node& node, bool load_sculpt)
+    {
+        m_height_map_seed = nullptr;
         // height map seed texture
         string height_map_path = node.attribute("height_map_path").as_string("");
         if (!height_map_path.empty())
@@ -3010,8 +3022,8 @@ namespace spartan
         m_blend_height  = node.attribute("blend_height").as_float(0.35f);
 
         // hand sculpting, applied on top of whatever generate produces
-        m_sculpt.Clear();
-        if (m_sculpt.LoadFromFile(get_terrain_sculpt_path()))
+        if (load_sculpt) { m_sculpt.Clear(); m_sculpt_snapshot.reset(); }
+        if (load_sculpt && m_sculpt.LoadFromFile(get_terrain_sculpt_path()))
         {
             SP_LOG_INFO("loaded sculpt layer: %zu tiles", m_sculpt.GetTileCount());
         }
@@ -4580,6 +4592,7 @@ namespace spartan
 
     void Terrain::ApplyBrush(const Vector3& world_center, const TerrainBrush& brush)
     {
+        m_sculpt_snapshot.reset();
         if (!HasHeightfield())
         {
             return;
@@ -6116,6 +6129,7 @@ namespace spartan
 
         // lattice cell (x, z) is dense cell (x, z), see FlushHeightEdits for the position formula
         const TerrainGridMapping mapping = GetGridMapping();
+        if (!m_sculpt.MatchesGrid(-mapping.offset_x, -mapping.offset_z, mapping.scale_x, mapping.scale_z)) m_sculpt_snapshot.reset();
         m_sculpt.SetGrid(-mapping.offset_x, -mapping.offset_z, mapping.scale_x, mapping.scale_z);
     }
 
@@ -6220,6 +6234,7 @@ namespace spartan
         const float rect_min_z = static_cast<float>(z0) * mapping.scale_z - mapping.offset_z;
         const float rect_max_x = static_cast<float>(x1) * mapping.scale_x - mapping.offset_x;
         const float rect_max_z = static_cast<float>(z1) * mapping.scale_z - mapping.offset_z;
+        m_sculpt_snapshot.reset();
         m_sculpt.ClearRect(rect_min_x, rect_min_z, rect_max_x, rect_max_z);
         if (!changed)
         {
@@ -6281,6 +6296,7 @@ namespace spartan
 
     void Terrain::ClearSculptLayer()
     {
+        m_sculpt_snapshot.reset();
         float min_x = 0.0f;
         float min_z = 0.0f;
         float max_x = 0.0f;
@@ -6291,6 +6307,53 @@ namespace spartan
         }
 
         m_sculpt.Clear();
+    }
+
+    std::shared_ptr<const TerrainSculptLayer> Terrain::GetSculptSnapshot() const
+    {
+        if (!m_sculpt_snapshot) m_sculpt_snapshot = std::make_shared<TerrainSculptLayer>(m_sculpt);
+        return m_sculpt_snapshot;
+    }
+
+    void Terrain::RestoreSculptLayer(const TerrainSculptLayer& layer)
+    {
+        m_sculpt_snapshot.reset();
+        if (!HasHeightfield()) { m_sculpt = layer; return; }
+        float min_x = 0, min_z = 0, max_x = 0, max_z = 0;
+        float next_min_x = 0, next_min_z = 0, next_max_x = 0, next_max_z = 0;
+        const bool previous = m_sculpt.GetBounds(min_x, min_z, max_x, max_z);
+        const bool next = layer.GetBounds(next_min_x, next_min_z, next_max_x, next_max_z);
+        if (!previous && !next) { m_sculpt = layer; return; }
+        if (!previous) { min_x = next_min_x; min_z = next_min_z; max_x = next_max_x; max_z = next_max_z; }
+        else if (next)
+        {
+            min_x = min(min_x, next_min_x); min_z = min(min_z, next_min_z);
+            max_x = max(max_x, next_max_x); max_z = max(max_z, next_max_z);
+        }
+        const auto mapping = GetGridMapping();
+        const int32_t x0 = clamp(static_cast<int32_t>(floorf((min_x + mapping.offset_x) / mapping.scale_x)), 0, static_cast<int32_t>(m_dense_width) - 1);
+        const int32_t z0 = clamp(static_cast<int32_t>(floorf((min_z + mapping.offset_z) / mapping.scale_z)), 0, static_cast<int32_t>(m_dense_height) - 1);
+        const int32_t x1 = clamp(static_cast<int32_t>(ceilf((max_x + mapping.offset_x) / mapping.scale_x)), 0, static_cast<int32_t>(m_dense_width) - 1);
+        const int32_t z1 = clamp(static_cast<int32_t>(ceilf((max_z + mapping.offset_z) / mapping.scale_z)), 0, static_cast<int32_t>(m_dense_height) - 1);
+        const bool seed_ok = m_positions_seed.size() == m_positions.size();
+        for (int32_t z = z0; z <= z1; ++z)
+            for (int32_t x = x0; x <= x1; ++x)
+            {
+                const float delta = layer.GetCell(x, z) - m_sculpt.GetCell(x, z);
+                if (delta == 0.0f) continue;
+                const size_t index = static_cast<size_t>(z) * m_dense_width + x;
+                if (seed_ok) { m_positions_seed[index].y += delta; m_positions[index].y = m_positions_seed[index].y; }
+                else m_positions[index].y += delta;
+            }
+        m_sculpt = layer;
+        for (const auto& pad : m_platforms)
+            PaintPadFromSeed(pad.center_x, pad.center_z, pad.half_x, pad.half_z, pad.yaw, pad.height, pad.margin, false);
+        if (m_live_pad_active)
+            PaintPadFromSeed(m_live_pad.center_x, m_live_pad.center_z, m_live_pad.half_x, m_live_pad.half_z, m_live_pad.yaw, m_live_pad.height, m_live_pad.margin, false);
+        MarkHeightsDirty(x0, z0, x1, z1);
+        MarkSplineHeightCarvesDirty();
+        FlushHeightEdits(true);
+        FlushPendingProps();
     }
 
     void Terrain::SaveSculptLayer(const string& directory) const
@@ -9441,6 +9504,7 @@ namespace spartan
 
         worker_scope worker(m_worker_busy, m_worker_thread);
 
+        m_height_map_seed = nullptr;
         Clear();
         ClearRoadCarve();
 

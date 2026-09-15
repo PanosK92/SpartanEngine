@@ -103,6 +103,10 @@ namespace spartan
 
     void Input::SetBlockedByUi(bool blocked)
     {
+        if (blocked && !m_blocked_by_ui)
+        {
+            GamepadStopFeedback();
+        }
         m_blocked_by_ui = blocked;
     }
 
@@ -147,6 +151,13 @@ namespace spartan
                 // determine if this is a wheel or gamepad
                 bool is_wheel                = (joystick_type == SDL_JOYSTICK_TYPE_WHEEL || name.find("wheel") != string::npos);
                 ControllerType detected_type = is_wheel ? ControllerType::SteeringWheel : ControllerType::Gamepad;
+
+                // An unmapped joystick is not an SDL_Gamepad handle.
+                if (!is_wheel && !SDL_IsGamepad(instance_id))
+                {
+                    SDL_CloseJoystick(joystick);
+                    continue;
+                }
 
                 // skip if detected type doesn't match what we're looking for
                 if (detected_type != controller->type)

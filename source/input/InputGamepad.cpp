@@ -41,6 +41,38 @@ namespace spartan
         math::Vector2 controller_thumb_right = math::Vector2::Zero;
         float controller_trigger_left        = 0.0f;
         float controller_trigger_right       = 0.0f;
+        bool feedback_active = false;
+        bool effects_failed = false;
+        Uint64 feedback_refreshed = 0;
+        Uint64 feedback_sent = 0;
+        std::array<Uint8, 47> last_effect = {};
+
+        // SDL's PS5 effect payload (test/testcontroller.c), without transport headers.
+        // SDL supplies USB/Bluetooth framing and CRC. Trigger zones follow
+        // https://github.com/nowrep/dualsensectl/blob/main/main.c (trigger_bitpacking_array).
+        void encode_trigger(Uint8* effect, float resistance, bool pulse)
+        {
+            effect[0] = 0x05; // explicitly release the actuator
+            if (!std::isfinite(resistance) || resistance <= 0.0f)
+                return;
+
+            effect[0] = pulse ? 0x26 : 0x21;
+            uint16_t zones = 0;
+            uint32_t forces = 0;
+            for (int zone = 1; zone < 10; ++zone)
+            {
+                // Light initial travel, progressively firmer toward full pedal travel.
+                const float ramp = pulse ? 1.0f : (0.35f + 0.65f * static_cast<float>(zone) / 9.0f);
+                const int force = std::clamp(static_cast<int>(std::clamp(resistance, 0.0f, 1.0f) * ramp * 7.0f + 1.0f), 1, 8);
+                zones |= static_cast<uint16_t>(1u << zone);
+                forces |= static_cast<uint32_t>(force - 1) << (3 * zone);
+            }
+            effect[1] = static_cast<Uint8>(zones);
+            effect[2] = static_cast<Uint8>(zones >> 8);
+            for (int byte = 0; byte < 4; ++byte)
+                effect[3 + byte] = static_cast<Uint8>(forces >> (8 * byte));
+            effect[9] = pulse ? 25 : 0;
+        }
 
         float get_normalized_axis_value(const Controller& controller, uint32_t axis)
         {
@@ -52,6 +84,10 @@ namespace spartan
             {
                 // get raw axis value
                 int16_t value = SDL_GetGamepadAxis(static_cast<SDL_Gamepad*>(controller.sdl_pointer), static_cast<SDL_GamepadAxis>(axis));
+
+                // Pedals are unipolar; a stick dead zone discards 24% of their travel.
+                if (axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER || axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER)
+                    return std::max(0.0f, static_cast<float>(value) / 32767.0f);
         
                 // account for deadzone
                 static const uint16_t deadzone = 8000; // a good default as per sdl_gamepad.h
@@ -81,8 +117,15 @@ namespace spartan
     {
         if (!gamepad.is_connected)
         {
+            controller_thumb_left = controller_thumb_right = Vector2::Zero;
+            controller_trigger_left = controller_trigger_right = 0.0f;
+            std::fill(m_keys.begin() + key_index_gamepad, m_keys.end(), false);
             return;
         }
+
+        // Trigger resistance persists on the device until explicitly cleared.
+        if (feedback_active && (IsBlockedByUi() || !SDL_GetKeyboardFocus() || SDL_GetTicks() - feedback_refreshed > 250))
+            GamepadStopFeedback();
     
         SDL_Gamepad* sdl_gamepad = static_cast<SDL_Gamepad*>(gamepad.sdl_pointer);
     
@@ -120,8 +163,19 @@ namespace spartan
 
     void Input::OnEventGamepad(void* event)
     {
+        const uint32_t previous_id = gamepad.instance_id;
         gamepad.type = ControllerType::Gamepad;
         CheckDeviceState(event, &gamepad);
+        if (previous_id != gamepad.instance_id)
+        {
+            feedback_active = false;
+            effects_failed = false;
+            feedback_sent = 0;
+            last_effect = {};
+            controller_thumb_left = controller_thumb_right = Vector2::Zero;
+            controller_trigger_left = controller_trigger_right = 0.0f;
+            std::fill(m_keys.begin() + key_index_gamepad, m_keys.end(), false);
+        }
     }
 
     bool Input::GamepadVibrate(const float left_motor_speed, const float right_motor_speed)
@@ -131,17 +185,84 @@ namespace spartan
             return false;
         }
 
-        Uint16 low_frequency_rumble  = static_cast<uint16_t>(clamp(left_motor_speed, 0.0f, 1.0f) * 65535);  // convert [0, 1] to [0, 65535]
-        Uint16 high_frequency_rumble = static_cast<uint16_t>(clamp(right_motor_speed, 0.0f, 1.0f) * 65535); // convert [0, 1] to [0, 65535]
-        Uint32 duration_ms           = 0xFFFFFFFF;
+        Uint16 low_frequency_rumble  = std::isfinite(left_motor_speed) ? static_cast<uint16_t>(clamp(left_motor_speed, 0.0f, 1.0f) * 65535) : 0;
+        Uint16 high_frequency_rumble = std::isfinite(right_motor_speed) ? static_cast<uint16_t>(clamp(right_motor_speed, 0.0f, 1.0f) * 65535) : 0;
+        Uint32 duration_ms           = 200; // a stalled or stopped simulation must not leave rumble running
+
+        if (!SDL_GetBooleanProperty(SDL_GetGamepadProperties(static_cast<SDL_Gamepad*>(gamepad.sdl_pointer)), SDL_PROP_GAMEPAD_CAP_RUMBLE_BOOLEAN, false))
+            return false;
 
         if (!SDL_RumbleGamepad(static_cast<SDL_Gamepad*>(gamepad.sdl_pointer), low_frequency_rumble, high_frequency_rumble, duration_ms))
         {
-            SP_LOG_ERROR("Failed to vibrate controller");
             return false;
         }
 
         return true;
+    }
+
+    void Input::GamepadDrivingFeedback(float low, float high, float brake_resistance,
+        float throttle_resistance, bool abs, bool traction_control, float rpm, bool limiter)
+    {
+        if (!gamepad.is_connected || IsBlockedByUi() || !SDL_GetKeyboardFocus())
+        {
+            GamepadStopFeedback();
+            return;
+        }
+
+        feedback_refreshed = SDL_GetTicks();
+        if (feedback_active && feedback_refreshed - feedback_sent < 16)
+            return; // bound output traffic independently of rendering frame rate
+        feedback_sent = feedback_refreshed;
+        feedback_active = true;
+        GamepadVibrate(low, high);
+
+        SDL_Gamepad* pad = static_cast<SDL_Gamepad*>(gamepad.sdl_pointer);
+        if (SDL_GetGamepadType(pad) != SDL_GAMEPAD_TYPE_PS5 || effects_failed)
+            return;
+
+        std::array<Uint8, 47> effect = {};
+        effect[0] = 0x0c; // right and left adaptive triggers only; preserve SDL rumble
+        encode_trigger(effect.data() + 10, throttle_resistance, traction_control);
+        encode_trigger(effect.data() + 21, brake_resistance, abs);
+        if (effect != last_effect)
+        {
+            if (!SDL_SendGamepadEffect(pad, effect.data(), static_cast<int>(effect.size())))
+            {
+                effects_failed = true;
+                SP_LOG_WARNING("PS5 adaptive triggers unavailable: %s", SDL_GetError());
+            }
+            else
+            {
+                last_effect = effect;
+            }
+        }
+
+        if (SDL_GetBooleanProperty(SDL_GetGamepadProperties(pad), SDL_PROP_GAMEPAD_CAP_RGB_LED_BOOLEAN, false))
+        {
+            const float revs = std::isfinite(rpm) ? std::clamp(rpm, 0.0f, 1.0f) : 0.0f;
+            const bool flash = limiter && (feedback_sent / 80) % 2 == 0;
+            SDL_SetGamepadLED(pad, flash ? 255 : static_cast<Uint8>(255.0f * revs),
+                flash ? 255 : static_cast<Uint8>(180.0f * (1.0f - revs)), flash ? 255 : 24);
+        }
+    }
+
+    void Input::GamepadStopFeedback()
+    {
+        if (gamepad.is_connected && feedback_active)
+        {
+            GamepadVibrate(0.0f, 0.0f);
+            SDL_Gamepad* pad = static_cast<SDL_Gamepad*>(gamepad.sdl_pointer);
+            if (SDL_GetGamepadType(pad) == SDL_GAMEPAD_TYPE_PS5)
+            {
+                std::array<Uint8, 47> effect = {};
+                effect[0] = 0x0c;
+                effect[10] = effect[21] = 0x05;
+                SDL_SendGamepadEffect(pad, effect.data(), static_cast<int>(effect.size()));
+                SDL_SetGamepadLED(pad, 0, 0, 64);
+            }
+        }
+        feedback_active = false;
+        last_effect = {};
     }
 
     bool Input::IsGamepadConnected()

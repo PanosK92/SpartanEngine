@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "pch.h"
 #include "Properties.h"
+#include "commands/CommandStack.h"
+#include "../EditorHistory.h"
 #include "Window.h"
 #include "FileDialog.h"
 #include "../imgui/ImGui_EditorUi.h"
@@ -88,7 +90,24 @@ namespace
                 dialog = make_unique<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_All);
             }
 
-            callback = on_selected;
+            Entity* target = World::GetCamera() ? World::GetCamera()->GetSelectedEntity() : nullptr;
+            const uint64_t id = target ? target->GetObjectId() : 0;
+            const uint64_t epoch = CommandStack::Epoch();
+            auto material = inspected_material.lock();
+            if (!material && target)
+                if (auto render = target->GetComponent<Render>(); render && render->GetMaterial())
+                    material = std::static_pointer_cast<Material>(render->GetMaterial()->shared_from_this());
+            callback = [on_selected, id, epoch, material](const string& path)
+            {
+                if (epoch != CommandStack::Epoch()) return;
+                auto entity = World::GetEntityById(id);
+                if (id && !entity) return;
+                std::unique_ptr<editor_history::EntityScope> entity_history;
+                std::unique_ptr<editor_history::MaterialScope> material_history;
+                if (entity) entity_history = std::make_unique<editor_history::EntityScope>(entity, true);
+                if (material) material_history = std::make_unique<editor_history::MaterialScope>(material.get());
+                on_selected(path);
+            };
             visible  = true;
         }
 
@@ -134,7 +153,8 @@ namespace
 
     // context menu state
     string context_menu_id;
-    Component* copied_component = nullptr;
+    std::string copied_component;
+    ComponentType copied_component_type = ComponentType::Max;
 
     // deferred component removal - storing the id prevents a use-after-free
     // crash when the component is destroyed while its Show* function is still on the stack
@@ -210,15 +230,25 @@ namespace
 
             if (ImGui::MenuItem("Copy Attributes"))
             {
-                copied_component = component;
+                pugi::xml_document document;
+                auto node = document.append_child("component");
+                component->Save(node);
+                copied_component = editor_history::Xml(node);
+                copied_component_type = component->GetType();
             }
 
-            ImGui::BeginDisabled(!copied_component || (copied_component && copied_component->GetType() != component->GetType()));
+            ImGui::BeginDisabled(copied_component.empty() || copied_component_type != component->GetType());
             if (ImGui::MenuItem("Paste Attributes"))
             {
-                if (copied_component && copied_component->GetType() == component->GetType())
+                if (!copied_component.empty() && copied_component_type == component->GetType())
                 {
-                    component->SetAttributes(copied_component->GetAttributes());
+                    pugi::xml_document document;
+                    if (document.load_string(copied_component.c_str()))
+                    {
+                        auto node = document.child("component");
+                        if (component->GetType() == ComponentType::Terrain) static_cast<Terrain*>(component)->LoadEditorState(node);
+                        else component->Load(node);
+                    }
                 }
             }
             ImGui::EndDisabled();
@@ -495,6 +525,7 @@ namespace
 
         entity->SetPositionLocal(position);
         entity->SetScaleLocal(scale);
+
     }
 
     // file/resource selector with browse button
@@ -579,6 +610,7 @@ void Properties::OnTickVisible()
         }
         else if (Entity* entity = get_selected_entity())
         {
+            editor_history::EntityScope history(entity, true);
             // push entity id so each entity gets its own collapse state for components
             ImGui::PushID(static_cast<int>(entity->GetObjectId()));
 
@@ -1607,6 +1639,7 @@ void Properties::ShowMaterial(Material* material, Render* render) const
         return;
     }
 
+    editor_history::MaterialScope history(material);
     const bool default_open = render == nullptr;
     if (component_begin("Material", design::accent_material(), nullptr, false, true, default_open))
     {

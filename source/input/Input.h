@@ -151,6 +151,10 @@ namespace spartan
         static const math::Vector2& GetGamepadThumbStickRight();
         static float GetGamepadTriggerLeft();
         static float GetGamepadTriggerRight();
+        // Normalized driving feedback; adaptive triggers are used on native PS5 pads.
+        static void GamepadDrivingFeedback(float low, float high, float brake_resistance,
+            float throttle_resistance, bool abs, bool traction_control, float rpm, bool limiter);
+        static void GamepadStopFeedback();
 
         // steering wheel
         static float GetSteeringWheelSteering();

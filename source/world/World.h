@@ -94,6 +94,7 @@ namespace spartan
 
         static bool EntityExists(Entity* entity);
         static void RemoveEntity(Entity* entity);
+        static bool CancelPendingRemoval(Entity* entity);
         static void RemoveEntityImmediate(Entity* entity);
         static void GetRootEntities(std::vector<Entity*>& entities);
         static void MoveEntityToIndex(Entity* entity, uint32_t index);

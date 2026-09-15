@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //======================================
 #include "pch.h"
+#include "../EditorHistory.h"
 #include "AssetViewer.h"
 #include "../imgui/ImGui_Extension.h"
 #include "../imgui/ImGui_Style.h"
@@ -3456,8 +3457,43 @@ void AssetViewer::RefreshPreviewMeshGeometry()
     m_preview_dirty = true;
 }
 
+AssetViewer::GeometryState AssetViewer::CaptureGeometry() const
+{
+    return {m_loaded_path, m_working_sub_meshes, m_working_lods, m_working_modified,
+        m_working_lods_built, m_working_lods_attempted, m_working_lods_scanned, m_preview_lod};
+}
+
+void AssetViewer::RestoreGeometry(const GeometryState& state)
+{
+    if (m_loaded_path != state.path)
+    {
+        std::string error;
+        if (!PreviewPath(state.path, error)) { SP_LOG_WARNING("Cannot restore mesh edit: %s", error.c_str()); return; }
+    }
+    m_working_sub_meshes = state.meshes;
+    m_working_lods = state.lods;
+    m_working_modified = state.modified;
+    m_working_lods_built = state.built;
+    m_working_lods_attempted = state.attempted;
+    m_working_lods_scanned = state.scanned;
+    m_preview_lod = state.preview_lod;
+    FlattenWorkingGeometry();
+    RefreshPreviewMeshGeometry();
+    m_visible = true;
+    m_preview_dirty = true;
+}
+
+void AssetViewer::RecordGeometry(const GeometryState& before)
+{
+    if (before.meshes.empty()) return;
+    auto after = CaptureGeometry();
+    editor_history::Record("geometry:" + before.path, [this, before] { RestoreGeometry(before); },
+        [this, after] { RestoreGeometry(after); });
+}
+
 void AssetViewer::SimplifyWorkingGeometry(const float ratio)
 {
+    const auto before = CaptureGeometry();
     // always start from the source so the slider stays absolute, welding first
     // because simplification cannot collapse edges across duplicated vertices
     LoadWorkingGeometry();
@@ -3510,10 +3546,12 @@ void AssetViewer::SimplifyWorkingGeometry(const float ratio)
     m_working_lods_scanned = true;
     FlattenWorkingGeometry();
     RefreshPreviewMeshGeometry();
+    RecordGeometry(before);
 }
 
 void AssetViewer::OptimizeWorkingGeometry()
 {
+    const auto before = CaptureGeometry();
     if (m_working_sub_meshes.empty())
     {
         return;
@@ -3535,10 +3573,12 @@ void AssetViewer::OptimizeWorkingGeometry()
     m_preview_lod = 0;
     FlattenWorkingGeometry();
     RefreshPreviewMeshGeometry();
+    RecordGeometry(before);
 }
 
 void AssetViewer::BuildWorkingLods()
 {
+    const auto before = CaptureGeometry();
     m_working_lods.clear();
     m_working_lods_built = false;
     m_working_lods_scanned = true;
@@ -3644,6 +3684,7 @@ void AssetViewer::BuildWorkingLods()
 
     FlattenWorkingGeometry();
     RefreshPreviewMeshGeometry();
+    RecordGeometry(before);
 }
 
 bool AssetViewer::SaveWorkingGeometry()
@@ -8552,7 +8593,9 @@ void AssetViewer::DrawMeshTools()
         )
     )
     {
+        const auto before = CaptureGeometry();
         LoadWorkingGeometry();
+        RecordGeometry(before);
     }
     ImGuiSp::tooltip(
         "Discard simplification and rebuilt LOD previews"
@@ -9969,8 +10012,12 @@ bool AssetViewer::EditMesh(
             m_status = "Built working mesh lods";
             break;
         case MeshAction::Revert:
+        {
+            const auto before = CaptureGeometry();
             LoadWorkingGeometry();
+            RecordGeometry(before);
             m_status = "Reverted unsaved mesh changes";
+        }
             break;
         case MeshAction::SetOptions:
             m_status = "Updated mesh edit options";

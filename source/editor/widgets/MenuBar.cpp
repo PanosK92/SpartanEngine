@@ -294,7 +294,7 @@ namespace
                     spartan::CommandStack::Undo();
                 }
 
-                if (ImGui::MenuItem("Redo", "Ctrl+Shift+Z"))
+                if (ImGui::MenuItem("Redo", "Ctrl+Y / Ctrl+Shift+Z"))
                 {
                     spartan::CommandStack::Redo();
                 }
@@ -1185,6 +1185,15 @@ void MenuBar::Initialize(Editor* _editor)
 
 void MenuBar::Tick()
 {
+    // Global history shortcuts also work when the hierarchy window is closed.
+    if (ImGui::GetIO().KeyCtrl && !ImGuiSp::editor_shortcuts_blocked() && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+    {
+        if (ImGui::IsKeyPressed(ImGuiKey_Y, false) || (ImGui::GetIO().KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z, false)))
+            spartan::CommandStack::Redo();
+        else if (ImGui::IsKeyPressed(ImGuiKey_Z, false))
+            spartan::CommandStack::Undo();
+    }
+
     // keyboard shortcuts
     {
         const bool keyboard_captured = ImGui::GetIO().WantTextInput || ImGui::GetIO().WantCaptureKeyboard;

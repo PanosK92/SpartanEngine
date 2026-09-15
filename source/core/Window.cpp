@@ -222,6 +222,8 @@ namespace spartan
 
             if (!SDL_WasInit(SDL_INIT_GAMEPAD))
             {
+                SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5, "1");
+                SDL_SetHint(SDL_HINT_JOYSTICK_ENHANCED_REPORTS, "1");
                 if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD))
                 {
                     SP_LOG_ERROR("Failed to initialise SDL gamepad subsystem: %s.", SDL_GetError());

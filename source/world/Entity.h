@@ -40,6 +40,8 @@ namespace pugi
 namespace spartan
 {
     class Render;
+    class TerrainSculptLayer;
+    using TerrainSculptSnapshots = std::unordered_map<uint64_t, std::shared_ptr<const TerrainSculptLayer>>;
 
     class Entity : public SpartanObject
     {
@@ -67,7 +69,7 @@ namespace spartan
         // io
         void Save(pugi::xml_node& node);
         // load_children false skips nested Entity nodes, used by the flattened world loader
-        void Load(pugi::xml_node& node, bool load_children = true);
+        void Load(pugi::xml_node& node, bool load_children = true, const TerrainSculptSnapshots* sculpt_snapshots = nullptr);
 
         // active
         bool GetActive()

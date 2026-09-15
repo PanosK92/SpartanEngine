@@ -65862,7 +65862,7 @@
       </volume>
      </Entity>
      <Entity name="Vrachionas and western villages" id="9026000000000000003" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_highlands">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.0912000015" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.04560000075" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="-15308.1641" bb_min_y="-12" bb_min_z="-6480.81592" bb_max_x="-1719.39551" bb_max_y="1000" bb_max_z="7100.8667" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -66155,7 +66155,7 @@
       </volume>
      </Entity>
      <Entity name="Vrachionas and western villages" id="9026000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_highlands">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.0912000015" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.04560000075" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="-3185.38989" bb_min_y="-12" bb_min_z="4797.83984" bb_max_x="-3119.00879" bb_max_y="1000" bb_max_z="4837.5" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -66783,7 +66783,7 @@
       </volume>
      </Entity>
      <Entity name="Volimes and Skinari" id="9026000000000000009" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_north">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.0432000011" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.02160000055" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="-16286.4697" bb_min_y="-12" bb_min_z="2208.61304" bb_max_x="-5901.30811" bb_max_y="1000" bb_max_z="12955.3281" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -67079,7 +67079,7 @@
       </volume>
      </Entity>
      <Entity name="Volimes and Skinari" id="9026000000000000010" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_north">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.0432000011" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.02160000055" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="-8056.61035" bb_min_y="-12" bb_min_z="10401.1074" bb_max_x="-7834.52148" bb_max_y="1000" bb_max_z="10530.7988" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -67590,7 +67590,7 @@
       </volume>
      </Entity>
      <Entity name="Alykes, Tragaki and Tsilivi" id="9026000000000000018" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_east">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.192000002" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.096000001" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="-2915.89551" bb_min_y="-12" bb_min_z="4662.87451" bb_max_x="-2868.90283" bb_max_y="1000" bb_max_z="4719.81396" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -67602,7 +67602,7 @@
       </volume>
      </Entity>
      <Entity name="Alykes, Tragaki and Tsilivi" id="9026000000000000019" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_east">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.192000002" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.096000001" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="-2872.00537" bb_min_y="-12" bb_min_z="1371.84387" bb_max_x="5409.89111" bb_max_y="1000" bb_max_z="5177.01562" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -67737,7 +67737,7 @@
       </volume>
      </Entity>
      <Entity name="Alykes, Tragaki and Tsilivi" id="9026000000000000020" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_east">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.192000002" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.096000001" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="-2250" bb_min_y="-12" bb_min_z="4450.63428" bb_max_x="-2163.56763" bb_max_y="1000" bb_max_z="4494.10156" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -67749,7 +67749,7 @@
       </volume>
      </Entity>
      <Entity name="Alykes, Tragaki and Tsilivi" id="9026000000000000021" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_east">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.192000002" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.096000001" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="-2479.67847" bb_min_y="-12" bb_min_z="4506.23291" bb_max_x="-2423.8125" bb_max_y="1000" bb_max_z="4562.5" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -67761,7 +67761,7 @@
       </volume>
      </Entity>
      <Entity name="Alykes, Tragaki and Tsilivi" id="9026000000000000022" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_east">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.192000002" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.096000001" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="-1757.45959" bb_min_y="-12" bb_min_z="4530.04053" bb_max_x="-1717.46228" bb_max_y="1000" bb_max_z="4569.95947" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -67971,7 +67971,7 @@
       </volume>
      </Entity>
      <Entity name="Central olive plain" id="9026000000000000029" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_plain">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.263999999" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.1319999995" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="-5786.03662" bb_min_y="-12" bb_min_z="-6098.23633" bb_max_x="5027.65283" bb_max_y="1000" bb_max_z="1730.57385" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -68103,7 +68103,7 @@
       </volume>
      </Entity>
      <Entity name="Laganas, Kalamaki and airport plain" id="9026000000000000032" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_south">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.119999997" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.0599999985" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="3035.3125" bb_min_y="-12" bb_min_z="-7558.78125" bb_max_x="12004.5059" bb_max_y="1000" bb_max_z="-1078.61194" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -68548,7 +68548,7 @@
       </volume>
      </Entity>
      <Entity name="Skopos and Vasilikos" id="9026000000000000038" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_vasilikos">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.211199999" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.1055999995" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="11578.7227" bb_min_y="-12" bb_min_z="-8025.68018" bb_max_x="17379.6328" bb_max_y="1000" bb_max_z="-2857.80713" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -68727,7 +68727,7 @@
       </volume>
      </Entity>
      <Entity name="Skopos and Vasilikos" id="9026000000000000039" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_vasilikos">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.211199999" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.1055999995" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="16640.3867" bb_min_y="-12" bb_min_z="-8301.82129" bb_max_x="17040.8828" bb_max_y="1000" bb_max_z="-8050.96777" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -68745,7 +68745,7 @@
       </volume>
      </Entity>
      <Entity name="Skopos and Vasilikos" id="9026000000000000040" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_vasilikos">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.211199999" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.1055999995" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="12889.4902" bb_min_y="-12" bb_min_z="-7933.24365" bb_max_x="13616.3281" bb_max_y="1000" bb_max_z="-7590.26807" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -68769,7 +68769,7 @@
       </volume>
      </Entity>
      <Entity name="Skopos and Vasilikos" id="9026000000000000041" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_vasilikos">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.211199999" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.1055999995" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="16892.9219" bb_min_y="-12" bb_min_z="-5494.31641" bb_max_x="17204.6445" bb_max_y="1000" bb_max_z="-5387.5" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -69319,7 +69319,7 @@
       </volume>
      </Entity>
      <Entity name="Keri and the southwest" id="9026000000000000048" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_keri">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.143999994" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.071999997" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="-6510.604" bb_min_y="-12" bb_min_z="-13025.3936" bb_max_x="5419.6084" bb_max_y="1000" bb_max_z="-5916.38184" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>
@@ -69594,7 +69594,7 @@
       </volume>
      </Entity>
      <Entity name="Keri and the southwest" id="9026000000000000049" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="soundscape_region,soundscape_district_keri">
-      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.143999994" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
+      <audio_source path="project/soundscapes/cicadas.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.071999997" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="true" ambient_profile="1" />
       <volume bb_min_x="5968.85303" bb_min_y="-12" bb_min_z="-9679.54883" bb_max_x="6722.9917" bb_max_y="1000" bb_max_z="-9240.4209" reverb_enabled="false" audio_fade_distance="180" audio_boundary_only="false" audio_group="island_cicadas">
        <Options />
        <AudioPolygon>

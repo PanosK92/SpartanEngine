@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "world/components/Camera.h"
 #include "world/components/ParticleSystem.h"
 #include "commands/CommandStack.h"
+#include "../EditorHistory.h"
 #include "commands/CommandEntityDelete.h"
 #include "input/Input.h"
 #include "../imgui/ImGui_Extension.h"
@@ -54,7 +55,7 @@ namespace
     Entity* entity_clicked = nullptr;
     Entity* entity_hovered = nullptr;
     ImGuiSp::DragDropPayload drag_drop_payload;
-    Entity* entity_copied    = nullptr;
+    uint64_t entity_copied_id = 0;
     ImGuiTextFilter entity_filter;
     unordered_set<uint64_t> filtered_entity_ids;
     uint32_t entity_count       = 0;
@@ -265,11 +266,13 @@ namespace
             entity->SetParent(parent);
         }
 
+        editor_history::Created(entity);
         return entity;
     }
 
     void rename_entity_inline(Entity* entity, float width)
     {
+        editor_history::EntityScope history(entity);
         if (rename_request_focus)
         {
             ImGui::SetKeyboardFocusHere();
@@ -499,6 +502,7 @@ void WorldViewer::TreeShow()
                 const uint64_t entity_id = *(const uint64_t*)payload->Data;
                 if (Entity* dropped_entity = World::GetEntityById(entity_id))
                 {
+                    editor_history::EntityScope history(dropped_entity);
                     if (reorder_target_entity && dropped_entity->GetObjectId() != reorder_target_entity->GetObjectId())
                     {
                         // reorder: move entity to new position
@@ -789,25 +793,13 @@ void WorldViewer::TreeAddEntity(Entity* entity)
                 const uint64_t entity_id = *(const uint64_t*)payload->Data;
                 if (Entity* dropped_entity = World::GetEntityById(entity_id))
                 {
+                    editor_history::EntityScope history(dropped_entity);
                     if (dropped_entity->GetObjectId() != entity->GetObjectId())
                     {
-                        // parent to this entity
-                        if (entity->GetParent() == dropped_entity)
+                        // Reject cycles instead of silently rearranging other descendants.
+                        if (entity->IsDescendantOf(dropped_entity))
                         {
-                            entity->SetParent(nullptr);
-                            dropped_entity->SetParent(entity);
-                        }
-                        else if (entity->IsDescendantOf(dropped_entity))
-                        {
-                            Entity* old_parent = entity->GetParent();
-                            if (!old_parent || old_parent != dropped_entity)
-                            {
-                                entity->SetParent(dropped_entity);
-                            }
-                            else
-                            {
-                                SP_LOG_WARNING("cannot make %s a child of %s due to circular parenting.", entity->GetObjectName().c_str(), dropped_entity->GetObjectName().c_str());
-                            }
+                            SP_LOG_WARNING("Cannot parent an entity to its own descendant.");
                         }
                         else
                         {
@@ -1015,9 +1007,10 @@ void WorldViewer::PopupContextMenu() const
 
     if (ImGui::MenuItem("Copy") && on_entity && !multiple_selected)
     {
-        entity_copied = selected_entity;
+        entity_copied_id = selected_entity->GetObjectId();
     }
 
+    Entity* entity_copied = World::GetEntityById(entity_copied_id);
     if (ImGui::MenuItem("Paste") && entity_copied)
     {
         Entity* cloned = entity_copied->Clone();
@@ -1044,6 +1037,7 @@ void WorldViewer::PopupContextMenu() const
                 }
             }
             cloned->SetObjectName(base_name + "_" + std::to_string(copy_number));
+            editor_history::Created(cloned);
         }
     }
 
@@ -1067,13 +1061,7 @@ void WorldViewer::PopupContextMenu() const
         {
             // delete all selected entities
             std::vector<Entity*> to_delete = camera->GetSelectedEntities();
-            for (Entity* entity : to_delete)
-            {
-                if (entity)
-                {
-                    ActionEntityDelete(entity);
-                }
-            }
+            editor_history::Deleted(to_delete);
             camera->ClearSelection();
         }
         else
@@ -1191,13 +1179,7 @@ void WorldViewer::HandleKeyShortcuts()
         {
             // copy the vector since we're modifying it
             std::vector<Entity*> to_delete = camera->GetSelectedEntities();
-            for (Entity* entity : to_delete)
-            {
-                if (entity)
-                {
-                    ActionEntityDelete(entity);
-                }
-            }
+            editor_history::Deleted(to_delete);
             camera->ClearSelection();
         }
     }
@@ -1210,19 +1192,6 @@ void WorldViewer::HandleKeyShortcuts()
         MenuBar::ShowWorldLoadDialog();
     }
 
-    // Undo and Redo: Ctrl + Z, Ctrl + Shift + Z
-    if (Input::GetKey(KeyCode::Ctrl_Left) && Input::GetKeyDown(KeyCode::Z))
-    {
-        if (Input::GetKey(KeyCode::Shift_Left))
-        {
-            CommandStack::Redo();
-        }
-        else
-        {
-            CommandStack::Undo();
-        }
-    }
-
     // Copy: Ctrl + C
     if (Input::GetKey(KeyCode::Ctrl_Left) && Input::GetKeyDown(KeyCode::C))
     {
@@ -1230,7 +1199,7 @@ void WorldViewer::HandleKeyShortcuts()
         {
             if (Entity* selected_entity = camera->GetSelectedEntity())
             {
-                entity_copied = selected_entity;
+                entity_copied_id = selected_entity->GetObjectId();
             }
         }
     }
@@ -1238,6 +1207,7 @@ void WorldViewer::HandleKeyShortcuts()
     // Paste: Ctrl + V
     if (Input::GetKey(KeyCode::Ctrl_Left) && Input::GetKeyDown(KeyCode::V))
     {
+        Entity* entity_copied = World::GetEntityById(entity_copied_id);
         if (entity_copied)
         {
             Entity* cloned = entity_copied->Clone();
@@ -1264,6 +1234,7 @@ void WorldViewer::HandleKeyShortcuts()
                     }
                 }
                 cloned->SetObjectName(base_name + "_" + std::to_string(copy_number));
+            editor_history::Created(cloned);
             }
         }
     }
@@ -1301,6 +1272,7 @@ Entity* WorldViewer::ActionEntityCreateEmpty()
         }
     }
 
+    editor_history::Created(entity);
     return entity;
 }
 

@@ -385,6 +385,18 @@ private:
         uint32_t source_index_count = 0;
     };
 
+    struct GeometryState
+    {
+        std::string path;
+        std::vector<WorkingSubMesh> meshes;
+        std::vector<std::vector<WorkingSubMesh>> lods;
+        bool modified, built, attempted, scanned;
+        int preview_lod;
+    };
+    GeometryState CaptureGeometry() const;
+    void RestoreGeometry(const GeometryState& state);
+    void RecordGeometry(const GeometryState& before);
+
     // a render component in the preview and the working geometry it draws, the render loses that
     // mapping the moment it is repointed at a scratch mesh
     struct PreviewRenderSlot

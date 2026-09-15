@@ -84,7 +84,10 @@ namespace ImGui::TransformGizmo
     }
 
     inline bool first_use = true;
+    inline uint64_t drag_epoch = 0;
     inline bool style_applied = false;
+    inline spartan::math::Vector3 drag_pivot;
+    inline spartan::math::Quaternion drag_rotation;
     inline std::vector<spartan::Entity*> entities_being_transformed;
     inline std::vector<spartan::math::Vector3> positions_previous;
     inline std::vector<spartan::math::Quaternion> rotations_previous;
@@ -386,8 +389,30 @@ namespace ImGui::TransformGizmo
         }
     }
 
+    inline void finish_drag()
+    {
+        std::vector<spartan::Entity*> entities;
+        std::vector<spartan::math::Vector3> positions, scales;
+        std::vector<spartan::math::Quaternion> rotations;
+        if (drag_epoch == spartan::CommandStack::Epoch())
+        {
+            for (size_t i = 0; i < entities_being_transformed.size(); ++i)
+            {
+                auto entity = entities_being_transformed[i];
+                if (!spartan::World::EntityExists(entity)) continue;
+                if (entity->GetPosition() == positions_previous[i] && entity->GetRotation() == rotations_previous[i] && entity->GetScale() == scales_previous[i]) continue;
+                entities.push_back(entity); positions.push_back(positions_previous[i]);
+                rotations.push_back(rotations_previous[i]); scales.push_back(scales_previous[i]);
+            }
+        }
+        if (!entities.empty()) spartan::CommandStack::Add<spartan::CommandTransformMulti>(entities, positions, rotations, scales);
+        entities_being_transformed.clear();
+        first_use = true;
+    }
+
     inline void tick()
     {
+        if (!first_use && (!ImGui::IsMouseDown(ImGuiMouseButton_Left) || drag_epoch != spartan::CommandStack::Epoch())) finish_drag();
         if (spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))
         {
             return;
@@ -399,7 +424,14 @@ namespace ImGui::TransformGizmo
             return;
         }
 
-        const std::vector<spartan::Entity*>& selected_entities = camera->GetSelectedEntities();
+        if (!first_use)
+        {
+            for (auto entity : entities_being_transformed)
+            {
+                if (!spartan::World::EntityExists(entity)) { finish_drag(); return; }
+            }
+        }
+        const std::vector<spartan::Entity*>& selected_entities = first_use ? camera->GetSelectedEntities() : entities_being_transformed;
         if (selected_entities.empty())
         {
             return;
@@ -544,6 +576,9 @@ namespace ImGui::TransformGizmo
         {
             if (first_use)
             {
+                drag_epoch = spartan::CommandStack::Epoch();
+                drag_pivot = initial_position;
+                drag_rotation = initial_rotation;
                 entities_being_transformed.clear();
                 positions_previous.clear();
                 rotations_previous.clear();
@@ -573,8 +608,8 @@ namespace ImGui::TransformGizmo
                 apply_aabb_edge_snap(primary_entity, selected_entities, initial_position, position);
             }
 
-            spartan::math::Vector3 position_delta = position - initial_position;
-            spartan::math::Quaternion rotation_delta = rotation * initial_rotation.Inverse();
+            spartan::math::Vector3 position_delta = position - drag_pivot;
+            spartan::math::Quaternion rotation_delta = rotation * drag_rotation.Inverse();
             spartan::math::Vector3 scale_ratio = spartan::math::Vector3(
                 initial_scale.x != 0.0f ? scale.x / initial_scale.x : 1.0f,
                 initial_scale.y != 0.0f ? scale.y / initial_scale.y : 1.0f,
@@ -619,7 +654,7 @@ namespace ImGui::TransformGizmo
                     }
                     else
                     {
-                        entity->SetPosition(entity->GetPosition() + position_delta);
+                        entity->SetPosition(positions_previous[entity_index] + position_delta);
                     }
                 }
 
@@ -627,11 +662,11 @@ namespace ImGui::TransformGizmo
                 {
                     if (pivot_mode != ::TransformGizmo::Pivot::Individual)
                     {
-                        const spartan::math::Vector3 relative = entity->GetPosition() - initial_position;
+                        const spartan::math::Vector3 relative = positions_previous[entity_index] - drag_pivot;
                         const spartan::math::Vector3 rotated  = rotation_delta * relative;
-                        entity->SetPosition(initial_position + rotated);
+                        entity->SetPosition(drag_pivot + rotated);
                     }
-                    entity->SetRotation(rotation_delta * entity->GetRotation());
+                    entity->SetRotation(rotation_delta * rotations_previous[entity_index]);
                 }
 
                 if (do_scale)
@@ -654,23 +689,10 @@ namespace ImGui::TransformGizmo
                 entity_index++;
             }
 
-            if (spartan::Input::GetKeyUp(spartan::KeyCode::Click_Left))
-            {
-                if (!entities_being_transformed.empty())
-                {
-                    spartan::CommandStack::Add<spartan::CommandTransformMulti>(
-                        entities_being_transformed,
-                        positions_previous,
-                        rotations_previous,
-                        scales_previous
-                    );
-                }
-                first_use = true;
-            }
         }
-        else
+        else if (!first_use)
         {
-            first_use = true;
+            finish_drag();
         }
     }
 
