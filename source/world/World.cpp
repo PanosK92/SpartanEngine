@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "components/Spline.h"
 #include "components/Light.h"
 #include "components/AudioSource.h"
+#include "components/Volume.h"
 #include "components/ParticleSystem.h"
 #include "components/Terrain.h"
 #include "components/Text3D.h"
@@ -79,6 +80,7 @@ namespace spartan
     {
         sol::state lua_state;
         vector<Entity*> entities;
+        unordered_map<uint64_t, Entity*> entities_by_id; // published entities, guarded by entity_access_mutex
         vector<Entity*> entities_lights;       // entities subset that contains only lights
         vector<Entity*> entities_with_render;  // entities subset that contains only active render components
         vector<Entity*> entities_with_ragdoll; // active ragdolls, late-ticked after scripts
@@ -86,6 +88,7 @@ namespace spartan
         vector<Entity*> entities_with_logic;   // active non-render entities that still have components to tick
         vector<Entity*> entities_with_icon;    // active entities that show an editor gizmo icon
         vector<Entity*> entities_with_particles; // active particle emitters
+        vector<Entity*> entities_with_volume; // includes inactive volumes, matching audio reverb queries
         string file_path;
         string world_name; // cached to avoid per-frame allocation
         string world_description;
@@ -180,6 +183,8 @@ namespace spartan
                 return;
             }
 
+            entities_by_id.erase(entity->GetObjectId());
+
             if (entity == camera)
             {
                 camera = nullptr;
@@ -204,6 +209,7 @@ namespace spartan
             erase_from(entities_with_logic);
             erase_from(entities_with_icon);
             erase_from(entities_with_particles);
+            erase_from(entities_with_volume);
             erase_from(entities_lights);
             erase_from(entities_pending);
         }
@@ -216,7 +222,7 @@ namespace spartan
             Vector3 scale;
         };
         unordered_map<uint64_t, EntitySnapshot> play_mode_snapshot;
-        float play_mode_time_of_day = 0.0f;
+        EnvironmentSettings play_mode_environment;
 
         // ids of entities created while playing, they are removed when play stops so spawned objects never leak into the world
         set<uint64_t> play_mode_spawned_ids;
@@ -371,7 +377,7 @@ namespace spartan
                    normalized_path.rfind("project/", 0) == 0;
         }
 
-        string world_file_path_to_resource_directory(const string& world_file_path)
+        string world_file_path_to_resource_directory(const string& world_file_path, bool log_directory = true)
         {
             const string world_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(world_file_path);
             string result;
@@ -390,7 +396,8 @@ namespace spartan
             // normalize to forward slashes
             replace(result.begin(), result.end(), '\\', '/');
 
-            SP_LOG_INFO("World resource directory: %s (from world: %s)", result.c_str(), world_file_path.c_str());
+            if (log_directory)
+                SP_LOG_INFO("World resource directory: %s (from world: %s)", result.c_str(), world_file_path.c_str());
             return result;
         }
 
@@ -643,6 +650,9 @@ namespace spartan
             WorldTable["SetTimeOfDay"]              = &World::SetTimeOfDay;
             WorldTable["GetWind"]                   = &World::GetWind;
             WorldTable["SetWind"]                   = &World::SetWind;
+            WorldTable["SetDateUtc"] = &Environment::SetDate;
+            WorldTable["GetAirTemperature"] = []() { return World::GetEnvironment().air_temperature; };
+            WorldTable["GetRoadTemperature"] = []() { return World::GetEnvironment().road_temperature; };
             WorldTable["GetDirectionalLight"]       = &World::GetDirectionalLight;
             WorldTable["GetCameraEntity"]           = []() -> Entity*
             {
@@ -988,51 +998,6 @@ namespace spartan
 
     }
 
-    namespace world_time
-    {
-        // simulated time
-        float time_of_day = 0.25f; // 6 AM
-        float time_scale = 200.0f; // 200x real time
-
-        // tick simulated time every frame
-        void tick()
-        {
-            time_of_day += (static_cast<float>(Timer::GetDeltaTimeSec()) * time_scale) / 86400.0f;
-            if (time_of_day >= 1.0f)
-            {
-                time_of_day -= 1.0f;
-            }
-            else if (time_of_day < 0.0f)
-            {
-                time_of_day = 0.0f;
-            }
-        }
-
-        // get current time of day based on boolean
-        float get_time_of_day(bool use_real_world_time)
-        {
-            if (use_real_world_time)
-            {
-                using namespace std::chrono;
-                auto now = system_clock::now();
-                time_t t = system_clock::to_time_t(now);
-                tm local_time = {};
-            #if defined(_WIN32)
-                localtime_s(&local_time, &t);
-            #else
-                localtime_r(&t, &local_time);
-            #endif
-                float hours = static_cast<float>(local_time.tm_hour);
-                float minutes = static_cast<float>(local_time.tm_min);
-                float seconds = static_cast<float>(local_time.tm_sec);
-                return (hours + minutes / 60.0f + seconds / 3600.0f) / 24.0f;
-            }
-
-            // return simulated time if not using real-world time
-            return time_of_day;
-        }
-    }
-
     namespace world_clouds
     {
         // the cloud noise tiles every 60 km horizontally, so any offset inside that span picks a different cloudscape
@@ -1268,6 +1233,8 @@ namespace spartan
         }
 
         // drain whatever workers have created so far, the renderer will skip entities whose components are still being set up
+        for (Entity* entity : entities_pending)
+            if (entity) entities_by_id[entity->GetObjectId()] = entity;
         entities.insert(entities.end(), entities_pending.begin(), entities_pending.end());
         entities_pending.clear();
         resolve = true;
@@ -1368,6 +1335,7 @@ namespace spartan
             // drop the live lists first, destructors that walk GetEntities must not see freed pointers
             vector<Entity*> to_delete;
             to_delete.swap(entities);
+            entities_by_id.clear();
             vector<Entity*> pending_to_delete;
             pending_to_delete.swap(entities_pending);
             entities_lights.clear();
@@ -1377,6 +1345,7 @@ namespace spartan
             entities_with_logic.clear();
             entities_with_icon.clear();
             entities_with_particles.clear();
+            entities_with_volume.clear();
             pending_remove.clear();
 
             for (Entity* entity : to_delete)
@@ -1405,6 +1374,7 @@ namespace spartan
         file_path.clear();
         world_name.clear();
         world_description.clear();
+        Environment::SetSettings(EnvironmentSettings{});
 
         // every load passes through here, so the next world gets a fresh cloudscape
         world_clouds::reroll_seed();
@@ -1496,7 +1466,7 @@ namespace spartan
         {
             play_mode_snapshot.clear();
             play_mode_snapshot.reserve(entities.size());
-            play_mode_time_of_day = world_time::time_of_day;
+            play_mode_environment = Environment::GetSettings();
             play_mode_spawned_ids.clear();
 
             play_start_queue.clear();
@@ -1545,7 +1515,7 @@ namespace spartan
                 }
             }
             play_mode_snapshot.clear();
-            world_time::time_of_day = play_mode_time_of_day;
+            Environment::SetSettings(play_mode_environment);
 
             // snapshot restores bone entities to mid-play values after Animator::Stop
             // re-bind so skinned meshes leave play in a standing rest pose
@@ -1602,12 +1572,18 @@ namespace spartan
             play_mode_spawned_ids.clear();
         }
 
+        if (Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused))
+        {
+            if (Light* light = GetDirectionalLight(); light && light->GetFlag(LightFlags::DayNightCycle))
+                Environment::Tick(Timer::GetDeltaTimeSec());
+        }
+
         ProcessPendingRemovals();
 
         // drain a slice of snapshot + Entity::Start each frame until the scene is ready
         if (play_boot == play_boot_phase::starting)
         {
-            const double budget_start = Timer::GetTimeMs();
+            const Stopwatch start_timer;
             while (play_start_cursor < play_start_queue.size())
             {
                 Entity* entity = play_start_queue[play_start_cursor++];
@@ -1624,7 +1600,7 @@ namespace spartan
                     entity->Start();
                 }
 
-                if ((Timer::GetTimeMs() - budget_start) >= play_start_budget_ms)
+                if (start_timer.GetElapsedTimeMs() >= play_start_budget_ms)
                 {
                     break;
                 }
@@ -1657,6 +1633,7 @@ namespace spartan
             }
 
             SP_PROFILE_CPU_END();
+            Animator::BeginSkinningBatch();
             SP_PROFILE_CPU_START("world_render_tick");
             // renderables cover most of the scene, cull/lod in parallel then finish other components
             const uint32_t render_count = static_cast<uint32_t>(entities_with_render.size());
@@ -1664,8 +1641,17 @@ namespace spartan
             {
                 if (render_count >= 64)
                 {
-                    ThreadPool::ParallelLoop([&](uint32_t start, uint32_t end)
+                    // Reuse one list per chunk. Render-only entities finish their
+                    // bookkeeping with their render update; other components keep
+                    // their original order on the main thread after the join.
+                    static array<vector<Entity*>, 8> followups;
+                    for (auto& list : followups) list.clear();
+                    const uint32_t jobs = min(render_count, 8u);
+                    ThreadPool::ParallelLoop([&](uint32_t first_job, uint32_t last_job)
                     {
+                        auto& pending = followups[first_job];
+                        const uint32_t start = render_count * first_job / jobs;
+                        const uint32_t end = render_count * last_job / jobs;
                         for (uint32_t i = start; i < end; i++)
                         {
                             Entity* entity = entities_with_render[i];
@@ -1674,19 +1660,25 @@ namespace spartan
                                 continue;
                             }
 
-                            if (Render* render = entity->GetComponent<Render>())
+                            Render* render = entity->GetComponent<Render>();
+                            if (render)
                             {
                                 render->Tick();
                             }
+                            if (render && entity->GetComponentCount() == 1)
+                                entity->TickAfterParallelRender();
+                            else
+                                pending.push_back(entity);
                         }
-                    }, render_count);
+                    }, jobs);
 
                     SP_PROFILE_CPU_START("world_post_render_tick");
-                    for (Entity* entity : entities_with_render)
+                    for (const auto& pending : followups)
                     {
-                        if (entity->GetActive())
+                        for (Entity* entity : pending)
                         {
-                            entity->TickAfterParallelRender();
+                            if (entity->GetActive())
+                                entity->TickAfterParallelRender();
                         }
                     }
                     SP_PROFILE_CPU_END();
@@ -1712,11 +1704,16 @@ namespace spartan
                 }
             }
 
+            Animator::FlushSkinningBatch();
+            Spline::ProcessPendingRoadMeshes();
             Spline::RebuildRoadJunctions();
+            SP_PROFILE_CPU_START("world_road_details");
             if (!ProgressTracker::IsLoading())
                 island_road_details::Tick(static_cast<float>(Timer::GetDeltaTimeSec()));
+            SP_PROFILE_CPU_END();
 
             // ragdoll hit capsules after scripts/pedestrians moved the bodies
+            SP_PROFILE_CPU_START("world_ragdoll_sync");
             for (Entity* entity : entities_with_ragdoll)
             {
                 if (entity->GetActive())
@@ -1727,6 +1724,7 @@ namespace spartan
                     }
                 }
             }
+            SP_PROFILE_CPU_END();
 
             SP_PROFILE_CPU_END();
             SP_PROFILE_CPU_START("world_change_scan");
@@ -1828,6 +1826,7 @@ namespace spartan
                 entities_with_logic.clear();
                 entities_with_icon.clear();
                 entities_with_particles.clear();
+                entities_with_volume.clear();
                 for (Entity* entity : entities)
                 {
                     // still in the live list until next removal flush, skip so draw does not
@@ -1835,6 +1834,11 @@ namespace spartan
                     if (pending_remove.count(entity->GetObjectId()) > 0)
                     {
                         continue;
+                    }
+
+                    if (entity->GetComponent<Volume>())
+                    {
+                        entities_with_volume.push_back(entity);
                     }
 
                     if (entity->GetActive())
@@ -1937,10 +1941,11 @@ namespace spartan
             entity_states.clear();
         }
 
-        if (Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused))
-        {
-            world_time::tick();
-        }
+    }
+
+    string World::GetResourceDirectory()
+    {
+        return file_path.empty() ? string() : world_file_path_to_resource_directory(file_path, false);
     }
 
     string World::GetResourceDirectory(
@@ -2257,6 +2262,19 @@ namespace spartan
 
             vector<PendingResourceSave> pending_saves;
             set<string> used_file_names;
+            set<string> reserved_file_names;
+            for (const auto& resource : resources)
+            {
+                if (path_is_within(resource->GetResourceFilePath(), directory))
+                {
+                    const string key = to_file_key(FileSystem::GetFileNameFromFilePath(resource->GetResourceFilePath()));
+                    reserved_file_names.insert(key);
+                    // Deferred textures can have no CPU data to save, but their files
+                    // are still referenced by materials and must survive pruning.
+                    if (referenced_resources.count(resource.get()) != 0)
+                        used_file_names.insert(key);
+                }
+            }
             for (shared_ptr<IResource>& resource : resources)
             {
                 if (
@@ -2306,25 +2324,35 @@ namespace spartan
                     name = name.substr(0, name.size() - ext.size());
                 }
 
-                string unique_name = name;
-                uint32_t suffix    = 2;
-                while (!used_file_names.insert(to_file_key(unique_name + ext)).second)
+                // Keep existing world-local identities stable regardless of load order. New
+                // resources must not claim a filename already owned by a saved texture/mesh.
+                string target_path = current_path;
+                if (!path_is_within(current_path, directory))
                 {
-                    unique_name = name + "_" + to_string(suffix++);
+                    string unique_name = name;
+                    uint32_t suffix = 2;
+                    while (used_file_names.count(to_file_key(unique_name + ext)) != 0 ||
+                           reserved_file_names.count(to_file_key(unique_name + ext)) != 0 ||
+                           FileSystem::Exists(directory + unique_name + ext))
+                    {
+                        unique_name = name + "_" + to_string(suffix++);
+                    }
+                    target_path = directory + unique_name + ext;
                 }
+                used_file_names.insert(to_file_key(FileSystem::GetFileNameFromFilePath(target_path)));
 
-                // repoint before the entity xml below serializes any reference to this resource by name
-                const string target_path = directory + unique_name + ext;
                 const bool path_changed  = resource->GetResourceFilePath() != FileSystem::GetRelativePath(target_path);
                 resource->SetResourceFilePath(target_path);
                 pending_saves.push_back({ resource.get(), target_path, path_changed });
             }
 
-            // pass 2, resources already at their target path are current, material setters persist changes immediately
+            ResourceCache::InvalidatePathIndex();
+
+            // Materials must persist the texture paths assigned above, even when their own path stayed the same.
             for (const PendingResourceSave& pending : pending_saves)
             {
                 const bool immutable = pending.resource->GetResourceType() != ResourceType::Material;
-                if (FileSystem::Exists(pending.target_path) && (!pending.path_changed || immutable))
+                if (immutable && !pending.path_changed && FileSystem::Exists(pending.target_path))
                 {
                     continue;
                 }
@@ -2472,6 +2500,21 @@ namespace spartan
         pugi::xml_node world_node = doc.append_child("World");
         world_node.append_attribute("name")        = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path).c_str();
         world_node.append_attribute("description") = world_description.c_str();
+        auto environment_node = world_node.append_child("Environment");
+        const auto& environment = Environment::GetSettings();
+        environment_node.append_attribute("utc_days") = environment.utc_days;
+        environment_node.append_attribute("latitude") = environment.latitude;
+        environment_node.append_attribute("longitude") = environment.longitude;
+        environment_node.append_attribute("elevation") = environment.elevation;
+        environment_node.append_attribute("time_scale") = environment.time_scale;
+        environment_node.append_attribute("north_degrees") = environment.north_degrees;
+        environment_node.append_attribute("annual_temperature") = environment.annual_temperature;
+        environment_node.append_attribute("seasonal_amplitude") = environment.seasonal_amplitude;
+        environment_node.append_attribute("daily_amplitude") = environment.daily_amplitude;
+        environment_node.append_attribute("sea_level_pressure") = environment.sea_level_pressure;
+        environment_node.append_attribute("wind_x") = GetWind().x;
+        environment_node.append_attribute("wind_y") = GetWind().y;
+        environment_node.append_attribute("wind_z") = GetWind().z;
 
         // console variables (only those explicitly overridden by this world are persisted)
         if (!world_console_variables.empty())
@@ -2867,6 +2910,20 @@ namespace spartan
 
             // read metadata
             world_description = world_node.attribute("description").as_string();
+            EnvironmentSettings environment;
+            auto environment_node = world_node.child("Environment");
+            environment.utc_days = environment_node.attribute("utc_days").as_double(environment.utc_days);
+            environment.latitude = environment_node.attribute("latitude").as_double(environment.latitude);
+            environment.longitude = environment_node.attribute("longitude").as_double(environment.longitude);
+            environment.elevation = environment_node.attribute("elevation").as_double(environment.elevation);
+            environment.time_scale = environment_node.attribute("time_scale").as_double(environment.time_scale);
+            environment.north_degrees = environment_node.attribute("north_degrees").as_float(environment.north_degrees);
+            environment.annual_temperature = environment_node.attribute("annual_temperature").as_float(environment.annual_temperature);
+            environment.seasonal_amplitude = environment_node.attribute("seasonal_amplitude").as_float(environment.seasonal_amplitude);
+            environment.daily_amplitude = environment_node.attribute("daily_amplitude").as_float(environment.daily_amplitude);
+            environment.sea_level_pressure = environment_node.attribute("sea_level_pressure").as_float(environment.sea_level_pressure);
+            Environment::SetSettings(environment);
+            SetWind(Vector3(environment_node.attribute("wind_x").as_float(), environment_node.attribute("wind_y").as_float(), environment_node.attribute("wind_z").as_float()));
 
             // console variables: apply any cvars defined by the world
             // format:
@@ -3250,13 +3307,8 @@ namespace spartan
     {
         lock_guard<mutex> lock(entity_access_mutex);
 
-        for (const auto& entity : entities)
-        {
-            if (entity && entity->GetObjectId() == id)
-            {
-                return entity;
-            }
-        }
+        const auto found = entities_by_id.find(id);
+        if (found != entities_by_id.end()) return found->second;
 
         // entities created this frame are not drained yet, a lookup that misses them
         // makes callers think their own freshly created entity died
@@ -3294,6 +3346,11 @@ namespace spartan
     const vector<Entity*>& World::GetEntitiesWithParticles()
     {
         return entities_with_particles;
+    }
+
+    const vector<Entity*>& World::GetEntitiesWithVolume()
+    {
+        return entities_with_volume;
     }
 
     bool World::IsPlayBooting()
@@ -3451,7 +3508,7 @@ namespace spartan
 
     float World::GetTimeOfDay(bool use_real_world_time)
     {
-        return world_time::get_time_of_day(use_real_world_time);
+        return Environment::GetTimeOfDay(use_real_world_time);
     }
 
     void World::SetTimeOfDay(float time_of_day)
@@ -3464,7 +3521,14 @@ namespace spartan
         {
             time_of_day = 1.0f;
         }
-        world_time::time_of_day = time_of_day;
+        Environment::SetTimeOfDay(time_of_day);
+    }
+
+    EnvironmentState World::GetEnvironment()
+    {
+        Light* light = GetDirectionalLight();
+        return Environment::Evaluate(light && light->GetFlag(LightFlags::DayNightCycle) && light->GetFlag(LightFlags::RealTimeCycle),
+            light ? light->GetCloudCoverage() : 0.0f, GetWind().Length());
     }
 
     const Vector3& World::GetWind()
@@ -3479,7 +3543,8 @@ namespace spartan
 
     void World::SetWind(const Vector3& wind)
     {
-        world_wind::wind = wind;
+        if (std::isfinite(wind.x) && std::isfinite(wind.y) && std::isfinite(wind.z))
+            world_wind::wind = Vector3(std::clamp(wind.x, -100.0f, 100.0f), std::clamp(wind.y, -100.0f, 100.0f), std::clamp(wind.z, -100.0f, 100.0f));
     }
 
     const Vector2& World::GetCloudSeedOffset()

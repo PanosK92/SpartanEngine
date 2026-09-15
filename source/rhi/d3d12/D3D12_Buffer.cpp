@@ -59,28 +59,6 @@ namespace spartan
         m_rhi_uav        = nullptr;
     }
 
-    void RHI_Buffer::DestroyResourceImmediate()
-    {
-        if (m_data_gpu && m_rhi_resource)
-        {
-            static_cast<ID3D12Resource*>(m_rhi_resource)->Unmap(0, nullptr);
-            m_data_gpu = nullptr;
-        }
-
-        if (m_rhi_resource)
-        {
-            RHI_Device::DescriptorSetInvalidateReferencingResource(this);
-            GpuMemory::Unregister(m_rhi_resource);
-            d3d12_state::RemoveState(static_cast<ID3D12Resource*>(m_rhi_resource));
-            static_cast<ID3D12Resource*>(m_rhi_resource)->Release();
-            m_rhi_resource = nullptr;
-        }
-
-        m_device_address = 0;
-        m_rhi_srv        = nullptr;
-        m_rhi_uav        = nullptr;
-    }
-
     void RHI_Buffer::RHI_CreateResource(const void* data)
     {
         SP_ASSERT(RHI_Context::device != nullptr);
@@ -111,8 +89,9 @@ namespace spartan
             m_object_size        = size;
         }
 
-        // d3d12 forbids uav on upload heaps, so storage buffers live on the default heap and cpu updates go through staging
-        const bool force_default_heap_uav = (m_type == RHI_Buffer_Type::Storage);
+        // Storage and GPU-populated instance buffers need UAV-capable default heaps.
+        const bool force_default_heap_uav = m_type == RHI_Buffer_Type::Storage ||
+            (m_type == RHI_Buffer_Type::Instance && !m_mappable);
 
         D3D12_HEAP_TYPE heap_type = D3D12_HEAP_TYPE_DEFAULT;
         D3D12_RESOURCE_STATES initial_state = D3D12_RESOURCE_STATE_COMMON;
@@ -229,7 +208,7 @@ namespace spartan
         d3d12_state::SetIsBuffer(buffer, true);
         d3d12_state::SetSubresourceCount(buffer, 1);
 
-        if (m_type == RHI_Buffer_Type::Storage)
+        if (force_default_heap_uav)
         {
             D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
             srv_desc.Shader4ComponentMapping         =
@@ -314,130 +293,27 @@ namespace spartan
             }
             else
             {
-                // default heap - upload via staging buffer using a one-shot command list
-                void* staging_ptr = RHI_Device::StagingBufferAcquire(m_object_size);
-                ID3D12Resource* staging = static_cast<ID3D12Resource*>(staging_ptr);
-                if (staging)
-                {
-                    void* mapped = nullptr;
-                    D3D12_RANGE rr = { 0, 0 };
-                    if (SUCCEEDED(staging->Map(0, &rr, &mapped)) && mapped)
-                    {
-                        memcpy(mapped, data, m_object_size);
-                        staging->Unmap(0, nullptr);
-                    }
-
-                    ID3D12CommandAllocator* alloc = nullptr;
-                    ID3D12GraphicsCommandList* list = nullptr;
-                    if (SUCCEEDED(RHI_Context::device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&alloc))))
-                    {
-                        if (SUCCEEDED(RHI_Context::device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, alloc, nullptr, IID_PPV_ARGS(&list))))
-                        {
-                            // common -> copy_dest
-                            D3D12_RESOURCE_BARRIER b = {};
-                            b.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                            b.Transition.pResource   = buffer;
-                            b.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
-                            b.Transition.StateAfter  = D3D12_RESOURCE_STATE_COPY_DEST;
-                            b.Transition.Subresource = 0;
-                            d3d12_barriers::Submit(list, &b, 1);
-
-                            list->CopyBufferRegion(buffer, 0, staging, 0, m_object_size);
-
-                            b.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-                            b.Transition.StateAfter  = D3D12_RESOURCE_STATE_COMMON;
-                            d3d12_barriers::Submit(list, &b, 1);
-                            list->Close();
-
-                            ID3D12CommandQueue* q = static_cast<ID3D12CommandQueue*>(RHI_Device::GetQueueRhiResource(RHI_Queue_Type::Graphics));
-                            ID3D12CommandList* lists[] = { list };
-                            q->ExecuteCommandLists(1, lists);
-                            RHI_Device::QueueWaitAll();
-
-                            list->Release();
-                        }
-                        alloc->Release();
-                    }
-
-                    RHI_Device::StagingBufferRelease(staging);
-                }
+                UploadSubRegion(data, 0, m_object_size);
             }
         }
     }
 
     void RHI_Buffer::UploadSubRegion(const void* data, uint64_t offset_bytes, uint64_t size_bytes)
     {
-        SP_ASSERT(data != nullptr);
-        SP_ASSERT(offset_bytes + size_bytes <= m_object_size);
-
-        // skip if backing allocation failed (out of device memory)
-        if (!m_rhi_resource)
-        {
+        SP_ASSERT(data && offset_bytes + size_bytes <= m_object_size);
+        if (!m_rhi_resource || size_bytes == 0)
             return;
-        }
-
         if (m_data_gpu)
         {
             memcpy(static_cast<uint8_t*>(m_data_gpu) + offset_bytes, data, size_bytes);
             return;
         }
 
-        // device-local buffer, stage on an upload heap and copy via an immediate command list
-        ID3D12Resource* dst     = static_cast<ID3D12Resource*>(m_rhi_resource);
-        ID3D12Resource* staging = static_cast<ID3D12Resource*>(RHI_Device::StagingBufferAcquire(size_bytes));
-        if (!staging)
-        {
-            SP_LOG_ERROR("UploadSubRegion: failed to acquire staging buffer for '%s'", m_object_name.c_str());
+        RHI_CommandList* upload = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics);
+        if (!upload)
             return;
-        }
-
-        void* mapped = nullptr;
-        D3D12_RANGE read_range = { 0, 0 };
-        if (FAILED(staging->Map(0, &read_range, &mapped)) || !mapped)
-        {
-            SP_LOG_ERROR("UploadSubRegion: failed to map staging buffer for '%s'", m_object_name.c_str());
-            RHI_Device::StagingBufferRelease(staging);
-            return;
-        }
-        memcpy(mapped, data, size_bytes);
-        staging->Unmap(0, nullptr);
-
-        RHI_CommandList* cmd_list_rhi = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics);
-        if (cmd_list_rhi)
-        {
-            ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list_rhi->GetRhiResource());
-
-            // transition to copy_dest, copy, then back to whatever state the tracker had,
-            // so subsequent draws/dispatches see the buffer in a sane state
-            const D3D12_RESOURCE_STATES state_before = d3d12_state::GetState(dst);
-            if (state_before != D3D12_RESOURCE_STATE_COPY_DEST)
-            {
-                D3D12_RESOURCE_BARRIER barrier = {};
-                barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                barrier.Transition.pResource   = dst;
-                barrier.Transition.Subresource = 0;
-                barrier.Transition.StateBefore = state_before;
-                barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_COPY_DEST;
-                d3d12_barriers::Submit(cmd_list, &barrier, 1);
-            }
-
-            cmd_list->CopyBufferRegion(dst, offset_bytes, staging, 0, size_bytes);
-
-            if (state_before != D3D12_RESOURCE_STATE_COPY_DEST)
-            {
-                D3D12_RESOURCE_BARRIER barrier = {};
-                barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                barrier.Transition.pResource   = dst;
-                barrier.Transition.Subresource = 0;
-                barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-                barrier.Transition.StateAfter  = state_before;
-                d3d12_barriers::Submit(cmd_list, &barrier, 1);
-            }
-
-            RHI_CommandList::ImmediateExecutionEnd(cmd_list_rhi);
-        }
-
-        RHI_Device::StagingBufferRelease(staging);
+        RHI_CommandList::UpdateBuffer(this, offset_bytes, size_bytes, data, false);
+        RHI_CommandList::ImmediateExecutionEnd(upload, false);
     }
 
     void RHI_Buffer::Update(void* data_cpu, const uint32_t size)

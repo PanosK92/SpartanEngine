@@ -164,7 +164,7 @@ namespace spartan
         void BuildRoadNetwork();
         void UpdatePopulation(float delta_time);
         bool FindRoadSpawn(uint32_t index, Driver& driver, math::Vector3& position, math::Quaternion& rotation);
-        void UpdateRoadDriver(Driver& driver, float delta_time);
+        void UpdateRoadDriver(Driver& driver, float delta_time, bool has_player, const math::Vector3& player_position, const math::Vector3& player_velocity);
         void SpawnNext();
         bool SpawnCar(uint32_t index);
         void InitializeLimits(Driver& driver);

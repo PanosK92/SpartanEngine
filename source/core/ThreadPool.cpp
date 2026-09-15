@@ -205,7 +205,13 @@ namespace spartan
             ~depth_scope() { parallel_depth--; }
         };
 
-        uint32_t workers   = min(thread_count, work_total);
+        const uint32_t workers = min(thread_count, work_total);
+        depth_scope caller_depth;
+        if (workers == 1)
+        {
+            work_fn(0, work_total);
+            return;
+        }
         uint32_t base_work = work_total / workers;
         uint32_t remainder = work_total % workers;
 
@@ -215,12 +221,10 @@ namespace spartan
         const shared_ptr<parallel_fn> shared_fn = make_shared<parallel_fn>(std::move(work_fn));
 
         vector<future<void>> futures;
-        futures.reserve(workers);
-
-        depth_scope caller_depth;
+        futures.reserve(workers - 1);
 
         uint32_t work_index = 0;
-        for (uint32_t i = 0; i < workers; ++i)
+        for (uint32_t i = 0; i + 1 < workers; ++i)
         {
             uint32_t work_count = base_work + (i < remainder ? 1u : 0u);
             uint32_t start      = work_index;
@@ -234,6 +238,13 @@ namespace spartan
             }));
             work_index = end;
         }
+
+        // The caller owns the final chunk instead of waiting idle for the pool.
+        // Always join the queued chunks before propagating an exception: their
+        // captures may refer to stack data belonging to this call's owner.
+        exception_ptr failure;
+        try { (*shared_fn)(work_index, work_total); }
+        catch (...) { failure = current_exception(); }
 
         for (future<void>& f : futures)
         {
@@ -253,8 +264,10 @@ namespace spartan
                     );
                 }
             }
-            f.get();
+            try { f.get(); }
+            catch (...) { if (!failure) failure = current_exception(); }
         }
+        if (failure) rethrow_exception(failure);
     }
 
     void ThreadPool::Flush(bool remove_queued)

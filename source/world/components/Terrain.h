@@ -43,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace spartan
 {
     class Mesh;
+    class RHI_Buffer;
     class Material;
     namespace math
     {
@@ -210,6 +211,8 @@ namespace spartan
         void SetDebugView(TerrainDebugView view);
         RHI_Texture* GetAnalysisMapA() const    { return m_map_a.get(); }
         RHI_Texture* GetAnalysisMapB() const    { return m_map_b.get(); }
+        bool IsOnRoad(float world_x, float world_z) const;
+        RHI_Buffer* GetRoadExclusionBuffer();
         RHI_Texture* GetPropMask() const        { return m_prop_mask.get(); }
         void RebuildPropMask();
         // after biome scatter, keep instance seeds then hide props on occupied pads
@@ -555,15 +558,10 @@ namespace spartan
         std::vector<uint8_t> m_map_b_pixels;
         std::vector<uint8_t> m_prop_mask_pixels; // r=grass g=trees b=rocks
         std::vector<uint8_t> m_prop_mask_seed;
-        std::vector<uint8_t> m_spline_carve_bits;
+        std::vector<math::Vector4> m_road_exclusions; // header, grid ranges, then projected triangle pairs
+        std::shared_ptr<RHI_Buffer> m_road_exclusion_buffer;
+        bool m_road_exclusion_buffer_dirty = true;
         bool m_spline_carve_dirty = false;
-        bool m_spline_carve_dirty_all = false;
-        std::unordered_set<uint64_t> m_spline_carve_dirty_ids;
-        std::unordered_map<uint64_t, std::array<int32_t, 4>> m_spline_carve_spline_bounds;
-        int32_t m_spline_carve_x0 = 0;
-        int32_t m_spline_carve_x1 = -1;
-        int32_t m_spline_carve_z0 = 0;
-        int32_t m_spline_carve_z1 = -1;
         // height the roads added to the dense grid, subtracting it gives the untouched ground back
         std::vector<float> m_road_carve_delta;
         std::unordered_map<uint64_t, std::array<int32_t, 4>> m_road_carve_bounds;

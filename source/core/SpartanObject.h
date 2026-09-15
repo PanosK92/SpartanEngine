@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====
 #include <string>
+#include <atomic>
 //===============
 
 namespace spartan
@@ -47,11 +48,12 @@ namespace spartan
         
         // name
         const std::string& GetObjectName() const    { return m_object_name; }
-        void SetObjectName(const std::string& name) { m_object_name = name; }
+        void SetObjectName(const std::string& name) { if (m_object_name != name) { m_object_name = name; ++s_identity_revision; } }
+        static uint64_t GetIdentityRevision() { return s_identity_revision.load(std::memory_order_relaxed); }
 
         // id
         const uint64_t GetObjectId() const  { return m_object_id; }
-        void SetObjectId(const uint64_t id) { m_object_id = id; }
+        void SetObjectId(const uint64_t id) { if (m_object_id != id) { m_object_id = id; ++s_identity_revision; } }
 
         // sizes
         const uint64_t GetObjectSize() const { return m_object_size; }
@@ -62,6 +64,7 @@ namespace spartan
         uint64_t m_object_size = 0;
 
     private:
+        inline static std::atomic<uint64_t> s_identity_revision{0};
         static void* GetThreadUniqueAddress()
         {
             thread_local int dummy;

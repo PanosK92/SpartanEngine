@@ -120,8 +120,9 @@ namespace spartan
         // overwrite a sub-rectangle of mip 0, layer 0 on an already created, uncompressed 2d texture
         // data is tightly packed rows of width * bytes per pixel, the cpu mirror is patched too when kept
         // false when the request cannot be served and the caller has to recreate the texture instead
-        bool UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data);
-        void DestroyResourceImmediate();
+        // defer_to_frame permits a supported backend to queue the copy on the current graphics list.
+        bool UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data, bool defer_to_frame = false);
+        void ReleaseGpuResources() { RHI_DestroyResource(); }
         void InvalidateGpuState() { ClearLayouts(); }
         RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layouts[mip]; }
         const std::array<RHI_Image_Layout, rhi_max_mip_count>& GetLayouts() const { return m_layouts; }
@@ -185,7 +186,7 @@ namespace spartan
     protected:
         bool RHI_CreateResource();
         // backend copy for UpdateRegion, arguments are already validated
-        bool RHI_UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data);
+        bool RHI_UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data, bool defer_to_frame);
 
         uint32_t m_width                = 0;
         uint32_t m_height               = 0;

@@ -26,6 +26,12 @@ The DSP runs at twice the output rate. A 95-tap windowed-sinc FIR filters the fi
 
 SDL playback is primed before binding the stream. The existing roughly 43 ms queue remains main-thread-fed: long rendering stalls can still underrun it. The standalone DSP tests cannot prove absence of device clicks under graphics load. A future audio-thread producer would need synchronized runtime parameters, meters, WAV capture, and reset ownership; moving the current callback to another thread alone is not safe.
 
+## Turbo reference pass
+
+The turbo was compared with the waveform, short-time spectrum and band-limited amplitude envelope of [EwanPenman11's Turbo Spooling and Blow Off](https://freesound.org/people/EwanPenman11/sounds/659544/) (CC0 public preview) and [Spin Opel's Turbo flutter](https://pixabay.com/sound-effects/film-special-effects-turbo-flutter-336362/) (Pixabay Content License). These are acoustic references only; no downloaded audio is shipped or played by the synthesizer. The latter includes substantial engine/background sound, so its overall envelope is not treated as isolated compressor flow.
+
+The model uses rounded asymmetric air packets, a descending intake resonance, slower shaft coast-down and a release cadence that falls from 16–22 toward 7 packets per second. In an isolated full-boost release, measured packet spacing grows from approximately 53 to 109 ms over the first 1.2 seconds. Charge memory prevents a simultaneous manifold-pressure drop from swallowing the lift event; reopening the throttle damps the release. The artificial continuous 27 Hz wastegate modulation is removed. These are reference-informed acoustic approximations, not an exact waveform reconstruction or a calibrated compressor simulation. A working bypass valve still produces a continuous discharge; set `turbo_bypass_valve="false"` on a car's engine to use compressor flutter.
+
 ## Additional car specifications
 
 Optional attributes on `<engine>` are backward compatible; current cars do not acquire invented manufacturer measurements.

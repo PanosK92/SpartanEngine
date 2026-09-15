@@ -170,12 +170,8 @@ namespace spartan
             // day night cycle
             if (GetFlag(LightFlags::DayNightCycle))
             {
-                Quaternion rotation = Quaternion::FromAxisAngle(
-                    Vector3::Right,                                                                               // x-axis rotation (left to right)
-                    (World::GetTimeOfDay(GetFlag(LightFlags::RealTimeCycle)) * 360.0f - 90.0f) * math::deg_to_rad // angle in radians, -90� offset for horizon
-                );
-
-                GetEntity()->SetRotation(rotation);
+                const auto& environment = World::GetEnvironment();
+                GetEntity()->SetRotation(Quaternion::FromLookRotation(-environment.sun));
                 update_matrices = true;
             }
 
@@ -626,45 +622,28 @@ namespace spartan
 
     void Light::SetPreset(const LightPreset preset)
     {
-        // a preset only moves the sun, the atmosphere derives the matching color and dimming
-        float time_of_day = 0.0f;
-        float yaw_degrees = 0.0f; // horizontal rotation around y axis
-
-        switch (preset)
+        if (preset == LightPreset::custom)
         {
-        case LightPreset::dawn:
-            time_of_day = 0.25f; // 6:00 am, sun at the horizon, the atmosphere turns it deep orange
-            break;
-
-        case LightPreset::day:
-            time_of_day = 0.5f; // 12:00 pm, near white sun at peak transmittance
-            break;
-
-        case LightPreset::dusk:
-            time_of_day = 0.69f; // 4:30 pm, golden hour
-            break;
-
-        case LightPreset::night:
-            time_of_day = 0.875f; // 9:00 pm, sun below the horizon, moon and stars take over
-            break;
-
-        case LightPreset::david_lynch:
-            time_of_day = 0.74f;  // sun near horizon for sunset colors
-            yaw_degrees = 125.0f; // rotate to avoid mountain
-            break;
-
-        case LightPreset::custom:
-            // do nothing, keep current settings
             m_preset = preset;
             return;
         }
-
-        SetTimeOfDay(time_of_day, yaw_degrees);
+        SolarEvent event = SolarEvent::Noon;
+        switch (preset)
+        {
+        case LightPreset::dawn: event = SolarEvent::Dawn; break;
+        case LightPreset::day: event = SolarEvent::Noon; break;
+        case LightPreset::dusk: event = SolarEvent::Dusk; break;
+        case LightPreset::night: event = SolarEvent::Midnight; break;
+        case LightPreset::david_lynch: event = SolarEvent::GoldenHour; break;
+        default: return;
+        }
+        if (!Environment::SetSolarEvent(event)) return;
+        SetTimeOfDay(World::GetTimeOfDay());
         SetIntensity(sun_illuminance_lux);
         m_preset = preset;
     }
 
-    void Light::SetTimeOfDay(const float time_of_day, const float yaw_degrees)
+    void Light::SetTimeOfDay(const float time_of_day, const float /*yaw_degrees*/)
     {
         // moving the sun manually invalidates any named preset
         m_preset = LightPreset::custom;
@@ -674,15 +653,8 @@ namespace spartan
         // set rotation based on time of day (only for directional lights)
         if (m_light_type == LightType::Directional)
         {
-            // elevation from time of day
-            float elevation_rad = (time_of_day * 360.0f - 90.0f) * math::deg_to_rad;
-            Quaternion elevation = Quaternion::FromAxisAngle(Vector3::Right, elevation_rad);
-
-            // horizontal rotation (yaw)
-            Quaternion yaw = Quaternion::FromAxisAngle(Vector3::Up, yaw_degrees * math::deg_to_rad);
-
-            // combine: yaw first, then elevation
-            GetEntity()->SetRotation(yaw * elevation);
+            // Orientation belongs to the geographic world frame, never an artificial solar orbit.
+            GetEntity()->SetRotation(Quaternion::FromLookRotation(-World::GetEnvironment().sun));
             UpdateMatrices();
         }
     }

@@ -29,12 +29,12 @@ struct vertex
     float4 color    : COLOR0;
 };
 
-vertex main_vs(vertex input)
+vertex main_vs(float3 position : POSITION, float4 color : COLOR0)
 {
-    input.position.w = 1.0f;
-    input.position   = mul(input.position, buffer_frame.view_projection_unjittered);
-    
-    return input;
+    vertex output;
+    output.position = mul(float4(position, 1.0f), buffer_frame.view_projection_unjittered);
+    output.color = color;
+    return output;
 }
 
 float4 main_ps(vertex input) : SV_TARGET

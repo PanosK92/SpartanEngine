@@ -74,16 +74,12 @@ void Editor::Tick()
         const bool render_editor = spartan::Engine::IsFlagSet(
             spartan::EngineMode::EditorVisible
         );
-        spartan::Renderer::SetPresentInRenderer(!render_editor);
-
-        if (render_editor)
-        {
-            editor_imgui::begin_frame();
-        }
-        else
-        {
+        // Runtime HUDs also use ImGui. Keep its frame and presentation alive
+        // when the editor panels are hidden.
+        spartan::Renderer::SetPresentInRenderer(false);
+        editor_imgui::begin_frame();
+        if (!render_editor)
             spartan::Input::SetBlockedByUi(false);
-        }
 
         spartan::Engine::Tick();
 
@@ -99,8 +95,8 @@ void Editor::Tick()
 
             editor_layout::end_root();
             GeneralWindows::Tick();
-            editor_imgui::render();
         }
+        editor_imgui::render();
 
         spartan::Profiler::TimeBlockEnd(spartan::TimeBlockType::Cpu);
         spartan::Timer::PostTick();

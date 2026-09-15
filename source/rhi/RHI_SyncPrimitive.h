@@ -24,6 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "../core/SpartanObject.h"
 #include <atomic>
+#include <memory>
+#include <vector>
 //================================
 
 namespace spartan
@@ -48,6 +50,7 @@ namespace spartan
         void Wait(const uint64_t timeout_nanoseconds, const uint64_t value);
         void Signal(const uint64_t value);
         bool IsSignaled();
+        bool IsSignaled(uint64_t value);
         void Reset();
         uint64_t GetNextSignalValue() { return m_value.fetch_add(1, std::memory_order_relaxed) + 1; }
         uint64_t GetValue() const     { return m_value.load(std::memory_order_relaxed); }
@@ -63,4 +66,27 @@ namespace spartan
         std::atomic<uint64_t> m_value    = 0;
         void* m_rhi_resource             = nullptr;
     };
+    struct RHI_Work
+    {
+        std::shared_ptr<RHI_SyncPrimitive> timeline;
+        uint64_t value = 0;
+
+        bool IsComplete() const { return !timeline || timeline->IsSignaled(value); }
+    };
+
+    struct RHI_PendingWork
+    {
+        std::vector<RHI_Work> submissions;
+        bool IsComplete() const
+        {
+            if (m_complete.load(std::memory_order_relaxed)) return true;
+            for (const RHI_Work& work : submissions)
+                if (!work.IsComplete()) return false;
+            m_complete.store(true, std::memory_order_relaxed);
+            return true;
+        }
+    private:
+        mutable std::atomic<bool> m_complete = false;
+    };
+
 }

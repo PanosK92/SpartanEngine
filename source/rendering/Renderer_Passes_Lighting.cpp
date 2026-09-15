@@ -1045,7 +1045,8 @@ namespace spartan
         // any light whose flags claim contact shadows, so the last frame that did write would keep being
         // applied. clear to lit and leave
         bool any_light = false;
-        for (Entity* entity : World::GetEntities())
+        const auto& lights = IsSecondaryViewActive() ? World::GetEntities() : World::GetEntitiesLights();
+        for (Entity* entity : lights)
         {
             Light* light = entity->GetComponent<Light>();
             any_light    = any_light ||
@@ -1054,6 +1055,7 @@ namespace spartan
                             light->GetFlag(LightFlags::Shadows)             &&
                             light->GetFlag(LightFlags::ShadowsScreenSpace)  &&
                             light->GetIntensityRadiometric() != 0.0f);
+            if (any_light) break;
         }
         if (!any_light)
         {
@@ -1071,7 +1073,7 @@ namespace spartan
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex_sss), tex_sss, rhi_all_mips, 0, true);
             uint32_t array_slice_index = 0;
-            for (Entity* entity : World::GetEntities())
+            for (Entity* entity : lights)
             {
                 if (Light* light = entity->GetComponent<Light>())
                 {
@@ -1323,6 +1325,7 @@ namespace spartan
         Renderer::BeginPass("fog_inject", eye_layer);
         {
             RHI_CommandList::SetShader(shader_inject);
+            RHI_CommandList::SetBuffer("ocean_wave_bounds", GetBuffer(Renderer_Buffer::OceanWaveBounds));
             RHI_CommandList::SetTexture("tex_fog_sky_visibility", tex_sky_visibility);
             RHI_CommandList::SetTexture("tex_fog_water_source_uav", water_write);
             RHI_CommandList::SetTexture("tex_fog_water_source", water_read);

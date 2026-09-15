@@ -78,10 +78,9 @@ namespace spartan
         {
             RHI_Resource_Type type;
             void*             resource;
-            uint64_t          frame;
+            std::shared_ptr<const RHI_PendingWork> completion;
         };
         vector<DeletionEntry> deletion_queue;
-        uint64_t              deletion_queue_frame = 0;
 
         VkImageUsageFlags get_image_usage_flags(const RHI_Texture* texture)
         {
@@ -2294,9 +2293,8 @@ namespace spartan
         StagingBufferPoolDestroy();
 
         // the destructor of all the resources enqueues it's vk buffer memory for de-allocation;
-        // the gpu is fully idle after QueueWaitAll(), so force-retire everything regardless of age
-        deletion_queue_frame += renderer_draw_data_buffer_count + 2;
-        RHI_Device::DeletionQueueParse();
+        // the GPU is idle and command-list teardown has cancelled any discarded recordings
+        RHI_Device::DeletionQueueFlush();
 
         // destroy the allocator itself and assert if any allocations are left
         vulkan_memory_allocator::destroy();
@@ -2397,36 +2395,40 @@ namespace spartan
 
     void RHI_Device::DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource)
     {
-        if (!resource)
-        {
-            return;
-        }
-
-        lock_guard<mutex> guard(mutex_deletion_queue);
-        deletion_queue.push_back({ resource_type, resource, deletion_queue_frame });
+        if (!resource) return;
+        auto completion = RHI_CommandList::CapturePendingWork();
+        std::lock_guard guard(mutex_deletion_queue);
+        deletion_queue.push_back({ resource_type, resource, std::move(completion) });
     }
 
     void RHI_Device::DeletionQueueParse()
     {
-        lock_guard<mutex> guard(mutex_deletion_queue);
-
-        deletion_queue_frame++;
-
-        // with renderer_draw_data_buffer_count lists rotating per queue, anything older than that many frames is no longer in flight
-        const uint64_t safe_age = renderer_draw_data_buffer_count + 1;
-
-        auto it = deletion_queue.begin();
-        while (it != deletion_queue.end())
+        std::vector<DeletionEntry> retired;
         {
-            if ((deletion_queue_frame - it->frame) < safe_age)
+            std::lock_guard guard(mutex_deletion_queue);
+            unordered_map<const RHI_PendingWork*, bool> completed;
+            size_t retained = 0;
+            for (size_t i = 0; i < deletion_queue.size(); i++)
             {
-                ++it;
-                continue;
+                auto& entry = deletion_queue[i];
+                auto [it, inserted] = completed.try_emplace(entry.completion.get(), false);
+                if (inserted) it->second = entry.completion->IsComplete();
+                if (it->second)
+                    retired.push_back(move(entry));
+                else
+                {
+                    if (retained != i) deletion_queue[retained] = move(entry);
+                    retained++;
+                }
             }
-
-            void* resource                  = it->resource;
-            RHI_Resource_Type resource_type = it->type;
-
+            deletion_queue.resize(retained);
+        }
+        // Releasing completion records can enqueue their semaphore destruction.
+        // Do not run destructors while holding the retirement mutex.
+        for (const auto& entry : retired)
+        {
+            void* resource = entry.resource;
+            RHI_Resource_Type resource_type = entry.type;
             switch (resource_type)
             {
                 case RHI_Resource_Type::Image:                 MemoryTextureDestroy(resource);                                                                                            break;
@@ -2445,41 +2447,20 @@ namespace spartan
                 default:                                       SP_ASSERT_MSG(false, "Unknown resource");                                                                                  break;
             }
 
-            // descriptor set invalidation is handled synchronously by the rhi resource
-            // owner before queueing here, so the cache is already coherent at this point
-            it = deletion_queue.erase(it);
         }
     }
 
     void RHI_Device::DeletionQueueFlush()
     {
-        {
-            lock_guard<mutex> guard(mutex_deletion_queue);
-            for (auto& entry : deletion_queue)
-                entry.frame = 0;
-        }
-
-        DeletionQueueParse();
+        // Callers wait for the GPU first. Drain secondary deletions as well.
+        do { DeletionQueueParse(); } while (DeletionQueueNeedsToParse());
     }
 
     bool RHI_Device::DeletionQueueNeedsToParse()
     {
-        lock_guard<mutex> guard(mutex_deletion_queue);
-
-        if (deletion_queue.empty())
-        {
-            return false;
-        }
-
-        const uint64_t safe_age = renderer_draw_data_buffer_count + 1;
+        std::lock_guard guard(mutex_deletion_queue);
         for (const auto& entry : deletion_queue)
-        {
-            if ((deletion_queue_frame + 1 - entry.frame) >= safe_age)
-            {
-                return true;
-            }
-        }
-
+            if (entry.completion->IsComplete()) return true;
         return false;
     }
 

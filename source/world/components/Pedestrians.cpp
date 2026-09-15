@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include "pch.h"
+#include "../../profiling/Profiler.h"
 #include "Pedestrians.h"
 #include "../RoadTrafficWorld.h"
 #include "Animator.h"
@@ -51,6 +52,17 @@ namespace spartan
         constexpr float ground_ray_down = 4.0f;
         constexpr float turn_speed = 8.0f;
         constexpr float spawn_clearance = 1.2f;
+
+        constexpr float walker_cell_size = 2.0f; // larger than the 1.5 m queue sensor
+        uint64_t walker_cell_key(int32_t x, int32_t z)
+        {
+            return (static_cast<uint64_t>(static_cast<uint32_t>(x)) << 32) | static_cast<uint32_t>(z);
+        }
+        uint64_t walker_cell_key(const Vector3& position)
+        {
+            return walker_cell_key(static_cast<int32_t>(floorf(position.x / walker_cell_size)),
+                static_cast<int32_t>(floorf(position.z / walker_cell_size)));
+        }
 
         Vector3 planar_normalize(Vector3 value)
         {
@@ -205,6 +217,7 @@ namespace spartan
 
     void Pedestrians::Tick()
     {
+        SP_PROFILE_CPU();
         // finish editor preload so the mannequin template is hidden under this manager
         if (!m_spawn_ready)
         {
@@ -231,6 +244,23 @@ namespace spartan
             UpdateAnimationLod();
         }
 
+        for (auto cell = m_walker_cells.begin(); cell != m_walker_cells.end();)
+        {
+            if (cell->second.empty())
+                cell = m_walker_cells.erase(cell);
+            else
+            {
+                cell->second.clear();
+                ++cell;
+            }
+        }
+        if (m_follow_roads)
+        {
+            for (Walker& walker : m_walkers)
+                if (walker.entity)
+                    m_walker_cells[walker_cell_key(walker.entity->GetPosition())].push_back(&walker);
+        }
+
         for (Walker& walker : m_walkers)
         {
             if (!walker.entity)
@@ -253,7 +283,15 @@ namespace spartan
             // near animated walkers get path casts, far ones just glide
             if (m_follow_roads)
             {
+                const uint64_t old_cell = walker_cell_key(walker.entity->GetPosition());
                 UpdateRoadWalker(walker, delta_time);
+                const uint64_t new_cell = walker_cell_key(walker.entity->GetPosition());
+                if (old_cell != new_cell)
+                {
+                    auto& previous = m_walker_cells[old_cell];
+                    previous.erase(remove(previous.begin(), previous.end(), &walker), previous.end());
+                    m_walker_cells[new_cell].push_back(&walker);
+                }
             }
             else if (walker.animating)
             {
@@ -611,8 +649,8 @@ namespace spartan
             if (!FindRoadSpawn(m_random_state,walker,position,heading)) continue;
             if (walker.ragdoll) {walker.ragdoll->SetHitBodyEnabled(false);walker.ragdoll->Stop();}
             walker.dead=false;walker.heading=heading;walker.ground_y=position.y;
-            walker.entity->SetPosition(position+Vector3::Up*walker.height_offset);
-            walker.entity->SetRotation(Quaternion::FromLookRotation(-heading,Vector3::Up));
+            walker.entity->SetPositionAndRotation(position+Vector3::Up*walker.height_offset,
+                Quaternion::FromLookRotation(-heading,Vector3::Up));
             if (walker.animator) walker.animator->Pause();
             walker.animating=false;walker.blocked_timer=0;
             break;
@@ -637,14 +675,26 @@ namespace spartan
         {
             const auto ahead=path.Sample(walker.road_progress+look_ahead);
             if (!IsPathClear(walker.entity->GetPosition(),ahead.position-walker.entity->GetPosition(),look_ahead)) speed=0;
-            for (const Walker& other:m_walkers)
+            const Vector3 position = walker.entity->GetPosition();
+            const int32_t cell_x = static_cast<int32_t>(floorf(position.x / walker_cell_size));
+            const int32_t cell_z = static_cast<int32_t>(floorf(position.z / walker_cell_size));
+            for (int32_t z = cell_z - 1; z <= cell_z + 1 && speed > 0.0f; ++z)
+            for (int32_t x = cell_x - 1; x <= cell_x + 1 && speed > 0.0f; ++x)
             {
-                if (&other==&walker || !other.entity) continue;
-                const Vector3 offset=other.entity->GetPosition()-walker.entity->GetPosition();
-                // Queue behind walkers travelling the same way. Opposing
-                // walkers must not form a permanent mutual-stop deadlock.
-                if (Vector3::Dot(other.heading,walker.heading)>.5f &&
-                    offset.LengthSquared()<2.25f && Vector3::Dot(offset,walker.heading)>.2f) {speed=0;break;}
+                const auto cell = m_walker_cells.find(walker_cell_key(x, z));
+                if (cell == m_walker_cells.end()) continue;
+                for (const Walker* other : cell->second)
+                {
+                    if (other == &walker) continue;
+                    const Vector3 offset = other->entity->GetPosition() - position;
+                    // Keep the same queue rule, considering only nearby cells.
+                    if (Vector3::Dot(other->heading, walker.heading) > .5f &&
+                        offset.LengthSquared() < 2.25f && Vector3::Dot(offset, walker.heading) > .2f)
+                    {
+                        speed = 0.0f;
+                        break;
+                    }
+                }
             }
         }
         walker.road_progress = std::min(path.Length(), walker.road_progress + speed * delta_time);
@@ -652,8 +702,8 @@ namespace spartan
         const auto pose = path.Sample(walker.road_progress);
         walker.heading = planar_normalize(pose.tangent);
         walker.ground_y = pose.position.y;
-        walker.entity->SetPosition(pose.position + Vector3::Up * walker.height_offset);
-        walker.entity->SetRotation(Quaternion::Lerp(walker.entity->GetRotation(),
+        walker.entity->SetPositionAndRotation(pose.position + Vector3::Up * walker.height_offset,
+            Quaternion::Lerp(walker.entity->GetRotation(),
             Quaternion::FromLookRotation(-walker.heading, Vector3::Up), std::min(1.0f, delta_time * turn_speed)));
     }
 
@@ -830,8 +880,7 @@ namespace spartan
             Vector3::Up
         );
         const float t = 1.0f - expf(-turn_speed * delta_time);
-        entity->SetRotation(Quaternion::Lerp(entity->GetRotation(), target_rot, t));
-        entity->SetPosition(position);
+        entity->SetPositionAndRotation(position, Quaternion::Lerp(entity->GetRotation(), target_rot, t));
     }
 
     void Pedestrians::UpdateWalkerFar(Walker& walker, float delta_time)
@@ -881,8 +930,7 @@ namespace spartan
             Vector3::Up
         );
         const float t = 1.0f - expf(-turn_speed * delta_time);
-        entity->SetRotation(Quaternion::Lerp(entity->GetRotation(), target_rot, t));
-        entity->SetPosition(position);
+        entity->SetPositionAndRotation(position, Quaternion::Lerp(entity->GetRotation(), target_rot, t));
     }
 
     void Pedestrians::UpdateAnimationLod()

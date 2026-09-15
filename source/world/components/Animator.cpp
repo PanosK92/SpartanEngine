@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "pch.h"
+#include "../../profiling/Profiler.h"
 #include <cctype>
 #include "Animator.h"
 #include "Render.h"
@@ -33,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../core/Engine.h"
 #include "../../core/ProgressTracker.h"
 #include "../../core/Timer.h"
+#include "../../core/ThreadPool.h"
 #include "../../geometry/Mesh.h"
 #include "../../physics/PhysicsWorld.h"
 #include "../../rendering/GeometryBuffer.h"
@@ -50,6 +52,15 @@ namespace spartan
 {
     namespace
     {
+        struct SkinningJob
+        {
+            Animator* animator;
+            shared_ptr<Mesh> mesh;
+            bool succeeded = false;
+        };
+        bool batch_skinning = false;
+        vector<SkinningJob> skinning_jobs;
+
         // every authoring tool names leg joints differently: thigh_l, thigh.L, UpperLeg.L,
         // LeftUpLeg, mixamorig:LeftUpLeg. strip the namespace, case, separators and trailing
         // numbering so one matcher covers all of them
@@ -208,9 +219,57 @@ namespace spartan
         CaptureBindPose();
     }
 
+    Animator::~Animator()
+    {
+        skinning_jobs.erase(remove_if(skinning_jobs.begin(), skinning_jobs.end(),
+            [this](const SkinningJob& job) { return job.animator == this; }), skinning_jobs.end());
+    }
+
+    void Animator::BeginSkinningBatch()
+    {
+        batch_skinning = true;
+    }
+
+    void Animator::FlushSkinningBatch()
+    {
+        batch_skinning = false;
+        if (skinning_jobs.empty()) return;
+        SP_PROFILE_CPU_START("animation_skin_batch");
+        ThreadPool::ParallelLoop([](uint32_t begin, uint32_t end)
+        {
+            for (uint32_t i = begin; i < end; ++i)
+            {
+                SkinningJob& job = skinning_jobs[i];
+                Animator* animator = job.animator;
+                const auto& skeleton = job.mesh->GetSkeleton();
+                const auto* binding = job.mesh->GetSkeletalMeshBinding();
+                if (skeleton && binding)
+                    job.succeeded = animation_evaluate::SkinMesh(*binding, animator->m_global_matrices,
+                        skeleton->bind_inverse_global_matrices, animator->m_bind_vertices,
+                        animator->m_skinned_vertices, animator->m_skin_matrices);
+            }
+        }, static_cast<uint32_t>(skinning_jobs.size()));
+        SP_PROFILE_CPU_END();
+        SP_PROFILE_CPU_START("animation_publish_batch");
+        for (SkinningJob& job : skinning_jobs)
+        {
+            if (!job.succeeded) continue;
+            Animator* animator = job.animator;
+            job.mesh->GetVertices() = animator->m_skinned_vertices;
+            GeometryBuffer::UpdateVertices(animator->m_skinned_vertices.data(), job.mesh->GetGlobalVertexOffset(),
+                static_cast<uint32_t>(animator->m_skinned_vertices.size()));
+            animator->MarkBlasNeedsRefit(job.mesh.get());
+        }
+        skinning_jobs.clear();
+        SP_PROFILE_CPU_END();
+    }
+
     void Animator::Remove()
     {
         Stop();
+        // Stop can queue the bind pose while a world animation batch is open.
+        skinning_jobs.erase(remove_if(skinning_jobs.begin(), skinning_jobs.end(),
+            [this](const SkinningJob& job) { return job.animator == this; }), skinning_jobs.end());
         m_mesh = nullptr;
         m_bind_vertices.clear();
         m_skinned_vertices.clear();
@@ -1156,10 +1215,11 @@ namespace spartan
                 scale = Vector3::One;
             }
 
-            entity->SetPositionLocal(local.GetTranslation());
-            entity->SetRotationLocal(local.GetRotation());
-            entity->SetScaleLocal(scale);
+            entity->SetTransformLocalDeferred(local.GetTranslation(), local.GetRotation(), scale);
         }
+        // Each joint setter used to propagate through all descendants, repeatedly
+        // recomputing the same bones. Publish the complete pose in one traversal.
+        root->UpdateTransform();
     }
 
     void Animator::CaptureBindPose()
@@ -1410,7 +1470,9 @@ namespace spartan
             ResolveJointEntities(skeleton);
         }
 
+        SP_PROFILE_CPU_START("animation_hierarchy");
         ApplyHierarchy(skeleton, local_matrices);
+        SP_PROFILE_CPU_END();
 
         SkeletalMeshBinding* binding = mesh->GetSkeletalMeshBinding();
         if (!binding || !m_bind_captured || m_bind_vertices.empty())
@@ -1426,6 +1488,21 @@ namespace spartan
 
         EnsureDynamicBlas(mesh);
 
+        if (batch_skinning)
+        {
+            // A script may replace the pose again this frame; only publish its final pose.
+            for (SkinningJob& job : skinning_jobs)
+            {
+                if (job.animator == this)
+                {
+                    job.mesh = static_pointer_cast<Mesh>(mesh->shared_from_this());
+                    return;
+                }
+            }
+            skinning_jobs.push_back({this, static_pointer_cast<Mesh>(mesh->shared_from_this()), false});
+            return;
+        }
+        SP_PROFILE_CPU_START("animation_skin");
         if (animation_evaluate::SkinMesh(
             *binding,
             m_global_matrices,
@@ -1434,6 +1511,8 @@ namespace spartan
             m_skinned_vertices,
             m_skin_matrices))
         {
+            SP_PROFILE_CPU_END();
+            SP_PROFILE_CPU_START("animation_upload");
             mesh->GetVertices() = m_skinned_vertices;
             GeometryBuffer::UpdateVertices(
                 m_skinned_vertices.data(),
@@ -1443,10 +1522,12 @@ namespace spartan
 
             MarkBlasNeedsRefit(mesh);
         }
+        SP_PROFILE_CPU_END();
     }
 
     void Animator::Tick()
     {
+        SP_PROFILE_CPU();
         if (ProgressTracker::IsLoading())
         {
             return;

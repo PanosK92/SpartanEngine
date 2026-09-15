@@ -36,6 +36,7 @@ namespace spartan
         array<Progress, static_cast<size_t>(ProgressType::Max)> progresses;
         recursive_mutex mutex_jobs;
         uint32_t anonymous_jobs = 0;
+        atomic<uint32_t> loading_sources = 0;
     }
 
     void Progress::Start(const uint32_t job_count, const string& text)
@@ -49,6 +50,7 @@ namespace spartan
         {
             m_job_count += job_count;
             m_text       = text;
+            UpdateProgressing();
             return;
         }
 
@@ -57,6 +59,7 @@ namespace spartan
         m_text            = text;
         m_continuous_mode = (job_count == 0); // if job_count is 0, use continuous mode
         m_fraction        = 0.0f;
+        UpdateProgressing();
     }
 
     float Progress::GetFraction() const
@@ -80,11 +83,23 @@ namespace spartan
     {
         lock_guard lock(mutex_jobs);
         m_fraction = (fraction < 0.0f) ? 0.0f : (fraction > 1.0f) ? 1.0f : fraction;
+        UpdateProgressing();
     }
 
     bool Progress::IsProgressing() const
     {
-        return GetFraction() != 1.0f;
+        return m_progressing.load(memory_order_acquire);
+    }
+
+    void Progress::UpdateProgressing()
+    {
+        const bool progressing = GetFraction() != 1.0f;
+        if (progressing != m_progressing.load(memory_order_relaxed))
+        {
+            if (progressing) loading_sources.fetch_add(1, memory_order_release);
+            else loading_sources.fetch_sub(1, memory_order_release);
+            m_progressing.store(progressing, memory_order_release);
+        }
     }
 
     void Progress::JobDone()
@@ -93,6 +108,7 @@ namespace spartan
 
         SP_ASSERT_MSG(m_jobs_done + 1 <= m_job_count, "Job count exceeded");
         m_jobs_done++;
+        UpdateProgressing();
     }
 
     void Progress::Complete()
@@ -104,6 +120,7 @@ namespace spartan
         m_jobs_done       = m_job_count.load();
         m_continuous_mode = false;
         m_fraction        = 1.0f;
+        UpdateProgressing();
     }
 
     string Progress::GetText()
@@ -127,22 +144,9 @@ namespace spartan
 
     bool ProgressTracker::IsLoading()
     {
-        lock_guard lock(mutex_jobs);
-
-        if (anonymous_jobs > 0)
-        {
-            return true;
-        }
-
-        for (const Progress& progress : progresses)
-        {
-            if (progress.IsProgressing())
-            {
-                return true;
-            }
-        }
-
-        return false; 
+        // Thousands of components ask this every frame. Writers maintain one
+        // aggregate under the existing mutex instead of readers locking every tracker.
+        return loading_sources.load(memory_order_acquire) != 0;
     }
 
     void ProgressTracker::SetGlobalLoadingState(bool is_loading)
@@ -152,11 +156,13 @@ namespace spartan
         if (is_loading)
         {
             anonymous_jobs++;
+            loading_sources.fetch_add(1, memory_order_release);
         }
         else if (anonymous_jobs > 0)
         {
             // guard against underflow, an unbalanced decrement would wrap to a huge value and leave IsLoading stuck true forever
             anonymous_jobs--;
+            loading_sources.fetch_sub(1, memory_order_release);
         }
     }
 }

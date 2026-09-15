@@ -43,6 +43,71 @@ namespace spartan::road_traffic
         return true;
     }
 
+    // Static obstacle hierarchy for sidewalk construction. The broad phase only
+    // rejects disjoint bounds; leaves retain the exact swept-body clearance test.
+    class WalkingObstacles
+    {
+    public:
+        struct Bounds { Vector3 minimum, maximum; };
+        void Add(const Vector3& lo, const Vector3& hi) { bounds.push_back({lo, hi}); }
+        void Build()
+        {
+            nodes.clear();
+            nodes.reserve(bounds.size() * 2);
+            if (!bounds.empty()) BuildNode(0, bounds.size());
+        }
+        bool Blocked(const Vector3& a, const Vector3& b) const
+        {
+            if (nodes.empty()) return false;
+            const Vector3 lo(std::min(a.x,b.x)-0.45f, std::min(a.y,b.y), std::min(a.z,b.z)-0.45f);
+            const Vector3 hi(std::max(a.x,b.x)+0.45f, std::max(a.y,b.y)+1.8f, std::max(a.z,b.z)+0.45f);
+            return Query(0, lo, hi, a, b);
+        }
+    private:
+        struct Node { Bounds box; size_t begin, end, left = invalid, right = invalid; };
+        std::vector<Bounds> bounds;
+        std::vector<Node> nodes;
+        size_t BuildNode(size_t begin, size_t end)
+        {
+            Bounds box = bounds[begin];
+            for (size_t i = begin + 1; i < end; ++i)
+            {
+                const auto& b = bounds[i];
+                box.minimum = Vector3(std::min(box.minimum.x,b.minimum.x),std::min(box.minimum.y,b.minimum.y),std::min(box.minimum.z,b.minimum.z));
+                box.maximum = Vector3(std::max(box.maximum.x,b.maximum.x),std::max(box.maximum.y,b.maximum.y),std::max(box.maximum.z,b.maximum.z));
+            }
+            const size_t index = nodes.size();
+            nodes.push_back({box, begin, end});
+            if (end - begin <= 8) return index;
+            const Vector3 size = box.maximum - box.minimum;
+            const bool split_x = size.x >= size.z;
+            const size_t middle = begin + (end - begin) / 2;
+            std::nth_element(bounds.begin()+begin, bounds.begin()+middle, bounds.begin()+end,
+                [split_x](const Bounds& a, const Bounds& b)
+                {
+                    return split_x ? a.minimum.x+a.maximum.x < b.minimum.x+b.maximum.x
+                                   : a.minimum.z+a.maximum.z < b.minimum.z+b.maximum.z;
+                });
+            const size_t left = BuildNode(begin, middle);
+            const size_t right = BuildNode(middle, end);
+            nodes[index].left = left;
+            nodes[index].right = right;
+            return index;
+        }
+        bool Query(size_t index, const Vector3& lo, const Vector3& hi, const Vector3& a, const Vector3& b) const
+        {
+            const Node& node = nodes[index];
+            if (hi.x < node.box.minimum.x || lo.x > node.box.maximum.x ||
+                hi.y < node.box.minimum.y || lo.y > node.box.maximum.y ||
+                hi.z < node.box.minimum.z || lo.z > node.box.maximum.z) return false;
+            if (node.left != invalid)
+                return Query(node.left,lo,hi,a,b) || Query(node.right,lo,hi,a,b);
+            for (size_t i = node.begin; i < node.end; ++i)
+                if (WalkingSegmentBlocked(a,b,bounds[i].minimum,bounds[i].maximum)) return true;
+            return false;
+        }
+    };
+
     struct Pose { Vector3 position; Vector3 tangent; };
     struct Path
     {
@@ -77,7 +142,10 @@ namespace spartan::road_traffic
                 const Vector3 delta = points[i] - points[i - 1];
                 const float t = std::clamp(Vector3::Dot(p - points[i - 1], delta) / delta.LengthSquared(), 0.0f, 1.0f);
                 const float d = std::clamp(distances[i - 1] + t * (distances[i] - distances[i - 1]), begin, std::min(end, Length()));
-                const float e = (Sample(d).position - p).LengthSquared();
+                // This segment is already known; Sample would binary-search the
+                // whole path and normalize a tangent that projection never uses.
+                const float fraction = (d - distances[i - 1]) / (distances[i] - distances[i - 1]);
+                const float e = (points[i - 1] + delta * fraction - p).LengthSquared();
                 if (e < error) { error = e; best = d; }
             }
             return best;

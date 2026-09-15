@@ -154,24 +154,6 @@ namespace
         return false;
     }
 
-    uint32_t count_active_entities(Entity* entity)
-    {
-        if (!entity || !entity->GetActive())
-        {
-            return 0;
-        }
-
-        uint32_t count = 1;
-        // copy children, hierarchy mutates on loader threads during world load
-        const vector<Entity*> children = entity->GetChildren();
-        for (Entity* child : children)
-        {
-            count += count_active_entities(child);
-        }
-
-        return count;
-    }
-
     void prepare_entity_filter()
     {
         filtered_entity_ids.clear();
@@ -184,18 +166,17 @@ namespace
             return;
         }
 
-        static vector<Entity*> root_entities;
-        World::GetRootEntities(root_entities);
-
         if (!entity_filter.IsActive())
         {
-            for (Entity* entity : root_entities)
+            for (Entity* entity : World::GetEntities())
             {
-                entity_count += count_active_entities(entity);
+                entity_count += entity->GetActive() ? 1u : 0u;
             }
             return;
         }
 
+        static vector<Entity*> root_entities;
+        World::GetRootEntities(root_entities);
         for (Entity* entity : root_entities)
         {
             collect_filtered_entities(entity);

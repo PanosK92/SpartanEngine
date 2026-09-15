@@ -43,5 +43,12 @@ namespace spartan::math
         Intersection CheckSphere(const Vector3& center, float radius, float ignore_depth = false) const;
 
         Plane m_planes[6];
+#if defined(__AVX2__)
+        // One SIMD lane per plane; the last two lanes are masked out.
+        float m_plane_x[8] = {};
+        float m_plane_y[8] = {};
+        float m_plane_z[8] = {};
+        float m_plane_d[8] = {};
+#endif
     };
 }

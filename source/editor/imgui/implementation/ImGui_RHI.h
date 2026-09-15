@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
+#include "profiling/Profiler.h"
 
 //= INCLUDES ===========================
 #include <array>
@@ -202,6 +203,7 @@ namespace ImGui::RHI
     // honor an imgui-managed texture (font atlas etc) according to the new imtexturedata protocol
     static void update_texture(ImTextureData* tex)
     {
+        spartan::ScopedTimeBlock block("ui_texture_update");
         if (tex->Status == ImTextureStatus_WantCreate)
         {
             IM_ASSERT(tex->Format == ImTextureFormat_RGBA32);
@@ -233,29 +235,20 @@ namespace ImGui::RHI
         }
         else if (tex->Status == ImTextureStatus_WantUpdates)
         {
-            // imgui added glyphs to the atlas, re-upload the latest pixel data
-            shared_ptr<RHI_Texture>* tex_holder = static_cast<shared_ptr<RHI_Texture>*>(tex->BackendUserData);
-            if (tex_holder)
+            // Existing glyphs keep their texture and UVs. Upload the bounding
+            // rectangle of new glyphs before this frame's UI draw, without a
+            // texture allocation or a synchronous graphics-queue round trip.
+            auto* tex_holder = static_cast<shared_ptr<RHI_Texture>*>(tex->BackendUserData);
+            if (!tex_holder || !*tex_holder) return;
+            const ImTextureRect& rect = tex->UpdateRect;
+            if (rect.w > 0 && rect.h > 0)
             {
-                bool is_font_atlas = (g_font_atlas == *tex_holder);
-
-                vector<RHI_Texture_Slice> texture_data;
-                vector<std::byte>& mip = texture_data.emplace_back().mips.emplace_back().bytes;
-                const uint32_t size    = static_cast<uint32_t>(tex->Width * tex->Height * tex->BytesPerPixel);
-                mip.resize(size);
-                memcpy(&mip[0], tex->Pixels, size);
-
-                *tex_holder = make_shared<RHI_Texture>(
-                    RHI_Texture_Type::Type2D, tex->Width, tex->Height, 1, 1,
-                    RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, "imgui_atlas", texture_data
-                );
-
-                tex->SetTexID(reinterpret_cast<ImTextureID>(tex_holder->get()));
-
-                if (is_font_atlas)
-                {
-                    g_font_atlas = *tex_holder;
-                }
+                const size_t row_bytes = static_cast<size_t>(rect.w) * tex->BytesPerPixel;
+                vector<std::byte> pixels(row_bytes * rect.h);
+                for (uint32_t row = 0; row < rect.h; ++row)
+                    memcpy(pixels.data() + row * row_bytes, tex->GetPixelsAt(rect.x, rect.y + row), row_bytes);
+                if (!(*tex_holder)->UpdateRegion(rect.x, rect.y, rect.w, rect.h, pixels.data(), true))
+                    return;
             }
             tex->SetStatus(ImTextureStatus_OK);
         }

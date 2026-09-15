@@ -349,6 +349,7 @@ namespace spartan
         dlss_reactivity_c,
         film_grain_c,
         motion_blur_c,
+        depth_of_field_focus_c,
         depth_of_field_c,
         chromatic_aberration_c,
         vhs_c,
@@ -648,6 +649,7 @@ namespace spartan
         ClusterStats,              // tiny stats buffer for the cluster assign pass (overflow counter)
         VolumetricLightIndices,    // compact list of volumetric light indices, built on cpu each frame
         OceanHeights,              // fft ocean displacement written by the gpu
+        OceanWaveBounds,           // absolute height bound per displacement cascade
         OceanHeightsReadback0,     // frame rotated cpu readback
         OceanHeightsReadback1,
         OceanHeightsReadback2,
@@ -741,6 +743,7 @@ namespace spartan
     struct Renderer_DrawCall
     {
         Render* render           = nullptr;
+        uint64_t material_id     = 0;
         uint32_t instance_index  = 0;
         uint32_t instance_count  = 0;
         uint32_t lod_index       = 0;
@@ -748,6 +751,8 @@ namespace spartan
         float distance_squared   = 0.0f;
         bool is_occluder         = false;
         bool camera_visible      = false;
+        bool is_transparent      = false;
+        bool is_alpha_tested     = false;
     };
 
 }

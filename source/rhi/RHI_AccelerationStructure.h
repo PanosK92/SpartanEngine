@@ -87,6 +87,7 @@ namespace spartan
         // misc
         RHI_AccelerationStructureType m_type = RHI_AccelerationStructureType::Max;
         uint64_t m_size                      = 0;
+        uint64_t m_device_address            = 0;
         bool m_allow_update                  = false;
 
         // rhi

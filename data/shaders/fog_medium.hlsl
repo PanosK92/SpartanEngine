@@ -46,10 +46,14 @@ FogMedium fog_sample_medium(float3 position, float y0, float y1, float footprint
     float3 advected = position - buffer_frame.wind * (float(buffer_frame.time) * 0.08f);
     // Filter unresolved density detail to its mean instead of letting a far
     // voxel sample unrelated noise peaks as the camera moves through the grid.
-    float coarse = lerp(fog_noise(advected * float3(0.008f, 0.022f, 0.008f)), 0.5f,
-        smoothstep(20.0f, 100.0f, footprint));
-    float fine = lerp(fog_noise(advected * 0.031f), 0.5f,
-        smoothstep(8.0f, 32.0f, footprint));
+    float coarse = 0.5f;
+    float fine = 0.5f;
+    if (footprint < 100.0f)
+        coarse = lerp(fog_noise(advected * float3(0.008f, 0.022f, 0.008f)), 0.5f,
+            smoothstep(20.0f, 100.0f, footprint));
+    if (footprint < 32.0f)
+        fine = lerp(fog_noise(advected * 0.031f), 0.5f,
+            smoothstep(8.0f, 32.0f, footprint));
     float noise = coarse * 0.7f + fine * 0.3f;
     float structure = lerp(1.0f, smoothstep(0.18f, 0.82f, noise) * 1.8f, breakup);
     float wind_mixing = rcp(1.0f + length(buffer_frame.wind) * (1.0f - shelter) * 0.06f);
@@ -60,6 +64,23 @@ FogMedium fog_sample_medium(float3 position, float y0, float y1, float footprint
 
     if (buffer_frame.ocean_enabled > 0.5f)
     {
+        float wave_bound = 0.001f;
+        [loop] for (uint cascade = 0u; cascade < buffer_frame.ocean_cascade_count; ++cascade)
+            wave_bound += asfloat(ocean_wave_bounds[cascade]);
+        wave_bound *= 1.00001f; // cover float accumulation and interpolation roundoff
+        // Entirely dry/submerged segments have exactly constant coverage.
+        // Only segments intersecting the measured wave band need FFT inversion.
+        if (min(y0, y1) > sea_level + wave_bound)
+        {
+            medium.air_extinction = air;
+            return medium;
+        }
+        if (max(y0, y1) < sea_level - wave_bound)
+        {
+            medium.water = 1.0f;
+            medium.air_extinction = air;
+            return medium;
+        }
         float water_y = sea_level;
         // FFT work is only needed in the wave band. Deep samples still receive
         // the moving entry point when their sunlight is evaluated.

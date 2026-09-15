@@ -178,7 +178,6 @@ namespace spartan
         array<shared_ptr<RHI_Queue>, static_cast<uint32_t>(RHI_Queue_Type::Max)> regular;
 
         // per-queue fences for queue-side wait/signal, separate from the rhi sync primitives
-        // (fence_graphics is reused as the "everything finished" fence by QueueWaitAll)
         ID3D12Fence* fence_graphics = nullptr;
         ID3D12Fence* fence_compute  = nullptr;
         ID3D12Fence* fence_copy     = nullptr;
@@ -187,7 +186,6 @@ namespace spartan
         uint64_t fence_value_compute  = 0;
         uint64_t fence_value_copy     = 0;
         uint64_t fence_value_present  = 0;
-        HANDLE fence_event = nullptr;
 
         ID3D12CommandQueue* get_d3d_queue(RHI_Queue_Type type)
         {
@@ -255,12 +253,6 @@ namespace spartan
                 queue = nullptr;
             }
 
-            if (fence_event)
-            {
-                CloseHandle(fence_event);
-                fence_event = nullptr;
-            }
-
             if (fence_graphics) { fence_graphics->Release(); fence_graphics = nullptr; }
             if (fence_compute)  { fence_compute->Release();  fence_compute  = nullptr; }
             if (fence_copy)     { fence_copy->Release();     fence_copy     = nullptr; }
@@ -292,15 +284,14 @@ namespace spartan
         }
     }
 
-    // deferred resource destruction queue, mirrors Vulkan_Device behaviour, age in frames
+    // deferred resource destruction, gated by submission completion
     namespace deletion
     {
-        struct Entry { RHI_Resource_Type type; void* resource; uint64_t frame; };
+        struct Entry { RHI_Resource_Type type; void* resource; std::shared_ptr<const RHI_PendingWork> completion; };
         std::vector<Entry> queue;
-        uint64_t           frame = 0;
         std::mutex         mutex;
 
-        // per-resource destructor switch, called when an entry is old enough to retire
+        // per-resource destructor switch, called after the recorded GPU work completes
         void destroy_resource(RHI_Resource_Type type, void* resource);
     }
 
@@ -352,7 +343,7 @@ namespace spartan
         constexpr uint32_t rtv_heap_size            = 512;
         constexpr uint32_t dsv_heap_size            = 256;
         constexpr uint32_t cbv_srv_uav_heap_size    = 1000000;
-        constexpr uint32_t sampler_heap_size        = 512;
+        constexpr uint32_t sampler_heap_size        = 2048;
 
         // bindless zone sizes within cbv_srv_uav heap
         constexpr uint32_t bindless_textures_count  = 16384;
@@ -361,6 +352,19 @@ namespace spartan
         // bindless zone sizes within sampler heap
         constexpr uint32_t bindless_samplers_compare_count = 64;
         constexpr uint32_t bindless_samplers_count         = 64;
+
+        constexpr uint32_t bindless_count = bindless_textures_count + bindless_buffers_count;
+        constexpr uint32_t sampler_count = bindless_samplers_compare_count + bindless_samplers_count;
+        constexpr uint32_t bindless_version_count = 16;
+        struct BindlessVersion
+        {
+            shared_ptr<const RHI_PendingWork> completion;
+        };
+        array<BindlessVersion, bindless_version_count> bindless_versions;
+        uint32_t bindless_version = UINT32_MAX;
+        bool bindless_dirty = true;
+        atomic<uint64_t> bindless_revision = 1;
+        mutex bindless_mutex;
 
         // descriptor heaps
         ID3D12DescriptorHeap* heap_rtv         = nullptr;
@@ -389,7 +393,7 @@ namespace spartan
         // [cpu_static_size, cpu_static_size + cpu_transient_size) transient views (set_texture mip views, set_acceleration_structure, set_buffer_uav)
         constexpr uint32_t cbv_srv_uav_cpu_static_size    = 100000;
         constexpr uint32_t cbv_srv_uav_cpu_transient_size = 200000;
-        constexpr uint32_t cbv_srv_uav_cpu_total_size     = cbv_srv_uav_cpu_static_size + cbv_srv_uav_cpu_transient_size;
+        constexpr uint32_t cbv_srv_uav_cpu_total_size     = cbv_srv_uav_cpu_static_size + cbv_srv_uav_cpu_transient_size + bindless_count;
 
         // sampler cpu heap free list, populated when samplers are destroyed so the slot can be reused
         std::vector<uint32_t> sampler_free_list;
@@ -420,6 +424,9 @@ namespace spartan
         void destroy()
         {
             pipelines.clear();
+            bindless_versions = {};
+            bindless_version = UINT32_MAX;
+            bindless_dirty = true;
             ring_pages.clear();
             ring_free_pages.clear();
             free_rtvs.clear();
@@ -867,8 +874,6 @@ namespace spartan
             queues::fence_value_compute  = 1;
             queues::fence_value_copy     = 1;
             queues::fence_value_present  = 1;
-            queues::fence_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-            SP_ASSERT_MSG(queues::fence_event != nullptr, "Failed to create fence event");
         }
 
         // create descriptor heaps
@@ -914,7 +919,7 @@ namespace spartan
                 "Failed to create CPU staging CBV/SRV/UAV heap");
 
             D3D12_DESCRIPTOR_HEAP_DESC cpu_sampler_heap_desc = {};
-            cpu_sampler_heap_desc.NumDescriptors = 1024;
+            cpu_sampler_heap_desc.NumDescriptors = descriptors::sampler_heap_size;
             cpu_sampler_heap_desc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
             cpu_sampler_heap_desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateDescriptorHeap(&cpu_sampler_heap_desc, IID_PPV_ARGS(&descriptors::heap_sampler_cpu))),
@@ -929,7 +934,7 @@ namespace spartan
             // compute zone bases (cbv/srv/uav)
             descriptors::zone_bindless_textures_base = 0;
             descriptors::zone_bindless_buffers_base  = descriptors::zone_bindless_textures_base + descriptors::bindless_textures_count;
-            descriptors::zone_ring_base              = descriptors::zone_bindless_buffers_base  + descriptors::bindless_buffers_count;
+            descriptors::zone_ring_base              = descriptors::bindless_count * descriptors::bindless_version_count;
             descriptors::zone_ring_size              = descriptors::cbv_srv_uav_heap_size - descriptors::zone_ring_base;
             descriptors::zone_ring_offset            = 0;
 
@@ -939,6 +944,32 @@ namespace spartan
         }
 
         // create rhi queue wrappers
+        // Every slot copied into a snapshot must contain a valid descriptor.
+        D3D12_SHADER_RESOURCE_VIEW_DESC null_srv = {};
+        null_srv.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        null_srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        null_srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        null_srv.Texture2D.MipLevels = 1;
+        auto srv_handle = descriptors::heap_cbv_srv_uav_cpu->GetCPUDescriptorHandleForHeapStart();
+        srv_handle.ptr += static_cast<SIZE_T>(descriptors::cbv_srv_uav_cpu_static_size + descriptors::cbv_srv_uav_cpu_transient_size) * descriptors::cbv_srv_uav_descriptor_size;
+        for (uint32_t i = 0; i < descriptors::bindless_count; i++)
+        {
+            RHI_Context::device->CreateShaderResourceView(nullptr, &null_srv, srv_handle);
+            srv_handle.ptr += descriptors::cbv_srv_uav_descriptor_size;
+        }
+        D3D12_SAMPLER_DESC default_sampler = {};
+        default_sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+        default_sampler.AddressU = default_sampler.AddressV = default_sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+        default_sampler.MaxLOD = D3D12_FLOAT32_MAX;
+        default_sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+        auto sampler_handle = descriptors::heap_sampler_cpu->GetCPUDescriptorHandleForHeapStart();
+        sampler_handle.ptr += static_cast<SIZE_T>(descriptors::sampler_heap_size - descriptors::sampler_count) * descriptors::sampler_descriptor_size;
+        for (uint32_t i = 0; i < descriptors::sampler_count; i++)
+        {
+            RHI_Context::device->CreateSampler(&default_sampler, sampler_handle);
+            sampler_handle.ptr += descriptors::sampler_descriptor_size;
+        }
+
         queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Graphics)] = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
         queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");
         queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Copy)]     = make_shared<RHI_Queue>(RHI_Queue_Type::Copy,     "copy");
@@ -949,7 +980,7 @@ namespace spartan
 
     void RHI_Device::Tick(const uint64_t frame_count)
     {
-        // retire any deletion queue entries old enough to be safe (gpu has finished using them)
+        // retire resources whose GPU work has completed
         DeletionQueueParse();
     }
 
@@ -967,10 +998,11 @@ namespace spartan
         }
 
         // force-retire any pending deletions, the gpu is guaranteed idle here
-        deletion::frame += renderer_draw_data_buffer_count + 2;
         DeletionQueueParse();
 
         queues::destroy();
+        StagingBufferPoolDestroy();
+        DeletionQueueFlush();
         descriptors::destroy();
 
         if (queues::graphics) { queues::graphics->Release(); queues::graphics = nullptr; }
@@ -992,47 +1024,15 @@ namespace spartan
 
     void RHI_Device::QueueWaitAll(const bool flush)
     {
-        // first ensure all rhi command lists per queue are fully submitted/waited
-        if (flush)
+        // Serialize callers that flush the same command-list pools. Queue::Wait also
+        // fences the native queue, including uploads submitted outside the frame.
+        static mutex wait_mutex;
+        lock_guard<mutex> lock(wait_mutex);
+        for (const auto& queue : queues::regular)
         {
-            for (uint32_t i = 0; i < static_cast<uint32_t>(RHI_Queue_Type::Max); i++)
+            if (queue)
             {
-                if (queues::regular[i])
-                {
-                    queues::regular[i]->Wait(true);
-                }
-            }
-        }
-        else
-        {
-            for (uint32_t i = 0; i < static_cast<uint32_t>(RHI_Queue_Type::Max); i++)
-            {
-                if (queues::regular[i])
-                {
-                    queues::regular[i]->Wait(false);
-                }
-            }
-        }
-
-        // then signal+wait on each queue's per-queue fence as a final guard
-        const RHI_Queue_Type queue_types[] = { RHI_Queue_Type::Graphics, RHI_Queue_Type::Compute, RHI_Queue_Type::Copy, RHI_Queue_Type::Present };
-        for (RHI_Queue_Type type : queue_types)
-        {
-            ID3D12CommandQueue* q = queues::get_d3d_queue(type);
-            ID3D12Fence*        f = queues::get_fence(type);
-            if (!q || !f)
-            {
-                continue;
-            }
-
-            uint64_t& fv = queues::get_fence_value(type);
-            const uint64_t target = fv++;
-            q->Signal(f, target);
-
-            if (f->GetCompletedValue() < target)
-            {
-                f->SetEventOnCompletion(target, queues::fence_event);
-                WaitForSingleObject(queues::fence_event, INFINITE);
+                queue->Wait(flush);
             }
         }
     }
@@ -1152,66 +1152,56 @@ namespace spartan
 
     void RHI_Device::DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource)
     {
-        if (!resource)
-        {
-            return;
-        }
-
-        std::lock_guard<std::mutex> guard(deletion::mutex);
-        deletion::queue.push_back({ resource_type, resource, deletion::frame });
+        if (!resource) return;
+        auto completion = RHI_CommandList::CapturePendingWork();
+        std::lock_guard guard(deletion::mutex);
+        deletion::queue.push_back({ resource_type, resource, std::move(completion) });
     }
 
     void RHI_Device::DeletionQueueParse()
     {
-        std::lock_guard<std::mutex> guard(deletion::mutex);
-
-        deletion::frame++;
-
-        // resources older than (renderer_draw_data_buffer_count + 1) frames are guaranteed to be no longer in flight
-        const uint64_t safe_age = renderer_draw_data_buffer_count + 1;
-
-        auto it = deletion::queue.begin();
-        while (it != deletion::queue.end())
+        std::vector<deletion::Entry> retired;
         {
-            if ((deletion::frame - it->frame) < safe_age)
+            std::lock_guard guard(deletion::mutex);
+            unordered_map<const RHI_PendingWork*, bool> completed;
+            size_t retained = 0;
+            for (size_t i = 0; i < deletion::queue.size(); i++)
             {
-                ++it;
-                continue;
+                auto& entry = deletion::queue[i];
+                auto [it, inserted] = completed.try_emplace(entry.completion.get(), false);
+                if (inserted) it->second = entry.completion->IsComplete();
+                if (it->second)
+                    retired.push_back(move(entry));
+                else
+                {
+                    if (retained != i) deletion::queue[retained] = move(entry);
+                    retained++;
+                }
             }
+            deletion::queue.resize(retained);
+        }
+        // Releasing completion records can enqueue their semaphore destruction.
+        // Do not run destructors while holding the retirement mutex.
+        for (const auto& entry : retired)
+        {
+            void* resource = entry.resource;
+            RHI_Resource_Type resource_type = entry.type;
+            deletion::destroy_resource(resource_type, resource);
 
-            deletion::destroy_resource(it->type, it->resource);
-            it = deletion::queue.erase(it);
         }
     }
 
     void RHI_Device::DeletionQueueFlush()
     {
-        {
-            std::lock_guard<std::mutex> guard(deletion::mutex);
-            for (auto& entry : deletion::queue)
-                entry.frame = 0;
-        }
-        DeletionQueueParse();
+        // Callers wait for the GPU first. Drain secondary deletions as well.
+        do { DeletionQueueParse(); } while (DeletionQueueNeedsToParse());
     }
 
     bool RHI_Device::DeletionQueueNeedsToParse()
     {
-        std::lock_guard<std::mutex> guard(deletion::mutex);
-
-        if (deletion::queue.empty())
-        {
-            return false;
-        }
-
-        const uint64_t safe_age = renderer_draw_data_buffer_count + 1;
+        std::lock_guard guard(deletion::mutex);
         for (const auto& entry : deletion::queue)
-        {
-            if ((deletion::frame + 1 - entry.frame) >= safe_age)
-            {
-                return true;
-            }
-        }
-
+            if (entry.completion->IsComplete()) return true;
         return false;
     }
 }
@@ -1230,6 +1220,57 @@ namespace spartan::d3d12_descriptors
     uint32_t GetDsvDescriptorSize()         { return spartan::descriptors::dsv_descriptor_size; }
     uint32_t GetCbvSrvUavDescriptorSize()   { return spartan::descriptors::cbv_srv_uav_descriptor_size; }
     uint32_t GetSamplerDescriptorSize()     { return spartan::descriptors::sampler_descriptor_size; }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE GetBindlessCpuHandle(uint32_t index)
+    {
+        using namespace spartan::descriptors;
+        auto handle = heap_cbv_srv_uav_cpu->GetCPUDescriptorHandleForHeapStart();
+        handle.ptr += static_cast<SIZE_T>(cbv_srv_uav_cpu_static_size + cbv_srv_uav_cpu_transient_size + index) * cbv_srv_uav_descriptor_size;
+        return handle;
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE GetBindlessSamplerCpuHandle(uint32_t index)
+    {
+        using namespace spartan::descriptors;
+        auto handle = heap_sampler_cpu->GetCPUDescriptorHandleForHeapStart();
+        handle.ptr += static_cast<SIZE_T>(sampler_heap_size - sampler_count + index) * sampler_descriptor_size;
+        return handle;
+    }
+
+    // Publish an immutable version. An old version remains intact until every
+    // command list that could have recorded its tables has finished.
+    uint64_t GetBindlessRevision() { return spartan::descriptors::bindless_revision.load(memory_order_relaxed); }
+
+    BindlessTables GetBindlessSnapshot()
+    {
+        using namespace spartan::descriptors;
+        lock_guard<mutex> lock(bindless_mutex);
+        if (bindless_dirty)
+        {
+            if (bindless_version != UINT32_MAX)
+                bindless_versions[bindless_version].completion = RHI_CommandList::CapturePendingWork();
+            uint32_t next = UINT32_MAX;
+            for (uint32_t i = 0; i < bindless_version_count; i++)
+            {
+                const auto& version = bindless_versions[i];
+                if (i != bindless_version && (!version.completion || version.completion->IsComplete()))
+                {
+                    next = i;
+                    break;
+                }
+            }
+            SP_ASSERT_MSG(next != UINT32_MAX, "Bindless descriptor versions exhausted");
+            auto destination = heap_cbv_srv_uav->GetCPUDescriptorHandleForHeapStart();
+            destination.ptr += static_cast<SIZE_T>(next) * bindless_count * cbv_srv_uav_descriptor_size;
+            RHI_Context::device->CopyDescriptorsSimple(bindless_count, destination, GetBindlessCpuHandle(0), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+            auto samplers = heap_sampler->GetCPUDescriptorHandleForHeapStart();
+            samplers.ptr += static_cast<SIZE_T>(next) * sampler_count * sampler_descriptor_size;
+            RHI_Context::device->CopyDescriptorsSimple(sampler_count, samplers, GetBindlessSamplerCpuHandle(0), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+            bindless_version = next;
+            bindless_dirty = false;
+        }
+        return {bindless_version * bindless_count, bindless_version * sampler_count, bindless_revision.load(memory_order_relaxed)};
+    }
 
     uint32_t GetBindlessTexturesBase()  { return spartan::descriptors::zone_bindless_textures_base; }
     uint32_t GetBindlessTexturesCount() { return spartan::descriptors::bindless_textures_count; }
@@ -1383,7 +1424,9 @@ namespace spartan::d3d12_descriptors
             spartan::descriptors::sampler_free_list.pop_back();
             return idx;
         }
-        return spartan::descriptors::sampler_cpu_offset.fetch_add(1);
+        const uint32_t index = spartan::descriptors::sampler_cpu_offset.fetch_add(1);
+        SP_ASSERT(index < spartan::descriptors::sampler_heap_size - spartan::descriptors::sampler_count);
+        return index;
     }
 
     void FreeSamplerCpu(uint32_t index)
@@ -1464,13 +1507,15 @@ namespace spartan::d3d12_descriptors
     {
         return spartan::queues::get_fence_value(type);
     }
-    HANDLE                  GetFenceEvent()        { return spartan::queues::fence_event; }
 }
 
 namespace spartan
 {
     void RHI_Device::UpdateBindlessMaterials(array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters)
     {
+        lock_guard<mutex> lock(descriptors::bindless_mutex);
+        descriptors::bindless_dirty = true;
+        descriptors::bindless_revision.fetch_add(1, memory_order_relaxed);
         // copy each texture's srv into the bindless_textures zone
         if (textures)
         {
@@ -1484,6 +1529,12 @@ namespace spartan
                 RHI_Texture* tex = (*textures)[i];
                 if (!tex || !tex->GetRhiSrv())
                 {
+                    D3D12_SHADER_RESOURCE_VIEW_DESC null_srv = {};
+                    null_srv.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+                    null_srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+                    null_srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                    null_srv.Texture2D.MipLevels = 1;
+                    RHI_Context::device->CreateShaderResourceView(nullptr, &null_srv, d3d12_descriptors::GetBindlessCpuHandle(base + i));
                     continue;
                 }
                 if (RHI_CommandList* cmd_list = Cmd())
@@ -1495,7 +1546,7 @@ namespace spartan
                 D3D12_CPU_DESCRIPTOR_HANDLE src;
                 src.ptr = reinterpret_cast<SIZE_T>(tex->GetRhiSrv());
 
-                D3D12_CPU_DESCRIPTOR_HANDLE dst = d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(base + i);
+                D3D12_CPU_DESCRIPTOR_HANDLE dst = d3d12_descriptors::GetBindlessCpuHandle(base + i);
                 RHI_Context::device->CopyDescriptorsSimple(1, dst, src, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
             }
         }
@@ -1512,7 +1563,7 @@ namespace spartan
             srv_desc.Buffer.NumElements      = parameters->GetElementCount();
             srv_desc.Buffer.StructureByteStride = parameters->GetStride();
 
-            D3D12_CPU_DESCRIPTOR_HANDLE dst = d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(slot);
+            D3D12_CPU_DESCRIPTOR_HANDLE dst = d3d12_descriptors::GetBindlessCpuHandle(slot);
             RHI_Context::device->CreateShaderResourceView(static_cast<ID3D12Resource*>(parameters->GetRhiResource()), &srv_desc, dst);
         }
     }
@@ -1524,6 +1575,9 @@ namespace spartan
             return;
         }
 
+        lock_guard<mutex> lock(descriptors::bindless_mutex);
+        descriptors::bindless_dirty = true;
+        descriptors::bindless_revision.fetch_add(1, memory_order_relaxed);
         D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
         srv_desc.Format                     = DXGI_FORMAT_UNKNOWN;
         srv_desc.ViewDimension              = D3D12_SRV_DIMENSION_BUFFER;
@@ -1532,7 +1586,7 @@ namespace spartan
         srv_desc.Buffer.StructureByteStride = buffer->GetStride();
 
         const uint32_t descriptor_index = d3d12_descriptors::GetBindlessBuffersBase() + slot;
-        D3D12_CPU_DESCRIPTOR_HANDLE dst  = d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(descriptor_index);
+        D3D12_CPU_DESCRIPTOR_HANDLE dst  = d3d12_descriptors::GetBindlessCpuHandle(descriptor_index);
         RHI_Context::device->CreateShaderResourceView(static_cast<ID3D12Resource*>(buffer->GetRhiResource()), &srv_desc, dst);
     }
 
@@ -1548,6 +1602,9 @@ namespace spartan
             return;
         }
 
+        lock_guard<mutex> lock(descriptors::bindless_mutex);
+        descriptors::bindless_dirty = true;
+        descriptors::bindless_revision.fetch_add(1, memory_order_relaxed);
         const uint32_t base_compare = d3d12_descriptors::GetSamplersCompareBase();
         const uint32_t base_sampler = d3d12_descriptors::GetSamplersBase();
 
@@ -1566,7 +1623,7 @@ namespace spartan
 
             // index 0 is compare (Compare_depth in the enum), rest go into samplers
             uint32_t dst_index = (i == 0) ? base_compare : (base_sampler + (i - 1));
-            D3D12_CPU_DESCRIPTOR_HANDLE dst = d3d12_descriptors::GetSamplerGpuVisibleCpuHandle(dst_index);
+            D3D12_CPU_DESCRIPTOR_HANDLE dst = d3d12_descriptors::GetBindlessSamplerCpuHandle(dst_index);
             RHI_Context::device->CopyDescriptorsSimple(1, dst, src, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
         }
     }

@@ -48,7 +48,7 @@ static const float ozone_width         = 15000.0;
 // of atmosphere radiance derived from the directional light's intensity, all tinting comes
 // from atmospheric transmittance so the sky, sun disc, clouds, ibl and direct surface
 // lighting stay locked to the atmosphere as the single ground truth for sun color
-static const float sun_angular_radius  = 0.00935;
+// Distance-dependent solar angular radius, supplied by the ephemeris.
 static const float3 ground_albedo      = float3(0.3, 0.3, 0.3);
 
 // constants - sampling
@@ -346,7 +346,7 @@ float3 compute_sun_disc(float3 view_dir, float3 sun_dir, float3 transmittance)
 
     float angle = acos(saturate(cos_angle));
     float3 toa  = get_sun_radiance_toa() * transmittance;
-    float x     = angle / sun_angular_radius;
+    float x     = angle / buffer_frame.equatorial_x.w;
 
     // limb darkening across the geometric disc
     float r    = saturate(x);
@@ -482,11 +482,10 @@ float3 night_rotate_about_axis(float3 dir, float3 axis, float angle)
     return dir * c + cross(axis, dir) * s + axis * dot(axis, dir) * (1.0 - c);
 }
 
-float3 night_apply_earth_rotation(float3 view_dir, float time_of_day)
+float3 night_apply_earth_rotation(float3 view_dir)
 {
-    // same axis as Light::SetTimeOfDay / DayNightCycle, sun and stars share one earth spin
-    const float3 celestial_axis = float3(1.0, 0.0, 0.0);
-    return night_rotate_about_axis(view_dir, celestial_axis, time_of_day * PI2);
+    return normalize(view_dir.x * buffer_frame.equatorial_x.xyz +
+        view_dir.y * buffer_frame.equatorial_y.xyz + view_dir.z * buffer_frame.equatorial_z.xyz);
 }
 
 // stars and milky way are dimmed by airmass toward the horizon, blue is attenuated more than red
@@ -641,7 +640,7 @@ moon_result night_compute_moon(float3 view_dir, float3 moon_dir)
         return r;
     }
     
-    const float moon_radius = 0.018;
+    float moon_radius = buffer_frame.celestial_sun.w;
     const float sin_r       = sin(moon_radius);
     
     float cos_angle = dot(view_dir, moon_dir);
@@ -702,9 +701,8 @@ moon_result night_compute_moon(float3 view_dir, float3 moon_dir)
     float dzp = night_fbm(sp + float3(0, 0, eps), 4) - terrain;
     float3 n_perturbed = normalize(n + float3(dxp, dyp, dzp) * 0.55);
     
-    // lunar light direction, rotated off the antisolar direction to give a waxing gibbous phase
-    const float phase_angle = 0.45;
-    float3 lunar_sun = normalize(-moon_dir * cos(phase_angle) + t_axis * sin(phase_angle));
+    // The actual Sun direction lights the lunar surface and orients the terminator.
+    float3 lunar_sun = buffer_frame.celestial_sun.xyz;
     
     // illumination with a soft terminator
     float n_dot_l = dot(n_perturbed, lunar_sun);
@@ -744,7 +742,7 @@ float3 night_compute_atmosphere(float3 view_dir, float3 moon_dir, Texture2D sky_
     {
         float3 lum  = sample_sky_view_lut(sky_view_lut, samp, view_dir, moon_dir, 1.0);
         float fade  = smoothstep(-0.05, 0.10, moon_elev);
-        moon_scatter = lum * night_moon_to_sun * fade;
+        moon_scatter = lum * night_moon_to_sun * fade * buffer_frame.celestial_moon.w;
     }
     
     return base + airglow + moon_scatter;
@@ -818,7 +816,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         return;
     }
     
-    float3 light_dir = moon_half ? normalize(-sun_dir) : sun_dir;
+    float3 light_dir = moon_half ? buffer_frame.celestial_moon.xyz : sun_dir;
     float3 view_dir  = sky_view_unit_to_dir(unit, light_dir);
     float3 cam_pos   = clamp_camera_to_atmosphere(get_camera_position());
     
@@ -923,10 +921,9 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float3 night_celestials = float3(0, 0, 0);
     if (night_factor > 0.001)
     {
-        float time_of_day     = buffer_frame.time_of_day;
-        float3 celestial_view = night_apply_earth_rotation(orig_view, time_of_day);
-        // moon stays opposite the sun, sun already tracks time of day
-        float3 moon_dir       = normalize(-sun_dir);
+        float3 celestial_view = night_apply_earth_rotation(orig_view);
+        // Topocentric lunar ephemeris, independent of the solar direction.
+        float3 moon_dir       = buffer_frame.celestial_moon.xyz;
 
         night_ambient = night_compute_atmosphere(view_dir, moon_dir, tex3, GET_SAMPLER(sampler_bilinear_clamp));
 
@@ -939,9 +936,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
                 night_celestials += night_compute_stars(celestial_view, tex5, tex6, (float)buffer_frame.time) * ext * star_visibility;
             }
 
-            moon_result mr    = night_compute_moon(orig_view, moon_dir);
-            night_ambient    += mr.halo;
-            night_celestials += mr.disc;
+
         }
         else
         {
@@ -952,7 +947,10 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         night_celestials *= night_factor;
     }
 
-    float3 final_color = luminance + night_ambient + sun_col + night_celestials;
+    moon_result lunar = night_compute_moon(orig_view, buffer_frame.celestial_moon.xyz);
+    float3 lunar_color = below_horizon ? float3(0,0,0) :
+        (lunar.disc * night_atmospheric_extinction(orig_view) + lunar.halo * night_factor * buffer_frame.celestial_moon.w);
+    float3 final_color = luminance + night_ambient + sun_col + night_celestials + lunar_color;
     // chroma preserving clamp so the sun disc and any other hdr spike carry the directional
     // light's temperature into the panorama instead of clipping every channel to the cap
     final_color        = hdr_clamp_chroma(final_color, 100.0);

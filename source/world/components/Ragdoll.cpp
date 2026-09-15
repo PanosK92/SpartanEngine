@@ -352,6 +352,7 @@ namespace spartan
 
     void Ragdoll::Initialize()
     {
+        m_hit_skeleton = nullptr;
         m_animator = GetEntity()->GetComponent<Animator>();
         GetEntity()->AddTag("pedestrian");
         if (m_hit_body_wanted)
@@ -823,29 +824,28 @@ namespace spartan
             return true;
         }
 
-        vector<Matrix> model_globals(skeleton->joint_count);
-        skeleton->ComputeGlobalPose(locals, model_globals);
+        if (m_hit_skeleton != skeleton || m_hit_globals.size() != skeleton->joint_count)
+        {
+            m_hit_skeleton = skeleton;
+            m_hit_globals.resize(skeleton->joint_count);
+            m_hit_hips = FindJointIndexAny(*skeleton, { "hips", "pelvis", "Hips", "Pelvis" });
+            m_hit_head = FindJointIndexAny(*skeleton, { "head", "Head" });
+            m_hit_foot_l = FindJointIndexAny(*skeleton, { "foot.l", "Foot.L", "LeftFoot", "mixamorig:LeftFoot" });
+            m_hit_foot_r = FindJointIndexAny(*skeleton, { "foot.r", "Foot.R", "RightFoot", "mixamorig:RightFoot" });
+        }
+        skeleton->ComputeGlobalPose(locals, m_hit_globals);
 
         const Matrix entity_world = entity->GetMatrix();
         auto joint_world = [&](const int32_t index) -> Vector3
         {
             return entity_world *
-                model_globals[static_cast<size_t>(index)].GetTranslation();
+                m_hit_globals[static_cast<size_t>(index)].GetTranslation();
         };
 
-        const int32_t hips = FindJointIndexAny(
-            *skeleton,
-            { "hips", "pelvis", "Hips", "Pelvis" }
-        );
-        const int32_t head = FindJointIndexAny(*skeleton, { "head", "Head" });
-        const int32_t foot_l = FindJointIndexAny(
-            *skeleton,
-            { "foot.l", "Foot.L", "LeftFoot", "mixamorig:LeftFoot" }
-        );
-        const int32_t foot_r = FindJointIndexAny(
-            *skeleton,
-            { "foot.r", "Foot.R", "RightFoot", "mixamorig:RightFoot" }
-        );
+        const int32_t hips = m_hit_hips;
+        const int32_t head = m_hit_head;
+        const int32_t foot_l = m_hit_foot_l;
+        const int32_t foot_r = m_hit_foot_r;
 
         if (hips < 0)
         {

@@ -44,6 +44,7 @@ namespace spartan
         ~SkidMarks();
 
         // component
+        void Initialize() override;
         void Tick() override;
         void Remove() override;
         void Save(pugi::xml_node& node) override;

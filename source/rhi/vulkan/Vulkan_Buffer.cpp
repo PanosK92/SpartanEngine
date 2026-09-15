@@ -45,18 +45,6 @@ namespace spartan
         }
     }
 
-    void RHI_Buffer::DestroyResourceImmediate()
-    {
-        if (m_rhi_resource)
-        {
-            // synchronous destruction must evict cached sets too, otherwise validation aborts on a bind of this dead vkbuffer
-            RHI_Device::DescriptorSetInvalidateReferencingResource(this);
-
-            RHI_Device::MemoryBufferDestroy(m_rhi_resource);
-            m_data_gpu = nullptr;
-        }
-    }
-
     void RHI_Buffer::RHI_CreateResource(const void* data)
     {
         RHI_DestroyResource();
@@ -210,45 +198,20 @@ namespace spartan
 
     void RHI_Buffer::UploadSubRegion(const void* data, uint64_t offset_bytes, uint64_t size_bytes)
     {
-        SP_ASSERT(data != nullptr);
-        SP_ASSERT(offset_bytes + size_bytes <= m_object_size);
-
-        // skip if backing allocation failed (e.g. vmaCreateBuffer ran out of device memory)
-        // recording vkCmdCopyBuffer with a null vkbuffer crashes the driver
-        if (!m_rhi_resource)
+        SP_ASSERT(data && offset_bytes + size_bytes <= m_object_size);
+        if (!m_rhi_resource || size_bytes == 0)
+            return;
+        if (m_data_gpu)
         {
+            memcpy(static_cast<uint8_t*>(m_data_gpu) + offset_bytes, data, size_bytes);
             return;
         }
 
-        if (m_mappable)
-        {
-            // for mapped buffers, direct memcpy at the offset
-            memcpy(static_cast<uint8_t*>(m_data_gpu) + offset_bytes, data, size_bytes);
-        }
-        else
-        {
-            // for device-local buffers, stage and copy at the specified offset
-            void* staging_buffer = RHI_Device::StagingBufferAcquire(size_bytes);
-
-            void* mapped = nullptr;
-            RHI_Device::MemoryMap(staging_buffer, mapped);
-            memcpy(mapped, data, size_bytes);
-            RHI_Device::MemoryUnmap(staging_buffer);
-
-            VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_rhi_resource);
-            VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
-            VkBufferCopy copy_region    = {};
-            copy_region.srcOffset       = 0;
-            copy_region.dstOffset       = offset_bytes;
-            copy_region.size            = size_bytes;
-
-            // use graphics queue to avoid a cross-queue sync hazard with draw commands that read the same buffer
-            RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics);
-            vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), *buffer_staging_vk, *buffer_vk, 1, &copy_region);
-            RHI_CommandList::ImmediateExecutionEnd(cmd_list);
-
-            RHI_Device::StagingBufferRelease(staging_buffer);
-        }
+        RHI_CommandList* upload = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics);
+        if (!upload)
+            return;
+        RHI_CommandList::UpdateBuffer(this, offset_bytes, size_bytes, data, false);
+        RHI_CommandList::ImmediateExecutionEnd(upload, false);
     }
 
     void RHI_Buffer::Update(void* data_cpu, const uint32_t size)

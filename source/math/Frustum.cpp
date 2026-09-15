@@ -75,11 +75,39 @@ namespace spartan::math
         m_planes[5].normal.z = view_projection.m23 + view_projection.m21;
         m_planes[5].d        = view_projection.m33 + view_projection.m31;
         m_planes[5].Normalize();
+#if defined(__AVX2__)
+        for (uint32_t i = 0; i < 6; ++i)
+        {
+            m_plane_x[i] = m_planes[i].normal.x;
+            m_plane_y[i] = m_planes[i].normal.y;
+            m_plane_z[i] = m_planes[i].normal.z;
+            m_plane_d[i] = m_planes[i].d;
+        }
+#endif
     }
 
     bool Frustum::IsVisible(const Vector3& center, const Vector3& extent, bool ignore_depth /*= false*/) const
     {
+#if defined(__AVX2__)
+        SP_ASSERT(!center.IsNaN() && !extent.IsNaN());
+        const __m256 nx = _mm256_loadu_ps(m_plane_x);
+        const __m256 ny = _mm256_loadu_ps(m_plane_y);
+        const __m256 nz = _mm256_loadu_ps(m_plane_z);
+        const __m256 sign = _mm256_set1_ps(-0.0f);
+        const __m256 distance = _mm256_add_ps(_mm256_add_ps(
+            _mm256_add_ps(_mm256_mul_ps(nx, _mm256_set1_ps(center.x)),
+                          _mm256_mul_ps(ny, _mm256_set1_ps(center.y))),
+            _mm256_mul_ps(nz, _mm256_set1_ps(center.z))), _mm256_loadu_ps(m_plane_d));
+        const __m256 radius = _mm256_add_ps(_mm256_add_ps(
+            _mm256_mul_ps(_mm256_andnot_ps(sign, nx), _mm256_set1_ps(extent.x)),
+            _mm256_mul_ps(_mm256_andnot_ps(sign, ny), _mm256_set1_ps(extent.y))),
+            _mm256_mul_ps(_mm256_andnot_ps(sign, nz), _mm256_set1_ps(extent.z)));
+        const int outside = _mm256_movemask_ps(_mm256_cmp_ps(
+            _mm256_add_ps(distance, radius), _mm256_setzero_ps(), _CMP_LT_OQ));
+        return (outside & (ignore_depth ? 0x3c : 0x3f)) == 0;
+#else
         return CheckCube(center, extent, ignore_depth) != Intersection::Outside;
+#endif
     }
 
     Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent, float ignore_depth) const

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "Component.h"
+#include <mutex>
 #include "../../math/Quaternion.h"
 #include "../../math/Vector2.h"
 #include "../../math/Vector3.h"
@@ -119,6 +120,9 @@ namespace spartan
         void GenerateRoadMesh();
         // Resolve explicit road_node_* control point tags after every spline has sampled the terrain.
         static void RebuildRoadJunctions();
+        void QueueRoadRegeneration(uint64_t surface_hash = 0);
+        static void ProcessPendingRoadMeshes();
+        static bool HasPendingRoadWork();
         void ClearRoadMesh(bool clear_sidewalk = true);
         bool HasRoadMesh() const { return m_mesh != nullptr; }
 
@@ -273,7 +277,7 @@ namespace spartan
         void OnWorldLoaded();
 
         // gather control point positions local to the spline entity
-        std::vector<math::Vector3> GetControlPointsLocal() const;
+        std::vector<math::Vector3> GetControlPointsLocal(uint64_t* road_nodes = nullptr) const;
 
         // resolve the current profile into a set of 2d cross-section points (in right-up plane)
         std::vector<math::Vector2> GetProfilePoints() const;
@@ -306,7 +310,7 @@ namespace spartan
 
         // capture current property/control point state to compare against next tick
         void SnapshotState();
-        std::string GetRoadNodeSignature() const;
+        uint64_t GetRoadNodeSignature() const;
 
         // snapping every handle costs raycasts, do it once per change instead of once per frame
         void RefreshHandlePositions();
@@ -345,6 +349,8 @@ namespace spartan
         float m_curve_alpha            = 0.5f;
         bool m_needs_road_regeneration = false;
         bool m_mesh_enabled            = false;
+        uint64_t m_pending_surface_hash = 0;
+        uint64_t m_sampled_surface_hash = 0;
 
         // profile
         SplineProfile m_profile  = SplineProfile::Road;
@@ -430,9 +436,12 @@ namespace spartan
         {
             math::Vector3 center;
             std::vector<math::Vector3> boundary;
+            // quads around exposed edges only; road mouths remain open
+            std::vector<math::Vector3> sidewalk_quads;
+            std::vector<math::Vector3> skirt_quads;
         };
         std::vector<JunctionPatch> m_junction_patches;
-        std::string m_prev_road_nodes;
+        uint64_t m_prev_road_nodes = 0;
         bool m_prev_junction_active = true;
         float m_prev_material_tiling_v = 1.0f;
 
@@ -478,6 +487,12 @@ namespace spartan
         bool m_prev_attach_inherit_closed_loop          = true;
         uint32_t m_prev_attach_sample_count             = 0;
         uint64_t m_prev_source_hash                     = 0;
+        mutable std::mutex m_control_cache_mutex;
+        mutable uint64_t m_control_child_revision = uint64_t(-1);
+        mutable uint64_t m_control_identity_revision = uint64_t(-1);
+        mutable uint64_t m_control_road_nodes = 0;
+        mutable std::vector<math::Vector3> m_control_points_cache;
+        uint64_t m_prev_world_revision = uint64_t(-1);
         math::Vector3 m_prev_world_position             = math::Vector3::Zero;
         math::Quaternion m_prev_world_rotation          = math::Quaternion::Identity;
         math::Vector3 m_prev_world_scale                = math::Vector3::One;

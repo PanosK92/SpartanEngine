@@ -78,6 +78,9 @@ namespace spartan::d3d12_descriptors
     uint32_t GetSamplerDescriptorSize();
 
     // zone info
+    struct BindlessTables { uint32_t textures; uint32_t samplers; uint64_t revision; };
+    BindlessTables GetBindlessSnapshot();
+    uint64_t GetBindlessRevision();
     uint32_t GetBindlessTexturesBase();
     uint32_t GetBindlessTexturesCount();
     uint32_t GetBindlessBuffersBase();

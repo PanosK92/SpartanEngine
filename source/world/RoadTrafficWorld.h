@@ -15,7 +15,7 @@ namespace spartan::road_traffic
     {
         Network network;
         Spline::RebuildRoadJunctions();
-        std::vector<math::BoundingBox> obstacles;
+        WalkingObstacles obstacles;
         if (pedestrians)
         {
             for (Entity* entity : World::GetEntities())
@@ -26,14 +26,13 @@ namespace spartan::road_traffic
                 if (physics->GetBodyType() == BodyType::Heightfield || physics->GetBodyType() == BodyType::Plane) continue;
                 if (entity->GetComponent<Spline>() || (entity->GetParent() && entity->GetParent()->GetComponent<Spline>())) continue;
                 const auto& bounds = render->GetBoundingBox();
-                if (bounds.GetMin().IsFinite() && bounds.GetMax().IsFinite()) obstacles.push_back(bounds);
+                if (bounds.GetMin().IsFinite() && bounds.GetMax().IsFinite()) obstacles.Add(bounds.GetMin(), bounds.GetMax());
             }
         }
+        obstacles.Build();
         auto blocked = [&](const Vector3& a, const Vector3& b)
         {
-            for (const auto& bounds : obstacles)
-                if (WalkingSegmentBlocked(a, b, bounds.GetMin(), bounds.GetMax())) return true;
-            return false;
+            return obstacles.Blocked(a, b);
         };
         for (Entity* entity : World::GetEntities())
         {

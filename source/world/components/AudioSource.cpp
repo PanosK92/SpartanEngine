@@ -380,7 +380,7 @@ namespace spartan
             Vector3 source_position      = GetEntity()->GetPosition();
             bool found_reverb_volume     = false;
 
-            for (Entity* entity : World::GetEntities())
+            for (Entity* entity : World::GetEntitiesWithVolume())
             {
                 Volume* volume = entity->GetComponent<Volume>();
                 if (!volume || !volume->GetReverbEnabled())

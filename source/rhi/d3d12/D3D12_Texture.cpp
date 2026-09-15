@@ -34,7 +34,7 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    bool RHI_Texture::RHI_UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data)
+    bool RHI_Texture::RHI_UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data, bool /*defer_to_frame*/)
     {
         ID3D12Resource* texture = static_cast<ID3D12Resource*>(m_rhi_resource);
         if (!texture || !RHI_Context::device)
@@ -402,69 +402,58 @@ namespace spartan
 
                     upload_buffer->Unmap(0, nullptr);
 
-                    ID3D12CommandAllocator* temp_allocator = nullptr;
-                    ID3D12GraphicsCommandList* temp_cmd_list = nullptr;
-
-                    if (SUCCEEDED(RHI_Context::device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&temp_allocator))))
+                    RHI_CommandList* upload = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics);
+                    if (upload)
                     {
-                        if (SUCCEEDED(RHI_Context::device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, temp_allocator, nullptr, IID_PPV_ARGS(&temp_cmd_list))))
+                        auto* temp_cmd_list = static_cast<ID3D12GraphicsCommandList*>(upload->GetRhiResource());
+                        for (uint32_t subresource = 0; subresource < subresource_count; subresource++)
                         {
-                            for (uint32_t subresource = 0; subresource < subresource_count; subresource++)
-                            {
-                                D3D12_TEXTURE_COPY_LOCATION dest_location = {};
-                                dest_location.pResource        = texture;
-                                dest_location.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-                                dest_location.SubresourceIndex = subresource;
+                            D3D12_TEXTURE_COPY_LOCATION dest_location = {};
+                            dest_location.pResource        = texture;
+                            dest_location.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+                            dest_location.SubresourceIndex = subresource;
 
-                                D3D12_TEXTURE_COPY_LOCATION src_location = {};
-                                src_location.pResource       = upload_buffer;
-                                src_location.Type            = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-                                src_location.PlacedFootprint = layouts[subresource];
+                            D3D12_TEXTURE_COPY_LOCATION src_location = {};
+                            src_location.pResource       = upload_buffer;
+                            src_location.Type            = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+                            src_location.PlacedFootprint = layouts[subresource];
 
-                                temp_cmd_list->CopyTextureRegion(&dest_location, 0, 0, 0, &src_location, nullptr);
-                            }
-
-                            // pixel|non_pixel so bindless material sampling works in pixel shaders without a per-texture settexture upgrade
-                            D3D12_RESOURCE_STATES post_state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-                            RHI_Image_Layout post_layout     = RHI_Image_Layout::General;
-                            if (m_flags & RHI_Texture_Uav)
-                            {
-                                post_state  = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-                                post_layout = RHI_Image_Layout::General;
-                            }
-
-                            D3D12_RESOURCE_BARRIER barrier = {};
-                            barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                            barrier.Transition.pResource   = texture;
-                            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-                            barrier.Transition.StateAfter  = post_state;
-                            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-                            temp_cmd_list->ResourceBarrier(1, &barrier);
-
-                            temp_cmd_list->Close();
-
-                            ID3D12CommandQueue* queue = static_cast<ID3D12CommandQueue*>(RHI_Device::GetQueueRhiResource(RHI_Queue_Type::Graphics));
-                            SP_ASSERT_MSG(queue != nullptr, "Graphics queue is null - device not fully initialized");
-                            ID3D12CommandList* cmd_lists[] = { temp_cmd_list };
-                            queue->ExecuteCommandLists(1, cmd_lists);
-
-                            RHI_Device::QueueWaitAll();
-
-                            // upload finished, reflect the post-copy state in both the rhi layout map and the d3d12 state tracker
-                            SetLayoutDirect(0, m_mip_count, post_layout);
-                            // simultaneous-access textures decay to common after executecommandlists
-                            const D3D12_RESOURCE_STATES tracked = (m_flags & RHI_Texture_ConcurrentSharing)
-                                ? D3D12_RESOURCE_STATE_COMMON
-                                : post_state;
-                            d3d12_state::SetState(texture, tracked);
-
-                            temp_cmd_list->Release();
+                            temp_cmd_list->CopyTextureRegion(&dest_location, 0, 0, 0, &src_location, nullptr);
                         }
-                        temp_allocator->Release();
+
+                        // pixel|non_pixel so bindless material sampling works in pixel shaders without a per-texture settexture upgrade
+                        D3D12_RESOURCE_STATES post_state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+                        RHI_Image_Layout post_layout     = RHI_Image_Layout::General;
+                        if (m_flags & RHI_Texture_Uav)
+                        {
+                            post_state  = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                            post_layout = RHI_Image_Layout::General;
+                        }
+
+                        D3D12_RESOURCE_BARRIER barrier = {};
+                        barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                        barrier.Transition.pResource   = texture;
+                        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+                        barrier.Transition.StateAfter  = post_state;
+                        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+                        temp_cmd_list->ResourceBarrier(1, &barrier);
+
+                        upload->RetainStagingBuffer(upload_buffer);
+                        RHI_CommandList::ImmediateExecutionEnd(upload, false);
+                        // The staging allocation must survive the copy fence.
+                        upload_buffer = nullptr;
+
+                        // reflect the queued post-copy state in both the rhi layout map and the d3d12 state tracker
+                        SetLayoutDirect(0, m_mip_count, post_layout);
+                        // simultaneous-access textures decay to common after executecommandlists
+                        const D3D12_RESOURCE_STATES tracked = (m_flags & RHI_Texture_ConcurrentSharing)
+                            ? D3D12_RESOURCE_STATE_COMMON
+                            : post_state;
+                        d3d12_state::SetState(texture, tracked);
                     }
                 }
 
-                RHI_Device::StagingBufferRelease(upload_buffer);
+                if (upload_buffer) RHI_Device::StagingBufferRelease(upload_buffer);
             }
         }
 
@@ -717,26 +706,4 @@ namespace spartan
         m_rhi_dsv_multiview = nullptr;
     }
 
-    void RHI_Texture::DestroyResourceImmediate()
-    {
-        RHI_Device::DescriptorSetInvalidateReferencingResource(this);
-
-        if (m_rhi_resource)
-        {
-            d3d12_state::RemoveState(static_cast<ID3D12Resource*>(m_rhi_resource));
-            GpuMemory::Unregister(m_rhi_resource);
-            static_cast<ID3D12Resource*>(m_rhi_resource)->Release();
-            m_rhi_resource = nullptr;
-        }
-
-        m_rhi_srv = nullptr;
-        for (auto& v : m_rhi_srv_mips) v = nullptr;
-        for (auto& v : m_rhi_srv_layers) v = nullptr;
-        for (auto& v : m_rhi_rtv) { d3d12_descriptors::FreeRtv(v); v = nullptr; }
-        for (auto& v : m_rhi_dsv) { d3d12_descriptors::FreeDsv(v); v = nullptr; }
-        d3d12_descriptors::FreeRtv(m_rhi_rtv_multiview);
-        m_rhi_rtv_multiview = nullptr;
-        d3d12_descriptors::FreeDsv(m_rhi_dsv_multiview);
-        m_rhi_dsv_multiview = nullptr;
-    }
 }

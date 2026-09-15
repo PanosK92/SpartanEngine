@@ -382,7 +382,7 @@ namespace spartan
         void Pass_ComputeBatchA(
             bool update_skysphere
         );
-        void Pass_GraphicsPhase1_Geometry();
+        void Pass_GraphicsPhase1_Geometry(bool scatter_prepared_async);
         void Pass_ComputeBatchB();
         void Pass_GraphicsPhase2_ShadowsAndRT();
         void ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer);

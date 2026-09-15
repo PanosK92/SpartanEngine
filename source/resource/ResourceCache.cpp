@@ -366,6 +366,11 @@ namespace spartan
         return m_resources;
     }
 
+    void ResourceCache::InvalidatePathIndex()
+    {
+        m_resource_path_index_dirty.store(true, memory_order_release);
+    }
+
     bool ResourceCache::IsShuttingDown()
     {
         return shutting_down.load(memory_order_acquire);

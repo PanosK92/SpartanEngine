@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "pch.h"
 #include "CarHud.h"
+#include "../core/Engine.h"
 #include "CarTelemetry.h"
 #include "Car.h"
 #include "CarState.h"
@@ -154,10 +155,11 @@ namespace spartan::car_hud
 
         const math::Vector2& vp_pos  = Viewport::GetScreenPosition();
         const math::Vector2& vp_size = Viewport::GetScreenSize();
-        float region_left            = 0.0f;
-        float region_width           = io.DisplaySize.x;
-        float anchor_bottom          = io.DisplaySize.y;
-        if (vp_size.x > 100.0f && vp_size.y > 100.0f)
+        const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
+        float region_left            = main_viewport->Pos.x;
+        float region_width           = main_viewport->Size.x;
+        float anchor_bottom          = main_viewport->Pos.y + main_viewport->Size.y;
+        if (Engine::IsFlagSet(EngineMode::EditorVisible) && vp_size.x > 100.0f && vp_size.y > 100.0f)
         {
             region_left   = vp_pos.x;
             region_width  = vp_size.x;

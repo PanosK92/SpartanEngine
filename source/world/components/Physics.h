@@ -387,6 +387,7 @@ namespace spartan
 
         // heightfield shape placement, physx grids start at their corner and store heights as scaled integers
         bool          m_mesh_is_heightfield      = false;
+        bool          m_mesh_is_convex           = false;
         math::Vector3 m_heightfield_offset       = math::Vector3::Zero;
         float         m_heightfield_scale_height = 1.0f;
         float         m_heightfield_scale_row    = 1.0f;
@@ -397,6 +398,10 @@ namespace spartan
         std::vector<void*> m_actors      = { nullptr };
         std::vector<bool> m_actors_active; // tracks which actors are currently in the scene (for distance-based activation)
         uint32_t m_actors_active_count = 0; // how many of the above are in the scene, lets a sleeping entity skip its per instance scan
+        math::Vector3 m_activation_camera = math::Vector3::Zero;
+        math::Matrix m_activation_world = math::Matrix::Identity;
+        float m_activation_slack = 0.0f;
+        bool m_activation_valid = false;
 
         // vehicle wheel entities and state
         Entity* m_wheel_entities[static_cast<int>(WheelIndex::Count)] = { nullptr, nullptr, nullptr, nullptr };

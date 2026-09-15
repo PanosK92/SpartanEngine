@@ -879,9 +879,9 @@ void cloud_march_cumulus(
             float day_w    = smoothstep(-0.05, 0.18, sun_elev);
             float night_w  = 1.0 - day_w;
             
-            float3 moon_dir   = -sun_dir;
-            float3 moon_light = cloud_sun_illuminance(pos, moon_dir, transmittance_lut, samp_lut) * cloud_moon_tint;
-            float3 moon_scat  = moon_light * cloud_phase(-cos_th);
+            float3 moon_dir   = buffer_frame.celestial_moon.xyz;
+            float3 moon_light = cloud_sun_illuminance(pos, moon_dir, transmittance_lut, samp_lut) * cloud_moon_tint * buffer_frame.celestial_moon.w;
+            float3 moon_scat  = moon_light * cloud_phase(dot(view_dir, moon_dir));
             
             // daytime ambient, sun driven
             float3 ambient_day = lerp(cloud_ambient_bottom, cloud_ambient_top, h_norm);
@@ -976,9 +976,9 @@ void cloud_march_cirrus(
             float day_w_c    = smoothstep(-0.05, 0.18, sun_elev_c);
             float night_w_c  = 1.0 - day_w_c;
             
-            float3 moon_dir   = -sun_dir;
-            float3 moon_light = cloud_sun_illuminance(pos, moon_dir, transmittance_lut, samp_lut) * cloud_moon_tint;
-            float moon_phase  = cloud_hg_phase(-cos_th, 0.62);
+            float3 moon_dir   = buffer_frame.celestial_moon.xyz;
+            float3 moon_light = cloud_sun_illuminance(pos, moon_dir, transmittance_lut, samp_lut) * cloud_moon_tint * buffer_frame.celestial_moon.w;
+            float moon_phase  = cloud_hg_phase(dot(view_dir, moon_dir), 0.62);
             
             float3 night_amb = night_sky_radiance(0.35) + night_airglow_rad * 0.8;
             float moon_elev_ci = dot(moon_dir, float3(0.0, 1.0, 0.0));

@@ -598,7 +598,7 @@ namespace car
             tire_condition_modifiers modifiers;
             float temperature_range = PxMax(spec.tire_temp_range, 1.0f);
             float core_deviation = PxClamp(fabsf(core_temperature - spec.tire_optimal_temp) / temperature_range, 0.0f, 1.5f);
-            float pressure_ratio = PxClamp(hot_tire_pressure(spec, core_temperature, 0) / PxMax(spec.tire_pressure_optimal, 0.1f), 0.6f, 1.4f);
+            float pressure_ratio = PxClamp(hot_tire_pressure(spec, core_temperature, 0, ambient_pressure / 100000.0f) / PxMax(spec.tire_pressure_optimal, 0.1f), 0.6f, 1.4f);
             float pressure_error = pressure_ratio - 1.0f;
             float pressure_grip = PxClamp(1.0f - pressure_error * pressure_error * 0.45f, 0.75f, 1.0f);
             float pressure_stiffness = powf(pressure_ratio, 0.55f);
@@ -632,6 +632,7 @@ namespace car
 
     float Simulation::get_brake_efficiency(float temp)
     {
+            // Material efficiency is calibrated against absolute disc temperature.
             float amb = spec.brake_ambient_temp;
             float opt = PxMax(spec.brake_optimal_temp, amb + 10.0f);
             float fade = PxMax(spec.brake_fade_temp, opt + 10.0f);
@@ -843,7 +844,7 @@ namespace car
     void Simulation::apply_aero_and_resistance()
     {
             PxTransform pose = body->getGlobalPose();
-            PxVec3 vel = body->getLinearVelocity();
+            PxVec3 vel = body->getLinearVelocity() - wind_velocity;
             float speed = vel.magnitude();
 
             // aero positions are actor origin offsets because center of mass is independent
@@ -900,7 +901,7 @@ namespace car
             PxVec3 drag_force_vec(0);
             if (speed > 0.5f)
             {
-                float base_drag = 0.5f * tuning::air_density * spec.drag_coeff * spec.frontal_area * speed * speed;
+                float base_drag = 0.5f * air_density * spec.drag_coeff * spec.frontal_area * speed * speed;
 
                 float yaw_drag_factor = 1.0f;
                 if (spec.yaw_aero_enabled && yaw_angle > 0.01f)
@@ -918,7 +919,7 @@ namespace car
             PxVec3 side_force_vec(0);
             if (spec.yaw_aero_enabled && fabsf(lateral_speed) > 1.0f)
             {
-                float side_force = 0.5f * tuning::air_density * spec.yaw_side_force_coeff * spec.side_area * lateral_speed * fabsf(lateral_speed);
+                float side_force = 0.5f * air_density * spec.yaw_side_force_coeff * spec.side_area * lateral_speed * fabsf(lateral_speed);
                 side_force_vec = -local_right * side_force;
                 float side_aero_z = (spec.aero_center_front_z + spec.aero_center_rear_z) * 0.5f;
                 PxVec3 side_aero_pos = pose.p + pose.q.rotate(PxVec3(0, aero_height, side_aero_z));
@@ -933,7 +934,7 @@ namespace car
             // low threshold keeps quadratic downforce continuous near rest
             if (speed > 1.0f)
             {
-                float dyn_pressure = 0.5f * tuning::air_density * speed * speed;
+                float dyn_pressure = 0.5f * air_density * speed * speed;
 
                 float front_cl = spec.lift_coeff_front;
                 float rear_cl  = spec.lift_coeff_rear;
@@ -3814,7 +3815,7 @@ namespace car
             motor_torque = -copysignf(PxMin(regen, spec.electric_motor_torque) * abs_scale * thermal_limit, motor_speed);
         }
         float requested_power = motor_torque * motor_speed;
-        float delivered = integrate_hybrid(spec, battery, requested_power, dt, spec.brake_ambient_temp, sample_curve(spec.motor_efficiency_rpm, spec.motor_efficiency_value, spec.motor_efficiency_count, angular_velocity_to_rpm(fabsf(motor_speed)), spec.motor_efficiency));
+        float delivered = integrate_hybrid(spec, battery, requested_power, dt, environment_enabled ? ambient_temperature : spec.brake_ambient_temp, sample_curve(spec.motor_efficiency_rpm, spec.motor_efficiency_value, spec.motor_efficiency_count, angular_velocity_to_rpm(fabsf(motor_speed)), spec.motor_efficiency));
         if (fabsf(motor_speed) > 0.01f) motor_torque = delivered / motor_speed;
         else if (battery.energy_j <= 0) motor_torque = 0;
         float electric_axle = motor_torque * spec.final_drive * efficiency;
@@ -4022,7 +4023,7 @@ namespace car
             {
                 wheel& w = wheels[i];
                 tire_condition_modifiers condition = get_tire_condition_modifiers(w.thermal.avg_surface(), w.thermal.core, w.wear, w.tire_load);
-                w.pressure_bar = hot_tire_pressure(spec, w.thermal.core, w.damage);
+                w.pressure_bar = hot_tire_pressure(spec, w.thermal.core, w.damage, ambient_pressure / 100000.0f);
                 w.condition_grip = condition.peak_grip * (1.0f - 0.8f * w.damage);
                 w.condition_stiffness = condition.stiffness;
                 w.condition_relaxation = condition.relaxation;
@@ -4146,7 +4147,7 @@ namespace car
                     }
 
                     const float shares[3] = { 1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f };
-                    integrate_tire_thermal(w.thermal, spec, shares, 0.0f, 0.0f, body->getLinearVelocity().magnitude(), dt);
+                    integrate_tire_thermal(w.thermal, spec, shares, 0.0f, 0.0f, (body->getLinearVelocity() - wind_velocity).magnitude(), dt, environment_enabled ? ambient_temperature : NAN);
                     w.rotation += w.angular_velocity * dt;
                     continue;
                 }
@@ -4416,7 +4417,7 @@ namespace car
                 w.dissipated_energy_j += slip_energy;
                 if (w.thermal.avg_surface() > spec.tire_damage_temp)
                     w.damage = PxClamp(w.damage + slip_energy / spec.tire_damage_energy, 0.0f, 1.0f);
-                integrate_tire_thermal(w.thermal, spec, zone_share, sum_slip_power * substep_inverse, rolling_power, ground_speed, dt);
+                integrate_tire_thermal(w.thermal, spec, zone_share, sum_slip_power * substep_inverse, rolling_power, environment_enabled ? (body->getLinearVelocity() - wind_velocity).magnitude() : ground_speed, dt, environment_enabled ? ambient_temperature : NAN, environment_enabled ? road_temperature : NAN, environment_enabled ? 1.0f : 0.0f);
 
                 // --- tire wear (per-zone based on local temperature) ---
                 float total_wear = 0.0f;
@@ -4863,7 +4864,7 @@ namespace car
     {
             record_reset();
             battery.energy_j = spec.battery_capacity_kwh * 3600000.0f * spec.battery_initial_soc;
-            battery.temperature = spec.brake_ambient_temp;
+            battery.temperature = (environment_enabled ? ambient_temperature : spec.brake_ambient_temp);
             engine_running = true;
             regen_axle_torque = 0;
             engine_rpm = spec.engine_idle_rpm;
@@ -4907,14 +4908,14 @@ namespace car
     {
             for (int i = 0; i < wheel_count; i++)
             {
-                wheels[i].brake_temp = PxMax(spec.brake_ambient_temp, 0.0f);
+                wheels[i].brake_temp = environment_enabled ? ambient_temperature : PxMax(spec.brake_ambient_temp, 0.0f);
                 wheels[i].wear = 0.0f;
                 wheels[i].damage = 0;
                 wheels[i].dissipated_energy_j = 0;
-                wheels[i].thermal.surface[0] = PxMax(spec.tire_ambient_temp, 0.0f);
-                wheels[i].thermal.surface[1] = PxMax(spec.tire_ambient_temp, 0.0f);
-                wheels[i].thermal.surface[2] = PxMax(spec.tire_ambient_temp, 0.0f);
-                wheels[i].thermal.core = PxMax(spec.tire_ambient_temp, 0.0f);
+                wheels[i].thermal.surface[0] = environment_enabled ? ambient_temperature : PxMax(spec.tire_ambient_temp, 0.0f);
+                wheels[i].thermal.surface[1] = environment_enabled ? ambient_temperature : PxMax(spec.tire_ambient_temp, 0.0f);
+                wheels[i].thermal.surface[2] = environment_enabled ? ambient_temperature : PxMax(spec.tire_ambient_temp, 0.0f);
+                wheels[i].thermal.core = environment_enabled ? ambient_temperature : PxMax(spec.tire_ambient_temp, 0.0f);
                 wheels[i].effective_radius = cfg.wheel_radius_for(i);
                 wheels[i].dynamic_camber = 0.0f;
                 wheels[i].dynamic_toe = 0.0f;
@@ -5575,11 +5576,11 @@ namespace car
                     const float shares[3] = { 1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f };
                     for (int i = 0; i < wheel_count; i++)
                     {
-                        integrate_tire_thermal(wheels[i].thermal, spec, shares, 0.0f, 0.0f, 0.0f, dt);
+                        integrate_tire_thermal(wheels[i].thermal, spec, shares, 0.0f, 0.0f, wind_velocity.magnitude(), dt, environment_enabled ? ambient_temperature : NAN, environment_enabled ? road_temperature : NAN, environment_enabled && wheels[i].grounded ? 1.0f : 0.0f);
                         float retention = expf(-spec.brake_cooling_base * dt / PxMax(spec.brake_thermal_mass * spec.brake_specific_heat, 1.0f));
-                        wheels[i].brake_temp = spec.brake_ambient_temp + (wheels[i].brake_temp - spec.brake_ambient_temp) * retention;
+                        wheels[i].brake_temp = (environment_enabled ? ambient_temperature : spec.brake_ambient_temp) + (wheels[i].brake_temp - (environment_enabled ? ambient_temperature : spec.brake_ambient_temp)) * retention;
                     }
-                    integrate_hybrid(spec, battery, 0, dt, spec.brake_ambient_temp);
+                    integrate_hybrid(spec, battery, 0, dt, (environment_enabled ? ambient_temperature : spec.brake_ambient_temp));
                     update_tire_condition();
                     tick_telemetry(dt, body->getLinearVelocity().magnitude() * 3.6f);
                     return;
@@ -5606,14 +5607,14 @@ namespace car
             float airspeed = vel.magnitude();
             for (int i = 0; i < wheel_count; i++)
             {
-                float temp_above_ambient = wheels[i].brake_temp - spec.brake_ambient_temp;
+                float temp_above_ambient = wheels[i].brake_temp - (environment_enabled ? ambient_temperature : spec.brake_ambient_temp);
                 if (temp_above_ambient > 0.0f)
                 {
                     float h = spec.brake_cooling_base + airspeed * spec.brake_cooling_airflow;
                     float cooling_power = h * temp_above_ambient;
                     float temp_drop = (cooling_power / PxMax(spec.brake_thermal_mass * spec.brake_specific_heat, 1.0f)) * dt;
                     wheels[i].brake_temp -= temp_drop;
-                    wheels[i].brake_temp = PxMax(wheels[i].brake_temp, spec.brake_ambient_temp);
+                    wheels[i].brake_temp = PxMax(wheels[i].brake_temp, (environment_enabled ? ambient_temperature : spec.brake_ambient_temp));
                 }
             }
 

@@ -55,7 +55,7 @@ RWStructuredBuffer<uint>          particle_counter  : register(u38);
 RWStructuredBuffer<EmitterParams> particle_emitter  : register(u39);
 
 // gpu texture compression
-RWStructuredBuffer<uint>  tex_compress_in      : register(u40);
+StructuredBuffer<uint>    tex_compress_in      : register(t40);
 RWStructuredBuffer<uint4> tex_compress_out     : register(u41); // bc3, bc5 (16 bytes per block)
 RWStructuredBuffer<uint2> tex_compress_out_bc1 : register(u42); // bc1 (8 bytes per block)
 
@@ -110,8 +110,8 @@ uint meshlet_micro_index_load(uint corner)
     return (meshlet_micro_indices[corner >> 2u] >> ((corner & 3u) * 8u)) & 0xFFu;
 }
 
-// per-instance cull tasks (read-only, declared as rw to keep slot management uniform with other indirect buffers)
-RWStructuredBuffer<CullTask> cull_tasks : register(u44);
+// per-instance cull tasks populated by the cpu
+StructuredBuffer<CullTask> cull_tasks : register(t44);
 
 // gpu-driven two-phase culling, phase a (instance_cull) compacts visible instances into surviving_instances and
 // bumps instance_dispatch_args.group_count_x, phase b (indirect_cull) is a DispatchIndirect over that count, one
@@ -123,35 +123,48 @@ RWStructuredBuffer<IndirectDispatchArgs> instance_dispatch_args : register(u55);
 // grid is (first_index, count) per cluster, indices is the flat list of light slot ids
 // single grid shared by both vr eyes, built in the left eye view-projection space, the right eye projects
 // its world space samples through the same matrices for the lookup, ipd induced offset is well under one tile
+#ifdef LIGHT_CLUSTER_WRITE
 RWStructuredBuffer<uint2> cluster_light_grid    : register(u45);
 RWStructuredBuffer<uint>  cluster_light_indices : register(u46);
+#else
+StructuredBuffer<uint2> cluster_light_grid    : register(t45);
+StructuredBuffer<uint>  cluster_light_indices : register(t46);
+#endif
 
 // cluster assign telemetry, currently a single overflow counter bumped when a cluster overshoots CLUSTER_MAX_LIGHTS
 RWStructuredBuffer<uint> cluster_stats : register(u47);
 
 // compact list of volumetric light indices, written by the cpu in UpdateLights, scanned by froxel fog inject
-// declared rw for binding uniformity with the other indirect/cluster buffers, treated as read only inside the shader
-RWStructuredBuffer<uint> volumetric_light_indices : register(u48);
+StructuredBuffer<uint> volumetric_light_indices : register(t48);
 
 // fft ocean displacement per texel, one slice per cascade
 RWStructuredBuffer<float4> ocean_heights : register(u56);
+// Maximum absolute stored wave height per cascade, reduced during ocean assembly.
+#ifdef OCEAN_WAVE_BOUNDS_WRITE
+RWStructuredBuffer<uint> ocean_wave_bounds : register(u65);
+#else
+StructuredBuffer<uint> ocean_wave_bounds : register(t65);
+#endif
 
 // restir paired spatial reuse tables, lin 2026 3, packed signed deltas to each pixel's partner
 // built once on the cpu, three concatenated tileable tables, treated read-only
-RWStructuredBuffer<uint> restir_pairing : register(u57);
+StructuredBuffer<uint> restir_pairing : register(t57);
 
 // restir nee pool, world space emissive triangles populated by Renderer::BuildEmissiveTriangleNeePool
 // each entry packs the world space triangle, area, normal, emission radiance, picking weight and
 // a cumulative prefix sum used for area-weighted sampling, count comes via buffer_frame.restir_pt_emissive_tri_count
-// declared rw to match the engine pattern for per-pass structured buffers but treated as read-only
-RWStructuredBuffer<EmissiveTriangle> emissive_triangles : register(u49);
+StructuredBuffer<EmissiveTriangle> emissive_triangles : register(t49);
 
 // gpu scatter, grass and micro detail, written each frame by grass_populate.hlsl and consumed by the scatter raster vs
 // grass_instances is the transient pool, partitioned into one section per slot per lod via lod_base in the push constant
 // grass_count holds one atomic counter per slot per lod, bumped by interlockedadd during the populate dispatch
 // grass_indirect_args holds one DrawIndexedIndirect args entry per slot per lod, the args compute reads grass_count
 // and bakes index_count / first_index / vertex_offset / first_instance from the per-lod constants
+#if defined(SP_SHADER_STAGE_COMPUTE)
 RWStructuredBuffer<GrassInstance>    grass_instances     : register(u50);
+#else
+StructuredBuffer<GrassInstance>     grass_instances     : register(t50);
+#endif
 RWStructuredBuffer<uint>             grass_count         : register(u51);
 RWStructuredBuffer<IndirectDrawArgs> grass_indirect_args : register(u52);
 RWStructuredBuffer<uint>             particle_volume_density : register(u53);

@@ -81,6 +81,8 @@ namespace spartan
         };
 
         vector<VehicleStepCallback> vehicle_step_callbacks;
+        unordered_map<const void*, uint64_t> vehicle_callback_generations;
+        uint64_t vehicle_callback_revision = 0;
     }
 
     namespace picking
@@ -485,7 +487,7 @@ namespace spartan
         // scene
         PxSceneDesc scene_desc(physics->getTolerancesScale());
         scene_desc.gravity                 = PxVec3(0.0f, settings::gravity, 0.0f);
-        scene_desc.cpuDispatcher           = PxDefaultCpuDispatcherCreate(2);
+        scene_desc.cpuDispatcher           = PxDefaultCpuDispatcherCreate(1);
         scene_desc.filterShader            = collision_filter_shader;
         scene_desc.simulationEventCallback = &contact_callback;
         ConfigurePhysicsScene(scene_desc);
@@ -507,6 +509,8 @@ namespace spartan
         // release controller manager (owned by physics component system)
         Physics::Shutdown();
         vehicle_step_callbacks.clear();
+        vehicle_callback_generations.clear();
+        ++vehicle_callback_revision;
 
         {
             lock_guard<mutex> lock(contact_mutex);
@@ -536,10 +540,14 @@ namespace spartan
     void PhysicsWorld::Tick()
     {
         SP_PROFILE_CPU();
+        static float accumulated_time = 0.0f;
 
-        // skip if loading
-        if (ProgressTracker::IsLoading())
+        // Loading, play boot and paused/editor time are not simulation debt.
+        if (ProgressTracker::IsLoading() || World::IsPlayBooting() ||
+            !Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused))
         {
+            accumulated_time = 0.0f;
+            interpolation::alpha = 0.0f;
             return;
         }
 
@@ -548,18 +556,11 @@ namespace spartan
             // simulation (frozen while paused)
             {
                 const float fixed_time_step   = 1.0f / settings::hz;
-                static float accumulated_time = 0.0f;
-
-                if (Engine::IsFlagSet(EngineMode::Paused))
-                {
-                    accumulated_time = 0.0f;
-                }
-
-                // accumulate delta time
-                if (!Engine::IsFlagSet(EngineMode::Paused))
-                {
-                    accumulated_time += static_cast<float>(Timer::GetDeltaTimeSec());
-                }
+                // At 60 FPS this is normally three or four steps. A load, debugger
+                // stop or streaming hitch must not cause an unbounded catch-up spiral.
+                constexpr uint32_t max_steps_per_frame = 8;
+                const float elapsed = max(static_cast<float>(Timer::GetDeltaTimeSec()), 0.0f);
+                accumulated_time += min(elapsed, fixed_time_step * max_steps_per_frame);
 
                 // fresh contact list for this frame's simulation steps
                 {
@@ -575,39 +576,42 @@ namespace spartan
 
                     // snapshot entries so callback registration can change during an update
                     if (Camera* camera = World::GetCamera()) RebaseOrigin(camera->GetEntity()->GetPosition());
-                    vector<VehicleStepCallback> callbacks;
-                    callbacks.reserve(vehicle_step_callbacks.size());
-                    for (const VehicleStepCallback& entry : vehicle_step_callbacks)
+                    static vector<pair<VehicleStepCallback, uint64_t>> callbacks;
+                    static uint64_t snapshot_revision = numeric_limits<uint64_t>::max();
+                    if (snapshot_revision != vehicle_callback_revision)
                     {
-                        callbacks.push_back(entry);
+                        callbacks.clear();
+                        callbacks.reserve(vehicle_step_callbacks.size());
+                        for (const VehicleStepCallback& entry : vehicle_step_callbacks)
+                            callbacks.emplace_back(entry, vehicle_callback_generations.at(entry.owner));
+                        snapshot_revision = vehicle_callback_revision;
                     }
-                    for (const VehicleStepCallback& entry : callbacks)
+                    SP_PROFILE_CPU_START("physics_vehicles");
+                    for (const auto& [entry, generation] : callbacks)
                     {
-                        const bool registered = any_of(
-                            vehicle_step_callbacks.begin(),
-                            vehicle_step_callbacks.end(),
-                            [&entry](const VehicleStepCallback& current)
-                            {
-                                return current.owner == entry.owner;
-                            }
-                        );
-                        if (registered)
-                        {
+                        // A callback may remove or replace another callback. Only invoke
+                        // the registration captured by this step's immutable snapshot.
+                        const auto current = vehicle_callback_generations.find(entry.owner);
+                        if (current != vehicle_callback_generations.end() && current->second == generation)
                             entry.callback(fixed_time_step);
-                        }
                     }
 
+                    SP_PROFILE_CPU_END();
+                    SP_PROFILE_CPU_START("physics_buoyancy");
                     // buoyancy from the fft water, applied per step so the force integrates consistently
                     Physics::TickBuoyancy();
-
+                    SP_PROFILE_CPU_END();
+                    SP_PROFILE_CPU_START("physics_simulate");
                     scene->simulate(fixed_time_step);
                     scene->fetchResults(true); // block
+                    SP_PROFILE_CPU_END();
                     accumulated_time -= fixed_time_step;
                 }
                 
                 // compute interpolation alpha for smooth rendering
                 // alpha = how far into the next physics step we are (0 to 1)
                 interpolation::alpha = accumulated_time / fixed_time_step;
+
             }
             // object picking, skip when right is held so cube shoot does not also grab
             {
@@ -689,9 +693,9 @@ namespace spartan
 
     void PhysicsWorld::AddActor(PxRigidActor* actor)
     {
+        lock_guard<recursive_mutex> lock(physx_mutex);
         if (actor && scene && !actor->getScene())
         {
-            lock_guard<recursive_mutex> lock(physx_mutex);
             scene->addActor(*actor);
         }
     }
@@ -715,11 +719,12 @@ namespace spartan
 
     void PhysicsWorld::RemoveActor(PxRigidActor* actor)
     {
+        lock_guard<recursive_mutex> lock(physx_mutex);
         if (actor && scene && actor->getScene() == scene)
         {
-            lock_guard<recursive_mutex> lock(physx_mutex);
             scene->removeActor(*actor);
-            scene->flushQueryUpdates();
+            // PhysX commits buffered query changes before the next query. Flushing
+            // after every streamed collider repeatedly rebuilds the same pruner.
         }
     }
 
@@ -762,6 +767,7 @@ namespace spartan
             return;
         }
 
+        vehicle_callback_generations[owner] = ++vehicle_callback_revision;
         for (VehicleStepCallback& entry : vehicle_step_callbacks)
         {
             if (entry.owner == owner)
@@ -777,6 +783,8 @@ namespace spartan
     void PhysicsWorld::UnregisterVehicleStepCallback(const void* owner)
     {
         lock_guard<recursive_mutex> lock(physx_mutex);
+        vehicle_callback_generations.erase(owner);
+        ++vehicle_callback_revision;
         vehicle_step_callbacks.erase(remove_if(vehicle_step_callbacks.begin(), vehicle_step_callbacks.end(), [owner](const VehicleStepCallback& entry) { return entry.owner == owner; }), vehicle_step_callbacks.end());
     }
 

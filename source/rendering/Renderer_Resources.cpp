@@ -249,6 +249,12 @@ namespace spartan
             rhi_max_array_size, nullptr, true, "volumetric_light_indices"
         );
 
+        const uint32_t unknown_wave_bounds[renderer_ocean_max_cascades] = { 0x7f800000u, 0x7f800000u, 0x7f800000u, 0x7f800000u };
+        at(buffers, Renderer_Buffer::OceanWaveBounds) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, sizeof(uint32_t), renderer_ocean_max_cascades,
+            nullptr, false, "ocean_wave_bounds");
+        at(buffers, Renderer_Buffer::OceanWaveBounds)->UploadSubRegion(unknown_wave_bounds, 0, sizeof(unknown_wave_bounds));
+
         // gpu displacement cache for buoyancy
         at(buffers, Renderer_Buffer::OceanHeights) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage,
@@ -1147,6 +1153,7 @@ namespace spartan
             { Renderer_Shader::motion_blur_c,                         RHI_Shader_Type::Compute, "motion_blur.hlsl"                                                           },
             { Renderer_Shader::ssao_c,                                RHI_Shader_Type::Compute, "ssao.hlsl"                                                                  },
             { Renderer_Shader::sss_c_bend,                            RHI_Shader_Type::Compute, "screen_space_shadows/bend_sss.hlsl"                                         },
+            { Renderer_Shader::depth_of_field_focus_c,                RHI_Shader_Type::Compute, "depth_of_field.hlsl", RHI_Vertex_Type::Max, "DOF_FOCUS" },
             { Renderer_Shader::depth_of_field_c,                      RHI_Shader_Type::Compute, "depth_of_field.hlsl"                                                        },
             { Renderer_Shader::variable_rate_shading_c,               RHI_Shader_Type::Compute, "variable_rate_shading.hlsl"                                                 },
             { Renderer_Shader::blit_c,                                RHI_Shader_Type::Compute, "blit.hlsl"                                                                  },

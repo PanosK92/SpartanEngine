@@ -184,7 +184,7 @@ namespace spartan
     namespace
     {
         shared_ptr<RHI_SwapChain> frame_swapchain;
-        RHI_CommandList* frame_lists[3] = {};
+        thread_local RHI_CommandList* frame_lists[3] = {};
         thread_local RHI_Frame_List frame_bound      = RHI_Frame_List::Graphics;
         thread_local RHI_CommandList* frame_override = nullptr;
         RHI_SyncPrimitive* frame_wait_timeline = nullptr;
@@ -348,7 +348,7 @@ namespace spartan
             frame_override = nullptr;
         }
         RHI_Work work;
-        work.timeline = cmd_list->GetTimelineSemaphore();
+        work.timeline = cmd_list->GetWork().timeline;
         work.value    = cmd_list->GetLastTimelineSignalValue();
         if (list == RHI_Frame_List::Graphics)
         {
@@ -398,7 +398,7 @@ namespace spartan
         }
         frame_lists[frame_list_index(RHI_Frame_List::Graphics)] = cmd_list;
         RHI_Work work;
-        work.timeline = cmd_list->GetTimelineSemaphore();
+        work.timeline = cmd_list->GetWork().timeline;
         work.value    = cmd_list->GetLastTimelineSignalValue();
         return work;
     }

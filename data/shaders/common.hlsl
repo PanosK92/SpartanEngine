@@ -142,7 +142,7 @@ static const float3 night_sky_zenith_rad  = float3(0.00009, 0.00015, 0.00030);
 static const float3 night_sky_horizon_rad = float3(0.00022, 0.00030, 0.00048);
 static const float3 night_airglow_rad     = float3(0.00010, 0.00014, 0.00007);
 // moon/sun irradiance ratio applied on top of get_sun_radiance_toa(), keep near physical ~4e-6
-static const float  night_moon_to_sun     = 2.0e-5;
+static const float  night_moon_to_sun     = 2.0e-6;
 
 float3 night_sky_radiance(float up_y)
 {

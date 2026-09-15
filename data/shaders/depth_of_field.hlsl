@@ -107,7 +107,7 @@ float focus_sample_weight(int i)
     return exp(-t * CENTER_WEIGHT_BIAS);
 }
 
-float compute_focus_distance(float2 resolution)
+float compute_focus_distance()
 {
     const float2 center = float2(0.5f, 0.5f);
 
@@ -291,6 +291,18 @@ float3 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens
 /*------------------------------------------------------------------------------
     compute shader entry point
 ------------------------------------------------------------------------------*/
+#ifdef DOF_FOCUS
+// Every pixel group uses the same depth samples and previous focus. Resolve
+// them once per view, retaining the existing focus pull and subject selection.
+[numthreads(1, 1, 1)]
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
+{
+    float fov_h = max(buffer_frame.camera_fov, 0.01f);
+    float f = (SENSOR_WIDTH_MM * 0.001f) * 0.5f / max(tan(fov_h * 0.5f), 1e-4f);
+    float s = max(smooth_focus_distance(compute_focus_distance()), f + 0.01f);
+    tex_uav2[uint2(0, 0)] = float4(s, s, s, 1.0f);
+}
+#else
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupIndex, uint3 group_id : SV_GroupID)
 {
@@ -309,19 +321,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupI
         float sensor_m          = SENSOR_HEIGHT_MM * 0.001f;
         float pixels_per_meter  = resolution.y / sensor_m;
 
-        float target_focus   = compute_focus_distance(resolution);
-        float focus_distance = smooth_focus_distance(target_focus);
-        float s              = max(focus_distance, f + 0.01f);
+        float s = tex2.Load(int3(0, 0, 0)).r;
 
         gs_lens.focus_distance = s;
         gs_lens.coc_factor     = (aperture_diameter * f * pixels_per_meter) / (abs(s - f) + FLT_MIN);
         gs_lens.aperture_fstop = aperture_fstop;
 
-        // only the first group on the owning view persists the smoothed focus
-        if (all(group_id.xy == 0) && pass_get_f3_value().y > 0.5f)
-        {
-            tex_uav2[uint2(0, 0)] = float4(s, s, s, 1.0f);
-        }
     }
     GroupMemoryBarrierWithGroupSync();
 
@@ -351,3 +356,4 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupI
 
     tex_uav[thread_id.xy] = float4(result, original.a);
 }
+#endif

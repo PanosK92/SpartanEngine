@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // turns the spatial-domain ifft output into a displacement map plus a slope and foam map
 
+#define OCEAN_WAVE_BOUNDS_WRITE
 #include "ocean_common.hlsl"
 
 // tessendorf permutation sign, undoes the fft frequency shift
@@ -52,6 +53,12 @@ void main_cs(uint3 id : SV_DispatchThreadID)
 
     float3 displacement            = float3(dx * chop, height, dz * chop) * disp_scale;
     tex_ocean_displacement_uav[id] = float4(displacement, 0.0);
+    // Bound the actual fp16 texture values, including rounding. Bilinear
+    // sampling and the shore multiplier (0.4..1) cannot exceed this magnitude.
+    float stored_height = abs(f16tof32(f32tof16(displacement.y)));
+    float wave_maximum = WaveActiveMax(stored_height);
+    if (WaveIsFirstLane())
+        InterlockedMax(ocean_wave_bounds[cascade], asuint(wave_maximum));
 
     // mirror displacement for cpu buoyancy
     if ((id.x & 3u) == 0u && (id.y & 3u) == 0u)

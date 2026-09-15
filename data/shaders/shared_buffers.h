@@ -178,10 +178,15 @@ struct FrameBufferData
     // radial motion blur wheel hubs, xy = screen uv, z = signed per-frame rotation angle in radians, w = projected radius in output pixels
     SHARED_FLOAT4 radial_blur_hubs[8];
     SHARED_FLOAT  radial_blur_hub_count;
-    // 0 = midnight, 0.5 = noon, drives catalog star and milky way rotation with the sun day cycle
+    // UTC fraction of the calendar day; the star catalogue uses the ephemeris transform below.
     SHARED_FLOAT  time_of_day;
     SHARED_FLOAT  padding_radial_1;
     SHARED_FLOAT  padding_radial_2;
+    SHARED_FLOAT4 celestial_moon; // xyz observer direction, w illuminated fraction
+    SHARED_FLOAT4 celestial_sun; // xyz observer direction, w lunar angular radius
+    SHARED_FLOAT4 equatorial_x;
+    SHARED_FLOAT4 equatorial_y;
+    SHARED_FLOAT4 equatorial_z;
 
 #ifdef __cplusplus
     void set_bit(const bool set, const uint32_t bit)
@@ -446,6 +451,8 @@ struct DrawData
     SHARED_UINT   lod_vertex_offset SHARED_DEFAULT(0); // global vertex offset for this lod (added to lod-local indices)
     SHARED_UINT   lod_meshlet_offset SHARED_DEFAULT(0); // global first meshlet index for this lod, phase b expands meshlets from here
     SHARED_UINT   lod_meshlet_count  SHARED_DEFAULT(0); // meshlet count for this lod, phase b loops over this many meshlets per surviving instance
+    SHARED_UINT   meshlet_vertex_base SHARED_DEFAULT(0); // 32-bit global base; MeshletBounds offsets remain mesh-local
+    SHARED_UINT   meshlet_micro_base  SHARED_DEFAULT(0);
 
     // per-renderable uv state, resolved on the cpu from the renderable's override or the material default
     // lets multiple renderables share a material yet tweak tiling, offset, rotation, invert, or world_space_uv independently
@@ -510,7 +517,7 @@ struct MeshletInstance
 // per-meshlet bounding sphere and topology ranges
 // center/radius are quantized into the lod's local aabb (drawdata.lod_aabb_min, drawdata.lod_aabb_extent), the cull shader dequantizes on read
 // first_index is relative to the lod's index_offset within the global index buffer, triangle_count is packed into the high 7 bits
-// first_vertex indexes the packed unique-vertex remap buffer used by mesh shaders, vertex_count is packed into the high 7 bits
+// first_vertex is mesh-local in the unique-vertex remap buffer; DrawData supplies the global base, vertex_count occupies the high 7 bits
 // first_micro indexes the packed micro-index buffer (one uint local index per corner, 3 * triangle_count entries)
 // the bounds are conservative, the cpu-side packer pads radius to cover center/radius quantization error so culling can never reject a sphere that the true geometry occupied
 struct MeshletBounds

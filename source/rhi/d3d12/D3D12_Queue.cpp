@@ -40,7 +40,6 @@ namespace spartan::d3d12_descriptors
     ID3D12CommandAllocator* GetGraphicsAllocator();
     ID3D12Fence* GetQueueFence(RHI_Queue_Type type);
     uint64_t& GetQueueFenceValue(RHI_Queue_Type type);
-    HANDLE GetFenceEvent();
 }
 
 namespace spartan
@@ -273,18 +272,20 @@ namespace spartan
                 d3d12_descriptors::GetQueueFence(m_type);
             uint64_t& fence_value =
                 d3d12_descriptors::GetQueueFenceValue(m_type);
-            HANDLE fence_event = d3d12_descriptors::GetFenceEvent();
+            HANDLE fence_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+            SP_ASSERT(fence_event);
 
             const uint64_t current_fence_value =
                 fence_value;
-            d3d12_queue->Signal(fence, current_fence_value);
+            SP_ASSERT(SUCCEEDED(d3d12_queue->Signal(fence, current_fence_value)));
             fence_value++;
 
             if (fence->GetCompletedValue() < current_fence_value)
             {
-                fence->SetEventOnCompletion(current_fence_value, fence_event);
+                SP_ASSERT(SUCCEEDED(fence->SetEventOnCompletion(current_fence_value, fence_event)));
                 WaitForSingleObject(fence_event, INFINITE);
             }
+            CloseHandle(fence_event);
         }
     }
 
@@ -317,6 +318,12 @@ namespace spartan
             d3d12_queue->Wait(static_cast<ID3D12Fence*>(semaphore_timeline_wait->GetRhiResource()), timeline_wait_value);
         }
 
+        // Asynchronous uploads publish on graphics. Other queues depend on their
+        // completion on the GPU, never by blocking the submitting CPU thread.
+        const RHI_Work upload = RHI_CommandList::GetPendingUpload();
+        if (m_type != RHI_Queue_Type::Graphics && upload.timeline)
+            d3d12_queue->Wait(static_cast<ID3D12Fence*>(upload.timeline->GetRhiResource()), upload.value);
+
         ID3D12CommandList* cmd_lists[] = { d3d12_cmd_list };
         d3d12_queue->ExecuteCommandLists(1, cmd_lists);
 
@@ -328,7 +335,7 @@ namespace spartan
         }
         if (semaphore_timeline_signal && semaphore_timeline_signal->GetRhiResource())
         {
-            timeline_signal_value = semaphore_timeline_signal->GetNextSignalValue();
+            timeline_signal_value = semaphore_timeline_signal->GetValue();
             d3d12_queue->Signal(static_cast<ID3D12Fence*>(semaphore_timeline_signal->GetRhiResource()), timeline_signal_value);
         }
 

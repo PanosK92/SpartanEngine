@@ -793,6 +793,11 @@ namespace spartan
                     parts.push_back(entity);
                 }
 
+                // Pack transforms once per plant set; trunk and canopy share them.
+                vector<Instance> packed_instances(transforms[tile_index].size());
+                for (size_t i = 0; i < packed_instances.size(); ++i)
+                    packed_instances[i].SetMatrix(transforms[tile_index][i]);
+
                 // One representative canopy per plant, never one per submesh.
                 Entity* acoustic_part = nullptr;
                 float acoustic_area = 0.0f;
@@ -847,7 +852,7 @@ namespace spartan
                         material->SetProperty(MaterialProperty::TerrainCoatingScale, layer.coating_scale);
                     }
 
-                    render->SetInstances(transforms[tile_index]);
+                    render->SetInstances(packed_instances);
                     if (layer.flags & (TerrainScatterFlags_Canopy | TerrainScatterFlags_Scrub))
                     {
                         const Vector3 size = render->GetBoundingBoxMesh().GetSize();
@@ -1280,29 +1285,24 @@ namespace spartan
                 }
                 terrain->EnsurePlacementData(batch_tiles);
 
+                // Every (layer, tile) pair has independent deterministic output.
+                // Dispatch them together instead of repeatedly using only four
+                // workers while the rest of the pool sits idle between layers.
+                auto place = [&jobs, &tiles, &tile_order, terrain, order_done, batch_size](uint32_t begin, uint32_t end)
+                {
+                    for (uint32_t work = begin; work < end; ++work)
+                    {
+                        scatter_job& job = jobs[work / batch_size];
+                        const uint32_t tile_index = tile_order[order_done + work % batch_size];
+                        if (tiles[tile_index])
+                            terrain->FindTransforms(tile_index, *job.layer, job.transforms[tile_index],
+                                &job.coverage[tile_index], &job.bounds);
+                    }
+                };
+                ThreadPool::ParallelLoop(place, static_cast<uint32_t>(jobs.size()) * batch_size);
+
                 for (scatter_job& job : jobs)
                 {
-                    auto place = [&job, &tiles, &tile_order, terrain, order_done](uint32_t start_index, uint32_t end_index)
-                    {
-                        for (uint32_t batch_index = start_index; batch_index < end_index; batch_index++)
-                        {
-                            const uint32_t tile_index = tile_order[order_done + batch_index];
-                            if (!tiles[tile_index])
-                            {
-                                continue;
-                            }
-
-                            terrain->FindTransforms(
-                                tile_index,
-                                *job.layer,
-                                job.transforms[tile_index],
-                                &job.coverage[tile_index],
-                                &job.bounds
-                            );
-                        }
-                    };
-                    ThreadPool::ParallelLoop(place, batch_size);
-
                     job.placed_batch = 0;
                     for (uint32_t order_index = order_done; order_index < order_end; order_index++)
                     {

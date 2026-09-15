@@ -30,6 +30,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Last element protects the live car and its recent tire-pressure field.
 StructuredBuffer<float4> grass_lod_parameters : register(t62);
 
+// Exact projected road triangles, indexed by a world-space grid. The coarse
+// biome mask stays intact outside roads, even when a road is narrower than one texel.
+StructuredBuffer<float4> terrain_road_exclusions : register(t63);
+bool on_road(float2 position)
+{
+    const float4 mapping = terrain_road_exclusions[0];
+    const uint2 size = uint2(terrain_road_exclusions[1].xy);
+    if (any(size == 0u)) return false;
+    const float2 uv = (position - mapping.xy) * mapping.zw;
+    if (any(uv < 0.0f) || any(uv > 1.0f)) return false;
+    const uint2 cell = min(uint2(uv * size), size - 1u);
+    const uint2 range = uint2(terrain_road_exclusions[2u + cell.y * size.x + cell.x].xy);
+    for (uint i = 0; i < range.y; ++i)
+    {
+        const float4 ab = terrain_road_exclusions[range.x + i * 2u];
+        const float2 c = terrain_road_exclusions[range.x + i * 2u + 1u].xy;
+        const float e0 = (ab.z - ab.x) * (position.y - ab.y) - (ab.w - ab.y) * (position.x - ab.x);
+        const float e1 = (c.x - ab.z) * (position.y - ab.w) - (c.y - ab.w) * (position.x - ab.z);
+        const float e2 = (ab.x - c.x) * (position.y - c.y) - (ab.y - c.y) * (position.x - c.x);
+        if ((e0 >= -1e-4f && e1 >= -1e-4f && e2 >= -1e-4f) || (e0 <= 1e-4f && e1 <= 1e-4f && e2 <= 1e-4f)) return true;
+    }
+    return false;
+}
+
 // conservative world-space bound used to cull an instance against the camera frustum and the occluder
 // hi-z, covers the tallest scaled instance plus wind sway and the intra-cell scatter, generous enough
 // that nothing on screen is ever wrongly rejected so visible density stays identical. both are scaled
@@ -306,14 +330,16 @@ float sample_terrain_height(float2 world_xz, float2 height_size, out float valid
     float2 f      = saturate(grid - base);
 
     float2 rcp_size = 1.0f / max(height_size, 1.0f);
-    float h00 = tex.SampleLevel(samplers[sampler_point_clamp], (base + float2(0.5f, 0.5f)) * rcp_size, 0).r;
+    // Both terrain triangles share the diagonal. Fetch only the third corner
+    // of the triangle containing the blade, keeping the same plane arithmetic.
+    bool lower = f.x + f.y <= 1.0f;
+    float corner = tex.SampleLevel(samplers[sampler_point_clamp], (base + (lower ? 0.5f : 1.5f)) * rcp_size, 0).r;
     float h10 = tex.SampleLevel(samplers[sampler_point_clamp], (base + float2(1.5f, 0.5f)) * rcp_size, 0).r;
     float h01 = tex.SampleLevel(samplers[sampler_point_clamp], (base + float2(0.5f, 1.5f)) * rcp_size, 0).r;
-    float h11 = tex.SampleLevel(samplers[sampler_point_clamp], (base + float2(1.5f, 1.5f)) * rcp_size, 0).r;
 
-    return (f.x + f.y <= 1.0f)
-        ? h00 + f.x * (h10 - h00) + f.y * (h01 - h00)
-        : h11 + (1.0f - f.x) * (h01 - h11) + (1.0f - f.y) * (h10 - h11);
+    return lower
+        ? corner + f.x * (h10 - corner) + f.y * (h01 - corner)
+        : corner + (1.0f - f.x) * (h01 - corner) + (1.0f - f.y) * (h10 - corner);
 }
 
 // two forward taps for the surface slope, reuses the centre height so a surviving blade pays three terrain
@@ -534,44 +560,6 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         return;
     }
 
-    float distance_to_camera = sqrt(dist2);
-    float warp_n = grass_value_noise(world_xz * (1.0f / 34.0f), 91u) * 0.7f
-                 + grass_value_noise(world_xz * (1.0f / 13.0f), 53u) * 0.3f;
-    float warp_amp = max(inner_transition, outer_transition) * 0.55f;
-    float distance_warped = distance_to_camera + warp_n * warp_amp;
-
-    float fade_in = inner_radius > 0.0f ?
-        smoothstep(
-            inner_start,
-            inner_radius,
-            distance_warped
-        ) :
-        1.0f;
-    float fade_out = 1.0f - smoothstep(
-        outer_start,
-        ring_radius,
-        distance_warped
-    );
-    // the patch field, evaluated before any texture tap so the threads it rejects are the cheapest
-    // ones in the pass, which is most of what pays for the boosted thread count above. it is keyed
-    // off world space only, never off the lod or the camera, so a pocket keeps the same outline
-    // across every ring and the lod seams stay invisible
-    float patch = grass_patch_weight(
-        world_xz,
-        patch_size,
-        patch_coverage,
-        patch_edge,
-        patch_scar,
-        patch_invert
-    );
-
-    float lod_weight = fade_in * fade_out * cell_keep * patch;
-    float lod_random = hash_unit(hash_mix(h0 ^ 0xa511e9b3u));
-    if (lod_random > lod_weight)
-    {
-        return;
-    }
-
     // height reject, single centre tap, also yields world_y for the visibility cull below
     uint height_w;
     uint height_h;
@@ -595,6 +583,49 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     get_frustum_side_planes(plane_l, plane_r, plane_b, plane_t);
     if (!sphere_in_side_planes(blade_center, cull_radius, plane_l, plane_r, plane_b, plane_t))
         return;
+
+    float distance_to_camera = sqrt(dist2);
+    float warp_n = grass_value_noise(world_xz * (1.0f / 34.0f), 91u) * 0.7f
+                 + grass_value_noise(world_xz * (1.0f / 13.0f), 53u) * 0.3f;
+    float warp_amp = max(inner_transition, outer_transition) * 0.55f;
+    float distance_warped = distance_to_camera + warp_n * warp_amp;
+
+    float fade_in = inner_radius > 0.0f ?
+        smoothstep(
+            inner_start,
+            inner_radius,
+            distance_warped
+        ) :
+        1.0f;
+    float fade_out = 1.0f - smoothstep(
+        outer_start,
+        ring_radius,
+        distance_warped
+    );
+    // Patch coverage can only decrease the keep probability. Reject candidates
+    // already outside the distance fade before evaluating the detailed noise.
+    float lod_random = hash_unit(hash_mix(h0 ^ 0xa511e9b3u));
+    float fade_weight = fade_in * fade_out * cell_keep;
+    if (lod_random > fade_weight)
+        return;
+
+    // Evaluate patch noise only for candidates in the camera frustum. It is keyed
+    // off world space only, never off the lod or the camera, so a pocket keeps the same outline
+    // across every ring and the lod seams stay invisible
+    float patch = grass_patch_weight(
+        world_xz,
+        patch_size,
+        patch_coverage,
+        patch_edge,
+        patch_scar,
+        patch_invert
+    );
+
+    float lod_weight = fade_weight * patch;
+    if (lod_random > lod_weight)
+    {
+        return;
+    }
 
     // hi-z arrives on tex2, derive the max mip from the texture so no extra push constant is needed
     // the sphere test also rejects blades behind the camera (the side planes alone do not)
@@ -639,6 +670,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             return;
         }
     }
+
+    if (on_road(world_xz)) return;
 
     // biome mask, same uv as the heightfield, the slot picks the channel it is gated on
     // is_transparent carries biome_min as float bits, negative disables the gate
@@ -748,7 +781,10 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         float budget = detail.y * lerp(0.85f, 1.0f, hash_unit(hash_mix(h0 ^ 0x41c64e6du)));
         coarse = pixels_per_height * 0.025f < budget && clip.w > 15.0f &&
                  (contact.w <= 0.0f || dot(to_contact, to_contact) > contact.w * contact.w);
-        if (coarse)
+        // Below the clamp angle (at most 75 degrees), the polynomial error
+        // bound is below 0.15; the clamped case is exactly 0.15. If that worst
+        // case already fits, both wind samples leave the LOD decision unchanged.
+        if (coarse && pixels_per_height * 0.150001f >= budget)
         {
             wind_sample current_wind = evaluate_wind(root, 0.0f);
             wind_sample previous_wind = evaluate_wind(root, -buffer_frame.delta_time);

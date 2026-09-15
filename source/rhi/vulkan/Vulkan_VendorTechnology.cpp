@@ -946,6 +946,7 @@ namespace spartan
         tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
         tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list);
         cmd_list->PrepareForExternalWrite(tex_output);
+        RHI_CommandList::RenderPassEnd();
         cmd_list->FlushBarriers();
 
         intel::params_execute.colorTexture               = intel::to_xess_image_view(tex_color);
@@ -1041,6 +1042,10 @@ namespace spartan
             return;
         }
 
+        // Feature creation records transfer commands as well as compute work.
+        // End rendering before entering the SDK, including its first-frame initialization.
+        RHI_CommandList::RenderPassEnd();
+        cmd_list->FlushBarriers();
         VkCommandBuffer vk_cmd = static_cast<VkCommandBuffer>(cmd_list->GetRhiResource());
         dlss::feature_create(vk_cmd);
         if (!dlss::handle)
@@ -1064,6 +1069,7 @@ namespace spartan
             tex_bias->SetLayout(RHI_Image_Layout::General, cmd_list);
         }
         cmd_list->PrepareForExternalWrite(tex_output);
+        RHI_CommandList::RenderPassEnd();
         cmd_list->FlushBarriers();
 
         NVSDK_NGX_Resource_VK color    = dlss::to_ngx(tex_color, false);
@@ -1185,6 +1191,7 @@ namespace spartan
         tex_view_z->SetLayout(RHI_Image_Layout::General, cmd_list);
         tex_signal_in->SetLayout(RHI_Image_Layout::General, cmd_list);
         cmd_list->PrepareForExternalWrite(tex_signal_out);
+        RHI_CommandList::RenderPassEnd();
         cmd_list->FlushBarriers();
 
         const uint32_t engine_frame = common::cb_frame->frame;

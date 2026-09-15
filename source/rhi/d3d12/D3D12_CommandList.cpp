@@ -251,6 +251,7 @@ namespace spartan
             // source cpu handles (from cpu staging heap) per slot - zero means null
             D3D12_CPU_DESCRIPTOR_HANDLE srv[d3d12_root_slot::srv_space0_count] = {};
             D3D12_CPU_DESCRIPTOR_HANDLE uav[d3d12_root_slot::uav_space0_count] = {};
+            uint64_t bindless_revision[2]         = {};
             bool srv_dirty                       = false;
             bool uav_dirty                       = false;
             bool is_compute_bound                = false;
@@ -269,8 +270,6 @@ namespace spartan
             ID3D12Resource* swapchain_bb_transitioned = nullptr;
             // deferred barrier batch, flushed by FlushBarriers (or before draw/dispatch/render-pass-begin)
             std::vector<D3D12_RESOURCE_BARRIER> pending_barriers;
-            // staging buffers acquired during recording, released on next Begin once gpu execution has finished
-            std::vector<void*> staging_buffers_in_flight;
             std::vector<ID3D12Resource*> readback_scratch;
             // snapshotted from the global tracker on first use, so concurrent recording still emits a correct StateBefore
             std::unordered_map<ID3D12Resource*, ResourceStateInfo> resource_states;
@@ -290,6 +289,7 @@ namespace spartan
             auto& b = get(cmd);
             for (auto& h : b.srv) h.ptr = 0;
             for (auto& h : b.uav) h.ptr = 0;
+            b.bindless_revision[0] = b.bindless_revision[1] = 0;
             b.srv_dirty                  = false;
             b.uav_dirty                  = false;
             b.is_compute_bound           = false;
@@ -310,12 +310,6 @@ namespace spartan
                 state.initialized = false;
             }
 
-            // safe to release staging buffers now, Begin guarantees the previous submission completed on the gpu
-            for (void* sb : b.staging_buffers_in_flight)
-            {
-                RHI_Device::StagingBufferRelease(sb);
-            }
-            b.staging_buffers_in_flight.clear();
             for (ID3D12Resource* resource : b.readback_scratch)
                 resource->Release();
             b.readback_scratch.clear();
@@ -936,14 +930,14 @@ namespace spartan
     }
 
     // bind all bindless descriptor tables at the fixed bindless zones
-    static void bind_bindless_tables(ID3D12GraphicsCommandList* cmd_list, bool is_compute)
+    static void bind_bindless_tables(ID3D12GraphicsCommandList* cmd_list, const RHI_CommandList* owner, bool is_compute)
     {
         // external passes (xess) may have swapped the bound heaps, always restore before using engine handles
         bind_shader_visible_heaps(cmd_list);
 
-        const uint32_t tex_base     = d3d12_descriptors::GetBindlessTexturesBase();
-        const uint32_t buf_base     = d3d12_descriptors::GetBindlessBuffersBase();
-        const uint32_t compare_base = d3d12_descriptors::GetSamplersCompareBase();
+        const auto [tex_base, compare_base, revision] = d3d12_descriptors::GetBindlessSnapshot();
+        cmd_state::get(owner).bindless_revision[is_compute] = revision;
+        const uint32_t buf_base = tex_base + d3d12_descriptors::GetBindlessTexturesCount();
 
         D3D12_GPU_DESCRIPTOR_HANDLE h_mat_tex   = d3d12_descriptors::GetCbvSrvUavGpuHandle(tex_base);
         D3D12_GPU_DESCRIPTOR_HANDLE h_mat_param = d3d12_descriptors::GetCbvSrvUavGpuHandle(buf_base + 0);
@@ -998,6 +992,9 @@ namespace spartan
         {
             return;
         }
+
+        if (b.bindless_revision[is_compute] != d3d12_descriptors::GetBindlessRevision())
+            bind_bindless_tables(cmd_list, cmd, is_compute);
 
         if (b.srv_dirty)
         {
@@ -1122,20 +1119,16 @@ namespace spartan
 
     RHI_CommandList::~RHI_CommandList()
     {
-        RHI_Device::QueueWaitAll();
+        if (m_state == RHI_CommandListState::Submitted) WaitForExecution();
+        ReadbackTimestampsForProfiler();
+        if (m_timestamp_sample) m_timestamp_sample->ready = true;
+        ReleasePendingWork();
         d3d12_descriptors::ReleaseRing(static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource));
 
         cmd_state::PendingBindings& bindings =
             cmd_state::get(this);
         for (ID3D12Resource* resource : bindings.readback_scratch)
             resource->Release();
-        for (void* staging_buffer :
-            bindings.staging_buffers_in_flight)
-        {
-            RHI_Device::StagingBufferRelease(
-                staging_buffer
-            );
-        }
         delete static_cast<cmd_state::PendingBindings*>(
             m_rhi_state
         );
@@ -1187,6 +1180,8 @@ namespace spartan
         bind_shader_visible_heaps(cmd_list);
 
         cmd_state::reset(this);
+        ReadbackTimestampsForProfiler();
+        m_timestamp_sample.reset();
         ResetTrackedResources();
         // Both rendering queues use DIRECT lists so the asynchronous phase can clear depth and blit.
         cmd_state::get(this).is_compute_queue = false;
@@ -1445,7 +1440,7 @@ namespace spartan
             const bool root_sig_ready  = use_compute_sig ? b.has_root_signature_compute : b.has_root_signature_graphics;
             if (root_sig_ready && root_signature_changed)
             {
-                bind_bindless_tables(cmd_list, use_compute_sig);
+                bind_bindless_tables(cmd_list, this, use_compute_sig);
                 b.srv_dirty = true;
                 b.uav_dirty = true;
             }
@@ -3443,18 +3438,15 @@ namespace spartan
 
     void RHI_CommandList::ReadbackTimestampsForProfiler()
     {
-        if (m_state == RHI_CommandListState::Submitted)
-        {
-            WaitForExecution();
-        }
-        if (m_timestamp_index == 0)
-        {
+        if (!m_timestamp_sample || m_timestamp_sample->ready || !GetWork().IsComplete())
             return;
+        if (m_timestamp_index > 0)
+        {
+            queries::CmdListQueries& q = queries::get(this);
+            queries::readback_data(q.readback_timestamp, m_timestamp_data.data(), std::min<uint32_t>(m_timestamp_index, m_max_timestamps));
+            m_timestamp_sample->ticks = m_timestamp_data;
         }
-
-        queries::CmdListQueries& q = queries::get(this);
-        queries::readback_data(q.readback_timestamp, m_timestamp_data.data(), std::min<uint32_t>(m_timestamp_index, m_max_timestamps));
-        m_gpu_frame_reference_tick = m_timestamp_data[0];
+        m_timestamp_sample->ready = true;
     }
 
     void RHI_CommandList::begin_occlusion_query(const uint64_t entity_id)
@@ -3720,7 +3712,7 @@ namespace spartan
         cmd_state::push_transition(b, dst, d3d12_general_state(false));
 
         // hold the staging buffer until this cmd list completes, Begin/destructor releases them back to the pool
-        b.staging_buffers_in_flight.push_back(staging_ptr);
+        RetainStagingBuffer(staging_ptr);
     }
 
     void RHI_CommandList::InsertBarrier(const RHI_Barrier& barrier)
@@ -4115,7 +4107,7 @@ namespace spartan
 
         cmd_state::push_transition(b, dst, d3d12_general_state(false));
 
-        b.staging_buffers_in_flight.push_back(staging_ptr);
+        RetainStagingBuffer(staging_ptr);
     }
     void RHI_CommandList::copy_buffer_to_buffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
     {
@@ -4192,20 +4184,29 @@ namespace spartan
         RHI_Queue* queue = immediate_execution::queues[qi].get();
         RHI_CommandList* cmd_list = queue->NextCommandList();
         cmd_list->Begin();
+        cmd_list->m_previous_binding = RHI_Device::Cmd();
         RHI_Device::Bind(cmd_list);
         return cmd_list;
     }
 
-    void RHI_CommandList::ImmediateExecutionEnd(RHI_CommandList* cmd_list)
+    void RHI_CommandList::ImmediateExecutionEnd(RHI_CommandList* cmd_list, bool wait)
     {
         if (!cmd_list)
         {
             return;
         }
 
-        cmd_list->Submit(nullptr, true);
+        cmd_list->Submit(nullptr, wait);
 
         const uint32_t qi = static_cast<uint32_t>(cmd_list->GetQueue()->GetType());
+
+        if (!wait)
+        {
+            SP_ASSERT(cmd_list->GetQueue()->GetType() == RHI_Queue_Type::Graphics);
+            SetPendingUpload(cmd_list->GetWork());
+        }
+
+        RHI_Device::Bind(cmd_list->m_previous_binding);
 
         // clear under the lock, releasing without the mutex races the waiter in Begin and can lose the wakeup
         {
@@ -4213,7 +4214,6 @@ namespace spartan
             immediate_execution::is_executing[qi] = false;
         }
         immediate_execution::condition_vars[qi].notify_one();
-        RHI_Device::Bind(static_cast<RHI_CommandList*>(nullptr));
     }
 
     void RHI_CommandList::ImmediateExecutionShutdown()
@@ -4225,6 +4225,7 @@ namespace spartan
         }
 
         immediate_execution::queues.fill(nullptr);
+        SetPendingUpload({});
     }
 
     void* RHI_CommandList::GetRhiResourcePipeline()

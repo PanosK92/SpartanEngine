@@ -1181,7 +1181,7 @@ namespace spartan
                     }
                 }
 
-                if (!texture && !tex_name.empty())
+                if (!texture && tex_path.empty() && !tex_name.empty())
                 {
                     texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
                 }
@@ -1272,6 +1272,7 @@ namespace spartan
         SP_ASSERT(slot < slots_per_texture);
 
         bool should_prepare = false;
+        bool texture_changed = false;
         {
             lock_guard<recursive_mutex> lock(m_mutex);
 
@@ -1280,7 +1281,7 @@ namespace spartan
 
             // check if the texture is actually changing
             RHI_Texture* previous_texture = m_textures[array_index];
-            bool texture_changed = (previous_texture != texture);
+            texture_changed = (previous_texture != texture);
 
             m_textures[array_index] = texture;
 
@@ -1333,8 +1334,10 @@ namespace spartan
             }
         }
 
-        // save on change, but not during loading (auto_adjust_multiplier is false when called from LoadFromFile)
-        if (auto_adjust_multiplier)
+        // Rebinding a shared wheel/prop texture is not an asset edit. Multiplier
+        // changes above save through SetProperty; only a changed texture needs
+        // this additional save (loading keeps auto_adjust_multiplier false).
+        if (auto_adjust_multiplier && texture_changed)
         {
             SaveToFile(GetResourceFilePath());
         }
@@ -1464,7 +1467,7 @@ namespace spartan
                 {
                     if (texture->GetRhiResource())
                     {
-                        texture->DestroyResourceImmediate();
+                        texture->ReleaseGpuResources();
                     }
                     continue;
                 }

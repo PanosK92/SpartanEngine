@@ -76,6 +76,7 @@ namespace spartan
 
     void RHI_AccelerationStructure::Destroy()
     {
+        m_device_address = 0;
         if (m_type == RHI_AccelerationStructureType::Top && m_rhi_resource)
         {
             RHI_Device::DescriptorSetInvalidateReferencingResource(this);
@@ -128,6 +129,8 @@ namespace spartan
 
     void RHI_AccelerationStructure::BuildBottomLevel(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureGeometry>& geometries, const vector<uint32_t>& primitive_counts, bool allow_update)
     {
+        // Dynamic vertex uploads recorded earlier this frame must precede AS reads.
+        cmd_list->SynchronizeResources(false);
         SP_ASSERT(m_type == RHI_AccelerationStructureType::Bottom);
         SP_ASSERT(geometries.size() == primitive_counts.size());
         SP_ASSERT(!geometries.empty());
@@ -196,6 +199,7 @@ namespace spartan
         create_info.size = size_info.accelerationStructureSize;
         create_info.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
         as_create(device, &create_info, nullptr, reinterpret_cast<VkAccelerationStructureKHR*>(&m_rhi_resource));
+        m_device_address = 0;
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::AccelerationStructure, m_object_name.c_str());
 
         // static blas share one growing scratch buffer, per-instance scratch oom'd the gpu, overallocated so the address can be aligned at use
@@ -247,6 +251,9 @@ namespace spartan
 
         as_build(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), 1, &build_info, p_range_infos.data());
 
+        // Initialize the immutable address before parallel TLAS readers use it.
+        GetDeviceAddress();
+
         // barrier: ensure build completes before use, and allow next blas to reuse the shared scratch buffer
         // dst must include ACCELERATION_STRUCTURE_WRITE so consecutive builds writing the shared scratch are ordered
         {
@@ -281,6 +288,8 @@ namespace spartan
 
     void RHI_AccelerationStructure::RefitBottomLevel(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureGeometry>& geometries, const vector<uint32_t>& primitive_counts)
     {
+        // Dynamic vertex uploads recorded earlier this frame must precede AS reads.
+        cmd_list->SynchronizeResources(false);
         SP_ASSERT(m_type == RHI_AccelerationStructureType::Bottom);
         SP_ASSERT(m_allow_update && m_rhi_resource && m_scratch_buffer);
         SP_ASSERT(geometries.size() == primitive_counts.size());
@@ -469,7 +478,9 @@ namespace spartan
         // build info
         VkAccelerationStructureBuildGeometryInfoKHR build_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
         build_info.type                                        = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-        build_info.flags                                       = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
+        // This TLAS is always rebuilt; update support constrains the driver's
+        // trace layout and reserves memory for an operation we never issue.
+        build_info.flags                                       = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
         build_info.geometryCount                               = 1;
         VkAccelerationStructureGeometryKHR geom                = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR };
         geom.geometryType                                      = VK_GEOMETRY_TYPE_INSTANCES_KHR;
@@ -514,6 +525,7 @@ namespace spartan
             create_info.size                                 = size_info.accelerationStructureSize;
             create_info.type                                 = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
             as_create(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkAccelerationStructureKHR*>(&m_rhi_resource));
+            m_device_address = 0;
             RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::AccelerationStructure, m_object_name.c_str());
     
             m_size = size_info.accelerationStructureSize;
@@ -568,11 +580,14 @@ namespace spartan
 
     uint64_t RHI_AccelerationStructure::GetDeviceAddress()
     {
+        if (!m_rhi_resource) return 0;
+        if (m_device_address != 0) return m_device_address;
         VkAccelerationStructureDeviceAddressInfoKHR address_info = {};
         address_info.sType                                       = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
         address_info.pNext                                       = nullptr;
         address_info.accelerationStructure                       = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
 
-        return as_get_device_address(static_cast<VkDevice>(RHI_Context::device), &address_info);
+        m_device_address = as_get_device_address(static_cast<VkDevice>(RHI_Context::device), &address_info);
+        return m_device_address;
     }
 }

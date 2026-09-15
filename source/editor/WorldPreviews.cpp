@@ -410,7 +410,7 @@ void WorldPreviews::Shutdown()
     {
         if (texture)
         {
-            texture->DestroyResourceImmediate();
+            texture->ReleaseGpuResources();
         }
     }
 

@@ -288,8 +288,76 @@ namespace spartan
         m_constant_buffer_bound = false;
     }
 
+
+    namespace completion
+    {
+        mutex mutex;
+        unordered_map<RHI_CommandList*, RHI_Work> work;
+        shared_ptr<const RHI_PendingWork> snapshot;
+        RHI_Work upload;
+    }
+
+    RHI_Work RHI_CommandList::GetPendingUpload()
+    {
+        lock_guard lock(completion::mutex);
+        return completion::upload;
+    }
+
+    void RHI_CommandList::SetPendingUpload(RHI_Work work)
+    {
+        RHI_Work previous;
+        {
+            lock_guard lock(completion::mutex);
+            previous = move(completion::upload);
+            completion::upload = move(work);
+        }
+    }
+
+    shared_ptr<const RHI_PendingWork> RHI_CommandList::CapturePendingWork()
+    {
+        lock_guard lock(completion::mutex);
+        if (!completion::snapshot)
+        {
+            auto snapshot = make_shared<RHI_PendingWork>();
+            for (const auto& [owner, work] : completion::work)
+                if (!work.IsComplete()) snapshot->submissions.push_back(work);
+            completion::snapshot = move(snapshot);
+        }
+        return completion::snapshot;
+    }
+
+    void RHI_CommandList::ReleasePendingWork()
+    {
+        for (void* buffer : m_upload_buffers)
+            RHI_Device::StagingBufferRelease(buffer);
+        m_upload_buffers.clear();
+
+        // A recording discarded at shutdown never reaches the queue.
+        if (m_state == RHI_CommandListState::Recording)
+            m_rendering_complete_semaphore_timeline->Signal(m_last_timeline_signal_value);
+        shared_ptr<const RHI_PendingWork> previous;
+        {
+            lock_guard lock(completion::mutex);
+            completion::work.erase(this);
+            previous = move(completion::snapshot);
+        }
+    }
+
     void RHI_CommandList::ResetTrackedResources()
     {
+        for (void* buffer : m_upload_buffers)
+            RHI_Device::StagingBufferRelease(buffer);
+        m_upload_buffers.clear();
+
+        // Reserve before recording so retirement also covers unsubmitted references.
+        m_last_timeline_signal_value = m_rendering_complete_semaphore_timeline->GetNextSignalValue();
+        shared_ptr<const RHI_PendingWork> previous;
+        {
+            lock_guard lock(completion::mutex);
+            completion::work[this] = GetWork();
+            previous = move(completion::snapshot);
+        }
+
         m_batch_barrier_flush = false;
         m_flushing_barriers   = false;
         m_render_pass_pending = false;
@@ -1007,7 +1075,9 @@ namespace spartan
                 resource_tracker::writes(previous.access);
             const bool cross_queue = previous.queue != RHI_Queue_Type::Max && current.queue != RHI_Queue_Type::Max && previous.queue != current.queue;
             const bool vulkan = RHI_Context::api_type == RHI_Api_Type::Vulkan;
-            const bool to_indirect = current.usage == RHI_Resource_Usage::Indirect;
+            // Repeated indirect reads need no dependency on one another. Keep
+            // the transition from a producer or another usage synchronized.
+            const bool to_indirect = current.usage == RHI_Resource_Usage::Indirect && previous.usage != RHI_Resource_Usage::Indirect;
             if (previous.access != RHI_Resource_Access::None && (wrote || compute_to_graphics || to_indirect) &&
                 (cross_queue || compute_to_graphics || to_indirect || previous.unsynced))
             {
@@ -1076,6 +1146,7 @@ namespace spartan
     {
         if (texture)
         {
+            render_pass_end();
             InsertBarrier(texture, RHI_Image_Layout::General, 0, texture->GetMipCount());
             FlushBarriers();
         }

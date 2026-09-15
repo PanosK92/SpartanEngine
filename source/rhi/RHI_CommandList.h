@@ -91,6 +91,12 @@ namespace spartan
         RHI_Resource_Usage usage   = RHI_Resource_Usage::None;
     };
 
+    struct RHI_TimestampSample
+    {
+        std::array<uint64_t, 256> ticks = {};
+        bool ready = false;
+    };
+
     class RHI_CommandList : public SpartanObject
     {
     public:
@@ -102,10 +108,14 @@ namespace spartan
                     RHI_SyncPrimitive* semaphore_timeline_wait = nullptr, uint64_t timeline_wait_value = 0);
         void WaitForExecution(const bool log_wait_time = false);
         bool IsExecutionComplete();
+        void RetainStagingBuffer(void* buffer) { m_upload_buffers.push_back(buffer); }
+        RHI_Work GetWork() const { return { m_rendering_complete_semaphore_timeline, m_last_timeline_signal_value }; }
+        static std::shared_ptr<const RHI_PendingWork> CapturePendingWork();
+        static RHI_Work GetPendingUpload();
 
         // immediate execution
         static RHI_CommandList* ImmediateExecutionBegin(const RHI_Queue_Type queue_type);
-        static void ImmediateExecutionEnd(RHI_CommandList* cmd_list);
+        static void ImmediateExecutionEnd(RHI_CommandList* cmd_list, bool wait = true);
         static void ImmediateExecutionShutdown();
 
         RHI_SyncPrimitive* GetTimelineSemaphore()                  { return m_rendering_complete_semaphore_timeline.get(); }
@@ -120,6 +130,11 @@ namespace spartan
         float GetTimestampResult(const uint32_t index_timestamp);
         float GetTimestampStartMs(const uint32_t index_timestamp);
         void ReadbackTimestampsForProfiler();
+        std::shared_ptr<RHI_TimestampSample> GetTimestampSample()
+        {
+            if (!m_timestamp_sample) m_timestamp_sample = std::make_shared<RHI_TimestampSample>();
+            return m_timestamp_sample;
+        }
         uint64_t GetTimestampRawTick(uint32_t index) const { return (index < m_max_timestamps) ? m_timestamp_data[index] : 0; }
         bool GetOcclusionQueryResult(const uint64_t entity_id);
 
@@ -405,6 +420,8 @@ namespace spartan
         void ValidateBindings();
         void ResetTrackedBindings();
         void ResetTrackedResources();
+        void ReleasePendingWork();
+        static void SetPendingUpload(RHI_Work work);
         void MarkTrackedResourcesSynced();
         void CommitTrackedResources();
         RHI_Image_Layout GetTrackedTextureLayout(RHI_Texture* texture, uint32_t mip_index);
@@ -423,6 +440,9 @@ namespace spartan
         uint64_t m_buffer_id_vertex                          = 0;
         uint64_t m_buffer_id_instance                        = 0;
         uint64_t m_buffer_id_index                           = 0;
+        std::shared_ptr<RHI_TimestampSample> m_timestamp_sample;
+        std::vector<void*> m_upload_buffers;
+        RHI_CommandList* m_previous_binding = nullptr;
         uint32_t m_timestamp_index                           = 0;
         bool m_occlusion_query_pool_reset                    = false;
 

@@ -125,6 +125,8 @@ namespace spartan
             bool     cloud_environment_baking  = false;
             Light*   cloud_light               = nullptr;
             math::Quaternion cloud_light_rotation = math::Quaternion::Identity;
+            math::Vector3 sky_moon = math::Vector3::Zero;
+            math::Vector3 sky_equatorial_x = math::Vector3::Zero;
             math::Vector3 cloud_wind            = math::Vector3::Zero;
             math::Vector2 cloud_seed_offset     = math::Vector2::Zero;
             float    cloud_light_intensity      = -1.0f;

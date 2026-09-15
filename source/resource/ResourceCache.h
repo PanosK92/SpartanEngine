@@ -227,6 +227,7 @@ namespace spartan
         static std::vector<std::shared_ptr<IResource>>& GetResources();
         // owning copy under the cache mutex, safe for unlocked iteration
         static std::vector<std::shared_ptr<IResource>> GetResourcesSnapshot();
+        static void InvalidatePathIndex();
         static std::recursive_mutex& GetMutex();
         static std::mutex& GetInFlightMutex(const std::string& path);
         static bool IsShuttingDown();

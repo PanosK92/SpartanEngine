@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========
 #define CACHE_MESH_TREE_WIND
 #include "common.hlsl"
+#undef MESH_SHADER_NUMTHREADS
+#define MESH_SHADER_NUMTHREADS 64
 //====================
 
 // gbuffer mesh path, one workgroup per survivor, the indirect group count bounds the dispatch
@@ -49,7 +51,7 @@ groupshared uint            gs_first_micro;
 groupshared bool            gs_skip_backface;
 groupshared bool            gs_emit;
 groupshared float3          gs_world[MESHLET_MAX_VERTICES];
-groupshared float4          gs_clip[MESHLET_MAX_VERTICES];
+groupshared float3          gs_ndc_w[MESHLET_MAX_VERTICES];
 
 [outputtopology("triangle")]
 [numthreads(MESH_SHADER_NUMTHREADS, 1, 1)]
@@ -88,8 +90,8 @@ void main_ms(
             {
                 gs_vertex_count   = min(meshlet_decode_vertex_count(gs_mb), MESHLET_MAX_VERTICES);
                 gs_triangle_count = min(meshlet_decode_triangle_count(gs_mb), MESHLET_MAX_TRIANGLES);
-                gs_first_vertex   = meshlet_decode_first_vertex(gs_mb);
-                gs_first_micro    = gs_mb.first_micro;
+                gs_first_vertex   = gs_draw.meshlet_vertex_base + meshlet_decode_first_vertex(gs_mb);
+                gs_first_micro    = gs_draw.meshlet_micro_base + gs_mb.first_micro;
                 gs_skip_backface  = ((gs_draw.flags & 1u) | (gs_draw.flags & 8u)) != 0u;
                 cache_mesh_tree_wind(gs_draw, gs_mi.instance_index, gs_mi.padding0);
             }
@@ -127,7 +129,7 @@ void main_ms(
         gbuffer_vertex clipped         = transform_to_clip_space(vertex, position_world, position_world_previous, 0);
         out_vertices[v_index]          = pack_gbuffer_indirect(clipped, gs_mi.draw_index);
         gs_world[v_index]              = position_world;
-        gs_clip[v_index]               = clipped.position;
+        gs_ndc_w[v_index] = float3(clipped.position.xy / clipped.position.w, clipped.position.w);
     }
 
     GroupMemoryBarrierWithGroupSync();
@@ -160,15 +162,15 @@ void main_ms(
             cull = dot(face_normal, view_dir) > 0.0f;
         }
 
-        float4 p0 = gs_clip[i0];
-        float4 p1 = gs_clip[i1];
-        float4 p2 = gs_clip[i2];
+        float3 p0 = gs_ndc_w[i0];
+        float3 p1 = gs_ndc_w[i1];
+        float3 p2 = gs_ndc_w[i2];
 
-        if (!cull && p0.w > 0.0f && p1.w > 0.0f && p2.w > 0.0f)
+        if (!cull && p0.z > 0.0f && p1.z > 0.0f && p2.z > 0.0f)
         {
-            float2 n0 = p0.xy / p0.w;
-            float2 n1 = p1.xy / p1.w;
-            float2 n2 = p2.xy / p2.w;
+            float2 n0 = p0.xy;
+            float2 n1 = p1.xy;
+            float2 n2 = p2.xy;
             float2 ndc_min = min(n0, min(n1, n2));
             float2 ndc_max = max(n0, max(n1, n2));
             float2 extent  = (ndc_max - ndc_min) * get_render_resolution_active() * 0.5f;

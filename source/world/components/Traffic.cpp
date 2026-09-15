@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include "pch.h"
+#include "../../profiling/Profiler.h"
 #include "Traffic.h"
 #include "Camera.h"
 #include "../RoadTrafficWorld.h"
@@ -167,6 +168,7 @@ namespace spartan
 
     void Traffic::Tick()
     {
+        SP_PROFILE_CPU();
         if (!Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused))
         {
             return;
@@ -186,8 +188,6 @@ namespace spartan
         Vector3 player_velocity;
         const bool has_player = GetPlayerState(player_position, player_velocity);
 
-        vector<pair<float, Driver*>> physics_candidates;
-        physics_candidates.reserve(m_drivers.size());
         for (Driver& driver : m_drivers)
         {
             if (!driver.car || car_set.find(driver.car) == car_set.end())
@@ -198,7 +198,7 @@ namespace spartan
                 continue;
             }
 
-            if (!driver.entity || driver.entity->GetComponent<Physics>() != driver.physics)
+            if (!driver.entity || !driver.physics || driver.entity->GetComponent<Physics>() != driver.physics)
             {
                 driver.car = nullptr;
                 driver.entity = nullptr;
@@ -206,51 +206,19 @@ namespace spartan
                 continue;
             }
 
+            bool physics_selected = false;
             if (has_player)
             {
                 Vector3 offset = driver.entity->GetPosition() - player_position;
                 offset.y = 0.0f;
                 const float radius = driver.physics_active ? m_physics_exit_radius : m_physics_radius;
-                const float distance_squared = offset.LengthSquared();
-                if (distance_squared <= radius * radius)
-                {
-                    physics_candidates.emplace_back(
-                        distance_squared,
-                        &driver
-                    );
-                }
+                physics_selected = offset.LengthSquared() <= radius * radius;
             }
-        }
-
-        sort(
-            physics_candidates.begin(),
-            physics_candidates.end(),
-            [](const auto& a, const auto& b)
-            {
-                return a.first < b.first;
-            }
-        );
-
-        unordered_set<Driver*> physics_selected_set;
-        physics_selected_set.reserve(physics_candidates.size() * 2 + 1);
-        for (const auto& candidate : physics_candidates)
-        {
-            physics_selected_set.insert(candidate.second);
-        }
-
-        for (Driver& driver : m_drivers)
-        {
-            if (!driver.car || !driver.entity || !driver.physics)
-            {
-                continue;
-            }
-
-            const bool physics_selected = physics_selected_set.find(&driver) != physics_selected_set.end();
             SetPhysicsActive(driver, physics_selected);
 
             if (m_follow_roads)
             {
-                UpdateRoadDriver(driver, delta_time);
+                UpdateRoadDriver(driver, delta_time, has_player, player_position, player_velocity);
                 continue;
             }
 
@@ -324,7 +292,7 @@ namespace spartan
 
                     uint32_t mesh_flags = Mesh::GetDefaultFlags();
                     mesh_flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
-                    mesh_flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
+                    // Retain authored LOD 0, but let distant traffic use generated LODs.
 
                     const bool body_loaded =
                         definition->body_model.empty() ||
@@ -508,7 +476,7 @@ namespace spartan
             Vector3 position;Quaternion rotation;
             if (!FindRoadSpawn(m_random_state,driver,position,rotation)) continue;
             SetPhysicsActive(driver,false);
-            driver.entity->SetPosition(position);driver.entity->SetRotation(rotation);
+            driver.entity->SetPositionAndRotation(position,rotation);
             driver.physics->SetBodyTransform(position,rotation);
             driver.spline_speed=driver.cruise_speed;driver.transition_time=2.0f;
             driver.last_position=position;driver.visits.clear();
@@ -516,7 +484,7 @@ namespace spartan
         }
     }
 
-    void Traffic::UpdateRoadDriver(Driver& driver, float delta_time)
+    void Traffic::UpdateRoadDriver(Driver& driver, float delta_time, bool has_player, const math::Vector3& player_position, const math::Vector3& player_velocity)
     {
         if (driver.road_edge >= m_road_network.edges.size() || driver.road_path.points.size() < 2) return;
         auto& path = driver.road_path;
@@ -567,8 +535,7 @@ namespace spartan
         };
         for (const Driver& other : m_drivers)
             if (&other != &driver && other.entity) avoid(other.entity->GetPosition(), other.spline_speed);
-        Vector3 player_position, player_velocity;
-        if (GetPlayerState(player_position, player_velocity)) avoid(player_position, std::max(0.0f, Vector3::Dot(player_velocity, current.tangent)));
+        if (has_player) avoid(player_position, std::max(0.0f, Vector3::Dot(player_velocity, current.tangent)));
 
         if (driver.physics_active)
         {
@@ -593,8 +560,9 @@ namespace spartan
             if (driver.car->GetDefinition()) ride = driver.limits.wheel_radius + std::max(driver.car->GetDefinition()->performance.suspension_height, 0.1f);
             driver.transition_time += delta_time;
             const float blend=driver.transition_time<2.0f ? 1.0f-expf(-3.0f*delta_time) : 1.0f;
-            driver.entity->SetPosition(Vector3::Lerp(driver.entity->GetPosition(),pose.position+Vector3::Up*ride,blend));
-            driver.entity->SetRotation(Quaternion::Lerp(driver.entity->GetRotation(),Quaternion::FromLookRotation(pose.tangent),blend));
+            driver.entity->SetPositionAndRotation(
+                Vector3::Lerp(driver.entity->GetPosition(),pose.position+Vector3::Up*ride,blend),
+                Quaternion::Lerp(driver.entity->GetRotation(),Quaternion::FromLookRotation(pose.tangent),blend));
             driver.physics->UpdateTrafficWheels(driver.spline_speed, signed_angle(horizontal(current.tangent), horizontal(target.tangent)) / lookahead, delta_time);
         }
     }

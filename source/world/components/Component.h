@@ -117,7 +117,7 @@ namespace spartan
         virtual void Load(pugi::xml_node& node) {}
 
         template <typename T>
-        static ComponentType TypeToEnum();
+        static constexpr ComponentType TypeToEnum() { return ComponentType::Max; }
 
         static std::string TypeToString(ComponentType type)
         {
@@ -194,4 +194,12 @@ namespace spartan
         // the attributes of the component
         std::vector<Attribute> m_attributes;
     };
+
+    // Component slots are known at compile time. Keeping the mapping here lets
+    // GetComponent<T> compile to a fixed-offset pointer load in development builds.
+    #define X(type, str) \
+        class type; \
+        template<> constexpr ComponentType Component::TypeToEnum<type>() { return ComponentType::type; }
+    SP_COMPONENT_LIST
+    #undef X
 }

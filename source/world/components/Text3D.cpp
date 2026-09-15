@@ -24,11 +24,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Text3D.h"
 #include "Render.h"
 #include "../Entity.h"
+#include "../World.h"
 #include "../../geometry/Mesh.h"
 #include "../../core/ProgressTracker.h"
 #include "../../resource/ResourceCache.h"
 #include "../../rendering/Renderer.h"
 #include <cmath>
+#include <map>
+#include "../../geometry/GeneratedCache.h"
+#include <tuple>
+#include "../../core/Stopwatch.h"
 SP_WARNINGS_OFF
 #include <freetype/freetype.h>
 #include <freetype/ftoutln.h>
@@ -50,6 +55,10 @@ namespace spartan
         constexpr uint32_t max_character_count = 4096;
         constexpr uint64_t max_raster_pixel_count = 4'000'000;
         constexpr uint32_t max_generated_quad_count = 250'000;
+
+        using TextMeshKey = tuple<string, string, string, float, float, float, float, float, uint32_t, uint32_t>;
+        // Weak ownership releases generated geometry with the world; identical signs share one upload.
+        map<TextMeshKey, weak_ptr<Mesh>> text_meshes;
 
         struct RasterGlyph
         {
@@ -306,7 +315,17 @@ namespace spartan
             return;
         }
 
+        static double budget_frame = -1.0;
+        static float spent_ms = 0.0f;
+        if (budget_frame != Timer::GetTimeMs())
+        {
+            budget_frame = Timer::GetTimeMs();
+            spent_ms = 0.0f;
+        }
+        if (spent_ms >= 2.0f) return;
+        const Stopwatch timer;
         GenerateMesh();
+        spent_ms += timer.GetElapsedTimeMs();
     }
 
     void Text3D::Remove()
@@ -593,504 +612,545 @@ namespace spartan
             return false;
         }
 
-        FT_Library library = nullptr;
-        if (FT_Init_FreeType(&library) != FT_Err_Ok)
+        const TextMeshKey key(m_text, m_font_path, FileSystem::GetLastWriteTime(m_font_path), m_size, m_depth, m_weight,
+            m_letter_spacing, m_line_spacing, m_resolution, static_cast<uint32_t>(m_alignment));
+        // Prune expired entries and remove an editable mesh from its old key before changing it.
+        const bool can_update = m_mesh && m_mesh.use_count() == 1;
+        for (auto it = text_meshes.begin(); it != text_meshes.end();)
         {
-            SP_LOG_ERROR("failed to initialize freetype for 3d text");
-            ClearMesh();
-            m_dirty = false;
-            return false;
+            if (it->second.expired() || (can_update && !it->second.owner_before(m_mesh) && !m_mesh.owner_before(it->second)))
+                it = text_meshes.erase(it);
+            else
+                ++it;
         }
-
-        FT_Face face = nullptr;
-        if (
-            FT_New_Face(
-                library,
-                m_font_path.c_str(),
-                0,
-                &face
-            ) != FT_Err_Ok
-        )
+        if (auto it = text_meshes.find(key); it != text_meshes.end())
         {
-            SP_LOG_ERROR(
-                "failed to load 3d text font \"%s\"",
-                m_font_path.c_str()
-            );
-            FT_Done_FreeType(library);
-            ClearMesh();
-            m_dirty = false;
-            return false;
-        }
-
-        if (
-            FT_Set_Pixel_Sizes(
-                face,
-                0,
-                m_resolution
-            ) != FT_Err_Ok
-        )
-        {
-            FT_Done_Face(face);
-            FT_Done_FreeType(library);
-            ClearMesh();
-            m_dirty = false;
-            return false;
-        }
-
-        const float scale =
-            m_size /
-            static_cast<float>(m_resolution);
-        const float depth_half = m_depth * 0.5f;
-        bool character_limit_reached = false;
-        const vector<uint32_t> codepoints = decode_utf8(
-            m_text,
-            character_limit_reached
-        );
-        if (character_limit_reached)
-        {
-            SP_LOG_WARNING(
-                "3d text exceeded its character limit"
-            );
-            FT_Done_Face(face);
-            FT_Done_FreeType(library);
-            ClearMesh();
-            m_dirty = false;
-            return false;
-        }
-
-        vector<RasterGlyph> glyphs;
-        vector<float> line_widths(1, 0.0f);
-        uint32_t line_index = 0;
-        FT_UInt previous_glyph_index = 0;
-        float pen_x = 0.0f;
-        uint64_t raster_pixel_count = 0;
-        bool raster_limit_reached = false;
-
-        for (const uint32_t codepoint : codepoints)
-        {
-            if (codepoint == '\r')
+            if (shared_ptr<Mesh> mesh = it->second.lock())
             {
-                continue;
+                if (!render)
+                {
+                    render = m_entity_ptr->AddComponent<Render>();
+                    m_created_render = true;
+                }
+                render->SetMesh(mesh.get());
+                m_mesh = move(mesh);
+                m_render_bound = true;
+                m_bound_render_id = render->GetObjectId();
+                m_dirty = false;
+                if (!render->GetMaterial() && Renderer::GetStandardMaterial()) render->SetDefaultMaterial();
+                return true;
+            }
+        }
+
+        generated_cache::Hash disk_hash;
+        disk_hash.Add(uint32_t(1)); // text raster/extrusion version
+        std::apply([&](const auto&... values) { (disk_hash.Add(values), ...); }, key);
+        disk_hash.Add(FileSystem::GetLastWriteTime(m_font_path));
+        const auto disk_path = generated_cache::Path(World::GetResourceDirectory(), "text", disk_hash.value);
+        vector<RHI_Vertex_PosTexNorTan> vertices;
+        vector<uint32_t> indices;
+        if (!generated_cache::Load(disk_path, disk_hash.value, vertices, indices))
+        {
+            FT_Library library = nullptr;
+            if (FT_Init_FreeType(&library) != FT_Err_Ok)
+            {
+                SP_LOG_ERROR("failed to initialize freetype for 3d text");
+                ClearMesh();
+                m_dirty = false;
+                return false;
             }
 
-            if (codepoint == '\n')
-            {
-                line_widths[line_index] = pen_x;
-                line_widths.push_back(0.0f);
-                line_index++;
-                pen_x = 0.0f;
-                previous_glyph_index = 0;
-                continue;
-            }
-
-            const FT_UInt glyph_index =
-                FT_Get_Char_Index(face, codepoint);
-
+            FT_Face face = nullptr;
             if (
-                previous_glyph_index != 0 &&
-                glyph_index != 0 &&
-                FT_HAS_KERNING(face)
+                FT_New_Face(
+                    library,
+                    m_font_path.c_str(),
+                    0,
+                    &face
+                ) != FT_Err_Ok
             )
             {
-                FT_Vector kerning;
-                if (
-                    FT_Get_Kerning(
-                        face,
-                        previous_glyph_index,
-                        glyph_index,
-                        FT_KERNING_DEFAULT,
-                        &kerning
-                    ) == FT_Err_Ok
-                )
-                {
-                    pen_x +=
-                        static_cast<float>(kerning.x >> 6) *
-                        scale;
-                }
+                SP_LOG_ERROR(
+                    "failed to load 3d text font \"%s\"",
+                    m_font_path.c_str()
+                );
+                FT_Done_FreeType(library);
+                ClearMesh();
+                m_dirty = false;
+                return false;
             }
 
             if (
-                FT_Load_Glyph(
+                FT_Set_Pixel_Sizes(
                     face,
-                    glyph_index,
-                    FT_LOAD_DEFAULT
+                    0,
+                    m_resolution
                 ) != FT_Err_Ok
             )
             {
-                previous_glyph_index = glyph_index;
-                continue;
+                FT_Done_Face(face);
+                FT_Done_FreeType(library);
+                ClearMesh();
+                m_dirty = false;
+                return false;
             }
 
-            if (
-                m_weight > 0.0f &&
-                face->glyph->format == FT_GLYPH_FORMAT_OUTLINE
-            )
+            const float scale =
+                m_size /
+                static_cast<float>(m_resolution);
+            const float depth_half = m_depth * 0.5f;
+            bool character_limit_reached = false;
+            const vector<uint32_t> codepoints = decode_utf8(
+                m_text,
+                character_limit_reached
+            );
+            if (character_limit_reached)
             {
-                const FT_Pos strength = static_cast<FT_Pos>(
-                    (m_weight / m_size) *
-                    static_cast<float>(m_resolution) *
-                    64.0f
+                SP_LOG_WARNING(
+                    "3d text exceeded its character limit"
                 );
-                FT_Outline_Embolden(
-                    &face->glyph->outline,
-                    strength
-                );
+                FT_Done_Face(face);
+                FT_Done_FreeType(library);
+                ClearMesh();
+                m_dirty = false;
+                return false;
             }
 
-            if (
-                FT_Render_Glyph(
-                    face->glyph,
-                    FT_RENDER_MODE_NORMAL
-                ) != FT_Err_Ok
-            )
-            {
-                previous_glyph_index = glyph_index;
-                continue;
-            }
+            vector<RasterGlyph> glyphs;
+            vector<float> line_widths(1, 0.0f);
+            uint32_t line_index = 0;
+            FT_UInt previous_glyph_index = 0;
+            float pen_x = 0.0f;
+            uint64_t raster_pixel_count = 0;
+            bool raster_limit_reached = false;
 
-            const FT_Bitmap& bitmap = face->glyph->bitmap;
-            if (bitmap.width > 0 && bitmap.rows > 0)
+            for (const uint32_t codepoint : codepoints)
             {
-                const uint64_t glyph_pixel_count =
-                    static_cast<uint64_t>(bitmap.width) *
-                    bitmap.rows;
+                if (codepoint == '\r')
+                {
+                    continue;
+                }
+
+                if (codepoint == '\n')
+                {
+                    line_widths[line_index] = pen_x;
+                    line_widths.push_back(0.0f);
+                    line_index++;
+                    pen_x = 0.0f;
+                    previous_glyph_index = 0;
+                    continue;
+                }
+
+                const FT_UInt glyph_index =
+                    FT_Get_Char_Index(face, codepoint);
+
                 if (
-                    raster_pixel_count + glyph_pixel_count >
-                    max_raster_pixel_count
+                    previous_glyph_index != 0 &&
+                    glyph_index != 0 &&
+                    FT_HAS_KERNING(face)
                 )
                 {
-                    raster_limit_reached = true;
-                    break;
+                    FT_Vector kerning;
+                    if (
+                        FT_Get_Kerning(
+                            face,
+                            previous_glyph_index,
+                            glyph_index,
+                            FT_KERNING_DEFAULT,
+                            &kerning
+                        ) == FT_Err_Ok
+                    )
+                    {
+                        pen_x +=
+                            static_cast<float>(kerning.x >> 6) *
+                            scale;
+                    }
                 }
-                raster_pixel_count += glyph_pixel_count;
 
-                RasterGlyph glyph;
-                glyph.width  = bitmap.width;
-                glyph.height = bitmap.rows;
-                glyph.line   = line_index;
-                glyph.x      =
-                    pen_x +
-                    static_cast<float>(face->glyph->bitmap_left) *
-                    scale;
-                glyph.y      =
-                    -static_cast<float>(line_index) *
-                    m_size *
-                    m_line_spacing +
-                    static_cast<float>(face->glyph->bitmap_top) *
-                    scale;
-                glyph.pixels.resize(
-                    static_cast<size_t>(glyph.width) *
-                    glyph.height
+                if (
+                    FT_Load_Glyph(
+                        face,
+                        glyph_index,
+                        FT_LOAD_DEFAULT
+                    ) != FT_Err_Ok
+                )
+                {
+                    previous_glyph_index = glyph_index;
+                    continue;
+                }
+
+                if (
+                    m_weight > 0.0f &&
+                    face->glyph->format == FT_GLYPH_FORMAT_OUTLINE
+                )
+                {
+                    const FT_Pos strength = static_cast<FT_Pos>(
+                        (m_weight / m_size) *
+                        static_cast<float>(m_resolution) *
+                        64.0f
+                    );
+                    FT_Outline_Embolden(
+                        &face->glyph->outline,
+                        strength
+                    );
+                }
+
+                if (
+                    FT_Render_Glyph(
+                        face->glyph,
+                        FT_RENDER_MODE_NORMAL
+                    ) != FT_Err_Ok
+                )
+                {
+                    previous_glyph_index = glyph_index;
+                    continue;
+                }
+
+                const FT_Bitmap& bitmap = face->glyph->bitmap;
+                if (bitmap.width > 0 && bitmap.rows > 0)
+                {
+                    const uint64_t glyph_pixel_count =
+                        static_cast<uint64_t>(bitmap.width) *
+                        bitmap.rows;
+                    if (
+                        raster_pixel_count + glyph_pixel_count >
+                        max_raster_pixel_count
+                    )
+                    {
+                        raster_limit_reached = true;
+                        break;
+                    }
+                    raster_pixel_count += glyph_pixel_count;
+
+                    RasterGlyph glyph;
+                    glyph.width  = bitmap.width;
+                    glyph.height = bitmap.rows;
+                    glyph.line   = line_index;
+                    glyph.x      =
+                        pen_x +
+                        static_cast<float>(face->glyph->bitmap_left) *
+                        scale;
+                    glyph.y      =
+                        -static_cast<float>(line_index) *
+                        m_size *
+                        m_line_spacing +
+                        static_cast<float>(face->glyph->bitmap_top) *
+                        scale;
+                    glyph.pixels.resize(
+                        static_cast<size_t>(glyph.width) *
+                        glyph.height
+                    );
+
+                    for (uint32_t y = 0; y < glyph.height; y++)
+                    {
+                        const int32_t pitch = bitmap.pitch;
+                        const ptrdiff_t row_offset =
+                            pitch >= 0
+                            ? static_cast<ptrdiff_t>(y) * pitch
+                            : static_cast<ptrdiff_t>(
+                                glyph.height - 1 - y
+                            ) * -pitch;
+                        const uint8_t* source =
+                            bitmap.buffer + row_offset;
+
+                        for (uint32_t x = 0; x < glyph.width; x++)
+                        {
+                            uint8_t coverage = 0;
+
+                            if (bitmap.pixel_mode == FT_PIXEL_MODE_GRAY)
+                            {
+                                coverage = source[x];
+                            }
+                            else if (
+                                bitmap.pixel_mode == FT_PIXEL_MODE_MONO
+                            )
+                            {
+                                coverage =
+                                    (
+                                        source[x >> 3] &
+                                        (0x80 >> (x & 7))
+                                    )
+                                    ? 255
+                                    : 0;
+                            }
+                            else if (
+                                bitmap.pixel_mode == FT_PIXEL_MODE_BGRA
+                            )
+                            {
+                                coverage = source[x * 4 + 3];
+                            }
+
+                            glyph.pixels[
+                                static_cast<size_t>(y) *
+                                glyph.width +
+                                x
+                            ] = coverage;
+                        }
+                    }
+
+                    glyphs.push_back(move(glyph));
+                }
+
+                pen_x +=
+                    static_cast<float>(face->glyph->advance.x >> 6) *
+                    scale +
+                    m_letter_spacing;
+                line_widths[line_index] = pen_x;
+                previous_glyph_index    = glyph_index;
+            }
+
+            FT_Done_Face(face);
+            FT_Done_FreeType(library);
+
+            if (raster_limit_reached)
+            {
+                SP_LOG_WARNING(
+                    "3d text exceeded its raster complexity limit"
+                );
+                ClearMesh();
+                m_dirty = false;
+                return false;
+            }
+
+            bool geometry_limit_reached = false;
+            const size_t estimated_quad_count = min(
+                glyphs.size() *
+                static_cast<size_t>(m_resolution) *
+                3,
+                static_cast<size_t>(max_generated_quad_count)
+            );
+            vertices.reserve(estimated_quad_count * 4);
+            indices.reserve(estimated_quad_count * 6);
+
+            for (const RasterGlyph& glyph : glyphs)
+            {
+                const float alignment_offset = get_alignment_offset(
+                    m_alignment,
+                    line_widths[min(
+                        glyph.line,
+                        static_cast<uint32_t>(line_widths.size() - 1)
+                    )]
                 );
 
                 for (uint32_t y = 0; y < glyph.height; y++)
                 {
-                    const int32_t pitch = bitmap.pitch;
-                    const ptrdiff_t row_offset =
-                        pitch >= 0
-                        ? static_cast<ptrdiff_t>(y) * pitch
-                        : static_cast<ptrdiff_t>(
-                            glyph.height - 1 - y
-                        ) * -pitch;
-                    const uint8_t* source =
-                        bitmap.buffer + row_offset;
+                    uint32_t x = 0;
+                    while (x < glyph.width)
+                    {
+                        if (!is_solid(glyph, x, y))
+                        {
+                            x++;
+                            continue;
+                        }
 
+                        const uint32_t run_start = x;
+                        while (
+                            x < glyph.width &&
+                            is_solid(glyph, x, y)
+                        )
+                        {
+                            x++;
+                        }
+
+                        const float x0 =
+                            glyph.x +
+                            alignment_offset +
+                            static_cast<float>(run_start) *
+                            scale;
+                        const float x1 =
+                            glyph.x +
+                            alignment_offset +
+                            static_cast<float>(x) *
+                            scale;
+                        const float y1 =
+                            glyph.y -
+                            static_cast<float>(y) *
+                            scale;
+                        const float y0 = y1 - scale;
+                        const Vector2 uv0(
+                            static_cast<float>(run_start) /
+                            glyph.width,
+                            static_cast<float>(y + 1) /
+                            glyph.height
+                        );
+                        const Vector2 uv1(
+                            static_cast<float>(x) /
+                            glyph.width,
+                            static_cast<float>(y) /
+                            glyph.height
+                        );
+
+                        add_quad(
+                            vertices,
+                            indices,
+                            Vector3(x0, y0, depth_half),
+                            Vector3(x1, y0, depth_half),
+                            Vector3(x1, y1, depth_half),
+                            Vector3(x0, y1, depth_half),
+                            Vector3::Forward,
+                            Vector2(uv0.x, uv0.y),
+                            Vector2(uv1.x, uv0.y),
+                            Vector2(uv1.x, uv1.y),
+                            Vector2(uv0.x, uv1.y),
+                            geometry_limit_reached
+                        );
+
+                        add_quad(
+                            vertices,
+                            indices,
+                            Vector3(x1, y0, -depth_half),
+                            Vector3(x0, y0, -depth_half),
+                            Vector3(x0, y1, -depth_half),
+                            Vector3(x1, y1, -depth_half),
+                            Vector3::Backward,
+                            Vector2(uv1.x, uv0.y),
+                            Vector2(uv0.x, uv0.y),
+                            Vector2(uv0.x, uv1.y),
+                            Vector2(uv1.x, uv1.y),
+                            geometry_limit_reached
+                        );
+                    }
+                }
+
+                for (uint32_t y = 0; y < glyph.height; y++)
+                {
                     for (uint32_t x = 0; x < glyph.width; x++)
                     {
-                        uint8_t coverage = 0;
-
-                        if (bitmap.pixel_mode == FT_PIXEL_MODE_GRAY)
+                        if (!is_solid(glyph, x, y))
                         {
-                            coverage = source[x];
-                        }
-                        else if (
-                            bitmap.pixel_mode == FT_PIXEL_MODE_MONO
-                        )
-                        {
-                            coverage =
-                                (
-                                    source[x >> 3] &
-                                    (0x80 >> (x & 7))
-                                )
-                                ? 255
-                                : 0;
-                        }
-                        else if (
-                            bitmap.pixel_mode == FT_PIXEL_MODE_BGRA
-                        )
-                        {
-                            coverage = source[x * 4 + 3];
+                            continue;
                         }
 
-                        glyph.pixels[
-                            static_cast<size_t>(y) *
-                            glyph.width +
-                            x
-                        ] = coverage;
+                        const float x0 =
+                            glyph.x +
+                            alignment_offset +
+                            static_cast<float>(x) *
+                            scale;
+                        const float x1 = x0 + scale;
+                        const float y1 =
+                            glyph.y -
+                            static_cast<float>(y) *
+                            scale;
+                        const float y0 = y1 - scale;
+                        const Vector2 side_uv0(0.0f, 0.0f);
+                        const Vector2 side_uv1(1.0f, 1.0f);
+
+                        if (
+                            !is_solid(
+                                glyph,
+                                static_cast<int64_t>(x) - 1,
+                                y
+                            )
+                        )
+                        {
+                            add_quad(
+                                vertices,
+                                indices,
+                                Vector3(x0, y0, -depth_half),
+                                Vector3(x0, y0, depth_half),
+                                Vector3(x0, y1, depth_half),
+                                Vector3(x0, y1, -depth_half),
+                                Vector3::Left,
+                                side_uv0,
+                                Vector2(side_uv1.x, side_uv0.y),
+                                side_uv1,
+                                Vector2(side_uv0.x, side_uv1.y),
+                                geometry_limit_reached
+                            );
+                        }
+
+                        if (!is_solid(glyph, x + 1, y))
+                        {
+                            add_quad(
+                                vertices,
+                                indices,
+                                Vector3(x1, y0, depth_half),
+                                Vector3(x1, y0, -depth_half),
+                                Vector3(x1, y1, -depth_half),
+                                Vector3(x1, y1, depth_half),
+                                Vector3::Right,
+                                side_uv0,
+                                Vector2(side_uv1.x, side_uv0.y),
+                                side_uv1,
+                                Vector2(side_uv0.x, side_uv1.y),
+                                geometry_limit_reached
+                            );
+                        }
+
+                        if (!is_solid(glyph, x, y + 1))
+                        {
+                            add_quad(
+                                vertices,
+                                indices,
+                                Vector3(x0, y0, -depth_half),
+                                Vector3(x1, y0, -depth_half),
+                                Vector3(x1, y0, depth_half),
+                                Vector3(x0, y0, depth_half),
+                                Vector3::Down,
+                                side_uv0,
+                                Vector2(side_uv1.x, side_uv0.y),
+                                side_uv1,
+                                Vector2(side_uv0.x, side_uv1.y),
+                                geometry_limit_reached
+                            );
+                        }
+
+                        if (
+                            !is_solid(
+                                glyph,
+                                x,
+                                static_cast<int64_t>(y) - 1
+                            )
+                        )
+                        {
+                            add_quad(
+                                vertices,
+                                indices,
+                                Vector3(x0, y1, depth_half),
+                                Vector3(x1, y1, depth_half),
+                                Vector3(x1, y1, -depth_half),
+                                Vector3(x0, y1, -depth_half),
+                                Vector3::Up,
+                                side_uv0,
+                                Vector2(side_uv1.x, side_uv0.y),
+                                side_uv1,
+                                Vector2(side_uv0.x, side_uv1.y),
+                                geometry_limit_reached
+                            );
+                        }
                     }
                 }
-
-                glyphs.push_back(move(glyph));
             }
 
-            pen_x +=
-                static_cast<float>(face->glyph->advance.x >> 6) *
-                scale +
-                m_letter_spacing;
-            line_widths[line_index] = pen_x;
-            previous_glyph_index    = glyph_index;
-        }
-
-        FT_Done_Face(face);
-        FT_Done_FreeType(library);
-
-        if (raster_limit_reached)
-        {
-            SP_LOG_WARNING(
-                "3d text exceeded its raster complexity limit"
-            );
-            ClearMesh();
-            m_dirty = false;
-            return false;
-        }
-
-        vector<RHI_Vertex_PosTexNorTan> vertices;
-        vector<uint32_t> indices;
-        bool geometry_limit_reached = false;
-        const size_t estimated_quad_count = min(
-            glyphs.size() *
-            static_cast<size_t>(m_resolution) *
-            3,
-            static_cast<size_t>(max_generated_quad_count)
-        );
-        vertices.reserve(estimated_quad_count * 4);
-        indices.reserve(estimated_quad_count * 6);
-
-        for (const RasterGlyph& glyph : glyphs)
-        {
-            const float alignment_offset = get_alignment_offset(
-                m_alignment,
-                line_widths[min(
-                    glyph.line,
-                    static_cast<uint32_t>(line_widths.size() - 1)
-                )]
-            );
-
-            for (uint32_t y = 0; y < glyph.height; y++)
+            if (geometry_limit_reached)
             {
-                uint32_t x = 0;
-                while (x < glyph.width)
-                {
-                    if (!is_solid(glyph, x, y))
-                    {
-                        x++;
-                        continue;
-                    }
-
-                    const uint32_t run_start = x;
-                    while (
-                        x < glyph.width &&
-                        is_solid(glyph, x, y)
-                    )
-                    {
-                        x++;
-                    }
-
-                    const float x0 =
-                        glyph.x +
-                        alignment_offset +
-                        static_cast<float>(run_start) *
-                        scale;
-                    const float x1 =
-                        glyph.x +
-                        alignment_offset +
-                        static_cast<float>(x) *
-                        scale;
-                    const float y1 =
-                        glyph.y -
-                        static_cast<float>(y) *
-                        scale;
-                    const float y0 = y1 - scale;
-                    const Vector2 uv0(
-                        static_cast<float>(run_start) /
-                        glyph.width,
-                        static_cast<float>(y + 1) /
-                        glyph.height
-                    );
-                    const Vector2 uv1(
-                        static_cast<float>(x) /
-                        glyph.width,
-                        static_cast<float>(y) /
-                        glyph.height
-                    );
-
-                    add_quad(
-                        vertices,
-                        indices,
-                        Vector3(x0, y0, depth_half),
-                        Vector3(x1, y0, depth_half),
-                        Vector3(x1, y1, depth_half),
-                        Vector3(x0, y1, depth_half),
-                        Vector3::Forward,
-                        Vector2(uv0.x, uv0.y),
-                        Vector2(uv1.x, uv0.y),
-                        Vector2(uv1.x, uv1.y),
-                        Vector2(uv0.x, uv1.y),
-                        geometry_limit_reached
-                    );
-
-                    add_quad(
-                        vertices,
-                        indices,
-                        Vector3(x1, y0, -depth_half),
-                        Vector3(x0, y0, -depth_half),
-                        Vector3(x0, y1, -depth_half),
-                        Vector3(x1, y1, -depth_half),
-                        Vector3::Backward,
-                        Vector2(uv1.x, uv0.y),
-                        Vector2(uv0.x, uv0.y),
-                        Vector2(uv0.x, uv1.y),
-                        Vector2(uv1.x, uv1.y),
-                        geometry_limit_reached
-                    );
-                }
+                SP_LOG_WARNING(
+                    "3d text exceeded its generated geometry limit"
+                );
+                ClearMesh();
+                m_dirty = false;
+                return false;
             }
 
-            for (uint32_t y = 0; y < glyph.height; y++)
+            if (vertices.empty() || indices.empty())
             {
-                for (uint32_t x = 0; x < glyph.width; x++)
-                {
-                    if (!is_solid(glyph, x, y))
-                    {
-                        continue;
-                    }
-
-                    const float x0 =
-                        glyph.x +
-                        alignment_offset +
-                        static_cast<float>(x) *
-                        scale;
-                    const float x1 = x0 + scale;
-                    const float y1 =
-                        glyph.y -
-                        static_cast<float>(y) *
-                        scale;
-                    const float y0 = y1 - scale;
-                    const Vector2 side_uv0(0.0f, 0.0f);
-                    const Vector2 side_uv1(1.0f, 1.0f);
-
-                    if (
-                        !is_solid(
-                            glyph,
-                            static_cast<int64_t>(x) - 1,
-                            y
-                        )
-                    )
-                    {
-                        add_quad(
-                            vertices,
-                            indices,
-                            Vector3(x0, y0, -depth_half),
-                            Vector3(x0, y0, depth_half),
-                            Vector3(x0, y1, depth_half),
-                            Vector3(x0, y1, -depth_half),
-                            Vector3::Left,
-                            side_uv0,
-                            Vector2(side_uv1.x, side_uv0.y),
-                            side_uv1,
-                            Vector2(side_uv0.x, side_uv1.y),
-                            geometry_limit_reached
-                        );
-                    }
-
-                    if (!is_solid(glyph, x + 1, y))
-                    {
-                        add_quad(
-                            vertices,
-                            indices,
-                            Vector3(x1, y0, depth_half),
-                            Vector3(x1, y0, -depth_half),
-                            Vector3(x1, y1, -depth_half),
-                            Vector3(x1, y1, depth_half),
-                            Vector3::Right,
-                            side_uv0,
-                            Vector2(side_uv1.x, side_uv0.y),
-                            side_uv1,
-                            Vector2(side_uv0.x, side_uv1.y),
-                            geometry_limit_reached
-                        );
-                    }
-
-                    if (!is_solid(glyph, x, y + 1))
-                    {
-                        add_quad(
-                            vertices,
-                            indices,
-                            Vector3(x0, y0, -depth_half),
-                            Vector3(x1, y0, -depth_half),
-                            Vector3(x1, y0, depth_half),
-                            Vector3(x0, y0, depth_half),
-                            Vector3::Down,
-                            side_uv0,
-                            Vector2(side_uv1.x, side_uv0.y),
-                            side_uv1,
-                            Vector2(side_uv0.x, side_uv1.y),
-                            geometry_limit_reached
-                        );
-                    }
-
-                    if (
-                        !is_solid(
-                            glyph,
-                            x,
-                            static_cast<int64_t>(y) - 1
-                        )
-                    )
-                    {
-                        add_quad(
-                            vertices,
-                            indices,
-                            Vector3(x0, y1, depth_half),
-                            Vector3(x1, y1, depth_half),
-                            Vector3(x1, y1, -depth_half),
-                            Vector3(x0, y1, -depth_half),
-                            Vector3::Up,
-                            side_uv0,
-                            Vector2(side_uv1.x, side_uv0.y),
-                            side_uv1,
-                            Vector2(side_uv0.x, side_uv1.y),
-                            geometry_limit_reached
-                        );
-                    }
-                }
+                ClearMesh();
+                m_dirty = false;
+                return false;
             }
-        }
 
-        if (geometry_limit_reached)
-        {
-            SP_LOG_WARNING(
-                "3d text exceeded its generated geometry limit"
-            );
-            ClearMesh();
-            m_dirty = false;
-            return false;
-        }
-
-        if (vertices.empty() || indices.empty())
-        {
-            ClearMesh();
-            m_dirty = false;
-            return false;
+            generated_cache::Save(disk_path, disk_hash.value, vertices, indices);
         }
 
         if (
-            m_mesh &&
+            can_update &&
             render &&
             render->GetMesh() == m_mesh.get() &&
             m_mesh->UpdateGeometry(vertices, indices)
         )
         {
             render->SetMesh(m_mesh.get());
+            text_meshes[key] = m_mesh;
             m_dirty = false;
 
             if (
@@ -1125,6 +1185,7 @@ namespace spartan
         }
         render->SetMesh(mesh.get());
         m_mesh            = move(mesh);
+        text_meshes[key]   = m_mesh;
         m_render_bound    = true;
         m_bound_render_id = render->GetObjectId();
         m_dirty           = false;

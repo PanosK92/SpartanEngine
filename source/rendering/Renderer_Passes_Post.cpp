@@ -124,23 +124,24 @@ namespace spartan
                     eye_layer == 0
                 );
 
+            Renderer::BeginPass("depth_of_field_focus", eye_layer);
+            {
+                RHI_CommandList::SetShader(GetShader(Renderer_Shader::depth_of_field_focus_c));
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), tex_dof_focus_previous);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), tex_dof_focus, rhi_all_mips, 0, true);
+                RHI_CommandList::Dispatch(1, 1, 1);
+            }
+            RHI_CommandList::EndPass();
+
             Renderer::BeginPass("depth_of_field", eye_layer);
             {
                 RHI_CommandList::SetShader(GetShader(Renderer_Shader::depth_of_field_c));
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_in);
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_out, rhi_all_mips, 0, true);
-                if (tex_dof_focus_previous)
-                {
-                    RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), tex_dof_focus_previous);
-                }
-                if (update_focus_history)
-                {
-                    RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), tex_dof_focus, rhi_all_mips, 0, true);
-                }
-                // y flags whether this dispatch owns the focus history write
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), tex_dof_focus);
                 m_pcb_pass_cpu.set_f3_value(
                     World::GetCamera()->GetAperture(),
-                    update_focus_history ? 1.0f : 0.0f,
+                    0.0f,
                     0.0f
                 );
                 RHI_CommandList::Dispatch(tex_out);

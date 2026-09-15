@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "../math/BoundingBox.h"
+#include "Environment.h"
 #include <string>
 #include <functional>
 #include <sol/forward.hpp>
@@ -57,6 +58,8 @@ namespace spartan
         static bool IsLoadingFromFile();
         static void ProcessPendingLoad();
         static bool IsSaving();
+        // Empty until a world has a file path; generated caches must not spill into the project root.
+        static std::string GetResourceDirectory();
         static std::string GetResourceDirectory(
             const std::string& world_file_path
         );
@@ -102,6 +105,7 @@ namespace spartan
         // editor gizmo icons, excludes render-only props
         static const std::vector<Entity*>& GetEntitiesWithIcon();
         static const std::vector<Entity*>& GetEntitiesWithParticles();
+        static const std::vector<Entity*>& GetEntitiesWithVolume();
 
         // true while play mode is still spreading Entity::Start across frames
         static bool IsPlayBooting();
@@ -122,6 +126,8 @@ namespace spartan
         // world time: 0.0 = midnight, 0.5 = noon, 1.0 = next midnight
         static float GetTimeOfDay(bool use_real_world_time = false);
         static void SetTimeOfDay(float time_of_day);
+
+        static EnvironmentState GetEnvironment();
 
         // wind
         static const math::Vector3& GetWind();

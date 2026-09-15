@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "pch.h"
 #include <cstdio>
+#include <bit>
 #include <sstream>
 #include "Entity.h"
 #include "Prefab.h"
@@ -211,12 +212,14 @@ namespace spartan
         if (!tag.empty() && !HasTag(tag))
         {
             m_tags.push_back(tag);
+            if (m_parent) ++m_parent->m_child_data_revision;
         }
     }
 
     void Entity::RemoveTag(const string& tag)
     {
         m_tags.erase(remove(m_tags.begin(), m_tags.end(), tag), m_tags.end());
+        if (m_parent) ++m_parent->m_child_data_revision;
     }
 
     bool Entity::HasTag(const string& tag) const
@@ -241,6 +244,7 @@ namespace spartan
     void Entity::SetTagsString(const string& comma_separated)
     {
         m_tags.clear();
+        if (m_parent) ++m_parent->m_child_data_revision;
         stringstream ss(comma_separated);
         string tag;
         while (getline(ss, tag, ','))
@@ -445,8 +449,11 @@ namespace spartan
             }
         }
 
-        for (shared_ptr<Component>& component : m_components)
+        for (uint32_t next = 0; (m_component_mask >> next) != 0;)
         {
+            const uint32_t index = next + std::countr_zero(m_component_mask >> next);
+            next = index + 1;
+            shared_ptr<Component>& component = m_components[index];
             if (component)
             {
                 component->Tick();
@@ -464,8 +471,12 @@ namespace spartan
             return;
         }
 
-        for (shared_ptr<Component>& component : m_components)
+        const uint64_t render_bit = uint64_t(1) << static_cast<uint32_t>(ComponentType::Render);
+        for (uint32_t next = 0; ((m_component_mask & ~render_bit) >> next) != 0;)
         {
+            const uint32_t index = next + std::countr_zero((m_component_mask & ~render_bit) >> next);
+            next = index + 1;
+            shared_ptr<Component>& component = m_components[index];
             if (component && component->GetType() != ComponentType::Render)
             {
                 component->Tick();
@@ -691,9 +702,9 @@ namespace spartan
     {
         // self
         {
-            m_is_active   = node.attribute("active").as_bool(true);
-            m_object_id   = node.attribute("id").as_ullong();
-            m_object_name = node.attribute("name").as_string(m_object_name.c_str());
+            SetActive(node.attribute("active").as_bool(true));
+            SetObjectId(node.attribute("id").as_ullong());
+            SetObjectName(node.attribute("name").as_string(m_object_name.c_str()));
             SetTagsString(node.attribute("tags").as_string(""));
 
             {
@@ -827,14 +838,14 @@ namespace spartan
         UpdateTransform();
     }
 
-    bool Entity::GetActive()
+    void Entity::UpdateActiveState()
     {
-        if (Entity* parent = GetParent())
-        {
-            return m_is_active && parent->GetActive();
-        }
-
-        return m_is_active;
+        // Hierarchy activity changes much less often than render/physics queries.
+        // Propagate only changes, preserving each child's authored local flag.
+        const bool active = m_is_active.load() && (!m_parent || m_parent->GetActive());
+        if (m_effective_active.exchange(active) == active) return;
+        for (Entity* child : GetChildren())
+            if (child) child->UpdateActiveState();
     }
 
     void Entity::SetActive(const bool active)
@@ -845,11 +856,7 @@ namespace spartan
         }
 
         m_is_active = active;
-    }
-
-    Component* Entity::GetComponentByType(ComponentType Type) const
-    {
-        return m_components[static_cast<uint32_t>(Type)].get();
+        UpdateActiveState();
     }
 
     Component* Entity::AddComponentByType(ComponentType Type)
@@ -924,6 +931,7 @@ namespace spartan
         }
 
         m_components[static_cast<uint32_t>(Type)] = component;
+        m_component_mask |= uint64_t(1) << static_cast<uint32_t>(Type);
         m_component_count++;
 
         component->SetType(Type);
@@ -937,6 +945,7 @@ namespace spartan
         if (m_components[static_cast<uint32_t>(Type)])
         {
             m_components[static_cast<uint32_t>(Type)] = nullptr;
+            m_component_mask &= ~(uint64_t(1) << static_cast<uint32_t>(Type));
             if (m_component_count > 0)
             {
                 m_component_count--;
@@ -970,8 +979,10 @@ namespace spartan
             {
                 if (id == component->GetObjectId())
                 {
+                    const uint32_t index = static_cast<uint32_t>(&component - m_components.data());
                     component->Remove();
                     component = nullptr;
+                    m_component_mask &= ~(uint64_t(1) << index);
                     if (m_component_count > 0)
                     {
                         m_component_count--;
@@ -982,10 +993,27 @@ namespace spartan
         }
     }
 
-    void Entity::UpdateTransform()
+    void Entity::SetTransformLocalDeferred(const Vector3& position, const Quaternion& rotation, const Vector3& scale)
     {
-        // compute local transform
-        m_matrix_local = Matrix(m_position_local, m_rotation_local, m_scale_local);
+        if (!position.IsFinite() || !rotation.IsFinite() || !scale.IsFinite())
+            return;
+        m_position_local = position;
+        m_rotation_local = rotation;
+        m_scale_local = scale;
+        m_local_matrix_dirty = true;
+        if (m_parent) ++m_parent->m_child_data_revision;
+    }
+
+    void Entity::UpdateTransform(bool update_local)
+    {
+        // Parent motion changes the world matrix, not the child's local pose.
+        // Deferred animation writes mark their local pose dirty explicitly.
+        if (update_local || m_local_matrix_dirty)
+        {
+            if (m_parent) ++m_parent->m_child_data_revision;
+            m_matrix_local = Matrix(m_position_local, m_rotation_local, m_scale_local);
+            m_local_matrix_dirty = false;
+        }
 
         // compute world transform
         if (m_parent)
@@ -997,22 +1025,18 @@ namespace spartan
             m_matrix = m_matrix_local;
         }
 
-        // update directions directly from matrix (avoids unstable quaternion decomposition)
-        // row-major layout: row 0 = right (X), row 1 = up (Y), row 2 = forward (Z)
-        {
-            // x
-            m_right    = Vector3::Normalize(Vector3(m_matrix.m00, m_matrix.m01, m_matrix.m02));
-            m_left     = -m_right;
-            // y
-            m_up       = Vector3::Normalize(Vector3(m_matrix.m10, m_matrix.m11, m_matrix.m12));
-            m_down     = -m_up;
-            // z
-            m_forward  = Vector3::Normalize(Vector3(m_matrix.m20, m_matrix.m21, m_matrix.m22));
-            m_backward = -m_forward;
-        }
+        ++m_transform_revision;
 
         // mark update
         m_time_since_last_transform_sec = 0.0f;
+
+        // A zero revision means no child has ever been attached. Most car parts
+        // are leaves; their parent motion needs no children lock or snapshot.
+        // Once edited, the normal locked path remains in use even if empty.
+        if (m_child_data_revision.load(std::memory_order_acquire) == 0)
+        {
+            return;
+        }
 
         // copy under the children lock, parallel prefab loads can AddChild while a parent updates
         Entity* stack_children[32];
@@ -1043,7 +1067,7 @@ namespace spartan
         {
             if (child_list[i])
             {
-                child_list[i]->UpdateTransform();
+                child_list[i]->UpdateTransform(false);
             }
         }
     }
@@ -1056,6 +1080,21 @@ namespace spartan
         }
 
         SetPositionLocal(!GetParent() ? position : position * GetParent()->GetMatrix().Inverted());
+    }
+
+    void Entity::SetPositionAndRotation(const Vector3& position, const Quaternion& rotation)
+    {
+        if (!position.IsFinite() || !rotation.IsFinite()) return;
+        const Vector3 local_position = m_parent ? position * m_parent->GetMatrix().Inverted() : position;
+        Quaternion parent_rotation = Quaternion::Identity;
+        for (Entity* ancestor = m_parent; ancestor; ancestor = ancestor->GetParent())
+            parent_rotation = ancestor->GetRotationLocal() * parent_rotation;
+        const Quaternion local_rotation = m_parent ? parent_rotation.Inverse() * rotation : rotation;
+        if (!local_position.IsFinite() || !local_rotation.IsFinite()) return;
+        if (m_position_local == local_position && m_rotation_local == local_rotation) return;
+        m_position_local = local_position;
+        m_rotation_local = local_rotation;
+        UpdateTransform();
     }
 
     void Entity::SetPositionLocal(const Vector3& position)
@@ -1274,6 +1313,7 @@ namespace spartan
                         }
 
                         child->m_parent = m_parent; // directly setting parent
+                        child->UpdateActiveState();
                         child->UpdateTransform();   // update transform if needed
                     }
                 }
@@ -1296,6 +1336,7 @@ namespace spartan
         }
 
         // transform after releasing m_mutex_parent, UpdateTransform can touch children/locks
+        UpdateActiveState();
         UpdateTransform();
     }
 
@@ -1314,6 +1355,7 @@ namespace spartan
         if (!(find(m_children.begin(), m_children.end(), child) != m_children.end()))
         {
             m_children.emplace_back(child);
+            ++m_child_data_revision;
         }
     }
 
@@ -1350,6 +1392,7 @@ namespace spartan
 
         // insert at new position
         m_children.insert(m_children.begin() + index, child);
+        ++m_child_data_revision;
     }
 
     void Entity::RemoveChild(Entity* child, bool update_child_with_null_parent)
@@ -1365,6 +1408,7 @@ namespace spartan
         {
             lock_guard lock(m_mutex_children);
 
+            ++m_child_data_revision;
             // remove the child
             m_children.erase(remove_if(m_children.begin(), m_children.end(), [child](Entity* vec_transform) { return vec_transform->GetObjectId() == child->GetObjectId(); }), m_children.end());
         }
@@ -1381,6 +1425,7 @@ namespace spartan
         lock_guard lock(m_mutex_parent);
 
         m_parent = nullptr;
+        UpdateActiveState();
         UpdateTransform();
     }
 
@@ -1401,6 +1446,7 @@ namespace spartan
     void Entity::AcquireChildren()
     {
         lock_guard lock(m_mutex_children);
+        ++m_child_data_revision;
         m_children.clear();
         m_children.shrink_to_fit();
 

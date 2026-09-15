@@ -276,7 +276,7 @@ namespace spartan
         uint64_t timeline_signal_value = 0;
     
         // wait semaphore setup (binary + optional timeline)
-        VkSemaphoreSubmitInfo semaphores_list_wait[2] = {};
+        VkSemaphoreSubmitInfo semaphores_list_wait[3] = {};
         uint32_t wait_semaphore_count = 0;
         if (semaphore_wait)
         {
@@ -295,6 +295,22 @@ namespace spartan
             wait_semaphore_count++;
         }
     
+        // Keep copy visibility across queues without a CPU upload wait.
+        const RHI_Work upload = RHI_CommandList::GetPendingUpload();
+        if (m_type != RHI_Queue_Type::Graphics && upload.timeline)
+        {
+            if (upload.timeline.get() == semaphore_timeline_wait)
+                semaphores_list_wait[wait_semaphore_count - 1].value = max(timeline_wait_value, upload.value);
+            else
+            {
+                auto& wait = semaphores_list_wait[wait_semaphore_count++];
+                wait.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+                wait.semaphore = static_cast<VkSemaphore>(upload.timeline->GetRhiResource());
+                wait.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+                wait.value = upload.value;
+            }
+        }
+
         // signal semaphores setup
         VkSemaphoreSubmitInfo semaphores_list_signal[2] = {};
         uint32_t signal_semaphore_count = 0;
@@ -311,7 +327,7 @@ namespace spartan
             semaphores_list_signal[signal_semaphore_count].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
             semaphores_list_signal[signal_semaphore_count].semaphore = static_cast<VkSemaphore>(semaphore_timeline_signal->GetRhiResource());
             semaphores_list_signal[signal_semaphore_count].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR;
-            timeline_signal_value = semaphore_timeline_signal->GetNextSignalValue();
+            timeline_signal_value = semaphore_timeline_signal->GetValue();
             semaphores_list_signal[signal_semaphore_count].value = timeline_signal_value;
             signal_semaphore_count++;
         }

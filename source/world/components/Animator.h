@@ -42,7 +42,10 @@ namespace spartan
     {
     public:
         Animator(Entity* entity);
-        ~Animator() = default;
+        ~Animator();
+
+        static void BeginSkinningBatch();
+        static void FlushSkinningBatch();
 
         void Initialize() override;
         void Tick() override;

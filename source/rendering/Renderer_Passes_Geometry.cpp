@@ -1336,6 +1336,22 @@ namespace spartan
         pso.resolution_scale = true;
         pso.is_multiview = Xr::IsSessionRunning() && Xr::GetStereoMode();
 
+        // This pass exists before any tire slips. Compile its pipeline during
+        // those initial frames, rather than blocking the first braking draw.
+        auto* vertex_shader = pso.shaders[RHI_Shader_Type::Vertex];
+        auto* pixel_shader = pso.shaders[RHI_Shader_Type::Pixel];
+        if (!vertex_shader || !vertex_shader->IsCompiled() || !pixel_shader || !pixel_shader->IsCompiled())
+            return;
+        pso.Prepare();
+        static uint64_t warmed_hash = 0;
+        if (warmed_hash != pso.GetHash())
+        {
+            RHI_Pipeline* pipeline = nullptr;
+            RHI_DescriptorSetLayout* layout = nullptr;
+            RHI_Device::GetOrCreatePipeline(pso, pipeline, layout);
+            warmed_hash = pso.GetHash();
+        }
+
         bool pipeline_set = false;
         for (uint32_t i = 0; i < m_draw_call_count; ++i)
         {
@@ -1433,6 +1449,10 @@ namespace spartan
             return;
         }
 
+        Terrain* road_terrain = Terrain::FindActive();
+        if (!road_terrain) return;
+        RHI_Buffer* road_exclusions = road_terrain->GetRoadExclusionBuffer();
+
         static_assert(renderer_max_gpu_scatter_args == 9 && renderer_max_gpu_scatter_slots == 3);
         std::array<Vector4, renderer_max_gpu_scatter_slots + 1> detail_parameters{};
         for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; ++slot)
@@ -1517,6 +1537,7 @@ namespace spartan
             // populate dispatches, one per slot per lod ring, each fills its own range of grass_instances
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::grass_populate_c));
             RHI_CommandList::SetBuffer("grass_lod_parameters", detail_buffer);
+            RHI_CommandList::SetBuffer("terrain_road_exclusions", road_exclusions);
 
             for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
             {
@@ -2042,6 +2063,22 @@ namespace spartan
         RHI_CommandList::UpdateBuffer(tracks.bodies.get(), 0, sizeof(tracks.body_data), tracks.body_data.data(), false);
         RHI_Texture* fallback = GetStandardTexture(Renderer_StandardTexture::Black);
 
+        // A horizontal circle enclosing both chassis poses rejects distant blades
+        // before the vertex shader loads the hull frame. Each blade expands it by
+        // its own reach, retaining the existing detailed contact test nearby.
+        const auto& body_now = tracks.body_data[0];
+        const auto& body_before = tracks.body_data[1];
+        const Vector2 body_center((body_now.center.x + body_before.center.x) * 0.5f,
+                                  (body_now.center.z + body_before.center.z) * 0.5f);
+        const auto body_radius = [&](const auto& body)
+        {
+            const float dx = body.center.x - body_center.x;
+            const float dz = body.center.z - body_center.y;
+            return sqrtf(dx * dx + dz * dz) +
+                Vector3(body.right.w, body.up.w, body.forward.w).Length();
+        };
+        const float contact_radius = max(body_radius(body_now), body_radius(body_before)) + 0.001f;
+
         RHI_Shader* grass_vertex = GetShader(Renderer_Shader::grass_blade_v);
         RHI_Shader* grass_pixel = GetShader(Renderer_Shader::grass_gbuffer_p);
 
@@ -2103,6 +2140,9 @@ namespace spartan
                     m_pcb_pass_cpu.v[base + 3] = tracks.valid && (frame == 0 || tracks.previous_valid) ? 1.0f : 0.0f;
                 }
                 m_pcb_pass_cpu.v[12] = tracks.valid ? 1.0f : 0.0f;
+                m_pcb_pass_cpu.v[13] = body_center.x;
+                m_pcb_pass_cpu.v[14] = body_center.y;
+                m_pcb_pass_cpu.v[15] = contact_radius;
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
                 // an empty ring bakes instance_count 0 into the args so the gpu skips it at near-zero cost

@@ -122,12 +122,17 @@ namespace spartan
 
     bool RHI_SyncPrimitive::IsSignaled()
     {
+        return IsSignaled(GetValue());
+    }
+
+    bool RHI_SyncPrimitive::IsSignaled(uint64_t value)
+    {
         if (!m_rhi_resource)
         {
             return true;
         }
 
-        return static_cast<ID3D12Fence*>(m_rhi_resource)->GetCompletedValue() >= GetValue();
+        return static_cast<ID3D12Fence*>(m_rhi_resource)->GetCompletedValue() >= value;
     }
 
     void RHI_SyncPrimitive::Reset()

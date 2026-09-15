@@ -380,7 +380,9 @@ TerrainLayerPick terrain_pick_layers(
     uint  keep   = clamp(surface.terrain_layer_quality(), 1u, terrain_layer_pick_max);
     float jitter = terrain_jitter(position_world, 0.0f);
 
-    float scores[terrain_layer_max_shader];
+    // Keep the sorted winners as each score is produced. Constant-index slots
+    // avoid repeatedly scanning and dynamically indexing the full score array.
+    float rejected = 0.0f;
     [loop]
     for (uint i = 0; i < layer_count; i++)
     {
@@ -390,11 +392,10 @@ TerrainLayerPick terrain_pick_layers(
         // zero-bias layers can never win, skip the slope/height/analysis work
         if (layer.terrain_weight_bias <= 0.0f && !layer.terrain_layer_snow())
         {
-            scores[i] = 0.0f;
             continue;
         }
 
-        scores[i] = terrain_layer_weight(
+        float score = terrain_layer_weight(
             layer,
             surface,
             analysis,
@@ -405,41 +406,29 @@ TerrainLayerPick terrain_pick_layers(
         );
 
         // per layer noise so the isoline grows fingers instead of tracing a slope contour
-        if (scores[i] > 0.0f)
+        if (score > 0.0f)
         {
             float breakup = terrain_jitter(position_world, 3.1f + (float)i * 2.3f);
-            scores[i]    *= lerp(0.55f, 1.45f, saturate(breakup * 0.5f + 0.5f));
+            score *= lerp(0.55f, 1.45f, saturate(breakup * 0.5f + 0.5f));
         }
-    }
-
-    // selection pass, keep is at most four so this is a handful of comparisons
-    [loop]
-    for (uint slot = 0; slot < keep; slot++)
-    {
-        float best_score = 0.0f;
-        uint  best_layer = 0;
-        bool  found      = false;
-
-        [loop]
-        for (uint candidate = 0; candidate < layer_count; candidate++)
+        if (score > 0.0f)
         {
-            if (scores[candidate] > best_score)
+            pick.count = min(pick.count + 1u, keep);
+            [unroll] for (uint slot = 0u; slot < terrain_layer_pick_max; ++slot)
             {
-                best_score = scores[candidate];
-                best_layer = candidate;
-                found      = true;
+                if (slot < keep && (score > pick.weight[slot] ||
+                    (score > 0.0f && score == pick.weight[slot] && layer_index < pick.index[slot])))
+                {
+                    float displaced_score = pick.weight[slot];
+                    uint displaced_index = pick.index[slot];
+                    pick.weight[slot] = score;
+                    pick.index[slot] = layer_index;
+                    score = displaced_score;
+                    layer_index = displaced_index;
+                }
             }
+            rejected = max(rejected, score);
         }
-
-        if (!found)
-        {
-            break;
-        }
-
-        scores[best_layer]      = 0.0f; // consumed
-        pick.index[pick.count]  = surface.terrain_layer_base + best_layer * surface.terrain_layer_stride;
-        pick.weight[pick.count] = best_score;
-        pick.count++;
     }
 
     // nothing scored, fall back to layer zero so the terrain is never untextured
@@ -455,13 +444,6 @@ TerrainLayerPick terrain_pick_layers(
     // off with the weight it held and the one that took it walks on with the same amount, which is
     // exactly the knife edge, subtracting the highest rejected score pins both sides of that swap to
     // zero so a layer fades in as it climbs the ranking instead of appearing at full strength
-    float rejected = 0.0f;
-    [loop]
-    for (uint rest = 0; rest < layer_count; rest++)
-    {
-        rejected = max(rejected, scores[rest]); // the winners were zeroed as they were consumed
-    }
-
     float total = 0.0f;
     [unroll]
     for (uint n = 0; n < terrain_layer_pick_max; n++)
@@ -1057,57 +1039,14 @@ TerrainSurface terrain_evaluate(
         count--;
     }
 
-    // sample the picks
-    TerrainLayerSample samples[terrain_layer_pick_max];
-    float porosities[terrain_layer_pick_max];
-    float macros[terrain_layer_pick_max];
-
-    [loop]
-    for (uint s = 0; s < count; s++)
-    {
-        samples[s] = terrain_sample_layer(
-            pick.index[s], uv, duvdx, duvdy, position_world, dpdx, dpdy, geometric_normal, detail_weight, hex_weight
-        );
-
-        MaterialParameters layer = material_parameters[NonUniformResourceIndex(pick.index[s])];
-        porosities[s]            = layer.terrain_porosity;
-        macros[s]                = layer.terrain_macro_strength;
-    }
-
     // mix by pick weight, height only nips the interface up close
     // a hard height gate painted the sawtooth and flickered with taa
     //
     // both modifiers are multiplicative on purpose, anything added here would give a layer that enters
     // the pick set at zero weight a floor to appear at, which puts the rank cut step back
     float deposition_bias = analysis.deposition * 0.35f;
-    float resolved[terrain_layer_pick_max];
-    [loop]
-    for (uint b = 0; b < count; b++)
-    {
-        MaterialParameters layer = material_parameters[NonUniformResourceIndex(pick.index[b])];
-        float bias               = layer.terrain_deposition_influence > 0.0f ? deposition_bias : 0.0f;
-        float contrast           = layer.terrain_blend_contrast * detail_weight;
-        float height_mod         = lerp(1.0f, samples[b].height + 0.5f, contrast);
-        resolved[b]              = pick.weight[b] * (1.0f + bias * 0.5f) * height_mod;
-    }
-
-    if (count > 2)
-    {
-        resolved[2] *= blend_weight;
-    }
-    if (count > 3)
-    {
-        resolved[3] *= blend_weight;
-    }
-
+    float4 resolved = 0.0f;
     float weight_sum = 0.0f;
-    [loop]
-    for (uint n = 0; n < count; n++)
-    {
-        weight_sum += resolved[n];
-    }
-
-    float inverse_sum = 1.0f / max(weight_sum, 1e-6f);
 
     float4 albedo   = 0.0f;
     float3 gradient = 0.0f;
@@ -1119,14 +1058,34 @@ TerrainSurface terrain_evaluate(
     [loop]
     for (uint r = 0; r < count; r++)
     {
-        float w   = resolved[r] * inverse_sum;
-        albedo   += samples[r].albedo * w;
-        gradient += samples[r].gradient * w;
-        orm      += samples[r].orm * w;
-        height   += samples[r].height * w;
-        porosity += porosities[r] * w;
-        macro    += macros[r] * w;
+        TerrainLayerSample sample = terrain_sample_layer(
+            pick.index[r], uv, duvdx, duvdy, position_world, dpdx, dpdy, geometric_normal, detail_weight, hex_weight
+        );
+        MaterialParameters layer = material_parameters[NonUniformResourceIndex(pick.index[r])];
+        float bias = layer.terrain_deposition_influence > 0.0f ? deposition_bias : 0.0f;
+        float contrast = layer.terrain_blend_contrast * detail_weight;
+        float height_mod = lerp(1.0f, sample.height + 0.5f, contrast);
+        float w = pick.weight[r] * (1.0f + bias * 0.5f) * height_mod;
+        if (r >= 2u) w *= blend_weight;
+        resolved[r] = w;
+        weight_sum += w;
+        albedo   += sample.albedo * w;
+        gradient += sample.gradient * w;
+        orm      += sample.orm * w;
+        height   += sample.height * w;
+        porosity += layer.terrain_porosity * w;
+        macro    += layer.terrain_macro_strength * w;
     }
+
+    // Normalize the accumulated numerators once. Only one layer sample stays
+    // live across the texture-fetch loop, rather than an indexed array of four.
+    float inverse_sum = 1.0f / max(weight_sum, 1e-6f);
+    albedo *= inverse_sum;
+    gradient *= inverse_sum;
+    orm *= inverse_sum;
+    height *= inverse_sum;
+    porosity *= inverse_sum;
+    macro *= inverse_sum;
 
     // dual scale tiling on the dominant layer's albedo, a second copy at a non integer scale
     // ratio breaks the mid distance repeat that no amount of per tile randomization can hide

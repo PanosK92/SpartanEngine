@@ -170,6 +170,12 @@ namespace spartan
         void DrawDebug() const;
 
         Animator* m_animator = nullptr;
+        mutable const Skeleton* m_hit_skeleton = nullptr;
+        mutable std::vector<math::Matrix> m_hit_globals;
+        mutable int32_t m_hit_hips = -1;
+        mutable int32_t m_hit_head = -1;
+        mutable int32_t m_hit_foot_l = -1;
+        mutable int32_t m_hit_foot_r = -1;
         physx::PxRigidDynamic* m_hit_body = nullptr;
         physx::PxMaterial* m_material = nullptr;
         std::vector<BoneBody> m_bodies;

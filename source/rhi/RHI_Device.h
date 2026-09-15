@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "RHI_Descriptor.h"
 #include "RHI_Definitions.h"
+#include "RHI_SyncPrimitive.h"
 //============================================
 
 namespace spartan
@@ -45,12 +46,6 @@ namespace spartan
         Graphics,
         ComputeA,
         ComputeB
-    };
-
-    struct RHI_Work
-    {
-        RHI_SyncPrimitive* timeline = nullptr;
-        uint64_t value              = 0;
     };
 
     class RHI_Device
@@ -207,6 +202,7 @@ namespace spartan
         static RHI_CommandList* Cmd(RHI_Frame_List list);
         friend class RHI_CommandList;
         friend class RHI_Buffer;
+        friend class RHI_Texture;
         friend class RHI_VendorTechnology;
         friend class RHI_AccelerationStructure;
         // properties

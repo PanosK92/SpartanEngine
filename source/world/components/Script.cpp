@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include "pch.h"
+#include "../../profiling/Profiler.h"
 #include "Script.h"
 #include "io/pugixml.hpp"
 #include "world/Entity.h"
@@ -194,6 +195,7 @@ void Script::PreTick()
 
 void Script::Tick()
 {
+    SP_PROFILE_CPU();
     if (!is_simulation_active())
     {
         return;

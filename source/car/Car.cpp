@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "pch.h"
 #include "Car.h"
+#include "../profiling/Profiler.h"
 #include "../physics/PhysicsWorld.h"
 #include "CarHud.h"
 #include "CarSimulation.h"
@@ -748,6 +749,7 @@ namespace spartan
 
     Car* Car::Create(const Config& config)
     {
+        SP_PROFILE_CPU();
         // the .car file is the single source of truth for the car
         const ::car::car_definition* definition = ::car::load_car_file(config.car_file);
         if (!definition)
@@ -2728,6 +2730,7 @@ namespace spartan
 
     Entity* Car::CreateBody(std::vector<Entity*>* out_excluded_entities)
     {
+        SP_PROFILE_CPU();
         if (!m_definition)
         {
             return nullptr;
@@ -2757,7 +2760,7 @@ namespace spartan
 
         uint32_t mesh_flags  = Mesh::GetDefaultFlags();
         mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
-        mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
+        // Retain authored LOD 0, but let distant traffic use generated LODs.
 
         std::shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>(m_definition->body_model, mesh_flags);
         if (!mesh_car)
@@ -3005,7 +3008,7 @@ namespace spartan
 
         uint32_t mesh_flags  = Mesh::GetDefaultFlags();
         mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
-        mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
+        // Retain authored LOD 0, but let distant traffic use generated LODs.
 
         std::shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>(m_definition->wheel_model, mesh_flags);
         if (!mesh)
@@ -3069,6 +3072,7 @@ namespace spartan
 
     void Car::CreateWheels(Entity* vehicle_ent, Physics* physics, const std::vector<Entity*>& baked_wheel_entities)
     {
+        SP_PROFILE_CPU();
         Entity* wheel_base = SpawnWheelBase();
         if (!wheel_base)
         {
@@ -3343,6 +3347,7 @@ namespace spartan
 
     void Car::CreateAudioSources(Entity* parent_entity)
     {
+        SP_PROFILE_CPU();
         std::call_once(audio_synthesizers_once, []()
         {
             engine_sound::initialize(48000);

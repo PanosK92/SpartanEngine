@@ -700,9 +700,9 @@ namespace engine_sound
             m_tick_decay      = expf(-1.0f / (0.0012f * m_sample_rate));
             m_bov_decay       = expf(-1.0f / (0.45f * m_sample_rate));
             m_bov_sweep       = 1.0f - expf(-1.0f / (0.4f * m_sample_rate));
-            m_surge_decay       = expf(-1.0f / (0.8f * m_sample_rate));
-            m_surge_burst_decay = expf(-1.0f / (0.014f * m_sample_rate));
-            m_surge_rate_slew   = 1.0f - expf(-1.0f / (0.5f * m_sample_rate));
+            m_surge_decay       = expf(-1.0f / (0.55f * m_sample_rate));
+            m_shaft_coast       = 1.0f - expf(-1.0f / (0.38f * m_sample_rate));
+            m_surge_rate_slew   = 1.0f - expf(-1.0f / (0.65f * m_sample_rate));
 
             m_noise.seed(0xA5A5F00Du);
             m_event_rng.seed(0x1234ABCDu);
@@ -942,7 +942,7 @@ namespace engine_sound
                     intake = breath * gain * 0.4f * p.intake_level * m_view_weight[1];
                 }
 
-                // turbo, whistle from the shaft, blow off hiss on lift, flutter at the wastegate
+                // Compressor whistle, bypass discharge and closed-throttle compressor surge.
                 float turbo = 0.0f;
                 if (cfg.turbo_enabled)
                 {
@@ -950,7 +950,10 @@ namespace engine_sound
                     shaft_target = std::max(shaft_target, 0.12f + 0.3f * throttle * rpm_norm);
                     // a surging wheel is being slammed by its own charge and slows down fast
                     shaft_target *= 1.0f - 0.55f * m_surge_env;
-                    float shaft = m_shaft_smooth.process(shaft_target);
+                    // Rotor inertia outlasts manifold boost on release.
+                    float shaft = shaft_target < m_shaft_smooth.z
+                        ? (m_shaft_smooth.z += (shaft_target - m_shaft_smooth.z) * m_shaft_coast)
+                        : m_shaft_smooth.process(shaft_target);
                     float freq  = 900.0f + 6500.0f * powf(shaft, 1.6f);
                     m_whistle_phase += two_pi * freq * dt;
                     m_whistle_phase2 += two_pi * freq * 1.985f * dt;
@@ -965,13 +968,9 @@ namespace engine_sound
                     float whistle = sinf(m_whistle_phase) * 0.6f + sinf(m_whistle_phase2) * 0.15f + m_whistle_bp.process(white) * 0.18f;
                     float whistle_gain = powf(shaft, 2.5f) * (0.35f + 0.65f * boost_norm) * (0.5f + 0.5f * cfg.turbo_stage) * (0.4f + 0.6f * throttle);
 
-                    m_flutter_phase += two_pi * 27.0f * dt;
-                    if (m_flutter_phase > two_pi)
-                    {
-                        m_flutter_phase -= two_pi;
-                    }
-                    float flutter = 1.0f - 0.45f * m_flutter_amount * (0.5f + 0.5f * sinf(m_flutter_phase));
-                    float hiss = m_hiss_bp.process(white) * (m_flutter_amount * (0.3f + 0.7f * (1.0f - flutter)) * 0.6f + boost_norm * 0.15f);
+                    // A wastegate regulates exhaust flow; it does not periodically reverse
+                    // compressor flow. Steady boost gets broadband air noise, not a 27 Hz chop.
+                    float hiss = m_hiss_bp.process(white) * boost_norm * 0.15f;
 
                     // compressor surge, the trapped charge stalls the wheel in a train of chops that
                     // slows and falls in pitch as the wheel spins down, the stutututu after a shift
@@ -988,12 +987,16 @@ namespace engine_sound
                         if (m_surge_phase >= 1.0f)
                         {
                             m_surge_phase -= 1.0f;
-                            m_surge_burst  = 0.7f + 0.3f * m_noise.uniform();
+                            m_surge_burst  = 0.88f + 0.12f * m_noise.uniform();
                         }
-                        m_surge_rate += (11.0f - m_surge_rate) * m_surge_rate_slew;
-                        float chop = m_surge_burst * m_surge_env;
-                        surge = (vent * 3.0f + sinf(m_whistle_phase) * 0.6f) * chop;
-                        m_surge_burst *= m_surge_burst_decay;
+                        m_surge_rate += (7.0f - m_surge_rate) * m_surge_rate_slew;
+                        // Rounded, asymmetric air packets: a finite attack and a longer
+                        // tail, with zero value/slope at each cycle boundary. Measured
+                        // release recordings have broad packets, not impulse-like rattles.
+                        float pulse = sinf(pi * powf(m_surge_phase, 0.65f));
+                        pulse = pulse * pulse * pulse * pulse;
+                        float chop = pulse * m_surge_burst * m_surge_env;
+                        surge = (m_surge_bp.process(white) * 3.0f + sinf(m_whistle_phase) * 0.18f) * chop;
                         m_surge_env   *= m_surge_decay;
                         whistle_gain  *= 1.0f - 0.6f * m_surge_env;
                     }
@@ -1002,7 +1005,7 @@ namespace engine_sound
                         m_surge_env = 0.0f;
                     }
 
-                    turbo = (whistle * whistle_gain * flutter * 0.12f + hiss * 0.1f + bov * 0.4f + surge * 0.55f) * p.turbo_level * m_view_weight[2];
+                    turbo = (whistle * whistle_gain * 0.12f + hiss * 0.1f + bov * 0.4f + surge * 0.55f) * p.turbo_level * m_view_weight[2];
                 }
 
                 // valvetrain ticks and a faint gear whine
@@ -1162,6 +1165,7 @@ namespace engine_sound
             m_intake_hp.reset();
             m_whistle_bp.reset();
             m_bov_bp.reset();
+            m_surge_bp.reset();
             m_hiss_bp.reset();
             m_tick_hp.reset();
             m_starter_bp.reset();
@@ -1177,10 +1181,10 @@ namespace engine_sound
             m_noise.seed(0xA5A5F00Du);
             m_event_rng.seed(0x1234ABCDu);
             m_control_counter = 0;
-            m_whistle_phase = m_whistle_phase2 = m_flutter_phase = 0.0f;
+            m_whistle_phase = m_whistle_phase2 = 0.0f;
             m_tick_phase = m_whine_phase = m_surge_phase = 0.0f;
             m_bov_freq = 3000.0f;
-            m_surge_rate = 24.0f;
+            m_surge_rate = 22.0f;
             m_lift_armed = false;
             const float chase[4] = { 1.0f, 0.45f, 0.55f, 0.3f };
             for (int i = 0; i < 4; i++)
@@ -1200,7 +1204,8 @@ namespace engine_sound
             m_surge_env      = 0.0f;
             m_surge_burst    = 0.0f;
             m_prev_shifting  = false;
-            m_flutter_amount = 0.0f;
+            m_charge = 0.0f;
+            m_turbo_release_time = 1.0f;
             m_lift_time      = 10.0f;
         }
 
@@ -1363,24 +1368,35 @@ namespace engine_sound
                 float freq  = 900.0f + 6500.0f * powf(shaft, 1.6f);
                 m_whistle_bp.set_bandpass(freq, 8.0f, m_sample_rate);
                 m_bov_bp.set_bandpass(m_bov_freq, 1.5f, m_sample_rate);
+                // Each returning flow packet sweeps down through the intake resonance.
+                m_surge_bp.set_bandpass(2600.0f + 1800.0f * sqrtf(m_surge_env)
+                    + 900.0f * (1.0f - m_surge_phase), 2.0f, m_sample_rate);
+                m_turbo_release_time += block_dt;
+                // Remember charge upstream of the throttle, which survives the drop
+                // in manifold telemetry and the smoothed throttle's release threshold.
+                m_charge = std::max(boost_norm, m_charge * expf(-block_dt / 0.2f));
+                if (throttle > 0.45f && !shifting && m_turbo_release_time > 0.12f)
+                {
+                    const float reopen_decay = expf(-block_dt / 0.025f);
+                    m_surge_env *= reopen_decay;
+                    m_bov_env *= reopen_decay;
+                }
 
                 // lift off or a shift with the manifold pressurised vents the compressor
                 bool shift_start = shifting && !m_prev_shifting;
-                if ((lift || shift_start) && boost_norm > 0.25f && m_surge_env < 0.3f)
+                if ((lift || shift_start) && m_charge > 0.25f && m_turbo_release_time > 0.15f)
                 {
-                    float charge = clamp01(boost_norm);
+                    float charge = clamp01(m_charge);
+                    m_turbo_release_time = 0.0f;
+                    m_charge = 0.0f;
                     m_bov_env     = cfg.turbo_bypass_valve ? charge * (0.35f + 0.25f * cfg.turbo_stage) : 0.0f;
                     m_bov_freq    = 3200.0f + 800.0f * cfg.turbo_stage;
                     m_surge_env   = cfg.turbo_bypass_valve ? 0.0f : charge * (0.7f + 0.3f * cfg.turbo_stage);
-                    m_surge_rate  = 24.0f + 10.0f * charge;
+                    m_surge_rate  = 16.0f + 6.0f * charge;
                     m_surge_phase = 0.0f;
                     m_surge_burst = 1.0f;
                 }
                 m_prev_shifting = shifting;
-
-                bool at_gate = cfg.boost_wastegate_rpm > 0.0f && rpm > cfg.boost_wastegate_rpm * 0.97f && boost_norm > 0.85f && throttle > 0.6f;
-                float flutter_target = at_gate ? 1.0f : 0.0f;
-                m_flutter_amount += (flutter_target - m_flutter_amount) * std::min(block_dt * 6.0f, 1.0f);
             }
 
             // overrun, a closed throttle at speed keeps feeding a hot pipe
@@ -1443,6 +1459,7 @@ namespace engine_sound
         biquad m_intake_hp;
         biquad m_whistle_bp;
         biquad m_bov_bp;
+        biquad m_surge_bp;
         biquad m_hiss_bp;
         biquad m_tick_hp;
         biquad m_starter_bp;
@@ -1454,18 +1471,18 @@ namespace engine_sound
 
         float m_whistle_phase  = 0.0f;
         float m_whistle_phase2 = 0.0f;
-        float m_flutter_phase  = 0.0f;
-        float m_flutter_amount = 0.0f;
+        float m_charge = 0.0f;
+        float m_turbo_release_time = 1.0f;
         float m_bov_env        = 0.0f;
         float m_bov_freq       = 3000.0f;
         float m_bov_decay      = 0.999f;
         float m_bov_sweep      = 0.001f;
         float m_surge_env      = 0.0f;
         float m_surge_phase    = 0.0f;
-        float m_surge_rate     = 24.0f;
+        float m_surge_rate     = 22.0f;
         float m_surge_burst    = 0.0f;
         float m_surge_decay    = 0.999f;
-        float m_surge_burst_decay = 0.99f;
+        float m_shaft_coast = 0.001f;
         float m_surge_rate_slew   = 0.0001f;
         bool  m_prev_shifting  = false;
         float m_tick_phase     = 0.0f;

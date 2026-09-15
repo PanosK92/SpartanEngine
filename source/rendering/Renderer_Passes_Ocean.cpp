@@ -218,7 +218,11 @@ namespace spartan
 
             // assemble displacement, surface slope and foam from the spatial-domain fields
             {
+                RHI_Buffer* wave_bounds = GetBuffer(Renderer_Buffer::OceanWaveBounds);
+                const uint32_t zero_bounds[renderer_ocean_max_cascades] = {};
+                RHI_CommandList::UpdateBuffer(wave_bounds, 0, sizeof(zero_bounds), zero_bounds, false);
                 RHI_CommandList::SetShader(shader_assemble, "ocean_assemble");
+                RHI_CommandList::SetBuffer("ocean_wave_bounds", wave_bounds);
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::ocean_fft_a), tex_fft_a, rhi_all_mips, 0, true);
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::ocean_fft_b), tex_fft_b, rhi_all_mips, 0, true);
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::ocean_displacement), tex_displacement, rhi_all_mips, 0, true);

@@ -80,7 +80,7 @@ Texture2DArray<float4> tex_rt_shadows_local : register(t32);
 [[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_uav_rt_shadows_local : register(u26);
 
 // geometry info buffer for ray tracing (per-blas-instance offsets)
-RWStructuredBuffer<GeometryInfo> geometry_infos : register(u20);
+StructuredBuffer<GeometryInfo> geometry_infos : register(t20);
 
 // restir reservoir uav bindings
 RWTexture2D<float4> tex_reservoir0 : register(u21);

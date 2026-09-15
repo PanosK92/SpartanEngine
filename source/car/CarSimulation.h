@@ -182,6 +182,10 @@ namespace car
         bool open_telemetry_if_needed();
         void write_telemetry_wheel_state(int i);
         void tick_telemetry(float dt, float speed_kmh);
+        // Boundary conditions supplied by the world; defaults preserve standalone calibration.
+        bool environment_enabled = false;
+        float ambient_temperature = 20, road_temperature = 20, ambient_pressure = 101325, air_density = 1.225f;
+        PxVec3 wind_velocity = PxVec3(0);
         void shift_origin(const PxVec3& shift); // call after PxScene::shiftOrigin, actors are already shifted
         PxVec3 get_scene_origin() const { return scene_origin; }
         double get_distance_m() const { return distance_m; }

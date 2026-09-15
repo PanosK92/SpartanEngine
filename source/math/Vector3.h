@@ -127,18 +127,13 @@ namespace spartan::math
             return std::min(std::min(x, y), z);
         }
 
-        [[nodiscard]] static float Dot(const Vector3& v1, const Vector3& v2) 
-        { 
-        #ifdef __AVX2__
-            __m128 a = _mm_set_ps(0.0f, v1.z, v1.y, v1.x);
-            __m128 b = _mm_set_ps(0.0f, v2.z, v2.y, v2.x);
-            __m128 dot = _mm_dp_ps(a, b, 0x71); // dot product of x, y, z, result in lowest element
-            return _mm_cvtss_f32(dot);
-        #else
-            return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z);
-        #endif
+        [[nodiscard]] static float Dot(const Vector3& v1, const Vector3& v2)
+        {
+            // Keep the three scalar components in registers instead of packing
+            // them for a horizontal SIMD reduction. Preserve its addition order.
+            return (v1.x * v2.x + v1.y * v2.y) + (v1.z * v2.z + 0.0f);
         }
-        
+
         [[nodiscard]] float Dot(const Vector3& rhs) const 
         {
             return Dot(*this, rhs);
@@ -175,39 +170,12 @@ namespace spartan::math
 
         [[nodiscard]] float Length() const
         {
-        #ifdef __AVX2__
-            // Load x, y, z, and 0.0f into an AVX register
-            __m128 vec = _mm_set_ps(0.0f, z, y, x);
-        
-            // Calculate squared length (dot product of vec with itself)
-            __m128 dot = _mm_dp_ps(vec, vec, 0x7F); // only sum x, y, z and leave w as 0
-        
-            // Take the square root of the dot product
-            __m128 length = _mm_sqrt_ps(dot);
-        
-            // Extract the result as a scalar float
-            return _mm_cvtss_f32(length);
-        #else
-            // Fallback to scalar path
-            return sqrt(x * x + y * y + z * z);
-        #endif
+            return sqrtf(LengthSquared());
         }
-        
+
         [[nodiscard]] float LengthSquared() const
         {
-        #ifdef __AVX2__
-            // Load x, y, z, and 0.0f into an AVX register
-            __m128 vec = _mm_set_ps(0.0f, z, y, x);
-        
-            // Calculate squared length (dot product of vec with itself)
-            __m128 dot = _mm_dp_ps(vec, vec, 0x7F); // only sum x, y, z and leave w as 0
-        
-            // Extract the result as a scalar float
-            return _mm_cvtss_f32(dot);
-        #else
-            // Fallback to scalar path
-            return x * x + y * y + z * z;
-        #endif
+            return (x * x + y * y) + z * z;
         }
 
         // returns a copy of /vector/ with its magnitude clamped to /max_length/

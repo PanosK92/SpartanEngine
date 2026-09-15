@@ -135,7 +135,7 @@ namespace spartan
 
         // gpu buffers
         void CreateGpuBuffers();
-        void BuildAccelerationStructure(bool allow_update = false);
+        void BuildAccelerationStructure(uint32_t sub_mesh_index, bool allow_update = false);
         RHI_Buffer* GetIndexBuffer();
         RHI_Buffer* GetVertexBuffer();
 
@@ -176,8 +176,24 @@ namespace spartan
         uint32_t GetAnimationClipCount() const                             { return static_cast<uint32_t>(m_animation_clips.size()); }
 
         // acceleration structure - one blas per sub-mesh to avoid shared geometry issues
-        RHI_AccelerationStructure* GetBlas(uint32_t sub_mesh_index) const;
-        bool HasBlas(uint32_t sub_mesh_index) const;
+        RHI_AccelerationStructure* GetBlas(uint32_t sub_mesh_index) const
+        {
+            if (sub_mesh_index >= m_blas.size())
+            {
+                return nullptr;
+            }
+
+            return m_blas[sub_mesh_index].get();
+        }
+        bool HasBlas(uint32_t sub_mesh_index) const
+        {
+            if (sub_mesh_index >= m_blas.size())
+            {
+                return false;
+            }
+
+            return m_blas[sub_mesh_index] != nullptr;
+        }
         void InvalidateBlas(uint32_t sub_mesh_index);
         void InvalidateAllBlas();
         void RefitBlas(uint32_t sub_mesh_index);

@@ -24,10 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Editor.h"
 #include "EditorImGui.h"
 #include "core/Event.h"
+#include "core/Engine.h"
 #include "imgui/implementation/ImGui_RHI.h"
 #include "imgui/implementation/imgui_impl_sdl3.h"
 #include "input/Input.h"
 #include "rendering/Renderer.h"
+#include "profiling/Profiler.h"
 #include "rhi/RHI_Device.h"
 #include "resource/ResourceCache.h"
 #include "rhi/RHI_Implementation.h"
@@ -117,14 +119,37 @@ void editor_imgui::begin_frame()
 
     const ImGuiIO& io = ImGui::GetIO();
     spartan::Input::SetBlockedByUi(io.WantTextInput);
+    if (!spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible))
+    {
+        spartan::Input::SetEditorViewportOffset(spartan::math::Vector2::Zero);
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        spartan::Input::SetMouseIsInViewport(ImGui::IsMouseHoveringRect(viewport->Pos,
+            ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y), false));
+    }
 }
 
 void editor_imgui::render()
 {
-    ImGui::Render();
-
-    spartan::RHI_Device::AcquireSwapChainImage();
-    ImGui::RHI::render(ImGui::GetDrawData());
+    spartan::ScopedTimeBlock time_block("editor_imgui::render");
+    if (!spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible))
+    {
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::GetBackgroundDrawList()->AddImage(
+            reinterpret_cast<ImTextureID>(spartan::Renderer::GetRenderTarget(spartan::Renderer_RenderTarget::frame_output)),
+            viewport->Pos, ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y));
+    }
+    {
+        spartan::ScopedTimeBlock block("ui_layout");
+        ImGui::Render();
+    }
+    {
+        spartan::ScopedTimeBlock block("ui_acquire");
+        spartan::RHI_Device::AcquireSwapChainImage();
+    }
+    {
+        spartan::ScopedTimeBlock block("ui_record");
+        ImGui::RHI::render(ImGui::GetDrawData());
+    }
 
     if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
     {
@@ -133,6 +158,6 @@ void editor_imgui::render()
     }
 
     const spartan::RHI_Work submitted = spartan::RHI_Device::EndFrame();
-    spartan::Renderer::SetFrameCompletion(submitted.timeline, submitted.value);
+    spartan::Renderer::SetFrameCompletion(submitted.timeline.get(), submitted.value);
     spartan::Renderer::FinalizeScreenshotReadback();
 }

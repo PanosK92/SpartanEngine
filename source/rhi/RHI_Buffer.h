@@ -108,7 +108,6 @@ namespace spartan
         void* GetRhiSrv() const             { return m_rhi_srv; }
         void* GetRhiUav() const             { return m_rhi_uav; }
         RHI_Buffer_Type GetType() const     { return m_type; }
-        void DestroyResourceImmediate();
         uint64_t GetDeviceAddress() const   { return m_device_address; }
 
     private:

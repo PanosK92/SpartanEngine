@@ -169,6 +169,10 @@ function spartan_project_configuration()
             SOURCE_DIR .. "/**.rc"
         }
         files(lzma_sdk.sources())
+        files { "../third_party/astronomy/astronomy.c", "../third_party/astronomy/astronomy.h" }
+        filter { "files:**/astronomy/**" }
+            flags { "NoPCH" }
+        filter {}
 
         if ARG_API_GRAPHICS == "d3d12" then
             removefiles { SOURCE_DIR .. "/rhi/vulkan/**" }

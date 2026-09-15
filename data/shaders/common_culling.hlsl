@@ -234,19 +234,19 @@ uint sphere_lod_index(float3 center_world, float radius_world, uint lod_count)
     }
 
     uint lod = lod_count - 1u;
-    if (screen_fraction >= 0.05f)
+    if (screen_fraction >= 0.20f)
     {
         lod = 0u;
     }
-    else if (screen_fraction >= 0.025f)
+    else if (screen_fraction >= 0.10f)
     {
         lod = 1u;
     }
-    else if (screen_fraction >= 0.012f)
+    else if (screen_fraction >= 0.048f)
     {
         lod = 2u;
     }
-    else if (screen_fraction >= 0.006f)
+    else if (screen_fraction >= 0.024f)
     {
         lod = 3u;
     }

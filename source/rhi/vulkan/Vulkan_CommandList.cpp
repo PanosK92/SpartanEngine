@@ -1372,12 +1372,17 @@ namespace spartan
 
     RHI_CommandList::~RHI_CommandList()
     {
+        ReadbackTimestampsForProfiler();
+        if (m_timestamp_sample) m_timestamp_sample->ready = true;
+        ReleasePendingWork();
         queries::shutdown(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion, m_rhi_query_pool_pipeline_statistics);
     }
 
     void RHI_CommandList::Begin()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
+        ReadbackTimestampsForProfiler();
+        m_timestamp_sample.reset();
         ResetTrackedResources();
      
         // begin command buffer
@@ -1402,6 +1407,7 @@ namespace spartan
         m_dynamic_pipeline_layout  = nullptr;
         m_dynamic_pipeline_type    = static_cast<uint8_t>(-1);
         m_dynamic_offset_count     = 0;
+        m_bind_dynamic             = true;
         m_pipeline                 = nullptr;
         m_pipeline_state_dirty     = false;
         m_mesh_cull_barrier_satisfied = false;
@@ -1591,6 +1597,10 @@ namespace spartan
             if (m_bindless_pipeline_layout != pipeline_layout || m_bindless_pipeline_type != pipeline_type)
             {
                 descriptor_sets::set_bindless(m_pso, m_rhi_resource, pipeline_layout);
+                // Binding the upper sets with an incompatible layout disturbs
+                // set zero, even when returning to a previously cached layout.
+                m_dynamic_descriptor_set = nullptr;
+                m_bind_dynamic = true;
                 m_bindless_pipeline_layout = pipeline_layout;
                 m_bindless_pipeline_type   = pipeline_type;
             }
@@ -1623,16 +1633,25 @@ namespace spartan
         RHI_Queue* queue          = immediate_execution::queues[qi].get();
         RHI_CommandList* cmd_list = queue->NextCommandList();
         cmd_list->Begin();
+        cmd_list->m_previous_binding = RHI_Device::Cmd();
         RHI_Device::Bind(cmd_list);
         return cmd_list;
     }
 
-    void RHI_CommandList::ImmediateExecutionEnd(RHI_CommandList* cmd_list)
+    void RHI_CommandList::ImmediateExecutionEnd(RHI_CommandList* cmd_list, bool wait)
     {
-        cmd_list->Submit(nullptr, true);
-        cmd_list->WaitForExecution();
+        cmd_list->Submit(nullptr, false);
+        if (wait) cmd_list->WaitForExecution();
 
         uint32_t qi = static_cast<uint32_t>(cmd_list->GetQueue()->GetType());
+
+        if (!wait)
+        {
+            SP_ASSERT(cmd_list->GetQueue()->GetType() == RHI_Queue_Type::Graphics);
+            SetPendingUpload(cmd_list->GetWork());
+        }
+
+        RHI_Device::Bind(cmd_list->m_previous_binding);
 
         // clear the flag under the lock, releasing it without the mutex races with the waiter in ImmediateExecutionBegin and loses the wakeup
         {
@@ -1640,7 +1659,6 @@ namespace spartan
             immediate_execution::is_executing[qi] = false;
         }
         immediate_execution::condition_vars[qi].notify_one();
-        RHI_Device::Bind(static_cast<RHI_CommandList*>(nullptr));
     }
 
     void RHI_CommandList::ImmediateExecutionShutdown()
@@ -1652,6 +1670,7 @@ namespace spartan
         }
 
         immediate_execution::queues.fill(nullptr);
+        SetPendingUpload({});
     }
 
     void RHI_CommandList::RenderPassBegin()
@@ -2592,6 +2611,7 @@ namespace spartan
     void RHI_CommandList::copy_buffer_to_buffer(void* source, RHI_Buffer* destination, uint64_t size)
     {
         SP_ASSERT(source && destination && size > 0);
+        render_pass_end();
 
         VkBufferCopy region = {};
         region.size         = size;
@@ -2606,6 +2626,7 @@ namespace spartan
     void RHI_CommandList::copy_buffer_to_buffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
     {
         SP_ASSERT(source && destination && size > 0);
+        render_pass_end();
 
         VkBufferCopy region = {};
         region.size         = size;
@@ -3160,16 +3181,15 @@ namespace spartan
 
     void RHI_CommandList::ReadbackTimestampsForProfiler()
     {
-        // wait for gpu to finish executing this command list
-        if (m_state == RHI_CommandListState::Submitted)
+        if (!m_timestamp_sample || m_timestamp_sample->ready || !GetWork().IsComplete())
+            return;
+        if (m_timestamp_index > 0)
         {
-            WaitForExecution();
+            queries::timestamp::update(m_rhi_query_pool_timestamps, m_timestamp_index);
+            m_timestamp_data = queries::timestamp::timestamps;
+            m_timestamp_sample->ticks = m_timestamp_data;
         }
-
-        // read fresh results from the query pool into m_timestamp_data
-        queries::timestamp::update(m_rhi_query_pool_timestamps, m_timestamp_index, true);
-        m_timestamp_data          = queries::timestamp::timestamps;
-        m_gpu_frame_reference_tick = m_timestamp_data[0];
+        m_timestamp_sample->ready = true;
     }
 
     void RHI_CommandList::begin_occlusion_query(const uint64_t entity_id)
@@ -3346,16 +3366,39 @@ namespace spartan
             return;
         }
 
-        const uint8_t* src       = static_cast<const uint8_t*>(data);
-        uint64_t bytes_remaining = size;
-        uint64_t current_offset  = offset;
-        while (bytes_remaining > 0)
+        // The global geometry buffers are shared between frames. Finish earlier
+        // shader/vertex/AS reads before overwriting a dynamic range on this queue.
+        VkBufferMemoryBarrier2 write_barrier = {};
+        write_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+        write_barrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+        write_barrier.srcAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+        write_barrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        write_barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        write_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        write_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        write_barrier.buffer = vk_buffer;
+        write_barrier.offset = offset;
+        write_barrier.size = size;
+        VkDependencyInfo write_dependency = {};
+        write_dependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        write_dependency.bufferMemoryBarrierCount = 1;
+        write_dependency.pBufferMemoryBarriers = &write_barrier;
+        vkCmdPipelineBarrier2(vk_cmd_buffer, &write_dependency);
+
+        if (size <= rhi_max_buffer_update_size)
         {
-            uint64_t chunk_size = (bytes_remaining > rhi_max_buffer_update_size) ? rhi_max_buffer_update_size : bytes_remaining;
-            vkCmdUpdateBuffer(vk_cmd_buffer, vk_buffer, current_offset, chunk_size, src);
-            src             += chunk_size;
-            current_offset  += chunk_size;
-            bytes_remaining -= chunk_size;
+            vkCmdUpdateBuffer(vk_cmd_buffer, vk_buffer, offset, size, data);
+        }
+        else
+        {
+            void* staging = RHI_Device::StagingBufferAcquire(size);
+            void* mapped = nullptr;
+            RHI_Device::MemoryMap(staging, mapped);
+            memcpy(mapped, data, size);
+            RHI_Device::MemoryUnmap(staging);
+            VkBufferCopy copy = {0, offset, size};
+            vkCmdCopyBuffer(vk_cmd_buffer, static_cast<VkBuffer>(staging), vk_buffer, 1, &copy);
+            RetainStagingBuffer(staging);
         }
         m_force_memory_sync = true;
     }

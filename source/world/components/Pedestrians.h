@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 namespace spartan
 {
@@ -100,6 +101,7 @@ namespace spartan
         uint32_t NextUInt();
 
         std::vector<Walker> m_walkers;
+        std::unordered_map<uint64_t, std::vector<Walker*>> m_walker_cells;
         road_traffic::Network m_road_network;
         road_traffic::LocalPopulation m_population;
         float m_population_timer = 0.0f;

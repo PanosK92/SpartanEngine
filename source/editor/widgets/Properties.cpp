@@ -1040,7 +1040,7 @@ void Properties::ShowLight(spartan::Light* light) const
                 float time_of_day = World::GetTimeOfDay(day_night_cycle && real_time_cycle);
                 char time_label[8];
                 snprintf(time_label, sizeof(time_label), "%02d:%02d", static_cast<int>(time_of_day * 24.0f), static_cast<int>(time_of_day * 1440.0f) % 60);
-                layout::begin_property("Time of Day", "drag the sun from night to day, the atmosphere derives the matching color and intensity");
+                layout::begin_property("Time (UTC)", "UTC time on the selected calendar date at the world location");
                 ImGui::BeginDisabled(day_night_cycle && real_time_cycle);
                 if (ImGui::SliderFloat("##time_of_day", &time_of_day, 0.0f, 1.0f, time_label))
                 {
@@ -1062,6 +1062,45 @@ void Properties::ShowLight(spartan::Light* light) const
             ImGui::EndDisabled();
 
             layout::separator();
+            auto environment_settings = Environment::GetSettings();
+            bool environment_changed = false;
+            int year, month, day, hour, minute; double second;
+            Environment::GetDate(year, month, day, hour, minute, second, day_night_cycle && real_time_cycle);
+            int date[3] = { year, month, day };
+            layout::begin_property("Date (UTC)", "Gregorian calendar, year / month / day, 1800 through 2200; press Enter to apply");
+            ImGui::BeginDisabled(day_night_cycle && real_time_cycle);
+            if (ImGui::InputInt3("##earth_date", date, ImGuiInputTextFlags_EnterReturnsTrue))
+            {
+                if (Environment::SetDate(date[0], date[1], date[2], hour, minute, second))
+                    light->SetTimeOfDay(World::GetTimeOfDay());
+                environment_settings = Environment::GetSettings();
+            }
+            ImGui::EndDisabled();
+            float latitude = float(environment_settings.latitude), longitude = float(environment_settings.longitude);
+            float elevation = float(environment_settings.elevation), rate = float(environment_settings.time_scale);
+            environment_changed |= property_float("Latitude", &latitude, 0.01f, -90, 90, "degrees north; negative is south", "%.4f");
+            environment_changed |= property_float("Longitude", &longitude, 0.01f, -180, 180, "degrees east; negative is west", "%.4f");
+            environment_changed |= property_float("Elevation", &elevation, 1, -400, 10000, "metres above sea level", "%.0f m");
+            environment_changed |= property_float("North heading", &environment_settings.north_degrees, 1, -360, 360, "0 means +Z north and +X east", "%.1f deg");
+            environment_changed |= property_float("Clock speed", &rate, 1, -86400, 86400, "simulated seconds per real second; 0 freezes, 1 is real speed", "%.1f x");
+            environment_changed |= property_float("Annual mean", &environment_settings.annual_temperature, 0.1f, -70, 50, "configurable sea-level climate, not recorded weather", "%.1f C");
+            environment_changed |= property_float("Seasonal swing", &environment_settings.seasonal_amplitude, 0.1f, 0, 40, "temperature amplitude either side of annual mean", "%.1f C");
+            environment_changed |= property_float("Daily swing", &environment_settings.daily_amplitude, 0.1f, 0, 20, "clear-day temperature amplitude", "%.1f C");
+            environment_changed |= property_float("Pressure", &environment_settings.sea_level_pressure, 10, 87000, 108500, "sea-level pressure; altitude adjusts local density and tire gauge pressure", "%.0f Pa");
+            if (environment_changed)
+            {
+                environment_settings.latitude = latitude; environment_settings.longitude = longitude;
+                environment_settings.elevation = elevation; environment_settings.time_scale = rate;
+                Environment::SetSettings(environment_settings);
+                if (!day_night_cycle) light->SetTimeOfDay(World::GetTimeOfDay());
+            }
+            const auto& conditions = World::GetEnvironment();
+            ImGui::Text("Air %.1f C | Road %.1f C", conditions.air_temperature, conditions.road_temperature);
+            ImGui::Text("Moon %.0f%% | Air %.3f kg/m3", conditions.moon_fraction * 100, conditions.air_density);
+            Vector3 environment_wind = World::GetWind();
+            layout::begin_property("Wind (m/s)", "world X/Y/Z velocity, shared by vegetation, clouds and vehicle aerodynamics");
+            if (ImGui::DragFloat3("##earth_wind", &environment_wind.x, 0.1f, -60, 60)) World::SetWind(environment_wind);
+
             layout::section_header("Weather");
 
             float cloud_coverage = light->GetCloudCoverage();

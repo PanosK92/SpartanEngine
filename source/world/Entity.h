@@ -70,13 +70,19 @@ namespace spartan
         void Load(pugi::xml_node& node, bool load_children = true);
 
         // active
-        bool GetActive();
+        bool GetActive()
+        {
+            return m_effective_active.load();
+        }
         // Inherited mobility, independent of current velocity or play state.
         // Script-driven movers without physics can declare the "dynamic" tag.
         bool IsDynamic() const;
         void SetActive(const bool active);
 
-        Component* GetComponentByType(ComponentType Type) const;
+        Component* GetComponentByType(ComponentType Type) const
+        {
+            return m_components[static_cast<uint32_t>(Type)].get();
+        }
         Component* AddComponentByType(ComponentType Type);
         void RemoveComponentByType(ComponentType Type);
 
@@ -97,6 +103,7 @@ namespace spartan
 
             // save new component
             m_components[static_cast<uint32_t>(type)] = std::static_pointer_cast<Component>(component);
+            m_component_mask |= uint64_t(1) << static_cast<uint32_t>(type);
             m_component_count++;
 
             // initialize component
@@ -125,6 +132,7 @@ namespace spartan
             if (m_components[static_cast<uint32_t>(component_type)])
             {
                 m_components[static_cast<uint32_t>(component_type)] = nullptr;
+                m_component_mask &= ~(uint64_t(1) << static_cast<uint32_t>(component_type));
                 if (m_component_count > 0)
                 {
                     m_component_count--;
@@ -139,9 +147,11 @@ namespace spartan
         uint32_t GetComponentCount() const;
 
         //= POSITION ======================================================================
+        uint64_t GetTransformRevision() const { return m_transform_revision; }
         math::Vector3 GetPosition()             const { return m_matrix.GetTranslation(); }
         const math::Vector3& GetPositionLocal() const { return m_position_local; }
         void SetPosition(const math::Vector3& position);
+        void SetPositionAndRotation(const math::Vector3& position, const math::Quaternion& rotation);
         void SetPositionLocal(const math::Vector3& position);
         //=================================================================================
 
@@ -165,12 +175,14 @@ namespace spartan
         //=========================================
 
         //= DIRECTIONS ================================================
-        const math::Vector3& GetUp() const       { return m_up; }
-        const math::Vector3& GetDown() const     { return m_down; }
-        const math::Vector3& GetForward() const  { return m_forward; }
-        const math::Vector3& GetBackward() const { return m_backward; }
-        const math::Vector3& GetRight() const    { return m_right; }
-        const math::Vector3& GetLeft() const     { return m_left; }
+        // Most moving descendants are render-only. Compute the requested axis
+        // from the current matrix instead of updating all six axes on every pose.
+        math::Vector3 GetUp() const       { return m_transform_revision ? math::Vector3::Normalize({m_matrix.m10, m_matrix.m11, m_matrix.m12}) : math::Vector3::Zero; }
+        math::Vector3 GetDown() const     { return -GetUp(); }
+        math::Vector3 GetForward() const  { return m_transform_revision ? math::Vector3::Normalize({m_matrix.m20, m_matrix.m21, m_matrix.m22}) : math::Vector3::Zero; }
+        math::Vector3 GetBackward() const { return -GetForward(); }
+        math::Vector3 GetRight() const    { return m_transform_revision ? math::Vector3::Normalize({m_matrix.m00, m_matrix.m01, m_matrix.m02}) : math::Vector3::Zero; }
+        math::Vector3 GetLeft() const     { return -GetRight(); }
         //=============================================================
 
         //= HIERARCHY ===================================================================================
@@ -193,6 +205,7 @@ namespace spartan
         Entity* GetParent()                       { return m_parent; }
         // returns a copy under the children mutex, mutate through AddChild/RemoveChild/MoveChildToIndex
         std::vector<Entity*> GetChildren() const;
+        uint64_t GetChildDataRevision() const { return m_child_data_revision.load(std::memory_order_relaxed); }
         //===============================================================================================
 
         const math::Matrix& GetMatrix() const              { return m_matrix; }
@@ -233,11 +246,18 @@ namespace spartan
 
     private:
         std::atomic<bool> m_is_active = true;
+        std::atomic<bool> m_effective_active = true;
+        void UpdateActiveState();
         bool m_transient              = false; // transient entities are not serialized
         std::array<std::shared_ptr<Component>, static_cast<uint32_t>(ComponentType::Max)> m_components;
         uint32_t m_component_count = 0;
+        static_assert(static_cast<uint32_t>(ComponentType::Max) < 64);
+        uint64_t m_component_mask = 0;
 
-        void UpdateTransform();
+        friend class Animator;
+        // Animator writes a complete pose, then updates the subtree once.
+        void SetTransformLocalDeferred(const math::Vector3& position, const math::Quaternion& rotation, const math::Vector3& scale);
+        void UpdateTransform(bool update_local = true);
         math::Matrix GetParentTransformMatrix();
 
         // walks a prefab base subtree and writes user additions as <prefab_override> blocks onto the instance root node
@@ -245,6 +265,8 @@ namespace spartan
         bool HasPrefabTransformChanged() const;
 
         // local
+        uint64_t m_transform_revision = 0;
+        std::atomic<uint64_t> m_child_data_revision{0};
         math::Vector3 m_position_local    = math::Vector3::Zero;
         math::Quaternion m_rotation_local = math::Quaternion::Identity;
         math::Vector3 m_scale_local       = math::Vector3::One;
@@ -252,14 +274,7 @@ namespace spartan
         math::Matrix m_matrix          = math::Matrix::Identity;
         math::Matrix m_matrix_previous = math::Matrix::Identity;
         math::Matrix m_matrix_local    = math::Matrix::Identity;
-
-        // computed during UpdateTransform() and cached for performance
-        math::Vector3 m_forward  = math::Vector3::Zero;
-        math::Vector3 m_backward = math::Vector3::Zero;
-        math::Vector3 m_up       = math::Vector3::Zero;
-        math::Vector3 m_down     = math::Vector3::Zero;
-        math::Vector3 m_right    = math::Vector3::Zero;
-        math::Vector3 m_left     = math::Vector3::Zero;
+        bool m_local_matrix_dirty = true;
 
         Entity* m_parent = nullptr;      // the parent of this entity
         std::vector<Entity*> m_children; // the children of this entity

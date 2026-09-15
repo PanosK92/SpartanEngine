@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #include <cmath>
+#include <mutex>
 SP_WARNINGS_OFF
 #include "../../io/pugixml.hpp"
 SP_WARNINGS_ON
@@ -184,6 +185,13 @@ namespace spartan
     SkidMarks::~SkidMarks()
     {
 
+    }
+
+    void SkidMarks::Initialize()
+    {
+        // Bake/upload the shared rubber mask while the car loads, not on its
+        // first hard brake. Trail geometry remains lazy and per vehicle.
+        CreateMaterial();
     }
 
     void SkidMarks::Tick()
@@ -568,18 +576,27 @@ namespace spartan
 
     void SkidMarks::CreateMaterial()
     {
-        // Generated from code on each material creation: no stale PNG/cache can silently
-        // replace the alpha mask. Upload RGBA8 explicitly, with its mip chain and alpha intact.
-        constexpr uint32_t size = 256;
-        vector<uint8_t> pixels;
-        generate_skid_texture_rgba(pixels, size, size);
-        vector<RHI_Texture_Slice> slices(1);
-        slices[0].mips.resize(1);
-        slices[0].mips[0].bytes.resize(pixels.size());
-        memcpy(slices[0].mips[0].bytes.data(), pixels.data(), pixels.size());
-        m_texture = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, size, size, 1, 1,
-            RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv | RHI_Texture_Transparent,
-            "skid_rubber_mask", std::move(slices));
+        if (m_material) return;
+        // Generate from code once per live texture. The weak cache releases GPU
+        // resources with the last car and cannot substitute an older on-disk mask.
+        static mutex texture_mutex;
+        static weak_ptr<RHI_Texture> shared_texture;
+        lock_guard<mutex> texture_lock(texture_mutex);
+        m_texture = shared_texture.lock();
+        if (!m_texture)
+        {
+            constexpr uint32_t size = 256;
+            vector<uint8_t> pixels;
+            generate_skid_texture_rgba(pixels, size, size);
+            vector<RHI_Texture_Slice> slices(1);
+            slices[0].mips.resize(1);
+            slices[0].mips[0].bytes.resize(pixels.size());
+            memcpy(slices[0].mips[0].bytes.data(), pixels.data(), pixels.size());
+            m_texture = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, size, size, 1, 1,
+                RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv | RHI_Texture_Transparent,
+                "skid_rubber_mask", std::move(slices));
+            shared_texture = m_texture;
+        }
         m_material = make_shared<Material>();
         m_material->SetPersistent(false);
         m_material->SetResourceName("skidmarks" + string(EXTENSION_MATERIAL));

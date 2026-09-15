@@ -1032,41 +1032,43 @@ namespace spartan
             uint32_t dense_height = density * (height - 1) + 1;
             vector<float> dense_height_data(dense_width * dense_height);
         
-            auto get_height = [&height_data, width, height](uint32_t x, uint32_t y) -> float
+            auto get_height = [&height_data, width, height](int x, int y) -> float
             {
-                return height_data[min(y, height - 1) * width + min(x, width - 1)];
+                return height_data[static_cast<size_t>(clamp(y, 0, static_cast<int>(height) - 1)) * width +
+                    static_cast<size_t>(clamp(x, 0, static_cast<int>(width) - 1))];
             };
-        
-            // bilinear interpolation to increase resolution
+
+            // Monotone cubic interpolation rounds coarse cell boundaries without
+            // introducing new peaks, pits or overshoot along either axis.
+            auto interpolate = [](float a, float b, float c, float d, float t)
+            {
+                const float ab = b - a, bc = c - b, cd = d - c;
+                const float m0 = ab * bc > 0.0f ? 2.0f * ab * bc / (ab + bc) : 0.0f;
+                const float m1 = bc * cd > 0.0f ? 2.0f * bc * cd / (bc + cd) : 0.0f;
+                const float t2 = t * t, t3 = t2 * t;
+                return (2.0f * t3 - 3.0f * t2 + 1.0f) * b +
+                    (t3 - 2.0f * t2 + t) * m0 +
+                    (-2.0f * t3 + 3.0f * t2) * c + (t3 - t2) * m1;
+            };
+
             auto compute_dense_pixel = [&](uint32_t start_index, uint32_t end_index)
             {
                 for (uint32_t index = start_index; index < end_index; index++)
                 {
-                    uint32_t x = index % dense_width;
-                    uint32_t y = index / dense_width;
-
-                    float u      = static_cast<float>(x) / static_cast<float>(density);
-                    float v      = static_cast<float>(y) / static_cast<float>(density);
-                    uint32_t x0  = static_cast<uint32_t>(floor(u));
-                    uint32_t x1  = min(x0 + 1, width - 1);
-                    uint32_t y0  = static_cast<uint32_t>(floor(v));
-                    uint32_t y1  = min(y0 + 1, height - 1);
-                    float dx     = u - static_cast<float>(x0);
-                    float dy     = v - static_cast<float>(y0);
-
-                    float h00 = get_height(x0, y0);
-                    float h10 = get_height(x1, y0);
-                    float h01 = get_height(x0, y1);
-                    float h11 = get_height(x1, y1);
-
-                    dense_height_data[y * dense_width + x] = 
-                        (1.0f - dx) * (1.0f - dy) * h00 +
-                        dx * (1.0f - dy) * h10 +
-                        (1.0f - dx) * dy * h01 +
-                        dx * dy * h11;
+                    const float u = static_cast<float>(index % dense_width) / static_cast<float>(density);
+                    const float v = static_cast<float>(index / dense_width) / static_cast<float>(density);
+                    const int x = static_cast<int>(u), y = static_cast<int>(v);
+                    const float dx = u - static_cast<float>(x), dy = v - static_cast<float>(y);
+                    float rows[4];
+                    for (int row = 0; row < 4; row++)
+                    {
+                        rows[row] = interpolate(get_height(x - 1, y + row - 1), get_height(x, y + row - 1),
+                            get_height(x + 1, y + row - 1), get_height(x + 2, y + row - 1), dx);
+                    }
+                    dense_height_data[index] = interpolate(rows[0], rows[1], rows[2], rows[3], dy);
                 }
             };
-        
+
             ThreadPool::ParallelLoop(compute_dense_pixel, dense_width * dense_height);
             height_data = move(dense_height_data);
         }

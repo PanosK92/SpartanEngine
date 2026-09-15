@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // are appended to a groupshared list which is then written into the global indices buffer
 // at a fixed offset of cluster_id * CLUSTER_MAX_LIGHTS
 
+#define LIGHT_CLUSTER_WRITE
 #include "common.hlsl"
 #include "light_cluster.hlsl"
 

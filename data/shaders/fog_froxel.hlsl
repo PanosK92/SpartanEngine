@@ -34,7 +34,48 @@ struct FogSkyProbe
     float3 light_dir;
 };
 
-// the probe is identical for every cell, build it once per thread
+groupshared FogSkyProbe fog_group_sky;
+groupshared uint fog_group_air_lights;
+
+// Cull local lights once for the entire group's air segments. A cone enclosing
+// the four corner rays and the full depth interval gives a conservative sphere.
+// Large light lists and displaced water samples retain the unrestricted path.
+uint fog_air_light_mask(uint3 group_id)
+{
+    uint count = buffer_frame.volumetric_light_count;
+    if (count == 0u) return 0u;
+    if (count > 32u) return 0xffffffffu;
+    float2 uv0 = float2(group_id.xy * 8u) / float2(fog_width, fog_height);
+    float2 uv1 = float2(group_id.xy * 8u + 8u) / float2(fog_width, fog_height);
+    float3 direction = fog_view_direction((uv0 + uv1) * 0.5f);
+    float cosine = 1.0f;
+    [unroll] for (uint corner = 0u; corner < 4u; ++corner)
+    {
+        float2 uv = float2((corner & 1u) ? uv1.x : uv0.x, (corner & 2u) ? uv1.y : uv0.y);
+        cosine = min(cosine, dot(direction, fog_view_direction(uv)));
+    }
+    if (cosine <= 0.0f) return count == 32u ? 0xffffffffu : (1u << count) - 1u;
+    cosine -= 1e-6f; // keep the cone conservative after normalized-dot roundoff
+    float d0 = fog_slice_to_distance(float(group_id.z * 4u) / float(fog_depth));
+    float d1 = fog_slice_to_distance(float(group_id.z * 4u + 4u) / float(fog_depth));
+    float3 center = get_camera_position() + direction * ((d0 + d1) * 0.5f);
+    float radius = (d1 - d0) * 0.5f + d1 * sqrt(max(2.0f * (1.0f - cosine), 0.0f));
+    radius += 0.05f + max(max(abs(center.x), abs(center.y)), abs(center.z)) * 1e-6f;
+    uint mask = 0u;
+    [loop] for (uint i = 0u; i < count; ++i)
+    {
+        LightParameters light = light_parameters[volumetric_light_indices[i]];
+        float extent = light.range;
+        if ((light.flags & (1u << 6)) != 0u)
+            extent += 0.5f * length(float2(light.area_width, light.area_height));
+        float3 delta = light.position - center;
+        if ((light.flags & 1u) != 0u || dot(delta, delta) <= (radius + extent) * (radius + extent))
+            mask |= 1u << i;
+    }
+    return mask;
+}
+
+// The probe is identical for every cell in the dispatch.
 FogSkyProbe fog_build_sky_probe()
 {
     const uint sky_mip = 7;
@@ -222,15 +263,26 @@ float3 fog_light_medium(
     float3 rate = 0.0f;
     if (buffer_frame.cluster_light_count > 0u)
         rate += fog_light_samples(0u, surface, positions, count, ray_direction, in_water, sigma_s, angular_footprint);
-    [loop]
-    for (uint k = 0u; k < buffer_frame.volumetric_light_count; k++)
-        rate += fog_light_samples(volumetric_light_indices[k], surface, positions, count, ray_direction, in_water, sigma_s, angular_footprint);
+    if (!in_water && buffer_frame.volumetric_light_count <= 32u)
+    {
+        uint lights = fog_group_air_lights;
+        [loop] while (lights != 0u)
+        {
+            uint k = firstbitlow(lights);
+            lights &= lights - 1u;
+            rate += fog_light_samples(volumetric_light_indices[k], surface, positions, count, ray_direction, in_water, sigma_s, angular_footprint);
+        }
+    }
+    else
+    {
+        [loop] for (uint k = 0u; k < buffer_frame.volumetric_light_count; k++)
+            rate += fog_light_samples(volumetric_light_indices[k], surface, positions, count, ray_direction, in_water, sigma_s, angular_footprint);
+    }
     return rate;
 }
 
 // One density/lighting injection for both air and water. No camera-medium switch.
-[numthreads(8, 8, 4)]
-void main_cs(uint3 thread_id : SV_DispatchThreadID)
+void fog_inject_cell(uint3 thread_id)
 {
     if (any(thread_id >= uint3(fog_width, fog_height, fog_depth)))
         return;
@@ -282,7 +334,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
     float3 air_position = get_camera_position() + ray_direction * air_distance;
     float3 scatter_rate = 0.0f;
-    FogSkyProbe sky = fog_build_sky_probe();
+    FogSkyProbe sky = fog_group_sky;
     float air_extinction = 0.0f;
     if (air_length > 0.0f)
     {
@@ -371,6 +423,20 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     tex_fog_water_source_uav[thread_id] = float4(water_rate, water_length > 0.0f ? 1.0f : 0.0f);
     tex3d_uav[thread_id] = float4(scatter_rate, density);
     tex_fog_extinction_uav[thread_id] = float4(medium.air_extinction, medium.water, 0.0f, 0.0f);
+}
+
+[numthreads(8, 8, 2)]
+void main_cs(uint3 group_id : SV_GroupID, uint3 local_id : SV_GroupThreadID, uint group_index : SV_GroupIndex)
+{
+    if (group_index == 0u)
+    {
+        fog_group_sky = fog_build_sky_probe();
+        fog_group_air_lights = fog_air_light_mask(group_id);
+    }
+    GroupMemoryBarrierWithGroupSync();
+    // Retain the CPU's 8x8x4 cell tiling with fewer resident threads per group.
+    [loop] for (uint z = 0u; z < 4u; z += 2u)
+        fog_inject_cell(group_id * uint3(8u, 8u, 4u) + local_id + uint3(0u, 0u, z));
 }
 
 #elif defined(FOG_SKY_VISIBILITY)

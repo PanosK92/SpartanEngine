@@ -222,6 +222,53 @@ namespace ImGui::TransformGizmo
                entity->GetObjectName().rfind("spline_point_", 0) == 0;
     }
 
+    static void merge_geometry_bounds(spartan::Entity* entity, spartan::math::BoundingBox& bounds, bool& has_bounds)
+    {
+        if (spartan::Render* render = entity->GetComponent<spartan::Render>(); render && render->GetMesh())
+        {
+            // use the current transform, since the render bounds can lag behind a gizmo edit
+            const spartan::math::BoundingBox box = render->HasInstancing()
+                ? render->GetBoundingBox()
+                : render->GetBoundingBoxMesh() * entity->GetMatrix();
+            const auto& min = box.GetMin();
+            const auto& max = box.GetMax();
+            if (std::isfinite(min.x) && std::isfinite(min.y) && std::isfinite(min.z) &&
+                std::isfinite(max.x) && std::isfinite(max.y) && std::isfinite(max.z) &&
+                min.x <= max.x && min.y <= max.y && min.z <= max.z)
+            {
+                if (has_bounds)
+                {
+                    bounds.Merge(box);
+                }
+                else
+                {
+                    bounds = box;
+                    has_bounds = true;
+                }
+            }
+        }
+
+        for (spartan::Entity* child : entity->GetChildren())
+        {
+            merge_geometry_bounds(child, bounds, has_bounds);
+        }
+    }
+
+    static spartan::math::Vector3 get_geometry_center(spartan::Entity* entity)
+    {
+        // spline handles have a displayed position which may be projected onto terrain
+        if (entity->GetParent() && entity->GetParent()->GetComponent<spartan::Spline>() &&
+            entity->GetObjectName().rfind("spline_point_", 0) == 0)
+        {
+            return spartan::Spline::GetEditorHandlePosition(entity);
+        }
+
+        spartan::math::BoundingBox bounds;
+        bool has_bounds = false;
+        merge_geometry_bounds(entity, bounds, has_bounds);
+        return has_bounds ? bounds.GetCenter() : spartan::Spline::GetEditorHandlePosition(entity);
+    }
+
     static bool project_mouse_onto_y_plane(spartan::Camera* camera, float plane_y, float& out_x, float& out_z)
     {
         if (!camera)
@@ -436,7 +483,7 @@ namespace ImGui::TransformGizmo
             {
                 if (entity)
                 {
-                    gizmo_position += spartan::Spline::GetEditorHandlePosition(entity);
+                    gizmo_position += get_geometry_center(entity);
                     valid_entity_count++;
                 }
             }
@@ -589,6 +636,8 @@ namespace ImGui::TransformGizmo
 
                 if (do_scale)
                 {
+                    const spartan::math::Vector3 center_before = pivot_mode == ::TransformGizmo::Pivot::Median
+                        ? get_geometry_center(entity) : entity->GetPosition();
                     // ratio is total from drag start, apply it to the captured scale
                     const spartan::math::Vector3 start_scale = scales_previous[entity_index];
                     entity->SetScale(spartan::math::Vector3(
@@ -596,6 +645,10 @@ namespace ImGui::TransformGizmo
                         start_scale.y * scale_ratio.y,
                         start_scale.z * scale_ratio.z
                     ));
+                    if (pivot_mode == ::TransformGizmo::Pivot::Median)
+                    {
+                        entity->SetPosition(entity->GetPosition() + center_before - get_geometry_center(entity));
+                    }
                 }
 
                 entity_index++;

@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================================
 #include "pch.h"
+#include "GeneratedCache.h"
+#include "world/World.h"
 #include <fstream>
 #include "Mesh.h"
 #include "../rhi/RHI_Buffer.h"
@@ -54,7 +56,7 @@ namespace spartan
         };
         static_assert(sizeof(MeshletBounds_v5) == 16, "v5 meshlet bounds must stay 16 bytes");
 
-        // add mesh-local or global offsets into packed first_vertex / first_micro fields
+        // Add LOD offsets within one mesh. Global GPU buffer bases live in DrawData.
         void offset_meshlet_unique_ranges(Sb_MeshletBounds& bounds, const uint32_t vertex_offset, const uint32_t micro_offset)
         {
             const uint32_t first_vertex = bounds.first_vertex_vert_count & MESHLET_FIRST_VERTEX_MASK;
@@ -501,14 +503,31 @@ namespace spartan
         vector<uint32_t>         lod_unique_vertices;
         vector<uint32_t>         lod_micro_indices;
         BoundingBox              lod_aabb;
-        geometry_processing::build_meshlets(
-            vertices,
-            indices,
-            lod_meshlets,
-            lod_unique_vertices,
-            lod_micro_indices,
-            lod_aabb
-        );
+        generated_cache::Hash cache_hash;
+        cache_hash.Add(uint32_t(1)); // meshlet generator/cache version
+        cache_hash.Add(sizeof(Sb_MeshletBounds));
+        const bool use_cache = indices.size() >= 192;
+        if (use_cache)
+        {
+            cache_hash.Add(vertices);
+            cache_hash.Add(indices);
+        }
+        const auto cache_path = generated_cache::Path(World::GetResourceDirectory(), "meshlets", cache_hash.value);
+        vector<Vector3> cached_bounds;
+        const bool cached = use_cache && generated_cache::Load(cache_path, cache_hash.value,
+            lod_meshlets, lod_unique_vertices, lod_micro_indices, cached_bounds, indices);
+        if (cached && cached_bounds.size() == 2)
+        {
+            lod_aabb = BoundingBox(cached_bounds[0], cached_bounds[1]);
+        }
+        else
+        {
+            geometry_processing::build_meshlets(vertices, indices, lod_meshlets,
+                lod_unique_vertices, lod_micro_indices, lod_aabb);
+            cached_bounds = {lod_aabb.GetMin(), lod_aabb.GetMax()};
+            if (use_cache) generated_cache::Save(cache_path, cache_hash.value,
+                lod_meshlets, lod_unique_vertices, lod_micro_indices, cached_bounds, indices);
+        }
 
         MeshLod lod;
         lod.vertex_count  = static_cast<uint32_t>(vertices.size());
@@ -640,7 +659,22 @@ namespace spartan
                 bool preserve_edges = m_flags & static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges);
                 // Disconnected branches/cards need component pruning to form useful distance LODs.
                 // Keep terrain borders and the original LOD 0 untouched.
-                geometry_processing::simplify(lod_indices, lod_vertices, target_index_count, preserve_uvs, preserve_edges, !preserve_edges);
+                // Reuse the exact simplification for repeated imports. Hash the
+                // actual input geometry, target and policy so asset edits and
+                // terrain-border protection cannot reuse an incompatible result.
+                generated_cache::Hash lod_hash;
+                lod_hash.Add(uint32_t(1)); // simplification policy/cache version
+                lod_hash.Add(lod_vertices);
+                lod_hash.Add(lod_indices);
+                lod_hash.Add(static_cast<uint64_t>(target_index_count));
+                lod_hash.Add(preserve_uvs);
+                lod_hash.Add(preserve_edges);
+                const auto lod_path = generated_cache::Path(World::GetResourceDirectory(), "lods", lod_hash.value);
+                if (!generated_cache::Load(lod_path, lod_hash.value, lod_vertices, lod_indices))
+                {
+                    geometry_processing::simplify(lod_indices, lod_vertices, target_index_count, preserve_uvs, preserve_edges, !preserve_edges);
+                    generated_cache::Save(lod_path, lod_hash.value, lod_vertices, lod_indices);
+                }
 
                 // stop unless this level is meaningfully cheaper than the one above it, a level that
                 // sheds a handful of triangles is a duplicate that still costs memory and a draw range
@@ -699,12 +733,8 @@ namespace spartan
             }
         }
 
-        // gpu bounds store global unique/micro offsets
-        vector<Sb_MeshletBounds> gpu_meshlets = meshlets;
-        for (Sb_MeshletBounds& bounds : gpu_meshlets)
-        {
-            offset_meshlet_unique_ranges(bounds, m_global_meshlet_vertex_offset, m_global_meshlet_micro_offset);
-        }
+        // Keep packed offsets mesh-local, including dynamic updates.
+        const vector<Sb_MeshletBounds>& gpu_meshlets = meshlets;
 
         GeometryBuffer::UpdateVertices(
             vertices.data(),
@@ -804,7 +834,6 @@ namespace spartan
             for (uint32_t i = 0; i < lod.meshlet_count; i++)
             {
                 Sb_MeshletBounds bounds = m_meshlets[lod.meshlet_offset + i];
-                offset_meshlet_unique_ranges(bounds, m_global_meshlet_vertex_offset, m_global_meshlet_micro_offset);
                 bounds.center_z_radius |= (0xFFFFu << 16);
                 gpu_meshlets[i] = bounds;
             }
@@ -964,12 +993,8 @@ namespace spartan
             );
         }
 
-        // patch mesh-local first_vertex / first_micro into global offsets for the uploaded bounds
+        // DrawData supplies 32-bit global bases; do not pack them into 25-bit mesh-local ranges.
         vector<Sb_MeshletBounds> gpu_meshlets = m_meshlets;
-        for (Sb_MeshletBounds& bounds : gpu_meshlets)
-        {
-            offset_meshlet_unique_ranges(bounds, m_global_meshlet_vertex_offset, m_global_meshlet_micro_offset);
-        }
 
         if (m_dynamic)
         {
@@ -1037,7 +1062,7 @@ namespace spartan
         return GeometryBuffer::GetIndexBuffer();
     }
 
-    void Mesh::BuildAccelerationStructure(bool allow_update)
+    void Mesh::BuildAccelerationStructure(uint32_t sub_mesh_index, bool allow_update)
     {
         SP_ASSERT(RHI_Device::IsSupportedRayTracing());
 
@@ -1068,20 +1093,22 @@ namespace spartan
             m_blas.resize(m_sub_meshes.size());
         }
 
-        // build one blas per sub-mesh
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_sub_meshes.size()); i++)
+        // Build only the requested submesh so the renderer can budget actual builds.
+        // A terrain mesh can contain thousands of tiles.
+        if (sub_mesh_index < m_sub_meshes.size())
         {
+            const uint32_t i = sub_mesh_index;
             // skip if already built
             if (m_blas[i])
             {
-                continue;
+                return;
             }
 
             // defensive, a sub-mesh with no lods means it was published before its first lod was filled in,
             // gating on m_ready_for_blas should make this unreachable but we keep the guard to avoid an out-of-range crash on regression
             if (m_sub_meshes[i].lods.empty())
             {
-                continue;
+                return;
             }
 
             const auto& lod = m_sub_meshes[i].lods[0]; // use lod 0 for blas
@@ -1091,7 +1118,7 @@ namespace spartan
             if (lod.vertex_count == 0 || lod.index_count == 0 || (lod.index_count % 3) != 0)
             {
                 SP_LOG_WARNING("Skipping degenerate sub-mesh blas: mesh=%s sub=%u verts=%u indices=%u", m_object_name.c_str(), i, lod.vertex_count, lod.index_count);
-                continue;
+                return;
             }
 
             // compute global offsets: mesh base offset + lod-relative offset
@@ -1118,26 +1145,6 @@ namespace spartan
         }
     }
 
-    RHI_AccelerationStructure* Mesh::GetBlas(uint32_t sub_mesh_index) const
-    {
-        if (sub_mesh_index >= m_blas.size())
-        {
-            return nullptr;
-        }
-
-        return m_blas[sub_mesh_index].get();
-    }
-
-    bool Mesh::HasBlas(uint32_t sub_mesh_index) const
-    {
-        if (sub_mesh_index >= m_blas.size())
-        {
-            return false;
-        }
-
-        return m_blas[sub_mesh_index] != nullptr;
-    }
-
     void Mesh::InvalidateBlas(uint32_t sub_mesh_index)
     {
         if (sub_mesh_index < m_blas.size())
@@ -1148,8 +1155,8 @@ namespace spartan
 
     void Mesh::InvalidateAllBlas()
     {
-        // called when the global geometry buffer is rebuilt, every blas references the old vertex/index buffer
-        // device address and must be rebuilt against the new buffers, the caller is responsible for ensuring the gpu is idle
+        // Geometry edits and world teardown invalidate the built geometry. Moving
+        // unchanged input buffers alone does not invalidate a completed BLAS.
         for (auto& blas : m_blas)
         {
             blas.reset();

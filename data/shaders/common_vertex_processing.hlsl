@@ -433,6 +433,32 @@ wind_sample evaluate_wind(
     return s;
 }
 
+#ifdef GRASS_INSTANCED
+// Adjacent vertex lanes often belong to the same blade. Elect one lane per
+// contiguous run, including partially active waves, to fetch its root wind.
+// Instance boundaries are explicit: neither vertex ordering nor wave size is assumed.
+wind_sample evaluate_grass_instance_wind(float3 root, float time_offset, uint instance_id)
+{
+    uint lane = WaveGetLaneIndex();
+    uint previous_lane = lane > 0u ? lane - 1u : lane;
+    uint4 active = WaveActiveBallot(true);
+    bool previous_active = (active[previous_lane / 32u] & (1u << (previous_lane % 32u))) != 0u;
+    uint previous_instance = WaveReadLaneAt(instance_id, previous_lane);
+    uint4 starts = WaveActiveBallot(lane == 0u || !previous_active || previous_instance != instance_id);
+    uint word = lane / 32u;
+    uint mask = starts[word] & (0xffffffffu >> (31u - lane % 32u));
+    while (mask == 0u && word > 0u) mask = starts[--word];
+    uint leader = word * 32u + firstbithigh(mask);
+    wind_sample sample = (wind_sample)0;
+    if (lane == leader) sample = evaluate_wind(root, time_offset);
+    sample.bend_dir_world = WaveReadLaneAt(sample.bend_dir_world, leader);
+    sample.bend_strength = WaveReadLaneAt(sample.bend_strength, leader);
+    sample.gust = WaveReadLaneAt(sample.gust, leader);
+    sample.micro = WaveReadLaneAt(sample.micro, leader);
+    return sample;
+}
+#endif
+
 // per-instance phase + natural frequency, derived from world-space base position
 // keeps blades from moving in lockstep, deterministic so motion vectors stay correct
 float2 wind_instance_phase_freq(float3 instance_pos)
@@ -625,10 +651,11 @@ struct vertex_processing
         // grass and flower wind
         if (surface.is_grass_blade() || surface.is_flower())
         {
-            wind_sample ws = evaluate_wind(
-                instance_pos,
-                time_offset
-            );
+#ifdef GRASS_INSTANCED
+            wind_sample ws = evaluate_grass_instance_wind(instance_pos, time_offset, instance_id);
+#else
+            wind_sample ws = evaluate_wind(instance_pos, time_offset);
+#endif
 
             // height fraction along the blade, base = 0, tip = 1
             float h          = saturate(vertex.uv_misc.z);
@@ -732,8 +759,13 @@ struct vertex_processing
                 MaterialParameters grass_material = GetMaterial();
                 float blade_reach = grass_material.local_height * length(transform[1].xyz)
                     + grass_material.local_width * length(transform[0].xyz);
-                bend_grass_around_body(grass_body_load(time_offset < 0.0f ? 1 : 0), instance_pos, blade_reach,
-                    position_world, vertex.normal, vertex.tangent);
+                float2 body_offset = instance_pos.xz - buffer_pass.values[3].yz;
+                float contact_radius = buffer_pass.values[3].w + blade_reach + 0.04f;
+                if (dot(body_offset, body_offset) <= contact_radius * contact_radius)
+                {
+                    bend_grass_around_body(grass_body_load(time_offset < 0.0f ? 1 : 0), instance_pos, blade_reach,
+                        position_world, vertex.normal, vertex.tangent);
+                }
             }
 #endif
         }

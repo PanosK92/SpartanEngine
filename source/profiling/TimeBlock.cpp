@@ -58,6 +58,7 @@ namespace spartan
         m_duration              = 0.0f;
         m_is_complete           = false;
         m_cmd_list              = cmd_list;
+        m_timestamp_sample.reset();
         m_timestamp_index_start = 0;
         m_timestamp_index_end   = 0;
         m_start_ms              = 0.0f;
@@ -74,6 +75,7 @@ namespace spartan
 
         if (type == TimeBlockType::Gpu)
         {
+            m_timestamp_sample = cmd_list->GetTimestampSample();
             m_timestamp_index_start = cmd_list->begin_timestamp();
         }
     }
@@ -106,6 +108,20 @@ namespace spartan
         m_is_complete = true;
     }
 
+    bool TimeBlock::TryResolveGpu()
+    {
+        if (!m_timestamp_sample) return true;
+        if (!m_timestamp_sample->ready && m_cmd_list)
+            m_cmd_list->ReadbackTimestampsForProfiler();
+        return m_timestamp_sample->ready;
+    }
+
+    uint64_t TimeBlock::GetTimestampRawTick(uint32_t index) const
+    {
+        return m_timestamp_sample && m_timestamp_sample->ready && index < m_timestamp_sample->ticks.size()
+            ? m_timestamp_sample->ticks[index] : 0;
+    }
+
     void TimeBlock::ResolveGpuTimestamps(uint64_t global_reference_tick, float timestamp_period, uint64_t end_tick_override /*= 0*/)
     {
         if (m_type != TimeBlockType::Gpu || !m_cmd_list)
@@ -113,8 +129,8 @@ namespace spartan
             return;
         }
 
-        uint64_t start_tick = m_cmd_list->GetTimestampRawTick(m_timestamp_index_start);
-        uint64_t end_tick   = end_tick_override != 0 ? end_tick_override : m_cmd_list->GetTimestampRawTick(m_timestamp_index_end);
+        uint64_t start_tick = GetTimestampRawTick(m_timestamp_index_start);
+        uint64_t end_tick   = end_tick_override != 0 ? end_tick_override : GetTimestampRawTick(m_timestamp_index_end);
         if (end_tick > start_tick)
         {
             uint64_t duration_ticks = end_tick - start_tick;
@@ -141,8 +157,8 @@ namespace spartan
             return;
         }
 
-        uint64_t start_tick = m_cmd_list->GetTimestampRawTick(m_timestamp_index_start);
-        uint64_t end_tick   = end_tick_override != 0 ? end_tick_override : m_cmd_list->GetTimestampRawTick(m_timestamp_index_end);
+        uint64_t start_tick = GetTimestampRawTick(m_timestamp_index_start);
+        uint64_t end_tick   = end_tick_override != 0 ? end_tick_override : GetTimestampRawTick(m_timestamp_index_end);
         if (end_tick > start_tick)
         {
             uint64_t duration_ticks = end_tick - start_tick;

@@ -3345,6 +3345,7 @@ namespace spartan
             json += ",\"fps\":" + std::to_string(Profiler::GetFps());
             json += ",\"frame_ms\":" + std::to_string(Profiler::GetFrameDurationMs());
             json += ",\"time_seconds\":" + std::to_string(Timer::GetTimeSec());
+            json += ",\"frame_number\":" + std::to_string(Renderer::GetFrameNumber());
             json += "}";
             return json;
         }

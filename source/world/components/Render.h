@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "Component.h"
+#include "../../rendering/Material.h"
 #include <vector>
 #include <limits>
 #include "../../math/Matrix.h"
@@ -99,7 +100,15 @@ namespace spartan
         const std::string& GetMeshName() const;
         void BuildAccelerationStructure();
         void RefitAccelerationStructure();
-        bool HasAccelerationStructure() const;
+        bool HasAccelerationStructure() const
+        {
+            if (!m_mesh)
+            {
+                return false;
+            }
+
+            return m_mesh->HasBlas(m_sub_mesh_index);
+        }
         void InvalidateAccelerationStructure();
         uint64_t GetAccelerationStructureDeviceAddress() const;
 
@@ -130,14 +139,78 @@ namespace spartan
         MaterialOverride& GetMaterialOverrideMutable()      { return m_material_override; }
         void ClearMaterialOverride()                        { m_material_override = MaterialOverride{}; }
         // resolves an override field, returning the material default when the override is unset
-        float ResolveUvTilingX() const;
-        float ResolveUvTilingY() const;
-        float ResolveUvOffsetX() const;
-        float ResolveUvOffsetY() const;
-        float ResolveUvRotation() const;
-        float ResolveUvInvertX() const;
-        float ResolveUvInvertY() const;
-        float ResolveUvWorldSpace() const;
+        float ResolveUvTilingX() const
+        {
+            if (MaterialOverride::is_set(m_material_override.uv_tiling_x))
+            {
+                return m_material_override.uv_tiling_x;
+            }
+
+            return m_material ? m_material->GetProperty(MaterialProperty::TextureTilingX) : 1.0f;
+        }
+        float ResolveUvTilingY() const
+        {
+            if (MaterialOverride::is_set(m_material_override.uv_tiling_y))
+            {
+                return m_material_override.uv_tiling_y;
+            }
+
+            return m_material ? m_material->GetProperty(MaterialProperty::TextureTilingY) : 1.0f;
+        }
+        float ResolveUvOffsetX() const
+        {
+            if (MaterialOverride::is_set(m_material_override.uv_offset_x))
+            {
+                return m_material_override.uv_offset_x;
+            }
+
+            return m_material ? m_material->GetProperty(MaterialProperty::TextureOffsetX) : 0.0f;
+        }
+        float ResolveUvOffsetY() const
+        {
+            if (MaterialOverride::is_set(m_material_override.uv_offset_y))
+            {
+                return m_material_override.uv_offset_y;
+            }
+
+            return m_material ? m_material->GetProperty(MaterialProperty::TextureOffsetY) : 0.0f;
+        }
+        float ResolveUvRotation() const
+        {
+            if (MaterialOverride::is_set(m_material_override.uv_rotation))
+            {
+                return m_material_override.uv_rotation;
+            }
+
+            return m_material ? m_material->GetProperty(MaterialProperty::TextureRotation) : 0.0f;
+        }
+        float ResolveUvInvertX() const
+        {
+            if (MaterialOverride::is_set(m_material_override.uv_invert_x))
+            {
+                return m_material_override.uv_invert_x;
+            }
+
+            return m_material ? m_material->GetProperty(MaterialProperty::TextureInvertX) : 0.0f;
+        }
+        float ResolveUvInvertY() const
+        {
+            if (MaterialOverride::is_set(m_material_override.uv_invert_y))
+            {
+                return m_material_override.uv_invert_y;
+            }
+
+            return m_material ? m_material->GetProperty(MaterialProperty::TextureInvertY) : 0.0f;
+        }
+        float ResolveUvWorldSpace() const
+        {
+            if (MaterialOverride::is_set(m_material_override.uv_world_space))
+            {
+                return m_material_override.uv_world_space;
+            }
+
+            return m_material ? m_material->GetProperty(MaterialProperty::WorldSpaceUv) : 0.0f;
+        }
 
         // instancing
         bool HasInstancing() const                  { return !m_instances.empty(); }
@@ -218,6 +291,8 @@ namespace spartan
         bool m_allow_blas_update = false;
 
         // misc
+        uint64_t m_bounds_transform_revision = uint64_t(-1);
+        bool m_bounds_entity_active = false;
         math::Matrix m_transform_previous = math::Matrix::Identity;
         uint32_t m_flags                  = RenderFlags::CastsShadows;
 

@@ -63,16 +63,8 @@ namespace spartan
         return sol::nil;
     }
 
-    template <typename T>
-    ComponentType Component::TypeToEnum() { return ComponentType::Max; }
-
-    template<typename T>
-    inline constexpr void validate_component_type() { static_assert(is_base_of<Component, T>::value, "Provided type does not implement IComponent"); }
-
-    #define REGISTER_COMPONENT(T, enumT) template<> ComponentType Component::TypeToEnum<T>() { validate_component_type<T>(); return enumT; }
-
     // auto-generated from SP_COMPONENT_LIST - no manual registration needed
-    #define X(type, str) REGISTER_COMPONENT(type, ComponentType::type)
+    #define X(type, str) static_assert(is_base_of<Component, type>::value, "Provided type does not implement IComponent");
     SP_COMPONENT_LIST
     #undef X
 }

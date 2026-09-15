@@ -340,7 +340,7 @@ namespace spartan
         }
     }
 
-    bool RHI_Texture::RHI_UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data)
+    bool RHI_Texture::RHI_UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data, bool defer_to_frame)
     {
         // same staging path as a fresh upload, only the copy region is a sub-rectangle of mip 0
         const uint64_t size = static_cast<uint64_t>(width) * height * GetBytesPerPixel();
@@ -349,11 +349,15 @@ namespace spartan
             return false;
         }
 
-        staging_budget::acquire(size);
+        const bool frame_upload = defer_to_frame && RHI_Device::IsRecording() &&
+            RHI_Device::GetBoundQueueType() == RHI_Queue_Type::Graphics;
+        // Frame staging retires with its command list, like UpdateBuffer. The
+        // bulk-upload budget applies to synchronous/background texture copies.
+        if (!frame_upload) staging_budget::acquire(size);
         void* staging_buffer = RHI_Device::StagingBufferAcquire(size);
         if (!staging_buffer)
         {
-            staging_budget::release(size);
+            if (!frame_upload) staging_budget::release(size);
             return false;
         }
 
@@ -362,7 +366,7 @@ namespace spartan
         if (!mapped_data)
         {
             RHI_Device::StagingBufferRelease(staging_buffer);
-            staging_budget::release(size);
+            if (!frame_upload) staging_budget::release(size);
             return false;
         }
         memcpy(mapped_data, data, static_cast<size_t>(size));
@@ -380,7 +384,9 @@ namespace spartan
         region.imageExtent                     = { width, height, 1 };
 
         bool copied = false;
-        if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
+        RHI_CommandList* cmd_list = frame_upload ? RHI_Device::Cmd() :
+            RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics);
+        if (cmd_list)
         {
             VkCommandBuffer vk_cmd = static_cast<VkCommandBuffer>(cmd_list->GetRhiResource());
 
@@ -391,7 +397,7 @@ namespace spartan
             VkImageMemoryBarrier2 barrier{};
             barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
             barrier.srcStageMask                    = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-            barrier.srcAccessMask                   = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+            barrier.srcAccessMask                   = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
             barrier.dstStageMask                    = VK_PIPELINE_STAGE_2_COPY_BIT;
             barrier.dstAccessMask                   = VK_ACCESS_2_TRANSFER_WRITE_BIT;
             barrier.oldLayout                       = vulkan_image_layout[static_cast<uint8_t>(RHI_Image_Layout::General)];
@@ -426,12 +432,20 @@ namespace spartan
             barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
             vkCmdPipelineBarrier2(vk_cmd, &dependency);
 
-            RHI_CommandList::ImmediateExecutionEnd(cmd_list);
+            if (frame_upload)
+            {
+                cmd_list->RetainStagingBuffer(staging_buffer);
+                staging_buffer = nullptr;
+            }
+            else
+            {
+                RHI_CommandList::ImmediateExecutionEnd(cmd_list);
+            }
             copied = true;
         }
 
-        RHI_Device::StagingBufferRelease(staging_buffer);
-        staging_budget::release(size);
+        if (staging_buffer) RHI_Device::StagingBufferRelease(staging_buffer);
+        if (!frame_upload) staging_budget::release(size);
         return copied;
     }
 
@@ -591,64 +605,4 @@ namespace spartan
         m_rhi_resource = nullptr;
     }
 
-    void RHI_Texture::DestroyResourceImmediate()
-    {
-        // synchronous destruction must also invalidate cached descriptor sets so
-        // future dispatches don't bind a set that still holds these dead handles
-        RHI_Device::DescriptorSetInvalidateReferencingResource(this);
-
-        if (m_rhi_srv)
-        {
-            vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(m_rhi_srv), nullptr);
-            m_rhi_srv = nullptr;
-        }
-
-        for (uint32_t i = 0; i < m_mip_count; i++)
-        {
-            if (m_rhi_srv_mips[i])
-            {
-                vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(m_rhi_srv_mips[i]), nullptr);
-                m_rhi_srv_mips[i] = nullptr;
-            }
-        }
-
-        for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
-        {
-            if (m_rhi_srv_layers[i])
-            {
-                vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(m_rhi_srv_layers[i]), nullptr);
-                m_rhi_srv_layers[i] = nullptr;
-            }
-
-            if (m_rhi_dsv[i])
-            {
-                vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(m_rhi_dsv[i]), nullptr);
-                m_rhi_dsv[i] = nullptr;
-            }
-
-            if (m_rhi_rtv[i])
-            {
-                vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(m_rhi_rtv[i]), nullptr);
-                m_rhi_rtv[i] = nullptr;
-            }
-        }
-
-        if (m_rhi_rtv_multiview)
-        {
-            vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(m_rhi_rtv_multiview), nullptr);
-            m_rhi_rtv_multiview = nullptr;
-        }
-
-        if (m_rhi_dsv_multiview)
-        {
-            vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(m_rhi_dsv_multiview), nullptr);
-            m_rhi_dsv_multiview = nullptr;
-        }
-
-        ClearLayouts();
-        if (m_rhi_resource)
-        {
-            RHI_Device::MemoryTextureDestroy(m_rhi_resource);
-        }
-    }
 }

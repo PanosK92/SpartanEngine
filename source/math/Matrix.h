@@ -231,33 +231,20 @@ namespace spartan::math
         [[nodiscard]] Vector3 GetScale() const
         {
         #if defined(__AVX2__)
-            const float* elements = Data();
-        
-            // calculate signs (scalar)
-            float xs = (sign(m00 * m01 * m02 * m03) < 0) ? -1.0f : 1.0f;
-            float ys = (sign(m10 * m11 * m12 * m13) < 0) ? -1.0f : 1.0f;
-            float zs = (sign(m20 * m21 * m22 * m23) < 0) ? -1.0f : 1.0f;
-        
-            // define gather indices for rows (in float offsets) - only first 3 elements matter
-            __m128i idx0 = _mm_set_epi32(0, 8, 4, 0);   // m00, m01, m02 (last ignored)
-            __m128i idx1 = _mm_set_epi32(1, 9, 5, 1);   // m10, m11, m12 (last ignored)
-            __m128i idx2 = _mm_set_epi32(2, 10, 6, 2);  // m20, m21, m22 (last ignored)
-        
-            // gather rows using avx2 gather
-            __m128 row0 = _mm_i32gather_ps(elements, idx0, 4);
-            __m128 row1 = _mm_i32gather_ps(elements, idx1, 4);
-            __m128 row2 = _mm_i32gather_ps(elements, idx2, 4);
-        
-            // use dot product to sum squares of first 3 elements (mask 0x71 = sum xyz, result in lowest)
-            __m128 len_sq0 = _mm_dp_ps(row0, row0, 0x71);
-            __m128 len_sq1 = _mm_dp_ps(row1, row1, 0x71);
-            __m128 len_sq2 = _mm_dp_ps(row2, row2, 0x71);
-        
-            // extract sums and compute sqrt with signs
+            // Columns are contiguous. Sum their squares lane-wise to obtain
+            // all three row lengths without gathers or horizontal dot products.
+            const __m128 c0 = _mm_loadu_ps(Data());
+            const __m128 c1 = _mm_loadu_ps(Data() + 4);
+            const __m128 c2 = _mm_loadu_ps(Data() + 8);
+            const __m128 c3 = _mm_loadu_ps(Data() + 12);
+            const __m128 sums = _mm_add_ps(_mm_add_ps(_mm_mul_ps(c0, c0), _mm_mul_ps(c1, c1)), _mm_mul_ps(c2, c2));
+            const __m128 products = _mm_mul_ps(_mm_mul_ps(_mm_mul_ps(c0, c1), c2), c3);
+            const __m128 signs = _mm_and_ps(_mm_cmplt_ps(products, _mm_setzero_ps()), _mm_set1_ps(-0.0f));
+            const __m128 scales = _mm_xor_ps(_mm_sqrt_ps(sums), signs);
             return Vector3(
-                xs * sqrt(_mm_cvtss_f32(len_sq0)),
-                ys * sqrt(_mm_cvtss_f32(len_sq1)),
-                zs * sqrt(_mm_cvtss_f32(len_sq2))
+                _mm_cvtss_f32(scales),
+                _mm_cvtss_f32(_mm_shuffle_ps(scales, scales, _MM_SHUFFLE(1, 1, 1, 1))),
+                _mm_cvtss_f32(_mm_shuffle_ps(scales, scales, _MM_SHUFFLE(2, 2, 2, 2)))
             );
         #else
             const int xs = (sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;

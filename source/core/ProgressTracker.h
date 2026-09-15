@@ -52,6 +52,8 @@ namespace spartan
         bool IsProgressing() const;
 
     private:
+        void UpdateProgressing(); // caller holds the tracker mutex
+        std::atomic<bool> m_progressing = false;
         std::atomic<uint32_t> m_jobs_done = 0;
         std::atomic<uint32_t> m_job_count = 0;
         std::atomic<float> m_fraction     = 1.0f; // for continuous mode

@@ -23,11 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include <chrono>
+#include <memory>
 #include "../rhi/RHI_Definitions.h"
 //=================================
 
 namespace spartan
 {
+    struct RHI_TimestampSample;
+
     enum class TimeBlockType
     {
         Cpu,
@@ -53,6 +56,8 @@ namespace spartan
         );
         void End();
         void ResolveGpuTimestamps(uint64_t global_reference_tick, float timestamp_period, uint64_t end_tick_override = 0);
+        bool TryResolveGpu();
+        uint64_t GetTimestampRawTick(uint32_t index) const;
         void ResolveGpuDuration(uint64_t end_tick_override = 0);
 
         TimeBlockType GetType()        const { return m_type; }
@@ -91,6 +96,7 @@ namespace spartan
 
         // dependencies
         RHI_CommandList* m_cmd_list = nullptr;
+        std::shared_ptr<RHI_TimestampSample> m_timestamp_sample;
 
         // cpu timing
         std::chrono::high_resolution_clock::time_point m_start;

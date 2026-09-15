@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../rendering/Material.h"
 #include "../../rendering/GeometryBuffer.h"
 #include "../../geometry/Mesh.h"
+#include "../../geometry/GeneratedCache.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 #include "../io/pugixml.hpp"
@@ -536,86 +537,6 @@ namespace spartan
         m_mesh->GetGeometry(m_sub_mesh_index, indices, vertices);
     }
 
-    float Render::ResolveUvTilingX() const
-    {
-        if (MaterialOverride::is_set(m_material_override.uv_tiling_x))
-        {
-            return m_material_override.uv_tiling_x;
-        }
-
-        return m_material ? m_material->GetProperty(MaterialProperty::TextureTilingX) : 1.0f;
-    }
-
-    float Render::ResolveUvTilingY() const
-    {
-        if (MaterialOverride::is_set(m_material_override.uv_tiling_y))
-        {
-            return m_material_override.uv_tiling_y;
-        }
-
-        return m_material ? m_material->GetProperty(MaterialProperty::TextureTilingY) : 1.0f;
-    }
-
-    float Render::ResolveUvOffsetX() const
-    {
-        if (MaterialOverride::is_set(m_material_override.uv_offset_x))
-        {
-            return m_material_override.uv_offset_x;
-        }
-
-        return m_material ? m_material->GetProperty(MaterialProperty::TextureOffsetX) : 0.0f;
-    }
-
-    float Render::ResolveUvOffsetY() const
-    {
-        if (MaterialOverride::is_set(m_material_override.uv_offset_y))
-        {
-            return m_material_override.uv_offset_y;
-        }
-
-        return m_material ? m_material->GetProperty(MaterialProperty::TextureOffsetY) : 0.0f;
-    }
-
-    float Render::ResolveUvRotation() const
-    {
-        if (MaterialOverride::is_set(m_material_override.uv_rotation))
-        {
-            return m_material_override.uv_rotation;
-        }
-
-        return m_material ? m_material->GetProperty(MaterialProperty::TextureRotation) : 0.0f;
-    }
-
-    float Render::ResolveUvInvertX() const
-    {
-        if (MaterialOverride::is_set(m_material_override.uv_invert_x))
-        {
-            return m_material_override.uv_invert_x;
-        }
-
-        return m_material ? m_material->GetProperty(MaterialProperty::TextureInvertX) : 0.0f;
-    }
-
-    float Render::ResolveUvInvertY() const
-    {
-        if (MaterialOverride::is_set(m_material_override.uv_invert_y))
-        {
-            return m_material_override.uv_invert_y;
-        }
-
-        return m_material ? m_material->GetProperty(MaterialProperty::TextureInvertY) : 0.0f;
-    }
-
-    float Render::ResolveUvWorldSpace() const
-    {
-        if (MaterialOverride::is_set(m_material_override.uv_world_space))
-        {
-            return m_material_override.uv_world_space;
-        }
-
-        return m_material ? m_material->GetProperty(MaterialProperty::WorldSpaceUv) : 0.0f;
-    }
-
     void Render::SetMaterial(const shared_ptr<Material>& material)
     {
         SP_ASSERT(material != nullptr);
@@ -784,7 +705,7 @@ namespace spartan
             return;
         }
 
-        m_mesh->BuildAccelerationStructure(m_allow_blas_update);
+        m_mesh->BuildAccelerationStructure(m_sub_mesh_index, m_allow_blas_update);
     }
 
     void Render::RefitAccelerationStructure()
@@ -795,16 +716,6 @@ namespace spartan
         }
 
         m_mesh->RefitBlas(m_sub_mesh_index);
-    }
-
-    bool Render::HasAccelerationStructure() const
-    {
-        if (!m_mesh)
-        {
-            return false;
-        }
-
-        return m_mesh->HasBlas(m_sub_mesh_index);
     }
 
     void Render::InvalidateAccelerationStructure()
@@ -968,7 +879,15 @@ namespace spartan
             return;
         }
 
-        const Matrix transform = (GetEntity() && GetEntity()->GetActive()) ? GetEntity()->GetMatrix() : Matrix::Identity;
+        Entity* entity = GetEntity();
+        const bool active = entity && entity->GetActive();
+        const uint64_t revision = entity ? entity->GetTransformRevision() : 0;
+        // Static bounds need no matrix copy, validation or comparison every frame.
+        // Parent movement increments descendant revisions; active changes still
+        // switch between the entity matrix and the historical identity behavior.
+        if (!m_bounding_box_dirty && revision == m_bounds_transform_revision && active == m_bounds_entity_active)
+            return;
+        const Matrix transform = active ? entity->GetMatrix() : Matrix::Identity;
 
         // refuse to fold a non finite transform into the world bbox, doing so would
         // poison m_bounding_box with NaN and trip the frustum culler assert downstream
@@ -978,6 +897,8 @@ namespace spartan
             return;
         }
 
+        m_bounds_transform_revision = revision;
+        m_bounds_entity_active = active;
         if (m_bounding_box_dirty || m_transform_previous != transform)
         {
             if (m_instances.empty()) // non-instanced
@@ -986,6 +907,33 @@ namespace spartan
             }
             else // instanced
             {
+                // Cache initial spatial preparation, not live transform changes.
+                // Packed transforms, mesh bounds and the parent matrix fully define
+                // these bounds, wind envelopes and Morton groups.
+                const bool cache_bounds = m_instance_bounds.empty() && m_instances.size() >= 256;
+                generated_cache::Hash bounds_hash;
+                std::filesystem::path bounds_path;
+                vector<Vector3> cached_box;
+                if (cache_bounds)
+                {
+                    bounds_hash.Add(uint32_t{1}); // bounds/wind/grouping algorithm version
+                    bounds_hash.Add(m_instances);
+                    bounds_hash.Add(m_bounding_box_mesh.GetMin());
+                    bounds_hash.Add(m_bounding_box_mesh.GetMax());
+                    bounds_hash.Add(transform);
+                    bounds_path = generated_cache::Path(World::GetResourceDirectory(), "instance_bounds", bounds_hash.value);
+                }
+                const bool cached = cache_bounds && generated_cache::Load(bounds_path, bounds_hash.value,
+                    cached_box, m_instance_bounds, m_instance_wind_padding, m_instance_bounds_order, m_instance_bounds_groups);
+                if (cached && cached_box.size() == 2 && m_instance_bounds.size() == m_instances.size() &&
+                    m_instance_wind_padding.size() == m_instances.size() && m_instance_bounds_order.size() == m_instances.size() &&
+                    m_instance_bounds_groups.size() == (m_instances.size() + 31) / 32)
+                {
+                    m_bounding_box = BoundingBox(cached_box[0], cached_box[1]);
+                    m_transform_previous = transform;
+                    m_bounding_box_dirty = false;
+                    return;
+                }
                 m_bounding_box = BoundingBox(Vector3::Infinity, Vector3::InfinityNeg);
                 m_instance_bounds.resize(m_instances.size());
                 m_instance_wind_padding.resize(m_instances.size());
@@ -1039,6 +987,12 @@ namespace spartan
                         group_bounds.Merge(BoundingBox(bounds.GetMin() - pad, bounds.GetMax() + pad));
                     }
                     m_instance_bounds_groups.push_back({group_bounds, begin, count});
+                }
+                if (cache_bounds)
+                {
+                    cached_box = {m_bounding_box.GetMin(), m_bounding_box.GetMax()};
+                    generated_cache::Save(bounds_path, bounds_hash.value, cached_box, m_instance_bounds,
+                        m_instance_wind_padding, m_instance_bounds_order, m_instance_bounds_groups);
                 }
             }
             m_transform_previous = transform;
@@ -1102,14 +1056,16 @@ namespace spartan
         float tan_half_fov      = tan(camera->GetFovVerticalRad() * 0.5f);
         float screen_fraction   = bounding_diameter / (2.0f * distance * tan_half_fov);
 
-        // screen height coverage each lod requires, calibrated so the transitions stay imperceptible
+        // Keep full detail for close objects. Five-percent coverage kept large
+        // trees at LOD 0 hundreds of metres away, overwhelming the geometry passes.
+        // Keep these coverage thresholds in sync with sphere_lod_index.
         static constexpr array<float, 5> screen_thresholds =
         {
-            0.05f,   // lod0: object covers >= 5% of screen height
-            0.025f,  // lod1: object covers >= 2.5% of screen height
-            0.012f,  // lod2: object covers >= 1.2% of screen height
-            0.006f,  // lod3: object covers >= 0.6% of screen height
-            0.003f   // lod4: object covers >= 0.3% of screen height
+            0.20f,
+            0.10f,
+            0.048f,
+            0.024f,
+            0.012f
         };
 
         // hysteresis against lod popping, a change requires passing the threshold by 10 percent in either direction

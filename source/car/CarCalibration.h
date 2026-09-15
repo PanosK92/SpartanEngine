@@ -31,10 +31,10 @@ namespace car
             if (value < x[i]) return y[i-1] + (y[i] - y[i-1]) * (value - x[i-1]) / (x[i] - x[i-1]);
         return y[count-1];
     }
-    inline float hot_tire_pressure(const car_preset& s, float core, float damage)
+    inline float hot_tire_pressure(const car_preset& s, float core, float damage, float ambient_pressure_bar = 1.01325f)
     {
         // Gauge bar -> absolute bar -> Kelvin gas law -> gauge bar.
-        float pressure = (s.tire_pressure + 1.01325f) * (core + 273.15f) / (s.tire_pressure_reference_temp + 273.15f) - 1.01325f;
+        float pressure = (s.tire_pressure + 1.01325f) * (core + 273.15f) / (s.tire_pressure_reference_temp + 273.15f) - ambient_pressure_bar;
         return PxMax(pressure * (1.0f - PxClamp(damage, 0.0f, 1.0f) * 0.9f), 0.05f);
     }
     inline float water_grip(const car_preset& s, float speed, float pressure, float water_depth)
