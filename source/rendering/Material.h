@@ -179,6 +179,7 @@ namespace spartan
         // iresource
         void LoadFromFile(const std::string& file_path) override;
         void SaveToFile(const std::string& file_path) override;
+        std::function<void()> CreateSaveTask(const std::string& file_path) override;
 
         // textures
         void SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot = 0, const bool auto_adjust_multiplier = true);

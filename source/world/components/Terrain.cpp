@@ -6358,6 +6358,11 @@ namespace spartan
 
     void Terrain::SaveSculptLayer(const string& directory) const
     {
+        CreateSculptSaveTask(directory)();
+    }
+
+    function<void()> Terrain::CreateSculptSaveTask(const string& directory) const
+    {
         string path = directory;
         replace(path.begin(), path.end(), '\\', '/');
         if (!path.empty() && path.back() != '/')
@@ -6366,23 +6371,25 @@ namespace spartan
         }
         path += terrain_sculpt_file_name;
 
+        return [path, m_sculpt = m_sculpt]
+        {
         // an empty layer removes the file so a cleared sculpt does not come back on the next load
         if (m_sculpt.IsEmpty())
         {
             if (FileSystem::Exists(path))
             {
-                FileSystem::Delete(path);
+                if (!FileSystem::Delete(path)) throw runtime_error("Failed to clear sculpt: " + path);
             }
             return;
         }
 
         if (!m_sculpt.SaveToFile(path))
         {
-            SP_LOG_ERROR("failed to save sculpt layer: %s", path.c_str());
-            return;
+            throw runtime_error("Failed to save sculpt: " + path);
         }
 
         SP_LOG_INFO("saved sculpt layer: %zu tiles, %.1f kb", m_sculpt.GetTileCount(), static_cast<float>(m_sculpt.GetByteCount()) / 1024.0f);
+        };
     }
 
     void Terrain::RefreshSplinePropCarves()

@@ -93,6 +93,7 @@ namespace spartan
         string file_path;
         string world_name; // cached to avoid per-frame allocation
         string world_description;
+        mutex resource_cleanup_mutex;
         vector<string> last_resource_cleanup;
         vector<string> last_resource_cleanup_failures;
         // mcp ai blockout output (project/mcp/blockout), empty means none registered
@@ -2056,12 +2057,14 @@ namespace spartan
 
     const vector<string>& World::GetLastResourceCleanup()
     {
+        lock_guard<mutex> lock(resource_cleanup_mutex);
         return last_resource_cleanup;
     }
 
-    const vector<string>&
+    vector<string>
         World::GetLastResourceCleanupFailures()
     {
+        lock_guard<mutex> lock(resource_cleanup_mutex);
         return last_resource_cleanup_failures;
     }
 
@@ -2106,7 +2109,7 @@ namespace spartan
             return false;
         }
 
-        // snapshot live world state on the caller, only the xml write runs on a worker
+        // Capture live state on the caller; resource writes, XML formatting and cleanup run on a worker.
         try
         {
             if (SaveToFileInternal(file_path, true))
@@ -2131,7 +2134,7 @@ namespace spartan
             WorldIoState::Saving;
     }
 
-    bool World::SaveToFileInternal(string file_path, bool defer_xml_write)
+    bool World::SaveToFileInternal(string file_path, bool asynchronous)
     {
         if (file_path.empty())
         {
@@ -2147,10 +2150,16 @@ namespace spartan
         // start timing
         const Stopwatch timer;
 
-        // serialize the resources before saving the world (XML), as it references them
+        vector<function<void()>> writes;
+        function<void()> cleanup;
+
+        // Resolve identities and capture live data on the owner thread. Disk work
+        // below only consumes owned snapshots and can safely outlive this frame.
         {
             string directory = world_file_path_to_resource_directory(file_path);
-            FileSystem::CreateDirectory_(directory);
+            writes.push_back([directory] {
+                filesystem::create_directories(directory);
+            });
 
             // terrain sculpt layers are world data written by the component, not resources, they
             // go next to the world so a regenerate on load finds them
@@ -2165,7 +2174,7 @@ namespace spartan
 
                     if (Terrain* terrain = entity->GetComponent<Terrain>())
                     {
-                        terrain->SaveSculptLayer(directory);
+                        writes.push_back(terrain->CreateSculptSaveTask(directory));
                     }
                 }
             }
@@ -2174,7 +2183,7 @@ namespace spartan
                 World::GetGeneratedResourceDirectory();
             const string library_directory =
                 World::GetLibraryResourceDirectory();
-            auto is_mcp_owned = [&](const string& path) -> bool
+            auto is_mcp_owned = [generated_directory, library_directory](const string& path) -> bool
             {
                 if (path.empty())
                 {
@@ -2412,9 +2421,12 @@ namespace spartan
                 {
                     continue;
                 }
-                pending.resource->SaveToFile(pending.target_path);
+                if (auto write = pending.resource->CreateSaveTask(pending.target_path))
+                    writes.push_back(move(write));
             }
 
+            cleanup = [directory, used_file_names = move(used_file_names), to_file_key, is_mcp_owned, is_engine_cache]() mutable
+            {
             // prefabs on disk reference meshes and materials that no live entity owns,
             // without protecting them a save turns every saved prefab into dangling references
             {
@@ -2496,11 +2508,13 @@ namespace spartan
                         "Failed to scan prefabs for referenced resources: %s",
                         e.what()
                     );
+                    return; // Never prune when reference discovery was incomplete.
                 }
             }
 
             // prune files that no longer belong to this save, loading picks up every file in this directory
             // so stale duplicates from older saves would otherwise come back and shadow the right resources
+            lock_guard<mutex> lock(resource_cleanup_mutex);
             last_resource_cleanup.clear();
             last_resource_cleanup_failures.clear();
             for (const string& existing_file : FileSystem::GetFilesInDirectory(directory))
@@ -2549,10 +2563,12 @@ namespace spartan
                     last_resource_cleanup[index].c_str()
                 );
             }
+            };
         }
 
         // create document
-        pugi::xml_document doc;
+        auto document = make_shared<pugi::xml_document>();
+        auto& doc = *document;
         pugi::xml_node world_node = doc.append_child("World");
         world_node.append_attribute("name")        = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path).c_str();
         world_node.append_attribute("description") = world_description.c_str();
@@ -2622,51 +2638,39 @@ namespace spartan
             ProgressTracker::GetProgress(ProgressType::World).Complete();
         }
 
-        if (defer_xml_write)
+        const float snapshot_ms = timer.GetElapsedTimeMs();
+        auto write_snapshot = [file_path, document, writes = move(writes), cleanup = move(cleanup), snapshot_ms]() mutable
         {
-            // snapshot is complete, only the file write leaves the main thread
-            ostringstream xml_stream;
-            doc.save(xml_stream, " ", pugi::format_indent);
-            string xml_content = xml_stream.str();
-            const float elapsed_ms = timer.GetElapsedTimeMs();
+            const Stopwatch write_timer;
+            for (auto& write : writes) write();
 
-            ThreadPool::AddTask(
-                [file_path = move(file_path), xml_content = move(xml_content), elapsed_ms]()
-                {
-                    SaveStateReset reset;
+            // Commit only a fully written document. A failed write must leave the
+            // previous world intact, and cleanup must wait until that commit.
+            const string temporary_path = file_path + ".tmp";
+            if (!document->save_file(temporary_path.c_str(), " ", pugi::format_indent))
+                throw runtime_error("Failed to write world: " + temporary_path);
+#ifdef _WIN32
+            if (!MoveFileExW(filesystem::path(temporary_path).c_str(), filesystem::path(file_path).c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+                throw runtime_error("Failed to commit world: " + file_path + " (Windows error " + to_string(GetLastError()) + ")");
+#else
+            filesystem::rename(temporary_path, file_path);
+#endif
+            cleanup();
+            SP_LOG_INFO("World '%s' saved: snapshot %.2f ms, background work %.2f ms", file_path.c_str(), snapshot_ms, write_timer.GetElapsedTimeMs());
+        };
 
-                    ofstream out(file_path, ios::binary | ios::trunc);
-                    if (!out)
-                    {
-                        SP_LOG_ERROR("Failed to save XML file.");
-                        return;
-                    }
-
-                    out.write(xml_content.data(), static_cast<streamsize>(xml_content.size()));
-                    if (!out)
-                    {
-                        SP_LOG_ERROR("Failed to save XML file.");
-                        return;
-                    }
-
-                    SP_LOG_INFO("World \"%s\" has been saved. Duration %.2f ms", file_path.c_str(), elapsed_ms);
-                }
-            );
-
-            return true;
-        }
-
-        // save to file
-        bool saved = doc.save_file(file_path.c_str(), " ", pugi::format_indent);
-        if (!saved)
+        if (asynchronous)
         {
-            SP_LOG_ERROR("Failed to save XML file.");
-            return false;
+            ThreadPool::AddTask([write_snapshot = move(write_snapshot)]() mutable {
+                SaveStateReset reset;
+                try { write_snapshot(); }
+                catch (const exception& error) { SP_LOG_ERROR("World save failed: %s", error.what()); }
+            });
         }
-
-        // log
-        SP_LOG_INFO("World \"%s\" has been saved. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
-
+        else
+        {
+            write_snapshot();
+        }
         return true;
     }
 

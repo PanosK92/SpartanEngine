@@ -1200,17 +1200,23 @@ namespace spartan
     
     void Material::SaveToFile(const string& file_path)
     {
+        if (auto save = CreateSaveTask(file_path)) save();
+    }
+
+    function<void()> Material::CreateSaveTask(const string& file_path)
+    {
         // skip when called without a resolved path, runtime clones must not dump xml
         if (file_path.empty() || !IsPersistent())
         {
-            return;
+            return {};
         }
 
         // serialize concurrent saves of the same path, the tmp file and rename must not race
-        lock_guard<mutex> file_lock(save_mutex_for(file_path));
+        lock_guard<recursive_mutex> snapshot_lock(m_mutex);
 
         SetResourceFilePath(file_path);
-        pugi::xml_document doc;
+        auto document = make_shared<pugi::xml_document>();
+        auto& doc = *document;
         pugi::xml_node material_node = doc.append_child("Material");
 
         // save properties
@@ -1231,7 +1237,7 @@ namespace spartan
             {
                 uint32_t index       = type * slots_per_texture + slot;
                 RHI_Texture* texture = m_textures[index];
-                if (is_packed && texture && !FileSystem::Exists(texture->GetResourceFilePath()))
+                if (is_packed && texture && !texture->CanSaveToFile() && !FileSystem::Exists(texture->GetResourceFilePath()))
                 {
                     texture = nullptr;
                 }
@@ -1245,12 +1251,16 @@ namespace spartan
             }
         }
 
+        return [file_path, document]
+        {
+        lock_guard<mutex> file_lock(save_mutex_for(file_path));
+        auto& doc = *document;
         // atomic write so a reader on another thread never observes a truncated file
         const string tmp_path = file_path + ".tmp";
         if (!doc.save_file(tmp_path.c_str()))
         {
             SP_LOG_ERROR("Failed to write %s", tmp_path.c_str());
-            return;
+            throw runtime_error("Failed to write material: " + file_path);
         }
 
         std::error_code ec;
@@ -1259,12 +1269,14 @@ namespace spartan
         {
             // fall back to copy + remove for cross volume cases
             std::filesystem::copy_file(tmp_path, file_path, std::filesystem::copy_options::overwrite_existing, ec);
+            if (ec) throw runtime_error("Failed to commit material: " + file_path + ": " + ec.message());
             std::filesystem::remove(tmp_path, ec);
             if (ec)
             {
                 SP_LOG_ERROR("Failed to commit %s, %s", file_path.c_str(), ec.message().c_str());
             }
         }
+        };
     }
 
     void Material::SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot, const bool auto_adjust_multiplier)

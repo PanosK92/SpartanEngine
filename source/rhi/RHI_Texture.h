@@ -89,6 +89,7 @@ namespace spartan
 
         // iresource
         void SaveToFile(const std::string& file_path) override;
+        std::function<void()> CreateSaveTask(const std::string& file_path) override;
         void LoadFromFile(const std::string& file_path) override;
         bool CanSaveToFile() const;
 

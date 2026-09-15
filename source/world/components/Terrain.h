@@ -278,6 +278,7 @@ namespace spartan
         void LoadEditorState(pugi::xml_node& node, const TerrainSculptLayer* sculpt = nullptr);
         std::shared_ptr<const TerrainSculptLayer> GetSculptSnapshot() const;
         void SaveSculptLayer(const std::string& directory) const;
+        std::function<void()> CreateSculptSaveTask(const std::string& directory) const;
         // tile_N child -> 0-based index, or -1
         static int ParseTileIndex(Entity* entity);
         uint32_t GetTileCountAxis() const { return m_tile_count; }

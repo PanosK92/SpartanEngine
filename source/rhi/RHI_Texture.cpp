@@ -624,83 +624,93 @@ namespace spartan
         return has_data && compressed;
     }
 
-    void spartan::RHI_Texture::SaveToFile(const string& file_path)
+    void RHI_Texture::SaveToFile(const string& file_path)
     {
-        // require cpu bytes
-        if (m_slices.empty() || m_slices[0].mips.empty())
+        if (!CanSaveToFile()) return;
+        CreateSaveTask(file_path)();
+        SetResourceFilePath(file_path);
+    }
+
+    function<void()> RHI_Texture::CreateSaveTask(const string& file_path)
+    {
+        return [file_path, m_slices = m_slices, m_type = m_type, m_format = m_format, m_width = m_width, m_height = m_height, m_depth = m_depth, m_mip_count = m_mip_count, m_flags = m_flags, m_object_name = m_object_name]()
         {
-            SP_LOG_WARNING("SaveToFile skipped for %s - no CPU-side data (will re-import from source)", file_path.c_str());
-            return;
-        }
-    
-        // require compressed native format
-        if (!IsCompressedFormat(m_format))
-        {
-            SP_LOG_WARNING("SaveToFile skipped for %s - not compressed (will re-import from source)", file_path.c_str());
-            return;
-        }
-    
-        binary_format::header hdr = {};
-        hdr.type                  = static_cast<uint32_t>(m_type);
-        hdr.format                = static_cast<uint32_t>(m_format);
-        hdr.width                 = m_width;
-        hdr.height                = m_height;
-        hdr.depth                 = m_depth;
-        hdr.mip_count             = m_mip_count;
-        hdr.flags                 = m_flags;
-        memset(hdr.name, 0, sizeof(hdr.name));
-        {
-            string n = m_object_name.empty() ? FileSystem::GetFileNameFromFilePath(file_path) : m_object_name;
-            size_t count = min(n.size(), sizeof(hdr.name) - 1);
-            copy_n(n.c_str(), count, hdr.name);
-            hdr.name[count] = '\0';
-        }
-    
-        ofstream ofs(file_path, ios::binary);
-        if (!ofs.is_open())
-        {
-            SP_LOG_ERROR("SaveToFile failed to open %s", file_path.c_str());
-            return;
-        }
-    
-        if (!binary_format::write_all(ofs, &hdr, sizeof(hdr)))
-        {
-            SP_LOG_ERROR("SaveToFile failed to write header for %s", file_path.c_str());
-            return;
-        }
-    
-        // write layout: for each slice, for each mip, write uint64 size then bytes
-        for (uint32_t array_index = 0; array_index < m_depth; array_index++)
-        {
-            const RHI_Texture_Slice& slice = m_slices[array_index];
-            if (slice.mips.size() != m_mip_count)
+            // require cpu bytes
+            if (m_slices.empty() || m_slices[0].mips.empty())
             {
-                SP_LOG_ERROR("SaveToFile mip count mismatch on slice %u", array_index);
-                return;
+                SP_LOG_WARNING("SaveToFile skipped for %s - no CPU-side data (will re-import from source)", file_path.c_str());
+                throw runtime_error("Failed to save texture: " + file_path);
             }
-    
-            for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
+        
+            // require compressed native format
+            if (!IsCompressedFormat(m_format))
             {
-                const auto& mip = slice.mips[mip_index];
-                const uint64_t byte_count = static_cast<uint64_t>(mip.bytes.size());
-                if (!binary_format::write_all(ofs, &byte_count, sizeof(byte_count)) || !binary_format::write_all(ofs, mip.bytes.data(), mip.bytes.size()))
+                SP_LOG_WARNING("SaveToFile skipped for %s - not compressed (will re-import from source)", file_path.c_str());
+                throw runtime_error("Failed to save texture: " + file_path);
+            }
+        
+            binary_format::header hdr = {};
+            hdr.type                  = static_cast<uint32_t>(m_type);
+            hdr.format                = static_cast<uint32_t>(m_format);
+            hdr.width                 = m_width;
+            hdr.height                = m_height;
+            hdr.depth                 = m_depth;
+            hdr.mip_count             = m_mip_count;
+            hdr.flags                 = m_flags;
+            memset(hdr.name, 0, sizeof(hdr.name));
+            {
+                string n = m_object_name.empty() ? FileSystem::GetFileNameFromFilePath(file_path) : m_object_name;
+                size_t count = min(n.size(), sizeof(hdr.name) - 1);
+                copy_n(n.c_str(), count, hdr.name);
+                hdr.name[count] = '\0';
+            }
+        
+            ofstream ofs(file_path, ios::binary);
+            if (!ofs.is_open())
+            {
+                SP_LOG_ERROR("SaveToFile failed to open %s", file_path.c_str());
+                throw runtime_error("Failed to save texture: " + file_path);
+            }
+        
+            if (!binary_format::write_all(ofs, &hdr, sizeof(hdr)))
+            {
+                SP_LOG_ERROR("SaveToFile failed to write header for %s", file_path.c_str());
+                throw runtime_error("Failed to save texture: " + file_path);
+            }
+        
+            // write layout: for each slice, for each mip, write uint64 size then bytes
+            for (uint32_t array_index = 0; array_index < m_depth; array_index++)
+            {
+                const RHI_Texture_Slice& slice = m_slices[array_index];
+                if (slice.mips.size() != m_mip_count)
                 {
-                    SP_LOG_ERROR("SaveToFile failed while writing slice %u mip %u", array_index, mip_index);
-                    return;
+                    SP_LOG_ERROR("SaveToFile mip count mismatch on slice %u", array_index);
+                    throw runtime_error("Failed to save texture: " + file_path);
+                }
+        
+                for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
+                {
+                    const auto& mip = slice.mips[mip_index];
+                    const uint64_t byte_count = static_cast<uint64_t>(mip.bytes.size());
+                    if (!binary_format::write_all(ofs, &byte_count, sizeof(byte_count)) || !binary_format::write_all(ofs, mip.bytes.data(), mip.bytes.size()))
+                    {
+                        SP_LOG_ERROR("SaveToFile failed while writing slice %u mip %u", array_index, mip_index);
+                        throw runtime_error("Failed to save texture: " + file_path);
+                    }
                 }
             }
-        }
+        
+            ofs.flush();
+            if (!ofs.good())
+            {
+                SP_LOG_ERROR("SaveToFile finalise failed for %s", file_path.c_str());
+                throw runtime_error("Failed to save texture: " + file_path);
+            }
+        
+            // record path for cache
     
-        ofs.flush();
-        if (!ofs.good())
-        {
-            SP_LOG_ERROR("SaveToFile finalise failed for %s", file_path.c_str());
-            return;
-        }
-    
-        // record path for cache
-        SetResourceFilePath(file_path);
-        SP_LOG_INFO("Saved native compressed texture to %s", file_path.c_str());
+            SP_LOG_INFO("Saved native compressed texture to %s", file_path.c_str());
+        };
     }
 
     void RHI_Texture::LoadFromFile(const string& file_path)

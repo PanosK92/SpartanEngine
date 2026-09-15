@@ -75,9 +75,9 @@ namespace spartan
         );
         static const std::string&
             GetLibraryResourceDirectory();
-        static const std::vector<std::string>&
+        static std::vector<std::string>
             GetLastResourceCleanup();
-        static const std::vector<std::string>&
+        static std::vector<std::string>
             GetLastResourceCleanupFailures();
 
         // entities
@@ -148,7 +148,7 @@ namespace spartan
     private:
         // when defer_xml_write is true, resource and entity serialization runs on the caller
         // and only the xml file write is posted to the thread pool
-        static bool SaveToFileInternal(std::string file_path, bool defer_xml_write);
+        static bool SaveToFileInternal(std::string file_path, bool asynchronous);
         static void ProcessPendingRemovals();
     };
 }

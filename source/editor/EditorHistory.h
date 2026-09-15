@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "commands/CommandEntityDelete.h"
 #include "world/Entity.h"
 #include "world/World.h"
+#include "world/Environment.h"
 #include "world/components/Terrain.h"
 #include "io/pugixml.hpp"
 #include "imgui/source/imgui.h"
@@ -125,6 +126,22 @@ namespace editor_history
                 component->Save(node);
             }
         }
+        if (components && entity->GetComponentByType(ComponentType::Light))
+        {
+            auto environment = root.append_child("environment");
+            const auto settings = Environment::GetSettings();
+            environment.append_attribute("utc_days") = settings.utc_days;
+            environment.append_attribute("latitude") = settings.latitude;
+            environment.append_attribute("longitude") = settings.longitude;
+            environment.append_attribute("elevation") = settings.elevation;
+            environment.append_attribute("time_scale") = settings.time_scale;
+            environment.append_attribute("north_degrees") = settings.north_degrees;
+            environment.append_attribute("annual_temperature") = settings.annual_temperature;
+            environment.append_attribute("seasonal_amplitude") = settings.seasonal_amplitude;
+            environment.append_attribute("daily_amplitude") = settings.daily_amplitude;
+            environment.append_attribute("sea_level_pressure") = settings.sea_level_pressure;
+            write("wind", World::GetWind());
+        }
         return Xml(root);
     }
 
@@ -170,6 +187,33 @@ namespace editor_history
             auto n = root.child("rotation");
             entity->SetRotationLocal(math::Quaternion(n.attribute("x").as_float(), n.attribute("y").as_float(), n.attribute("z").as_float(), n.attribute("w").as_float()));
         }
+        if (root.child("environment") && Xml(root.child("environment")) != Xml(old.child("environment")))
+        {
+            auto settings = Environment::GetSettings();
+            auto environment = root.child("environment");
+            if (std::string(environment.attribute("utc_days").value()) != old.child("environment").attribute("utc_days").value())
+                settings.utc_days = environment.attribute("utc_days").as_double();
+            if (std::string(environment.attribute("latitude").value()) != old.child("environment").attribute("latitude").value())
+                settings.latitude = environment.attribute("latitude").as_double();
+            if (std::string(environment.attribute("longitude").value()) != old.child("environment").attribute("longitude").value())
+                settings.longitude = environment.attribute("longitude").as_double();
+            if (std::string(environment.attribute("elevation").value()) != old.child("environment").attribute("elevation").value())
+                settings.elevation = environment.attribute("elevation").as_double();
+            if (std::string(environment.attribute("time_scale").value()) != old.child("environment").attribute("time_scale").value())
+                settings.time_scale = environment.attribute("time_scale").as_double();
+            if (std::string(environment.attribute("north_degrees").value()) != old.child("environment").attribute("north_degrees").value())
+                settings.north_degrees = environment.attribute("north_degrees").as_float();
+            if (std::string(environment.attribute("annual_temperature").value()) != old.child("environment").attribute("annual_temperature").value())
+                settings.annual_temperature = environment.attribute("annual_temperature").as_float();
+            if (std::string(environment.attribute("seasonal_amplitude").value()) != old.child("environment").attribute("seasonal_amplitude").value())
+                settings.seasonal_amplitude = environment.attribute("seasonal_amplitude").as_float();
+            if (std::string(environment.attribute("daily_amplitude").value()) != old.child("environment").attribute("daily_amplitude").value())
+                settings.daily_amplitude = environment.attribute("daily_amplitude").as_float();
+            if (std::string(environment.attribute("sea_level_pressure").value()) != old.child("environment").attribute("sea_level_pressure").value())
+                settings.sea_level_pressure = environment.attribute("sea_level_pressure").as_float();
+            Environment::SetSettings(settings);
+        }
+        if (root.child("wind") && Xml(root.child("wind")) != Xml(old.child("wind"))) World::SetWind(vector(root.child("wind")));
         auto list = root.child("components");
         auto old_list = old.child("components");
         for (auto n : old_list.children())

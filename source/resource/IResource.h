@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include <atomic>
+#include <functional>
 #include <memory>
 #include "../file_system/FileSystem.h"
 #include "../core/SpartanObject.h"
@@ -128,6 +129,8 @@ namespace spartan
         bool IsPersistent() const                 { return m_persistent; }
 
         // io
+        // Capture on the owner thread; the returned task owns everything it writes.
+        virtual std::function<void()> CreateSaveTask(const std::string& file_path) { return {}; }
         virtual void SaveToFile(const std::string& file_path)   { }
         virtual void LoadFromFile(const std::string& file_path) { }
 
