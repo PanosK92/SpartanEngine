@@ -56,7 +56,8 @@ namespace spartan
             RHI_Texture* tex_color,
             RHI_Texture* tex_depth,
             RHI_Texture* tex_velocity,
-            RHI_Texture* tex_output
+            RHI_Texture* tex_output,
+            RHI_Texture* tex_reactive
         );
 
         // ngx project id, guid format required by nvidia, must match vulkan discovery

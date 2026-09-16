@@ -77,6 +77,7 @@ namespace spartan
     void RHI_AccelerationStructure::Destroy()
     {
         m_device_address = 0;
+        m_tlas_instance_count = m_tlas_refit_count = 0;
         if (m_type == RHI_AccelerationStructureType::Top && m_rhi_resource)
         {
             RHI_Device::DescriptorSetInvalidateReferencingResource(this);
@@ -457,15 +458,16 @@ namespace spartan
         region.dstOffset    = dst_offset;
         vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), static_cast<VkBuffer>(m_staging_buffer[buf_idx]), static_cast<VkBuffer>(m_instance_buffer[buf_idx]), 1, &region);
     
-        // barrier: make copy available for build
+        // Make instance uploads and prior TLAS writes available to a refit, and
+        // finish prior ray queries before overwriting this shared TLAS.
         // the as build stage reads instance data via shader read, not acceleration structure read
         {
             VkMemoryBarrier2 memory_barrier = {};
             memory_barrier.sType            = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
-            memory_barrier.srcStageMask     = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-            memory_barrier.srcAccessMask    = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            memory_barrier.srcStageMask     = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+            memory_barrier.srcAccessMask    = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
             memory_barrier.dstStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-            memory_barrier.dstAccessMask    = VK_ACCESS_2_SHADER_READ_BIT;
+            memory_barrier.dstAccessMask    = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
 
             VkDependencyInfo dependency_info   = {};
             dependency_info.sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
@@ -478,9 +480,9 @@ namespace spartan
         // build info
         VkAccelerationStructureBuildGeometryInfoKHR build_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
         build_info.type                                        = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-        // This TLAS is always rebuilt; update support constrains the driver's
-        // trace layout and reserves memory for an operation we never issue.
-        build_info.flags                                       = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+        // Rigid motion can refit the existing hierarchy. Rebuild on count
+        // changes and periodically to recover tree quality after sustained driving.
+        build_info.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
         build_info.geometryCount                               = 1;
         VkAccelerationStructureGeometryKHR geom                = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR };
         geom.geometryType                                      = VK_GEOMETRY_TYPE_INSTANCES_KHR;
@@ -489,7 +491,7 @@ namespace spartan
         geom.geometry.instances.data.deviceAddress             = aligned_address;
         build_info.pGeometries                                 = &geom;
     
-        // always use full build mode - tlas updates can produce degenerate bvh when transforms change significantly
+        // query storage for a full build; select refit below after checking the existing allocation
         build_info.mode                     = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
         build_info.srcAccelerationStructure = VK_NULL_HANDLE;
         build_info.dstAccelerationStructure = VK_NULL_HANDLE;
@@ -501,6 +503,8 @@ namespace spartan
         // create or resize acceleration structure if needed
         if (!m_rhi_resource || size_info.accelerationStructureSize > m_size)
         {
+            m_tlas_instance_count = 0;
+            m_tlas_refit_count = 0;
             // drop only the as storage, instance buffers are already sized for this capacity
             if (m_rhi_resource)
             {
@@ -531,12 +535,16 @@ namespace spartan
             m_size = size_info.accelerationStructureSize;
         }
     
-        // update dst
+        const bool refit = m_tlas_instance_count == primitive_count && m_tlas_refit_count < 60;
+        build_info.mode = refit ? VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR : VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+        build_info.srcAccelerationStructure = refit ? static_cast<VkAccelerationStructureKHR>(m_rhi_resource) : VK_NULL_HANDLE;
         build_info.dstAccelerationStructure = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
+        m_tlas_instance_count = primitive_count;
+        m_tlas_refit_count = refit ? m_tlas_refit_count + 1 : 0;
     
         // overallocated by alignment, vma does not guarantee the base satisfies minAccelerationStructureScratchOffsetAlignment
         const uint64_t scratch_alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
-        uint64_t required_scratch_size   = size_info.buildScratchSize;
+        uint64_t required_scratch_size   = max(size_info.buildScratchSize, size_info.updateScratchSize);
         required_scratch_size            = ((required_scratch_size + scratch_alignment - 1) & ~(scratch_alignment - 1)) + scratch_alignment;
         if (!m_scratch_buffer || required_scratch_size > m_scratch_buffer_size)
         {
@@ -566,7 +574,7 @@ namespace spartan
             memory_barrier.sType            = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
             memory_barrier.srcStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
             memory_barrier.srcAccessMask    = VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
-            memory_barrier.dstStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            memory_barrier.dstStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_TRANSFER_BIT;
             memory_barrier.dstAccessMask    = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
 
             VkDependencyInfo dependency_info   = {};

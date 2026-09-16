@@ -414,7 +414,7 @@ namespace spartan
         RHI_CommandList::EndPass();
     }
 
-    void Renderer::Pass_Upscaler_Reactivity()
+    void Renderer::Pass_Upscaler_Reactivity(uint32_t eye_layer)
     {
         RHI_Texture* tex_reactivity = GetRenderTarget(Renderer_RenderTarget::dlss_reactivity);
         RHI_Shader* shader = GetShader(Renderer_Shader::dlss_reactivity_c);
@@ -434,16 +434,16 @@ namespace spartan
             return;
         }
 
-        Renderer::BeginPass("upscaler_reactivity", rhi_all_mips);
+        Renderer::BeginPass("upscaler_reactivity", eye_layer);
         {
             RHI_CommandList::SetShader(shader);
             RHI_CommandList::SetTexture(
                 static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_velocity),
-                tex_velocity
+                tex_velocity, rhi_all_mips, 0, false, eye_layer
             );
             RHI_CommandList::SetTexture(
                 static_cast<uint32_t>(Renderer_BindingsSrv::tex3),
-                tex_depth_previous
+                tex_depth_previous, rhi_all_mips, 0, false, eye_layer
             );
             RHI_CommandList::SetTexture(
                 static_cast<uint32_t>(Renderer_BindingsUav::tex),
@@ -493,7 +493,8 @@ namespace spartan
                     tex_in,
                     tex_depth,
                     tex_velocity,
-                    tex_out
+                    tex_out,
+                    GetRenderTarget(Renderer_RenderTarget::dlss_reactivity)
                 );
             }
             else if (!is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss)
@@ -537,6 +538,7 @@ namespace spartan
                     eye_layer
                 );
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), tex_in);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex4), GetRenderTarget(Renderer_RenderTarget::dlss_reactivity));
                 RHI_CommandList::SetTexture(
                     static_cast<uint32_t>(Renderer_BindingsSrv::tex3),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous),

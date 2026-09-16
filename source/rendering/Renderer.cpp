@@ -4044,10 +4044,12 @@ namespace spartan
         // World animation has already marked deformable meshes before frame preparation.
         if (ray_tracing_prepared_at != Timer::GetTimeMs()) prepare_ray_tracing_renders();
 
+        m_pass_state.skip_rt_trace = false;
         // blas builds are capped per frame, recording thousands onto one command list hits driver tdr
-        bool blas_burst_done = false;
+        bool blas_burst_done = true;
         bool blas_refit_done = false;
         bool blas_built_this_frame = false;
+        if (!ray_tracing_build_work.empty())
         {
             SP_PROFILE_CPU_START("rt_blas_update");
             RHI_CommandList::BeginMarker("blas_build");
@@ -5071,9 +5073,9 @@ namespace spartan
         Pass_Fog_Composite(eye_layer);
 
         // particles remain foreground content and composite after world space clouds
+        Pass_Upscaler_Reactivity(eye_layer);
         if (eye == 0)
         {
-            Pass_Upscaler_Reactivity();
             Pass_Particles();
         }
 

@@ -402,6 +402,8 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
     // depth belongs to the selected render sample, not the output pixel between samples.
     float2 surface_uv_prev = uv_prev + (float2(center) + 0.5f - p_render) / active_render_f;
     float reuse = compute_history_reuse(center, active_render_f, px_render_max, surface_uv_prev, center_depth, center_velocity.w, moving_coverage, foliage_coverage, float2(furthest_depth, closest_depth));
+    // Shared transparency/disocclusion rejection, also consumed by DLSS and XeSS.
+    reuse *= 1.0f - saturate(tex4[center].r);
     if (reuse <= 0.0f)
     {
         return float4(saturate_16(max(tonemap_for_taa_inv(current_rgb_tm), 0.0f.xxx)), 0.0f);

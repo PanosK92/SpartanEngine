@@ -465,7 +465,7 @@ namespace spartan
         void Pass_Tonemap(RHI_Texture* tex_in, RHI_Texture* tex_out, bool force_sdr = false);
         void Pass_Bloom(RHI_Texture* tex_in, RHI_Texture* tex_out);
         void Pass_AA_Upscale(uint32_t eye_layer = rhi_all_mips);
-        void Pass_Upscaler_Reactivity();
+        void Pass_Upscaler_Reactivity(uint32_t eye_layer);
         void Pass_AutoExposure(RHI_Texture* tex_in);
         // passes - utility
         void Pass_Blit(RHI_Texture* tex_in, RHI_Texture* tex_out, const bool gpu_timing = true);

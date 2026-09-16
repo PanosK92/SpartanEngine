@@ -619,7 +619,7 @@ struct GrassInstance
     SHARED_UINT  normal_yaw_scale; // normal_oct (high 16) | yaw_packed (8) | scale_packed (8)
 };
 
-// gpu particle (64 bytes)
+// gpu particle (96 bytes)
 struct Particle
 {
     SHARED_FLOAT3 position;

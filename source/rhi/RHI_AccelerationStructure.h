@@ -89,6 +89,8 @@ namespace spartan
         uint64_t m_size                      = 0;
         uint64_t m_device_address            = 0;
         bool m_allow_update                  = false;
+        uint32_t m_tlas_instance_count = 0;
+        uint32_t m_tlas_refit_count = 0;
 
         // rhi
         void* m_rhi_resource         = nullptr;

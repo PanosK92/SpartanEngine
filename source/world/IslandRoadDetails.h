@@ -233,6 +233,9 @@ namespace spartan::island_road_details
     inline void Tick(float dt)
     {
         if (World::GetName()!="plan.world" || !Terrain::FindActive()) return;
+        // Junction solving can replace every road frame. Wait for its final meshes
+        // before building furniture, otherwise startup repeatedly discards these batches.
+        if (Spline::HasPendingRoadWork()) return;
         Entity* root=root_id ? World::GetEntityById(root_id) : nullptr;
         if (!root)
         {

@@ -241,7 +241,7 @@ namespace spartan
         xess_d3d12_init_params_t params_init       = {};
         xess_d3d12_execute_params_t params_execute = {};
         Vector2 jitter                             = Vector2::Zero;
-        const float responsive_mask_value_max      = 0.05f;
+        const float responsive_mask_value_max      = 1.0f;
         const float exposure_scale                 = 1.0f;
         xess_quality_settings_t quality            = XESS_QUALITY_SETTING_BALANCED;
 
@@ -317,7 +317,7 @@ namespace spartan
             intel::params_init.outputResolution.y   = common::resolution_output_height;
             intel::params_init.qualitySetting       = intel::get_quality(scale_factor);
             // xess computes its own exposure, feeding it the tonemapper's value would lag its training assumptions
-            intel::params_init.initFlags            = XESS_INIT_FLAG_USE_NDC_VELOCITY | XESS_INIT_FLAG_INVERTED_DEPTH | XESS_INIT_FLAG_ENABLE_AUTOEXPOSURE;
+            intel::params_init.initFlags            = XESS_INIT_FLAG_USE_NDC_VELOCITY | XESS_INIT_FLAG_INVERTED_DEPTH | XESS_INIT_FLAG_ENABLE_AUTOEXPOSURE | XESS_INIT_FLAG_RESPONSIVE_PIXEL_MASK;
             intel::params_init.creationNodeMask     = 0;
             intel::params_init.visibleNodeMask      = 0;
             intel::params_init.pTempBufferHeap      = nullptr;
@@ -863,7 +863,8 @@ namespace spartan
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
-        RHI_Texture* tex_output
+        RHI_Texture* tex_output,
+        RHI_Texture* tex_reactive
     )
     {
         RHI_CommandList* cmd_list = RHI_Device::Cmd();
@@ -875,7 +876,7 @@ namespace spartan
 
         // d3d12 xess wants non_pixel_shader_resource for inputs and unordered_access for output,
         // shader_read includes pixel which xess silently strips, desyncing our state tracker
-        RHI_Texture* tex_mask = Renderer::GetStandardTexture(Renderer_StandardTexture::Black);
+        RHI_Texture* tex_mask = tex_reactive;
         cmd_list->EnsureComputeShaderResource(tex_color);
         cmd_list->EnsureComputeShaderResource(tex_velocity);
         cmd_list->EnsureComputeShaderResource(tex_depth);

@@ -36,6 +36,20 @@ plane. Those tracers and GPU particles share launch conditions, but are not a
 one-to-one GPU collision readback. Motion-relative
 segments account for the body moving or rotating into airborne spray.
 
+## Motion and reconstruction
+
+Billboards retain their previous position and size and write unjittered motion
+into the shared velocity target, including when clouds supply that target.
+Transparency coverage contributes to the same rejection mask consumed by DLSS,
+XeSS and TAAU. Linear and FXAA paths use the same particle simulation and rendering.
+Geometry rejection follows object motion and previous surface depth, including
+thin moving silhouettes such as side mirrors.
+
+Vehicle debris uses its birth contact plane and ballistic gravity instead of the
+generic smoke collision probes. Launch lift is capped at 2.2 m/s before random
+spread; debris lives for 0.55 seconds. Emission and deposit tracing run within
+60 metres of the camera; accumulated dirt remains when the car leaves that range.
+
 ## Budgets and lifecycle
 
 - 48 deposits per Render, oldest replaced first; 8,192 GPU deposits per view.

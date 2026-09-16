@@ -23,66 +23,59 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // relative depth match for the same surface
 static const float reuse_depth_tol = 0.02f;
-static const float still_px         = 0.5f;
-static const float edge_px_start    = 2.0f;
-static const float edge_px_full     = 10.0f;
+static const float edge_px_start    = 0.5f;
+static const float edge_px_full     = 3.0f;
 
 float history_reuse(int2 px, float2 res, int2 px_max, float2 velocity_ndc)
 {
-    float  depth_raw = tex_depth[px].r;
-    float2 uv        = (float2(px) + 0.5f) / res;
-    float3 position   = get_position(depth_raw, uv);
-    float4 prev_clip = mul(float4(position, 1.0f), get_view_projection_previous());
-    if (prev_clip.w < 1e-6f)
-    {
-        return 0.0f;
-    }
-
-    float2 prev_uv = ndc_to_uv(prev_clip.xy / prev_clip.w);
+    float depth_raw = tex_depth[px].r;
+    float2 uv = (float2(px) + 0.5f) / res;
+    // Geometry motion includes the object's previous transform. Camera-only reprojection
+    // follows the road behind a moving car instead of the car and its thin mirrors.
+    float2 prev_uv = uv - velocity_ndc * float2(0.5f, -0.5f)
+        + (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current) * float2(0.5f, -0.5f);
     if (any(prev_uv < 0.0f) || any(prev_uv > 1.0f))
-    {
         return 0.0f;
+
+    float expected = abs(tex_velocity[px].w);
+    if (expected <= 0.0f || expected >= FLT_MAX_16U || isnan(expected) || isinf(expected))
+    {
+        float3 position = get_position(depth_raw, uv);
+        float4 prev_clip = mul(float4(position, 1.0f), get_view_projection_previous());
+        if (prev_clip.w <= 1e-6f)
+            return 0.0f;
+        expected = linearize_depth(prev_clip.z / prev_clip.w);
     }
 
-    int2  prev_px        = clamp(int2(prev_uv * res), int2(0, 0), px_max);
-    float prev_depth_raw = tex3[prev_px].r;
-    float expected       = linearize_depth(prev_clip.z / prev_clip.w);
-    float actual         = linearize_depth(prev_depth_raw);
-    float abs_delta      = abs(actual - expected);
-    if (abs_delta <= reuse_depth_tol * max(expected, 1e-3f))
-    {
-        return 1.0f;
-    }
-
-    static const int2 n4[4] =
-    {
-        int2(1, 0), int2(-1, 0),
-        int2(0, 1), int2(0, -1)
-    };
+    // Weight depth support at the reprojected footprint; a single unrelated neighbor
+    // must not validate the entire pixel along a moving silhouette.
+    float2 pos = prev_uv * res - 0.5f;
+    int2 base = int2(floor(pos));
+    float2 f = frac(pos);
+    float reuse = 0.0f;
     [unroll]
-    for (int i = 0; i < 4; ++i)
+    for (int y = 0; y < 2; ++y)
     {
-        int2 tap = px + n4[i];
-        if (any(tap < 0) || any(tap > px_max))
+        [unroll]
+        for (int x = 0; x < 2; ++x)
         {
-            continue;
-        }
-
-        float2 vel_n  = tex_velocity[tap].xy;
-        float  rel_px = length((vel_n - velocity_ndc) * float2(0.5f, -0.5f) * res);
-        if (rel_px > still_px)
-        {
-            continue;
-        }
-
-        float z_n = linearize_depth(tex_depth[tap].r);
-        if (abs(actual - z_n) <= reuse_depth_tol * max(z_n, 1e-3f))
-        {
-            return 1.0f;
+            int2 tap = base + int2(x, y);
+            if (any(tap < 0) || any(tap > px_max))
+                continue;
+            float z = tex3[tap].r;
+            float match = 0.0f;
+            if (depth_raw <= 1e-8f)
+                match = z <= 1e-8f ? 1.0f : 0.0f;
+            else if (z > 1e-8f)
+            {
+                float error = abs(linearize_depth(z) - expected) / max(expected, 1e-3f);
+                match = 1.0f - smoothstep(reuse_depth_tol, 2.0f * reuse_depth_tol, error);
+            }
+            float2 weight = float2(x == 0 ? 1.0f - f.x : f.x, y == 0 ? 1.0f - f.y : f.y);
+            reuse += weight.x * weight.y * match;
         }
     }
-
-    return 0.0f;
+    return saturate(reuse);
 }
 
 float velocity_edge(int2 px, float2 res, int2 px_max, float2 velocity_ndc)

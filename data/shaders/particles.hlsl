@@ -847,7 +847,7 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     previous_up = safe_normalize(cross(previous_forward, previous_right), previous_up);
     float3 previous_world = p.previous_position + previous_right * c.x * p.previous_size * (0.5 + stretch * 1.5)
         + previous_up * c.y * p.previous_size * (0.5 - saturate(stretch) * 0.2);
-    o.clip_current = mul(float4(world, 1), get_view_projection_unjittered());
+    o.clip_current = mul(float4(world, 1), (pass_is_right_eye() ? buffer_frame.view_projection_unjittered_right : buffer_frame.view_projection_unjittered));
     o.clip_previous = mul(float4(previous_world, 1), get_view_projection_previous_unjittered());
     o.position  = clip;
     o.local     = c;

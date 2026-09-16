@@ -28,7 +28,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../world/components/Render.h"
 #include "../world/components/Terrain.h"
 #include "../world/components/ParticleSystem.h"
+#include "../world/components/Camera.h"
 #include "../rhi/RHI_Vertex.h"
+#include "../profiling/Profiler.h"
 #include "../math/Ray.h"
 #include <array>
 #include <numeric>
@@ -110,6 +112,7 @@ namespace spartan
             std::vector<Triangle> triangles;
             std::vector<Node> nodes;
             Matrix previous, world, inverse, old_inverse;
+            Render* frame_render = nullptr;
             uint32_t Build(uint32_t first, uint32_t count)
             {
                 const uint32_t index = static_cast<uint32_t>(nodes.size());
@@ -214,17 +217,17 @@ namespace spartan
                 p->SetRenderMode(ParticleRenderMode::Billboard);
                 p->SetLightingMode(ParticleLightingMode::Lit);
                 p->SetBlendMode(ParticleBlendMode::Alpha);
-                p->SetMaxParticles(dust ? 256 : 384);
+                p->SetMaxParticles(dust ? 96 : 128);
                 p->SetEmissionRate(0.0f);
-                p->SetLifetime(dust ? 1.8f : 0.85f);
+                p->SetLifetime(dust ? 1.1f : 0.55f);
                 p->SetEmissionRadius(dust ? 0.12f : 0.10f);
                 p->SetDirectionalBlend(1.0f);
-                p->SetEmissionConeAngle(dust ? 0.75f : 0.80f);
+                p->SetEmissionConeAngle(dust ? 0.30f : 0.18f);
                 p->SetVelocityInheritance(1.0f);
-                p->SetGravityModifier(dust ? -0.03f : -1.0f);
-                p->SetDrag(dust ? 1.4f : 0.35f);
-                p->SetTurbulenceStrength(dust ? 0.4f : 0.0f);
-                p->SetWindInfluence(dust ? 0.6f : 0.05f);
+                p->SetGravityModifier(dust ? -0.2f : -1.0f);
+                p->SetDrag(dust ? 1.4f : 0.8f);
+                p->SetTurbulenceStrength(dust ? 0.12f : 0.0f);
+                p->SetWindInfluence(dust ? 0.15f : 0.0f);
                 p->SetEmissiveStrength(0.0f);
             }
             return e->GetComponent<ParticleSystem>();
@@ -237,9 +240,8 @@ namespace spartan
             Vector3 point, normal, impact_velocity;
             for (auto& receiver : receivers)
             {
-                Entity* e = World::GetEntityById(receiver.entity_id);
-                Render* render = e ? e->GetComponent<Render>() : nullptr;
-                if (!render || !render->GetMesh() || render->GetMesh()->GetObjectId() != receiver.mesh_id) continue;
+                Render* render = receiver.frame_render;
+                if (!render) continue;
                 // Relative segment includes body translation/rotation, so sideways/yaw motion can catch spray.
                 const Matrix& inverse = receiver.inverse;
                 const Matrix& old_inverse = receiver.old_inverse;
@@ -287,6 +289,7 @@ namespace spartan
 
     void CarSurfaceEffects::Tick(Entity* vehicle, float delta_time, bool playing)
     {
+        SP_PROFILE_CPU();
         auto& s = *m_state;
         auto* physics = vehicle->GetComponent<Physics>();
         auto* sim = physics ? physics->GetVehicleSimulation() : nullptr;
@@ -301,6 +304,19 @@ namespace spartan
                     if (Entity* e = World::GetEntityById(receiver.entity_id))
                         if (auto* r = e->GetComponent<Render>()) r->ClearDecals();
             s.active = false; s.drops.clear(); s.remainder.fill(0.0f); return;
+        }
+        // Traffic vehicles can be simulated across the island. Build mesh BVHs and
+        // trace deposits only near the camera; preserve existing dirt when out of range.
+        if (auto* camera = World::GetCamera())
+        {
+            if ((camera->GetEntity()->GetPosition() - vehicle->GetPosition()).LengthSquared() > 60.0f * 60.0f)
+            {
+                s.drops.clear(); s.remainder.fill(0.0f);
+                s.previous_position = vehicle->GetPosition();
+                for (auto& receiver : s.receivers)
+                    if (Entity* e = World::GetEntityById(receiver.entity_id)) receiver.previous = e->GetMatrix();
+                return;
+            }
         }
         if (!std::isfinite(delta_time) || delta_time <= 0.0f) return;
         const float dt = std::min(delta_time, 0.1f);
@@ -320,6 +336,7 @@ namespace spartan
         for (auto& receiver : s.receivers)
             if (Entity* e = World::GetEntityById(receiver.entity_id))
             {
+                receiver.frame_render = e->GetComponent<Render>();
                 receiver.world = e->GetMatrix();
                 receiver.inverse = receiver.world.Inverted();
                 receiver.old_inverse = receiver.previous.Inverted();
@@ -333,7 +350,7 @@ namespace spartan
             {
                 auto& drop = s.drops[j];
                 drop.velocity.y -= 9.81f * step;
-                drop.velocity *= expf(-0.35f * step);
+                drop.velocity *= expf(-0.8f * step);
                 Vector3 next = drop.position + drop.velocity * step;
                 const float ground_distance = (next - drop.ground_point).Dot(drop.ground_normal);
                 const bool landed = ground_distance < 0.0f;
@@ -344,7 +361,7 @@ namespace spartan
                 }
                 const bool hit = s.Deposit(drop, next, static_cast<float>(k) / steps, static_cast<float>(k+1) / steps, step);
                 drop.position = next; drop.age += step;
-                if (hit || landed || drop.age > 0.8f) { s.drops[j] = s.drops.back(); s.drops.pop_back(); }
+                if (hit || landed || drop.age > 0.55f) { s.drops[j] = s.drops.back(); s.drops.pop_back(); }
                 else ++j;
             }
         }
@@ -370,12 +387,13 @@ namespace spartan
             const float slip_speed = fabsf(tread - longitudinal) + fabsf(lateral);
             const float motion = std::max(fabsf(tread), hub_velocity.Length());
             const float load = std::clamp(wheel.tire_load / 3500.0f, 0.0f, 1.5f);
-            const float rate = std::clamp((motion - 0.7f) * 3.0f + slip_speed * 9.0f, 0.0f, 150.0f) * surface.loose * load;
+            const float rate = std::clamp((motion - 1.0f) * 1.2f + slip_speed * 3.0f, 0.0f, 65.0f) * surface.loose * load;
             if (rate <= 0.0f) continue;
             // Tread ejects backward and upward; lateral slip throws across the car during a slide.
             const float sign = fabsf(tread) > 0.5f ? (tread > 0 ? 1.0f : -1.0f) : (longitudinal >= 0 ? 1.0f : -1.0f);
-            Vector3 launch = -forward * sign * std::min(18.0f, motion * 0.65f + slip_speed * 0.3f)
-                           - axle * lateral * 0.5f + normal * std::min(9.0f, 1.3f + motion * 0.24f + slip_speed * 0.18f);
+            Vector3 launch = -forward * sign * std::min(6.0f, motion * 0.16f + slip_speed * 0.10f)
+                           - axle * std::clamp(lateral * 0.18f, -2.0f, 2.0f)
+                           + normal * std::min(2.2f, 0.7f + motion * 0.035f + slip_speed * 0.04f);
             const float radius = std::max(wheel.effective_radius, physics->GetWheelRadius());
             const float width = physics->GetWheelWidth(wi);
             // Dirt stays on the tread into its trailing arc before centrifugal release.
@@ -388,27 +406,28 @@ namespace spartan
                 p->GetEntity()->SetPosition(origin);
                 p->SetEmissionDirection(launch.Normalized());
                 p->SetStartSpeed(launch.Length());
+                p->SetGroundPlane(Vector4(normal.x, normal.y, normal.z, -normal.Dot(point)));
             }
             debris->SetEmissionRadius(width * 0.5f);
             debris->SetEmissionRate(rate);
             debris->SetStartColor(surface.color);
             debris->SetEndColor(Color(surface.color.r,surface.color.g,surface.color.b,0.0f));
-            debris->SetStartSize(surface.size * (1.0f + surface.wet));
+            debris->SetStartSize(surface.size * 0.65f * (1.0f + surface.wet));
             debris->SetEndSize(surface.size * 0.65f);
-            debris->SetVelocityStretch(surface.grass > 0.5f ? 0.8f : 0.12f);
+            debris->SetVelocityStretch(surface.grass > 0.5f ? 0.3f : 0.08f);
             dust->SetEmissionRate(rate * (1.0f - surface.wet) * (1.0f - surface.grass * 0.8f) * 0.6f);
             dust->SetStartSpeed(launch.Length() * 0.25f);
-            dust->SetStartSize(0.09f); dust->SetEndSize(0.75f);
-            dust->SetStartColor(Color(surface.color.r,surface.color.g,surface.color.b,0.16f));
+            dust->SetStartSize(0.06f); dust->SetEndSize(0.35f);
+            dust->SetStartColor(Color(surface.color.r,surface.color.g,surface.color.b,0.08f));
             dust->SetEndColor(Color(surface.color.r,surface.color.g,surface.color.b,0.0f));
             // A representative subset of the spray is traced against a cached triangle BVH.
             // The GPU keeps the full plume; deposition cost stays bounded even in a four-wheel burnout.
-            s.remainder[i] += std::min(rate * 0.22f, 24.0f) * dt;
+            s.remainder[i] += std::min(rate * 0.25f, 12.0f) * dt;
             while (s.remainder[i] >= 1.0f && s.drops.size() < 96)
             {
                 s.remainder[i] -= 1.0f;
-                const Vector3 jitter = axle * ((s.Random()-0.5f) * 1.5f) + normal * ((s.Random()-0.5f) * 0.8f);
-                const Vector3 velocity = (launch.Normalized() + jitter).Normalized() * launch.Length() * (0.7f + s.Random()*0.6f) + hub_velocity;
+                const Vector3 jitter = axle * ((s.Random()-0.5f) * 0.36f) + normal * ((s.Random()-0.5f) * 0.16f);
+                const Vector3 velocity = (launch.Normalized() + jitter).Normalized() * launch.Length() * (0.7f + s.Random()*0.5f) + hub_velocity;
                 s.drops.push_back({origin + axle * ((s.Random()-0.5f) * width),velocity,surface,0.0f,s.Random()*100.0f,point,normal});
             }
             s.remainder[i] = std::min(s.remainder[i], 1.0f);

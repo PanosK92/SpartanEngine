@@ -245,7 +245,7 @@ namespace spartan
         xess_vk_init_params_t params_init       = {};
         xess_vk_execute_params_t params_execute = {};
         Vector2 jitter                          = Vector2::Zero;
-        const float responsive_mask_value_max   = 0.05f;
+        const float responsive_mask_value_max   = 1.0f;
         const float exposure_scale              = 1.0f; // neutral, the engine handles exposure separately
         xess_quality_settings_t quality         = XESS_QUALITY_SETTING_BALANCED;
 
@@ -315,7 +315,7 @@ namespace spartan
             intel::params_init.outputResolution.y = common::resolution_output_height;
             intel::params_init.qualitySetting     = intel::get_quality(scale_factor);
             // xess computes its own exposure, feeding it the tonemapper's value would lag its training assumptions
-            intel::params_init.initFlags          = XESS_INIT_FLAG_USE_NDC_VELOCITY | XESS_INIT_FLAG_INVERTED_DEPTH | XESS_INIT_FLAG_ENABLE_AUTOEXPOSURE;
+            intel::params_init.initFlags          = XESS_INIT_FLAG_USE_NDC_VELOCITY | XESS_INIT_FLAG_INVERTED_DEPTH | XESS_INIT_FLAG_ENABLE_AUTOEXPOSURE | XESS_INIT_FLAG_RESPONSIVE_PIXEL_MASK;
             intel::params_init.creationNodeMask   = 0;
             intel::params_init.visibleNodeMask    = 0;
             intel::params_init.tempBufferHeap     = VK_NULL_HANDLE;
@@ -932,7 +932,8 @@ namespace spartan
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
-        RHI_Texture* tex_output
+        RHI_Texture* tex_output,
+        RHI_Texture* tex_reactive
     )
     {
         RHI_CommandList* cmd_list = RHI_Device::Cmd();
@@ -942,6 +943,7 @@ namespace spartan
             return;
         }
 
+        tex_reactive->SetLayout(RHI_Image_Layout::General, cmd_list);
         tex_color->SetLayout(RHI_Image_Layout::General, cmd_list);
         tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
         tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list);
@@ -954,7 +956,7 @@ namespace spartan
         intel::params_execute.velocityTexture            = intel::to_xess_image_view(tex_velocity);
         intel::params_execute.outputTexture              = intel::to_xess_image_view(tex_output);
         intel::params_execute.exposureScaleTexture       = {}; // ignored, autoexposure flag is set
-        intel::params_execute.responsivePixelMaskTexture = intel::to_xess_image_view(Renderer::GetStandardTexture(Renderer_StandardTexture::Black)); // neutralize and control via float
+        intel::params_execute.responsivePixelMaskTexture = intel::to_xess_image_view(tex_reactive);
         intel::params_execute.jitterOffsetX              = intel::jitter.x;
         intel::params_execute.jitterOffsetY              = intel::jitter.y;
         intel::params_execute.exposureScale              = intel::exposure_scale;
@@ -972,6 +974,7 @@ namespace spartan
 
         _xess_result_t result = xessVKExecute(intel::context, static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &intel::params_execute);
         SP_ASSERT(result == XESS_RESULT_SUCCESS);
+        cmd_list->AdoptComputeShaderResource(tex_reactive);
         cmd_list->AdoptComputeShaderResource(tex_color);
         cmd_list->AdoptComputeShaderResource(tex_velocity);
         cmd_list->AdoptComputeShaderResource(tex_depth);
