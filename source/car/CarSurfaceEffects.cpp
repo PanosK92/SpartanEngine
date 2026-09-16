@@ -31,6 +31,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../world/components/Camera.h"
 #include "../rhi/RHI_Vertex.h"
 #include "../profiling/Profiler.h"
+#include "../core/ThreadPool.h"
+#include "../geometry/Mesh.h"
+#include <atomic>
+#include <map>
 #include "../math/Ray.h"
 #include <array>
 #include <numeric>
@@ -105,14 +109,12 @@ namespace spartan
 
         struct Triangle { Vector3 a, b, c; };
         struct Node { BoundingBox box; uint32_t first = 0, count = 0, left = 0, right = 0; };
-        struct Receiver
+        // Immutable after publication. Receivers of the same mesh share the expensive tree.
+        struct CollisionMesh
         {
-            uint64_t entity_id = 0;
-            uint64_t mesh_id = 0;
+            std::atomic<bool> ready = false;
             std::vector<Triangle> triangles;
             std::vector<Node> nodes;
-            Matrix previous, world, inverse, old_inverse;
-            Render* frame_render = nullptr;
             uint32_t Build(uint32_t first, uint32_t count)
             {
                 const uint32_t index = static_cast<uint32_t>(nodes.size());
@@ -152,6 +154,17 @@ namespace spartan
                 }
             }
         };
+        struct Receiver
+        {
+            uint64_t entity_id = 0, mesh_id = 0;
+            uint32_t sub_mesh = 0;
+            std::shared_ptr<CollisionMesh> collision;
+            Matrix previous, world, inverse, old_inverse;
+            Render* frame_render = nullptr;
+        };
+        // Accessed only from the world thread; expired entries do not retain world assets.
+        static std::map<std::pair<uint64_t, uint32_t>, std::weak_ptr<CollisionMesh>> collision_cache;
+
         struct Drop
         {
             Vector3 position, velocity;
@@ -174,7 +187,11 @@ namespace spartan
 
         void CacheReceivers(Entity* vehicle, Physics* physics)
         {
+            SP_PROFILE_CPU();
             receivers.clear();
+            std::erase_if(collision_cache, [](const auto& item) { return item.second.expired(); });
+            struct BuildRequest { std::shared_ptr<Mesh> mesh; uint32_t sub_mesh; std::shared_ptr<CollisionMesh> collision; };
+            std::vector<BuildRequest> builds;
             std::vector<Entity*> entities;
             vehicle->GetDescendants(&entities);
             entities.push_back(vehicle);
@@ -187,18 +204,44 @@ namespace spartan
                     for (int i = 0; i < 4; ++i)
                         wheel_mesh |= e == physics->GetWheelEntity(static_cast<WheelIndex>(i));
                 if (wheel_mesh) continue;
-                std::vector<uint32_t> indices;
-                std::vector<RHI_Vertex_PosTexNorTan> vertices;
-                render->GetGeometry(&indices, &vertices);
                 Receiver receiver;
                 receiver.entity_id = entity->GetObjectId();
                 receiver.mesh_id = render->GetMesh()->GetObjectId();
+                receiver.sub_mesh = render->GetSubMeshIndex();
                 receiver.previous = entity->GetMatrix();
-                for (size_t i = 0; i + 2 < indices.size(); i += 3)
-                    if (indices[i] < vertices.size() && indices[i+1] < vertices.size() && indices[i+2] < vertices.size())
-                        receiver.triangles.push_back({vertices[indices[i]].get_position(), vertices[indices[i+1]].get_position(), vertices[indices[i+2]].get_position()});
-                if (!receiver.triangles.empty())
-                { receiver.Build(0, static_cast<uint32_t>(receiver.triangles.size())); receivers.push_back(std::move(receiver)); }
+                auto& cached = collision_cache[{receiver.mesh_id, receiver.sub_mesh}];
+                receiver.collision = cached.lock();
+                if (!receiver.collision)
+                {
+                    // Pin only the asset, never an Entity/Render or this State, across the worker job.
+                    auto mesh = std::static_pointer_cast<Mesh>(render->GetMesh()->weak_from_this().lock());
+                    if (!mesh) continue;
+                    receiver.collision = std::make_shared<CollisionMesh>();
+                    cached = receiver.collision;
+                    builds.push_back({std::move(mesh), receiver.sub_mesh, receiver.collision});
+                }
+                receivers.push_back(std::move(receiver));
+            }
+            if (!builds.empty())
+            {
+                // One job per car, not one job per panel: leave workers available for frame work.
+                ThreadPool::AddTask([builds = std::move(builds)]()
+                {
+                    for (const auto& request : builds)
+                    {
+                        auto& collision = *request.collision;
+                        std::vector<uint32_t> indices;
+                        std::vector<RHI_Vertex_PosTexNorTan> vertices;
+                        request.mesh->GetGeometry(request.sub_mesh, &indices, &vertices);
+                        collision.triangles.reserve(indices.size() / 3);
+                        for (size_t i = 0; i + 2 < indices.size(); i += 3)
+                            if (indices[i] < vertices.size() && indices[i+1] < vertices.size() && indices[i+2] < vertices.size())
+                                collision.triangles.push_back({vertices[indices[i]].get_position(), vertices[indices[i+1]].get_position(), vertices[indices[i+2]].get_position()});
+                        if (!collision.triangles.empty())
+                            collision.Build(0, static_cast<uint32_t>(collision.triangles.size()));
+                        collision.ready.store(true, std::memory_order_release);
+                    }
+                });
             }
         }
 
@@ -241,7 +284,7 @@ namespace spartan
             for (auto& receiver : receivers)
             {
                 Render* render = receiver.frame_render;
-                if (!render) continue;
+                if (!render || !receiver.collision->ready.load(std::memory_order_acquire) || receiver.collision->nodes.empty()) continue;
                 // Relative segment includes body translation/rotation, so sideways/yaw motion can catch spray.
                 const Matrix& inverse = receiver.inverse;
                 const Matrix& old_inverse = receiver.old_inverse;
@@ -254,7 +297,7 @@ namespace spartan
                 Ray ray(a, b-a);
                 float distance = length * closest;
                 Vector3 n;
-                receiver.Trace(0, ray, distance, n);
+                receiver.collision->Trace(0, ray, distance, n);
                 if (distance >= length * closest) continue;
                 closest = distance / length;
                 target = render;
@@ -325,12 +368,17 @@ namespace spartan
         {
             Entity* e = World::GetEntityById(receiver.entity_id);
             Render* r = e ? e->GetComponent<Render>() : nullptr;
-            return !r || !r->GetMesh() || r->GetMesh()->GetObjectId() != receiver.mesh_id;
+            return !r || !r->GetMesh() || r->GetMesh()->GetObjectId() != receiver.mesh_id || r->GetSubMeshIndex() != receiver.sub_mesh;
         });
+        // Waking physics or teleporting changes transforms, not mesh topology.
+        // Keep the trees instead of rebuilding them on every traffic activation.
+        if (s.receivers.empty() || mesh_changed)
+            s.CacheReceivers(vehicle, physics);
         if (teleport || mesh_changed)
         {
-            s.CacheReceivers(vehicle, physics);
             s.drops.clear(); s.remainder.fill(0.0f);
+            for (auto& receiver : s.receivers)
+                if (Entity* e = World::GetEntityById(receiver.entity_id)) receiver.previous = e->GetMatrix();
         }
         s.active = true; s.previous_position = vehicle->GetPosition();
         for (auto& receiver : s.receivers)

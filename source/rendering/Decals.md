@@ -54,6 +54,9 @@ spread; debris lives for 0.55 seconds. Emission and deposit tracing run within
 
 - 48 deposits per Render, oldest replaced first; 8,192 GPU deposits per view.
 - At most 96 ballistic tracers and eight small particle emitters per car.
+- Body collision trees are built on a worker, shared by mesh/submesh, and retained
+  across physics sleep/wake and teleports. Deposits wait for a ready tree; rendering
+  never waits for its construction. Worker jobs retain assets, not scene entities.
 - Repeated draws and LODs share uploaded decal records; GPU uploads use frame rings.
 - Deposits are transient, cleared on play stop, and not saved into authored worlds.
 - Teleports discard airborne tracers. Render:GetDecalCount and vehicle_get's
