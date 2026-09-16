@@ -140,6 +140,9 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     p.position     = emitter.position + offset;
     p.lifetime     = emitter.lifetime * r_life;
     p.velocity     = dir * emitter.start_speed * r_speed + emitter.emitter_velocity * emitter.velocity_inheritance;
+    p.previous_position = p.position;
+    p.previous_size = emitter.start_size * r_size;
+    p.ground_plane = emitter.ground_plane;
     p.max_lifetime = p.lifetime;
     p.color         = emitter.start_color;
     p.size          = emitter.start_size * r_size;
@@ -631,6 +634,9 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     float dt = emitter.delta_time;
 
+    p.previous_position = p.position;
+    p.previous_size = p.size;
+
     // integrate gravity
     p.velocity.y += emitter.gravity_modifier * 9.81 * dt;
 
@@ -683,7 +689,14 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float3 new_pos = p.position + p.velocity * dt;
 
     // fresh puffs need a short grace period to leave tight emitters such as exhaust tips
-    if (age_for_collision > 0.18)
+    const bool ballistic = dot(p.ground_plane.xyz, p.ground_plane.xyz) > 0.5;
+    if (ballistic && dot(float4(new_pos, 1.0), p.ground_plane) < 0.0)
+    {
+        p.lifetime = 0.0;
+        particle_buffer_a[index] = p;
+        return;
+    }
+    if (!ballistic && age_for_collision > 0.18)
     {
     #ifdef RAY_TRACING_ENABLED
         if (emitter.collision_traced != 0u)
@@ -756,6 +769,8 @@ struct ps_input
     float4 render_params  : TEXCOORD8; // blend mode, lighting mode, emissive strength, soft depth
     float4 flipbook       : TEXCOORD9; // rows, columns, fps, random seed
     float  churn          : TEXCOORD10;
+    float4 clip_current   : TEXCOORD11;
+    float4 clip_previous  : TEXCOORD12;
 };
 
 ps_input main_vs(uint vertex_id : SV_VertexID)
@@ -781,6 +796,7 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     o.render_params = float4((float)emitter.blend_mode, (float)emitter.lighting_mode, emitter.emissive_strength, emitter.soft_depth_scale);
     o.flipbook  = float4((float)emitter.flipbook_rows, (float)emitter.flipbook_columns, emitter.flipbook_fps, 0.0);
     o.churn     = 0.0;
+    o.clip_current = o.clip_previous = float4(0, 0, 0, 1);
 
     Particle p = particle_buffer_a[index];
 
@@ -823,6 +839,16 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     float spin     = (rng(index * 40503u + 13u) * 2.0 - 1.0) * 1.2;
     float ang      = base_ang + spin * age_t;
 
+    float3 previous_right = normalize(float3(buffer_frame.view_previous[0][0], buffer_frame.view_previous[1][0], buffer_frame.view_previous[2][0]));
+    float3 previous_up = normalize(float3(buffer_frame.view_previous[0][1], buffer_frame.view_previous[1][1], buffer_frame.view_previous[2][1]));
+    float3 previous_forward = normalize(cross(previous_right, previous_up));
+    float3 previous_axis = safe_normalize(flow_axis - previous_forward * dot(flow_axis, previous_forward), previous_right);
+    previous_right = safe_normalize(lerp(previous_right, previous_axis, saturate(stretch)), previous_right);
+    previous_up = safe_normalize(cross(previous_forward, previous_right), previous_up);
+    float3 previous_world = p.previous_position + previous_right * c.x * p.previous_size * (0.5 + stretch * 1.5)
+        + previous_up * c.y * p.previous_size * (0.5 - saturate(stretch) * 0.2);
+    o.clip_current = mul(float4(world, 1), get_view_projection_unjittered());
+    o.clip_previous = mul(float4(previous_world, 1), get_view_projection_previous_unjittered());
     o.position  = clip;
     o.local     = c;
     o.color     = p.color.rgb;
@@ -1002,7 +1028,14 @@ float3 evaluate_particle_lighting(uint2 pixel, Surface surface)
     return max(result, ambient);
 }
 
-float4 main_ps(ps_input input) : SV_Target0
+struct particle_output
+{
+    float4 color : SV_Target0;
+    float4 velocity : SV_Target1;
+    float4 reactivity : SV_Target2;
+};
+
+particle_output main_ps(ps_input input)
 {
     // radial disc, discard outside the unit circle so the quad never reads as a square
     float dist = length(input.local);
@@ -1094,17 +1127,24 @@ float4 main_ps(ps_input input) : SV_Target0
     lit_color *= fog.transmittance;
     if (blend_mode != particle_blend_additive)
         lit_color += fog.scattering;
+    particle_output result;
+    float2 velocity = input.clip_current.xy / max(input.clip_current.w, 1e-5) - input.clip_previous.xy / max(input.clip_previous.w, 1e-5);
+    result.color = float4(lit_color, alpha);
+    result.velocity = float4(velocity, 0, alpha);
+    result.reactivity = float4(1, 0, 0, alpha);
     if (blend_mode == particle_blend_additive)
     {
-        return float4(lit_color * alpha, 0.0);
+        result.color = float4(lit_color * alpha, 0);
+        result.velocity = 0; // additive light cannot replace the opaque surface motion
+        result.reactivity = float4(alpha, 0, 0, 0);
     }
-
-    if (blend_mode == particle_blend_premultiplied)
+    else if (blend_mode == particle_blend_premultiplied)
     {
-        return float4(lit_color * alpha, alpha);
+        result.color.rgb *= alpha;
+        result.velocity.xy *= alpha;
+        result.reactivity.x = alpha;
     }
-
-    return float4(lit_color, alpha);
+    return result;
 }
 
 #endif

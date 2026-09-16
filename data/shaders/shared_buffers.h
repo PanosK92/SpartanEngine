@@ -375,6 +375,8 @@ struct GeometryInfo
 
     SHARED_UINT material_index;
     SHARED_UINT padding_rt;
+    SHARED_UINT decal_offset SHARED_DEFAULT(0);
+    SHARED_UINT decal_count SHARED_DEFAULT(0);
     // Explicit rows of the CPU row-vector matrices, independent of HLSL matrix packing.
     // Translation is reconstructed from the ray; only the linear transforms are needed.
     SHARED_FLOAT4 object_to_world_0;
@@ -427,6 +429,19 @@ struct IndirectDispatchArgs
     SHARED_UINT group_count_z SHARED_DEFAULT(1);
 };
 
+// Receiver-scoped rigid surface deposits. The material buffer blue channel stores their coverage.
+#define decal_max_per_receiver 48
+struct DecalParameters
+{
+    SHARED_MATRIX world_to_decal;
+    SHARED_FLOAT4 color; // linear albedo and opacity
+    SHARED_FLOAT4 surface; // roughness, relief in metres, seed, grass fraction
+    SHARED_UINT source_material SHARED_DEFAULT(0xffffffffu);
+    SHARED_UINT padding0 SHARED_DEFAULT(0);
+    SHARED_UINT padding1 SHARED_DEFAULT(0);
+    SHARED_UINT padding2 SHARED_DEFAULT(0);
+};
+
 // per-draw data for gpu-driven rendering (one entry per renderable lod, looked up from MeshletInstance.draw_index)
 // flags bit 0: skinned (instance cull uses the dynamic world aabb, phase b keeps every meshlet, triangle pass skips backface)
 // flags bit 1: per-instance (both cull phases rebuild the per-instance world transform from instance_index for per-instance bounds)
@@ -441,6 +456,8 @@ struct DrawData
 {
     SHARED_MATRIX transform;
     SHARED_MATRIX transform_previous;
+    SHARED_UINT decal_offset SHARED_DEFAULT(0);
+    SHARED_UINT decal_count SHARED_DEFAULT(0);
     SHARED_UINT   material_index    SHARED_DEFAULT(0);
     SHARED_UINT   is_transparent    SHARED_DEFAULT(0);
     SHARED_UINT   aabb_index        SHARED_DEFAULT(0);
@@ -607,6 +624,9 @@ struct Particle
 {
     SHARED_FLOAT3 position;
     SHARED_FLOAT  lifetime     SHARED_DEFAULT(0.0f); // remaining
+    SHARED_FLOAT3 previous_position;
+    SHARED_FLOAT previous_size SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT4 ground_plane; // captured at birth; zero normal disables ballistic ground collision
     SHARED_FLOAT3 velocity;
     SHARED_FLOAT  max_lifetime SHARED_DEFAULT(0.0f); // initial
     SHARED_FLOAT4 color;                              // current rgba
@@ -619,6 +639,7 @@ struct Particle
 // gpu emitter parameters
 struct EmitterParams
 {
+    SHARED_FLOAT4 ground_plane;
     SHARED_FLOAT3 position;
     SHARED_FLOAT  emission_rate    SHARED_DEFAULT(0.0f);
     SHARED_FLOAT  lifetime         SHARED_DEFAULT(0.0f);
@@ -695,6 +716,7 @@ namespace spartan
     using Sb_EmissiveTriangle = EmissiveTriangle;
     using Sb_IndirectDrawArgs     = IndirectDrawArgs;
     using Sb_IndirectDispatchArgs = IndirectDispatchArgs;
+    static_assert(sizeof(DecalParameters) == 112);
     using Sb_DrawData         = DrawData;
     using Sb_MeshletBounds    = MeshletBounds;
     using Sb_CullTask          = CullTask;

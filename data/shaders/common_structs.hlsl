@@ -114,7 +114,7 @@ struct Surface
         F0                     = lerp(0.04f, albedo, metallic);
         anisotropic           = material.anisotropic;
         anisotropic_rotation  = material.anisotropic_rotation;
-        clearcoat             = material.clearcoat;
+        clearcoat             = material.clearcoat * (1.0f - sample_material.b);
         clearcoat_roughness   = material.clearcoat_roughness;
         sheen                 = material.sheen;
         subsurface_scattering = material.subsurface_scattering;

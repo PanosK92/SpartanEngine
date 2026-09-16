@@ -49,6 +49,17 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    void Render::AddDecal(const DecalParameters& world_decal, Material* source_material)
+    {
+        if (!world_decal.world_to_decal.IsFinite() || HasInstancing()) return;
+        DecalParameters decal = world_decal;
+        decal.world_to_decal = m_entity_ptr->GetMatrix() * world_decal.world_to_decal;
+        // Bounded history, composited in emission order. ClearDecals also supports washing/reset.
+        if (m_decals.size() == decal_capacity)
+            m_decals.erase(m_decals.begin());
+        m_decals.push_back({decal, source_material});
+    }
+
     bool Render::ExcludesTerrainBlend() const
     {
         return HasFlag(RenderFlags::ExcludeFromTerrainBlend) || m_entity_ptr->IsDynamic();
@@ -437,6 +448,17 @@ namespace spartan
 
         State.new_usertype<Render>("Render",
             sol::base_classes,              sol::bases<Component>(),
+            "GetDecalCount",                &Render::GetDecalCount,
+            "ClearDecals",                  &Render::ClearDecals,
+            "AddDecal", [](Render& self, const Vector3& position, const Quaternion& rotation, const Vector3& half_size, const Vector4& color, float roughness, float relief, float seed, Material* source)
+            {
+                if (!position.IsFinite() || !half_size.IsFinite() || half_size.x <= 0 || half_size.y <= 0 || half_size.z <= 0) return;
+                DecalParameters decal;
+                decal.world_to_decal = Matrix(position, rotation, half_size).Inverted();
+                decal.color = Vector4(color.x, color.y, color.z, std::clamp(color.w, 0.0f, 1.0f));
+                decal.surface = Vector4(std::clamp(roughness, 0.0f, 1.0f), std::clamp(relief, 0.0f, 0.01f), seed, 0.0f);
+                self.AddDecal(decal, source);
+            },
             "GetMaterialName",              &Render::GetMaterialName,
             "GetBoundingBox",               &Render::GetBoundingBox,
             "GetMaterial",                  &Render::GetMaterial,

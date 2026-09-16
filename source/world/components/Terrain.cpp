@@ -6373,22 +6373,22 @@ namespace spartan
 
         return [path, m_sculpt = m_sculpt]
         {
-        // an empty layer removes the file so a cleared sculpt does not come back on the next load
-        if (m_sculpt.IsEmpty())
-        {
-            if (FileSystem::Exists(path))
+            // an empty layer removes the file so a cleared sculpt does not come back on the next load
+            if (m_sculpt.IsEmpty())
             {
-                if (!FileSystem::Delete(path)) throw runtime_error("Failed to clear sculpt: " + path);
+                if (FileSystem::Exists(path))
+                {
+                    if (!FileSystem::Delete(path)) throw runtime_error("Failed to clear sculpt: " + path);
+                }
+                return;
             }
-            return;
-        }
 
-        if (!m_sculpt.SaveToFile(path))
-        {
-            throw runtime_error("Failed to save sculpt: " + path);
-        }
+            if (!m_sculpt.SaveToFile(path))
+            {
+                throw runtime_error("Failed to save sculpt: " + path);
+            }
 
-        SP_LOG_INFO("saved sculpt layer: %zu tiles, %.1f kb", m_sculpt.GetTileCount(), static_cast<float>(m_sculpt.GetByteCount()) / 1024.0f);
+            SP_LOG_INFO("saved sculpt layer: %zu tiles, %.1f kb", m_sculpt.GetTileCount(), static_cast<float>(m_sculpt.GetByteCount()) / 1024.0f);
         };
     }
 

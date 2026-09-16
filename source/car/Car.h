@@ -47,6 +47,7 @@ namespace spartan
 {
     class Entity;
     class Physics;
+    class CarSurfaceEffects;
 
     // view modes for car camera
     enum class CarView
@@ -156,6 +157,7 @@ namespace spartan
         void AddCameraOrbitPitch(float delta);
 
     private:
+        std::shared_ptr<CarSurfaceEffects> m_surface_effects;
         Car() = default;
         ~Car() = default;
 

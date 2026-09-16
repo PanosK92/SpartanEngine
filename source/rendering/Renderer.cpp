@@ -497,6 +497,31 @@ namespace spartan
             }
         }
 
+        void fill_decal_draw_fields(Sb_DrawData& out, const Render* render)
+        {
+            using namespace Renderer;
+            out.decal_offset = out.decal_count = 0;
+            if (!render || render->HasInstancing() || render->GetDecals().empty()) return;
+            auto cached = m_decal_ranges.find(render);
+            if (cached == m_decal_ranges.end())
+            {
+                const uint32_t first = static_cast<uint32_t>(m_decal_data.size());
+                const auto inverse = render->GetEntity()->GetMatrix().Inverted();
+                for (const auto& local : render->GetDecals())
+                {
+                    if (m_decal_data.size() == renderer_max_decals) break;
+                    auto decal = local.parameters;
+                    decal.world_to_decal = inverse * local.parameters.world_to_decal;
+                    decal.source_material = local.source_material ? local.source_material->GetIndex() : 0xffffffffu;
+                    m_decal_data.push_back(decal);
+                }
+                cached = m_decal_ranges.emplace(render, std::make_pair(
+                    m_frame_resource_index * renderer_max_decals + first, static_cast<uint32_t>(m_decal_data.size()) - first)).first;
+            }
+            out.decal_offset = cached->second.first;
+            out.decal_count = cached->second.second;
+        }
+
         void sanitize_vendor_upscaler_resolution()
         {
             const Renderer_AntiAliasing_Upsampling mode =
@@ -1295,6 +1320,16 @@ namespace spartan
             {
                 RHI_CommandList::UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_draw_data_cpu[0]);
             }
+        }
+        if (!m_decal_data.empty())
+        {
+            RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::Decals);
+            const uint32_t offset = m_frame_resource_index * renderer_max_decals * sizeof(DecalParameters);
+            const uint32_t size = static_cast<uint32_t>(m_decal_data.size() * sizeof(DecalParameters));
+            if (void* mapped = buffer->GetMappedData())
+                memcpy(static_cast<char*>(mapped) + offset, m_decal_data.data(), size);
+            else
+                RHI_CommandList::UpdateBuffer(buffer, offset, size, m_decal_data.data());
         }
         // mark synced even when empty so later imgui/editor WriteDrawData can stage mid-frame on d3d12
         m_draw_data_gpu_synced = true;
@@ -2715,6 +2750,7 @@ namespace spartan
         entry.meshlet_micro_base = 0;
 
         fill_uv_draw_fields_from_render(entry, render);
+        fill_decal_draw_fields(entry, render);
 
         // the draw data buffer is a single large allocation partitioned into per-frame regions;
         // each frame writes to its own region so there is no write-after-read race with the gpu
@@ -3340,6 +3376,8 @@ namespace spartan
 
     void Renderer::UpdateDrawCalls_ResetCounts()
     {
+        m_decal_data.clear();
+        m_decal_ranges.clear();
         m_draw_call_count           = 0;
         m_draw_calls_prepass_count  = 0;
         m_draw_data_count           = 0;
@@ -3387,6 +3425,12 @@ namespace spartan
                 continue;
             }
 
+            // Stage receiver data even off screen: a reflection may still see it.
+            if (!render->GetDecals().empty() && !render->HasInstancing())
+            {
+                Sb_DrawData decal_range;
+                fill_decal_draw_fields(decal_range, render);
+            }
             // off-screen geometry is only kept when classic shadow maps need the caster
             if (!render->IsVisible())
             {
@@ -3634,6 +3678,7 @@ namespace spartan
                 draw_data.meshlet_micro_base = render->GetMesh()->GetGlobalMeshletMicroOffset();
                 draw_data.lod_meshlet_count  = lod_meshlet_count;
                 fill_uv_draw_fields_from_render(draw_data, render);
+                fill_decal_draw_fields(draw_data, render);
 
                 const BoundingBox& lod_aabb_local = render->GetLodAabb(lod);
                 const Vector3 lod_extent          = lod_aabb_local.GetMax() - lod_aabb_local.GetMin();
@@ -3866,7 +3911,7 @@ namespace spartan
         geometry_info.world_to_object_0 = Vector4(inverse.m00, inverse.m01, inverse.m02, 0.0f);
         geometry_info.world_to_object_1 = Vector4(inverse.m10, inverse.m11, inverse.m12, 0.0f);
         geometry_info.world_to_object_2 = Vector4(inverse.m20, inverse.m21, inverse.m22, 0.0f);
-        static_assert(sizeof(Sb_GeometryInfo) == 144, "RT geometry buffer layout must match HLSL");
+        static_assert(sizeof(Sb_GeometryInfo) == 152, "RT geometry buffer layout must match HLSL");
         fill_uv_draw_fields_from_render(geometry_info, render);
     }
 
@@ -4249,6 +4294,10 @@ namespace spartan
                 {
                     instances.push_back(cache.instance);
                     geometry_infos.push_back(cache.geometry);
+                    auto& geometry = geometry_infos.back();
+                    const auto range = m_decal_ranges.find(render);
+                    geometry.decal_offset = range != m_decal_ranges.end() ? range->second.first : 0;
+                    geometry.decal_count = range != m_decal_ranges.end() ? range->second.second : 0;
                 }
                 else if (cache.invalid_transform)
                 {
@@ -4779,6 +4828,7 @@ namespace spartan
         }
         RHI_CommandList::SetConstantBuffer(0u, GetBuffer(Renderer_Buffer::ConstantFrame));
         RHI_CommandList::SetTexture("tex_perlin", GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
+        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::decals), GetBuffer(Renderer_Buffer::Decals));
 
         RHI_Texture* tex_exposure = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
         if (tex_exposure)

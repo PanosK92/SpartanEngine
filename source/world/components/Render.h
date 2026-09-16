@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../geometry/Mesh.h"
 #include "../rendering/Renderer_Definitions.h"
 #include "../../rendering/Instance.h"
+#include "../../rendering/Renderer_Buffers.h"
 //============================================
 
 namespace spartan
@@ -76,6 +77,14 @@ namespace spartan
 
         static void RegisterForScripting(sol::state_view State);
         sol::reference AsLua(sol::state_view state) override;
+
+        // Runtime deposits follow this receiver, independently of material sharing and mesh UVs.
+        struct Decal { DecalParameters parameters; Material* source_material = nullptr; };
+        void AddDecal(const DecalParameters& world_decal, Material* source_material = nullptr);
+        void ClearDecals() { m_decals.clear(); }
+        uint32_t GetDecalCount() const { return static_cast<uint32_t>(m_decals.size()); }
+        const std::vector<Decal>& GetDecals() const { return m_decals; }
+        static constexpr uint32_t decal_capacity = decal_max_per_receiver;
 
         // mesh
         void SetMesh(Mesh* mesh, const uint32_t sub_mesh_index = 0);
@@ -258,6 +267,7 @@ namespace spartan
         void UpdateLodIndices();
 
     private:
+        std::vector<Decal> m_decals;
 
         // geometry/mesh
         Mesh* m_mesh                          = nullptr;

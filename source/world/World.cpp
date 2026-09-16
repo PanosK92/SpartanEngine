@@ -2055,7 +2055,7 @@ namespace spartan
         return library_resource_directory;
     }
 
-    const vector<string>& World::GetLastResourceCleanup()
+    vector<string> World::GetLastResourceCleanup()
     {
         lock_guard<mutex> lock(resource_cleanup_mutex);
         return last_resource_cleanup;
@@ -2150,6 +2150,7 @@ namespace spartan
         // start timing
         const Stopwatch timer;
 
+        const auto save_started = filesystem::file_time_type::clock::now();
         vector<function<void()>> writes;
         function<void()> cleanup;
 
@@ -2425,144 +2426,151 @@ namespace spartan
                     writes.push_back(move(write));
             }
 
-            cleanup = [directory, used_file_names = move(used_file_names), to_file_key, is_mcp_owned, is_engine_cache]() mutable
+            cleanup = [save_started, directory, used_file_names = move(used_file_names), to_file_key, is_mcp_owned, is_engine_cache]() mutable
             {
-            // prefabs on disk reference meshes and materials that no live entity owns,
-            // without protecting them a save turns every saved prefab into dangling references
-            {
-                auto protect_prefab_references =
-                    [&used_file_names, &to_file_key](
-                        const string& prefab_path
-                    )
+                // prefabs on disk reference meshes and materials that no live entity owns,
+                // without protecting them a save turns every saved prefab into dangling references
                 {
-                    pugi::xml_document prefab_document;
-                    if (!prefab_document.load_file(prefab_path.c_str()))
-                    {
-                        return;
-                    }
-
-                    vector<pugi::xml_node> pending =
-                    {
-                        prefab_document.document_element()
-                    };
-                    while (!pending.empty())
-                    {
-                        const pugi::xml_node node = pending.back();
-                        pending.pop_back();
-                        for (
-                            pugi::xml_node child = node.first_child();
-                            child;
-                            child = child.next_sibling()
+                    auto protect_prefab_references =
+                        [&used_file_names, &to_file_key](
+                            const string& prefab_path
                         )
+                    {
+                        pugi::xml_document prefab_document;
+                        if (!prefab_document.load_file(prefab_path.c_str()))
                         {
-                            pending.push_back(child);
+                            throw runtime_error("Cannot inspect prefab: " + prefab_path);
                         }
 
-                        for (
-                            const char* attribute :
+                        vector<pugi::xml_node> pending =
+                        {
+                            prefab_document.document_element()
+                        };
+                        while (!pending.empty())
+                        {
+                            const pugi::xml_node node = pending.back();
+                            pending.pop_back();
+                            for (
+                                pugi::xml_node child = node.first_child();
+                                child;
+                                child = child.next_sibling()
+                            )
                             {
-                                "mesh_path",
-                                "material_path"
+                                pending.push_back(child);
                             }
+
+                            for (
+                                const char* attribute :
+                                {
+                                    "mesh_path",
+                                    "material_path"
+                                }
+                            )
+                            {
+                                const string reference =
+                                    node.attribute(attribute).as_string();
+                                if (!reference.empty())
+                                {
+                                    used_file_names.insert(
+                                        to_file_key(
+                                            FileSystem::GetFileNameFromFilePath(
+                                                reference
+                                            )
+                                        )
+                                    );
+                                }
+                            }
+                        }
+                    };
+
+                    try
+                    {
+                        for (
+                            const filesystem::directory_entry& entry :
+                            filesystem::recursive_directory_iterator(directory)
                         )
                         {
-                            const string reference =
-                                node.attribute(attribute).as_string();
-                            if (!reference.empty())
+                            if (
+                                entry.is_regular_file() &&
+                                FileSystem::IsEnginePrefabFile(
+                                    entry.path().string()
+                                )
+                            )
                             {
-                                used_file_names.insert(
-                                    to_file_key(
-                                        FileSystem::GetFileNameFromFilePath(
-                                            reference
-                                        )
-                                    )
+                                protect_prefab_references(
+                                    entry.path().string()
                                 );
                             }
                         }
                     }
-                };
-
-                try
-                {
-                    for (
-                        const filesystem::directory_entry& entry :
-                        filesystem::recursive_directory_iterator(directory)
-                    )
+                    catch (const exception& e)
                     {
-                        if (
-                            entry.is_regular_file() &&
-                            FileSystem::IsEnginePrefabFile(
-                                entry.path().string()
-                            )
-                        )
+                        SP_LOG_WARNING(
+                            "Failed to scan prefabs for referenced resources: %s",
+                            e.what()
+                        );
+                        return; // Never prune when reference discovery was incomplete.
+                    }
+                }
+
+                // prune files that no longer belong to this save, loading picks up every file in this directory
+                // so stale duplicates from older saves would otherwise come back and shadow the right resources
+                vector<string> removed, failures;
+                for (const string& existing_file : FileSystem::GetFilesInDirectory(directory))
+                {
+                    // Files created or edited after the snapshot belong to a later edit.
+                    error_code time_error;
+                    const auto modified = filesystem::last_write_time(existing_file, time_error);
+                    if (time_error || modified >= save_started) continue;
+                    if (is_mcp_owned(existing_file) || is_engine_cache(existing_file))
+                    {
+                        continue;
+                    }
+
+                    if (used_file_names.find(to_file_key(FileSystem::GetFileNameFromFilePath(existing_file))) == used_file_names.end())
+                    {
+                        if (FileSystem::Delete(existing_file))
                         {
-                            protect_prefab_references(
-                                entry.path().string()
+                            removed.push_back(
+                                existing_file
+                            );
+                        }
+                        else
+                        {
+                            failures.push_back(
+                                existing_file
                             );
                         }
                     }
                 }
-                catch (const exception& e)
-                {
-                    SP_LOG_WARNING(
-                        "Failed to scan prefabs for referenced resources: %s",
-                        e.what()
-                    );
-                    return; // Never prune when reference discovery was incomplete.
-                }
-            }
 
-            // prune files that no longer belong to this save, loading picks up every file in this directory
-            // so stale duplicates from older saves would otherwise come back and shadow the right resources
-            lock_guard<mutex> lock(resource_cleanup_mutex);
-            last_resource_cleanup.clear();
-            last_resource_cleanup_failures.clear();
-            for (const string& existing_file : FileSystem::GetFilesInDirectory(directory))
-            {
-                if (is_mcp_owned(existing_file) || is_engine_cache(existing_file))
+                // pruning used to be silent, which made deleted resources look like
+                // files that never existed
+                for (
+                    size_t index = 0;
+                    index < removed.size();
+                    index++
+                )
                 {
-                    continue;
-                }
-
-                if (used_file_names.find(to_file_key(FileSystem::GetFileNameFromFilePath(existing_file))) == used_file_names.end())
-                {
-                    if (FileSystem::Delete(existing_file))
+                    if (index == 10)
                     {
-                        last_resource_cleanup.push_back(
-                            existing_file
+                        SP_LOG_INFO(
+                            "Pruned %zu more unreferenced resource files",
+                            removed.size() - index
                         );
+                        break;
                     }
-                    else
-                    {
-                        last_resource_cleanup_failures.push_back(
-                            existing_file
-                        );
-                    }
-                }
-            }
 
-            // pruning used to be silent, which made deleted resources look like
-            // files that never existed
-            for (
-                size_t index = 0;
-                index < last_resource_cleanup.size();
-                index++
-            )
-            {
-                if (index == 10)
-                {
                     SP_LOG_INFO(
-                        "Pruned %zu more unreferenced resource files",
-                        last_resource_cleanup.size() - index
+                        "Pruned unreferenced resource: %s",
+                        removed[index].c_str()
                     );
-                    break;
                 }
-
-                SP_LOG_INFO(
-                    "Pruned unreferenced resource: %s",
-                    last_resource_cleanup[index].c_str()
-                );
-            }
+                {
+                    lock_guard<mutex> lock(resource_cleanup_mutex);
+                    last_resource_cleanup = move(removed);
+                    last_resource_cleanup_failures = move(failures);
+                }
             };
         }
 
@@ -2649,12 +2657,7 @@ namespace spartan
             const string temporary_path = file_path + ".tmp";
             if (!document->save_file(temporary_path.c_str(), " ", pugi::format_indent))
                 throw runtime_error("Failed to write world: " + temporary_path);
-#ifdef _WIN32
-            if (!MoveFileExW(filesystem::path(temporary_path).c_str(), filesystem::path(file_path).c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
-                throw runtime_error("Failed to commit world: " + file_path + " (Windows error " + to_string(GetLastError()) + ")");
-#else
             filesystem::rename(temporary_path, file_path);
-#endif
             cleanup();
             SP_LOG_INFO("World '%s' saved: snapshot %.2f ms, background work %.2f ms", file_path.c_str(), snapshot_ms, write_timer.GetElapsedTimeMs());
         };

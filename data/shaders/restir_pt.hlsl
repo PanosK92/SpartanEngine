@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================
 #include "common.hlsl"
 #include "common_road.hlsl"
+#include "common_decals.hlsl"
 #include "common_ray_hit.hlsl"
 #include "restir_reservoir.hlsl"
 //==============================
@@ -968,6 +969,11 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
             : albedo * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
     }
 
+    float decal_occlusion = 1.0f;
+    float footprint = max(ray_t * 0.001f, 0.001f);
+    apply_decals(uint2(geo.decal_offset, geo.decal_count), hit_position, geometric_normal,
+        tangent_world * footprint, cross(geometric_normal, tangent_world) * footprint,
+        albedo, normal_world, roughness, metallic, decal_occlusion, emission);
     payload.hit_position     = hit_position;
     payload.hit_normal       = normal_world;
     payload.geometric_normal = geometric_normal;

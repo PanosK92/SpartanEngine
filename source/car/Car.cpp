@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CarDebug.h"
 #include "CarEngineSoundSynthesis.h"
 #include "CarTireSquealSynthesis.h"
+#include "CarSurfaceEffects.h"
 #include "../input/Input.h"
 #include "../core/Window.h"
 #include "../file_system/FileSystem.h"
@@ -3500,6 +3501,12 @@ namespace spartan
             m_was_playing = is_playing;
         }
 
+        if (m_vehicle_entity && m_is_drivable && !Engine::IsFlagSet(EngineMode::Paused))
+        {
+            if (!m_surface_effects) m_surface_effects = std::make_shared<CarSurfaceEffects>();
+            m_surface_effects->Tick(m_vehicle_entity, static_cast<float>(Timer::GetDeltaTimeSec()),
+                Engine::IsFlagSet(EngineMode::Playing));
+        }
         TickInput();
         TickSounds();
         TickChaseCamera();

@@ -222,6 +222,8 @@ namespace spartan
             uint32_t m_frame_resource_index;
             uint32_t m_cpu_indirect_draw_arg_count;
             std::array<Sb_DrawData, renderer_max_draw_calls> m_draw_data_cpu;
+            std::vector<DecalParameters> m_decal_data;
+            std::unordered_map<const Render*, std::pair<uint32_t, uint32_t>> m_decal_ranges;
             uint32_t m_draw_data_count;
             bool m_draw_data_gpu_synced;
             std::array<RHI_Texture*, rhi_max_array_size> m_bindless_textures;
@@ -271,6 +273,8 @@ namespace spartan
         inline auto& m_frame_resource_index = state().m_frame_resource_index;
         inline auto& m_cpu_indirect_draw_arg_count = state().m_cpu_indirect_draw_arg_count;
         inline auto& m_draw_data_cpu = state().m_draw_data_cpu;
+        inline auto& m_decal_data = state().m_decal_data;
+        inline auto& m_decal_ranges = state().m_decal_ranges;
         inline auto& m_draw_data_count = state().m_draw_data_count;
         inline auto& m_draw_data_gpu_synced = state().m_draw_data_gpu_synced;
         inline auto& m_bindless_textures = state().m_bindless_textures;

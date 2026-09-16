@@ -116,6 +116,9 @@ namespace spartan
         at(buffers, Renderer_Buffer::GeometryInfo)       = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_GeometryInfo)), rhi_max_array_size * 4,                 nullptr,            true, "geometry_info");
 
         // one buffer for every frame, each writes its own offset region so the bindless descriptors never change under in-flight commands
+        at(buffers, Renderer_Buffer::Decals) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(DecalParameters)),
+            renderer_max_decals * renderer_draw_data_buffer_count, nullptr, true, "decals");
         at(buffers, Renderer_Buffer::DrawData) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)),
             renderer_max_draw_calls * renderer_draw_data_buffer_count, nullptr, true,
@@ -706,7 +709,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_emissive) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R11G11B10_Float, flags, "gbuffer_emissive");
             // rgba: xy = ndc velocity, z = radial motion blur mask, w unused
             at(render_targets, Renderer_RenderTarget::gbuffer_velocity) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_velocity");
-            at(render_targets, Renderer_RenderTarget::dlss_reactivity)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "dlss_reactivity");
+            at(render_targets, Renderer_RenderTarget::dlss_reactivity)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "dlss_reactivity");
             at(render_targets, Renderer_RenderTarget::gbuffer_depth)    = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float,          flags, "gbuffer_depth");
             // restir's temporal gate tests disocclusion against the prior depth, the current frame's depth ghosts moving objects
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float, flags, "gbuffer_depth_previous");

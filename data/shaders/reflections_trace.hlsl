@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========
 #include "common.hlsl"
 #include "common_road.hlsl"
+#include "common_decals.hlsl"
 #include "common_ray_hit.hlsl"
 //====================
 
@@ -76,8 +77,9 @@ void ray_gen()
     float4 normal_sample = tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
     uint material_index  = uint(normal_sample.a);
     MaterialParameters mat = material_parameters[material_index];
-    float roughness = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
-    roughness       = lerp(roughness, mat.clearcoat_roughness, saturate(mat.clearcoat));
+    float4 decal_material = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
+    float roughness = decal_material.r;
+    roughness       = lerp(roughness, mat.clearcoat_roughness, saturate(mat.clearcoat) * (1.0f - decal_material.b));
 
     // skip near-diffuse lobes, apply fades them out and ibl covers the rest
     if (roughness >= 0.9f)
@@ -306,6 +308,13 @@ ReflectionSurface reconstruct_reflection_surface(float ray_t, uint instance_inde
     }
 
     road_weathering(mat.flags,hit_pos,albedo,roughness,exp2(mip_level)*3.0/4096.0);
+    float decal_metalness = mat.metalness, decal_occlusion = 1.0f;
+    float3 decal_tangent = normalize(tangent_world);
+    float3 decal_bitangent = normalize(cross(normal_world, decal_tangent));
+    float footprint = max(ray_t * 0.001f, 0.001f);
+    apply_decals(uint2(geo.decal_offset, geo.decal_count), hit_pos, normal_world,
+        decal_tangent * footprint, decal_bitangent * footprint, albedo, normal_world,
+        roughness, decal_metalness, decal_occlusion, payload.emission);
     payload.position       = hit_pos;
     payload.hit_distance   = ray_t;
     payload.normal         = normal_world;

@@ -204,7 +204,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     if (!is_water_pixel && !is_glass_pixel)
     {
-        float coat = saturate(mat.clearcoat);
+        float coat = saturate(mat.clearcoat) * (1.0f - sample_material.b);
         float reflection_roughness = lerp(sample_material.r, mat.clearcoat_roughness, coat);
         if (reflection_roughness >= reflection_roughness_fade_end)
         {

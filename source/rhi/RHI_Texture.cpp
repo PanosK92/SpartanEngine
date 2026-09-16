@@ -454,11 +454,11 @@ namespace spartan
         void downsample_bilinear(const vector<std::byte>& input, vector<std::byte>& output, uint32_t width, uint32_t height)
         {
             constexpr uint32_t channels = 4; // RGBA32 - engine standard
-  
+
             // calculate new dimensions (halving both width and height)
             uint32_t new_width  = width  >> 1;
             uint32_t new_height = height >> 1;
-            
+
             // ensure minimum size
             if (new_width < 1)
             {
@@ -468,7 +468,7 @@ namespace spartan
             {
                 new_height = 1;
             }
-            
+
             // bilinear downsample, rows are independent so parallelize across rows
             // small mips are too cheap to parallelize, fall back to sequential
             auto process_rows = [&](uint32_t y_start, uint32_t y_end)
@@ -626,9 +626,13 @@ namespace spartan
 
     void RHI_Texture::SaveToFile(const string& file_path)
     {
-        if (!CanSaveToFile()) return;
-        CreateSaveTask(file_path)();
-        SetResourceFilePath(file_path);
+        try
+        {
+            if (!CanSaveToFile()) return;
+            CreateSaveTask(file_path)();
+            SetResourceFilePath(file_path);
+        }
+        catch (const exception& error) { SP_LOG_ERROR("Resource save failed: %s", error.what()); }
     }
 
     function<void()> RHI_Texture::CreateSaveTask(const string& file_path)
@@ -641,14 +645,14 @@ namespace spartan
                 SP_LOG_WARNING("SaveToFile skipped for %s - no CPU-side data (will re-import from source)", file_path.c_str());
                 throw runtime_error("Failed to save texture: " + file_path);
             }
-        
+
             // require compressed native format
             if (!IsCompressedFormat(m_format))
             {
                 SP_LOG_WARNING("SaveToFile skipped for %s - not compressed (will re-import from source)", file_path.c_str());
                 throw runtime_error("Failed to save texture: " + file_path);
             }
-        
+
             binary_format::header hdr = {};
             hdr.type                  = static_cast<uint32_t>(m_type);
             hdr.format                = static_cast<uint32_t>(m_format);
@@ -664,20 +668,20 @@ namespace spartan
                 copy_n(n.c_str(), count, hdr.name);
                 hdr.name[count] = '\0';
             }
-        
+
             ofstream ofs(file_path, ios::binary);
             if (!ofs.is_open())
             {
                 SP_LOG_ERROR("SaveToFile failed to open %s", file_path.c_str());
                 throw runtime_error("Failed to save texture: " + file_path);
             }
-        
+
             if (!binary_format::write_all(ofs, &hdr, sizeof(hdr)))
             {
                 SP_LOG_ERROR("SaveToFile failed to write header for %s", file_path.c_str());
                 throw runtime_error("Failed to save texture: " + file_path);
             }
-        
+
             // write layout: for each slice, for each mip, write uint64 size then bytes
             for (uint32_t array_index = 0; array_index < m_depth; array_index++)
             {
@@ -687,7 +691,7 @@ namespace spartan
                     SP_LOG_ERROR("SaveToFile mip count mismatch on slice %u", array_index);
                     throw runtime_error("Failed to save texture: " + file_path);
                 }
-        
+
                 for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
                 {
                     const auto& mip = slice.mips[mip_index];
@@ -699,16 +703,16 @@ namespace spartan
                     }
                 }
             }
-        
+
             ofs.flush();
             if (!ofs.good())
             {
                 SP_LOG_ERROR("SaveToFile finalise failed for %s", file_path.c_str());
                 throw runtime_error("Failed to save texture: " + file_path);
             }
-        
+
             // record path for cache
-    
+
             SP_LOG_INFO("Saved native compressed texture to %s", file_path.c_str());
         };
     }
@@ -852,7 +856,7 @@ namespace spartan
     {
         // ensure slices exist up to the requested index
         while (m_slices.size() <= slice_index)
-        { 
+        {
             m_slices.emplace_back();
         }
 
@@ -1060,7 +1064,7 @@ namespace spartan
                 }
             }
         }
-        
+
         // upload to gpu
         if (!RHI_Device::IsDeviceLost())
         {

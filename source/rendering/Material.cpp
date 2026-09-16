@@ -48,13 +48,13 @@ namespace spartan
             {
                 // System / meta
                 case MaterialProperty::Gltf:                       return "gltf";
-        
+
                 // World / geometry context
                 case MaterialProperty::WorldHeight:                return "world_space_height";
                 case MaterialProperty::WorldWidth:                 return "world_space_width";
                 case MaterialProperty::WorldSpaceUv:               return "world_space_uv";
                 case MaterialProperty::Tessellation:               return "tessellation";
-        
+
                 // Core PBR
                 case MaterialProperty::ColorR:                     return "color_r";
                 case MaterialProperty::ColorG:                     return "color_g";
@@ -64,7 +64,7 @@ namespace spartan
                 case MaterialProperty::Metalness:                  return "metalness";
                 case MaterialProperty::Normal:                     return "normal";
                 case MaterialProperty::Height:                     return "height";
-        
+
                 // Extended PBR
                 case MaterialProperty::Clearcoat:                  return "clearcoat";
                 case MaterialProperty::Clearcoat_Roughness:        return "clearcoat_roughness";
@@ -89,7 +89,7 @@ namespace spartan
                 case MaterialProperty::SurfacePreset:              return "surface_preset";
                 case MaterialProperty::NormalFromAlbedo:           return "normal_from_albedo";
                 case MaterialProperty::EmissiveFromAlbedo:         return "emissive_from_albedo";
-        
+
                 // Texture transforms
                 case MaterialProperty::TextureTilingX:             return "texture_tiling_x";
                 case MaterialProperty::TextureTilingY:             return "texture_tiling_y";
@@ -98,7 +98,7 @@ namespace spartan
                 case MaterialProperty::TextureInvertX:             return "texture_invert_x";
                 case MaterialProperty::TextureInvertY:             return "texture_invert_y";
                 case MaterialProperty::TextureRotation:            return "texture_rotation";
-        
+
                 // Special effects
                 case MaterialProperty::IsTerrain:                  return "texture_slope_based";
                 case MaterialProperty::IsGrassBlade:               return "is_grass_blade";
@@ -115,13 +115,13 @@ namespace spartan
                 case MaterialProperty::TerrainBlendSharpness:      return "terrain_blend_sharpness";
                 case MaterialProperty::TerrainCoating:             return "terrain_coating";
                 case MaterialProperty::TerrainCoatingScale:        return "terrain_coating_scale";
-        
+
                 // Render settings
                 case MaterialProperty::CullMode:                   return "cull_mode";
-        
+
                 // Sentinel
                 case MaterialProperty::Max:                        return "max";
-        
+
                 default:
                 {
                     SP_ASSERT_MSG(false, "Unknown material property");
@@ -243,7 +243,7 @@ namespace spartan
         void merge_alpha_mask_into_color_alpha(vector<byte>& albedo, vector<byte>& mask)
         {
             SP_ASSERT_MSG(albedo.size() == mask.size(), "The dimensions must be equal");
-        
+
             for (size_t i = 0; i < albedo.size(); i += 4)
             {
                 float alpha_albedo   = static_cast<float>(albedo[i + 3]) / 255.0f; // channel a
@@ -260,7 +260,7 @@ namespace spartan
             SP_ASSERT_MSG(albedo_data.size() == width * height * 4, "Invalid albedo data size");
             SP_ASSERT_MSG(intensity > 0.0f, "Intensity must be positive");
             normal_data.resize(width * height * 4);
-        
+
             // 5x5 sobel kernels for x and y gradients
             const int sobel_x[5][5] =
             {
@@ -278,7 +278,7 @@ namespace spartan
                 { 1,  2,  3,  2,  1},
                 { 2,  3,  4,  3,  2}
             };
-        
+
             // function to get perceptual luminance (grayscale)
             auto get_grayscale = [&](uint32_t px, uint32_t py) -> float
             {
@@ -289,17 +289,17 @@ namespace spartan
                 // perceptual luminance (itu-r bt.709)
                 return 0.2126f * r + 0.7152f * g + 0.0722f * b;
             };
-        
+
             // temporary buffer for normal map before post-processing
             vector<Vector3> temp_normals(width * height);
-        
+
             // compute gradients and normals
             for (uint32_t y = 0; y < height; ++y)
             {
                 for (uint32_t x = 0; x < width; ++x)
                 {
                     float gx = 0.0f, gy = 0.0f;
-        
+
                     // apply 5x5 sobel kernels
                     for (int j = -2; j <= 2; ++j)
                     {
@@ -312,21 +312,21 @@ namespace spartan
                             gy += value * sobel_y[j + 2][i + 2];
                         }
                     }
-        
+
                     // normalize gradient magnitude and apply intensity
                     float scale = 1.0f / 128.0f;
                     gx *= scale * intensity;
                     gy *= scale * intensity;
-        
+
                     // compute normal (z = 1 for surface facing up)
                     Vector3 normal(gx, flip_y ? -gy : gy, 1.0f);
                     normal.Normalize();
-        
+
                     // store in temporary buffer
                     temp_normals[y * width + x] = normal;
                 }
             }
-        
+
             // 3x3 gaussian kernel for smoothing
             const float gaussian[3][3] =
             {
@@ -334,14 +334,14 @@ namespace spartan
                 {2.0f / 16.0f, 4.0f / 16.0f, 2.0f / 16.0f},
                 {1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f}
             };
-        
+
             // apply gaussian blur and store final normals
             for (uint32_t y = 0; y < height; ++y)
             {
                 for (uint32_t x = 0; x < width; ++x)
                 {
                     Vector3 blurred_normal(0.0f, 0.0f, 0.0f);
-        
+
                     // apply gaussian blur
                     for (int j = -1; j <= 1; ++j)
                     {
@@ -356,13 +356,13 @@ namespace spartan
                             blurred_normal.z += n.z * weight;
                         }
                     }
-        
+
                     // re-normalize after blurring
                     blurred_normal.Normalize();
-        
+
                     // map to [0,1] for storage
                     blurred_normal = (blurred_normal + Vector3::One) * 0.5f;
-        
+
                     // store in output
                     uint32_t index = (y * width + x) * 4;
                     normal_data[index + 0] = static_cast<byte>(static_cast<uint8_t>(blurred_normal.x * 255.0f)); // r: x direction
@@ -456,7 +456,7 @@ namespace spartan
                 hydrate_source(texture_metalness);
                 hydrate_source(texture_height);
             }
-        
+
             // check for normal_from_albedo flag
             if (material->GetProperty(MaterialProperty::NormalFromAlbedo) == 1.0f && texture_color && !texture_color->IsCompressedFormat())
             {
@@ -465,10 +465,10 @@ namespace spartan
                 uint32_t height    = texture_color->GetHeight();
                 uint32_t depth     = texture_color->GetDepth();
                 uint32_t mip_count = texture_color->GetMipCount();
-        
+
                 // generate normal map name
                 string normal_name = "normal_from_" + texture_color->GetObjectName() + "_slot" + to_string(slot);
-        
+
                 // check if normal map already exists
                 shared_ptr<RHI_Texture> texture_normal_new = ResourceCache::GetByName<RHI_Texture>(normal_name);
                 if (!texture_normal_new)
@@ -484,10 +484,10 @@ namespace spartan
                         normal_name.c_str()
                     );
                     texture_normal_new->SetCompressionFormat(RHI_Format::BC5_Unorm);
-        
+
                     // allocate mip
                     texture_normal_new->AllocateMip();
-        
+
                     // generate normal map data
                     vector<byte> normal_data;
                     texture_processing::generate_normal_from_albedo(
@@ -502,12 +502,12 @@ namespace spartan
                     texture_normal_new->SetResourceFilePath(texture_color->GetObjectName() + "_normal_from_albedo.png"); // that's a hack, need to fix the ResourceCache to rely on a hash, not names and paths
                     texture_normal_new = ResourceCache::Cache<RHI_Texture>(texture_normal_new);
                 }
-        
+
                 // set the new normal texture
                 material->SetTexture(MaterialTextureType::Normal, texture_normal_new, slot);
                 texture_normal = texture_normal_new.get();
             }
-        
+
             // helper to check if texture is valid for packing
             auto is_valid_for_packing = [](RHI_Texture* tex) -> bool
             {
@@ -544,7 +544,7 @@ namespace spartan
             check_mip(texture_roughness);
             check_mip(texture_metalness);
             check_mip(texture_height);
-        
+
             // pack textures
             {
                 // step 1: pack alpha mask into color alpha (resize if needed)
@@ -591,7 +591,7 @@ namespace spartan
                         }
                     }
                 }
-        
+
                 // step 2: pack occlusion, roughness, metalness, and height into a single texture
                 if (!keep_packed)
                 {
@@ -603,10 +603,10 @@ namespace spartan
                         RHI_Texture_Mip* mip = tex->GetMip(0, 0);
                         return mip && !mip->bytes.empty();
                     };
-        
+
                     // generate unique name including slot to handle multi-slot materials (e.g. terrain)
                     string tex_name = material->GetObjectName() + "_packed_slot" + to_string(slot);
-                    
+
                     // for repacking, remove the old packed texture from cache so we create a fresh one
                     shared_ptr<RHI_Texture> texture_packed = ResourceCache::GetByName<RHI_Texture>(tex_name);
                     if (texture_packed)
@@ -642,14 +642,14 @@ namespace spartan
                             material->IsPersistent()
                         );
                         texture_packed->SetCompressionFormat(RHI_Format::BC3_Unorm);
-                        
+
                         // set resource file path so the texture can be cached and properly referenced by materials
                         // the path matches what World::SaveToFile uses when saving textures
                         string packed_path = string(ResourceCache::GetProjectDirectory()) + packed_name + ".texture";
                         texture_packed->SetResourceFilePath(packed_path);
-                        
+
                         texture_packed->AllocateMip();
-        
+
                         const size_t packed_size = max_width * max_height * 4;
 
                         // get texture data or use material property-based defaults
@@ -665,7 +665,7 @@ namespace spartan
                             has_packable_data(texture_metalness) ? texture_metalness : nullptr, packed_size, metalness_default);
                         vector<byte> height_data = texture_processing::get_texture_data_or_default(
                             has_packable_data(texture_height) ? texture_height : nullptr, packed_size, static_cast<byte>(127));
-        
+
                         // resize if necessary (only when texture data is available)
                         if (has_packable_data(texture_occlusion) && (texture_occlusion->GetWidth() != max_width || texture_occlusion->GetHeight() != max_height))
                         {
@@ -683,7 +683,7 @@ namespace spartan
                         {
                             texture_processing::resize_texture(texture_height->GetMip(0, 0)->bytes, texture_height->GetWidth(), texture_height->GetHeight(), texture_height->GetChannelCount(), height_data, max_width, max_height);
                         }
-        
+
                         texture_processing::pack_occlusion_roughness_metalness_height(
                             move(occlusion_data),
                             move(roughness_data),
@@ -1071,7 +1071,7 @@ namespace spartan
             }
         }
         bump_revision();
-    
+
         pugi::xml_node textures_node = node_material.child("textures");
         auto texture_path_of = [&textures_node](const MaterialTextureType type, const uint32_t slot)
         {
@@ -1149,7 +1149,7 @@ namespace spartan
                 {
                     continue;
                 }
-    
+
                 string tex_name = node_texture.attribute("texture_name").as_string();
                 string tex_path = node_texture.attribute("texture_path").as_string();
 
@@ -1185,7 +1185,7 @@ namespace spartan
                 {
                     texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
                 }
-    
+
                 if (texture)
                 {
                     SetTexture(static_cast<MaterialTextureType>(type), texture.get(), slot, false);
@@ -1197,10 +1197,14 @@ namespace spartan
         m_packed_from_disk = packed_reused;
         m_object_size      = sizeof(*this);
     }
-    
+
     void Material::SaveToFile(const string& file_path)
     {
-        if (auto save = CreateSaveTask(file_path)) save();
+        try
+        {
+            if (auto save = CreateSaveTask(file_path)) save();
+        }
+        catch (const exception& error) { SP_LOG_ERROR("Resource save failed: %s", error.what()); }
     }
 
     function<void()> Material::CreateSaveTask(const string& file_path)
@@ -1211,7 +1215,7 @@ namespace spartan
             return {};
         }
 
-        // serialize concurrent saves of the same path, the tmp file and rename must not race
+        // Capture values while material preparation is excluded.
         lock_guard<recursive_mutex> snapshot_lock(m_mutex);
 
         SetResourceFilePath(file_path);
@@ -1253,29 +1257,29 @@ namespace spartan
 
         return [file_path, document]
         {
-        lock_guard<mutex> file_lock(save_mutex_for(file_path));
-        auto& doc = *document;
-        // atomic write so a reader on another thread never observes a truncated file
-        const string tmp_path = file_path + ".tmp";
-        if (!doc.save_file(tmp_path.c_str()))
-        {
-            SP_LOG_ERROR("Failed to write %s", tmp_path.c_str());
-            throw runtime_error("Failed to write material: " + file_path);
-        }
+            lock_guard<mutex> file_lock(save_mutex_for(file_path));
+            auto& doc = *document;
+            // atomic write so a reader on another thread never observes a truncated file
+            const string tmp_path = file_path + ".tmp";
+            if (!doc.save_file(tmp_path.c_str()))
+            {
+                SP_LOG_ERROR("Failed to write %s", tmp_path.c_str());
+                throw runtime_error("Failed to write material: " + file_path);
+            }
 
-        std::error_code ec;
-        std::filesystem::rename(tmp_path, file_path, ec);
-        if (ec)
-        {
-            // fall back to copy + remove for cross volume cases
-            std::filesystem::copy_file(tmp_path, file_path, std::filesystem::copy_options::overwrite_existing, ec);
-            if (ec) throw runtime_error("Failed to commit material: " + file_path + ": " + ec.message());
-            std::filesystem::remove(tmp_path, ec);
+            std::error_code ec;
+            std::filesystem::rename(tmp_path, file_path, ec);
             if (ec)
             {
-                SP_LOG_ERROR("Failed to commit %s, %s", file_path.c_str(), ec.message().c_str());
+                // fall back to copy + remove for cross volume cases
+                std::filesystem::copy_file(tmp_path, file_path, std::filesystem::copy_options::overwrite_existing, ec);
+                if (ec) throw runtime_error("Failed to commit material: " + file_path + ": " + ec.message());
+                std::filesystem::remove(tmp_path, ec);
+                if (ec)
+                {
+                    SP_LOG_ERROR("Failed to commit %s, %s", file_path.c_str(), ec.message().c_str());
+                }
             }
-        }
         };
     }
 
@@ -1365,7 +1369,7 @@ namespace spartan
         // only packed textures get compressed, the gpu upload is deferred so pack_textures can still mutate the cpu bytes
         SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_DeferUpload), slot);
     }
- 
+
     bool Material::HasTextureOfType(const string& path) const
     {
         for (const auto& texture : m_textures)
@@ -1389,7 +1393,7 @@ namespace spartan
             if (m_textures[static_cast<uint32_t>(texture_type) * slots_per_texture + slot] != nullptr)
                 return true;
         }
-    
+
         return false;
     }
 
@@ -1509,7 +1513,7 @@ namespace spartan
     {
         // array to track highest used slot for each texture type
         uint32_t max_used_slot[static_cast<size_t>(MaterialTextureType::Max)] = { 0 };
-    
+
         // iterate through each texture type
         for (size_t type = 0; type < static_cast<size_t>(MaterialTextureType::Max); type++)
         {
@@ -1518,7 +1522,7 @@ namespace spartan
             {
                 // calculate array index using the helper function
                 uint32_t index = (static_cast<uint32_t>(type) * slots_per_texture) + slot;
-                
+
                 // if this slot has a texture, update the max used slot for this type
                 if (m_textures[index])
                 {
@@ -1526,7 +1530,7 @@ namespace spartan
                 }
             }
         }
-    
+
         // return the maximum used slot count across all texture types (minimum of 1)
         return max<uint32_t>(*max_element(begin(max_used_slot), end(max_used_slot)), 1);
     }

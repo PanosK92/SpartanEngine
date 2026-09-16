@@ -7475,6 +7475,16 @@ namespace spartan
                 json += ",\"entity\":" + entity_to_json_compact(root);
             }
             json += ",\"occupied\":" + json_bool(car->IsOccupied());
+            uint32_t decal_count = 0;
+            if (root)
+            {
+                std::vector<Entity*> receivers;
+                root->GetDescendants(&receivers);
+                receivers.push_back(root);
+                for (Entity* receiver : receivers)
+                    if (Render* render = receiver->GetComponent<Render>()) decal_count += render->GetDecalCount();
+            }
+            json += ",\"decal_count\":" + std::to_string(decal_count);
             json += ",\"mcp_controlled\":" + json_bool(car->IsExternallyControlled());
             json += ",\"view\":" + json_string(car_view_to_name(car->GetCurrentView()));
             json += ",\"show_telemetry\":" + json_bool(car->GetShowTelemetry());

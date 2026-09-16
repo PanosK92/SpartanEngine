@@ -86,6 +86,7 @@ namespace spartan
     // in restir_reservoir.hlsl, near coprime so tiling periods never align within a screen
     const uint32_t restir_pairing_sizes[3]         = { 254, 230, 210 };
     const uint32_t restir_pairing_element_count    = 254 * 254 + 230 * 230 + 210 * 210;
+    const uint32_t renderer_max_decals = 8192; // shared by all receivers in one view, ring-buffered per frame
     const uint32_t renderer_draw_data_buffer_count = 4;       // matches command list pool size, avoids cpu-gpu memcpy races
     const uint32_t renderer_max_indirect_draws     = 131072;  // per render component lod draw data, cull shader clamps writes
     // Preserve the old instance budget, plus one partial batch per possible draw.
@@ -305,6 +306,7 @@ namespace spartan
         meshlet_vertices       = 58,
         meshlet_micro_indices  = 59,
         tree_wind_cache       = 60,
+        decals                = 66,
         // per-instance cull tasks for gpu-driven culling
         cull_tasks             = 44,
         // two-phase culling: phase a survivor list + its indirect dispatch args
@@ -642,6 +644,7 @@ namespace spartan
         TreeWindCache,            // optional per-visible-instance root wind
         SurvivingInstances,        // phase a survivor list, phase b dispatches one workgroup per entry
         InstanceDispatchArgs,      // single-slot indirect dispatch args buffer driving the meshlet cull pass (phase b)
+        Decals,
         DrawData,                  // bindless per-draw data (transforms, material index, etc.)
         // clustered lighting
         ClusterLightGrid,          // one uint2 per cluster: (first_index, count) into ClusterLightIndices

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 #include "common_tessellation.hlsl"
 #include "common_road.hlsl"
+#include "common_decals.hlsl"
 //=================================
 
 struct gbuffer
@@ -604,10 +605,15 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         }
     }
 
+    float decal_coverage = apply_decals(vertex.decal_range, position_world, normalize(vertex.normal), dpdx_world, dpdy_world,
+        albedo.rgb, normal, roughness, metalness, occlusion, emission);
+
+    albedo.a = lerp(albedo.a, 1.0f, decal_coverage);
+
     // geometric specular antialiasing, yamada 2018, the screen space normal variance is folded
     // into the ggx width so sub pixel detail rolls off into roughness instead of shimmering
     // water has analytic normals rather than a normal texture so it is admitted explicitly
-    if (surface.has_texture_normal() || surface.is_water() || terrain_shaded)
+    if (surface.has_texture_normal() || surface.is_water() || terrain_shaded || vertex.decal_range.y > 0)
     {
         const float SPECULAR_AA_SIGMA2 = 0.25f;
         const float SPECULAR_AA_KAPPA  = 0.18f;
@@ -624,7 +630,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     gbuffer g_buffer;
     g_buffer.albedo   = albedo;
     g_buffer.normal   = float4(normal, pass_get_material_index());
-    g_buffer.material = float4(roughness, metalness, 0.0f, occlusion);
+    g_buffer.material = float4(roughness, metalness, decal_coverage, occlusion);
     // previous surface depth lets temporal reconstruction validate object motion along the view axis.
     float previous_depth = vertex.position_previous.w > 0.0f ?
         min(linearize_depth(vertex.position_previous.z / vertex.position_previous.w), FLT_MAX_16U) : 0.0f;

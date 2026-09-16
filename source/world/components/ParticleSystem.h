@@ -163,6 +163,10 @@ namespace spartan
         float GetVolumeShadowing() const;
         void SetVolumeShadowing(float shadowing);
 
+        // Runtime contact plane for ballistic debris. Zero disables this cheaper collision path.
+        const math::Vector4& GetGroundPlane() const { return m_ground_plane; }
+        void SetGroundPlane(const math::Vector4& plane) { m_ground_plane = plane; }
+
         // simulation
         float GetDrag() const;
         void SetDrag(float drag);
@@ -262,6 +266,7 @@ namespace spartan
         float m_volume_density              = 1.0f;
         float m_volume_anisotropy           = 0.35f;
         float m_volume_shadowing            = 0.5f;
+        math::Vector4 m_ground_plane = math::Vector4::Zero;
         float m_drag                        = 1.2f;
         float m_turbulence_strength         = 0.3f;
         float m_wind_influence              = 0.0f;

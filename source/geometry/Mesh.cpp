@@ -198,7 +198,11 @@ namespace spartan
 
     void Mesh::SaveToFile(const string& file_path)
     {
-        CreateSaveTask(file_path)();
+        try
+        {
+            CreateSaveTask(file_path)();
+        }
+        catch (const exception& error) { SP_LOG_ERROR("Resource save failed: %s", error.what()); }
     }
 
     function<void()> Mesh::CreateSaveTask(const string& file_path)
@@ -211,28 +215,28 @@ namespace spartan
                 SP_LOG_ERROR("Failed to open file for writing: %s", file_path.c_str());
                 throw runtime_error("Failed to open mesh: " + file_path);
             }
-    
+
             uint32_t version = 6; // meshlet unique-vertex remaps + micro-indices, MeshletBounds at 24 bytes
             outfile.write(reinterpret_cast<const char*>(&version), sizeof(uint32_t));
-    
+
             uint32_t type = static_cast<uint32_t>(m_type);
             outfile.write(reinterpret_cast<const char*>(&type), sizeof(uint32_t));
-    
+
             // legacy field for backward compatibility (previously stored lod curve type)
             uint32_t legacy_field = 0;
             outfile.write(reinterpret_cast<const char*>(&legacy_field), sizeof(uint32_t));
-    
+
             outfile.write(reinterpret_cast<const char*>(&m_flags), sizeof(uint32_t));
-    
+
             uint32_t submesh_count = static_cast<uint32_t>(m_sub_meshes.size());
             outfile.write(reinterpret_cast<const char*>(&submesh_count), sizeof(uint32_t));
-    
+
             for (uint32_t sub_idx = 0; sub_idx < submesh_count; sub_idx++)
             {
                 const SubMesh& sub = m_sub_meshes[sub_idx];
                 uint32_t lod_count = static_cast<uint32_t>(sub.lods.size());
                 outfile.write(reinterpret_cast<const char*>(&lod_count), sizeof(uint32_t));
-    
+
                 for (const auto& lod : sub.lods)
                 {
                     outfile.write(reinterpret_cast<const char*>(&lod.vertex_offset), sizeof(uint32_t));
@@ -241,7 +245,7 @@ namespace spartan
                     outfile.write(reinterpret_cast<const char*>(&lod.index_count), sizeof(uint32_t));
                     outfile.write(reinterpret_cast<const char*>(&lod.meshlet_offset), sizeof(uint32_t));
                     outfile.write(reinterpret_cast<const char*>(&lod.meshlet_count), sizeof(uint32_t));
-    
+
                     Vector3 min = lod.aabb.GetMin();
                     Vector3 max = lod.aabb.GetMax();
                     outfile.write(reinterpret_cast<const char*>(&min.x), sizeof(float));
@@ -252,27 +256,27 @@ namespace spartan
                     outfile.write(reinterpret_cast<const char*>(&max.z), sizeof(float));
                 }
             }
-    
+
             uint32_t vertex_count = static_cast<uint32_t>(m_vertices.size());
             outfile.write(reinterpret_cast<const char*>(&vertex_count), sizeof(uint32_t));
             outfile.write(reinterpret_cast<const char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
-    
+
             uint32_t index_count = static_cast<uint32_t>(m_indices.size());
             outfile.write(reinterpret_cast<const char*>(&index_count), sizeof(uint32_t));
             outfile.write(reinterpret_cast<const char*>(m_indices.data()), index_count * sizeof(uint32_t));
-    
+
             uint32_t meshlet_count = static_cast<uint32_t>(m_meshlets.size());
             outfile.write(reinterpret_cast<const char*>(&meshlet_count), sizeof(uint32_t));
             outfile.write(reinterpret_cast<const char*>(m_meshlets.data()), meshlet_count * sizeof(Sb_MeshletBounds));
-    
+
             uint32_t meshlet_vertex_count = static_cast<uint32_t>(m_meshlet_vertices.size());
             outfile.write(reinterpret_cast<const char*>(&meshlet_vertex_count), sizeof(uint32_t));
             outfile.write(reinterpret_cast<const char*>(m_meshlet_vertices.data()), meshlet_vertex_count * sizeof(uint32_t));
-    
+
             uint32_t meshlet_micro_count = static_cast<uint32_t>(m_meshlet_micro_indices.size());
             outfile.write(reinterpret_cast<const char*>(&meshlet_micro_count), sizeof(uint32_t));
             outfile.write(reinterpret_cast<const char*>(m_meshlet_micro_indices.data()), meshlet_micro_count * sizeof(uint32_t));
-    
+
             outfile.close();
             if (!outfile) throw runtime_error("Failed to write mesh: " + file_path);
             SP_LOG_INFO("Mesh '%s': saved %u sub-meshes, %u vertices, %u indices", m_object_name.c_str(), submesh_count, vertex_count, index_count);

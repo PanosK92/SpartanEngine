@@ -936,6 +936,7 @@ namespace spartan
             params.flipbook_columns     = emitter->GetFlipbookColumns();
             params.flipbook_fps         = emitter->GetFlipbookFps();
             params.emitter_velocity     = emitter->GetEmitterVelocity();
+            params.ground_plane         = emitter->GetGroundPlane();
         }
 
         // the volumetric path costs a clear, a scatter, a full grid resolve and a full resolution ray
@@ -1108,7 +1109,9 @@ namespace spartan
             RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
             RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
             RHI_CommandList::SetBlendState(GetBlendState(to_blend_state(emitters[i]->GetBlendMode())));
-            RHI_CommandList::SetColorTarget(tex_render);
+            RHI_CommandList::SetColorTargets(tex_render,
+                GetRenderTarget(m_pass_state.cloud_history.valid && !IsSecondaryViewActive() ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity),
+                GetRenderTarget(Renderer_RenderTarget::dlss_reactivity));
             RHI_CommandList::SetResolutionScale(true);
 
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_buffer_a), buf_a);
