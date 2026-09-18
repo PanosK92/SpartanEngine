@@ -129,16 +129,16 @@
     <prefab_override path="vehicle/wheel_rear_right" position="-1.57159 0.655991 2.60003" rotation="0.203829 1.78683e-07 -7.45058e-08 0.979007" scale="0.38736 0.38736 0.38736" />
     <prefab_override path="vehicle/wheel_rear_left" position="1.56764 0.662726 2.60504" rotation="6.70552e-08 0.979007 0.203829 -2.38419e-07" scale="0.38736 0.38736 0.38736" />
     <Entity name="camera_wheel" id="5723169428173957001" active="true" position="-3.06563 1.1557 -4.06346" rotation="0.105288 0.31571 -0.0364061 0.942293" scale="1 1 1">
-     <camera aperture="1.39999998" shutter_speed="0.0333333351" iso="1600" exposure_mode="1" auto_exposure_adaptation_speed="0.7" auto_exposure_compensation="-0.7" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="100000" projection="0" preset="5" flags="17" />
+     <camera aperture="1.39999998" shutter_speed="0.0333333351" iso="1600" exposure_mode="1" auto_exposure_adaptation_speed="0.7" auto_exposure_compensation="0" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="100000" projection="0" preset="5" flags="17" />
     </Entity>
     <Entity name="camera_hood" id="5723169428173957002" active="true" position="0.283028 1.70274 -2.47828" rotation="0 1 0 0" scale="1 1 1">
-     <camera aperture="1.39999998" shutter_speed="0.0333333351" iso="1600" exposure_mode="1" auto_exposure_adaptation_speed="0.7" auto_exposure_compensation="-0.7" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="100000" projection="0" preset="5" flags="17" />
+     <camera aperture="1.39999998" shutter_speed="0.0333333351" iso="1600" exposure_mode="1" auto_exposure_adaptation_speed="0.7" auto_exposure_compensation="0" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="100000" projection="0" preset="5" flags="17" />
     </Entity>
     <Entity name="camera_dash" id="5723169428173957003" active="true" position="0.646301 1.67173 -0.0544891" rotation="0 1 0 0" scale="1 1 1">
-     <camera aperture="1.39999998" shutter_speed="0.0333333351" iso="1600" exposure_mode="1" auto_exposure_adaptation_speed="0.7" auto_exposure_compensation="-0.7" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="100000" projection="0" preset="5" flags="17" />
+     <camera aperture="1.39999998" shutter_speed="0.0333333351" iso="1600" exposure_mode="1" auto_exposure_adaptation_speed="0.7" auto_exposure_compensation="0" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="100000" projection="0" preset="5" flags="17" />
     </Entity>
     <Entity name="camera_rear" id="5723169428173957004" active="true" position="0.0113678 1.9244 1.79459" rotation="0 0 0 1" scale="1 1 1">
-     <camera aperture="1.39999998" shutter_speed="0.0333333351" iso="1600" exposure_mode="1" auto_exposure_adaptation_speed="0.7" auto_exposure_compensation="-0.7" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="100000" projection="0" preset="5" flags="17" />
+     <camera aperture="1.39999998" shutter_speed="0.0333333351" iso="1600" exposure_mode="1" auto_exposure_adaptation_speed="0.7" auto_exposure_compensation="0" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="100000" projection="0" preset="5" flags="17" />
     </Entity>
    </Entity>
    <Entity name="Highway" id="7850748446432689067" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
@@ -65555,7 +65555,7 @@
    <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="6251.15 18.5759 -2823.78" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
     <Entity name="component_camera" id="17524583551347340245" active="true" position="0 0.77 0" rotation="0.0396345 -0.788242 0.0508088 0.611982" scale="1 1 1">
-     <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="400" exposure_mode="1" auto_exposure_adaptation_speed="0.7" auto_exposure_compensation="-0.7" fov_horizontal="1.57200742" near_plane="0.100000001" far_plane="100000" projection="0" preset="3" flags="17" />
+     <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="400" exposure_mode="1" auto_exposure_adaptation_speed="0.7" auto_exposure_compensation="0" fov_horizontal="1.57200742" near_plane="0.100000001" far_plane="100000" projection="0" preset="3" flags="17" />
     </Entity>
    </Entity>
   </Entity>

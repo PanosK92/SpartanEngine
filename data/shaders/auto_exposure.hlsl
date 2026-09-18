@@ -106,10 +106,12 @@ void main_cs(uint group_index : SV_GroupIndex)
     float avg_nits = exp2(log2_sum / max(weight_sum, 0.000001f));
     avg_nits       = clamp(avg_nits, avg_nits_min, avg_nits_max);
 
-    // perceptual key from krawczyk et al, bright scenes render bright
-    float key = 1.03f - 2.0f / (2.0f + log10(avg_nits + 1.0f));
-    // krawczyk alone maps a few-nit night sky to mid gray, which reads as a fake daylight blue
-    // pull the key down hard in the dark so night stays near black and day is unchanged
+    // Meter to middle grey in scene-linear display units. A luminance-dependent
+    // daytime key approached 0.7 (near display white after the output transfer),
+    // so entering a shaded forest raised its midtones and bleached sunlit leaves.
+    // Keep headroom for highlights; artistic bias belongs in compensation.
+    float key = 0.18f;
+    // Retain the low-light adaptation curve so night is not lifted to middle grey.
     float dark_t = saturate((log2(avg_nits + 1e-4f) + 2.0f) / 8.0f);
     key = lerp(0.018f, key, dark_t * dark_t);
 

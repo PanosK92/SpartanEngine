@@ -22,7 +22,7 @@ Older files receive default environment settings without requiring conversion.
 
 The island's clear-weather look is authored in `plan.world`: cloud coverage
 0.28, fog density 0.22, ground mist 0.12, haze altitude scale 600 m, bloom 0.25,
-and camera exposure compensation -0.7 stops. These are look-development values,
+and camera exposure compensation 0 stops. These are look-development values,
 not a weather observation. Keep the GT7 display transform fixed while comparing
 materials; validate SDR captures and the HDR display separately. The directional
 light's effective colour comes from atmospheric transmission, not the saved
@@ -32,6 +32,15 @@ Ray-traced reflections/shadows and SSAO are enabled for this baseline. ReSTIR
 indirect lighting remains off: the island's large emissive set exceeds its NEE
 pool and the tested garage view shows conspicuous coloured noise. Enabling it
 is not a substitute for a stable indirect-lighting solution.
+
+Automatic exposure meters the retained histogram band to 0.18 linear middle grey
+in daylight, with the existing low-light transition toward 0.018. The previous
+luminance-dependent daytime key reached 0.53–0.70, leaving too little highlight
+headroom when looking into vegetation. The island no longer needs its old -0.7
+stop compensation. Diffuse sky SH now includes the visible fraction as well as
+directional band attenuation: attenuating the bands alone left the constant sky
+term unoccluded and kept crevices bright. Screen-space AO still cannot account
+for a canopy outside the view; this correction does not add forest-scale GI.
 
 Vegetation in `plan.world` uses twelve independent scatter rules: mature pine and
 olive canopy, maquis, a separate woodland understory, young pines, wildflowers,

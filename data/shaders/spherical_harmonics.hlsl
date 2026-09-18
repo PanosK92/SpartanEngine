@@ -87,7 +87,10 @@ float3 sh_irradiance_l2(float3 dir, float3 L[9], float ao)
     E += L[6] * (b[6] * k2);
     E += L[7] * (b[7] * k2);
     E += L[8] * (b[8] * k2);
-    return max(E, 0.0f.xxx);
+    // Band attenuation only changes directionality. The DC band survives even
+    // at zero visibility, so integrate the visible fraction as well. Otherwise
+    // enclosed surfaces receive the full average sky and AO cannot darken them.
+    return max(E, 0.0f.xxx) * visibility;
 }
 
 #endif
