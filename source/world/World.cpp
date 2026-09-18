@@ -30,6 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IslandWildlife.h"
 #include "IslandRoadDetails.h"
 #include "../car/Car.h"
+#include "../geometry/GeneratedCache.h"
+#include "../rendering/GeometryBuffer.h"
 #include "../profiling/Profiler.h"
 #include "../core/ProgressTracker.h"
 #include "../core/ThreadPool.h"
@@ -125,10 +127,13 @@ namespace spartan
         {
             Idle,
             Saving,
-            Loading
+            Loading,
+            Preparing
         };
         atomic<WorldIoState> world_io_state = WorldIoState::Idle;
         string pending_load_path;
+        Stopwatch preparation_timer;
+        size_t preparation_cursor = 0;
         BoundingBox bounding_box    = BoundingBox::Unit;
         Entity* camera              = nullptr;
         Entity* camera_override     = nullptr; // set by the sequencer or gameplay, takes precedence over the default camera
@@ -1459,9 +1464,12 @@ namespace spartan
                 ProcessPendingAdditions();
                 deferred_load_document.reset();
 
-                ProgressTracker::GetProgress(ProgressType::World).Complete();
-                ProgressTracker::SetGlobalLoadingState(false);
-                world_io_state.store(WorldIoState::Idle, memory_order_release);
+                ProgressTracker::GetProgress(ProgressType::World).SetText("preparing terrain, roads and population...");
+                preparation_timer.Start();
+                preparation_cursor = 0;
+                for (Entity* entity : entities)
+                    if (entity->GetActive() && entity->GetComponent<Camera>()) camera = pick_default_camera(camera, entity);
+                world_io_state.store(WorldIoState::Preparing, memory_order_release);
 
                 // fall through so resolve rebuilds entities_with_render before Renderer::Tick
                 // returning here left that list empty while HaveMaterialsChangedThisFrame still
@@ -1474,6 +1482,62 @@ namespace spartan
         }
 
         SP_PROFILE_CPU();
+
+        if (IsPreparing())
+        {
+            ProcessPendingAdditions();
+            bool terrain_busy = false;
+            bool surface_busy = false;
+            // Run only preparation components. Scripts, gameplay and ordinary editor ticks
+            // must not observe a world whose roads, collision and vegetation are incomplete.
+            const vector<Entity*> preparation_entities = entities;
+            for (Entity* entity : preparation_entities)
+            {
+                if (Terrain* terrain = entity->GetComponent<Terrain>(); terrain && entity->GetActive())
+                {
+                    if (!terrain->IsCpuGenerationPending()) terrain->Tick();
+                    surface_busy |= terrain->IsCpuGenerationPending() || terrain->IsMeshCommitPending();
+                    terrain_busy |= terrain->IsGenerating();
+                }
+            }
+            ProcessPendingAdditions();
+            if (!surface_busy)
+            {
+                // Authored/non-terrain and attached splines also have deferred first-tick work.
+                for (Entity* entity : preparation_entities)
+                    if (Spline* spline = entity->GetComponent<Spline>(); spline && entity->GetActive()) spline->Tick();
+                Spline::ProcessPendingRoadMeshes();
+                Spline::RebuildRoadJunctions();
+            }
+            if (terrain_busy || Spline::HasPendingRoadWork()) return;
+            if (!island_road_details::PrepareWorld()) return;
+            if (preparation_cursor == 0) ProcessPendingRemovals();
+            // Complete model preloads and bake navigation before editor entry. Live agents
+            // still spawn in play mode; a failed asset must not wedge the loading screen.
+            const Stopwatch slice;
+            while (preparation_cursor < entities.size())
+            {
+                Entity* entity = entities[preparation_cursor];
+                if (entity->GetActive())
+                {
+                    if (Text3D* text = entity->GetComponent<Text3D>()) text->PrepareWorld();
+                    if (Render* render = entity->GetComponent<Render>()) render->Tick();
+                    if (Physics* physics = entity->GetComponent<Physics>()) physics->PrepareWorld();
+                    if (Traffic* traffic = entity->GetComponent<Traffic>(); traffic && !traffic->PrepareWorld()) return;
+                    if (Pedestrians* walkers = entity->GetComponent<Pedestrians>(); walkers && !walkers->PrepareWorld()) return;
+                }
+                ++preparation_cursor;
+                if (slice.GetElapsedTimeMs() >= 3.0f) return;
+            }
+            ProcessPendingAdditions();
+            if (preparation_cursor < entities.size()) return;
+            GeometryBuffer::BuildIfDirty();
+            SP_LOG_INFO("World preparation complete: %.2f ms", preparation_timer.GetElapsedTimeMs());
+            for (const string& line : generated_cache::GetStatistics()) SP_LOG_INFO("Bake cache %s", line.c_str());
+            ProgressTracker::GetProgress(ProgressType::World).Complete();
+            ProgressTracker::SetGlobalLoadingState(false);
+            world_io_state.store(WorldIoState::Idle, memory_order_release);
+        }
 
         // notify listeners on the first tick after loading completes
         // any final pending entities are drained so subscribers see a fully populated scene
@@ -2691,7 +2755,13 @@ namespace spartan
 
     bool World::IsLoadingFromFile()
     {
-        return world_io_state.load(memory_order_acquire) == WorldIoState::Loading;
+        const auto state = world_io_state.load(memory_order_acquire);
+        return state == WorldIoState::Loading || state == WorldIoState::Preparing;
+    }
+
+    bool World::IsPreparing()
+    {
+        return world_io_state.load(memory_order_acquire) == WorldIoState::Preparing;
     }
 
     void World::ProcessPendingLoad()
@@ -2722,6 +2792,7 @@ namespace spartan
         // shutdown synchronously before async loading
         Shutdown();
         Renderer::ResetWorldGeometry();
+        generated_cache::ResetStatistics();
 
         // publish the loading state now so the progress ui shows this frame instead of only once the worker task starts
         ProgressTracker::SetGlobalLoadingState(true);

@@ -113,7 +113,7 @@ const logStart = fs.readFileSync(logPath, "utf8").length;
 assert.equal((await client.command("entity_set_transform", {id: 106, position: [30, 4, -100]})).ok, true);
 await new Promise(r => setTimeout(r, 500));
 const editLog = fs.readFileSync(logPath, "utf8").slice(logStart);
-const rebuild = [...editLog.matchAll(/rebuilt (\d+) of 3 splines/g)];
+const rebuild = [...editLog.matchAll(/(?:rebuilt|queued) (\d+) of \d+ spline(?:s| meshes)/g)];
 assert.equal(rebuild.length, 1, `expected one junction pass after the edit: ${editLog}`);
 assert.ok(Number(rebuild[0][1]) >= 1 && Number(rebuild[0][1]) <= 2, `distant road rebuilt: ${editLog}`);
 assert.equal((editLog.match(/generated spline mesh:/g) ?? []).length, Number(rebuild[0][1]), "edited road must be generated only once");

@@ -416,6 +416,15 @@ namespace spartan
         m_cloth_global_vertex_offset = 0;
     }
 
+    void Physics::PrepareWorld()
+    {
+        // The world loader has joined its worker before calling this. Prepare only the
+        // nearby collision that would otherwise consume the first editor frames.
+        if (!m_needs_creation || (m_is_static && m_body_type == BodyType::Mesh && outside_collision_prepare_range(GetEntity()))) return;
+        m_needs_creation = false;
+        Create();
+    }
+
     void Physics::PreTick()
     {
         // physx treats a main thread write during worker actor creation as concurrent access and corrupts its pruner tree
@@ -2530,7 +2539,7 @@ namespace spartan
         auto hulls = [&]()
         {
             ScopedTimeBlock block("chassis_fit_or_cache");
-            return chassis_cache.get(surface, params, *insertion);
+            return chassis_cache.get(surface, params, *insertion, World::GetResourceDirectory());
         }();
         if (hulls.empty())
         {
@@ -4300,46 +4309,73 @@ namespace spartan
             return;
         }
 
-        float height_min = positions[static_cast<size_t>(z_start) * grid_width + x_start].y;
-        float height_max = height_min;
-        for (uint32_t z = 0; z < z_count; z++)
+        generated_cache::Hash cache_key;
+        cache_key.Add(uint32_t(1)); cache_key.Add(uint32_t(PX_PHYSICS_VERSION));
+        cache_key.Add(x_count); cache_key.Add(z_count);
+        for (uint32_t z = 0; z < z_count; ++z)
+            cache_key.Bytes(positions.data() + size_t(z_start + z) * grid_width + x_start, size_t(x_count) * sizeof(Vector3));
+        const auto cache_path = generated_cache::Path(World::GetResourceDirectory(), "heightfields", cache_key.value);
+        vector<uint8_t> cooked;
+        vector<float> metadata;
+        float height_centre = 0, height_scale = 1;
+        if (generated_cache::Load(cache_path, cache_key.value, cooked, metadata) && !cooked.empty() &&
+            metadata.size() == 2 && std::isfinite(metadata[0]) && std::isfinite(metadata[1]) && metadata[1] > 0)
         {
-            const size_t source_row = static_cast<size_t>(z_start + z) * grid_width + x_start;
-            for (uint32_t x = 0; x < x_count; x++)
-            {
-                const float height = positions[source_row + x].y;
-                height_min         = min(height_min, height);
-                height_max         = max(height_max, height);
-            }
+            PxDefaultMemoryInputData input(cooked.data(), static_cast<PxU32>(cooked.size()));
+            m_mesh = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics())->createHeightField(input);
+            height_centre = metadata[0]; height_scale = metadata[1];
         }
-
-        // heights are int16, mapping the window's own range onto the full range keeps the step near a
-        // millimetre, a fixed scale would cost metres of precision on a tall map
-        const float height_centre = (height_max + height_min) * 0.5f;
-        const float height_scale  = max((height_max - height_min) / 65534.0f, 1e-4f);
-
-        // physx rows run along local x and columns along local z, the terrain grid is stored row major
-        // in z, so the two indices swap on the way in
-        const uint32_t sample_count = x_count * z_count;
-        vector<PxHeightFieldSample> samples(sample_count);
-        for (uint32_t z = 0; z < z_count; z++)
+        if (!m_mesh)
         {
-            const size_t source_row = static_cast<size_t>(z_start + z) * grid_width + x_start;
-            for (uint32_t x = 0; x < x_count; x++)
+            float height_min = positions[static_cast<size_t>(z_start) * grid_width + x_start].y;
+            float height_max = height_min;
+            for (uint32_t z = 0; z < z_count; z++)
             {
-                const float quantised = (positions[source_row + x].y - height_centre) / height_scale;
-                samples[x * z_count + z].height = static_cast<PxI16>(clamp(quantised, -32767.0f, 32767.0f));
+                const size_t source_row = static_cast<size_t>(z_start + z) * grid_width + x_start;
+                for (uint32_t x = 0; x < x_count; x++)
+                {
+                    const float height = positions[source_row + x].y;
+                    height_min         = min(height_min, height);
+                    height_max         = max(height_max, height);
+                }
             }
+
+            // heights are int16, mapping the window's own range onto the full range keeps the step near a
+            // millimetre, a fixed scale would cost metres of precision on a tall map
+            height_centre = (height_max + height_min) * 0.5f;
+            height_scale  = max((height_max - height_min) / 65534.0f, 1e-4f);
+
+            // physx rows run along local x and columns along local z, the terrain grid is stored row major
+            // in z, so the two indices swap on the way in
+            const uint32_t sample_count = x_count * z_count;
+            vector<PxHeightFieldSample> samples(sample_count);
+            for (uint32_t z = 0; z < z_count; z++)
+            {
+                const size_t source_row = static_cast<size_t>(z_start + z) * grid_width + x_start;
+                for (uint32_t x = 0; x < x_count; x++)
+                {
+                    const float quantised = (positions[source_row + x].y - height_centre) / height_scale;
+                    samples[x * z_count + z].height = static_cast<PxI16>(clamp(quantised, -32767.0f, 32767.0f));
+                }
+            }
+
+            PxHeightFieldDesc desc;
+            desc.nbRows         = x_count;
+            desc.nbColumns      = z_count;
+            desc.format         = PxHeightFieldFormat::eS16_TM;
+            desc.samples.data   = samples.data();
+            desc.samples.stride = sizeof(PxHeightFieldSample);
+
+            PxDefaultMemoryOutputStream output;
+            if (PxCookHeightField(desc, output))
+            {
+                cooked.assign(output.getData(), output.getData() + output.getSize());
+                PxDefaultMemoryInputData input(cooked.data(), static_cast<PxU32>(cooked.size()));
+                m_mesh = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics())->createHeightField(input);
+                if (m_mesh) generated_cache::Save(cache_path, cache_key.value, cooked, vector<float>{height_centre, height_scale});
         }
-
-        PxHeightFieldDesc desc;
-        desc.nbRows         = x_count;
-        desc.nbColumns      = z_count;
-        desc.format         = PxHeightFieldFormat::eS16_TM;
-        desc.samples.data   = samples.data();
-        desc.samples.stride = sizeof(PxHeightFieldSample);
-
-        m_mesh = PxCreateHeightField(desc, *PxGetStandaloneInsertionCallback());
+        if (!m_mesh) m_mesh = PxCreateHeightField(desc, *PxGetStandaloneInsertionCallback());
+        }
         if (!m_mesh)
         {
             SP_LOG_ERROR("failed to create the terrain heightfield");

@@ -2944,6 +2944,10 @@ namespace spartan
             layer_node.append_attribute("blend_sharpness")      = layer.blend_sharpness;
             layer_node.append_attribute("render_distance")      = layer.render_distance;
             layer_node.append_attribute("shadow_distance")      = layer.shadow_distance;
+            layer_node.append_attribute("foliage_tint_r")       = layer.foliage_tint[0];
+            layer_node.append_attribute("foliage_tint_g")       = layer.foliage_tint[1];
+            layer_node.append_attribute("foliage_tint_b")       = layer.foliage_tint[2];
+            layer_node.append_attribute("foliage_scattering")   = layer.foliage_scattering;
             layer_node.append_attribute("grass_ring_0")         = layer.grass_ring_radius[0];
             layer_node.append_attribute("grass_ring_1")         = layer.grass_ring_radius[1];
             layer_node.append_attribute("grass_ring_2")         = layer.grass_ring_radius[2];
@@ -3160,6 +3164,10 @@ namespace spartan
                 layer.blend_sharpness      = layer_node.attribute("blend_sharpness").as_float(0.5f);
                 layer.render_distance      = layer_node.attribute("render_distance").as_float(0.0f);
                 layer.shadow_distance      = layer_node.attribute("shadow_distance").as_float(150.0f);
+                layer.foliage_tint[0]       = layer_node.attribute("foliage_tint_r").as_float(-1.0f);
+                layer.foliage_tint[1]       = layer_node.attribute("foliage_tint_g").as_float(-1.0f);
+                layer.foliage_tint[2]       = layer_node.attribute("foliage_tint_b").as_float(-1.0f);
+                layer.foliage_scattering    = clamp(layer_node.attribute("foliage_scattering").as_float(0.35f), 0.0f, 1.0f);
                 layer.grass_ring_radius[0] = layer_node.attribute("grass_ring_0").as_float(55.0f);
                 layer.grass_ring_radius[1] = layer_node.attribute("grass_ring_1").as_float(180.0f);
                 layer.grass_ring_radius[2] = layer_node.attribute("grass_ring_2").as_float(500.0f);
@@ -3487,6 +3495,106 @@ namespace spartan
         return true;
     }
 
+    uint64_t Terrain::GetScatterCacheKey(uint32_t tile_index, const TerrainScatterLayer& layer, const BoundingBox* bounds) const
+    {
+        generated_cache::Hash hash;
+        hash.Add(uint32_t(1)); // placement and habitat algorithms
+        hash.Add(tile_index); hash.Add(m_tile_count); hash.Add(m_dense_width); hash.Add(m_dense_height);
+        hash.Add(m_density); hash.Add(m_scale); hash.Add(GetSeaLevelLocal());
+        hash.Add(GetEntity()->GetMatrix()); hash.Add(m_world_mapping);
+        hash.Add(m_map_width); hash.Add(m_map_height);
+        if (bounds) { hash.Add(bounds->GetMin()); hash.Add(bounds->GetMax()); }
+        hash.Add(layer.name);
+        hash.Add(layer.mesh_path);
+        hash.Add(layer.mesh_variants);
+        hash.Add(layer.habitat);
+        hash.Add(layer.material_folder);
+        hash.Add(layer.enabled);
+        hash.Add(layer.kind);
+        hash.Add(layer.mountain_rocks);
+        hash.Add(layer.formation_spacing);
+        hash.Add(layer.formation_length);
+        hash.Add(layer.formation_width);
+        hash.Add(layer.formation_height);
+        hash.Add(layer.formation_jitter);
+        hash.Add(layer.embed_fraction);
+        hash.Add(layer.coating);
+        hash.Add(layer.coating_scale);
+        hash.Add(layer.density);
+        hash.Add(layer.max_per_tile);
+        hash.Add(layer.seed);
+        hash.Add(layer.slope_min);
+        hash.Add(layer.slope_max);
+        hash.Add(layer.slope_bias);
+        hash.Add(layer.height_min);
+        hash.Add(layer.height_max);
+        hash.Add(layer.height_fade);
+        hash.Add(layer.curvature_influence);
+        hash.Add(layer.flow_influence);
+        hash.Add(layer.occlusion_influence);
+        hash.Add(layer.insolation_influence);
+        hash.Add(layer.wear_influence);
+        hash.Add(layer.deposition_influence);
+        hash.Add(layer.talus_influence);
+        hash.Add(layer.ground_mask);
+        hash.Add(layer.mask_channel);
+        hash.Add(layer.mask_min);
+        hash.Add(layer.clump_radius);
+        hash.Add(layer.clump_count);
+        hash.Add(layer.clump_raggedness);
+        hash.Add(layer.clump_coverage);
+        hash.Add(layer.clump_invert);
+        hash.Add(layer.mesh_scale);
+        hash.Add(layer.size_min);
+        hash.Add(layer.size_max);
+        hash.Add(layer.size_from_slope);
+        hash.Add(layer.size_from_altitude);
+        hash.Add(layer.altitude_span);
+        hash.Add(layer.giant_chance);
+        hash.Add(layer.giant_size);
+        hash.Add(layer.align_to_normal);
+        hash.Add(layer.surface_offset);
+        hash.Add(layer.sink);
+        hash.Add(layer.blend_height);
+        hash.Add(layer.blend_sharpness);
+        hash.Add(layer.render_distance);
+        hash.Add(layer.shadow_distance);
+        hash.Add(layer.grass_ring_radius);
+        hash.Add(layer.grass_cell_size);
+        hash.Add(layer.flags);
+        const uint32_t axis = max(m_tile_count, 1u);
+        const TerrainGridMapping mapping = GetGridMapping();
+        // Formations can sample support beyond their owner tile. Include their full reach.
+        const float reach = layer.mountain_rocks ? 8.0f * (clamp(layer.formation_spacing, 8.0f, 1000.0f) +
+            clamp(layer.formation_length, 1.0f, 1500.0f) + clamp(layer.formation_width, 1.0f, 1000.0f)) : 0.0f;
+        const uint32_t halo_x = 2 + static_cast<uint32_t>(ceilf(reach / max(mapping.scale_x, 0.001f)));
+        const uint32_t halo_z = 2 + static_cast<uint32_t>(ceilf(reach / max(mapping.scale_z, 0.001f)));
+        uint32_t x0 = (tile_index % axis) * (m_dense_width - 1) / axis;
+        uint32_t x1 = (tile_index % axis + 1) * (m_dense_width - 1) / axis;
+        uint32_t z0 = (tile_index / axis) * (m_dense_height - 1) / axis;
+        uint32_t z1 = (tile_index / axis + 1) * (m_dense_height - 1) / axis;
+        x0 = x0 > halo_x ? x0 - halo_x : 0; x1 = min(x1 + halo_x, m_dense_width - 1);
+        z0 = z0 > halo_z ? z0 - halo_z : 0; z1 = min(z1 + halo_z, m_dense_height - 1);
+        for (uint32_t z = z0; z <= z1; ++z)
+            hash.Bytes(m_positions.data() + size_t(z) * m_dense_width + x0, size_t(x1 - x0 + 1) * sizeof(Vector3));
+        if (m_map_width && m_map_height)
+        {
+            const uint32_t mx0 = static_cast<uint32_t>(uint64_t(x0) * (m_map_width - 1) / (m_dense_width - 1));
+            const uint32_t mx1 = min(m_map_width - 1, 1 + static_cast<uint32_t>(uint64_t(x1) * (m_map_width - 1) / (m_dense_width - 1)));
+            const uint32_t mz0 = static_cast<uint32_t>(uint64_t(z0) * (m_map_height - 1) / (m_dense_height - 1));
+            const uint32_t mz1 = min(m_map_height - 1, 1 + static_cast<uint32_t>(uint64_t(z1) * (m_map_height - 1) / (m_dense_height - 1)));
+            for (const auto* pixels : {&m_map_a_pixels, &m_map_b_pixels, &m_prop_mask_pixels, &m_layer_dominant})
+            {
+                hash.Add(uint64_t(pixels->size()));
+                const size_t channels = pixels == &m_layer_dominant ? 1 : 4;
+                if (pixels->size() < size_t(m_map_width) * m_map_height * channels) continue;
+                for (uint32_t z = mz0; z <= mz1; ++z)
+                    hash.Bytes(pixels->data() + (size_t(z) * m_map_width + mx0) * channels, size_t(mx1 - mx0 + 1) * channels);
+            }
+        }
+        return hash.value;
+    }
+
     void Terrain::FindTransforms(
         const uint32_t tile_index,
         const TerrainScatterLayer& layer,
@@ -3541,8 +3649,8 @@ namespace spartan
             TerrainSystem::SyncHeightDataFromPositions(m_height_data, m_positions);
         }
     
-        // only the eroded heightfield is stored, vertices, normals, tiles and placement data are
-        // derived from it in parallel on load faster than they can be read back from disk
+        // This file stores the eroded heightfield. Prepared tiles and placement have
+        // separate content-addressed caches so authored edits invalidate only their dependents.
         uint32_t width            = GetWidth();
         uint32_t height           = GetHeight();
         uint32_t height_data_size = static_cast<uint32_t>(m_height_data.size());
@@ -3758,22 +3866,10 @@ namespace spartan
             TerrainSystem::GenerateVerticesAndIndices(m_vertices, m_indices, m_positions, m_dense_width, m_dense_height);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
     
-            // 6. generate normals
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating normals...");
-            TerrainSystem::GenerateNormals(m_vertices, m_dense_width, m_dense_height);
+            // Normals, tiles and placement are derived after sculpt/platform edits.
+            // Building them here would immediately discard and repeat the same work.
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-    
-            // 7. split into tiles
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("splitting into tiles...");
-            geometry_processing::split_grid_into_tiles(m_vertices, m_dense_width, m_dense_height, m_tile_count, m_tile_vertices, m_tile_indices, m_tile_offsets);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-
-            // 8. compute triangle data for placement
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("computing placement data...");
-            for (uint32_t tile_index = 0; tile_index < m_tile_vertices.size(); tile_index++)
-            {
-                placement::compute_triangle_data(m_tile_vertices, m_tile_indices, tile_index, m_triangle_data);
-            }
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
             // surface area is expensive, computed once here so the cache carries it and a hit skips it
@@ -3782,10 +3878,26 @@ namespace spartan
             SaveToFile(cache_file.c_str());
         }
 
+        // Erosion analysis affects placement and materials, even though the heights are already
+        // baked. Preserve it too, so the first load and subsequent loads use identical inputs.
+        generated_cache::Hash erosion_key;
+        erosion_key.Add(uint32_t(1)); erosion_key.Add(ComputeCacheHash()); erosion_key.Add(m_positions);
+        const auto erosion_path = generated_cache::Path(World::GetResourceDirectory(), "erosion", erosion_key.value);
+        if (loaded_from_cache)
+        {
+            m_erosion_maps = TerrainErosionMaps{};
+            if (!generated_cache::Load(erosion_path, erosion_key.value, m_erosion_maps.wear, m_erosion_maps.deposition) ||
+                !m_erosion_maps.IsValid(m_positions.size())) m_erosion_maps = TerrainErosionMaps{};
+        }
+        else if (m_erosion_maps.IsValid(m_positions.size()))
+        {
+            generated_cache::Save(erosion_path, erosion_key.value, m_erosion_maps.wear, m_erosion_maps.deposition);
+        }
+
         // the cache above is pure procedural ground, hand sculpting goes on top of it and the seed
         // the pads paint from has to include it
         ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying sculpt layer...");
-        bool heights_changed = ApplySculptLayer();
+        ApplySculptLayer();
 
         SnapshotSeed();
         m_live_pad_active = false;
@@ -3796,19 +3908,11 @@ namespace spartan
             PruneOrphanPlatforms();
         }
 
-        if (ApplyPlatformsToHeightfield())
-        {
-            heights_changed = true;
-        }
+        ApplyPlatformsToHeightfield();
 
-        // the cache only holds the heightfield, so a cache hit derives the mesh here, once, after the
-        // sculpt and pads have moved the heights they are going to move
-        if (heights_changed || loaded_from_cache)
-        {
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("building mesh data...");
-            RebuildMeshData(true);
-        }
-
+        // Prepared tiles include the final sculpt/platform surface. A warm load never needs
+        // the full-grid vertices, normals, placement triangles or individual LOD caches.
+        m_triangle_data.clear();
         const float surface_ms = generation_timer.GetElapsedTimeMs();
         BakeTerrainMaps(true);
         BakeHeightMapPixels();
@@ -3820,8 +3924,8 @@ namespace spartan
 
         // compute stats
         m_height_samples = m_dense_width * m_dense_height;
-        m_vertex_count   = static_cast<uint32_t>(m_vertices.size());
-        m_index_count    = static_cast<uint32_t>(m_indices.size());
+        m_vertex_count   = m_dense_width * m_dense_height;
+        m_index_count    = (m_dense_width - 1) * (m_dense_height - 1) * 6;
         m_triangle_count = m_index_count / 3;
 
         ProgressTracker::GetProgress(ProgressType::Terrain).SetText("building mesh...");
@@ -3855,12 +3959,71 @@ namespace spartan
 
     void Terrain::BuildCpuMesh()
     {
+        const Stopwatch timer;
+        const uint32_t axis = max(m_tile_count, 1u);
+        const uint32_t count = axis * axis;
+        vector<shared_ptr<Mesh>> tiles(count);
+        vector<uint64_t> keys(count);
+        m_tile_offsets.resize(count);
+        atomic<uint32_t> hits = 0;
+        const string resources = World::GetResourceDirectory();
+        ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
+        {
+            for (uint32_t i = begin; i < end; ++i)
+            {
+                const uint32_t x0 = (i % axis) * (m_dense_width - 1) / axis;
+                const uint32_t x1 = (i % axis + 1) * (m_dense_width - 1) / axis;
+                const uint32_t z0 = (i / axis) * (m_dense_height - 1) / axis;
+                const uint32_t z1 = (i / axis + 1) * (m_dense_height - 1) / axis;
+                const Vector3& lo = m_positions[size_t(z0) * m_dense_width + x0];
+                const Vector3& hi = m_positions[size_t(z1) * m_dense_width + x1];
+                m_tile_offsets[i] = Vector3((lo.x + hi.x) * 0.5f, 0, (lo.z + hi.z) * 0.5f);
+                generated_cache::Hash hash;
+                hash.Add(uint32_t(1)); // grid normals, UVs, tiling, LOD and meshlet policy/layout
+                hash.Add(sizeof(RHI_Vertex_PosTexNorTan)); hash.Add(sizeof(Sb_MeshletBounds));
+                hash.Add(sizeof(MeshLod)); hash.Add(mesh_lod_count);
+                hash.Add(m_dense_width); hash.Add(m_dense_height); hash.Add(axis); hash.Add(i);
+                // One cell of neighbours affects edge normals, even when its own tile is unchanged.
+                const uint32_t left = x0 ? x0 - 1 : 0;
+                const uint32_t right = min(x1 + 1, m_dense_width - 1);
+                for (uint32_t z = z0 ? z0 - 1 : 0; z <= min(z1 + 1, m_dense_height - 1); ++z)
+                    hash.Bytes(m_positions.data() + size_t(z) * m_dense_width + left,
+                        size_t(right - left + 1) * sizeof(Vector3));
+                keys[i] = hash.value;
+                auto tile = make_shared<Mesh>();
+                if (tile->LoadPrepared(generated_cache::Path(resources, "terrain_tiles", hash.value).string(), hash.value))
+                {
+                    tiles[i] = move(tile);
+                    hits.fetch_add(1, memory_order_relaxed);
+                }
+            }
+        }, count);
+        if (hits.load() != count)
+        {
+            RebuildMeshData(false);
+            ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
+            {
+                for (uint32_t i = begin; i < end; ++i)
+                {
+                    if (tiles[i]) continue;
+                    auto tile = make_shared<Mesh>();
+                    tile->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                    tile->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges), true);
+                    tile->AddGeometry(m_tile_vertices[i], m_tile_indices[i], true);
+                    tile->SavePrepared(generated_cache::Path(resources, "terrain_tiles", keys[i]).string(), keys[i]);
+                    tiles[i] = move(tile);
+                }
+            }, count);
+        }
         m_mesh_pending = make_shared<Mesh>();
         m_mesh_pending->SetObjectName("terrain_mesh");
         m_mesh_pending->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
         m_mesh_pending->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges), true);
-
-        BuildTileMesh(*m_mesh_pending, true);
+        m_mesh_pending->ReserveSubMeshes(count);
+        // Stable append order keeps the prepared mesh identical across worker scheduling.
+        for (uint32_t i = 0; i < count; ++i) m_mesh_pending->AppendPrepared(*tiles[i], i);
+        SP_LOG_INFO("Terrain tile bake: %u hits, %u misses (missing/stale/invalid), %.2f ms",
+            hits.load(), count - hits.load(), timer.GetElapsedTimeMs());
     }
 
     void Terrain::BuildTileMesh(Mesh& mesh, const bool generate_lods)
@@ -3897,7 +4060,7 @@ namespace spartan
             CommitProps();
         }
 
-        const bool carves_can_run = !m_is_generating.load(memory_order_acquire) && !ProgressTracker::IsLoading() &&
+        const bool carves_can_run = !m_is_generating.load(memory_order_acquire) && (!ProgressTracker::IsLoading() || World::IsPreparing()) &&
             !Spline::HasPendingRoadWork();
 
         // grade the ground before the props are re-evaluated, they key off the new surface
@@ -4034,6 +4197,13 @@ namespace spartan
         }
         if (!m_props_population_step)
         {
+            // Placement must see the finished ground and road exclusions, including on the first load.
+            if (m_road_carve_dirty) RefreshSplineHeightCarves();
+            if (m_spline_carve_dirty)
+            {
+                m_spline_carve_dirty = false;
+                RefreshSplinePropCarves();
+            }
             m_props_population_step = WorldHelpers::BeginTerrainBiomeProps(this);
         }
         if (!m_props_population_step())
@@ -5412,6 +5582,8 @@ namespace spartan
 
     void Terrain::RefreshSplineHeightCarves()
     {
+        const Stopwatch bake_timer;
+        uint32_t bake_hits = 0, bake_misses = 0;
         m_road_carve_dirty = false;
 
         if (!HasHeightfield())
@@ -5619,117 +5791,158 @@ namespace spartan
                 }
             }
 
-            // two envelopes, the highest fill cone and the lowest cut cone
-            // the cut cone holds a flat plateau one grid cell wide around every road point, which is what
-            // guarantees the carved surface can never interpolate up through the deck between vertices
-            const size_t scratch_count = static_cast<size_t>(rect_width) * rect_height;
-            std::vector<float> raise_to(scratch_count, -numeric_limits<float>::max());
-            std::vector<float> lower_to(scratch_count,  numeric_limits<float>::max());
-
+            generated_cache::Hash carve_hash;
+            carve_hash.Add(uint32_t(2)); // envelope/carve policy and region layout
+            carve_hash.Add(region); carve_hash.Add(m_dense_width); carve_hash.Add(m_dense_height);
+            carve_hash.Add(plateau);
+            for (int32_t z = rect_z0; z <= rect_z1; ++z)
+                carve_hash.Bytes(m_positions.data() + size_t(z) * m_dense_width + rect_x0, size_t(rect_width) * sizeof(Vector3));
             for (const RoadCarveJob& job : jobs)
             {
-                if (job.bounds[1] < rect_x0 || job.bounds[0] > rect_x1 ||
-                    job.bounds[3] < rect_z0 || job.bounds[2] > rect_z1)
+                if (job.bounds[1] < rect_x0 || job.bounds[0] > rect_x1 || job.bounds[3] < rect_z0 || job.bounds[2] > rect_z1) continue;
+                carve_hash.Add(job.points); carve_hash.Add(job.half_widths);
+                carve_hash.Add(job.bed_drop); carve_hash.Add(job.fill_slope); carve_hash.Add(job.cut_slope); carve_hash.Add(job.shoulder);
+            }
+            const auto carve_path = generated_cache::Path(World::GetResourceDirectory(), "road_carves", carve_hash.value);
+            vector<float> baked_heights;
+            const bool hit = generated_cache::Load(carve_path, carve_hash.value, baked_heights) &&
+                baked_heights.size() == size_t(rect_width) * rect_height &&
+                all_of(baked_heights.begin(), baked_heights.end(), [](float v) { return std::isfinite(v); });
+            if (hit)
+            {
+                ++bake_hits;
+                for (int32_t z = rect_z0; z <= rect_z1; ++z)
+                for (int32_t x = rect_x0; x <= rect_x1; ++x)
                 {
-                    continue;
+                    const size_t index = size_t(z) * m_dense_width + x;
+                    const float height = baked_heights[size_t(z - rect_z0) * rect_width + x - rect_x0];
+                    m_road_carve_delta[index] = height - m_positions[index].y;
+                    m_positions[index].y = height;
                 }
+            }
+            else
+            {
+                ++bake_misses;
+                // two envelopes, the highest fill cone and the lowest cut cone
+                // the cut cone holds a flat plateau one grid cell wide around every road point, which is what
+                // guarantees the carved surface can never interpolate up through the deck between vertices
+                const size_t scratch_count = static_cast<size_t>(rect_width) * rect_height;
+                std::vector<float> raise_to(scratch_count, -numeric_limits<float>::max());
+                std::vector<float> lower_to(scratch_count,  numeric_limits<float>::max());
 
-                for (size_t s = 0; s + 1 < job.points.size(); s++)
+                for (const RoadCarveJob& job : jobs)
                 {
-                    const Vector3& a = job.points[s];
-                    const Vector3& b = job.points[s + 1];
-                    const float half_a = job.half_widths[s];
-                    const float half_b = job.half_widths[s + 1];
-                    const float reach  = max(half_a, half_b) + job.shoulder;
-
-                    const int32_t sx0 = max(static_cast<int32_t>(floorf((min(a.x, b.x) - reach + mapping.offset_x) / mapping.scale_x)), rect_x0);
-                    const int32_t sx1 = min(static_cast<int32_t>(ceilf ((max(a.x, b.x) + reach + mapping.offset_x) / mapping.scale_x)), rect_x1);
-                    const int32_t sz0 = max(static_cast<int32_t>(floorf((min(a.z, b.z) - reach + mapping.offset_z) / mapping.scale_z)), rect_z0);
-                    const int32_t sz1 = min(static_cast<int32_t>(ceilf ((max(a.z, b.z) + reach + mapping.offset_z) / mapping.scale_z)), rect_z1);
-
-                    if (sx1 < sx0 || sz1 < sz0)
+                    if (job.bounds[1] < rect_x0 || job.bounds[0] > rect_x1 ||
+                        job.bounds[3] < rect_z0 || job.bounds[2] > rect_z1)
                     {
                         continue;
                     }
 
-                    const float dx = b.x - a.x;
-                    const float dz = b.z - a.z;
-                    const float segment_length_sq = dx * dx + dz * dz;
-
-                    for (int32_t z = sz0; z <= sz1; z++)
+                    for (size_t s = 0; s + 1 < job.points.size(); s++)
                     {
-                        const size_t row        = static_cast<size_t>(z) * m_dense_width;
-                        const size_t scratch_row = static_cast<size_t>(z - rect_z0) * rect_width;
+                        const Vector3& a = job.points[s];
+                        const Vector3& b = job.points[s + 1];
+                        const float half_a = job.half_widths[s];
+                        const float half_b = job.half_widths[s + 1];
+                        const float reach  = max(half_a, half_b) + job.shoulder;
 
-                        for (int32_t x = sx0; x <= sx1; x++)
+                        const int32_t sx0 = max(static_cast<int32_t>(floorf((min(a.x, b.x) - reach + mapping.offset_x) / mapping.scale_x)), rect_x0);
+                        const int32_t sx1 = min(static_cast<int32_t>(ceilf ((max(a.x, b.x) + reach + mapping.offset_x) / mapping.scale_x)), rect_x1);
+                        const int32_t sz0 = max(static_cast<int32_t>(floorf((min(a.z, b.z) - reach + mapping.offset_z) / mapping.scale_z)), rect_z0);
+                        const int32_t sz1 = min(static_cast<int32_t>(ceilf ((max(a.z, b.z) + reach + mapping.offset_z) / mapping.scale_z)), rect_z1);
+
+                        if (sx1 < sx0 || sz1 < sz0)
                         {
-                            const size_t index = row + static_cast<size_t>(x);
-                            const Vector3& cell = m_positions[index];
+                            continue;
+                        }
 
-                            float t = 0.0f;
-                            if (segment_length_sq > 1e-8f)
+                        const float dx = b.x - a.x;
+                        const float dz = b.z - a.z;
+                        const float segment_length_sq = dx * dx + dz * dz;
+
+                        for (int32_t z = sz0; z <= sz1; z++)
+                        {
+                            const size_t row        = static_cast<size_t>(z) * m_dense_width;
+                            const size_t scratch_row = static_cast<size_t>(z - rect_z0) * rect_width;
+
+                            for (int32_t x = sx0; x <= sx1; x++)
                             {
-                                t = ((cell.x - a.x) * dx + (cell.z - a.z) * dz) / segment_length_sq;
-                                t = clamp(t, 0.0f, 1.0f);
+                                const size_t index = row + static_cast<size_t>(x);
+                                const Vector3& cell = m_positions[index];
+
+                                float t = 0.0f;
+                                if (segment_length_sq > 1e-8f)
+                                {
+                                    t = ((cell.x - a.x) * dx + (cell.z - a.z) * dz) / segment_length_sq;
+                                    t = clamp(t, 0.0f, 1.0f);
+                                }
+
+                                const float px = a.x + dx * t;
+                                const float pz = a.z + dz * t;
+                                const float ox = cell.x - px;
+                                const float oz = cell.z - pz;
+                                const float distance = sqrtf(ox * ox + oz * oz);
+
+                                const float half = half_a + (half_b - half_a) * t;
+                                if (distance > half + job.shoulder)
+                                {
+                                    continue;
+                                }
+
+                                const size_t scratch = scratch_row + static_cast<size_t>(x - rect_x0);
+                                const float bed      = (a.y + (b.y - a.y) * t) - job.bed_drop;
+
+                                // fill cone, highest one wins so an embankment survives a neighbouring dip
+                                const float fill_over = max(0.0f, distance - half);
+                                raise_to[scratch] = max(raise_to[scratch], bed - fill_over * job.fill_slope);
+
+                                // cut cone, lowest one wins, the plateau keeps it at bed level for a whole grid
+                                // cell around the road so bilinear interpolation can never climb over the deck
+                                const float cut_over = max(0.0f, distance - half - plateau);
+                                lower_to[scratch] = min(lower_to[scratch], bed + cut_over * job.cut_slope);
                             }
-
-                            const float px = a.x + dx * t;
-                            const float pz = a.z + dz * t;
-                            const float ox = cell.x - px;
-                            const float oz = cell.z - pz;
-                            const float distance = sqrtf(ox * ox + oz * oz);
-
-                            const float half = half_a + (half_b - half_a) * t;
-                            if (distance > half + job.shoulder)
-                            {
-                                continue;
-                            }
-
-                            const size_t scratch = scratch_row + static_cast<size_t>(x - rect_x0);
-                            const float bed      = (a.y + (b.y - a.y) * t) - job.bed_drop;
-
-                            // fill cone, highest one wins so an embankment survives a neighbouring dip
-                            const float fill_over = max(0.0f, distance - half);
-                            raise_to[scratch] = max(raise_to[scratch], bed - fill_over * job.fill_slope);
-
-                            // cut cone, lowest one wins, the plateau keeps it at bed level for a whole grid
-                            // cell around the road so bilinear interpolation can never climb over the deck
-                            const float cut_over = max(0.0f, distance - half - plateau);
-                            lower_to[scratch] = min(lower_to[scratch], bed + cut_over * job.cut_slope);
                         }
                     }
                 }
-            }
 
-            // resolve both envelopes against the untouched ground
-            for (int32_t z = rect_z0; z <= rect_z1; z++)
-            {
-                const size_t row         = static_cast<size_t>(z) * m_dense_width;
-                const size_t scratch_row = static_cast<size_t>(z - rect_z0) * rect_width;
-
-                for (int32_t x = rect_x0; x <= rect_x1; x++)
+                // resolve both envelopes against the untouched ground
+                for (int32_t z = rect_z0; z <= rect_z1; z++)
                 {
-                    const size_t scratch = scratch_row + static_cast<size_t>(x - rect_x0);
-                    if (lower_to[scratch] == numeric_limits<float>::max())
+                    const size_t row         = static_cast<size_t>(z) * m_dense_width;
+                    const size_t scratch_row = static_cast<size_t>(z - rect_z0) * rect_width;
+
+                    for (int32_t x = rect_x0; x <= rect_x1; x++)
                     {
-                        continue;
+                        const size_t scratch = scratch_row + static_cast<size_t>(x - rect_x0);
+                        if (lower_to[scratch] == numeric_limits<float>::max())
+                        {
+                            continue;
+                        }
+
+                        const size_t index = row + static_cast<size_t>(x);
+                        const float base   = m_positions[index].y;
+
+                        float target = max(base, raise_to[scratch]);
+                        target       = min(target, lower_to[scratch]);
+
+                        m_road_carve_delta[index] = target - base;
+                        m_positions[index].y      = target;
                     }
-
-                    const size_t index = row + static_cast<size_t>(x);
-                    const float base   = m_positions[index].y;
-
-                    float target = max(base, raise_to[scratch]);
-                    target       = min(target, lower_to[scratch]);
-
-                    m_road_carve_delta[index] = target - base;
-                    m_positions[index].y      = target;
                 }
+
+                baked_heights.reserve(size_t(rect_width) * rect_height);
+                for (int32_t z = rect_z0; z <= rect_z1; ++z)
+                for (int32_t x = rect_x0; x <= rect_x1; ++x)
+                    baked_heights.push_back(m_positions[size_t(z) * m_dense_width + x].y);
+                generated_cache::Save(carve_path, carve_hash.value, baked_heights);
             }
 
             // repair only what moved, the flush adds the seam ring and patches the height texture in place
             MarkHeightsDirty(rect_x0, rect_z0, rect_x1, rect_z1);
             FlushHeightEdits(true);
         }
+        SP_LOG_INFO("Road carve bake: %u hits, %u misses (missing/stale/invalid), %.2f ms",
+            bake_hits, bake_misses, bake_timer.GetElapsedTimeMs());
     }
 
     void Terrain::CollectTilesInRegion(
@@ -6399,55 +6612,91 @@ namespace spartan
         constexpr uint32_t grid_size = 1024;
         const Vector4 mapping = GetMappingWorld();
         if (mapping.z <= 0.0f || mapping.w <= 0.0f) return;
-        vector<vector<Vector4>> cells(grid_size * grid_size);
-        auto cell_x = [&](float x) { return clamp(static_cast<int>((x - mapping.x) * mapping.z * grid_size), 0, static_cast<int>(grid_size) - 1); };
-        auto cell_z = [&](float z) { return clamp(static_cast<int>((z - mapping.y) * mapping.w * grid_size), 0, static_cast<int>(grid_size) - 1); };
-        auto add_render = [&](Entity* entity)
-        {
-            if (!entity || !entity->GetActive()) return;
-            Render* render = entity->GetComponent<Render>();
-            Mesh* mesh = render ? render->GetMesh() : nullptr;
-            if (!mesh || render->GetSubMeshIndex() >= mesh->GetSubMeshCount()) return;
-            const SubMesh& sub = mesh->GetSubMesh(render->GetSubMeshIndex());
-            if (sub.lods.empty()) return;
-            const MeshLod& lod = sub.lods[0];
-            const auto& vertices = mesh->GetVertices();
-            const auto& indices = mesh->GetIndices();
-            const Matrix& world = entity->GetMatrix();
-            for (uint32_t i = 0; i + 2 < lod.index_count; i += 3)
-            {
-                const Vector3 a = world * vertices[lod.vertex_offset + indices[lod.index_offset + i]].get_position();
-                const Vector3 b = world * vertices[lod.vertex_offset + indices[lod.index_offset + i + 1]].get_position();
-                const Vector3 c = world * vertices[lod.vertex_offset + indices[lod.index_offset + i + 2]].get_position();
-                const float area = (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x);
-                if (fabsf(area) < 1e-6f) continue; // vertical curb faces have no footprint
-                const int x0 = cell_x(min(a.x, min(b.x, c.x))), x1 = cell_x(max(a.x, max(b.x, c.x)));
-                const int z0 = cell_z(min(a.z, min(b.z, c.z))), z1 = cell_z(max(a.z, max(b.z, c.z)));
-                for (int z = z0; z <= z1; ++z)
-                for (int x = x0; x <= x1; ++x)
-                {
-                    auto& cell = cells[z * grid_size + x];
-                    cell.emplace_back(a.x, a.z, b.x, b.z);
-                    cell.emplace_back(c.x, c.z, 0.0f, 0.0f);
-                }
-            }
-        };
+        const Stopwatch timer;
+        generated_cache::Hash hash;
+        hash.Add(uint32_t(1)); hash.Add(grid_size); hash.Add(mapping);
+        vector<Entity*> roads;
         for (Entity* entity : World::GetEntities())
         {
             Spline* spline = entity ? entity->GetComponent<Spline>() : nullptr;
             if (!spline || !entity->GetActive() || !spline->GetMeshEnabled() || spline->GetProfile() != SplineProfile::Road) continue;
-            add_render(entity);
-            add_render(entity->GetChildByName("spline_sidewalk"));
-            add_render(entity->GetChildByName("spline_road_shoulder"));
+            for (Entity* part : {entity, entity->GetChildByName("spline_sidewalk"), entity->GetChildByName("spline_road_shoulder")})
+            {
+                if (!part || !part->GetActive()) continue;
+                Render* render = part->GetComponent<Render>();
+                Mesh* mesh = render ? render->GetMesh() : nullptr;
+                if (!mesh || render->GetSubMeshIndex() >= mesh->GetSubMeshCount()) continue;
+                const SubMesh& sub = mesh->GetSubMesh(render->GetSubMeshIndex());
+                if (sub.lods.empty()) continue;
+                const MeshLod& lod = sub.lods[0];
+                hash.Add(part->GetMatrix());
+                hash.Add(lod.vertex_count); hash.Add(lod.index_count);
+                hash.Bytes(mesh->GetVertices().data() + lod.vertex_offset, size_t(lod.vertex_count) * sizeof(RHI_Vertex_PosTexNorTan));
+                hash.Bytes(mesh->GetIndices().data() + lod.index_offset, size_t(lod.index_count) * sizeof(uint32_t));
+                roads.push_back(part);
+            }
         }
-        m_road_exclusions.assign(2 + grid_size * grid_size, Vector4::Zero);
-        m_road_exclusions[0] = mapping;
-        m_road_exclusions[1] = Vector4(static_cast<float>(grid_size), static_cast<float>(grid_size), 0.0f, 0.0f);
-        for (uint32_t i = 0; i < cells.size(); ++i)
+        const auto cache_path = generated_cache::Path(World::GetResourceDirectory(), "road_exclusions", hash.value);
+        vector<Vector4> cached;
+        bool hit = generated_cache::Load(cache_path, hash.value, cached) && cached.size() >= 2 + grid_size * grid_size &&
+            cached[0] == mapping && cached[1].x == grid_size && cached[1].y == grid_size;
+        for (uint32_t i = 0; hit && i < grid_size * grid_size; ++i)
         {
-            m_road_exclusions[2 + i] = Vector4(static_cast<float>(m_road_exclusions.size()), static_cast<float>(cells[i].size() / 2), 0.0f, 0.0f);
-            m_road_exclusions.insert(m_road_exclusions.end(), cells[i].begin(), cells[i].end());
+            const Vector4& range = cached[2 + i];
+            hit = std::isfinite(range.x) && std::isfinite(range.y) && range.x >= 2 + grid_size * grid_size &&
+                range.y >= 0 && double(range.x) + double(range.y) * 2 <= double(cached.size());
         }
+        if (hit)
+        {
+            m_road_exclusions = move(cached);
+        }
+        else
+        {
+            vector<vector<Vector4>> cells(grid_size * grid_size);
+            auto cell_x = [&](float x) { return clamp(static_cast<int>((x - mapping.x) * mapping.z * grid_size), 0, static_cast<int>(grid_size) - 1); };
+            auto cell_z = [&](float z) { return clamp(static_cast<int>((z - mapping.y) * mapping.w * grid_size), 0, static_cast<int>(grid_size) - 1); };
+            auto add_render = [&](Entity* entity)
+            {
+                if (!entity || !entity->GetActive()) return;
+                Render* render = entity->GetComponent<Render>();
+                Mesh* mesh = render ? render->GetMesh() : nullptr;
+                if (!mesh || render->GetSubMeshIndex() >= mesh->GetSubMeshCount()) return;
+                const SubMesh& sub = mesh->GetSubMesh(render->GetSubMeshIndex());
+                if (sub.lods.empty()) return;
+                const MeshLod& lod = sub.lods[0];
+                const auto& vertices = mesh->GetVertices();
+                const auto& indices = mesh->GetIndices();
+                const Matrix& world = entity->GetMatrix();
+                for (uint32_t i = 0; i + 2 < lod.index_count; i += 3)
+                {
+                    const Vector3 a = world * vertices[lod.vertex_offset + indices[lod.index_offset + i]].get_position();
+                    const Vector3 b = world * vertices[lod.vertex_offset + indices[lod.index_offset + i + 1]].get_position();
+                    const Vector3 c = world * vertices[lod.vertex_offset + indices[lod.index_offset + i + 2]].get_position();
+                    const float area = (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x);
+                    if (fabsf(area) < 1e-6f) continue; // vertical curb faces have no footprint
+                    const int x0 = cell_x(min(a.x, min(b.x, c.x))), x1 = cell_x(max(a.x, max(b.x, c.x)));
+                    const int z0 = cell_z(min(a.z, min(b.z, c.z))), z1 = cell_z(max(a.z, max(b.z, c.z)));
+                    for (int z = z0; z <= z1; ++z)
+                    for (int x = x0; x <= x1; ++x)
+                    {
+                        auto& cell = cells[z * grid_size + x];
+                        cell.emplace_back(a.x, a.z, b.x, b.z);
+                        cell.emplace_back(c.x, c.z, 0.0f, 0.0f);
+                    }
+                }
+            };
+            for (Entity* entity : roads) add_render(entity);
+            m_road_exclusions.assign(2 + grid_size * grid_size, Vector4::Zero);
+            m_road_exclusions[0] = mapping;
+            m_road_exclusions[1] = Vector4(static_cast<float>(grid_size), static_cast<float>(grid_size), 0.0f, 0.0f);
+            for (uint32_t i = 0; i < cells.size(); ++i)
+            {
+                m_road_exclusions[2 + i] = Vector4(static_cast<float>(m_road_exclusions.size()), static_cast<float>(cells[i].size() / 2), 0.0f, 0.0f);
+                m_road_exclusions.insert(m_road_exclusions.end(), cells[i].begin(), cells[i].end());
+            }
+            generated_cache::Save(cache_path, hash.value, m_road_exclusions);
+        }
+        SP_LOG_INFO("Road exclusion bake: %s, %.2f ms", hit ? "hit" : "miss (missing/stale/invalid)", timer.GetElapsedTimeMs());
         m_road_exclusion_buffer_dirty = true;
         // Seeds retain the original instances, so removing/narrowing a road restores
         // nearby vegetation instead of making each rebuild progressively emptier.

@@ -209,6 +209,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         sky_sh,
         ibl_visibility
     );
+    if (surface.is_foliage())
+    {
+        // Thin leaves also receive sky through their reverse side. Share the
+        // diffuse budget with reflection rather than adding an ambient glow.
+        // A single screen-space visibility estimate cannot resolve both sides;
+        // retain its occlusion for transmission too, avoiding light leaks.
+        float3 transmitted_sky = sh_irradiance_l2(-surface.normal, sky_sh, ibl_visibility);
+        float transmission = saturate(surface.subsurface_scattering) * 0.70f;
+        diffuse_skysphere = lerp(diffuse_skysphere, transmitted_sky, transmission);
+    }
     float3 multi_bounce = gtao_multi_bounce(ibl_visibility, surface.albedo.rgb);
     float3 bounce_boost = multi_bounce / ibl_visibility;
     // SH convolution returns irradiance, so the Lambert BRDF still needs 1/pi.

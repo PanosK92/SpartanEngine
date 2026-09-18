@@ -91,5 +91,40 @@ float rt_trace_visibility(float3 origin, float3 direction, float t_max)
     return rt_trace_occluder(origin, direction, 0.001f, t_max) < 0.0f ? 1.0f : 0.0f;
 }
 
+// Stochastic thin-sheet transmission keeps the binary visibility contract used
+// by SIGMA. Its temporal reconstruction integrates the surviving leaf paths;
+// opaque bark, buildings and terrain still terminate every ray.
+float rt_trace_foliage_shadow(float3 origin, float3 direction, float t_max)
+{
+    RayDesc ray;
+    ray.Origin = origin;
+    ray.Direction = direction;
+    ray.TMin = 0.001f;
+    ray.TMax = max(t_max, ray.TMin);
+    RayQuery<RAY_FLAG_FORCE_NON_OPAQUE | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
+    uint seed = buffer_frame.frame * 1664525u ^ asuint(origin.x) ^ asuint(origin.z);
+    while (query.Proceed())
+    {
+        if (query.CandidateType() != CANDIDATE_NON_OPAQUE_TRIANGLE)
+            continue;
+        uint instance = query.CandidateInstanceIndex();
+        uint primitive = query.CandidatePrimitiveIndex();
+        float distance = query.CandidateTriangleRayT();
+        float3 position = origin + direction * distance;
+        MaterialParameters material = material_parameters[geometry_infos[instance].material_index];
+        if (material.is_alpha_tested() && !rt_candidate_opaque(instance, primitive, query.CandidateTriangleBarycentrics(), position))
+            continue;
+        Surface blocker;
+        blocker.flags = material.flags;
+        float transmission = blocker.is_foliage() ? saturate(material.subsurface_scattering) * 0.70f : 0.0f;
+        if (transmission > 0.0f && hash(seed ^ instance * 73856093u ^ primitive * 19349663u) < transmission)
+            continue;
+        query.CommitNonOpaqueTriangleHit();
+        query.Abort();
+    }
+    return query.CommittedStatus() == COMMITTED_NOTHING ? -1.0f : query.CommittedRayT();
+}
+
 #endif
 #endif

@@ -143,7 +143,7 @@ float3 subsurface_scattering(Surface surface, Light light)
     float3 L = -light.to_pixel;
     float3 V = -surface.camera_to_pixel;
     float response = subsurface_diffuse_response(dot(surface.normal, L), dot(V, -L), surface.is_foliage());
-    return light.radiance * response * surface.albedo;
+    return light.radiance * response;
 }
 
 // evaluates a single light against the surface, accumulates into the out parameters
@@ -247,6 +247,11 @@ void evaluate_light(
             }
         }
 
+        // Screen-space depth has no leaf thickness and treats every card as
+        // opaque. Retain contact detail without erasing the thin-sheet paths
+        // resolved by the primary shadow ray. Solid occluders still fully block.
+        if (surface.is_foliage())
+            L_shadow_contact = lerp(L_shadow_contact, 1.0f, scattering_fraction * 0.70f);
         L_shadow = min(L_shadow_primary, L_shadow_contact);
 
         // Transmission still needs a clear path to the light. Contact shadows also

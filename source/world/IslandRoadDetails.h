@@ -7,6 +7,8 @@
 #include "components/Render.h"
 #include "../rendering/Material.h"
 #include "../geometry/Mesh.h"
+#include "../geometry/GeneratedCache.h"
+#include "../core/Stopwatch.h"
 #include "../rhi/RHI_Vertex.h"
 #include <unordered_map>
 #include <array>
@@ -230,6 +232,90 @@ namespace spartan::island_road_details
         }
     }
 
+    struct BakedPart
+    {
+        uint32_t parent = UINT32_MAX, finish = FinishCount, shape = 0;
+        Vector3 position, scale;
+        Quaternion rotation;
+        char name[64] = {};
+    };
+
+    inline bool LoadDetails(Entity* group, uint64_t key)
+    {
+        std::vector<BakedPart> parts;
+        const std::string resources = World::GetResourceDirectory();
+        if (!generated_cache::Load(generated_cache::Path(resources, "road_furniture", key), key, parts)) return false;
+        std::vector<std::shared_ptr<Mesh>> meshes(parts.size());
+        for (size_t i = 0; i < parts.size(); ++i)
+        {
+            const auto& p = parts[i];
+            if ((p.parent != UINT32_MAX && p.parent >= i) || p.finish > FinishCount || p.shape > 2 ||
+                !p.position.IsFinite() || !p.scale.IsFinite() || p.name[63] != 0) return false;
+            if (p.shape == 2)
+            {
+                generated_cache::Hash mesh_key; mesh_key.Add(key); mesh_key.Add(uint64_t(i));
+                meshes[i] = std::make_shared<Mesh>();
+                if (!meshes[i]->LoadPrepared(generated_cache::Path(resources, "road_furniture_mesh", mesh_key.value).string(), mesh_key.value)) return false;
+            }
+        }
+        std::vector<Entity*> entities;
+        for (size_t i = 0; i < parts.size(); ++i)
+        {
+            const auto& p = parts[i];
+            Entity* parent = p.parent == UINT32_MAX ? group : entities[p.parent];
+            Entity* entity;
+            if (p.finish == FinishCount)
+            {
+                entity = World::CreateEntity(); entity->SetObjectName(p.name);
+                entity->SetTransient(true); entity->SetParent(parent);
+            }
+            else
+            {
+                entity = Part(parent, p.name, p.position, p.scale, static_cast<Finish>(p.finish), p.shape == 1);
+                if (meshes[i])
+                {
+                    meshes[i]->SetObjectName("roadside_furniture");
+                    meshes[i]->CreateGpuBuffers();
+                    entity->GetComponent<Render>()->SetOwnedMesh(meshes[i]);
+                }
+            }
+            entity->SetPositionLocal(p.position); entity->SetScaleLocal(p.scale); entity->SetRotationLocal(p.rotation);
+            entities.push_back(entity);
+        }
+        return true;
+    }
+
+    inline void SaveDetails(Entity* group, uint64_t key)
+    {
+        std::vector<BakedPart> parts;
+        const std::string resources = World::GetResourceDirectory();
+        std::function<void(Entity*, uint32_t)> visit = [&](Entity* entity, uint32_t parent)
+        {
+            // These temporary anchors were already merged and are pending removal.
+            if (entity->GetObjectName() == "roadside_delineator" || entity->GetObjectName() == "roadside_guardrail") return;
+            BakedPart p;
+            p.parent = parent; p.position = entity->GetPositionLocal(); p.scale = entity->GetScaleLocal();
+            p.rotation = entity->GetRotationLocal();
+            const std::string& name = entity->GetObjectName();
+            std::memcpy(p.name, name.data(), std::min(name.size(), sizeof(p.name) - 1));
+            const uint32_t index = static_cast<uint32_t>(parts.size());
+            if (Render* render = entity->GetComponent<Render>())
+            {
+                for (uint32_t f = 0; f < FinishCount; ++f) if (render->GetMaterial() == materials[f].get()) p.finish = f;
+                p.shape = render->GetMesh() == triangle.get() ? 1 : name == "roadside_furniture" ? 2 : 0;
+                if (p.shape == 2)
+                {
+                    generated_cache::Hash mesh_key; mesh_key.Add(key); mesh_key.Add(uint64_t(index));
+                    render->GetMesh()->SavePrepared(generated_cache::Path(resources, "road_furniture_mesh", mesh_key.value).string(), mesh_key.value);
+                }
+            }
+            parts.push_back(p);
+            for (Entity* child : entity->GetChildren()) visit(child, index);
+        };
+        for (Entity* child : group->GetChildren()) visit(child, UINT32_MAX);
+        generated_cache::Save(generated_cache::Path(resources, "road_furniture", key), key, parts);
+    }
+
     inline void Tick(float dt)
     {
         if (World::GetName()!="plan.world" || !Terrain::FindActive()) return;
@@ -277,7 +363,11 @@ namespace spartan::island_road_details
         Entity* entity=World::GetEntityById(record.id);
         Spline* spline=entity ? entity->GetComponent<Spline>() : nullptr;
         if (!spline || spline->GetRoadFrames().empty()) return;
-        uint64_t hash=1469598103934665603ull;
+        generated_cache::Hash recipe;
+        recipe.Add(uint32_t(1)); recipe.Add(sizeof(BakedPart)); recipe.Add(sizeof(MeshLod));
+        recipe.Add(spline->GetRoadFrames()); recipe.Add(spline->GetControlPointCount());
+        for (const auto& f : spline->GetRoadFrames()) recipe.Add(spline->GetSidewalkWidthAt(f.t));
+        uint64_t& hash = recipe.value;
         auto add=[&](float value){uint32_t bits;std::memcpy(&bits,&value,sizeof(bits));hash=(hash^bits)*1099511628211ull;};
         add(spline->GetRoadWidth()); add(spline->GetRoadWidthEnd());
         add(spline->GetSidewalkWidth()); add(spline->GetSidewalkEnabled() ? 1.0f : 0.0f);
@@ -285,13 +375,45 @@ namespace spartan::island_road_details
             {add(v.x);add(v.y);add(v.z);}
         for (const auto& f:spline->GetRoadFrames()) {add(f.position.x);add(f.position.y);add(f.position.z);}
         for (Entity* point:entity->GetChildren())
+        {
+            if (point->GetObjectName().find("spline_point_") != 0) continue;
+            recipe.Add(point->GetObjectName());
             for (const std::string& tag:point->GetTags())
+            {
+                if (tag.find("road_node_") != 0) continue;
+                recipe.Add(tag);
                 if (const auto found=junction_degree.find(tag);found!=junction_degree.end()) add(static_cast<float>(found->second));
+            }
+            recipe.Add(uint8_t(0));
+        }
         if (record.signature==hash) return;
         record.signature=hash;
         if (Entity* old=World::GetEntityById(record.detail_id)) World::RemoveEntity(old);
         Entity* group=Anchor(root,("details_"+entity->GetObjectName()).c_str(),Vector3::Zero,Vector3::Forward);
         record.detail_id=group->GetObjectId();
-        Build(entity,spline,group);
+        if (!LoadDetails(group, hash))
+        {
+            Build(entity,spline,group);
+            SaveDetails(group, hash);
+        }
     }
+    inline bool PrepareWorld()
+    {
+        if (World::GetName() != "plan.world" || !Terrain::FindActive()) return true;
+        const Stopwatch slice;
+        do
+        {
+            Tick(0.0f);
+            World::ProcessPendingAdditions();
+            const bool pending = std::any_of(roads.begin(), roads.end(), [](const Road& road)
+            {
+                Entity* entity = World::GetEntityById(road.id);
+                Spline* spline = entity ? entity->GetComponent<Spline>() : nullptr;
+                return road.signature == 0 && spline && !spline->GetRoadFrames().empty();
+            });
+            if (!pending) return true;
+        } while (slice.GetElapsedTimeMs() < 3.0f);
+        return false;
+    }
+
 }

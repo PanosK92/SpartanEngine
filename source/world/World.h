@@ -56,6 +56,7 @@ namespace spartan
         static bool SaveToFileAsync(std::string file_path);
         static bool LoadFromFile(const std::string& file_path);
         static bool IsLoadingFromFile();
+        static bool IsPreparing();
         static void ProcessPendingLoad();
         static bool IsSaving();
         // Empty until a world has a file path; generated caches must not spill into the project root.

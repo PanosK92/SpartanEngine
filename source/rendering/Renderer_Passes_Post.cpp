@@ -330,6 +330,11 @@ namespace spartan
     {
         RHI_Texture* pyramid = GetRenderTarget(Renderer_RenderTarget::bloom);
         const uint32_t mip_count = pyramid->GetMipCount();
+        // Post-effect parity can leave the single-mip frame_output_2 as input.
+        // It has a full SRV but no per-mip SRV; explicitly requesting mip zero
+        // supplies no valid view. Both bloom shaders sample level zero.
+        const uint32_t input_mip = tex_in->HasPerMipViews() ? 0 : rhi_all_mips;
+        const uint32_t input_mip_range = tex_in->HasPerMipViews() ? 1 : 0;
         auto dispatch_mip = [pyramid](uint32_t mip)
         {
             const uint32_t width = max(1u, pyramid->GetWidth() >> mip);
@@ -345,7 +350,7 @@ namespace spartan
         RHI_CommandList::BeginMarker("bloom_prefilter");
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_prefilter_c), "bloom_prefilter");
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_in, 0, 1);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_in, input_mip, input_mip_range);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), pyramid, 0, 1, true);
             dispatch_mip(0);
         }
@@ -385,7 +390,7 @@ namespace spartan
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::bloom_blend_frame_c), "bloom_composite");
             m_pcb_pass_cpu.set_f3_value(cvar_bloom.GetValue(), 0.0f, 0.0f);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_in, 0, 1);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_in, input_mip, input_mip_range);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), pyramid, 0, 1);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_out, rhi_all_mips, 0, true);
             RHI_CommandList::Dispatch(tex_out);

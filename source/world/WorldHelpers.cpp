@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../rendering/Material.h"
 #include "../rendering/GeometryBuffer.h"
 #include "../resource/ResourceCache.h"
+#include "../geometry/GeneratedCache.h"
 #include "../geometry/Mesh.h"
 #include "../geometry/GeometryGeneration.h"
 #include "../geometry/GeometryProcessing.h"
@@ -656,7 +657,7 @@ namespace spartan
         unordered_map<uint64_t, string> scatter_material_owners;
         unordered_map<string, shared_ptr<Material>> scatter_layer_materials;
 
-        shared_ptr<Material> resolve_layer_material(Material* source, const string& layer_name)
+        shared_ptr<Material> resolve_layer_material(Material* source, const string& layer_name, bool isolate)
         {
             if (!source)
             {
@@ -668,9 +669,9 @@ namespace spartan
             if (owner == scatter_material_owners.end())
             {
                 scatter_material_owners[id] = layer_name;
-                return nullptr;
+                if (!isolate) return nullptr;
             }
-            if (owner->second == layer_name)
+            else if (owner->second == layer_name && !isolate)
             {
                 return nullptr;
             }
@@ -814,7 +815,10 @@ namespace spartan
                         render->SetMaterial(material_override);
                     }
 
-                    if (shared_ptr<Material> owned = resolve_layer_material(render->GetMaterial(), layer.name))
+                    // Scene calibration must not save over imported materials or
+                    // leak into another world using the same plant asset.
+                    const bool calibrated = layer.foliage_tint[0] >= 0.0f || layer.foliage_scattering != 0.35f;
+                    if (shared_ptr<Material> owned = resolve_layer_material(render->GetMaterial(), layer.name, calibrated))
                     {
                         render->SetMaterial(owned);
                     }
@@ -827,7 +831,13 @@ namespace spartan
                         {
                             material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                             material->SetProperty(MaterialProperty::IsFoliage, 1.0f);
-                            material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.35f);
+                            material->SetProperty(MaterialProperty::SubsurfaceScattering, layer.foliage_scattering);
+                            if (layer.foliage_tint[0] >= 0.0f && layer.foliage_tint[1] >= 0.0f && layer.foliage_tint[2] >= 0.0f)
+                            {
+                                material->SetProperty(MaterialProperty::ColorR, layer.foliage_tint[0]);
+                                material->SetProperty(MaterialProperty::ColorG, layer.foliage_tint[1]);
+                                material->SetProperty(MaterialProperty::ColorB, layer.foliage_tint[2]);
+                            }
                         }
 
                         // Wood and leaves share the same anchored sway. The shader adds
@@ -1175,6 +1185,9 @@ namespace spartan
             uint32_t slots_per_instance = 1;
             vector<vector<Matrix>> transforms;
             vector<float> coverage;
+            vector<uint64_t> cache_keys;
+            vector<uint8_t> cache_hits;
+            uint32_t hits = 0, misses = 0;
             BoundingBox bounds;
             size_t placed               = 0;
             size_t placed_batch         = 0;
@@ -1264,6 +1277,8 @@ namespace spartan
                 }
                 job.transforms.resize(tile_count);
                 job.coverage.resize(tile_count, 0.0f);
+                job.cache_keys.resize(tile_count);
+                job.cache_hits.resize(tile_count);
                 return false;
             }
 
@@ -1283,20 +1298,53 @@ namespace spartan
                 {
                     tiles[tile_index] = tile_ids[tile_index] ? World::GetEntityById(tile_ids[tile_index]) : nullptr;
                 }
-                terrain->EnsurePlacementData(batch_tiles);
+                const string resources = World::GetResourceDirectory();
+                ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
+                {
+                    for (uint32_t work = begin; work < end; ++work)
+                    {
+                        auto& job = jobs[work / batch_size];
+                        const uint32_t tile = batch_tiles[work % batch_size];
+                        if (!tiles[tile]) continue;
+                        const uint64_t key = terrain->GetScatterCacheKey(tile, *job.layer, &job.bounds);
+                        job.cache_keys[tile] = key;
+                        vector<float> coverage;
+                        const bool hit = generated_cache::Load(generated_cache::Path(resources, "scatter", key), key,
+                            job.transforms[tile], coverage) && coverage.size() == 1 && std::isfinite(coverage[0]);
+                        job.cache_hits[tile] = hit;
+                        if (hit) job.coverage[tile] = coverage[0];
+                    }
+                }, static_cast<uint32_t>(jobs.size()) * batch_size);
+                vector<uint32_t> missing;
+                for (uint32_t tile : batch_tiles)
+                {
+                    bool needs_triangles = false;
+                    for (auto& job : jobs)
+                    {
+                        if (job.cache_hits[tile]) ++job.hits;
+                        else { ++job.misses; needs_triangles = true; }
+                    }
+                    if (needs_triangles) missing.push_back(tile);
+                }
+                terrain->EnsurePlacementData(missing);
 
                 // Every (layer, tile) pair has independent deterministic output.
                 // Dispatch them together instead of repeatedly using only four
                 // workers while the rest of the pool sits idle between layers.
-                auto place = [&jobs, &tiles, &tile_order, terrain, order_done, batch_size](uint32_t begin, uint32_t end)
+                auto place = [&jobs, &tiles, &tile_order, &resources, terrain, order_done, batch_size](uint32_t begin, uint32_t end)
                 {
                     for (uint32_t work = begin; work < end; ++work)
                     {
                         scatter_job& job = jobs[work / batch_size];
                         const uint32_t tile_index = tile_order[order_done + work % batch_size];
-                        if (tiles[tile_index])
+                        if (tiles[tile_index] && !job.cache_hits[tile_index])
+                        {
                             terrain->FindTransforms(tile_index, *job.layer, job.transforms[tile_index],
                                 &job.coverage[tile_index], &job.bounds);
+                            const uint64_t key = job.cache_keys[tile_index];
+                            generated_cache::Save(generated_cache::Path(resources, "scatter", key), key,
+                                job.transforms[tile_index], vector<float>{job.coverage[tile_index]});
+                        }
                     }
                 };
                 ThreadPool::ParallelLoop(place, static_cast<uint32_t>(jobs.size()) * batch_size);
@@ -1355,6 +1403,8 @@ namespace spartan
             {
                 job.layer->instance_count = static_cast<uint32_t>(job.placed);
                 job.layer->coverage       = job.coverage_sum / static_cast<float>(tile_count);
+                SP_LOG_INFO("Scatter bake '%s': %u hits, %u misses (missing/stale/invalid)",
+                    job.layer->name.c_str(), job.hits, job.misses);
 
                 if (job.placed == 0)
                 {

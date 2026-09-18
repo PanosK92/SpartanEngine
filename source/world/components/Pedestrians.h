@@ -45,6 +45,7 @@ namespace spartan
         Pedestrians(Entity* entity);
         ~Pedestrians() override;
 
+        bool PrepareWorld();
         void Start() override;
         void Stop() override;
         void Tick() override;

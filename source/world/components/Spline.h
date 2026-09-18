@@ -273,6 +273,7 @@ namespace spartan
         void SetInstanceRandomYaw(float degrees)                { m_instance_random_yaw = degrees; }
 
     private:
+        static void SolveRoadJunctions(const std::vector<Spline*>& members);
         // regenerate the mesh after the world finishes loading
         void OnWorldLoaded();
 

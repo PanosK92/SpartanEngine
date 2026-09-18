@@ -508,6 +508,74 @@ namespace spartan
         return true;
     }
 
+    bool Mesh::LoadPrepared(const string& path, uint64_t key)
+    {
+        vector<RHI_Vertex_PosTexNorTan> vertices;
+        vector<uint32_t> indices, remaps, micro;
+        vector<Sb_MeshletBounds> meshlets;
+        vector<MeshLod> lods;
+        if (!generated_cache::Load(path, key, vertices, indices, meshlets, remaps, micro, lods) ||
+            lods.empty() || lods.size() > mesh_lod_count) return false;
+        for (const MeshLod& lod : lods)
+        {
+            if (!lod.vertex_count || !lod.index_count ||
+                uint64_t(lod.vertex_offset) + lod.vertex_count > vertices.size() ||
+                uint64_t(lod.index_offset) + lod.index_count > indices.size() ||
+                uint64_t(lod.meshlet_offset) + lod.meshlet_count > meshlets.size() ||
+                !lod.aabb.GetMin().IsFinite() || !lod.aabb.GetMax().IsFinite()) return false;
+            for (size_t i = lod.index_offset; i < uint64_t(lod.index_offset) + lod.index_count; ++i)
+                if (indices[i] >= lod.vertex_count) return false;
+            for (size_t i = lod.meshlet_offset; i < uint64_t(lod.meshlet_offset) + lod.meshlet_count; ++i)
+            {
+                const auto& b = meshlets[i];
+                const uint32_t first = b.first_vertex_vert_count & MESHLET_FIRST_VERTEX_MASK;
+                const uint32_t count = (b.first_vertex_vert_count >> MESHLET_VERT_COUNT_SHIFT) & MESHLET_VERT_COUNT_MASK;
+                const uint32_t triangles = (b.first_index_tri_count >> MESHLET_TRI_COUNT_SHIFT) & MESHLET_TRI_COUNT_MASK;
+                const uint32_t index = b.first_index_tri_count & MESHLET_FIRST_INDEX_MASK;
+                if (!count || count > MESHLET_MAX_VERTICES || !triangles || triangles > MESHLET_MAX_TRIANGLES ||
+                    uint64_t(first) + count > remaps.size() || uint64_t(b.first_micro) + triangles * 3 > micro.size() ||
+                    uint64_t(index) + triangles * 3 > lod.index_count) return false;
+                for (size_t j = b.first_micro; j < uint64_t(b.first_micro) + triangles * 3; ++j)
+                    if (micro[j] >= count) return false;
+                for (size_t j = first; j < uint64_t(first) + count; ++j)
+                    if (remaps[j] >= lod.vertex_count) return false;
+            }
+        }
+        m_vertices = move(vertices); m_indices = move(indices); m_meshlets = move(meshlets);
+        m_meshlet_vertices = move(remaps); m_meshlet_micro_indices = move(micro);
+        m_sub_meshes = {SubMesh{move(lods)}};
+        return true;
+    }
+
+    void Mesh::SavePrepared(const string& path, uint64_t key) const
+    {
+        if (m_sub_meshes.size() != 1) return;
+        generated_cache::Save(path, key, m_vertices, m_indices, m_meshlets,
+            m_meshlet_vertices, m_meshlet_micro_indices, m_sub_meshes[0].lods);
+    }
+
+    void Mesh::AppendPrepared(const Mesh& tile, uint32_t sub_mesh_index)
+    {
+        lock_guard lock(m_mutex);
+        SubMesh sub = tile.m_sub_meshes[0];
+        for (MeshLod& lod : sub.lods)
+        {
+            lod.vertex_offset += static_cast<uint32_t>(m_vertices.size());
+            lod.index_offset += static_cast<uint32_t>(m_indices.size());
+            lod.meshlet_offset += static_cast<uint32_t>(m_meshlets.size());
+        }
+        const size_t first = m_meshlets.size();
+        m_meshlets.insert(m_meshlets.end(), tile.m_meshlets.begin(), tile.m_meshlets.end());
+        for (size_t i = first; i < m_meshlets.size(); ++i)
+            offset_meshlet_unique_ranges(m_meshlets[i], static_cast<uint32_t>(m_meshlet_vertices.size()),
+                static_cast<uint32_t>(m_meshlet_micro_indices.size()));
+        m_vertices.insert(m_vertices.end(), tile.m_vertices.begin(), tile.m_vertices.end());
+        m_indices.insert(m_indices.end(), tile.m_indices.begin(), tile.m_indices.end());
+        m_meshlet_vertices.insert(m_meshlet_vertices.end(), tile.m_meshlet_vertices.begin(), tile.m_meshlet_vertices.end());
+        m_meshlet_micro_indices.insert(m_meshlet_micro_indices.end(), tile.m_meshlet_micro_indices.begin(), tile.m_meshlet_micro_indices.end());
+        m_sub_meshes[sub_mesh_index] = move(sub);
+    }
+
     void Mesh::AddLod(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const uint32_t sub_mesh_index)
     {
         // build per-lod meshlets, this also repacks indices into meshlet-contiguous order and returns the lod aabb the meshlet bounds were quantized against

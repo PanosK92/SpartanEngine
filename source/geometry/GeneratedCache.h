@@ -31,9 +31,47 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <tuple>
 #include <type_traits>
 #include <vector>
+#include <map>
+#include <mutex>
+#include <sstream>
 
 namespace spartan::generated_cache
 {
+    struct Statistics { uint64_t hits = 0, missing = 0, invalid = 0; double milliseconds = 0; };
+    inline std::mutex statistics_mutex;
+    inline std::map<std::string, Statistics> statistics;
+    inline void ResetStatistics() { std::lock_guard lock(statistics_mutex); statistics.clear(); }
+    inline std::vector<std::string> GetStatistics()
+    {
+        std::lock_guard lock(statistics_mutex);
+        std::vector<std::string> lines;
+        for (const auto& [category, stats] : statistics)
+        {
+            std::ostringstream line;
+            line << category << ": " << stats.hits << " hits, " << stats.missing
+                 << " missing/changed keys, " << stats.invalid << " invalid files, "
+                 << stats.milliseconds << " ms accumulated cache reads";
+            lines.push_back(line.str());
+        }
+        return lines;
+    }
+    struct ReadMeasurement
+    {
+        std::string category;
+        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+        bool hit = false, missing = false;
+        ~ReadMeasurement()
+        {
+            const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+            std::lock_guard lock(statistics_mutex);
+            auto& stats = statistics[category];
+            if (hit) ++stats.hits;
+            else if (missing) ++stats.missing;
+            else ++stats.invalid;
+            stats.milliseconds += ms;
+        }
+    };
+
     // Version the caller's key when changing a generator or its binary layout.
     struct Hash
     {
@@ -65,8 +103,9 @@ namespace spartan::generated_cache
     template<typename... Vectors> bool Load(const std::filesystem::path& path, uint64_t key, Vectors&... output)
     {
         if (path.empty()) return false;
+        ReadMeasurement measurement{path.parent_path().filename().string()};
         std::ifstream file(path, std::ios::binary | std::ios::ate);
-        if (!file) return false;
+        if (!file) { measurement.missing = true; return false; }
         const auto length = file.tellg();
         // Bound allocations and reject truncated/corrupt caches before touching caller data.
         if (length < 16 || length > 512ll * 1024 * 1024) return false;
@@ -96,6 +135,7 @@ namespace spartan::generated_cache
         std::tuple<std::decay_t<Vectors>...> loaded;
         if (!std::apply([&](auto&... values) { return (read(values) && ...); }, loaded) || cursor != bytes.size()) return false;
         std::tie(output...) = std::move(loaded);
+        measurement.hit = true;
         return true;
     }
 

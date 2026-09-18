@@ -758,16 +758,16 @@ namespace spartan
         ResetPresetProperties(false);
         SetColorInternal(color, false);
 
+        // Paint presets change the finish, not the UV layout of imported body maps.
+        // FlakeScale controls procedural flake density independently.
         switch (preset)
         {
             case MaterialPaintPreset::GlossSolid:
             {
-                SetPropertyInternal(MaterialProperty::Roughness,           0.08f, false);
+                SetPropertyInternal(MaterialProperty::Roughness,           0.24f, false);
                 SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
-                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.05f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.08f, false);
                 SetPropertyInternal(MaterialProperty::Normal,              0.03f, false);
-                SetPropertyInternal(MaterialProperty::TextureTilingX,      100.0f, false);
-                SetPropertyInternal(MaterialProperty::TextureTilingY,      100.0f, false);
                 break;
             }
             case MaterialPaintPreset::Metallic:
@@ -780,8 +780,6 @@ namespace spartan
                 SetPropertyInternal(MaterialProperty::Normal,              0.04f, false);
                 SetPropertyInternal(MaterialProperty::FlakeStrength,       0.18f, false);
                 SetPropertyInternal(MaterialProperty::FlakeScale,          160.0f, false);
-                SetPropertyInternal(MaterialProperty::TextureTilingX,      130.0f, false);
-                SetPropertyInternal(MaterialProperty::TextureTilingY,      130.0f, false);
                 break;
             }
             case MaterialPaintPreset::Satin:
@@ -790,8 +788,6 @@ namespace spartan
                 SetPropertyInternal(MaterialProperty::Clearcoat,           0.75f, false);
                 SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.45f, false);
                 SetPropertyInternal(MaterialProperty::Normal,              0.02f, false);
-                SetPropertyInternal(MaterialProperty::TextureTilingX,      80.0f, false);
-                SetPropertyInternal(MaterialProperty::TextureTilingY,      80.0f, false);
                 break;
             }
             case MaterialPaintPreset::Matte:
@@ -814,8 +810,6 @@ namespace spartan
                 SetPropertyInternal(MaterialProperty::PearlColorB,         1.0f,  false);
                 SetPropertyInternal(MaterialProperty::FlakeStrength,       0.18f, false);
                 SetPropertyInternal(MaterialProperty::FlakeScale,          140.0f, false);
-                SetPropertyInternal(MaterialProperty::TextureTilingX,      120.0f, false);
-                SetPropertyInternal(MaterialProperty::TextureTilingY,      120.0f, false);
                 break;
             }
             case MaterialPaintPreset::Candy:

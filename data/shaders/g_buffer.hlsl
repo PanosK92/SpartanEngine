@@ -36,9 +36,11 @@ struct gbuffer
 };
 
 // constants
-static const float3 vegetation_greener  = float3(0.05f, 0.4f, 0.03f);
-static const float3 vegetation_yellower = float3(0.45f, 0.4f, 0.15f);
-static const float3 vegetation_browner  = float3(0.3f, 0.15f, 0.08f);
+// Multipliers preserve each species' authored reflectance and leaf detail.
+// Adding a constant colour lifts dark foliage and washes out the texture.
+static const float3 vegetation_greener  = float3(0.92f, 1.02f, 0.92f);
+static const float3 vegetation_yellower = float3(1.06f, 0.98f, 0.84f);
+static const float3 vegetation_browner  = float3(0.92f, 0.85f, 0.76f);
 // Linear albedo: muted greens with olive and occasional dry straw, rather than
 // saturated lime tips. Sunlight and transmission supply the brightness naturally.
 static const float3 grass_base          = float3(0.016f, 0.027f, 0.012f);
@@ -446,7 +448,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     {
         float height_percent = vertex.uv_misc.z;
         float variation      = vertex.uv_misc.w;
-        albedo.rgb           = compute_grass_color(
+        albedo.rgb           *= compute_grass_color(
             height_percent,
             variation
         );
@@ -460,10 +462,15 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     else if (surface.color_variation_from_instance())
     {
         float variation       = hash((uint)vertex.uv_misc.w);
-        float3 variation_tint = lerp(vegetation_greener, vegetation_yellower, step(0.25f, variation));
-        variation_tint        = lerp(variation_tint, vegetation_browner, step(0.5f, variation));
-        albedo.rgb            = lerp(albedo.rgb, variation_tint, 0.15f);
+        float3 variation_tint = lerp(vegetation_greener, vegetation_yellower, smoothstep(0.0f, 0.6f, variation));
+        variation_tint        = lerp(variation_tint, vegetation_browner, smoothstep(0.6f, 1.0f, variation));
+        albedo.rgb           *= variation_tint;
     }
+
+    // Asset calibration can lift an underexposed leaf atlas, but diffuse
+    // reflectance must never exceed the incident energy at its brightest texels.
+    if (surface.is_foliage())
+        albedo.rgb = saturate(albedo.rgb);
 
     // alpha: opaque pass forces alpha to 1 for non-transparent pixels
     albedo.a = lerp(albedo.a, 1.0f, step(albedo_sample.a, 1.0f) * pass_is_opaque());
@@ -549,9 +556,14 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     if (material.flake_strength > 0.0f)
     {
         float flake_scale = max(material.flake_scale, 1.0f);
-        float2 flake_cell = floor(vertex.uv_misc.xy * flake_scale);
-        float flake_hash  = hash(flake_cell + floor(position_world.xz * 0.25f));
-        float sparkle     = pow(saturate(flake_hash), 48.0f) * saturate(material.flake_strength);
+        float2 flake_uv   = vertex.uv_misc.xy * flake_scale;
+        float2 flake_cell = floor(flake_uv);
+        // Paint belongs to the vehicle, not the world. Filter unresolved flakes
+        // to their mean (integral of x^48 = 1/49) to avoid distant shimmer.
+        float footprint  = max(length(ddx(flake_uv)), length(ddy(flake_uv)));
+        float resolved   = 1.0f - smoothstep(0.5f, 1.5f, footprint);
+        float sparkle    = lerp(1.0f / 49.0f, pow(saturate(hash(flake_cell)), 48.0f), resolved)
+                         * saturate(material.flake_strength);
         float3 flake_tint = lerp(albedo.rgb, float3(1.0f, 1.0f, 1.0f), 0.35f);
         albedo.rgb       += sparkle * flake_tint * 0.35f;
         roughness         = lerp(roughness, roughness * 0.65f, sparkle);

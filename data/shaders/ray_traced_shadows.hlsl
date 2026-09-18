@@ -76,7 +76,7 @@ float3 sample_sun_direction(float3 light_dir, float2 disk_sample, float penumbra
 // inline query so alpha tested foliage resolves its cutouts, the hit group below stays for the pipeline
 float2 trace_opaque_shadow(float3 origin, float3 direction, float t_max)
 {
-    float hit_distance = rt_trace_occluder(origin, direction, 0.001f, max(t_max, 0.001f));
+    float hit_distance = rt_trace_foliage_shadow(origin, direction, t_max);
     if (hit_distance >= 0.0f)
     {
         return float2(0.0f, hit_distance);

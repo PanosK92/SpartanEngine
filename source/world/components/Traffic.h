@@ -46,6 +46,7 @@ namespace spartan
         Traffic(Entity* entity);
         ~Traffic() override;
 
+        bool PrepareWorld();
         void Start() override;
         void Stop() override;
         void Tick() override;

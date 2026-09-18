@@ -127,6 +127,14 @@ namespace spartan
         m_source_mesh.reset();
     }
 
+    bool Pedestrians::PrepareWorld()
+    {
+        if (m_preload_state && !m_preload_state->completed.load(std::memory_order_acquire)) return false;
+        FinishPreloadOnMainThread();
+        if (m_follow_roads) m_road_network = road_traffic::BuildWorldNetwork(true);
+        return true;
+    }
+
     void Pedestrians::Start()
     {
         // drop live walkers only, keep a world-load mesh preload so play does not hitch

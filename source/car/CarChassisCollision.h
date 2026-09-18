@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include <vector>
 #include "physx/cooking/PxCooking.h"
+#include "../geometry/GeneratedCache.h"
 
 namespace car::chassis_collision
 {
@@ -267,7 +268,7 @@ namespace car::chassis_collision
         };
         std::vector<entry> entries;
 
-        std::vector<mesh_ptr> get(const std::vector<triangle>& triangles, const PxCookingParams& params, PxInsertionCallback& insertion)
+        std::vector<mesh_ptr> get(const std::vector<triangle>& triangles, const PxCookingParams& params, PxInsertionCallback& insertion, const std::string& resources = {})
         {
             uint64_t hash = 14695981039346656037ull;
             for (const triangle& t : triangles)
@@ -279,6 +280,43 @@ namespace car::chassis_collision
                         std::memcpy(&bits, &value, sizeof(bits));
                         hash = (hash ^ bits) * 1099511628211ull;
                     }
+            spartan::generated_cache::Hash key;
+            key.Add(uint32_t(1)); key.Add(uint32_t(PX_PHYSICS_VERSION)); key.Add(hash);
+            key.Add(max_hulls); key.Add(max_vertices); key.Add(params.scale.length); key.Add(params.scale.speed);
+            key.Add(params.gaussMapLimit); key.Add(params.convexMeshCookingType);
+            hash = key.value;
+            const auto path = spartan::generated_cache::Path(resources, "chassis_hulls", hash);
+            bool memory_hit = std::any_of(entries.begin(), entries.end(), [&](const entry& e)
+                { return e.hash == hash && e.triangle_count == triangles.size(); });
+            if (!memory_hit)
+            {
+                std::vector<uint32_t> counts;
+                std::vector<std::array<float, 3>> points;
+                if (spartan::generated_cache::Load(path, hash, counts, points) && !counts.empty() && counts.size() <= max_hulls)
+                {
+                    entry e{hash, triangles.size(), {}};
+                    size_t cursor = 0;
+                    bool valid = true;
+                    for (uint32_t count : counts)
+                    {
+                        if (count < 4 || count > 255 || count > points.size() - cursor) { valid = false; break; }
+                        auto& hull = e.hulls.emplace_back();
+                        for (size_t i = cursor; i < cursor + count; ++i)
+                        {
+                            const auto& point = points[i];
+                            PxVec3 vertex(point[0], point[1], point[2]);
+                            valid &= vertex.isFinite();
+                            hull.push_back(vertex);
+                        }
+                        cursor += count;
+                    }
+                    if (valid && cursor == points.size())
+                    {
+                        if (entries.size() == 16) entries.erase(entries.begin());
+                        entries.push_back(std::move(e));
+                    }
+                }
+            }
             for (const entry& e : entries)
             {
                 if (e.hash != hash || e.triangle_count != triangles.size()) continue;
@@ -297,6 +335,14 @@ namespace car::chassis_collision
                 entry e{hash, triangles.size(), {}};
                 for (const auto& mesh : result)
                     e.hulls.emplace_back(mesh->getVertices(), mesh->getVertices() + mesh->getNbVertices());
+                std::vector<uint32_t> counts;
+                std::vector<std::array<float, 3>> points;
+                for (const auto& hull : e.hulls)
+                {
+                    counts.push_back(static_cast<uint32_t>(hull.size()));
+                    for (const auto& point : hull) points.push_back({point.x, point.y, point.z});
+                }
+                spartan::generated_cache::Save(path, hash, counts, points);
                 if (entries.size() == 16) entries.erase(entries.begin());
                 entries.push_back(std::move(e));
             }

@@ -110,7 +110,9 @@ namespace spartan
 
     // scatter layers are the prop half of the same rule system, a slope band, an altitude band and
     // an analysis influence mean exactly what they mean for a surface layer above
-    const uint32_t terrain_scatter_max = 8;
+    // Separate canopy, regeneration and understory rules can share mesh palettes.
+    // This CPU rule count is independent of the eight terrain surface materials.
+    const uint32_t terrain_scatter_max = 12;
 
     enum class TerrainScatterKind : uint32_t
     {
@@ -231,6 +233,10 @@ namespace spartan
         // rendering
         float render_distance       = 0.0f;   // meters, 0 is unlimited
         float shadow_distance       = 150.0f; // meters
+        // Optional leaf-only linear texture multiplier. Negative preserves the
+        // imported colour; bark and stones are never affected by calibration.
+        float foliage_tint[3]       = { -1.0f, -1.0f, -1.0f };
+        float foliage_scattering    = 0.35f;
 
         // gpu kinds only, grass and detail, the three concentric rings the gpu populates around the
         // camera, the spacing is what sets the density and the reach is what sets the cost

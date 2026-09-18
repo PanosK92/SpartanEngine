@@ -98,6 +98,7 @@ namespace spartan
         void Remove() override;
         // discard the current actors and build them again from the component's current state
         void Rebuild() { Create(); }
+        void PrepareWorld();
         void PreTick() override;
         void Tick() override;
         void Save(pugi::xml_node& node) override;

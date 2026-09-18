@@ -247,6 +247,7 @@ namespace spartan
         bool IsScatterActive(const TerrainScatterLayer& layer) const;
         // ground area one instance of density 1 covers, used to turn instances per hectare into a count
         float GetTriangleArea() const;
+        uint64_t GetScatterCacheKey(uint32_t tile_index, const TerrainScatterLayer& layer, const math::BoundingBox* bounds) const;
         // sea and snow in entity local y, triangle heights are local and the levels are world, the
         // sea comes from the water component when there is one, every cpu and gpu path reads these
         float GetSeaLevelLocal() const;
@@ -258,6 +259,7 @@ namespace spartan
         void RefreshLayers();
         // hand the current layer set, analysis maps and world mapping to the renderer
         void PushToRenderer() const;
+        bool IsCpuGenerationPending() const { return m_worker_busy.load(std::memory_order_acquire) != 0; }
         bool IsGenerating() const { return m_is_generating.load(); }
         bool IsMeshCommitPending() const { return m_gpu_commit_pending.load(std::memory_order_acquire); }
         void Tick() override;

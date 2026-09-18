@@ -115,6 +115,13 @@ namespace spartan
         Stop();
     }
 
+    bool Traffic::PrepareWorld()
+    {
+        if (m_preload_state && !m_preload_state->completed.load(std::memory_order_acquire)) return false;
+        if (m_follow_roads) BuildRoadNetwork();
+        return true;
+    }
+
     void Traffic::Start()
     {
         // destroy live cars but keep a warm car mesh preload from world load

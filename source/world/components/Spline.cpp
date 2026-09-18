@@ -714,7 +714,7 @@ namespace spartan
     void Spline::Tick()
     {
         SP_PROFILE_CPU();
-        if (ProgressTracker::IsLoading())
+        if (ProgressTracker::IsLoading() && !World::IsPreparing())
         {
             return;
         }
@@ -1526,10 +1526,42 @@ namespace spartan
             if (active != spline->m_prev_junction_active) road_junctions_dirty = true;
             spline->m_prev_junction_active = active;
         }
-        if (!road_junctions_dirty || ProgressTracker::IsLoading() || !pending_road_regeneration.empty()) return;
-        const Stopwatch solve_timer;
+        if (!road_junctions_dirty || (ProgressTracker::IsLoading() && !World::IsPreparing()) || !pending_road_regeneration.empty()) return;
         road_junctions_dirty = false;
+        // Independent authored networks cannot influence each other's junction solver.
+        // Stable IDs/order keep their cache keys independent of unrelated entity insertion.
+        vector<Spline*> members;
+        for (Spline* spline : road_network_members)
+            if (spline->m_entity_ptr->GetActive() && spline->m_mesh_enabled && !spline->m_base_road_frames.empty())
+                members.push_back(spline);
+        sort(members.begin(), members.end(), [](Spline* a, Spline* b)
+            { return a->m_entity_ptr->GetObjectId() < b->m_entity_ptr->GetObjectId(); });
+        vector<size_t> parents(members.size());
+        for (size_t i = 0; i < parents.size(); ++i) parents[i] = i;
+        auto root = [&](size_t i) { while (parents[i] != i) { parents[i] = parents[parents[i]]; i = parents[i]; } return i; };
+        map<string, size_t> owners;
+        for (size_t i = 0; i < members.size(); ++i)
+        {
+            for (Entity* child : members[i]->m_entity_ptr->GetChildren())
+            {
+                if (!child || child->GetObjectName().find(prefix_control_point) != 0) continue;
+                for (const string& tag : child->GetTags())
+                {
+                    if (tag.find("road_node_") != 0) continue;
+                    auto [it, inserted] = owners.emplace(tag, i);
+                    if (!inserted) parents[root(i)] = root(it->second);
+                    break;
+                }
+            }
+        }
+        map<size_t, vector<Spline*>> groups;
+        for (size_t i = 0; i < members.size(); ++i) groups[root(i)].push_back(members[i]);
+        for (const auto& [id, group] : groups) SolveRoadJunctions(group);
+    }
 
+    void Spline::SolveRoadJunctions(const vector<Spline*>& members)
+    {
+        const Stopwatch solve_timer;
         struct Road
         {
             Spline* spline;
@@ -1555,9 +1587,9 @@ namespace spartan
         };
         vector<Road> roads;
         map<string, vector<Node>> nodes;
-        for (Entity* entity : World::GetEntities())
+        for (Spline* spline : members)
         {
-            Spline* spline = entity->GetComponent<Spline>();
+            Entity* entity = spline->m_entity_ptr;
             if (!spline || !entity->GetActive() || !spline->m_mesh_enabled || spline->m_base_road_frames.empty()) continue;
             Road road;
             road.spline = spline;
@@ -1600,7 +1632,7 @@ namespace spartan
         }
 
         generated_cache::Hash network_hash;
-        network_hash.Add(uint32_t(1)); // shared junction solver and border generator version
+        network_hash.Add(uint32_t(2)); // per-connected-network junction solver and border generator version
         bool cache_network = !roads.empty();
         for (const Road& road : roads)
         {
@@ -1669,12 +1701,23 @@ namespace spartan
                 for (size_t i = 0; i < roads.size(); i++)
                 {
                     Spline* spline = roads[i].spline;
+                    const auto& entry = cached[i];
+                    const bool same_frames = entry.frames.size() == spline->m_junction_frames.size() &&
+                        (entry.frames.empty() || memcmp(entry.frames.data(), spline->m_junction_frames.data(), entry.frames.size() * sizeof(SplineFrame)) == 0);
+                    const bool same_segments = entry.segments.size() == roads[i].previous_segments.size() &&
+                        equal(entry.segments.begin(), entry.segments.end(), roads[i].previous_segments.begin());
+                    const bool same_patches = entry.patches.size() == roads[i].previous_patches.size() &&
+                        equal(entry.patches.begin(), entry.patches.end(), roads[i].previous_patches.begin(), [](const JunctionPatch& a, const JunctionPatch& b)
+                        { return a.center == b.center && a.boundary == b.boundary && a.sidewalk_quads == b.sidewalk_quads && a.skirt_quads == b.skirt_quads; });
                     spline->m_junction_frames = move(cached[i].frames);
                     spline->m_junction_segments.assign(cached[i].segments.begin(), cached[i].segments.end());
                     spline->m_junction_patches = move(cached[i].patches);
                     spline->m_carve_samples = move(cached[i].carves);
-                    pending_road_uploads.insert(spline);
-                    if (Terrain* terrain = Terrain::FindActive()) terrain->MarkSplineHeightCarvesDirty(spline->m_entity_ptr->GetObjectId());
+                    if (!same_frames || !same_segments || !same_patches)
+                    {
+                        pending_road_uploads.insert(spline);
+                        if (Terrain* terrain = Terrain::FindActive()) terrain->MarkSplineHeightCarvesDirty(spline->m_entity_ptr->GetObjectId());
+                    }
                 }
                 SP_LOG_INFO("restored baked junctions for %zu roads in %.2f ms", roads.size(), solve_timer.GetElapsedTimeMs());
                 return;
@@ -2148,7 +2191,7 @@ namespace spartan
 
     void Spline::ProcessPendingRoadMeshes()
     {
-        if (ProgressTracker::IsLoading()) return;
+        if (ProgressTracker::IsLoading() && !World::IsPreparing()) return;
         const Stopwatch timer;
         // Complete one road at a time, then yield the main thread back to rendering/input.
         while (!pending_road_regeneration.empty())
@@ -2179,10 +2222,11 @@ namespace spartan
 
     void Spline::GenerateRoadMesh()
     {
+        m_needs_road_regeneration = false;
         // Cache standalone terrain roads against their authored inputs and the actual terrain surface.
         // Attached paths still evaluate their source live, since their source can be edited independently.
         generated_cache::Hash frame_hash;
-        frame_hash.Add(uint32_t(1)); // sampling/grade solver version
+        frame_hash.Add(uint32_t(2)); // sampling/grade solver version
         frame_hash.Add(m_pending_surface_hash);
         frame_hash.Add(GetControlPointsLocal());
         frame_hash.Add(m_entity_ptr->GetMatrix());
@@ -2195,7 +2239,8 @@ namespace spartan
             m_terrain_offset, m_max_grade_degrees, m_max_cut, m_grade_smoothing, m_smoothing_length}) frame_hash.Add(value);
         if (Water* water = find_active_water()) frame_hash.Add(water->GetSeaLevel());
         else if (Terrain* terrain = Terrain::FindActive()) frame_hash.Add(terrain->GetSeaLevel());
-        const bool cache_frames = m_pending_surface_hash != 0 && m_conform_to_terrain && !IsAttached();
+        const bool cache_frames = !IsAttached() && (!m_conform_to_terrain || m_pending_surface_hash != 0);
+        frame_hash.Add(m_conform_to_terrain);
         const auto frame_path = generated_cache::Path(World::GetResourceDirectory(), "road_frames", frame_hash.value);
         vector<SplineFrame> frames;
         if (!cache_frames || !generated_cache::Load(frame_path, frame_hash.value, frames) || frames.size() < 2)
@@ -2203,7 +2248,7 @@ namespace spartan
             frames = SampleFrames(m_resolution);
             if (cache_frames && frames.size() >= 2) generated_cache::Save(frame_path, frame_hash.value, frames);
         }
-        m_sampled_surface_hash = cache_frames ? m_pending_surface_hash : 0;
+        m_sampled_surface_hash = cache_frames ? frame_hash.value : 0;
         m_pending_surface_hash = 0;
         m_sidewalk_ramp_t = frames.empty() ? 0.001f : 5.0f / max(frames.back().distance, 1.0f);
         if (frames.size() < 2)
