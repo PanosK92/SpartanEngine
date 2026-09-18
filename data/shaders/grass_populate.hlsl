@@ -609,6 +609,66 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     if (lod_random > fade_weight)
         return;
 
+    // Reject unsuitable ground before the patch noise and slope taps. The
+    // slope-dependent part of the same probability is applied below.
+    // biome mask, same uv as the heightfield, the slot picks the channel it is gated on
+    // is_transparent carries biome_min as float bits, negative disables the gate
+    float biome_min = asfloat(buffer_pass.is_transparent);
+    float biome_ground = 1.0f;
+    if (biome_min >= 0.0f || ground_mask != 0u)
+    {
+        // the mask is baked at its own resolution, so it needs its own texel centre rebase
+        uint mask_w;
+        uint mask_h;
+        tex3.GetDimensions(mask_w, mask_h);
+
+        float2 mask_uv = terrain_normalized_to_uv(
+            terrain_world_to_normalized(world_xz),
+            float2(mask_w, mask_h)
+        );
+
+        // ground type gate, the same bitfield the mesh placer reads. the dominant surface layer rides
+        // in alpha as an index rather than a weight, so it takes a point tap, a bilinear one across the
+        // boundary between two layers averages out to a value that names a third
+        if (ground_mask != 0u)
+        {
+            float index_a = tex3.SampleLevel(samplers[sampler_point_clamp], mask_uv, 0).a;
+            uint  dominant = min(
+                (uint)(index_a * 255.0f + 0.5f),
+                grass_ground_layer_max - 1u
+            );
+            if ((ground_mask & (1u << dominant)) == 0u)
+            {
+                return;
+            }
+        }
+
+        // a slot with the biome set to ignore still wants the ground gate above, so this is nested
+        // rather than being the condition on the whole block
+        if (biome_min >= 0.0f)
+        {
+            float4 mask     = tex3.SampleLevel(samplers[sampler_bilinear_clamp], mask_uv, 0);
+            float grass_w   = mask_channel == 0u ? mask.r : (mask_channel == 1u ? mask.g : mask.b);
+            if (grass_w < biome_min)
+            {
+                return;
+            }
+
+            // the mask decides where grass can live, the patch field decides where it did, so the
+            // mask is remapped to saturate just past its own gate instead of being used as the density
+            // directly. a meadow core reading 0.6 used to throw away four blades in ten for nothing
+            biome_ground = saturate((grass_w - biome_min) / grass_biome_gain);
+            float biome_roll = hash_unit(hash_mix(h0 ^ 0x27d4eb2du));
+            if (biome_roll > biome_ground)
+            {
+                return;
+            }
+        }
+    }
+
+    // Road geometry is authoritative: reject it before patch noise and slope taps.
+    if (on_road(world_xz)) return;
+
     // Evaluate patch noise only for candidates in the camera frustum. It is keyed
     // off world space only, never off the lod or the camera, so a pocket keeps the same outline
     // across every ring and the lod seams stay invisible
@@ -671,61 +731,11 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         }
     }
 
-    if (on_road(world_xz)) return;
-
-    // biome mask, same uv as the heightfield, the slot picks the channel it is gated on
-    // is_transparent carries biome_min as float bits, negative disables the gate
-    float biome_min = asfloat(buffer_pass.is_transparent);
-    if (biome_min >= 0.0f || ground_mask != 0u)
+    if (biome_min >= 0.0f)
     {
-        // the mask is baked at its own resolution, so it needs its own texel centre rebase
-        uint mask_w;
-        uint mask_h;
-        tex3.GetDimensions(mask_w, mask_h);
-
-        float2 mask_uv = terrain_normalized_to_uv(
-            terrain_world_to_normalized(world_xz),
-            float2(mask_w, mask_h)
-        );
-
-        // ground type gate, the same bitfield the mesh placer reads. the dominant surface layer rides
-        // in alpha as an index rather than a weight, so it takes a point tap, a bilinear one across the
-        // boundary between two layers averages out to a value that names a third
-        if (ground_mask != 0u)
-        {
-            float index_a = tex3.SampleLevel(samplers[sampler_point_clamp], mask_uv, 0).a;
-            uint  dominant = min(
-                (uint)(index_a * 255.0f + 0.5f),
-                grass_ground_layer_max - 1u
-            );
-            if ((ground_mask & (1u << dominant)) == 0u)
-            {
-                return;
-            }
-        }
-
-        // a slot with the biome set to ignore still wants the ground gate above, so this is nested
-        // rather than being the condition on the whole block
-        if (biome_min >= 0.0f)
-        {
-            float4 mask     = tex3.SampleLevel(samplers[sampler_bilinear_clamp], mask_uv, 0);
-            float grass_w   = mask_channel == 0u ? mask.r : (mask_channel == 1u ? mask.g : mask.b);
-            float slope_fit = saturate((surface_normal.y - max_slope_cos) / max(1.0f - max_slope_cos, 1e-4f));
-            if (grass_w < biome_min)
-            {
-                return;
-            }
-
-            // the mask decides where grass can live, the patch field above decides where it did, so the
-            // mask is remapped to saturate just past its own gate instead of being used as the density
-            // directly. a meadow core reading 0.6 used to throw away four blades in ten for nothing
-            float ground = saturate((grass_w - biome_min) / grass_biome_gain) * slope_fit;
-            float biome_roll = hash_unit(hash_mix(h0 ^ 0x27d4eb2du));
-            if (biome_roll > ground)
-            {
-                return;
-            }
-        }
+        float slope_fit = saturate((surface_normal.y - max_slope_cos) / max(1.0f - max_slope_cos, 1e-4f));
+        float biome_roll = hash_unit(hash_mix(h0 ^ 0x27d4eb2du));
+        if (biome_roll > biome_ground * slope_fit) return;
     }
 
     // one roll inside the authored size range, the ends arrive already packed the way the raster

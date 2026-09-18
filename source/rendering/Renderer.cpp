@@ -95,6 +95,8 @@ namespace spartan
 
         // set by TickUploadMaterials, consumed by UpdateAccelerationStructures
         bool materials_uploaded_this_frame = false;
+        // Residency swaps replace SRVs without changing material slots or ray tracing geometry.
+        bool bindless_textures_dirty = false;
     }
 
     // constant and push constant buffers
@@ -784,7 +786,7 @@ namespace spartan
         RHI_Device::Tick(m_frame_num);
         if (RHI_TextureStreaming::Tick(m_frame_num))
         {
-            m_pass_state.bindless_materials_dirty = true;
+            bindless_textures_dirty = true;
         }
         RHI_Device::BeginFrame(can_render);
         RHI_Device::Bind(RHI_Frame_List::Graphics);
@@ -1227,23 +1229,43 @@ namespace spartan
     void Renderer::TickUploadMaterials()
     {
         SP_PROFILE_CPU();
-        // Demand is collected every frame, even when material properties are unchanged.
-        // The RHI owns residency policy; the renderer only estimates projected texels.
+        // Spread demand collection over eight frames; mip residency does not need
+        // a full island traversal every frame. Publish the maximum over the whole
+        // sweep so shared materials do not oscillate between their near/far users.
         Camera* streaming_camera = World::GetCamera();
-        for (Entity* entity : render_entities())
+        constexpr uint64_t demand_frames = 8;
+        struct MaterialDemand { weak_ptr<Material> material; float pixels = 0.0f; };
+        static unordered_map<uint64_t, MaterialDemand> material_pixels;
+        static uint64_t demand_cycle = numeric_limits<uint64_t>::max();
+        if (demand_cycle != m_frame_num / demand_frames)
         {
+            material_pixels.clear();
+            demand_cycle = m_frame_num / demand_frames;
+        }
+        const Vector3 streaming_position = streaming_camera ? streaming_camera->GetEntity()->GetPosition() : Vector3::Zero;
+        const float streaming_focal_length = streaming_camera ? GetViewport().height / (2.0f * tan(streaming_camera->GetFovVerticalRad() * 0.5f)) : 0.0f;
+        const auto& streaming_entities = render_entities();
+        for (size_t i = m_frame_num % demand_frames; i < streaming_entities.size(); i += demand_frames)
+        {
+            Entity* entity = streaming_entities[i];
             Render* render = entity->GetComponent<Render>();
             Material* material = render ? render->GetMaterial() : nullptr;
             if (!material) continue;
+            auto [it, inserted] = material_pixels.try_emplace(material->GetObjectId());
+            if (inserted)
+                it->second.material = static_pointer_cast<Material>(material->weak_from_this().lock());
+            float& demand = it->second.pixels;
+            if (!isfinite(demand)) continue;
 
             const float repeat_x = max(abs(render->ResolveUvTilingX()), 0.001f);
             const float repeat_y = max(abs(render->ResolveUvTilingY()), 0.001f);
+            const bool world_space_uv = render->ResolveUvWorldSpace() != 0.0f;
             auto projected_pixels = [&](const BoundingBox& bounds)
             {
                 if (!streaming_camera || bounds.IsInfinite()) return numeric_limits<float>::infinity();
-                const Vector3 camera_position = streaming_camera->GetEntity()->GetPosition();
+                const Vector3& camera_position = streaming_position;
                 if (bounds.Contains(camera_position)) return numeric_limits<float>::infinity();
-                if (render->ResolveUvWorldSpace() != 0.0f)
+                if (world_space_uv)
                 {
                     if (streaming_camera->GetProjectionType() != Projection_Perspective)
                         return numeric_limits<float>::infinity();
@@ -1251,8 +1273,7 @@ namespace spartan
                     // bounding sphere for a conservative upper bound on projected density.
                     const float distance = max(streaming_camera->GetNearPlane(),
                         Vector3::Distance(camera_position, bounds.GetCenter()) - bounds.GetExtents().Length());
-                    const float focal_length = GetViewport().height / (2.0f * tan(streaming_camera->GetFovVerticalRad() * 0.5f));
-                    return focal_length / (max(distance, 0.001f) * min(repeat_x, repeat_y));
+                    return streaming_focal_length / (max(distance, 0.001f) * min(repeat_x, repeat_y));
                 }
                 const math::Rectangle rect = streaming_camera->WorldToScreenCoordinates(bounds);
                 return max(abs(rect.width) / repeat_x, abs(rect.height) / repeat_y);
@@ -1267,10 +1288,18 @@ namespace spartan
             }
             else
                 pixels = projected_pixels(render->GetBoundingBox());
+            demand = max(demand, pixels);
+        }
+        if (m_frame_num % demand_frames == demand_frames - 1)
+        for (const auto& [id, demand] : material_pixels)
+        {
+            // The world can change during a sweep. Never retain or dereference a
+            // removed material, and never keep GPU resources alive past shutdown.
+            if (auto material = demand.material.lock())
             for (RHI_Texture* texture : material->GetTextures())
             {
                 if (!texture) continue;
-                RHI_TextureStreaming::Request(texture, pixels, m_frame_num);
+                RHI_TextureStreaming::Request(texture, demand.pixels, m_frame_num);
             }
         }
         // Terrain layers and scatter materials can exist outside the entity list.
@@ -1306,24 +1335,24 @@ namespace spartan
         // terrain rules and the grass material are packed into the material buffer without touching
         // a Material, so the world side revision cannot see them
         const bool bindless_changed = m_pass_state.bindless_materials_dirty;
-        if (
-            GetFrameNumber() != 0 &&
-            !view_changed &&
-            !world_changed &&
-            !bindless_changed
-        )
+        const bool update_materials = GetFrameNumber() == 0 || view_changed || world_changed || bindless_changed;
+        if (!update_materials && !bindless_textures_dirty)
         {
             return;
         }
-        m_pass_state.bindless_materials_dirty = false;
-        uploaded_for_secondary = is_secondary;
-        materials_uploaded_this_frame = true;
 
-        UpdateMaterials();
+        if (update_materials)
+        {
+            m_pass_state.bindless_materials_dirty = false;
+            uploaded_for_secondary = is_secondary;
+            materials_uploaded_this_frame = true;
+            UpdateMaterials();
+        }
+        bindless_textures_dirty = false;
         RHI_CommandList::PrepareTexturesForSampling(&m_bindless_textures);
         RHI_Device::UpdateBindlessMaterials(
             &m_bindless_textures,
-            GetBuffer(Renderer_Buffer::MaterialParameters)
+            update_materials ? GetBuffer(Renderer_Buffer::MaterialParameters) : nullptr
         );
 
         // null srvs write the 1m checkerboard, keep retrying until gpu prep finishes
@@ -4413,11 +4442,13 @@ namespace spartan
             static uint32_t last_instance_count = 0;
             if (!instances.empty())
             {
-                if (instances.size() != last_instance_count)
+                // Camera culling changes the count routinely while driving. Log
+                // creation, not every normal rebuild/refit of the moving scene.
+                if (last_instance_count == 0)
                 {
                     SP_LOG_INFO("Ray tracing: building TLAS with %zu instances", instances.size());
-                    last_instance_count = static_cast<uint32_t>(instances.size());
                 }
+                last_instance_count = static_cast<uint32_t>(instances.size());
                 SP_PROFILE_CPU_END();
                 SP_PROFILE_CPU_START("rt_tlas_build");
                 m_tlas->BuildTopLevel(instances);

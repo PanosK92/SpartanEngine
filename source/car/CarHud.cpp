@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../world/components/Physics.h"
 #include "imgui/source/imgui.h"
 #include "widgets/Viewport.h"
+#include <string_view>
 //==========================================
 
 namespace spartan::car_hud
@@ -284,6 +285,15 @@ namespace spartan::car_hud
             const ImU32 white      = IM_COL32(245, 248, 250, 255);
             const ImU32 line_color = IM_COL32(112, 126, 140, 70);
             ImFont* font           = ImGui::GetFont();
+
+            // Keep all speed/gear digits resident at fixed raster sizes. A new
+            // digit or a gear pulse must not grow/upload the atlas while driving.
+            for (const float size : {62.0f, 70.0f})
+            {
+                ImFontBaked* baked = font->GetFontBaked(size * scale);
+                for (const char c : std::string_view("0123456789NRP-"))
+                    baked->FindGlyph(static_cast<ImWchar>(c));
+            }
 
             auto draw_text = [&](
                 const char* text,
@@ -566,8 +576,8 @@ namespace spartan::car_hud
                 );
             }
 
-            const float gear_size =
-                (70.0f + gear_pulse * 8.0f) * scale;
+            const float gear_size = 70.0f * scale;
+            const float gear_scale = 1.0f + gear_pulse * (8.0f / 70.0f);
             const ImVec2 gear_text_size = font->CalcTextSizeA(
                 gear_size,
                 FLT_MAX,
@@ -585,6 +595,7 @@ namespace spartan::car_hud
                 ),
                 text_label
             );
+            const int gear_vertex_start = dl->VtxBuffer.Size;
             dl->AddText(
                 font,
                 gear_size,
@@ -595,6 +606,15 @@ namespace spartan::car_hud
                 is_shifting ? accent_warn : white,
                 gear_str
             );
+            // Animate the quad, not the raster size: continuously changing font
+            // sizes bake new glyphs and can trigger a synchronous atlas resize.
+            for (int i = gear_vertex_start; i < dl->VtxBuffer.Size; ++i)
+            {
+                ImVec2& pos = dl->VtxBuffer[i].pos;
+                pos.x = gear_center_x + (pos.x - gear_center_x) * gear_scale;
+                const float top = content_top + 18.0f * scale;
+                pos.y = top + (pos.y - top) * gear_scale;
+            }
 
             char speed_text[16];
             snprintf(

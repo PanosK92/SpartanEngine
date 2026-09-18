@@ -995,6 +995,21 @@ namespace spartan
                 return false;
             }
 
+            // GPU grass uses the same scene-local foliage calibration as mesh scatter.
+            // Keep the builtin material intact for worlds that use the default palette.
+            const bool calibrated = layer.foliage_tint[0] >= 0.0f || layer.foliage_scattering != 0.35f;
+            if (calibrated && is_foliage_material(material.get()))
+            {
+                material = resolve_layer_material(material.get(), layer.name, true);
+                material->SetProperty(MaterialProperty::SubsurfaceScattering, layer.foliage_scattering);
+                if (layer.foliage_tint[0] >= 0.0f && layer.foliage_tint[1] >= 0.0f && layer.foliage_tint[2] >= 0.0f)
+                {
+                    material->SetProperty(MaterialProperty::ColorR, layer.foliage_tint[0]);
+                    material->SetProperty(MaterialProperty::ColorG, layer.foliage_tint[1]);
+                    material->SetProperty(MaterialProperty::ColorB, layer.foliage_tint[2]);
+                }
+            }
+
             Renderer::GpuScatterParams params;
             for (uint32_t ring = 0; ring < 3; ring++)
             {

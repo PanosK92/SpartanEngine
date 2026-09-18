@@ -36,16 +36,16 @@ struct FogSkyProbe
 };
 
 groupshared FogSkyProbe fog_group_sky;
-groupshared uint fog_group_air_lights;
+static const uint fog_light_mask_words = 8u;
+groupshared uint fog_group_air_lights[fog_light_mask_words];
 
 // Cull local lights once for the entire group's air segments. A cone enclosing
 // the four corner rays and the full depth interval gives a conservative sphere.
 // Large light lists and displaced water samples retain the unrestricted path.
-uint fog_air_light_mask(uint3 group_id)
+uint fog_air_light_mask(uint3 group_id, uint first_light)
 {
-    uint count = buffer_frame.volumetric_light_count;
-    if (count == 0u) return 0u;
-    if (count > 32u) return 0xffffffffu;
+    if (first_light >= buffer_frame.volumetric_light_count) return 0u;
+    uint count = min(buffer_frame.volumetric_light_count - first_light, 32u);
     float2 uv0 = float2(group_id.xy * 8u) / float2(fog_width, fog_height);
     float2 uv1 = float2(group_id.xy * 8u + 8u) / float2(fog_width, fog_height);
     float3 direction = fog_view_direction((uv0 + uv1) * 0.5f);
@@ -65,7 +65,7 @@ uint fog_air_light_mask(uint3 group_id)
     uint mask = 0u;
     [loop] for (uint i = 0u; i < count; ++i)
     {
-        LightParameters light = light_parameters[volumetric_light_indices[i]];
+        LightParameters light = light_parameters[volumetric_light_indices[first_light + i]];
         float extent = light.range;
         if ((light.flags & (1u << 6)) != 0u)
             extent += 0.5f * length(float2(light.area_width, light.area_height));
@@ -281,14 +281,18 @@ float3 fog_light_medium(
     float3 rate = 0.0f;
     if (buffer_frame.cluster_light_count > 0u)
         rate += fog_light_samples(0u, surface, positions, count, ray_direction, in_water, sigma_s, angular_footprint);
-    if (!in_water && buffer_frame.volumetric_light_count <= 32u)
+    if (!in_water && buffer_frame.volumetric_light_count <= fog_light_mask_words * 32u)
     {
-        uint lights = fog_group_air_lights;
-        [loop] while (lights != 0u)
+        uint words = (buffer_frame.volumetric_light_count + 31u) / 32u;
+        [loop] for (uint word = 0u; word < words; ++word)
         {
-            uint k = firstbitlow(lights);
-            lights &= lights - 1u;
-            rate += fog_light_samples(volumetric_light_indices[k], surface, positions, count, ray_direction, in_water, sigma_s, angular_footprint);
+            uint lights = fog_group_air_lights[word];
+            [loop] while (lights != 0u)
+            {
+                uint k = word * 32u + firstbitlow(lights);
+                lights &= lights - 1u;
+                rate += fog_light_samples(volumetric_light_indices[k], surface, positions, count, ray_direction, in_water, sigma_s, angular_footprint);
+            }
         }
     }
     else
@@ -375,7 +379,9 @@ void fog_inject_cell(uint3 thread_id)
     medium.air_extinction = air_extinction;
     float3 water_position = get_camera_position() + ray_direction * water_distance;
     float3 water_rate = 0.0f;
-    if (water_length > 0.0f)
+    // A seabed above the entry leaves no physical water column to illuminate.
+    // Keep the medium/extinction data, but skip rays and caustics inside land.
+    if (water_length > 0.0f && water_sample_length > 0.0f)
     {
         float angular_footprint = max(
             length(fog_view_direction(uv + float2(1.0f / float(fog_width), 0.0f)) - ray_direction),
@@ -449,8 +455,11 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 local_id : SV_GroupThreadID, uin
     if (group_index == 0u)
     {
         fog_group_sky = fog_build_sky_probe();
-        fog_group_air_lights = fog_air_light_mask(group_id);
     }
+    // Build separate 32-light masks in parallel. Busy streets must not fall
+    // back to evaluating every headlight in every air cell after light 32.
+    if (group_index < fog_light_mask_words)
+        fog_group_air_lights[group_index] = fog_air_light_mask(group_id, group_index * 32u);
     GroupMemoryBarrierWithGroupSync();
     // Retain the CPU's 8x8x4 cell tiling with fewer resident threads per group.
     [loop] for (uint z = 0u; z < 4u; z += 2u)
