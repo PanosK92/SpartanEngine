@@ -695,9 +695,10 @@ namespace spartan
             m_rhi_resource = nullptr;
         }
 
+        d3d12_descriptors::FreeCbvSrvUavCpu(m_rhi_srv);
         m_rhi_srv = nullptr;
-        for (auto& v : m_rhi_srv_mips) v = nullptr;
-        for (auto& v : m_rhi_srv_layers) v = nullptr;
+        for (auto& v : m_rhi_srv_mips) { d3d12_descriptors::FreeCbvSrvUavCpu(v); v = nullptr; }
+        for (auto& v : m_rhi_srv_layers) { d3d12_descriptors::FreeCbvSrvUavCpu(v); v = nullptr; }
         for (auto& v : m_rhi_rtv) { d3d12_descriptors::FreeRtv(v); v = nullptr; }
         for (auto& v : m_rhi_dsv) { d3d12_descriptors::FreeDsv(v); v = nullptr; }
         d3d12_descriptors::FreeRtv(m_rhi_rtv_multiview);

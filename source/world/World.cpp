@@ -3010,7 +3010,7 @@ namespace spartan
                                 {
                                     if (jobs[i].type == ResourceJob::Type::Texture)
                                     {
-                                        if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(jobs[i].path))
+                                        if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(jobs[i].path, RHI_Texture_Stream))
                                         {
                                             texture->PrepareForGpu();
                                         }

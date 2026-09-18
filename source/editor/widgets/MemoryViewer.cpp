@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "memory/GpuMemory.h"
 #include "memory/Allocator.h"
 #include "rhi/RHI_Device.h"
+#include "rhi/RHI_TextureStreaming.h"
 #include "resource/ResourceCache.h"
 //===================================
 
@@ -945,6 +946,15 @@ void MemoryViewer::OnTickVisible()
         ImGui::Text("tracked %s / %s", used_text, total_text);
         ImGui::SameLine();
         ImGui::TextDisabled("(%u allocs)", static_cast<unsigned>(blocks.size()));
+        const auto streaming = RHI_TextureStreaming::GetStatistics();
+        ImGui::Text("streamed textures: %.1f / %.1f MiB resident, %.1f MiB full, %u textures",
+            streaming.resident_bytes / 1048576.0, streaming.budget_bytes / 1048576.0,
+            streaming.full_bytes / 1048576.0, streaming.texture_count);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Texture payload only; excludes allocation overhead, staging and retiring images.\nPending replacement: %.1f MiB. Small mip tails remain resident even if the budget is too small.",
+                streaming.pending_bytes / 1048576.0);
+        }
         ImGui::Text("holes %s", holes_text);
         ImGui::SameLine();
         ImGui::Text("unused %s", unused_text);

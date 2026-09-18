@@ -426,6 +426,8 @@ namespace spartan
         // sampler cpu heap free list, populated when samplers are destroyed so the slot can be reused
         std::vector<uint32_t> sampler_free_list;
         std::mutex            sampler_free_list_mutex;
+        vector<uint32_t>       cpu_view_free_list;
+        mutex                  cpu_view_mutex;
 
         // zone bases inside the shader-visible heaps
         uint32_t zone_bindless_textures_base   = 0;
@@ -459,6 +461,8 @@ namespace spartan
             ring_free_pages.clear();
             free_rtvs.clear();
             free_dsvs.clear();
+            cpu_view_free_list.clear();
+            cbv_srv_uav_cpu_offset = 0;
             rtv_offset = 0;
             dsv_offset = 0;
             if (heap_rtv)             { heap_rtv->Release();             heap_rtv = nullptr; }
@@ -1426,14 +1430,34 @@ namespace spartan::d3d12_descriptors
         free_dsvs.push_back(static_cast<uint32_t>((reinterpret_cast<SIZE_T>(handle) - heap_dsv->GetCPUDescriptorHandleForHeapStart().ptr) / dsv_descriptor_size));
     }
 
-    // monotonic allocator for static cpu staging descriptors, used by texture/buffer init
-    // never wraps, sized large enough to hold all long-lived views
+    // CPU staging descriptors are copied into GPU-visible heaps before submission.
+    // Recycle destroyed views so repeated texture residency changes cannot exhaust them.
     uint32_t AllocateCbvSrvUavCpu()
     {
+        lock_guard<mutex> lock(spartan::descriptors::cpu_view_mutex);
+        auto& free_list = spartan::descriptors::cpu_view_free_list;
+        if (!free_list.empty())
+        {
+            const uint32_t index = free_list.back();
+            free_list.pop_back();
+            return index;
+        }
         uint32_t idx = spartan::descriptors::cbv_srv_uav_cpu_offset.fetch_add(1);
         SP_ASSERT_MSG(idx < spartan::descriptors::cbv_srv_uav_cpu_static_size,
             "Static cpu staging heap exhausted, increase cbv_srv_uav_cpu_static_size");
         return idx;
+    }
+
+    void FreeCbvSrvUavCpu(void* handle)
+    {
+        if (!handle) return;
+        using namespace spartan::descriptors;
+        const SIZE_T base = heap_cbv_srv_uav_cpu->GetCPUDescriptorHandleForHeapStart().ptr;
+        const SIZE_T offset = reinterpret_cast<SIZE_T>(handle) - base;
+        const uint32_t index = static_cast<uint32_t>(offset / cbv_srv_uav_descriptor_size);
+        SP_ASSERT(index < cbv_srv_uav_cpu_static_size && offset % cbv_srv_uav_descriptor_size == 0);
+        lock_guard<mutex> lock(cpu_view_mutex);
+        cpu_view_free_list.push_back(index);
     }
 
     // ring allocator for transient cpu staging descriptors, wraps inside the dedicated transient zone

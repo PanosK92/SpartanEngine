@@ -1116,7 +1116,7 @@ namespace spartan
                 continue;
             }
 
-            if (shared_ptr<RHI_Texture> texture_packed = ResourceCache::Load<RHI_Texture>(packed_path))
+            if (shared_ptr<RHI_Texture> texture_packed = ResourceCache::Load<RHI_Texture>(packed_path, RHI_Texture_Stream))
             {
                 if (texture_packed->IsCompressedFormat() && texture_packed->HasData())
                 {
@@ -1165,13 +1165,13 @@ namespace spartan
                     {
                         shared_ptr<RHI_Texture> placeholder = make_shared<RHI_Texture>();
                         placeholder->SetResourceFilePath(tex_path);
-                        placeholder->SetFlag(RHI_Texture_Srv | RHI_Texture_DeferUpload);
+                        placeholder->SetFlag(RHI_Texture_Srv | RHI_Texture_DeferUpload | RHI_Texture_Stream);
                         m_deferred_textures.push_back(placeholder);
                         texture = placeholder;
                     }
                     else
                     {
-                        texture = ResourceCache::Load<RHI_Texture>(tex_path, RHI_Texture_Srv | RHI_Texture_DeferUpload);
+                        texture = ResourceCache::Load<RHI_Texture>(tex_path, RHI_Texture_Srv | RHI_Texture_DeferUpload | RHI_Texture_Stream);
                     }
                 }
 
@@ -1361,7 +1361,7 @@ namespace spartan
     void Material::SetTexture(const MaterialTextureType texture_type, const string& file_path, const uint8_t slot)
     {
         // only packed textures get compressed, the gpu upload is deferred so pack_textures can still mutate the cpu bytes
-        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_DeferUpload), slot);
+        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_DeferUpload | RHI_Texture_Stream), slot);
     }
 
     bool Material::HasTextureOfType(const string& path) const
@@ -1484,7 +1484,7 @@ namespace spartan
 
                 if (texture->GetResourceState() == ResourceState::Max)
                 {
-                    texture->PrepareForGpu();
+                    texture->PrepareForGpu(true);
                 }
             }
         }

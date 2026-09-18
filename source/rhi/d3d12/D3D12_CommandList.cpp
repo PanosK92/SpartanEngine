@@ -1527,12 +1527,12 @@ namespace spartan
 
                 ID3D12Resource* resource = static_cast<ID3D12Resource*>(rt->GetRhiResource());
                 cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
-                SetTrackedTextureLayout(rt, 0, rt->GetMipCount(), RHI_Image_Layout::General);
+                SetTrackedTextureLayout(rt, 0, rt->GetResidentMipCount(), RHI_Image_Layout::General);
 
                 rtv_handles[i].ptr = reinterpret_cast<SIZE_T>(rtv);
                 rtv_count          = i + 1;
-                width              = rt->GetWidth();
-                height             = rt->GetHeight();
+                width              = rt->GetResidentWidth();
+                height             = rt->GetResidentHeight();
             }
         }
 
@@ -1552,14 +1552,14 @@ namespace spartan
             {
                 ID3D12Resource* depth_resource = static_cast<ID3D12Resource*>(depth->GetRhiResource());
                 cmd_state::push_transition(b, depth_resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-                SetTrackedTextureLayout(depth, 0, depth->GetMipCount(), RHI_Image_Layout::General);
+                SetTrackedTextureLayout(depth, 0, depth->GetResidentMipCount(), RHI_Image_Layout::General);
 
                 dsv_handle.ptr = reinterpret_cast<SIZE_T>(dsv);
                 dsv_ptr        = &dsv_handle;
                 if (width == 0)
                 {
-                    width  = depth->GetWidth();
-                    height = depth->GetHeight();
+                    width  = depth->GetResidentWidth();
+                    height = depth->GetResidentHeight();
                 }
             }
         }
@@ -1621,7 +1621,7 @@ namespace spartan
             ID3D12Resource* vrs_resource = static_cast<ID3D12Resource*>(vrs->GetRhiResource());
 
             cmd_state::push_transition(b, vrs_resource, D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE);
-            SetTrackedTextureLayout(vrs, 0, vrs->GetMipCount(), RHI_Image_Layout::General);
+            SetTrackedTextureLayout(vrs, 0, vrs->GetResidentMipCount(), RHI_Image_Layout::General);
             cmd_state::flush(cmd_list, b);
 
             RHI_Device::SetVariableRateShading(this, true);
@@ -1666,7 +1666,7 @@ namespace spartan
 
             ID3D12Resource* resource = static_cast<ID3D12Resource*>(rt->GetRhiResource());
             cmd_state::push_transition(b, resource, d3d12_general_state(false));
-            SetTrackedTextureLayout(rt, 0, rt->GetMipCount(), RHI_Image_Layout::General);
+            SetTrackedTextureLayout(rt, 0, rt->GetResidentMipCount(), RHI_Image_Layout::General);
         }
 
         if (RHI_Texture* depth = m_pso.render_target_depth_texture)
@@ -1674,7 +1674,7 @@ namespace spartan
             if (ID3D12Resource* resource = static_cast<ID3D12Resource*>(depth->GetRhiResource()))
             {
                 cmd_state::push_transition(b, resource, d3d12_general_state(true));
-                SetTrackedTextureLayout(depth, 0, depth->GetMipCount(), RHI_Image_Layout::General);
+                SetTrackedTextureLayout(depth, 0, depth->GetResidentMipCount(), RHI_Image_Layout::General);
             }
         }
     }
@@ -1706,7 +1706,7 @@ namespace spartan
             cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             cmd_state::flush(cmd_list, b);
             const float values[4] = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
-            for (uint32_t mip = 0; mip < texture->GetMipCount(); mip++)
+            for (uint32_t mip = 0; mip < texture->GetResidentMipCount(); mip++)
             {
                 const auto cpu = create_transient_mip_view(texture, mip, 1, true, rhi_all_mips);
                 const uint32_t slot = d3d12_descriptors::AllocateRing(cmd_list, 1);
@@ -1723,7 +1723,7 @@ namespace spartan
                 }
             }
             cmd_state::push_uav_barrier(b, resource);
-            SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::General);
+            SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
             TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute, RHI_Resource_Usage::Shader);
         }
         else if (texture->IsDepthStencilFormat() && texture->GetRhiDsv(0))
@@ -1731,7 +1731,7 @@ namespace spartan
             PrepareForExternalWrite(texture, RHI_Image_Layout::General, RHI_Barrier_Scope::Graphics);
             // ClearDepthStencilView requires the resource to be in depth_write state
             cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-            SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::General);
+            SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
             cmd_state::flush(cmd_list, b);
 
             D3D12_CPU_DESCRIPTOR_HANDLE dsv = {};
@@ -1758,7 +1758,7 @@ namespace spartan
             PrepareForExternalWrite(texture, RHI_Image_Layout::General, RHI_Barrier_Scope::Graphics);
             // ClearRenderTargetView requires the resource to be in render_target state
             cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
-            SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::General);
+            SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
             cmd_state::flush(cmd_list, b);
 
             D3D12_CPU_DESCRIPTOR_HANDLE rtv = {};
@@ -2208,21 +2208,21 @@ namespace spartan
         // save the layouts the textures had before the blit so they can be restored after, matching the vulkan semantics
         std::array<RHI_Image_Layout, rhi_max_mip_count> src_layouts_initial = {};
         std::array<RHI_Image_Layout, rhi_max_mip_count> dst_layouts_initial = {};
-        for (uint32_t mip = 0; mip < source->GetMipCount(); mip++)
+        for (uint32_t mip = 0; mip < source->GetResidentMipCount(); mip++)
         {
             src_layouts_initial[mip] = GetTrackedTextureLayout(source, mip);
         }
-        for (uint32_t mip = 0; mip < destination->GetMipCount(); mip++)
+        for (uint32_t mip = 0; mip < destination->GetResidentMipCount(); mip++)
         {
             dst_layouts_initial[mip] = GetTrackedTextureLayout(destination, mip);
         }
         auto safe_layout = [](RHI_Image_Layout l) { return l == RHI_Image_Layout::Max ? RHI_Image_Layout::General : l; };
 
         // copyresource requires identical resource footprints including mip and array counts
-        const bool dims_match   = source->GetWidth()  == destination->GetWidth()
-                               && source->GetHeight() == destination->GetHeight();
+        const bool dims_match   = source->GetResidentWidth()  == destination->GetResidentWidth()
+                               && source->GetResidentHeight() == destination->GetResidentHeight();
         const bool format_match = source->GetFormat() == destination->GetFormat();
-        const bool mips_match   = source->GetMipCount() == destination->GetMipCount();
+        const bool mips_match   = source->GetResidentMipCount() == destination->GetResidentMipCount();
         const bool array_match  = source->GetArrayLength() == destination->GetArrayLength();
         const bool no_scaling   = resolution_scale >= 1.0f - 1e-6f && resolution_scale <= 1.0f + 1e-6f;
 
@@ -2240,10 +2240,10 @@ namespace spartan
             }
             else
             {
-                const uint32_t mip_count   = blit_mips ? std::min(source->GetMipCount(), destination->GetMipCount()) : 1u;
+                const uint32_t mip_count   = blit_mips ? std::min(source->GetResidentMipCount(), destination->GetResidentMipCount()) : 1u;
                 const uint32_t array_count = std::min(source->GetArrayLength(), destination->GetArrayLength());
-                const uint32_t src_mips    = source->GetMipCount();
-                const uint32_t dst_mips    = destination->GetMipCount();
+                const uint32_t src_mips    = source->GetResidentMipCount();
+                const uint32_t dst_mips    = destination->GetResidentMipCount();
 
                 for (uint32_t array_index = 0; array_index < array_count; array_index++)
                 {
@@ -2265,11 +2265,11 @@ namespace spartan
             }
 
             // whole-resource copy transitions, restore every mip
-            for (uint32_t i = 0; i < source->GetMipCount(); i++)
+            for (uint32_t i = 0; i < source->GetResidentMipCount(); i++)
             {
                 InsertBarrier(source, safe_layout(src_layouts_initial[i]), i, 1);
             }
-            for (uint32_t i = 0; i < destination->GetMipCount(); i++)
+            for (uint32_t i = 0; i < destination->GetResidentMipCount(); i++)
             {
                 InsertBarrier(destination, safe_layout(dst_layouts_initial[i]), i, 1);
             }
@@ -2282,9 +2282,9 @@ namespace spartan
 
         const D3D12_RESOURCE_STATES src_read_state = d3d12_general_state(src_is_depth);
         const D3D12_RESOURCE_STATES dst_write_state = dst_is_depth ? D3D12_RESOURCE_STATE_DEPTH_WRITE : D3D12_RESOURCE_STATE_RENDER_TARGET;
-        const uint32_t mip_count = blit_mips ? destination->GetMipCount() : 1;
-        const uint32_t src_mips  = source->GetMipCount();
-        const uint32_t dst_mips  = destination->GetMipCount();
+        const uint32_t mip_count = blit_mips ? destination->GetResidentMipCount() : 1;
+        const uint32_t src_mips  = source->GetResidentMipCount();
+        const uint32_t dst_mips  = destination->GetResidentMipCount();
         const uint32_t arrays    = std::min(source->GetArrayLength(), destination->GetArrayLength());
 
         for (uint32_t array_index = 0; array_index < arrays; array_index++)
@@ -2375,8 +2375,8 @@ namespace spartan
             }
 
             params.destination_format    = dst_dxgi;
-            params.destination_width     = std::max(1u, destination->GetWidth()  >> mip);
-            params.destination_height    = std::max(1u, destination->GetHeight() >> mip);
+            params.destination_width     = std::max(1u, destination->GetResidentWidth()  >> mip);
+            params.destination_height    = std::max(1u, destination->GetResidentHeight() >> mip);
             params.is_depth_destination  = dst_is_depth;
             // resolution_scale shrinks the source extent that fills the destination, matches the vulkan semantics where
             // source[0..w*scale, 0..h*scale] is mapped onto destination[0..dst_w, 0..dst_h]
@@ -2398,11 +2398,11 @@ namespace spartan
         // restore the pre-blit layouts so subsequent passes observe the textures in their expected state
         if (blit_mips)
         {
-            for (uint32_t i = 0; i < source->GetMipCount(); i++)
+            for (uint32_t i = 0; i < source->GetResidentMipCount(); i++)
             {
                 InsertBarrier(source, safe_layout(src_layouts_initial[i]), i, 1);
             }
-            for (uint32_t i = 0; i < destination->GetMipCount(); i++)
+            for (uint32_t i = 0; i < destination->GetResidentMipCount(); i++)
             {
                 InsertBarrier(destination, safe_layout(dst_layouts_initial[i]), i, 1);
             }
@@ -2432,8 +2432,8 @@ namespace spartan
 
         auto& b = cmd_state::get(this);
 
-        const bool dims_match   = source->GetWidth()  == destination->GetWidth()
-                               && source->GetHeight() == destination->GetHeight();
+        const bool dims_match   = source->GetResidentWidth()  == destination->GetWidth()
+                               && source->GetResidentHeight() == destination->GetHeight();
         const bool format_match = d3d12_format[rhi_format_to_index(source->GetFormat())] == d3d12_format[rhi_format_to_index(destination->GetFormat())];
 
         // fast path, identical format and size means a straight copy into the backbuffer is valid
@@ -2446,7 +2446,7 @@ namespace spartan
             cmd_list->CopyResource(dst, src);
 
             // leave source layout consistent with d3d12 state, the rhi layout map will be re-synced by the next pass
-            SetTrackedTextureLayout(source, 0, source->GetMipCount(), RHI_Image_Layout::General);
+            SetTrackedTextureLayout(source, 0, source->GetResidentMipCount(), RHI_Image_Layout::General);
 
             // backbuffer stays in copy_dest, EndFrame transitions it to present
             b.swapchain_bb_transitioned = dst;
@@ -2480,7 +2480,7 @@ namespace spartan
         // the blit swapped in its own root signature and pso, force the next graphics bind to restore the bindless layout
         b.has_root_signature_graphics = false;
 
-        SetTrackedTextureLayout(source, 0, source->GetMipCount(), RHI_Image_Layout::General);
+        SetTrackedTextureLayout(source, 0, source->GetResidentMipCount(), RHI_Image_Layout::General);
 
         // backbuffer is now in render_target, EndFrame transitions it to present
         b.swapchain_bb_transitioned = dst;
@@ -2508,8 +2508,8 @@ namespace spartan
         const RHI_Image_Layout dst_layout_initial = GetTrackedTextureLayout(destination, 0);
         auto safe_layout = [](RHI_Image_Layout l) { return l == RHI_Image_Layout::Max ? RHI_Image_Layout::General : l; };
 
-        const bool dims_match   = source->GetWidth()  == destination->GetWidth()
-                               && source->GetHeight() == destination->GetHeight();
+        const bool dims_match   = source->GetResidentWidth()  == destination->GetResidentWidth()
+                               && source->GetResidentHeight() == destination->GetResidentHeight();
         const bool format_match = source->GetFormat() == destination->GetFormat();
 
         if (dims_match && format_match)
@@ -2520,7 +2520,7 @@ namespace spartan
 
             // mip 0 of array layer dst_layer in destination, mip 0 of source
             // subresource index formula, MipSlice + ArraySlice * MipLevels + PlaneSlice * MipLevels * ArraySize
-            const uint32_t dst_mip_count = destination->GetMipCount();
+            const uint32_t dst_mip_count = destination->GetResidentMipCount();
             const UINT dst_subresource   = static_cast<UINT>(0u + dst_layer * dst_mip_count);
 
             D3D12_TEXTURE_COPY_LOCATION src_loc = {};
@@ -2563,8 +2563,8 @@ namespace spartan
                 params.source_srv_cpu_handle.ptr = reinterpret_cast<SIZE_T>(src_srv_ptr);
                 params.destination_rtv_handle    = rtv;
                 params.destination_format        = dst_dxgi;
-                params.destination_width         = destination->GetWidth();
-                params.destination_height        = destination->GetHeight();
+                params.destination_width         = destination->GetResidentWidth();
+                params.destination_height        = destination->GetResidentHeight();
                 params.is_depth_destination      = false;
                 params.source_uv_scale_x         = 1.0f;
                 params.source_uv_scale_y         = 1.0f;
@@ -2577,8 +2577,8 @@ namespace spartan
         }
 
         // restore the pre-blit layouts so subsequent passes observe the textures in their expected state
-        InsertBarrier(source,      safe_layout(src_layout_initial), 0, source->GetMipCount());
-        InsertBarrier(destination, safe_layout(dst_layout_initial), 0, destination->GetMipCount());
+        InsertBarrier(source,      safe_layout(src_layout_initial), 0, source->GetResidentMipCount());
+        InsertBarrier(destination, safe_layout(dst_layout_initial), 0, destination->GetResidentMipCount());
     }
 
     void RHI_CommandList::blit_to_xr_swapchain(RHI_Texture* source)
@@ -2701,7 +2701,7 @@ namespace spartan
         b.has_root_signature_graphics = false;
 
         // the xr image stays in render_target which is the state the runtime expects on release, restore the source
-        InsertBarrier(source, source_layout_initial, 0, source->GetMipCount());
+        InsertBarrier(source, source_layout_initial, 0, source->GetResidentMipCount());
         FlushBarriers();
 
         // release after gpu submit in Renderer::Tick, ending the frame before submit caused hmd judder
@@ -2735,7 +2735,7 @@ namespace spartan
 
         cmd_list->CopyResource(dst, src);
 
-        SetTrackedTextureLayout(source, 0, source->GetMipCount(), RHI_Image_Layout::General);
+        SetTrackedTextureLayout(source, 0, source->GetResidentMipCount(), RHI_Image_Layout::General);
         b.swapchain_bb_transitioned = dst;
     }
 
@@ -3205,7 +3205,7 @@ namespace spartan
 
         ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture->GetRhiResource());
         const bool mip_specified = mip_index != rhi_all_mips;
-        const uint32_t total_mips = texture->GetMipCount();
+        const uint32_t total_mips = texture->GetResidentMipCount();
         const uint32_t array_size = texture->GetArrayLength();
         const uint32_t effective_mip_range = mip_range == 0 ? 1u : mip_range;
 
@@ -3759,7 +3759,7 @@ namespace spartan
                 // (e.g. mipmap filtering passes that need to flip a single mip back to shader_read between dispatches)
                 if (barrier.texture && barrier.mip_index != rhi_all_mips)
                 {
-                    const uint32_t total_mips = barrier.texture->GetMipCount();
+                    const uint32_t total_mips = barrier.texture->GetResidentMipCount();
                     const uint32_t array_size = barrier.texture->GetArrayLength();
                     const uint32_t mip_count  = barrier.mip_range == 0 ? 1u : barrier.mip_range;
                     for (uint32_t a = 0; a < array_size; a++)
@@ -3779,7 +3779,7 @@ namespace spartan
                 if (barrier.texture)
                 {
                     const uint32_t mip_index = barrier.mip_index == rhi_all_mips ? 0 : barrier.mip_index;
-                    const uint32_t mip_range = barrier.mip_index == rhi_all_mips ? barrier.texture->GetMipCount() : (barrier.mip_range == 0 ? 1 : barrier.mip_range);
+                    const uint32_t mip_range = barrier.mip_index == rhi_all_mips ? barrier.texture->GetResidentMipCount() : (barrier.mip_range == 0 ? 1 : barrier.mip_range);
                     SetTrackedTextureLayout(barrier.texture, mip_index, mip_range, layout_tracked);
                 }
                 break;
@@ -3882,7 +3882,7 @@ namespace spartan
         auto& b = cmd_state::get(this);
         const D3D12_RESOURCE_STATES state = cmd_state::compute_shader_resource_state(texture->IsDepthStencilFormat(), include_pixel_stage);
         cmd_state::push_transition(b, resource, state, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, true);
-        SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::General);
+        SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
     }
 
     void RHI_CommandList::AdoptComputeShaderResource(RHI_Texture* texture, bool include_pixel_stage)
@@ -3901,7 +3901,7 @@ namespace spartan
         auto& b = cmd_state::get(this);
         const D3D12_RESOURCE_STATES state = cmd_state::compute_shader_resource_state(texture->IsDepthStencilFormat(), include_pixel_stage);
         cmd_state::adopt_state(b, resource, state);
-        SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::General);
+        SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
         TrackExternalTextureUsage(texture, RHI_Resource_Access::Read, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute);
     }
 
@@ -3920,7 +3920,7 @@ namespace spartan
 
         auto& b = cmd_state::get(this);
         cmd_state::adopt_state(b, resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::General);
+        SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
         TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute);
     }
 

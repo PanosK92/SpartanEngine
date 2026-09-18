@@ -105,7 +105,8 @@ namespace spartan::d3d12_descriptors
     uint32_t AllocateDsv();
     void FreeRtv(void* handle);
     void FreeDsv(void* handle);
-    uint32_t AllocateCbvSrvUavCpu();          // monotonic, for static views (texture/buffer init)
+    uint32_t AllocateCbvSrvUavCpu();          // recyclable static views (texture/buffer init)
+    void FreeCbvSrvUavCpu(void* handle);
     uint32_t AllocateCbvSrvUavCpuTransient(); // wraps inside a dedicated transient zone, for per-frame transient views
     uint32_t AllocateSamplerCpu();
     void     FreeSamplerCpu(uint32_t index);

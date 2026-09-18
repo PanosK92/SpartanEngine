@@ -169,7 +169,7 @@ namespace spartan
 
         bool overlap = false;
         const uint32_t clear_mip_start = mip_index == rhi_all_mips ? 0 : mip_index;
-        const uint32_t clear_mip_count = mip_index == rhi_all_mips ? texture->GetMipCount() : (mip_range == 0 ? 1 : mip_range);
+        const uint32_t clear_mip_count = mip_index == rhi_all_mips ? texture->GetResidentMipCount() : (mip_range == 0 ? 1 : mip_range);
         const uint32_t clear_mip_end   = clear_mip_start + clear_mip_count;
 
         for (size_t i = 0; i < m_bindings.size(); i++)
@@ -183,7 +183,7 @@ namespace spartan
             }
 
             const uint32_t binding_mip_start = binding.mip == rhi_all_mips ? 0 : binding.mip;
-            const uint32_t binding_mip_count = binding.mip == rhi_all_mips ? texture->GetMipCount() : (binding.mip_range == 0 ? 1 : binding.mip_range);
+            const uint32_t binding_mip_count = binding.mip == rhi_all_mips ? texture->GetResidentMipCount() : (binding.mip_range == 0 ? 1 : binding.mip_range);
             const uint32_t binding_mip_end   = binding_mip_start + binding_mip_count;
             const bool mip_overlap           = clear_mip_start < binding_mip_end && binding_mip_start < clear_mip_end;
             const bool layer_overlap         = array_layer == rhi_all_mips || binding.array_layer == rhi_all_mips || array_layer == binding.array_layer;

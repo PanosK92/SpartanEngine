@@ -219,16 +219,7 @@ namespace
         {
             return 0;
         }
-        const uint64_t slices = std::max<uint32_t>(1u, t->GetArrayLength());
-        const uint64_t bpp    = std::max<uint32_t>(1u, t->GetBytesPerPixel());
-        uint64_t total = 0;
-        for (uint32_t m = 0; m < t->GetMipCount(); ++m)
-        {
-            const uint64_t w = std::max<uint64_t>(1, static_cast<uint64_t>(t->GetWidth())  >> m);
-            const uint64_t h = std::max<uint64_t>(1, static_cast<uint64_t>(t->GetHeight()) >> m);
-            total += w * h * bpp;
-        }
-        return total * slices;
+        return t->GetRhiResource() ? t->GetObjectSize() : 0;
     }
 
     bool toggle_button(const char* label, bool active, const ImVec2& size = ImVec2(0, 0))
@@ -746,9 +737,9 @@ namespace
             char hud[256];
             int written = 0;
             written += snprintf(hud + written, sizeof(hud) - written, "zoom %.0f%%", s.zoom * 100.0f);
-            if (tex->GetMipCount() > 1)
+            if (tex->GetResidentMipCount() > 1)
             {
-                written += snprintf(hud + written, sizeof(hud) - written, "\nmip %d / %u", s.mip_level, tex->GetMipCount() - 1);
+                written += snprintf(hud + written, sizeof(hud) - written, "\nmip %d / %u", s.mip_level, tex->GetResidentMipCount() - 1);
             }
             if (tex->GetArrayLength() > 1)
             {
@@ -868,7 +859,8 @@ namespace
                 rowf("Size",    "%u x %u", tex->GetWidth(), tex->GetHeight());
                 rowf("Channels","%u", tex->GetChannelCount());
                 row("Format",   rhi_format_to_string(tex->GetFormat()));
-                rowf("Mips",    "%u", tex->GetMipCount());
+                rowf("Mips",    "%u resident / %u source", tex->GetResidentMipCount(), tex->GetMipCount());
+                rowf("Resident", "%u x %u (source mip %u)", tex->GetResidentWidth(), tex->GetResidentHeight(), tex->GetResidentMip());
                 rowf("Slices",  "%u", tex->GetArrayLength());
                 row("Type",     texture_type_label(tex->GetType()));
                 rowf("Memory",  "%.2f MB", static_cast<double>(texture_byte_estimate(tex)) / (1024.0 * 1024.0));
@@ -898,7 +890,7 @@ namespace
 
         if (ImGui::CollapsingHeader("View", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            const int max_mip = static_cast<int>(tex->GetMipCount()) - 1;
+            const int max_mip = static_cast<int>(tex->GetResidentMipCount()) - 1;
             ImGui::BeginDisabled(max_mip <= 0);
             ImGui::SliderInt("Mip", &s.mip_level, 0, std::max(0, max_mip));
             ImGui::EndDisabled();
@@ -993,7 +985,7 @@ namespace
         ImGui::SameLine(); ImGui::TextDisabled("|"); ImGui::SameLine();
         ImGui::Text("%s", rhi_format_to_string(tex->GetFormat()));
         ImGui::SameLine(); ImGui::TextDisabled("|"); ImGui::SameLine();
-        ImGui::Text("mip %d / %u", s.mip_level, std::max<uint32_t>(1u, tex->GetMipCount()) - 1);
+        ImGui::Text("mip %d / %u", s.mip_level, std::max<uint32_t>(1u, tex->GetResidentMipCount()) - 1);
         ImGui::SameLine(); ImGui::TextDisabled("|"); ImGui::SameLine();
         ImGui::Text("slice %d / %u", s.array_level, std::max<uint32_t>(1u, tex->GetArrayLength()) - 1);
         ImGui::SameLine(); ImGui::TextDisabled("|"); ImGui::SameLine();
@@ -1049,7 +1041,7 @@ void TextureViewer::OnTickVisible()
     // clamp mip and slice to current texture
     if (s.texture_current)
     {
-        s.mip_level   = std::clamp(s.mip_level,   0, std::max(0, static_cast<int>(s.texture_current->GetMipCount())    - 1));
+        s.mip_level   = std::clamp(s.mip_level,   0, std::max(0, static_cast<int>(s.texture_current->GetResidentMipCount())    - 1));
         s.array_level = std::clamp(s.array_level, 0, std::max(0, static_cast<int>(s.texture_current->GetArrayLength()) - 1));
     }
 

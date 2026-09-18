@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include <fstream>
 #include "RHI_Texture.h"
+#include "RHI_TextureStreaming.h"
 #include "RHI_Buffer.h"
 #include "RHI_Device.h"
 #include "RHI_Shader.h"
@@ -767,7 +768,9 @@ namespace spartan
             m_height          = hdr.height;
             m_depth           = hdr.depth;
             m_mip_count       = hdr.mip_count;
-            m_flags           = hdr.flags | RHI_Texture_Srv;
+            // Upload policy belongs to the caller, not to the saved native texture.
+            const uint32_t upload_flags = RHI_Texture_DeferUpload | RHI_Texture_Stream;
+            m_flags           = (hdr.flags & ~upload_flags) | (m_flags & upload_flags) | RHI_Texture_Srv;
             m_object_name     = hdr.name[0] ? string(hdr.name) : FileSystem::GetFileNameFromFilePath(file_path);
             m_viewport        = RHI_Viewport(0, 0, static_cast<float>(m_width), static_cast<float>(m_height));
             m_channel_count   = rhi_to_format_channel_count(m_format);
@@ -878,7 +881,7 @@ namespace spartan
         uint32_t array_length = (m_type == RHI_Texture_Type::Type3D) ? 1 : m_depth;
         for (uint32_t array_index = 0; array_index < array_length; array_index++)
         {
-            for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
+            for (uint32_t mip_index = m_resident_mip; mip_index < m_mip_count; mip_index++)
             {
                 const uint32_t mip_width  = max(1u, m_width >> mip_index);
                 const uint32_t mip_height = max(1u, m_height >> mip_index);
@@ -895,7 +898,7 @@ namespace spartan
         {
             SP_ASSERT(HasPerMipViews());
             SP_ASSERT(mip_range != 0);
-            SP_ASSERT(mip_index + mip_range <= m_mip_count);
+            SP_ASSERT(mip_index + mip_range <= GetResidentMipCount());
         }
 
         cmd_list->InsertBarrier(this, RHI_Image_Layout::General, mip_index, mip_range);
@@ -999,7 +1002,7 @@ namespace spartan
         return false;
     }
 
-    void RHI_Texture::PrepareForGpu()
+    void RHI_Texture::PrepareForGpu(bool stream)
     {
         // atomically transition from idle to preparing so only one thread can enter
         ResourceState expected = ResourceState::Max;
@@ -1007,6 +1010,8 @@ namespace spartan
         {
             return;
         }
+
+        if (stream) m_flags |= RHI_Texture_Stream;
 
         // skip textures with invalid dimensions (failed to load)
         if (m_width == 0 || m_height == 0)
@@ -1069,7 +1074,12 @@ namespace spartan
         if (!RHI_Device::IsDeviceLost())
         {
             Breadcrumbs::BeginMarker("texture_create_resource");
-            SP_ASSERT(RHI_CreateResource());
+            const bool created = RHI_TextureStreaming::Prepare(*this);
+            if (!created)
+            {
+                SP_LOG_ERROR("Failed to create texture '%s'", m_object_name.c_str());
+                RHI_DestroyResource();
+            }
             Breadcrumbs::EndMarker(); // create_resource
         }
 

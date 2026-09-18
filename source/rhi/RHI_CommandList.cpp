@@ -72,7 +72,7 @@ namespace spartan
 
         RHI_Tracked_Texture_Binding& binding = uav ? m_tracked_textures_uav[slot] : m_tracked_textures_srv[slot];
         const uint32_t resolved_mip   = mip_index == rhi_all_mips ? 0 : mip_index;
-        const uint32_t resolved_range = !texture ? 0 : (mip_index == rhi_all_mips ? texture->GetMipCount() : (mip_range == 0 ? 1 : mip_range));
+        const uint32_t resolved_range = !texture ? 0 : (mip_index == rhi_all_mips ? texture->GetResidentMipCount() : (mip_range == 0 ? 1 : mip_range));
         const RHI_Resource_Access resolved_access = texture
             ? (uav ? RHI_Resource_Access::ReadWrite : RHI_Resource_Access::Read)
             : RHI_Resource_Access::None;
@@ -186,7 +186,7 @@ namespace spartan
 
         m_resources_dirty = true;
         auto& usages = m_tracked_texture_history[texture->GetObjectId()];
-        for (uint32_t mip = 0; mip < texture->GetMipCount(); mip++)
+        for (uint32_t mip = 0; mip < texture->GetResidentMipCount(); mip++)
         {
             usages[mip].access   = access;
             usages[mip].usage    = usage;
@@ -226,7 +226,7 @@ namespace spartan
         const RHI_Image_Layout target_layout = RHI_Image_Layout::General;
         (void)layout;
 
-        for (uint32_t mip = 0; mip < texture->GetMipCount(); mip++)
+        for (uint32_t mip = 0; mip < texture->GetResidentMipCount(); mip++)
         {
             const RHI_Tracked_Usage& previous = history_it->second[mip];
             const RHI_Queue_Type current_queue = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
@@ -387,7 +387,7 @@ namespace spartan
                     continue;
                 }
                 keep_writes = true;
-                for (uint32_t mip = 0; mip < texture->GetMipCount(); mip++)
+                for (uint32_t mip = 0; mip < texture->GetResidentMipCount(); mip++)
                 {
                     usages[mip].unsynced = resource_tracker::writes(current[mip].access);
                 }
@@ -440,7 +440,7 @@ namespace spartan
             lock_guard<mutex> lock(resource_tracker::global_mutex);
             it->second = texture->GetLayouts();
         }
-        const uint32_t mip_end = min(mip_index + mip_range, texture->GetMipCount());
+        const uint32_t mip_end = min(mip_index + mip_range, texture->GetResidentMipCount());
         for (uint32_t mip = mip_index; mip < mip_end; mip++)
         {
             it->second[mip] = layout;
@@ -860,7 +860,7 @@ namespace spartan
             }
 
             auto& usages = m_current_texture_usage[binding.texture];
-            const uint32_t mip_end = min(binding.mip_index + binding.mip_range, binding.texture->GetMipCount());
+            const uint32_t mip_end = min(binding.mip_index + binding.mip_range, binding.texture->GetResidentMipCount());
             for (uint32_t mip = binding.mip_index; mip < mip_end; mip++)
             {
                 usages[mip].access = resource_tracker::merge(usages[mip].access, binding.access);
@@ -945,7 +945,7 @@ namespace spartan
                 barrier_start = rhi_all_mips;
             };
 
-            for (uint32_t mip = 0; mip < texture->GetMipCount(); mip++)
+            for (uint32_t mip = 0; mip < texture->GetResidentMipCount(); mip++)
             {
                 RHI_Tracked_Usage& previous = previous_usages[mip];
                 RHI_Tracked_Usage& current  = current_usages[mip];
@@ -1013,7 +1013,7 @@ namespace spartan
                     previous = current;
                 }
             }
-            flush_range(texture->GetMipCount());
+            flush_range(texture->GetResidentMipCount());
         }
 
         if (!include_bindings)
@@ -1119,7 +1119,7 @@ namespace spartan
         lock_guard<mutex> lock(resource_tracker::global_mutex);
         for (auto& [texture, layouts] : m_tracked_texture_layouts)
         {
-            for (uint32_t mip = 0; mip < texture->GetMipCount(); mip++)
+            for (uint32_t mip = 0; mip < texture->GetResidentMipCount(); mip++)
             {
                 texture->SetLayoutDirect(mip, 1, layouts[mip]);
             }
@@ -1147,7 +1147,7 @@ namespace spartan
         if (texture)
         {
             render_pass_end();
-            InsertBarrier(texture, RHI_Image_Layout::General, 0, texture->GetMipCount());
+            InsertBarrier(texture, RHI_Image_Layout::General, 0, texture->GetResidentMipCount());
             FlushBarriers();
         }
     }
@@ -1157,7 +1157,7 @@ namespace spartan
         if (texture && texture->GetRhiResource() && texture->GetResourceState() == ResourceState::PreparedForGpu)
         {
             const RHI_Image_Layout layout = RHI_Image_Layout::General;
-            InsertBarrier(texture, layout, 0, texture->GetMipCount());
+            InsertBarrier(texture, layout, 0, texture->GetResidentMipCount());
             TrackExternalTextureUsage(texture, RHI_Resource_Access::Read, layout, RHI_Barrier_Scope::All);
         }
     }
@@ -1205,8 +1205,8 @@ namespace spartan
         const uint32_t thread_group_size = 8;
 
         // scaled dimensions
-        const uint32_t scaled_width  = RHI_Device::ScaleDimension(texture->GetWidth(), resolution_scale);
-        const uint32_t scaled_height = RHI_Device::ScaleDimension(texture->GetHeight(), resolution_scale);
+        const uint32_t scaled_width  = RHI_Device::ScaleDimension(texture->GetResidentWidth(), resolution_scale);
+        const uint32_t scaled_height = RHI_Device::ScaleDimension(texture->GetResidentHeight(), resolution_scale);
         const uint32_t scaled_depth  = (texture->GetType() == RHI_Texture_Type::Type3D) ? RHI_Device::ScaleDimension(texture->GetDepth(), resolution_scale) : 1;
 
         // conservative dispatch counts

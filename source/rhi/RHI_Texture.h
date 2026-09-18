@@ -55,7 +55,9 @@ namespace spartan
         RHI_Texture_Compress          = 1U << 11,
         // skip the auto PrepareForGpu at the end of LoadFromFile so callers can mutate CPU bytes before the upload,
         // used by Material::SetTexture for source textures that go through pack_textures (alpha mask merge etc.)
-        RHI_Texture_DeferUpload       = 1U << 12
+        RHI_Texture_DeferUpload       = 1U << 12,
+        // immutable material textures start with a small resident tail
+        RHI_Texture_Stream            = 1U << 13
     };
 
     struct RHI_Texture_Mip
@@ -117,7 +119,7 @@ namespace spartan
 
         // misc
         void ClearData();
-        void PrepareForGpu();
+        void PrepareForGpu(bool stream = false);
         // overwrite a sub-rectangle of mip 0, layer 0 on an already created, uncompressed 2d texture
         // data is tightly packed rows of width * bytes per pixel, the cpu mirror is patched too when kept
         // false when the request cannot be served and the caller has to recreate the texture instead
@@ -134,6 +136,12 @@ namespace spartan
 
         // data
         uint32_t GetMipCount() const    { return m_mip_count; }
+        // Source dimensions/mips remain stable for saving and CPU access. GPU subresources
+        // are numbered from zero in the currently resident mip tail.
+        uint32_t GetResidentMip() const { return m_resident_mip; }
+        uint32_t GetResidentMipCount() const { return m_mip_count - m_resident_mip; }
+        uint32_t GetResidentWidth() const { return std::max(1u, m_width >> m_resident_mip); }
+        uint32_t GetResidentHeight() const { return std::max(1u, m_height >> m_resident_mip); }
         uint32_t GetDepth() const       { return m_depth; }
         uint32_t GetArrayLength() const { return (m_type == RHI_Texture_Type::Type3D) ? 1 : m_depth; }
         bool HasData() const            { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
@@ -214,6 +222,8 @@ namespace spartan
         void* m_mapped_data                                             = nullptr;
 
     private:
+        friend class RHI_TextureStreaming;
+        uint32_t m_resident_mip = 0;
         friend class RHI_CommandList;
         friend class RHI_DescriptorSet;
         friend class RHI_DescriptorSetLayout;

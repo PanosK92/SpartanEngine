@@ -508,7 +508,7 @@ namespace spartan
                 void* image           = texture ? texture->GetRhiResource() : barrier.image;
                 RHI_Format format     = texture ? texture->GetFormat() : barrier.format;
                 uint32_t array_length = texture ? texture->GetArrayLength() : barrier.array_length;
-                uint32_t mip_count    = texture ? texture->GetMipCount() : rhi_max_mip_count;
+                uint32_t mip_count    = texture ? texture->GetResidentMipCount() : rhi_max_mip_count;
 
                 SP_ASSERT(image != nullptr);
 
@@ -647,7 +647,7 @@ namespace spartan
                                               barrier.texture->GetFormat() == RHI_Format::D32_Float_S8X24_Uint;
                 pending.per_mip_layouts_differ = false;
                 pending.mip_index           = barrier.mip_index == rhi_all_mips ? 0 : barrier.mip_index;
-                pending.mip_range           = barrier.mip_index == rhi_all_mips ? barrier.texture->GetMipCount() : (barrier.mip_range == 0 ? 1 : barrier.mip_range);
+                pending.mip_range           = barrier.mip_index == rhi_all_mips ? barrier.texture->GetResidentMipCount() : (barrier.mip_range == 0 ? 1 : barrier.mip_range);
                 pending.per_mip_count       = pending.mip_range;
 
                 for (uint32_t mip = 0; mip < pending.per_mip_count; mip++)
@@ -704,7 +704,7 @@ namespace spartan
         {
             return;
         }
-        SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::General);
+        SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
         TrackExternalTextureUsage(texture, RHI_Resource_Access::Read, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute);
     }
 
@@ -714,7 +714,7 @@ namespace spartan
         {
             return;
         }
-        SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::General);
+        SetTrackedTextureLayout(texture, 0, texture->GetResidentMipCount(), RHI_Image_Layout::General);
         TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute);
     }
 
@@ -1762,9 +1762,9 @@ namespace spartan
         if (m_pso.render_target_depth_texture != nullptr)
         {
             RHI_Texture* rt = m_pso.render_target_depth_texture;
-            if (RHI_Device::ScaleDimension(rt->GetWidth()) == rt->GetWidth())
+            if (RHI_Device::ScaleDimension(rt->GetResidentWidth()) == rt->GetResidentWidth())
             { 
-                SP_ASSERT_MSG(rt->GetWidth() == rendering_info.renderArea.extent.width, "The depth buffer doesn't match the output resolution");
+                SP_ASSERT_MSG(rt->GetResidentWidth() == rendering_info.renderArea.extent.width, "The depth buffer doesn't match the output resolution");
             }
             SP_ASSERT(rt->IsDsv());
     
@@ -2208,24 +2208,24 @@ namespace spartan
         SP_ASSERT_MSG(!source->IsDepthFormat() || !destination->IsDepthFormat() || source->GetFormat() == destination->GetFormat(),                 "Depth formats must be identical for blit");
         if (blit_mips)
         {
-            SP_ASSERT_MSG(source->GetMipCount() == destination->GetMipCount(), "If the mips are blitted, then the mip count between the source and the destination textures must match");
+            SP_ASSERT_MSG(source->GetResidentMipCount() == destination->GetResidentMipCount(), "If the mips are blitted, then the mip count between the source and the destination textures must match");
         }
 
         // compute a blit region for each mip
         array<VkOffset3D,  rhi_max_mip_count> blit_offsets_source     = {};
         array<VkOffset3D, rhi_max_mip_count> blit_offsets_destination = {};
         array<VkImageBlit, rhi_max_mip_count> blit_regions            = {};
-        uint32_t blit_region_count                                    = blit_mips ? source->GetMipCount() : 1;
+        uint32_t blit_region_count                                    = blit_mips ? source->GetResidentMipCount() : 1;
         for (uint32_t mip_index = 0; mip_index < blit_region_count; mip_index++)
         {
             VkOffset3D& source_blit_size = blit_offsets_source[mip_index];
-            source_blit_size.x           = static_cast<int32_t>(RHI_Device::ScaleDimension(source->GetWidth(), source_scaling)) >> mip_index;
-            source_blit_size.y           = static_cast<int32_t>(RHI_Device::ScaleDimension(source->GetHeight(), source_scaling)) >> mip_index;
+            source_blit_size.x           = static_cast<int32_t>(RHI_Device::ScaleDimension(source->GetResidentWidth(), source_scaling)) >> mip_index;
+            source_blit_size.y           = static_cast<int32_t>(RHI_Device::ScaleDimension(source->GetResidentHeight(), source_scaling)) >> mip_index;
             source_blit_size.z           = 1;
 
             VkOffset3D& destination_blit_size = blit_offsets_destination[mip_index];
-            destination_blit_size.x           = destination->GetWidth()  >> mip_index;
-            destination_blit_size.y           = destination->GetHeight() >> mip_index;
+            destination_blit_size.x           = destination->GetResidentWidth()  >> mip_index;
+            destination_blit_size.y           = destination->GetResidentHeight() >> mip_index;
             destination_blit_size.z           = 1;
 
             VkImageBlit& blit_region                  = blit_regions[mip_index];
@@ -2250,7 +2250,7 @@ namespace spartan
         FlushBarriers();
 
         VkFilter filter = (source->IsDepthFormat() || destination->IsDepthFormat() || 
-                          (source->GetWidth() == destination->GetWidth() && source->GetHeight() == destination->GetHeight())) 
+                          (source->GetResidentWidth() == destination->GetResidentWidth() && source->GetResidentHeight() == destination->GetResidentHeight()))
         ? VK_FILTER_NEAREST 
         : VK_FILTER_LINEAR;
 
@@ -2280,13 +2280,13 @@ namespace spartan
         blit_region.srcSubresource.baseArrayLayer = 0;
         blit_region.srcSubresource.layerCount     = 1;
         blit_region.srcOffsets[0]                 = { 0, 0, 0 };
-        blit_region.srcOffsets[1]                 = { static_cast<int32_t>(source->GetWidth()), static_cast<int32_t>(source->GetHeight()), 1 };
+        blit_region.srcOffsets[1]                 = { static_cast<int32_t>(source->GetResidentWidth()), static_cast<int32_t>(source->GetResidentHeight()), 1 };
         blit_region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
         blit_region.dstSubresource.mipLevel       = 0;
         blit_region.dstSubresource.baseArrayLayer = dst_layer;
         blit_region.dstSubresource.layerCount     = 1;
         blit_region.dstOffsets[0]                 = { 0, 0, 0 };
-        blit_region.dstOffsets[1]                 = { static_cast<int32_t>(destination->GetWidth()), static_cast<int32_t>(destination->GetHeight()), 1 };
+        blit_region.dstOffsets[1]                 = { static_cast<int32_t>(destination->GetResidentWidth()), static_cast<int32_t>(destination->GetResidentHeight()), 1 };
 
         vkCmdBlitImage(
             static_cast<VkCommandBuffer>(m_rhi_resource),
@@ -2302,12 +2302,12 @@ namespace spartan
     void RHI_CommandList::blit(RHI_Texture* source, RHI_SwapChain* destination)
     {
         SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
-        SP_ASSERT_MSG(source->GetWidth() <= destination->GetWidth() && source->GetHeight() <= destination->GetHeight(),
+        SP_ASSERT_MSG(source->GetResidentWidth() <= destination->GetWidth() && source->GetResidentHeight() <= destination->GetHeight(),
             "The source texture dimension(s) are larger than the those of the destination texture");
 
         VkOffset3D source_blit_size = {};
-        source_blit_size.x          = source->GetWidth();
-        source_blit_size.y          = source->GetHeight();
+        source_blit_size.x          = source->GetResidentWidth();
+        source_blit_size.y          = source->GetResidentHeight();
         source_blit_size.z          = 1;
 
         VkOffset3D destination_blit_size = {};
@@ -2335,8 +2335,8 @@ namespace spartan
         FlushBarriers();
 
         // deduce filter
-        bool width_equal  = source->GetWidth() == destination->GetWidth();
-        bool height_equal = source->GetHeight() == destination->GetHeight();
+        bool width_equal  = source->GetResidentWidth() == destination->GetWidth();
+        bool height_equal = source->GetResidentHeight() == destination->GetHeight();
         RHI_Filter filter = width_equal && height_equal ? RHI_Filter::Nearest : RHI_Filter::Linear;
 
         vkCmdBlitImage(
@@ -2371,8 +2371,8 @@ namespace spartan
 
         SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
 
-        uint32_t src_width  = source->GetWidth();
-        uint32_t src_height = source->GetHeight();
+        uint32_t src_width  = source->GetResidentWidth();
+        uint32_t src_height = source->GetResidentHeight();
         uint32_t dst_width  = Xr::GetRecommendedWidth();
         uint32_t dst_height = Xr::GetRecommendedHeight();
 
@@ -2491,17 +2491,17 @@ namespace spartan
     {
         SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
         SP_ASSERT_MSG((destination->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
-        SP_ASSERT(source->GetWidth() == destination->GetWidth());
-        SP_ASSERT(source->GetHeight() == destination->GetHeight());
+        SP_ASSERT(source->GetResidentWidth() == destination->GetResidentWidth());
+        SP_ASSERT(source->GetResidentHeight() == destination->GetResidentHeight());
         SP_ASSERT(source->GetFormat() == destination->GetFormat());
         if (blit_mips)
         {
-            SP_ASSERT_MSG(source->GetMipCount() == destination->GetMipCount(),
+            SP_ASSERT_MSG(source->GetResidentMipCount() == destination->GetResidentMipCount(),
                 "If the mips are blitted, then the mip count between the source and the destination textures must match");
         }
 
         array<VkImageCopy, rhi_max_mip_count> copy_regions = {};
-        uint32_t copy_region_count                         = blit_mips ? source->GetMipCount() : 1;
+        uint32_t copy_region_count                         = blit_mips ? source->GetResidentMipCount() : 1;
         for (uint32_t mip_index = 0; mip_index < copy_region_count; mip_index++)
         {
             VkImageCopy& copy_region              = copy_regions[mip_index];
@@ -2511,8 +2511,8 @@ namespace spartan
             copy_region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             copy_region.dstSubresource.mipLevel   = mip_index;
             copy_region.dstSubresource.layerCount = 1;
-            copy_region.extent.width              = source->GetWidth()  >> mip_index;
-            copy_region.extent.height             = source->GetHeight() >> mip_index;
+            copy_region.extent.width              = source->GetResidentWidth()  >> mip_index;
+            copy_region.extent.height             = source->GetResidentHeight() >> mip_index;
             copy_region.extent.depth              = 1;
         }
 
@@ -2532,8 +2532,8 @@ namespace spartan
     void RHI_CommandList::copy(RHI_Texture* source, RHI_SwapChain* destination)
     {
         SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
-        SP_ASSERT(source->GetWidth() == destination->GetWidth());
-        SP_ASSERT(source->GetHeight() == destination->GetHeight());
+        SP_ASSERT(source->GetResidentWidth() == destination->GetWidth());
+        SP_ASSERT(source->GetResidentHeight() == destination->GetHeight());
         SP_ASSERT(source->GetFormat() == destination->GetFormat());
 
         VkImageCopy copy_region               = {};
@@ -2543,8 +2543,8 @@ namespace spartan
         copy_region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         copy_region.dstSubresource.mipLevel   = 0;
         copy_region.dstSubresource.layerCount = 1;
-        copy_region.extent.width              = source->GetWidth();
-        copy_region.extent.height             = source->GetHeight();
+        copy_region.extent.width              = source->GetResidentWidth();
+        copy_region.extent.height             = source->GetResidentHeight();
         copy_region.extent.depth              = 1;
 
         render_pass_end();
@@ -2565,7 +2565,7 @@ namespace spartan
     void RHI_CommandList::copy_texture_to_buffer(RHI_Texture* source, RHI_Buffer* destination)
     {
         SP_ASSERT_MSG(source && destination, "Invalid source/destination");
-        SP_ASSERT_MSG(source->GetWidth() && source->GetHeight(), "Source must have valid dimensions");
+        SP_ASSERT_MSG(source->GetResidentWidth() && source->GetResidentHeight(), "Source must have valid dimensions");
 
         PrepareForExternalRead(source, RHI_Image_Layout::General, RHI_Barrier_Scope::Transfer);
         FlushBarriers();
@@ -2580,7 +2580,7 @@ namespace spartan
         region.imageSubresource.baseArrayLayer = 0;
         region.imageSubresource.layerCount     = 1;
         region.imageOffset                     = { 0, 0, 0 };
-        region.imageExtent                     = { static_cast<uint32_t>(source->GetWidth()), static_cast<uint32_t>(source->GetHeight()), 1 };
+        region.imageExtent                     = { static_cast<uint32_t>(source->GetResidentWidth()), static_cast<uint32_t>(source->GetResidentHeight()), 1 };
 
         vkCmdCopyImageToBuffer(
             static_cast<VkCommandBuffer>(GetRhiResource()),

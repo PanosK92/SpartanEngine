@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../input/Input.h"
 #include "../display/Display.h"
 #include "../rhi/RHI_Device.h"
+#include "../rhi/RHI_TextureStreaming.h"
 #include "../rhi/RHI_SwapChain.h"
 #include "../rhi/RHI_Queue.h"
 #include "../rhi/RHI_Implementation.h"
@@ -707,6 +708,7 @@ namespace spartan
     {
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
+        RHI_TextureStreaming::Shutdown();
         RHI_Device::QueueWaitAll();
 
         RHI_CommandList::ImmediateExecutionShutdown();
@@ -780,6 +782,10 @@ namespace spartan
             RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->Wait();
         }
         RHI_Device::Tick(m_frame_num);
+        if (RHI_TextureStreaming::Tick(m_frame_num))
+        {
+            m_pass_state.bindless_materials_dirty = true;
+        }
         RHI_Device::BeginFrame(can_render);
         RHI_Device::Bind(RHI_Frame_List::Graphics);
 
@@ -1221,6 +1227,67 @@ namespace spartan
     void Renderer::TickUploadMaterials()
     {
         SP_PROFILE_CPU();
+        // Demand is collected every frame, even when material properties are unchanged.
+        // The RHI owns residency policy; the renderer only estimates projected texels.
+        Camera* streaming_camera = World::GetCamera();
+        for (Entity* entity : render_entities())
+        {
+            Render* render = entity->GetComponent<Render>();
+            Material* material = render ? render->GetMaterial() : nullptr;
+            if (!material) continue;
+
+            const float repeat_x = max(abs(render->ResolveUvTilingX()), 0.001f);
+            const float repeat_y = max(abs(render->ResolveUvTilingY()), 0.001f);
+            auto projected_pixels = [&](const BoundingBox& bounds)
+            {
+                if (!streaming_camera || bounds.IsInfinite()) return numeric_limits<float>::infinity();
+                const Vector3 camera_position = streaming_camera->GetEntity()->GetPosition();
+                if (bounds.Contains(camera_position)) return numeric_limits<float>::infinity();
+                if (render->ResolveUvWorldSpace() != 0.0f)
+                {
+                    if (streaming_camera->GetProjectionType() != Projection_Perspective)
+                        return numeric_limits<float>::infinity();
+                    // World UV tiling is repeats per metre. Use the nearest point on a
+                    // bounding sphere for a conservative upper bound on projected density.
+                    const float distance = max(streaming_camera->GetNearPlane(),
+                        Vector3::Distance(camera_position, bounds.GetCenter()) - bounds.GetExtents().Length());
+                    const float focal_length = GetViewport().height / (2.0f * tan(streaming_camera->GetFovVerticalRad() * 0.5f));
+                    return focal_length / (max(distance, 0.001f) * min(repeat_x, repeat_y));
+                }
+                const math::Rectangle rect = streaming_camera->WorldToScreenCoordinates(bounds);
+                return max(abs(rect.width) / repeat_x, abs(rect.height) / repeat_y);
+            };
+            // Cached instance groups bound all their instances without scanning every
+            // transform. Off-screen users retain demand for shadows and reflections.
+            float pixels = 0.0f;
+            if (render->HasInstancing() && !render->GetInstanceBoundsGroups().empty())
+            {
+                for (const auto& group : render->GetInstanceBoundsGroups())
+                    pixels = max(pixels, projected_pixels(group.bounds));
+            }
+            else
+                pixels = projected_pixels(render->GetBoundingBox());
+            for (RHI_Texture* texture : material->GetTextures())
+            {
+                if (!texture) continue;
+                RHI_TextureStreaming::Request(texture, pixels, m_frame_num);
+            }
+        }
+        // Terrain layers and scatter materials can exist outside the entity list.
+        auto request_full_material = [](Material* material)
+        {
+            if (!material) return;
+            for (RHI_Texture* texture : material->GetTextures())
+                RHI_TextureStreaming::Request(texture, numeric_limits<float>::infinity(), m_frame_num);
+        };
+        if (m_pass_state.terrain_enabled)
+        {
+            request_full_material(m_pass_state.terrain.surface);
+            for (Material* layer : m_pass_state.terrain.layer_materials)
+                request_full_material(layer);
+        }
+        for (const PassState::GpuScatterSlot& slot : m_pass_state.gpu_scatter)
+            if (slot.enabled) request_full_material(slot.material);
         // the bindless slot a material owns is handed out here and a draw carries that slot as an index,
         // so this has to run before the draw data is written, doing it afterwards leaves the frame
         // sampling whatever material now sits where the index used to point, which reads as the wrong
