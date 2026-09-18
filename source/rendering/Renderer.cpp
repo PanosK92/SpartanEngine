@@ -120,6 +120,7 @@ namespace spartan
             string file_path;
             string png_path;
             string exr_path;
+            ImageColorSpace exr_color_space = ImageColorSpace::LinearRec709;
             bool save_exr = false;
             bool pending  = false;
             bool ready    = false;
@@ -441,7 +442,7 @@ namespace spartan
                     void* exr_data = exr_staging->GetMappedData();
 
                     SP_LOG_INFO("Saving HDR screenshot to '%s'...", request.exr_path.c_str());
-                    ImageImporter::Save(request.exr_path, width, height, channel_count, bits_per_channel, exr_data);
+                    ImageImporter::Save(request.exr_path, width, height, channel_count, bits_per_channel, exr_data, request.exr_color_space);
                     SP_LOG_INFO("HDR screenshot saved as '%s'", request.exr_path.c_str());
                 });
             }
@@ -4640,6 +4641,9 @@ namespace spartan
         lock_guard<mutex> lock(screenshot_mutex);
         if (screenshot.pending)
         {
+            // Snapshot the encoding of this frame before another view changes constants.
+            screenshot.exr_color_space = m_cb_frame_cpu.hdr_enabled > 1.5f ? ImageColorSpace::LinearRec709 :
+                (m_cb_frame_cpu.hdr_enabled > 0.0f ? ImageColorSpace::Hdr10 : ImageColorSpace::Srgb);
             screenshot.pending = false;
             screenshot.ready   = true;
         }

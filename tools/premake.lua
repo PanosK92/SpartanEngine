@@ -169,6 +169,13 @@ function spartan_project_configuration()
             SOURCE_DIR .. "/**.rc"
         }
         files(lzma_sdk.sources())
+        files { "../third_party/lz4/lz4.c", "../third_party/lz4/lz4.h" }
+        filter { "files:**/lz4/**" }
+            flags { "NoPCH" }
+            warnings "Off"
+        filter { "files:**/geometry/GeneratedCache.cpp" }
+            flags { "NoPCH" }
+        filter {}
         files { "../third_party/astronomy/astronomy.c", "../third_party/astronomy/astronomy.h" }
         filter { "files:**/astronomy/**" }
             flags { "NoPCH" }

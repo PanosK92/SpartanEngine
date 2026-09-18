@@ -329,7 +329,17 @@ namespace
             ++match_count;
         };
 
-        consider(entity->GetComponent<Light>() != nullptr, IconType::Light);
+        if (Light* light = entity->GetComponent<Light>())
+        {
+            IconType light_icon = IconType::Light;
+            switch (light->GetLightType())
+            {
+                case LightType::Directional: light_icon = IconType::LightDirectional; break;
+                case LightType::Point:       light_icon = IconType::LightPoint;       break;
+                case LightType::Spot:        light_icon = IconType::LightSpot;        break;
+            }
+            consider(true, light_icon);
+        }
         consider(entity->GetComponent<Camera>() != nullptr, IconType::Camera);
         consider(entity->GetComponent<ParticleSystem>() != nullptr, IconType::Particle);
         consider(entity->GetComponent<AudioSource>() != nullptr, IconType::Audio);
@@ -688,8 +698,8 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     const float row_height = ImGui::GetTextLineHeightWithSpacing();
     
     // calculate content width (icon + text only)
-    const float padding      = ImGui::GetStyle().FramePadding.y * 2.0f;
-    const float icon_size    = ImGui::GetTextLineHeightWithSpacing() - padding;
+    // Match the label height so icons remain legible without increasing row spacing.
+    const float icon_size    = ImGui::GetTextLineHeight();
     const bool is_transient  = entity->IsTransient();
     const string display_name = is_transient
         ? (entity->GetObjectName() + " (transient)")
@@ -836,8 +846,6 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     float next_x           = row_pos.x;
     if (entry.texture)
     {
-        const float padding   = ImGui::GetStyle().FramePadding.y * 2.0f;
-        const float icon_size = ImGui::GetTextLineHeightWithSpacing() - padding;
         const float y_offset  = (row_height - icon_size) * 0.5f;
         ImVec2 icon_min       = ImVec2(
             row_pos.x,

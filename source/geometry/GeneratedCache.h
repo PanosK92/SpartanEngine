@@ -100,24 +100,25 @@ namespace spartan::generated_cache
         return std::filesystem::path(world_resources) / "generated_cache" / category / (std::to_string(key) + ".bin");
     }
 
-    template<typename... Vectors> bool Load(const std::filesystem::path& path, uint64_t key, Vectors&... output)
+    inline constexpr uint64_t maximum_payload_size = 512ull * 1024 * 1024 - 16;
+    // The byte codec also accepts the original uncompressed cache format.
+    bool ReadPayload(const std::filesystem::path& path, uint64_t key, std::vector<uint8_t>& bytes);
+    void WritePayload(const std::filesystem::path& path, uint64_t key, const std::vector<uint8_t>& bytes);
+    struct MaintenanceResult { uint64_t removed = 0, bytes_removed = 0; };
+    // Only disposable generated_cache/<category>/<hash>.bin files are eligible.
+    MaintenanceResult Maintain(const std::string& world_resources, uint64_t budget = 2ull * 1024 * 1024 * 1024);
+
+    template<typename... Vectors> bool Load(const std::filesystem::path& path, uint64_t key, Vectors&... output) try
     {
         if (path.empty()) return false;
         ReadMeasurement measurement{path.parent_path().filename().string()};
-        std::ifstream file(path, std::ios::binary | std::ios::ate);
-        if (!file) { measurement.missing = true; return false; }
-        const auto length = file.tellg();
-        // Bound allocations and reject truncated/corrupt caches before touching caller data.
-        if (length < 16 || length > 512ll * 1024 * 1024) return false;
-        file.seekg(0);
-        uint64_t stored_key = 0, checksum = 0;
-        file.read(reinterpret_cast<char*>(&stored_key), sizeof(stored_key));
-        file.read(reinterpret_cast<char*>(&checksum), sizeof(checksum));
-        if (stored_key != key) return false;
-        std::vector<uint8_t> bytes(static_cast<size_t>(length) - 16);
-        if (!file.read(reinterpret_cast<char*>(bytes.data()), bytes.size())) return false;
-        Hash hash; hash.Bytes(bytes.data(), bytes.size());
-        if (hash.value != checksum) return false;
+        std::vector<uint8_t> bytes;
+        if (!ReadPayload(path, key, bytes))
+        {
+            std::error_code error;
+            measurement.missing = !std::filesystem::exists(path, error);
+            return false;
+        }
         size_t cursor = 0;
         auto read = [&](auto& values)
         {
@@ -138,46 +139,31 @@ namespace spartan::generated_cache
         measurement.hit = true;
         return true;
     }
+    catch (const std::exception&) { return false; }
 
-    template<typename... Vectors> void Save(const std::filesystem::path& path, uint64_t key, const Vectors&... input)
+    template<typename... Vectors> void Save(const std::filesystem::path& path, uint64_t key, const Vectors&... input) try
     {
         if (path.empty()) return;
         std::vector<uint8_t> bytes;
+        bool fits = true;
         auto append = [&](const auto& values)
         {
             using T = typename std::decay_t<decltype(values)>::value_type;
             static_assert(std::is_trivially_copyable_v<T>);
             const uint64_t count = values.size();
             const size_t start = bytes.size();
+            if (!fits || maximum_payload_size - start < sizeof(count) ||
+                count > (maximum_payload_size - start - sizeof(count)) / sizeof(T))
+            {
+                fits = false;
+                return;
+            }
             bytes.resize(start + sizeof(count) + values.size() * sizeof(T));
             memcpy(bytes.data() + start, &count, sizeof(count));
             if (count) memcpy(bytes.data() + start + sizeof(count), values.data(), values.size() * sizeof(T));
         };
         (append(input), ...);
-        if (bytes.size() > 512ull * 1024 * 1024 - 16) return;
-        Hash hash; hash.Bytes(bytes.data(), bytes.size());
-        std::error_code error;
-        std::filesystem::create_directories(path.parent_path(), error);
-        if (error) return;
-        static std::atomic<uint64_t> serial = 0;
-        const auto temporary = path.string() + ".tmp." +
-            std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "." + std::to_string(serial++);
-        {
-            std::ofstream file(temporary, std::ios::binary | std::ios::trunc);
-            file.write(reinterpret_cast<const char*>(&key), sizeof(key));
-            file.write(reinterpret_cast<const char*>(&hash.value), sizeof(hash.value));
-            file.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
-            file.close();
-            if (!file) { std::filesystem::remove(temporary, error); return; }
-        }
-        // Publish complete files only. A simultaneous writer of the same key is equivalent.
-        std::filesystem::rename(temporary, path, error);
-        if (error)
-        {
-            std::filesystem::remove(path, error);
-            error.clear();
-            std::filesystem::rename(temporary, path, error);
-        }
-        if (error) std::filesystem::remove(temporary, error);
+        if (fits) WritePayload(path, key, bytes);
     }
+    catch (const std::exception&) {} // Allocation/storage failure must not fail a world save.
 }

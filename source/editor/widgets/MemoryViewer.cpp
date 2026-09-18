@@ -814,7 +814,7 @@ MemoryViewer::MemoryViewer(Editor* editor) : Widget(editor)
     m_title         = "Memory";
     m_visible       = false;
     m_toolbar_order = 8;
-    m_toolbar_icon  = static_cast<int>(IconType::Hybrid);
+    m_toolbar_icon  = static_cast<int>(IconType::Memory);
     m_size_initial  = Vector2(920, 680);
     m_size_min      = Vector2(520, 420);
 }

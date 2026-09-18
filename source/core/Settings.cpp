@@ -143,6 +143,11 @@ namespace spartan
                 root.append_child("FPSLimit").text().set(Timer::GetFpsLimit());
                 for (const auto& [name, cvar] : ConsoleRegistry::Get().GetAll())
                 {
+                    // Diagnostic transport views are temporary, never a startup setting.
+                    if (name == "r.fog.debug")
+                    {
+                        continue;
+                    }
                     if (name.size() >= 2 && name[0] == 'r' && name[1] == '.')
                     {
                         pugi::xml_text text = root.append_child(cvar_name_to_xml(string(name).c_str()).c_str()).text();
@@ -229,6 +234,12 @@ namespace spartan
                 // load render options from xml
                 for (const auto& [name, cvar] : ConsoleRegistry::Get().GetAll())
                 {
+                    // Ignore diagnostic views left in settings by older builds.
+                    if (name == "r.fog.debug")
+                    {
+                        cvar_fog_debug.SetValue(0.0f);
+                        continue;
+                    }
                     if (name.size() >= 2 && name[0] == 'r' && name[1] == '.')
                     {
                         pugi::xml_node child = root.child(cvar_name_to_xml(string(name).c_str()).c_str());

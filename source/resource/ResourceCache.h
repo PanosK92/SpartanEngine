@@ -102,6 +102,10 @@ namespace spartan
         Logo,
         Mcp,
         Snap,
+        Memory,
+        LightDirectional,
+        LightPoint,
+        LightSpot,
         Max
     };
 

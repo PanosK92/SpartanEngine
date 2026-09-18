@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================
 #include "pch.h"
 #include <array>
+#include <fstream>
 #include "ImageImporter.h"
 #include "../../rhi/RHI_Texture.h"
 #include "../../core/ThreadPool.h"
@@ -467,8 +468,46 @@ namespace spartan
 
         BYTE float_to_unorm8_dithered(float value, float dither, float strength)
         {
+            // Dither quantization between endpoints without lifting true black
+            // or pulling clipped white below full scale.
+            if (!(value > 0.0f))
+                return 0;
+            if (value >= 1.0f)
+                return 255;
+
             value = saturate_float(value + dither * (strength / 255.0f));
             return static_cast<BYTE>(value * 255.0f + 0.5f);
+        }
+
+        bool save_srgb_png(FIBITMAP* bitmap, const string& file_path)
+        {
+            // FreeImage's PNG writer does not emit an sRGB chunk. Tag the encoded
+            // pixels explicitly so color-managed viewers do not use monitor primaries.
+            FIMEMORY* memory = FreeImage_OpenMemory();
+            if (!memory)
+                return false;
+
+            BYTE* bytes = nullptr;
+            DWORD size = 0;
+            bool saved = false;
+            if (FreeImage_SaveToMemory(FIF_PNG, bitmap, memory, PNG_Z_BEST_SPEED) &&
+                FreeImage_AcquireMemory(memory, &bytes, &size) && size >= 33)
+            {
+                // PNG signature + IHDR = 33 bytes. sRGB intent 0 (perceptual),
+                // including its length, type and CRC, must precede image data.
+                static constexpr unsigned char srgb_chunk[] =
+                {
+                    0, 0, 0, 1, 's', 'R', 'G', 'B', 0, 0xae, 0xce, 0x1c, 0xe9
+                };
+                ofstream file(file_path, ios::binary | ios::trunc);
+                file.write(reinterpret_cast<const char*>(bytes), 33);
+                file.write(reinterpret_cast<const char*>(srgb_chunk), sizeof(srgb_chunk));
+                file.write(reinterpret_cast<const char*>(bytes + 33), size - 33);
+                file.close();
+                saved = !file.fail();
+            }
+            FreeImage_CloseMemory(memory);
+            return saved;
         }
 
     }
@@ -614,10 +653,16 @@ namespace spartan
         FreeImage_Unload(bitmap);
     }
 
-    void ImageImporter::Save(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data)
+    void ImageImporter::Save(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data, ImageColorSpace color_space)
     {
-        if (width == 0 || height == 0)
+        if (width == 0 || height == 0 || !data)
         {
+            return;
+        }
+
+        if (channel_count != 4 || bits_per_channel != 16)
+        {
+            SP_LOG_ERROR("EXR export expects RGBA half float data");
             return;
         }
 
@@ -639,6 +684,27 @@ namespace spartan
                     converted[dst_index + 1] = half_to_float(src_half[src_index + 1]);
                     converted[dst_index + 2] = half_to_float(src_half[src_index + 2]);
                     converted[dst_index + 3] = half_to_float(src_half[src_index + 3]);
+
+                    float* rgb = converted.data() + dst_index;
+                    if (color_space == ImageColorSpace::Srgb)
+                    {
+                        for (uint32_t c = 0; c < 3; c++)
+                            rgb[c] = rgb[c] <= 0.04045f ? rgb[c] / 12.92f : pow((rgb[c] + 0.055f) / 1.055f, 2.4f);
+                    }
+                    else if (color_space == ImageColorSpace::Hdr10)
+                    {
+                        // ST.2084 to linear Rec.2020, expressed in scRGB units.
+                        for (uint32_t c = 0; c < 3; c++)
+                        {
+                            const float p = pow(saturate_float(rgb[c]), 1.0f / 78.84375f);
+                            rgb[c] = pow(max(p - 0.8359375f, 0.0f) / (18.8515625f - 18.6875f * p), 1.0f / 0.1593017578125f) * 125.0f;
+                        }
+                        const float r = rgb[0], g = rgb[1], b = rgb[2];
+                        // Retain negative and >1 values: they carry HDR/wide gamut.
+                        rgb[0] =  1.6604910f * r - 0.5876411f * g - 0.0728499f * b;
+                        rgb[1] = -0.1245505f * r + 1.1328999f * g - 0.0083494f * b;
+                        rgb[2] = -0.0181508f * r - 0.1005789f * g + 1.1187297f * b;
+                    }
                 }
             }
         }, height);
@@ -701,7 +767,7 @@ namespace spartan
             }
         }
 
-        BOOL saved = FreeImage_Save(FIF_PNG, bitmap, file_path.c_str(), PNG_Z_BEST_SPEED);
+        const bool saved = save_srgb_png(bitmap, file_path);
         FreeImage_Unload(bitmap);
 
         if (!saved)
@@ -712,7 +778,7 @@ namespace spartan
 
     void ImageImporter::SaveSdr(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data)
     {
-        if (width == 0 || height == 0)
+        if (width == 0 || height == 0 || !data)
         {
             return;
         }
@@ -727,6 +793,12 @@ namespace spartan
             }
 
             SaveSdrRgba8(file_path, width, height, data);
+            return;
+        }
+
+        if (channel_count != 4 || bits_per_channel != 16)
+        {
+            SP_LOG_ERROR("SaveSdr expects RGBA half float data");
             return;
         }
 
@@ -771,7 +843,7 @@ namespace spartan
             memcpy(scanline, converted.data() + static_cast<size_t>(y) * width * 3, static_cast<size_t>(width) * 3);
         }
 
-        BOOL saved = FreeImage_Save(FIF_PNG, bitmap, file_path.c_str(), PNG_Z_BEST_SPEED);
+        const bool saved = save_srgb_png(bitmap, file_path);
         FreeImage_Unload(bitmap);
 
         if (!saved)

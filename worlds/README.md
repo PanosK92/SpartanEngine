@@ -20,6 +20,20 @@ package when publishing an asset update. A local move does not update that
 download automatically. Do not force-add assets or create resource subdirectories
 here; the Git ignore rules intentionally allow only `.world` files and this note.
 
+Generated world caches use lossless LZ4 compression automatically. Existing raw
+caches are accepted and converted on a successful read; incompressible payloads
+stay raw inside the versioned format. Each file is size-bounded and checksummed,
+and a missing or invalid cache is rebuilt from its inputs. No asset reimport or
+world-file conversion is required.
+
+After world preparation and successful saves, the engine trims each world's
+`generated_cache/` directory to a 2 GiB budget, evicting the least recently used
+entries first. This is a budget for disposable build data, not for the world or
+its assets. Evicted entries are regenerated when needed; a working set larger
+than the budget can therefore cost additional build time. Authored meshes,
+textures, materials, world XML and terrain sculpt layers are outside this
+cleanup. Cache files are replaced only after the new file is fully written.
+
 The Ferrari showroom's warm, red and cyan tubes use separate emissive materials.
 After downloading an older project package, run
 `node tools/worlds/showroom_emitters.mjs` from the repository root to generate

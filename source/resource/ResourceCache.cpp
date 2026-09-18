@@ -562,7 +562,11 @@ namespace spartan
                 { IconType::Refresh,       "icons/refresh.png"          },
                 { IconType::Logo,          "logo.ico"                   },
                 { IconType::Mcp,           "icons/mcp.png"              },
-                { IconType::Snap,          "icons/snap.png"             }
+                { IconType::Snap,          "icons/snap.png"             },
+                { IconType::Memory,        "icons/memory.png"           },
+                { IconType::LightDirectional, "icons/light_directional.png" },
+                { IconType::LightPoint,    "icons/light_point.png"      },
+                { IconType::LightSpot,     "icons/light_spot.png"       }
             };
             return table;
         }

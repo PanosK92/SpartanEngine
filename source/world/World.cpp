@@ -1534,6 +1534,12 @@ namespace spartan
             GeometryBuffer::BuildIfDirty();
             SP_LOG_INFO("World preparation complete: %.2f ms", preparation_timer.GetElapsedTimeMs());
             for (const string& line : generated_cache::GetStatistics()) SP_LOG_INFO("Bake cache %s", line.c_str());
+            // Cache eviction only removes reproducible data and runs off the editor thread.
+            ThreadPool::AddTask([resources = GetResourceDirectory()]()
+            {
+                const auto result = generated_cache::Maintain(resources);
+                if (result.removed) SP_LOG_INFO("Bake cache reclaimed %.1f MB (%llu files)", result.bytes_removed / 1000000.0, static_cast<unsigned long long>(result.removed));
+            });
             ProgressTracker::GetProgress(ProgressType::World).Complete();
             ProgressTracker::SetGlobalLoadingState(false);
             world_io_state.store(WorldIoState::Idle, memory_order_release);
@@ -2666,6 +2672,8 @@ namespace spartan
             pugi::xml_node cvars_node = world_node.append_child("ConsoleVariables");
             for (const string& cvar_name : world_console_variables)
             {
+                if (cvar_name == "r.fog.debug")
+                    continue;
                 optional<string> value = ConsoleRegistry::Get().GetValueAsString(cvar_name);
                 if (!value.has_value())
                 {
@@ -2711,7 +2719,7 @@ namespace spartan
         }
 
         const float snapshot_ms = timer.GetElapsedTimeMs();
-        auto write_snapshot = [file_path, document, writes = move(writes), cleanup = move(cleanup), snapshot_ms]() mutable
+        auto write_snapshot = [file_path, resources = world_file_path_to_resource_directory(file_path, false), document, writes = move(writes), cleanup = move(cleanup), snapshot_ms]() mutable
         {
             const Stopwatch write_timer;
             for (auto& write : writes) write();
@@ -2723,6 +2731,8 @@ namespace spartan
                 throw runtime_error("Failed to write world: " + temporary_path);
             filesystem::rename(temporary_path, file_path);
             cleanup();
+            const auto cache_result = generated_cache::Maintain(resources);
+            if (cache_result.removed) SP_LOG_INFO("Bake cache reclaimed %.1f MB (%llu files)", cache_result.bytes_removed / 1000000.0, static_cast<unsigned long long>(cache_result.removed));
             SP_LOG_INFO("World '%s' saved: snapshot %.2f ms, background work %.2f ms", file_path.c_str(), snapshot_ms, write_timer.GetElapsedTimeMs());
         };
 
@@ -3073,6 +3083,8 @@ namespace spartan
             //     <Variable name="r.restir_pt" value="1" />
             //   </ConsoleVariables>
             world_console_variables.clear();
+            // A transport inspection view must not leak into another world.
+            cvar_fog_debug.SetValue(0.0f);
             // Atmosphere density belongs to the world, not the last scene or
             // the editor's saved graphics settings. Persist these controls even
             // when the source world predates them, so UI edits survive saving.
@@ -3092,6 +3104,8 @@ namespace spartan
                     const char* name  = var_node.attribute("name").as_string();
                     const char* value = var_node.attribute("value").as_string();
 
+                    if (string_view(name) == "r.fog.debug")
+                        continue;
                     if (name && name[0] != '\0')
                     {
                         ConsoleRegistry::Get().SetValueFromString(name, value);
