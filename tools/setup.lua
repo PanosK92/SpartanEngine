@@ -54,6 +54,12 @@ local AGILITY_NUPKG       = path.join(PROJECT_ROOT, "third_party", "d3d12_agilit
 -- d3d12core.dll sits next to the exe, matching the exported D3D12SDKPath (".\\")
 local AGILITY_RUNTIME_DLLS = { "D3D12Core.dll", "d3d12SDKLayers.dll" }
 
+-- dxgi debug services are a dependency of the agility debug layer, but are not in its nuget package.
+-- fetch the signed x64 binary from microsoft so target machines don't need graphics tools installed.
+local DXGI_DEBUG_URL  = "https://msdl.microsoft.com/download/symbols/dxgidebug.dll/3EF0515C25000/dxgidebug.dll"
+local DXGI_DEBUG_HASH = "1639820f65a0e2c269210a44b9875c4e3fe166458e2823dc79dd9c3c31ce8ea1" -- 10.0.26100.1882
+local DXGI_DEBUG_DLL  = path.join(AGILITY_BIN_DIR, "dxgidebug.dll")
+
 -- steamworks sdk, committed in third_party/steamworks (headers and win64 redistributables)
 local STEAMWORKS_DIR   = path.join(PROJECT_ROOT, "third_party", "steamworks")
 local STEAM_DLL        = path.join(STEAMWORKS_DIR, "redistributable_bin", "win64", "steam_api64.dll")
@@ -119,8 +125,8 @@ local function compute_sha256(p)
     local cmd
     if is_windows() then
         cmd = string.format(
-            'powershell -NoProfile -Command "(Get-FileHash -Algorithm SHA256 -LiteralPath %s).Hash.ToLower()"',
-            quote(p)
+            'powershell -NoProfile -Command "$stream = [IO.File]::OpenRead(\'%s\'); $sha = [Security.Cryptography.SHA256]::Create(); try { [BitConverter]::ToString($sha.ComputeHash($stream)).Replace(\'-\', \'\').ToLower() } finally { $sha.Dispose(); $stream.Dispose() }"',
+            shell_path(p):gsub("'", "''")
         )
     else
         cmd = string.format("sha256sum %s | awk '{print $1}'", quote(p))
@@ -270,7 +276,9 @@ local function ensure_agility_sdk()
         return
     end
 
-    if read_text(AGILITY_STAMP) == AGILITY_VERSION and file_exists(path.join(AGILITY_BIN_DIR, "D3D12Core.dll")) then
+    if read_text(AGILITY_STAMP) == AGILITY_VERSION
+        and file_exists(path.join(AGILITY_BIN_DIR, "D3D12Core.dll"))
+        and file_exists(path.join(AGILITY_BIN_DIR, "d3d12SDKLayers.dll")) then
         print("agility sdk " .. AGILITY_VERSION .. " present, skipping download")
         return
     end
@@ -320,21 +328,28 @@ local function stage_agility_runtime()
         return
     end
 
-    local staged = 0
-
-    for _, dll in ipairs(AGILITY_RUNTIME_DLLS) do
-        local source = path.join(AGILITY_BIN_DIR, dll)
-        if file_exists(source) then
-            copy_file(source, path.join(BINARIES_DIR, dll))
-            staged = staged + 1
+    if compute_sha256(DXGI_DEBUG_DLL) ~= DXGI_DEBUG_HASH then
+        print("downloading dxgi debug services...")
+        local result, code = download_with_progress(DXGI_DEBUG_URL, DXGI_DEBUG_DLL)
+        if result ~= "OK" then
+            error(string.format("dxgi debug download failed: %s (http %s)", tostring(result), tostring(code)))
+        end
+        if compute_sha256(DXGI_DEBUG_DLL) ~= DXGI_DEBUG_HASH then
+            os.remove(DXGI_DEBUG_DLL)
+            error("dxgi debug dll hash mismatch")
         end
     end
 
-    if staged > 0 then
-        print(string.format("  staged %d agility dll(s) into binaries/", staged))
-    else
-        print("  agility sdk not found, skipping agility staging")
+    for _, dll in ipairs(AGILITY_RUNTIME_DLLS) do
+        local source = path.join(AGILITY_BIN_DIR, dll)
+        if not file_exists(source) then
+            error("missing agility runtime dll: " .. source)
+        end
+        copy_file(source, path.join(BINARIES_DIR, dll))
     end
+
+    copy_file(DXGI_DEBUG_DLL, path.join(BINARIES_DIR, "dxgidebug.dll"))
+    print("  staged agility runtime, debug layer and dxgi debug services into binaries/")
 end
 
 local function stage_steam_runtime()

@@ -277,7 +277,7 @@ namespace spartan
         Microsoft::WRL::ComPtr<IDXGIFactory4> factory;
         {
             UINT dxgi_factory_flags = 0;
-            if (Debugging::IsValidationLayerEnabled())
+            if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled())
             {
                 dxgi_factory_flags |= DXGI_CREATE_FACTORY_DEBUG;
             }

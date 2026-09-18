@@ -236,7 +236,7 @@ namespace spartan
         {
             // debug utils
             {
-                if (Debugging::IsValidationLayerEnabled())
+                if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled())
                 {
                     load(reinterpret_cast<void**>(&create_messenger), "vkCreateDebugUtilsMessengerEXT");
                     load(reinterpret_cast<void**>(&destroy_messenger), "vkDestroyDebugUtilsMessengerEXT");
@@ -361,7 +361,7 @@ namespace spartan
 
         vector<const char*> get_extensions_instance()
         {
-            if (Debugging::IsValidationLayerEnabled())
+            if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled())
             {
                 extensions_instance.emplace_back("VK_EXT_debug_report");
                 extensions_instance.emplace_back("VK_EXT_debug_utils");
@@ -370,7 +370,7 @@ namespace spartan
             }
 
             // gpu markers (also uses debug utils, but it's already added above if validation is on)
-            if (Debugging::IsGpuMarkingEnabled() && !Debugging::IsValidationLayerEnabled())
+            if (Debugging::IsGpuMarkingEnabled() && (!Debugging::IsValidationLayerEnabled() && !Debugging::IsGpuAssistedValidationEnabled()))
             {
                 extensions_instance.emplace_back("VK_EXT_debug_utils");
             }
@@ -383,7 +383,7 @@ namespace spartan
 
             // layer-provided extensions (e.g. VK_EXT_layer_settings, VK_EXT_validation_features) are only
             // returned when enumerating with the layer name, not from the loader-level enumeration above
-            if (Debugging::IsValidationLayerEnabled())
+            if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled())
             {
                 uint32_t layer_ext_count = 0;
                 vkEnumerateInstanceExtensionProperties("VK_LAYER_KHRONOS_validation", &layer_ext_count, nullptr);
@@ -556,7 +556,7 @@ namespace spartan
         static vector<VkLayerSettingEXT> settings_storage; // persistent storage for VkLayerSettingEXT
         vector<VkLayerSettingEXT>& get_settings()
         {
-            SP_ASSERT(Debugging::IsValidationLayerEnabled());
+            SP_ASSERT(Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled());
         
             // check layer availability
             {
@@ -1979,7 +1979,7 @@ namespace spartan
             // check if the validation layer is actually installed before trying to enable it,
             // some loaders silently accept a missing layer instead of returning VK_ERROR_LAYER_NOT_PRESENT
             bool validation_layer_available = false;
-            if (Debugging::IsValidationLayerEnabled())
+            if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled())
             {
                 uint32_t layer_count = 0;
                 vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
@@ -2281,7 +2281,7 @@ namespace spartan
         descriptors::descriptor_pools.clear();
 
         // debug messenger
-        if (Debugging::IsValidationLayerEnabled())
+        if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled())
         {
             validation_layer::logging::shutdown(RHI_Context::instance);
         }
@@ -3119,7 +3119,7 @@ namespace spartan
 
     void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const char* name)
     {
-        if (Debugging::IsValidationLayerEnabled()) // function pointers are not initialized if validation disabled
+        if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled()) // function pointers are not initialized if validation disabled
         {
             SP_ASSERT(resource != nullptr);
             SP_ASSERT(functions::set_object_name != nullptr);

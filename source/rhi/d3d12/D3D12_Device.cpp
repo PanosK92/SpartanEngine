@@ -63,6 +63,34 @@ namespace spartan
         ID3D12InfoQueue1* info_queue1     = nullptr;
         DWORD             callback_cookie = 0;
 
+        void load_debug_runtime()
+        {
+            // preload from the executable directory before dxgi/d3d12 probe the system installation.
+            // keep this module loaded until process exit: the debug layer can use it during teardown.
+            static HMODULE dxgi_debug = nullptr;
+            if (dxgi_debug)
+                return;
+
+            wchar_t executable_path[32768];
+            const DWORD length = GetModuleFileNameW(nullptr, executable_path, _countof(executable_path));
+            if (length == 0 || length >= _countof(executable_path))
+            {
+                SP_LOG_WARNING("Could not resolve the executable path for local DXGI debug services");
+                return;
+            }
+
+            const wstring path = wstring(executable_path).substr(0, wstring(executable_path).find_last_of(L"\\/") + 1) + L"dxgidebug.dll";
+            dxgi_debug = LoadLibraryExW(path.c_str(), nullptr, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
+            if (dxgi_debug)
+            {
+                SP_LOG_INFO("Loaded app-local DXGI debug services");
+            }
+            else
+            {
+                SP_LOG_WARNING("Could not load app-local dxgidebug.dll (error %lu), trying system debug services", GetLastError());
+            }
+        }
+
         static void __stdcall message_callback(
             D3D12_MESSAGE_CATEGORY,
             D3D12_MESSAGE_SEVERITY severity,
@@ -89,7 +117,7 @@ namespace spartan
 
         void initialize()
         {
-            if (!Debugging::IsValidationLayerEnabled())
+            if (!Debugging::IsValidationLayerEnabled() && !Debugging::IsGpuAssistedValidationEnabled())
             {
                 return;
             }
@@ -691,12 +719,10 @@ namespace spartan
         m_shader_group_handle_alignment = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;    // 32
         m_shader_group_base_alignment   = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;     // 64
 
-        device_physical::detect_all();
-        device_physical::select_primary();
-
         UINT dxgi_factory_flags = 0;
-        if (Debugging::IsValidationLayerEnabled())
+        if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled())
         {
+            validation::load_debug_runtime();
             Microsoft::WRL::ComPtr<ID3D12Debug1> debug_interface;
             if (d3d12_utility::error::check(D3D12GetDebugInterface(IID_PPV_ARGS(&debug_interface))))
             {
@@ -715,9 +741,12 @@ namespace spartan
             }
             else
             {
-                SP_LOG_WARNING("D3D12 debug layer requested but unavailable, install the graphics tools optional feature in windows");
+                SP_LOG_WARNING("D3D12 debug layer requested but unavailable, rerun project setup to restore D3D12Core.dll, d3d12SDKLayers.dll and dxgidebug.dll");
             }
         }
+
+        device_physical::detect_all();
+        device_physical::select_primary();
 
         Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
         SP_ASSERT_MSG(d3d12_utility::error::check(CreateDXGIFactory2(dxgi_factory_flags, IID_PPV_ARGS(&factory))), "Failed to create dxgi factory");
