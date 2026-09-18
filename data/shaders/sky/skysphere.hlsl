@@ -19,257 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= includes =========
-#include "../common.hlsl"
-#include "planet.hlsl"
-//====================
-
-// constants - atmosphere
-static const float3 up_direction       = float3(0.0, 1.0, 0.0);
-static const float earth_radius        = planet_earth_radius;
-static const float atmosphere_radius   = planet_atmosphere_radius;
-static const float3 earth_center       = planet_earth_center;
-
-// constants - scattering coefficients at sea level
-static const float3 rayleigh_scatter   = float3(5.802e-6, 13.558e-6, 33.1e-6);
-static const float rayleigh_height     = 8000.0;
-static const float3 mie_scatter        = float3(3.996e-6, 3.996e-6, 3.996e-6);
-static const float3 mie_extinction     = float3(4.4e-6, 4.4e-6, 4.4e-6);
-static const float mie_height          = 1200.0;
-static const float mie_g               = 0.8;
-
-// constants - ozone
-static const float3 ozone_absorption   = float3(0.65e-6, 1.881e-6, 0.085e-6);
-static const float ozone_center_height = 25000.0;
-static const float ozone_width         = 15000.0;
-
-// constants - sun and ground
-// every sun energy term reads get_sun_radiance_toa() from common.hlsl, the neutral white top
-// of atmosphere radiance derived from the directional light's intensity, all tinting comes
-// from atmospheric transmittance so the sky, sun disc, clouds, ibl and direct surface
-// lighting stay locked to the atmosphere as the single ground truth for sun color
-// Distance-dependent solar angular radius, supplied by the ephemeris.
-static const float3 ground_albedo      = float3(0.3, 0.3, 0.3);
-
-// constants - sampling
-static const int transmittance_samples = 32;
-static const int multiscatter_samples  = 16;
-static const int scattering_samples    = 32;
-
-// utility
-float safe_sqrt(float x) { return sqrt(max(0.0, x)); }
-
-float2 ray_sphere_intersect(float3 origin, float3 direction, float3 center, float radius)
-{
-    float3 oc = origin - center;
-    float b = dot(direction, oc);
-    float c = dot(oc, oc) - radius * radius;
-    float discriminant = b * b - c;
-    
-    if (discriminant < 0.0)
-        return float2(-1.0, -1.0);
-    
-    float d = sqrt(discriminant);
-    return float2(-b - d, -b + d);
-}
-
-float get_height(float3 position)
-{
-    return length(position - earth_center) - earth_radius;
-}
-
-// keep the camera inside the atmosphere shell, shared by the sky view lut and the panorama bake
-float3 clamp_camera_to_atmosphere(float3 cam_pos)
-{
-    float cam_h = get_height(cam_pos);
-    if (cam_h < 0.0)
-    {
-        return earth_center + normalize(cam_pos - earth_center) * (earth_radius + 1.0);
-    }
-    if (cam_h > atmosphere_radius - earth_radius)
-    {
-        return earth_center + normalize(cam_pos - earth_center) * (atmosphere_radius - 1.0);
-    }
-    return cam_pos;
-}
-
-// density functions
-float get_rayleigh_density(float height) { return exp(-height / rayleigh_height); }
-float get_mie_density(float height)      { return exp(-height / mie_height); }
-float get_ozone_density(float height)    { return max(0.0, 1.0 - abs(height - ozone_center_height) / ozone_width); }
-
-float3 get_extinction(float height)
-{
-    return rayleigh_scatter * get_rayleigh_density(height) +
-           mie_extinction * get_mie_density(height) +
-           ozone_absorption * get_ozone_density(height);
-}
-
-float3 get_scattering(float height)
-{
-    return rayleigh_scatter * get_rayleigh_density(height) + mie_scatter * get_mie_density(height);
-}
-
-// phase functions
-float rayleigh_phase(float cos_theta)
-{
-    return (3.0 / (16.0 * PI)) * (1.0 + cos_theta * cos_theta);
-}
-
-float cornette_shanks_phase(float cos_theta, float g)
-{
-    float g2 = g * g;
-    float num = 3.0 * (1.0 - g2) * (1.0 + cos_theta * cos_theta);
-    float denom = (8.0 * PI) * (2.0 + g2) * pow(1.0 + g2 - 2.0 * g * cos_theta, 1.5);
-    return num / max(denom, 0.0001);
-}
-
-// transmittance lut uv mapping with horizon emphasis
-float2 transmittance_lut_params_to_uv(float height, float cos_zenith)
-{
-    float h = safe_sqrt((height - earth_radius) / (atmosphere_radius - earth_radius));
-    float rho = safe_sqrt(max(0.0, height * height - earth_radius * earth_radius));
-    float cos_horizon = -rho / height;
-    
-    float x_mu;
-    if (cos_zenith > cos_horizon)
-        x_mu = 0.5 + 0.5 * (cos_zenith - cos_horizon) / (1.0 - cos_horizon);
-    else
-        x_mu = 0.5 * (cos_zenith + 1.0) / (cos_horizon + 1.0);
-    
-    return float2(saturate(x_mu), h);
-}
-
-void transmittance_uv_to_params(float2 uv, out float height, out float cos_zenith)
-{
-    float h = uv.y * uv.y;
-    height = earth_radius + h * (atmosphere_radius - earth_radius);
-    
-    float rho = safe_sqrt(max(0.0, height * height - earth_radius * earth_radius));
-    float cos_horizon = -rho / height;
-    
-    if (uv.x > 0.5)
-    {
-        float t = (uv.x - 0.5) * 2.0;
-        cos_zenith = cos_horizon + t * (1.0 - cos_horizon);
-    }
-    else
-    {
-        float t = uv.x * 2.0;
-        cos_zenith = t * (cos_horizon + 1.0) - 1.0;
-    }
-}
-
-// compute optical depth from position to atmosphere top
-float3 compute_transmittance_to_top(float3 position, float3 direction)
-{
-    float2 intersect = ray_sphere_intersect(position, direction, earth_center, atmosphere_radius);
-    float t_max = intersect.y;
-    if (t_max < 0.0)
-        return float3(1.0, 1.0, 1.0);
-    
-    // rays that hit the planet are fully occluded, zero gives every consumer the earth shadow
-    float2 ground_hit = ray_sphere_intersect(position, direction, earth_center, earth_radius);
-    if (ground_hit.x > 0.0)
-        return float3(0.0, 0.0, 0.0);
-    
-    // trapezoidal integration
-    float dt = t_max / transmittance_samples;
-    float3 optical_depth = float3(0.0, 0.0, 0.0);
-    float3 prev_ext = get_extinction(get_height(position));
-    
-    for (int i = 1; i <= transmittance_samples; i++)
-    {
-        float3 sample_pos = position + direction * i * dt;
-        float height = get_height(sample_pos);
-        if (height < 0.0) break;
-        
-        float3 curr_ext = get_extinction(height);
-        optical_depth += (prev_ext + curr_ext) * 0.5 * dt;
-        prev_ext = curr_ext;
-    }
-    
-    return exp(-optical_depth);
-}
-
-// multi-scatter lut - infinite bounce approximation
-float3 compute_multiscatter(float height, float cos_sun_zenith, Texture2D transmittance_lut, SamplerState samp)
-{
-    float3 position = earth_center + float3(0.0, earth_radius + height, 0.0);
-    float3 sun_dir = float3(safe_sqrt(1.0 - cos_sun_zenith * cos_sun_zenith), cos_sun_zenith, 0.0);
-    
-    float3 luminance_sum = float3(0.0, 0.0, 0.0);
-    float3 f_ms_sum = float3(0.0, 0.0, 0.0);
-    
-    const int sqrt_samples = 8;
-    for (int i = 0; i < sqrt_samples; i++)
-    {
-        for (int j = 0; j < sqrt_samples; j++)
-        {
-            float u = (i + 0.5) / sqrt_samples;
-            float v = (j + 0.5) / sqrt_samples;
-            
-            float cos_theta = u * 2.0 - 1.0;
-            float sin_theta = safe_sqrt(1.0 - cos_theta * cos_theta);
-            float phi = v * PI2;
-            float3 ray_dir = float3(sin_theta * cos(phi), cos_theta, sin_theta * sin(phi));
-            
-            float2 atmo_hit = ray_sphere_intersect(position, ray_dir, earth_center, atmosphere_radius);
-            float t_max = atmo_hit.y;
-            
-            float2 ground_hit = ray_sphere_intersect(position, ray_dir, earth_center, earth_radius);
-            bool hits_ground = ground_hit.x > 0.0;
-            if (hits_ground) t_max = ground_hit.x;
-            
-            float dt = t_max / multiscatter_samples;
-            float3 trans = float3(1.0, 1.0, 1.0);
-            float3 scatter_integral = float3(0.0, 0.0, 0.0);
-            
-            for (int k = 0; k < multiscatter_samples; k++)
-            {
-                float3 sample_pos = position + ray_dir * (k + 0.5) * dt;
-                float sample_h = get_height(sample_pos);
-                
-                float3 scatter = get_scattering(sample_h);
-                float3 extinct = get_extinction(sample_h);
-                
-                float cos_sun = dot(normalize(sample_pos - earth_center), sun_dir);
-                float2 sun_uv = transmittance_lut_params_to_uv(sample_h + earth_radius, cos_sun);
-                float3 trans_sun = transmittance_lut.SampleLevel(samp, sun_uv, 0).rgb;
-                
-                float3 scatter_no_phase = scatter * trans_sun;
-                float3 s_int = (scatter_no_phase - scatter_no_phase * exp(-extinct * dt)) / max(extinct, 0.0001);
-                
-                scatter_integral += s_int * trans;
-                trans *= exp(-extinct * dt);
-            }
-            
-            // ground contribution
-            if (hits_ground)
-            {
-                float3 ground_pos = position + ray_dir * t_max;
-                float3 ground_n = normalize(ground_pos - earth_center);
-                float ndotl = saturate(dot(ground_n, sun_dir));
-                
-                float2 sun_uv = transmittance_lut_params_to_uv(earth_radius, dot(ground_n, sun_dir));
-                float3 trans_sun = transmittance_lut.SampleLevel(samp, sun_uv, 0).rgb;
-                
-                luminance_sum += trans * trans_sun * ndotl * ground_albedo / PI;
-            }
-            
-            float phase = 1.0 / (4.0 * PI);
-            luminance_sum += scatter_integral * phase;
-            f_ms_sum += scatter_integral * phase;
-        }
-    }
-    
-    float sphere_samples = sqrt_samples * sqrt_samples;
-    luminance_sum *= 4.0 * PI / sphere_samples;
-    f_ms_sum *= 4.0 * PI / sphere_samples;
-    
-    // infinite series approximation
-    return luminance_sum / max(float3(1.0, 1.0, 1.0) - f_ms_sum, 0.001);
-}
+#include "atmosphere.hlsl"
 
 // main sky color computation
 float3 compute_sky_luminance(
@@ -286,44 +36,25 @@ float3 compute_sky_luminance(
     float2 ground_hit = ray_sphere_intersect(position, view_dir, earth_center, earth_radius);
     if (ground_hit.x > 0.0) t_max = min(t_max, ground_hit.x);
     
-    float cos_theta = dot(view_dir, sun_dir);
-    float phase_r = rayleigh_phase(cos_theta);
-    float phase_m = cornette_shanks_phase(cos_theta, mie_g);
-    
     float3 luminance = float3(0.0, 0.0, 0.0);
     float3 trans = float3(1.0, 1.0, 1.0);
-    float dt = (t_max - t_min) / scattering_samples;
+    float previous_t = t_min;
     
     for (int i = 0; i < scattering_samples; i++)
     {
-        float3 sample_pos = position + view_dir * (t_min + (i + jitter) * dt);
+        float u = float(i + 1) / scattering_samples;
+        float t = t_min + (t_max - t_min) * u * u;
+        float dt = t - previous_t;
+        float3 sample_pos = position + view_dir * lerp(previous_t, t, jitter);
+        previous_t = t;
         float height = get_height(sample_pos);
         
         if (height < 0.0 || height > atmosphere_radius - earth_radius)
             continue;
         
         float3 extinction = get_extinction(height);
-        float rayleigh_d = get_rayleigh_density(height);
-        float mie_d = get_mie_density(height);
-        
-        float3 up = normalize(sample_pos - earth_center);
-        float cos_sun = dot(up, sun_dir);
-        
-        // the lut stores zero for ground occluded sun rays, earth shadow and twilight fall out naturally
-        float2 sun_uv = transmittance_lut_params_to_uv(height + earth_radius, cos_sun);
-        float3 trans_sun = transmittance_lut.SampleLevel(samp, sun_uv, 0).rgb;
-        
-        // single + multi scatter
-        float3 scatter_r = rayleigh_scatter * rayleigh_d * phase_r;
-        float3 scatter_m = mie_scatter * mie_d * phase_m;
-        float3 scattering = (scatter_r + scatter_m) * trans_sun;
-        
-        float2 ms_uv = float2(cos_sun * 0.5 + 0.5, saturate(height / (atmosphere_radius - earth_radius)));
-        float3 ms = multiscatter_lut.SampleLevel(samp, ms_uv, 0).rgb;
-        float3 ms_scatter = (rayleigh_scatter * rayleigh_d + mie_scatter * mie_d) * ms;
-        
-        float3 total = scattering + ms_scatter;
-        float3 scatter_int = total * (1.0 - exp(-extinction * dt)) / max(extinction, 1e-6);
+        float3 total = atmosphere_source(sample_pos, view_dir, sun_dir, transmittance_lut, multiscatter_lut, samp);
+        float3 scatter_int = total * atmosphere_segment_weight(extinction, dt);
         
         luminance += scatter_int * trans;
         trans *= exp(-extinction * dt);
@@ -488,13 +219,6 @@ float3 night_apply_earth_rotation(float3 view_dir)
         view_dir.y * buffer_frame.equatorial_y.xyz + view_dir.z * buffer_frame.equatorial_z.xyz);
 }
 
-// stars and milky way are dimmed by airmass toward the horizon, blue is attenuated more than red
-float3 night_atmospheric_extinction(float3 view_dir)
-{
-    float airmass = 1.0 / max(view_dir.y + 0.05, 0.05);
-    return exp(-airmass * float3(0.07, 0.10, 0.16));
-}
-
 // yale bsc5 catalog stars as unresolved pinpoints, magnitude drives flux and size
 float3 night_compute_stars(float3 celestial_view, Texture2D stars_tex, Texture2D grid_tex, float time_seconds)
 {
@@ -522,7 +246,8 @@ float3 night_compute_stars(float3 celestial_view, Texture2D stars_tex, Texture2D
         {
             int2 c = cell + int2(dx, dy);
             c.x = (c.x + grid_size.x) % grid_size.x;
-            c.y = clamp(c.y, 0, grid_size.y - 1);
+            // Do not count a polar cell more than once.
+            if (c.y < 0 || c.y >= grid_size.y) continue;
 
             float4 cell_data = grid_tex.Load(int3(c, 0));
             uint offset = asuint(cell_data.x);
@@ -777,9 +502,10 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     tex_uav.GetDimensions(res.x, res.y);
     if (any(tid.xy >= uint2(res))) return;
     
-    float2 uv = (tid.xy + 0.5) / res;
+    float2 uv = float2(tid.xy) / (res - 1.0);
     float cos_sun = uv.x * 2.0 - 1.0;
-    float height = uv.y * (atmosphere_radius - earth_radius);
+    // Include sea level and concentrate resolution in the dense lower atmosphere.
+    float height = uv.y * uv.y * (atmosphere_radius - earth_radius);
     
     tex_uav[tid.xy] = float4(compute_multiscatter(height, cos_sun, tex, GET_SAMPLER(sampler_bilinear_clamp)), 1.0);
 }
@@ -907,9 +633,9 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     else if (sun_elev > -0.02)
     {
         float3 cam_up    = normalize(cam_pos - earth_center);
-        float2 sun_uv    = transmittance_lut_params_to_uv(length(cam_pos - earth_center), max(dot(cam_up, sun_dir), 0.0));
-        float3 sun_trans = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), sun_uv, 0).rgb;
-        sun_col          = compute_sun_disc(orig_view, sun_dir, sun_trans) * smoothstep(-0.02, 0.02, sun_elev);
+        float3 sun_trans = planet_transmittance(tex, GET_SAMPLER(sampler_bilinear_clamp),
+            length(cam_pos - earth_center), dot(cam_up, orig_view));
+        sun_col          = compute_sun_disc(orig_view, sun_dir, sun_trans);
     }
     
     // night sky, atmosphere is sky-dome, celestials ride behind the atmosphere
@@ -917,6 +643,9 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float night_factor      = 1.0 - day_factor;
     // stars only after the sun is below the horizon, never on a blue daytime sky
     float star_visibility = smoothstep(0.02, -0.12, sun_elev);
+    // Celestial light traverses the same air as the Sun, including altitude and ozone.
+    float3 view_trans = planet_transmittance(tex, GET_SAMPLER(sampler_bilinear_clamp),
+        length(cam_pos - earth_center), dot(normalize(cam_pos - earth_center), orig_view));
     float3 night_ambient    = float3(0, 0, 0);
     float3 night_celestials = float3(0, 0, 0);
     if (night_factor > 0.001)
@@ -929,7 +658,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
 
         if (!below_horizon)
         {
-            float3 ext = night_atmospheric_extinction(orig_view);
+            float3 ext = view_trans;
             if (star_visibility > 0.001)
             {
                 night_celestials += night_compute_milky_way(celestial_view) * ext * star_visibility;
@@ -949,19 +678,19 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
 
     moon_result lunar = night_compute_moon(orig_view, buffer_frame.celestial_moon.xyz);
     float3 lunar_color = below_horizon ? float3(0,0,0) :
-        (lunar.disc * night_atmospheric_extinction(orig_view) + lunar.halo * night_factor * buffer_frame.celestial_moon.w);
+        (lunar.disc * view_trans + lunar.halo * night_factor * buffer_frame.celestial_moon.w);
     float3 final_color = luminance + night_ambient + sun_col + night_celestials + lunar_color;
     // chroma preserving clamp so the sun disc and any other hdr spike carry the directional
     // light's temperature into the panorama instead of clipping every channel to the cap
     final_color        = hdr_clamp_chroma(final_color, 100.0);
 
-    // temporal accumulation, behaviour depends on bake mode
-    //   warmup, progressive average of the jittered full bakes, frame n blends at 1/n so the
-    //   first frame fully replaces the panorama and the burst lands on the exact mean, the
-    //   old fixed 0.1 blend left ~43 percent of the previous sky in the history after the burst
-    //   steady, gentle blend smooths the interleaved panorama refresh
-    float4 prev = tex_uav[pixel];
-    final_color = lerp(prev.rgb, final_color, warmup ? warmup_blend : 0.06);
+    // Each texel updates only once per 16 frames. A 0.06 blend added seconds of
+    // lag and left trails behind moving celestial bodies; the LUT is deterministic.
+    // The first warmup frame must not read uninitialized texture contents.
+    if (warmup && warmup_blend < 1.0)
+    {
+        final_color = lerp(tex_uav[pixel].rgb, final_color, warmup_blend);
+    }
 
     tex_uav[pixel] = float4(final_color, 1.0);
 }

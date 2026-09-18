@@ -590,26 +590,6 @@ float cloud_powder(float density, float cos_theta)
     return lerp(1.0, powder_term, back_weight);
 }
 
-// transmittance lut lookup matching the skysphere uv mapping, replicated here so clouds.hlsl
-// stays decoupled from skysphere.hlsl's helpers (which include this file)
-float2 cloud_transmittance_uv(float height, float cos_zenith)
-{
-    float h           = sqrt(max((height - cloud_earth_radius) / (1e5), 0.0));
-    float rho         = sqrt(max(height * height - cloud_earth_radius * cloud_earth_radius, 0.0));
-    float cos_horizon = -rho / height;
-    
-    float x_mu;
-    if (cos_zenith > cos_horizon)
-    {
-        x_mu = 0.5 + 0.5 * (cos_zenith - cos_horizon) / (1.0 - cos_horizon);
-    }
-    else
-    {
-        x_mu = 0.5 * (cos_zenith + 1.0) / (cos_horizon + 1.0);
-    }
-    return float2(saturate(x_mu), h);
-}
-
 float3 cloud_sun_illuminance(float3 sample_pos, float3 sun_dir, Texture2D transmittance_lut, SamplerState samp)
 {
     // toa sun radiance tinted by the transmittance below, clouds stay locked to the atmosphere
@@ -617,9 +597,8 @@ float3 cloud_sun_illuminance(float3 sample_pos, float3 sun_dir, Texture2D transm
     float h     = length(sample_pos - cloud_earth_center);
     float cos_z = dot(up, sun_dir);
 
-    // the lut stores zero for ground occluded rays, no extra horizon fade needed
-    float2 uv    = cloud_transmittance_uv(h, cos_z);
-    float3 trans = transmittance_lut.SampleLevel(samp, uv, 0).rgb;
+    // Shared horizon mapping and planet occlusion with the sky.
+    float3 trans = planet_transmittance(transmittance_lut, samp, h, cos_z);
 
     return get_sun_radiance_toa() * trans;
 }

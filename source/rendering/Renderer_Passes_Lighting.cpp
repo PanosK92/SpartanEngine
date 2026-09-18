@@ -1394,6 +1394,8 @@ namespace spartan
         Renderer::BeginPass("fog_composite", eye_layer);
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::fog_composite_c));
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance));
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter));
             m_pcb_pass_cpu.set_f3_value(cvar_fog_debug.GetValue());
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
             RHI_Texture* frame = GetRenderTarget(Renderer_RenderTarget::frame_render);

@@ -505,6 +505,79 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
 #elif defined(FOG_COMPOSITE)
 
+#include "sky/atmosphere.hlsl"
+
+// Integrate finite camera rays through the same atmosphere used by the sky.
+// The local fog/water integral supplies transport over each interval. Recover
+// its effective extinction and combine the media before Beer integration, so
+// neither medium's in-scattering bypasses attenuation by the other.
+FogTransport integrate_camera_atmosphere(Surface surface, FogTransport local_end)
+{
+    FogTransport result;
+    result.scattering = 0.0f;
+    result.transmittance = 1.0f;
+    FogTransport local_start;
+    local_start.scattering = 0.0f;
+    local_start.transmittance = 1.0f;
+    float3 atmosphere_transmittance = 1.0f;
+    float3 direction = surface.camera_to_pixel;
+    float3 origin = get_camera_position();
+    if (buffer_frame.ocean_enabled > 0.5f &&
+        max(origin.y, surface.position.y) < buffer_frame.ocean_sea_level)
+        return local_end;
+    float2 uv = render_uv_to_screen_uv(surface.uv);
+    float3 sun_direction = normalize(-light_parameters[0].direction);
+    bool has_local_transport = any(local_end.transmittance < 1.0f) || any(local_end.scattering > 0.0f);
+    float previous_distance = 0.0f;
+    // Resolve the shortest atmospheric density scale. Short gameplay rays do
+    // not need the same quadrature count as a multi-kilometre mountain vista.
+    uint steps = clamp(uint(ceil(surface.camera_to_pixel_length / mie_height)), 2u, 16u);
+    for (uint i = 0u; i < steps; ++i)
+    {
+        // Quadratic spacing resolves the denser air and local media near the
+        // camera. This controls quadrature accuracy, not the strength of haze.
+        float fraction = float(i + 1u) / float(steps);
+        float distance = surface.camera_to_pixel_length * fraction * fraction;
+        float dt = max(distance - previous_distance, 1e-6f);
+        float3 position = origin + direction * ((distance + previous_distance) * 0.5f);
+        float height = get_height(position);
+        float3 extinction = 0.0f;
+        float3 source = 0.0f;
+        bool submerged = buffer_frame.ocean_enabled > 0.5f && position.y < buffer_frame.ocean_sea_level;
+        if (!submerged && height >= 0.0f && height < atmosphere_radius - earth_radius)
+        {
+            extinction = get_extinction(height);
+            source = atmosphere_source(position, direction, sun_direction, tex, tex2,
+                GET_SAMPLER(sampler_bilinear_clamp)) * get_sun_radiance_toa();
+            source += atmosphere_source(position, direction, buffer_frame.celestial_moon.xyz, tex, tex2,
+                GET_SAMPLER(sampler_bilinear_clamp)) * get_sun_radiance_toa()
+                * (night_moon_to_sun * buffer_frame.celestial_moon.w);
+        }
+        FogTransport local_next = local_end;
+        if (has_local_transport && i + 1u != steps)
+            local_next = sample_fog_volume(uv, distance);
+        float3 local_ratio = saturate(local_next.transmittance / max(local_start.transmittance, 1e-20f));
+        float3 local_extinction = -log(max(local_ratio, 1e-20f)) / dt;
+        float3 combined_extinction = local_extinction + extinction;
+        float3 combined_weight;
+        float3 local_weight;
+        [unroll] for (uint channel = 0u; channel < 3u; ++channel)
+        {
+            combined_weight[channel] = fog_segment_weight(combined_extinction[channel], dt);
+            local_weight[channel] = fog_segment_weight(local_extinction[channel], dt);
+        }
+        float3 local_scattering = max(local_next.scattering - local_start.scattering, 0.0f);
+        result.scattering += atmosphere_transmittance * (
+            local_scattering * combined_weight / max(local_weight, 1e-20f)
+            + local_start.transmittance * source * combined_weight);
+        atmosphere_transmittance *= exp(-extinction * dt);
+        local_start = local_next;
+        previous_distance = distance;
+    }
+    result.transmittance = atmosphere_transmittance * local_end.transmittance;
+    return result;
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -515,6 +588,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     Surface surface;
     surface.Build(thread_id.xy, resolution, true, false);
     FogTransport volume = sample_fog_volume(render_uv_to_screen_uv(surface.uv), surface.is_sky() ? fog_far : surface.camera_to_pixel_length);
+    // The sky already contains its full atmospheric path. Finite geometry
+    // needs only the path ending at its depth, including the air before water.
+    if (!surface.is_sky() && buffer_frame.cluster_light_count > 0u)
+        volume = integrate_camera_atmosphere(surface, volume);
     float4 color = tex_uav[thread_id.xy];
     float mode = pass_get_f3_value().x;
     if (mode < 0.5f)

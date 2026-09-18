@@ -10,10 +10,7 @@
   <Variable name="r.motion_blur" value="1.000000" />
   <Variable name="r.film_grain" value="0.000000" />
   <Variable name="r.chromatic_aberration" value="0.000000" />
-  <Variable name="r.fog" value="0.220000" />
-  <Variable name="r.fog.ground" value="0.120000" />
-  <Variable name="r.fog.height" value="600.000000" />
-  <Variable name="r.fog.variation" value="0.350000" />
+  <Variable name="r.fog" value="0.000000" />
   <Variable name="r.bloom_scatter" value="0.500000" />
   <Variable name="r.tonemapping" value="4.000000" />
   <Variable name="r.depth_of_field" value="0.000000" />
