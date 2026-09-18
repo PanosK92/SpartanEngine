@@ -22,6 +22,18 @@ here; the Git ignore rules intentionally allow only `.world` files and this note
 
 The Ferrari showroom's warm, red and cyan tubes use separate emissive materials.
 After downloading an older project package, run
-`node tools/bloom_tests/showroom_emitters.mjs` from the repository root to generate
+`node tools/worlds/showroom_emitters.mjs` from the repository root to generate
 them from the saved light colors and the existing `ceiling_light.xml` material.
 Include the resulting `tube_*_emitter.xml` assets in the next project package.
+The showcase explicitly sets bloom and mist density in its `ConsoleVariables`.
+
+Atmospheric air is always present. All lights scatter through that air; nearby
+light scattering retains a distance budget under each light's Performance settings.
+The Atmosphere controls add mist to the baseline air: `r.atmosphere.mist_density`
+is the amount, `mist_height` is its altitude scale, `ground_mist` sets its relative
+concentration near terrain, and `mist_variation` controls its wind-driven breakup.
+Zero mist density means clear air, with distant atmospheric haze still present.
+The island uses zero extra mist; the showroom uses one. These values belong to
+each world and are saved with it, rather than inherited from the previous world.
+Old `r.fog` settings load as mist density with their original values. The legacy
+per-light Volumetric flag is ignored; shadows control occlusion, not scattering.

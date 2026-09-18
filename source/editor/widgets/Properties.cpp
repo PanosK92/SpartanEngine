@@ -957,7 +957,6 @@ void Properties::ShowLight(spartan::Light* light) const
         float angle                 = light->GetAngle() * math::rad_to_deg * 2.0f;
         bool shadows                = light->GetFlag(spartan::LightFlags::Shadows);
         bool shadows_screen_space   = light->GetFlag(spartan::LightFlags::ShadowsScreenSpace);
-        bool volumetric             = light->GetFlag(spartan::LightFlags::Volumetric);
         float range                 = light->GetRange();
         float area_width            = light->GetAreaWidth();
         float area_height           = light->GetAreaHeight();
@@ -1048,14 +1047,9 @@ void Properties::ShowLight(spartan::Light* light) const
 
         property_toggle("Enabled", &shadows, "cast shadows from this light");
 
-        if (shadows)
+        if (shadows && is_directional)
         {
-            if (is_directional)
-            {
-                property_toggle("Screen Space", &shadows_screen_space, "screen space contact shadows");
-            }
-
-            property_toggle("Volumetric", &volumetric, "volumetric light scattering");
+            property_toggle("Screen Space", &shadows_screen_space, "screen space contact shadows");
         }
 
         // directional-specific options
@@ -1220,7 +1214,6 @@ void Properties::ShowLight(spartan::Light* light) const
             light->SetTemperature(temperature_kelvin);
         }
         light->SetFlag(spartan::LightFlags::ShadowsScreenSpace, is_directional && shadows_screen_space);
-        light->SetFlag(spartan::LightFlags::Volumetric, volumetric);
         light->SetFlag(spartan::LightFlags::Shadows, shadows);
         //=========================================================================================================
     }

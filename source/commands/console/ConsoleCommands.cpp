@@ -96,6 +96,12 @@ namespace spartan
 
     ConsoleVariable* ConsoleRegistry::Find(std::string_view name)
     {
+        // Read old worlds, scripts and console commands without exposing a
+        // second set of atmosphere controls or an apparent fog on/off switch.
+        if (name == "r.fog")                name = "r.atmosphere.mist_density";
+        else if (name == "r.fog.height")    name = "r.atmosphere.mist_height";
+        else if (name == "r.fog.ground")    name = "r.atmosphere.ground_mist";
+        else if (name == "r.fog.variation") name = "r.atmosphere.mist_variation";
         auto It = m_console_variables.find(name);
         return It != m_console_variables.end() ? &It->second : nullptr;
     }

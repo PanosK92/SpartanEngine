@@ -4,6 +4,12 @@
   <Variable name="r.lights" value="1.000000" />
   <Variable name="r.ray_traced_reflections" value="1.000000" />
   <Variable name="r.dithering" value="0.000000" />
+  <Variable name="r.bloom" value="1.000000" />
+  <Variable name="r.bloom_scatter" value="0.700000" />
+  <Variable name="r.atmosphere.mist_density" value="1.000000" />
+  <Variable name="r.atmosphere.mist_height" value="300.000000" />
+  <Variable name="r.atmosphere.ground_mist" value="1.000000" />
+  <Variable name="r.atmosphere.mist_variation" value="0.650000" />
  </ConsoleVariables>
  <Entities>
   <Entity name="music" id="9100000000000000001" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">

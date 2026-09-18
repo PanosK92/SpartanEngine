@@ -1360,8 +1360,8 @@ namespace spartan
                 RHI_CommandList::SetTexture("tex_ocean_displacement", tex_ocean_disp);
             }
 
-            m_pcb_pass_cpu.set_f3_value(use_history ? 0.0f : 1.0f, max(cvar_fog.GetValue(), 0.0f));
-            m_pcb_pass_cpu.set_f3_value2(max(cvar_fog_height.GetValue(), 1.0f), max(cvar_fog_ground.GetValue(), 0.0f), clamp(cvar_fog_variation.GetValue(), 0.0f, 1.0f));
+            m_pcb_pass_cpu.set_f3_value(use_history ? 0.0f : 1.0f, max(cvar_mist_density.GetValue(), 0.0f));
+            m_pcb_pass_cpu.set_f3_value2(max(cvar_mist_height.GetValue(), 1.0f), max(cvar_ground_mist.GetValue(), 0.0f), clamp(cvar_mist_variation.GetValue(), 0.0f, 1.0f));
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
             RHI_CommandList::Dispatch(groups_x, groups_y, groups_z);
         }

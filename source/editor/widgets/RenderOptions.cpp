@@ -489,10 +489,10 @@ void RenderOptions::OnTickVisible()
 
                 if (option_header("Atmosphere"))
                 {
-                    option_value("Fog density", "r.fog", "Air haze and mist density in the unified volume", 0.1f);
-                    option_value("Haze height", "r.fog.height", "Altitude scale in metres", 10.0f, 1.0f, 5000.0f);
-                    option_value("Ground mist", "r.fog.ground", "Mist near terrain, strongest in sheltered valleys", 0.1f, 0.0f, 10.0f);
-                    option_value("Fog variation", "r.fog.variation", "Wind-driven variation in the mist", 0.05f, 0.0f, 1.0f);
+                    option_value("Mist density", "r.atmosphere.mist_density", "Extra haze and mist. Zero means clear air: atmosphere and light scattering always remain.", 0.1f);
+                    option_value("Mist height", "r.atmosphere.mist_height", "Altitude scale of extra haze in metres. Does not alter the baseline atmosphere.", 10.0f, 1.0f, 5000.0f);
+                    option_value("Ground mist", "r.atmosphere.ground_mist", "Ground mist relative to mist density, strongest in sheltered valleys", 0.1f, 0.0f, 10.0f);
+                    option_value("Mist variation", "r.atmosphere.mist_variation", "Wind-driven variation in the extra mist", 0.05f, 0.0f, 1.0f);
                 }
 
                 if (option_header("Wind"))

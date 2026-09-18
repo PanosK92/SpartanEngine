@@ -735,7 +735,7 @@ const light_create_args = {
   area_width: z.number().optional().describe("area light width in meters"),
   area_height: z.number().optional().describe("area light height in meters"),
   shadows: z.boolean().optional(),
-  volumetric: z.boolean().optional(),
+  volumetric: z.boolean().optional().describe("deprecated compatibility argument; scattering is automatic for all lights, adjust world mist density instead"),
   draw_distance: z.number().optional(),
   shadow_distance: z.number().optional(),
   volumetric_distance: z.number().optional(),

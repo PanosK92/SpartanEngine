@@ -3057,7 +3057,15 @@ namespace spartan
             environment.daily_amplitude = environment_node.attribute("daily_amplitude").as_float(environment.daily_amplitude);
             environment.sea_level_pressure = environment_node.attribute("sea_level_pressure").as_float(environment.sea_level_pressure);
             Environment::SetSettings(environment);
-            SetWind(Vector3(environment_node.attribute("wind_x").as_float(), environment_node.attribute("wind_y").as_float(), environment_node.attribute("wind_z").as_float()));
+            // Older worlds have no saved wind. Restore the default instead of
+            // flattening their FFT ocean or inheriting the previous world's wind.
+            world_wind::initialize();
+            const Vector3 default_wind = GetWind();
+            SetWind(Vector3(
+                environment_node.attribute("wind_x").as_float(default_wind.x),
+                environment_node.attribute("wind_y").as_float(default_wind.y),
+                environment_node.attribute("wind_z").as_float(default_wind.z)
+            ));
 
             // console variables: apply any cvars defined by the world
             // format:
@@ -3065,6 +3073,18 @@ namespace spartan
             //     <Variable name="r.restir_pt" value="1" />
             //   </ConsoleVariables>
             world_console_variables.clear();
+            // Atmosphere density belongs to the world, not the last scene or
+            // the editor's saved graphics settings. Persist these controls even
+            // when the source world predates them, so UI edits survive saving.
+            for (const char* name : { "r.atmosphere.mist_density", "r.atmosphere.mist_height",
+                                     "r.atmosphere.ground_mist", "r.atmosphere.mist_variation" })
+            {
+                if (ConsoleVariable* cvar = ConsoleRegistry::Get().Find(name))
+                {
+                    *cvar->m_value_ptr = cvar->m_default_value;
+                    world_console_variables.emplace_back(name);
+                }
+            }
             if (pugi::xml_node cvars_node = world_node.child("ConsoleVariables"))
             {
                 for (pugi::xml_node var_node = cvars_node.child("Variable"); var_node; var_node = var_node.next_sibling("Variable"))
@@ -3075,7 +3095,12 @@ namespace spartan
                     if (name && name[0] != '\0')
                     {
                         ConsoleRegistry::Get().SetValueFromString(name, value);
-                        world_console_variables.emplace_back(name);
+                        // Canonicalize legacy fog names; old worlds keep their
+                        // exact mist values and save with the human-facing names.
+                        const ConsoleVariable* cvar = ConsoleRegistry::Get().Find(name);
+                        const string canonical_name = cvar ? string(cvar->m_name) : string(name);
+                        if (find(world_console_variables.begin(), world_console_variables.end(), canonical_name) == world_console_variables.end())
+                            world_console_variables.emplace_back(canonical_name);
                     }
                 }
             }

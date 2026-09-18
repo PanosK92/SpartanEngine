@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <World name="liminal_space" description="Endless waiting rooms, windowed atriums and fluorescent passages. Follow the light; the building keeps going.">
  <ConsoleVariables>
-  <Variable name="r.fog" value="1.400000" />
+  <Variable name="r.atmosphere.mist_density" value="1.400000" />
   <Variable name="r.vhs" value="1.000000" />
   <Variable name="r.film_grain" value="0.000000" />
   <Variable name="r.chromatic_aberration" value="0.000000" />

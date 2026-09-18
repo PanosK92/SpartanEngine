@@ -91,11 +91,11 @@ namespace spartan
     extern TConsoleVar<float> cvar_light_flares_intensity_scale;
     extern TConsoleVar<float> cvar_light_flares_max_size_px;
     extern TConsoleVar<float> cvar_light_flares_occlusion;
-    extern TConsoleVar<float> cvar_fog;
+    extern TConsoleVar<float> cvar_mist_density;
     extern TConsoleVar<float> cvar_fog_debug;
-    extern TConsoleVar<float> cvar_fog_height;
-    extern TConsoleVar<float> cvar_fog_ground;
-    extern TConsoleVar<float> cvar_fog_variation;
+    extern TConsoleVar<float> cvar_mist_height;
+    extern TConsoleVar<float> cvar_ground_mist;
+    extern TConsoleVar<float> cvar_mist_variation;
     extern TConsoleVar<float> cvar_ssao;
     extern TConsoleVar<float> cvar_ray_traced_reflections;
     extern TConsoleVar<float> cvar_ray_traced_shadows;

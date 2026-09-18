@@ -375,6 +375,12 @@ namespace spartan
 
     void Light::SetFlag(const LightFlags flag, const bool enable)
     {
+        // Legacy scripts can still call this API, but cannot disable the medium's
+        // response to a light. New authoring controls expose density instead.
+        if (flag == LightFlags::Volumetric)
+        {
+            return;
+        }
         if (flag == LightFlags::ShadowsScreenSpace && enable && m_light_type != LightType::Directional)
         {
             return;
@@ -403,7 +409,6 @@ namespace spartan
                 if (flag & LightFlags::Shadows)
                 {
                     m_flags &= ~static_cast<uint32_t>(LightFlags::ShadowsScreenSpace);
-                    m_flags &= ~static_cast<uint32_t>(LightFlags::Volumetric);
                 }
             }
         }
@@ -1069,11 +1074,8 @@ namespace spartan
 
     bool Light::IsVolumetricEffective() const
     {
-        if (!(m_flags & static_cast<uint32_t>(LightFlags::Volumetric)))
-        {
-            return false;
-        }
-
+        // Scattering is a property of the medium, not an opt-in light effect.
+        // Keep the distance budget, but ignore the legacy serialized toggle.
         return is_within_distance(this, m_distance_volumetric);
     }
 

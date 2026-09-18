@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 #include "sky/clouds.hlsl"
 #include "fog_medium.hlsl"
+#include "sky/atmosphere.hlsl"
 //=======================
 
 #if defined(FOG_INJECT)
@@ -142,6 +143,8 @@ float3 fog_evaluate_light(
     float angular_footprint
 )
 {
+    // Celestial scattering in clear air is already evaluated by the atmosphere.
+    if (!in_water && light.is_directional() && !any(sigma_s > 0.0f)) return 0.0f;
     float3 light_dir;
     float local_atten;
     compute_volumetric_light_sample(light, sample_pos, light_dir, local_atten);
@@ -201,7 +204,22 @@ float3 fog_evaluate_light(
     // directly toward the sun; the previous narrow g=0.72 lobe hid most of them.
     float phase_g = in_water || light.is_directional() ? 0.4f : 0.6f;
     float phase = henyey_greenstein_phase(dot(ray_direction, light_dir), phase_g);
-    return light.color * light.intensity * local_atten * visibility * phase * tint * sigma_s;
+    float3 scattering = phase * sigma_s;
+    if (!in_water && !light.is_directional())
+    {
+        // Local lights illuminate the same molecular air and aerosols as the
+        // sun/sky. Mist adds particles; zero mist never removes the atmosphere.
+        // Baseline extinction is applied once by integrate_camera_atmosphere,
+        // which also supplies the sun/moon source (do not count those twice).
+        float height = get_height(sample_pos);
+        if (height >= 0.0f && height < atmosphere_radius - earth_radius)
+        {
+            float cosine = dot(ray_direction, light_dir);
+            scattering += rayleigh_scatter * get_rayleigh_density(height) * rayleigh_phase(cosine)
+                + mie_scatter * get_mie_density(height) * cornette_shanks_phase(cosine, mie_g);
+        }
+    }
+    return light.color * light.intensity * local_atten * visibility * tint * scattering;
 }
 
 float3 fog_ambient_medium(FogSkyProbe probe, float2 uv, float distance, float3 sample_pos, float3 ray_direction, bool in_water)
@@ -230,9 +248,8 @@ float3 fog_light_samples(
 {
     Light light;
     light.Build(light_index, surface);
-    // Water sunlight is part of the ocean transport, including caustic shafts.
-    // The light's optional atmospheric-fog flag must not turn the ocean black
-    // or remove its shafts (several worlds intentionally disable air beams).
+    // The GPU bit now denotes the scattering distance budget, not an authored
+    // enable switch. Celestial underwater transport always includes sunlight.
     if (!light.is_volumetric() && !(in_water && light.is_directional()))
     {
         return 0.0f;
@@ -258,7 +275,8 @@ float3 fog_light_medium(
     float angular_footprint = 0.0f
 )
 {
-    if (!any(sigma_s > 0.0f)) return 0.0f;
+    // Clear air still scatters local lights through the baseline atmosphere.
+    if (in_water && !any(sigma_s > 0.0f)) return 0.0f;
     Surface surface = fog_build_surface(positions[0], ray_direction, thread_id.xy, uv);
     float3 rate = 0.0f;
     if (buffer_frame.cluster_light_count > 0u)

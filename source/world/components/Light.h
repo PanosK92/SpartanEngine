@@ -78,7 +78,7 @@ namespace spartan
     {
         Shadows            = 1U << 0,
         ShadowsScreenSpace = 1U << 1,
-        Volumetric         = 1U << 2,
+        Volumetric         = 1U << 2, // legacy serialization/API bit; atmospheric scattering is automatic
         DayNightCycle      = 1U << 3, // rotates the light according to the time of day (game time)
         RealTimeCycle      = 1U << 4  // derives the time of day from the real world time
     };
@@ -100,7 +100,7 @@ namespace spartan
 
         // flags
         uint32_t GetFlags() const                    { return m_flags; }
-        bool GetFlag(const LightFlags flag)          { return m_flags & flag; }
+        bool GetFlag(const LightFlags flag)          { return flag == LightFlags::Volumetric || (m_flags & flag); }
         void SetFlag(const LightFlags flag, const bool enable = true);
 
         // type

@@ -49,12 +49,12 @@ static const float cumulus_density_mul    = 1.30;
 // coverage is authored on the directional light, 0 is clear and 1 is overcast
 float cloud_coverage_cumulus()
 {
-    return buffer_frame.cloud_coverage;
+    return saturate(buffer_frame.cloud_coverage);
 }
 
 float cloud_coverage_cirrus()
 {
-    return buffer_frame.cloud_coverage * 0.58;
+    return saturate(buffer_frame.cloud_coverage) * 0.58;
 }
 static const float cumulus_sigma_t        = 0.012;
 
@@ -68,11 +68,6 @@ static const float cirrus_noise_scale     = 1.0 / 12000.0;
 static const float cirrus_density_mul     = 0.015;
 static const float cirrus_sigma_t         = 0.001;
 static const float3 cirrus_streak_axis    = float3(1.0, 0.0, 0.0); // direction of the wispy streaks
-
-float cloud_cirrus_weight(float altitude)
-{
-    return smoothstep(6500.0, 9500.0, altitude);
-}
 
 // constant wind offsets, drift the noise sampling so two skybox bakes show different cloudscapes
 static const float3 cumulus_wind_offset   = float3(1234.0, 0.0,  567.0);
@@ -273,7 +268,7 @@ float cloud_time()
 // position used for height or shell intersection
 float3 cloud_wind_drift(float speed_mul)
 {
-    float3 wind = buffer_frame.wind * speed_mul;
+    float3 wind = float3(buffer_frame.wind.x, 0.0, buffer_frame.wind.z) * speed_mul;
     float3 seed = float3(buffer_frame.cloud_seed_offset.x, 0.0, buffer_frame.cloud_seed_offset.y);
     return seed - wind * cloud_time();
 }
@@ -511,7 +506,8 @@ float cloud_density_cumulus_cheap(float3 pos, Texture3D noise, SamplerState samp
 float cloud_density_cirrus(float3 pos, Texture3D noise, SamplerState samp)
 {
     float h         = length(pos - cloud_earth_center) - cloud_earth_radius;
-    float h_norm    = saturate((h - cirrus_bottom_alt) / cirrus_thickness);
+    if (h <= cirrus_bottom_alt || h >= cirrus_top_alt) return 0.0;
+    float h_norm    = (h - cirrus_bottom_alt) / cirrus_thickness;
     float profile   = cloud_height_profile_cirrus(h_norm);
     if (profile <= 0.0)
     {
@@ -542,7 +538,8 @@ float cloud_density_cirrus(float3 pos, Texture3D noise, SamplerState samp)
 float cloud_density_cirrus_cheap(float3 pos, Texture3D noise, SamplerState samp)
 {
     float h       = length(pos - cloud_earth_center) - cloud_earth_radius;
-    float h_norm  = saturate((h - cirrus_bottom_alt) / cirrus_thickness);
+    if (h <= cirrus_bottom_alt || h >= cirrus_top_alt) return 0.0;
+    float h_norm  = (h - cirrus_bottom_alt) / cirrus_thickness;
     float profile = cloud_height_profile_cirrus(h_norm);
     if (profile <= 0.0)
     {
@@ -603,29 +600,35 @@ float3 cloud_sun_illuminance(float3 sample_pos, float3 sun_dir, Texture2D transm
     return get_sun_radiance_toa() * trans;
 }
 
+float2 cloud_ray_shell(float3 origin, float3 dir, float radius_low, float radius_high);
+
 float cloud_sun_optical_depth_cumulus(
     float3 pos, float3 sun_dir,
     Texture3D noise, SamplerState samp,
-    float2 weather, float jitter)
+    float jitter)
 {
-    float optical_depth = 0.0;
-    float distance = 0.0;
-    static const float step_lengths[4] =
-    {
-        200.0,
-        500.0,
-        1200.0,
-        3000.0
-    };
+    float2 shell = cloud_ray_shell(pos, sun_dir,
+        cloud_earth_radius + cumulus_bottom_alt,
+        cloud_earth_radius + cumulus_top_alt);
+    if (shell.y <= 0.0) return 0.0;
 
+    // Cover the visible cloud field, including grazing light paths. Exponential
+    // spacing retains local self-shadow detail without a fixed 4.9 km cutoff.
+    float span = min(shell.y, cumulus_range_max);
+    float optical_depth = 0.0;
+    float previous_t = 0.0;
+    const int light_steps = 8;
     [unroll]
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < light_steps; i++)
     {
-        float step_length = step_lengths[i];
-        float offset      = frac(jitter + float(i) * 0.6180339887);
-        float3 p          = pos + sun_dir * (distance + step_length * offset);
-        optical_depth    += cloud_density_cumulus_cheap(p, noise, samp, weather) * step_length;
-        distance         += step_length;
+        float u = float(i + 1) / light_steps;
+        float t = 200.0 * (pow(1.0 + span / 200.0, u) - 1.0);
+        float offset = frac(jitter + float(i) * 0.6180339887);
+        float3 p = pos + sun_dir * lerp(previous_t, t, offset);
+        // Weather varies along the light path, especially near sunset.
+        float2 weather = cloud_weather(noise, samp, p);
+        optical_depth += cloud_density_cumulus_cheap(p, noise, samp, weather) * (t - previous_t);
+        previous_t = t;
     }
     return optical_depth;
 }
@@ -654,7 +657,7 @@ float3 cloud_multiscatter_attenuation(float3 sun_light, float optical_depth, flo
     for (int i = 0; i < 3; i++)
     {
         float a       = pow(0.5, float(i)); // extinction shrink
-        float b       = pow(0.6, float(i)); // contribution shrink, lower than the extinction ratio so shadowed cores actually go dark and forms read as sculpted
+        float b       = pow(0.6, float(i)); // contribution shrink for higher scattering orders
         float g_scale = pow(0.5, float(i)); // g shrink, deeper octaves more isotropic
         float beer    = exp(-optical_depth * cumulus_sigma_t * a);
         result       += sun_light * beer * cloud_phase(cos_theta, g_scale) * b;
@@ -666,107 +669,49 @@ float3 cloud_multiscatter_attenuation(float3 sun_light, float optical_depth, flo
 // raymarch helpers
 // =====================================================================
 
-float2 cloud_ray_shell(float3 origin, float3 dir, float radius_low, float radius_high)
+float2 cloud_ray_sphere(float3 origin, float3 dir, float radius)
 {
-    float3 oc       = origin - cloud_earth_center;
-    float oc_len_sq = dot(oc, oc);
-    float b         = dot(dir, oc);
-    float earth_distance = 1e30;
-    float earth_r_sq = cloud_earth_radius * cloud_earth_radius;
-    if (oc_len_sq > earth_r_sq - 1.0)
-    {
-        float c_e = oc_len_sq - earth_r_sq;
-        float d_e = b * b - c_e;
-        if (d_e > 0.0)
-        {
-            float t_e = -b - sqrt(d_e);
-            if (t_e > 0.0)
-            {
-                earth_distance = t_e;
-            }
-        }
-    }
-    
-    // outer shell, always present for any ray going up
-    float c_h = oc_len_sq - radius_high * radius_high;
-    float d_h = b * b - c_h;
-    if (d_h < 0.0)
-    {
-        return float2(-1.0, -1.0);
-    }
-    float sd_h = sqrt(d_h);
-    float t_h0 = -b - sd_h;
-    float t_h1 = -b + sd_h;
-    if (t_h1 < 0.0)
-    {
-        return float2(-1.0, -1.0);
-    }
-    
-    // inner shell, may be missed by purely tangential rays
-    float c_l   = oc_len_sq - radius_low * radius_low;
-    float d_l   = b * b - c_l;
-    float oc_len = sqrt(oc_len_sq);
-    
-    float t_enter;
-    float t_exit;
-    
-    if (oc_len < radius_low)
-    {
-        // origin sits below the layer, look up and the layer begins at the inner shell exit
-        if (d_l < 0.0)
-        {
-            t_enter = max(0.0, t_h0);
-            t_exit  = t_h1;
-        }
-        else
-        {
-            float t_l1 = -b + sqrt(d_l);
-            t_enter    = t_l1;
-            t_exit     = t_h1;
-        }
-    }
-    else if (oc_len < radius_high)
-    {
-        // origin sits inside the layer, march starts right away
-        t_enter = 0.0;
-        if (d_l > 0.0)
-        {
-            float t_l0 = -b - sqrt(d_l);
-            t_exit     = (t_l0 > 0.0) ? t_l0 : t_h1;
-        }
-        else
-        {
-            t_exit = t_h1;
-        }
-    }
-    else
-    {
-        // origin sits above the layer, only relevant for high altitude flight
-        if (t_h0 < 0.0)
-        {
-            return float2(-1.0, -1.0);
-        }
-        t_enter = t_h0;
-        if (d_l > 0.0)
-        {
-            float t_l0 = -b - sqrt(d_l);
-            t_exit     = (t_l0 > t_enter) ? t_l0 : t_h1;
-        }
-        else
-        {
-            t_exit = t_h1;
-        }
-    }
-    
-    t_exit = min(t_exit, earth_distance);
-    if (t_exit <= t_enter)
-    {
-        return float2(-1.0, -1.0);
-    }
-    return float2(max(t_enter, 0.0), t_exit);
+    float3 oc = origin - cloud_earth_center;
+    float r = length(oc);
+    float b = dot(oc, dir);
+    float c = (r - radius) * (r + radius);
+    float discriminant = b * b - c;
+    if (discriminant < 0.0) return -1.0;
+    float d = sqrt(discriminant);
+    float q = -b - (b >= 0.0 ? d : -d);
+    if (abs(q) < 1e-6) return 0.0;
+    float other = c / q;
+    return float2(min(q, other), max(q, other));
 }
 
-// cloudy weather is marched continuously, only empty weather uses coarse skips
+// Nearest contiguous interval in the cloud shell, clipped against the planet.
+float2 cloud_ray_shell(float3 origin, float3 dir, float radius_low, float radius_high)
+{
+    float r = length(origin - cloud_earth_center);
+    float2 outer = cloud_ray_sphere(origin, dir, radius_high);
+    if (outer.y <= 0.0) return -1.0;
+    float2 inner = cloud_ray_sphere(origin, dir, radius_low);
+    float t_enter = max(outer.x, 0.0);
+    float t_exit = outer.y;
+    if (r < radius_low)
+    {
+        t_enter = max(t_enter, inner.y);
+    }
+    else if (inner.x >= 0.0)
+    {
+        t_exit = min(t_exit, inner.x);
+    }
+
+    float2 earth = cloud_ray_sphere(origin, dir, cloud_earth_radius);
+    if (r < cloud_earth_radius ||
+        (earth.x >= 0.0 && dot(origin - cloud_earth_center, dir) < 0.0))
+    {
+        t_exit = min(t_exit, max(earth.x, 0.0));
+    }
+    return t_exit > t_enter ? float2(t_enter, t_exit) : float2(-1.0, -1.0);
+}
+
+// March continuously; weather can avoid density/light work but cannot bound empty space.
 void cloud_march_cumulus(
     float3 cam_pos, float3 view_dir, float3 sun_dir,
     Texture3D noise_tex, Texture2D transmittance_lut,
@@ -794,7 +739,6 @@ void cloud_march_cumulus(
     
     float cos_th = dot(view_dir, sun_dir);
     
-    const float empty_skip = 1600.0;
     const float density_thresh = 1e-4;
     float t = shell.x;
     
@@ -814,6 +758,10 @@ void cloud_march_cumulus(
             cumulus_step_max,
             smoothstep(4000.0, 30000.0, t)
         );
+        // Integrate only the remaining segment; jitter must not drop the final
+        // interval or let it extend through geometry/the shell boundary.
+        step_size = min(step_size, t_max - t);
+        if (step_size <= 0.0) break;
         float sample_offset = frac(jitter + float(march_i) * 0.6180339887);
         float t_s = t + step_size * sample_offset;
         if (t_s >= t_max)
@@ -830,11 +778,11 @@ void cloud_march_cumulus(
         }
         weather_age++;
         
-        // weather is a horizontal 2d lookup with cells ~26km across, so when it returns zero
-        // we can safely skip a big chunk of horizontal distance without missing any cloud
+        // Zero coverage is not a conservative empty-space bound: weather contains
+        // smaller octaves, so a 1.6 km jump can skip an entire cloud patch.
         if (weather.x <= 0.0)
         {
-            t += empty_skip;
+            t += step_size;
             weather_age = cumulus_weather_interval;
             continue;
         }
@@ -850,17 +798,25 @@ void cloud_march_cumulus(
             float step_trans  = exp(-ext * step_size);
             
             float light_jitter = frac(jitter + float(march_i) * 0.7548776662);
-            float sun_od      = cloud_sun_optical_depth_cumulus(pos, sun_dir, noise_tex, samp_noise, weather, light_jitter);
-            float3 sun_light  = cloud_sun_illuminance(pos, sun_dir, transmittance_lut, samp_lut);
-            float3 sun_scat   = cloud_multiscatter_attenuation(sun_light, sun_od, cos_th);
+            float3 sun_light = cloud_sun_illuminance(pos, sun_dir, transmittance_lut, samp_lut);
+            float3 sun_scat = 0.0;
+            if (any(sun_light > 1e-7))
+            {
+                float sun_od = cloud_sun_optical_depth_cumulus(pos, sun_dir, noise_tex, samp_noise, light_jitter);
+                sun_scat = cloud_multiscatter_attenuation(sun_light, sun_od, cos_th);
+            }
             
             float sun_elev = dot(sun_dir, float3(0.0, 1.0, 0.0));
             float day_w    = smoothstep(-0.05, 0.18, sun_elev);
-            float night_w  = 1.0 - day_w;
             
             float3 moon_dir   = buffer_frame.celestial_moon.xyz;
             float3 moon_light = cloud_sun_illuminance(pos, moon_dir, transmittance_lut, samp_lut) * cloud_moon_tint * buffer_frame.celestial_moon.w;
-            float3 moon_scat  = moon_light * cloud_phase(dot(view_dir, moon_dir));
+            float3 moon_scat = 0.0;
+            if (any(moon_light > 1e-7))
+            {
+                float moon_od = cloud_sun_optical_depth_cumulus(pos, moon_dir, noise_tex, samp_noise, light_jitter);
+                moon_scat = cloud_multiscatter_attenuation(moon_light, moon_od, dot(view_dir, moon_dir));
+            }
             
             // daytime ambient, sun driven
             float3 ambient_day = lerp(cloud_ambient_bottom, cloud_ambient_top, h_norm);
@@ -872,25 +828,15 @@ void cloud_march_cumulus(
             ambient_night       *= lerp(0.95, 1.20, h_norm);
             
             float3 ambient = lerp(ambient_night, ambient_day, day_w);
-            ambient       *= lerp(0.85, 1.0, transmittance);
             
-            float moon_elev_c = dot(moon_dir, float3(0.0, 1.0, 0.0));
-            float moon_vis    = smoothstep(-0.05, 0.12, moon_elev_c);
-            float3 direct =
-                (sun_scat * day_w + moon_scat * night_w * moon_vis) *
-                cloud_powder(density, cos_th);
+            // Atmospheric transmittance already handles the local planetary horizon.
+            float3 direct = sun_scat * cloud_powder(density, cos_th)
+                + moon_scat * cloud_powder(density, dot(view_dir, moon_dir));
             float3 luminance_in = direct + ambient;
             float3 s_int        = cloud_albedo * luminance_in * (1.0 - step_trans);
             
-            // aerial perspective. distant clouds add less in_scatter, and they also occlude
-            // less because the haze in front of them fills in whatever silhouette they would
-            // have cut. without this, grazing horizon rays integrate kilometres of cloud and
-            // produce a thick ring around the camera that does not exist in real life
-            float aerial_t      = exp(-t_s * cloud_aerial_falloff);
-            float effective_trans = lerp(1.0, step_trans, aerial_t);
-            
-            in_scatter    += transmittance * s_int * aerial_t;
-            transmittance *= effective_trans;
+            in_scatter    += transmittance * s_int;
+            transmittance *= step_trans;
             float opacity = trans_before - transmittance;
             distance_weight += opacity * t_s;
             opacity_weight  += opacity;
@@ -970,15 +916,9 @@ void cloud_march_cirrus(
             }
             float3 scat      = sun_light * phase * cirrus_shadow * day_w_c + moon_light * moon_phase * night_w_c * moon_vis_c + night_amb * night_w_c;
             
-            // aerial perspective, same model as the cumulus march. cirrus is higher up so the
-            // haze along grazing rays is a bit thinner, but the effect is significant enough
-            // that distant wisps would otherwise wrap around the camera as a high ring
-            float aerial_t      = exp(-t_s * cloud_aerial_falloff);
-            float effective_trans = lerp(1.0, step_trans, aerial_t);
-            
             float3 s_int   = cloud_albedo * scat * (1.0 - step_trans);
-            in_scatter    += transmittance * s_int * aerial_t;
-            transmittance *= effective_trans;
+            in_scatter    += transmittance * s_int;
+            transmittance *= step_trans;
             float opacity = trans_before - transmittance;
             distance_weight += opacity * t_s;
             opacity_weight  += opacity;
@@ -1006,13 +946,18 @@ void clouds_evaluate_detailed(
     float distance_weight = 0.0;
     float opacity_weight  = 0.0;
 
-    // cumulus first so cirrus sits behind the gaps
+    // Only cumulus is currently enabled; cirrus requires ordered layer integration.
     cloud_march_cumulus(cam_pos, view_dir, sun_dir,
         noise_tex, transmittance_lut,
         samp_noise, samp_lut,
         jitter, max_distance, in_scatter, transmittance, distance_weight, opacity_weight);
 
     representative_distance = opacity_weight > 1e-5 ? distance_weight / opacity_weight : 0.0;
+    // Approximate the cloud volume as one layer for aerial perspective. Applying
+    // haze per march step changes Beer extinction and makes opacity step-dependent.
+    float aerial_t = exp(-representative_distance * cloud_aerial_falloff);
+    in_scatter *= aerial_t;
+    transmittance = lerp(1.0, transmittance, aerial_t);
 }
 
 float2 cloud_depth_uv(float2 uv, float2 jitter)
@@ -1072,9 +1017,8 @@ float2 cloud_velocity(float3 view_dir, float distance, bool is_cloud)
     if (is_cloud)
     {
         previous_position = current_position;
-        float cloud_altitude = length(current_position - cloud_earth_center) - cloud_earth_radius;
-        float cirrus_weight = cloud_cirrus_weight(cloud_altitude);
-        float wind_multiplier = lerp(cumulus_wind_speed_mul, cirrus_wind_speed_mul, cirrus_weight);
+        // Tall cumulus still moves with cumulus wind. Altitude is not a layer ID.
+        float wind_multiplier = cumulus_wind_speed_mul;
         previous_position.xz -= buffer_frame.wind.xz * wind_multiplier * buffer_frame.delta_time;
     }
 
@@ -1193,9 +1137,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float3 view_dir = cloud_view_direction(uv);
     float reprojection_distance = current_distance > 0.0 ? current_distance : 10000.0;
     float3 world_position = get_camera_position() + view_dir * reprojection_distance;
-    float cloud_altitude = length(world_position - cloud_earth_center) - cloud_earth_radius;
-    float cirrus_weight = cloud_cirrus_weight(cloud_altitude);
-    float wind_multiplier = lerp(cumulus_wind_speed_mul, cirrus_wind_speed_mul, cirrus_weight);
+    float wind_multiplier = cumulus_wind_speed_mul;
     world_position.xz -= buffer_frame.wind.xz * wind_multiplier * buffer_frame.delta_time;
     matrix previous_vp = pass_is_right_eye() ? buffer_frame.view_projection_previous_unjittered_right : buffer_frame.view_projection_previous_unjittered;
     float4 previous_clip = mul(float4(world_position, 1.0), previous_vp);
@@ -1232,7 +1174,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
             float sampled_previous_depth  = linearize_depth(previous_depth_raw);
             depth_valid = scene_previous_clip.w > 0.0 && all(scene_previous_uv > 0.0) && all(scene_previous_uv < 1.0) && abs(sampled_previous_depth - expected_previous_depth) <= max(2.0, expected_previous_depth * 0.02);
         }
-        history_valid = distance_valid && depth_valid && !any(isnan(history));
+        history_valid = distance_valid && depth_valid && all(isfinite(history)) && isfinite(history_distance);
     }
 
     if (history_valid)
@@ -1246,6 +1188,9 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         current = lerp(history, current, current_weight);
         current_distance = lerp(history_distance, current_distance, current_weight);
     }
+    // Neighborhood margins can extend beyond physically valid radiance/transmittance.
+    current.rgb = max(current.rgb, 0.0);
+    current.a = saturate(current.a);
     if (current.a > 0.999)
     {
         current_distance = 0.0;
