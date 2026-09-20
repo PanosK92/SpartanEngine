@@ -34,15 +34,19 @@ namespace spartan
     {
     public:
         static void Initialize();
+        // Start a fresh timing epoch without changing the configured FPS limit.
+        // Call immediately before entering the frame loop to exclude loading time.
+        static void Reset();
         static void PostTick();
 
         // FPS Limit
-        static void SetFpsLimit(float fps);
+        static void SetFpsLimit(float fps); // negative: monitor, [30, 10000): capped, >=10000: unlocked
         static float GetFpsLimit();
         static FpsLimitType GetFpsLimitType();
         static void OnVsyncToggled(const bool enabled);
 
-        // Times
+        // Frame-boundary snapshots in a monotonic clock domain. Raw deltas include
+        // pacing and stalls; smoothed deltas are for display, not simulation.
         static double GetTimeMs();
         static double GetTimeSec();
         static double GetDeltaTimeMs();

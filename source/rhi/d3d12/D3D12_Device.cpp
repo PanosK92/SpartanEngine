@@ -817,6 +817,14 @@ namespace spartan
                 }
             }
 
+            // SV_InstanceID is draw-local in DXIL. Batched depth draws need the
+            // optional SM 6.8 start-instance semantic to recover their draw-data index.
+            D3D12_FEATURE_DATA_D3D12_OPTIONS21 options21 = {};
+            m_is_shader_base_instance_supported =
+                caps::highest_shader_model >= D3D_SHADER_MODEL_6_8 &&
+                SUCCEEDED(RHI_Context::device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS21, &options21, sizeof(options21))) &&
+                options21.ExtendedCommandInfoSupported;
+
             // xess requires shader model 6.4 or newer
             m_xess_supported = caps::highest_shader_model >= D3D_SHADER_MODEL_6_4;
             m_dlss_supported = GetPrimaryPhysicalDevice() && GetPrimaryPhysicalDevice()->IsNvidia();

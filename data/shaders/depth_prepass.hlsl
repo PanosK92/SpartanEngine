@@ -45,9 +45,17 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     _draw.material_index     = buffer_pass.material_index;
     _draw.uv_tiling          = float2(1.0f, 1.0f);
 #elif defined(INDEXED_MULTI_DRAW)
-gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_or_draw_index : SV_InstanceID, uint view_id : SV_ViewID)
+gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_or_draw_index : SV_InstanceID, uint view_id : SV_ViewID
+#if defined(API_D3D12) && defined(SP_BASE_INSTANCE)
+    , uint start_instance : SV_StartInstanceLocation
+#endif
+)
 {
     Vertex_PosUvNorTan input = to_full_vertex(cpu_input);
+    // Vulkan's InstanceIndex includes firstInstance; DXIL's InstanceID does not.
+#if defined(API_D3D12) && defined(SP_BASE_INSTANCE)
+    instance_or_draw_index += start_instance;
+#endif
     const bool is_multi_draw = buffer_pass.draw_index == 0xffffffffu;
     _draw                    = draw_data[is_multi_draw ? instance_or_draw_index : buffer_pass.draw_index];
     uint instance_id         = is_multi_draw ? _draw.instance_index : instance_or_draw_index;

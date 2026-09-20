@@ -167,6 +167,8 @@ namespace spartan
         static bool IsSupportedDlss()                                     { return m_dlss_supported; }
         static bool IsSupportedRayTracing()                               { return m_is_ray_tracing_supported; }
         static bool IsSupportedMeshShaders()                              { return m_is_mesh_shaders_supported; }
+        // Whether a vertex shader can recover firstInstance from an indirect draw.
+        static bool IsSupportedShaderBaseInstance()                       { return m_is_shader_base_instance_supported; }
 
         // markers
         static void MarkerBegin(RHI_CommandList* cmd_list, const char* name, const math::Vector4& color);
@@ -231,6 +233,7 @@ namespace spartan
         static bool m_dlss_supported;
         static bool m_is_ray_tracing_supported;
         static bool m_is_mesh_shaders_supported;
+        static bool m_is_shader_base_instance_supported;
         static void (*m_pipeline_bound_callback)(RHI_CommandList*);
         static void (*m_default_push_constants_callback)(RHI_CommandList*);
         static void (*m_pass_reset_callback)();

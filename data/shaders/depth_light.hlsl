@@ -24,9 +24,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 #ifdef INDEXED_MULTI_DRAW
-gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_or_draw_index : SV_InstanceID)
+gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_or_draw_index : SV_InstanceID
+#if defined(API_D3D12) && defined(SP_BASE_INSTANCE)
+    , uint start_instance : SV_StartInstanceLocation
+#endif
+)
 {
     Vertex_PosUvNorTan input = to_full_vertex(cpu_input);
+    // Match Vulkan when firstInstance carries the batched draw-data index.
+#if defined(API_D3D12) && defined(SP_BASE_INSTANCE)
+    instance_or_draw_index += start_instance;
+#endif
     const bool is_multi_draw = buffer_pass.draw_index == 0xffffffffu;
     _draw                    = draw_data[is_multi_draw ? instance_or_draw_index : buffer_pass.draw_index];
     uint instance_id         = is_multi_draw ? _draw.instance_index : instance_or_draw_index;

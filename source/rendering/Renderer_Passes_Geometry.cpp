@@ -416,7 +416,7 @@ namespace spartan
         RHI_Shader* multi_vertex_shader = GetShader(Renderer_Shader::depth_light_multi_draw_v);
         RHI_Shader* multi_pixel_shader  = GetShader(Renderer_Shader::depth_light_multi_draw_alpha_color_p);
         const bool shaders_supported    = multi_vertex_shader && multi_vertex_shader->IsCompiled() && (!has_alpha_draws || (multi_pixel_shader && multi_pixel_shader->IsCompiled()));
-        const bool use_batches          = shaders_supported && argument_buffer && argument_count != 0 && m_cpu_indirect_draw_arg_count + argument_count <= renderer_max_cpu_indirect_draws;
+        const bool use_batches          = RHI_Device::IsSupportedShaderBaseInstance() && shaders_supported && argument_buffer && argument_count != 0 && m_cpu_indirect_draw_arg_count + argument_count <= renderer_max_cpu_indirect_draws;
         if (use_batches)
         {
             vector<Sb_IndirectDrawArgs> arguments;
@@ -669,7 +669,9 @@ namespace spartan
 
         RHI_Buffer* argument_buffer = GetBuffer(Renderer_Buffer::CpuIndirectDrawArgs);
         RHI_Shader* multi_vertex_shader = GetShader(Renderer_Shader::depth_prepass_multi_draw_v);
-        const bool use_batches          = multi_vertex_shader && multi_vertex_shader->IsCompiled() && argument_buffer && argument_count != 0 && m_cpu_indirect_draw_arg_count + argument_count <= renderer_max_cpu_indirect_draws;
+        // Without shader access to firstInstance, use explicit per-draw constants:
+        // a wrong transform here poisons Hi-Z and culls visible grass patches.
+        const bool use_batches          = RHI_Device::IsSupportedShaderBaseInstance() && multi_vertex_shader && multi_vertex_shader->IsCompiled() && argument_buffer && argument_count != 0 && m_cpu_indirect_draw_arg_count + argument_count <= renderer_max_cpu_indirect_draws;
         if (use_batches)
         {
             vector<Sb_IndirectDrawArgs> arguments;

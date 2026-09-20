@@ -61,6 +61,7 @@ Editor::~Editor()
 
 void Editor::Tick()
 {
+    spartan::Timer::Reset();
     while (!spartan::Window::WantsToClose())
     {
         spartan::Profiler::FrameStart();
