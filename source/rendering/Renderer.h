@@ -511,6 +511,7 @@ namespace spartan
         void UpdateAccelerationStructures();
         // fills EmissiveTriangles from lod 0 of every emissive render, area weighted with a prefix sum so restir can sample in o(log n)
         void BuildEmissiveTriangleNeePool();
+        void EnsureEmissiveTriangleCapacity(uint32_t count);
         void RotateFrameBuffers();
     }
 }

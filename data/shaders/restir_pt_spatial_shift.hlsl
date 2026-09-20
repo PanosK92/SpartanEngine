@@ -63,7 +63,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (has_sample)
     {
         float  linear_depth = linearize_depth(depth);
-        float3 pos_ws       = get_position(uv);
+        float3 pos_ws       = restir_primary_position(uv);
         float3 normal_ws    = get_normal(uv);
 
         for (uint t = 0; t < RESTIR_PAIRING_COUNT; t++)
@@ -74,7 +74,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                 continue;
 
             float2 partner_uv        = (partner + 0.5f) / resolution;
-            float3 partner_pos_ws    = get_position(partner_uv);
+            float3 partner_pos_ws    = restir_primary_position(partner_uv);
             float4 partner_material  = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), partner_uv, 0);
             float3 partner_albedo    = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), partner_uv, 0).rgb);
             float  partner_roughness = max(partner_material.r, 0.04f);

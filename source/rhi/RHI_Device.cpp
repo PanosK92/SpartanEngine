@@ -21,6 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include "pch.h"
+#include <time.h>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
+#endif
 #include "RHI_Device.h"
 #include "RHI_SwapChain.h"
 #include "RHI_Queue.h"
@@ -35,6 +42,20 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    double RHI_Device::GetCpuTimestampMs()
+    {
+#ifdef _WIN32
+        static const double frequency = [] { LARGE_INTEGER f; QueryPerformanceFrequency(&f); return static_cast<double>(f.QuadPart); }();
+        LARGE_INTEGER tick;
+        QueryPerformanceCounter(&tick);
+        return static_cast<double>(tick.QuadPart) * 1000.0 / frequency;
+#else
+        timespec tick = {};
+        clock_gettime(CLOCK_MONOTONIC, &tick);
+        return static_cast<double>(tick.tv_sec) * 1000.0 + static_cast<double>(tick.tv_nsec) * 1e-6;
+#endif
+    }
+
     // device properties
     float RHI_Device::m_timestamp_period                            = 0;
     uint64_t RHI_Device::m_min_uniform_buffer_offset_alignment      = 0;

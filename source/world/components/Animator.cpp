@@ -235,11 +235,22 @@ namespace spartan
         batch_skinning = false;
         if (skinning_jobs.empty()) return;
         SP_PROFILE_CPU_START("animation_skin_batch");
-        ThreadPool::ParallelLoop([](uint32_t begin, uint32_t end)
+        // Character meshes have very different vertex counts. Feed expensive jobs
+        // first and let workers claim the next mesh instead of fixing equal job counts.
+        static vector<uint32_t> order;
+        order.resize(skinning_jobs.size());
+        for (uint32_t i = 0; i < order.size(); ++i) order[i] = i;
+        sort(order.begin(), order.end(), [](uint32_t a, uint32_t b)
         {
-            for (uint32_t i = begin; i < end; ++i)
+            return skinning_jobs[a].animator->m_bind_vertices.size() > skinning_jobs[b].animator->m_bind_vertices.size();
+        });
+        atomic<uint32_t> next_job = 0;
+        ThreadPool::ParallelLoop([&next_job](uint32_t, uint32_t)
+        {
+            for (uint32_t i = next_job.fetch_add(1, memory_order_relaxed); i < order.size();
+                i = next_job.fetch_add(1, memory_order_relaxed))
             {
-                SkinningJob& job = skinning_jobs[i];
+                SkinningJob& job = skinning_jobs[order[i]];
                 Animator* animator = job.animator;
                 const auto& skeleton = job.mesh->GetSkeleton();
                 const auto* binding = job.mesh->GetSkeletalMeshBinding();
@@ -255,9 +266,12 @@ namespace spartan
         {
             if (!job.succeeded) continue;
             Animator* animator = job.animator;
-            job.mesh->GetVertices() = animator->m_skinned_vertices;
-            GeometryBuffer::UpdateVertices(animator->m_skinned_vertices.data(), job.mesh->GetGlobalVertexOffset(),
-                static_cast<uint32_t>(animator->m_skinned_vertices.size()));
+            // Keep both allocations: the old mesh storage becomes next frame's
+            // skinning destination, removing one full-mesh copy from the main thread.
+            job.mesh->GetVertices().swap(animator->m_skinned_vertices);
+            const auto& vertices = job.mesh->GetVertices();
+            GeometryBuffer::UpdateVertices(vertices.data(), job.mesh->GetGlobalVertexOffset(),
+                static_cast<uint32_t>(vertices.size()));
             animator->MarkBlasNeedsRefit(job.mesh.get());
         }
         skinning_jobs.clear();

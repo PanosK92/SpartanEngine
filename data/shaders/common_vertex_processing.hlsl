@@ -661,7 +661,7 @@ struct vertex_processing
 
             // height fraction along the blade, base = 0, tip = 1
             float h          = saturate(vertex.uv_misc.z);
-            float h_cantilever = pow(h, 1.5f); // stiffer at the base than a linear taper
+            float h_cantilever = h * sqrt(h); // stiffer at the base than a linear taper
 
             // retain subtle blade variation without breaking gust coherence
             float2 inst          = wind_instance_phase_freq(instance_pos);

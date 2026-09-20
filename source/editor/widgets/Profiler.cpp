@@ -19,1134 +19,581 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
 #include "pch.h"
 #include "Profiler.h"
 #include "../imgui/ImGui_EditorUi.h"
-#include "../imgui/ImGui_Extension.h"
+
 #include "profiling/Profiler.h"
 #include "resource/ResourceCache.h"
-#include "../rhi/RHI_Device.h"
-#include "../memory/Allocator.h"
-//===================================
+#include "rhi/RHI_Device.h"
+#include "memory/Allocator.h"
+#include <cmath>
 
-//= NAMESPACES ===============
 using namespace std;
-using namespace spartan::math;
-//============================
 
 namespace
 {
-    bool toggle_button(const char* label, const bool active)
+    constexpr size_t history_limit = 120;
+    constexpr const char* lane_names[] = { "CPU / Main thread", "GPU / Graphics", "GPU / Compute", "GPU / Copy", "GPU / Present", "GPU / Other" };
+    constexpr ImU32 canvas = IM_COL32(24, 26, 31, 255);
+    constexpr ImU32 panel = IM_COL32(32, 35, 41, 255);
+    constexpr ImU32 grid = IM_COL32(49, 53, 61, 255);
+    constexpr ImU32 muted = IM_COL32(158, 168, 182, 255);
+    constexpr ImU32 text = IM_COL32(230, 234, 241, 255);
+    constexpr ImU32 accent = IM_COL32(99, 191, 232, 255);
+
+    int lane_for(const spartan::TimeBlock& block)
     {
-        if (active)
+        if (block.GetType() == spartan::TimeBlockType::Cpu) return 0;
+        switch (block.GetQueueType())
         {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+            case spartan::RHI_Queue_Type::Graphics: return 1;
+            case spartan::RHI_Queue_Type::Compute: return 2;
+            case spartan::RHI_Queue_Type::Copy: return 3;
+            case spartan::RHI_Queue_Type::Present: return 4;
+            default: return 5;
         }
-        const bool clicked = ImGui::Button(label);
-        if (active)
-        {
-            ImGui::PopStyleColor();
-        }
-        return clicked;
     }
 
-    ImU32 get_time_block_color(const char* name, bool is_compute = false)
+    ImU32 scope_color(const string& name, int lane, bool dimmed = false)
     {
-        if (is_compute)
-        {
-            // red hue range for compute blocks, varied by name hash for distinction
-            size_t hash_value = hash<string>{}(name);
-            float hue = 0.0f + static_cast<float>(hash_value % 30) / 360.0f; // 0-30 degrees (red range)
-            ImVec4 color = ImColor::HSV(hue, 0.7f, 0.8f);
-            return IM_COL32(
-                static_cast<int>(color.x * 255),
-                static_cast<int>(color.y * 255),
-                static_cast<int>(color.z * 255),
-                255
-            );
-        }
-
-        size_t hash_value = hash<string>{}(name);
-        float hue = static_cast<float>(hash_value % 360) / 360.0f;
-        ImVec4 color = ImColor::HSV(hue, 0.55f, 0.75f);
-        return IM_COL32(
-            static_cast<int>(color.x * 255),
-            static_cast<int>(color.y * 255),
-            static_cast<int>(color.z * 255),
-            255
-        );
+        // Stable colors across captures; related tracks retain a recognizable palette.
+        uint32_t hash = 2166136261u;
+        for (unsigned char c : name) hash = (hash ^ c) * 16777619u;
+        const float base[] = { 0.31f, 0.55f, 0.08f, 0.75f, 0.91f, 0.65f };
+        const float hue = base[lane] + static_cast<float>(hash % 45) / 360.0f;
+        ImVec4 color = ImColor::HSV(hue, 0.48f, dimmed ? 0.26f : 0.72f);
+        return ImGui::ColorConvertFloat4ToU32(color);
     }
 
-    void show_memory_bar(const char* label, float used_mb, float budget_mb, float total_mb, ImVec2 size = ImVec2(-1, 0))
+    bool toggle(const char* label, bool active)
     {
-        ImVec2 pos  = ImGui::GetCursorScreenPos();
-        float full_width = (size.x <= 0.0f ? ImGui::GetContentRegionAvail().x : size.x);
-        float full_height = (size.y <= 0.0f ? ImGui::GetTextLineHeightWithSpacing() : size.y);
-
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
-        ImU32 col_total  = IM_COL32(20, 30, 60, 255);
-        ImU32 col_budget = IM_COL32(80, 150, 220, 255);
-        float used_fraction = (budget_mb > 0.0f) ? (used_mb / budget_mb) : 0.0f;
-        used_fraction = ImClamp(used_fraction, 0.0f, 1.0f);
-        ImU32 col_used;
-        if (used_fraction < 0.5f)
-        {
-            float t = used_fraction / 0.5f;
-            col_used = IM_COL32(
-                (int)(80  + t * (220-80)),
-                (int)(220 - t * (220-180)),
-                80, 255
-            );
-        }
-        else
-        {
-            float t = (used_fraction - 0.5f) / 0.5f;
-            col_used = IM_COL32(220, (int)(180 - t * 180), 80, 255);
-        }
-
-        draw_list->AddRectFilled(pos, ImVec2(pos.x + full_width, pos.y + full_height), col_total);
-
-        float budget_fraction = (budget_mb > 0.0f && total_mb > 0.0f) ? (budget_mb / total_mb) : 0.0f;
-        draw_list->AddRectFilled(pos, ImVec2(pos.x + full_width * budget_fraction, pos.y + full_height), col_budget);
-        draw_list->AddRectFilled(pos, ImVec2(pos.x + full_width * used_fraction * budget_fraction, pos.y + full_height), col_used);
-        draw_list->AddRect(pos, ImVec2(pos.x + full_width, pos.y + full_height), IM_COL32(255, 255, 255, 255));
-
-        char buf[128];
-        snprintf(buf, sizeof(buf), "%s %.0f/%.0f MB (Budget %.0f MB)", label, used_mb, total_mb, budget_mb);
-        ImGui::RenderTextClipped(pos, ImVec2(pos.x + full_width, pos.y + full_height), buf, nullptr, nullptr, ImVec2(0.5f, 0.5f));
-
-        ImGui::Dummy(ImVec2(full_width, full_height));
+        if (active) ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(49, 88, 109, 255));
+        const bool pressed = ImGui::Button(label);
+        if (active) ImGui::PopStyleColor();
+        return pressed;
     }
-
-    int mode_hardware = 0; // 0: gpu, 1: cpu
-    int mode_sort     = 1; // 0: alphabetically, 1: by duration
-    int mode_view     = 1; // 0: list, 1: timeline
 }
 
 Profiler::Profiler(Editor* editor) : Widget(editor)
 {
-    m_title         = "Profiler";
-    m_visible       = false;
+    m_title = "Profiler";
+    m_visible = false;
     m_toolbar_order = 1;
-    m_toolbar_icon  = static_cast<int>(spartan::IconType::Profiler);
-    m_size_initial  = Vector2(1000, 715);
-    m_size_min      = Vector2(600, 500);
-    m_plot.fill(16.0f);
+    m_toolbar_icon = static_cast<int>(spartan::IconType::Profiler);
+    m_size_initial = spartan::math::Vector2(1180, 800);
+    m_size_min = spartan::math::Vector2(600, 500);
 }
 
 void Profiler::OnTick()
 {
-    // let the runtime profiler know if the widget is open so it can skip the gpu stall when nobody is watching
-    spartan::Profiler::SetVisualized(m_visible);
+    spartan::Profiler::SetVisualized(m_visible && !m_paused);
+    if (m_visible && !m_paused) CaptureLatest();
+}
+
+void Profiler::CaptureLatest()
+{
+    const uint64_t revision = spartan::Profiler::GetCaptureRevision();
+    if (revision == m_last_revision) return;
+    m_last_revision = revision;
+    const auto& blocks = spartan::Profiler::GetTimeBlocks();
+    if (blocks.empty()) return;
+
+    Capture capture;
+    capture.revision = spartan::Profiler::GetCapturedFrameNumber();
+    capture.wall = spartan::Profiler::GetCapturedFrameDurationMs();
+    capture.incomplete = spartan::Profiler::GetCapturedIncompleteCount();
+    capture.dropped = spartan::Profiler::GetCapturedDroppedTimestamps();
+    vector<pair<float, float>> cpu_intervals, wait_intervals, gpu_intervals;
+    auto covered_ms = [](vector<pair<float, float>>& intervals)
+    {
+        sort(intervals.begin(), intervals.end());
+        float end = -FLT_MAX, covered = 0.0f;
+        for (const auto& interval : intervals)
+        {
+            covered += max(0.0f, interval.second - max(end, interval.first));
+            end = max(end, interval.second);
+        }
+        return covered;
+    };
+    capture.pacing = spartan::Profiler::GetCapturedPacingTimeMs();
+    float gpu_start = FLT_MAX;
+    float gpu_end = 0.0f;
+    for (const auto& block : blocks)
+    {
+        if (!block.IsComplete() || !block.GetName() || !isfinite(block.GetDuration()) || !isfinite(block.GetStartMs()) ||
+            !isfinite(block.GetEndMs()) || block.GetEndMs() < block.GetStartMs()) continue;
+        const int lane = lane_for(block);
+        if (!block.IsTimingValid()) { if (lane != 0) ++capture.invalid_gpu; continue; }
+        if (lane == 0)
+        {
+            if (!block.HasParent()) cpu_intervals.emplace_back(block.GetStartMs(), block.GetEndMs());
+            if (spartan::Profiler::IsCpuWait(block.GetName())) wait_intervals.emplace_back(block.GetStartMs(), block.GetEndMs());
+        }
+        else
+        {
+            capture.has_gpu = true;
+            capture.calibrated &= block.IsGpuCalibrated();
+            capture.calibration_deviation_ms = max(capture.calibration_deviation_ms, block.GetCalibrationDeviationMs());
+            gpu_intervals.emplace_back(block.GetStartMs(), block.GetEndMs());
+        }
+        capture.scopes.push_back({ block.GetName(), block.GetStartMs(), block.GetEndMs(),
+            block.GetDuration(), block.GetTreeDepth(), lane, block.GetId(), block.GetParentId() });
+        if (lane != 0)
+        {
+            gpu_start = min(gpu_start, block.GetStartMs());
+            gpu_end = max(gpu_end, block.GetEndMs());
+        }
+    }
+    // Subtract the union of direct children, not their sum (GPU scopes may overlap).
+    unordered_map<uint32_t, vector<pair<float, float>>> children;
+    unordered_map<uint32_t, const Scope*> by_id;
+    for (const auto& scope : capture.scopes) by_id[scope.id] = &scope;
+    for (const auto& scope : capture.scopes)
+    {
+        auto parent = by_id.find(scope.parent_id);
+        if (parent == by_id.end() || parent->second->lane != scope.lane) continue;
+        const float start = max(scope.start, parent->second->start);
+        const float end = min(scope.end, parent->second->end);
+        if (end > start) children[scope.parent_id].emplace_back(start, end);
+    }
+    for (auto& scope : capture.scopes) scope.self = max(0.0f, scope.duration - covered_ms(children[scope.id]));
+    capture.cpu = covered_ms(cpu_intervals);
+    capture.wait = covered_ms(wait_intervals);
+    capture.gpu_covered = covered_ms(gpu_intervals);
+    capture.gpu = gpu_start == FLT_MAX ? 0.0f : gpu_end - gpu_start;
+    if (capture.scopes.empty()) return;
+    m_history.push_back(move(capture));
+    if (m_history.size() > history_limit) m_history.pop_front();
+    m_selected_capture = static_cast<int>(m_history.size()) - 1;
+    m_selected_scope = -1;
+}
+
+void Profiler::SelectCapture(int index)
+{
+    if (index < 0 || index >= static_cast<int>(m_history.size())) return;
+    m_selected_capture = index;
+    m_selected_scope = -1;
+    m_paused = true;
+    m_fit = true;
+}
+
+void Profiler::DrawHistory()
+{
+    const float dpi = spartan::Window::GetDpiScale();
+    ImGui::TextDisabled("FRAME HISTORY");
+    ImGui::SameLine();
+    ImGui::TextDisabled("%zu / %zu samples", m_history.size(), history_limit);
+    ImGui::SameLine();
+    ImGui::TextDisabled("| click to inspect");
+    const ImVec2 origin = ImGui::GetCursorScreenPos();
+    const ImVec2 size(max(1.0f, ImGui::GetContentRegionAvail().x), 72.0f * dpi);
+    ImGui::InvisibleButton("##capture_history", size);
+    const bool hovered = ImGui::IsItemHovered();
+    auto* draw = ImGui::GetWindowDrawList();
+    draw->AddRectFilled(origin, ImVec2(origin.x + size.x, origin.y + size.y), canvas);
+    float maximum = 33.334f;
+    for (const auto& capture : m_history) maximum = max(maximum, capture.wall * 1.1f);
+    const float bar_width = size.x / static_cast<float>(history_limit);
+    const float baseline = origin.y + size.y - 4.0f * dpi;
+    const float graph_height = size.y - 12.0f * dpi;
+    const float budget_y = baseline - (16.667f / maximum) * graph_height;
+    draw->AddLine(ImVec2(origin.x, budget_y), ImVec2(origin.x + size.x, budget_y), grid);
+    draw->AddText(ImVec2(origin.x + 5.0f * dpi, origin.y + 3.0f * dpi), muted, "16.67 ms budget");
+    for (int i = 0; i < static_cast<int>(m_history.size()); ++i)
+    {
+        const float x = origin.x + static_cast<float>(i) * bar_width;
+        const float top = baseline - ImClamp(m_history[i].wall / maximum, 0.0f, 1.0f) * graph_height;
+        const ImU32 color = i == m_selected_capture ? accent :
+            (m_history[i].wall > 16.667f ? IM_COL32(196, 143, 81, 255) : IM_COL32(81, 132, 157, 255));
+        draw->AddRectFilled(ImVec2(x + 1.0f, min(top, baseline - 1.0f)), ImVec2(x + bar_width, baseline), color);
+        if (i == m_selected_capture)
+            draw->AddRect(ImVec2(x, origin.y), ImVec2(x + bar_width, origin.y + size.y), accent);
+    }
+    if (hovered && !m_history.empty())
+    {
+        const int index = static_cast<int>((ImGui::GetIO().MousePos.x - origin.x) / bar_width);
+        if (index >= 0 && index < static_cast<int>(m_history.size()))
+        {
+            const auto& capture = m_history[index];
+            ImGui::SetTooltip("Sample #%llu\nWall %.3f ms | CPU %.3f ms\nGPU span %.3f ms | Pacing %.3f ms",
+                static_cast<unsigned long long>(capture.revision), capture.wall, capture.cpu, capture.gpu, capture.pacing);
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) SelectCapture(index);
+        }
+    }
+}
+
+void Profiler::DrawTimeline(const Capture& capture, float height)
+{
+    const float dpi = spartan::Window::GetDpiScale();
+    const float row = max(22.0f * dpi, ImGui::GetTextLineHeight() + 5.0f * dpi);
+    const float header = row + 4.0f * dpi;
+    ImGui::BeginChild("##timeline", ImVec2(0, height), ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollWithMouse);
+    const float width = max(1.0f, ImGui::GetContentRegionAvail().x);
+    const float labels = min(170.0f * dpi, width * 0.28f);
+    const float track_width = max(1.0f, width - labels);
+    const ImVec2 origin = ImGui::GetCursorScreenPos();
+    auto* draw = ImGui::GetWindowDrawList();
+    uint32_t depths[6] = {};
+    uint32_t min_depths[6] = { UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX };
+    int counts[6] = {};
+    float extent = max(capture.wall, 0.1f);
+    float first = 0.0f;
+    for (const auto& scope : capture.scopes)
+    {
+        depths[scope.lane] = max(depths[scope.lane], scope.depth);
+        min_depths[scope.lane] = min(min_depths[scope.lane], scope.depth);
+        ++counts[scope.lane];
+        extent = max(extent, scope.end);
+        first = min(first, scope.start);
+    }
+    float total_height = header;
+    for (int lane = 0; lane < 6; ++lane)
+    {
+        if ((lane == 0 ? !m_show_cpu : !m_show_gpu) || counts[lane] == 0) continue;
+        total_height += header + (m_collapsed[lane] ? 0.0f : row * static_cast<float>(depths[lane] - min_depths[lane] + 1)) + 6.0f * dpi;
+    }
+    total_height = max(total_height, ImGui::GetContentRegionAvail().y);
+    if (m_fit || m_auto_fit)
+    {
+        m_offset_ms = first;
+        m_range_ms = (extent - first) * 1.04f;
+        m_fit = false;
+    }
+    ImGui::InvisibleButton("##timeline_input", ImVec2(width, total_height),
+        ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
+    const bool hovered = ImGui::IsItemHovered();
+    const auto& io = ImGui::GetIO();
+    if (hovered) ImGui::SetKeyOwner(ImGuiKey_MouseWheelY, ImGui::GetItemID());
+    const bool over_tracks = io.MousePos.x >= origin.x + labels;
+    if (hovered && over_tracks && io.MouseWheel != 0.0f)
+    {
+        const float fraction = ImClamp((io.MousePos.x - origin.x - labels) / track_width, 0.0f, 1.0f);
+        const float anchor = m_offset_ms + fraction * m_range_ms;
+        m_range_ms = ImClamp(m_range_ms * powf(0.8f, io.MouseWheel), 0.01f, max(1000.0f, extent * 2.0f));
+        m_offset_ms = max(first, anchor - fraction * m_range_ms);
+        m_auto_fit = false;
+    }
+    if (ImGui::IsItemActive() && (ImGui::IsMouseDragging(ImGuiMouseButton_Right) || ImGui::IsMouseDragging(ImGuiMouseButton_Middle)))
+    {
+        m_offset_ms = max(first, m_offset_ms - io.MouseDelta.x * m_range_ms / track_width);
+        m_auto_fit = false;
+    }
+    // Wheel over the track names scrolls vertically; wheel over events zooms around the cursor.
+    if (hovered && !over_tracks && io.MouseWheel != 0.0f)
+        ImGui::SetScrollY(ImGui::GetScrollY() - io.MouseWheel * row * 3.0f);
+
+    draw->AddRectFilled(origin, ImVec2(origin.x + width, origin.y + total_height), canvas);
+    const float x_begin = origin.x + labels;
+    const float x_end = origin.x + width;
+    auto to_x = [&](float ms) { return x_begin + (ms - m_offset_ms) / m_range_ms * track_width; };
+    float y = origin.y + header;
+    int hovered_scope = -1;
+    float hovered_width = FLT_MAX;
+    for (int lane = 0; lane < 6; ++lane)
+    {
+        if ((lane == 0 ? !m_show_cpu : !m_show_gpu) || counts[lane] == 0) continue;
+        const float lane_height = header + (m_collapsed[lane] ? 0.0f : row * static_cast<float>(depths[lane] - min_depths[lane] + 1));
+        draw->AddRectFilled(ImVec2(origin.x, y), ImVec2(x_end, y + header), panel);
+        draw->AddRectFilled(ImVec2(origin.x, y + header), ImVec2(x_begin, y + lane_height), panel);
+        char label[80];
+        snprintf(label, sizeof(label), "%s %s", m_collapsed[lane] ? ">" : "v", lane_names[lane]);
+        draw->PushClipRect(ImVec2(origin.x, y), ImVec2(x_begin - 2.0f * dpi, y + lane_height), true);
+        draw->AddText(ImVec2(origin.x + 6.0f * dpi, y + 4.0f * dpi), text, label);
+        draw->PopClipRect();
+        char count[32];
+        snprintf(count, sizeof(count), "%d scopes", counts[lane]);
+        draw->AddText(ImVec2(x_begin + 8.0f * dpi, y + 4.0f * dpi), muted, count);
+        if (hovered && ImGui::IsMouseHoveringRect(ImVec2(origin.x, y), ImVec2(x_begin, y + header)) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            m_collapsed[lane] = !m_collapsed[lane];
+        draw->AddLine(ImVec2(x_begin, y), ImVec2(x_begin, y + lane_height), grid);
+        if (!m_collapsed[lane])
+        {
+            draw->PushClipRect(ImVec2(x_begin, y + header), ImVec2(x_end, y + lane_height), true);
+            for (int i = 0; i < static_cast<int>(capture.scopes.size()); ++i)
+            {
+                const auto& scope = capture.scopes[i];
+                if (scope.lane != lane || scope.end < m_offset_ms || scope.start > m_offset_ms + m_range_ms) continue;
+                const float x0 = max(x_begin, to_x(scope.start));
+                const float x1 = min(x_end, max(x0 + 1.0f, to_x(scope.end)));
+                const float y0 = y + header + static_cast<float>(scope.depth - min_depths[lane]) * row + 1.0f;
+                const ImVec2 p0(x0, y0), p1(x1, y0 + row - 2.0f);
+                const bool matches = m_filter.PassFilter(scope.name.c_str());
+                draw->AddRectFilled(p0, p1, scope_color(scope.name, lane, !matches));
+                if (i == m_selected_scope) draw->AddRect(p0, p1, text, 0.0f, 2.0f * dpi);
+                if (x1 - x0 > 12.0f * dpi)
+                {
+                    draw->PushClipRect(p0, p1, true);
+                    draw->AddText(ImVec2(x0 + 4.0f * dpi, y0 + 2.0f * dpi), matches ? text : muted, scope.name.c_str());
+                    draw->PopClipRect();
+                }
+                if (hovered && matches && ImGui::IsMouseHoveringRect(p0, p1) && x1 - x0 < hovered_width)
+                {
+                    hovered_scope = i;
+                    hovered_width = x1 - x0;
+                }
+            }
+            draw->PopClipRect();
+        }
+        y += lane_height + 6.0f * dpi;
+    }
+
+    // Grid is drawn after lane backgrounds, so it remains visible between nested events.
+    const float target = m_range_ms / max(1.0f, track_width / (95.0f * dpi));
+    const float magnitude = powf(10.0f, floorf(log10f(max(target, 0.0001f))));
+    const float normalized = target / magnitude;
+    const float step = (normalized <= 1.0f ? 1.0f : normalized <= 2.0f ? 2.0f : normalized <= 5.0f ? 5.0f : 10.0f) * magnitude;
+    draw->PushClipRect(ImVec2(x_begin, origin.y), ImVec2(x_end, origin.y + total_height), true);
+    for (float tick = ceilf(m_offset_ms / step) * step; tick <= m_offset_ms + m_range_ms; tick += step)
+    {
+        const float x = to_x(tick);
+        draw->AddLine(ImVec2(x, origin.y + header), ImVec2(x, origin.y + total_height), IM_COL32(180, 190, 210, 22));
+    }
+    // Sticky ruler stays visible when scrolling tall CPU stacks.
+    const float ruler_y = origin.y + ImGui::GetScrollY();
+    draw->AddRectFilled(ImVec2(x_begin, ruler_y), ImVec2(x_end, ruler_y + header), panel);
+    for (float tick = ceilf(m_offset_ms / step) * step; tick <= m_offset_ms + m_range_ms; tick += step)
+    {
+        char label[32];
+        snprintf(label, sizeof(label), "%.2f ms", tick);
+        draw->AddText(ImVec2(to_x(tick) + 3.0f * dpi, ruler_y + 4.0f * dpi), muted, label);
+    }
+    draw->PopClipRect();
+    draw->AddRectFilled(ImVec2(origin.x, ruler_y), ImVec2(x_begin, ruler_y + header), panel);
+    draw->AddText(ImVec2(origin.x + 6.0f * dpi, ruler_y + 4.0f * dpi), muted, "TRACKS");
+    if (hovered_scope >= 0 && io.MousePos.y >= ruler_y + header)
+    {
+        const auto& scope = capture.scopes[hovered_scope];
+        ImGui::SetTooltip("%s\n%s\nDuration %.4f ms\nStart %.4f ms | End %.4f ms\nClick to select; double-click to focus",
+            scope.name.c_str(), lane_names[scope.lane], scope.duration, scope.start, scope.end);
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        {
+            m_selected_scope = hovered_scope;
+            m_inspect_narrow = true;
+            m_paused = true;
+        }
+        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+        {
+            m_range_ms = max(0.01f, (scope.end - scope.start) * 1.2f);
+            m_offset_ms = max(0.0f, scope.start - m_range_ms * 0.08f);
+            m_auto_fit = false;
+        }
+    }
+    if (!m_show_cpu && !m_show_gpu)
+        draw->AddText(ImVec2(x_begin + 8.0f * dpi, ruler_y + header + 8.0f * dpi), muted, "Enable CPU or GPU to show tracks.");
+    ImGui::EndChild();
+}
+
+void Profiler::DrawDetails(const Capture& capture, float height)
+{
+    const float dpi = spartan::Window::GetDpiScale();
+    ImGui::BeginChild("##scope_details", ImVec2(0, height), ImGuiChildFlags_Borders);
+    const bool wide = ImGui::GetContentRegionAvail().x >= 760.0f * dpi;
+    const float table_width = wide ? ImGui::GetContentRegionAvail().x * 0.63f : 0.0f;
+    if (!wide)
+    {
+        if (toggle("Scopes", !m_inspect_narrow)) m_inspect_narrow = false;
+        ImGui::SameLine();
+        if (toggle("Selection", m_inspect_narrow)) m_inspect_narrow = true;
+    }
+    const bool show_list = wide || !m_inspect_narrow;
+    const bool show_inspector = wide || m_inspect_narrow;
+    if (show_list)
+    {
+        ImGui::BeginChild("##scope_list", ImVec2(table_width, 0.0f));
+        vector<int> order;
+        for (int i = 0; i < static_cast<int>(capture.scopes.size()); ++i)
+        {
+            const auto& scope = capture.scopes[i];
+            if ((scope.lane == 0 ? m_show_cpu : m_show_gpu) && m_filter.PassFilter(scope.name.c_str())) order.push_back(i);
+        }
+        ImGui::TextDisabled("SCOPES / %zu matching", order.size());
+        if (ImGui::BeginTable("##scope_table", 5, ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY |
+            ImGuiTableFlags_Resizable | ImGuiTableFlags_Sortable | ImGuiTableFlags_BordersInnerV, ImVec2(0, 0)))
+        {
+            ImGui::TableSetupColumn("Scope", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Track", ImGuiTableColumnFlags_WidthFixed, 95.0f * dpi);
+            ImGui::TableSetupColumn("Duration (ms)", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_PreferSortDescending, 110.0f * dpi);
+            ImGui::TableSetupColumn("Start (ms)", ImGuiTableColumnFlags_WidthFixed, 90.0f * dpi);
+            ImGui::TableSetupColumn("Self (ms)", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_PreferSortDescending, 90.0f * dpi);
+            ImGui::TableSetupScrollFreeze(0, 1);
+            ImGui::TableHeadersRow();
+            const auto* specs = ImGui::TableGetSortSpecs();
+            const int column = specs && specs->SpecsCount ? specs->Specs[0].ColumnIndex : 2;
+            const bool ascending = specs && specs->SpecsCount && specs->Specs[0].SortDirection == ImGuiSortDirection_Ascending;
+            stable_sort(order.begin(), order.end(), [&](int a, int b)
+            {
+                const auto& left = capture.scopes[ascending ? a : b];
+                const auto& right = capture.scopes[ascending ? b : a];
+                if (column == 0) return left.name < right.name;
+                if (column == 1) return left.lane < right.lane;
+                if (column == 4) return left.self < right.self;
+                return column == 3 ? left.start < right.start : left.duration < right.duration;
+            });
+            ImGuiListClipper clipper;
+            clipper.Begin(static_cast<int>(order.size()));
+            while (clipper.Step())
+            for (int row_index = clipper.DisplayStart; row_index < clipper.DisplayEnd; ++row_index)
+            {
+                const int index = order[row_index];
+                const auto& scope = capture.scopes[index];
+                ImGui::PushID(index);
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                if (ImGui::Selectable(scope.name.c_str(), m_selected_scope == index, ImGuiSelectableFlags_SpanAllColumns))
+                {
+                    m_selected_scope = index;
+                    m_inspect_narrow = true;
+                    m_paused = true;
+                }
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TextUnformatted(scope.lane == 0 ? "CPU" : lane_names[scope.lane] + 6);
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text("%.4f", scope.duration);
+                ImGui::TableSetColumnIndex(3);
+                ImGui::Text("%.4f", scope.start);
+                ImGui::TableSetColumnIndex(4);
+                ImGui::Text("%.4f", scope.self);
+                ImGui::PopID();
+            }
+            ImGui::EndTable();
+        }
+        if (order.empty()) ImGui::TextDisabled("No scopes match the current filter.");
+        ImGui::EndChild();
+    }
+    if (wide) ImGui::SameLine();
+    if (show_inspector)
+    {
+        ImGui::BeginChild("##scope_inspector", ImVec2(0, 0));
+        ImGui::TextDisabled("SELECTION");
+        if (m_selected_scope >= 0 && m_selected_scope < static_cast<int>(capture.scopes.size()))
+        {
+            const auto& scope = capture.scopes[m_selected_scope];
+            ImGui::TextWrapped("%s", scope.name.c_str());
+            ImGui::TextDisabled("%s", lane_names[scope.lane]);
+            ImGui::Separator();
+            ImGui::Text("Duration   %.4f ms", scope.duration);
+            ImGui::Text("Self       %.4f ms", scope.self);
+            ImGui::SetItemTooltip("Elapsed time excluding measured child scopes; includes uninstrumented work and waits.");
+            ImGui::Text("Start      %.4f ms", scope.start);
+            ImGui::Text("End        %.4f ms", scope.end);
+            if (capture.wall > 0.0f) ImGui::Text("Wall share %.2f%%", scope.duration / capture.wall * 100.0f);
+            if (ImGui::Button("Focus scope"))
+            {
+                m_range_ms = max(0.01f, (scope.end - scope.start) * 1.2f);
+                m_offset_ms = max(0.0f, scope.start - m_range_ms * 0.08f);
+                m_auto_fit = false;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Copy name")) ImGui::SetClipboardText(scope.name.c_str());
+        }
+        else
+        {
+            ImGui::TextWrapped("Select a timeline event or a scope row to inspect its timing.");
+            ImGui::Spacing();
+            ImGui::TextDisabled("Wheel: zoom at cursor");
+            ImGui::TextDisabled("Right / middle drag: pan");
+            ImGui::TextDisabled("Wheel on track names: scroll");
+            ImGui::TextDisabled("Double-click event: focus");
+        }
+        ImGui::EndChild();
+    }
+    ImGui::EndChild();
 }
 
 void Profiler::OnTickVisible()
 {
-    int previous_item_type = mode_hardware;
-
-    // detect mode changes and trigger auto-fit
-    if (mode_hardware != m_prev_mode_hardware || mode_view != m_prev_mode_view)
-    {
-        m_timeline_needs_fit  = true;
-        m_prev_mode_hardware  = mode_hardware;
-        m_prev_mode_view      = mode_view;
-    }
-
     const float dpi = spartan::Window::GetDpiScale();
-    if (toggle_button("GPU", mode_hardware == 0))
+    if (toggle(m_paused ? "Resume live" : "Pause", m_paused))
     {
-        mode_hardware = 0;
-    }
-    ImGui::SameLine();
-    if (toggle_button("CPU", mode_hardware == 1))
-    {
-        mode_hardware = 1;
-    }
-    ImGui::SameLine();
-    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-    ImGui::SameLine();
-    if (toggle_button("Timeline", mode_view == 1))
-    {
-        mode_view = 1;
-    }
-    ImGui::SameLine();
-    if (toggle_button("List", mode_view == 0))
-    {
-        mode_view = 0;
-    }
-    ImGui::SameLine();
-    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-    ImGui::SameLine();
-    if (toggle_button("Freeze", m_frozen))
-    {
-        if (!m_frozen)
+        m_paused = !m_paused;
+        if (!m_paused)
         {
-            m_frozen_time_blocks =
-                spartan::Profiler::GetTimeBlocks();
-            m_frozen_time_cpu =
-                spartan::Profiler::GetTimeCpuLast();
-            m_frozen_time_gpu =
-                spartan::Profiler::GetTimeGpuLast();
-            m_frozen_time_frame =
-                spartan::Profiler::
-                    GetCapturedFrameDurationMs();
-            m_frozen_time_pacing =
-                spartan::Profiler::
-                    GetCapturedPacingTimeMs();
-        }
-        m_frozen = !m_frozen;
-    }
-    ImGuiSp::tooltip(m_frozen ? "Resume live capture" : "Freeze the current capture");
-
-    ImGui::SameLine();
-    ImGui::SeparatorEx(
-        ImGuiSeparatorFlags_Vertical
-    );
-    ImGui::SameLine();
-    const bool is_recording =
-        spartan::Profiler::IsRecording();
-    const bool is_recording_stopping =
-        spartan::Profiler::IsRecordingStopping();
-    if (is_recording)
-    {
-        ImGui::PushStyleColor(
-            ImGuiCol_Button,
-            ImGui::Style::color_error
-        );
-        ImGui::PushStyleColor(
-            ImGuiCol_ButtonHovered,
-            ImGui::EditorUi::alpha(
-                ImGui::Style::color_error,
-                0.85f
-            )
-        );
-        if (ImGuiSp::button("Stop"))
-        {
-            spartan::Profiler::StopRecording();
-        }
-        ImGui::PopStyleColor(2);
-    }
-    else if (is_recording_stopping)
-    {
-        ImGui::BeginDisabled();
-        ImGuiSp::button("Stopping...");
-        ImGui::EndDisabled();
-    }
-    else if (ImGuiSp::button("Record"))
-    {
-        spartan::Profiler::StartRecording();
-    }
-    ImGuiSp::tooltip(
-        is_recording ?
-            "Stop and save the CSV capture" :
-            "Record every profiler block per frame, "
-            "recording never waits for GPU completion "
-            "or changes frame pacing"
-    );
-
-    if (is_recording || is_recording_stopping)
-    {
-        ImGui::SameLine();
-        ImGui::TextDisabled(
-            "%llu frames",
-            spartan::Profiler::
-                GetRecordedFrameCount()
-        );
-    }
-
-    if (mode_view == 1)
-    {
-        ImGui::SameLine();
-        if (ImGuiSp::button("Fit"))
-        {
-            m_timeline_needs_fit = true;
-            m_user_has_interacted = false;
-        }
-        ImGuiSp::tooltip("Fit all captured blocks");
-    }
-    else
-    {
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(140.0f * dpi);
-        if (ImGui::BeginCombo("##mode_sort", mode_sort == 0 ? "Name" : "Duration"))
-        {
-            if (ImGui::Selectable("Name", mode_sort == 0))
-            {
-                mode_sort = 0;
-            }
-            if (ImGui::Selectable("Duration", mode_sort == 1))
-            {
-                mode_sort = 1;
-            }
-            ImGui::EndCombo();
+            m_selected_capture = static_cast<int>(m_history.size()) - 1;
+            m_selected_scope = -1;
         }
     }
+    ImGui::SetItemTooltip("%s", "Pause sampled history for inspection; CSV recording runs independently");
+    ImGui::SameLine();
+    const bool recording = spartan::Profiler::IsRecording();
+    ImGui::BeginDisabled(spartan::Profiler::IsRecordingStopping());
+    if (toggle(recording ? "Stop CSV" : "Record CSV", recording))
+    {
+        if (recording) spartan::Profiler::StopRecording();
+        else spartan::Profiler::StartRecording();
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Fit")) { m_fit = true; m_auto_fit = true; }
+    ImGui::SameLine();
+    if (ImGui::Button("Clear"))
+    {
+        m_history.clear();
+        m_selected_capture = m_selected_scope = -1;
+        m_fit = true;
+    }
+    ImGui::SameLine();
+    if (toggle("CPU", m_show_cpu)) m_show_cpu = !m_show_cpu;
+    ImGui::SameLine();
+    if (toggle("GPU", m_show_gpu)) m_show_gpu = !m_show_gpu;
+    ImGui::SameLine();
+    bool continuous = spartan::Profiler::IsContinuous();
+    if (ImGui::Checkbox("Every frame", &continuous)) spartan::Profiler::SetContinuous(continuous);
+    ImGui::SetItemTooltip("Consecutive CPU/GPU samples while live. More profiling overhead; CSV always records every frame.");
+    ImGui::SameLine();
+    ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(m_paused ? muted : accent), m_paused ? "PAUSED" : "LIVE");
 
-    const bool show_interval =
-        !m_frozen &&
-        !is_recording &&
-        !is_recording_stopping;
-    const float interval_controls_width = 210.0f * dpi;
-    const bool interval_on_same_row = show_interval && ImGui::GetContentRegionAvail().x >= 420.0f * dpi;
-    ImGui::SetNextItemWidth(interval_on_same_row ? ImGui::GetContentRegionAvail().x - interval_controls_width : -FLT_MIN);
+    ImGui::SetNextItemWidth(max(100.0f * dpi, ImGui::GetContentRegionAvail().x - 205.0f * dpi));
     ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F, ImGuiInputFlags_Tooltip);
-    if (ImGui::InputTextWithHint("##profile_filter", "Filter captured blocks", m_block_filter.InputBuf, IM_ARRAYSIZE(m_block_filter.InputBuf), ImGuiInputTextFlags_EscapeClearsAll))
-    {
-        m_block_filter.Build();
-    }
+    if (ImGui::InputTextWithHint("##scope_filter", "Find scopes...", m_filter.InputBuf, IM_ARRAYSIZE(m_filter.InputBuf), ImGuiInputTextFlags_EscapeClearsAll)) m_filter.Build();
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    float interval = spartan::Profiler::GetUpdateInterval();
+    ImGui::BeginDisabled(m_paused || continuous || recording || spartan::Profiler::IsRecordingStopping());
+    if (ImGui::SliderFloat("##refresh", &interval, 0.05f, 2.0f, "Sample every %.2f s")) spartan::Profiler::SetUpdateInterval(interval);
+    ImGui::EndDisabled();
 
-    if (show_interval)
+    const auto& error = spartan::Profiler::GetRecordingError();
+    const auto& path = spartan::Profiler::GetRecordingFilePath();
+    if (!error.empty()) ImGui::TextWrapped("CSV error: %s", error.c_str());
+    else if (!path.empty())
     {
-        if (interval_on_same_row)
-        {
-            ImGui::SameLine();
-        }
-        ImGui::TextDisabled("Refresh");
+        ImGui::TextDisabled(spartan::Profiler::IsRecordingStopping() ? "Saving CSV..." : recording ? "Recording CSV" : "CSV saved");
         ImGui::SameLine();
-        float interval = spartan::Profiler::GetUpdateInterval();
-        ImGui::SetNextItemWidth(-FLT_MIN);
-        if (
-            ImGui::SliderFloat(
-                "##update_interval",
-                &interval,
-                0.05f,
-                2.0f,
-                "%.2f s"
-            )
-        )
-        {
-            spartan::Profiler::SetUpdateInterval(interval);
-        }
+        if (ImGui::SmallButton("Copy CSV path")) ImGui::SetClipboardText(path.c_str());
+        ImGui::SetItemTooltip("%s", path.c_str());
+        if (recording) { ImGui::SameLine(); ImGui::TextDisabled("%llu frames", static_cast<unsigned long long>(spartan::Profiler::GetRecordedFrameCount())); }
     }
-    ImGui::Separator();
-
-    const string& recording_error =
-        spartan::Profiler::GetRecordingError();
-    const string& recording_path =
-        spartan::Profiler::GetRecordingFilePath();
-    if (!recording_error.empty())
+    DrawHistory();
+    if (m_selected_capture < 0 || m_history.empty())
     {
-        ImGui::TextColored(
-            ImGui::Style::color_error,
-            "%s",
-            recording_error.c_str()
-        );
+        ImGui::Spacing();
+        ImGui::TextDisabled(m_paused ? "History is empty. Resume live sampling to capture timings." : "Waiting for a completed timing sample...");
+        return;
     }
-    else if (!recording_path.empty())
-    {
-        ImGui::TextDisabled(
-            "%s",
-            is_recording ?
-                "Recording CSV" :
-                "Last CSV"
-        );
-        ImGui::SameLine();
-        if (ImGuiSp::button("Copy path"))
-        {
-            ImGui::SetClipboardText(
-                recording_path.c_str()
-            );
-        }
-        ImGuiSp::tooltip(
-            recording_path.c_str()
-        );
-    }
-
-    spartan::TimeBlockType type = mode_hardware == 0 ? spartan::TimeBlockType::Gpu : spartan::TimeBlockType::Cpu;
-
-    // freeze: snapshot the current data and keep displaying it until unfrozen
-    if (!m_frozen)
-    {
-        m_frozen_time_blocks = spartan::Profiler::GetTimeBlocks();
-        m_frozen_time_cpu    = spartan::Profiler::GetTimeCpuLast();
-        m_frozen_time_gpu    = spartan::Profiler::GetTimeGpuLast();
-        m_frozen_time_frame  =
-            spartan::Profiler::GetCapturedFrameDurationMs();
-        m_frozen_time_pacing =
-            spartan::Profiler::GetCapturedPacingTimeMs();
-    }
-
-    vector<spartan::TimeBlock>& time_blocks = m_frozen_time_blocks;
-    uint32_t time_block_count               = static_cast<uint32_t>(time_blocks.size());
-
-    auto block_duration =
-        [&](const char* name)
-        {
-            float duration = 0.0f;
-            for (const spartan::TimeBlock& block : time_blocks)
-            {
-                if (
-                    block.GetType() ==
-                        spartan::TimeBlockType::Cpu &&
-                    block.IsComplete() &&
-                    strcmp(block.GetName(), name) == 0
-                )
-                {
-                    duration += block.GetDuration();
-                }
-            }
-            return duration;
-        };
-
-    float wait_time =
-        block_duration("frame_slot_wait") +
-        block_duration("cmd_wait_graphics") +
-        block_duration("cmd_wait_compute") +
-        block_duration("cmd_wait_copy") +
-        block_duration("cmd_wait_present") +
-        block_duration("queue_wait_idle");
-    const float acquire_time =
-        block_duration("frame_acquire");
-    const float submit_time =
-        block_duration("queue_submit_graphics") +
-        block_duration("queue_submit_compute") +
-        block_duration("queue_submit_copy") +
-        block_duration("queue_submit_present") +
-        block_duration("queue_submit");
-    const float present_time =
-        block_duration("frame_present");
-
-    auto draw_metric =
-        [&](
-            const char* label,
-            float value,
-            const ImVec4& color,
-            const char* tooltip
-        )
-        {
-            char text[64];
-            snprintf(
-                text,
-                sizeof(text),
-                "%s %.2f ms",
-                label,
-                value
-            );
-            ImGui::EditorUi::draw_chip(
-                text,
-                ImGui::EditorUi::alpha(color, 0.24f),
-                ImGui::Style::color_text
-            );
-            ImGuiSp::tooltip(tooltip);
-        };
-
-    draw_metric(
-        "Wall",
-        m_frozen_time_frame,
-        ImGui::Style::color_surface_active,
-        "Last sampled frame, total elapsed time from frame start through "
-        "frame-rate pacing, excludes profiler readback and CSV overhead"
-    );
-    ImGui::SameLine();
-    draw_metric(
-        "CPU",
-        m_frozen_time_cpu,
-        ImGui::Style::color_accent_2,
-        "Main-thread CPU execution time, excludes time blocked on "
-        "GPU resources, synchronization, presentation, and pacing"
-    );
-    ImGui::SameLine();
-    draw_metric(
-        "GPU span",
-        m_frozen_time_gpu,
-        ImGui::Style::color_accent_1,
-        "Elapsed GPU span from the earliest root GPU marker to "
-        "the latest root GPU marker across queues, not a sum of every pass"
-    );
-    ImGui::SameLine();
-    draw_metric(
-        "Pacing",
-        m_frozen_time_pacing,
-        ImGui::Style::color_text_muted,
-        "CPU time spent enforcing the configured FPS limit after "
-        "frame work completed"
-    );
-
-    draw_metric(
-        "Wait",
-        wait_time,
-        ImGui::Style::color_warning,
-        "CPU time blocked waiting for frame resources, command-list "
-        "reuse, fences, timelines, or an idle queue"
-    );
-    ImGui::SameLine();
-    draw_metric(
-        "Acquire",
-        acquire_time,
-        ImGui::Style::color_accent_1,
-        "CPU time acquiring the next swapchain image, Vulkan can block "
-        "until an image is available while D3D12 is typically immediate"
-    );
-    ImGui::SameLine();
-    draw_metric(
-        "Submit",
-        submit_time,
-        ImGui::Style::color_accent_2,
-        "CPU time issuing command buffers to graphics, compute, "
-        "copy, and present queues, excludes GPU execution time"
-    );
-    ImGui::SameLine();
-    draw_metric(
-        "Present",
-        present_time,
-        ImGui::Style::color_surface_active,
-        "CPU time handing the completed swapchain image to the "
-        "display system, this can block because of VSync or backpressure"
-    );
-    ImGui::Separator();
-
-    if (mode_view == 0)
-    {
-        // list view
-        vector<spartan::TimeBlock> list_blocks =
-            time_blocks;
-        if (mode_sort == 1)
-        {
-            sort(list_blocks.begin(), list_blocks.end(), [](const spartan::TimeBlock& a, const spartan::TimeBlock& b)
-            {
-                return a.GetDuration() > b.GetDuration();
-            });
-        }
-        else if (mode_sort == 0)
-        {
-            sort(list_blocks.begin(), list_blocks.end(), [](const spartan::TimeBlock& a, const spartan::TimeBlock& b)
-            {
-                return string_view(a.GetName()) < string_view(b.GetName());
-            });
-        }
-
-        uint32_t visible_count = 0;
-        ImGui::EditorUi::push_table_style();
-        if (ImGui::BeginTable("##profile_list", 3, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp))
-        {
-            ImGui::TableSetupColumn("Block", ImGuiTableColumnFlags_WidthStretch, 0.55f);
-            ImGui::TableSetupColumn("Duration", ImGuiTableColumnFlags_WidthFixed, 100.0f * dpi);
-            ImGui::TableSetupColumn("% Wall", ImGuiTableColumnFlags_WidthStretch, 0.25f);
-            ImGui::TableHeadersRow();
-
-            for (uint32_t i = 0; i < time_block_count; i++)
-            {
-                const spartan::TimeBlock& block = list_blocks[i];
-                if (block.GetType() != type || !block.IsComplete() || !m_block_filter.PassFilter(block.GetName()))
-                {
-                    continue;
-                }
-
-                visible_count++;
-                ImGui::PushID(static_cast<int>(i));
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                const ImVec4 marker_color = ImGui::ColorConvertU32ToFloat4(get_time_block_color(block.GetName(), block.GetQueueType() == spartan::RHI_Queue_Type::Compute));
-                ImGui::ColorButton("##block_color", marker_color, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoBorder, ImVec2(8.0f * dpi, 8.0f * dpi));
-                ImGui::SameLine();
-                ImGui::TextUnformatted(block.GetName());
-
-                ImGui::TableSetColumnIndex(1);
-                ImGui::Text("%.3f ms", block.GetDuration());
-
-                ImGui::TableSetColumnIndex(2);
-                const float fraction =
-                    m_frozen_time_frame > 0.0f ?
-                        ImClamp(
-                            block.GetDuration() /
-                                m_frozen_time_frame,
-                            0.0f,
-                            1.0f
-                        ) :
-                        0.0f;
-                char percentage[16];
-                snprintf(percentage, sizeof(percentage), "%.1f%%", fraction * 100.0f);
-                ImGui::ProgressBar(fraction, ImVec2(-FLT_MIN, 0.0f), percentage);
-                ImGui::PopID();
-            }
-
-            ImGui::EndTable();
-        }
-        ImGui::EditorUi::pop_table_style();
-
-        if (visible_count == 0)
-        {
-            const char* message = m_block_filter.IsActive() ? "No captured blocks match your filter" : "No captured blocks available";
-            const ImVec2 message_size = ImGui::CalcTextSize(message);
-            ImGui::SetCursorPosX(max(ImGui::GetCursorPosX(), (ImGui::GetWindowWidth() - message_size.x) * 0.5f));
-            ImGui::Dummy(ImVec2(0.0f, 18.0f * dpi));
-            ImGui::TextDisabled("%s", message);
-        }
-    }
+    const auto& capture = m_history[m_selected_capture];
+    char gpu_summary[64] = "GPU span unavailable";
+    if (capture.has_gpu && capture.calibrated) snprintf(gpu_summary, sizeof(gpu_summary), "GPU span %.2f ms", capture.gpu);
+    ImGui::Text("Frame #%llu   Wall %.2f ms   CPU elapsed %.2f ms   Wait %.2f ms   %s",
+        static_cast<unsigned long long>(capture.revision), capture.wall, capture.cpu, capture.wait, gpu_summary);
+    ImGui::SetItemTooltip("%s", "CPU elapsed includes instrumented waits (shown separately), not CPU core utilization. GPU span includes gaps between measured passes; it is not hardware utilization.");
+    const float available = ImGui::GetContentRegionAvail().y;
+    const float footer = ImGui::GetTextLineHeightWithSpacing() * 2.0f + 8.0f * dpi;
+    const float details = max(150.0f * dpi, min(245.0f * dpi, available * 0.37f));
+    DrawTimeline(capture, max(100.0f * dpi, available - details - footer - ImGui::GetStyle().ItemSpacing.y * 2.0f));
+    DrawDetails(capture, details);
+    if (!capture.has_gpu)
+        ImGui::TextDisabled("GPU timing unavailable | Incomplete scopes %u | Invalid GPU scopes %u | Dropped timestamps %u",
+            capture.incomplete, capture.invalid_gpu, capture.dropped);
+    else if (capture.calibrated)
+        ImGui::TextDisabled("CPU/GPU clocks aligned | Calibration uncertainty ~%.1f us | GPU scope coverage %.2f ms | Pacing %.2f ms",
+            capture.calibration_deviation_ms * 1000.0, capture.gpu_covered, capture.pacing);
     else
-    {
-        // timeline view
-
-        // layout constants
-        const float lane_height   = 40.0f * dpi;
-        const float lane_padding  = 4.0f * dpi;
-        const float ruler_height  = 34.0f * dpi;
-        const float content_width = ImGui::GetContentRegionAvail().x;
-        const float label_width   = min(120.0f * dpi, content_width * 0.3f);
-        const float timeline_width = ImMax(content_width - label_width, 100.0f * dpi);
-
-        // build lane info
-        struct LaneInfo
-        {
-            const char*              label;
-            spartan::TimeBlockType   block_type;
-            spartan::RHI_Queue_Type  queue_filter;
-            bool                     use_depth;
-        };
-
-        vector<LaneInfo> lanes;
-        uint32_t max_depth = 0;
-
-        if (type == spartan::TimeBlockType::Gpu)
-        {
-            lanes.push_back({"Graphics", spartan::TimeBlockType::Gpu, spartan::RHI_Queue_Type::Graphics, false});
-            lanes.push_back({"Compute",  spartan::TimeBlockType::Gpu, spartan::RHI_Queue_Type::Compute,  false});
-            lanes.push_back({"Copy",     spartan::TimeBlockType::Gpu, spartan::RHI_Queue_Type::Copy,     false});
-        }
-        else
-        {
-            for (uint32_t i = 0; i < time_block_count; i++)
-            {
-                if (time_blocks[i].GetType() == spartan::TimeBlockType::Cpu && time_blocks[i].IsComplete() && m_block_filter.PassFilter(time_blocks[i].GetName()))
-                {
-                    max_depth = max(max_depth, time_blocks[i].GetTreeDepth());
-                }
-            }
-            lanes.push_back({"CPU", spartan::TimeBlockType::Cpu, spartan::RHI_Queue_Type::Max, true});
-        }
-
-        // compute total timeline height for the invisible button
-        float total_lanes_height = 0.0f;
-        for (const auto& lane : lanes)
-        {
-            uint32_t depth_count = lane.use_depth ? (max_depth + 1) : 1;
-            total_lanes_height += lane_height * depth_count + lane_padding;
-        }
-        float total_timeline_height = ruler_height + total_lanes_height;
-
-        // compute the actual data extent across all visible blocks
-        float data_min_ms = FLT_MAX;
-        float data_max_ms = 0.0f;
-        for (uint32_t i = 0; i < time_block_count; i++)
-        {
-            const spartan::TimeBlock& block = time_blocks[i];
-            if (!block.IsComplete() || block.GetType() != type || !m_block_filter.PassFilter(block.GetName()))
-            {
-                continue;
-            }
-
-            if (type == spartan::TimeBlockType::Gpu)
-            {
-                bool in_any_lane = false;
-                for (const auto& lane : lanes)
-                {
-                    if (lane.queue_filter == spartan::RHI_Queue_Type::Max || block.GetQueueType() == lane.queue_filter)
-                    {
-                        in_any_lane = true;
-                        break;
-                    }
-                }
-                if (!in_any_lane)
-                {
-                    continue;
-                }
-            }
-
-            data_min_ms = ImMin(data_min_ms, block.GetStartMs());
-            data_max_ms = ImMax(data_max_ms, block.GetEndMs());
-        }
-        if (data_min_ms == FLT_MAX)
-        {
-            data_min_ms = 0.0f;
-            data_max_ms = 16.67f;
-        }
-        float data_extent = ImMax(data_max_ms - data_min_ms, 0.5f);
-
-        // auto-fit on first view or mode change
-        if (m_timeline_needs_fit && data_max_ms > 0.0f)
-        {
-            m_timeline_offset_ms  = ImMax(data_min_ms - data_extent * 0.02f, 0.0f);
-            m_timeline_range_ms   = data_extent * 1.05f;
-            m_timeline_needs_fit  = false;
-            m_user_has_interacted = false;
-        }
-
-        // auto-grow: only when the user hasn't manually zoomed or panned
-        if (!m_user_has_interacted)
-        {
-            float visible_end = m_timeline_offset_ms + m_timeline_range_ms;
-            if (data_max_ms > visible_end)
-            {
-                m_timeline_range_ms = (data_max_ms - m_timeline_offset_ms) * 1.05f;
-            }
-        }
-
-        // cap range to something sane (200ms = ~5fps, anything beyond is garbage data)
-        m_timeline_range_ms = ImClamp(m_timeline_range_ms, 0.01f, 200.0f);
-
-        // capture the origin before any drawing so zoom/pan math is stable
-        ImVec2 timeline_screen_origin = ImGui::GetCursorScreenPos();
-
-        // place an invisible button over the entire timeline area for input capture
-        ImGui::InvisibleButton("##timeline_input", ImVec2(content_width, total_timeline_height));
-        bool timeline_hovered = ImGui::IsItemHovered();
-        bool timeline_active  = ImGui::IsItemActive();
-
-        // zoom with scroll wheel
-        if (timeline_hovered)
-        {
-            float wheel = ImGui::GetIO().MouseWheel;
-            if (wheel != 0.0f)
-            {
-                m_user_has_interacted = true;
-
-                float zoom_factor = 1.0f - wheel * 0.15f;
-                zoom_factor = ImClamp(zoom_factor, 0.5f, 2.0f);
-
-                float mouse_x    = ImGui::GetIO().MousePos.x - timeline_screen_origin.x - label_width;
-                float mouse_frac = ImClamp(mouse_x / timeline_width, 0.0f, 1.0f);
-                float mouse_ms   = m_timeline_offset_ms + mouse_frac * m_timeline_range_ms;
-                float new_range  = m_timeline_range_ms * zoom_factor;
-                new_range        = ImClamp(new_range, 0.01f, 200.0f);
-
-                m_timeline_offset_ms = mouse_ms - mouse_frac * new_range;
-                m_timeline_range_ms  = new_range;
-            }
-        }
-
-        // pan with right-click drag or middle-click drag
-        if (timeline_hovered || timeline_active)
-        {
-            bool dragging = ImGui::IsMouseDragging(ImGuiMouseButton_Right) || ImGui::IsMouseDragging(ImGuiMouseButton_Middle);
-            if (dragging)
-            {
-                m_user_has_interacted = true;
-
-                float drag_delta_x = ImGui::GetIO().MouseDelta.x;
-                float ms_per_pixel = m_timeline_range_ms / timeline_width;
-                m_timeline_offset_ms -= drag_delta_x * ms_per_pixel;
-            }
-        }
-
-        m_timeline_offset_ms = ImMax(m_timeline_offset_ms, 0.0f);
-
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        ImVec2 origin         = timeline_screen_origin;
-        const ImU32 panel_color = ImGui::EditorUi::color(
-            ImGui::Style::color_panel
-        );
-        const ImU32 canvas_color = ImGui::EditorUi::color(
-            ImGui::Style::color_canvas
-        );
-        const ImU32 canvas_alt_color = ImGui::EditorUi::color(
-            ImGui::Style::lerp(
-                ImGui::Style::color_canvas,
-                ImGui::Style::color_panel,
-                0.28f
-            )
-        );
-        const ImU32 border_color = ImGui::EditorUi::color(
-            ImGui::Style::color_border
-        );
-        const ImU32 muted_color = ImGui::EditorUi::color(
-            ImGui::Style::color_text_muted
-        );
-        const ImU32 text_color = ImGui::EditorUi::color(
-            ImGui::Style::color_text
-        );
-
-        // draw ruler background
-        {
-            ImVec2 ruler_min = ImVec2(origin.x + label_width, origin.y);
-            ImVec2 ruler_max = ImVec2(ruler_min.x + timeline_width, ruler_min.y + ruler_height);
-            draw_list->AddRectFilled(
-                ruler_min,
-                ruler_max,
-                panel_color
-            );
-
-            // label area background
-            draw_list->AddRectFilled(
-                origin,
-                ImVec2(
-                    origin.x + label_width - 1.0f,
-                    ruler_max.y
-                ),
-                panel_color
-            );
-            draw_list->AddText(
-                ImVec2(
-                    origin.x + 8.0f * dpi,
-                    origin.y + 8.0f * dpi
-                ),
-                muted_color,
-                "ms"
-            );
-
-            // vertical divider between labels and ruler
-            draw_list->AddLine(
-                ImVec2(origin.x + label_width - 1.0f, origin.y),
-                ImVec2(origin.x + label_width - 1.0f, ruler_max.y),
-                border_color
-            );
-
-            // tick marks
-            float ms_per_pixel   = m_timeline_range_ms / timeline_width;
-            float target_tick_ms = ms_per_pixel * 100.0f;
-
-            float nice_intervals[] = { 0.05f, 0.1f, 0.25f, 0.5f, 1.0f, 2.0f, 5.0f, 10.0f, 25.0f, 50.0f, 100.0f, 250.0f, 500.0f };
-            float tick_interval_ms = nice_intervals[sizeof(nice_intervals) / sizeof(nice_intervals[0]) - 1]; // default to largest
-            for (float iv : nice_intervals)
-            {
-                if (iv >= target_tick_ms)
-                {
-                    tick_interval_ms = iv;
-                    break;
-                }
-            }
-
-            float first_tick    = floor(m_timeline_offset_ms / tick_interval_ms) * tick_interval_ms;
-            uint32_t tick_count = 0;
-            for (float tick_ms = first_tick; tick_ms <= m_timeline_offset_ms + m_timeline_range_ms; tick_ms += tick_interval_ms)
-            {
-                if (++tick_count > 500)
-                {
-                    break;
-                }
-
-                float frac = (tick_ms - m_timeline_offset_ms) / m_timeline_range_ms;
-                if (frac < -0.01f || frac > 1.01f)
-                {
-                    continue;
-                }
-
-                float x = ruler_min.x + frac * timeline_width;
-
-                // vertical grid line through the whole timeline (not clipped)
-                draw_list->AddLine(
-                    ImVec2(x, ruler_max.y),
-                    ImVec2(x, origin.y + total_timeline_height),
-                    border_color
-                );
-
-                // tick line on ruler
-                draw_list->AddLine(
-                    ImVec2(x, ruler_min.y + ruler_height * 0.55f),
-                    ImVec2(x, ruler_max.y),
-                    muted_color
-                );
-            }
-
-            // draw tick labels clipped to ruler area so they don't overflow on the right
-            draw_list->PushClipRect(ruler_min, ruler_max, true);
-            tick_count = 0;
-            for (float tick_ms = first_tick; tick_ms <= m_timeline_offset_ms + m_timeline_range_ms; tick_ms += tick_interval_ms)
-            {
-                if (++tick_count > 500)
-                {
-                    break;
-                }
-
-                float frac = (tick_ms - m_timeline_offset_ms) / m_timeline_range_ms;
-                if (frac < -0.01f || frac > 1.01f)
-                {
-                    continue;
-                }
-
-                float x = ruler_min.x + frac * timeline_width;
-
-                char tick_label[32];
-                if (tick_interval_ms >= 1.0f)
-                {
-                    snprintf(tick_label, sizeof(tick_label), "%.0f", tick_ms);
-                }
-                else
-                {
-                    snprintf(tick_label, sizeof(tick_label), "%.2f", tick_ms);
-                }
-
-                draw_list->AddText(
-                    ImVec2(
-                        x + 3.0f * dpi,
-                        ruler_min.y + 4.0f * dpi
-                    ),
-                    muted_color,
-                    tick_label
-                );
-            }
-            draw_list->PopClipRect();
-
-            // ruler bottom border
-            draw_list->AddLine(
-                ImVec2(origin.x, ruler_max.y),
-                ImVec2(
-                    origin.x + content_width,
-                    ruler_max.y
-                ),
-                border_color
-            );
-        }
-
-        // draw each lane
-        const spartan::TimeBlock* tooltip_block = nullptr;
-        float tooltip_block_width               = FLT_MAX;
-        float y_cursor = origin.y + ruler_height;
-        for (size_t lane_idx = 0; lane_idx < lanes.size(); lane_idx++)
-        {
-            const auto& lane = lanes[lane_idx];
-
-            uint32_t lane_depth_count = lane.use_depth ? (max_depth + 1) : 1;
-            float total_lane_height   = lane_height * lane_depth_count;
-
-            // lane label area
-            draw_list->AddRectFilled(
-                ImVec2(origin.x, y_cursor),
-                ImVec2(origin.x + label_width - 1.0f, y_cursor + total_lane_height),
-                panel_color
-            );
-
-            // label text (vertically centered, with padding from the right edge)
-            float text_y = y_cursor + (total_lane_height - ImGui::GetTextLineHeight()) * 0.5f;
-            draw_list->AddText(
-                ImVec2(
-                    origin.x + 8.0f * dpi,
-                    text_y
-                ),
-                text_color,
-                lane.label
-            );
-
-            // vertical divider between labels and timeline
-            draw_list->AddLine(
-                ImVec2(origin.x + label_width - 1.0f, y_cursor),
-                ImVec2(origin.x + label_width - 1.0f, y_cursor + total_lane_height),
-                border_color
-            );
-
-            // lane background with alternating shade
-            ImU32 lane_bg = lane_idx % 2 == 0
-                ? canvas_color
-                : canvas_alt_color;
-            ImVec2 lane_origin = ImVec2(origin.x + label_width, y_cursor);
-            draw_list->AddRectFilled(lane_origin, ImVec2(lane_origin.x + timeline_width, y_cursor + total_lane_height), lane_bg);
-
-            // lane separator line (horizontal)
-            draw_list->AddLine(
-                ImVec2(origin.x, y_cursor + total_lane_height),
-                ImVec2(origin.x + content_width, y_cursor + total_lane_height),
-                border_color
-            );
-
-            // draw time blocks for this lane
-            for (uint32_t i = 0; i < time_block_count; i++)
-            {
-                const spartan::TimeBlock& block = time_blocks[i];
-                if (!block.IsComplete() || block.GetType() != lane.block_type || !m_block_filter.PassFilter(block.GetName()))
-                {
-                    continue;
-                }
-
-                // filter by queue type for gpu lanes
-                if (lane.block_type == spartan::TimeBlockType::Gpu && lane.queue_filter != spartan::RHI_Queue_Type::Max)
-                {
-                    if (block.GetQueueType() != lane.queue_filter)
-                    {
-                        continue;
-                    }
-                }
-
-                float block_start = block.GetStartMs();
-                float block_end   = block.GetEndMs();
-
-                // skip blocks entirely outside visible range
-                if (block_end < m_timeline_offset_ms || block_start > m_timeline_offset_ms + m_timeline_range_ms)
-                {
-                    continue;
-                }
-
-                // compute pixel positions
-                float frac_start = (block_start - m_timeline_offset_ms) / m_timeline_range_ms;
-                float frac_end   = (block_end - m_timeline_offset_ms) / m_timeline_range_ms;
-                frac_start       = ImClamp(frac_start, 0.0f, 1.0f);
-                frac_end         = ImClamp(frac_end, 0.0f, 1.0f);
-
-                float x0 = lane_origin.x + frac_start * timeline_width;
-                float x1 = lane_origin.x + frac_end * timeline_width;
-
-                // minimum width so tiny blocks are still visible and clickable
-                if (x1 - x0 < 3.0f * dpi)
-                {
-                    x1 = x0 + 3.0f * dpi;
-                }
-
-                // vertical position
-                float depth_offset = lane.use_depth ? (block.GetTreeDepth() * lane_height) : 0.0f;
-                float y0 = y_cursor + depth_offset + 2.0f * dpi;
-                float y1 = y0 + lane_height - 4.0f * dpi;
-
-                bool is_compute = (block.GetQueueType() == spartan::RHI_Queue_Type::Compute);
-                ImU32 col = get_time_block_color(block.GetName(), is_compute);
-
-                // draw block
-                draw_list->AddRectFilled(ImVec2(x0, y0), ImVec2(x1, y1), col, 2.0f * dpi);
-
-                // subtle border for depth
-                draw_list->AddRect(ImVec2(x0, y0), ImVec2(x1, y1), IM_COL32(0, 0, 0, 60), 2.0f * dpi);
-
-                // text label: show "name - Xms" if wide enough, just name if moderate, clipped if narrow
-                float block_width = x1 - x0;
-                const char* name  = block.GetName();
-
-                char full_label[128];
-                snprintf(full_label, sizeof(full_label), "%s - %.3fms", name, block.GetDuration());
-
-                ImVec2 full_size = ImGui::CalcTextSize(full_label);
-                ImVec2 name_size = ImGui::CalcTextSize(name);
-
-                float text_y_offset = y0 + (lane_height - 4.0f - ImGui::GetTextLineHeight()) * 0.5f;
-
-                if (block_width > full_size.x + 6.0f)
-                {
-                    draw_list->AddText(ImVec2(x0 + 3.0f, text_y_offset), IM_COL32(255, 255, 255, 240), full_label);
-                }
-                else if (block_width > name_size.x + 6.0f)
-                {
-                    draw_list->AddText(ImVec2(x0 + 3.0f, text_y_offset), IM_COL32(255, 255, 255, 240), name);
-                }
-                else if (block_width > 8.0f)
-                {
-                    draw_list->PushClipRect(ImVec2(x0 + 1.0f, y0), ImVec2(x1 - 1.0f, y1), true);
-                    draw_list->AddText(ImVec2(x0 + 3.0f, text_y_offset), IM_COL32(255, 255, 255, 200), name);
-                    draw_list->PopClipRect();
-                }
-
-                // track the narrowest block under the cursor for tooltip
-                if (timeline_hovered && ImGui::IsMouseHoveringRect(ImVec2(x0, y0), ImVec2(x1, y1)))
-                {
-                    if (tooltip_block == nullptr || block_width < tooltip_block_width)
-                    {
-                        tooltip_block       = &block;
-                        tooltip_block_width = block_width;
-                    }
-                }
-            }
-
-            y_cursor += total_lane_height + lane_padding;
-        }
-
-        // show tooltip for the narrowest hovered block
-        if (tooltip_block)
-        {
-            ImGui::BeginTooltip();
-            ImGui::TextUnformatted(tooltip_block->GetName());
-            ImGui::Separator();
-            ImGui::Text("duration: %.3f ms", tooltip_block->GetDuration());
-            ImGui::Text("start:    %.3f ms", tooltip_block->GetStartMs());
-            ImGui::Text("end:      %.3f ms", tooltip_block->GetEndMs());
-            if (tooltip_block->GetType() == spartan::TimeBlockType::Gpu)
-            {
-                const char* queue_name = "unknown";
-                if (tooltip_block->GetQueueType() == spartan::RHI_Queue_Type::Graphics)
-                {
-                    queue_name = "graphics";
-                }
-                else if (tooltip_block->GetQueueType() == spartan::RHI_Queue_Type::Compute)
-                {
-                    queue_name = "compute";
-                }
-                ImGui::Text("queue:    %s", queue_name);
-            }
-            ImGui::EndTooltip();
-        }
-
-        // outer border around the entire timeline
-        draw_list->AddRect(
-            origin,
-            ImVec2(
-                origin.x + content_width,
-                origin.y + total_timeline_height
-            ),
-            border_color,
-            ImGui::EditorUi::scaled(4.0f)
-        );
-
-        // info bar below the timeline
-        ImGui::Text("%.2f - %.2f ms (%.2f ms visible)", m_timeline_offset_ms, m_timeline_offset_ms + m_timeline_range_ms, m_timeline_range_ms);
-        ImGui::SameLine();
-        ImGui::TextDisabled("scroll: zoom | right-drag: pan");
-    }
-
-    // wall time plot
-    ImGui::Separator();
-    {
-        float time_live =
-            m_frozen ?
-                m_frozen_time_frame :
-                spartan::Profiler::GetFrameDurationMs();
-
-        if (previous_item_type != mode_hardware)
-        {
-            m_timeline_needs_fit = true;
-        }
-
-        if (time_live == 0.0f)
-        {
-            time_live = m_plot.back();
-        }
-        else if (!m_frozen)
-        {
-            m_timings.AddSample(time_live);
-        }
-
-        // cur, avg, min, max
-        {
-            if (ImGuiSp::button("Clear"))
-            {
-                m_timings.Clear();
-            }
-            ImGui::SameLine();
-            ImGui::Text(
-                "Live wall  Cur:%.2f, Avg:%.2f, Min:%.2f, Max:%.2f",
-                time_live,
-                m_timings.m_avg,
-                m_timings.m_min,
-                m_timings.m_max
-            );
-            bool is_stuttering =
-                m_timings.m_sample_count > 1 &&
-                time_live >
-                m_timings.m_avg + 1.0f;
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(is_stuttering ? 1.0f : 0.0f, is_stuttering ? 0.0f : 1.0f, 0.0f, 1.0f), is_stuttering ? "Stuttering: Yes" : "Stuttering: No");
-        }
-
-        if (!m_frozen)
-        {
-            for (
-                uint32_t i = 0;
-                i < m_plot.size() - 1;
-                i++
-            )
-            {
-                m_plot[i] = m_plot[i + 1];
-            }
-            m_plot[m_plot.size() - 1] = time_live;
-        }
-
-        ImGui::PlotLines("##performance_plot", m_plot.data(), static_cast<int>(m_plot.size()), 0, "", m_timings.m_min, m_timings.m_max, ImVec2(ImGui::GetContentRegionAvail().x, 80));
-    }
-
-    // memory (vram/ram)
-    {
-        ImGui::Separator();
-
-        bool is_vram    = type == spartan::TimeBlockType::Gpu;
-        float allocated = is_vram ? spartan::RHI_Device::MemoryGetAllocatedMb() : spartan::Allocator::GetMemoryAllocatedMb();
-        float available = is_vram ? spartan::RHI_Device::MemoryGetAvailableMb() : spartan::Allocator::GetMemoryAvailableMb();
-        float total     = is_vram ? spartan::RHI_Device::MemoryGetTotalMb()     : spartan::Allocator::GetMemoryTotalMb();
-
-        show_memory_bar(is_vram ? "VRAM" : "RAM", allocated, available, total, ImVec2(-1, 32));
-    }
+        ImGui::TextDisabled("UNCALIBRATED: tracks have independent origins; cross-track gaps and aggregate GPU times are unavailable.");
+    if (capture.has_gpu && (capture.incomplete || capture.invalid_gpu || capture.dropped))
+        ImGui::TextDisabled("Incomplete scopes %u | Invalid GPU scopes %u | Dropped timestamps %u",
+            capture.incomplete, capture.invalid_gpu, capture.dropped);
+    ImGui::TextDisabled("Live memory   RAM %.0f / %.0f MB    VRAM %.0f / %.0f MB",
+        spartan::Allocator::GetMemoryAllocatedMb(), spartan::Allocator::GetMemoryTotalMb(),
+        static_cast<double>(spartan::RHI_Device::MemoryGetAllocatedMb()), static_cast<double>(spartan::RHI_Device::MemoryGetTotalMb()));
 }

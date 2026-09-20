@@ -893,22 +893,23 @@ namespace spartan
         }
 
         // copy the resolved query data from the readback buffer into a uint64 array
-        static void readback_data(ID3D12Resource* readback, uint64_t* out, uint32_t count)
+        static bool readback_data(ID3D12Resource* readback, uint64_t* out, uint32_t count)
         {
             if (!readback || !out || count == 0)
             {
-                return;
+                return false;
             }
 
             D3D12_RANGE read_range = { 0, count * sizeof(uint64_t) };
             void* mapped = nullptr;
             if (FAILED(readback->Map(0, &read_range, &mapped)) || !mapped)
             {
-                return;
+                return false;
             }
             memcpy(out, mapped, count * sizeof(uint64_t));
             D3D12_RANGE write_range = { 0, 0 };
             readback->Unmap(0, &write_range);
+            return true;
         }
     }
 
@@ -1244,7 +1245,7 @@ namespace spartan
         SP_ASSERT_MSG(d3d12_utility::error::check(cmd_list->Close()), "Failed to close command list");
 
         ID3D12CommandQueue* queue = static_cast<ID3D12CommandQueue*>(RHI_Device::GetQueueRhiResource(m_queue->GetType()));
-        m_last_timeline_signal_value = m_queue->Submit(cmd_list, 0, semaphore_wait, semaphore_signal, m_rendering_complete_semaphore_timeline.get(), semaphore_timeline_wait, timeline_wait_value);
+        m_last_timeline_signal_value = m_queue->Submit(cmd_list, 0, semaphore_wait, semaphore_signal, m_rendering_complete_semaphore_timeline.get(), semaphore_timeline_wait, timeline_wait_value, &m_submission_order);
         CommitTrackedResources();
 
         m_rhi_fence_value++;
@@ -3346,12 +3347,12 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         if (!Debugging::IsGpuTimingEnabled() || !m_rhi_query_pool_timestamps)
         {
-            return 0;
+            return UINT32_MAX;
         }
         if (m_timestamp_index >= m_max_timestamps)
         {
             Profiler::m_rhi_timestamps_dropped++;
-            return 0;
+            return UINT32_MAX;
         }
 
         // d3d12 timestamp queries use only EndQuery, write 'ticks-at-this-point-in-the-stream' to the slot
@@ -3372,12 +3373,12 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         if (!Debugging::IsGpuTimingEnabled() || !m_rhi_query_pool_timestamps)
         {
-            return 0;
+            return UINT32_MAX;
         }
         if (m_timestamp_index >= m_max_timestamps)
         {
             Profiler::m_rhi_timestamps_dropped++;
-            return 0;
+            return UINT32_MAX;
         }
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
@@ -3443,8 +3444,11 @@ namespace spartan
         if (m_timestamp_index > 0)
         {
             queries::CmdListQueries& q = queries::get(this);
-            queries::readback_data(q.readback_timestamp, m_timestamp_data.data(), std::min<uint32_t>(m_timestamp_index, m_max_timestamps));
+            const bool available = queries::readback_data(q.readback_timestamp, m_timestamp_data.data(), std::min<uint32_t>(m_timestamp_index, m_max_timestamps));
             m_timestamp_sample->ticks = m_timestamp_data;
+            m_timestamp_sample->count = min(m_timestamp_index, m_max_timestamps);
+            for (uint32_t i = 0; i < m_timestamp_sample->count; i++)
+                m_timestamp_sample->available[i] = available;
         }
         m_timestamp_sample->ready = true;
     }

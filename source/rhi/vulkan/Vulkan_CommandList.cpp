@@ -1450,7 +1450,8 @@ namespace spartan
             semaphore_binary,                             // signal semaphore (binary)
             m_rendering_complete_semaphore_timeline.get(), // signal semaphore (timeline)
             semaphore_timeline_wait,                      // wait semaphore (timeline, for cross-queue sync)
-            timeline_wait_value                           // value to wait on
+            timeline_wait_value,                          // value to wait on
+            &m_submission_order
         );
         CommitTrackedResources();
 
@@ -3082,19 +3083,18 @@ namespace spartan
             !m_rhi_query_pool_timestamps
         )
         {
-            return 0;
+            return UINT32_MAX;
         }
-        if (m_timestamp_index >= m_max_timestamps)
+        // Vulkan writes one query per view inside multiview rendering.
+        const uint32_t query_count = m_render_pass_active && m_pso.is_multiview ? 2u : 1u;
+        if (m_timestamp_index + query_count > m_max_timestamps)
         {
             Profiler::m_rhi_timestamps_dropped++;
-            return 0;
+            return UINT32_MAX;
         }
 
-        // timestamp writes must not happen inside an active render pass
-        if (m_render_pass_active)
-        {
-            render_pass_end();
-        }
+        // Timestamp commands are legal inside dynamic rendering. Ending the
+        // render pass here changes the workload being measured.
 
         uint32_t timestamp_index = m_timestamp_index;
 
@@ -3103,9 +3103,10 @@ namespace spartan
             static_cast<VkCommandBuffer>(m_rhi_resource),
             VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
             static_cast<VkQueryPool>(m_rhi_query_pool_timestamps),
-            m_timestamp_index++
+            m_timestamp_index
         );
 
+        m_timestamp_index += query_count;
         return timestamp_index;
     }
 
@@ -3117,19 +3118,18 @@ namespace spartan
             !m_rhi_query_pool_timestamps
         )
         {
-            return 0;
+            return UINT32_MAX;
         }
-        if (m_timestamp_index >= m_max_timestamps)
+        // Vulkan writes one query per view inside multiview rendering.
+        const uint32_t query_count = m_render_pass_active && m_pso.is_multiview ? 2u : 1u;
+        if (m_timestamp_index + query_count > m_max_timestamps)
         {
             Profiler::m_rhi_timestamps_dropped++;
-            return 0;
+            return UINT32_MAX;
         }
 
-        // timestamp writes must not happen inside an active render pass
-        if (m_render_pass_active)
-        {
-            render_pass_end();
-        }
+        // Timestamp commands are legal inside dynamic rendering. Ending the
+        // render pass here changes the workload being measured.
 
         uint32_t timestamp_index = m_timestamp_index;
 
@@ -3137,9 +3137,10 @@ namespace spartan
             static_cast<VkCommandBuffer>(m_rhi_resource),
             VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
             static_cast<VkQueryPool>(m_rhi_query_pool_timestamps),
-            m_timestamp_index++
+            m_timestamp_index
         );
 
+        m_timestamp_index += query_count;
         return timestamp_index;
     }
 
@@ -3188,6 +3189,9 @@ namespace spartan
             queries::timestamp::update(m_rhi_query_pool_timestamps, m_timestamp_index);
             m_timestamp_data = queries::timestamp::timestamps;
             m_timestamp_sample->ticks = m_timestamp_data;
+            m_timestamp_sample->count = min(m_timestamp_index, m_max_timestamps);
+            for (uint32_t i = 0; i < m_timestamp_sample->count; i++)
+                m_timestamp_sample->available[i] = queries::timestamp::availability[i] != 0;
         }
         m_timestamp_sample->ready = true;
     }

@@ -60,6 +60,10 @@ namespace spartan
         uint64_t GetTimestampRawTick(uint32_t index) const;
         void ResolveGpuDuration(uint64_t end_tick_override = 0);
 
+        bool IsTimingValid() const { return m_type == TimeBlockType::Cpu || m_gpu_timing_valid; }
+        bool IsGpuCalibrated() const { return m_calibration.calibrated; }
+        double GetCalibrationDeviationMs() const { return m_calibration.deviation_ms; }
+
         TimeBlockType GetType()        const { return m_type; }
         const char* GetName()          const { return m_name; }
         bool HasParent()               const { return m_parent_id != 0; }
@@ -99,7 +103,10 @@ namespace spartan
         std::shared_ptr<RHI_TimestampSample> m_timestamp_sample;
 
         // cpu timing
-        std::chrono::high_resolution_clock::time_point m_start;
-        std::chrono::high_resolution_clock::time_point m_end;
+        double m_start = 0.0;
+        double m_end = 0.0;
+        double m_frame_start_ms = 0.0;
+        RHI_TimestampCalibration m_calibration;
+        bool m_gpu_timing_valid = false;
     };
 }

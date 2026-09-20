@@ -56,12 +56,16 @@ namespace spartan
         
         // properties
         static const std::vector<TimeBlock>& GetTimeBlocks();
+        static uint64_t GetCaptureRevision();
         static float GetTimeCpuLast();
         static float GetTimeGpuLast();
         static float GetTimeFrameLast();
         static float GetFrameDurationMs();
         static float GetCapturedFrameDurationMs();
         static float GetCapturedPacingTimeMs();
+        static uint64_t GetCapturedFrameNumber();
+        static uint32_t GetCapturedIncompleteCount();
+        static uint32_t GetCapturedDroppedTimestamps();
         static float GetFps();
         static float GetUpdateInterval();
         static void SetUpdateInterval(float interval);
@@ -80,7 +84,12 @@ namespace spartan
         static const std::string& GetRecordingError();
 
         // timeline helpers
-        static float GetCpuOffsetMs(const std::chrono::high_resolution_clock::time_point& time_point);
+        static float GetCpuOffsetMs(double time_ms);
+        static double GetFrameStartMs();
+        static const RHI_TimestampCalibration& GetGpuCalibration(RHI_Queue_Type queue);
+        static void SetContinuous(bool enabled);
+        static bool IsContinuous();
+        static bool IsCpuWait(const char* name);
         
         // metrics - rhi
         static uint32_t m_rhi_draw;

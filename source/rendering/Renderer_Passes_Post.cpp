@@ -652,6 +652,7 @@ namespace spartan
 
     void Renderer::Pass_BlitRestirFallback(RHI_Texture* tex_raw, RHI_Texture* tex_denoised)
     {
+        m_pass_state.restir_accumulation_valid = false;
         Pass_Blit(tex_raw, tex_denoised);
     }
 

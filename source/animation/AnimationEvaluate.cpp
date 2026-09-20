@@ -708,15 +708,17 @@ namespace spartan
                         out_vertices[vertex_index].set_position(skinned);
 
                         // lighting used bind pose normals before this, so shading never followed a
-                        // rotating limb, the mesh deformed but the light on it did not
+                        // rotating limb, the mesh deformed but the light on it did not. Octahedral
+                        // packing normalizes by the L1 norm, so a unit-length intermediate
+                        // would only add two square roots per vertex.
                         out_vertices[vertex_index].set_normal(
                             skinned_nor.LengthSquared() > 1.0e-12f
-                                ? skinned_nor.Normalized()
+                                ? skinned_nor
                                 : bind_nor
                         );
                         out_vertices[vertex_index].set_tangent(
                             skinned_tan.LengthSquared() > 1.0e-12f
-                                ? skinned_tan.Normalized()
+                                ? skinned_tan
                                 : bind_tan
                         );
                     }

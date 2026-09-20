@@ -233,10 +233,10 @@ namespace spartan
             1, nullptr, true, "cluster_stats"
         );
 
-        // rebuilt each frame from every emissive material, capped at restir_emissive_tri_max to bound the cpu walk
+        // Initial allocation; larger scenes grow the pool instead of disabling emissive NEE.
         at(buffers, Renderer_Buffer::EmissiveTriangles) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_EmissiveTriangle)),
-            restir_emissive_tri_max, nullptr, true, "emissive_triangles"
+            restir_emissive_tri_initial_capacity, nullptr, false, "emissive_triangles"
         );
 
         // three concatenated tileable pairing tables, uploaded once when the restir reservoirs initialize
@@ -517,6 +517,8 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::restir_output)                   = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_duplication)              = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised)                 = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_denoised_previous)        = nullptr;
+            m_pass_state.restir_accumulation_valid = false;
             at(render_targets, Renderer_RenderTarget::nrd_in_mv)                       = nullptr;
             at(render_targets, Renderer_RenderTarget::nrd_in_normal_roughness)         = nullptr;
             at(render_targets, Renderer_RenderTarget::nrd_in_viewz)                    = nullptr;
@@ -546,7 +548,9 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::restir_shift2)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_shift2");
             at(render_targets, Renderer_RenderTarget::restir_output)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_output");
             at(render_targets, Renderer_RenderTarget::restir_duplication)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R8_Unorm,           restir_flags, "restir_duplication");
-            at(render_targets, Renderer_RenderTarget::restir_denoised)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised");
+            at(render_targets, Renderer_RenderTarget::restir_denoised)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_denoised");
+            at(render_targets, Renderer_RenderTarget::restir_denoised_previous)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_denoised_previous");
+            m_pass_state.restir_accumulation_valid = false;
             at(render_targets, Renderer_RenderTarget::nrd_in_mv)                       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "nrd_in_mv");
             at(render_targets, Renderer_RenderTarget::nrd_in_normal_roughness)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R10G10B10A2_Unorm, restir_flags, "nrd_in_normal_roughness");
             at(render_targets, Renderer_RenderTarget::nrd_in_viewz)                    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32_Float,         restir_flags, "nrd_in_viewz");
@@ -573,6 +577,22 @@ namespace spartan
             last_restir_scale = -1.0f;
             m_pass_state.restir_reservoirs_initialized = false;
         }
+    }
+
+    void Renderer::EnsureEmissiveTriangleCapacity(uint32_t count)
+    {
+        auto& buffer = at(buffers, Renderer_Buffer::EmissiveTriangles);
+        if (buffer && buffer->GetElementCount() >= count)
+            return;
+
+        // Buffer destruction defers the old allocation until its GPU users finish.
+        // Keep geometric growth so small changes in emitter topology do not reallocate.
+        uint32_t capacity = buffer ? buffer->GetElementCount() : restir_emissive_tri_initial_capacity;
+        while (capacity < count)
+            capacity *= 2;
+        buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, sizeof(Sb_EmissiveTriangle),
+            capacity, nullptr, false, "emissive_triangles");
+        SP_LOG_INFO("ReSTIR emissive sampler: %u triangles, capacity %u", count, capacity);
     }
 
     void Renderer::CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic)
@@ -623,6 +643,8 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::restir_shift2)                   = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_duplication)              = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised)                 = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_denoised_previous)        = nullptr;
+            m_pass_state.restir_accumulation_valid = false;
             at(render_targets, Renderer_RenderTarget::nrd_in_mv)                       = nullptr;
             at(render_targets, Renderer_RenderTarget::nrd_in_normal_roughness)         = nullptr;
             at(render_targets, Renderer_RenderTarget::nrd_in_viewz)                    = nullptr;

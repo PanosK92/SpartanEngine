@@ -2068,6 +2068,8 @@ namespace spartan
 
                 body.actor->setLinearVelocity(PxVec3(0.0f, 0.0f, 0.0f));
                 body.actor->setAngularVelocity(PxVec3(0.0f, 0.0f, 0.0f));
+                // kinematic bodies cannot use ccd; restore it when waking
+                body.actor->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, false);
                 body.actor->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
             }
         }
@@ -2135,6 +2137,7 @@ namespace spartan
                 }
 
                 body.actor->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, false);
+                body.actor->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
                 body.actor->setLinearVelocity(PxVec3(0.0f, 0.0f, 0.0f));
                 body.actor->setAngularVelocity(PxVec3(0.0f, 0.0f, 0.0f));
                 body.actor->clearForce();

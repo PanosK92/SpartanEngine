@@ -43,9 +43,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     const float2 uv = (thread_id.xy + 0.5f) / float2(resolution);
 
-    float depth = get_depth(uv);
-    // must match transposed worldtoview passed to nrd (engine v*m equals nrd m*v after transpose)
-    float view_z = abs(get_position_view_space(uv).z);
+    // Match the primary ray's point-sampled surface. Filtering depth blends unrelated
+    // surfaces at edges; a world-space round trip also loses precision far from the origin.
+    float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
+    float view_z = linearize_depth(depth);
     const float denoising_range = max(buffer_frame.camera_far * 0.99f, 1.0f);
 
     // sky, mark invalid for nrd, reverse-z clears far to 0

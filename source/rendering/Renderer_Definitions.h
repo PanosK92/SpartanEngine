@@ -77,9 +77,8 @@ namespace spartan
     const uint32_t renderer_max_cpu_indirect_draws = renderer_max_draw_calls * 8;
     const uint32_t renderer_max_instance_count     = 1024;
     const uint32_t renderer_editor_icon_size_px    = 48;
-    // hard cap on the restir nee pool, the cpu walker stops appending once this many emissive
-    // triangles have been recorded so worst case upload size is bounded at 80 * 16384 = 1.25 mb
-    const uint32_t restir_emissive_tri_max         = 16384;
+    // Initial capacity of the ReSTIR emissive pool; it grows to retain every emitter.
+    const uint32_t restir_emissive_tri_initial_capacity         = 16384;
     // rgba32f textures per reservoir set, must match pack_reservoir in restir_reservoir.hlsl
     const uint32_t restir_reservoir_textures       = 5;
     // paired spatial reuse tables, lin 2026 3, sizes and order must match RESTIR_PAIRING_SIZES
@@ -558,6 +557,7 @@ namespace spartan
         // sample duplication score map driving the adaptive temporal confidence cap, lin 2026
         restir_duplication,
         restir_denoised,
+        restir_denoised_previous,
         // nrd gi (restir sized)
         nrd_in_mv,
         nrd_in_normal_roughness,

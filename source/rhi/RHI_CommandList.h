@@ -94,6 +94,8 @@ namespace spartan
     struct RHI_TimestampSample
     {
         std::array<uint64_t, 256> ticks = {};
+        std::array<bool, 256> available = {};
+        uint32_t count = 0;
         bool ready = false;
     };
 
@@ -119,6 +121,7 @@ namespace spartan
         static void ImmediateExecutionShutdown();
 
         RHI_SyncPrimitive* GetTimelineSemaphore()                  { return m_rendering_complete_semaphore_timeline.get(); }
+        uint64_t GetSubmissionOrder() const { return m_submission_order; }
         uint64_t GetLastTimelineSignalValue() const                { return m_last_timeline_signal_value; }
         const RHI_CommandListState GetState() const                { return m_state; }
         RHI_Queue* GetQueue() const                                { return m_queue; }
@@ -435,6 +438,7 @@ namespace spartan
         // sync
         std::shared_ptr<RHI_SyncPrimitive> m_rendering_complete_semaphore_timeline;
         uint64_t m_last_timeline_signal_value = 0;
+        uint64_t m_submission_order = 0;
 
         // misc
         uint64_t m_buffer_id_vertex                          = 0;

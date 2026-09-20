@@ -31,6 +31,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Declarations
 namespace spartan
 {
+    // CPU milliseconds use the same monotonic clock as the profiler. GPU ticks
+    // are queue-specific on D3D12; never compare raw ticks between its queues.
+    struct RHI_TimestampCalibration
+    {
+        uint64_t gpu_tick = 0;
+        double cpu_ms = 0.0;
+        double period_ns = 0.0;
+        double deviation_ms = 0.0;
+        uint32_t valid_bits = 64;
+        bool calibrated = false;
+    };
+
     class RHI_Context;
     class RHI_Queue;
     class RHI_CommandList;

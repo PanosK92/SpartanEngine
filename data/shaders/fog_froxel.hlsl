@@ -246,6 +246,20 @@ float3 fog_light_samples(
     float angular_footprint
 )
 {
+    LightParameters parameters = light_parameters[light_index];
+    if ((parameters.flags & 1u) == 0u)
+    {
+        float radius = parameters.range;
+        if ((parameters.flags & (1u << 6)) != 0u)
+            radius += 0.5f * length(float2(parameters.area_width, parameters.area_height));
+        float3 delta0 = positions[0] - parameters.position;
+        float3 delta1 = positions[count - 1u] - parameters.position;
+        // Every light sample is outside the finite attenuation support. Include
+        // the area's full diagonal and roundoff slack to retain boundary samples.
+        radius += 0.001f;
+        if (dot(delta0, delta0) > radius * radius && dot(delta1, delta1) > radius * radius)
+            return 0.0f;
+    }
     Light light;
     light.Build(light_index, surface);
     // The GPU bit now denotes the scattering distance budget, not an authored

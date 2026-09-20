@@ -106,6 +106,8 @@ namespace spartan
             bool skip_rt_trace           = false;
             bool cleared_restir          = false;
             bool restir_reservoirs_initialized = false;
+            bool restir_accumulation_valid = false;
+            uint64_t restir_scene_signature = 0;
 
             bool     sky_first_frame           = true;
             bool     sky_had_directional_light = false;

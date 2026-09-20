@@ -584,6 +584,13 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     if (!sphere_in_side_planes(blade_center, cull_radius, plane_l, plane_r, plane_b, plane_t))
         return;
 
+    // hi-z arrives on tex2, derive the max mip from the texture so no extra push constant is needed
+    // the sphere test also rejects blades behind the camera (the side planes alone do not)
+    uint hiz_w, hiz_h, hiz_mips;
+    tex2.GetDimensions(0, hiz_w, hiz_h, hiz_mips);
+    if (!sphere_hiz_visible(tex2, blade_center, cull_radius, float(hiz_mips - 1u)))
+        return;
+
     float distance_to_camera = sqrt(dist2);
     float warp_n = grass_value_noise(world_xz * (1.0f / 34.0f), 91u) * 0.7f
                  + grass_value_noise(world_xz * (1.0f / 13.0f), 53u) * 0.3f;
@@ -686,13 +693,6 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     {
         return;
     }
-
-    // hi-z arrives on tex2, derive the max mip from the texture so no extra push constant is needed
-    // the sphere test also rejects blades behind the camera (the side planes alone do not)
-    uint hiz_w, hiz_h, hiz_mips;
-    tex2.GetDimensions(0, hiz_w, hiz_h, hiz_mips);
-    if (!sphere_hiz_visible(tex2, blade_center, cull_radius, float(hiz_mips - 1u)))
-        return;
 
     // slope reject, two forward taps reusing the centre height, paid only by visible blades
     float3 surface_normal = sample_terrain_normal(

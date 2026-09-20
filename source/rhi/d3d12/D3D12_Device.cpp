@@ -1011,6 +1011,32 @@ namespace spartan
         SP_LOG_INFO("DirectX 12.0 initialized successfully");
     }
 
+    RHI_TimestampCalibration RHI_Device::GetTimestampCalibration(RHI_Queue_Type type)
+    {
+        RHI_TimestampCalibration result;
+        auto* queue = static_cast<ID3D12CommandQueue*>(GetQueueRhiResource(type));
+        UINT64 frequency = 0, cpu_tick = 0;
+        if (!queue || FAILED(queue->GetTimestampFrequency(&frequency)) || !frequency)
+        {
+            result.valid_bits = 0;
+            return result;
+        }
+        result.period_ns = 1e9 / static_cast<double>(frequency);
+        const double before = GetCpuTimestampMs();
+        const HRESULT status = queue->GetClockCalibration(&result.gpu_tick, &cpu_tick);
+        const double after = GetCpuTimestampMs();
+        if (SUCCEEDED(status))
+        {
+            LARGE_INTEGER cpu_frequency;
+            QueryPerformanceFrequency(&cpu_frequency);
+            result.cpu_ms = static_cast<double>(cpu_tick) * 1000.0 / static_cast<double>(cpu_frequency.QuadPart);
+            // D3D12 provides no maximum deviation; expose a conservative call bracket.
+            result.deviation_ms = after - before;
+            result.calibrated = true;
+        }
+        return result;
+    }
+
     void RHI_Device::Tick(const uint64_t frame_count)
     {
         // retire resources whose GPU work has completed

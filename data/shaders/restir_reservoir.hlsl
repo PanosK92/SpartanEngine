@@ -28,6 +28,18 @@ static const uint  RESTIR_MAX_PATH_LENGTH    = 5;
 // candidates, so these caps count frames of history, lin 2022 uses 20 flat, lin 2026 5 shrinks
 // it toward 1 where copies of one path cluster, the duplication reduction stays on a linear
 // curve to a floor that keeps a few frames alive
+// Reconstruct the exact G-buffer texel that supplied the normal and material.
+// A filtered depth at a quarter-resolution texel center can place the ray inside
+// a wall, causing self-intersection and repeated history rejection.
+float3 restir_primary_position(float2 uv)
+{
+    uint2 size;
+    tex_depth.GetDimensions(size.x, size.y);
+    uint2 pixel = min(uint2(uv * float2(size)), size - 1u);
+    float2 sample_uv = (float2(pixel) + 0.5f) / float2(size);
+    return get_position(tex_depth.Load(int3(pixel, 0)).r, render_uv_to_screen_uv(sample_uv));
+}
+
 static const uint  RESTIR_M_CAP_MIN          = 16;
 static const uint  RESTIR_M_CAP_MAX          = 64;
 static const float RESTIR_C_CAP_DUPLICATED   = 2.0f;
@@ -61,8 +73,9 @@ uint  get_restir_max_path_length()     { return RESTIR_MAX_PATH_LENGTH; }
 uint  get_restir_light_candidates()    { return 16u; }
 // lin 2026 7 traces one path tree per pixel and lets reuse supply the sample count, that needs
 // the paper's full hybrid shift, without the replay leg the reuse rate here is too low to carry it
-uint  get_restir_initial_candidates()  { return 8u; }
-uint  get_restir_emtri_candidates()    { return 8u; }
+// Explicit emitter sampling replaces half the brute-force paths when the pool is available.
+uint  get_restir_initial_candidates()  { return buffer_frame.restir_pt_emissive_tri_count > 0.5f ? 4u : 8u; }
+uint  get_restir_emtri_candidates()    { return 4u; }
 // single sample w cap, trades firefly safety for highlight energy
 float get_restir_w_clamp()             { return 100.0f; }
 // per pixel period for both halves of sample validation, the radiance refresh has to outpace the
@@ -814,7 +827,7 @@ bool is_neighbor_gbuffer_compatible(
         return false;
 
     // world distance gate scaled with depth, a 5cm floor, rejects crevices regardless of camera distance
-    float3 neighbor_pos  = get_position(neighbor_uv);
+    float3 neighbor_pos  = restir_primary_position(neighbor_uv);
     float  world_dist    = length(neighbor_pos - center_pos);
     float  max_world_dist = max(pair_depth * 0.02f, 0.05f);
     if (world_dist > max_world_dist)
@@ -1482,6 +1495,16 @@ bool emtri_ris_pick(
         {
             continue;
         }
+
+        // Reject zero-support triangles before the spherical-triangle trigonometry.
+        // Every point is either behind the shading hemisphere or on the emitter's
+        // back face. Random draws above are still consumed to preserve replay.
+        float3 to_v0 = tri.v0 - pos;
+        float3 to_v1 = tri.v1 - pos;
+        float3 to_v2 = tri.v2 - pos;
+        if (max(dot(normal, to_v0), max(dot(normal, to_v1), dot(normal, to_v2))) <= 0.0f ||
+            dot(tri.normal, -to_v0) <= 0.0f)
+            continue;
 
         // The helper returns 1/pdf in solid angle, including its small-triangle area fallback.
         float3 dir;

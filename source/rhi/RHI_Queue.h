@@ -40,7 +40,7 @@ namespace spartan
         uint64_t Submit(
             void* cmd_buffer, const uint32_t wait_flags,
             RHI_SyncPrimitive* semaphore_wait, RHI_SyncPrimitive* semaphore_signal, RHI_SyncPrimitive* semaphore_timeline_signal,
-            RHI_SyncPrimitive* semaphore_timeline_wait = nullptr, uint64_t timeline_wait_value = 0
+            RHI_SyncPrimitive* semaphore_timeline_wait = nullptr, uint64_t timeline_wait_value = 0, uint64_t* submission_order = nullptr
         );
         bool Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait);
         RHI_CommandList* NextCommandList();
@@ -52,6 +52,7 @@ namespace spartan
         > m_cmd_lists;
         void* m_rhi_resource                                        = nullptr;
         std::atomic<uint32_t> m_index                               = 0;
+        uint64_t m_submission_order = 0; // protected by the queue submission mutex
         RHI_Queue_Type m_type                                       = RHI_Queue_Type::Max;
     };
 }

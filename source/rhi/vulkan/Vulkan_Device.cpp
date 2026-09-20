@@ -310,8 +310,10 @@ namespace spartan
             "VK_KHR_ray_query",
             "VK_KHR_ray_tracing_maintenance1",
             // mesh shaders
+            VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
             VK_EXT_MESH_SHADER_EXTENSION_NAME
         };
+        bool calibrated_timestamps_supported = false;
         bool memory_priority_supported              = false;
         bool memory_priority_enabled                = false;
         bool pageable_device_local_memory_supported = false;
@@ -347,6 +349,7 @@ namespace spartan
                 if (found)
                 {
                     extensions_supported.emplace_back(requested);
+                    calibrated_timestamps_supported |= strcmp(requested, VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME) == 0;
                     memory_priority_supported              |= strcmp(requested, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME) == 0;
                     pageable_device_local_memory_supported |= strcmp(requested, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME) == 0;
                 }
@@ -2195,6 +2198,52 @@ namespace spartan
         descriptors::create_pool();
         descriptors::create_pipeline_cache();
         descriptors::bindless::initialize();
+    }
+
+    RHI_TimestampCalibration RHI_Device::GetTimestampCalibration(RHI_Queue_Type queue)
+    {
+        RHI_TimestampCalibration result;
+        result.period_ns = PropertyGetTimestampPeriod();
+        uint32_t count = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(RHI_Context::device_physical, &count, nullptr);
+        vector<VkQueueFamilyProperties> families(count);
+        vkGetPhysicalDeviceQueueFamilyProperties(RHI_Context::device_physical, &count, families.data());
+        const uint32_t family = GetQueueIndex(queue);
+        result.valid_bits = family < count ? families[family].timestampValidBits : 0;
+        if (!result.valid_bits || !extensions::calibrated_timestamps_supported) return result;
+
+        auto domains_fn = reinterpret_cast<PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT>(
+            vkGetInstanceProcAddr(RHI_Context::instance, "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT"));
+        auto timestamps_fn = reinterpret_cast<PFN_vkGetCalibratedTimestampsEXT>(
+            vkGetDeviceProcAddr(RHI_Context::device, "vkGetCalibratedTimestampsEXT"));
+        if (!domains_fn || !timestamps_fn) return result;
+#ifdef _WIN32
+        constexpr VkTimeDomainEXT cpu_domain = VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_EXT;
+        LARGE_INTEGER frequency;
+        QueryPerformanceFrequency(&frequency);
+        const double cpu_tick_ms = 1000.0 / static_cast<double>(frequency.QuadPart);
+#else
+        constexpr VkTimeDomainEXT cpu_domain = VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT;
+        const double cpu_tick_ms = 1e-6;
+#endif
+        count = 0;
+        if (domains_fn(RHI_Context::device_physical, &count, nullptr) != VK_SUCCESS) return result;
+        vector<VkTimeDomainEXT> domains(count);
+        if (domains_fn(RHI_Context::device_physical, &count, domains.data()) != VK_SUCCESS ||
+            find(domains.begin(), domains.end(), cpu_domain) == domains.end()) return result;
+        VkCalibratedTimestampInfoEXT infos[2] = {};
+        infos[0].sType = infos[1].sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT;
+        infos[0].timeDomain = VK_TIME_DOMAIN_DEVICE_EXT;
+        infos[1].timeDomain = cpu_domain;
+        uint64_t ticks[2] = {}, deviation = 0;
+        if (timestamps_fn(RHI_Context::device, 2, infos, ticks, &deviation) == VK_SUCCESS)
+        {
+            result.gpu_tick = ticks[0];
+            result.cpu_ms = static_cast<double>(ticks[1]) * cpu_tick_ms;
+            result.deviation_ms = static_cast<double>(deviation) * 1e-6;
+            result.calibrated = true;
+        }
+        return result;
     }
 
     void RHI_Device::Tick(const uint64_t frame_count)

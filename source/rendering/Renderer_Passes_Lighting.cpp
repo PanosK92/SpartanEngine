@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../rhi/RHI_Device.h"
 #include "../rhi/RHI_VendorTechnology.h"
 #include "../core/Window.h"
+#include "../core/Engine.h"
 #include "../xr/Xr.h"
 SP_WARNINGS_OFF
 #include "bend_sss_cpu.h"
@@ -798,6 +799,10 @@ namespace spartan
         {
             swap(render_targets[idx_velocity], render_targets[idx_velocity_prev]);
         }
+        const uint32_t gi = static_cast<uint32_t>(Renderer_RenderTarget::restir_denoised);
+        const uint32_t gi_prev = static_cast<uint32_t>(Renderer_RenderTarget::restir_denoised_previous);
+        if (render_targets[gi] && render_targets[gi_prev])
+            swap(render_targets[gi], render_targets[gi_prev]);
     }
 
     void Renderer::Pass_ReSTIR_PathTracing()
@@ -952,12 +957,13 @@ namespace spartan
 
         RHI_Texture* tex_gi_raw      = GetRenderTarget(Renderer_RenderTarget::restir_output);
         RHI_Texture* tex_gi_denoised = GetRenderTarget(Renderer_RenderTarget::restir_denoised);
+        RHI_Texture* tex_gi_previous = GetRenderTarget(Renderer_RenderTarget::restir_denoised_previous);
         RHI_Texture* tex_mv          = GetRenderTarget(Renderer_RenderTarget::nrd_in_mv);
         RHI_Texture* tex_normal      = GetRenderTarget(Renderer_RenderTarget::nrd_in_normal_roughness);
         RHI_Texture* tex_view_z      = GetRenderTarget(Renderer_RenderTarget::nrd_in_viewz);
         RHI_Texture* tex_in          = GetRenderTarget(Renderer_RenderTarget::nrd_in_diff_radiance);
         RHI_Texture* tex_out         = GetRenderTarget(Renderer_RenderTarget::nrd_out_diff_radiance);
-        if (!tex_gi_raw || !tex_gi_denoised || !tex_mv || !tex_normal || !tex_view_z || !tex_in || !tex_out)
+        if (!tex_gi_raw || !tex_gi_denoised || !tex_gi_previous || !tex_mv || !tex_normal || !tex_view_z || !tex_in || !tex_out)
         {
             if (tex_gi_raw && tex_gi_denoised)
             {
@@ -1012,8 +1018,19 @@ namespace spartan
             {
                 RHI_CommandList::SetShader(shader_unpack, "restir_pt_nrd_unpack");
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_out);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), tex_gi_previous);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous));
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex5), GetRenderTarget(Renderer_RenderTarget::gbuffer_normal_previous));
+                const bool camera_still = m_cb_frame_cpu.view_projection_unjittered == m_cb_frame_cpu.view_projection_previous_unjittered;
+                // Moving scenes retain NRD's responsive temporal filtering. Only a still
+                // authoring view progressively averages the remaining Monte Carlo variance.
+                const bool accumulate = m_pass_state.restir_accumulation_valid && camera_still &&
+                    !Engine::IsFlagSet(EngineMode::Playing) && !IsSecondaryViewActive();
+                m_pcb_pass_cpu.set_f3_value(accumulate ? 0.0f : 1.0f);
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi_denoised, rhi_all_mips, 0, true);
                 RHI_CommandList::Dispatch(tex_gi_denoised);
+                m_pass_state.restir_accumulation_valid = true;
             }
             RHI_CommandList::EndMarker();
         }

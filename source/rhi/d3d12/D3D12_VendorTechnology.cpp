@@ -159,12 +159,16 @@ namespace spartan
             settings.hitDistanceParameters.A           = restir_hit_distance_a;
             settings.hitDistanceParameters.B           = restir_hit_distance_b;
             settings.hitDistanceParameters.C           = restir_hit_distance_c;
-            settings.diffusePrepassBlurRadius          = 0.0f;
+            settings.diffusePrepassBlurRadius          = 8.0f;
             settings.specularPrepassBlurRadius         = 0.0f;
-            settings.maxBlurRadius                     = 8.0f;
+            settings.maxBlurRadius                     = 16.0f;
             settings.minBlurRadius                     = 1.0f;
-            settings.maxAccumulatedFrameNum            = get_accumulated_frame_num(nrd::REBLUR_DEFAULT_ACCUMULATION_TIME, nrd::REBLUR_MAX_HISTORY_FRAME_NUM, delta_time);
-            settings.maxFastAccumulatedFrameNum        = get_accumulated_frame_num(nrd::REBLUR_DEFAULT_ACCUMULATION_TIME / 5.0f, settings.maxAccumulatedFrameNum, delta_time);
+            // Quarter-resolution indirect light needs a longer history than reflections.
+            // ReBLUR antilag and disocclusion still discard stale lighting and moving surfaces.
+            settings.maxAccumulatedFrameNum            = get_accumulated_frame_num(2.0f, nrd::REBLUR_MAX_HISTORY_FRAME_NUM, delta_time);
+            settings.maxFastAccumulatedFrameNum        = (std::min)(settings.maxAccumulatedFrameNum, (std::max)(4u, get_accumulated_frame_num(0.25f, settings.maxAccumulatedFrameNum, delta_time)));
+            // History reconstruction requires fewer frames than fast history, including at low FPS.
+            settings.historyFixFrameNum                = (std::min)(3u, settings.maxFastAccumulatedFrameNum - 1u);
             settings.minHitDistanceWeight              = 0.08f;
             settings.fireflySuppressorMinRelativeScale = 2.5f;
             settings.enableAntiFirefly                 = true;

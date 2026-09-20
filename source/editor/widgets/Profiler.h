@@ -21,42 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
 #include "Widget.h"
-#include <array>
-#include <utility>
-#include <vector>
 #include "profiling/TimeBlock.h"
-//=================================
-
-struct Timings
-{
-    Timings() { Clear(); }
-
-    void AddSample(const float sample)
-    {
-        m_min = std::min(m_min, sample);
-        m_max = std::max(m_max, sample);
-        m_sum += sample;
-        m_sample_count++;
-        m_avg = float(m_sum / static_cast<float>(m_sample_count));
-    }
-
-    void Clear()
-    {
-        m_min          = FLT_MAX;
-        m_max          = FLT_MIN;
-        m_avg          = 0.0f;
-        m_sum          = 0.0f;
-        m_sample_count = 0;
-    }
-
-    float m_min;
-    float m_max;
-    float m_avg;
-    double m_sum;
-    uint64_t m_sample_count;
-};
+#include <deque>
+#include <string>
+#include <vector>
 
 class Profiler : public Widget
 {
@@ -66,23 +35,56 @@ public:
     void OnTickVisible() override;
 
 private:
-    std::array<float, 400> m_plot;
-    Timings m_timings;
-    ImGuiTextFilter m_block_filter;
+    // Own labels and timings only: history must not retain timestamp queries or command lists.
+    struct Scope
+    {
+        std::string name;
+        float start;
+        float end;
+        float duration;
+        uint32_t depth;
+        int lane;
+        uint32_t id;
+        uint32_t parent_id;
+        float self = 0.0f;
+    };
 
-    // timeline state
-    float m_timeline_offset_ms       = 0.0f;
-    float m_timeline_range_ms        = 16.0f;
-    bool  m_timeline_needs_fit       = true;
-    bool  m_user_has_interacted      = false; // set when user zooms or pans, disables auto-grow
-    int   m_prev_mode_hardware       = -1;
-    int   m_prev_mode_view           = -1;
+    struct Capture
+    {
+        uint64_t revision = 0;
+        float wall = 0.0f;
+        float cpu = 0.0f;
+        float gpu = 0.0f;
+        float pacing = 0.0f;
+        float wait = 0.0f;
+        float gpu_covered = 0.0f;
+        double calibration_deviation_ms = 0.0;
+        bool calibrated = true;
+        bool has_gpu = false;
+        uint32_t invalid_gpu = 0;
+        uint32_t incomplete = 0;
+        uint32_t dropped = 0;
+        std::vector<Scope> scopes;
+    };
 
-    // freeze state
-    bool m_frozen = false;
-    std::vector<spartan::TimeBlock> m_frozen_time_blocks;
-    float m_frozen_time_cpu  = 0.0f;
-    float m_frozen_time_gpu  = 0.0f;
-    float m_frozen_time_frame = 0.0f;
-    float m_frozen_time_pacing = 0.0f;
+    void CaptureLatest();
+    void DrawHistory();
+    void DrawTimeline(const Capture& capture, float height);
+    void DrawDetails(const Capture& capture, float height);
+    void SelectCapture(int index);
+
+    std::deque<Capture> m_history;
+    uint64_t m_last_revision = 0;
+    int m_selected_capture = -1;
+    int m_selected_scope = -1;
+    bool m_paused = false;
+    bool m_show_cpu = true;
+    bool m_show_gpu = true;
+    bool m_inspect_narrow = false;
+    bool m_collapsed[6] = {};
+    bool m_fit = true;
+    bool m_auto_fit = true;
+    float m_offset_ms = 0.0f;
+    float m_range_ms = 16.667f;
+    ImGuiTextFilter m_filter;
 };

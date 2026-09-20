@@ -30,7 +30,10 @@ float2 reproject_to_previous_frame(float2 current_uv)
 {
     float2 velocity_ndc = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv, 0).xy;
     float2 velocity_uv  = velocity_ndc * float2(0.5f, -0.5f);
-    return current_uv - velocity_uv;
+    // The reservoir and G-buffer histories live on jittered pixel grids, while
+    // velocity deliberately excludes jitter. Put history UVs on the prior grid.
+    float2 jitter_delta = (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current) * float2(0.5f, -0.5f);
+    return current_uv - velocity_uv + jitter_delta;
 }
 
 // validates temporal reprojection, delegated to the shared evaluate_disocclusion helper
@@ -76,7 +79,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (depth <= 0.0f)
         return;
 
-    float3 pos_ws    = get_position(uv);
+    float3 pos_ws    = restir_primary_position(uv);
     float3 normal_ws = get_normal(uv);
     float3 view_dir  = normalize(get_camera_position() - pos_ws);
     float4 material  = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);

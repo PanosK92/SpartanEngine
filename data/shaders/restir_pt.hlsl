@@ -610,7 +610,7 @@ void ray_gen()
     uint seed = create_seed_for_pass(launch_id, buffer_frame.frame, 0);
 
     // gather primary surface properties from the g-buffer
-    float3 pos_ws    = get_position(uv);
+    float3 pos_ws    = restir_primary_position(uv);
     float3 normal_ws = get_normal(uv);
     float4 material  = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
     float3 albedo    = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);

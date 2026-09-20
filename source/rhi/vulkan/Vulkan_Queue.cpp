@@ -192,7 +192,9 @@ namespace spartan
                     return cmd_list.get();
                 }
 
-                if (submitted_index == count)
+                // Lists are reserved before they are submitted (Compute B, for
+                // example, is reserved before fog). Ring order is not GPU order.
+                if (submitted_index == count || cmd_list->GetSubmissionOrder() < m_cmd_lists[submitted_index]->GetSubmissionOrder())
                 {
                     submitted_index = index;
                 }
@@ -266,7 +268,7 @@ namespace spartan
     uint64_t RHI_Queue::Submit(
         void* cmd_buffer, const uint32_t wait_flags,
         RHI_SyncPrimitive* semaphore_wait, RHI_SyncPrimitive* semaphore_signal, RHI_SyncPrimitive* semaphore_timeline_signal,
-        RHI_SyncPrimitive* semaphore_timeline_wait, uint64_t timeline_wait_value
+        RHI_SyncPrimitive* semaphore_timeline_wait, uint64_t timeline_wait_value, uint64_t* submission_order
     )
     {
         ScopedTimeBlock time_block(
@@ -366,6 +368,7 @@ namespace spartan
             SP_ASSERT_VK(result);
         }
 
+        if (submission_order) *submission_order = ++m_submission_order;
         return timeline_signal_value;
     }
 

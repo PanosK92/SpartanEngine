@@ -70,11 +70,13 @@ namespace spartan
         m_max_tree_depth        = max(m_max_tree_depth, m_tree_depth);
 
         // record cpu time for timeline position
-        m_start    = chrono::high_resolution_clock::now();
+        m_start    = RHI_Device::GetCpuTimestampMs();
         m_start_ms = Profiler::GetCpuOffsetMs(m_start);
+        m_frame_start_ms = Profiler::GetFrameStartMs();
 
         if (type == TimeBlockType::Gpu)
         {
+            m_calibration = Profiler::GetGpuCalibration(queue_type);
             m_timestamp_sample = cmd_list->GetTimestampSample();
             m_timestamp_index_start = cmd_list->begin_timestamp();
         }
@@ -84,18 +86,17 @@ namespace spartan
     {
         if (m_type == TimeBlockType::Cpu)
         {
-            m_end = chrono::high_resolution_clock::now();
+            m_end = RHI_Device::GetCpuTimestampMs();
         }
         else if (m_type == TimeBlockType::Gpu)
         {
-            m_timestamp_index_end = m_cmd_list->EndTimestamp();
+            m_timestamp_index_end = m_cmd_list->end_timestamp();
         }
 
         // compute duration and timeline offsets
         if (m_type == TimeBlockType::Cpu)
         {
-            const chrono::duration<double, milli> ms = m_end - m_start;
-            m_duration = static_cast<float>(ms.count());
+            m_duration = static_cast<float>(m_end - m_start);
             m_end_ms   = m_start_ms + m_duration;
         }
         else if (m_type == TimeBlockType::Gpu)
@@ -129,25 +130,30 @@ namespace spartan
             return;
         }
 
-        uint64_t start_tick = GetTimestampRawTick(m_timestamp_index_start);
-        uint64_t end_tick   = end_tick_override != 0 ? end_tick_override : GetTimestampRawTick(m_timestamp_index_end);
-        if (end_tick > start_tick)
+        m_gpu_timing_valid = false;
+        if (!m_timestamp_sample || !m_timestamp_sample->ready ||
+            m_timestamp_index_start >= m_timestamp_sample->count ||
+            m_timestamp_index_end >= m_timestamp_sample->count ||
+            !m_timestamp_sample->available[m_timestamp_index_start] ||
+            !m_timestamp_sample->available[m_timestamp_index_end] || !m_calibration.valid_bits)
         {
-            uint64_t duration_ticks = end_tick - start_tick;
-            m_duration = clamp(static_cast<float>(duration_ticks * timestamp_period * 1e-6f), 0.0f, 1000.0f);
+            m_start_ms = m_end_ms = m_duration = 0.0f;
+            return;
         }
-        else
-        {
-            m_duration = 0.0f;
-        }
-
-        // compute position relative to the global frame reference
-        if (start_tick >= global_reference_tick && global_reference_tick != 0)
-        {
-            m_start_ms = static_cast<float>((start_tick - global_reference_tick) * timestamp_period * 1e-6f);
-        }
-
+        const uint64_t mask = m_calibration.valid_bits == 64 ? UINT64_MAX : (uint64_t(1) << m_calibration.valid_bits) - 1;
+        const uint64_t start_tick = GetTimestampRawTick(m_timestamp_index_start) & mask;
+        const uint64_t end_tick = (end_tick_override ? end_tick_override : GetTimestampRawTick(m_timestamp_index_end)) & mask;
+        const uint64_t elapsed = (end_tick - start_tick) & mask;
+        const double period = m_calibration.period_ns > 0.0 ? m_calibration.period_ns : timestamp_period;
+        if (elapsed > (mask >> 1) || period <= 0.0) return;
+        m_duration = static_cast<float>(static_cast<double>(elapsed) * period * 1e-6);
+        const uint64_t reference = m_calibration.calibrated ? m_calibration.gpu_tick : global_reference_tick;
+        const uint64_t delta = (start_tick - reference) & mask;
+        const double signed_delta = delta > (mask >> 1) ? -static_cast<double>((reference - start_tick) & mask) : static_cast<double>(delta);
+        const double origin_ms = m_calibration.calibrated ? m_calibration.cpu_ms - m_frame_start_ms : 0.0;
+        m_start_ms = static_cast<float>(origin_ms + signed_delta * period * 1e-6);
         m_end_ms = m_start_ms + m_duration;
+        m_gpu_timing_valid = true;
     }
 
     void TimeBlock::ResolveGpuDuration(uint64_t end_tick_override /*= 0*/)

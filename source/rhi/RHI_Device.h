@@ -141,6 +141,10 @@ namespace spartan
         static void StagingBufferRelease(void* buffer);
         static void StagingBufferPoolDestroy();
 
+        // Profiling clocks. Calibration never waits for GPU execution.
+        static double GetCpuTimestampMs();
+        static RHI_TimestampCalibration GetTimestampCalibration(RHI_Queue_Type queue);
+
         // properties (actual silicon properties)
         static float PropertyGetTimestampPeriod()                         { return m_timestamp_period; }
         static uint64_t PropertyGetMinUniformBufferOffsetAlignment()      { return m_min_uniform_buffer_offset_alignment; }

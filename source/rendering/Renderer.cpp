@@ -1341,6 +1341,9 @@ namespace spartan
             return;
         }
 
+        if (update_materials || bindless_textures_dirty)
+            m_pass_state.restir_accumulation_valid = false;
+
         if (update_materials)
         {
             m_pass_state.bindless_materials_dirty = false;
@@ -2316,7 +2319,8 @@ namespace spartan
         static vector<uint32_t>                 indices;
         static vector<RHI_Vertex_PosTexNorTan>  vertices;
         tris.clear();
-        bool truncated = false;
+        uint64_t scene_signature = 14695981039346656037ull;
+        auto mix_scene = [&](uint64_t value) { scene_signature = (scene_signature ^ value) * 1099511628211ull; };
 
         for (Entity* entity : render_entities())
         {
@@ -2330,6 +2334,9 @@ namespace spartan
                 continue;
             }
 
+            mix_scene(entity->GetObjectId());
+            mix_scene(entity->GetTransformRevision());
+            mix_scene(entity->GetChildDataRevision());
             Material* material = render->GetMaterial();
             if (!material)
             {
@@ -2350,12 +2357,13 @@ namespace spartan
 
             // This pool represents constant radiance on non-instanced meshes.
             // When it cannot represent an emitter, leave all authored emission
-            // to BRDF/environment sampling, as with the pool-cap fallback below.
+            // to BRDF/environment sampling, rather than suppressing unsampled emitters.
             // A partial pool would suppress the missing emitter at ray hits.
             if (material->HasTextureOfType(MaterialTextureType::Color) ||
                 material->GetProperty(MaterialProperty::IsTerrain) != 0.0f || render->HasInstancing())
             {
                 m_cb_frame_cpu.restir_pt_emissive_tri_count = 0.0f;
+                m_pass_state.restir_accumulation_valid = false;
                 return;
             }
 
@@ -2391,12 +2399,6 @@ namespace spartan
             uint32_t tri_count = static_cast<uint32_t>(indices.size() / 3u);
             for (uint32_t i = 0; i < tri_count; i++)
             {
-                if (tris.size() >= restir_emissive_tri_max)
-                {
-                    truncated = true;
-                    break;
-                }
-
                 uint32_t i0 = indices[i * 3u + 0u];
                 uint32_t i1 = indices[i * 3u + 1u];
                 uint32_t i2 = indices[i * 3u + 2u];
@@ -2436,30 +2438,11 @@ namespace spartan
                 tri.cdf      = 0.0f;
                 tris.push_back(tri);
             }
-
-            if (truncated)
-            {
-                break;
-            }
         }
 
-        // a truncated pool would zero emission at vertices it cannot sample, brdf sampling is unbiased so fall back to it
-        // that fallback is correct but very noisy, cosine rays find small bright emitters rarely and
-        // each hit lands far above its neighbours, so the reuse passes freeze those spikes into blobs
-        if (truncated)
-        {
-            static bool warned = false;
-            if (!warned)
-            {
-                SP_LOG_WARNING(
-                    "emissive triangle count exceeds the nee pool cap of %u, falling back to brdf sampled emission, expect noisy indirect light from emitters",
-                    restir_emissive_tri_max
-                );
-                warned = true;
-            }
-            m_cb_frame_cpu.restir_pt_emissive_tri_count = 0.0f;
-            return;
-        }
+        if (scene_signature != m_pass_state.restir_scene_signature)
+            m_pass_state.restir_accumulation_valid = false;
+        m_pass_state.restir_scene_signature = scene_signature;
 
         // build the prefix sum over picking weight, the last entry's cdf is the total weight
         // and the shader normalizes a uniform xi against it to area sample a triangle
@@ -2472,6 +2455,7 @@ namespace spartan
 
         if (!tris.empty() && total_weight > 0.0f)
         {
+            EnsureEmissiveTriangleCapacity(static_cast<uint32_t>(tris.size()));
             RHI_Buffer* emissive_triangles_buffer = GetBuffer(Renderer_Buffer::EmissiveTriangles);
             emissive_triangles_buffer->ResetOffset();
             emissive_triangles_buffer->Update(
@@ -3402,6 +3386,18 @@ namespace spartan
             // Atmosphere shaders still use this direction even at zero intensity.
             m_bindless_lights[0].direction       = Vector3(0.0f, -1.0f, 0.0f);
             m_bindless_lights[0].direction_right = Vector3(1.0f, 0.0f, 0.0f);
+        }
+        // Progressive GI must react to changes in light intensity, placement and shape.
+        if (cvar_restir_pt.GetValueAs<bool>())
+        {
+            static vector<Sb_Light> previous_lights;
+            const uint32_t count = max(m_count_active_lights, 1u);
+            if (previous_lights.size() != count ||
+                memcmp(previous_lights.data(), m_bindless_lights.data(), count * sizeof(Sb_Light)) != 0)
+            {
+                m_pass_state.restir_accumulation_valid = false;
+                previous_lights.assign(m_bindless_lights.begin(), m_bindless_lights.begin() + count);
+            }
         }
         buffer->Update(&m_bindless_lights[0], buffer->GetStride() * max(m_count_active_lights, 1u));
 
