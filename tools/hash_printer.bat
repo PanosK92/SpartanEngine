@@ -43,7 +43,7 @@ if not exist "%path_%" (
     echo %name%: file not found ^(%path_%^)
     goto :eof
 )
-for /f "usebackq delims=" %%H in (`powershell -NoProfile -Command "(Get-FileHash -Algorithm SHA256 -LiteralPath '%path_%').Hash.ToLower()"`) do (
+for /f "usebackq delims=" %%H in (`powershell -NoProfile -Command "$ErrorActionPreference='Stop'; $stream=[IO.File]::OpenRead($env:path_); $sha=[Security.Cryptography.SHA256]::Create(); try { [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-','').ToLowerInvariant() } finally { $sha.Dispose(); $stream.Dispose() }"`) do (
     echo %name%: %%H
 )
 goto :eof

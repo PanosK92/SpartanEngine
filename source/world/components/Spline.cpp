@@ -354,23 +354,33 @@ namespace spartan
         }
 
         // integrating first turns each window average into two lookups instead of a scan
-        vector<float> integral(count, 0.0f);
+        vector<double> integral(count, 0.0);
         for (size_t i = 1; i < count; i++)
         {
             integral[i] = integral[i - 1] + (heights[i] + heights[i - 1]) * 0.5f * spans[i - 1];
         }
 
-        auto integral_at = [&](float s) -> float
+        auto integral_at = [&](float s) -> double
         {
-            // past either end the profile continues flat, which keeps the endpoints on their own height
+            // Closed roads wrap the integration window across the seam. Averaging the two
+            // endpoints afterwards only hides the height discontinuity, not the grade kink.
+            double offset = 0.0;
+            if (closed)
+            {
+                const float cycles = floorf(s / total);
+                s -= cycles * total;
+                offset = cycles * integral.back();
+            }
+
+            // Open roads continue flat outside their endpoints.
             if (s <= 0.0f)
             {
-                return integral.front() + heights.front() * s;
+                return offset + heights.front() * s;
             }
 
             if (s >= total)
             {
-                return integral.back() + heights.back() * (s - total);
+                return offset + integral.back() + heights.back() * (s - total);
             }
 
             const size_t hi  = static_cast<size_t>(lower_bound(distance.begin(), distance.end(), s) - distance.begin());
@@ -379,7 +389,7 @@ namespace spartan
             const float t    = (span > 1e-6f) ? (s - distance[lo]) / span : 0.0f;
             const float h    = heights[lo] + (heights[hi] - heights[lo]) * t;
 
-            return integral[lo] + (heights[lo] + h) * 0.5f * (s - distance[lo]);
+            return offset + integral[lo] + (heights[lo] + h) * 0.5f * (s - distance[lo]);
         };
 
         vector<float> result(count);
@@ -387,7 +397,7 @@ namespace spartan
         {
             const float a = distance[i] - radius;
             const float b = distance[i] + radius;
-            result[i]     = (integral_at(b) - integral_at(a)) / (b - a);
+            result[i]     = static_cast<float>((integral_at(b) - integral_at(a)) / (b - a));
         }
 
         if (closed)
@@ -453,6 +463,27 @@ namespace spartan
         for (size_t i = 0; i < count; i++)
         {
             deck_heights[i] = max(fill_profile[i], cut_profile[i]);
+        }
+
+        if (blend > 0.0f && smoothing_length > 0.0f)
+        {
+            // Cut/grade constraints can put sharp crests back into the averaged profile.
+            // Round those transitions last. Averaging a slope-limited curve preserves its
+            // slope bound, including with flat endpoint extension and periodic wrapping.
+            vector<float> rounded = deck_heights;
+            smooth_profile_by_length(rounded, spans, smoothing_length, closed);
+            smooth_profile_by_length(rounded, spans, smoothing_length, closed);
+            float lift = 0.0f;
+            for (size_t i = 0; i < count; i++)
+            {
+                deck_heights[i] += (rounded[i] - deck_heights[i]) * blend;
+                lift = max(lift, floor_heights[i] - deck_heights[i]);
+            }
+
+            // Preserve the cut budget with a uniform vertical translation, rather than
+            // clamping individual samples and recreating the very bumps we just removed.
+            // Terrain cut/fill is subsequently rebuilt from this finished deck.
+            for (float& height : deck_heights) height += lift;
         }
     }
 
@@ -1044,7 +1075,7 @@ namespace spartan
         m_grade_limit_enabled      = node.attribute("grade_limit_enabled").as_bool(true);
         m_max_grade_degrees        = node.attribute("max_grade_degrees").as_float(8.0f);
         m_max_cut                  = node.attribute("max_cut").as_float(20.0f);
-        m_grade_smoothing          = node.attribute("grade_smoothing").as_float(0.9f);
+        m_grade_smoothing          = node.attribute("grade_smoothing").as_float(1.0f);
         m_smoothing_length         = node.attribute("smoothing_length").as_float(160.0f);
         m_embankment_enabled       = node.attribute("embankment_enabled").as_bool(true);
         m_embankment_slope_degrees = node.attribute("embankment_slope_degrees").as_float(50.0f);
@@ -2226,7 +2257,7 @@ namespace spartan
         // Cache standalone terrain roads against their authored inputs and the actual terrain surface.
         // Attached paths still evaluate their source live, since their source can be edited independently.
         generated_cache::Hash frame_hash;
-        frame_hash.Add(uint32_t(2)); // sampling/grade solver version
+        frame_hash.Add(uint32_t(3)); // sampling/grade solver version
         frame_hash.Add(m_pending_surface_hash);
         frame_hash.Add(GetControlPointsLocal());
         frame_hash.Add(m_entity_ptr->GetMatrix());

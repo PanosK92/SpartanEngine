@@ -91,6 +91,7 @@ namespace spartan
                 { ComponentType::SplineFollower, Renderer_StandardTexture::Gizmo_spline_follower },
                 { ComponentType::Traffic,        Renderer_StandardTexture::Gizmo_traffic         },
                 { ComponentType::Pedestrians,    Renderer_StandardTexture::Gizmo_pedestrians     },
+                { ComponentType::Navigation,     Renderer_StandardTexture::Gizmo_spline          },
                 { ComponentType::Animator,       Renderer_StandardTexture::Gizmo_animator        },
                 { ComponentType::Ragdoll,        Renderer_StandardTexture::Gizmo_ragdoll         },
                 { ComponentType::SkidMarks,      Renderer_StandardTexture::Gizmo_skid_marks      },
@@ -321,6 +322,45 @@ namespace spartan
                 RHI_CommandList::DrawIndexed(6, GetStandardMesh(MeshType::Quad)->GetGlobalIndexOffset(), GetStandardMesh(MeshType::Quad)->GetGlobalVertexOffset());
             }
         );
+    }
+
+    void Renderer::Pass_DebugTriangles(RHI_Texture* tex_out)
+    {
+        FrameResource& frame = m_frame_resources[m_frame_resource_index];
+        auto& vertex_buffer = frame.debug_triangles_vertex_buffer;
+        if (!frame.debug_triangles_uploaded)
+        {
+            // Upload once per frame slot, shared by both stereo eyes after the GPU fence.
+            frame.debug_triangles_vertex_count = static_cast<uint32_t>(m_debug_triangles_vertices.size());
+            if (frame.debug_triangles_vertex_count != 0)
+            {
+                if (!vertex_buffer || frame.debug_triangles_vertex_count > vertex_buffer->GetElementCount())
+                    vertex_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex,
+                        sizeof(RHI_Vertex_PosCol), frame.debug_triangles_vertex_count, nullptr, true, "debug_triangles");
+                memcpy(vertex_buffer->GetMappedData(), m_debug_triangles_vertices.data(),
+                    frame.debug_triangles_vertex_count * sizeof(RHI_Vertex_PosCol));
+            }
+            frame.debug_triangles_uploaded = true;
+        }
+        if (frame.debug_triangles_vertex_count == 0) return;
+
+        RHI_CommandList::BeginPass("debug_triangles");
+        {
+            // The line shader also handles solid vertex colours and rejects fragments behind
+            // scene depth. Alpha blend over the scene without writing to its depth buffer.
+            RHI_CommandList::SetShaders(GetShader(Renderer_Shader::line_v), GetShader(Renderer_Shader::line_p));
+            RHI_CommandList::SetBlendState(GetBlendState(Renderer_BlendState::Alpha));
+            RHI_CommandList::SetDepthStencilState(GetDepthStencilState(Renderer_DepthStencilState::Off));
+            RHI_CommandList::SetRasterizerState(GetRasterizerState(Renderer_RasterizerState::Solid));
+            RHI_CommandList::SetPrimitiveTopology(RHI_PrimitiveTopology::TriangleList);
+            RHI_CommandList::SetColorTarget(tex_out);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
+            RHI_CommandList::SetBufferVertex(vertex_buffer.get());
+            RHI_CommandList::SetCullMode(RHI_CullMode::None);
+            RHI_CommandList::Draw(frame.debug_triangles_vertex_count);
+            RHI_CommandList::SetCullMode(RHI_CullMode::Back);
+        }
+        RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_Lines(RHI_Texture* tex_out)

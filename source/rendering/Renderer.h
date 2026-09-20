@@ -101,6 +101,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_ray_traced_shadows;
     extern TConsoleVar<float> cvar_restir_pt;
     extern TConsoleVar<float> cvar_restir_pt_scale;
+    extern TConsoleVar<float> cvar_restir_pt_reference;
     extern TConsoleVar<float> cvar_motion_blur;
     extern TConsoleVar<float> cvar_depth_of_field;
     extern TConsoleVar<float> cvar_film_grain;
@@ -224,6 +225,7 @@ namespace spartan
         // debug primitives (duration: 0 = one frame, > 0 = seconds, FLT_MAX = forever)
         void DrawLine(const math::Vector3& from, const math::Vector3& to, const Color& color_from = Color::standard_renderer_lines, const Color& color_to = Color::standard_renderer_lines, float duration_sec = 0.0f);
         void DrawTriangle(const math::Vector3& v0, const math::Vector3& v1, const math::Vector3& v2, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
+        void DrawTriangleFilled(const math::Vector3& v0, const math::Vector3& v1, const math::Vector3& v2, const Color& color);
         void DrawBox(const math::BoundingBox& box, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
         void DrawCircle(const math::Vector3& center, const math::Vector3& axis, const float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
         void DrawSphere(const math::Vector3& center, float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
@@ -452,6 +454,7 @@ namespace spartan
         // passes - debug/editor
         void Pass_Grid(RHI_Texture* tex_out);
         void Pass_Lines(RHI_Texture* tex_out);
+        void Pass_DebugTriangles(RHI_Texture* tex_out);
         void Pass_Outline(RHI_Texture* tex_out);
         void Pass_Icons(RHI_Texture* tex_out);
         void Pass_Text(RHI_Texture* tex_out);

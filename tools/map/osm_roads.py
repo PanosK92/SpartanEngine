@@ -137,7 +137,7 @@ DEFAULT_SPLINE = (
     'has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="8" '
     'uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" '
     'conform_to_terrain="true" terrain_offset="0.25" grade_limit_enabled="true" max_grade_degrees="8" '
-    'max_cut="20" grade_smoothing="0.899999976" smoothing_length="160" embankment_enabled="true" '
+    'max_cut="20" grade_smoothing="1" smoothing_length="160" embankment_enabled="true" '
     'embankment_slope_degrees="50" embankment_max_height="8" carve_terrain="true" carve_bed_drop="0.150000006" '
     'carve_fill_slope_degrees="33" carve_cut_slope_degrees="45" carve_max_shoulder="60" instance_spacing="5" '
     'align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" '

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common_decals.hlsl"
 #include "common_ray_hit.hlsl"
 #include "restir_reservoir.hlsl"
+#include "restir_surface.hlsl"
 //==============================
 
 // upper bounds on the per pixel ris pool sizes, live counts come from the get_restir_* helpers
@@ -33,21 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const uint  INITIAL_CANDIDATE_SAMPLES_MAX   = 8;
 static const uint  LIGHT_RIS_CANDIDATE_SAMPLES_MAX = 64;
 static const float MIN_COS_AT_PRIMARY              = 1e-3f;
-
-struct PathSurface
-{
-    float3 hit_position;
-    float3 hit_normal;
-    float3 geometric_normal;
-    float3 albedo;
-    float3 emission;
-    float  roughness;
-    float  metallic;
-    bool   hit;
-};
-
-// Read payload fields at the call site so DXC's payload-access analysis sees them.
-PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint primitive_index, uint barycentrics_packed, RayDesc ray);
 
 // power proportional light pick weight, lin 2022 6.1, all four light types are eligible
 float light_pick_weight(LightParameters l)
@@ -112,7 +98,7 @@ PathSample sample_emissive_tri_candidate(
     inout uint seed,
     out float ris_weight)
 {
-    PathSample s;
+    PathSample s = (PathSample)0;
     s.rc_pos          = float3(0, 0, 0);
     s.rc_normal       = float3(0, 1, 0);
     s.rc_outgoing_dir = float3(0, 1, 0);
@@ -127,7 +113,7 @@ PathSample sample_emissive_tri_candidate(
     s.src_roughness   = 1.0f;
     s.src_metallic    = 0.0f;
     s.seed_path       = seed;
-    s.path_length     = 1;
+    s.path_length     = 2;
     s.rc_length       = 2;
     s.flags           = 0;
     ris_weight        = 0.0f;
@@ -156,133 +142,6 @@ PathSample sample_emissive_tri_candidate(
     return s;
 }
 
-// sky_nee_pdf_at, direct_lighting_at_vertex and sample_sky live in restir_reservoir.hlsl,
-// shared with the replay shift so both evaluate the same integrand with the same rng draws
-
-// traces the suffix past rc with the rc bsdf factored out, lin 2022 5
-// throughput starts at 1/pdf_at_rc so the caller can re-multiply by f_rc at shift time
-// out_first_dir is the direction leaving rc into the suffix
-void trace_rc_suffix(
-    PathSurface rc,
-    float3 rc_view_dir,
-    uint max_bounces_remaining,
-    inout uint seed,
-    out float3 out_L_post,
-    out float3 out_first_dir,
-    out float out_first_pdf)
-{
-    out_L_post    = float3(0, 0, 0);
-    out_first_dir = float3(0, 0, 0);
-    out_first_pdf = 0.0f;
-
-    if (max_bounces_remaining < 1)
-        return;
-
-    PathSurface cur            = rc;
-    float3      view_dir       = rc_view_dir;
-    float3      throughput     = float3(1, 1, 1);
-    float       prev_brdf_pdf  = 0.0f;
-    float3      prev_normal    = rc.hit_normal;
-    bool        first_iter     = true;
-
-    for (uint bounce = 0; bounce < max_bounces_remaining; bounce++)
-    {
-        if (bounce >= RESTIR_RR_START)
-        {
-            // constant probability so the decision only depends on the shared seed draw,
-            // identical under replay at any destination, lin 2026 6.2.4
-            if (random_float(seed) > RESTIR_RR_CONTINUATION)
-                break;
-            throughput /= RESTIR_RR_CONTINUATION;
-        }
-
-        float2 xi = random_float2(seed);
-        float  pdf;
-        float3 nd = sample_brdf(cur.albedo, cur.roughness, cur.metallic, cur.hit_normal, view_dir, xi, pdf, 1.0f);
-
-        if (pdf < RESTIR_MIN_PDF || dot(nd, cur.hit_normal) <= 0.0f || any(isnan(nd)))
-            break;
-
-        if (first_iter)
-        {
-            // factor out f_rc at rc, throughput becomes 1/pdf for re-multiply at shift time
-            out_first_dir = nd;
-            out_first_pdf = pdf;
-            throughput    = float3(1, 1, 1) / pdf;
-            first_iter    = false;
-        }
-        else
-        {
-            float  unused_pdf;
-            float3 brdf = evaluate_brdf(cur.albedo, cur.roughness, cur.metallic, cur.hit_normal, view_dir, nd, unused_pdf, 1.0f);
-            throughput *= brdf / pdf;
-        }
-
-        prev_brdf_pdf = pdf;
-        prev_normal   = cur.hit_normal;
-
-        float ofs = compute_ray_offset(cur.hit_position);
-        RayDesc ray;
-        ray.Origin    = cur.hit_position + cur.geometric_normal * ofs;
-        ray.Direction = nd;
-        ray.TMin      = RESTIR_RAY_T_MIN;
-        ray.TMax      = 1000.0f;
-
-        HitPayload hit_record;
-        TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, hit_record);
-        PathSurface next = reconstruct_path_surface(
-            hit_record.hit_distance, hit_record.instance_index, hit_record.primitive_index, hit_record.barycentrics_packed, ray);
-
-        if (!next.hit)
-        {
-            float w = power_heuristic(prev_brdf_pdf, sky_nee_pdf_at(nd, prev_normal));
-            out_L_post += throughput * sample_sky(nd) * w;
-            break;
-        }
-
-        // emissive triangle hit via brdf bounce, mis against the env probe at the previous
-        // vertex which can also reach this emitter through its cosine hemisphere
-        float w_emissive = power_heuristic(prev_brdf_pdf, sky_nee_pdf_at(nd, prev_normal));
-        out_L_post += throughput * next.emission * w_emissive;
-        // suffix vertices past rc use the full brdf
-        out_L_post += throughput * direct_lighting_at_vertex(
-            next.hit_position, next.hit_normal, next.geometric_normal,
-            -nd, next.albedo, next.roughness, next.metallic, 1.0f, seed);
-
-        cur      = next;
-        view_dir = -nd;
-    }
-}
-
-// gathers the rc nee + emission (lambert only, view independent) and the suffix radiance past rc
-void accumulate_subpath_at_rc(
-    PathSurface rc,
-    float3 rc_view_dir,
-    uint max_bounces,
-    inout uint seed,
-    out float3 out_L_nee,
-    out float3 out_L_post,
-    out float3 out_first_dir,
-    out float out_first_pdf)
-{
-    // the closest hit shader already zeroes whatever the emtri strategy carries, so no blanket
-    // kill here, that one dropped texture emitters from gi entirely whenever the pool was active
-    out_L_nee = rc.emission;
-    // diffuse only brdf at rc keeps the stored nee view independent for reuse at any dst
-    out_L_nee += direct_lighting_at_vertex(
-        rc.hit_position, rc.hit_normal, rc.geometric_normal,
-        rc_view_dir, rc.albedo, rc.roughness, rc.metallic, 0.0f, seed);
-
-    out_L_post    = float3(0, 0, 0);
-    out_first_dir = float3(0, 0, 0);
-    out_first_pdf = 0.0f;
-
-    if (max_bounces < 2)
-        return;
-
-    trace_rc_suffix(rc, rc_view_dir, max_bounces - 1, seed, out_L_post, out_first_dir, out_first_pdf);
-}
-
 // builds a candidate by directly sampling an analytical light or the sun cone
 // rc is the sampled light point, source_pdf is in solid angle at the primary
 PathSample sample_light_candidate(
@@ -291,7 +150,7 @@ PathSample sample_light_candidate(
     inout uint seed,
     out float source_pdf)
 {
-    PathSample s;
+    PathSample s = (PathSample)0;
     s.rc_pos          = float3(0, 0, 0);
     s.rc_normal       = float3(0, 1, 0);
     s.rc_outgoing_dir = float3(0, 1, 0);
@@ -306,7 +165,7 @@ PathSample sample_light_candidate(
     s.src_roughness   = 1.0f;
     s.src_metallic    = 0.0f;
     s.seed_path       = seed;
-    s.path_length     = 1;
+    s.path_length     = 2;
     s.rc_length       = 2;
     s.flags           = 0;
     source_pdf        = 0.0f;
@@ -463,127 +322,6 @@ PathSample sample_light_candidate(
     return s;
 }
 
-// traces a path from the primary, captures the reconnection vertex and the suffix radiance
-PathSample trace_path_from_primary(
-    float3 primary_pos,
-    float3 primary_normal,
-    float3 dir,
-    float dir_pdf,
-    uint replay_seed,
-    inout uint seed)
-{
-    PathSample s;
-    s.rc_pos          = float3(0, 0, 0);
-    s.rc_normal       = float3(0, 1, 0);
-    s.rc_outgoing_dir = float3(0, 1, 0);
-    s.rc_L_post       = float3(0, 0, 0);
-    s.rc_L_nee        = float3(0, 0, 0);
-    s.rc_albedo       = float3(0, 0, 0);
-    s.rc_roughness    = 1.0f;
-    s.rc_metallic     = 0.0f;
-    s.src_pos         = float3(0, 0, 0);
-    s.src_normal      = float3(0, 1, 0);
-    s.src_albedo      = float3(0, 0, 0);
-    s.src_roughness   = 1.0f;
-    s.src_metallic    = 0.0f;
-    // store the seed used for xi so the random replay shift can re-derive the same prefix
-    s.seed_path       = replay_seed;
-    s.path_length     = 0;
-    s.rc_length       = 0;
-    s.flags           = 0;
-
-    if (dot(dir, primary_normal) <= 0.0f)
-        return s;
-
-    float primary_offset = compute_ray_offset(primary_pos);
-    RayDesc ray;
-    ray.Origin    = primary_pos + primary_normal * primary_offset;
-    ray.Direction = dir;
-    ray.TMin      = RESTIR_RAY_T_MIN;
-    ray.TMax      = 1000.0f;
-
-    HitPayload hit_record;
-    TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, hit_record);
-    PathSurface hit = reconstruct_path_surface(
-        hit_record.hit_distance, hit_record.instance_index, hit_record.primitive_index, hit_record.barycentrics_packed, ray);
-
-    if (!hit.hit)
-    {
-        // the ray escaped, the sky dome is the reconnection vertex and rc_pos carries the
-        // direction, restir replaces diffuse ibl wholesale in light_image_based so dropping
-        // this candidate would remove every bit of sky lighting from the primary bounce
-        // the sun disc is excluded inside sample_sky, the analytic directional light owns it
-        s.flags      |= PATH_FLAG_SKY;
-        s.rc_pos      = dir;
-        s.rc_normal   = -dir;
-        s.rc_L_nee    = sample_sky(dir);
-        s.rc_L_post   = float3(0, 0, 0);
-        s.path_length = 1;
-        s.rc_length   = 1;
-        return s;
-    }
-
-    s.rc_pos       = hit.hit_position;
-    // shading normal, the suffix sampled rc_outgoing_dir around it and f_rc is re-evaluated
-    // against it at shift time, the geometric normal would reject directions the path took
-    s.rc_normal    = hit.hit_normal;
-    s.rc_albedo    = hit.albedo;
-    s.rc_roughness = max(hit.roughness, 0.04f);
-    s.rc_metallic  = hit.metallic;
-    s.rc_length    = 2;
-
-    // an emissive rc folds its own emission into rc_L_nee below, sample validation cannot pull
-    // that back apart from the shaded term so it has to skip these, luminance floors at FLT_MIN
-    // and would mark every surface
-    if (any(hit.emission > 0.0f))
-        s.flags |= PATH_FLAG_RC_EMIT;
-
-    float3 L_nee, L_post, first_outgoing_dir;
-    float  first_pdf;
-    accumulate_subpath_at_rc(hit, -dir, max(get_restir_max_path_length(), 2u) - 1u, seed, L_nee, L_post, first_outgoing_dir, first_pdf);
-
-    if (any(isnan(L_nee))  || any(isinf(L_nee)))  L_nee  = float3(0, 0, 0);
-    if (any(isnan(L_post)) || any(isinf(L_post))) L_post = float3(0, 0, 0);
-    L_nee  = max(L_nee,  0.0f);
-    L_post = max(L_post, 0.0f);
-
-    // stored radiance is left unmodified so the resampler scores the true integrand
-    s.rc_L_nee        = L_nee;
-    s.rc_L_post       = L_post;
-    s.rc_outgoing_dir = first_outgoing_dir;
-    s.path_length     = 2;
-
-    // scene independent reconnection criteria, lin 2026 4
-    // dual ray footprint thresholds bound the area density change at rc and the angular density
-    // change of the rc outgoing lobe, the primary lobe is cosine only so its roughness never
-    // invalidates reconnection
-    float dist_sq             = dot(hit.hit_position - primary_pos, hit.hit_position - primary_pos);
-    float footprint_threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(primary_pos, primary_normal);
-
-    // forward footprint, reciprocal area density of rc when traced from the primary
-    float cos_at_rc    = abs(dot(hit.geometric_normal, dir));
-    float fp_forward   = dist_sq / max(dir_pdf * cos_at_rc, 1e-6f);
-
-    // inverse footprint, reciprocal area density of the primary when traced back from rc,
-    // skipped for terminal paths and for diffuse rc, where reconnection cannot meaningfully
-    // change the outgoing density, lin 2026 4, keeping the test there only rejects reconnections
-    // that were safe and leaves those paths unreusable
-    bool  rc_is_diffuse = s.rc_roughness >= RESTIR_RC_DIFFUSE_ROUGHNESS;
-    float fp_inverse    = 1e30f;
-    if (first_pdf > RESTIR_MIN_PDF && !rc_is_diffuse)
-    {
-        float cos_at_primary = abs(dot(primary_normal, dir));
-        fp_inverse           = dist_sq / max(first_pdf * cos_at_primary, 1e-6f);
-    }
-
-    bool rc_valid = (min(fp_forward, fp_inverse) >= footprint_threshold)
-                 && (dist_sq >= RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE);
-    if (rc_valid)
-        s.flags |= PATH_FLAG_HAS_RC;
-
-    return s;
-}
-
 [shader("raygeneration")]
 void ray_gen()
 {
@@ -596,13 +334,14 @@ void ray_gen()
     if (depth <= 0.0f)
     {
         Reservoir empty = create_empty_reservoir();
-        float4 t0, t1, t2, t3, t4;
-        pack_reservoir(empty, t0, t1, t2, t3, t4);
+        float4 t0, t1, t2, t3, t4, t5;
+        pack_reservoir(empty, t0, t1, t2, t3, t4, t5);
         tex_reservoir0[launch_id] = t0;
         tex_reservoir1[launch_id] = t1;
         tex_reservoir2[launch_id] = t2;
         tex_reservoir3[launch_id] = t3;
         tex_reservoir4[launch_id] = t4;
+        tex_reservoir5[launch_id] = t5;
         tex_uav[launch_id] = float4(0, 0, 0, 1);
         return;
     }
@@ -648,26 +387,18 @@ void ray_gen()
 
         if (dir_valid)
         {
-            candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, replay_seed, seed);
+            float3 reference_radiance;
+            candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, replay_seed, seed, reference_radiance, false, (PathSample)0);
+            // Independent path-tracing estimate: sum the traced light contributions,
+            // without selecting a path endpoint or doing spatiotemporal reuse.
+            canonical_gi += eval_surface_brdf_cos(albedo, roughness, metallic, normal_ws,
+                view_dir, dir, restir_primary_specular_blend(roughness)) * reference_radiance / source_pdf;
+            candidate.F = evaluate_path_integrand(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic).f_dst;
             float target_pdf = target_pdf_self(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f)
             {
                 // single strategy weight, the sun free sky is only reachable through brdf sampling
-                weight = target_pdf / (n_brdf * source_pdf);
-
-                ShiftResult canonical = self_shift_evaluate(
-                    candidate,
-                    pos_ws,
-                    normal_ws,
-                    view_dir,
-                    albedo,
-                    roughness,
-                    metallic
-                );
-                if (canonical.ok)
-                {
-                    canonical_gi += canonical.f_dst / source_pdf;
-                }
+                weight = target_pdf * candidate.initial_weight / (n_brdf * source_pdf);
             }
         }
 
@@ -692,6 +423,7 @@ void ray_gen()
         float light_weight = 0.0f;
         if (light_source_pdf >= RESTIR_MIN_PDF)
         {
+            light_candidate.F = evaluate_path_integrand(light_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic).f_dst;
             float target_pdf = target_pdf_self(light_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f)
             {
@@ -715,6 +447,9 @@ void ray_gen()
                     // single strategy weight, analytic lights are not in the bvh and the sun disc
                     // is excluded from every sky read so no other strategy reaches this integrand
                     light_weight = target_pdf / (n_light * light_source_pdf);
+                    ShiftResult evaluated = self_shift_evaluate(light_candidate, pos_ws, normal_ws,
+                        view_dir, albedo, roughness, metallic);
+                    canonical_gi += evaluated.f_dst * n_brdf / (n_light * light_source_pdf);
                 }
             }
         }
@@ -724,7 +459,7 @@ void ray_gen()
 
     // emissive triangle nee strategy, area sampling of the global emissive pool
     // single strategy weight, while the pool is active brdf paths zero their rc emission in
-    // accumulate_subpath_at_rc so emtri is the only technique carrying this contribution,
+    // the path tree so emtri is the only technique carrying this contribution,
     // mixing in the brdf density here would shrink the weights and lose emissive energy
     for (uint ei = 0; ei < n_emtri_count; ei++)
     {
@@ -734,11 +469,15 @@ void ray_gen()
         float emtri_weight = 0.0f;
         if (emtri_ris_weight > 0.0f)
         {
+            emtri_candidate.F = evaluate_path_integrand(emtri_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic).f_dst;
             float target_pdf = target_pdf_self(emtri_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f && trace_shift_visibility(emtri_candidate, pos_ws, normal_ws))
             {
                 // the ris weight is the unbiased stand in for 1 / source pdf of the pick
                 emtri_weight = target_pdf * emtri_ris_weight / n_emtri;
+                ShiftResult evaluated = self_shift_evaluate(emtri_candidate, pos_ws, normal_ws,
+                    view_dir, albedo, roughness, metallic);
+                canonical_gi += evaluated.f_dst * emtri_ris_weight * n_brdf / n_emtri;
             }
         }
 
@@ -759,10 +498,6 @@ void ray_gen()
     // loop had nothing left to dilute it, that surplus is what grew into the bright blobs
     reservoir.M = 1.0f;
 
-    // soft saturator, see soft_clamp_w in restir_reservoir.hlsl
-    float w_clamp = get_w_clamp_for_sample(reservoir.sample);
-    reservoir.W   = soft_clamp_w(reservoir.W, w_clamp);
-
     // stamp the source primary g-buffer onto the chosen sample, all candidates from this pixel
     // share the same primary surface so we only need to write it once after ris finalization
     // downstream passes read these instead of sampling the current g-buffer at a reprojected
@@ -773,20 +508,17 @@ void ray_gen()
     reservoir.sample.src_roughness = roughness;
     reservoir.sample.src_metallic  = metallic;
 
-    float4 t0, t1, t2, t3, t4;
-    pack_reservoir(reservoir, t0, t1, t2, t3, t4);
+    float4 t0, t1, t2, t3, t4, t5;
+    pack_reservoir(reservoir, t0, t1, t2, t3, t4, t5);
     tex_reservoir0[launch_id] = t0;
     tex_reservoir1[launch_id] = t1;
     tex_reservoir2[launch_id] = t2;
     tex_reservoir3[launch_id] = t3;
     tex_reservoir4[launch_id] = t4;
+    tex_reservoir5[launch_id] = t5;
 
     canonical_gi /= n_brdf;
     canonical_gi /= restir_gi_demodulator(albedo);
-    canonical_gi = soft_saturate_radiance(
-        canonical_gi,
-        get_restir_gi_clamp()
-    );
 
     // real reconnection distance in w so reblur can size its kernels, sky gets the far band,
     // rc_pos holds a unit direction for sky samples so it must not be treated as a position
@@ -797,189 +529,4 @@ void ray_gen()
     }
 
     tex_uav[launch_id] = float4(canonical_gi, hit_dist);
-}
-
-PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint primitive_index, uint barycentrics_packed, RayDesc ray)
-{
-    PathSurface payload = (PathSurface)0;
-    payload.hit = ray_t >= 0.0f;
-    if (!payload.hit)
-        return payload;
-
-    GeometryInfo geo = geometry_infos[instance_index];
-
-    uint material_index    = geo.material_index;
-    MaterialParameters mat = material_parameters[material_index];
-
-    uint index_base      = geo.index_offset + primitive_index * 3;
-    uint i0 = geometry_indices[index_base + 0];
-    uint i1 = geometry_indices[index_base + 1];
-    uint i2 = geometry_indices[index_base + 2];
-
-    PulledVertex pv0 = geometry_vertices[geo.vertex_offset + i0];
-    PulledVertex pv1 = geometry_vertices[geo.vertex_offset + i1];
-    PulledVertex pv2 = geometry_vertices[geo.vertex_offset + i2];
-
-    float3 bary = unpack_hit_barycentrics(barycentrics_packed);
-
-    float3 n0 = unpack_vertex_oct(pv0.normal);
-    float3 n1 = unpack_vertex_oct(pv1.normal);
-    float3 n2 = unpack_vertex_oct(pv2.normal);
-    float3 t0 = unpack_vertex_oct(pv0.tangent);
-    float3 t1 = unpack_vertex_oct(pv1.tangent);
-    float3 t2 = unpack_vertex_oct(pv2.tangent);
-    float2 uv0 = unpack_vertex_uv(pv0.uv);
-    float2 uv1 = unpack_vertex_uv(pv1.uv);
-    float2 uv2 = unpack_vertex_uv(pv2.uv);
-
-    float3 normal_object  = normalize(n0 * bary.x + n1 * bary.y + n2 * bary.z);
-    float3 tangent_object = normalize(t0 * bary.x + t1 * bary.y + t2 * bary.z);
-    float2 texcoord       = uv0 * bary.x + uv1 * bary.y + uv2 * bary.z;
-
-    float3x3 obj_to_world = float3x3(geo.object_to_world_0.xyz, geo.object_to_world_1.xyz, geo.object_to_world_2.xyz);
-    float3x3 world_to_obj = float3x3(geo.world_to_object_0.xyz, geo.world_to_object_1.xyz, geo.world_to_object_2.xyz);
-    float3 normal_world   = normalize(mul(normal_object, transpose(world_to_obj)));
-    float3 tangent_world  = normalize(mul(tangent_object, obj_to_world));
-
-    // full uv state is per-renderable, fetched from geometry_infos[InstanceIndex()]
-    float3 hit_position = ray.Origin + ray.Direction * ray_t;
-    if (mat.is_terrain())
-    {
-        // terrain maps planar world xz with tiling as repeats per meter, matches the raster path
-        texcoord = hit_position.xz;
-    }
-    else if (geo.uv_world_space > 0.0f)
-    {
-        texcoord = compute_world_space_uv(hit_position, normal_world);
-    }
-    texcoord = texcoord * geo.uv_tiling + geo.uv_offset;
-    if (!mat.is_terrain() && geo.uv_world_space > 0.0f)
-        texcoord = lerp(texcoord, 1.0f - frac(texcoord) + floor(texcoord), step(0.5f, geo.uv_invert));
-
-    if (geo.uv_rotation != 0.0f)
-        texcoord = rotate_uv_90(texcoord, geo.uv_rotation);
-
-    float dist      = ray_t;
-    float mip_level = clamp(log2(max(dist * 0.5f, 1.0f)), 0.0f, 4.0f);
-
-    // terrain, same layer weights as the raster path, one layer and no hex tiling because a
-    // secondary bounce cannot resolve the detail, without this gi lit the world as if it were grass
-    bool terrain_shaded = mat.is_terrain() && mat.terrain_layer_count > 0;
-    TerrainSurface terrain = (TerrainSurface)0;
-    if (terrain_shaded)
-    {
-        terrain = terrain_shade_lod(mat, hit_position, normal_world, texcoord, mip_level);
-    }
-
-    float3 albedo = mat.color.rgb;
-    if (terrain_shaded)
-    {
-        albedo = terrain.albedo;
-    }
-    else if (mat.has_texture_albedo())
-    {
-        uint albedo_texture_index = material_index + material_texture_index_albedo;
-        float4 sampled = material_textures[albedo_texture_index].SampleLevel(
-            GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
-        if (mat.is_albedo_srgb())
-        {
-            sampled.rgb = srgb_to_linear(sampled.rgb);
-        }
-        albedo = sampled.rgb * mat.color.rgb;
-    }
-    albedo = saturate(albedo);
-
-    float roughness = mat.roughness;
-    float metallic  = mat.metalness;
-    if (terrain_shaded)
-    {
-        roughness = terrain.roughness;
-        metallic  = terrain.metalness;
-    }
-    else if (mat.has_texture_roughness() || mat.has_texture_metalness())
-    {
-        float4 packed = material_textures[material_index + material_texture_index_packed].SampleLevel(
-            GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
-        roughness *= lerp(1.0f, packed.g, (float)mat.has_texture_roughness());
-        metallic  *= lerp(1.0f, packed.b, (float)mat.has_texture_metalness());
-    }
-    road_weathering(mat.flags,hit_position,albedo,roughness,exp2(mip_level)*3.0/4096.0);
-    roughness = max(roughness, 0.04f);
-
-    float3x3 obj_to_world_3x3 = float3x3(geo.object_to_world_0.xyz, geo.object_to_world_1.xyz, geo.object_to_world_2.xyz);
-    float3 edge1_world   = mul(pv1.position - pv0.position, obj_to_world_3x3);
-    float3 edge2_world   = mul(pv2.position - pv0.position, obj_to_world_3x3);
-    float3 geometric_normal = normalize(cross(edge1_world, edge2_world));
-
-    if (dot(geometric_normal, ray.Direction) > 0.0f)
-        geometric_normal = -geometric_normal;
-    if (dot(normal_world, geometric_normal) < 0.0f)
-        normal_world = -normal_world;
-
-    float3 tangent_projected = tangent_world - geometric_normal * dot(tangent_world, geometric_normal);
-    if (dot(tangent_projected, tangent_projected) > 1e-6f)
-    {
-        tangent_world = normalize(tangent_projected);
-    }
-    else
-    {
-        float3 fallback_bitangent;
-        build_orthonormal_basis_fast(geometric_normal, tangent_world, fallback_bitangent);
-    }
-
-    if (!terrain_shaded && mat.has_texture_normal())
-    {
-        uint normal_texture_index = material_index + material_texture_index_normal;
-        float3 normal_sample = material_textures[normal_texture_index].SampleLevel(
-            GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
-
-        // Same two-channel normal decode and strength as the raster G-buffer.
-        normal_sample = normalize(normal_sample * 2.0f - 1.0f);
-        normal_sample.z = sqrt(max(0.0f, 1.0f - dot(normal_sample.xy, normal_sample.xy)));
-        normal_sample.xy *= saturate(max(0.01f, mat.normal));
-
-        float3 bitangent = normalize(cross(geometric_normal, tangent_world));
-        float3x3 tbn     = float3x3(tangent_world, bitangent, geometric_normal);
-
-        normal_world = normalize(mul(normal_sample, tbn));
-        if (dot(normal_world, geometric_normal) < 0.0f)
-            normal_world = -normal_world;
-    }
-
-    // emissive calibration mirrors g_buffer and light_composition, from_albedo overrides the texture path
-    float3 emission = float3(0.0f, 0.0f, 0.0f);
-    if (mat.has_texture_emissive())
-    {
-        uint emissive_texture_index = material_index + material_texture_index_emission;
-        float3 emissive_sample = material_textures[emissive_texture_index].SampleLevel(
-            GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
-        if (mat.is_emissive_srgb())
-        {
-            emissive_sample = srgb_to_linear(emissive_sample);
-        }
-        emission = emissive_sample * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
-    }
-    if (mat.emissive_from_albedo())
-    {
-        // the nee pool holds authored emitters only, so zero them here while it is active to keep
-        // the two strategies from double counting, texture emitters stay on this path because the
-        // pool derives radiance from the flat material color and cannot evaluate their texture
-        emission = is_emtri_pool_active()
-            ? float3(0.0f, 0.0f, 0.0f)
-            : albedo * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
-    }
-
-    float decal_occlusion = 1.0f;
-    float footprint = max(ray_t * 0.001f, 0.001f);
-    apply_decals(uint2(geo.decal_offset, geo.decal_count), hit_position, geometric_normal,
-        tangent_world * footprint, cross(geometric_normal, tangent_world) * footprint,
-        albedo, normal_world, roughness, metallic, decal_occlusion, emission);
-    payload.hit_position     = hit_position;
-    payload.hit_normal       = normal_world;
-    payload.geometric_normal = geometric_normal;
-    payload.albedo           = albedo;
-    payload.emission         = emission;
-    payload.roughness        = roughness;
-    payload.metallic         = metallic;
-    return payload;
 }

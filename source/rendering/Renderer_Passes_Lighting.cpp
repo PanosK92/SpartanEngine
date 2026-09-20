@@ -47,12 +47,8 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    // restir gi composition gain, pairs with get_restir_w_clamp in restir_reservoir.hlsl
-    // the reservoir estimate is already the diffuse indirect radiance so an unbiased composition
-    // would be one, sh_irradiance_l2 returns true irradiance and the sky diffuse ibl path never
-    // divides it by pi, so the sky term restir replaces is itself pi too bright and matching it
-    // is what this factor is for, see the note in light_image_based
-    static const float restir_composition_intensity = 5.0f;
+    // The estimator already includes the primary BSDF and returns radiance.
+    static const float restir_composition_intensity = 1.0f;
 
     void Renderer::Pass_Reflections_Apply(uint32_t eye_layer /*= rhi_all_mips*/)
     {
@@ -609,7 +605,7 @@ namespace spartan
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
 
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0) + i, reservoirs[i], rhi_all_mips, 0, true);
+                RHI_CommandList::SetTexture((i == 5 ? static_cast<uint32_t>(Renderer_BindingsUav::reservoir5) : static_cast<uint32_t>(Renderer_BindingsUav::reservoir0) + i), reservoirs[i], rhi_all_mips, 0, true);
 
             RHI_CommandList::TraceRays(width, height);
         }
@@ -641,8 +637,8 @@ namespace spartan
 
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
             {
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs_prev[i]);
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0)      + i, reservoirs[i], rhi_all_mips, 0, true);
+                RHI_CommandList::SetTexture((i == 5 ? static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev5) : static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i), reservoirs_prev[i]);
+                RHI_CommandList::SetTexture((i == 5 ? static_cast<uint32_t>(Renderer_BindingsUav::reservoir5) : static_cast<uint32_t>(Renderer_BindingsUav::reservoir0) + i), reservoirs[i], rhi_all_mips, 0, true);
             }
 
             // the validity gate needs the prior surface depth at prev_uv, the current depth there ghosts moving objects
@@ -717,7 +713,7 @@ namespace spartan
 
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
             {
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
+                RHI_CommandList::SetTexture((i == 5 ? static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev5) : static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i), reservoirs[i]);
             }
 
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex),  shift[0], rhi_all_mips, 0, true);
@@ -731,9 +727,12 @@ namespace spartan
         {
             RHI_CommandList::SetShader(shader_spatial);
 
-            // tlas for the periodic sample validation ray, the pairing buffer resolves partners
+            // Winning replay paths use the same transport resources as the prepass.
             RHI_CommandList::SetAccelerationStructure(static_cast<uint32_t>(Renderer_BindingsSrv::tlas), tlas);
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::restir_pairing), GetBuffer(Renderer_Buffer::RestirPairing));
+            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::geometry_info), GetBuffer(Renderer_Buffer::GeometryInfo));
+            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::emissive_triangles), GetBuffer(Renderer_Buffer::EmissiveTriangles));
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3), GetRenderTarget(Renderer_RenderTarget::skysphere));
 
             // pre-pass shift results, one per pairing table
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), shift[0]);
@@ -742,8 +741,8 @@ namespace spartan
 
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
             {
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0)      + i, reservoirs_spatial[i], rhi_all_mips, 0, true);
+                RHI_CommandList::SetTexture((i == 5 ? static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev5) : static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i), reservoirs[i]);
+                RHI_CommandList::SetTexture((i == 5 ? static_cast<uint32_t>(Renderer_BindingsUav::reservoir5) : static_cast<uint32_t>(Renderer_BindingsUav::reservoir0) + i), reservoirs_spatial[i], rhi_all_mips, 0, true);
             }
 
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
@@ -872,6 +871,14 @@ namespace spartan
         const uint32_t dispatch_x  = (width  + 7) / 8;
         const uint32_t dispatch_y  = (height + 7) / 8;
 
+        const uint32_t reference_mode = cvar_restir_pt_reference.GetValueAs<uint32_t>();
+        if (m_pass_state.restir_reference_mode != reference_mode)
+        {
+            m_pass_state.restir_reference_mode = reference_mode;
+            m_pass_state.restir_reservoirs_initialized = false;
+            m_pass_state.restir_accumulation_valid = false;
+        }
+
         // one-shot clear after (re)allocation, new textures are not guaranteed zeroed and depth_previous must start at far so disocclusion fails closed
         if (!m_pass_state.restir_reservoirs_initialized)
         {
@@ -905,10 +912,10 @@ namespace spartan
                 RHI_CommandList::ClearTexture(tex_duplication, Color::standard_black);
             }
 
-            // sigma is the paper's 16 px scaled by the restir resolution factor, the tables regenerate with the reservoirs
+            // Section 7 uses sigma = 16 in the sample grid, independent of output upscaling.
             if (RHI_Buffer* pairing_buffer = GetBuffer(Renderer_Buffer::RestirPairing))
             {
-                float sigma = min(max(16.0f * cvar_restir_pt_scale.GetValue(), 2.0f), 16.0f);
+                const float sigma = 16.0f;
                 vector<uint32_t> pairing(restir_pairing_element_count);
                 uint32_t base = 0;
                 for (uint32_t t = 0; t < 3; t++)
@@ -923,8 +930,32 @@ namespace spartan
             m_pass_state.restir_reservoirs_initialized = true;
         }
 
+        // Cached suffix radiance cannot be edited independently of the selected
+        // path and its RIS density. Reject history when transport changes instead.
+        // Keep pairing tables and G-buffer history intact on these lightweight resets.
+        if (m_pass_state.restir_history_invalid || reference_mode == 2u)
+        {
+            for (RHI_Texture* reservoir : reservoirs_prev)
+                RHI_CommandList::ClearTexture(reservoir, Color::standard_transparent);
+            if (RHI_Texture* duplication = GetRenderTarget(Renderer_RenderTarget::restir_duplication))
+                RHI_CommandList::ClearTexture(duplication, Color::standard_black);
+            m_pass_state.restir_history_invalid = false;
+        }
+
         Pass_ReSTIR_TraceInitial(tlas, tex_gi, tex_skysphere, reservoirs, width, height);
+        if (reference_mode == 1u)
+        {
+            // Reference samples never enter the history consumed by the reuse estimator.
+            m_pass_state.restir_accumulation_valid = false;
+            return;
+        }
         Pass_ReSTIR_Temporal(tlas, tex_gi, reservoirs, reservoirs_prev, dispatch_x, dispatch_y);
+        if (reference_mode == 2u || reference_mode == 3u)
+        {
+            Pass_ReSTIR_SwapReservoirs();
+            m_pass_state.restir_accumulation_valid = false;
+            return;
+        }
         const bool ran_spatial = Pass_ReSTIR_SpatialPair(tlas, tex_gi, reservoirs, reservoirs_spatial, dispatch_x, dispatch_y);
 
         // counts shifted copies of the same candidate per pixel, next frame's temporal pass lowers the confidence cap where they cluster
@@ -958,6 +989,12 @@ namespace spartan
         RHI_Texture* tex_gi_raw      = GetRenderTarget(Renderer_RenderTarget::restir_output);
         RHI_Texture* tex_gi_denoised = GetRenderTarget(Renderer_RenderTarget::restir_denoised);
         RHI_Texture* tex_gi_previous = GetRenderTarget(Renderer_RenderTarget::restir_denoised_previous);
+        if (cvar_restir_pt_reference.GetValueAs<bool>())
+        {
+            if (tex_gi_raw && tex_gi_denoised)
+                Pass_BlitRestirFallback(tex_gi_raw, tex_gi_denoised);
+            return;
+        }
         RHI_Texture* tex_mv          = GetRenderTarget(Renderer_RenderTarget::nrd_in_mv);
         RHI_Texture* tex_normal      = GetRenderTarget(Renderer_RenderTarget::nrd_in_normal_roughness);
         RHI_Texture* tex_view_z      = GetRenderTarget(Renderer_RenderTarget::nrd_in_viewz);

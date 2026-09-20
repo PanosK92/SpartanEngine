@@ -60,13 +60,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     {
         // the resample writes into a separate slot that later rotates into the temporal history,
         // leaving sky texels untouched would carry a stale reservoir forward, clear them instead
-        float4 e0, e1, e2, e3, e4;
-        pack_reservoir(create_empty_reservoir(), e0, e1, e2, e3, e4);
+        float4 e0, e1, e2, e3, e4, e5;
+        pack_reservoir(create_empty_reservoir(), e0, e1, e2, e3, e4, e5);
         tex_reservoir0[pixel] = e0;
         tex_reservoir1[pixel] = e1;
         tex_reservoir2[pixel] = e2;
         tex_reservoir3[pixel] = e3;
         tex_reservoir4[pixel] = e4;
+        tex_reservoir5[pixel] = e5;
         return;
     }
 
@@ -84,7 +85,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         tex_reservoir_prev1[pixel],
         tex_reservoir_prev2[pixel],
         tex_reservoir_prev3[pixel],
-        tex_reservoir_prev4[pixel]
+        tex_reservoir_prev4[pixel],
+        tex_reservoir_prev5[pixel]
     );
 
     if (!is_reservoir_valid(center))
@@ -136,7 +138,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             tex_reservoir_prev1[neighbor_pixel],
             tex_reservoir_prev2[neighbor_pixel],
             tex_reservoir_prev3[neighbor_pixel],
-            tex_reservoir_prev4[neighbor_pixel]
+            tex_reservoir_prev4[neighbor_pixel],
+            tex_reservoir_prev5[neighbor_pixel]
         );
 
         if (!is_reservoir_valid(neighbor) || neighbor.M <= 0.0f)
@@ -164,6 +167,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float neigh_share  = (neigh_denom > 0.0f) ? (neighbor.M * target_j_own) / neigh_denom : 0.0f;
 
         stream_samples [valid_neighbors] = neighbor.sample;
+        stream_samples [valid_neighbors].src_pos = restir_primary_position((neighbor_pixel + 0.5f) / resolution);
         stream_target  [valid_neighbors] = target_j_at_c;
         stream_jacobian[valid_neighbors] = jacobian_j_to_c;
         stream_W       [valid_neighbors] = neighbor.W;
@@ -193,50 +197,32 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         if (combined.weight_sum > 0.0f && random_float(seed) * combined.weight_sum < weight_j)
         {
             combined.sample     = stream_samples[j];
+            combined.sample.F   = stream_f[j];
             combined.target_pdf = target_at_c;
             picked_neighbor     = true;
         }
     }
 
-    combined.M = M_total;
-    clamp_reservoir_M(combined, get_restir_m_cap());
-
-    // lin 2022 6.4 sample validation, kills stale paths that survive purely through spatial reuse
-    // liveness is weight_sum, W is only computed by the finalize further down and is still zero here
-    bool validation_reset  = false;
-    uint validation_period = get_restir_validation_period();
-    if (validation_period > 0u && combined.M > 0.0f && combined.weight_sum > 0.0f)
+    // The prepass stores F/J only. Materialize the winning shift so replayed
+    // vertices and the RC outgoing density match the destination integrand.
+    if (picked_neighbor)
     {
-        uint hash = (pixel.x * 73856093u) ^ (pixel.y * 19349663u);
-        uint slot = (buffer_frame.frame + hash) % validation_period;
-        if (slot == 0u)
-        {
-            bool reachable = trace_shift_visibility(combined.sample, pos_ws, normal_ws);
-            if (!reachable)
-            {
-                // a reused path went stale, fall back to this pixel's own sample which the
-                // temporal pass already validated, only empty out when that sample is the
-                // one that failed
-                bool keep_center    = picked_neighbor && target_cur > 0.0f;
-                combined            = create_empty_reservoir();
-                combined.sample     = center.sample;
-                combined.target_pdf = target_cur;
-                combined.weight_sum = keep_center ? (target_cur * center.W) : 0.0f;
-                combined.M          = keep_center ? center_M                : 0.0f;
-                validation_reset    = true;
-            }
-        }
+        ShiftResult shifted = try_reconnection_shift(combined.sample, combined.sample.src_pos,
+            pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
+        combined.sample = shifted.sample;
     }
+
+    combined.M = M_total;
+    // Confidence is summed here; only the temporal input is capped (paper section 2.2).
+
+    // Every reused candidate was visibility-tested before RIS. The canonical
+    // candidate was traced this frame. A second, post-selection rejection with
+    // a canonical fallback would condition the estimator on the selected draw.
 
     // finalize, W = weight_sum / target, no /M since the m_i factors are already normalized
     // the selection time target is reused instead of a re-evaluation, for replay shifted
     // samples the two evaluation paths differ slightly and a mismatched divide skews W
     combined.W = (combined.target_pdf > 0.0f) ? (combined.weight_sum / combined.target_pdf) : 0.0f;
-
-    // soft saturator, see soft_clamp_w in restir_reservoir.hlsl
-    float w_clamp   = get_w_clamp_for_sample(combined.sample);
-    float w_unclamped = combined.W;
-    combined.W      = soft_clamp_w(combined.W, w_clamp);
 
     // re-stamp the source primary g-buffer, the combine may have copied a neighbor src_*
     combined.sample.src_pos       = pos_ws;
@@ -245,44 +231,29 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.sample.src_roughness = roughness;
     combined.sample.src_metallic  = metallic;
 
-    float4 t0, t1, t2, t3, t4;
-    pack_reservoir(combined, t0, t1, t2, t3, t4);
+    float4 t0, t1, t2, t3, t4, t5;
+    pack_reservoir(combined, t0, t1, t2, t3, t4, t5);
     tex_reservoir0[pixel] = t0;
     tex_reservoir1[pixel] = t1;
     tex_reservoir2[pixel] = t2;
     tex_reservoir3[pixel] = t3;
     tex_reservoir4[pixel] = t4;
+    tex_reservoir5[pixel] = t5;
 
     // vector resampling weights for shading, lin 2026 6.3, gi = sum_i m_i f_i W_i J_i in rgb
     // scalar weights keep driving resampling while the rgb sum averages out the chroma noise
     // that a luminance only target cannot importance sample
     float3 gi = float3(0, 0, 0);
-    if (!validation_reset)
+    ShiftResult center_self = self_shift_evaluate(center.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
+    gi = k_inv * (1.0f + canonical_pair_acc) * center_self.f_dst * max(center.W, 0.0f);
+
+    for (uint v = 0; v < valid_neighbors; v++)
     {
-        ShiftResult center_self = self_shift_evaluate(center.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-        gi = k_inv * (1.0f + canonical_pair_acc) * center_self.f_dst * max(center.W, 0.0f);
-
-        for (uint v = 0; v < valid_neighbors; v++)
-        {
-            gi += (k_inv * stream_share[v]) * stream_f[v] * max(stream_W[v], 0.0f) * stream_jacobian[v];
-        }
-
-        // apply the same firefly suppression ratio the scalar W received from the soft clamp
-        if (w_unclamped > 1e-8f)
-        {
-            gi *= combined.W / w_unclamped;
-        }
-
-        // diffuse albedo demodulation and firefly ceiling, matches shade_reservoir_path so the composition re-modulation applies albedo exactly once
-        gi = gi / restir_gi_demodulator(albedo);
-        gi = soft_saturate_radiance(gi, get_restir_gi_clamp());
+        gi += (k_inv * stream_share[v]) * stream_f[v] * max(stream_W[v], 0.0f) * stream_jacobian[v];
     }
-    else
-    {
-        // the reused path failed validation, the vector sum is built from that same stream so
-        // shade whatever reservoir survived instead of dropping the pixel to black
-        gi = shade_reservoir_path(combined, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-    }
+
+    // Demodulate once; composition restores the primary albedo.
+    gi = gi / restir_gi_demodulator(albedo);
 
     if (any(isnan(gi)) || any(isinf(gi)))
     {
@@ -300,7 +271,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // fall back to the temporal stage estimate only when the reservoir is genuinely empty, see
     // the matching comment in restir_pt_temporal, a value keyed fallback lifts every dark pixel
     // and flips estimators frame to frame
-    if (combined.M <= 0.0f || combined.W <= 0.0f)
+    if (combined.M <= 0.0f)
     {
         float4 temporal_stage = tex_uav[pixel];
         gi       = temporal_stage.rgb;

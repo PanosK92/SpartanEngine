@@ -1151,6 +1151,7 @@ namespace spartan
         }
 
         m_lines_vertices.clear();
+        m_debug_triangles_vertices.clear();
         m_icons.clear();
 
         if (can_render)
@@ -1342,7 +1343,10 @@ namespace spartan
         }
 
         if (update_materials || bindless_textures_dirty)
+        {
             m_pass_state.restir_accumulation_valid = false;
+            m_pass_state.restir_history_invalid = true;
+        }
 
         if (update_materials)
         {
@@ -2310,6 +2314,7 @@ namespace spartan
         if (!cvar_restir_pt.GetValueAs<bool>())
         {
             m_cb_frame_cpu.restir_pt_emissive_tri_count = 0.0f;
+            m_pass_state.restir_history_invalid = true;
             return;
         }
 
@@ -2441,7 +2446,10 @@ namespace spartan
         }
 
         if (scene_signature != m_pass_state.restir_scene_signature)
+        {
             m_pass_state.restir_accumulation_valid = false;
+            m_pass_state.restir_history_invalid = true;
+        }
         m_pass_state.restir_scene_signature = scene_signature;
 
         // build the prefix sum over picking weight, the last entry's cdf is the total weight
@@ -3396,6 +3404,7 @@ namespace spartan
                 memcmp(previous_lights.data(), m_bindless_lights.data(), count * sizeof(Sb_Light)) != 0)
             {
                 m_pass_state.restir_accumulation_valid = false;
+                m_pass_state.restir_history_invalid = true;
                 previous_lights.assign(m_bindless_lights.begin(), m_bindless_lights.begin() + count);
             }
         }

@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "components/Water.h"
 #include "components/Traffic.h"
 #include "components/Pedestrians.h"
+#include "components/Navigation.h"
 #include "components/SpawnPoint.h"
 #include "components/CarReset.h"
 #include "components/Text3D.h"
@@ -914,6 +915,9 @@ namespace spartan
             break;
         case ComponentType::Pedestrians:
             component = std::make_shared<Pedestrians>(this);
+            break;
+        case ComponentType::Navigation:
+            component = std::make_shared<Navigation>(this);
             break;
         case ComponentType::SpawnPoint:
             component = std::make_shared<SpawnPoint>(this);

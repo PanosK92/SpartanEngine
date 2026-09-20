@@ -22,12 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_RESTIR_RESERVOIR
 #define SPARTAN_RESTIR_RESERVOIR
 
-// core parameters, m_cap ramps from a moving baseline to the static target as the camera holds still
-static const uint  RESTIR_MAX_PATH_LENGTH    = 5;
-// the initial pass hands its reservoir a confidence of exactly one whatever happened to its
-// candidates, so these caps count frames of history, lin 2022 uses 20 flat, lin 2026 5 shrinks
-// it toward 1 where copies of one path cluster, the duplication reduction stays on a linear
-// curve to a floor that keeps a few frames alive
+// ReSTIR PT Enhanced (2026), sections 5 and 7.
+static const uint RESTIR_MAX_PATH_LENGTH = 5;
 // Reconstruct the exact G-buffer texel that supplied the normal and material.
 // A filtered depth at a quarter-resolution texel center can place the ray inside
 // a wall, causing self-intersection and repeated history rejection.
@@ -40,9 +36,8 @@ float3 restir_primary_position(float2 uv)
     return get_position(tex_depth.Load(int3(pixel, 0)).r, render_uv_to_screen_uv(sample_uv));
 }
 
-static const uint  RESTIR_M_CAP_MIN          = 16;
-static const uint  RESTIR_M_CAP_MAX          = 64;
-static const float RESTIR_C_CAP_DUPLICATED   = 2.0f;
+static const float RESTIR_C_CAP_DEFAULT      = 20.0f;
+static const float RESTIR_C_CAP_DUPLICATED   = 1.0f;
 
 // paired spatial reuse, lin 2026 3, three tileable self inverting gaussian pairing tables
 // sizes are near coprime so the tiling periods never align within a screen
@@ -50,19 +45,9 @@ static const uint RESTIR_PAIRING_COUNT    = 3;
 static const uint RESTIR_PAIRING_SIZES[3] = { 254u, 230u, 210u };
 static const uint RESTIR_PAIRING_BASES[3] = { 0u, 64516u, 117416u };
 
-// lin 2026 5 sensitivity of the cap reduction, c_cap = lerp(default, min, d^alpha), the paper
-// uses 0.1 which collapses the cap toward the floor at a few percent duplication, without a
-// random replay leg every reusable path here is a reconnection so copies of a good path spread
-// faster than in the paper and that setting starves the history, 0.5 keeps the quick early
-// response while leaving several frames alive at typical duplication scores
-static const float RESTIR_DUPLICATION_ALPHA  = 0.5f;
-
-float get_restir_m_cap()
-{
-    float t    = float(buffer_frame.time) - buffer_frame.camera_last_movement_time;
-    float ramp = saturate((t - 0.5f) / 1.0f);
-    return lerp(float(RESTIR_M_CAP_MIN), float(RESTIR_M_CAP_MAX), ramp);
-}
+// Section 5: decorrelation intentionally introduces a small, localized bias.
+static const float RESTIR_DUPLICATION_ALPHA = 0.1f;
+float get_restir_m_cap() { return RESTIR_C_CAP_DEFAULT; }
 // duplication is the fraction of the 17x17 window carrying this pixel's replay seed
 float get_restir_m_cap_decorrelated(float duplication)
 {
@@ -71,21 +56,10 @@ float get_restir_m_cap_decorrelated(float duplication)
 }
 uint  get_restir_max_path_length()     { return RESTIR_MAX_PATH_LENGTH; }
 uint  get_restir_light_candidates()    { return 16u; }
-// lin 2026 7 traces one path tree per pixel and lets reuse supply the sample count, that needs
-// the paper's full hybrid shift, without the replay leg the reuse rate here is too low to carry it
-// Explicit emitter sampling replaces half the brute-force paths when the pool is available.
+// Use several initial trees for robustness at disocclusions. Explicit emitter
+// sampling replaces half the trees when the emissive pool is available.
 uint  get_restir_initial_candidates()  { return buffer_frame.restir_pt_emissive_tri_count > 0.5f ? 4u : 8u; }
 uint  get_restir_emtri_candidates()    { return 4u; }
-// single sample w cap, trades firefly safety for highlight energy
-float get_restir_w_clamp()             { return 100.0f; }
-// per pixel period for both halves of sample validation, the radiance refresh has to outpace the
-// rate the scene's lights change or the history stays stale between checks, 4 puts it at 15hz on
-// a 60hz frame which covers a flickering fluorescent
-uint  get_restir_validation_period()   { return 4u; }
-// firefly ceiling on the demodulated gi, which is irradiance over pi so it sits in the same
-// band as incident sky radiance, not in the single sample w band, raising it toward the sky
-// radiance clamp lets the reuse passes' outliers through and they read as saturated blobs
-float get_restir_gi_clamp()            { return get_restir_w_clamp() * 0.05f; }
 // depth and normal gates for spatial reuse and temporal validity, ~26 deg keeps reuse on continuous surfaces
 static const float RESTIR_DEPTH_THRESHOLD    = 0.03f;
 static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
@@ -96,9 +70,6 @@ static const float RESTIR_RAY_T_MIN          = 0.001f;
 static const float RESTIR_EMISSIVE_NITS_FROM_ALBEDO = lighting_emissive_nits_from_albedo;
 static const float RESTIR_EMISSIVE_NITS_TEXTURE     = lighting_emissive_nits_texture;
 
-// sky / environment, both bands derive from the surface w clamp so one knob scales the hdr range
-static const float RESTIR_SKY_RADIANCE_CLAMP_FACTOR = 4.0f;
-static const float RESTIR_SKY_W_CLAMP_FACTOR        = 10.0f;
 static const float RESTIR_SKY_DISTANCE              = 1e10f;
 
 // reconnection criteria, lin 2026 4, dual ray footprint thresholds replace the old fixed
@@ -110,19 +81,6 @@ static const float RESTIR_RC_FOOTPRINT_C     = 0.0002f;
 // at or above this roughness the rc outgoing lobe is broad enough that reconnection barely
 // perturbs its angular density, so the inverse footprint test does not apply, lin 2026 4
 static const float RESTIR_RC_DIFFUSE_ROUGHNESS = 0.2f;
-// reject geometrically extreme shifts in both directions, the jacobian participates in the
-// pairwise mis denominators so a rejection zeroes a cross domain density that the own domain
-// evaluator still reports, which is an energy gain rather than a saved firefly, keep the guard
-// wide enough that only genuinely degenerate geometry trips it and let the mis weights handle
-// the rest, 8 was tight enough to fire on every wall to wall reconnection in a corner
-static const float RESTIR_JACOBIAN_REJECT    = 32.0f;
-// src_pos travels through the reservoir as an f16 offset from rc_pos, so when a shift lands
-// back on the pixel it came from the two primaries differ by quantization noise only and the
-// jacobian comes out a fixed fraction off one, the same fraction every frame, which the temporal
-// loop compounds into a slow brightening, below this relative primary separation the shift is
-// treated as the identity, 2^-9 is twice the f16 half ulp summed over three components
-static const float RESTIR_SHIFT_IDENTITY_EPS_SQ = 3.8e-6f;
-
 // brdf / numerics
 static const float RESTIR_MIN_PDF            = 1e-6f;
 
@@ -341,8 +299,8 @@ static const uint PATH_FLAG_NEE      = 1 << 3;  // candidate came from the light
 
 // suffix of a path starting at the primary hit, lin 2022 5 split of the radiance leaving rc
 //   L_at_rc = L_nee + f_rc(in_at_rc, rc_outgoing_dir) * L_post
-// L_nee is view independent (lambert only nee at rc), f_rc is re-evaluated at the dst incoming
-// direction at shift time so indirect specular stays view dependent
+// L_nee stores terminal emission only. Continuing paths store one selected suffix
+// in L_post; the full RC BRDF is re-evaluated for the destination incoming direction.
 // rc_pos is a world space vertex (HAS_RC) or a unit sky direction (SKY)
 // rc_normal is the shading normal at rc, the same one the suffix trace sampled and shaded with,
 // storing the geometric normal instead makes f_rc reject its own rc_outgoing_dir on normal mapped
@@ -350,6 +308,11 @@ static const uint PATH_FLAG_NEE      = 1 << 3;  // candidate came from the light
 // src_* captures the source pixel primary surface so reuse passes avoid sampling a reprojected g-buffer
 struct PathSample
 {
+    float3 F; // Exact RGB integrand at the source primary, paired with W.
+    float rc_pdf; // Zero for terminal/NEE-at-RC paths; otherwise the RC BSDF PDF.
+    float initial_weight; // Transient initial RIS/RR weight, folded into reservoir W.
+    uint endpoint_light; // 0xffff = BSDF hit, otherwise the fixed NEE technique.
+    uint endpoint_emtri_draw;
     float3 rc_pos;
     float3 rc_normal;
     float3 rc_outgoing_dir;
@@ -402,49 +365,31 @@ float3 octahedral_decode(float2 e)
     return normalize(n);
 }
 
-// rc_length never exceeds RESTIR_MAX_PATH_LENGTH and only three flag bits are defined, so both
-// fit in a nibble and the freed bytes carry the two roughnesses at u8, which is far finer than
-// any ggx lobe cares about
-uint pack_path_info(uint path_length, uint rc_length, uint flags, float rc_roughness, float src_roughness)
+uint pack_path_info(PathSample s)
 {
-    uint rc_rough_u8  = uint(saturate(rc_roughness)  * 255.0f + 0.5f);
-    uint src_rough_u8 = uint(saturate(src_roughness) * 255.0f + 0.5f);
-
-    return (rc_length    & 0xFu)
-         | ((flags       & 0xFu)  <<  4u)
-         | ((rc_rough_u8 & 0xFFu) <<  8u)
-         | ((src_rough_u8 & 0xFFu) << 16u)
-         | ((path_length & 0xFFu) << 24u);
+    return (s.rc_length & 7u) | ((s.flags & 15u) << 3u) | ((s.path_length & 7u) << 7u)
+        | ((s.endpoint_light & 65535u) << 10u) | ((s.endpoint_emtri_draw & 7u) << 26u);
 }
 
-void unpack_path_info(uint packed, out uint path_length, out uint rc_length, out uint flags, out float rc_roughness, out float src_roughness)
+void unpack_path_info(uint packed, inout PathSample s)
 {
-    rc_length     = packed & 0xFu;
-    flags         = (packed >> 4u) & 0xFu;
-    rc_roughness  = float((packed >>  8u) & 0xFFu) / 255.0f;
-    src_roughness = float((packed >> 16u) & 0xFFu) / 255.0f;
-    path_length   = (packed >> 24u) & 0xFFu;
+    s.rc_length = packed & 7u;
+    s.flags = (packed >> 3u) & 15u;
+    s.path_length = (packed >> 7u) & 7u;
+    s.endpoint_light = (packed >> 10u) & 65535u;
+    s.endpoint_emtri_draw = (packed >> 26u) & 7u;
 }
 
-// reservoir texture packing, 5 x RGBA32F = 20 floats = 80 bytes, lin 2026 6.2.1
-// only the two radiance terms, rc_pos, W and target_pdf need full f32, everything else is
-// quantized or shares a slot, radiance stays f32 because photometric light intensities in this
-// engine run past the f16 ceiling
-// tex0.xyz = rc_pos
-// tex0.w   = asfloat(pack_f16x2(rc_normal_oct.x, rc_normal_oct.y))
-// tex1.xyz = rc_L_post
-// tex1.w   = asfloat(pack_f16x2(rc_outgoing_oct.x, rc_outgoing_oct.y))
-// tex2.xyz = rc_L_nee
-// tex2.w   = asfloat(pack_uint8x4(rc_albedo.r, rc_albedo.g, rc_albedo.b, rc_metallic))
-// tex3.x   = asfloat(seed_path)
-// tex3.y   = asfloat(packed: rc_length | flags | rc_roughness | src_roughness | path_length)
-// tex3.z   = W
-// tex3.w   = target_pdf
-// tex4.x   = asfloat(pack_f16x2(M, (src_pos - rc_pos).x))
-// tex4.y   = asfloat(pack_f16x2((src_pos - rc_pos).y, (src_pos - rc_pos).z))
-// tex4.z   = asfloat(pack_f16x2(src_normal_oct.x, src_normal_oct.y))
-// tex4.w   = asfloat(pack_uint8x4(src_albedo.r, src_albedo.g, src_albedo.b, src_metallic))
-// src_pos is stored relative to rc_pos so f16 spends its precision on the reconnection length
+// Six RGBA32F textures (96 bytes), including the exact cached RGB integrand. A single path has either terminal emission
+// or a continuing suffix, never both. The unused radiance triplet stores the
+// source primary position losslessly; half-float offsets previously changed
+// shift Jacobians and could quantize sky-path primaries by meters.
+// t0: RC position, packed RC normal
+// t1: suffix radiance OR source position, packed outgoing direction
+// t2: terminal radiance OR source position, packed RC albedo/metallic
+// t3: seed, path descriptor, W, target
+// t4: M, two half-float roughnesses, packed source normal, source albedo/metallic
+// t5: cached RGB integrand paired with W (full precision), RC outgoing BSDF PDF
 float pack_f16x2_to_float(float a, float b)
 {
     uint packed = f32tof16(a) | (f32tof16(b) << 16u);
@@ -477,41 +422,40 @@ float4 unpack_float_to_uint8x4(float p)
     );
 }
 
-void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 tex2, out float4 tex3, out float4 tex4)
+void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 tex2, out float4 tex3, out float4 tex4, out float4 tex5)
 {
     float2 rc_normal_oct  = octahedral_encode(r.sample.rc_normal);
     float2 rc_out_oct     = octahedral_encode(r.sample.rc_outgoing_dir);
     float2 src_normal_oct = octahedral_encode(r.sample.src_normal);
 
+    bool terminal = (r.sample.flags & (PATH_FLAG_SKY | PATH_FLAG_RC_EMIT | PATH_FLAG_NEE)) != 0u;
     tex0 = float4(r.sample.rc_pos,    pack_f16x2_to_float(rc_normal_oct.x, rc_normal_oct.y));
-    tex1 = float4(r.sample.rc_L_post, pack_f16x2_to_float(rc_out_oct.x,    rc_out_oct.y));
+    tex1 = float4(terminal ? r.sample.src_pos : r.sample.rc_L_post, pack_f16x2_to_float(rc_out_oct.x,    rc_out_oct.y));
     tex2 = float4(
-        r.sample.rc_L_nee,
+        terminal ? r.sample.rc_L_nee : r.sample.src_pos,
         pack_uint8x4_to_float(r.sample.rc_albedo.r, r.sample.rc_albedo.g, r.sample.rc_albedo.b, r.sample.rc_metallic)
     );
     tex3 = float4(
         asfloat(r.sample.seed_path),
-        asfloat(pack_path_info(r.sample.path_length, r.sample.rc_length, r.sample.flags, r.sample.rc_roughness, r.sample.src_roughness)),
+        asfloat(pack_path_info(r.sample)),
         r.W,
         r.target_pdf
     );
-    // src_pos rides as an offset from rc_pos, f16 keeps three decimal digits of relative
-    // precision so a short reconnection holds on to its distance and cosines, absolute world
-    // coordinates quantize to centimetres past 32 units which is the whole length of a corner
-    // reconnection and turns the shift jacobian there into noise
-    float3 src_offset = r.sample.src_pos - r.sample.rc_pos;
-
+    tex5 = float4(r.sample.F, r.sample.rc_pdf);
     tex4 = float4(
-        pack_f16x2_to_float(r.M,          src_offset.x),
-        pack_f16x2_to_float(src_offset.y, src_offset.z),
+        r.M,
+        pack_f16x2_to_float(r.sample.rc_roughness, r.sample.src_roughness),
         pack_f16x2_to_float(src_normal_oct.x, src_normal_oct.y),
         pack_uint8x4_to_float(r.sample.src_albedo.r, r.sample.src_albedo.g, r.sample.src_albedo.b, r.sample.src_metallic)
     );
 }
 
-Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, float4 tex4)
+Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, float4 tex4, float4 tex5)
 {
     Reservoir r;
+    r.sample.F = tex5.rgb;
+    r.sample.rc_pdf = tex5.a;
+    r.sample.initial_weight = 1.0f;
 
     float2 rc_normal_oct = unpack_float_to_f16x2(tex0.w);
     float2 rc_out_oct    = unpack_float_to_f16x2(tex1.w);
@@ -528,22 +472,23 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, f
 
     r.sample.seed_path = asuint(tex3.x);
 
-    float rc_roughness, src_roughness;
-    unpack_path_info(asuint(tex3.y), r.sample.path_length, r.sample.rc_length, r.sample.flags, rc_roughness, src_roughness);
-    r.sample.rc_roughness  = max(rc_roughness,  0.04f);
-    r.sample.src_roughness = max(src_roughness, 0.04f);
+    unpack_path_info(asuint(tex3.y), r.sample);
+    float2 roughness = unpack_float_to_f16x2(tex4.y);
+    r.sample.rc_roughness = max(roughness.x, 0.04f);
+    r.sample.src_roughness = max(roughness.y, 0.04f);
+    bool terminal = (r.sample.flags & (PATH_FLAG_SKY | PATH_FLAG_RC_EMIT | PATH_FLAG_NEE)) != 0u;
+    r.sample.rc_L_post = terminal ? float3(0, 0, 0) : tex1.xyz;
+    r.sample.rc_L_nee = terminal ? tex2.xyz : float3(0, 0, 0);
 
-    float2 m_pos_x        = unpack_float_to_f16x2(tex4.x);
-    float2 pos_yz         = unpack_float_to_f16x2(tex4.y);
     float2 src_normal_oct = unpack_float_to_f16x2(tex4.z);
     float4 src_albedo_met = unpack_float_to_uint8x4(tex4.w);
 
-    r.sample.src_pos      = r.sample.rc_pos + float3(m_pos_x.y, pos_yz.x, pos_yz.y);
+    r.sample.src_pos      = terminal ? tex1.xyz : tex2.xyz;
     r.sample.src_normal   = octahedral_decode(src_normal_oct);
     r.sample.src_albedo   = src_albedo_met.rgb;
     r.sample.src_metallic = src_albedo_met.a;
 
-    r.M          = m_pos_x.x;
+    r.M          = tex4.x;
     r.W          = tex3.z;
     r.target_pdf = tex3.w;
     // never stored, the resampling stream rebuilds it from scratch in every pass
@@ -559,6 +504,7 @@ bool is_nee_sample(PathSample s)     { return (s.flags & PATH_FLAG_NEE)     != 0
 
 bool is_reservoir_valid(Reservoir r)
 {
+    if (any(isnan(r.sample.F)) || any(isinf(r.sample.F))) return false;
     if (any(isnan(r.sample.rc_pos))    || any(isinf(r.sample.rc_pos)))    return false;
     if (any(isnan(r.sample.rc_L_post)) || any(isinf(r.sample.rc_L_post))) return false;
     if (any(isnan(r.sample.rc_L_nee))  || any(isinf(r.sample.rc_L_nee)))  return false;
@@ -588,6 +534,11 @@ Reservoir create_empty_reservoir()
     r.sample.src_roughness   = 1.0f;
     r.sample.src_metallic    = 0.0f;
     r.sample.seed_path       = 0;
+    r.sample.F               = 0.0f;
+    r.sample.rc_pdf          = 0.0f;
+    r.sample.initial_weight  = 1.0f;
+    r.sample.endpoint_light  = 65535u;
+    r.sample.endpoint_emtri_draw = 0u;
     r.sample.path_length     = 0;
     r.sample.rc_length       = 0;
     r.sample.flags           = 0;
@@ -596,13 +547,6 @@ Reservoir create_empty_reservoir()
     r.W                      = 0;
     r.target_pdf             = 0;
     return r;
-}
-
-float get_w_clamp_for_sample(PathSample s)
-{
-    float w = get_restir_w_clamp();
-    // sky samples use a higher clamp since sun disk radiance exceeds the surface band
-    return is_sky_sample(s) ? w * RESTIR_SKY_W_CLAMP_FACTOR : w;
 }
 
 // streaming ris sample insert, lin 2022 algorithm 1
@@ -914,39 +858,6 @@ float target_scalar(float3 f)
     return max(f.r + f.g + f.b, 0.0f) * (1.0f / 3.0f);
 }
 
-// smooth saturator for the reservoir w cap, pass through below c and asymptote at 2c above
-// avoids the flicker a hard min creates when w bounces across the threshold between frames
-float soft_clamp_w(float w, float c)
-{
-    // a non positive cap means the clamp is disabled, returning 0 here would black out all gi
-    if (c <= 0.0f)
-        return w;
-    if (w <= c)
-        return w;
-    return c + (w - c) / (1.0f + (w - c) / c);
-}
-
-// soft luminance compressor, preserves chromaticity and approaches threshold asymptotically
-float3 soft_saturate_radiance(float3 radiance, float threshold)
-{
-    if (threshold <= 0.0f)
-        return radiance;
-
-    float lum = dot(radiance, float3(0.299f, 0.587f, 0.114f));
-    if (lum > threshold)
-    {
-        float scale = threshold + (lum - threshold) / (1.0f + (lum - threshold) / threshold);
-        radiance *= scale / lum;
-    }
-    return radiance;
-}
-
-float3 clamp_sky_radiance(float3 radiance)
-{
-    float threshold = get_restir_w_clamp() * RESTIR_SKY_RADIANCE_CLAMP_FACTOR;
-    return soft_saturate_radiance(radiance, threshold);
-}
-
 // ray offset for self intersection avoidance, scales with position magnitude and camera distance
 // since float precision degrades with magnitude, wachter and binder simplified form
 // the magnitude term covers rounding in the world position itself and the distance term covers
@@ -1210,7 +1121,25 @@ struct ShiftResult
     float3 f_dst;
     float  jacobian;
     bool   ok;
+    PathSample sample;
 };
+
+ShiftResult try_random_replay_shift(PathSample src, float3 src_pos, float3 dst_pos,
+    float3 dst_normal, float3 dst_view, float3 dst_albedo, float roughness, float metallic);
+
+// Only a light endpoint directly after RC has a view-dependent endpoint MIS
+// weight. Deeper endpoints keep the same incoming direction under reconnection.
+float restir_rc_endpoint_mis(uint path_length, uint endpoint_light, float3 normal, float3 direction, float brdf_pdf)
+{
+    if (path_length != 3u)
+        return 1.0f;
+    float env_pdf = max(dot(normal, direction), 0.0f) / PI;
+    if (endpoint_light == 65535u)
+        return power_heuristic(brdf_pdf, env_pdf);
+    if (endpoint_light == uint(buffer_frame.restir_pt_light_count) + 1u)
+        return power_heuristic(env_pdf, brdf_pdf);
+    return 1.0f;
+}
 
 // radiance leaving rc toward dst primary, L_at_rc = L_nee + f_rc(dst_view, rc_outgoing_dir) * L_post
 // dir_primary_to_rc is the unit direction from dst primary to rc, incoming at rc is its negative
@@ -1224,18 +1153,16 @@ float3 rc_outgoing_radiance(PathSample src, float3 dir_primary_to_rc)
 
     float3 view_at_rc = -dir_primary_to_rc;
     // rc is a suffix vertex so the full brdf is active
-    float3 f_rc      = eval_surface_brdf_cos(src.rc_albedo, src.rc_roughness, src.rc_metallic,
-                                             src.rc_normal, view_at_rc, src.rc_outgoing_dir,
-                                             1.0f);
-    return src.rc_L_nee + f_rc * src.rc_L_post;
+    float pdf;
+    float3 f_rc = evaluate_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic,
+        src.rc_normal, view_at_rc, src.rc_outgoing_dir, pdf, 1.0f);
+    float mis = restir_rc_endpoint_mis(src.path_length, src.endpoint_light, src.rc_normal, src.rc_outgoing_dir, pdf);
+    return src.rc_L_nee + f_rc * src.rc_L_post * mis;
 }
 
 // reconnection shift from source primary to destination, ok=false on degenerate geometry
 // visibility is checked separately so non visibility critical passes can skip the ray cast
-// this is the only shift, a random replay leg used to cover paths without a reconnection vertex
-// but it returns the radiance of a freshly retraced path while the reservoir keeps carrying the
-// original PathSample, so the stored target no longer described the stored sample and W blew up
-// whenever the replayed path was dimmer, paths without an rc simply fail to shift now
+// Non-reconnectable paths use shared-random-number replay and carry its updated descriptor.
 ShiftResult try_reconnection_shift(
     PathSample src,
     float3 src_primary_pos,
@@ -1247,6 +1174,7 @@ ShiftResult try_reconnection_shift(
     float dst_metallic)
 {
     ShiftResult result;
+    result.sample = src;
     result.f_dst    = float3(0, 0, 0);
     result.jacobian = 0.0f;
     result.ok       = false;
@@ -1264,23 +1192,30 @@ ShiftResult try_reconnection_shift(
         result.f_dst    = brdf_cos * rc_outgoing_radiance(src, dir);
         result.jacobian = 1.0f;
         result.ok       = true;
+        result.sample.F = result.f_dst;
         return result;
     }
+
+    // Source positions are full precision; only the actual identity skips gates.
+    bool is_identity = all(dst_pos == src_primary_pos);
+    if (is_identity)
+    {
+        result.f_dst = src.F;
+        result.sample.F = src.F;
+        result.jacobian = 1.0f;
+        result.ok = all(isfinite(src.F)) && any(src.F > 0.0f);
+        return result;
+    }
+
+    // Replay must update both the integrand and the path descriptor. Identity
+    // evaluates the cached sample without tracing a different random path.
+    if (!is_identity && !has_reconnection(src))
+        return try_random_replay_shift(src, src_primary_pos, dst_pos, dst_normal, dst_view_dir,
+            dst_albedo, dst_roughness, dst_metallic);
 
     float3 rc_from_dst = src.rc_pos - dst_pos;
     float  dist_dst_sq = dot(rc_from_dst, rc_from_dst);
     if (dist_dst_sq < RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE)
-        return result;
-
-    // identity shift, see RESTIR_SHIFT_IDENTITY_EPS_SQ, the source side reuses the destination
-    // geometry so the jacobian is exactly one and every gate below matches self_shift_evaluate
-    float3 primary_delta = dst_pos - src_primary_pos;
-    bool   is_identity   = dot(primary_delta, primary_delta) <= dist_dst_sq * RESTIR_SHIFT_IDENTITY_EPS_SQ;
-
-    // paths that failed the footprint criteria, lin 2026 4, carry no reconnection vertex and
-    // cannot be moved to another primary, the identity shift leaves the path where it is so a
-    // still camera keeps its history instead of dropping it whenever such a path wins a pixel
-    if (!is_identity && !has_reconnection(src))
         return result;
 
     float3 rc_from_src = is_identity ? rc_from_dst : (src.rc_pos - src_primary_pos);
@@ -1311,7 +1246,15 @@ ShiftResult try_reconnection_shift(
     {
         float pdf_dst = max(dot(dst_normal, dir_dst), 0.0f) / PI;
         float fp_dst  = dist_dst_sq / max(pdf_dst * cos_rc_dst, 1e-6f);
-        if (fp_dst < RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(dst_pos, dst_normal))
+        float fp_inverse = 1e30f;
+        if (src.rc_roughness < RESTIR_RC_DIFFUSE_ROUGHNESS && any(src.rc_L_post > 0.0f))
+        {
+            float pdf_rc;
+            evaluate_brdf(src.rc_albedo, src.rc_roughness, src.rc_metallic, src.rc_normal,
+                -dir_dst, src.rc_outgoing_dir, pdf_rc, 1.0f);
+            fp_inverse = dist_dst_sq / max(pdf_rc * abs(dot(dst_normal, dir_dst)), 1e-6f);
+        }
+        if (min(fp_dst, fp_inverse) < RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(dst_pos, dst_normal))
             return result;
     }
 
@@ -1321,13 +1264,15 @@ ShiftResult try_reconnection_shift(
 
     // solid angle jacobian at rc, (cos_dst * dist_src^2) / (cos_src * dist_dst^2)
     float jacobian = (cos_rc_dst * dist_src_sq) / max(cos_rc_src * dist_dst_sq, 1e-6f);
-    if (jacobian < 1.0f / RESTIR_JACOBIAN_REJECT || jacobian > RESTIR_JACOBIAN_REJECT || isnan(jacobian) || isinf(jacobian))
+    if (!(jacobian > 0.0f) || isnan(jacobian) || isinf(jacobian))
         return result;
 
-    // re-evaluate f_rc at the dst incoming direction so indirect specular stays view dependent
+    // RC outgoing direction is represented in solid angle, so reconnecting
+    // preserves that coordinate. Its initial sampling PDF is already in W.
     result.f_dst    = brdf_cos * rc_outgoing_radiance(src, dir_dst);
     result.jacobian = jacobian;
     result.ok       = true;
+    result.sample.F = result.f_dst;
     return result;
 }
 
@@ -1361,7 +1306,7 @@ float3 sample_sky(float3 dir)
     }
     float2 uv  = direction_sphere_uv(dir);
     float3 sky = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), uv, SKY_MIP_LEVEL).rgb;
-    return clamp_sky_radiance(sky);
+    return sky;
 }
 
 // env nee density at a given direction, cosine hemisphere only, the sun is owned by the
@@ -1457,18 +1402,23 @@ uint emtri_pick_index(float u, uint count)
 // distribution that no amount of reuse could settle, resampling the draws against the unshadowed
 // geometry term toward this vertex concentrates the one shadow ray the caller will trace on the
 // panels that can actually light it, out_W is the ris estimate of 1 / pdf of the pick
-// the draw count is fixed so the stream stays aligned between the trace and the refresh
+// The draw count is fixed so initial tracing and random replay consume the same dimensions.
 static const uint RESTIR_EMTRI_RIS_CANDIDATES = 8u;
 
-bool emtri_ris_pick(
+bool emtri_ris_pick_path(
     float3 pos,
     float3 normal,
     inout uint seed,
     out float3 out_pos,
     out float3 out_normal,
     out float3 out_emission,
-    out float  out_W)
+    out float out_W,
+    out float out_pdf,
+    out uint out_draw,
+    int forced_draw)
 {
+    out_pdf = 0.0f;
+    out_draw = 0u;
     out_pos      = float3(0.0f, 0.0f, 0.0f);
     out_normal   = float3(0.0f, 1.0f, 0.0f);
     out_emission = float3(0.0f, 0.0f, 0.0f);
@@ -1537,8 +1487,10 @@ bool emtri_ris_pick(
         float w      = target / max(pdf_sa, RESTIR_MIN_PDF);
 
         weight_sum += w;
-        if (u * weight_sum < w)
+        if (forced_draw >= 0 ? i == uint(forced_draw) : u * weight_sum < w)
         {
+            out_pdf = pdf_sa;
+            out_draw = i;
             out_pos      = p;
             out_normal   = tri.normal;
             out_emission = tri.emission;
@@ -1555,45 +1507,53 @@ bool emtri_ris_pick(
     return true;
 }
 
-// emissive triangle nee at a bounce vertex, single strategy, the pool owns authored emitters so
-// the brdf bounce and the env probe both return zero for them and nothing is counted twice
-// without this the only way a bounce vertex saw a ceiling panel was a cosine hemisphere draw
-// landing on it, a few percent chance per path
-float3 emtri_nee_at_vertex(
-    float3 shading_pos,
-    float3 shading_normal,
-    float3 ray_origin,
-    float3 view_dir,
-    float3 albedo,
-    float roughness,
-    float metallic,
-    float specular_blend,
-    inout uint seed)
+bool emtri_ris_pick(float3 pos, float3 normal, inout uint seed,
+    out float3 light_pos, out float3 light_normal, out float3 emission, out float W)
 {
-    float3 light_pos, light_normal, emission;
-    float  W;
-    if (!emtri_ris_pick(shading_pos, shading_normal, seed, light_pos, light_normal, emission, W))
-    {
-        return float3(0.0f, 0.0f, 0.0f);
-    }
-
-    float3 to   = light_pos - shading_pos;
-    float  dist = length(to);
-    float3 dir  = to / dist;
-
-    if (!trace_shadow_ray(ray_origin, dir, dist))
-    {
-        return float3(0.0f, 0.0f, 0.0f);
-    }
-
-    float  brdf_pdf;
-    float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, dir, brdf_pdf, specular_blend);
-    return brdf * emission * W;
+    float pdf;
+    uint draw;
+    return emtri_ris_pick_path(pos, normal, seed, light_pos, light_normal, emission, W, pdf, draw, -1);
 }
 
 // direct lighting (analytical lights + environment probe) at a surface vertex toward view_dir
-// specular_blend weights the specular lobe, 1 keeps the full brdf, 0 leaves view independent diffuse for rc
-float3 direct_lighting_at_vertex(
+// specular_blend weights the specular lobe; RC vertices use the full BRDF.
+// Stream light-ending paths without adding their radiances into one stored path.
+// Keep physical radiance/PDF separate from the RIS weight. Replay evaluates
+// the stored leaf rather than resampling a different endpoint at the destination.
+struct RestirLightSample
+{
+    float3 radiance_sum;
+    float3 direction;
+    float3 incident;
+    float weight_sum;
+    float selected_target;
+    float initial_weight;
+    uint light_index;
+    uint emtri_draw;
+};
+
+void restir_stream_light(inout RestirLightSample result, float3 direction, float3 incident,
+    float3 brdf_cos, inout uint selection_seed, float candidate_weight,
+    uint light_index, uint emtri_draw, int forced_light)
+{
+    float target = target_scalar(brdf_cos * incident);
+    if (!(target > 0.0f) || isnan(target) || isinf(target))
+        return;
+    result.radiance_sum += brdf_cos * incident * candidate_weight;
+    float weight = target * candidate_weight;
+    result.weight_sum += weight;
+    float u = random_float(selection_seed);
+    if (forced_light >= 0 ? uint(forced_light) == light_index : u * result.weight_sum < weight)
+    {
+        result.light_index = light_index;
+        result.emtri_draw = emtri_draw;
+        result.direction = direction;
+        result.incident = incident;
+        result.selected_target = target;
+    }
+}
+
+RestirLightSample sample_direct_lighting_at_vertex(
     float3 shading_pos,
     float3 shading_normal,
     float3 geometric_normal,
@@ -1602,9 +1562,12 @@ float3 direct_lighting_at_vertex(
     float roughness,
     float metallic,
     float  specular_blend,
-    inout uint seed)
+    inout uint seed,
+    int forced_light,
+    int forced_emtri_draw)
 {
-    float3 total = float3(0, 0, 0);
+    RestirLightSample result = (RestirLightSample)0;
+    uint selection_seed = seed ^ 0x9e3779b9u;
     uint light_count = (uint)buffer_frame.restir_pt_light_count;
     float shading_offset = compute_ray_offset(shading_pos);
     float3 ray_origin_light = shading_pos + geometric_normal * shading_offset;
@@ -1701,7 +1664,7 @@ float3 direct_lighting_at_vertex(
         if (!trace_shadow_ray(ray_origin_light, light_dir, light_dist))
             continue;
 
-        // rc uses lambert only so the stored nee stays view independent
+        // The selected incident radiance is independent of the incoming RC view.
         float  brdf_pdf;
         float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, light_dir, brdf_pdf, specular_blend);
 
@@ -1709,23 +1672,30 @@ float3 direct_lighting_at_vertex(
         float mis_weight = 1.0f;
 
         float3 Li = light_color * light.intensity * attenuation;
-        total += brdf * Li * mis_weight / max(light_pdf, 1e-6f);
+        restir_stream_light(result, light_dir, Li * mis_weight / max(light_pdf, 1e-6f), brdf, selection_seed, 1.0f, light_idx, 0u, forced_light);
     }
 
-    // emissive triangle nee, see emtri_nee_at_vertex
+    // Emissive-triangle NEE contributes one light-ending path.
     if (is_emtri_pool_active())
     {
-        total += emtri_nee_at_vertex(
-            shading_pos,
-            shading_normal,
-            ray_origin_light,
-            view_dir,
-            albedo,
-            roughness,
-            metallic,
-            specular_blend,
-            seed
-        );
+        float3 light_pos, light_normal, emission;
+        float W, source_pdf;
+        uint draw;
+        if (emtri_ris_pick_path(shading_pos, shading_normal, seed, light_pos, light_normal, emission,
+            W, source_pdf, draw, forced_light == int(light_count) ? forced_emtri_draw : -1))
+        {
+            float3 to_light = light_pos - shading_pos;
+            float distance = length(to_light);
+            float3 direction = to_light / max(distance, RESTIR_MIN_PDF);
+            if (distance > RESTIR_RAY_T_MIN && trace_shadow_ray(ray_origin_light, direction, distance))
+            {
+                float pdf;
+                float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir,
+                    direction, pdf, specular_blend);
+                restir_stream_light(result, direction, emission / source_pdf, brdf, selection_seed,
+                    W * source_pdf, light_count, draw, forced_light);
+            }
+        }
     }
 
     // environment nee, cosine hemisphere toward the sun free sky, the analytic loop above
@@ -1771,7 +1741,7 @@ float3 direct_lighting_at_vertex(
                     float3 brdf_probe = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_probe, specular_blend);
 
                     float mis_weight = power_heuristic(env_pdf, brdf_pdf_probe);
-                    total += brdf_probe * emission * mis_weight / env_pdf;
+                    restir_stream_light(result, env_dir, emission / env_pdf, brdf_probe * mis_weight, selection_seed, 1.0f, light_count + 1u, 0u, forced_light);
                 }
             }
             else
@@ -1782,100 +1752,40 @@ float3 direct_lighting_at_vertex(
                 float3 brdf_env = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_env, specular_blend);
 
                 float mis_weight_env = power_heuristic(env_pdf, brdf_pdf_env);
-                total += brdf_env * env_radiance * mis_weight_env / env_pdf;
+                restir_stream_light(result, env_dir, env_radiance / env_pdf, brdf_env * mis_weight_env, selection_seed, 1.0f, light_count + 1u, 0u, forced_light);
             }
         }
     }
 
-    return total;
-}
-
-// lin 2022 6.4 sample validation, the radiance half
-// re-shades the stored reconnection vertex against the lights as they are now, a validation that
-// only re-traces visibility passes forever in a scene whose geometry never moves while its lights
-// flicker or get repositioned, so reservoirs keep replaying radiance the scene stopped producing
-// and a room that has gone dark stays lit by its own history
-// w survives the update untouched because it is a density, weight_sum and the target it divides
-// both carry the old radiance and cancel, so refreshing the radiance and re-deriving the own
-// domain target from it moves the estimate by exactly the ratio the light moved, which tracks the
-// change without discarding the accumulated confidence
-// rc_L_post is left alone, re-deriving it would mean retracing the whole suffix, so this recovers
-// the direct term at rc and lets the deeper bounces age out through the confidence cap
-// the nee replays the path's own random stream, seed_path is the state before the primary
-// direction draw and the trace consumed exactly that draw before shading rc, so with unchanged
-// lights the refresh reproduces the stored radiance bit for bit and injects no noise, a fresh
-// draw here re-rolled a one sample estimate into the history every period and the paths that
-// had been kept for a lucky hit mostly went dark, which read as boiling on a still camera
-// returns false when the sample stores radiance this function cannot re-derive
-bool restir_refresh_rc_radiance(inout PathSample s, float3 src_primary_pos)
-{
-    uint seed = s.seed_path;
-    random_float2(seed);
-
-    // sky and nee samples carry an emitter's own radiance, and an emissive rc folds a term into
-    // rc_L_nee that is not separable from the shaded one, none of them can be rebuilt here,
-    // paths without the rc flag still store a full rc vertex and survive through the identity
-    // shift so they are refreshed like any other
-    if (is_sky_sample(s) || is_nee_sample(s) || is_rc_emissive(s))
-        return false;
-
-    float3 to_rc = s.rc_pos - src_primary_pos;
-    float  d2    = dot(to_rc, to_rc);
-    if (d2 < RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE)
-        return false;
-
-    // the stored nee is view independent, the incoming direction only orients the shadow rays
-    float3 view_at_rc = -to_rc * rsqrt(d2);
-
-    // the geometric normal at rc is not stored, the shading normal drives the same ray offset the
-    // original trace used, and the diffuse only blend matches accumulate_subpath_at_rc
-    float3 fresh = direct_lighting_at_vertex(
-        s.rc_pos,
-        s.rc_normal,
-        s.rc_normal,
-        view_at_rc,
-        s.rc_albedo,
-        s.rc_roughness,
-        s.rc_metallic,
-        0.0f,
-        seed
-    );
-
-    if (any(isnan(fresh)) || any(isinf(fresh)))
-        return false;
-
-    s.rc_L_nee = max(fresh, 0.0f);
-    return true;
+    if (result.selected_target > 0.0f)
+        result.initial_weight = result.weight_sum / result.selected_target;
+    return result;
 }
 
 // visibility ray from dst primary to rc, sky samples test reachability to the sky
 bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal)
 {
-    float  offset = max(RESTIR_RAY_T_MIN, compute_ray_offset(dst_pos));
-    float3 dir;
-    float  t_max;
-
+    float offset = compute_ray_offset(dst_pos);
+    RayDesc ray;
+    ray.Origin = dst_pos + dst_normal * offset;
+    ray.TMin = RESTIR_RAY_T_MIN;
     if (is_sky_sample(src))
     {
-        dir   = src.rc_pos;
-        t_max = 10000.0f;
+        ray.Direction = src.rc_pos;
+        ray.TMax = 10000.0f;
     }
     else
     {
-        float3 to_rc = src.rc_pos - dst_pos;
-        float  dist  = length(to_rc);
-        if (dist < RESTIR_RC_MIN_DISTANCE)
-            return false;
-
-        dir   = to_rc / dist;
-        t_max = max(dist - offset * 2.0f, offset);
+        // Aim at the endpoint from the actual offset origin. A parallel ray
+        // from the unoffset direction tests a different segment near corners.
+        float3 to_rc = src.rc_pos - ray.Origin;
+        float distance = length(to_rc);
+        float endpoint_epsilon = max(RESTIR_RAY_T_MIN, compute_ray_offset(src.rc_pos));
+        if (distance <= endpoint_epsilon + ray.TMin)
+            return true;
+        ray.Direction = to_rc / distance;
+        ray.TMax = distance - endpoint_epsilon;
     }
-
-    RayDesc ray;
-    ray.Origin    = dst_pos + dst_normal * offset;
-    ray.Direction = dir;
-    ray.TMin      = offset;
-    ray.TMax      = t_max;
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
@@ -1896,7 +1806,7 @@ bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal)
 // meeting put the reconnection vertex a centimetre away and edge on, firing every gate that only
 // the cross domain evaluator had, which drove each technique's share to 1 and let the temporal
 // feedback loop compound the surplus until the clamps saturated
-ShiftResult self_shift_evaluate(
+ShiftResult evaluate_path_integrand(
     PathSample src,
     float3 dst_pos,
     float3 dst_normal,
@@ -1906,6 +1816,7 @@ ShiftResult self_shift_evaluate(
     float dst_metallic)
 {
     ShiftResult result;
+    result.sample = src;
     result.f_dst    = float3(0, 0, 0);
     result.jacobian = 1.0f;
     result.ok       = false;
@@ -1937,6 +1848,20 @@ ShiftResult self_shift_evaluate(
     // dst incoming equals src incoming by construction so f_rc matches the original, no drift
     result.f_dst = brdf_cos * rc_outgoing_radiance(src, dir);
     result.ok    = true;
+    return result;
+}
+
+// The cached RGB value and its scalar target must describe the same sample.
+// Re-evaluating packed normals/directions here introduces a multiplicative error
+// every time history is reused, particularly at glossy reconnection vertices.
+ShiftResult self_shift_evaluate(PathSample src, float3 pos, float3 normal, float3 view,
+    float3 albedo, float roughness, float metallic)
+{
+    ShiftResult result = (ShiftResult)0;
+    result.sample = src;
+    result.f_dst = src.F;
+    result.jacobian = 1.0f;
+    result.ok = all(isfinite(src.F)) && any(src.F > 0.0f);
     return result;
 }
 
@@ -2013,8 +1938,9 @@ float3 shade_reservoir_path(Reservoir r, float3 dst_pos, float3 dst_normal, floa
     // irradiance
     float3 gi = (shift.f_dst * r.W) / restir_gi_demodulator(dst_albedo);
 
-    // soft firefly ceiling for a stuck reservoir, preserves chromaticity instead of hard clipping
-    return soft_saturate_radiance(gi, get_restir_gi_clamp());
+    return gi;
 }
+
+#include "restir_path.hlsl"
 
 #endif // SPARTAN_RESTIR_RESERVOIR

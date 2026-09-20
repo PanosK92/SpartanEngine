@@ -56,7 +56,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         tex_reservoir_prev1[pixel],
         tex_reservoir_prev2[pixel],
         tex_reservoir_prev3[pixel],
-        tex_reservoir_prev4[pixel]
+        tex_reservoir_prev4[pixel],
+        tex_reservoir_prev5[pixel]
     );
 
     bool has_sample = depth > 0.0f && is_reservoir_valid(center) && center.M > 0.0f && center.W > 0.0f;
@@ -96,7 +97,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             if (!shift.ok || shift.jacobian <= 0.0f)
                 continue;
 
-            if (!trace_shift_visibility(center.sample, partner_pos_ws, partner_normal_ws))
+            if (!trace_shift_visibility(shift.sample, partner_pos_ws, partner_normal_ws))
                 continue;
 
             shift_out[t] = float4(shift.f_dst, shift.jacobian);

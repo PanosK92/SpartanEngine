@@ -92,7 +92,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         tex_reservoir1[pixel],
         tex_reservoir2[pixel],
         tex_reservoir3[pixel],
-        tex_reservoir4[pixel]
+        tex_reservoir4[pixel],
+        tex_reservoir5[pixel]
     );
 
     if (!is_reservoir_valid(current))
@@ -140,6 +141,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     }
 
     bool have_temporal = false;
+    PathSample temporal_shifted_sample = (PathSample)0;
     Reservoir temporal = create_empty_reservoir();
     float  target_temp          = 0.0f;
     float  jacobian_temp        = 0.0f;
@@ -162,7 +164,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                 tex_reservoir_prev1[prev_pixel],
                 tex_reservoir_prev2[prev_pixel],
                 tex_reservoir_prev3[prev_pixel],
-                tex_reservoir_prev4[prev_pixel]
+                tex_reservoir_prev4[prev_pixel],
+                tex_reservoir_prev5[prev_pixel]
             );
 
             // A valid zero-weight history is still a sampled technique. Dropping it based
@@ -190,35 +193,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                 float3 src_albedo      = temporal.sample.src_albedo;
                 float  src_roughness   = max(temporal.sample.src_roughness, 0.04f);
                 float  src_metallic    = temporal.sample.src_metallic;
-                float3 src_view_dir    = normalize(get_camera_position() - src_primary_pos);
-
-                // lin 2022 6.4 sample validation, run before the shift so the shifted target,
-                // the mis denominators and the shading integrand all see the refreshed radiance
-                // the visibility validation further down only catches geometry going stale, this
-                // catches a light changing intensity or moving, which is the only thing that
-                // changes in a scene whose walls never move
-                uint refresh_period = get_restir_validation_period();
-                if (refresh_period > 0u && temporal.W > 0.0f)
-                {
-                    uint refresh_hash = (pixel.x * 73856093u) ^ (pixel.y * 19349663u);
-                    if (((buffer_frame.frame + refresh_hash) % refresh_period) == 0u)
-                    {
-                        if (restir_refresh_rc_radiance(temporal.sample, src_primary_pos))
-                        {
-                            // w is scale free, the own domain target is not, re-derive it from
-                            // the refreshed radiance or the mis denominator keeps the old scale
-                            temporal.target_pdf = target_pdf_self(
-                                temporal.sample,
-                                src_primary_pos,
-                                src_normal_ws,
-                                src_view_dir,
-                                src_albedo,
-                                src_roughness,
-                                src_metallic
-                            );
-                        }
-                    }
-                }
+                float3 src_view_dir    = normalize(buffer_frame.camera_position_previous - src_primary_pos);
 
                 ShiftResult shift_t_to_c = try_reconnection_shift(
                     temporal.sample,
@@ -233,12 +208,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
                 if (temporal.W > 0.0f && shift_t_to_c.ok)
                 {
-                    bool visible = trace_shift_visibility(temporal.sample, pos_ws, normal_ws);
+                    bool visible = trace_shift_visibility(shift_t_to_c.sample, pos_ws, normal_ws);
                     if (visible)
                     {
                         target_temp   = target_scalar(shift_t_to_c.f_dst);
                         jacobian_temp = shift_t_to_c.jacobian;
                         f_temp        = shift_t_to_c.f_dst;
+                        temporal_shifted_sample = shift_t_to_c.sample;
                     }
                 }
 
@@ -255,7 +231,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                     src_metallic
                 );
                 if (current.W > 0.0f && shift_c_to_t.ok &&
-                    trace_shift_visibility(current.sample, src_primary_pos, src_normal_ws))
+                    trace_shift_visibility(shift_c_to_t.sample, src_primary_pos, src_normal_ws))
                 {
                     target_cur_at_temp   = target_scalar(shift_c_to_t.f_dst);
                     jacobian_cur_at_temp = shift_c_to_t.jacobian;
@@ -280,7 +256,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // weights floor the canonical at 0.5 which is the right trade against three sibling pixels
     // of equal confidence but ruinous here, it hands a fresh single frame estimate half the
     // image every frame no matter how deep the history is, so nothing ever settles, the plain
-    // balance heuristic lets an m of 128 push the canonical down to its proper few percent
+    // balance heuristic lets accumulated confidence reduce the canonical share
     float weight_cur = 0.0f;
     float weight_tmp = 0.0f;
     // kept in scope for the vector shading sum further down
@@ -315,7 +291,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.weight_sum = max(weight_cur, 0.0f);
     combined.M          = current.M;
 
-    bool picked_temporal = false;
     if (have_temporal)
     {
         combined.weight_sum += max(weight_tmp, 0.0f);
@@ -323,52 +298,21 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
         if (combined.weight_sum > 0.0f && random_float(seed) * combined.weight_sum < weight_tmp)
         {
-            combined.sample     = temporal.sample;
+            combined.sample     = temporal_shifted_sample;
             combined.target_pdf = target_temp;
-            picked_temporal     = true;
         }
     }
 
-    clamp_reservoir_M(combined, get_restir_m_cap());
+    // Confidence is summed here; only the temporal input is capped (paper section 2.2).
 
-    // lin 2022 6.4 sample validation, every n frames a subset of pixels re-traces rc visibility
-    // and resets the reservoir if rc is no longer reachable, cost amortized to ~1/n pixels per frame
-    // liveness is weight_sum, W is only computed by the finalize further down and is still zero here
-    bool validation_reset  = false;
-    uint validation_period = get_restir_validation_period();
-    if (validation_period > 0u && combined.M > 0.0f && combined.weight_sum > 0.0f)
-    {
-        uint hash = (pixel.x * 73856093u) ^ (pixel.y * 19349663u);
-        uint slot = (buffer_frame.frame + hash) % validation_period;
-        if (slot == 0u)
-        {
-            bool reachable = trace_shift_visibility(combined.sample, pos_ws, normal_ws);
-            if (!reachable)
-            {
-                validation_reset    = true;
-                // history is stale, drop it, but keep this frame's freshly traced canonical
-                // whose rc was found by an actual ray, emptying the reservoir outright blacks
-                // out 1/period of the pixels every frame and restarts accumulation there
-                combined            = create_empty_reservoir();
-                combined.sample     = current.sample;
-                combined.target_pdf = target_cur;
-                bool keep_canonical = picked_temporal && target_cur > 0.0f;
-                combined.weight_sum = keep_canonical ? (target_cur * current.W) : 0.0f;
-                combined.M          = keep_canonical ? current.M                : 0.0f;
-                have_temporal       = false;
-            }
-        }
-    }
+    // Every reused candidate was visibility-tested before RIS. The canonical
+    // candidate was traced this frame. A second, post-selection rejection with
+    // a canonical fallback would condition the estimator on the selected draw.
 
     // finalize, W = weight_sum / target, no /M since the m_i factors are already normalized
     // the selection time target is reused instead of a re-evaluation, for replay shifted
     // samples the two evaluation paths differ slightly and a mismatched divide skews W
     combined.W = (combined.target_pdf > 0.0f) ? (combined.weight_sum / combined.target_pdf) : 0.0f;
-
-    // soft saturator, see soft_clamp_w in restir_reservoir.hlsl
-    float w_clamp     = get_w_clamp_for_sample(combined.sample);
-    float w_unclamped = combined.W;
-    combined.W        = soft_clamp_w(combined.W, w_clamp);
 
     // re-stamp the source primary g-buffer, downstream shifts originate from the current pixel
     combined.sample.src_pos       = pos_ws;
@@ -377,44 +321,29 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.sample.src_roughness = roughness;
     combined.sample.src_metallic  = metallic;
 
-    float4 t0, t1, t2, t3, t4;
-    pack_reservoir(combined, t0, t1, t2, t3, t4);
+    float4 t0, t1, t2, t3, t4, t5;
+    pack_reservoir(combined, t0, t1, t2, t3, t4, t5);
     tex_reservoir0[pixel] = t0;
     tex_reservoir1[pixel] = t1;
     tex_reservoir2[pixel] = t2;
     tex_reservoir3[pixel] = t3;
     tex_reservoir4[pixel] = t4;
+    tex_reservoir5[pixel] = t5;
 
     // vector resampling weights for shading, lin 2026 6.3, gi = sum_i m_i f_i W_i J_i in rgb
     // scalar weights keep driving resampling while the rgb sum averages out the chroma noise
     // that a luminance only target cannot importance sample, both integrands are already evaluated
     float3 gi = float3(0, 0, 0);
-    if (!validation_reset)
+    ShiftResult canonical = self_shift_evaluate(current.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
+    gi = m_cur * canonical.f_dst * max(current.W, 0.0f);
+
+    if (have_temporal)
     {
-        ShiftResult canonical = self_shift_evaluate(current.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-        gi = m_cur * canonical.f_dst * max(current.W, 0.0f);
-
-        if (have_temporal)
-        {
-            gi += m_temp * f_temp * max(temporal.W, 0.0f) * jacobian_temp;
-        }
-
-        // apply the same firefly suppression ratio the scalar W received from the soft clamp
-        if (w_unclamped > 1e-8f)
-        {
-            gi *= combined.W / w_unclamped;
-        }
-
-        // diffuse albedo demodulation and firefly ceiling, matches shade_reservoir_path so the composition re-modulation applies albedo exactly once
-        gi = gi / restir_gi_demodulator(albedo);
-        gi = soft_saturate_radiance(gi, get_restir_gi_clamp());
+        gi += m_temp * f_temp * max(temporal.W, 0.0f) * jacobian_temp;
     }
-    else
-    {
-        // the reused path failed validation, the vector sum is built from that same stream so
-        // shade whatever reservoir survived instead of dropping the pixel to black
-        gi = shade_reservoir_path(combined, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-    }
+
+    // Demodulate once; composition restores the primary albedo.
+    gi = gi / restir_gi_demodulator(albedo);
 
     if (any(isnan(gi)) || any(isinf(gi)))
     {
@@ -433,7 +362,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // this on a small gi value instead swaps in a different estimator exactly on the pixels
     // where the resampled one came out dark, which is a one sided lift of every shadowed pixel
     // and reads as boiling because the switch flips frame to frame
-    if (combined.M <= 0.0f || combined.W <= 0.0f)
+    if (combined.M <= 0.0f)
     {
         float4 trace_stage = tex_uav[pixel];
         gi       = trace_stage.rgb;

@@ -382,7 +382,7 @@ namespace spartan
         bool m_grade_limit_enabled = true;
         float m_max_grade_degrees  = 8.0f;
         float m_max_cut            = 20.0f;
-        float m_grade_smoothing    = 0.9f;
+        float m_grade_smoothing    = 1.0f;
         // arc length the elevation profile is averaged over, this is what stops the rollercoaster
         float m_smoothing_length   = 160.0f;
 

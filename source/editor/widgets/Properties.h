@@ -37,6 +37,8 @@ namespace spartan
     class Terrain;
     class Spline;
     class SplineFollower;
+    class Pedestrians;
+    class Navigation;
     class Volume;
     class Script;
     class Component;
@@ -68,6 +70,8 @@ private:
     void ShowTerrain(spartan::Terrain* terrain) const;
     void ShowSpline(spartan::Spline* spline) const;
     void ShowSplineFollower(spartan::SplineFollower* follower) const;
+    void ShowPedestrians(spartan::Pedestrians* pedestrians) const;
+    void ShowNavigation(spartan::Navigation* navigation) const;
     void ShowAudioSource(spartan::AudioSource* audio_source) const;
     void ShowVolume(spartan::Volume* volume) const;
     void ShowParticleSystem(spartan::ParticleSystem* particle_system) const;

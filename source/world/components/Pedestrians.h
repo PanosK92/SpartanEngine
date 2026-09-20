@@ -38,6 +38,7 @@ namespace spartan
     class Entity;
     class Mesh;
     class Ragdoll;
+    class NavigationWorld;
 
     class Pedestrians : public Component
     {
@@ -51,6 +52,10 @@ namespace spartan
         void Tick() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
+        bool GetUseNavigation() const { return m_use_navigation; }
+        void SetUseNavigation(bool enabled) { m_use_navigation = enabled; } // applies on next Start
+        uint64_t GetNavigationEntityId() const { return m_navigation_entity_id; }
+        void SetNavigationEntityId(uint64_t id) { m_navigation_entity_id = id; }
 
     private:
         struct Walker
@@ -72,6 +77,9 @@ namespace spartan
             road_traffic::Path road_path;
             float road_progress = 0.0f;
             uint32_t route_random = 1;
+            int navigation_agent = -1;
+            bool navigation_moving = false;
+            float navigation_timer = 0.0f;
         };
 
         struct PreloadState
@@ -98,6 +106,9 @@ namespace spartan
         void UpdateAnimationLod();
         bool FindRoadSpawn(uint32_t index, Walker& walker, math::Vector3& position, math::Vector3& heading);
         void UpdateRoadWalker(Walker& walker, float delta_time);
+        void UpdateNavigationWalker(Walker& walker, float delta_time);
+        void ResolveNavigation();
+        void ReleaseNavigation();
         float NextFloat();
         uint32_t NextUInt();
 
@@ -108,6 +119,9 @@ namespace spartan
         float m_population_timer = 0.0f;
         float m_recycle_timer = 0.0f;
         bool m_follow_roads = false;
+        bool m_use_navigation = false;
+        uint64_t m_navigation_entity_id = 0; // 0 chooses the first active Navigation component
+        std::shared_ptr<NavigationWorld> m_navigation; // consumer reference, never ticks the provider
         std::shared_ptr<Mesh> m_source_mesh;
         math::Vector3 m_bounds_min = math::Vector3(454.5f, -10.0f, -793.9f);
         math::Vector3 m_bounds_max = math::Vector3(1414.5f, 80.0f, 166.1f);

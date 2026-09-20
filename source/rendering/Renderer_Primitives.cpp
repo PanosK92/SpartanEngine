@@ -53,6 +53,13 @@ namespace spartan
         m_persistent_lines.push_back(line);
     }
 
+    void Renderer::DrawTriangleFilled(const Vector3& v0, const Vector3& v1, const Vector3& v2, const Color& color)
+    {
+        m_debug_triangles_vertices.emplace_back(v0, color);
+        m_debug_triangles_vertices.emplace_back(v1, color);
+        m_debug_triangles_vertices.emplace_back(v2, color);
+    }
+
     void Renderer::DrawTriangle(const Vector3& v0, const Vector3& v1, const Vector3& v2, const Color& color /*= DEBUG_COLOR*/, float duration_sec /*= 0.0f*/)
     {
         DrawLine(v0, v1, color, color, duration_sec);

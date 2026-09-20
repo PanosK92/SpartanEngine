@@ -40,6 +40,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "world/components/AudioSource.h"
 #include "world/components/Spline.h"
 #include "world/components/SplineFollower.h"
+#include "world/components/Pedestrians.h"
+#include "world/components/Navigation.h"
 #include "world/components/Terrain.h"
 #include "world/WorldHelpers.h"
 #include "core/ThreadPool.h"
@@ -621,6 +623,8 @@ void Properties::OnTickVisible()
             ShowTerrain(entity->GetComponent<Terrain>());
             ShowSpline(entity->GetComponent<Spline>());
             ShowSplineFollower(entity->GetComponent<SplineFollower>());
+            ShowPedestrians(entity->GetComponent<Pedestrians>());
+            ShowNavigation(entity->GetComponent<Navigation>());
             ShowAudioSource(entity->GetComponent<AudioSource>());
             ShowText3D(entity->GetComponent<Text3D>());
 
@@ -3151,6 +3155,58 @@ void Properties::ShowSpline(spartan::Spline* spline) const
     component_end();
 }
 
+void Properties::ShowPedestrians(spartan::Pedestrians* pedestrians) const
+{
+    if (!pedestrians) return;
+    if (component_begin("Pedestrians", design::accent_spline_follower(), pedestrians))
+    {
+        bool enabled = pedestrians->GetUseNavigation();
+        ImGui::BeginDisabled(Engine::IsFlagSet(EngineMode::Playing));
+        if (property_toggle("Navigation", &enabled, "find walkable routes and avoid other pedestrians; applies when play starts"))
+            pedestrians->SetUseNavigation(enabled);
+        vector<string> names = {"Automatic"};
+        vector<uint64_t> ids = {0};
+        uint32_t selected = 0;
+        const uint64_t current = pedestrians->GetNavigationEntityId();
+        for (Entity* entity : World::GetEntities())
+        {
+            if (!entity->GetComponent<Navigation>()) continue;
+            ids.push_back(entity->GetObjectId());
+            names.push_back(entity->GetObjectName());
+            if (ids.back() == current) selected = static_cast<uint32_t>(ids.size() - 1);
+        }
+        if (current != 0 && selected == 0)
+        {
+            ids.push_back(current);
+            names.push_back("Missing navigation entity");
+            selected = static_cast<uint32_t>(ids.size() - 1);
+        }
+        if (property_combo("Navigation Entity", names, &selected, "scene entity providing the shared navmesh; automatic uses the first active provider"))
+            pedestrians->SetNavigationEntityId(ids[selected]);
+        ImGui::EndDisabled();
+    }
+    component_end();
+}
+
+void Properties::ShowNavigation(spartan::Navigation* navigation) const
+{
+    if (!navigation) return;
+    if (component_begin("Navigation", design::accent_spline_follower(), navigation))
+    {
+        bool enabled = navigation->GetEnabled();
+        bool debug = navigation->GetDebugDraw();
+        bool follow_camera = navigation->GetFollowCamera();
+        if (property_toggle("Enabled", &enabled, "build and simulate this navigation world")) navigation->SetEnabled(enabled);
+        if (property_toggle("Follow Camera", &follow_camera, "stream tiles around the camera; when off, use this entity's position"))
+            navigation->SetFollowCamera(follow_camera);
+        if (property_toggle("Debug Draw", &debug, "show the navmesh in translucent light blue, raised above the ground; available in edit and play modes")) navigation->SetDebugDraw(debug);
+        ImGui::BeginDisabled((!Engine::IsFlagSet(EngineMode::Playing) && !debug) || !enabled);
+        if (ImGui::Button("Rebuild Navmesh")) navigation->Rebuild();
+        ImGui::EndDisabled();
+    }
+    component_end();
+}
+
 void Properties::ShowSplineFollower(spartan::SplineFollower* follower) const
 {
     if (!follower)
@@ -4152,6 +4208,11 @@ void Properties::ComponentContextMenu_Add() const
             if (ImGui::MenuItem("Car Reset"))
             {
                 entity->AddComponent<CarReset>();
+            }
+
+            if (ImGui::MenuItem("Navigation"))
+            {
+                entity->AddComponent<Navigation>();
             }
 
             ImGui::Dummy(ImVec2(0, design::spacing_sm));

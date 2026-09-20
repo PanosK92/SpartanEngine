@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../../profiling/Profiler.h"
 #include "Pedestrians.h"
+#include "Navigation.h"
+#include "../../navigation/NavigationWorld.h"
 #include "../RoadTrafficWorld.h"
 #include "Animator.h"
 #include "Camera.h"
@@ -86,6 +88,8 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_model_file, string);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_count, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_follow_roads, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_use_navigation, bool);
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetNavigationEntityId, SetNavigationEntityId, uint64_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_animated, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_animation_radius, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_walk_speed, float);
@@ -93,6 +97,7 @@ namespace spartan
 
     Pedestrians::~Pedestrians()
     {
+        ReleaseNavigation();
         // never RemoveEntity here, World::Shutdown/RemoveEntity may already hold entity_access_mutex
         CancelPreload();
         for (Walker& walker : m_walkers)
@@ -137,6 +142,7 @@ namespace spartan
 
     void Pedestrians::Start()
     {
+        ReleaseNavigation();
         // drop live walkers only, keep a world-load mesh preload so play does not hitch
         for (Walker& walker : m_walkers)
         {
@@ -176,6 +182,7 @@ namespace spartan
 
     void Pedestrians::Stop()
     {
+        ReleaseNavigation();
         CancelPreload();
 
         for (Walker& walker : m_walkers)
@@ -237,6 +244,10 @@ namespace spartan
             return;
         }
 
+        ResolveNavigation();
+        // An explicitly configured provider may be disabled, removed or still starting.
+        // Wait for it instead of silently resuming spline movement.
+        if (m_use_navigation && !m_navigation) return;
         UpdatePopulation(static_cast<float>(Timer::GetDeltaTimeSec()));
         SpawnNext();
         if (m_walkers.empty())
@@ -278,6 +289,8 @@ namespace spartan
 
             if (walker.ragdoll && walker.ragdoll->IsDead())
             {
+                if (m_navigation) m_navigation->GetMesh().RemoveAgent(walker.navigation_agent);
+                walker.navigation_agent = -1;
                 walker.dead = true;
                 walker.animating = false;
                 continue;
@@ -289,7 +302,11 @@ namespace spartan
             }
 
             // near animated walkers get path casts, far ones just glide
-            if (m_follow_roads)
+            if (m_navigation)
+            {
+                UpdateNavigationWalker(walker, delta_time);
+            }
+            else if (m_follow_roads)
             {
                 const uint64_t old_cell = walker_cell_key(walker.entity->GetPosition());
                 UpdateRoadWalker(walker, delta_time);
@@ -524,6 +541,9 @@ namespace spartan
         }
         else if (!FindSpawnPosition(index, position, heading)) return false;
 
+        // No spline fallback while a tile is loading: only spawn on confirmed walkable ground.
+        if (m_navigation && !m_navigation->Project(position)) return false;
+
         // skeleton joints are dropped, a walker only needs its root and the skinned mesh nodes,
         // for the mannequiny that is 2 entities instead of 48
         Entity* template_root = m_source_mesh->GetRootEntity();
@@ -604,6 +624,15 @@ namespace spartan
         walker.turn_timer = 2.0f + NextFloat() * 6.0f;
         walker.animating = true;
         walker.dead = false;
+        if (m_navigation)
+        {
+            walker.navigation_agent = m_navigation->GetMesh().AddAgent({position.x, position.y, position.z}, walker.speed);
+            if (walker.navigation_agent < 0)
+            {
+                World::RemoveEntityImmediate(entity);
+                return false;
+            }
+        }
         m_walkers.push_back(move(walker));
         return true;
     }
@@ -628,6 +657,7 @@ namespace spartan
             walker.road_edge=edge;walker.road_path=m_road_network.edges[edge].lane;
             walker.road_progress=progress;walker.route_random=m_random_state | 1u;
             position=pose.position;heading=planar_normalize(pose.tangent);
+            if (m_navigation && !m_navigation->Project(position)) continue;
             return true;
         }
         return false;
@@ -655,6 +685,13 @@ namespace spartan
             if (distance<330 || (distance<650 && camera->IsInViewFrustum(BoundingBox(old-Vector3(1),old+Vector3(1,2,1))))) continue;
             Vector3 position,heading;
             if (!FindRoadSpawn(m_random_state,walker,position,heading)) continue;
+            if (m_navigation)
+            {
+                m_navigation->GetMesh().RemoveAgent(walker.navigation_agent);
+                walker.navigation_agent = m_navigation->GetMesh().AddAgent({position.x, position.y, position.z}, walker.speed);
+                walker.navigation_timer = 0.0f;
+                walker.navigation_moving = false;
+            }
             if (walker.ragdoll) {walker.ragdoll->SetHitBodyEnabled(false);walker.ragdoll->Stop();}
             walker.dead=false;walker.heading=heading;walker.ground_y=position.y;
             walker.entity->SetPositionAndRotation(position+Vector3::Up*walker.height_offset,
@@ -663,6 +700,97 @@ namespace spartan
             walker.animating=false;walker.blocked_timer=0;
             break;
         }
+    }
+
+    void Pedestrians::ReleaseNavigation()
+    {
+        for (Walker& walker : m_walkers)
+        {
+            if (m_navigation) m_navigation->GetMesh().RemoveAgent(walker.navigation_agent);
+            walker.navigation_agent = -1;
+            walker.navigation_moving = false;
+            walker.navigation_timer = 0.0f;
+        }
+        m_navigation.reset();
+    }
+
+    void Pedestrians::ResolveNavigation()
+    {
+        std::shared_ptr<NavigationWorld> next;
+        if (m_use_navigation)
+        {
+            if (m_navigation_entity_id != 0)
+            {
+                Entity* entity = World::GetEntityById(m_navigation_entity_id);
+                if (Navigation* provider = entity ? entity->GetComponent<Navigation>() : nullptr)
+                    next = provider->GetWorld();
+            }
+            else
+            {
+                for (Entity* entity : World::GetEntities())
+                {
+                    if (Navigation* provider = entity->GetComponent<Navigation>())
+                    {
+                        next = provider->GetWorld();
+                        if (next) break;
+                    }
+                }
+            }
+        }
+        if (next == m_navigation) return;
+        ReleaseNavigation();
+        m_navigation = std::move(next);
+        // Never keep crowd slot indices across a rebuild or provider replacement.
+        for (Walker& walker : m_walkers)
+        {
+            if (!walker.dead && walker.animator) walker.animator->Pause();
+            walker.animating = false;
+        }
+    }
+
+    void Pedestrians::UpdateNavigationWalker(Walker& walker, float delta_time)
+    {
+        auto& mesh = m_navigation->GetMesh();
+        navigation::Point position, velocity;
+        if (!mesh.GetAgent(walker.navigation_agent, position, velocity))
+        {
+            // The camera can teleport and evict this agent's tile before recycling catches up.
+            mesh.RemoveAgent(walker.navigation_agent);
+            walker.navigation_agent = -1;
+            walker.navigation_moving = false;
+            if (walker.animator) walker.animator->Pause();
+            walker.animating = false;
+            Vector3 ground = walker.entity->GetPosition() - Vector3::Up * walker.height_offset;
+            if (m_navigation->Project(ground))
+                walker.navigation_agent = mesh.AddAgent({ground.x, ground.y, ground.z}, walker.speed);
+            return;
+        }
+        const Vector3 movement(velocity[0], 0, velocity[2]);
+        walker.navigation_moving = movement.LengthSquared() > 0.01f;
+        walker.navigation_timer -= delta_time;
+        if (walker.navigation_timer <= 0.0f)
+        {
+            // Waiting at a destination or blocked: pick a reachable point, never a straight-line teleport.
+            if (!walker.navigation_moving || walker.blocked_timer > 20.0f)
+            {
+                mesh.Wander(walker.navigation_agent, 45.0f);
+                walker.blocked_timer = 0.0f;
+            }
+            walker.navigation_timer = 1.0f + NextFloat();
+        }
+        walker.blocked_timer += delta_time;
+        if (walker.navigation_moving) walker.heading = planar_normalize(movement);
+        walker.ground_y = position[1];
+        walker.entity->SetPositionAndRotation(Vector3(position[0], position[1] + walker.height_offset, position[2]),
+            Quaternion::Lerp(walker.entity->GetRotation(), Quaternion::FromLookRotation(-walker.heading, Vector3::Up),
+                std::min(1.0f, delta_time * turn_speed)));
+        if (!walker.navigation_moving && walker.animating && walker.animator)
+        {
+            walker.animator->Pause();
+            walker.animating = false;
+        }
+        if (walker.animator && walker.navigation_moving)
+            walker.animator->SetSpeed(movement.Length() / std::max(0.1f, m_walk_speed));
     }
 
     void Pedestrians::UpdateRoadWalker(Walker& walker, float delta_time)
@@ -953,7 +1081,7 @@ namespace spartan
                     continue;
                 }
 
-                if (walker.animator && !walker.animating)
+                if (walker.animator && !walker.animating && (!m_navigation || walker.navigation_moving))
                 {
                     walker.animator->Resume();
                     walker.animating = true;
@@ -986,7 +1114,7 @@ namespace spartan
                 walker.ragdoll->SetHitBodyEnabled(distance_squared<=radius*radius);
             }
             const float animation_radius=m_animation_radius+(walker.animating ? 20.0f : 0.0f);
-            if (distance_squared <= animation_radius * animation_radius)
+            if (distance_squared <= animation_radius * animation_radius && (!m_navigation || walker.navigation_moving))
             {
                 candidates.emplace_back(distance_squared, &walker);
             }
@@ -1052,6 +1180,8 @@ namespace spartan
     void Pedestrians::Save(pugi::xml_node& node)
     {
         node.append_attribute("follow_roads") = m_follow_roads;
+        node.append_attribute("use_navigation") = m_use_navigation;
+        node.append_attribute("navigation_entity_id") = m_navigation_entity_id;
         node.append_attribute("count") = m_count;
         node.append_attribute("model_file") = m_model_file.c_str();
         node.append_attribute("bounds_min_x") = m_bounds_min.x;
@@ -1068,6 +1198,8 @@ namespace spartan
     void Pedestrians::Load(pugi::xml_node& node)
     {
         m_follow_roads = node.attribute("follow_roads").as_bool(false);
+        m_use_navigation = node.attribute("use_navigation").as_bool(false);
+        m_navigation_entity_id = node.attribute("navigation_entity_id").as_ullong(0);
         m_count = node.attribute("count").as_uint(m_count);
         m_model_file = node.attribute("model_file").as_string(m_model_file.c_str());
         m_bounds_min.x = node.attribute("bounds_min_x").as_float(m_bounds_min.x);

@@ -80,7 +80,7 @@ namespace spartan
     // Initial capacity of the ReSTIR emissive pool; it grows to retain every emitter.
     const uint32_t restir_emissive_tri_initial_capacity         = 16384;
     // rgba32f textures per reservoir set, must match pack_reservoir in restir_reservoir.hlsl
-    const uint32_t restir_reservoir_textures       = 5;
+    const uint32_t restir_reservoir_textures       = 6;
     // paired spatial reuse tables, lin 2026 3, sizes and order must match RESTIR_PAIRING_SIZES
     // in restir_reservoir.hlsl, near coprime so tiling periods never align within a screen
     const uint32_t restir_pairing_sizes[3]         = { 254, 230, 210 };
@@ -241,6 +241,7 @@ namespace spartan
         reservoir_prev2    = 24,
         reservoir_prev3    = 25,
         reservoir_prev4    = 26,
+        reservoir_prev5    = 67,
 
         // fft ocean displacement history
         ocean_displacement_previous = 27,
@@ -282,6 +283,7 @@ namespace spartan
         reservoir2    = 23,
         reservoir3    = 24,
         reservoir4    = 25,
+        reservoir5    = 67,
         rt_shadows_local = 26,
         // integer format textures (vrs, etc)
         tex_uint               = 30,
@@ -578,18 +580,21 @@ namespace spartan
         restir_reservoir2,
         restir_reservoir3,
         restir_reservoir4,
+        restir_reservoir5,
         // restir reservoir buffers (previous frame for temporal)
         restir_reservoir_prev0,
         restir_reservoir_prev1,
         restir_reservoir_prev2,
         restir_reservoir_prev3,
         restir_reservoir_prev4,
+        restir_reservoir_prev5,
         // restir reservoir buffers (spatial ping-pong)
         restir_reservoir_spatial0,
         restir_reservoir_spatial1,
         restir_reservoir_spatial2,
         restir_reservoir_spatial3,
         restir_reservoir_spatial4,
+        restir_reservoir_spatial5,
         // paired spatial reuse shift results, lin 2026 3, one per pairing table
         restir_shift0,
         restir_shift1,

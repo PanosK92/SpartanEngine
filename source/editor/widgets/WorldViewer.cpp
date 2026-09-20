@@ -353,6 +353,7 @@ namespace
         consider(entity->GetComponentByType(ComponentType::Water) != nullptr, IconType::Water);
         consider(entity->GetComponentByType(ComponentType::Traffic) != nullptr, IconType::Traffic);
         consider(entity->GetComponentByType(ComponentType::Pedestrians) != nullptr, IconType::Pedestrians);
+        consider(entity->GetComponentByType(ComponentType::Navigation) != nullptr, IconType::Spline);
         consider(entity->GetComponentByType(ComponentType::SpawnPoint) != nullptr, IconType::SpawnPoint);
         consider(entity->GetComponentByType(ComponentType::CarReset) != nullptr, IconType::CarReset);
         consider(entity->GetComponentByType(ComponentType::Text3D) != nullptr, IconType::Text3D);

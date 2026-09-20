@@ -88,6 +88,7 @@ local function link_windows_libraries(configs, suffix)
         links { "dxcompiler", "libxess", "dxguid", "steam_api64" }
         links { suffix == "" and "nvsdk_ngx_s" or "nvsdk_ngx_s_dbg" }
         links(suffixed(LIBS_COMMON, suffix))
+        links(suffixed({ "Recast", "Detour", "DetourCrowd" }, suffix))
         links(suffixed(LIBS_PHYSX, suffix))
         links(suffixed(LIBS_NRD, suffix))
         if ARG_API_GRAPHICS == "vulkan" then
@@ -169,6 +170,22 @@ function spartan_project_configuration()
             SOURCE_DIR .. "/**.rc"
         }
         files(lzma_sdk.sources())
+        -- Recast bakes tiles, Detour queries them, DetourCrowd handles pedestrian avoidance.
+        includedirs {
+            "../third_party/recast/Recast/Include",
+            "../third_party/recast/Detour/Include",
+            "../third_party/recast/DetourCrowd/Include"
+        }
+        files { "../third_party/recast/**.h" }
+        -- Windows uses the release/debug binaries in libraries.7z. Other platforms build source.
+        filter { "system:not windows" }
+            files { "../third_party/recast/**.cpp" }
+        filter { "files:**/recast/**" }
+            flags { "NoPCH" }
+            warnings "Off"
+        filter { "files:**/navigation/NavigationMesh.cpp" }
+            flags { "NoPCH" }
+        filter {}
         files { "../third_party/lz4/lz4.c", "../third_party/lz4/lz4.h" }
         filter { "files:**/lz4/**" }
             flags { "NoPCH" }

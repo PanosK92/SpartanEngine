@@ -54,6 +54,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "components/Physics.h"
 #include "components/Traffic.h"
 #include "components/Pedestrians.h"
+#include "components/Navigation.h"
 #include "components/Script.h"
 #include "components/CarReset.h"
 #include "../physics/PhysicsWorld.h"
@@ -266,6 +267,7 @@ namespace spartan
             }
             return entity->GetComponent<Traffic>()
                 || entity->GetComponent<Pedestrians>()
+                || entity->GetComponent<Navigation>()
                 || entity->GetComponent<CarReset>()
                 || entity->GetComponent<Physics>()
                 || entity->GetComponent<AudioSource>()
@@ -2013,6 +2015,7 @@ namespace spartan
                                 ComponentType::SplineFollower,
                                 ComponentType::Traffic,
                                 ComponentType::Pedestrians,
+                                ComponentType::Navigation,
                                 ComponentType::Animator,
                                 ComponentType::Ragdoll,
                                 ComponentType::SkidMarks,

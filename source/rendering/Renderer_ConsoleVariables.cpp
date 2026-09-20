@@ -198,6 +198,7 @@ namespace spartan
     TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced reflections",                  on_ray_traced_reflections_change);
     TConsoleVar<float> cvar_ray_traced_shadows             ("r.ray_traced_shadows",             static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced shadows for all lights",       on_ray_traced_shadows_change);
     TConsoleVar<float> cvar_restir_pt                      ("r.restir_pt",                      0.0f,                                                    "restir path tracing global illumination");
+    TConsoleVar<float> cvar_restir_pt_reference            ("r.restir_pt_reference",            0.0f,                                                    "validation: 0 normal, 1 reference path sum, 2 initial RIS, 3 temporal, 4 spatial; modes 1-4 bypass denoising");
     TConsoleVar<float> cvar_restir_pt_scale                ("r.restir_pt_scale",                0.25f,                                                   "restir resolution scale (0.1-1.0)",       on_restir_pt_scale_change);
     TConsoleVar<float> cvar_motion_blur                    ("r.motion_blur",                    1.0f,                                                    "motion blur");
     TConsoleVar<float> cvar_depth_of_field                 ("r.depth_of_field",                 1.0f,                                                    "depth of field");

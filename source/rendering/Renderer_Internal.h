@@ -79,6 +79,9 @@ namespace spartan
             std::shared_ptr<RHI_Buffer> lines_vertex_buffer;
             uint32_t lines_vertex_count = 0;
             bool lines_uploaded = false;
+            std::shared_ptr<RHI_Buffer> debug_triangles_vertex_buffer;
+            uint32_t debug_triangles_vertex_count = 0;
+            bool debug_triangles_uploaded = false;
             std::shared_ptr<RHI_Buffer> indirect_draw_args;
             std::shared_ptr<RHI_Buffer> cpu_indirect_draw_args;
             std::shared_ptr<RHI_Buffer> indirect_draw_data;
@@ -107,6 +110,8 @@ namespace spartan
             bool cleared_restir          = false;
             bool restir_reservoirs_initialized = false;
             bool restir_accumulation_valid = false;
+            uint32_t restir_reference_mode = 0;
+            bool restir_history_invalid = true;
             uint64_t restir_scene_signature = 0;
 
             bool     sky_first_frame           = true;
@@ -238,6 +243,7 @@ namespace spartan
             math::Matrix m_view_projection_previous_right;
             math::Matrix m_view_projection_previous_unjittered_left;
             std::vector<RHI_Vertex_PosCol> m_lines_vertices;
+            std::vector<RHI_Vertex_PosCol> m_debug_triangles_vertices;
             std::vector<PersistentLine> m_persistent_lines;
             std::shared_ptr<RHI_Buffer> m_icons_vertex_buffer;
             std::vector<RHI_Vertex_PosTex> m_icons_vertices;
@@ -289,6 +295,7 @@ namespace spartan
         inline auto& m_view_projection_previous_right = state().m_view_projection_previous_right;
         inline auto& m_view_projection_previous_unjittered_left = state().m_view_projection_previous_unjittered_left;
         inline auto& m_lines_vertices = state().m_lines_vertices;
+        inline auto& m_debug_triangles_vertices = state().m_debug_triangles_vertices;
         inline auto& m_persistent_lines = state().m_persistent_lines;
         inline auto& m_icons_vertex_buffer = state().m_icons_vertex_buffer;
         inline auto& m_icons_vertices = state().m_icons_vertices;

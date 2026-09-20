@@ -305,6 +305,7 @@ namespace spartan
     void Renderer::Pass_PostProcess_EditorOverlays(RHI_Texture* tex_out)
     {
         Pass_Grid   (tex_out);
+        Pass_DebugTriangles(tex_out);
         Pass_Lines  (tex_out);
         Pass_Outline(tex_out);
         Pass_Icons  (tex_out);
