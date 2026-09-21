@@ -59,8 +59,24 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    struct Entity::HierarchyTraversal
+    {
+        uint64_t revision = 0;
+        vector<Entity*> descendants; // depth first, parent before child, sibling order preserved
+    };
+
+    struct Entity::TransformCache
+    {
+        atomic<uint32_t> valid{0};
+        Matrix inverse;
+        Quaternion hierarchy_rotation;
+    };
+
     namespace
     {
+        // Structural edits are infrequent. Serialize them and traversal construction;
+        // steady-state traversal uses immutable snapshots without taking this lock.
+        recursive_mutex hierarchy_mutex;
         void save_transform(pugi::xml_node& node, const Vector3& position, const Quaternion& rotation, const Vector3& scale)
         {
             char position_text[96];
@@ -101,8 +117,8 @@ namespace spartan
             }
         }
 
-        // input is an entity, output is a clone of that entity (descendant entities are not cloned)
-        Entity* clone_entity(Entity* entity)
+        // Copy one node; hierarchy construction belongs to the caller.
+        Entity* clone_shallow(Entity* entity)
         {
             // clone basic properties
             Entity* clone = World::CreateEntity();
@@ -119,7 +135,7 @@ namespace spartan
             clone->SetTransient(entity->IsTransient());
 
             // clone all the components
-            for (shared_ptr<Component> component_original : entity->GetAllComponents())
+            for (const auto& component_original : entity->GetAllComponents())
             {
                 if (component_original != nullptr)
                 {
@@ -134,24 +150,9 @@ namespace spartan
             return clone;
         };
 
-        // input is an entity, output is a clone of that entity (descendant entities are cloned)
-        Entity* clone_entity_and_descendants(Entity* entity)
-        {
-            Entity* clone_self = clone_entity(entity);
-
-            // clone children make them call this lambda
-            for (Entity* child_transform : entity->GetChildren())
-            {
-                Entity* clone_child = clone_entity_and_descendants(child_transform);
-                clone_child->SetParent(clone_self);
-            }
-
-            return clone_self;
-        };
-
         // clones descendants that carry components straight onto clone_root, component-less
         // nodes are dropped and their transform is folded into each surviving child
-        void clone_components_flattened(Entity* source, Entity* clone_root, const Matrix& source_to_root)
+        void clone_visual_children(Entity* source, Entity* clone_root, const Matrix& source_to_root)
         {
             for (Entity* child : source->GetChildren())
             {
@@ -165,14 +166,14 @@ namespace spartan
 
                 if (child->GetComponentCount() > 0)
                 {
-                    Entity* child_clone = clone_entity(child);
+                    Entity* child_clone = clone_shallow(child);
                     child_clone->SetParent(clone_root);
                     child_clone->SetPositionLocal(child_to_root.GetTranslation());
                     child_clone->SetRotationLocal(child_to_root.GetRotation());
                     child_clone->SetScaleLocal(child_to_root.GetScale());
                 }
 
-                clone_components_flattened(child, clone_root, child_to_root);
+                clone_visual_children(child, clone_root, child_to_root);
             }
         };
 
@@ -181,29 +182,30 @@ namespace spartan
     Entity::Entity()
     {
         m_object_name = "Entity";
-        m_is_active   = true;
-
-        m_components.fill(nullptr);
+        m_last_transform_time_sec = Timer::GetTimeSec();
     }
 
     Entity::~Entity()
     {
-        m_components.fill(nullptr);
+        for (auto& component : m_components) component.reset();
 
         // the selection holds raw pointers, drop this one wherever it sits in the list, not just when
         // it happens to be the primary pick
         Camera::RemoveFromSelection(this);
+        delete m_transform_cache.load(memory_order_relaxed);
     }
 
     Entity* Entity::Clone()
     {
-        return clone_entity_and_descendants(this);
+        Entity* clone = clone_shallow(this);
+        for (Entity* child : GetChildren()) child->Clone()->SetParent(clone);
+        return clone;
     }
 
     Entity* Entity::CloneVisualOnly()
     {
-        Entity* clone_root = clone_entity(this);
-        clone_components_flattened(this, clone_root, Matrix::Identity);
+        Entity* clone_root = clone_shallow(this);
+        clone_visual_children(this, clone_root, Matrix::Identity);
 
         return clone_root;
     }
@@ -275,7 +277,7 @@ namespace spartan
             },
             "AddComponent", [](Entity* Self, ComponentType Type) -> sol::reference
             {
-                if (Component* comp = Self->AddComponentByType(Type))
+                if (Component* comp = Self->AddComponent(Type))
                 {
                     return comp->AsLua(World::GetLuaState());
                 }
@@ -315,7 +317,14 @@ namespace spartan
                 return result;
             },
 
-            "GetAllComponents",         &Entity::GetAllComponents,
+            "GetAllComponents", [](Entity* self)
+            {
+                // Lua observes components; their lifetime belongs to the entity.
+                std::array<Component*, static_cast<uint32_t>(ComponentType::Max)> components{};
+                for (size_t i = 0; i < components.size(); ++i)
+                    components[i] = self->m_components[i].get();
+                return components;
+            },
             "GetComponentCount",        &Entity::GetComponentCount,
             "GetName",                  &Entity::GetObjectName,
             "SetName",                  &Entity::SetObjectName,
@@ -383,7 +392,7 @@ namespace spartan
 
     void Entity::Start()
     {
-        for (shared_ptr<Component>& component : m_components)
+        for (auto& component : m_components)
         {
             if (component)
             {
@@ -411,13 +420,41 @@ namespace spartan
 
     void Entity::Stop()
     {
-        for (shared_ptr<Component>& component : m_components)
+        for (auto& component : m_components)
         {
             if (component)
             {
                 component->Stop();
             }
         }
+    }
+
+    Entity::PreTickGate* Entity::GetPreTickGate()
+    {
+        if (!m_pretick_gate)
+        {
+            m_pretick_gate = std::make_unique<PreTickGate>();
+            m_pretick_gate->entity = this;
+            RefreshPreTickGate();
+        }
+        return m_pretick_gate.get();
+    }
+
+    void Entity::RefreshPreTickGate()
+    {
+        if (!m_pretick_gate) return;
+        Physics* physics = GetComponent<Physics>();
+        m_pretick_gate->active = GetActive();
+        m_pretick_gate->physics_running = physics && physics->NeedsRunningPreTick();
+        m_pretick_gate->other_work = GetComponent<Script>() || GetComponent<Ragdoll>();
+        WakePhysicsPreTick();
+    }
+
+    void Entity::SleepPhysicsPreTick(const Vector3& camera_position, float radius)
+    {
+        PreTickGate* gate = GetPreTickGate();
+        gate->sleep_origin = camera_position;
+        gate->sleep_radius_squared = radius * radius;
     }
 
     void Entity::PreTick()
@@ -437,59 +474,24 @@ namespace spartan
         }
     }
 
-    void Entity::Tick()
+    void Entity::Tick(bool tick_render)
     {
-        // render-only entities are the common case on big maps, avoid scanning empty slots
-        if (m_component_count == 1)
-        {
-            if (Render* render = GetComponent<Render>())
-            {
-                render->Tick();
-                m_time_since_last_transform_sec += static_cast<float>(Timer::GetDeltaTimeSec());
-                return;
-            }
-        }
-
-        for (uint32_t next = 0; (m_component_mask >> next) != 0;)
-        {
-            const uint32_t index = next + std::countr_zero(m_component_mask >> next);
-            next = index + 1;
-            shared_ptr<Component>& component = m_components[index];
-            if (component)
-            {
-                component->Tick();
-            }
-        }
-
-        m_time_since_last_transform_sec += static_cast<float>(Timer::GetDeltaTimeSec());
-    }
-
-    void Entity::TickAfterParallelRender()
-    {
-        if (m_component_count == 1 && GetComponent<Render>())
-        {
-            m_time_since_last_transform_sec += static_cast<float>(Timer::GetDeltaTimeSec());
-            return;
-        }
-
         const uint64_t render_bit = uint64_t(1) << static_cast<uint32_t>(ComponentType::Render);
-        for (uint32_t next = 0; ((m_component_mask & ~render_bit) >> next) != 0;)
+        const uint64_t included = tick_render ? ~uint64_t(0) : ~render_bit;
+        // Re-read membership after callbacks: scripts may add or remove later components.
+        for (uint32_t next = 0; ((m_component_mask & included) >> next) != 0;)
         {
-            const uint32_t index = next + std::countr_zero((m_component_mask & ~render_bit) >> next);
+            const uint32_t index = next + std::countr_zero((m_component_mask & included) >> next);
             next = index + 1;
-            shared_ptr<Component>& component = m_components[index];
-            if (component && component->GetType() != ComponentType::Render)
-            {
-                component->Tick();
-            }
+            if (Component* component = m_components[index].get()) component->Tick();
         }
-
-        m_time_since_last_transform_sec += static_cast<float>(Timer::GetDeltaTimeSec());
     }
 
-    uint32_t Entity::GetComponentCount() const
+    float Entity::GetTimeSinceLastTransform() const
     {
-        return m_component_count;
+        // Static render-only entities need no per-frame clock write. Keep the
+        // timestamp in double precision so long sessions retain sub-frame ages.
+        return static_cast<float>(max(0.0, Timer::GetTimeSec() - m_last_transform_time_sec));
     }
 
     void Entity::Save(pugi::xml_node& node)
@@ -531,13 +533,13 @@ namespace spartan
             // for prefab instances only user-added components are saved, the base rebuilds its own
             for (uint32_t i = 0; i < static_cast<uint32_t>(ComponentType::Max); i++)
             {
-                shared_ptr<Component>& component = m_components[i];
+                auto& component = m_components[i];
                 if (!component)
                 {
                     continue;
                 }
 
-                if (HasPrefabData() && m_prefab_owned_components[i])
+                if (HasPrefabData() && (m_prefab_component_mask & (uint64_t(1) << i)))
                 {
                     continue;
                 }
@@ -589,17 +591,7 @@ namespace spartan
 
     void Entity::SaveOverrides(pugi::xml_node& root_node, const string& path)
     {
-        // detect user additions on this base node
-        bool has_user_components = false;
-        for (uint32_t i = 0; i < static_cast<uint32_t>(ComponentType::Max); i++)
-        {
-            if (m_components[i] && !m_prefab_owned_components[i])
-            {
-                has_user_components = true;
-                break;
-            }
-        }
-
+        const bool has_user_components = (m_component_mask & ~m_prefab_component_mask) != 0;
         const vector<Entity*> children = GetChildren();
         bool has_user_children = false;
         for (Entity* child : children)
@@ -625,8 +617,8 @@ namespace spartan
 
             for (uint32_t i = 0; i < static_cast<uint32_t>(ComponentType::Max); i++)
             {
-                shared_ptr<Component>& component = m_components[i];
-                if (component && !m_prefab_owned_components[i])
+                auto& component = m_components[i];
+                if (component && !(m_prefab_component_mask & (uint64_t(1) << i)))
                 {
                     string type_name              = Component::TypeToString(component->GetType());
                     pugi::xml_node component_node = override_node.append_child(type_name.c_str());
@@ -685,11 +677,7 @@ namespace spartan
         m_prefab_rotation_local = m_rotation_local;
         m_prefab_scale_local    = m_scale_local;
 
-        // mark the components currently on this entity as part of the prefab base
-        for (uint32_t i = 0; i < static_cast<uint32_t>(ComponentType::Max); i++)
-        {
-            m_prefab_owned_components[i] = m_components[i] != nullptr;
-        }
+        m_prefab_component_mask = m_component_mask;
 
         // mark descendants as prefab owned and recurse into them
         for (Entity* child : m_children)
@@ -725,6 +713,9 @@ namespace spartan
                 stringstream ss(scale_str);
                 ss >> m_scale_local.x >> m_scale_local.y >> m_scale_local.z;
             }
+            // Load can also restore an existing entity, whose local matrix is
+            // already clean. These deserialized fields bypass the normal setters.
+            m_local_matrix_dirty = true;
 
             // components and prefabs
             for (pugi::xml_node component_node = node.first_child(); component_node; component_node = component_node.next_sibling())
@@ -845,12 +836,21 @@ namespace spartan
 
     void Entity::UpdateActiveState()
     {
-        // Hierarchy activity changes much less often than render/physics queries.
-        // Propagate only changes, preserving each child's authored local flag.
         const bool active = m_is_active.load() && (!m_parent || m_parent->GetActive());
         if (m_effective_active.exchange(active) == active) return;
-        for (Entity* child : GetChildren())
-            if (child) child->UpdateActiveState();
+        if (m_pretick_gate) m_pretick_gate->active = active;
+        if (Render* render = GetComponent<Render>()) render->SetEntityActive(active);
+        if (active) m_last_transform_time_sec = Timer::GetTimeSec();
+        if (!HasChildren()) return;
+        const auto traversal = GetHierarchyTraversal();
+        for (Entity* entity : traversal->descendants)
+        {
+            const bool child_active = entity->m_is_active.load() && (!entity->m_parent || entity->m_parent->GetActive());
+            if (entity->m_pretick_gate) entity->m_pretick_gate->active = child_active;
+            if (Render* render = entity->GetComponent<Render>()) render->SetEntityActive(child_active);
+            if (entity->m_effective_active.exchange(child_active) != child_active && child_active)
+                entity->m_last_transform_time_sec = Timer::GetTimeSec();
+        }
     }
 
     void Entity::SetActive(const bool active)
@@ -864,220 +864,162 @@ namespace spartan
         UpdateActiveState();
     }
 
-    Component* Entity::AddComponentByType(ComponentType Type)
+    void Entity::RemoveComponentByType(ComponentType type)
     {
-        if (Component* component = GetComponentByType(Type))
-        {
-            return component;
-        }
-
-        std::shared_ptr<Component> component;
-        switch (Type)
-        {
-        case ComponentType::AudioSource:
-            component = std::make_shared<AudioSource>(this);
-            break;
-        case ComponentType::Camera:
-            component = std::make_shared<Camera>(this);
-            break;
-        case ComponentType::Light:
-            component = std::make_shared<Light>(this);
-            break;
-        case ComponentType::Physics:
-            component = std::make_shared<Physics>(this);
-            break;
-        case ComponentType::Render:
-            component = std::make_shared<Render>(this);
-            break;
-        case ComponentType::Spline:
-            component = std::make_shared<Spline>(this);
-            break;
-        case ComponentType::SplineFollower:
-            component = std::make_shared<SplineFollower>(this);
-            break;
-        case ComponentType::Terrain:
-            component = std::make_shared<Terrain>(this);
-            break;
-        case ComponentType::Volume:
-            component = std::make_shared<Volume>(this);
-            break;
-        case ComponentType::Script:
-            component = std::make_shared<Script>(this);
-            break;
-        case ComponentType::ParticleSystem:
-            component = std::make_shared<ParticleSystem>(this);
-            break;
-        case ComponentType::Water:
-            component = std::make_shared<Water>(this);
-            break;
-        case ComponentType::Traffic:
-            component = std::make_shared<Traffic>(this);
-            break;
-        case ComponentType::Pedestrians:
-            component = std::make_shared<Pedestrians>(this);
-            break;
-        case ComponentType::Navigation:
-            component = std::make_shared<Navigation>(this);
-            break;
-        case ComponentType::SpawnPoint:
-            component = std::make_shared<SpawnPoint>(this);
-            break;
-        case ComponentType::CarReset:
-            component = std::make_shared<CarReset>(this);
-            break;
-        case ComponentType::Text3D:
-            component = std::make_shared<Text3D>(this);
-            break;
-        case ComponentType::Animator:
-            component = std::make_shared<Animator>(this);
-            break;
-        case ComponentType::Ragdoll:
-            component = std::make_shared<Ragdoll>(this);
-            break;
-        case ComponentType::Max:
-            break;
-        }
-
-        m_components[static_cast<uint32_t>(Type)] = component;
-        m_component_mask |= uint64_t(1) << static_cast<uint32_t>(Type);
-        m_component_count++;
-
-        component->SetType(Type);
-        component->Initialize();
-
-        return component.get();
+        const uint32_t index = static_cast<uint32_t>(type);
+        if (!m_components[index]) return;
+        m_components[index].reset();
+        m_component_mask &= ~(uint64_t(1) << index);
+        RefreshPreTickGate();
     }
 
-    void Entity::RemoveComponentByType(ComponentType Type)
+    Component* Entity::AddComponent(ComponentType type)
     {
-        if (m_components[static_cast<uint32_t>(Type)])
-        {
-            m_components[static_cast<uint32_t>(Type)] = nullptr;
-            m_component_mask &= ~(uint64_t(1) << static_cast<uint32_t>(Type));
-            if (m_component_count > 0)
-            {
-                m_component_count--;
-            }
-        }
-    }
-
-    Component* Entity::AddComponent(const ComponentType type)
-    {
-        Component* component = nullptr;
-
         switch (type)
         {
-            // auto-generated from SP_COMPONENT_LIST
-            #define X(type, str) case ComponentType::type: component = static_cast<Component*>(AddComponent<type>()); break;
+            #define X(type, str) case ComponentType::type: return AddComponent<type>();
             SP_COMPONENT_LIST
             #undef X
-            default: component = nullptr; break;
+            default: SP_ASSERT(false); return nullptr;
         }
-
-        SP_ASSERT(component != nullptr);
-
-        return component;
     }
 
-    void Entity::RemoveComponentById(const uint64_t id)
+    void Entity::RemoveComponentById(uint64_t id)
     {
-        for (shared_ptr<Component>& component : m_components)
+        for (const auto& component : m_components)
         {
-            if (component)
+            if (component && component->GetObjectId() == id)
             {
-                if (id == component->GetObjectId())
-                {
-                    const uint32_t index = static_cast<uint32_t>(&component - m_components.data());
-                    component->Remove();
-                    component = nullptr;
-                    m_component_mask &= ~(uint64_t(1) << index);
-                    if (m_component_count > 0)
-                    {
-                        m_component_count--;
-                    }
-                    break;
-                }
+                const ComponentType type = component->GetType();
+                component->Remove();
+                RemoveComponentByType(type);
+                return;
             }
         }
+    }
+
+    void Entity::InvalidateHierarchy()
+    {
+        // Called under hierarchy_mutex, so the ancestor chain cannot change here.
+        for (Entity* entity = this; entity; entity = entity->m_parent)
+            entity->m_hierarchy_revision.fetch_add(1, memory_order_release);
+    }
+
+    shared_ptr<const Entity::HierarchyTraversal> Entity::GetHierarchyTraversal() const
+    {
+        auto cached = m_hierarchy_traversal.load(memory_order_acquire);
+        if (cached && cached->revision == m_hierarchy_revision.load(memory_order_acquire))
+            return cached;
+
+        lock_guard lock(hierarchy_mutex);
+        cached = m_hierarchy_traversal.load(memory_order_acquire);
+        const uint64_t revision = m_hierarchy_revision.load(memory_order_acquire);
+        if (cached && cached->revision == revision) return cached;
+
+        auto traversal = make_shared<HierarchyTraversal>();
+        traversal->revision = revision;
+        vector<Entity*> pending(m_children.rbegin(), m_children.rend());
+        while (!pending.empty())
+        {
+            Entity* entity = pending.back();
+            pending.pop_back();
+            traversal->descendants.push_back(entity);
+            pending.insert(pending.end(), entity->m_children.rbegin(), entity->m_children.rend());
+        }
+        shared_ptr<const HierarchyTraversal> result = traversal;
+        m_hierarchy_traversal.store(result, memory_order_release);
+        return result;
+    }
+
+    Entity::TransformCache& Entity::GetTransformCache() const
+    {
+        if (TransformCache* cache = m_transform_cache.load(memory_order_acquire)) return *cache;
+        lock_guard lock(m_mutex_parent);
+        TransformCache* cache = m_transform_cache.load(memory_order_relaxed);
+        if (!cache)
+        {
+            cache = new TransformCache();
+            m_transform_cache.store(cache, memory_order_release);
+        }
+        return *cache;
+    }
+
+    const Matrix& Entity::GetMatrixInverse() const
+    {
+        TransformCache& cache = GetTransformCache();
+        if (!(cache.valid.load(memory_order_acquire) & 1u))
+        {
+            lock_guard lock(m_mutex_parent);
+            if (!(cache.valid.load(memory_order_relaxed) & 1u))
+            {
+                cache.inverse = m_matrix.Inverted();
+                cache.valid.fetch_or(1u, memory_order_release);
+            }
+        }
+        return cache.inverse;
+    }
+
+    const Quaternion& Entity::GetHierarchyRotation() const
+    {
+        TransformCache& cache = GetTransformCache();
+        if (!(cache.valid.load(memory_order_acquire) & 2u))
+        {
+            lock_guard lock(m_mutex_parent);
+            if (!(cache.valid.load(memory_order_relaxed) & 2u))
+            {
+                Quaternion rotation = Quaternion::Identity;
+                for (const Entity* ancestor = this; ancestor; ancestor = ancestor->m_parent)
+                    rotation = ancestor->m_rotation_local * rotation;
+                cache.hierarchy_rotation = rotation;
+                cache.valid.fetch_or(2u, memory_order_release);
+            }
+        }
+        return cache.hierarchy_rotation;
     }
 
     void Entity::SetTransformLocalDeferred(const Vector3& position, const Quaternion& rotation, const Vector3& scale)
     {
-        if (!position.IsFinite() || !rotation.IsFinite() || !scale.IsFinite())
-            return;
+        if (!position.IsFinite() || !rotation.IsFinite() || !scale.IsFinite()) return;
+        if (m_position_local == position && m_rotation_local == rotation && m_scale_local == scale) return;
         m_position_local = position;
         m_rotation_local = rotation;
         m_scale_local = scale;
         m_local_matrix_dirty = true;
-        if (m_parent) ++m_parent->m_child_data_revision;
     }
 
-    void Entity::UpdateTransform(bool update_local)
+    void Entity::UpdateTransformSelf()
     {
-        // Parent motion changes the world matrix, not the child's local pose.
-        // Deferred animation writes mark their local pose dirty explicitly.
-        if (update_local || m_local_matrix_dirty)
+        const uint64_t parent_revision = m_parent ? m_parent->m_transform_revision : 0;
+        if (!m_local_matrix_dirty && m_transform_revision != 0 &&
+            m_transform_parent == m_parent && m_parent_transform_revision == parent_revision)
+            return;
+
+        if (m_local_matrix_dirty)
         {
             if (m_parent) ++m_parent->m_child_data_revision;
             m_matrix_local = Matrix(m_position_local, m_rotation_local, m_scale_local);
             m_local_matrix_dirty = false;
         }
-
-        // compute world transform
-        if (m_parent)
-        {
-            m_matrix = m_matrix_local * m_parent->GetMatrix();
-        }
-        else
-        {
-            m_matrix = m_matrix_local;
-        }
-
+        m_matrix = m_parent ? m_matrix_local * m_parent->m_matrix : m_matrix_local;
+        m_transform_parent = m_parent;
+        m_parent_transform_revision = parent_revision;
         ++m_transform_revision;
+        WakePhysicsPreTick();
+        m_last_transform_time_sec = Timer::GetTimeSec();
+        if (TransformCache* cache = m_transform_cache.load(memory_order_acquire))
+            cache->valid.store(0, memory_order_release);
+    }
 
-        // mark update
-        m_time_since_last_transform_sec = 0.0f;
-
-        // A zero revision means no child has ever been attached. Most car parts
-        // are leaves; their parent motion needs no children lock or snapshot.
-        // Once edited, the normal locked path remains in use even if empty.
-        if (m_child_data_revision.load(std::memory_order_acquire) == 0)
-        {
-            return;
-        }
-
-        // copy under the children lock, parallel prefab loads can AddChild while a parent updates
-        Entity* stack_children[32];
-        Entity** child_list = nullptr;
-        uint32_t child_count = 0;
-        vector<Entity*> heap_children;
-        {
-            lock_guard lock(m_mutex_children);
-            child_count = static_cast<uint32_t>(m_children.size());
-            if (child_count == 0)
-            {
-                return;
-            }
-
-            if (child_count <= 32)
-            {
-                memcpy(stack_children, m_children.data(), child_count * sizeof(Entity*));
-                child_list = stack_children;
-            }
-            else
-            {
-                heap_children = m_children;
-                child_list    = heap_children.data();
-            }
-        }
-
-        for (uint32_t i = 0; i < child_count; i++)
-        {
-            if (child_list[i])
-            {
-                child_list[i]->UpdateTransform(false);
-            }
-        }
+    void Entity::UpdateTransform()
+    {
+        UpdateTransformSelf();
+        if (m_children_count.load(memory_order_acquire) == 0) return;
+        // One contiguous traversal replaces recursive discovery, child-list copies,
+        // and a mutex acquisition at every internal node. Deferred animation poses
+        // are still inspected even when the instance root itself did not move.
+        const auto traversal = GetHierarchyTraversal();
+        for (Entity* entity : traversal->descendants)
+            entity->UpdateTransformSelf();
     }
 
     void Entity::SetPosition(const Vector3& position)
@@ -1087,21 +1029,19 @@ namespace spartan
             return;
         }
 
-        SetPositionLocal(!GetParent() ? position : position * GetParent()->GetMatrix().Inverted());
+        SetPositionLocal(!GetParent() ? position : position * GetParent()->GetMatrixInverse());
     }
 
     void Entity::SetPositionAndRotation(const Vector3& position, const Quaternion& rotation)
     {
         if (!position.IsFinite() || !rotation.IsFinite()) return;
-        const Vector3 local_position = m_parent ? position * m_parent->GetMatrix().Inverted() : position;
-        Quaternion parent_rotation = Quaternion::Identity;
-        for (Entity* ancestor = m_parent; ancestor; ancestor = ancestor->GetParent())
-            parent_rotation = ancestor->GetRotationLocal() * parent_rotation;
-        const Quaternion local_rotation = m_parent ? parent_rotation.Inverse() * rotation : rotation;
+        const Vector3 local_position = m_parent ? position * m_parent->GetMatrixInverse() : position;
+        const Quaternion local_rotation = m_parent ? m_parent->GetHierarchyRotation().Inverse() * rotation : rotation;
         if (!local_position.IsFinite() || !local_rotation.IsFinite()) return;
         if (m_position_local == local_position && m_rotation_local == local_rotation) return;
         m_position_local = local_position;
         m_rotation_local = local_rotation;
+        m_local_matrix_dirty = true;
         UpdateTransform();
     }
 
@@ -1121,40 +1061,16 @@ namespace spartan
         }
 
         m_position_local = position;
+        m_local_matrix_dirty = true;
         UpdateTransform();
     }
 
     void Entity::SetRotation(const Quaternion& rotation)
     {
-        // compute local rotation without using unstable GetRotation() decomposition
-        Quaternion local_rotation;
-        if (!GetParent())
-        {
-            local_rotation = rotation;
-        }
-        else
-        {
-            // compute parent's world rotation by composing local rotations up the hierarchy
-            // world_rot = root_local * ... * parent_local (compose from root down)
-            vector<Quaternion> rotations;
-            Entity* ancestor = GetParent();
-            while (ancestor)
-            {
-                rotations.push_back(ancestor->GetRotationLocal());
-                ancestor = ancestor->GetParent();
-            }
-
-            // compose from root (back of vector) to parent (front of vector)
-            Quaternion parent_world_rotation = Quaternion::Identity;
-            for (auto it = rotations.rbegin(); it != rotations.rend(); ++it)
-            {
-                parent_world_rotation = parent_world_rotation * (*it);
-            }
-
-            local_rotation = parent_world_rotation.Inverse() * rotation;
-        }
-
-        SetRotationLocal(local_rotation);
+        // Compose authored quaternions, preserving the existing scale/shear behavior.
+        // Siblings reuse their parent's result until its transform changes.
+        if (!rotation.IsFinite()) return;
+        SetRotationLocal(m_parent ? m_parent->GetHierarchyRotation().Inverse() * rotation : rotation);
     }
 
     void Entity::SetRotationLocal(const Quaternion& rotation)
@@ -1173,6 +1089,7 @@ namespace spartan
         }
 
         m_rotation_local = rotation;
+        m_local_matrix_dirty = true;
         UpdateTransform();
     }
 
@@ -1202,6 +1119,7 @@ namespace spartan
         }
 
         m_scale_local = scale;
+        m_local_matrix_dirty = true;
 
         // a scale of 0 will cause a division by zero when decomposing the world transform matrix
         m_scale_local.x = (m_scale_local.x == 0.0f) ? numeric_limits<float>::min() : m_scale_local.x;
@@ -1287,63 +1205,17 @@ namespace spartan
 
     void Entity::SetParent(Entity* new_parent)
     {
+        lock_guard hierarchy_lock(hierarchy_mutex);
+        // Reject cycles without detaching unrelated children or corrupting the
+        // inverse links. Ancestry is an O(depth) parent walk, not a subtree search.
+        if (m_parent == new_parent || new_parent == this) return;
+        if (new_parent && new_parent->IsDescendantOf(this)) return;
         {
             lock_guard lock(m_mutex_parent);
-
-            if (new_parent)
-            {
-                // early exit if the parent is this entity
-                if (GetObjectId() == new_parent->GetObjectId())
-                {
-                    return;
-                }
-
-                // early exit if the parent is already set
-                if (m_parent && m_parent->GetObjectId() == new_parent->GetObjectId())
-                {
-                    return;
-                }
-
-                // if the new parent is a descendant of this transform (e.g. dragging and dropping an entity onto one of it's children)
-                if (new_parent->IsDescendantOf(this))
-                {
-                    vector<Entity*> children;
-                    {
-                        lock_guard children_lock(m_mutex_children);
-                        children.swap(m_children);
-                    }
-
-                    for (Entity* child : children)
-                    {
-                        if (!child)
-                        {
-                            continue;
-                        }
-
-                        child->m_parent = m_parent; // directly setting parent
-                        child->UpdateActiveState();
-                        child->UpdateTransform();   // update transform if needed
-                    }
-                }
-            }
-
-            // remove the this as a child from the existing parent
-            if (m_parent)
-            {
-                bool update_child_with_null_parent = false;
-                m_parent->RemoveChild(this, update_child_with_null_parent);
-            }
-
-            // add this is a child to new parent
-            if (new_parent)
-            {
-                new_parent->AddChild(this);
-            }
-
+            if (m_parent) m_parent->RemoveChild(this, false);
             m_parent = new_parent;
+            if (m_parent) m_parent->AddChild(this);
         }
-
-        // transform after releasing m_mutex_parent, UpdateTransform can touch children/locks
         UpdateActiveState();
         UpdateTransform();
     }
@@ -1351,25 +1223,29 @@ namespace spartan
     void Entity::AddChild(Entity* child)
     {
         SP_ASSERT(child != nullptr);
-        lock_guard lock(m_mutex_children);
-
-        // ensure that the child is not this transform
-        if (child->GetObjectId() == GetObjectId())
+        lock_guard hierarchy_lock(hierarchy_mutex);
+        if (child == this) return;
+        if (child->m_parent != this)
         {
+            child->SetParent(this);
             return;
         }
+        lock_guard lock(m_mutex_children);
 
         // if this is not already a child, add it
-        if (!(find(m_children.begin(), m_children.end(), child) != m_children.end()))
+        if (find(m_children.begin(), m_children.end(), child) == m_children.end())
         {
             m_children.emplace_back(child);
+            m_children_count.store(static_cast<uint32_t>(m_children.size()), memory_order_release);
             ++m_child_data_revision;
+            InvalidateHierarchy();
         }
     }
 
     void Entity::MoveChildToIndex(Entity* child, uint32_t index)
     {
         SP_ASSERT(child != nullptr);
+        lock_guard hierarchy_lock(hierarchy_mutex);
         lock_guard lock(m_mutex_children);
 
         // find the child in the list
@@ -1401,46 +1277,43 @@ namespace spartan
         // insert at new position
         m_children.insert(m_children.begin() + index, child);
         ++m_child_data_revision;
+        InvalidateHierarchy();
     }
 
     void Entity::RemoveChild(Entity* child, bool update_child_with_null_parent)
     {
         SP_ASSERT(child != nullptr);
-
-        // ensure the transform is not itself
-        if (child->GetObjectId() == GetObjectId())
-        {
-            return;
-        }
-
+        if (child == this) return;
+        lock_guard hierarchy_lock(hierarchy_mutex);
         {
             lock_guard lock(m_mutex_children);
-
+            auto it = find(m_children.begin(), m_children.end(), child);
+            if (it == m_children.end()) return;
+            m_children.erase(it);
+            m_children_count.store(static_cast<uint32_t>(m_children.size()), memory_order_release);
             ++m_child_data_revision;
-            // remove the child
-            m_children.erase(remove_if(m_children.begin(), m_children.end(), [child](Entity* vec_transform) { return vec_transform->GetObjectId() == child->GetObjectId(); }), m_children.end());
+            InvalidateHierarchy();
         }
-
-        // never call SetParent while holding m_mutex_children, that path can re-enter RemoveChild and deadlock
-        if (update_child_with_null_parent)
-        {
+        // The false path deliberately preserves the parent pointer for deferred
+        // world deletion. It must still invalidate every surviving ancestor cache.
+        if (update_child_with_null_parent && child->m_parent == this)
             child->SetParent(nullptr);
-        }
     }
 
     void Entity::ClearParent()
     {
-        lock_guard lock(m_mutex_parent);
-
-        m_parent = nullptr;
+        lock_guard hierarchy_lock(hierarchy_mutex);
+        {
+            lock_guard lock(m_mutex_parent);
+            m_parent = nullptr;
+        }
         UpdateActiveState();
         UpdateTransform();
     }
 
     uint32_t Entity::GetChildrenCount() const
     {
-        lock_guard lock(m_mutex_children);
-        return static_cast<uint32_t>(m_children.size());
+        return m_children_count.load(memory_order_acquire);
     }
 
     vector<Entity*> Entity::GetChildren() const
@@ -1449,92 +1322,55 @@ namespace spartan
         return m_children;
     }
 
-    // searches the entire hierarchy, finds any children and saves them in m_children
-    // this is a recursive function, the children will also find their own children and so on
     void Entity::AcquireChildren()
     {
-        lock_guard lock(m_mutex_children);
-        ++m_child_data_revision;
-        m_children.clear();
-        m_children.shrink_to_fit();
+        // Compatibility repair for editor/import operations. Build the adjacency
+        // index once; the old recursive version scanned the entire world per node.
+        lock_guard hierarchy_lock(hierarchy_mutex);
+        unordered_map<Entity*, vector<Entity*>> children_by_parent;
+        for (Entity* entity : World::GetEntities())
+            if (entity && entity->m_parent && entity != entity->m_parent)
+                children_by_parent[entity->m_parent].push_back(entity);
 
-        const vector<Entity*>& entities = World::GetEntities();
-        for (Entity* possible_child : entities)
+        InvalidateHierarchy();
+        vector<Entity*> pending{this};
+        while (!pending.empty())
         {
-            if (!possible_child || !possible_child->GetParent() || possible_child->GetObjectId() == GetObjectId())
-            {
-                continue;
-            }
-
-            // if it's parent matches this transform
-            if (possible_child->GetParent()->GetObjectId() == GetObjectId())
-            {
-                // welcome home son
-                m_children.emplace_back(possible_child);
-
-                // make the child do the same thing all over, essentially resolving the entire hierarchy
-                possible_child->AcquireChildren();
-            }
+            Entity* entity = pending.back();
+            pending.pop_back();
+            lock_guard lock(entity->m_mutex_children);
+            auto it = children_by_parent.find(entity);
+            if (it != children_by_parent.end()) entity->m_children = move(it->second);
+            else entity->m_children.clear();
+            entity->m_children_count.store(static_cast<uint32_t>(entity->m_children.size()), memory_order_release);
+            ++entity->m_child_data_revision;
+            entity->m_hierarchy_revision.fetch_add(1, memory_order_release);
+            pending.insert(pending.end(), entity->m_children.begin(), entity->m_children.end());
         }
     }
 
     bool Entity::IsDescendantOf(Entity* transform) const
     {
         SP_ASSERT(transform != nullptr);
-
-        if (!m_parent)
-        {
-            return false;
-        }
-
-        if (m_parent->GetObjectId() == transform->GetObjectId())
-        {
-            return true;
-        }
-
-        for (Entity* child : transform->GetChildren())
-        {
-            if (IsDescendantOf(child))
-            {
-                return true;
-            }
-        }
-
+        for (const Entity* ancestor = m_parent; ancestor; ancestor = ancestor->m_parent)
+            if (ancestor == transform) return true;
         return false;
     }
 
     void Entity::GetDescendants(vector<Entity*>* descendants)
     {
-        const vector<Entity*> children = GetChildren();
-        for (Entity* child : children)
-        {
-            descendants->emplace_back(child);
-
-            if (child->HasChildren())
-            {
-                child->GetDescendants(descendants);
-            }
-        }
+        if (!HasChildren()) return;
+        const auto traversal = GetHierarchyTraversal();
+        descendants->insert(descendants->end(), traversal->descendants.begin(), traversal->descendants.end());
     }
 
     Entity* Entity::GetDescendantByName(const string& name)
     {
-        vector<Entity*> descendants;
-        GetDescendants(&descendants);
-
-        for (Entity* entity : descendants)
-        {
-            if (entity->GetObjectName() == name)
-            {
-                return entity;
-            }
-        }
-
+        if (!HasChildren()) return nullptr;
+        const auto traversal = GetHierarchyTraversal();
+        for (Entity* entity : traversal->descendants)
+            if (entity->GetObjectName() == name) return entity;
         return nullptr;
     }
 
-    Matrix Entity::GetParentTransformMatrix()
-    {
-        return GetParent() ? GetParent()->GetMatrix() : Matrix::Identity;
-    }
 }

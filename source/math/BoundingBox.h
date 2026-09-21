@@ -74,7 +74,14 @@ namespace spartan
             void Merge(const BoundingBox& box);
 
             // edges and points on them
-            Vector3 GetClosestPoint(const Vector3& point) const;
+            Vector3 GetClosestPoint(const Vector3& point) const
+            {
+                return Vector3(
+                    std::max(m_min.x, std::min(point.x, m_max.x)),
+                    std::max(m_min.y, std::min(point.y, m_max.y)),
+                    std::max(m_min.z, std::min(point.z, m_max.z))
+                );
+            }
             void GetCorners(std::array<Vector3, 8>* corners) const
             {
                 *corners =

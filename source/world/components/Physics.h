@@ -163,7 +163,12 @@ namespace spartan
         void SetUseConvexHull(bool enabled);
 
         // the render rewrote its instance list, the per instance actors are rebuilt on the next tick
-        void OnInstancesChanged() { m_instances_dirty = true; }
+        void OnInstancesChanged();
+        bool NeedsRunningPreTick() const
+        {
+            return !m_is_static || m_needs_creation || m_instances_dirty ||
+                m_body_type == BodyType::Controller || m_body_type == BodyType::Vehicle || m_body_type == BodyType::Cloth;
+        }
 
         // ground
         bool IsGrounded() const;

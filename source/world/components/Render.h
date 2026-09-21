@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Component.h"
 #include "../../rendering/Material.h"
 #include <vector>
+#include <atomic>
 #include <limits>
 #include "../../math/Matrix.h"
 #include "../../math/BoundingBox.h"
@@ -63,11 +64,39 @@ namespace spartan
         static float unset()         { return std::numeric_limits<float>::quiet_NaN(); }
     };
 
+    class Render;
+
+    // Authoritative hot state, allocated together independently of cold component data.
+    // Getters, setters, cloning and loading all address these same fields.
+    struct alignas(64) RenderSceneData : PooledObject<RenderSceneData>
+    {
+        // The first cache line contains the culling inputs and outputs.
+        math::BoundingBox bounding_box = math::BoundingBox::Unit;
+        math::Vector3 cull_camera_position = math::Vector3::Zero;
+        float max_distance_render = FLT_MAX;
+        float max_distance_shadow = FLT_MAX;
+        float distance_squared = 0.0f;
+        uint32_t flags = RenderFlags::CastsShadows;
+        uint32_t lod_index = 0;
+        uint32_t sub_mesh_index = 0;
+        bool is_visible = false;
+        bool has_decals = false;
+        std::atomic<bool> active{true};
+
+        Entity* entity = nullptr;
+        Render* render = nullptr;
+        Mesh* mesh = nullptr;
+        Material* material = nullptr;
+        std::vector<Instance> instances;
+    };
+    static_assert(sizeof(RenderSceneData) == 128, "Keep render scene data within two cache lines");
+
     // makes an entity drawable, it owns the mesh, the material and the per-frame lod and visibility state
     class Render : public Component
     {
     public:
         Render(Entity* entity);
+        const RenderSceneData& GetSceneData() const { return *m_scene; }
         ~Render();
 
         // icomponent
@@ -81,7 +110,7 @@ namespace spartan
         // Runtime deposits follow this receiver, independently of material sharing and mesh UVs.
         struct Decal { DecalParameters parameters; Material* source_material = nullptr; };
         void AddDecal(const DecalParameters& world_decal, Material* source_material = nullptr);
-        void ClearDecals() { m_decals.clear(); }
+        void ClearDecals() { m_decals.clear(); m_scene->has_decals = false; }
         uint32_t GetDecalCount() const { return static_cast<uint32_t>(m_decals.size()); }
         const std::vector<Decal>& GetDecals() const { return m_decals; }
         static constexpr uint32_t decal_capacity = decal_max_per_receiver;
@@ -93,7 +122,7 @@ namespace spartan
         void ClearMesh();
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
         uint32_t GetLodCount() const;
-        uint32_t GetLodIndex() const { return m_lod_index; }
+        uint32_t GetLodIndex() const { return m_scene->lod_index; }
         uint32_t GetIndexOffset(const uint32_t lod = 0) const;
         uint32_t GetIndexCount(const uint32_t lod = 0) const;
         uint32_t GetVertexOffset(const uint32_t lod = 0) const;
@@ -102,8 +131,8 @@ namespace spartan
         uint32_t GetMeshletCount(const uint32_t lod = 0) const;
         uint32_t GetGlobalMeshletOffset() const;
         const math::BoundingBox& GetLodAabb(const uint32_t lod = 0) const;
-        Mesh* GetMesh() const { return m_mesh; }
-        uint32_t GetSubMeshIndex() const { return m_sub_mesh_index; }
+        Mesh* GetMesh() const { return m_scene->mesh; }
+        uint32_t GetSubMeshIndex() const { return m_scene->sub_mesh_index; }
         RHI_Buffer* GetIndexBuffer() const;
         RHI_Buffer* GetVertexBuffer() const;
         const std::string& GetMeshName() const;
@@ -111,12 +140,12 @@ namespace spartan
         void RefitAccelerationStructure();
         bool HasAccelerationStructure() const
         {
-            if (!m_mesh)
+            if (!m_scene->mesh)
             {
                 return false;
             }
 
-            return m_mesh->HasBlas(m_sub_mesh_index);
+            return m_scene->mesh->HasBlas(m_scene->sub_mesh_index);
         }
         void InvalidateAccelerationStructure();
         uint64_t GetAccelerationStructureDeviceAddress() const;
@@ -128,7 +157,7 @@ namespace spartan
         bool GetAllowBlasUpdate() const { return m_allow_blas_update; }
 
         // bounding box
-        const math::BoundingBox& GetBoundingBox() const     { return m_bounding_box; }
+        const math::BoundingBox& GetBoundingBox() const     { return m_scene->bounding_box; }
         const math::BoundingBox& GetBoundingBoxMesh() const { return m_bounding_box_mesh; }
         // world aabb that ignores entity transform, for ragdoll/cloth etc
         void SetBoundingBoxOverride(const math::BoundingBox& world_box);
@@ -140,7 +169,7 @@ namespace spartan
         void SetMaterial(const std::string& file_path);
         void SetDefaultMaterial();
         std::string GetMaterialName() const;
-        Material* GetMaterial() const           { return m_material; }
+        Material* GetMaterial() const           { return m_scene->material; }
         bool IsUsingDefaultMaterial() const     { return m_material_default; }
 
         // per-render uv transform, nan fields resolve to the material's value at draw time
@@ -155,7 +184,7 @@ namespace spartan
                 return m_material_override.uv_tiling_x;
             }
 
-            return m_material ? m_material->GetProperty(MaterialProperty::TextureTilingX) : 1.0f;
+            return m_scene->material ? m_scene->material->GetProperty(MaterialProperty::TextureTilingX) : 1.0f;
         }
         float ResolveUvTilingY() const
         {
@@ -164,7 +193,7 @@ namespace spartan
                 return m_material_override.uv_tiling_y;
             }
 
-            return m_material ? m_material->GetProperty(MaterialProperty::TextureTilingY) : 1.0f;
+            return m_scene->material ? m_scene->material->GetProperty(MaterialProperty::TextureTilingY) : 1.0f;
         }
         float ResolveUvOffsetX() const
         {
@@ -173,7 +202,7 @@ namespace spartan
                 return m_material_override.uv_offset_x;
             }
 
-            return m_material ? m_material->GetProperty(MaterialProperty::TextureOffsetX) : 0.0f;
+            return m_scene->material ? m_scene->material->GetProperty(MaterialProperty::TextureOffsetX) : 0.0f;
         }
         float ResolveUvOffsetY() const
         {
@@ -182,7 +211,7 @@ namespace spartan
                 return m_material_override.uv_offset_y;
             }
 
-            return m_material ? m_material->GetProperty(MaterialProperty::TextureOffsetY) : 0.0f;
+            return m_scene->material ? m_scene->material->GetProperty(MaterialProperty::TextureOffsetY) : 0.0f;
         }
         float ResolveUvRotation() const
         {
@@ -191,7 +220,7 @@ namespace spartan
                 return m_material_override.uv_rotation;
             }
 
-            return m_material ? m_material->GetProperty(MaterialProperty::TextureRotation) : 0.0f;
+            return m_scene->material ? m_scene->material->GetProperty(MaterialProperty::TextureRotation) : 0.0f;
         }
         float ResolveUvInvertX() const
         {
@@ -200,7 +229,7 @@ namespace spartan
                 return m_material_override.uv_invert_x;
             }
 
-            return m_material ? m_material->GetProperty(MaterialProperty::TextureInvertX) : 0.0f;
+            return m_scene->material ? m_scene->material->GetProperty(MaterialProperty::TextureInvertX) : 0.0f;
         }
         float ResolveUvInvertY() const
         {
@@ -209,7 +238,7 @@ namespace spartan
                 return m_material_override.uv_invert_y;
             }
 
-            return m_material ? m_material->GetProperty(MaterialProperty::TextureInvertY) : 0.0f;
+            return m_scene->material ? m_scene->material->GetProperty(MaterialProperty::TextureInvertY) : 0.0f;
         }
         float ResolveUvWorldSpace() const
         {
@@ -218,12 +247,12 @@ namespace spartan
                 return m_material_override.uv_world_space;
             }
 
-            return m_material ? m_material->GetProperty(MaterialProperty::WorldSpaceUv) : 0.0f;
+            return m_scene->material ? m_scene->material->GetProperty(MaterialProperty::WorldSpaceUv) : 0.0f;
         }
 
         // instancing
-        bool HasInstancing() const                  { return !m_instances.empty(); }
-        uint32_t GetInstanceCount()  const          { return m_instances.empty() ? 1 : static_cast<uint32_t>(m_instances.size()); }
+        bool HasInstancing() const                  { return !m_scene->instances.empty(); }
+        uint32_t GetInstanceCount()  const          { return m_scene->instances.empty() ? 1 : static_cast<uint32_t>(m_scene->instances.size()); }
         uint32_t GetGlobalInstanceOffset() const    { return m_global_instance_offset; }
         math::Matrix GetInstance(const uint32_t index, const bool to_world);
         math::Vector3 GetInstancePosition(uint32_t index, const math::Matrix& world) const;
@@ -244,20 +273,23 @@ namespace spartan
         void SetInstances(const std::vector<math::Matrix>& transforms);
 
         // render distance
-        float GetMaxRenderDistance() const                         { return m_max_distance_render; }
-        void SetMaxRenderDistance(const float max_render_distance) { m_max_distance_render = max_render_distance; }
+        float GetMaxRenderDistance() const                         { return m_scene->max_distance_render; }
+
+        void SetMaxRenderDistance(float distance) { m_scene->max_distance_render = distance; }
 
         // shadow distance
-        float GetMaxShadowDistance() const                         { return m_max_distance_shadow; }
-        void SetMaxShadowDistance(const float max_shadow_distance) { m_max_distance_shadow = max_shadow_distance; }
+        float GetMaxShadowDistance() const                         { return m_scene->max_distance_shadow; }
+
+        void SetMaxShadowDistance(float distance) { m_scene->max_distance_shadow = distance; }
 
         // distance & visibility
-        float GetDistanceSquared() const    { return m_distance_squared; }
-        bool IsVisible() const              { return m_is_visible; }
-        void SetVisible(const bool visible) { m_is_visible = visible; }
+        float GetDistanceSquared() const    { return m_scene->distance_squared; }
+        bool IsVisible() const              { return m_scene->is_visible; }
+
+        void SetVisible(bool visible) { m_scene->is_visible = visible; }
 
         // flags
-        bool HasFlag(const RenderFlags flag) const { return m_flags & flag; }
+        bool HasFlag(const RenderFlags flag) const { return m_scene->flags & flag; }
         bool ExcludesTerrainBlend() const;
         void SetFlag(const RenderFlags flag, const bool enable = true);
 
@@ -270,24 +302,23 @@ namespace spartan
         void UpdateLodIndices();
 
     private:
+        friend class Entity;
+        void SetEntityActive(bool active) { m_scene->active.store(active, std::memory_order_relaxed); }
+        std::unique_ptr<RenderSceneData> m_scene;
         std::vector<Decal> m_decals;
 
         // geometry/mesh
-        Mesh* m_mesh                          = nullptr;
         std::shared_ptr<Mesh> m_owned_mesh; // lifetime of transient procedural geometry
-        uint32_t m_sub_mesh_index             = 0;
         bool m_bounding_box_dirty             = true;
         bool m_bounding_box_override          = false;
         math::BoundingBox m_bounding_box_mesh = math::BoundingBox::Unit;
-        math::BoundingBox m_bounding_box      = math::BoundingBox::Unit;
 
         // material
         bool m_material_default = false;
-        Material* m_material    = nullptr;
         MaterialOverride m_material_override;
 
         // instancing
-        std::vector<Instance> m_instances;
+
         // Updated with the aggregate AABB on instance, mesh or world-transform changes.
         // Shadow slices reuse these exact bounds instead of unpacking every transform each frame.
         std::vector<math::BoundingBox> m_instance_bounds;
@@ -307,18 +338,10 @@ namespace spartan
         uint64_t m_bounds_transform_revision = uint64_t(-1);
         bool m_bounds_entity_active = false;
         math::Matrix m_transform_previous = math::Matrix::Identity;
-        uint32_t m_flags                  = RenderFlags::CastsShadows;
 
         // deferred default material assignment (renderer may not be ready during load)
         bool m_needs_default_material = false;
 
-        // visibility & lods
-        float m_max_distance_render = FLT_MAX;
-        float m_max_distance_shadow = FLT_MAX;
-        float m_distance_squared    = 0.0f;
-        bool m_is_visible           = false;
-        uint32_t m_lod_index        = 0;
         uint64_t m_previous_lights  = 0; // lights whose frustums this entity was in last frame
-        math::Vector3 m_cull_camera_position = math::Vector3::Zero;
     };
 }

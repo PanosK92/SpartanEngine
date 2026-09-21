@@ -302,7 +302,7 @@ namespace spartan::mcp_common
     {
         std::string json = "[";
         bool first_component = true;
-        for (const std::shared_ptr<Component>& component : entity->GetAllComponents())
+        for (const auto& component : entity->GetAllComponents())
         {
             if (component == nullptr)
             {

@@ -21,18 +21,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
 #include "../math/BoundingBox.h"
 #include "Environment.h"
 #include <string>
+#include <vector>
+#include <cstdint>
 #include <functional>
 #include <sol/forward.hpp>
-//==============================
 
 namespace spartan
 {
+    class Entity;
     class Camera;
     class Light;
+    struct RenderSceneData;
+    struct WorldWorkCounters;
 
     // metadata structure for reading world info without fully loading
     struct WorldMetadata
@@ -50,6 +53,8 @@ namespace spartan
         static void Initialize();
         static void Shutdown();
         static void Tick();
+        static const WorldWorkCounters& GetWorkCounters();
+        static uint64_t GetWorkCounterTick();
 
         // io
         static bool SaveToFile(std::string file_path);
@@ -61,25 +66,15 @@ namespace spartan
         static bool IsSaving();
         // Empty until a world has a file path; generated caches must not spill into the project root.
         static std::string GetResourceDirectory();
-        static std::string GetResourceDirectory(
-            const std::string& world_file_path
-        );
+        static std::string GetResourceDirectory(const std::string& world_file_path);
         // mcp ai blockout output, world save leaves these alone
-        static void SetGeneratedResourceDirectory(
-            const std::string& directory
-        );
-        static const std::string&
-            GetGeneratedResourceDirectory();
+        static void SetGeneratedResourceDirectory(const std::string& directory);
+        static const std::string& GetGeneratedResourceDirectory();
         // asset viewer curated library, separate from raw mcp blockout output
-        static void SetLibraryResourceDirectory(
-            const std::string& directory
-        );
-        static const std::string&
-            GetLibraryResourceDirectory();
-        static std::vector<std::string>
-            GetLastResourceCleanup();
-        static std::vector<std::string>
-            GetLastResourceCleanupFailures();
+        static void SetLibraryResourceDirectory(const std::string& directory);
+        static const std::string& GetLibraryResourceDirectory();
+        static std::vector<std::string> GetLastResourceCleanup();
+        static std::vector<std::string> GetLastResourceCleanupFailures();
 
         // entities
         static sol::state_view GetLuaState();
@@ -104,6 +99,8 @@ namespace spartan
         static const std::vector<Entity*>& GetEntities();
         static const std::vector<Entity*>& GetEntitiesLights();
         static const std::vector<Entity*>& GetEntitiesWithRender();
+        static const std::vector<const RenderSceneData*>& GetRenderSceneData();
+        static void InvalidateRenderSceneData();
         // editor gizmo icons, excludes render-only props
         static const std::vector<Entity*>& GetEntitiesWithIcon();
         static const std::vector<Entity*>& GetEntitiesWithParticles();
@@ -147,8 +144,7 @@ namespace spartan
         static bool ReadMetadata(const std::string& world_file_path, WorldMetadata& metadata);
 
     private:
-        // when defer_xml_write is true, resource and entity serialization runs on the caller
-        // and only the xml file write is posted to the thread pool
+        // Async saves serialize on the caller and dispatch only the XML write.
         static bool SaveToFileInternal(std::string file_path, bool asynchronous);
         static void ProcessPendingRemovals();
     };

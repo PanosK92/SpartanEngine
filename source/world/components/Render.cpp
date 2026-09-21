@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================================
 #include "pch.h"
+#include "../../profiling/WorldWork.h"
 #include <sstream>
 #include "Render.h"
 #include "Camera.h"
@@ -59,6 +60,7 @@ namespace spartan
         if (m_decals.size() == decal_capacity)
             m_decals.erase(m_decals.begin());
         m_decals.push_back({decal, source_material});
+        m_scene->has_decals = true;
     }
 
     bool Render::ExcludesTerrainBlend() const
@@ -85,45 +87,62 @@ namespace spartan
         }
     }
 
-    Render::Render(Entity* entity) : Component(entity)
+    Render::Render(Entity* entity) : Component(entity), m_scene(std::make_unique<RenderSceneData>())
     {
+        m_scene->entity = entity;
+        m_scene->render = this;
+        SetEntityActive(entity->GetActive());
+        World::InvalidateRenderSceneData();
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_owned_mesh, shared_ptr<Mesh>);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material, Material*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags, uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh, Mesh*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box, BoundingBox);
+        RegisterAttribute("m_material", "Material*", [this]() { return m_scene->material; },
+            [this](const std::any& value) { m_scene->material = std::any_cast<Material*>(value); });
+        RegisterAttribute("m_flags", "uint32_t", [this]() { return m_scene->flags; },
+            [this](const std::any& value) { m_scene->flags = std::any_cast<uint32_t>(value); });
+        RegisterAttribute("m_mesh", "Mesh*", [this]() { return m_scene->mesh; },
+            [this](const std::any& value) { m_scene->mesh = std::any_cast<Mesh*>(value); });
+        RegisterAttribute("m_bounding_box", "BoundingBox", [this]() { return m_scene->bounding_box; },
+            [this](const std::any& value) { m_scene->bounding_box = std::any_cast<BoundingBox>(value); });
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_mesh, BoundingBox);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sub_mesh_index, uint32_t);
+        RegisterAttribute("m_sub_mesh_index", "uint32_t", [this]() { return m_scene->sub_mesh_index; },
+            [this](const std::any& value) { m_scene->sub_mesh_index = std::any_cast<uint32_t>(value); });
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_dirty, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instances, vector<Instance>);
+        RegisterAttribute("m_instances", "vector<Instance>", [this]() { return m_scene->instances; },
+            [this](const std::any& value) { m_scene->instances = std::any_cast<vector<Instance>>(value); });
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_transform_previous, Matrix);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_distance_render, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_distance_shadow, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_distance_squared, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_visible, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_lod_index, uint32_t);
+        RegisterAttribute("m_max_distance_render", "float", [this]() { return m_scene->max_distance_render; },
+            [this](const std::any& value) { m_scene->max_distance_render = std::any_cast<float>(value); });
+        RegisterAttribute("m_max_distance_shadow", "float", [this]() { return m_scene->max_distance_shadow; },
+            [this](const std::any& value) { m_scene->max_distance_shadow = std::any_cast<float>(value); });
+        RegisterAttribute("m_distance_squared", "float", [this]() { return m_scene->distance_squared; },
+            [this](const std::any& value) { m_scene->distance_squared = std::any_cast<float>(value); });
+        RegisterAttribute("m_is_visible", "bool", [this]() { return m_scene->is_visible; },
+            [this](const std::any& value) { m_scene->is_visible = std::any_cast<bool>(value); });
+        RegisterAttribute("m_lod_index", "uint32_t", [this]() { return m_scene->lod_index; },
+            [this](const std::any& value) { m_scene->lod_index = std::any_cast<uint32_t>(value); });
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_previous_lights, uint64_t);
     }
 
     Render::~Render()
     {
-        m_mesh = nullptr;
+        World::InvalidateRenderSceneData();
+        GetEntity()->WakePhysicsPreTick();
+        m_scene->mesh = nullptr;
     }
 
     void Render::Save(pugi::xml_node& node)
     {
         // mesh, skip procedural meshes as they are not in the resource cache, their owning component regenerates them after load
-        const bool is_standard_mesh = m_mesh && m_mesh->GetObjectName().rfind("standard_", 0) == 0;
-        const bool is_procedural    = m_mesh && m_mesh->GetObjectName() == "ocean";
-        const bool is_resolvable    = m_mesh && !is_procedural && (is_standard_mesh || ResourceCache::GetByName<Mesh>(m_mesh->GetObjectName()) != nullptr);
-        node.append_attribute("mesh_name")      = is_resolvable ? m_mesh->GetObjectName().c_str() : "";
-        node.append_attribute("mesh_path")      = is_resolvable && !is_standard_mesh ? m_mesh->GetResourceFilePath().c_str() : "";
-        node.append_attribute("sub_mesh_index") = m_sub_mesh_index;
+        const bool is_standard_mesh = m_scene->mesh && m_scene->mesh->GetObjectName().rfind("standard_", 0) == 0;
+        const bool is_procedural    = m_scene->mesh && m_scene->mesh->GetObjectName() == "ocean";
+        const bool is_resolvable    = m_scene->mesh && !is_procedural && (is_standard_mesh || ResourceCache::GetByName<Mesh>(m_scene->mesh->GetObjectName()) != nullptr);
+        node.append_attribute("mesh_name")      = is_resolvable ? m_scene->mesh->GetObjectName().c_str() : "";
+        node.append_attribute("mesh_path")      = is_resolvable && !is_standard_mesh ? m_scene->mesh->GetResourceFilePath().c_str() : "";
+        node.append_attribute("sub_mesh_index") = m_scene->sub_mesh_index;
 
         // material
-        node.append_attribute("material_name")    = m_material && !m_material_default ? m_material->GetObjectName().c_str() : "";
-        node.append_attribute("material_path")    = m_material && !m_material_default ? m_material->GetResourceFilePath().c_str() : "";
+        node.append_attribute("material_name")    = m_scene->material && !m_material_default ? m_scene->material->GetObjectName().c_str() : "";
+        node.append_attribute("material_path")    = m_scene->material && !m_material_default ? m_scene->material->GetResourceFilePath().c_str() : "";
         node.append_attribute("material_default") = m_material_default;
 
         // per-render material overrides, only set fields are written so unset ones keep inheriting from the material
@@ -144,17 +163,17 @@ namespace spartan
         save_override("ovr_uv_world_space", m_material_override.uv_world_space);
 
         // flags
-        node.append_attribute("flags") = m_flags;
+        node.append_attribute("flags") = m_scene->flags;
 
         // distances
-        node.append_attribute("max_render_distance") = m_max_distance_render;
-        node.append_attribute("max_shadow_distance") = m_max_distance_shadow;
+        node.append_attribute("max_render_distance") = m_scene->max_distance_render;
+        node.append_attribute("max_shadow_distance") = m_scene->max_distance_shadow;
 
         // instances
-        if (!m_instances.empty())
+        if (!m_scene->instances.empty())
         {
             pugi::xml_node instances_node = node.append_child("Instances");
-            for (const auto& instance : m_instances)
+            for (const auto& instance : m_scene->instances)
             {
                 pugi::xml_node t_node = instances_node.append_child("Transform");
                 math::Matrix matrix = instance.GetMatrix();
@@ -173,29 +192,29 @@ namespace spartan
         // mesh
         const string mesh_name = node.attribute("mesh_name").as_string();
         const string mesh_path = node.attribute("mesh_path").as_string();
-        m_sub_mesh_index       = node.attribute("sub_mesh_index").as_uint();
+        m_scene->sub_mesh_index       = node.attribute("sub_mesh_index").as_uint();
         if (!mesh_name.empty())
         {
             // check for standard meshes first (owned by Renderer, not ResourceCache)
             if (mesh_name == "standard_cube")
             {
-                m_mesh = Renderer::GetStandardMesh(MeshType::Cube).get();
+                m_scene->mesh = Renderer::GetStandardMesh(MeshType::Cube).get();
             }
             else if (mesh_name == "standard_quad")
             {
-                m_mesh = Renderer::GetStandardMesh(MeshType::Quad).get();
+                m_scene->mesh = Renderer::GetStandardMesh(MeshType::Quad).get();
             }
             else if (mesh_name == "standard_sphere")
             {
-                m_mesh = Renderer::GetStandardMesh(MeshType::Sphere).get();
+                m_scene->mesh = Renderer::GetStandardMesh(MeshType::Sphere).get();
             }
             else if (mesh_name == "standard_cylinder")
             {
-                m_mesh = Renderer::GetStandardMesh(MeshType::Cylinder).get();
+                m_scene->mesh = Renderer::GetStandardMesh(MeshType::Cylinder).get();
             }
             else if (mesh_name == "standard_cone")
             {
-                m_mesh = Renderer::GetStandardMesh(MeshType::Cone).get();
+                m_scene->mesh = Renderer::GetStandardMesh(MeshType::Cone).get();
             }
             else if (mesh_name == "ocean")
             {
@@ -218,7 +237,7 @@ namespace spartan
                 }
                 if (mesh)
                 {
-                    m_mesh = mesh.get();
+                    m_scene->mesh = mesh.get();
                 }
                 else
                 {
@@ -236,7 +255,7 @@ namespace spartan
             }
             if (mesh)
             {
-                m_mesh = mesh.get();
+                m_scene->mesh = mesh.get();
             }
             else
             {
@@ -284,11 +303,11 @@ namespace spartan
         }
 
         // flags
-        m_flags = node.attribute("flags").as_uint();
+        m_scene->flags = node.attribute("flags").as_uint();
 
         // distances
-        m_max_distance_render = node.attribute("max_render_distance").as_float(FLT_MAX);
-        m_max_distance_shadow = node.attribute("max_shadow_distance").as_float(FLT_MAX);
+        m_scene->max_distance_render = node.attribute("max_render_distance").as_float(FLT_MAX);
+        m_scene->max_distance_shadow = node.attribute("max_shadow_distance").as_float(FLT_MAX);
 
         // per-render material overrides, missing attributes keep the nan default which means inherit
         auto load_override = [&node](const char* name, float& target)
@@ -308,7 +327,7 @@ namespace spartan
         load_override("ovr_uv_world_space", m_material_override.uv_world_space);
 
         // instances
-        m_instances.clear();
+        m_scene->instances.clear();
         pugi::xml_node instances_node = node.child("Instances");
         if (instances_node)
         {
@@ -329,23 +348,23 @@ namespace spartan
                         m[12], m[13], m[14], m[15]);
                     Instance instance;
                     instance.SetMatrix(matrix);
-                    m_instances.emplace_back(instance);
+                    m_scene->instances.emplace_back(instance);
                 }
             }
         }
 
         // use the mesh lod aabb, copying every vertex here used to dominate entity load time
-        if (m_mesh && GetLodCount() > 0)
+        if (m_scene->mesh && GetLodCount() > 0)
         {
             m_bounding_box_mesh = GetLodAabb(0);
         }
 
         // update instance buffer and bounding boxes
-        if (!m_instances.empty())
+        if (!m_scene->instances.empty())
         {
-            SetInstances(m_instances);
+            SetInstances(m_scene->instances);
         }
-        else if (m_mesh)
+        else if (m_scene->mesh)
         {
             Tick();
         }
@@ -353,6 +372,8 @@ namespace spartan
 
     void Render::Tick()
     {
+        CountWorldWork(WorldWork::render_tick_calls);
+        const bool was_visible = m_scene->is_visible;
         // deferred default material assignment (renderer may not be ready during load)
         if (m_needs_default_material)
         {
@@ -366,8 +387,10 @@ namespace spartan
         UpdateAabb();
         UpdateFrustumAndDistanceCulling();
 
+        CountWorldWork(WorldWork::render_visible, m_scene->is_visible);
+        CountWorldWork(WorldWork::visibility_changes, was_visible != m_scene->is_visible);
         // lod only matters for visible geometry, off-screen props skip the coverage math
-        if (m_is_visible)
+        if (m_scene->is_visible)
         {
             UpdateLodIndices();
         }
@@ -375,11 +398,12 @@ namespace spartan
 
     void Render::UpdateFrustumAndDistanceCulling()
     {
+        CountWorldWork(WorldWork::cull_calls);
         Camera* camera = World::GetCamera();
         if (!camera)
         {
-            m_distance_squared = 0.0f;
-            m_is_visible       = true;
+            m_scene->distance_squared = 0.0f;
+            m_scene->is_visible       = true;
             return;
         }
 
@@ -391,44 +415,46 @@ namespace spartan
         if (center.IsNaN() || extents.IsNaN())
         {
             SP_LOG_WARNING("non finite bbox on '%s', marking invisible", GetEntity() ? GetEntity()->GetObjectName().c_str() : "?");
-            m_is_visible       = false;
-            m_distance_squared = 0.0f;
+            m_scene->is_visible       = false;
+            m_scene->distance_squared = 0.0f;
             return;
         }
 
         const Vector3 camera_position = camera->GetEntity()->GetPosition();
-        const float max_distance = m_max_distance_render;
+        const float max_distance = m_scene->max_distance_render;
         const float max_distance_sq = max_distance * max_distance;
 
-        if (!m_is_visible && m_distance_squared > max_distance_sq)
+        if (!m_scene->is_visible && m_scene->distance_squared > max_distance_sq)
         {
-            const float cam_move_sq = Vector3::DistanceSquared(camera_position, m_cull_camera_position);
+            const float cam_move_sq = Vector3::DistanceSquared(camera_position, m_scene->cull_camera_position);
             if (cam_move_sq < 4.0f)
             {
+                CountWorldWork(WorldWork::cull_cached_skips);
                 return;
             }
         }
-        m_cull_camera_position = camera_position;
+        CountWorldWork(WorldWork::cull_tests);
+        m_scene->cull_camera_position = camera_position;
 
         const float radius = max(extents.x, max(extents.y, extents.z)) * 1.7320508f;
         const float reject_distance = max_distance + radius;
         const float center_distance_sq = Vector3::DistanceSquared(camera_position, center);
         if (center_distance_sq > reject_distance * reject_distance)
         {
-            m_is_visible       = false;
-            m_distance_squared = center_distance_sq;
+            m_scene->is_visible       = false;
+            m_scene->distance_squared = center_distance_sq;
             return;
         }
 
         if (!camera->IsInViewFrustum(bounding_box))
         {
-            m_is_visible = false;
-            m_distance_squared = center_distance_sq;
+            m_scene->is_visible = false;
+            m_scene->distance_squared = center_distance_sq;
             return;
         }
 
-        m_distance_squared = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
-        m_is_visible       = m_distance_squared <= max_distance_sq;
+        m_scene->distance_squared = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
+        m_scene->is_visible       = m_scene->distance_squared <= max_distance_sq;
     }
 
     void Render::RegisterForScripting(sol::state_view State)
@@ -514,8 +540,8 @@ namespace spartan
 
         if (m_owned_mesh.get() != mesh) m_owned_mesh.reset();
         // set mesh
-        m_mesh           = mesh;
-        m_sub_mesh_index = sub_mesh_index;
+        m_scene->mesh           = mesh;
+        m_scene->sub_mesh_index = sub_mesh_index;
 
         // Mesh construction already computed this bound. Reuse it so each
         // imported instance does not copy and scan the same vertex buffer.
@@ -541,22 +567,22 @@ namespace spartan
 
     void Render::ClearMesh()
     {
-        m_mesh              = nullptr;
+        m_scene->mesh              = nullptr;
         m_owned_mesh.reset();
-        m_sub_mesh_index    = 0;
+        m_scene->sub_mesh_index    = 0;
         m_bounding_box_mesh = BoundingBox::Unit;
         m_bounding_box_dirty = true;
-        m_lod_index          = 0;
+        m_scene->lod_index          = 0;
     }
 
     void Render::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
     {
         // a null mesh is a valid transient state, procedural meshes like roads are generated after load
-        if (!m_mesh)
+        if (!m_scene->mesh)
         {
             return;
         }
-        m_mesh->GetGeometry(m_sub_mesh_index, indices, vertices);
+        m_scene->mesh->GetGeometry(m_scene->sub_mesh_index, indices, vertices);
     }
 
     void Render::SetMaterial(const shared_ptr<Material>& material)
@@ -566,21 +592,21 @@ namespace spartan
         m_material_default = false;
 
         // cache it so it can be serialized/deserialized
-        m_material = ResourceCache::Cache(material).get();
-        if (m_material == nullptr)
+        m_scene->material = ResourceCache::Cache(material).get();
+        if (m_scene->material == nullptr)
         {
             SP_LOG_ERROR("Material was unable to be cached, and failed to be set.")
             return;
         }
 
         // pack textures, generate mips, compress, upload to GPU
-        if (m_material->GetResourceState() == ResourceState::Max)
+        if (m_scene->material->GetResourceState() == ResourceState::Max)
         {
-            m_material->PrepareForGpu();
+            m_scene->material->PrepareForGpu();
         }
 
         // use the cached mesh bounds, copying vertices dominates large prefab loads
-        if (m_mesh && GetLodCount() > 0)
+        if (m_scene->mesh && GetLodCount() > 0)
         {
             const Vector3 size = GetLodAabb(0).GetSize();
             material->SetProperty(
@@ -611,14 +637,14 @@ namespace spartan
 
     string Render::GetMaterialName() const
     {
-        return m_material ? m_material->GetObjectName() : "";
+        return m_scene->material ? m_scene->material->GetObjectName() : "";
     }
 
     uint32_t Render::GetIndexOffset(const uint32_t lod) const
     {
-        if (const MeshLod* mesh_lod = get_mesh_lod(m_mesh, m_sub_mesh_index, lod))
+        if (const MeshLod* mesh_lod = get_mesh_lod(m_scene->mesh, m_scene->sub_mesh_index, lod))
         {
-            return m_mesh->GetGlobalIndexOffset() + mesh_lod->index_offset;
+            return m_scene->mesh->GetGlobalIndexOffset() + mesh_lod->index_offset;
         }
 
         return 0;
@@ -626,7 +652,7 @@ namespace spartan
 
     uint32_t Render::GetIndexCount(const uint32_t lod) const
     {
-        if (const MeshLod* mesh_lod = get_mesh_lod(m_mesh, m_sub_mesh_index, lod))
+        if (const MeshLod* mesh_lod = get_mesh_lod(m_scene->mesh, m_scene->sub_mesh_index, lod))
         {
             return mesh_lod->index_count;
         }
@@ -636,9 +662,9 @@ namespace spartan
 
     uint32_t Render::GetVertexOffset(const uint32_t lod) const
     {
-        if (const MeshLod* mesh_lod = get_mesh_lod(m_mesh, m_sub_mesh_index, lod))
+        if (const MeshLod* mesh_lod = get_mesh_lod(m_scene->mesh, m_scene->sub_mesh_index, lod))
         {
-            return m_mesh->GetGlobalVertexOffset() + mesh_lod->vertex_offset;
+            return m_scene->mesh->GetGlobalVertexOffset() + mesh_lod->vertex_offset;
         }
 
         return 0;
@@ -646,7 +672,7 @@ namespace spartan
 
     uint32_t Render::GetVertexCount(const uint32_t lod) const
     {
-        if (const MeshLod* mesh_lod = get_mesh_lod(m_mesh, m_sub_mesh_index, lod))
+        if (const MeshLod* mesh_lod = get_mesh_lod(m_scene->mesh, m_scene->sub_mesh_index, lod))
         {
             return mesh_lod->vertex_count;
         }
@@ -656,7 +682,7 @@ namespace spartan
 
     uint32_t Render::GetMeshletOffset(const uint32_t lod) const
     {
-        if (const MeshLod* mesh_lod = get_mesh_lod(m_mesh, m_sub_mesh_index, lod))
+        if (const MeshLod* mesh_lod = get_mesh_lod(m_scene->mesh, m_scene->sub_mesh_index, lod))
         {
             return mesh_lod->meshlet_offset;
         }
@@ -666,7 +692,7 @@ namespace spartan
 
     uint32_t Render::GetMeshletCount(const uint32_t lod) const
     {
-        if (const MeshLod* mesh_lod = get_mesh_lod(m_mesh, m_sub_mesh_index, lod))
+        if (const MeshLod* mesh_lod = get_mesh_lod(m_scene->mesh, m_scene->sub_mesh_index, lod))
         {
             return mesh_lod->meshlet_count;
         }
@@ -676,12 +702,12 @@ namespace spartan
 
     uint32_t Render::GetGlobalMeshletOffset() const
     {
-        return m_mesh ? m_mesh->GetGlobalMeshletOffset() : 0;
+        return m_scene->mesh ? m_scene->mesh->GetGlobalMeshletOffset() : 0;
     }
 
     const BoundingBox& Render::GetLodAabb(const uint32_t lod) const
     {
-        if (const MeshLod* mesh_lod = get_mesh_lod(m_mesh, m_sub_mesh_index, lod))
+        if (const MeshLod* mesh_lod = get_mesh_lod(m_scene->mesh, m_scene->sub_mesh_index, lod))
         {
             return mesh_lod->aabb;
         }
@@ -691,71 +717,71 @@ namespace spartan
 
     RHI_Buffer* Render::GetIndexBuffer() const
 	{
-        if (!m_mesh)
+        if (!m_scene->mesh)
         {
             return nullptr;
         }
 
-        return m_mesh->GetIndexBuffer();
+        return m_scene->mesh->GetIndexBuffer();
 	}
 
     RHI_Buffer* Render::GetVertexBuffer() const
     {
-        if (!m_mesh)
+        if (!m_scene->mesh)
         {
             return nullptr;
         }
 
-        return m_mesh->GetVertexBuffer();
+        return m_scene->mesh->GetVertexBuffer();
     }
 
     const string& Render::GetMeshName() const
     {
         static string no_mesh = "N/A";
-        if (!m_mesh)
+        if (!m_scene->mesh)
         {
             return no_mesh;
         }
 
-        return m_mesh->GetObjectName();
+        return m_scene->mesh->GetObjectName();
     }
 
     void Render::BuildAccelerationStructure()
     {
-        if (!m_mesh)
+        if (!m_scene->mesh)
         {
             return;
         }
 
-        m_mesh->BuildAccelerationStructure(m_sub_mesh_index, m_allow_blas_update);
+        m_scene->mesh->BuildAccelerationStructure(m_scene->sub_mesh_index, m_allow_blas_update);
     }
 
     void Render::RefitAccelerationStructure()
     {
-        if (!m_mesh)
+        if (!m_scene->mesh)
         {
             return;
         }
 
-        m_mesh->RefitBlas(m_sub_mesh_index);
+        m_scene->mesh->RefitBlas(m_scene->sub_mesh_index);
     }
 
     void Render::InvalidateAccelerationStructure()
     {
-        if (m_mesh)
+        if (m_scene->mesh)
         {
-            m_mesh->InvalidateBlas(m_sub_mesh_index);
+            m_scene->mesh->InvalidateBlas(m_scene->sub_mesh_index);
         }
     }
 
     uint64_t Render::GetAccelerationStructureDeviceAddress() const
     {
-        if (!m_mesh)
+        if (!m_scene->mesh)
         {
             return 0;
         }
 
-        RHI_AccelerationStructure* blas = m_mesh->GetBlas(m_sub_mesh_index);
+        RHI_AccelerationStructure* blas = m_scene->mesh->GetBlas(m_scene->sub_mesh_index);
         if (!blas)
         {
             return 0;
@@ -766,12 +792,12 @@ namespace spartan
 
     Matrix Render::GetInstance(const uint32_t index, const bool to_world)
     {
-        return to_world ? m_instances[index].GetMatrix() * GetEntity()->GetMatrix() : m_instances[index].GetMatrix();
+        return to_world ? m_scene->instances[index].GetMatrix() * GetEntity()->GetMatrix() : m_scene->instances[index].GetMatrix();
     }
 
     Vector3 Render::GetInstancePosition(uint32_t index, const Matrix& world) const
     {
-        const Instance& instance = m_instances[index];
+        const Instance& instance = m_scene->instances[index];
         return world * Vector3(instance.position_x, instance.position_y, instance.position_z);
     }
 
@@ -786,7 +812,7 @@ namespace spartan
         if (instances.empty())
         {
             // offset 0 makes the draw read identity, the owned slot stays so a refill can reuse it
-            m_instances.clear();
+            m_scene->instances.clear();
             m_instance_bounds.clear();
             m_instance_wind_padding.clear();
             m_instance_bounds_groups.clear();
@@ -796,21 +822,21 @@ namespace spartan
             return;
         }
 
-        m_instances = instances;
-        const uint32_t count = static_cast<uint32_t>(m_instances.size());
+        m_scene->instances = instances;
+        const uint32_t count = static_cast<uint32_t>(m_scene->instances.size());
 
         // rewrite the slot we already own when the new set fits, appending every time leaks the pool
         // until the global geometry buffer has to reallocate and re-upload the entire world
         bool reused = false;
         if (m_global_instance_slot != 0 && count <= m_global_instance_slot_capacity)
         {
-            reused = GeometryBuffer::UpdateInstances(m_instances.data(), m_global_instance_slot, count);
+            reused = GeometryBuffer::UpdateInstances(m_scene->instances.data(), m_global_instance_slot, count);
         }
 
         if (!reused)
         {
             // append into the global instance pool so the indirect path can read instance attrs by offset + sv_instanceid
-            m_global_instance_slot          = GeometryBuffer::AppendInstances(m_instances.data(), count);
+            m_global_instance_slot          = GeometryBuffer::AppendInstances(m_scene->instances.data(), count);
             m_global_instance_slot_capacity = count;
         }
 
@@ -855,37 +881,38 @@ namespace spartan
 
     uint32_t Render::GetLodCount() const
     {
-        if (!m_mesh)
+        if (!m_scene->mesh)
         {
             return 0;
         }
 
         // bounds checked, shutdown can clear submeshes while a dangling raw pointer still looks non null
-        return m_mesh->GetLodCount(m_sub_mesh_index);
+        return m_scene->mesh->GetLodCount(m_scene->sub_mesh_index);
     }
 
     void Render::SetFlag(const RenderFlags flag, const bool enable /*= true*/)
     {
         bool enabled      = false;
         bool disabled     = false;
-        bool flag_present = m_flags & flag;
+        bool flag_present = m_scene->flags & flag;
 
         if (enable && !flag_present)
         {
-            m_flags |= static_cast<uint32_t>(flag);
+            m_scene->flags |= static_cast<uint32_t>(flag);
             enabled  = true;
 
         }
         else if (!enable && flag_present)
         {
-            m_flags  &= ~static_cast<uint32_t>(flag);
+            m_scene->flags  &= ~static_cast<uint32_t>(flag);
             disabled  = true;
         }
     }
 
     void Render::SetBoundingBoxOverride(const BoundingBox& world_box)
     {
-        m_bounding_box = world_box;
+        GetEntity()->WakePhysicsPreTick();
+        m_scene->bounding_box = world_box;
         m_bounding_box_override = true;
         m_bounding_box_dirty = false;
         UpdateFrustumAndDistanceCulling();
@@ -908,6 +935,7 @@ namespace spartan
 
     void Render::UpdateAabb()
     {
+        CountWorldWork(WorldWork::bounds_checks);
         if (m_bounding_box_override)
         {
             return;
@@ -924,7 +952,7 @@ namespace spartan
         const Matrix transform = active ? entity->GetMatrix() : Matrix::Identity;
 
         // refuse to fold a non finite transform into the world bbox, doing so would
-        // poison m_bounding_box with NaN and trip the frustum culler assert downstream
+        // poison m_scene->bounding_box with NaN and trip the frustum culler assert downstream
         if (!transform.IsFinite())
         {
             SP_LOG_WARNING("non finite world matrix on '%s', keeping last bbox", GetEntity() ? GetEntity()->GetObjectName().c_str() : "?");
@@ -935,23 +963,26 @@ namespace spartan
         m_bounds_entity_active = active;
         if (m_bounding_box_dirty || m_transform_previous != transform)
         {
-            if (m_instances.empty()) // non-instanced
+            GetEntity()->WakePhysicsPreTick();
+            CountWorldWork(WorldWork::bounds_rebuilt);
+            CountWorldWork(WorldWork::bounds_instances_rebuilt, m_scene->instances.size());
+            if (m_scene->instances.empty()) // non-instanced
             {
-                m_bounding_box = m_bounding_box_mesh * transform;
+                m_scene->bounding_box = m_bounding_box_mesh * transform;
             }
             else // instanced
             {
                 // Cache initial spatial preparation, not live transform changes.
                 // Packed transforms, mesh bounds and the parent matrix fully define
                 // these bounds, wind envelopes and Morton groups.
-                const bool cache_bounds = m_instance_bounds.empty() && m_instances.size() >= 256;
+                const bool cache_bounds = m_instance_bounds.empty() && m_scene->instances.size() >= 256;
                 generated_cache::Hash bounds_hash;
                 std::filesystem::path bounds_path;
                 vector<Vector3> cached_box;
                 if (cache_bounds)
                 {
                     bounds_hash.Add(uint32_t{1}); // bounds/wind/grouping algorithm version
-                    bounds_hash.Add(m_instances);
+                    bounds_hash.Add(m_scene->instances);
                     bounds_hash.Add(m_bounding_box_mesh.GetMin());
                     bounds_hash.Add(m_bounding_box_mesh.GetMax());
                     bounds_hash.Add(transform);
@@ -959,27 +990,27 @@ namespace spartan
                 }
                 const bool cached = cache_bounds && generated_cache::Load(bounds_path, bounds_hash.value,
                     cached_box, m_instance_bounds, m_instance_wind_padding, m_instance_bounds_order, m_instance_bounds_groups);
-                if (cached && cached_box.size() == 2 && m_instance_bounds.size() == m_instances.size() &&
-                    m_instance_wind_padding.size() == m_instances.size() && m_instance_bounds_order.size() == m_instances.size() &&
-                    m_instance_bounds_groups.size() == (m_instances.size() + 31) / 32)
+                if (cached && cached_box.size() == 2 && m_instance_bounds.size() == m_scene->instances.size() &&
+                    m_instance_wind_padding.size() == m_scene->instances.size() && m_instance_bounds_order.size() == m_scene->instances.size() &&
+                    m_instance_bounds_groups.size() == (m_scene->instances.size() + 31) / 32)
                 {
-                    m_bounding_box = BoundingBox(cached_box[0], cached_box[1]);
+                    m_scene->bounding_box = BoundingBox(cached_box[0], cached_box[1]);
                     m_transform_previous = transform;
                     m_bounding_box_dirty = false;
                     return;
                 }
-                m_bounding_box = BoundingBox(Vector3::Infinity, Vector3::InfinityNeg);
-                m_instance_bounds.resize(m_instances.size());
-                m_instance_wind_padding.resize(m_instances.size());
-                for (size_t i = 0; i < m_instances.size(); ++i)
+                m_scene->bounding_box = BoundingBox(Vector3::Infinity, Vector3::InfinityNeg);
+                m_instance_bounds.resize(m_scene->instances.size());
+                m_instance_wind_padding.resize(m_scene->instances.size());
+                for (size_t i = 0; i < m_scene->instances.size(); ++i)
                 {
-                    const Matrix world_instance = m_instances[i].GetMatrix() * transform;
+                    const Matrix world_instance = m_scene->instances[i].GetMatrix() * transform;
                     const BoundingBox bounds = m_bounding_box_mesh * world_instance;
                     m_instance_bounds[i] = bounds;
                     // Same conservative envelope as tree_wind_cull_padding in common_culling.hlsl.
                     m_instance_wind_padding[i] = ((bounds.GetCenter() - world_instance.GetTranslation()).Length()
                         + bounds.GetExtents().Length()) * 0.07f + 0.03f;
-                    m_bounding_box.Merge(bounds);
+                    m_scene->bounding_box.Merge(bounds);
                 }
 
                 // Spatial groups accelerate shadow queries without reordering the
@@ -991,10 +1022,10 @@ namespace spartan
                     x = (x | (x << 4)) & 0x030C30C3u;
                     return (x | (x << 2)) & 0x09249249u;
                 };
-                const Vector3 origin = m_bounding_box.GetMin();
-                const Vector3 size = m_bounding_box.GetSize();
-                vector<uint64_t> keys(m_instances.size());
-                for (uint32_t i = 0; i < m_instances.size(); ++i)
+                const Vector3 origin = m_scene->bounding_box.GetMin();
+                const Vector3 size = m_scene->bounding_box.GetSize();
+                vector<uint64_t> keys(m_scene->instances.size());
+                for (uint32_t i = 0; i < m_scene->instances.size(); ++i)
                 {
                     const Vector3 p = m_instance_bounds[i].GetCenter() - origin;
                     const uint32_t x = static_cast<uint32_t>(clamp(p.x / max(size.x, 0.001f), 0.0f, 1.0f) * 1023.0f);
@@ -1024,7 +1055,7 @@ namespace spartan
                 }
                 if (cache_bounds)
                 {
-                    cached_box = {m_bounding_box.GetMin(), m_bounding_box.GetMax()};
+                    cached_box = {m_scene->bounding_box.GetMin(), m_scene->bounding_box.GetMax()};
                     generated_cache::Save(bounds_path, bounds_hash.value, cached_box, m_instance_bounds,
                         m_instance_wind_padding, m_instance_bounds_order, m_instance_bounds_groups);
                 }
@@ -1036,19 +1067,20 @@ namespace spartan
 
     void Render::UpdateLodIndices()
     {
+        CountWorldWork(WorldWork::lod_updates);
         // screen coverage handles distance, object size and fov uniformly with no per-type special cases
 
         const uint32_t lod_count = GetLodCount();
         if (lod_count == 0)
         {
-            m_lod_index = 0;
+            m_scene->lod_index = 0;
             return;
         }
 
         Camera* camera = World::GetCamera();
         if (!camera)
         {
-            m_lod_index = lod_count - 1;
+            m_scene->lod_index = lod_count - 1;
             return;
         }
 
@@ -1058,7 +1090,7 @@ namespace spartan
         // camera inside bounding box = maximum detail
         if (box.Contains(camera_position))
         {
-            m_lod_index = 0;
+            m_scene->lod_index = 0;
             return;
         }
 
@@ -1071,10 +1103,10 @@ namespace spartan
         // tile at lod 0 forever, the coverage has to come from the size of one instance while the box
         // keeps supplying the distance
         Vector3 measured_extents = box.GetExtents();
-        if (HasInstancing() && GetEntity() && !m_instances.empty())
+        if (HasInstancing() && GetEntity() && !m_scene->instances.empty())
         {
             const Vector3 entity_scale = GetEntity()->GetScale();
-            const Vector3 inst_scale   = m_instances[0].GetMatrix().GetScale();
+            const Vector3 inst_scale   = m_scene->instances[0].GetMatrix().GetScale();
             const Vector3 mesh_extents = GetLodAabb(0).GetExtents();
             measured_extents           = Vector3(
                 mesh_extents.x * abs(entity_scale.x * inst_scale.x),
@@ -1111,12 +1143,12 @@ namespace spartan
             float threshold = screen_thresholds[i];
 
             // apply hysteresis based on relationship to current lod
-            if (i < m_lod_index)
+            if (i < m_scene->lod_index)
             {
                 // upgrading to higher detail: raise the bar
                 threshold *= hysteresis;
             }
-            else if (i == m_lod_index)
+            else if (i == m_scene->lod_index)
             {
                 // staying at current lod: lower the bar (easier to stay)
                 threshold /= hysteresis;
@@ -1129,6 +1161,6 @@ namespace spartan
             }
         }
 
-        m_lod_index = clamp(new_lod, 0u, lod_count - 1);
+        m_scene->lod_index = clamp(new_lod, 0u, lod_count - 1);
     }
 }

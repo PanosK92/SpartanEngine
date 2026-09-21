@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "pch.h"
+#include "../profiling/WorldWork.h"
 #include "commands/CommandStack.h"
 #include <unordered_set>
 #include "World.h"
@@ -83,17 +84,37 @@ namespace spartan
     namespace
     {
         ProgressTask world_progress;
+        WorldWorkCounters work_counters;
+        uint64_t work_counter_tick = 0;
         sol::state lua_state;
         vector<Entity*> entities;
         unordered_map<uint64_t, Entity*> entities_by_id; // published entities, guarded by entity_access_mutex
-        vector<Entity*> entities_lights;       // entities subset that contains only lights
-        vector<Entity*> entities_with_render;  // entities subset that contains only active render components
-        vector<Entity*> entities_with_ragdoll; // active ragdolls, late-ticked after scripts
-        vector<Entity*> entities_with_pretick; // physics, script, or ragdoll, only these need Entity::PreTick
-        vector<Entity*> entities_with_logic;   // active non-render entities that still have components to tick
-        vector<Entity*> entities_with_icon;    // active entities that show an editor gizmo icon
-        vector<Entity*> entities_with_particles; // active particle emitters
-        vector<Entity*> entities_with_volume; // includes inactive volumes, matching audio reverb queries
+        // Cached views borrow entities owned by the world. Keep invalidation and
+        // removal together so no view can retain a destroyed entity.
+        struct EntityViews
+        {
+            vector<Entity*> lights, render, ragdolls, logic, icons, particles, volumes;
+            vector<Entity::PreTickGate*> pretick;
+            vector<const RenderSceneData*> render_data;
+            atomic<bool> render_dirty{true};
+
+            void Clear()
+            {
+                for (auto* list : {&lights, &render, &ragdolls, &logic, &icons, &particles, &volumes})
+                    list->clear();
+                pretick.clear();
+                render_data.clear();
+                render_dirty.store(true, memory_order_relaxed);
+            }
+
+            void Remove(Entity* entity)
+            {
+                for (auto* list : {&lights, &render, &ragdolls, &logic, &icons, &particles, &volumes})
+                    erase(*list, entity);
+                erase_if(pretick, [entity](const Entity::PreTickGate* gate) { return gate->entity == entity; });
+                render_dirty.store(true, memory_order_relaxed);
+            }
+        } views;
         string file_path;
         string world_name; // cached to avoid per-frame allocation
         string world_description;
@@ -209,58 +230,33 @@ namespace spartan
                 light = nullptr;
             }
 
-            auto erase_from = [entity](vector<Entity*>& list)
-            {
-                list.erase(remove(list.begin(), list.end(), entity), list.end());
-            };
-
-            erase_from(entities_with_render);
-            erase_from(entities_with_ragdoll);
-            erase_from(entities_with_pretick);
-            erase_from(entities_with_logic);
-            erase_from(entities_with_icon);
-            erase_from(entities_with_particles);
-            erase_from(entities_with_volume);
-            erase_from(entities_lights);
-            erase_from(entities_pending);
+            views.Remove(entity);
+            erase(entities_pending, entity);
         }
 
-        // snapshot for play/stop state restoration (like unity's play mode)
-        struct EntitySnapshot
+        // Play owns its restore snapshot and staged Start queue together.
+        struct PlaySession
         {
-            Vector3 position;
-            Quaternion rotation;
-            Vector3 scale;
-        };
-        unordered_map<uint64_t, EntitySnapshot> play_mode_snapshot;
-        EnvironmentSettings play_mode_environment;
+            struct Pose { Vector3 position; Quaternion rotation; Vector3 scale; };
+            enum class Phase : uint8_t { Idle, Starting, Ready };
+            unordered_map<uint64_t, Pose> snapshot;
+            EnvironmentSettings environment;
+            set<uint64_t> spawned_ids;
+            Phase phase = Phase::Idle;
+            vector<Entity*> start_queue;
+            size_t start_cursor = 0;
+            static constexpr double start_budget_ms = 4.0;
 
-        // ids of entities created while playing, they are removed when play stops so spawned objects never leak into the world
-        set<uint64_t> play_mode_spawned_ids;
-
-        // play boot spreads Entity::Start over frames so thousands of entities do not freeze the first tick
-        enum class play_boot_phase : uint8_t
-        {
-            idle,
-            starting,
-            ready
-        };
-        play_boot_phase play_boot = play_boot_phase::idle;
-        vector<Entity*> play_start_queue;
-        size_t play_start_cursor = 0;
-        constexpr double play_start_budget_ms = 4.0;
-
-        // Start is spread across frames. Deletions must invalidate this queue
-        // while its pointers are still alive, without shifting the cursor.
-        void cancel_pending_starts(const set<uint64_t>& ids)
-        {
-            for (size_t i = play_start_cursor; i < play_start_queue.size(); ++i)
+            // Invalidate deleted entities without shifting the staged-start cursor.
+            void CancelStarts(const set<uint64_t>& ids)
             {
-                Entity*& entity = play_start_queue[i];
-                if (entity && ids.count(entity->GetObjectId()) != 0)
-                    entity = nullptr;
+                for (size_t i = start_cursor; i < start_queue.size(); ++i)
+                {
+                    Entity*& entity = start_queue[i];
+                    if (entity && ids.count(entity->GetObjectId()) != 0) entity = nullptr;
+                }
             }
-        }
+        } play;
 
         bool entity_has_play_priority(Entity* entity)
         {
@@ -278,28 +274,11 @@ namespace spartan
                 || entity->GetComponent<Ragdoll>();
         }
 
-        // entity state tracking - things that change the nature of the entity for rendering
-        enum class EntityChange : uint8_t
-        {
-            None       = 0,
-            Active     = 1 << 0,
-            Components = 1 << 1,
-            CullMode   = 1 << 2,
-            LightType  = 1 << 3
-        };
-        unordered_map<uint64_t, uint32_t> entity_states; // stores: low 8 bits for flags, next 8 for component count, next 8 for cull mode, next 8 for light type
-
         // material change tracking - things that change the nature of the material for rendering
         unordered_map<uint64_t, size_t> material_state_hashes;
 
         // light change tracking - things that change the nature of the light for rendering
         unordered_map<uint64_t, size_t> light_state_hashes;
-
-        void mark_entity_changed(uint64_t id, EntityChange change)
-        {
-            entity_states[id] |= static_cast<uint32_t>(change);
-            resolve            = true;
-        }
 
         size_t compute_material_hash(Material* material)
         {
@@ -1201,7 +1180,7 @@ namespace spartan
         }
 
         // Also covers removals queued in edit mode before the play queue existed.
-        cancel_pending_starts(pending_remove);
+        play.CancelStarts(pending_remove);
 
         // unlink doomed entities from survivors first, everything is still alive
         // here so no surviving entity is left holding a freed parent or child
@@ -1244,7 +1223,6 @@ namespace spartan
                 untrack_entity(*it);
 
                 // clean up change tracking
-                entity_states.erase(id);
                 if (Material* mat = (*it)->GetComponent<Render>() ? (*it)->GetComponent<Render>()->GetMaterial() : nullptr)
                 {
                     material_state_hashes.erase(mat->GetObjectId());
@@ -1383,14 +1361,7 @@ namespace spartan
             entities_by_id.clear();
             vector<Entity*> pending_to_delete;
             pending_to_delete.swap(entities_pending);
-            entities_lights.clear();
-            entities_with_render.clear();
-            entities_with_ragdoll.clear();
-            entities_with_pretick.clear();
-            entities_with_logic.clear();
-            entities_with_icon.clear();
-            entities_with_particles.clear();
-            entities_with_volume.clear();
+            views.Clear();
             pending_remove.clear();
 
             for (Entity* entity : to_delete)
@@ -1408,11 +1379,11 @@ namespace spartan
         WorldHelpers::Clear();                        // release long lived builder meshes and materials
         SP_FIRE_EVENT(EventType::WorldUnloading);    // editor drops thumbnail pointers before the cache frees them
         ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
-        play_mode_spawned_ids.clear();
-        play_mode_snapshot.clear();
-        play_boot = play_boot_phase::idle;
-        play_start_queue.clear();
-        play_start_cursor = 0;
+        play.spawned_ids.clear();
+        play.snapshot.clear();
+        play.phase = PlaySession::Phase::Idle;
+        play.start_queue.clear();
+        play.start_cursor = 0;
         was_in_editor_mode = true;
         camera = nullptr;
         light  = nullptr;
@@ -1425,7 +1396,7 @@ namespace spartan
         world_clouds::reroll_seed();
 
         // clear change tracking
-        entity_states.clear();
+
         material_state_hashes.clear();
         light_state_hashes.clear();
 
@@ -1433,8 +1404,15 @@ namespace spartan
         resolve = true;
     }
 
+    const WorldWorkCounters& World::GetWorkCounters() { return work_counters; }
+    uint64_t World::GetWorkCounterTick() { return work_counter_tick; }
+
     void World::Tick()
     {
+        work_counters = {};
+        ++work_counter_tick;
+        ScopedWorldWork work_scope(work_counters);
+        CountWorldWork(WorldWork::entities_total, entities.size());
         // only world file loads park the tick, model importer progress from warm preloads must not freeze play
         if (world_io_state.load(memory_order_acquire) == WorldIoState::Loading)
         {
@@ -1478,7 +1456,7 @@ namespace spartan
                     if (entity->GetActive() && entity->GetComponent<Camera>()) camera = pick_default_camera(camera, entity);
                 world_io_state.store(WorldIoState::Preparing, memory_order_release);
 
-                // fall through so resolve rebuilds entities_with_render before Renderer::Tick
+                // fall through so resolve rebuilds views.render before Renderer::Tick
                 // returning here left that list empty while HaveMaterialsChangedThisFrame still
                 // recorded hashes, so bindless materials never uploaded until a later entity spawn
             }
@@ -1574,7 +1552,7 @@ namespace spartan
             // force a resolve so the final entity state, deferred script setup like the sun, is rebuilt into the
             // renderer caches, a static world such as empty would otherwise stay on the last unlit loading frame
             resolve = true;
-            // drop hashes recorded against an empty entities_with_render during the commit frame gap
+            // drop hashes recorded against an empty views.render during the commit frame gap
             material_state_hashes.clear();
             light_state_hashes.clear();
             SP_FIRE_EVENT(EventType::WorldLoaded);
@@ -1588,33 +1566,33 @@ namespace spartan
         // start, transform snapshot and Entity::Start are both time budgeted across frames
         if (started)
         {
-            play_mode_snapshot.clear();
-            play_mode_snapshot.reserve(entities.size());
-            play_mode_environment = Environment::GetSettings();
-            play_mode_spawned_ids.clear();
+            play.snapshot.clear();
+            play.snapshot.reserve(entities.size());
+            play.environment = Environment::GetSettings();
+            play.spawned_ids.clear();
 
-            play_start_queue.clear();
-            play_start_queue.reserve(entities.size());
+            play.start_queue.clear();
+            play.start_queue.reserve(entities.size());
             for (Entity* entity : entities)
             {
-                play_start_queue.push_back(entity);
+                play.start_queue.push_back(entity);
             }
             // traffic pedestrians cars scripts first so their async work starts immediately
             stable_partition(
-                play_start_queue.begin(),
-                play_start_queue.end(),
+                play.start_queue.begin(),
+                play.start_queue.end(),
                 [](Entity* entity) { return entity_has_play_priority(entity); });
-            play_start_cursor = 0;
-            play_boot = play_boot_phase::starting;
+            play.start_cursor = 0;
+            play.phase = PlaySession::Phase::Starting;
         }
 
         // stop
         if (stopped)
         {
             island_wildlife::Clear(true);
-            play_boot = play_boot_phase::idle;
-            play_start_queue.clear();
-            play_start_cursor = 0;
+            play.phase = PlaySession::Phase::Idle;
+            play.start_queue.clear();
+            play.start_cursor = 0;
 
             // copy the list, Stop can queue removals and must not walk a mutating vector
             const vector<Entity*> entities_to_stop = entities;
@@ -1629,17 +1607,17 @@ namespace spartan
             // restore all entity transforms from snapshot
             for (Entity* entity : entities)
             {
-                auto it = play_mode_snapshot.find(entity->GetObjectId());
-                if (it != play_mode_snapshot.end())
+                auto it = play.snapshot.find(entity->GetObjectId());
+                if (it != play.snapshot.end())
                 {
-                    const EntitySnapshot& snapshot = it->second;
+                    const PlaySession::Pose& snapshot = it->second;
                     entity->SetPositionLocal(snapshot.position);
                     entity->SetRotationLocal(snapshot.rotation);
                     entity->SetScaleLocal(snapshot.scale);
                 }
             }
-            play_mode_snapshot.clear();
-            Environment::SetSettings(play_mode_environment);
+            play.snapshot.clear();
+            Environment::SetSettings(play.environment);
 
             // snapshot restores bone entities to mid-play values after Animator::Stop
             // re-bind so skinned meshes leave play in a standing rest pose
@@ -1670,7 +1648,7 @@ namespace spartan
             vector<Entity*> spawned;
             for (Entity* entity : entities)
             {
-                if (play_mode_spawned_ids.count(entity->GetObjectId()) == 0)
+                if (play.spawned_ids.count(entity->GetObjectId()) == 0)
                 {
                     continue;
                 }
@@ -1693,7 +1671,7 @@ namespace spartan
             {
                 RemoveEntity(entity);
             }
-            play_mode_spawned_ids.clear();
+            play.spawned_ids.clear();
         }
 
         if (Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused))
@@ -1705,36 +1683,36 @@ namespace spartan
         ProcessPendingRemovals();
 
         // drain a slice of snapshot + Entity::Start each frame until the scene is ready
-        if (play_boot == play_boot_phase::starting)
+        if (play.phase == PlaySession::Phase::Starting)
         {
             const Stopwatch start_timer;
-            while (play_start_cursor < play_start_queue.size())
+            while (play.start_cursor < play.start_queue.size())
             {
-                Entity* entity = play_start_queue[play_start_cursor++];
+                Entity* entity = play.start_queue[play.start_cursor++];
                 if (entity)
                 {
                     if (!entity->IsTransient())
                     {
-                        EntitySnapshot snapshot;
+                        PlaySession::Pose snapshot;
                         snapshot.position = entity->GetPositionLocal();
                         snapshot.rotation = entity->GetRotationLocal();
                         snapshot.scale    = entity->GetScaleLocal();
-                        play_mode_snapshot[entity->GetObjectId()] = snapshot;
+                        play.snapshot[entity->GetObjectId()] = snapshot;
                     }
                     entity->Start();
                 }
 
-                if (start_timer.GetElapsedTimeMs() >= play_start_budget_ms)
+                if (start_timer.GetElapsedTimeMs() >= PlaySession::start_budget_ms)
                 {
                     break;
                 }
             }
 
-            if (play_start_cursor >= play_start_queue.size())
+            if (play.start_cursor >= play.start_queue.size())
             {
-                play_start_queue.clear();
-                play_start_cursor = 0;
-                play_boot = play_boot_phase::ready;
+                play.start_queue.clear();
+                play.start_cursor = 0;
+                play.phase = PlaySession::Phase::Ready;
                 SP_LOG_INFO(
                     "play boot complete, %zu entities started",
                     entities.size());
@@ -1742,77 +1720,99 @@ namespace spartan
         }
 
         // during boot keep rendering, but skip sim ticks and the per entity change scan
-        if (play_boot != play_boot_phase::starting)
+        if (play.phase != PlaySession::Phase::Starting)
         {
             if (Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused))
                 island_wildlife::Tick(static_cast<float>(Timer::GetDeltaTimeSec()));
 
             SP_PROFILE_CPU_START("world_pretick");
-            for (Entity* entity : entities_with_pretick)
+            Camera* pretick_camera = GetCamera();
+            Vector3 pretick_position = pretick_camera ? pretick_camera->GetEntity()->GetPosition() : Vector3::Zero;
+            bool pretick_playing = Engine::IsFlagSet(EngineMode::Playing);
+            for (Entity::PreTickGate* gate : views.pretick)
             {
-                if (entity->GetActive())
+                CountWorldWork(WorldWork::pretick_candidates);
+                if (!gate->ShouldRun(pretick_playing, pretick_camera != nullptr, pretick_position))
                 {
-                    entity->PreTick();
+                    CountWorldWork(WorldWork::pretick_sleeping);
+                    continue;
                 }
+                CountWorldWork(WorldWork::pretick_entities);
+                gate->entity->PreTick();
+                // A controller or script can move/switch the camera or stop play.
+                // Refresh after each callback to preserve the original entity order.
+                pretick_camera = GetCamera();
+                pretick_position = pretick_camera ? pretick_camera->GetEntity()->GetPosition() : Vector3::Zero;
+                pretick_playing = Engine::IsFlagSet(EngineMode::Playing);
             }
 
             SP_PROFILE_CPU_END();
             Animator::BeginSkinningBatch();
             SP_PROFILE_CPU_START("world_render_tick");
             // renderables cover most of the scene, cull/lod in parallel then finish other components
-            const uint32_t render_count = static_cast<uint32_t>(entities_with_render.size());
+            const auto& render_entries = GetRenderSceneData();
+            const uint32_t render_count = static_cast<uint32_t>(render_entries.size());
             if (render_count > 0)
             {
                 if (render_count >= 64)
                 {
-                    // Reuse one list per chunk. Render-only entities finish their
-                    // bookkeeping with their render update; other components keep
+                    // Physics::Tick only streams this entity's static actors and
+                    // serializes scene writes through PhysicsWorld. It can finish
+                    // beside its own render update; other components keep
                     // their original order on the main thread after the join.
                     static array<vector<Entity*>, 8> followups;
                     for (auto& list : followups) list.clear();
                     const uint32_t jobs = min(render_count, 8u);
+                    std::array<WorldWorkCounters, 8> batch_work;
                     ThreadPool::ParallelLoop([&](uint32_t first_job, uint32_t last_job)
                     {
+                        ScopedWorldWork batch_scope(batch_work[first_job]);
                         auto& pending = followups[first_job];
                         const uint32_t start = render_count * first_job / jobs;
                         const uint32_t end = render_count * last_job / jobs;
                         for (uint32_t i = start; i < end; i++)
                         {
-                            Entity* entity = entities_with_render[i];
+                            const RenderSceneData& data = *render_entries[i];
+                            Entity* entity = data.entity;
                             if (!entity->GetActive())
                             {
                                 continue;
                             }
 
-                            Render* render = entity->GetComponent<Render>();
+                            CountWorldWork(WorldWork::render_entities);
+                            Render* render = data.render;
                             if (render)
                             {
                                 render->Tick();
                             }
-                            if (render && entity->GetComponentCount() == 1)
-                                entity->TickAfterParallelRender();
+                            if (render && entity->CanTickWithParallelRender())
+                            {
+                                if (Physics* physics = entity->GetComponent<Physics>()) physics->Tick();
+                            }
                             else
                                 pending.push_back(entity);
                         }
                     }, jobs);
 
+                    for (const auto& batch : batch_work) work_counters.Merge(batch);
                     SP_PROFILE_CPU_START("world_post_render_tick");
                     for (const auto& pending : followups)
                     {
                         for (Entity* entity : pending)
                         {
                             if (entity->GetActive())
-                                entity->TickAfterParallelRender();
+                                entity->Tick(false);
                         }
                     }
                     SP_PROFILE_CPU_END();
                 }
                 else
                 {
-                    for (Entity* entity : entities_with_render)
+                    for (Entity* entity : views.render)
                     {
                         if (entity->GetActive())
                         {
+                            CountWorldWork(WorldWork::render_entities);
                             entity->Tick();
                         }
                     }
@@ -1820,10 +1820,11 @@ namespace spartan
             }
             SP_PROFILE_CPU_END();
             SP_PROFILE_CPU_START("world_logic_tick");
-            for (Entity* entity : entities_with_logic)
+            for (Entity* entity : views.logic)
             {
                 if (entity->GetActive())
                 {
+                    CountWorldWork(WorldWork::logic_entities);
                     entity->Tick();
                 }
             }
@@ -1838,7 +1839,7 @@ namespace spartan
 
             // ragdoll hit capsules after scripts/pedestrians moved the bodies
             SP_PROFILE_CPU_START("world_ragdoll_sync");
-            for (Entity* entity : entities_with_ragdoll)
+            for (Entity* entity : views.ragdolls)
             {
                 if (entity->GetActive())
                 {
@@ -1850,80 +1851,6 @@ namespace spartan
             }
             SP_PROFILE_CPU_END();
 
-            SP_PROFILE_CPU_END();
-            SP_PROFILE_CPU_START("world_change_scan");
-            // only entities marked dirty need the change scan, empty most frames
-            if (!entity_states.empty())
-            {
-                for (Entity* entity : entities)
-                {
-                    if (!entity->GetActive())
-                    {
-                        continue;
-                    }
-
-                    uint64_t id = entity->GetObjectId();
-                    auto it = entity_states.find(id);
-                    if (it == entity_states.end())
-                    {
-                        continue;
-                    }
-
-                    uint32_t& state = it->second;
-                    uint32_t new_state = state;
-
-                    // active state
-                    bool was_active = (state & static_cast<uint32_t>(EntityChange::Active)) != 0;
-                    if (entity->GetActive() != was_active)
-                    {
-                        new_state |= static_cast<uint32_t>(EntityChange::Active);
-                        resolve = true;
-                    }
-
-                    // component count
-                    uint8_t prev_component_count = (state >> 8) & 0xFF;
-                    uint8_t curr_component_count = static_cast<uint8_t>(min(entity->GetComponentCount(), 255u));
-                    if (curr_component_count != prev_component_count)
-                    {
-                        new_state = (new_state & ~0xFF00) | (curr_component_count << 8);
-                        new_state |= static_cast<uint32_t>(EntityChange::Components);
-                        resolve = true;
-                    }
-
-                    // cull mode
-                    uint8_t prev_cull = (state >> 16) & 0xFF;
-                    uint8_t curr_cull = static_cast<uint8_t>(RHI_CullMode::None);
-                    if (Render* render = entity->GetComponent<Render>())
-                    {
-                        if (Material* material = render->GetMaterial())
-                        {
-                            curr_cull = static_cast<uint8_t>(material->GetProperty(MaterialProperty::CullMode));
-                        }
-                    }
-                    if (curr_cull != prev_cull)
-                    {
-                        new_state = (new_state & ~0xFF0000) | (curr_cull << 16);
-                        new_state |= static_cast<uint32_t>(EntityChange::CullMode);
-                        resolve = true;
-                    }
-
-                    // light type
-                    uint8_t prev_light_type = (state >> 24) & 0xFF;
-                    uint8_t curr_light_type = static_cast<uint8_t>(LightType::Max);
-                    if (Light* light_comp = entity->GetComponent<Light>())
-                    {
-                        curr_light_type = static_cast<uint8_t>(light_comp->GetLightType());
-                    }
-                    if (curr_light_type != prev_light_type)
-                    {
-                        new_state = (new_state & ~0xFF000000) | (curr_light_type << 24);
-                        new_state |= static_cast<uint32_t>(EntityChange::LightType);
-                        resolve = true;
-                    }
-
-                    state = new_state;
-                }
-            }
             SP_PROFILE_CPU_END();
         }
 
@@ -1943,14 +1870,7 @@ namespace spartan
                 camera             = nullptr;
                 light              = nullptr;
                 audio_source_count = 0;
-                entities_lights.clear();
-                entities_with_render.clear();
-                entities_with_ragdoll.clear();
-                entities_with_pretick.clear();
-                entities_with_logic.clear();
-                entities_with_icon.clear();
-                entities_with_particles.clear();
-                entities_with_volume.clear();
+                views.Clear();
                 for (Entity* entity : entities)
                 {
                     // still in the live list until next removal flush, skip so draw does not
@@ -1962,7 +1882,7 @@ namespace spartan
 
                     if (entity->GetComponent<Volume>())
                     {
-                        entities_with_volume.push_back(entity);
+                        views.volumes.push_back(entity);
                     }
 
                     if (entity->GetActive())
@@ -1976,23 +1896,23 @@ namespace spartan
                             {
                                 light = entity;
                             }
-                            entities_lights.push_back(entity);
+                            views.lights.push_back(entity);
                         }
 
                         const bool has_render = entity->GetComponent<Render>() != nullptr;
                         if (has_render)
                         {
-                            entities_with_render.push_back(entity);
+                            views.render.push_back(entity);
                         }
                         else if (entity->GetComponentCount() > 0)
                         {
                             // lights, scripts, audio, etc without a mesh still need Entity::Tick
-                            entities_with_logic.push_back(entity);
+                            views.logic.push_back(entity);
                         }
 
                         if (entity->GetComponent<Ragdoll>())
                         {
-                            entities_with_ragdoll.push_back(entity);
+                            views.ragdolls.push_back(entity);
                         }
 
                         if (
@@ -2001,7 +1921,7 @@ namespace spartan
                             entity->GetComponent<Ragdoll>()
                         )
                         {
-                            entities_with_pretick.push_back(entity);
+                            views.pretick.push_back(entity->GetPreTickGate());
                         }
 
                         if (entity->GetComponent<AudioSource>())
@@ -2011,7 +1931,7 @@ namespace spartan
 
                         if (entity->GetComponent<ParticleSystem>())
                         {
-                            entities_with_particles.push_back(entity);
+                            views.particles.push_back(entity);
                         }
 
                         // editor icons, skip empty and render-only props
@@ -2046,7 +1966,7 @@ namespace spartan
                             {
                                 if (entity->GetComponentByType(type))
                                 {
-                                    entities_with_icon.push_back(entity);
+                                    views.icons.push_back(entity);
                                     break;
                                 }
                             }
@@ -2063,7 +1983,7 @@ namespace spartan
 
             compute_bounding_box();
             resolve = false;
-            entity_states.clear();
+
         }
 
     }
@@ -3265,12 +3185,12 @@ namespace spartan
         Entity* entity = new Entity();
         // entity becomes visible to the renderer on the next World::Tick which auto-drains this list, partial component state is tolerated via skip checks
         entities_pending.push_back(entity);
-        mark_entity_changed(entity->GetObjectId(), EntityChange::Components); // new entity requires resolve
+        resolve = true;
 
         // entities spawned during play are tracked so they can be removed when play stops
         if (Engine::IsFlagSet(EngineMode::Playing))
         {
-            play_mode_spawned_ids.insert(entity->GetObjectId());
+            play.spawned_ids.insert(entity->GetObjectId());
         }
 
         return entity;
@@ -3322,7 +3242,7 @@ namespace spartan
 
             // defer removal
             pending_remove.insert(ids_to_remove.begin(), ids_to_remove.end());
-            cancel_pending_starts(ids_to_remove);
+            play.CancelStarts(ids_to_remove);
 
             // detach from parent so it won't hold a dangling pointer after deferred deletion
             if (Entity* parent = entity_to_remove->GetParent())
@@ -3363,7 +3283,7 @@ namespace spartan
         set<uint64_t> ids_to_remove;
         for (Entity* entity : entities_to_remove)
             ids_to_remove.insert(entity->GetObjectId());
-        cancel_pending_starts(ids_to_remove);
+        play.CancelStarts(ids_to_remove);
 
         // detach from the parent before deleting, re-acquiring here would keep the
         // doomed entity in the list because it is still part of the world
@@ -3399,7 +3319,6 @@ namespace spartan
             if (it != entities.end())
             {
                 // clean up change tracking
-                entity_states.erase(id);
                 if (Material* mat = entity->GetComponent<Render>() ? entity->GetComponent<Render>()->GetMaterial() : nullptr)
                 {
                     material_state_hashes.erase(mat->GetObjectId());
@@ -3551,32 +3470,52 @@ namespace spartan
 
     const vector<Entity*>& World::GetEntitiesLights()
     {
-        return entities_lights;
+        return views.lights;
+    }
+
+    void World::InvalidateRenderSceneData()
+    {
+        views.render_dirty.store(true, memory_order_relaxed);
+    }
+
+    const vector<const RenderSceneData*>& World::GetRenderSceneData()
+    {
+        // Read on the owner thread before dispatch. Component construction/destruction
+        // may invalidate this from a loader, but workers never resize the published view.
+        if (views.render_dirty.exchange(false, memory_order_relaxed))
+        {
+            views.render_data.clear();
+            views.render_data.reserve(views.render.size());
+            for (Entity* entity : views.render)
+                if (Render* render = entity->GetComponent<Render>())
+                    views.render_data.push_back(&render->GetSceneData());
+        }
+        return views.render_data;
     }
 
     const vector<Entity*>& World::GetEntitiesWithRender()
     {
-        return entities_with_render;
+        return views.render;
     }
 
     const vector<Entity*>& World::GetEntitiesWithIcon()
     {
-        return entities_with_icon;
+        return views.icons;
     }
 
     const vector<Entity*>& World::GetEntitiesWithParticles()
     {
-        return entities_with_particles;
+        return views.particles;
     }
 
     const vector<Entity*>& World::GetEntitiesWithVolume()
     {
-        return entities_with_volume;
+        return views.volumes;
     }
 
     bool World::IsPlayBooting()
     {
-        return play_boot == play_boot_phase::starting;
+        return play.phase == PlaySession::Phase::Starting;
     }
 
     const string& World::GetName()
@@ -3625,7 +3564,7 @@ namespace spartan
 
     uint32_t World::GetLightCount()
     {
-        return static_cast<uint32_t>(entities_lights.size());
+        return static_cast<uint32_t>(views.lights.size());
     }
 
     uint32_t World::GetAudioSourceCount()
@@ -3647,7 +3586,7 @@ namespace spartan
         // states still need a periodic poll so bindless updates when gpu prep finishes
         resource_poll_frame++;
         const bool poll_resources = (resource_poll_frame % 8) == 0;
-        const bool hashes_empty = material_state_hashes.empty() && !entities_with_render.empty();
+        const bool hashes_empty = material_state_hashes.empty() && !views.render.empty();
         if (!props_changed && !poll_resources && !hashes_empty)
         {
             return false;
@@ -3655,9 +3594,9 @@ namespace spartan
 
         bool changed = false;
         unordered_set<uint64_t> seen;
-        seen.reserve(entities_with_render.size());
+        seen.reserve(views.render.size());
 
-        for (Entity* entity : entities_with_render)
+        for (Entity* entity : views.render)
         {
             if (!entity)
             {
@@ -3704,7 +3643,7 @@ namespace spartan
         lock_guard<mutex> lock(entity_access_mutex);
 
         bool changed = false;
-        for (Entity* entity : entities_lights)
+        for (Entity* entity : views.lights)
         {
             if (Light* light = entity->GetComponent<Light>())
             {

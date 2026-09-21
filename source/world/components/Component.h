@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include <any>
+#include "../../core/PooledObject.h"
 #include <vector>
 #include <functional>
 #include <string>
@@ -84,7 +85,7 @@ namespace spartan
         std::function<void(std::any)> setter;
     };
 
-    class Component : public SpartanObject
+    class Component : public SpartanObject, public PooledObject<Component>
     {
     public:
         Component(Entity* entity);
@@ -147,13 +148,7 @@ namespace spartan
         void SetType(ComponentType type)       { m_type = type; }
 
         const auto& GetAttributes() const { return m_attributes; }
-        void SetAttributes(const std::vector<Attribute>& attributes)
-        {
-            for (uint32_t i = 0; i < static_cast<uint32_t>(m_attributes.size()); i++)
-            {
-                m_attributes[i].setter(attributes[i].getter());
-            }
-        }
+        void SetAttributes(const std::vector<Attribute>& attributes);
 
         Entity* GetEntity() const { return m_entity_ptr; }
 

@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================================
 #include "pch.h"
+#include "../profiling/WorldWork.h"
 #include "../core/ThreadPool.h"
 #include "McpCommands.h"
 #include "McpCommandsCommon.h"
@@ -3248,6 +3249,7 @@ namespace spartan
                 try
                 {
                     attribute.setter(parsed);
+                    if (component->GetEntity()) component->GetEntity()->RefreshPreTickGate();
                 }
                 catch (const std::bad_any_cast&)
                 {
@@ -13966,6 +13968,15 @@ namespace spartan
             { "engine_status",                 [](const McpRequest&) { return command_engine_status(); } },
             { "progress_snapshot",             [](const McpRequest&) { return GetMcpProgressSnapshot(); } },
             { "profiler_snapshot",             command_profiler_snapshot },
+            { "world_work_snapshot", [](const McpRequest&)
+                {
+                    std::string json = "{\"ok\":true,\"world_tick\":" + std::to_string(World::GetWorkCounterTick());
+                    const auto& counts = World::GetWorkCounters().values;
+                    for (size_t i = 0; i < counts.size(); ++i)
+                        json += ",\"" + std::string(world_work_names[i]) + "\":" + std::to_string(counts[i]);
+                    return json + "}";
+                }
+            },
             { "profiler_record",               command_profiler_record },
             { "meshlet_snapshot",              command_meshlet_snapshot },
             { "engine_set_mode",               command_engine_set_mode },

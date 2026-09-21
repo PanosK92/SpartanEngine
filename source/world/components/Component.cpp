@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include "pch.h"
 #include "Component.h"
+#include "../Entity.h"
 #include "AudioSource.h"
 #include "Camera.h"
 #include "Light.h"
@@ -57,6 +58,13 @@ namespace spartan
     {
         m_entity_ptr = entity;
         m_enabled    = true;
+    }
+
+    void Component::SetAttributes(const std::vector<Attribute>& attributes)
+    {
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_attributes.size()); ++i)
+            m_attributes[i].setter(attributes[i].getter());
+        if (m_entity_ptr) m_entity_ptr->RefreshPreTickGate();
     }
 
     sol::reference Component::AsLua(sol::state_view state)

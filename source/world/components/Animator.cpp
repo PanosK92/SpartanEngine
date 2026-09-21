@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "pch.h"
+#include "../../profiling/WorldWork.h"
 #include "../../profiling/Profiler.h"
 #include <cctype>
 #include "Animator.h"
@@ -264,6 +265,8 @@ namespace spartan
         SP_PROFILE_CPU_START("animation_publish_batch");
         for (SkinningJob& job : skinning_jobs)
         {
+            CountWorldWork(WorldWork::animation_jobs);
+            if (job.succeeded) CountWorldWork(WorldWork::animation_vertices, job.animator->m_skinned_vertices.size());
             if (!job.succeeded) continue;
             Animator* animator = job.animator;
             // Keep both allocations: the old mesh storage becomes next frame's

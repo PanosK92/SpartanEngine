@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "pch.h"
+#include "../../profiling/WorldWork.h"
 #include "Spline.h"
 #include <unordered_set>
 #include "Physics.h"
@@ -120,7 +121,7 @@ namespace spartan
 
         PxControllerManager* controller_manager = nullptr;
 
-        bool outside_collision_prepare_range(Entity* entity)
+        bool outside_collision_prepare_range(Entity* entity, bool remember = false)
         {
             Camera* camera = World::GetCamera();
             Render* render = entity->GetComponent<Render>();
@@ -129,7 +130,17 @@ namespace spartan
                 return false;
             }
             const Vector3 position = camera->GetEntity()->GetPosition();
-            return Vector3::DistanceSquared(position, render->GetBoundingBox().GetClosestPoint(position)) > distance_deactivate_squared;
+            const float distance_squared = Vector3::DistanceSquared(position, render->GetBoundingBox().GetClosestPoint(position));
+            const bool outside = distance_squared > distance_deactivate_squared;
+            if (outside && remember && std::isfinite(distance_squared))
+            {
+                const float distance = sqrtf(distance_squared);
+                // Distance to a fixed box is 1-Lipschitz: the camera cannot reach
+                // the preparation boundary before moving this far. Round inward.
+                const float margin = max(0.01f, distance * 0.00001f);
+                entity->SleepPhysicsPreTick(position, max(0.0f, distance - distance_deactivate - margin));
+            }
+            return outside;
         }
 
         // fft water buoyancy, applied once per fixed physics step to every submerged dynamic body
@@ -456,6 +467,12 @@ namespace spartan
         m_cloth_global_vertex_offset = 0;
     }
 
+    void Physics::OnInstancesChanged()
+    {
+        m_instances_dirty = true;
+        GetEntity()->RefreshPreTickGate();
+    }
+
     void Physics::PrepareWorld()
     {
         // The world loader has joined its worker before calling this. Prepare only the
@@ -467,9 +484,20 @@ namespace spartan
 
     void Physics::PreTick()
     {
+        CountWorldWork(WorldWork::physics_pretick_calls);
         // physx treats a main thread write during worker actor creation as concurrent access and corrupts its pruner tree
         if (ProgressTracker::IsLoading())
         {
+            return;
+        }
+
+        // Static actors do not synchronize transforms from PhysX in play mode.
+        // Creation and instance edits still run immediately when requested.
+        if (m_is_static && !m_needs_creation && !m_instances_dirty &&
+            Engine::IsFlagSet(EngineMode::Playing) && m_body_type != BodyType::Controller &&
+            m_body_type != BodyType::Vehicle && m_body_type != BodyType::Cloth)
+        {
+            CountWorldWork(WorldWork::physics_static_clean_skips);
             return;
         }
 
@@ -479,8 +507,9 @@ namespace spartan
             // Match static collision streaming before cooking, not only after
             // allocating actors for the entire island. Prepare at the outer
             // radius so collision is ready before the 40 m activation boundary.
-            if (m_is_static && m_body_type == BodyType::Mesh && outside_collision_prepare_range(GetEntity()))
+            if (m_is_static && m_body_type == BodyType::Mesh && outside_collision_prepare_range(GetEntity(), true))
             {
+                CountWorldWork(WorldWork::physics_creation_far_skips);
                 return;
             }
             // The editor can render and select meshes without cooked collision.
@@ -504,6 +533,7 @@ namespace spartan
 
             const Stopwatch creation_timer;
             m_needs_creation = false;
+            CountWorldWork(WorldWork::physics_created);
             Create();
             creation_time_ms += creation_timer.GetElapsedTimeMs();
         }
@@ -512,6 +542,7 @@ namespace spartan
         if (m_instances_dirty)
         {
             m_instances_dirty = false;
+            CountWorldWork(WorldWork::physics_instances_rebuilt);
             RebuildInstanceActors();
         }
 
@@ -528,28 +559,34 @@ namespace spartan
         switch (m_body_type)
         {
             case BodyType::Controller:
+                CountWorldWork(WorldWork::physics_controller_updates);
                 TickController(is_playing, delta_time);
                 break;
 
             case BodyType::Vehicle:
+                CountWorldWork(WorldWork::physics_vehicle_updates);
                 TickVehicle(is_playing);
                 break;
 
             case BodyType::Cloth:
+                CountWorldWork(WorldWork::physics_cloth_updates);
                 TickCloth(is_playing, delta_time);
                 break;
 
             default:
                 if (!m_is_static)
                 {
+                    CountWorldWork(WorldWork::physics_dynamic_syncs);
                     TickDynamicBodies(is_playing);
                 }
                 else if (!is_playing)
                 {
+                    CountWorldWork(WorldWork::physics_editor_static_syncs);
                     SyncStaticPoses();
                 }
                 break;
         }
+        GetEntity()->RefreshPreTickGate();
     }
 
     void Physics::Tick()
@@ -1248,7 +1285,8 @@ namespace spartan
 
     void Physics::TickDistanceActivation()
     {
-        if (m_actors.empty()) return;
+        CountWorldWork(WorldWork::physics_activation_calls);
+        if (m_actors.empty()) { CountWorldWork(WorldWork::physics_activation_empty_skips); return; }
         Camera* camera = World::GetCamera();
         Render* render = GetEntity()->GetComponent<Render>();
         if (!camera || !render)
@@ -1277,6 +1315,7 @@ namespace spartan
 
         if (m_actors_active_count == 0 && box_distance_squared > distance_activate_squared)
         {
+            CountWorldWork(WorldWork::physics_activation_box_skips);
             return;
         }
 
@@ -1296,6 +1335,7 @@ namespace spartan
             (camera_pos == m_activation_camera ||
              Vector3::DistanceSquared(camera_pos, m_activation_camera) < m_activation_slack * m_activation_slack))
         {
+            CountWorldWork(WorldWork::physics_activation_cached_skips);
             return;
         }
         float activation_slack = distance_activate;
@@ -1307,6 +1347,7 @@ namespace spartan
                 continue;
             }
 
+            CountWorldWork(WorldWork::physics_actors_tested);
             // compute distance to actor
             Vector3 closest_point = instanced
                 ? render->GetInstancePosition(i, world)
@@ -1317,12 +1358,14 @@ namespace spartan
             const bool is_active = m_actors_active[i];
             if (is_active && distance_squared > distance_deactivate_squared)
             {
+                CountWorldWork(WorldWork::physics_actors_deactivated);
                 PhysicsWorld::RemoveActor(actor);
                 m_actors_active[i] = false;
                 m_actors_active_count--;
             }
             else if (!is_active && distance_squared <= distance_activate_squared)
             {
+                CountWorldWork(WorldWork::physics_actors_activated);
                 PhysicsWorld::AddActor(actor);
                 m_actors_active[i] = true;
                 m_actors_active_count++;
@@ -1398,6 +1441,7 @@ namespace spartan
         // defer creation until tick so that render component is available
         // (components load in enum order, and render comes after physics)
         m_needs_creation = true;
+        GetEntity()->RefreshPreTickGate();
     }
 
     void Physics::RegisterForScripting(sol::state_view State)
@@ -1851,6 +1895,7 @@ namespace spartan
         {
             Remove();
             m_needs_creation = true;
+            GetEntity()->RefreshPreTickGate();
             return;
         }
         Create();
@@ -3904,6 +3949,11 @@ namespace spartan
 
     void Physics::Create()
     {
+        struct ParticipationRefresh
+        {
+            Entity* entity;
+            ~ParticipationRefresh() { entity->RefreshPreTickGate(); }
+        } refresh{GetEntity()};
         // serializes the whole physx setup, the prefab path runs on loader workers and physx corrupts the scene on concurrent writes
         lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
 

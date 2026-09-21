@@ -191,6 +191,19 @@ namespace spartan
                 : World::GetEntitiesWithRender();
         }
 
+        const vector<const RenderSceneData*>& render_scene_data(bool filter_secondary = true)
+        {
+            if (!secondary_render_root_active) return World::GetRenderSceneData();
+            // Preview roots are intentionally outside the world's active render list.
+            static vector<const RenderSceneData*> preview;
+            preview.clear();
+            for (Entity* entity : World::GetEntities())
+                if (entity && (!filter_secondary || (entity->GetActive() && is_secondary_view_entity(entity))))
+                    if (Render* render = entity->GetComponent<Render>())
+                        preview.push_back(&render->GetSceneData());
+            return preview;
+        }
+
         const vector<Entity*>& light_entities()
         {
             return secondary_render_root_active
@@ -206,6 +219,7 @@ namespace spartan
 
         void prepare_ray_tracing_renders()
         {
+            SP_PROFILE_CPU();
             ray_tracing_prepared_at = Timer::GetTimeMs();
             static vector<Render*> previous_renders;
             previous_renders.swap(ray_tracing_renders);
@@ -214,29 +228,50 @@ namespace spartan
             ray_tracing_pending_blas = false;
             Camera* camera = World::GetCamera();
             const Vector3 camera_position = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
-            for (Entity* entity : render_entities())
+            const auto& entries = render_scene_data();
+            struct Candidates { vector<Render*> renders; vector<Render*> builds; bool missing = false; };
+            static array<Candidates, 8> batches;
+            for (auto& batch : batches)
             {
-                if (!entity || !entity->GetActive() || !is_secondary_view_entity(entity)) continue;
-                Render* render = entity->GetComponent<Render>();
-                if (!render || render->HasFlag(RenderFlags::ExcludeFromRayTracing)) continue;
-                // Respect authored visibility budgets for individual props too.
-                // Instanced scatter has its own per-instance distance cache below;
-                // terrain and other unlimited-distance geometry remain included.
-                if (camera && !render->HasInstancing())
+                batch.renders.clear();
+                batch.builds.clear();
+                batch.missing = false;
+            }
+            const uint32_t jobs = entries.size() >= 256 ? static_cast<uint32_t>(batches.size()) : 1u;
+            auto collect = [&](uint32_t first, uint32_t last)
+            {
+                auto& batch = batches[first];
+                for (size_t i = entries.size() * first / jobs; i < entries.size() * last / jobs; ++i)
                 {
-                    const float distance = max(render->GetMaxRenderDistance(), render->GetMaxShadowDistance());
-                    if (distance >= 0.0f && distance < numeric_limits<float>::max() * 0.5f)
+                    const RenderSceneData& data = *entries[i];
+                    if (!data.active.load(memory_order_relaxed) || (data.flags & RenderFlags::ExcludeFromRayTracing)) continue;
+                    Render* render = data.render;
+                    // Keep the same off-screen shadow/reflection visibility budget.
+                    if (camera && data.instances.empty())
                     {
-                        const BoundingBox& bounds = render->GetBoundingBox();
-                        const float radius = distance + 25.0f;
-                        if (Vector3::DistanceSquared(camera_position, bounds.GetClosestPoint(camera_position)) > radius * radius)
-                            continue;
+                        const float distance = max(data.max_distance_render, data.max_distance_shadow);
+                        if (distance >= 0.0f && distance < numeric_limits<float>::max() * 0.5f)
+                        {
+                            const BoundingBox& bounds = data.bounding_box;
+                            const float radius = distance + 25.0f;
+                            if (Vector3::DistanceSquared(camera_position, bounds.GetClosestPoint(camera_position)) > radius * radius)
+                                continue;
+                        }
                     }
+                    batch.renders.push_back(render);
+                    const bool missing = !render->HasAccelerationStructure();
+                    batch.missing |= missing;
+                    if (missing || render->NeedsBlasRefit()) batch.builds.push_back(render);
                 }
-                ray_tracing_renders.push_back(render);
-                const bool missing = !render->HasAccelerationStructure();
-                ray_tracing_pending_blas |= missing;
-                if (missing || render->NeedsBlasRefit()) ray_tracing_build_work.push_back(render);
+            };
+            if (jobs == 1) collect(0, 1);
+            else ThreadPool::ParallelLoop(collect, jobs);
+            // Stable source order preserves the TLAS membership comparison.
+            for (const auto& batch : batches)
+            {
+                ray_tracing_renders.insert(ray_tracing_renders.end(), batch.renders.begin(), batch.renders.end());
+                ray_tracing_build_work.insert(ray_tracing_build_work.end(), batch.builds.begin(), batch.builds.end());
+                ray_tracing_pending_blas |= batch.missing;
             }
             ray_tracing_membership_dirty |= ray_tracing_renders != previous_renders;
         }
@@ -1259,7 +1294,13 @@ namespace spartan
         // sweep so shared materials do not oscillate between their near/far users.
         Camera* streaming_camera = World::GetCamera();
         constexpr uint64_t demand_frames = 8;
-        struct MaterialDemand { weak_ptr<Material> material; float pixels = 0.0f; };
+        struct MaterialDemand
+        {
+            weak_ptr<Material> material;
+            float pixels = 0.0f;
+            float full_resolution_pixels = 0.0f;
+            uint32_t revision = 0;
+        };
         static unordered_map<uint64_t, MaterialDemand> material_pixels;
         static uint64_t demand_cycle = numeric_limits<uint64_t>::max();
         if (demand_cycle != m_frame_num / demand_frames)
@@ -1269,18 +1310,33 @@ namespace spartan
         }
         const Vector3 streaming_position = streaming_camera ? streaming_camera->GetEntity()->GetPosition() : Vector3::Zero;
         const float streaming_focal_length = streaming_camera ? GetViewport().height / (2.0f * tan(streaming_camera->GetFovVerticalRad() * 0.5f)) : 0.0f;
-        const auto& streaming_entities = render_entities();
-        for (size_t i = m_frame_num % demand_frames; i < streaming_entities.size(); i += demand_frames)
+        const auto& streaming_entries = render_scene_data(false);
+        for (size_t i = m_frame_num % demand_frames; i < streaming_entries.size(); i += demand_frames)
         {
-            Entity* entity = streaming_entities[i];
-            Render* render = entity->GetComponent<Render>();
-            Material* material = render ? render->GetMaterial() : nullptr;
+            const RenderSceneData& data = *streaming_entries[i];
+            Render* render = data.render;
+            Material* material = data.material;
             if (!material) continue;
             auto [it, inserted] = material_pixels.try_emplace(material->GetObjectId());
             if (inserted)
+            {
                 it->second.material = static_pointer_cast<Material>(material->weak_from_this().lock());
+            }
+            if (inserted || it->second.revision != material->GetRevision())
+            {
+                it->second.revision = material->GetRevision();
+                it->second.full_resolution_pixels = 0.0f;
+                // Request() reserves an extra mip: once twice the projected
+                // pixels cover every source texture, all requests are mip zero.
+                // Further instances cannot increase this material's residency.
+                for (RHI_Texture* texture : material->GetTextures())
+                    if (texture)
+                        it->second.full_resolution_pixels = max(it->second.full_resolution_pixels,
+                            0.5f * static_cast<float>(max(texture->GetWidth(), texture->GetHeight())));
+            }
             float& demand = it->second.pixels;
-            if (!isfinite(demand)) continue;
+            const float full_resolution_pixels = it->second.full_resolution_pixels;
+            if (demand >= full_resolution_pixels) continue;
 
             const float repeat_x = max(abs(render->ResolveUvTilingX()), 0.001f);
             const float repeat_y = max(abs(render->ResolveUvTilingY()), 0.001f);
@@ -1309,10 +1365,13 @@ namespace spartan
             if (render->HasInstancing() && !render->GetInstanceBoundsGroups().empty())
             {
                 for (const auto& group : render->GetInstanceBoundsGroups())
+                {
                     pixels = max(pixels, projected_pixels(group.bounds));
+                    if (pixels >= full_resolution_pixels) break;
+                }
             }
             else
-                pixels = projected_pixels(render->GetBoundingBox());
+                pixels = projected_pixels(data.bounding_box);
             demand = max(demand, pixels);
         }
         if (m_frame_num % demand_frames == demand_frames - 1)
@@ -3521,35 +3580,45 @@ namespace spartan
         // with ray traced shadows the tlas owns them and only visible draws are collected
         const bool shadow_maps_required = World::GetLightCount() > 0 && !IsRayTracedShadowsActive();
 
-        for (Entity* entity : render_entities())
+        struct Candidates { vector<Render*> renders; bool transparent = false; };
+        static array<Candidates, 8> batches;
+        for (auto& batch : batches)
         {
-            if (!entity || !entity->GetActive())
+            batch.renders.clear();
+            batch.transparent = false;
+        }
+        const auto& entries = render_scene_data();
+        const uint32_t jobs = entries.size() >= 256 ? static_cast<uint32_t>(batches.size()) : 1u;
+        auto collect = [&](uint32_t first, uint32_t last)
+        {
+            auto& batch = batches[first];
+            for (size_t i = entries.size() * first / jobs; i < entries.size() * last / jobs; ++i)
             {
-                continue;
+                const RenderSceneData& data = *entries[i];
+                if (!data.active.load(memory_order_relaxed) || !data.mesh || !data.material) continue;
+                Render* render = data.render;
+                batch.transparent |= data.material->IsTransparent();
+                if (!data.is_visible && !(shadow_maps_required && (data.flags & RenderFlags::CastsShadows)) &&
+                    (!data.has_decals || !data.instances.empty())) continue;
+                batch.renders.push_back(render);
             }
-            if (
-                secondary_render_root_active &&
-                entity != secondary_render_root_active &&
-                !entity->IsDescendantOf(
-                    secondary_render_root_active
-                )
-            )
-            {
-                continue;
-            }
+        };
+        if (jobs == 1) collect(0, 1);
+        else ThreadPool::ParallelLoop(collect, jobs);
 
-            // a worker may still be assigning the Render component, the mesh or the material, so guard every step
-            Render* render = entity->GetComponent<Render>();
-            if (!render || !render->GetMesh())
-            {
-                continue;
-            }
-
+        // Only the compact candidate set touches shared draw/decal staging.
+        // Merge in source order so capacity limits choose the same geometry.
+        static vector<Render*> candidates;
+        candidates.clear();
+        for (const auto& batch : batches)
+        {
+            m_transparents_present |= batch.transparent;
+            candidates.insert(candidates.end(), batch.renders.begin(), batch.renders.end());
+        }
+        for (Render* render : candidates)
+        {
+            Entity* entity = render->GetEntity();
             Material* material = render->GetMaterial();
-            if (!material)
-            {
-                continue;
-            }
 
             // Stage receiver data even off screen: a reflection may still see it.
             if (!render->GetDecals().empty() && !render->HasInstancing())
