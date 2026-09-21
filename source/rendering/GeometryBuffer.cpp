@@ -21,7 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "pch.h"
+#include "../core/Stopwatch.h"
 #include "GeometryBuffer.h"
+#include "../geometry/GeneratedCache.h"
 #include "../rhi/RHI_CommandList.h"
 #include "../rhi/RHI_Buffer.h"
 #include "../rhi/RHI_Device.h"
@@ -38,12 +40,13 @@ namespace spartan
     namespace
     {
         // cpu-side accumulators
-        // meshlet_micro_indices stays one corner per element here, the gpu copy packs four corners per uint
+        // Micro-indices are meshlet-local byte values on both CPU and GPU.
+        // Keep their existing corner offsets and four-byte block alignment.
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
         vector<Sb_MeshletBounds> meshlet_bounds;
         vector<uint32_t> meshlet_vertices;
-        vector<uint32_t> meshlet_micro_indices;
+        vector<uint8_t> meshlet_micro_indices;
         vector<Instance> instances;
 
         // micro index packing, a corner is a meshlet local vertex id below MESHLET_MAX_VERTICES so a byte is enough
@@ -53,18 +56,6 @@ namespace spartan
         uint32_t packed_micro_count(const uint32_t corner_count)
         {
             return (corner_count + micro_indices_per_uint - 1) / micro_indices_per_uint;
-        }
-
-        void pack_micro_indices(const uint32_t* corners, const uint32_t corner_count, vector<uint32_t>& packed_out)
-        {
-            const uint32_t packed_count = packed_micro_count(corner_count);
-            packed_out.assign(packed_count, 0);
-
-            for (uint32_t i = 0; i < corner_count; i++)
-            {
-                packed_out[i / micro_indices_per_uint] |=
-                    (corners[i] & 0xFFu) << ((i % micro_indices_per_uint) * 8u);
-            }
         }
 
         // gpu buffers
@@ -115,10 +106,17 @@ namespace spartan
 
         void upload(RHI_Buffer* buffer, const void* data, uint64_t offset, uint64_t size)
         {
+            const Stopwatch timer;
             if (RHI_Device::IsRecording())
                 RHI_CommandList::UpdateBuffer(buffer, offset, size, data, false);
             else
                 buffer->UploadSubRegion(data, offset, size);
+            if (size >= 64ull * 1024 * 1024)
+            {
+                const std::string name = buffer->GetObjectName();
+                SP_LOG_INFO("Geometry upload '%s': %.1f MB, %.2f ms", name.c_str(),
+                    size / (1024.0 * 1024.0), timer.GetElapsedTimeMs());
+            }
         }
 
         // deferred vertex uploads
@@ -315,7 +313,9 @@ namespace spartan
         uint32_t base_offset = static_cast<uint32_t>(meshlet_micro_indices.size());
         if (count > 0)
         {
-            meshlet_micro_indices.insert(meshlet_micro_indices.end(), data, data + count);
+            meshlet_micro_indices.resize(static_cast<size_t>(base_offset) + count);
+            for (uint32_t i = 0; i < count; ++i)
+                meshlet_micro_indices[static_cast<size_t>(base_offset) + i] = static_cast<uint8_t>(data[i]);
 
             // pad so the next block starts on a uint boundary, the padding corners are never indexed by a meshlet
             const size_t remainder = meshlet_micro_indices.size() % micro_indices_per_uint;
@@ -444,21 +444,17 @@ namespace spartan
         lock_guard<mutex> lock(buffer_mutex);
 
         SP_ASSERT(offset + count <= static_cast<uint32_t>(meshlet_micro_indices.size()));
-        memcpy(meshlet_micro_indices.data() + offset, data, count * sizeof(uint32_t));
+        for (uint32_t i = 0; i < count; ++i)
+            meshlet_micro_indices[static_cast<size_t>(offset) + i] = static_cast<uint8_t>(data[i]);
 
         if (count > 0 && meshlet_micro_index_buffer && offset + count <= meshlet_micro_count_committed)
         {
-            // repack from the cpu array rather than from data, so the tail uint keeps the block padding that lives past count
+            // Include neighboring bytes so unaligned edits preserve the rest of the GPU uint.
             const uint32_t aligned_offset = (offset / micro_indices_per_uint) * micro_indices_per_uint;
             const uint32_t aligned_count  = packed_micro_count(offset + count - aligned_offset) * micro_indices_per_uint;
             const uint32_t clamped_count  = min(aligned_count, static_cast<uint32_t>(meshlet_micro_indices.size()) - aligned_offset);
 
-            vector<uint32_t> packed;
-            pack_micro_indices(meshlet_micro_indices.data() + aligned_offset, clamped_count, packed);
-
-            const uint64_t byte_offset = static_cast<uint64_t>(packed_micro_count(aligned_offset)) * sizeof(uint32_t);
-            const uint64_t byte_size   = static_cast<uint64_t>(packed.size()) * sizeof(uint32_t);
-            meshlet_micro_index_buffer->UploadSubRegion(packed.data(), byte_offset, byte_size);
+            meshlet_micro_index_buffer->UploadSubRegion(meshlet_micro_indices.data() + aligned_offset, aligned_offset, clamped_count);
         }
     }
 
@@ -718,13 +714,9 @@ namespace spartan
 
             if (new_meshlet_micros > 0)
             {
-                // the committed count is always a multiple of the pack width, appends pad to keep it there
-                vector<uint32_t> packed;
-                pack_micro_indices(meshlet_micro_indices.data() + meshlet_micro_count_committed, new_meshlet_micros, packed);
-
-                uint64_t offset = static_cast<uint64_t>(packed_micro_count(meshlet_micro_count_committed)) * sizeof(uint32_t);
-                uint64_t size   = static_cast<uint64_t>(packed.size()) * sizeof(uint32_t);
-                upload(meshlet_micro_index_buffer.get(), packed.data(), offset, size);
+                // Appends already store the exact packed bytes, including block padding.
+                upload(meshlet_micro_index_buffer.get(), meshlet_micro_indices.data() + meshlet_micro_count_committed,
+                    meshlet_micro_count_committed, new_meshlet_micros);
             }
 
             if (new_instances > 0)
@@ -769,6 +761,43 @@ namespace spartan
         meshlet_vertex_reserve = max(meshlet_vertex_reserve, meshlet_vertex_count);
         meshlet_micro_reserve  = max(meshlet_micro_reserve,  meshlet_micro_count);
         instance_reserve       = max(instance_reserve,       instance_count);
+    }
+
+    void GeometryBuffer::ReserveForWorldLoad(const string& resources)
+    {
+        vector<uint32_t> counts;
+        constexpr uint64_t key = 1;
+        if (!generated_cache::Load(generated_cache::Path(resources, "geometry_capacity", key), key, counts) || counts.size() != 6) return;
+        const uint64_t bytes = uint64_t(counts[0]) * sizeof(RHI_Vertex_PosTexNorTan) +
+            uint64_t(counts[1]) * sizeof(uint32_t) + uint64_t(counts[2]) * sizeof(Sb_MeshletBounds) +
+            uint64_t(counts[3]) * sizeof(uint32_t) + uint64_t(counts[4]) * sizeof(uint8_t) + uint64_t(counts[5]) * sizeof(Instance);
+        // A corrupt/stale hint must not request an unbounded allocation. reserve
+        // changes capacity only; appends still initialize and validate all data.
+        if (bytes > 16ull * 1024 * 1024 * 1024) return;
+        lock_guard<mutex> lock(buffer_mutex);
+        try
+        {
+            vertices.reserve(counts[0]);
+            indices.reserve(counts[1]);
+            meshlet_bounds.reserve(counts[2]);
+            meshlet_vertices.reserve(counts[3]);
+            meshlet_micro_indices.reserve(counts[4]);
+            instances.reserve(counts[5]);
+        }
+        catch (const bad_alloc&) {} // Optional; normal vector growth remains valid.
+    }
+
+    void GeometryBuffer::SaveWorldLoadCapacity(const string& resources)
+    {
+        vector<uint32_t> counts;
+        {
+            lock_guard<mutex> lock(buffer_mutex);
+            counts = {static_cast<uint32_t>(vertices.size()), static_cast<uint32_t>(indices.size()),
+                static_cast<uint32_t>(meshlet_bounds.size()), static_cast<uint32_t>(meshlet_vertices.size()),
+                static_cast<uint32_t>(meshlet_micro_indices.size()), static_cast<uint32_t>(instances.size())};
+        }
+        constexpr uint64_t key = 1;
+        generated_cache::Save(generated_cache::Path(resources, "geometry_capacity", key), key, counts);
     }
 
     void GeometryBuffer::Shutdown()

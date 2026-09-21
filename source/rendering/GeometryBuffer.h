@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../rhi/RHI_Vertex.h"
 #include "Renderer_Buffers.h"
 #include "Instance.h"
+#include <string>
 //================================
 
 namespace spartan
@@ -79,6 +80,10 @@ namespace spartan
             uint32_t meshlet_micro_count,
             uint32_t instance_count
         );
+
+        // Capacity hints only: stale/missing hints never affect geometry or offsets.
+        static void ReserveForWorldLoad(const std::string& resources);
+        static void SaveWorldLoadCapacity(const std::string& resources);
 
         // destroy gpu buffers and clear cpu data
         static void Shutdown();

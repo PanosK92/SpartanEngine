@@ -1097,7 +1097,9 @@ namespace spartan
         RHI_CommandList::BeginMarker("particle_render");
         for (uint32_t i = 0; i < emitter_count; i++)
         {
-            if (range_counts[i] == 0)
+            // Traffic cars retain their smoke emitters even when idle. Keep
+            // their buffer slices stable, but don't draw thousands of dead quads.
+            if (range_counts[i] == 0 || !emitters[i]->HasLiveParticles())
             {
                 continue;
             }

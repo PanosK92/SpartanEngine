@@ -1096,28 +1096,23 @@ namespace
 
         spartan::ThreadPool::AddTask([]()
         {
-            spartan::Progress& progress = spartan::ProgressTracker::GetProgress(spartan::ProgressType::Download);
-            progress.Start(0, "Downloading projects...");
-            spartan::ProgressTracker::SetGlobalLoadingState(true);
+            auto progress = spartan::ProgressTracker::Begin(spartan::ProgressType::Download, "Project library", "Downloading projects");
 
             bool success = spartan::FileSystem::DownloadFile(
                 assets_url,
                 assets_destination,
                 [&progress](float download_progress)
                 {
-                    progress.SetFraction(download_progress * 0.9f);
+                    progress.SetFraction(download_progress);
                 }
             );
 
             if (success)
             {
-                progress.SetText("Extracting projects...");
-                progress.SetFraction(0.9f);
+                progress.SetStep("Extracting projects");
                 success = spartan::FileSystem::ExtractArchive(assets_destination, assets_extract_dir);
-                progress.SetFraction(1.0f);
             }
 
-            spartan::ProgressTracker::SetGlobalLoadingState(false);
             if (success)
             {
                 downloaded_and_extracted = true;

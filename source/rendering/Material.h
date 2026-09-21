@@ -171,6 +171,18 @@ namespace spartan
     class Material : public IResource
     {
     public:
+        // Batch property/texture edits into one final asset write.
+        class ScopedEdit
+        {
+        public:
+            explicit ScopedEdit(Material& material);
+            ~ScopedEdit();
+            ScopedEdit(const ScopedEdit&) = delete;
+            ScopedEdit& operator=(const ScopedEdit&) = delete;
+        private:
+            Material& m_material;
+        };
+
         Material();
         ~Material() = default;
 
@@ -220,6 +232,9 @@ namespace spartan
         void ClearPackedTextures();
 
     private:
+        uint32_t m_save_defer_count = 0;
+        bool m_save_deferred = false;
+
         void SetPropertyInternal(MaterialProperty property_type, float value, bool save);
         void SetColorInternal(const Color& color, bool save);
         void ResetPresetProperties(bool save);

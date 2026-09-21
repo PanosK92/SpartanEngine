@@ -3030,7 +3030,8 @@ namespace spartan
             return nullptr;
         }
 
-        Entity* wheel_source = wheel_root->GetChildByIndex(0);
+        // A single-root glTF can put the tire directly on the imported root.
+        Entity* wheel_source = wheel_root->GetComponent<Render>() ? wheel_root : wheel_root->GetChildByIndex(0);
         if (!wheel_source)
         {
             return nullptr;
@@ -3047,8 +3048,23 @@ namespace spartan
         std::vector<Entity*> wheel_parts = {wheel_base};
         wheel_base->GetDescendants(&wheel_parts);
         for (Entity* part : wheel_parts)
+        {
             if (Render* render = part->GetComponent<Render>())
+            {
                 render->SetFlag(RenderFlags::ExcludeFromTerrainBlend);
+                bool rotates = true;
+                for (Entity* ancestor = part; ancestor && ancestor != wheel_base; ancestor = ancestor->GetParent())
+                {
+                    if (ancestor->GetObjectName() == "brake_caliper")
+                    {
+                        rotates = false;
+                        break;
+                    }
+                }
+                if (Material* material = render->GetMaterial())
+                    material->SetProperty(MaterialProperty::MotionBlurRadial, rotates ? 1.0f : 0.0f);
+            }
+        }
 
         // wheel bounds must be measured at unit scale before absolute dimension scaling
         wheel_base->SetScale(1.0f);
@@ -3178,10 +3194,12 @@ namespace spartan
                 placements[index] = placement;
             }
         }
-        physics->ScaleWheelEntityToDimensions(wheel_fl, placements[0].radius, front_wheel_width);
-        physics->ScaleWheelEntityToDimensions(wheel_fr, placements[1].radius, front_wheel_width);
-        physics->ScaleWheelEntityToDimensions(wheel_rl, placements[2].radius, rear_wheel_width);
-        physics->ScaleWheelEntityToDimensions(wheel_rr, placements[3].radius, rear_wheel_width);
+        // The contact solver and visible tread must use the same unloaded radius.
+        // Donor wheels locate the arches; their radius does not override the tire preset.
+        physics->ScaleWheelEntityToDimensions(wheel_fl, front_wheel_radius, front_wheel_width);
+        physics->ScaleWheelEntityToDimensions(wheel_fr, front_wheel_radius, front_wheel_width);
+        physics->ScaleWheelEntityToDimensions(wheel_rl, rear_wheel_radius, rear_wheel_width);
+        physics->ScaleWheelEntityToDimensions(wheel_rr, rear_wheel_radius, rear_wheel_width);
 
         // front left
         wheel_fl->SetObjectName("wheel_front_left");

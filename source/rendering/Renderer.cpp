@@ -202,23 +202,43 @@ namespace spartan
         vector<Render*> ray_tracing_build_work;
         double ray_tracing_prepared_at = -1.0;
         bool ray_tracing_pending_blas = false;
+        bool ray_tracing_membership_dirty = false;
 
         void prepare_ray_tracing_renders()
         {
             ray_tracing_prepared_at = Timer::GetTimeMs();
+            static vector<Render*> previous_renders;
+            previous_renders.swap(ray_tracing_renders);
             ray_tracing_renders.clear();
             ray_tracing_build_work.clear();
             ray_tracing_pending_blas = false;
+            Camera* camera = World::GetCamera();
+            const Vector3 camera_position = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
             for (Entity* entity : render_entities())
             {
                 if (!entity || !entity->GetActive() || !is_secondary_view_entity(entity)) continue;
                 Render* render = entity->GetComponent<Render>();
                 if (!render || render->HasFlag(RenderFlags::ExcludeFromRayTracing)) continue;
+                // Respect authored visibility budgets for individual props too.
+                // Instanced scatter has its own per-instance distance cache below;
+                // terrain and other unlimited-distance geometry remain included.
+                if (camera && !render->HasInstancing())
+                {
+                    const float distance = max(render->GetMaxRenderDistance(), render->GetMaxShadowDistance());
+                    if (distance >= 0.0f && distance < numeric_limits<float>::max() * 0.5f)
+                    {
+                        const BoundingBox& bounds = render->GetBoundingBox();
+                        const float radius = distance + 25.0f;
+                        if (Vector3::DistanceSquared(camera_position, bounds.GetClosestPoint(camera_position)) > radius * radius)
+                            continue;
+                    }
+                }
                 ray_tracing_renders.push_back(render);
                 const bool missing = !render->HasAccelerationStructure();
                 ray_tracing_pending_blas |= missing;
                 if (missing || render->NeedsBlasRefit()) ray_tracing_build_work.push_back(render);
             }
+            ray_tracing_membership_dirty |= ray_tracing_renders != previous_renders;
         }
 
         bool ensure_secondary_view_targets(
@@ -761,8 +781,9 @@ namespace spartan
         }
 
         sanitize_vendor_upscaler_resolution();
-        RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), GetResolutionScale());
         tick_dynamic_resolution_scale();
+        // Jitter generation and vendor dispatch must use this frame's active render size.
+        RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), GetResolutionScale());
         if (Debugging::IsBreadcrumbsEnabled())
         {
             Breadcrumbs::StartFrame();
@@ -773,6 +794,9 @@ namespace spartan
         const uint32_t min_render_dimension = 64;
         const bool resolution_valid         = m_resolution_render.x >= min_render_dimension && m_resolution_render.y >= min_render_dimension;
         const bool can_render               = !Window::IsMinimized() && m_initialized_resources && resolution_valid;
+        // Keep presenting the last viewport image and the loading UI, but don't
+        // rebuild/draw a half-published world or compete with its bulk uploads.
+        const bool render_world             = can_render && !World::IsLoadingFromFile();
 
         if (can_render)
         {
@@ -801,7 +825,7 @@ namespace spartan
         float secondary_wireframe_previous =
             cvar_wireframe.GetValue();
 
-        if (can_render)
+        if (render_world)
         {
             TickUpdateHiZSuppressionState();
             if (secondary_view_recovery_frames > 0)
@@ -993,7 +1017,7 @@ namespace spartan
             xr_should_render = Xr::BeginFrame();
         }
 
-        if (can_render)
+        if (render_world)
         {
             UpdateFrameConstantBuffer();
             ProduceFrame();
@@ -2876,7 +2900,15 @@ namespace spartan
         static unordered_set<uint64_t> unique_material_ids;
         static bool capacity_warning_logged = false;
         uint32_t count = 0;
-        const uint32_t material_slot_count = static_cast<uint32_t>(MaterialTextureType::Max) * Material::slots_per_texture;
+        // Only shader-visible maps need descriptors. Reserving the five CPU-only
+        // source maps exhausted the table in plan.world and sent grass to index 0.
+        // Keep this order in sync with common_resources_buffers.hlsl; serialized
+        // MaterialTextureType indices remain unchanged.
+        static constexpr array gpu_texture_types = {
+            MaterialTextureType::Color, MaterialTextureType::Normal,
+            MaterialTextureType::Emission, MaterialTextureType::Packed
+        };
+        const uint32_t material_slot_count = static_cast<uint32_t>(gpu_texture_types.size()) * Material::slots_per_texture;
 
         auto should_decode_as_srgb = [](RHI_Texture* texture)
         {
@@ -2992,22 +3024,14 @@ namespace spartan
     
             // textures
             {
-                for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); type++)
+                for (uint32_t type = 0; type < gpu_texture_types.size(); type++)
                 {
-                    // shaders read these channels from the packed texture, the sources stay cpu only and never get an
-                    // srv, binding them kept the null srv retry below re-uploading every material on every frame
-                    const MaterialTextureType texture_type = static_cast<MaterialTextureType>(type);
-                    const bool cpu_only =
-                        texture_type == MaterialTextureType::Roughness ||
-                        texture_type == MaterialTextureType::Metalness ||
-                        texture_type == MaterialTextureType::Occlusion ||
-                        texture_type == MaterialTextureType::Height    ||
-                        texture_type == MaterialTextureType::AlphaMask;
+                    const MaterialTextureType texture_type = gpu_texture_types[type];
 
                     for (uint32_t slot = 0; slot < Material::slots_per_texture; slot++)
                     {
                         uint32_t bindless_index = count + (type * Material::slots_per_texture) + slot;
-                        m_bindless_textures[bindless_index] = cpu_only ? nullptr : material->GetTexture(texture_type, slot);
+                        m_bindless_textures[bindless_index] = material->GetTexture(texture_type, slot);
                     }
                 }
             }
@@ -4239,6 +4263,7 @@ namespace spartan
         {
             const bool structural_tlas_rebuild =
                 !m_tlas ||
+                ray_tracing_membership_dirty ||
                 materials_uploaded_this_frame ||
                 blas_refit_done ||
                 blas_built_this_frame;
@@ -4464,12 +4489,14 @@ namespace spartan
                 // passes bound at zero and read whatever an earlier rebuild had left there
                 geometry_info_buffer->ResetOffset();
                 geometry_info_buffer->Update(geometry_infos.data(), static_cast<uint32_t>(geometry_infos.size() * sizeof(Sb_GeometryInfo)));
+                ray_tracing_membership_dirty = false;
             }
             else if (last_instance_count != 0)
             {
                 SP_LOG_INFO("Ray tracing: destroying TLAS (world changed)");
                 m_tlas = nullptr;
                 last_instance_count = 0;
+                ray_tracing_membership_dirty = false;
             }
 
             RHI_CommandList::EndMarker();

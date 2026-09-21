@@ -362,8 +362,18 @@ namespace spartan
                     RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::rt_shadows_local), tex_shadows_local, rhi_all_mips, 0, true);
                 }
 
-                // x tells the raygen whether transparents exist, opaque scenes take a single accept first hit ray
-                m_pcb_pass_cpu.set_f3_value(m_transparents_present ? 1.0f : 0.0f);
+                // Resolve the four SIGMA slots once per frame, rather than scanning
+                // every visible street light for every shaded pixel.
+                static_assert(nrd_local_shadow_max == 4);
+                float shadow_lights[nrd_local_shadow_max] = {};
+                for (uint32_t i = 1; i < m_count_active_lights; ++i)
+                {
+                    const uint32_t flags = m_bindless_lights[i].flags;
+                    const uint32_t slot = (flags >> 8u) & 7u;
+                    if (slot > 0 && slot <= nrd_local_shadow_max && (flags & (1u << 3)) != 0)
+                        shadow_lights[slot - 1] = static_cast<float>(i);
+                }
+                m_pcb_pass_cpu.set_f4_value(shadow_lights[0], shadow_lights[1], shadow_lights[2], shadow_lights[3]);
 
                 uint32_t width  = tex_shadows->GetWidth();
                 uint32_t height = tex_shadows->GetHeight();

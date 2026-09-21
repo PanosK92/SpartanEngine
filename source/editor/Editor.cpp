@@ -74,7 +74,7 @@ void Editor::Tick()
 
         const bool render_editor = spartan::Engine::IsFlagSet(
             spartan::EngineMode::EditorVisible
-        );
+        ) && !(spartan::Engine::HasArgument("--mcp-control") && spartan::Engine::HasArgument("--mcp-hidden"));
         // Runtime HUDs also use ImGui. Keep its frame and presentation alive
         // when the editor panels are hidden.
         spartan::Renderer::SetPresentInRenderer(false);

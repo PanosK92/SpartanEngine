@@ -35,6 +35,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../resource/import/ImageImporter.h"
 #include "../core/ProgressTracker.h"
 #include "../profiling/Breadcrumbs.h"
+#include "../geometry/GeneratedCache.h"
+#include "../world/World.h"
 //===========================================
 
 //= NAMESPACES =====
@@ -720,7 +722,7 @@ namespace spartan
 
     void RHI_Texture::LoadFromFile(const string& file_path)
     {
-        ProgressTracker::SetGlobalLoadingState(true);
+        auto progress = ProgressTracker::Begin(ProgressType::Texture, FileSystem::GetFileNameFromFilePath(file_path), "Reading texture");
         ClearData();
 
         {
@@ -748,7 +750,6 @@ namespace spartan
             {
                 SP_LOG_ERROR("Failed to open native texture %s", file_path.c_str());
                 Breadcrumbs::EndMarker(); // texture_load
-                ProgressTracker::SetGlobalLoadingState(false);
                 return;
             }
 
@@ -757,7 +758,6 @@ namespace spartan
             {
                 SP_LOG_ERROR("Failed to read header for %s", file_path.c_str());
                 Breadcrumbs::EndMarker(); // texture_load
-                ProgressTracker::SetGlobalLoadingState(false);
                 return;
             }
 
@@ -790,7 +790,6 @@ namespace spartan
                     {
                         SP_LOG_ERROR("Failed to read size for slice %u mip %u in %s", array_index, mip_index, file_path.c_str());
                         Breadcrumbs::EndMarker(); // texture_load
-                        ProgressTracker::SetGlobalLoadingState(false);
                         return;
                     }
 
@@ -800,7 +799,6 @@ namespace spartan
                     {
                         SP_LOG_ERROR("Failed to read data for slice %u mip %u in %s", array_index, mip_index, file_path.c_str());
                         Breadcrumbs::EndMarker(); // texture_load
-                        ProgressTracker::SetGlobalLoadingState(false);
                         return;
                     }
                 }
@@ -824,10 +822,10 @@ namespace spartan
         // (alpha mask merging into color.a is the canonical case, an early upload would freeze the pre-merge bytes on the gpu)
         if (!(m_flags & RHI_Texture_DeferUpload))
         {
+            progress.SetStep("Preparing texture for GPU");
             PrepareForGpu();
         }
 
-        ProgressTracker::SetGlobalLoadingState(false);
     }
 
     RHI_Texture_Mip* RHI_Texture::GetMip(const uint32_t array_index, const uint32_t mip_index)
@@ -1030,7 +1028,52 @@ namespace spartan
         bool is_not_compressed   = !IsCompressedFormat();                    // the bistro world loads pre-compressed textures
         bool is_material_texture = IsMaterialTexture() && !m_slices.empty(); // render targets or textures which are written to in compute passes, don't need mip and compression
 
-        if (is_not_compressed && is_material_texture)
+        // Cache the final compressed mip chain using the actual post-material
+        // pixels. Alpha-mask merges, generated normals and packed channels are
+        // therefore part of the key, rather than being bypassed by a path cache.
+        generated_cache::Hash bake_key;
+        filesystem::path bake_path;
+        bool restored_mips = false;
+        RHI_Format target = m_compression_format != RHI_Format::Max ? m_compression_format : RHI_Format::BC3_Unorm;
+        if (is_not_compressed && is_material_texture && (m_flags & RHI_Texture_Compress) &&
+            m_type == RHI_Texture_Type::Type2D && m_depth == 1 && m_slices.size() == 1 &&
+            m_slices[0].mips.size() == 1 && m_format == RHI_Format::R8G8B8A8_Unorm &&
+            !World::GetResourceDirectory().empty())
+        {
+            if (target == RHI_Format::BC1_Unorm && HasAlphaPixels())
+            {
+                target = RHI_Format::BC3_Unorm;
+                m_flags |= RHI_Texture_Transparent;
+            }
+            bake_key.Add(uint32_t{1}); // bump when mip filtering or BC compression changes
+            bake_key.Add(m_width); bake_key.Add(m_height); bake_key.Add(m_format); bake_key.Add(target);
+            const auto& pixels = m_slices[0].mips[0].bytes;
+            bake_key.Add(generated_cache::HashBytes(pixels.data(), pixels.size()));
+            bake_path = generated_cache::Path(World::GetResourceDirectory(), "texture_mips", bake_key.value);
+            vector<uint8_t> bytes;
+            const uint32_t mip_count = mips::compute_count(m_width, m_height);
+            size_t expected_size = 0;
+            for (uint32_t mip = 0; mip < mip_count; ++mip)
+                expected_size += CalculateMipSize(max(1u, m_width >> mip), max(1u, m_height >> mip), 1, target, 8, 4);
+            if (generated_cache::Load(bake_path, bake_key.value, bytes) && bytes.size() == expected_size)
+            {
+                vector<RHI_Texture_Mip> prepared(mip_count);
+                size_t cursor = 0;
+                for (uint32_t mip = 0; mip < mip_count; ++mip)
+                {
+                    const size_t size = CalculateMipSize(max(1u, m_width >> mip), max(1u, m_height >> mip), 1, target, 8, 4);
+                    prepared[mip].bytes.resize(size);
+                    memcpy(prepared[mip].bytes.data(), bytes.data() + cursor, size);
+                    cursor += size;
+                }
+                m_slices[0].mips = move(prepared);
+                m_mip_count = mip_count;
+                SetFormat(target);
+                restored_mips = true;
+            }
+        }
+
+        if (is_not_compressed && is_material_texture && !restored_mips)
         {
             // generate mip chain for all slices
             Breadcrumbs::BeginMarker("texture_mip_generation");
@@ -1056,7 +1099,6 @@ namespace spartan
             bool not_compressed = !IsCompressedFormat();
             if (compress && not_compressed)
             {
-                RHI_Format target = m_compression_format != RHI_Format::Max ? m_compression_format : RHI_Format::BC3_Unorm;
                 if (target == RHI_Format::BC1_Unorm && HasAlphaPixels())
                 {
                     target = RHI_Format::BC3_Unorm;
@@ -1068,6 +1110,20 @@ namespace spartan
                     SP_LOG_WARNING("GPU compression skipped for '%s', texture will remain uncompressed", m_object_name.c_str());
                 }
             }
+        }
+
+        if (!bake_path.empty() && !restored_mips && m_format == target && IsCompressedFormat())
+        {
+            vector<uint8_t> bytes;
+            size_t total = 0;
+            for (const auto& mip : m_slices[0].mips) total += mip.bytes.size();
+            bytes.reserve(total);
+            for (const auto& mip : m_slices[0].mips)
+            {
+                const auto* first = reinterpret_cast<const uint8_t*>(mip.bytes.data());
+                bytes.insert(bytes.end(), first, first + mip.bytes.size());
+            }
+            generated_cache::Save(bake_path, bake_key.value, bytes);
         }
 
         // upload to gpu

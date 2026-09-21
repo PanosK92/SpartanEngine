@@ -95,6 +95,11 @@ namespace spartan
         float m_fps                   = 0.0f;
         uint32_t timing_sample_count   = 0;
 
+        // Live throughput is independent of the slower CPU/GPU profiling averages.
+        constexpr double fps_update_interval_sec = 0.25;
+        double fps_elapsed_sec = 0.0;
+        uint32_t fps_frame_count = 0;
+
         // time blocks (double buffered)
         int m_time_block_index = -1;
         vector<int> open_time_blocks;
@@ -1219,6 +1224,21 @@ namespace spartan
 
     void Profiler::PostTick()
     {
+        // Count every completed frame, including pacing and stalls. Averaging
+        // frame counts over elapsed time avoids bias from averaging reciprocal deltas.
+        const double delta_sec = Timer::GetDeltaTimeSec();
+        if (delta_sec > 0.0)
+        {
+            fps_elapsed_sec += delta_sec;
+            fps_frame_count++;
+            if (fps_elapsed_sec >= fps_update_interval_sec)
+            {
+                m_fps = static_cast<float>(fps_frame_count / fps_elapsed_sec);
+                fps_elapsed_sec = 0.0;
+                fps_frame_count = 0;
+            }
+        }
+
         // measure frame duration for timeline
         frame_duration_ms = GetCpuOffsetMs(RHI_Device::GetCpuTimestampMs());
 
@@ -1393,13 +1413,6 @@ namespace spartan
                     max(time_frame_max, time_frame_last);
             }
             timing_sample_count++;
-
-            // fps
-            m_fps =
-                time_frame_avg > 0.0f ?
-                    1000.0f /
-                        time_frame_avg :
-                    0.0f;
         }
 
         if (
@@ -1546,6 +1559,10 @@ namespace spartan
     {
         ClearRhiMetrics();
 
+        m_fps           = 0.0f;
+        fps_elapsed_sec = 0.0;
+        fps_frame_count = 0;
+
         time_frame_avg  = 0.0f;
         time_frame_min  = numeric_limits<float>::max();
         time_frame_max  = numeric_limits<float>::lowest();
@@ -1675,12 +1692,12 @@ namespace spartan
     void Profiler::DrawPerformanceMetrics()
     {
         static char metrics_buffer[16384]            = { 0 };
-        static float metrics_time_since_last_update  = profiling_interval_sec;
-        metrics_time_since_last_update              += static_cast<float>(Timer::GetDeltaTimeSec());
+        static double metrics_time_since_last_update = fps_update_interval_sec;
+        metrics_time_since_last_update              += Timer::GetDeltaTimeSec();
 
-        if (metrics_time_since_last_update >= profiling_interval_sec)
+        if (metrics_time_since_last_update >= fps_update_interval_sec)
         {
-            metrics_time_since_last_update = 0.0f;
+            metrics_time_since_last_update = 0.0;
             int offset = 0;
 
             // fps and frames
@@ -1688,7 +1705,7 @@ namespace spartan
                 "FPS:\t\t%.1f\n"
                 "Time:\t\t%.2f ms\n"
                 "Frame:\t\t%llu\n\n",
-                m_fps, time_frame_avg, Renderer::GetFrameNumber());
+                m_fps, m_fps > 0.0f ? 1000.0f / m_fps : 0.0f, Renderer::GetFrameNumber());
             SP_ASSERT(offset < sizeof(metrics_buffer));
 
             // timings

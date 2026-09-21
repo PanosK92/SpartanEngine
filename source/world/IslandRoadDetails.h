@@ -7,35 +7,49 @@
 #include "components/Render.h"
 #include "../rendering/Material.h"
 #include "../geometry/Mesh.h"
+#include "../geometry/GeometryProcessing.h"
 #include "../geometry/GeneratedCache.h"
 #include "../core/Stopwatch.h"
+#include "../core/ProgressTracker.h"
+#include "../core/ThreadPool.h"
+#include "../core/Engine.h"
 #include "../rhi/RHI_Vertex.h"
 #include <unordered_map>
 #include <array>
 #include <cstring>
+#include "RoadGuardrail.h"
 
 namespace spartan::island_road_details
 {
     using namespace math;
-    enum Finish { White, Red, Metal, Dark, Yellow, FinishCount };
+    enum Finish { White, Red, Metal, Dark, Yellow, Galvanized, ReflectiveAmber, FinishCount };
     struct Road { uint64_t id; uint64_t detail_id = 0; uint64_t signature = 0; };
     inline std::vector<Road> roads;
+    inline std::unordered_map<uint64_t, uint64_t> preparation_keys;
     inline std::unordered_map<std::string,uint32_t> junction_degree;
     inline std::array<std::shared_ptr<Material>, FinishCount> materials;
     inline std::shared_ptr<Mesh> triangle;
     inline uint64_t root_id = 0;
     inline size_t cursor = 0;
     inline float discover_time = 0;
+    inline double cache_ms = 0, build_ms = 0, save_ms = 0;
+    inline uint32_t cache_hits = 0, cache_misses = 0;
 
+    inline void ClearBakes();
     inline void Clear()
     {
+        ClearBakes();
         roads.clear();
+        preparation_keys.clear();
         junction_degree.clear();
         materials.fill(nullptr);
         triangle.reset();
+        road_guardrail::Clear();
         root_id = 0;
         cursor = 0;
         discover_time = 0;
+        cache_ms = build_ms = save_ms = 0;
+        cache_hits = cache_misses = 0;
     }
 
     inline Entity* Part(Entity* parent, const char* name, Vector3 position, Vector3 scale, Finish finish, bool triangular = false)
@@ -43,12 +57,25 @@ namespace spartan::island_road_details
         if (!materials[finish])
         {
             static const Color colors[] = {Color(.88f,.89f,.84f,1),Color(.65f,.015f,.012f,1),
-                Color(.35f,.38f,.4f,1),Color(.025f,.03f,.035f,1),Color(1,.65f,.015f,1)};
+                Color(.35f,.38f,.4f,1),Color(.025f,.03f,.035f,1),Color(1,.65f,.015f,1),Color(1,1,1,1),Color(1,1,1,1)};
             materials[finish] = std::make_shared<Material>();
             materials[finish]->SetObjectName("roadside_finish_"+std::to_string(finish));
             materials[finish]->SetColor(colors[finish]);
             materials[finish]->SetProperty(MaterialProperty::Roughness,finish == Metal ? .42f : .7f);
             materials[finish]->SetProperty(MaterialProperty::Metalness,finish == Metal ? .7f : 0);
+            const std::string assets=World::GetResourceDirectory()+"guardrail/";
+            if (finish==Galvanized)
+            {
+                materials[finish]->SetTexture(MaterialTextureType::Color,assets+"zinc_color.png");
+                materials[finish]->SetTexture(MaterialTextureType::Roughness,assets+"zinc_roughness.png");
+                materials[finish]->SetTexture(MaterialTextureType::Metalness,assets+"zinc_metalness.png");
+                materials[finish]->SetTexture(MaterialTextureType::Normal,assets+"zinc_normal.png");
+            }
+            else if (finish==ReflectiveAmber)
+            {
+                materials[finish]->SetTexture(MaterialTextureType::Color,assets+"reflector_color.png");
+                materials[finish]->SetProperty(MaterialProperty::Roughness,.22f);
+            }
         }
         Entity* part = World::CreateEntity();
         part->SetObjectName(name);
@@ -59,11 +86,30 @@ namespace spartan::island_road_details
         Render* render = part->AddComponent<Render>();
         if (triangular) render->SetMesh(triangle.get()); else render->SetMesh(MeshType::Cube);
         render->SetMaterial(materials[finish]);
-        render->SetMaxRenderDistance(250);
-        render->SetMaxShadowDistance(45);
-        render->SetFlag(RenderFlags::ExcludeFromRayTracing);
+        render->SetMaxRenderDistance(finish==Galvanized || finish==ReflectiveAmber ? 650.0f : 250.0f);
+        render->SetMaxShadowDistance(finish==Galvanized ? 120.0f : 45.0f);
+        if (finish!=Galvanized && finish!=ReflectiveAmber) render->SetFlag(RenderFlags::ExcludeFromRayTracing);
         render->SetFlag(RenderFlags::ExcludeFromTerrainBlend);
         return part;
+    }
+
+    // Per-instance bounds already provide spatial culling. Do not create three
+    // separate render entities for every 64 metres of otherwise identical hardware.
+    inline void PublishGuardrailInstances(Entity* group, std::array<std::vector<Matrix>, road_guardrail::ModuleCount>& instances)
+    {
+        for (const auto module : {road_guardrail::Post, road_guardrail::Splice, road_guardrail::Reflector})
+        {
+            auto& transforms = instances[module];
+            if (transforms.empty()) continue;
+            const Vector3 origin = transforms.front().GetTranslation();
+            const Matrix local(-origin, Quaternion::Identity, Vector3::One);
+            for (auto& transform : transforms) transform = transform * local;
+            Entity* batch = Part(group, road_guardrail::InstanceName(module), origin, Vector3::One,
+                module == road_guardrail::Reflector ? ReflectiveAmber : Galvanized);
+            Render* render = batch->GetComponent<Render>();
+            render->SetOwnedMesh(road_guardrail::SharedMesh(module));
+            render->SetInstances(transforms);
+        }
     }
 
     inline void MakeTriangle()
@@ -95,7 +141,7 @@ namespace spartan::island_road_details
         return anchor;
     }
 
-    inline void Build(Entity* road, Spline* spline, Entity* group)
+    inline void Build(Entity* road, Spline* spline, Entity* group, const ProgressTask& progress)
     {
         const auto& frames = spline->GetRoadFrames();
         if (frames.size() < 3) return;
@@ -179,15 +225,6 @@ namespace spartan::island_road_details
             for (float half : {-1.0f,1.0f})
                 Part(sign,"chevron",Vector3(0,1.7f+half*.13f,.04f),Vector3(.42f,.1f,.02f),Yellow)
                     ->SetRotationLocal(Quaternion::FromEulerAngles(0,0,-turn*half*40));
-            // A short barrier on the outside of a sharp bend, never across a junction.
-            for (int step=0;step<7;++step)
-            {
-                const size_t j=before+(after-before)*step/6;
-                if (near_junction(j,30)) continue;
-                Entity* rail=Anchor(group,"roadside_guardrail",roadside(j,tangent_at(j),-turn),tangent_at(j));
-                Part(rail,"rail_post",Vector3(0,.45f,0),Vector3(.10f,.9f,.10f),Metal);
-                Part(rail,"beam",Vector3(0,.75f,0),Vector3(.12f,.22f,7),Metal);
-            }
         }
         // Repeated furniture shares merged meshes. Keep signs individually
         // selectable, without retaining thousands of post/rail entities.
@@ -196,7 +233,7 @@ namespace spartan::island_road_details
         for (Entity* anchor:children)
         {
             const std::string& name=anchor->GetObjectName();
-            if (name!="roadside_delineator" && name!="roadside_guardrail") continue;
+            if (name!="roadside_delineator") continue;
             for (Entity* part:anchor->GetChildren())
             {
                 Render* render=part->GetComponent<Render>();
@@ -230,6 +267,66 @@ namespace spartan::island_road_details
             mesh->CreateGpuBuffers();
             render->SetOwnedMesh(mesh);
         }
+        struct GuardrailBatch
+        {
+            Vector3 origin;
+            size_t finish;
+            road_guardrail::GeometryLods lods;
+            std::shared_ptr<Mesh> mesh;
+        };
+        std::vector<GuardrailBatch> guardrails;
+        std::array<std::vector<Matrix>, road_guardrail::ModuleCount> hardware;
+        progress.SetStep("Placing guardrails");
+        road_guardrail::Build(road,spline,junctions,[&](const Vector3& origin,size_t finish,road_guardrail::GeometryLods& lods)
+        {
+            guardrails.push_back({origin, finish, std::move(lods), {}});
+        },[&](const Vector3& origin,road_guardrail::Module module,const std::vector<Matrix>& instances)
+        {
+            const Matrix transform(origin, Quaternion::Identity, Vector3::One);
+            for (const Matrix& instance : instances) hardware[module].push_back(instance * transform);
+        });
+        PublishGuardrailInstances(group, hardware);
+        if (!guardrails.empty())
+        {
+            progress.SetStep("Building guardrail meshes and LODs");
+            std::atomic<uint32_t> next{0};
+            ThreadPool::ParallelLoop([&](uint32_t, uint32_t)
+            {
+                for (uint32_t i; (i = next.fetch_add(1, std::memory_order_relaxed)) < guardrails.size();)
+                {
+                    auto& batch = guardrails[i];
+                    batch.mesh = std::make_shared<Mesh>();
+                    batch.mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveLod0) |
+                        static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
+                    auto& base = batch.lods[0];
+                    batch.mesh->AddGeometry(base.vertices, base.indices, false);
+                    size_t previous_count = base.indices.size();
+                    for (uint32_t lod = 1; lod < mesh_lod_count; ++lod)
+                    {
+                        auto& level = batch.lods[lod];
+                        if (level.indices.size() >= previous_count * mesh_lod_min_reduction) break;
+                        geometry_processing::weld_and_optimize(level.vertices, level.indices);
+                        batch.mesh->AddLod(level.vertices, level.indices, 0);
+                        previous_count = level.indices.size();
+                    }
+                    for (auto& level : batch.lods)
+                    {
+                        std::vector<RHI_Vertex_PosTexNorTan>().swap(level.vertices);
+                        std::vector<uint32_t>().swap(level.indices);
+                    }
+                }
+            }, static_cast<uint32_t>(guardrails.size()));
+            progress.SetStep("Publishing guardrail geometry");
+            for (auto& batch : guardrails)
+            {
+                Entity* entity = Part(group, batch.finish == 0 ? "roadside_guardrail_steel" : "roadside_guardrail_reflectors",
+                    batch.origin, Vector3::One, batch.finish == 0 ? Galvanized : ReflectiveAmber);
+                batch.mesh->SetObjectName(entity->GetObjectName() + "_" + std::to_string(entity->GetObjectId()));
+                batch.mesh->CreateGpuBuffers();
+                entity->GetComponent<Render>()->SetOwnedMesh(batch.mesh);
+                if (batch.finish == 0) road_guardrail::AddCollision(entity);
+            }
+        }
     }
 
     struct BakedPart
@@ -238,30 +335,162 @@ namespace spartan::island_road_details
         Vector3 position, scale;
         Quaternion rotation;
         char name[64] = {};
+        uint32_t block = UINT32_MAX, offset = 0, size = 0;
     };
 
-    inline bool LoadDetails(Entity* group, uint64_t key)
+    struct BakedRoad
     {
         std::vector<BakedPart> parts;
-        const std::string resources = World::GetResourceDirectory();
+        std::vector<std::shared_ptr<Mesh>> meshes;
+        std::vector<std::vector<Matrix>> instances;
+        std::future<void> ready;
+        bool valid = false;
+    };
+    inline std::unordered_map<uint64_t, std::shared_ptr<BakedRoad>> pending_bakes;
+    inline void ClearBakes()
+    {
+        for (auto& [key, bake] : pending_bakes) if (bake->ready.valid()) bake->ready.wait();
+        pending_bakes.clear();
+    }
+
+    inline bool ReadDetails(BakedRoad& data, const std::string& resources, uint64_t key)
+    {
+        auto& parts = data.parts;
         if (!generated_cache::Load(generated_cache::Path(resources, "road_furniture", key), key, parts)) return false;
-        std::vector<std::shared_ptr<Mesh>> meshes(parts.size());
+        if (parts.empty()) return true;
+        auto& meshes = data.meshes;
+        auto& instances = data.instances;
+        meshes.resize(parts.size());
+        instances.resize(parts.size());
+        uint32_t block_count = 0;
         for (size_t i = 0; i < parts.size(); ++i)
         {
             const auto& p = parts[i];
-            if ((p.parent != UINT32_MAX && p.parent >= i) || p.finish > FinishCount || p.shape > 2 ||
+            if ((p.parent != UINT32_MAX && p.parent >= i) || p.finish > FinishCount || p.shape >= 3+road_guardrail::ModuleCount ||
                 !p.position.IsFinite() || !p.scale.IsFinite() || p.name[63] != 0) return false;
-            if (p.shape == 2)
+            if (p.shape >= 2)
             {
-                generated_cache::Hash mesh_key; mesh_key.Add(key); mesh_key.Add(uint64_t(i));
-                meshes[i] = std::make_shared<Mesh>();
-                if (!meshes[i]->LoadPrepared(generated_cache::Path(resources, "road_furniture_mesh", mesh_key.value).string(), mesh_key.value)) return false;
+                if (p.block >= parts.size() || p.size == 0) return false;
+                block_count = std::max(block_count, p.block + 1);
+            }
+            if (p.shape>=3)
+            {
+                const auto module=static_cast<road_guardrail::Module>(p.shape-3);
+                if (road_guardrail::InstanceModule(p.name)!=module) return false;
             }
         }
+        std::atomic<bool> valid{true};
+        std::vector<std::vector<uint8_t>> blocks(block_count);
+        if (block_count)
+        {
+            ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
+            {
+                for (uint32_t i = begin; i < end; ++i)
+                {
+                    generated_cache::Hash block_key; block_key.Add(key); block_key.Add(i);
+                    const auto path = generated_cache::Path(resources, "road_furniture_blocks", block_key.value);
+                    generated_cache::ReadMeasurement measurement{"road_furniture_blocks"};
+                    // Keep the decoded byte-vector's eight-byte header in place.
+                    // Copying it into another vector duplicated every road block
+                    // before the prepared meshes even read their own slices.
+                    uint64_t byte_count = 0;
+                    bool loaded = generated_cache::ReadPayload(path, block_key.value, blocks[i]) && blocks[i].size() >= sizeof(byte_count);
+                    if (loaded)
+                    {
+                        memcpy(&byte_count, blocks[i].data(), sizeof(byte_count));
+                        loaded = byte_count == blocks[i].size() - sizeof(byte_count);
+                    }
+                    measurement.hit = loaded;
+                    if (!loaded)
+                    {
+                        std::error_code error;
+                        measurement.missing = !std::filesystem::exists(path, error);
+                        valid.store(false, std::memory_order_relaxed);
+                    }
+                }
+            }, block_count);
+            if (!valid.load(std::memory_order_relaxed)) return false;
+        }
+        ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
+        {
+            for (size_t i = begin; i < end && valid.load(std::memory_order_relaxed); ++i)
+            {
+                const auto& part = parts[i];
+                if (part.shape < 2) continue;
+                const auto& encoded_block = blocks[part.block];
+                const std::span<const uint8_t> block(encoded_block.data() + sizeof(uint64_t), encoded_block.size() - sizeof(uint64_t));
+                if (uint64_t(part.offset) + part.size > block.size())
+                {
+                    valid.store(false, std::memory_order_relaxed);
+                    continue;
+                }
+                const std::span<const uint8_t> bytes(block.data() + part.offset, part.size);
+                bool loaded = true;
+                if (parts[i].shape >= 3)
+                {
+                    loaded = generated_cache::Decode(bytes,instances[i]) && !instances[i].empty();
+                    for (const Matrix& matrix : instances[i])
+                        for (size_t element = 0; element < 16; ++element) loaded &= std::isfinite(matrix.Data()[element]);
+                }
+                else if (parts[i].shape == 2)
+                {
+                    meshes[i] = std::make_shared<Mesh>();
+                    loaded = meshes[i]->LoadPrepared(bytes);
+                }
+                if (!loaded) valid.store(false, std::memory_order_relaxed);
+            }
+        }, static_cast<uint32_t>(parts.size()));
+        if (!valid.load(std::memory_order_relaxed)) return false;
+        return true;
+    }
+
+    inline void PrefetchBake(uint64_t key)
+    {
+        if (pending_bakes.contains(key)) return;
+        auto data = std::make_shared<BakedRoad>();
+        const std::string resources = World::GetResourceDirectory();
+        data->ready = ThreadPool::AddTask([data, resources, key]() { data->valid = ReadDetails(*data, resources, key); });
+        pending_bakes.emplace(key, std::move(data));
+    }
+
+    inline bool LoadDetails(Entity* group, uint64_t key, const ProgressTask& progress)
+    {
+        progress.SetStep("Reading cached guardrail geometry");
+        std::shared_ptr<BakedRoad> data;
+        if (auto found = pending_bakes.find(key); found != pending_bakes.end())
+        {
+            data = std::move(found->second);
+            pending_bakes.erase(found);
+            data->ready.get();
+        }
+        else
+        {
+            data = std::make_shared<BakedRoad>();
+            data->valid = ReadDetails(*data, World::GetResourceDirectory(), key);
+        }
+        if (!data->valid) return false;
+        auto& parts = data->parts;
+        auto& meshes = data->meshes;
+        auto& instances = data->instances;
+        for (size_t i = 0; i < parts.size(); ++i)
+            if (parts[i].shape >= 3) meshes[i] = road_guardrail::SharedMesh(static_cast<road_guardrail::Module>(parts[i].shape - 3));
+        progress.SetStep("Restoring roadside entities");
         std::vector<Entity*> entities;
+        entities.reserve(parts.size());
+        std::array<std::vector<Matrix>, road_guardrail::ModuleCount> hardware;
+        std::vector<bool> has_children(parts.size(), false);
+        for (const auto& p : parts) if (p.parent != UINT32_MAX) has_children[p.parent] = true;
         for (size_t i = 0; i < parts.size(); ++i)
         {
             const auto& p = parts[i];
+            // Existing bakes remain usable: consolidate their leaf hardware on load.
+            if (p.shape >= 3 && p.parent == UINT32_MAX && !has_children[i])
+            {
+                const Matrix transform(p.position, p.rotation, p.scale);
+                for (const Matrix& instance : instances[i]) hardware[p.shape - 3].push_back(instance * transform);
+                entities.push_back(nullptr);
+                continue;
+            }
             Entity* parent = p.parent == UINT32_MAX ? group : entities[p.parent];
             Entity* entity;
             if (p.finish == FinishCount)
@@ -274,25 +503,47 @@ namespace spartan::island_road_details
                 entity = Part(parent, p.name, p.position, p.scale, static_cast<Finish>(p.finish), p.shape == 1);
                 if (meshes[i])
                 {
-                    meshes[i]->SetObjectName("roadside_furniture");
-                    meshes[i]->CreateGpuBuffers();
+                    if (p.shape==2)
+                    {
+                        meshes[i]->SetObjectName("roadside_furniture");
+                        meshes[i]->CreateGpuBuffers();
+                    }
                     entity->GetComponent<Render>()->SetOwnedMesh(meshes[i]);
+                    if (!instances[i].empty()) entity->GetComponent<Render>()->SetInstances(instances[i]);
                 }
             }
             entity->SetPositionLocal(p.position); entity->SetScaleLocal(p.scale); entity->SetRotationLocal(p.rotation);
+            if (entity->GetObjectName()=="roadside_guardrail_steel") road_guardrail::AddCollision(entity);
             entities.push_back(entity);
         }
+        PublishGuardrailInstances(group, hardware);
         return true;
     }
 
     inline void SaveDetails(Entity* group, uint64_t key)
     {
         std::vector<BakedPart> parts;
+        std::vector<std::vector<uint8_t>> blocks;
+        bool valid = true;
+        auto pack = [&](BakedPart& part, const std::vector<uint8_t>& bytes)
+        {
+            if (bytes.empty() || bytes.size() > generated_cache::maximum_payload_size - sizeof(uint64_t))
+            {
+                valid = false;
+                return;
+            }
+            constexpr size_t block_size = 32 * 1024 * 1024;
+            if (blocks.empty() || blocks.back().size() + bytes.size() > block_size) blocks.emplace_back();
+            part.block = static_cast<uint32_t>(blocks.size() - 1);
+            part.offset = static_cast<uint32_t>(blocks.back().size());
+            part.size = static_cast<uint32_t>(bytes.size());
+            blocks.back().insert(blocks.back().end(), bytes.begin(), bytes.end());
+        };
         const std::string resources = World::GetResourceDirectory();
         std::function<void(Entity*, uint32_t)> visit = [&](Entity* entity, uint32_t parent)
         {
             // These temporary anchors were already merged and are pending removal.
-            if (entity->GetObjectName() == "roadside_delineator" || entity->GetObjectName() == "roadside_guardrail") return;
+            if (entity->GetObjectName() == "roadside_delineator") return;
             BakedPart p;
             p.parent = parent; p.position = entity->GetPositionLocal(); p.scale = entity->GetScaleLocal();
             p.rotation = entity->GetRotationLocal();
@@ -302,22 +553,101 @@ namespace spartan::island_road_details
             if (Render* render = entity->GetComponent<Render>())
             {
                 for (uint32_t f = 0; f < FinishCount; ++f) if (render->GetMaterial() == materials[f].get()) p.finish = f;
-                p.shape = render->GetMesh() == triangle.get() ? 1 : name == "roadside_furniture" ? 2 : 0;
+                p.shape = render->GetMesh() == triangle.get() ? 1 : name == "roadside_furniture" || road_guardrail::IsBatch(name) ? 2 : 0;
+                if (const auto module=road_guardrail::InstanceModule(name);module!=road_guardrail::ModuleCount)
+                {
+                    p.shape=3+module;
+                    std::vector<Matrix> instances;
+                    for (uint32_t i=0;i<render->GetInstanceCount();++i) instances.push_back(render->GetInstance(i,false));
+                    pack(p, generated_cache::Encode(instances));
+                }
                 if (p.shape == 2)
                 {
-                    generated_cache::Hash mesh_key; mesh_key.Add(key); mesh_key.Add(uint64_t(index));
-                    render->GetMesh()->SavePrepared(generated_cache::Path(resources, "road_furniture_mesh", mesh_key.value).string(), mesh_key.value);
+                    pack(p, render->GetMesh()->SerializePrepared());
                 }
             }
             parts.push_back(p);
             for (Entity* child : entity->GetChildren()) visit(child, index);
         };
         for (Entity* child : group->GetChildren()) visit(child, UINT32_MAX);
+        if (!valid) return;
+        if (!blocks.empty())
+        {
+            // A few bounded archives replace thousands of tiny files per road.
+            // Publish the manifest only after every block has been written.
+            ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
+            {
+                for (uint32_t i = begin; i < end; ++i)
+                {
+                    generated_cache::Hash block_key; block_key.Add(key); block_key.Add(i);
+                    generated_cache::Save(generated_cache::Path(resources,"road_furniture_blocks",block_key.value),block_key.value,blocks[i]);
+                }
+            }, static_cast<uint32_t>(blocks.size()));
+        }
         generated_cache::Save(generated_cache::Path(resources, "road_furniture", key), key, parts);
+    }
+
+    inline uint64_t CacheKey(Entity* entity, Spline* spline)
+    {
+        // Terrain grading and junction solving are finished before this stage.
+        // Prefetch and publication can share one fingerprint per road; live
+        // editing still evaluates the full recipe every time.
+        if (World::IsPreparing())
+            if (auto found = preparation_keys.find(entity->GetObjectId()); found != preparation_keys.end()) return found->second;
+        generated_cache::Hash recipe;
+        recipe.Add(uint32_t(6)); recipe.Add(sizeof(BakedPart)); recipe.Add(sizeof(MeshLod));
+        recipe.Add(road_guardrail::asset_hash);
+        recipe.Add(spline->GetRoadFrames()); recipe.Add(spline->GetControlPointCount());
+        for (const auto& f : spline->GetRoadFrames()) recipe.Add(spline->GetSidewalkWidthAt(f.t));
+        uint64_t& hash = recipe.value;
+        auto add=[&](float value){uint32_t bits;std::memcpy(&bits,&value,sizeof(bits));hash=(hash^bits)*1099511628211ull;};
+        add(spline->GetRoadWidth()); add(spline->GetRoadWidthEnd());
+        add(spline->GetSidewalkWidth()); add(spline->GetSidewalkEnabled() ? 1.0f : 0.0f);
+        for (const Vector3 v : {entity->GetPosition(),entity->GetRotation().ToEulerAngles(),entity->GetScale()})
+            {add(v.x);add(v.y);add(v.z);}
+        for (const auto& f:spline->GetRoadFrames()) {add(f.position.x);add(f.position.y);add(f.position.z);}
+        // Terrain-only edits can change whether an otherwise identical road needs
+        // protection. Include the exposed roadside heights in its cache identity.
+        if (Terrain* terrain=Terrain::FindActive())
+        {
+            const Matrix matrix=entity->GetMatrix();
+            for (const auto& f:spline->GetRoadFrames())
+            {
+                const Vector3 center=matrix*f.position;
+                const Vector3 right=matrix*(f.position+f.right)-center;
+                const float half=(spline->GetRoadWidth()+(spline->GetRoadWidthEnd()-spline->GetRoadWidth())*f.t)*.5f;
+                for (float side:{-1.0f,1.0f}) for (float offset:{3.0f,7.0f})
+                {
+                    const Vector3 probe=center+right*half+right.Normalized()*(.8f+offset);
+                    const Vector3 sided=center+(probe-center)*side;
+                    float height=0;
+                    const bool valid=terrain->SampleHeight(sided.x,sided.z,height);
+                    recipe.Add(valid); if (valid) add(height);
+                }
+            }
+        }
+        for (Entity* point:entity->GetChildren())
+        {
+            if (point->GetObjectName().find("spline_point_") != 0) continue;
+            recipe.Add(point->GetObjectName());
+            for (const std::string& tag:point->GetTags())
+            {
+                if (tag.find("road_node_") != 0) continue;
+                recipe.Add(tag);
+                if (const auto found=junction_degree.find(tag);found!=junction_degree.end()) add(static_cast<float>(found->second));
+            }
+            recipe.Add(uint8_t(0));
+        }
+        if (World::IsPreparing()) preparation_keys[entity->GetObjectId()] = hash;
+        return hash;
     }
 
     inline void Tick(float dt)
     {
+        // Road furniture is baked during world preparation. Runtime traffic only
+        // follows those roads; rediscovery and terrain cache-key sampling belong
+        // to authoring, and resume when returning to the editor.
+        if (Engine::IsFlagSet(EngineMode::Playing) && !World::IsPreparing()) return;
         if (World::GetName()!="plan.world" || !Terrain::FindActive()) return;
         // Junction solving can replace every road frame. Wait for its final meshes
         // before building furniture, otherwise startup repeatedly discards these batches.
@@ -358,44 +688,54 @@ namespace spartan::island_road_details
             for (const auto& [id,r]:previous) if (Entity* e=World::GetEntityById(r.detail_id)) World::RemoveEntity(e);
         }
         if (roads.empty()) return;
+        // Missing assets must not stall world loading or produce an empty cache.
+        // A later successful load changes the recipe and rebuilds these details.
+        const bool guardrails_ready=road_guardrail::Load(World::GetResourceDirectory());
         cursor%=roads.size();
         Road& record=roads[cursor++];
         Entity* entity=World::GetEntityById(record.id);
         Spline* spline=entity ? entity->GetComponent<Spline>() : nullptr;
         if (!spline || spline->GetRoadFrames().empty()) return;
-        generated_cache::Hash recipe;
-        recipe.Add(uint32_t(1)); recipe.Add(sizeof(BakedPart)); recipe.Add(sizeof(MeshLod));
-        recipe.Add(spline->GetRoadFrames()); recipe.Add(spline->GetControlPointCount());
-        for (const auto& f : spline->GetRoadFrames()) recipe.Add(spline->GetSidewalkWidthAt(f.t));
-        uint64_t& hash = recipe.value;
-        auto add=[&](float value){uint32_t bits;std::memcpy(&bits,&value,sizeof(bits));hash=(hash^bits)*1099511628211ull;};
-        add(spline->GetRoadWidth()); add(spline->GetRoadWidthEnd());
-        add(spline->GetSidewalkWidth()); add(spline->GetSidewalkEnabled() ? 1.0f : 0.0f);
-        for (const Vector3 v : {entity->GetPosition(),entity->GetRotation().ToEulerAngles(),entity->GetScale()})
-            {add(v.x);add(v.y);add(v.z);}
-        for (const auto& f:spline->GetRoadFrames()) {add(f.position.x);add(f.position.y);add(f.position.z);}
-        for (Entity* point:entity->GetChildren())
-        {
-            if (point->GetObjectName().find("spline_point_") != 0) continue;
-            recipe.Add(point->GetObjectName());
-            for (const std::string& tag:point->GetTags())
-            {
-                if (tag.find("road_node_") != 0) continue;
-                recipe.Add(tag);
-                if (const auto found=junction_degree.find(tag);found!=junction_degree.end()) add(static_cast<float>(found->second));
-            }
-            recipe.Add(uint8_t(0));
-        }
+        const uint64_t hash = CacheKey(entity, spline);
         if (record.signature==hash) return;
+        // Keep a bounded pipeline: read/decode the next five roads while the
+        // owning thread publishes this one. No scene access occurs in workers.
+        if (World::IsPreparing() && guardrails_ready)
+        {
+            PrefetchBake(hash);
+            for (size_t ahead = 0; ahead < 5 && cursor + ahead < roads.size(); ++ahead)
+            {
+                const Road& next = roads[cursor + ahead];
+                if (next.signature != 0) continue;
+                Entity* next_entity = World::GetEntityById(next.id);
+                Spline* next_spline = next_entity ? next_entity->GetComponent<Spline>() : nullptr;
+                if (next_spline && !next_spline->GetRoadFrames().empty()) PrefetchBake(CacheKey(next_entity, next_spline));
+            }
+        }
+        auto progress = ProgressTracker::Begin(ProgressType::Terrain, entity->GetObjectName(), "Loading roadside details");
+        const Stopwatch preparation_time;
         record.signature=hash;
         if (Entity* old=World::GetEntityById(record.detail_id)) World::RemoveEntity(old);
         Entity* group=Anchor(root,("details_"+entity->GetObjectName()).c_str(),Vector3::Zero,Vector3::Forward);
         record.detail_id=group->GetObjectId();
-        if (!LoadDetails(group, hash))
+        Stopwatch phase;
+        const bool cached = guardrails_ready && LoadDetails(group, hash, progress);
+        cache_ms += phase.GetElapsedTimeMs();
+        if (cached) ++cache_hits;
+        else
         {
-            Build(entity,spline,group);
-            SaveDetails(group, hash);
+            ++cache_misses;
+            progress.SetStep("Building roadside details and guardrails");
+            phase.Start();
+            Build(entity,spline,group,progress);
+            build_ms += phase.GetElapsedTimeMs();
+            progress.SetStep("Caching roadside details");
+            phase.Start();
+            if (guardrails_ready) SaveDetails(group, hash);
+            save_ms += phase.GetElapsedTimeMs();
         }
+        if (preparation_time.GetElapsedTimeMs() > 1000.0f)
+            SP_LOG_INFO("Roadside preparation '%s': %.2f ms", entity->GetObjectName().c_str(), preparation_time.GetElapsedTimeMs());
     }
     inline bool PrepareWorld()
     {
@@ -411,8 +751,13 @@ namespace spartan::island_road_details
                 Spline* spline = entity ? entity->GetComponent<Spline>() : nullptr;
                 return road.signature == 0 && spline && !spline->GetRoadFrames().empty();
             });
-            if (!pending) return true;
-        } while (slice.GetElapsedTimeMs() < 3.0f);
+            if (!pending)
+            {
+                SP_LOG_INFO("Roadside bake: %u hits, %u misses, cache %.2f ms, generation %.2f ms, save %.2f ms",
+                    cache_hits, cache_misses, cache_ms, build_ms, save_ms);
+                return true;
+            }
+        } while (slice.GetElapsedTimeMs() < 20.0f);
         return false;
     }
 

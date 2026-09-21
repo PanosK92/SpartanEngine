@@ -165,6 +165,7 @@ namespace car
             tire_heat_transfer_airflow = 2.0f;
             brake_specific_heat = 500.0f;
             tire_pressure_reference_temp = 20.0f;
+            tire_carcass_stiffness_fraction = 0.35f;
             tire_damage_energy = 2000000.0f;
             tire_damage_temp = 180.0f;
             tire_hydroplaning_speed = 28.0f;
@@ -460,7 +461,8 @@ namespace car
         float rear_camber;
         float front_toe;
         float rear_toe;
-        float tire_vertical_stiffness;
+        float tire_vertical_stiffness; // N/m at tire_pressure_optimal
+        float tire_carcass_stiffness_fraction; // estimated pressure-independent fraction
         float lsd_viscous;
         float abs_load_sensitivity;
 

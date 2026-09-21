@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../physics/PhysicsWorld.h"
 #include "../../car/Car.h"
 #include "../../car/CarSimulation.h"
+#include "../../car/CarCalibration.h"
 #include "../../car/CarChassisCollision.h"
 #include "../../geometry/Mesh.h"
 #include "../../geometry/GeneratedCache.h"
@@ -42,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../rendering/Material.h"
 #include "../../rendering/GeometryBuffer.h"
 #include "../../core/ProgressTracker.h"
+#include "../../core/ThreadPool.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 #ifdef DEBUG
@@ -64,6 +66,44 @@ using namespace physx;
 
 namespace spartan
 {
+    struct Physics::TireDeformationBatch
+    {
+        std::vector<std::function<void()>> skin, uploads;
+    };
+
+    struct Physics::TireVisualState
+    {
+        struct BoundVertex
+        {
+            car::tire_cage::binding weights;
+            Vector3 position, tangent, bitangent;
+            uint32_t vertex_index, lod_index;
+        };
+        struct Part
+        {
+            uint64_t entity_id;
+            std::shared_ptr<Mesh> source, mesh;
+            uint32_t submesh;
+            uint32_t previous_lod = UINT32_MAX;
+            Matrix to_wheel, from_wheel;
+            // Bindings are grouped by cage cell so unchanged arcs are never scanned.
+            std::vector<BoundVertex> vertices;
+            std::array<uint32_t, car::tire_cage::node_count + 1> cell_offsets{};
+            static constexpr uint32_t upload_block_size = 256;
+            std::array<std::vector<uint32_t>, car::tire_cage::node_count> cell_blocks;
+            std::vector<uint8_t> dirty_blocks;
+            std::array<Vector3, car::tire_cage::node_count> local_displacement;
+            std::array<uint16_t, car::tire_cage::node_count> dirty_cells;
+        };
+        car::tire_cage cage;
+        std::vector<Part> parts;
+        bool deformed = false, has_shape = false;
+        Vector3 previous_normal;
+        float previous_distance = 0, previous_stiffness = 0;
+        float previous_pressure = 0, previous_reference_stiffness = 0, previous_ambient_pressure = 0;
+        std::array<bool, car::tire_cage::node_count> active_cells{};
+    };
+
     namespace
     {
         const float distance_deactivate = 80.0f;
@@ -694,6 +734,9 @@ namespace spartan
         }
         else
         {
+            for (int i = 0; i < 4; ++i)
+                if (m_tire_visuals[i]) UpdateTireDeformation(i, false);
+
             // editor mode: sync entity -> physx, reset velocities
             m_wheel_offsets_synced      = false;
             m_interpolation_initialized = false;
@@ -2294,9 +2337,11 @@ namespace spartan
         {
             if (m_wheel_entities[index] != entity)
             {
+                m_tire_visuals[index].reset();
                 m_cheap_wheel_rest_captured[index] = false;
             }
             m_wheel_entities[index] = entity;
+            m_wheel_calipers[index] = entity ? entity->GetChildByName("brake_caliper") : nullptr;
 
             // sync the physics wheel offset from the entity position
             if (entity)
@@ -2705,8 +2750,9 @@ namespace spartan
             return;
         }
 
-        const float measured_radius = max(max(extents.x, extents.y), extents.z);
-        const Vector3 scale(target_radius / measured_radius);
+        // Wheel assets use X for the axle; preserve the requested front/rear tire widths.
+        const float measured_radius = max(extents.y, extents.z);
+        const Vector3 scale(target_width / (extents.x * 2.0f), target_radius / measured_radius, target_radius / measured_radius);
         if (!scale.IsFinite() || scale.x <= 0.0f || scale.y <= 0.0f || scale.z <= 0.0f)
         {
             return;
@@ -3404,6 +3450,11 @@ namespace spartan
             return;
         }
 
+        TireDeformationBatch batch;
+        std::array<TireDeformationBatch, 4> wheel_batches;
+        std::array<bool, 4> valid_wheels{};
+        batch.skin.reserve(256);
+        batch.uploads.reserve(16);
         for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
         {
             Entity* wheel_entity = m_wheel_entities[i];
@@ -3435,7 +3486,335 @@ namespace spartan
             wheel_rotation = TransformVehicleRotationToRender(wheel_rotation);
             wheel_position -= wheel_rotation * m_wheel_mesh_center_offsets[i];
             wheel_entity->SetPositionAndRotation(wheel_position, wheel_rotation);
+
+            valid_wheels[i] = true;
+
+            // The caliper shares the axle origin and scale, but follows the upright,
+            // not the spinning wheel body. This also retains steering and camber.
+            if (Entity* caliper = m_wheel_calipers[i])
+            {
+                if (PxRigidDynamic* upright = m_vehicle_simulation->get_multibody_state().corners[i].upright)
+                {
+                    Vector3 upright_position;
+                    Quaternion upright_rotation;
+                    from_px_transform(upright->getGlobalPose(), upright_position, upright_rotation);
+                    if (upright_rotation.IsFinite())
+                    {
+                        if (is_right_wheel)
+                            upright_rotation *= Quaternion::FromAxisAngle(Vector3::Up, math::pi);
+                        caliper->SetRotation(TransformVehicleRotationToRender(upright_rotation));
+                    }
+                }
+            }
         }
+        SP_PROFILE_CPU_START("tire_deformation_all_wheels");
+        // Imported mesh creation/rebinding stays on the main thread. Once the
+        // private meshes exist, each wheel owns all of its mutable cage/render
+        // state and can prepare independently; the physics snapshot is read-only.
+        const auto& config = m_vehicle_simulation->get_config();
+        const auto& spec = m_vehicle_simulation->get_spec();
+        bool can_prepare_in_parallel = true;
+        for (int i = 0; i < 4; ++i)
+            if (valid_wheels[i] && (!m_tire_visuals[i] ||
+                m_tire_visuals[i]->cage.radius != config.wheel_radius_for(i) ||
+                m_tire_visuals[i]->cage.width != (i < 2 ? spec.front_wheel_width : spec.rear_wheel_width)))
+                can_prepare_in_parallel = false;
+        auto prepare = [&](uint32_t first, uint32_t last)
+        {
+            for (uint32_t i = first; i < last; ++i)
+                if (valid_wheels[i]) UpdateTireDeformation(i, true, &wheel_batches[i]);
+        };
+        SP_PROFILE_CPU_START("tire_prepare_batch");
+        if (can_prepare_in_parallel) ThreadPool::ParallelLoop(prepare, 4);
+        else prepare(0, 4);
+        SP_PROFILE_CPU_END();
+        for (auto& wheel : wheel_batches)
+        {
+            for (auto& job : wheel.skin) batch.skin.push_back(std::move(job));
+            for (auto& upload : wheel.uploads) batch.uploads.push_back(std::move(upload));
+        }
+        // One dispatch for the whole car, not a dispatch/barrier for every
+        // material of every wheel. Mesh uploads run only after all jobs join.
+        if (!batch.skin.empty())
+        {
+            SP_PROFILE_CPU_START("tire_mesh_skin_batch");
+            std::atomic<uint32_t> next_job{0};
+            ThreadPool::ParallelLoop([&](uint32_t, uint32_t)
+            {
+                uint32_t job;
+                while ((job = next_job.fetch_add(1, std::memory_order_relaxed)) < batch.skin.size())
+                    batch.skin[job]();
+            }, static_cast<uint32_t>(batch.skin.size()));
+            SP_PROFILE_CPU_END();
+            for (auto& upload : batch.uploads) upload();
+        }
+        SP_PROFILE_CPU_END();
+    }
+
+    void Physics::UpdateTireDeformation(int wheel_index, bool grounded, TireDeformationBatch* batch)
+    {
+        SP_PROFILE_CPU();
+        Entity* wheel_entity = m_wheel_entities[wheel_index];
+        if (!wheel_entity || !m_vehicle_simulation) return;
+        const auto& state = m_vehicle_simulation->get_wheel_state(wheel_index);
+        const auto& spec = m_vehicle_simulation->get_spec();
+        const auto& cfg = m_vehicle_simulation->get_config();
+        const float radius = cfg.wheel_radius_for(wheel_index);
+        const float width = wheel_index < 2 ? spec.front_wheel_width : spec.rear_wheel_width;
+        if (radius <= 0 || width <= 0) return;
+
+        // Cheap/distant traffic keeps its undeformed mesh. Only physical tires
+        // near the camera need skinning; restore the original if leaving range.
+        if (Camera* camera = World::GetCamera())
+            grounded &= Vector3::DistanceSquared(camera->GetEntity()->GetPosition(), wheel_entity->GetPosition()) < 40.0f * 40.0f;
+        grounded &= state.grounded && state.tire_load > 0;
+        auto& visual = m_tire_visuals[wheel_index];
+        if (!visual && !grounded) return;
+        const Quaternion rotation = wheel_entity->GetRotation();
+        const Vector3 hub = wheel_entity->GetPosition() + rotation * m_wheel_mesh_center_offsets[wheel_index];
+        const Matrix wheel_frame(hub, rotation, Vector3::One);
+
+        // Build immutable bindings once per wheel/size. Never modify cached
+        // imported geometry: all four tires and all cars share those resources.
+        if (visual && (visual->cage.radius != radius || visual->cage.width != width))
+        {
+            for (auto& part : visual->parts)
+                if (Entity* entity = World::GetEntityById(part.entity_id))
+                    if (Render* render = entity->GetComponent<Render>())
+                    {
+                        render->SetMesh(part.source.get(), part.submesh);
+                        render->ClearBoundingBoxOverride();
+                        render->SetAllowBlasUpdate(false);
+                    }
+            visual.reset();
+        }
+        if (!visual)
+        {
+            auto pending = std::make_unique<TireVisualState>();
+            pending->cage.initialize(radius, width);
+            std::vector<Entity*> entities = {wheel_entity};
+            wheel_entity->GetDescendants(&entities);
+            for (Entity* entity : entities)
+            {
+                Render* render = entity->GetComponent<Render>();
+                if (!render || !render->GetMesh() || !render->GetMaterial()) continue;
+                // Explicit hero-asset contract: rigid rim, rotor and caliper are
+                // never bound. Sidewall lettering follows the same rubber cage.
+                const std::string& material = render->GetMaterial()->GetObjectName();
+                if (material.find("rubber") == std::string::npos && material.find("sidewall") == std::string::npos) continue;
+                TireVisualState::Part part;
+                part.entity_id = entity->GetObjectId();
+                part.source = std::static_pointer_cast<Mesh>(render->GetMesh()->shared_from_this());
+                part.submesh = render->GetSubMeshIndex();
+                for (const auto& other : pending->parts)
+                    if (other.source == part.source) part.mesh = other.mesh;
+                if (!part.mesh) part.mesh = part.source->CreateSkinnedInstance();
+                if (!part.mesh) return; // retry after import has published the GPU geometry
+                part.mesh->SetResourceFilePath(part.source->GetResourceFilePath());
+                part.to_wheel = entity->GetMatrix() * wheel_frame.Inverted();
+                part.from_wheel = part.to_wheel.Inverted();
+                const auto& source_vertices = part.source->GetVertices();
+                for (const auto& lod : part.source->GetSubMesh(part.submesh).lods)
+                {
+                    auto& bindings = part.vertices;
+                    bindings.reserve(bindings.size() + lod.vertex_count);
+                    for (uint32_t j = 0; j < lod.vertex_count; ++j)
+                    {
+                        const auto& vertex = source_vertices[lod.vertex_offset + j];
+                        const Vector3 p = vertex.get_position(), n = vertex.get_normal();
+                        Vector3 t = vertex.get_tangent();
+                        if (t.LengthSquared() < 0.1f) t = n.Cross(std::abs(n.y) < 0.9f ? Vector3::Up : Vector3::Right).Normalized();
+                        const Vector3 b = n.Cross(t).Normalized();
+                        const Vector3 origin = part.to_wheel * Vector3::Zero;
+                        TireVisualState::BoundVertex bound;
+                        bound.vertex_index = lod.vertex_offset + j;
+                        bound.lod_index = static_cast<uint32_t>(&lod - part.source->GetSubMesh(part.submesh).lods.data());
+                        bound.position = p;
+                        bound.tangent = t;
+                        bound.bitangent = b;
+                        bound.weights = pending->cage.bind(part.to_wheel * p,
+                            part.to_wheel * t - origin, part.to_wheel * b - origin);
+                        bindings.push_back(bound);
+                    }
+                }
+                std::stable_sort(part.vertices.begin(), part.vertices.end(), [](const auto& a, const auto& b)
+                {
+                    return a.weights.nodes[0] < b.weights.nodes[0];
+                });
+                for (const auto& bound : part.vertices) ++part.cell_offsets[bound.weights.nodes[0] + 1];
+                for (size_t cell = 1; cell < part.cell_offsets.size(); ++cell)
+                    part.cell_offsets[cell] += part.cell_offsets[cell - 1];
+                part.dirty_blocks.resize((source_vertices.size() + TireVisualState::Part::upload_block_size - 1) /
+                    TireVisualState::Part::upload_block_size);
+                for (const auto& bound : part.vertices)
+                    part.cell_blocks[bound.weights.nodes[0]].push_back(bound.vertex_index / TireVisualState::Part::upload_block_size);
+                for (auto& blocks : part.cell_blocks)
+                {
+                    std::sort(blocks.begin(), blocks.end());
+                    blocks.erase(std::unique(blocks.begin(), blocks.end()), blocks.end());
+                }
+                pending->parts.push_back(std::move(part));
+            }
+            if (pending->parts.empty()) return;
+            for (auto& part : pending->parts)
+                if (Entity* entity = World::GetEntityById(part.entity_id))
+                    if (Render* render = entity->GetComponent<Render>())
+                    {
+                        render->SetOwnedMesh(part.mesh);
+                        render->SetMesh(part.mesh.get(), part.submesh);
+                        render->SetAllowBlasUpdate(true);
+                    }
+            visual = std::move(pending);
+        }
+
+        Vector3 normal = from_px_vec3(state.contact_normal);
+        normal = rotation.Conjugate() * (m_vehicle_render_rotation * (m_vehicle_physics_rotation.Conjugate() * normal));
+        const Vector3 point = rotation.Conjugate() * (TransformVehiclePointToRender(from_px_vec3(state.contact_point)) - hub);
+        const float distance = -normal.Dot(point);
+        const float stiffness = car::loaded_tire_stiffness(spec, state.pressure_bar) / std::max(spec.tire_vertical_stiffness, 1.0f);
+        const float ambient_bar = m_vehicle_simulation->ambient_pressure / 100000.0f;
+        // At rest, keep the solved shape until the support plane moves by a
+        // tenth of a millimetre. Compare to the last solve so motion accumulates.
+        const bool upload = !visual->has_shape || grounded != visual->deformed || (grounded &&
+            ((normal - visual->previous_normal).LengthSquared() > 1e-6f ||
+             std::abs(distance - visual->previous_distance) > 0.0001f ||
+             std::abs(stiffness - visual->previous_stiffness) > 0.001f ||
+             std::abs(state.pressure_bar - visual->previous_pressure) > 0.001f ||
+             std::abs(spec.tire_vertical_stiffness - visual->previous_reference_stiffness) > 1.0f ||
+             std::abs(ambient_bar - visual->previous_ambient_pressure) > 0.001f));
+        const auto previous_cells = visual->active_cells;
+        if (upload)
+        {
+            SP_PROFILE_CPU_START("tire_cage_solve");
+            visual->cage.solve(normal, distance, stiffness, grounded,
+                state.pressure_bar, spec.tire_vertical_stiffness, ambient_bar);
+            SP_PROFILE_CPU_END();
+            visual->previous_normal = normal;
+            visual->previous_distance = distance;
+            visual->previous_stiffness = stiffness;
+            visual->previous_pressure = state.pressure_bar;
+            visual->previous_reference_stiffness = spec.tire_vertical_stiffness;
+            visual->previous_ambient_pressure = ambient_bar;
+            visual->has_shape = true;
+            visual->active_cells.fill(false);
+            for (int band = 0; band < car::tire_cage::bands - 1; ++band)
+                for (int lane = 0; lane < car::tire_cage::lanes - 1; ++lane)
+                    for (int a = 0; a < car::tire_cage::sectors; ++a)
+                        for (int r = 0; r < 2; ++r)
+                            for (int x = 0; x < 2; ++x)
+                                for (int t = 0; t < 2; ++t)
+                                    visual->active_cells[car::tire_cage::index(band, lane, a)] |=
+                                        visual->cage.displacement[car::tire_cage::index(band + r, lane + x, a + t)].LengthSquared() > 1e-12f;
+        }
+        for (auto& part : visual->parts)
+        {
+            Entity* entity = World::GetEntityById(part.entity_id);
+            Render* render = entity ? entity->GetComponent<Render>() : nullptr;
+            if (!render || render->GetMesh() != part.mesh.get()) continue;
+            // A conservative world bound also selects the renderer's deformable
+            // meshlet path: rest-pose cone/bounds tests cannot reject this tire.
+            const BoundingBox local = part.source->GetSubMesh(part.submesh).lods[0].aabb;
+            const BoundingBox world = local * entity->GetMatrix();
+            render->SetBoundingBoxOverride(BoundingBox(world.GetMin() - Vector3(0.06f), world.GetMax() + Vector3(0.06f)));
+            const uint32_t current_lod = render->GetLodIndex();
+            const bool lod_changed = current_lod != part.previous_lod;
+            if (upload || lod_changed)
+            {
+                auto& vertices = part.mesh->GetVertices();
+                const auto& original = part.source->GetVertices();
+                const Vector3 origin = part.from_wheel * Vector3::Zero;
+                SP_PROFILE_CPU_START("tire_mesh_prepare");
+                // Transform the 576 cage displacements once instead of applying
+                // three matrices to every affected render vertex.
+                auto& local_displacement = part.local_displacement;
+                auto& dirty_cells = part.dirty_cells;
+                uint32_t dirty_count = 0;
+                std::fill(part.dirty_blocks.begin(), part.dirty_blocks.end(), 0);
+                for (uint16_t cell = 0; cell < car::tire_cage::node_count; ++cell)
+                {
+                    local_displacement[cell] = part.from_wheel * visual->cage.displacement[cell] - origin;
+                    if ((lod_changed || visual->active_cells[cell] || previous_cells[cell]) &&
+                        part.cell_offsets[cell] != part.cell_offsets[cell + 1])
+                    {
+                        dirty_cells[dirty_count++] = cell;
+                        for (uint32_t block : part.cell_blocks[cell]) part.dirty_blocks[block] = 1;
+                    }
+                }
+                auto skin_range = [&part, &vertices, &original, &local_displacement,
+                    visual_ptr = visual.get(), current_lod](uint32_t begin, uint32_t end)
+                {
+                    for (uint32_t j = begin; j < end; ++j)
+                    {
+                        const auto& bound = part.vertices[j];
+                        // BLAS uses LOD 0; rasterization uses current_lod.
+                        if (bound.lod_index != 0 && bound.lod_index != current_lod) continue;
+                        auto& vertex = vertices[bound.vertex_index];
+                        if (!visual_ptr->active_cells[bound.weights.nodes[0]])
+                        {
+                            vertex = original[bound.vertex_index];
+                            continue;
+                        }
+                        Vector3 p = bound.position, t = bound.tangent, b = bound.bitangent;
+                        for (int k = 0; k < 8; ++k)
+                        {
+                            const Vector3& d = local_displacement[bound.weights.nodes[k]];
+                            p += d * bound.weights.weight[k];
+                            t += d * bound.weights.tangent_weight[k];
+                            b += d * bound.weights.bitangent_weight[k];
+                        }
+                        vertex.set_position(p);
+                        const Vector3 n = t.Cross(b);
+                        // Octahedral packing is scale invariant; no square roots needed.
+                        vertex.set_normal(n.LengthSquared() > 1e-12f ? n : original[bound.vertex_index].get_normal());
+                        vertex.set_tangent(t.LengthSquared() > 1e-12f ? t : original[bound.vertex_index].get_tangent());
+                    }
+                };
+                // Cells have very different vertex counts. Split dense cells,
+                // then let workers pull bounded jobs across all four wheels.
+                for (uint32_t c = 0; c < dirty_count; ++c)
+                {
+                    const uint16_t cell = dirty_cells[c];
+                    const uint32_t last = part.cell_offsets[cell + 1];
+                    for (uint32_t first = part.cell_offsets[cell]; first < last; first += 1024)
+                    {
+                        const uint32_t end = std::min(first + 1024, last);
+                        if (batch) batch->skin.push_back([skin_range, first, end]() { skin_range(first, end); });
+                        else skin_range(first, end);
+                    }
+                }
+                SP_PROFILE_CPU_END();
+                auto upload_ranges = [&part, &vertices, render, dirty_count, current_lod]()
+                {
+                    // Merge adjacent dirty blocks into uploads. This includes arcs
+                    // leaving contact, whose vertices were restored above.
+                    for (uint32_t block = 0; block < part.dirty_blocks.size();)
+                    {
+                        if (!part.dirty_blocks[block]) { ++block; continue; }
+                        const uint32_t first = block++;
+                        while (block < part.dirty_blocks.size() && part.dirty_blocks[block]) ++block;
+                        const uint32_t begin = first * TireVisualState::Part::upload_block_size;
+                        const uint32_t end = std::min(block * TireVisualState::Part::upload_block_size,
+                            static_cast<uint32_t>(vertices.size()));
+                        const auto& lods = part.source->GetSubMesh(part.submesh).lods;
+                        for (uint32_t lod_index : {0u, current_lod})
+                        {
+                            const auto& lod = lods[lod_index];
+                            const uint32_t first_vertex = std::max(begin, lod.vertex_offset);
+                            const uint32_t last_vertex = std::min(end, lod.vertex_offset + lod.vertex_count);
+                            if (last_vertex > first_vertex)
+                                part.mesh->UploadVertexRange(first_vertex, last_vertex - first_vertex);
+                            if (current_lod == 0) break;
+                        }
+                    }
+                    if (dirty_count) render->SetNeedsBlasRefit(true);
+                };
+                if (batch && dirty_count) batch->uploads.push_back(upload_ranges);
+                else upload_ranges();
+                part.previous_lod = current_lod;
+            }
+
+        }
+        visual->deformed = grounded;
     }
 
     void Physics::CaptureCheapWheelRestPoses()
@@ -3517,6 +3896,9 @@ namespace spartan
                 continue;
             }
             wheel_entity->SetPositionAndRotation(wheel_position, wheel_rotation);
+            if (Entity* caliper = m_wheel_calipers[i])
+                caliper->SetRotation((is_front ? steer_q : Quaternion::Identity) * base);
+            UpdateTireDeformation(i, false);
         }
     }
 

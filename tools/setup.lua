@@ -3,22 +3,19 @@
 -- Permission is hereby granted, free of charge, to any person obtaining a copy
 -- of this software and associated documentation files (the "Software"), to deal
 -- in the Software without restriction, including without limitation the rights
--- to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 -- copies of the Software, and to permit persons to whom the Software is furnished
--- to do so, subject to the following conditions :
+-- to do so, subject to the following conditions:
 --
 -- The above copyright notice and this permission notice shall be included in
 -- all copies or substantial portions of the Software.
 --
 -- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 -- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
--- FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
+-- FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 -- COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 -- IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
--- headers for xess, dlss and steamworks live in third_party, their libs and dlls ship in libraries.7z
--- the only sdk fetched separately is the d3d12 agility sdk (nuget, not part of the archive)
 
 local setup = {}
 
@@ -31,14 +28,20 @@ local ARCHIVE_PATH     = path.join(LIBRARIES_DIR, "libraries.7z")
 local SEVEN_ZIP_CACHE  = path.join(PROJECT_ROOT, "third_party", "lzma_sdk", "bin", "7zr.exe")
 local SEVEN_ZIP_URL    = "https://www.7-zip.org/a/7zr.exe"
 
-local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/ryshk2l75pjp10fgxkw78/libraries.7z?rlkey=ml1dlwvjnobmsd4kv738aekp7&dl=1"
+local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/byrj4cytjj9krvm49pto6/libraries.7z?rlkey=w7axjqiqdooded5tpovg80nn2&dl=1"
 local LIBRARY_HASH     = "3477dc97dfef688c4e4348032e3c658ba6fbd6352f0fa39a38702167423c6e68"
 
 local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "dxcompiler.dll"),
     path.join(LIBRARIES_DIR, "libxess.dll"),
-    path.join(LIBRARIES_DIR, "nvngx_dlss.dll"),
 }
+
+-- xess-sr overlay from github so upscaler stays current without libraries.7z churn
+local XESS_VERSION     = "3.0.2"
+local XESS_DIR         = path.join(PROJECT_ROOT, "third_party", "xess")
+local XESS_STAMP       = path.join(XESS_DIR, "version.txt")
+local XESS_URL         = "https://github.com/intel/xess/releases/download/v" .. XESS_VERSION .. "/XeSS_SDK_" .. XESS_VERSION .. ".zip"
+local XESS_ZIP         = path.join(PROJECT_ROOT, "third_party", "XeSS_SDK_" .. XESS_VERSION .. ".zip")
 
 -- d3d12 agility sdk, downloaded on demand into third_party/d3d12_agility
 -- the middle number of the nuget version is the D3D12SDKVersion exported by the exe
@@ -54,15 +57,12 @@ local AGILITY_NUPKG       = path.join(PROJECT_ROOT, "third_party", "d3d12_agilit
 -- d3d12core.dll sits next to the exe, matching the exported D3D12SDKPath (".\\")
 local AGILITY_RUNTIME_DLLS = { "D3D12Core.dll", "d3d12SDKLayers.dll" }
 
--- dxgi debug services are a dependency of the agility debug layer, but are not in its nuget package.
--- fetch the signed x64 binary from microsoft so target machines don't need graphics tools installed.
-local DXGI_DEBUG_URL  = "https://msdl.microsoft.com/download/symbols/dxgidebug.dll/3EF0515C25000/dxgidebug.dll"
-local DXGI_DEBUG_HASH = "1639820f65a0e2c269210a44b9875c4e3fe166458e2823dc79dd9c3c31ce8ea1" -- 10.0.26100.1882
-local DXGI_DEBUG_DLL  = path.join(AGILITY_BIN_DIR, "dxgidebug.dll")
-
--- steamworks sdk, committed in third_party/steamworks (headers and win64 redistributables)
+-- steamworks sdk, downloaded on demand into third_party/steamworks
 local STEAMWORKS_DIR   = path.join(PROJECT_ROOT, "third_party", "steamworks")
 local STEAM_DLL        = path.join(STEAMWORKS_DIR, "redistributable_bin", "win64", "steam_api64.dll")
+local STEAM_LIB        = path.join(STEAMWORKS_DIR, "redistributable_bin", "win64", "steam_api64.lib")
+local STEAMWORKS_URL   = "https://github.com/rlabrecque/SteamworksSDK/archive/refs/heads/main.zip"
+local STEAMWORKS_ZIP   = path.join(PROJECT_ROOT, "third_party", "steamworks_sdk.zip")
 local STEAM_APP_ID     = "480" -- valve spacewar test appid, replace with the real one
 
 local function is_windows()
@@ -125,8 +125,8 @@ local function compute_sha256(p)
     local cmd
     if is_windows() then
         cmd = string.format(
-            'powershell -NoProfile -Command "$stream = [IO.File]::OpenRead(\'%s\'); $sha = [Security.Cryptography.SHA256]::Create(); try { [BitConverter]::ToString($sha.ComputeHash($stream)).Replace(\'-\', \'\').ToLower() } finally { $sha.Dispose(); $stream.Dispose() }"',
-            shell_path(p):gsub("'", "''")
+            'powershell -NoProfile -Command "(Get-FileHash -Algorithm SHA256 -LiteralPath %s).Hash.ToLower()"',
+            quote(p)
         )
     else
         cmd = string.format("sha256sum %s | awk '{print $1}'", quote(p))
@@ -276,9 +276,7 @@ local function ensure_agility_sdk()
         return
     end
 
-    if read_text(AGILITY_STAMP) == AGILITY_VERSION
-        and file_exists(path.join(AGILITY_BIN_DIR, "D3D12Core.dll"))
-        and file_exists(path.join(AGILITY_BIN_DIR, "d3d12SDKLayers.dll")) then
+    if read_text(AGILITY_STAMP) == AGILITY_VERSION and file_exists(path.join(AGILITY_BIN_DIR, "D3D12Core.dll")) then
         print("agility sdk " .. AGILITY_VERSION .. " present, skipping download")
         return
     end
@@ -328,61 +326,166 @@ local function stage_agility_runtime()
         return
     end
 
-    if compute_sha256(DXGI_DEBUG_DLL) ~= DXGI_DEBUG_HASH then
-        print("downloading dxgi debug services...")
-        local result, code = download_with_progress(DXGI_DEBUG_URL, DXGI_DEBUG_DLL)
-        if result ~= "OK" then
-            error(string.format("dxgi debug download failed: %s (http %s)", tostring(result), tostring(code)))
-        end
-        if compute_sha256(DXGI_DEBUG_DLL) ~= DXGI_DEBUG_HASH then
-            os.remove(DXGI_DEBUG_DLL)
-            error("dxgi debug dll hash mismatch")
-        end
-    end
+    local staged = 0
 
     for _, dll in ipairs(AGILITY_RUNTIME_DLLS) do
         local source = path.join(AGILITY_BIN_DIR, dll)
-        if not file_exists(source) then
-            error("missing agility runtime dll: " .. source)
+        if file_exists(source) then
+            copy_file(source, path.join(BINARIES_DIR, dll))
+            staged = staged + 1
         end
-        copy_file(source, path.join(BINARIES_DIR, dll))
     end
 
-    copy_file(DXGI_DEBUG_DLL, path.join(BINARIES_DIR, "dxgidebug.dll"))
-    print("  staged agility runtime, debug layer and dxgi debug services into binaries/")
+    if staged > 0 then
+        print(string.format("  staged %d agility dll(s) into binaries/", staged))
+    else
+        print("  agility sdk not found, skipping agility staging")
+    end
 end
 
-local function stage_steam_runtime()
-    if not file_exists(STEAM_DLL) then
-        print("  steamworks sdk not found, skipping steam staging")
+local function ensure_xess_sdk()
+    if not is_windows() then
+        print("  not windows, skipping xess sdk")
         return
     end
 
-    copy_file(STEAM_DLL, path.join(BINARIES_DIR, path.getname(STEAM_DLL)))
+    local required = {
+        path.join(XESS_DIR, "xess", "xess.h"),
+        path.join(LIBRARIES_DIR, "libxess.lib"),
+        path.join(LIBRARIES_DIR, "libxess.dll"),
+    }
 
-    local appid_path = path.join(BINARIES_DIR, "steam_appid.txt")
-    if not file_exists(appid_path) then
-        local f = io.open(appid_path, "wb")
-        f:write(STEAM_APP_ID)
-        f:close()
+    local present = read_text(XESS_STAMP) == XESS_VERSION
+    if present then
+        for _, p in ipairs(required) do
+            if not file_exists(p) then
+                present = false
+                break
+            end
+        end
     end
-    print("  staged steam_api64.dll and steam_appid.txt")
+
+    if present then
+        print("xess sdk " .. XESS_VERSION .. " present, skipping download")
+        return
+    end
+
+    print("downloading xess sdk " .. XESS_VERSION .. "...")
+    os.mkdir(path.getdirectory(XESS_ZIP))
+
+    local result, code = download_with_progress(XESS_URL, XESS_ZIP)
+    if result ~= "OK" then
+        error(string.format("xess sdk download failed: %s (http %s)", tostring(result), tostring(code)))
+    end
+
+    local extract_root = path.join(PROJECT_ROOT, "third_party", "xess_sdk_extract")
+    if os.isdir(extract_root) then
+        os.rmdir(extract_root)
+    end
+
+    extract_zip(XESS_ZIP, extract_root)
+
+    local sdk_root = extract_root
+    if not os.isdir(path.join(sdk_root, "inc")) then
+        -- some zips nest one directory
+        for _, entry in ipairs(os.matchdirs(path.join(extract_root, "*"))) do
+            if os.isdir(path.join(entry, "inc")) then
+                sdk_root = entry
+                break
+            end
+        end
+    end
+
+    if not os.isdir(path.join(sdk_root, "inc")) then
+        error("unexpected xess sdk archive layout")
+    end
+
+    os.mkdir(XESS_DIR)
+    copy_dir(path.join(sdk_root, "inc", "xess"), path.join(XESS_DIR, "xess"))
+    copy_file(path.join(sdk_root, "lib", "libxess.lib"), path.join(LIBRARIES_DIR, "libxess.lib"))
+    copy_file(path.join(sdk_root, "bin", "libxess.dll"), path.join(LIBRARIES_DIR, "libxess.dll"))
+
+    local f = io.open(XESS_STAMP, "wb")
+    f:write(XESS_VERSION)
+    f:close()
+
+    os.rmdir(extract_root)
+    os.remove(XESS_ZIP)
+
+    print("xess sdk " .. XESS_VERSION .. " installed")
+end
+
+local function ensure_steamworks()
+    if file_exists(STEAM_DLL) and file_exists(STEAM_LIB) then
+        print("steamworks sdk present, skipping download")
+        return
+    end
+
+    print("downloading steamworks sdk...")
+    os.mkdir(path.getdirectory(STEAMWORKS_ZIP))
+
+    local result, code = download_with_progress(STEAMWORKS_URL, STEAMWORKS_ZIP)
+
+    if result ~= "OK" then
+        print(string.format("  steamworks download failed: %s (http %s)", tostring(result), tostring(code)))
+        return
+    end
+
+    local extract_root = path.join(PROJECT_ROOT, "third_party", "steamworks_extract")
+    if os.isdir(extract_root) then
+        os.rmdir(extract_root)
+    end
+
+    local ok, err = pcall(extract_zip, STEAMWORKS_ZIP, extract_root)
+    if not ok then
+        print("  steamworks extraction failed: " .. tostring(err))
+        return
+    end
+
+    local sdk_root = path.join(extract_root, "SteamworksSDK-main")
+    if not os.isdir(sdk_root) then
+        print("  unexpected steamworks archive layout")
+        return
+    end
+
+    if os.isdir(STEAMWORKS_DIR) then
+        os.rmdir(STEAMWORKS_DIR)
+    end
+    os.mkdir(STEAMWORKS_DIR)
+
+    copy_dir(path.join(sdk_root, "public"), path.join(STEAMWORKS_DIR, "public"))
+    copy_dir(path.join(sdk_root, "redistributable_bin"), path.join(STEAMWORKS_DIR, "redistributable_bin"))
+
+    os.rmdir(extract_root)
+    os.remove(STEAMWORKS_ZIP)
+
+    if file_exists(STEAM_DLL) and file_exists(STEAM_LIB) then
+        print("steamworks sdk installed")
+    else
+        print("  steamworks sdk install incomplete")
+    end
 end
 
 function setup.run()
-    print("\n[1/5] copying data files into binaries...")
+    print("\n[1/7] copying data files into binaries...")
     copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
 
-    print("\n[2/5] ensuring libraries archive is present...")
+    print("\n[2/7] ensuring libraries archive is present...")
     ensure_archive()
 
-    print("\n[3/5] extracting archive...")
+    print("\n[3/7] extracting archive...")
     extract_archive()
 
-    print("\n[4/5] ensuring d3d12 agility sdk...")
+    print("\n[4/7] ensuring xess sdk...")
+    ensure_xess_sdk()
+
+    print("\n[5/7] ensuring d3d12 agility sdk...")
     ensure_agility_sdk()
 
-    print("\n[5/5] copying runtime dlls into binaries...")
+    print("\n[6/7] ensuring steamworks sdk...")
+    ensure_steamworks()
+
+    print("\n[7/7] copying runtime dlls into binaries...")
     for _, dll in ipairs(RUNTIME_DLLS) do
         if file_exists(dll) then
             copy_file(dll, path.join(BINARIES_DIR, path.getname(dll)))
@@ -392,7 +495,20 @@ function setup.run()
     end
 
     stage_agility_runtime()
-    stage_steam_runtime()
+
+    if file_exists(STEAM_DLL) then
+        copy_file(STEAM_DLL, path.join(BINARIES_DIR, path.getname(STEAM_DLL)))
+
+        local appid_path = path.join(BINARIES_DIR, "steam_appid.txt")
+        if not file_exists(appid_path) then
+            local f = io.open(appid_path, "wb")
+            f:write(STEAM_APP_ID)
+            f:close()
+        end
+        print("  staged steam_api64.dll and steam_appid.txt")
+    else
+        print("  steamworks sdk not found, skipping steam staging")
+    end
 
     print("\nsetup complete")
 end

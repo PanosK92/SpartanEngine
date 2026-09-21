@@ -19,150 +19,148 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============
 #include "pch.h"
 #include "ProgressTracker.h"
-//==========================
+#include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cmath>
+#include <map>
+#include <mutex>
 
-//= NAMESPACES ===============
 using namespace std;
-using namespace spartan::math;
-//============================
 
 namespace spartan
 {
     namespace
-    { 
-        array<Progress, static_cast<size_t>(ProgressType::Max)> progresses;
-        recursive_mutex mutex_jobs;
-        uint32_t anonymous_jobs = 0;
-        atomic<uint32_t> loading_sources = 0;
-    }
-
-    void Progress::Start(const uint32_t job_count, const string& text)
     {
-        lock_guard lock(mutex_jobs);
-
-        // accumulate when a previous run is still in progress so concurrent producers (eg parallel model imports)
-        // can share a single tracker without resetting each other's progress
-        const bool already_running = !m_continuous_mode && (m_jobs_done < m_job_count);
-        if (already_running)
+        struct Registry
         {
-            m_job_count += job_count;
-            m_text       = text;
-            UpdateProgressing();
-            return;
-        }
+            mutex access;
+            map<uint64_t, ProgressTaskState*> tasks;
+            array<atomic<uint32_t>, static_cast<size_t>(ProgressType::Max)> by_type{};
+            atomic<uint32_t> active_count{0};
+            uint64_t next_id = 1;
+        };
 
-        m_job_count       = job_count;
-        m_jobs_done       = 0;
-        m_text            = text;
-        m_continuous_mode = (job_count == 0); // if job_count is 0, use continuous mode
-        m_fraction        = 0.0f;
-        UpdateProgressing();
-    }
-
-    float Progress::GetFraction() const
-    {
-        lock_guard lock(mutex_jobs);
-
-        if (m_continuous_mode)
+        const shared_ptr<Registry>& registry()
         {
-            return m_fraction.load();
-        }
-
-        if (m_job_count == 0)
-        {
-            return 1.0f;
-        }
-
-        return static_cast<float>(m_jobs_done) / static_cast<float>(m_job_count);
-    }
-
-    void Progress::SetFraction(float fraction)
-    {
-        lock_guard lock(mutex_jobs);
-        m_fraction = (fraction < 0.0f) ? 0.0f : (fraction > 1.0f) ? 1.0f : fraction;
-        UpdateProgressing();
-    }
-
-    bool Progress::IsProgressing() const
-    {
-        return m_progressing.load(memory_order_acquire);
-    }
-
-    void Progress::UpdateProgressing()
-    {
-        const bool progressing = GetFraction() != 1.0f;
-        if (progressing != m_progressing.load(memory_order_relaxed))
-        {
-            if (progressing) loading_sources.fetch_add(1, memory_order_release);
-            else loading_sources.fetch_sub(1, memory_order_release);
-            m_progressing.store(progressing, memory_order_release);
+            // Tasks keep the registry alive even during static shutdown.
+            static const auto instance = make_shared<Registry>();
+            return instance;
         }
     }
 
-    void Progress::JobDone()
+    struct ProgressTaskState
     {
-        lock_guard lock(mutex_jobs);
+        shared_ptr<Registry> owner;
+        ProgressSnapshot info;
+        chrono::steady_clock::time_point started = chrono::steady_clock::now();
+        bool blocks_loading = true;
+        bool active = false; // Protected by owner->access, like all display data.
 
-        SP_ASSERT_MSG(m_jobs_done + 1 <= m_job_count, "Job count exceeded");
-        m_jobs_done++;
-        UpdateProgressing();
+        void Finish()
+        {
+            if (!owner) return;
+            lock_guard lock(owner->access);
+            if (!active) return;
+            active = false;
+            owner->tasks.erase(info.id);
+            if (blocks_loading)
+            {
+                owner->by_type[static_cast<size_t>(info.type)].fetch_sub(1, memory_order_release);
+                owner->active_count.fetch_sub(1, memory_order_release);
+            }
+        }
+        ~ProgressTaskState() { Finish(); }
+    };
+
+    ProgressTask ProgressTracker::Begin(ProgressType type, const string& title, const string& step, ProgressMode mode)
+    {
+        if (static_cast<size_t>(type) >= static_cast<size_t>(ProgressType::Max)) return {};
+        auto state = make_shared<ProgressTaskState>();
+        state->blocks_loading = mode == ProgressMode::Loading;
+        state->owner = registry();
+        state->info.type = type;
+        state->info.title = title;
+        state->info.step = step;
+        {
+            lock_guard lock(state->owner->access);
+            state->info.id = state->owner->next_id++;
+            state->owner->tasks.emplace(state->info.id, state.get());
+            state->active = true;
+            if (state->blocks_loading)
+            {
+                state->owner->by_type[static_cast<size_t>(type)].fetch_add(1, memory_order_release);
+                state->owner->active_count.fetch_add(1, memory_order_release);
+            }
+        }
+        return ProgressTask(move(state));
     }
 
-    void Progress::Complete()
+    void ProgressTask::SetStep(const string& step, const string& detail) const
     {
-        lock_guard lock(mutex_jobs);
-
-        // a single missed JobDone leaves the tracker just below one and Start accumulates onto it,
-        // which wedges the loading screen for this load and every load after it
-        m_jobs_done       = m_job_count.load();
-        m_continuous_mode = false;
-        m_fraction        = 1.0f;
-        UpdateProgressing();
+        if (!m_state) return;
+        lock_guard lock(m_state->owner->access);
+        if (!m_state->active) return;
+        m_state->info.step = step;
+        m_state->info.detail = detail;
+        m_state->info.fraction = -1.0f;
+        ++m_state->info.step_id;
     }
 
-    string Progress::GetText()
+    void ProgressTask::SetDetail(const string& detail) const
     {
-        lock_guard lock(mutex_jobs);
-        return m_text;
+        if (!m_state) return;
+        lock_guard lock(m_state->owner->access);
+        if (m_state->active) m_state->info.detail = detail;
     }
 
-    void Progress::SetText(const string& text)
+    void ProgressTask::SetFraction(float fraction) const
     {
-        lock_guard lock(mutex_jobs);
-        m_text = text;
+        if (!m_state || !isfinite(fraction)) return;
+        lock_guard lock(m_state->owner->access);
+        if (!m_state->active) return;
+        // Parallel callbacks can arrive out of order. Only a new step resets progress.
+        m_state->info.fraction = max(m_state->info.fraction, clamp(fraction, 0.0f, 1.0f));
     }
 
-    Progress& ProgressTracker::GetProgress(const ProgressType progress_type)
+    void ProgressTask::Finish() const
     {
-        lock_guard lock(mutex_jobs);
-
-        return progresses[static_cast<uint32_t>(progress_type)];
+        if (m_state) m_state->Finish();
     }
 
     bool ProgressTracker::IsLoading()
     {
-        // Thousands of components ask this every frame. Writers maintain one
-        // aggregate under the existing mutex instead of readers locking every tracker.
-        return loading_sources.load(memory_order_acquire) != 0;
+        return registry()->active_count.load(memory_order_acquire) != 0;
     }
 
-    void ProgressTracker::SetGlobalLoadingState(bool is_loading)
+    bool ProgressTracker::IsLoading(ProgressType type)
     {
-        lock_guard lock(mutex_jobs);
+        return static_cast<size_t>(type) < static_cast<size_t>(ProgressType::Max) && registry()->by_type[static_cast<size_t>(type)].load(memory_order_acquire) != 0;
+    }
 
-        if (is_loading)
+    ProgressDisplay ProgressTracker::GetDisplay()
+    {
+        const auto& owner = registry();
+        lock_guard lock(owner->access);
+        ProgressDisplay display;
+        display.active_count = static_cast<uint32_t>(owner->tasks.size());
+        // A world/download remains the primary task; active model work takes the
+        // supporting row ahead of terrain/texture work. Oldest wins within a type,
+        // so rapidly reporting workers cannot flicker or steal the display.
+        const auto now = chrono::steady_clock::now();
+        for (uint32_t type = 0; type < static_cast<uint32_t>(ProgressType::Max); ++type)
         {
-            anonymous_jobs++;
-            loading_sources.fetch_add(1, memory_order_release);
+            for (const auto& [id, state] : owner->tasks)
+            {
+                if (static_cast<uint32_t>(state->info.type) != type) continue;
+                auto& row = display.tasks[display.count++];
+                row = state->info;
+                row.elapsed_seconds = chrono::duration<double>(now - state->started).count();
+                if (display.count == display.tasks.size()) return display;
+            }
         }
-        else if (anonymous_jobs > 0)
-        {
-            // guard against underflow, an unbalanced decrement would wrap to a huge value and leave IsLoading stuck true forever
-            anonymous_jobs--;
-            loading_sources.fetch_sub(1, memory_order_release);
-        }
+        return display;
     }
 }

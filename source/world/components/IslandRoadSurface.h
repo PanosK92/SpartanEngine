@@ -44,22 +44,19 @@ namespace spartan::island_road_surface
     }
 
     inline void SetLayer(Entity* parent,const char* name,
-        std::vector<RHI_Vertex_PosTexNorTan>& vertices,std::vector<uint32_t>& indices,int layer)
+        const std::shared_ptr<Mesh>& mesh,int layer)
     {
         Entity* child=parent->GetChildByName(name);
         if (child) {child->RemoveComponent<Physics>();child->RemoveComponent<Render>();}
-        if (indices.empty()) return;
+        if (!mesh) return;
         if (!child)
         {
             child=World::CreateEntity();child->SetObjectName(name);child->SetParent(parent);
             child->SetPositionLocal(Vector3::Zero);child->SetRotationLocal(Quaternion::Identity);
             child->SetScaleLocal(Vector3::One);child->SetTransient(true);
         }
-        auto mesh=std::make_shared<Mesh>();
         mesh->SetObjectName(std::string(name)+"_"+std::to_string(parent->GetObjectId()));
-        mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize),false);
-        mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale),false);
-        mesh->AddGeometry(vertices,indices,false);mesh->CreateGpuBuffers();
+        mesh->CreateGpuBuffers();
         Render* render=child->AddComponent<Render>();
         render->SetOwnedMesh(mesh);render->SetMaterial(MaterialFor(layer));
         render->SetFlag(RenderFlags::ExcludeFromTerrainBlend,layer!=2);

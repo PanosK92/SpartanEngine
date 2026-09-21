@@ -3166,8 +3166,9 @@ namespace car
 
                 // each row carries its share of the carcass rate, so an asymmetric patch produces a real
                 // moment on the upright instead of one force through the wheel centre line
-                float row_stiffness = PxMax(spec.tire_vertical_stiffness, 1.0f) * rows_inverse;
-                float row_damping = 2.0f * 0.7f * sqrtf(PxMax(spec.tire_vertical_stiffness, 1.0f) * PxMax(cfg.wheel_mass, 1.0f)) * rows_inverse;
+                w.pressure_bar = hot_tire_pressure(spec, w.thermal.core, w.damage, ambient_pressure / 100000.0f);
+                const float radial_stiffness = loaded_tire_stiffness(spec, w.pressure_bar);
+
                 float row_force_limit = spec.max_susp_force * rows_inverse;
                 PxVec3 total_force = PxVec3(0.0f);
                 PxVec3 point_accumulator = PxVec3(0.0f);
@@ -3189,7 +3190,10 @@ namespace car
                     // damping only exists while the tread is actually squashed, applying it on a grazing
                     // hit invents a force before the tire has touched anything
                     float closing = probe_velocity.dot(row.normal);
-                    row.load = PxClamp(row.penetration * row_stiffness - closing * row_damping, 0.0f, row_force_limit);
+                    const float spring_force = tire_spring_force(row.penetration, radial_stiffness, spec.tire_vertical_stiffness, wheel_radius) * rows_inverse;
+                    const float tangent_stiffness = radial_stiffness + (row.penetration > max_penetration * 0.7f ? 4.0f * spec.tire_vertical_stiffness : 0.0f);
+                    const float row_damping = 2.0f * 0.7f * sqrtf(tangent_stiffness * PxMax(cfg.wheel_mass, 1.0f)) * rows_inverse;
+                    row.load = PxClamp(spring_force - closing * row_damping, 0.0f, row_force_limit);
                     if (row.load <= 0.0f)
                     {
                         continue;
@@ -3995,7 +3999,7 @@ namespace car
     {
             float raw_radius = cfg.wheel_radius_for(wheel_index);
             float radius = std::isfinite(raw_radius) && raw_radius > 0.0f ? PxMax(raw_radius, 0.05f) : 0.34f;
-            float deflection = spec.tire_vertical_stiffness > 1000.0f ? PxClamp(tire_load / spec.tire_vertical_stiffness, 0.0f, 0.05f) : 0.0f;
+            float deflection = tire_spring_deflection(tire_load, loaded_tire_stiffness(spec, wheels[wheel_index].pressure_bar), spec.tire_vertical_stiffness, radius);
             return PxMax(radius - deflection * 0.55f, 0.05f);
     }
 
@@ -4297,7 +4301,7 @@ namespace car
                     float saturation = 0.0f;
                     if (use_brush)
                     {
-                        brush_tire_params brush = evaluate_brush_params(spec, wr_eff, tread_width, w.tire_load, w.condition_stiffness);
+                        brush_tire_params brush = evaluate_brush_params(spec, wr_eff, tread_width, w.tire_load, w.condition_stiffness, w.pressure_bar);
                         dynamic_force = evaluate_brush_model(spec, brush, w.slip_ratio, curve_slip_angle, dyn_camb, w.tire_load, peak_force_long, peak_force_lat, camber_thrust_sign, saturation, rolling_direction);
                         patch_half_length = brush.patch_half_length;
                     }

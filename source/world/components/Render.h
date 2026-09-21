@@ -237,7 +237,10 @@ namespace spartan
         };
         const std::vector<InstanceBoundsGroup>& GetInstanceBoundsGroups() const { return m_instance_bounds_groups; }
         uint32_t GetGroupedInstanceIndex(uint32_t index) const { return m_instance_bounds_order[index]; }
-        void SetInstances(const std::vector<Instance>& instances);
+        void SetInstances(const std::vector<Instance>& instances, bool refresh_bounds = true);
+        // Main-thread batch: prepare independent bounds on
+        // workers, then update visibility on the caller. Entries must be unique.
+        static void RefreshBounds(const std::vector<Render*>& renders);
         void SetInstances(const std::vector<math::Matrix>& transforms);
 
         // render distance

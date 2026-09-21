@@ -82,6 +82,7 @@ namespace spartan
 {
     namespace
     {
+        ProgressTask world_progress;
         sol::state lua_state;
         vector<Entity*> entities;
         unordered_map<uint64_t, Entity*> entities_by_id; // published entities, guarded by entity_access_mutex
@@ -135,6 +136,8 @@ namespace spartan
         string pending_load_path;
         Stopwatch preparation_timer;
         size_t preparation_cursor = 0;
+        enum class PreparationStage { Terrain, Roads, Components };
+        PreparationStage preparation_stage = PreparationStage::Terrain;
         BoundingBox bounding_box    = BoundingBox::Unit;
         Entity* camera              = nullptr;
         Entity* camera_override     = nullptr; // set by the sequencer or gameplay, takes precedence over the default camera
@@ -1349,6 +1352,7 @@ namespace spartan
 
         // drop queued work and wait for in-flight material/resource/load tasks
         ThreadPool::Flush(true);
+        world_progress.Finish();
 
         // a load worker may have signaled commit as it finished, drop that after the wait
         {
@@ -1466,9 +1470,10 @@ namespace spartan
                 ProcessPendingAdditions();
                 deferred_load_document.reset();
 
-                ProgressTracker::GetProgress(ProgressType::World).SetText("preparing terrain, roads and population...");
+                world_progress.SetStep("Preparing terrain, roads and population");
                 preparation_timer.Start();
                 preparation_cursor = 0;
+                preparation_stage = PreparationStage::Terrain;
                 for (Entity* entity : entities)
                     if (entity->GetActive() && entity->GetComponent<Camera>()) camera = pick_default_camera(camera, entity);
                 world_io_state.store(WorldIoState::Preparing, memory_order_release);
@@ -1487,39 +1492,50 @@ namespace spartan
 
         if (IsPreparing())
         {
-            ProcessPendingAdditions();
-            bool terrain_busy = false;
-            bool surface_busy = false;
-            // Run only preparation components. Scripts, gameplay and ordinary editor ticks
-            // must not observe a world whose roads, collision and vegetation are incomplete.
-            const vector<Entity*> preparation_entities = entities;
-            for (Entity* entity : preparation_entities)
+            if (preparation_stage == PreparationStage::Terrain)
             {
-                if (Terrain* terrain = entity->GetComponent<Terrain>(); terrain && entity->GetActive())
-                {
-                    if (!terrain->IsCpuGenerationPending()) terrain->Tick();
-                    surface_busy |= terrain->IsCpuGenerationPending() || terrain->IsMeshCommitPending();
-                    terrain_busy |= terrain->IsGenerating();
-                }
-            }
-            ProcessPendingAdditions();
-            if (!surface_busy)
-            {
-                // Authored/non-terrain and attached splines also have deferred first-tick work.
+                world_progress.SetDetail("Terrain surface, vegetation and roads");
+                ProcessPendingAdditions();
+                bool terrain_busy = false;
+                bool surface_busy = false;
+                // Run only preparation components. Scripts, gameplay and ordinary editor ticks
+                // must not observe a world whose roads, collision and vegetation are incomplete.
+                const vector<Entity*> preparation_entities = entities;
                 for (Entity* entity : preparation_entities)
-                    if (Spline* spline = entity->GetComponent<Spline>(); spline && entity->GetActive()) spline->Tick();
-                Spline::ProcessPendingRoadMeshes();
-                Spline::RebuildRoadJunctions();
+                {
+                    if (Terrain* terrain = entity->GetComponent<Terrain>(); terrain && entity->GetActive())
+                    {
+                        if (!terrain->IsCpuGenerationPending()) terrain->Tick();
+                        surface_busy |= terrain->IsCpuGenerationPending() || terrain->IsMeshCommitPending();
+                        terrain_busy |= terrain->IsGenerating();
+                    }
+                }
+                ProcessPendingAdditions();
+                if (!surface_busy)
+                {
+                    // Authored/non-terrain and attached splines also have deferred first-tick work.
+                    for (Entity* entity : preparation_entities)
+                        if (Spline* spline = entity->GetComponent<Spline>(); spline && entity->GetActive()) spline->Tick();
+                    Spline::ProcessPendingRoadMeshes();
+                    Spline::RebuildRoadJunctions();
+                }
+                if (terrain_busy || Spline::HasPendingRoadWork()) return;
+                preparation_stage = PreparationStage::Roads;
             }
-            if (terrain_busy || Spline::HasPendingRoadWork()) return;
-            if (!island_road_details::PrepareWorld()) return;
-            if (preparation_cursor == 0) ProcessPendingRemovals();
+            if (preparation_stage == PreparationStage::Roads)
+            {
+                world_progress.SetDetail("Roadside details and guardrails");
+                if (!island_road_details::PrepareWorld()) return;
+                preparation_stage = PreparationStage::Components;
+                ProcessPendingRemovals();
+            }
             // Complete model preloads and bake navigation before editor entry. Live agents
             // still spawn in play mode; a failed asset must not wedge the loading screen.
             const Stopwatch slice;
             while (preparation_cursor < entities.size())
             {
                 Entity* entity = entities[preparation_cursor];
+                world_progress.SetDetail("Preparing scene: " + entity->GetObjectName());
                 if (entity->GetActive())
                 {
                     if (Text3D* text = entity->GetComponent<Text3D>()) text->PrepareWorld();
@@ -1529,10 +1545,13 @@ namespace spartan
                     if (Pedestrians* walkers = entity->GetComponent<Pedestrians>(); walkers && !walkers->PrepareWorld()) return;
                 }
                 ++preparation_cursor;
-                if (slice.GetElapsedTimeMs() >= 3.0f) return;
+                if (slice.GetElapsedTimeMs() >= 20.0f) return;
             }
             ProcessPendingAdditions();
             if (preparation_cursor < entities.size()) return;
+            world_progress.SetStep("Uploading world geometry");
+            generated_cache::SaveChecksumIndex(GetResourceDirectory());
+            GeometryBuffer::SaveWorldLoadCapacity(GetResourceDirectory());
             GeometryBuffer::BuildIfDirty();
             SP_LOG_INFO("World preparation complete: %.2f ms", preparation_timer.GetElapsedTimeMs());
             for (const string& line : generated_cache::GetStatistics()) SP_LOG_INFO("Bake cache %s", line.c_str());
@@ -1542,8 +1561,7 @@ namespace spartan
                 const auto result = generated_cache::Maintain(resources);
                 if (result.removed) SP_LOG_INFO("Bake cache reclaimed %.1f MB (%llu files)", result.bytes_removed / 1000000.0, static_cast<unsigned long long>(result.removed));
             });
-            ProgressTracker::GetProgress(ProgressType::World).Complete();
-            ProgressTracker::SetGlobalLoadingState(false);
+            world_progress.Finish();
             world_io_state.store(WorldIoState::Idle, memory_order_release);
         }
 
@@ -2163,7 +2181,6 @@ namespace spartan
         catch (const exception& error)
         {
             SP_LOG_ERROR("Failed to save world '%s': %s", file_path.c_str(), error.what());
-            ProgressTracker::GetProgress(ProgressType::World).Complete();
             return false;
         }
     }
@@ -2193,7 +2210,6 @@ namespace spartan
         catch (const exception& error)
         {
             SP_LOG_ERROR("Failed to save world '%s': %s", file_path.c_str(), error.what());
-            ProgressTracker::GetProgress(ProgressType::World).Complete();
         }
 
         world_io_state.store(WorldIoState::Idle, memory_order_release);
@@ -2220,7 +2236,8 @@ namespace spartan
             file_path += string(EXTENSION_WORLD);
         }
 
-        // start timing
+        auto progress = ProgressTracker::Begin(ProgressType::World, FileSystem::GetFileNameFromFilePath(file_path),
+            "Saving world", ProgressMode::Background);
         const Stopwatch timer;
 
         const auto save_started = filesystem::file_time_type::clock::now();
@@ -2697,10 +2714,9 @@ namespace spartan
             // get root entities, save them, and they will save their children recursively
             vector<Entity*> root_entities;
             World::GetRootEntities(root_entities);
-            const uint32_t root_entity_count = static_cast<uint32_t>(root_entities.size());
 
             // progress tracking
-            ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
+            progress.SetStep("Serializing entities");
 
             // write entities to node while the world is still owned by this thread
             for (Entity* root : root_entities)
@@ -2708,22 +2724,19 @@ namespace spartan
                 // transient entities are runtime only, such as skid mark trails, they must never be serialized
                 if (root->IsTransient())
                 {
-                    ProgressTracker::GetProgress(ProgressType::World).JobDone();
                     continue;
                 }
 
                 pugi::xml_node entity_node = entities_node.append_child("Entity");
                 root->Save(entity_node);
-                ProgressTracker::GetProgress(ProgressType::World).JobDone();
             }
 
-            // an empty world starts the tracker in continuous mode where it can never reach one on its own
-            ProgressTracker::GetProgress(ProgressType::World).Complete();
         }
 
         const float snapshot_ms = timer.GetElapsedTimeMs();
-        auto write_snapshot = [file_path, resources = world_file_path_to_resource_directory(file_path, false), document, writes = move(writes), cleanup = move(cleanup), snapshot_ms]() mutable
+        auto write_snapshot = [progress, file_path, resources = world_file_path_to_resource_directory(file_path, false), document, writes = move(writes), cleanup = move(cleanup), snapshot_ms]() mutable
         {
+            progress.SetStep("Writing resources and world");
             const Stopwatch write_timer;
             for (auto& write : writes) write();
 
@@ -2802,13 +2815,18 @@ namespace spartan
         // ensure prefabs are registered before loading
         Car::RegisterPrefabs();
 
+        // Include teardown/job waits in the same visible task and elapsed time.
+        // Shutdown finishes the previous world's handle, so retain this one locally.
+        auto load_progress = ProgressTracker::Begin(ProgressType::World,
+            FileSystem::GetFileNameFromFilePath(file_path_), "Finishing previous world work");
         // shutdown synchronously before async loading
         Shutdown();
         Renderer::ResetWorldGeometry();
         generated_cache::ResetStatistics();
 
         // publish the loading state now so the progress ui shows this frame instead of only once the worker task starts
-        ProgressTracker::SetGlobalLoadingState(true);
+        world_progress = move(load_progress);
+        world_progress.SetStep("Reading world");
 
         // copy path for the lambda capture
         string path_copy = file_path_;
@@ -2819,405 +2837,419 @@ namespace spartan
             // clears the loading state and releases the guard, must run on every exit path
             auto finish = []()
             {
-                // the tracker never resets while it is below one, so an early return or a miscount
-                // would keep the loading screen up for this load and poison every load after it
-                ProgressTracker::GetProgress(ProgressType::World).Complete();
-                ProgressTracker::SetGlobalLoadingState(false);
+                world_progress.Finish();
                 world_io_state.store(
                     WorldIoState::Idle,
                     memory_order_release
                 );
             };
 
-            file_path  = path_copy;
-            world_name = FileSystem::GetFileNameFromFilePath(file_path);
-
-            // start timing
-            const Stopwatch timer;
-
-            // load xml document, kept alive until main thread finishes deferred script init
-            shared_ptr<pugi::xml_document> doc = make_shared<pugi::xml_document>();
-            pugi::xml_parse_result result = doc->load_file(file_path.c_str());
-            if (!result)
+            try
             {
-                SP_LOG_ERROR("Failed to load XML file: %s", result.description());
-                finish();
-                return;
-            }
-            deferred_load_document = doc;
+                file_path  = path_copy;
+                world_name = FileSystem::GetFileNameFromFilePath(file_path);
 
-            // get world node
-            pugi::xml_node world_node = doc->child("World");
-            if (!world_node)
-            {
-                SP_LOG_ERROR("No 'World' node found.");
-                deferred_load_document.reset();
-                finish();
-                return;
-            }
+                // start timing
+                const Stopwatch timer;
 
-            // deserialize the resources before loading the world (XML), as it references them
-            {
-                string directory = world_file_path_to_resource_directory(file_path);
-
+                // load xml document, kept alive until main thread finishes deferred script init
+                shared_ptr<pugi::xml_document> doc = make_shared<pugi::xml_document>();
+                pugi::xml_parse_result result = doc->load_file(file_path.c_str());
+                if (!result)
                 {
-                    vector<string> files;
-                    if (FileSystem::IsDirectory(directory))
-                    {
-                        files = FileSystem::GetFilesInDirectory(directory);
-                    }
-
-                    // Shared libraries can live outside the world's resource directory.
-                    // Load their native render dependencies here too, rather than stalling
-                    // the sequential entity pass on each first use. Keep the directory
-                    // scan for older worlds which reference resources only by name.
-                    unordered_set<string> resource_paths;
-                    auto path_key = [](const string& path)
-                    {
-                        return filesystem::absolute(path).lexically_normal().generic_string();
-                    };
-                    for (const string& path : files)
-                    {
-                        resource_paths.insert(path_key(path));
-                    }
-                    auto add_dependency = [&](const string& path, bool native)
-                    {
-                        if (native && resource_paths.insert(path_key(path)).second && FileSystem::IsFile(path))
-                        {
-                            files.push_back(path);
-                        }
-                    };
-                    function<void(pugi::xml_node)> collect_dependencies = [&](pugi::xml_node parent)
-                    {
-                        for (pugi::xml_node entity : parent.children("Entity"))
-                        {
-                            if (pugi::xml_node render = entity.child("render"))
-                            {
-                                const string mesh_path = render.attribute("mesh_path").as_string();
-                                const string mesh_name = render.attribute("mesh_name").as_string();
-                                if (mesh_name.rfind("standard_", 0) != 0 && mesh_name != "ocean")
-                                {
-                                    add_dependency(mesh_path, FileSystem::IsEngineMeshFile(mesh_path));
-                                }
-                                if (!render.attribute("material_default").as_bool(true) &&
-                                    render.attribute("material_name").as_string()[0] != '\0')
-                                {
-                                    const string material_path = render.attribute("material_path").as_string();
-                                    add_dependency(material_path, FileSystem::IsEngineMaterialFile(material_path));
-                                }
-                            }
-                            collect_dependencies(entity);
-                        }
-                    };
-                    collect_dependencies(world_node.child("Entities"));
-
-                    // bucket files by type so we can fan each bucket out across the thread pool
-                    // sequential loads here used to dominate world load time on texture heavy scenes
-                    vector<string> texture_paths;
-                    vector<string> mesh_paths;
-                    vector<string> material_paths;
-                    texture_paths.reserve(files.size());
-                    mesh_paths.reserve(files.size());
-                    material_paths.reserve(files.size());
-
-                    for (const string& path : files)
-                    {
-                        const string file_name =
-                            FileSystem::GetFileNameFromFilePath(path);
-                        if (
-                            file_name.rfind("car_", 0) == 0 &&
-                            file_name.find("_packed_slot") != string::npos
-                        )
-                        {
-                            continue;
-                        }
-
-                        // the terrain reads its own caches while it generates, loading them here as
-                        // ordinary resources would build the whole terrain mesh a second time
-                        if (
-                            file_name.rfind("terrain_cache", 0)      == 0 ||
-                            file_name.rfind("terrain_mesh_cache", 0) == 0
-                        )
-                        {
-                            continue;
-                        }
-
-                        if (FileSystem::IsEngineTextureFile(path))
-                        {
-                            texture_paths.push_back(path);
-                        }
-                        else if (FileSystem::IsEngineMeshFile(path))
-                        {
-                            mesh_paths.push_back(path);
-                        }
-                        else if (FileSystem::IsEngineMaterialFile(path))
-                        {
-                            material_paths.push_back(path);
-                        }
-                    }
-
-                    // progress counts only what is actually loaded below, counting every file on disk
-                    // left the unclassified ones permanently outstanding and pinned the bar under 100 percent
-                    uint32_t resource_count = static_cast<uint32_t>(
-                        texture_paths.size() + mesh_paths.size() + material_paths.size()
-                    );
-                    if (resource_count > 0)
-                    {
-                        ProgressTracker::GetProgress(ProgressType::World).Start(resource_count, "Loading resources...");
-                    }
-
-                    // pass 1, textures and meshes are independent, fan them out together
-                    // ResourceCache::Load uses a per-path in-flight lock so concurrent loads of the same path are deduplicated,
-                    // RHI_Texture::PrepareForGpu transitions state via compare_exchange_strong so it is safe across threads
-                    {
-                        struct ResourceJob
-                        {
-                            enum class Type : uint8_t { Texture, Mesh } type;
-                            string path;
-                            uint64_t size_bytes = 0;
-                        };
-
-                        vector<ResourceJob> jobs;
-                        jobs.reserve(texture_paths.size() + mesh_paths.size());
-                        auto add_job = [&jobs](const ResourceJob::Type type, const string& path)
-                        {
-                            error_code ignored;
-                            const uint64_t size_bytes = filesystem::file_size(path, ignored);
-                            jobs.push_back({ type, path, ignored ? 0ull : size_bytes });
-                        };
-                        for (const string& path : texture_paths)
-                        {
-                            add_job(ResourceJob::Type::Texture, path);
-                        }
-                        for (const string& path : mesh_paths)
-                        {
-                            add_job(ResourceJob::Type::Mesh, path);
-                        }
-
-                        if (!jobs.empty())
-                        {
-                            // largest first, a 30 mb mesh picked up last would otherwise run alone at the end
-                            sort(jobs.begin(), jobs.end(), [](const ResourceJob& a, const ResourceJob& b)
-                            {
-                                return a.size_bytes > b.size_bytes;
-                            });
-
-                            // the loop only decides how many workers take part, each one pulls the next job
-                            // from a shared counter so a worker that lands on small files keeps going while
-                            // another is still inside a big one, static ranges left most of the pool idle
-                            atomic<uint32_t> next_job = 0;
-                            const uint32_t job_count  = static_cast<uint32_t>(jobs.size());
-                            ThreadPool::ParallelLoop([&jobs, &next_job, job_count, resource_count](uint32_t, uint32_t)
-                            {
-                                for (uint32_t i = next_job.fetch_add(1, memory_order_relaxed); i < job_count; i = next_job.fetch_add(1, memory_order_relaxed))
-                                {
-                                    if (jobs[i].type == ResourceJob::Type::Texture)
-                                    {
-                                        if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(jobs[i].path, RHI_Texture_Stream))
-                                        {
-                                            texture->PrepareForGpu();
-                                        }
-                                    }
-                                    else
-                                    {
-                                        ResourceCache::Load<Mesh>(jobs[i].path);
-                                    }
-
-                                    if (resource_count > 0)
-                                    {
-                                        ProgressTracker::GetProgress(ProgressType::World).JobDone();
-                                    }
-                                }
-                            }, job_count);
-                        }
-                    }
-
-                    // pass 2, materials reference textures by path so they must run after the texture pass completes
-                    if (!material_paths.empty())
-                    {
-                        atomic<uint32_t> next_material = 0;
-                        const uint32_t material_count  = static_cast<uint32_t>(material_paths.size());
-                        ThreadPool::ParallelLoop([&material_paths, &next_material, material_count, resource_count](uint32_t, uint32_t)
-                        {
-                            for (uint32_t i = next_material.fetch_add(1, memory_order_relaxed); i < material_count; i = next_material.fetch_add(1, memory_order_relaxed))
-                            {
-                                ResourceCache::Load<Material>(material_paths[i]);
-
-                                if (resource_count > 0)
-                                {
-                                    ProgressTracker::GetProgress(ProgressType::World).JobDone();
-                                }
-                            }
-                        }, material_count);
-                    }
+                    SP_LOG_ERROR("Failed to load XML file: %s", result.description());
+                    finish();
+                    return;
                 }
-            }
+                deferred_load_document = doc;
 
-            SP_LOG_INFO("World load: resources %.2f ms", timer.GetElapsedTimeMs());
-
-            // read metadata
-            world_description = world_node.attribute("description").as_string();
-            EnvironmentSettings environment;
-            auto environment_node = world_node.child("Environment");
-            environment.utc_days = environment_node.attribute("utc_days").as_double(environment.utc_days);
-            environment.latitude = environment_node.attribute("latitude").as_double(environment.latitude);
-            environment.longitude = environment_node.attribute("longitude").as_double(environment.longitude);
-            environment.elevation = environment_node.attribute("elevation").as_double(environment.elevation);
-            environment.time_scale = environment_node.attribute("time_scale").as_double(environment.time_scale);
-            environment.north_degrees = environment_node.attribute("north_degrees").as_float(environment.north_degrees);
-            environment.annual_temperature = environment_node.attribute("annual_temperature").as_float(environment.annual_temperature);
-            environment.seasonal_amplitude = environment_node.attribute("seasonal_amplitude").as_float(environment.seasonal_amplitude);
-            environment.daily_amplitude = environment_node.attribute("daily_amplitude").as_float(environment.daily_amplitude);
-            environment.sea_level_pressure = environment_node.attribute("sea_level_pressure").as_float(environment.sea_level_pressure);
-            Environment::SetSettings(environment);
-            // Older worlds have no saved wind. Restore the default instead of
-            // flattening their FFT ocean or inheriting the previous world's wind.
-            world_wind::initialize();
-            const Vector3 default_wind = GetWind();
-            SetWind(Vector3(
-                environment_node.attribute("wind_x").as_float(default_wind.x),
-                environment_node.attribute("wind_y").as_float(default_wind.y),
-                environment_node.attribute("wind_z").as_float(default_wind.z)
-            ));
-
-            // console variables: apply any cvars defined by the world
-            // format:
-            //   <ConsoleVariables>
-            //     <Variable name="r.restir_pt" value="1" />
-            //   </ConsoleVariables>
-            world_console_variables.clear();
-            // A transport inspection view must not leak into another world.
-            cvar_fog_debug.SetValue(0.0f);
-            // Atmosphere density belongs to the world, not the last scene or
-            // the editor's saved graphics settings. Persist these controls even
-            // when the source world predates them, so UI edits survive saving.
-            for (const char* name : { "r.atmosphere.mist_density", "r.atmosphere.mist_height",
-                                     "r.atmosphere.ground_mist", "r.atmosphere.mist_variation" })
-            {
-                if (ConsoleVariable* cvar = ConsoleRegistry::Get().Find(name))
+                // get world node
+                pugi::xml_node world_node = doc->child("World");
+                if (!world_node)
                 {
-                    *cvar->m_value_ptr = cvar->m_default_value;
-                    world_console_variables.emplace_back(name);
-                }
-            }
-            if (pugi::xml_node cvars_node = world_node.child("ConsoleVariables"))
-            {
-                for (pugi::xml_node var_node = cvars_node.child("Variable"); var_node; var_node = var_node.next_sibling("Variable"))
-                {
-                    const char* name  = var_node.attribute("name").as_string();
-                    const char* value = var_node.attribute("value").as_string();
-
-                    if (string_view(name) == "r.fog.debug")
-                        continue;
-                    if (name && name[0] != '\0')
-                    {
-                        ConsoleRegistry::Get().SetValueFromString(name, value);
-                        // Canonicalize legacy fog names; old worlds keep their
-                        // exact mist values and save with the human-facing names.
-                        const ConsoleVariable* cvar = ConsoleRegistry::Get().Find(name);
-                        const string canonical_name = cvar ? string(cvar->m_name) : string(name);
-                        if (find(world_console_variables.begin(), world_console_variables.end(), canonical_name) == world_console_variables.end())
-                            world_console_variables.emplace_back(canonical_name);
-                    }
-                }
-            }
-
-            // entities
-            {
-                // get node
-                pugi::xml_node entities_node = world_node.child("Entities");
-                if (!entities_node)
-                {
-                    SP_LOG_ERROR("No 'Entities' node found.");
+                    SP_LOG_ERROR("No 'World' node found.");
                     deferred_load_document.reset();
                     finish();
                     return;
                 }
 
-                // flatten the entity tree so every node can load in parallel
-                // parent_index is into this same vector, UINT32_MAX means root
-                struct FlatEntity
-                {
-                    pugi::xml_node node;
-                    uint32_t parent_index = UINT32_MAX;
-                };
+                generated_cache::LoadChecksumIndex(GetResourceDirectory());
+                GeometryBuffer::ReserveForWorldLoad(GetResourceDirectory());
 
-                vector<FlatEntity> flat_entities;
+                // deserialize the resources before loading the world (XML), as it references them
                 {
-                    function<void(pugi::xml_node, uint32_t)> collect = [&](pugi::xml_node node, uint32_t parent_index)
+                    string directory = world_file_path_to_resource_directory(file_path);
+
                     {
-                        const uint32_t index = static_cast<uint32_t>(flat_entities.size());
-                        flat_entities.push_back({ node, parent_index });
-
-                        for (pugi::xml_node child = node.child("Entity"); child; child = child.next_sibling("Entity"))
+                        // The directory is an index for legacy name-only references,
+                        // not a manifest: old imports and removed assets can remain here.
+                        const vector<string> directory_files = FileSystem::IsDirectory(directory)
+                            ? FileSystem::GetFilesInDirectory(directory) : vector<string>{};
+                        vector<string> files;
+                        unordered_set<string> resource_paths;
+                        unordered_multimap<string, string> resources_by_name;
+                        auto is_native = [](const string& path)
                         {
-                            collect(child, index);
+                            return FileSystem::IsEngineMeshFile(path) || FileSystem::IsEngineTextureFile(path) ||
+                                FileSystem::IsEngineMaterialFile(path);
+                        };
+                        for (const string& path : directory_files)
+                            if (is_native(path)) resources_by_name.emplace(FileSystem::GetFileNameWithoutExtensionFromFilePath(path), path);
+                        unordered_map<string, bool> dependency_exists;
+                        auto add_dependency = [&](const string& path) -> bool
+                        {
+                            if (path.empty() || !is_native(path)) return false;
+                            if (auto found = dependency_exists.find(path); found != dependency_exists.end()) return found->second;
+                            string key = filesystem::absolute(path).lexically_normal().generic_string();
+#ifdef _WIN32
+                            transform(key.begin(), key.end(), key.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
+#endif
+                            const bool exists = resource_paths.contains(key) || FileSystem::IsFile(path);
+                            dependency_exists[path] = exists;
+                            if (exists && resource_paths.insert(key).second) files.push_back(path);
+                            return exists;
+                        };
+                        function<void(pugi::xml_node)> collect_dependencies = [&](pugi::xml_node node)
+                        {
+                            for (pugi::xml_attribute attribute : node.attributes())
+                            {
+                                const string value = attribute.as_string();
+                                add_dependency(value);
+                                // IResource derives its lookup name from the filename stem.
+                                const string name = attribute.name();
+                                if (name.ends_with("_name"))
+                                {
+                                    const string saved_path = node.attribute((name.substr(0, name.size() - 5) + "_path").c_str()).as_string();
+                                    if (add_dependency(saved_path)) continue;
+                                    const auto [begin, end] = resources_by_name.equal_range(value);
+                                    for (auto it = begin; it != end; ++it) add_dependency(it->second);
+                                }
+                            }
+                            for (pugi::xml_node child : node.children()) collect_dependencies(child);
+                        };
+                        collect_dependencies(world_node);
+                        // Include native texture dependencies before the parallel material
+                        // pass. Foreign images remain deferred so alpha merging precedes compression.
+                        for (size_t i = 0; i < files.size(); ++i)
+                        {
+                            if (!FileSystem::IsEngineMaterialFile(files[i])) continue;
+                            pugi::xml_document material;
+                            if (material.load_file(files[i].c_str())) collect_dependencies(material);
                         }
+                        SP_LOG_INFO("World dependencies: %zu native resources referenced, %zu files in resource directory",
+                            files.size(), directory_files.size());
+
+                        // bucket files by type so we can fan each bucket out across the thread pool
+                        // sequential loads here used to dominate world load time on texture heavy scenes
+                        vector<string> texture_paths;
+                        vector<string> mesh_paths;
+                        vector<string> material_paths;
+                        texture_paths.reserve(files.size());
+                        mesh_paths.reserve(files.size());
+                        material_paths.reserve(files.size());
+
+                        for (const string& path : files)
+                        {
+                            const string file_name =
+                                FileSystem::GetFileNameFromFilePath(path);
+                            if (
+                                file_name.rfind("car_", 0) == 0 &&
+                                file_name.find("_packed_slot") != string::npos
+                            )
+                            {
+                                continue;
+                            }
+
+                            // the terrain reads its own caches while it generates, loading them here as
+                            // ordinary resources would build the whole terrain mesh a second time
+                            if (
+                                file_name.rfind("terrain_cache", 0)      == 0 ||
+                                file_name.rfind("terrain_mesh_cache", 0) == 0
+                            )
+                            {
+                                continue;
+                            }
+
+                            if (FileSystem::IsEngineTextureFile(path))
+                            {
+                                texture_paths.push_back(path);
+                            }
+                            else if (FileSystem::IsEngineMeshFile(path))
+                            {
+                                mesh_paths.push_back(path);
+                            }
+                            else if (FileSystem::IsEngineMaterialFile(path))
+                            {
+                                material_paths.push_back(path);
+                            }
+                        }
+
+                        // progress counts only what is actually loaded below, counting every file on disk
+                        // left the unclassified ones permanently outstanding and pinned the bar under 100 percent
+                        uint32_t resource_count = static_cast<uint32_t>(
+                            texture_paths.size() + mesh_paths.size() + material_paths.size()
+                        );
+                        if (resource_count > 0)
+                        {
+                            world_progress.SetStep("Loading resources");
+                        }
+
+                        // pass 1, textures and meshes are independent, fan them out together
+                        // ResourceCache::Load uses a per-path in-flight lock so concurrent loads of the same path are deduplicated,
+                        // RHI_Texture::PrepareForGpu transitions state via compare_exchange_strong so it is safe across threads
+                        {
+                            struct ResourceJob
+                            {
+                                enum class Type : uint8_t { Texture, Mesh } type;
+                                string path;
+                                uint64_t size_bytes = 0;
+                            };
+
+                            vector<ResourceJob> jobs;
+                            jobs.reserve(texture_paths.size() + mesh_paths.size());
+                            auto add_job = [&jobs](const ResourceJob::Type type, const string& path)
+                            {
+                                error_code ignored;
+                                const uint64_t size_bytes = filesystem::file_size(path, ignored);
+                                jobs.push_back({ type, path, ignored ? 0ull : size_bytes });
+                            };
+                            for (const string& path : texture_paths)
+                            {
+                                add_job(ResourceJob::Type::Texture, path);
+                            }
+                            for (const string& path : mesh_paths)
+                            {
+                                add_job(ResourceJob::Type::Mesh, path);
+                            }
+
+                            if (!jobs.empty())
+                            {
+                                // largest first, a 30 mb mesh picked up last would otherwise run alone at the end
+                                sort(jobs.begin(), jobs.end(), [](const ResourceJob& a, const ResourceJob& b)
+                                {
+                                    return a.size_bytes > b.size_bytes;
+                                });
+
+                                // the loop only decides how many workers take part, each one pulls the next job
+                                // from a shared counter so a worker that lands on small files keeps going while
+                                // another is still inside a big one, static ranges left most of the pool idle
+                                atomic<uint32_t> next_job = 0;
+                                const uint32_t job_count  = static_cast<uint32_t>(jobs.size());
+                                ThreadPool::ParallelLoop([&jobs, &next_job, job_count, resource_count](uint32_t, uint32_t)
+                                {
+                                    for (uint32_t i = next_job.fetch_add(1, memory_order_relaxed); i < job_count; i = next_job.fetch_add(1, memory_order_relaxed))
+                                    {
+                                        if (jobs[i].type == ResourceJob::Type::Texture)
+                                        {
+                                            if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(jobs[i].path, RHI_Texture_Stream))
+                                            {
+                                                texture->PrepareForGpu();
+                                            }
+                                        }
+                                        else
+                                        {
+                                            ResourceCache::Load<Mesh>(jobs[i].path);
+                                        }
+
+                                        if (resource_count > 0)
+                                        {
+                                            world_progress.SetDetail(jobs[i].path);
+                                        }
+                                    }
+                                }, job_count);
+                            }
+                        }
+
+                        // pass 2, materials reference textures by path so they must run after the texture pass completes
+                        if (!material_paths.empty())
+                        {
+                            atomic<uint32_t> next_material = 0;
+                            const uint32_t material_count  = static_cast<uint32_t>(material_paths.size());
+                            ThreadPool::ParallelLoop([&material_paths, &next_material, material_count, resource_count](uint32_t, uint32_t)
+                            {
+                                for (uint32_t i = next_material.fetch_add(1, memory_order_relaxed); i < material_count; i = next_material.fetch_add(1, memory_order_relaxed))
+                                {
+                                    ResourceCache::Load<Material>(material_paths[i]);
+
+                                    if (resource_count > 0)
+                                    {
+                                        world_progress.SetDetail(material_paths[i]);
+                                    }
+                                }
+                            }, material_count);
+                        }
+                    }
+                }
+
+                SP_LOG_INFO("World load: resources %.2f ms", timer.GetElapsedTimeMs());
+
+                // read metadata
+                world_description = world_node.attribute("description").as_string();
+                EnvironmentSettings environment;
+                auto environment_node = world_node.child("Environment");
+                environment.utc_days = environment_node.attribute("utc_days").as_double(environment.utc_days);
+                environment.latitude = environment_node.attribute("latitude").as_double(environment.latitude);
+                environment.longitude = environment_node.attribute("longitude").as_double(environment.longitude);
+                environment.elevation = environment_node.attribute("elevation").as_double(environment.elevation);
+                environment.time_scale = environment_node.attribute("time_scale").as_double(environment.time_scale);
+                environment.north_degrees = environment_node.attribute("north_degrees").as_float(environment.north_degrees);
+                environment.annual_temperature = environment_node.attribute("annual_temperature").as_float(environment.annual_temperature);
+                environment.seasonal_amplitude = environment_node.attribute("seasonal_amplitude").as_float(environment.seasonal_amplitude);
+                environment.daily_amplitude = environment_node.attribute("daily_amplitude").as_float(environment.daily_amplitude);
+                environment.sea_level_pressure = environment_node.attribute("sea_level_pressure").as_float(environment.sea_level_pressure);
+                Environment::SetSettings(environment);
+                // Older worlds have no saved wind. Restore the default instead of
+                // flattening their FFT ocean or inheriting the previous world's wind.
+                world_wind::initialize();
+                const Vector3 default_wind = GetWind();
+                SetWind(Vector3(
+                    environment_node.attribute("wind_x").as_float(default_wind.x),
+                    environment_node.attribute("wind_y").as_float(default_wind.y),
+                    environment_node.attribute("wind_z").as_float(default_wind.z)
+                ));
+
+                // console variables: apply any cvars defined by the world
+                // format:
+                //   <ConsoleVariables>
+                //     <Variable name="r.restir_pt" value="1" />
+                //   </ConsoleVariables>
+                world_console_variables.clear();
+                // A transport inspection view must not leak into another world.
+                cvar_fog_debug.SetValue(0.0f);
+                // Atmosphere density belongs to the world, not the last scene or
+                // the editor's saved graphics settings. Persist these controls even
+                // when the source world predates them, so UI edits survive saving.
+                for (const char* name : { "r.atmosphere.mist_density", "r.atmosphere.mist_height",
+                                         "r.atmosphere.ground_mist", "r.atmosphere.mist_variation" })
+                {
+                    if (ConsoleVariable* cvar = ConsoleRegistry::Get().Find(name))
+                    {
+                        *cvar->m_value_ptr = cvar->m_default_value;
+                        world_console_variables.emplace_back(name);
+                    }
+                }
+                if (pugi::xml_node cvars_node = world_node.child("ConsoleVariables"))
+                {
+                    for (pugi::xml_node var_node = cvars_node.child("Variable"); var_node; var_node = var_node.next_sibling("Variable"))
+                    {
+                        const char* name  = var_node.attribute("name").as_string();
+                        const char* value = var_node.attribute("value").as_string();
+
+                        if (string_view(name) == "r.fog.debug")
+                            continue;
+                        if (name && name[0] != '\0')
+                        {
+                            ConsoleRegistry::Get().SetValueFromString(name, value);
+                            // Canonicalize legacy fog names; old worlds keep their
+                            // exact mist values and save with the human-facing names.
+                            const ConsoleVariable* cvar = ConsoleRegistry::Get().Find(name);
+                            const string canonical_name = cvar ? string(cvar->m_name) : string(name);
+                            if (find(world_console_variables.begin(), world_console_variables.end(), canonical_name) == world_console_variables.end())
+                                world_console_variables.emplace_back(canonical_name);
+                        }
+                    }
+                }
+
+                // entities
+                {
+                    // get node
+                    pugi::xml_node entities_node = world_node.child("Entities");
+                    if (!entities_node)
+                    {
+                        SP_LOG_ERROR("No 'Entities' node found.");
+                        deferred_load_document.reset();
+                        finish();
+                        return;
+                    }
+
+                    // flatten the entity tree so every node can load in parallel
+                    // parent_index is into this same vector, UINT32_MAX means root
+                    struct FlatEntity
+                    {
+                        pugi::xml_node node;
+                        uint32_t parent_index = UINT32_MAX;
                     };
 
-                    for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
+                    vector<FlatEntity> flat_entities;
                     {
-                        collect(entity_node, UINT32_MAX);
-                    }
-                }
-
-                // progress tracking
-                uint32_t entity_count = static_cast<uint32_t>(flat_entities.size());
-                // close the resource phase first, a missed resource JobDone would accumulate into
-                // this start and leave the bar stuck under 100 after every entity has loaded
-                ProgressTracker::GetProgress(ProgressType::World).Complete();
-                ProgressTracker::GetProgress(ProgressType::World).Start(entity_count, "Loading entities...");
-
-                // defer script lua execution, lua is single threaded and cannot run across the worker threads below
-                {
-                    lock_guard lock(script_init_mutex);
-                    script_inits_pending.clear();
-                }
-                defer_script_init.store(true, memory_order_release);
-
-                // create and load every entity without hierarchy, children are wired after
-                // keep this sequential on the load worker, component Initialize/Load is not safe
-                // across the pool (audio cache, water gpu buffers, renderer ocean state)
-                vector<Entity*> loaded_entities(entity_count, nullptr);
-                if (entity_count > 0)
-                {
-                    for (uint32_t i = 0; i < entity_count; i++)
-                    {
-                        Entity* entity = World::CreateEntity();
-                        const Stopwatch entity_timer;
-                        entity->Load(flat_entities[i].node, false);
-                        if (entity_timer.GetElapsedTimeMs() > 100.0)
+                        function<void(pugi::xml_node, uint32_t)> collect = [&](pugi::xml_node node, uint32_t parent_index)
                         {
-                            SP_LOG_INFO("World load: entity '%s' %.2f ms", entity->GetObjectName().c_str(), entity_timer.GetElapsedTimeMs());
-                        }
-                        loaded_entities[i] = entity;
-                        ProgressTracker::GetProgress(ProgressType::World).JobDone();
-                    }
+                            const uint32_t index = static_cast<uint32_t>(flat_entities.size());
+                            flat_entities.push_back({ node, parent_index });
 
-                    // wire parents in document order so each parent exists before its children attach
-                    for (uint32_t i = 0; i < entity_count; i++)
-                    {
-                        const uint32_t parent_index = flat_entities[i].parent_index;
-                        if (parent_index == UINT32_MAX)
+                            for (pugi::xml_node child = node.child("Entity"); child; child = child.next_sibling("Entity"))
+                            {
+                                collect(child, index);
+                            }
+                        };
+
+                        for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
                         {
-                            continue;
+                            collect(entity_node, UINT32_MAX);
+                        }
+                    }
+
+                    // progress tracking
+                    uint32_t entity_count = static_cast<uint32_t>(flat_entities.size());
+                    world_progress.SetStep("Loading entities");
+
+                    // defer script lua execution, lua is single threaded and cannot run across the worker threads below
+                    {
+                        lock_guard lock(script_init_mutex);
+                        script_inits_pending.clear();
+                    }
+                    defer_script_init.store(true, memory_order_release);
+
+                    // create and load every entity without hierarchy, children are wired after
+                    // keep this sequential on the load worker, component Initialize/Load is not safe
+                    // across the pool (audio cache, water gpu buffers, renderer ocean state)
+                    vector<Entity*> loaded_entities(entity_count, nullptr);
+                    if (entity_count > 0)
+                    {
+                        for (uint32_t i = 0; i < entity_count; i++)
+                        {
+                            Entity* entity = World::CreateEntity();
+                            const Stopwatch entity_timer;
+                            entity->Load(flat_entities[i].node, false);
+                            if (entity_timer.GetElapsedTimeMs() > 100.0)
+                            {
+                                SP_LOG_INFO("World load: entity '%s' %.2f ms", entity->GetObjectName().c_str(), entity_timer.GetElapsedTimeMs());
+                            }
+                            loaded_entities[i] = entity;
+                            world_progress.SetFraction(static_cast<float>(i + 1) / static_cast<float>(entity_count));
                         }
 
-                        SP_ASSERT(parent_index < loaded_entities.size());
-                        SP_ASSERT(loaded_entities[i] != nullptr);
-                        SP_ASSERT(loaded_entities[parent_index] != nullptr);
-                        loaded_entities[i]->SetParent(loaded_entities[parent_index]);
+                        // wire parents in document order so each parent exists before its children attach
+                        for (uint32_t i = 0; i < entity_count; i++)
+                        {
+                            const uint32_t parent_index = flat_entities[i].parent_index;
+                            if (parent_index == UINT32_MAX)
+                            {
+                                continue;
+                            }
+
+                            SP_ASSERT(parent_index < loaded_entities.size());
+                            SP_ASSERT(loaded_entities[i] != nullptr);
+                            SP_ASSERT(loaded_entities[parent_index] != nullptr);
+                            loaded_entities[i]->SetParent(loaded_entities[parent_index]);
+                        }
                     }
+
+                    // leave entities in entities_pending, only the main thread may publish into the live vector
                 }
 
-                // leave entities in entities_pending, only the main thread may publish into the live vector
+                // report time
+                SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
+
+                // hand off publish + deferred script init to World::Tick, loading stays up until that finishes
+                load_ready_for_main_commit.store(true, memory_order_release);
             }
-
-            // report time
-            SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
-
-            // hand off publish + deferred script init to World::Tick, loading stays up until that finishes
-            load_ready_for_main_commit.store(true, memory_order_release);
+            catch (const exception& error)
+            {
+                SP_LOG_ERROR("World load failed: %s", error.what());
+                deferred_load_document.reset();
+                finish();
+            }
         });
     }
 

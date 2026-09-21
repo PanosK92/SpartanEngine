@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 #include "CarState.h"
+#include "CarTireDeformation.h"
 namespace car
 {
     inline float sample_curve(const float* x, const float* y, int count, float value, float fallback)
@@ -36,6 +37,11 @@ namespace car
         // Gauge bar -> absolute bar -> Kelvin gas law -> gauge bar.
         float pressure = (s.tire_pressure + 1.01325f) * (core + 273.15f) / (s.tire_pressure_reference_temp + 273.15f) - ambient_pressure_bar;
         return PxMax(pressure * (1.0f - PxClamp(damage, 0.0f, 1.0f) * 0.9f), 0.05f);
+    }
+    inline float loaded_tire_stiffness(const car_preset& s, float pressure)
+    {
+        return tire_radial_stiffness(s.tire_vertical_stiffness, pressure,
+            s.tire_pressure_optimal, s.tire_carcass_stiffness_fraction);
     }
     inline float water_grip(const car_preset& s, float speed, float pressure, float water_depth)
     {

@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../rendering/GeometryBuffer.h"
 #include "../../geometry/Mesh.h"
 #include "../../geometry/GeneratedCache.h"
+#include "../../core/ThreadPool.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 #include "../io/pugixml.hpp"
@@ -516,12 +517,11 @@ namespace spartan
         m_mesh           = mesh;
         m_sub_mesh_index = sub_mesh_index;
 
-        // compute and set bounding box (GetGeometry validates bounds internally)
-        vector<RHI_Vertex_PosTexNorTan> vertices;
-        mesh->GetGeometry(sub_mesh_index, nullptr, &vertices);
-        if (!vertices.empty())
+        // Mesh construction already computed this bound. Reuse it so each
+        // imported instance does not copy and scan the same vertex buffer.
+        if (GetLodCount() > 0)
         {
-            m_bounding_box_mesh = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
+            m_bounding_box_mesh = GetLodAabb(0);
             m_bounding_box_dirty = true;
         }
 
@@ -775,7 +775,7 @@ namespace spartan
         return world * Vector3(instance.position_x, instance.position_y, instance.position_z);
     }
 
-    void Render::SetInstances(const vector<Instance>& instances)
+    void Render::SetInstances(const vector<Instance>& instances, bool refresh_bounds)
     {
         // a scattered prop owns one physics actor per instance, the slot lookup is free when there is none
         if (Physics* physics = GetEntity()->GetComponent<Physics>())
@@ -816,7 +816,19 @@ namespace spartan
 
         m_global_instance_offset = m_global_instance_slot;
         m_bounding_box_dirty     = true;
-        Tick(); // update bounding boxes, frustum and distance culling
+        if (refresh_bounds) Tick(); // update bounding boxes, frustum and distance culling
+    }
+
+    void Render::RefreshBounds(const vector<Render*>& renders)
+    {
+        if (renders.empty()) return;
+        // Transforms and inherited active states are already resolved by the
+        // scene setters. Do not mutate the scene until the workers join.
+        ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
+        {
+            for (uint32_t i = begin; i < end; ++i) renders[i]->UpdateAabb();
+        }, static_cast<uint32_t>(renders.size()));
+        for (Render* render : renders) render->Tick();
     }
 
     void Render::SetInstances(const vector<Matrix>& transforms)

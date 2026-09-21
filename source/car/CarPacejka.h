@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // per-surface friction scalars, brake efficiency. all pure functions, no state mutation.
 
 #include "CarState.h"
+#include "CarCalibration.h"
 namespace car
 {
 
@@ -95,11 +96,11 @@ namespace car
         float stiffness_lat     = 0.0f; // n per unit practical slip
     };
 
-    inline brush_tire_params evaluate_brush_params(const car_preset& preset, float wheel_radius, float tread_width, float tire_load, float stiffness_scale)
+    inline brush_tire_params evaluate_brush_params(const car_preset& preset, float wheel_radius, float tread_width, float tire_load, float stiffness_scale, float pressure_bar = -1.0f)
     {
         brush_tire_params params;
         float radius = PxMax(wheel_radius, 0.05f);
-        float deflection = PxClamp(tire_load / PxMax(preset.tire_vertical_stiffness, 1.0f), 0.0f, radius * 0.5f);
+        float deflection = tire_spring_deflection(tire_load, loaded_tire_stiffness(preset, pressure_bar >= 0 ? pressure_bar : preset.tire_pressure_optimal), preset.tire_vertical_stiffness, radius);
         // the chord of a circle cut this deep is sqrt of two r d, a real belt lifts off before the
         // chord ends so the length that actually carries tread force is root two shorter
         params.patch_half_length = PxMax(sqrtf(radius * deflection), 0.005f);
@@ -171,7 +172,7 @@ namespace car
         return patch_half_length / 3.0f * PxClamp(1.0f - saturation, 0.0f, 1.0f);
     }
 
-    inline float evaluate_pneumatic_trail(const car_preset& preset, float slip_angle, float tire_load, float stiffness_scale)
+    inline float evaluate_pneumatic_trail(const car_preset& preset, float slip_angle, float tire_load, float stiffness_scale, float pressure_bar = -1.0f)
     {
         float normalized_angle = fabsf(slip_angle) / PxMax(preset.pneumatic_trail_peak, 0.01f);
         float trail_shape = PxMax(cosf(1.1f * atanf(normalized_angle)), 0.0f);

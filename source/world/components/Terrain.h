@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "Component.h"
+#include "../../core/ProgressTracker.h"
 #include <atomic>
 #include <algorithm>
 #include <array>
@@ -617,6 +618,7 @@ namespace spartan
         uint32_t m_width                  = 0;
         uint32_t m_height                 = 0;
         float m_area_km2                  = 0.0f;
+        ProgressTask m_progress;
         std::atomic<bool> m_is_generating = false;
         // a worker is inside generate, the heightfield arrays are being resized under it, samplers
         // on other threads bail instead of reading them, the destructor waits for it

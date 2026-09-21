@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mutex>
 #include <atomic>
 #include <memory>
+#include <span>
 #include "../rhi/RHI_Vertex.h"
 #include "../resource/IResource.h"
 #include "../math/BoundingBox.h"
@@ -58,6 +59,7 @@ namespace spartan
         PostProcessGenerateLods         = 1 << 6,
         PostProcessPreserveTerrainEdges = 1 << 7,
         PostProcessPreserveLod0         = 1 << 8, // keep authored detail, optimize layout without reducing geometry
+        PostProcessSkipCache            = 1 << 9, // the owning generator caches the complete prepared mesh
     };
 
     enum class MeshType
@@ -104,6 +106,8 @@ namespace spartan
         void LoadFromFile(const std::string& file_path) override;
         // CPU-only, validated generated geometry. GPU resources are created after scene publication.
         bool LoadPrepared(const std::string& path, uint64_t key);
+        bool LoadPrepared(std::span<const uint8_t> bytes);
+        std::vector<uint8_t> SerializePrepared() const;
         void SavePrepared(const std::string& path, uint64_t key) const;
         void AppendPrepared(const Mesh& tile, uint32_t sub_mesh_index);
 
@@ -117,7 +121,7 @@ namespace spartan
         void AddLod(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const uint32_t sub_mesh_index);
         void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, uint32_t* sub_mesh_index = nullptr);
         // writes into a pre-reserved slot, the auto-allocating overload races on size() when ParseMesh runs in parallel
-        void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, const uint32_t sub_mesh_index_in);
+        void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, const uint32_t sub_mesh_index_in, const bool preserve_lod0 = false);
         bool UpdateGeometry(
             std::vector<RHI_Vertex_PosTexNorTan>& vertices,
             std::vector<uint32_t>& indices

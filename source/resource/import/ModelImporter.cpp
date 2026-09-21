@@ -22,9 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "pch.h"
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <filesystem>
 #include <limits>
+#include <stdexcept>
 #include <unordered_set>
 #include <vector>
 #include "ModelImporter.h"
@@ -63,36 +65,35 @@ namespace spartan
     struct MeshJob
     {
         aiMesh*  assimp_mesh    = nullptr;
-        Entity*  entity         = nullptr;
+        vector<Entity*> entities;
         // deterministic sub-mesh slot, assigned sequentially during ParseNode so the parallel ParseMesh stage cannot race on it
         uint32_t sub_mesh_index = 0;
     };
 
+    struct TextureFileCache
+    {
+        bool indexed = false;
+        unordered_map<string, string> files;
+        unordered_map<string, string> resolved_paths;
+    };
+
     struct ImportContext
     {
-        bool report_progress = false;
+        ProgressTask progress;
         string file_path;
         string model_name;
         string model_directory;
         Mesh* mesh           = nullptr;
         const aiScene* scene = nullptr;
         unordered_map<string, uint32_t> bone_name_to_index;
-        unordered_map<string, string> directory_files;
+        TextureFileCache directory_files;
         unordered_map<uint32_t, shared_ptr<Material>> materials;
         std::vector<MeshJob> mesh_jobs;
-        std::mutex mesh_jobs_mutex;
-        std::mutex materials_mutex;
+        unordered_map<const aiMesh*, uint32_t> mesh_to_job;
     };
 
     namespace
     {
-        // The UI has one importer progress slot. Only its owner may reset or
-        // increment it; other imports still run concurrently without reporting.
-        std::mutex progress_owner_mutex;
-
-        // each ModelImporter::Load builds its own Assimp::Importer so concurrent imports are safe
-        // and we don't need a global import lock anymore
-
         Matrix to_matrix(const aiMatrix4x4& transform)
         {
             return Matrix
@@ -132,51 +133,20 @@ namespace spartan
             entity->SetScaleLocal(matrix_engine.GetScale());
         }
 
-        uint32_t compute_node_count(const aiNode* node)
-        {
-            if (!node)
-            {
-                return 0;
-            }
-
-            uint32_t count = 1;
-            for (uint32_t i = 0; i < node->mNumChildren; i++)
-            {
-                count += compute_node_count(node->mChildren[i]);
-            }
-            return count;
-        }
-
         class AssimpProgress : public ProgressHandler
         {
         public:
-            AssimpProgress(const string& file_path)
-                : m_file_name(FileSystem::GetFileNameFromFilePath(file_path))
-            {
-            }
-
-            bool Update(float percentage) override { return true; }
-
-            void UpdateFileRead(int current_step, int number_of_steps) override
-            {
-                // reading progress is ignored - assimp doesn't call this consistently
-            }
-
+            explicit AssimpProgress(ProgressTask task) : m_task(move(task)) {}
+            bool Update(float) override { return true; }
+            void UpdateFileRead(int, int) override {}
             void UpdatePostProcess(int current_step, int number_of_steps) override
             {
-                if (current_step == 0)
-                {
-                    ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
-                    ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(number_of_steps, "Post-processing model...");
-                }
-                else
-                {
-                    ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
-                }
+                if (current_step == 0) m_task.SetStep("Preparing geometry");
+                if (number_of_steps > 0)
+                    m_task.SetFraction(static_cast<float>(current_step) / static_cast<float>(number_of_steps));
             }
-
         private:
-            string m_file_name;
+            ProgressTask m_task;
         };
 
         string normalize_for_lookup(string path)
@@ -233,16 +203,20 @@ namespace spartan
             return false;
         }
 
-        void build_directory_file_cache(const string& root, unordered_map<string, string>& out)
+        void build_directory_file_cache(const string& root, TextureFileCache& cache)
         {
+            if (cache.indexed) return;
+            cache.indexed = true;
             try
             {
-                for (auto& entry : std::filesystem::recursive_directory_iterator(root))
+                for (auto& entry : std::filesystem::recursive_directory_iterator(
+                    root.empty() ? "." : root, filesystem::directory_options::skip_permission_denied))
                 {
-                    if (entry.is_regular_file())
+                    if (entry.is_regular_file() && FileSystem::IsSupportedImageFile(entry.path().string()))
                     {
                         string p = entry.path().string();
-                        out.emplace(normalize_for_lookup(p), std::move(p));
+                        const string key = normalize_for_lookup(p);
+                        cache.files.emplace(key, std::move(p));
                     }
                 }
             }
@@ -252,15 +226,15 @@ namespace spartan
             }
         }
 
-        string resolve_texture_path(const string& original_path, const string& model_directory, const unordered_map<string, string>& directory_files)
+        string resolve_texture_path_uncached(const string& original_path, const string& model_directory, TextureFileCache& directory_files)
         {
             auto probe = [&](const string& candidate) -> string
             {
                 // try the directory cache first for o(1) hits on textures that live under model_directory
-                if (!directory_files.empty())
+                if (!directory_files.files.empty())
                 {
-                    auto it = directory_files.find(normalize_for_lookup(candidate));
-                    if (it != directory_files.end())
+                    auto it = directory_files.files.find(normalize_for_lookup(candidate));
+                    if (it != directory_files.files.end())
                     {
                         return it->second;
                     }
@@ -272,11 +246,18 @@ namespace spartan
             };
 
             // try the original path first (relative to model)
-            string full_path = model_directory + original_path;
+            string portable_path = original_path;
+            replace(portable_path.begin(), portable_path.end(), '\\', '/');
+            const filesystem::path source_path(portable_path);
+            const string full_path = (source_path.is_absolute() ? source_path : filesystem::path(model_directory) / source_path).lexically_normal().string();
             if (string hit = probe(full_path); !hit.empty())
             {
                 return hit;
             }
+
+            // Only scan subdirectories when a reference cannot be resolved directly.
+            build_directory_file_cache(model_directory, directory_files);
+            if (string hit = probe(full_path); !hit.empty()) return hit;
 
             // get base path without extension
             const string base_path = FileSystem::GetFilePathWithoutExtension(full_path);
@@ -327,7 +308,7 @@ namespace spartan
 
             string best;
             size_t best_size = numeric_limits<size_t>::max();
-            for (const auto& entry : directory_files)
+            for (const auto& entry : directory_files.files)
             {
                 if (!FileSystem::IsSupportedImageFile(entry.second))
                 {
@@ -340,18 +321,23 @@ namespace spartan
                     continue;
                 }
 
-                if (found.size() < best_size)
+                if (found.size() < best_size || (found.size() == best_size && entry.second < best))
                 {
                     best      = entry.second;
                     best_size = found.size();
-                    if (found == wanted)
-                    {
-                        break;
-                    }
                 }
             }
 
             return best;
+        }
+
+        string resolve_texture_path(const string& original_path, const string& model_directory, TextureFileCache& cache)
+        {
+            auto it = cache.resolved_paths.find(original_path);
+            if (it != cache.resolved_paths.end()) return it->second;
+            string resolved = resolve_texture_path_uncached(original_path, model_directory, cache);
+            cache.resolved_paths.emplace(original_path, resolved); // Cache misses as well.
+            return resolved;
         }
 
         bool has_any_texture(const shared_ptr<Material>& material)
@@ -686,7 +672,7 @@ namespace spartan
 
         void bind_assimp_textures(
             const string& model_directory,
-            const unordered_map<string, string>& directory_files,
+            TextureFileCache& directory_files,
             const shared_ptr<Material>& material,
             const aiMaterial* material_assimp,
             bool typed_slots
@@ -754,7 +740,7 @@ namespace spartan
         // pick up maps next to the model by material name, then albedo/normal/roughness for 1-2 material files
         void adopt_sibling_textures(
             const string& model_directory,
-            const unordered_map<string, string>& directory_files,
+            TextureFileCache& directory_files,
             const shared_ptr<Material>& material,
             const string& material_name,
             const uint32_t material_count
@@ -765,6 +751,7 @@ namespace spartan
                 return;
             }
 
+            build_directory_file_cache(model_directory, directory_files);
             vector<string> keys;
             auto add_key = [&](const string& stem)
             {
@@ -791,7 +778,7 @@ namespace spartan
             vector<string> best_path(slot_count);
             vector<size_t> best_size(slot_count, numeric_limits<size_t>::max());
 
-            for (const auto& entry : directory_files)
+            for (const auto& entry : directory_files.files)
             {
                 if (!FileSystem::IsSupportedImageFile(entry.second))
                 {
@@ -817,7 +804,7 @@ namespace spartan
 
                 const MaterialTextureType slot = slot_from_texture_name(entry.second);
                 const uint32_t index = static_cast<uint32_t>(slot);
-                if (found.size() < best_size[index])
+                if (found.size() < best_size[index] || (found.size() == best_size[index] && entry.second < best_path[index]))
                 {
                     best_path[index] = entry.second;
                     best_size[index] = found.size();
@@ -1043,6 +1030,7 @@ namespace spartan
 
             aiString name_assimp;
             aiGetMaterialString(material_assimp, AI_MATKEY_NAME, &name_assimp);
+            ctx.progress.SetDetail(name_assimp.C_Str());
             const string name          = unique_material_name(
                 FileSystem::ToSnakeCase(name_assimp.C_Str()),
                 ctx.model_directory,
@@ -1061,8 +1049,9 @@ namespace spartan
                 material = make_shared<Material>();
             }
             material->SetResourceFilePath(material_path);
+            const Material::ScopedEdit edit(*material);
 
-            const string extension = FileSystem::GetExtensionFromFilePath(ctx.file_path);
+            const string extension = normalize_for_lookup(FileSystem::GetExtensionFromFilePath(ctx.file_path));
             const bool is_gltf = (extension == ".gltf") || (extension == ".glb");
             bind_assimp_textures(ctx.model_directory, ctx.directory_files, material, material_assimp, is_gltf);
 
@@ -1079,7 +1068,6 @@ namespace spartan
                 material->HasTextureOfType(MaterialTextureType::AlphaMask))
             {
                 material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                return material;
             }
 
             // gltf detection (including .glb binary format)
@@ -1093,19 +1081,16 @@ namespace spartan
             }
 
             // opacity
-            aiColor4D opacity(1.0f, 1.0f, 1.0f, 1.0f);
-            aiGetMaterialColor(material_assimp, AI_MATKEY_OPACITY, &opacity);
-            if (color_diffuse.a < opacity.r)
-            {
-                opacity.r = color_diffuse.a;
-            }
+            float opacity = 1.0f;
+            const bool has_opacity = aiGetMaterialFloat(material_assimp, AI_MATKEY_OPACITY, &opacity) == AI_SUCCESS;
+            opacity = min(opacity, color_diffuse.a);
 
             // convert name to lowercase once for all comparisons
             string name_lower = name;
             transform(name_lower.begin(), name_lower.end(), name_lower.begin(), ::tolower);
 
             // detect transparency
-            bool is_transparent = opacity.r < 1.0f;
+            bool is_transparent = opacity < 1.0f;
             if (!is_transparent)
             {
                 is_transparent =
@@ -1118,9 +1103,9 @@ namespace spartan
             const bool has_roughness   = material->HasTextureOfType(MaterialTextureType::Roughness);
             const bool has_metalness   = material->HasTextureOfType(MaterialTextureType::Metalness);
             const bool is_pbr_material = has_roughness && has_metalness;
-            if (is_transparent && !is_pbr_material)
+            if (is_transparent && !is_pbr_material && !is_gltf && !has_opacity && color_diffuse.a == 1.0f)
             {
-                opacity.r = 0.5f;
+                opacity = 0.5f;
                 material->SetProperty(MaterialProperty::Roughness, 0.0f);
             }
 
@@ -1128,7 +1113,7 @@ namespace spartan
             material->SetProperty(MaterialProperty::ColorR, color_diffuse.r);
             material->SetProperty(MaterialProperty::ColorG, color_diffuse.g);
             material->SetProperty(MaterialProperty::ColorB, color_diffuse.b);
-            material->SetProperty(MaterialProperty::ColorA, opacity.r);
+            material->SetProperty(MaterialProperty::ColorA, opacity);
 
             float roughness_factor = 1.0f;
             if (aiGetMaterialFloat(material_assimp, AI_MATKEY_ROUGHNESS_FACTOR, &roughness_factor) == AI_SUCCESS)
@@ -1171,27 +1156,25 @@ namespace spartan
                 }
             }
 
-            // gltf exporters flag opaque materials doubleSided as a precaution, only honor it for transparent and alpha tested surfaces
-            const bool has_alpha_mask = material->HasTextureOfType(MaterialTextureType::AlphaMask);
-            if (is_transparent || has_alpha_mask)
+            // Double-sided opaque surfaces (leaves, cloth, cards) also need both sides.
+            int no_culling = 0;
+            if (aiGetMaterialInteger(material_assimp, AI_MATKEY_TWOSIDED, &no_culling) == AI_SUCCESS && no_culling != 0)
             {
-                int no_culling = 1;
-                aiGetMaterialInteger(material_assimp, AI_MATKEY_TWOSIDED, &no_culling);
-                if (no_culling != 0)
-                {
-                    material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                }
+                material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
             }
 
-            adopt_sibling_textures(
-                ctx.model_directory,
-                ctx.directory_files,
-                material,
-                name,
-                ctx.scene ? ctx.scene->mNumMaterials : 1
-            );
+            // glTF materials are explicit; an untextured material is intentional.
+            if (!is_gltf)
+            {
+                adopt_sibling_textures(ctx.model_directory, ctx.directory_files, material, name, ctx.scene->mNumMaterials);
+            }
 
-            infer_untextured_surface(material, name_lower);
+            if (!is_gltf && !has_any_texture(material) &&
+                material_assimp->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness_factor) != AI_SUCCESS &&
+                material_assimp->Get(AI_MATKEY_METALLIC_FACTOR, metallic_factor) != AI_SUCCESS)
+            {
+                infer_untextured_surface(material, name_lower);
+            }
 
             if (material->HasTextureOfType(MaterialTextureType::AlphaMask))
             {
@@ -1300,25 +1283,6 @@ namespace spartan
             }
         }
 
-        // robotexpressive etc duplicate names (bone + mesh leaf). prefer armature bones.
-        void collect_nodes_named(const aiNode* root, const string& name, vector<const aiNode*>& out)
-        {
-            if (!root)
-            {
-                return;
-            }
-
-            if (string(root->mName.C_Str()) == name)
-            {
-                out.push_back(root);
-            }
-
-            for (uint32_t i = 0; i < root->mNumChildren; ++i)
-            {
-                collect_nodes_named(root->mChildren[i], name, out);
-            }
-        }
-
         bool node_has_ancestor_named(const aiNode* node, const char* ancestor_name)
         {
             while (node)
@@ -1353,33 +1317,12 @@ namespace spartan
             return score;
         }
 
-        const aiNode* find_node(const aiNode* root, const string& name)
+        // Index once instead of walking the entire scene for every bone lookup.
+        void index_joint_nodes(const aiNode* node, unordered_map<string, const aiNode*>& nodes)
         {
-            vector<const aiNode*> matches;
-            collect_nodes_named(root, name, matches);
-            if (matches.empty())
-            {
-                return nullptr;
-            }
-
-            if (matches.size() == 1)
-            {
-                return matches[0];
-            }
-
-            const aiNode* best = matches[0];
-            int best_score = score_joint_node(best);
-            for (size_t i = 1; i < matches.size(); ++i)
-            {
-                const int score = score_joint_node(matches[i]);
-                if (score > best_score)
-                {
-                    best_score = score;
-                    best = matches[i];
-                }
-            }
-
-            return best;
+            auto [it, inserted] = nodes.try_emplace(node->mName.C_Str(), node);
+            if (!inserted && score_joint_node(node) > score_joint_node(it->second)) it->second = node;
+            for (uint32_t i = 0; i < node->mNumChildren; ++i) index_joint_nodes(node->mChildren[i], nodes);
         }
 
         // engine world = local * parent_world
@@ -1411,6 +1354,14 @@ namespace spartan
                 return nullptr;
             }
 
+            unordered_map<string, const aiNode*> joint_nodes;
+            index_joint_nodes(scene->mRootNode, joint_nodes);
+            auto find_node = [&](const string& name) -> const aiNode*
+            {
+                auto it = joint_nodes.find(name);
+                return it != joint_nodes.end() ? it->second : nullptr;
+            };
+
             // include weighted bones, animated nodes, and all their ancestors
             unordered_set<string> joint_set(weighted_names.begin(), weighted_names.end());
             if (scene->mAnimations)
@@ -1432,7 +1383,7 @@ namespace spartan
             unordered_set<string> with_ancestors = joint_set;
             for (const string& name : joint_set)
             {
-                const aiNode* node = find_node(scene->mRootNode, name);
+                const aiNode* node = find_node(name);
                 while (node)
                 {
                     const string node_name = node->mName.C_Str();
@@ -1455,6 +1406,12 @@ namespace spartan
                 }
             }
 
+            sort(joint_names.begin() + static_cast<ptrdiff_t>(weighted_names.size()), joint_names.end());
+            if (joint_names.size() > static_cast<size_t>(numeric_limits<int16_t>::max()))
+            {
+                throw runtime_error("Model skeleton exceeds the supported joint count");
+            }
+
             // resolve immediate parent joint for each joint
             const uint32_t unsorted_count = static_cast<uint32_t>(joint_names.size());
             vector<int32_t> unsorted_parents(unsorted_count, -1);
@@ -1466,7 +1423,7 @@ namespace spartan
 
             for (uint32_t i = 0; i < unsorted_count; ++i)
             {
-                const aiNode* node = find_node(scene->mRootNode, joint_names[i]);
+                const aiNode* node = find_node(joint_names[i]);
                 if (!node)
                 {
                     continue;
@@ -1552,7 +1509,7 @@ namespace spartan
                 out_name_to_index[sorted_names[i]] = i;
                 skeleton->m_mutable_parents[i] = sorted_parents[i];
 
-                const aiNode* bone_node = find_node(scene->mRootNode, sorted_names[i]);
+                const aiNode* bone_node = find_node(sorted_names[i]);
                 if (!bone_node)
                 {
                     skeleton->bind_local_matrices[i] = Matrix::Identity;
@@ -1563,7 +1520,6 @@ namespace spartan
                 if (sorted_parents[i] >= 0)
                 {
                     const aiNode* parent_joint_node = find_node(
-                        scene->mRootNode,
                         sorted_names[static_cast<uint32_t>(sorted_parents[i])]
                     );
 
@@ -1707,11 +1663,8 @@ namespace spartan
                 return to_vector3(keys[count - 1].mValue);
             }
 
-            uint32_t next = 1;
-            while (next < count && time_ticks > keys[next].mTime)
-            {
-                ++next;
-            }
+            const uint32_t next = static_cast<uint32_t>(lower_bound(keys + 1, keys + count, time_ticks,
+                [](const auto& key, double time) { return key.mTime < time; }) - keys);
 
             const uint32_t prev = next - 1;
             const double span = keys[next].mTime - keys[prev].mTime;
@@ -1739,11 +1692,8 @@ namespace spartan
                 return to_quaternion(keys[count - 1].mValue);
             }
 
-            uint32_t next = 1;
-            while (next < count && time_ticks > keys[next].mTime)
-            {
-                ++next;
-            }
+            const uint32_t next = static_cast<uint32_t>(lower_bound(keys + 1, keys + count, time_ticks,
+                [](const auto& key, double time) { return key.mTime < time; }) - keys);
 
             const uint32_t prev = next - 1;
             const double span = keys[next].mTime - keys[prev].mTime;
@@ -1774,6 +1724,10 @@ namespace spartan
                 2u,
                 static_cast<uint32_t>(std::lround(static_cast<double>(clip.duration_seconds) * static_cast<double>(clip.sample_rate))) + 1u
             );
+            // Samples span the complete clip, including a fractional final tick.
+            // Runtime indexes by seconds * sample_rate, so use the actual spacing.
+            if (clip.duration_seconds > 0.0f)
+                clip.sample_rate = static_cast<float>(frame_count - 1) / clip.duration_seconds;
 
             // initialize base pose to identity, evaluate starts from skeleton bind
             clip.base_local_positions.resize(joint_count, Vector3::Zero);
@@ -1938,9 +1892,9 @@ namespace spartan
         }
 
         // initialize import context
-        std::unique_lock<std::mutex> progress_owner(progress_owner_mutex, std::try_to_lock);
         ImportContext ctx;
-        ctx.report_progress = progress_owner.owns_lock();
+        ctx.progress = ProgressTracker::Begin(ProgressType::ModelImporter,
+            FileSystem::GetFileNameFromFilePath(file_path), "Reading model");
         ctx.file_path       = file_path;
         ctx.model_name      = FileSystem::ToSnakeCase(
             FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path)
@@ -1948,9 +1902,6 @@ namespace spartan
         ctx.model_directory = FileSystem::GetDirectoryFromFilePath(file_path);
         ctx.mesh            = mesh_in;
         ctx.mesh->SetObjectName(ctx.model_name);
-
-        // walk the model directory once so resolve_texture_path does O(1) lookups instead of O(n) stat probes per material slot
-        build_directory_file_cache(ctx.model_directory, ctx.directory_files);
 
         // set up the importer
         Importer importer;
@@ -1963,7 +1914,7 @@ namespace spartan
 
             // enable progress tracking
             importer.SetPropertyBool(AI_CONFIG_GLOB_MEASURE_TIME, true);
-            if (ctx.report_progress) importer.SetProgressHandler(new AssimpProgress(file_path));
+            importer.SetProgressHandler(new AssimpProgress(ctx.progress));
         }
 
         // import flags
@@ -1982,31 +1933,20 @@ namespace spartan
             import_flags |= aiProcess_CalcTangentSpace;
             import_flags |= aiProcess_GenUVCoords;
 
-            // generate missing normals, gltf/glb must ship them so regeneration is skipped
-            // smooth stays behind a flag, otherwise use flat normals to keep hard edges
-            const string extension        = FileSystem::GetExtensionFromFilePath(file_path);
-            const bool source_has_normals = (extension == ".gltf") || (extension == ".glb");
-            if (!source_has_normals)
+            // Assimp preserves supplied normals. Normals are optional in glTF too.
+            if (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportGenerateSmoothNormals))
             {
-                if (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportGenerateSmoothNormals))
-                {
-                    import_flags |= aiProcess_GenSmoothNormals;
-                }
-                else
-                {
-                    import_flags |= aiProcess_GenNormals;
-                }
+                import_flags |= aiProcess_GenSmoothNormals;
+            }
+            else
+            {
+                import_flags |= aiProcess_GenNormals;
             }
 
             // limit bone weights to 4 per vertex
             import_flags |= aiProcess_LimitBoneWeights;
 
-            // combine meshes
-            if (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportCombineMeshes))
-            {
-                import_flags |= aiProcess_OptimizeMeshes;
-                import_flags |= aiProcess_PreTransformVertices;
-            }
+            // Combining is deferred until we know whether the scene is animated.
 
             // aiProcess_JoinIdenticalVertices is deliberately off, meshoptimizer welds identical vertices faster in optimize()
             if (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData))
@@ -2018,18 +1958,24 @@ namespace spartan
             }
         }
 
-        if (ctx.report_progress) ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(1, "Loading model from drive...");
 
         // read the 3d model file from drive
         ctx.scene = importer.ReadFile(file_path, import_flags);
-        if (ctx.scene)
+        if (ctx.scene && (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportCombineMeshes)))
+        {
+            bool has_bones = false;
+            for (uint32_t i = 0; i < ctx.scene->mNumMeshes; ++i)
+                has_bones |= ctx.scene->mMeshes[i]->HasBones();
+            // PreTransformVertices removes animation and skinning information.
+            if (!has_bones && !ctx.scene->HasAnimations())
+                ctx.scene = importer.ApplyPostProcessing(aiProcess_OptimizeMeshes | aiProcess_PreTransformVertices);
+        }
+        if (ctx.scene && ctx.scene->mRootNode)
         {
             // extract skeleton before parsing nodes so bone indices are available during mesh parsing
             ParseSkeleton(ctx);
 
-            // update progress tracking
-            const uint32_t job_count = compute_node_count(ctx.scene->mRootNode);
-            if (ctx.report_progress) ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(job_count, "Parsing model...");
+            ctx.progress.SetStep("Building scene hierarchy");
 
             // recursively parse nodes (sequential, just creates entities and collects mesh jobs)
             ParseNode(ctx, ctx.scene->mRootNode);
@@ -2038,21 +1984,70 @@ namespace spartan
             if (!ctx.mesh_jobs.empty())
             {
                 const uint32_t mesh_job_count = static_cast<uint32_t>(ctx.mesh_jobs.size());
+                ctx.progress.SetStep("Building meshes and LODs");
                 ctx.mesh->ReserveSubMeshes(mesh_job_count);
-                ThreadPool::ParallelLoop([&ctx](uint32_t start, uint32_t end)
+                // Start expensive meshes first and claim work dynamically, avoiding
+                // a long tail when one worker's chunk contains all the large meshes.
+                vector<uint32_t> work_order(mesh_job_count);
+                for (uint32_t i = 0; i < mesh_job_count; ++i) work_order[i] = i;
+                stable_sort(work_order.begin(), work_order.end(), [&ctx](uint32_t a, uint32_t b)
                 {
-                    for (uint32_t i = start; i < end; i++)
+                    return ctx.mesh_jobs[a].assimp_mesh->mNumFaces > ctx.mesh_jobs[b].assimp_mesh->mNumFaces;
+                });
+                atomic<uint32_t> next_job{0};
+                atomic<uint32_t> completed_jobs{0};
+                auto process_jobs = [&](uint32_t, uint32_t)
+                {
+                    for (;;)
                     {
-                        const MeshJob& job = ctx.mesh_jobs[i];
-                        ParseMesh(ctx, job.assimp_mesh, job.entity, job.sub_mesh_index);
+                        const uint32_t index = next_job.fetch_add(1, memory_order_relaxed);
+                        if (index >= mesh_job_count) break;
+                        const MeshJob& job = ctx.mesh_jobs[work_order[index]];
+                        ParseMesh(ctx, job.assimp_mesh, job.sub_mesh_index);
+                        ctx.progress.SetFraction(static_cast<float>(completed_jobs.fetch_add(1) + 1) / static_cast<float>(mesh_job_count));
                     }
-                }, mesh_job_count);
+                };
+                // A single large mesh can use the inner vertex/index parallel loops.
+                if (mesh_job_count == 1) process_jobs(0, 1);
+                else ThreadPool::ParallelLoop(process_jobs, mesh_job_count);
+
+                // Finalize shared state after all appends. Read the actual LOD 0
+                // offset; other meshes may have appended their LODs in between.
+                ctx.progress.SetStep("Loading materials and skinning");
+                for (const MeshJob& job : ctx.mesh_jobs)
+                {
+                    if (job.assimp_mesh->HasBones() && !ctx.bone_name_to_index.empty())
+                    {
+                        if (!ctx.mesh->GetSkeletalMeshBinding())
+                            ctx.mesh->SetSkeletalMeshBinding(make_unique<SkeletalMeshBinding>());
+                        extract_bone_weights(job.assimp_mesh, ctx.bone_name_to_index, job.sub_mesh_index,
+                            ctx.mesh->GetSubMesh(job.sub_mesh_index).lods[0].vertex_offset,
+                            *ctx.mesh->GetSkeletalMeshBinding());
+                    }
+
+                    shared_ptr<Material> material;
+                    const uint32_t material_index = job.assimp_mesh->mMaterialIndex;
+                    if (material_index < ctx.scene->mNumMaterials)
+                    {
+                        auto [it, inserted] = ctx.materials.try_emplace(material_index);
+                        if (inserted) it->second = load_material(ctx, ctx.scene->mMaterials[material_index], material_index);
+                        material = it->second;
+                    }
+                    for (Entity* entity : job.entities)
+                    {
+                        Render* render = entity->AddComponent<Render>();
+                        render->SetMesh(ctx.mesh, job.sub_mesh_index);
+                        if (material) render->SetMaterial(material);
+                    }
+                }
             }
 
             // extract animation clips
+            ctx.progress.SetStep("Building animation clips");
             ParseAnimations(ctx);
 
             // update model geometry
+            ctx.progress.SetStep("Uploading geometry to GPU");
             ctx.mesh->CreateGpuBuffers();
 
             // make the root entity active since it's now thread-safe
@@ -2063,10 +2058,7 @@ namespace spartan
             SP_LOG_ERROR("%s", importer.GetErrorString());
         }
 
-        // always clear importer progress so a missed JobDone cannot wedge IsLoading forever
-        if (ctx.report_progress) ProgressTracker::GetProgress(ProgressType::ModelImporter).Complete();
-
-        importer.FreeScene();
+        // Importer and progress are released by their scope guards, including on exceptions.
     }
 
     void ModelImporter::ParseNode(ImportContext& ctx, const aiNode* node, Entity* parent_entity)
@@ -2087,7 +2079,7 @@ namespace spartan
         entity->SetObjectName(node_name);
 
         // update progress tracking
-        if (ctx.report_progress) ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetObjectName());
+        ctx.progress.SetDetail(entity->GetObjectName());
 
         // set parent
         entity->SetParent(parent_entity);
@@ -2113,8 +2105,6 @@ namespace spartan
             ParseNode(ctx, node->mChildren[i], entity);
         }
 
-        // update progress tracking
-        if (ctx.report_progress) ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
     }
 
     void ModelImporter::ParseNodeMeshes(ImportContext& ctx, const aiNode* assimp_node, Entity* node_entity)
@@ -2135,12 +2125,13 @@ namespace spartan
                 node_name += "_" + to_string(i + 1);
             }
 
-            entity->SetObjectName(node_name);
+            if (entity != ctx.mesh->GetRootEntity()) entity->SetObjectName(node_name);
 
             // collect the job, ParseMesh runs later in parallel after the tree walk completes,
             // the sub-mesh index is assigned here from the current jobs count so it's deterministic and matches assimp's traversal order
-            const uint32_t deterministic_sub_mesh_index = static_cast<uint32_t>(ctx.mesh_jobs.size());
-            ctx.mesh_jobs.push_back({ node_mesh, entity, deterministic_sub_mesh_index });
+            auto [it, inserted] = ctx.mesh_to_job.try_emplace(node_mesh, static_cast<uint32_t>(ctx.mesh_jobs.size()));
+            if (inserted) ctx.mesh_jobs.push_back({ node_mesh, {}, it->second });
+            ctx.mesh_jobs[it->second].entities.push_back(entity);
         }
     }
 
@@ -2193,69 +2184,18 @@ namespace spartan
         }
     }
 
-    void ModelImporter::ParseMesh(ImportContext& ctx, aiMesh* assimp_mesh, Entity* entity_parent, const uint32_t sub_mesh_index)
+    void ModelImporter::ParseMesh(ImportContext& ctx, aiMesh* assimp_mesh, const uint32_t sub_mesh_index)
     {
         SP_ASSERT(assimp_mesh != nullptr);
-        SP_ASSERT(entity_parent != nullptr);
-
-        // process vertices and indices (parallel for large meshes)
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
-
         process_vertices_parallel(assimp_mesh, vertices);
         process_indices_parallel(assimp_mesh, indices);
 
-        // serialize append + weight offsets, parallel ParseMesh raced GetVertexCount
-        // and wrote overlapping skin sections (mannequiny exploded)
-        static mutex geometry_append_mutex;
-        uint32_t vertex_offset = 0;
-        {
-            lock_guard<mutex> geometry_lock(geometry_append_mutex);
-
-            vertex_offset = ctx.mesh->GetVertexCount();
-            ctx.mesh->AddGeometry(vertices, indices, true, sub_mesh_index);
-
-            if (assimp_mesh->mNumBones > 0 && !ctx.bone_name_to_index.empty())
-            {
-                if (!ctx.mesh->GetSkeletalMeshBinding())
-                {
-                    ctx.mesh->SetSkeletalMeshBinding(make_unique<SkeletalMeshBinding>());
-                }
-
-                extract_bone_weights(
-                    assimp_mesh,
-                    ctx.bone_name_to_index,
-                    sub_mesh_index,
-                    vertex_offset,
-                    *ctx.mesh->GetSkeletalMeshBinding()
-                );
-            }
-        }
-
-        // set the geometry
-        entity_parent->AddComponent<Render>()->SetMesh(ctx.mesh, sub_mesh_index);
-
-        // material
-        if (ctx.scene->HasMaterials())
-        {
-            const uint32_t material_index = assimp_mesh->mMaterialIndex;
-            shared_ptr<Material> material;
-            {
-                lock_guard<mutex> material_lock(ctx.materials_mutex);
-                auto it = ctx.materials.find(material_index);
-                if (it != ctx.materials.end())
-                {
-                    material = it->second;
-                }
-                else
-                {
-                    material = load_material(ctx, ctx.scene->mMaterials[material_index], material_index);
-                    ctx.materials[material_index] = material;
-                }
-            }
-
-            entity_parent->AddComponent<Render>()->SetMaterial(material);
-        }
+        // AddGeometry locks only the shared appends; optimization and meshlet
+        // construction run independently. Skin weights retain Assimp vertex order.
+        // Until LOD generation remaps influences too, skinned meshes use LOD 0.
+        ctx.mesh->AddGeometry(vertices, indices, !ctx.mesh->GetSkeleton(), sub_mesh_index, true);
     }
 
     void ModelImporter::ParseSkeleton(ImportContext& ctx)

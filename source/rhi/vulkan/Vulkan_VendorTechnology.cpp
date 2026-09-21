@@ -98,7 +98,8 @@ namespace spartan
             settings.motionVectorScale[1] = 1.0f;
             settings.motionVectorScale[2] = 0.0f;
 
-            // taa jitter is clip space xy, nrd wants uv space sample offset in [-0.5, 0.5]
+            // NRD wants the sample offset in pixels, opposite to the projected geometry displacement.
+            // Convert NDC to the denoising grid, including reduced-resolution denoisers.
             auto clamp_nrd_jitter = [](float value) -> float
             {
                 if (!std::isfinite(value))
@@ -109,10 +110,10 @@ namespace spartan
                 return (std::max)(-0.5f, (std::min)(value, 0.5f));
             };
 
-            settings.cameraJitter[0]     = clamp_nrd_jitter(cb_frame->taa_jitter_current.x * 0.5f);
-            settings.cameraJitter[1]     = clamp_nrd_jitter(-cb_frame->taa_jitter_current.y * 0.5f);
-            settings.cameraJitterPrev[0] = clamp_nrd_jitter(cb_frame->taa_jitter_previous.x * 0.5f);
-            settings.cameraJitterPrev[1] = clamp_nrd_jitter(-cb_frame->taa_jitter_previous.y * 0.5f);
+            settings.cameraJitter[0]     = clamp_nrd_jitter(-cb_frame->taa_jitter_current.x * 0.5f * width);
+            settings.cameraJitter[1]     = clamp_nrd_jitter(cb_frame->taa_jitter_current.y * 0.5f * height);
+            settings.cameraJitterPrev[0] = clamp_nrd_jitter(-cb_frame->taa_jitter_previous.x * 0.5f * width);
+            settings.cameraJitterPrev[1] = clamp_nrd_jitter(cb_frame->taa_jitter_previous.y * 0.5f * height);
 
             settings.resourceSize[0]     = static_cast<uint16_t>(width);
             settings.resourceSize[1]     = static_cast<uint16_t>(height);

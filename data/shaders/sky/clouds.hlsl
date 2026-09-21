@@ -974,9 +974,9 @@ float3 cloud_view_direction(float2 uv)
 
 float cloud_scene_distance(float2 uv)
 {
-    uint width;
-    uint height;
-    tex_depth.GetDimensions(width, height);
+    uint2 resolution = uint2(get_render_resolution_active());
+    uint width = resolution.x;
+    uint height = resolution.y;
     float2 depth_uv = saturate(cloud_depth_uv(uv, buffer_frame.taa_jitter_current));
     int2 pixel      = clamp(int2(floor(depth_uv * float2(width, height) - 0.5)), int2(0, 0), int2(width - 1, height - 1));
     float distance  = 1e30;
@@ -1001,7 +1001,9 @@ float cloud_scene_distance(float2 uv)
 float cloud_scene_distance_at(float2 uv, Texture2D depth_tex, float2 jitter, float3 camera_position)
 {
     float2 depth_uv = saturate(cloud_depth_uv(uv, jitter));
-    float raw       = depth_tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), depth_uv, 0).r;
+    uint2 resolution = uint2(get_render_resolution_active());
+    uint2 pixel = min(uint2(depth_uv * resolution), resolution - 1);
+    float raw = depth_tex.Load(int3(pixel, 0)).r;
     if (raw <= 1e-6)
     {
         return 1e30;
@@ -1205,10 +1207,8 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
 [numthreads(8, 8, 1)]
 void main_cs(uint3 tid : SV_DispatchThreadID)
 {
-    uint width;
-    uint height;
-    tex_uav.GetDimensions(width, height);
-    if (any(tid.xy >= uint2(width, height)))
+    uint2 resolution = uint2(get_render_resolution_active());
+    if (any(tid.xy >= resolution))
     {
         return;
     }
@@ -1216,7 +1216,10 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     uint cloud_width;
     uint cloud_height;
     tex2.GetDimensions(cloud_width, cloud_height);
-    float2 uv = (float2(tid.xy) + 0.5) / float2(width, height);
+    // The scene is jittered, but the resolved cloud history is on an unjittered grid.
+    // Sample clouds along the same ray as the scene pixel before temporal upscaling.
+    float2 uv = (float2(tid.xy) + 0.5) / float2(resolution)
+        - buffer_frame.taa_jitter_current * float2(0.5, -0.5);
     float scene_distance = cloud_scene_distance_at(uv, tex_depth, buffer_frame.taa_jitter_current, get_camera_position());
     float2 cloud_position = uv * float2(cloud_width, cloud_height) - 0.5;
     int2 cloud_base = int2(floor(cloud_position));

@@ -1724,6 +1724,10 @@ register_tool(server, "engine_status", "Read editor/runtime status, frame metric
   outputSchema: output_schemas.engine_status,
 });
 
+register_tool(server, "progress_snapshot", "Read the two visible loading tasks, current phases, details, elapsed time and active task count. Responds even while the main thread is busy. A null fraction means indeterminate progress.", {}, "progress_snapshot", {
+  annotations: read_only,
+});
+
 register_tool(
   server,
   "profiler_snapshot",

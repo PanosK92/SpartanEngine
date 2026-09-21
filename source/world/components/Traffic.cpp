@@ -352,20 +352,15 @@ namespace spartan
             return false;
         }
 
-        const float hue = static_cast<float>((index * 7) % 20) / 20.0f;
         Car::Config config;
         config.position = position;
         config.car_file = m_car_path;
         config.drivable = true;
         config.vehicle_sim_mode = VehicleSimMode::Cheap;
-        config.customize_materials = false;
-        config.paint_preset = MaterialPaintPreset::Metallic;
-        config.paint_color = Color(
-            0.15f + hue * 0.65f,
-            0.2f + fmodf(hue + 0.37f, 1.0f) * 0.55f,
-            0.2f + fmodf(hue + 0.71f, 1.0f) * 0.55f,
-            1.0f
-        );
+        // Match the garage prefab's finish, including its surface presets and subtle body normals.
+        config.customize_materials = true;
+        config.paint_preset = MaterialPaintPreset::GlossSolid;
+        config.paint_color = Color(0.42f, 0.012f, 0.008f, 1.0f);
 
         Car* car = Car::Create(config);
         if (!car)

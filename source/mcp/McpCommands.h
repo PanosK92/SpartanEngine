@@ -32,6 +32,8 @@ namespace spartan
     using McpCommandHandler = std::function<std::string(const McpRequest&)>;
 
     std::string ExecuteMcpCommand(const McpRequest& request);
+    // Thread-safe read-only snapshot; bypasses the main-thread queue during loads.
+    std::string GetMcpProgressSnapshot();
     void RegisterMcpCommand(const std::string& name, McpCommandHandler handler);
     void UnregisterMcpCommand(const std::string& name);
 }

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "McpServer.h"
 #include "McpQueue.h"
+#include "McpCommands.h"
 #include "resource/ResourceCache.h"
 #include "world/World.h"
 #include <algorithm>
@@ -321,7 +322,7 @@ namespace spartan
                     if (!line.empty())
                     {
                         McpRequest request = parse_request(line);
-                        std::string response       = McpQueue::Submit(request);
+                        std::string response       = request.command == "progress_snapshot" ? GetMcpProgressSnapshot() : McpQueue::Submit(request);
                         response                   = response_with_request_id(request, response);
                         response.push_back('\n');
 

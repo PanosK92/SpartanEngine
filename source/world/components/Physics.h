@@ -361,6 +361,10 @@ namespace spartan
         float ComputeVolume();
 
         void UpdateWheelTransforms();
+        struct TireDeformationBatch;
+        void UpdateTireDeformation(int wheel_index, bool grounded, TireDeformationBatch* batch = nullptr);
+        struct TireVisualState;
+        std::unique_ptr<TireVisualState> m_tire_visuals[4];
         void UpdateCheapWheelTransforms();
         void CaptureCheapWheelRestPoses();
         void Create();
@@ -406,6 +410,7 @@ namespace spartan
 
         // vehicle wheel entities and state
         Entity* m_wheel_entities[static_cast<int>(WheelIndex::Count)] = { nullptr, nullptr, nullptr, nullptr };
+        Entity* m_wheel_calipers[static_cast<int>(WheelIndex::Count)] = {}; // optional axle-centered brake_caliper child
         float m_wheel_radius   = 0.35f; // wheel radius for spin calculation (default)
         math::Vector3 m_wheel_mesh_center_offsets[static_cast<int>(WheelIndex::Count)] = {};
         bool m_wheel_offsets_synced = false;  // flag to ensure wheel offsets are synced from entities once

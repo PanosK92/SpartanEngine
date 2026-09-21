@@ -510,11 +510,25 @@ namespace spartan
 
     bool Mesh::LoadPrepared(const string& path, uint64_t key)
     {
+        generated_cache::ReadMeasurement measurement{filesystem::path(path).parent_path().filename().string()};
+        vector<uint8_t> bytes;
+        if (!generated_cache::ReadPayload(path, key, bytes))
+        {
+            error_code error;
+            measurement.missing = !filesystem::exists(path, error);
+            return false;
+        }
+        measurement.hit = LoadPrepared(bytes);
+        return measurement.hit;
+    }
+
+    bool Mesh::LoadPrepared(span<const uint8_t> bytes)
+    {
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices, remaps, micro;
         vector<Sb_MeshletBounds> meshlets;
         vector<MeshLod> lods;
-        if (!generated_cache::Load(path, key, vertices, indices, meshlets, remaps, micro, lods) ||
+        if (!generated_cache::Decode(bytes, vertices, indices, meshlets, remaps, micro, lods) ||
             lods.empty() || lods.size() > mesh_lod_count) return false;
         for (const MeshLod& lod : lods)
         {
@@ -554,6 +568,13 @@ namespace spartan
             m_meshlet_vertices, m_meshlet_micro_indices, m_sub_meshes[0].lods);
     }
 
+    vector<uint8_t> Mesh::SerializePrepared() const
+    {
+        if (m_sub_meshes.size() != 1) return {};
+        return generated_cache::Encode(m_vertices, m_indices, m_meshlets,
+            m_meshlet_vertices, m_meshlet_micro_indices, m_sub_meshes[0].lods);
+    }
+
     void Mesh::AppendPrepared(const Mesh& tile, uint32_t sub_mesh_index)
     {
         lock_guard lock(m_mutex);
@@ -587,7 +608,7 @@ namespace spartan
         generated_cache::Hash cache_hash;
         cache_hash.Add(uint32_t(1)); // meshlet generator/cache version
         cache_hash.Add(sizeof(Sb_MeshletBounds));
-        const bool use_cache = indices.size() >= 192;
+        const bool use_cache = indices.size() >= 192 && !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
         if (use_cache)
         {
             cache_hash.Add(vertices);
@@ -670,7 +691,7 @@ namespace spartan
         }
     }
 
-    void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const bool generate_lods, const uint32_t sub_mesh_index_in)
+    void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const bool generate_lods, const uint32_t sub_mesh_index_in, const bool preserve_lod0)
     {
         // caller must have reserved this slot via ReserveSubMeshes or the auto-allocating overload above
         SP_ASSERT(sub_mesh_index_in < m_sub_meshes.size());
@@ -685,7 +706,7 @@ namespace spartan
             {
                 // Authored game-ready props must not be reduced before distance
                 // LOD selection. Other imports retain their density reduction.
-                if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessPreserveLod0))
+                if (preserve_lod0 || (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessPreserveLod0)))
                     geometry_processing::weld_and_optimize(vertices, indices);
                 else
                     geometry_processing::optimize(vertices, indices);
@@ -751,10 +772,11 @@ namespace spartan
                 lod_hash.Add(preserve_uvs);
                 lod_hash.Add(preserve_edges);
                 const auto lod_path = generated_cache::Path(World::GetResourceDirectory(), "lods", lod_hash.value);
-                if (!generated_cache::Load(lod_path, lod_hash.value, lod_vertices, lod_indices))
+                const bool cache_lods = !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
+                if (!cache_lods || !generated_cache::Load(lod_path, lod_hash.value, lod_vertices, lod_indices))
                 {
                     geometry_processing::simplify(lod_indices, lod_vertices, target_index_count, preserve_uvs, preserve_edges, !preserve_edges);
-                    generated_cache::Save(lod_path, lod_hash.value, lod_vertices, lod_indices);
+                    if (cache_lods) generated_cache::Save(lod_path, lod_hash.value, lod_vertices, lod_indices);
                 }
 
                 // stop unless this level is meaningfully cheaper than the one above it, a level that

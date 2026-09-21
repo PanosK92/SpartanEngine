@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImageImporter.h"
 #include "../../rhi/RHI_Texture.h"
 #include "../../core/ThreadPool.h"
+#include "../../geometry/GeneratedCache.h"
+#include "../../world/World.h"
 SP_WARNINGS_OFF
 #define FREEIMAGE_LIB
 #include <FreeImage/FreeImage.h>
@@ -533,6 +535,50 @@ namespace spartan
             return;
         }
 
+        // Reuse exactly the decoded/corrected pixels. Hash source bytes rather
+        // than timestamps, so edits and identical images in other assets work
+        // without relying on paths or the filesystem clock.
+        constexpr uint32_t image_flags = RHI_Texture_Greyscale | RHI_Texture_Srgb | RHI_Texture_Transparent;
+        generated_cache::Hash image_key;
+        filesystem::path image_cache_path;
+        if (slice_index == 0 && !World::GetResourceDirectory().empty())
+        {
+            try
+            {
+                ifstream source(file_path, ios::binary | ios::ate);
+                const auto length = source.tellg();
+                if (source && length > 0 && length <= 64 * 1024 * 1024)
+                {
+                    vector<uint8_t> encoded(static_cast<size_t>(length));
+                    source.seekg(0);
+                    if (source.read(reinterpret_cast<char*>(encoded.data()), static_cast<streamsize>(encoded.size())))
+                    {
+                        image_key.Add(uint32_t{1}); // bitmap corrections/resize algorithm
+                        image_key.Add(texture->GetWidth()); image_key.Add(texture->GetHeight());
+                        image_key.Add(texture->GetFlags() & image_flags);
+                        image_key.Add(FileSystem::GetExtensionFromFilePath(file_path));
+                        image_key.Add(generated_cache::HashBytes(encoded.data(), encoded.size()));
+                        image_cache_path = generated_cache::Path(World::GetResourceDirectory(), "image_pixels", image_key.value);
+                        vector<uint32_t> metadata;
+                        vector<byte> pixels;
+                        if (generated_cache::Load(image_cache_path, image_key.value, metadata, pixels) && metadata.size() == 3 &&
+                            metadata[0] > 0 && metadata[0] <= 65536 && metadata[1] > 0 && metadata[1] <= 65536 &&
+                            (metadata[2] & ~image_flags) == 0 && uint64_t(metadata[0]) * metadata[1] * 4 == pixels.size())
+                        {
+                            texture->SetWidth(metadata[0]); texture->SetHeight(metadata[1]);
+                            texture->SetBitsPerChannel(8); texture->SetChannelCount(4);
+                            texture->SetFormat(RHI_Format::R8G8B8A8_Unorm);
+                            texture->SetFlags((texture->GetFlags() & ~image_flags) | metadata[2]);
+                            texture->AllocateMip();
+                            texture->GetMip(0, 0)->bytes = move(pixels);
+                            return;
+                        }
+                    }
+                }
+            }
+            catch (const exception&) { image_cache_path.clear(); }
+        }
+
         // acquire image format
         FREE_IMAGE_FORMAT format = FIF_UNKNOWN;
         {
@@ -651,6 +697,13 @@ namespace spartan
         memcpy(&mip->bytes[0], bytes, bytes_size);
 
         FreeImage_Unload(bitmap);
+        if (!image_cache_path.empty() && texture->GetFormat() == RHI_Format::R8G8B8A8_Unorm &&
+            texture->GetBitsPerChannel() == 8 && texture->GetChannelCount() == 4 &&
+            uint64_t(texture->GetWidth()) * texture->GetHeight() * 4 == mip->bytes.size())
+        {
+            const vector<uint32_t> metadata = {texture->GetWidth(), texture->GetHeight(), texture->GetFlags() & image_flags};
+            generated_cache::Save(image_cache_path, image_key.value, metadata, mip->bytes);
+        }
     }
 
     void ImageImporter::Save(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data, ImageColorSpace color_space)

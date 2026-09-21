@@ -1192,8 +1192,33 @@ namespace spartan
         m_object_size      = sizeof(*this);
     }
 
+    Material::ScopedEdit::ScopedEdit(Material& material) : m_material(material)
+    {
+        lock_guard<recursive_mutex> lock(m_material.m_mutex);
+        ++m_material.m_save_defer_count;
+    }
+
+    Material::ScopedEdit::~ScopedEdit()
+    {
+        bool save;
+        {
+            lock_guard<recursive_mutex> lock(m_material.m_mutex);
+            save = --m_material.m_save_defer_count == 0 && m_material.m_save_deferred;
+            if (save) m_material.m_save_deferred = false;
+        }
+        if (save) m_material.SaveToFile(m_material.GetResourceFilePath());
+    }
+
     void Material::SaveToFile(const string& file_path)
     {
+        {
+            lock_guard<recursive_mutex> lock(m_mutex);
+            if (m_save_defer_count != 0 && file_path == GetResourceFilePath())
+            {
+                m_save_deferred = true;
+                return;
+            }
+        }
         try
         {
             if (auto save = CreateSaveTask(file_path)) save();

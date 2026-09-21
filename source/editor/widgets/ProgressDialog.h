@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======
 #include "Widget.h"
+#include "core/ProgressTracker.h"
 //=================
 
 class ProgressDialog : public Widget
@@ -34,4 +35,11 @@ public:
     void OnTick() override;
     void OnTickVisible() override;
     void OnPreBegin() override;
+
+private:
+    spartan::ProgressDisplay m_display;
+    double m_visible_since = 0.0;
+    struct BarState { uint64_t id = 0; uint64_t step_id = 0; float fraction = 0.0f; };
+    std::array<BarState, 2> m_bars;
+
 };

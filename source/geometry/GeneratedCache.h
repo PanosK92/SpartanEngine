@@ -34,13 +34,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include <mutex>
 #include <sstream>
+#include <span>
 
 namespace spartan::generated_cache
 {
     struct Statistics { uint64_t hits = 0, missing = 0, invalid = 0; double milliseconds = 0; };
     inline std::mutex statistics_mutex;
     inline std::map<std::string, Statistics> statistics;
-    inline void ResetStatistics() { std::lock_guard lock(statistics_mutex); statistics.clear(); }
+    inline auto session_started = std::filesystem::file_time_type::clock::now();
+    inline void ResetStatistics()
+    {
+        std::lock_guard lock(statistics_mutex);
+        statistics.clear();
+        session_started = std::filesystem::file_time_type::clock::now();
+    }
     inline std::vector<std::string> GetStatistics()
     {
         std::lock_guard lock(statistics_mutex);
@@ -71,6 +78,12 @@ namespace spartan::generated_cache
             stats.milliseconds += ms;
         }
     };
+
+    // Fast bulk hashing for derived payloads. The incremental Hash below keeps
+    // existing recipe keys stable, so old geometry bakes remain reusable.
+    uint64_t HashBytes(const void* data, size_t size);
+    void LoadChecksumIndex(const std::string& resources);
+    void SaveChecksumIndex(const std::string& resources);
 
     // Version the caller's key when changing a generator or its binary layout.
     struct Hash
@@ -105,20 +118,12 @@ namespace spartan::generated_cache
     bool ReadPayload(const std::filesystem::path& path, uint64_t key, std::vector<uint8_t>& bytes);
     void WritePayload(const std::filesystem::path& path, uint64_t key, const std::vector<uint8_t>& bytes);
     struct MaintenanceResult { uint64_t removed = 0, bytes_removed = 0; };
-    // Only disposable generated_cache/<category>/<hash>.bin files are eligible.
+    // Evict unused history, retaining this session's working set even if it
+    // exceeds the soft budget. Otherwise large worlds rebuild on every load.
     MaintenanceResult Maintain(const std::string& world_resources, uint64_t budget = 2ull * 1024 * 1024 * 1024);
 
-    template<typename... Vectors> bool Load(const std::filesystem::path& path, uint64_t key, Vectors&... output) try
+    template<typename... Vectors> bool Decode(std::span<const uint8_t> bytes, Vectors&... output) try
     {
-        if (path.empty()) return false;
-        ReadMeasurement measurement{path.parent_path().filename().string()};
-        std::vector<uint8_t> bytes;
-        if (!ReadPayload(path, key, bytes))
-        {
-            std::error_code error;
-            measurement.missing = !std::filesystem::exists(path, error);
-            return false;
-        }
         size_t cursor = 0;
         auto read = [&](auto& values)
         {
@@ -136,14 +141,28 @@ namespace spartan::generated_cache
         std::tuple<std::decay_t<Vectors>...> loaded;
         if (!std::apply([&](auto&... values) { return (read(values) && ...); }, loaded) || cursor != bytes.size()) return false;
         std::tie(output...) = std::move(loaded);
-        measurement.hit = true;
         return true;
     }
     catch (const std::exception&) { return false; }
 
-    template<typename... Vectors> void Save(const std::filesystem::path& path, uint64_t key, const Vectors&... input) try
+    template<typename... Vectors> bool Load(const std::filesystem::path& path, uint64_t key, Vectors&... output) try
     {
-        if (path.empty()) return;
+        if (path.empty()) return false;
+        ReadMeasurement measurement{path.parent_path().filename().string()};
+        std::vector<uint8_t> bytes;
+        if (!ReadPayload(path, key, bytes))
+        {
+            std::error_code error;
+            measurement.missing = !std::filesystem::exists(path, error);
+            return false;
+        }
+        measurement.hit = Decode(bytes, output...);
+        return measurement.hit;
+    }
+    catch (const std::exception&) { return false; }
+
+    template<typename... Vectors> std::vector<uint8_t> Encode(const Vectors&... input)
+    {
         std::vector<uint8_t> bytes;
         bool fits = true;
         auto append = [&](const auto& values)
@@ -163,7 +182,14 @@ namespace spartan::generated_cache
             if (count) memcpy(bytes.data() + start + sizeof(count), values.data(), values.size() * sizeof(T));
         };
         (append(input), ...);
-        if (fits) WritePayload(path, key, bytes);
+        return fits ? std::move(bytes) : std::vector<uint8_t>{};
+    }
+
+    template<typename... Vectors> void Save(const std::filesystem::path& path, uint64_t key, const Vectors&... input) try
+    {
+        if (path.empty()) return;
+        auto bytes = Encode(input...);
+        if (!bytes.empty()) WritePayload(path, key, bytes);
     }
     catch (const std::exception&) {} // Allocation/storage failure must not fail a world save.
 }

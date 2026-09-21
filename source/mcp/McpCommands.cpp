@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================================
 #include "pch.h"
+#include "../core/ThreadPool.h"
 #include "McpCommands.h"
 #include "McpCommandsCommon.h"
 #include "McpCommandsWorldBuild.h"
@@ -3346,6 +3347,8 @@ namespace spartan
             json += ",\"frame_ms\":" + std::to_string(Profiler::GetFrameDurationMs());
             json += ",\"time_seconds\":" + std::to_string(Timer::GetTimeSec());
             json += ",\"frame_number\":" + std::to_string(Renderer::GetFrameNumber());
+            json += ",\"jobs_running\":" + json_bool(ThreadPool::AreTasksRunning());
+            json += ",\"working_threads\":" + std::to_string(ThreadPool::GetWorkingThreadCount());
             json += "}";
             return json;
         }
@@ -13932,6 +13935,27 @@ namespace spartan
         get_external_commands().erase(name);
     }
 
+    std::string GetMcpProgressSnapshot()
+    {
+        const auto display = ProgressTracker::GetDisplay();
+        std::string json = "{\"ok\":true,\"loading\":" + json_bool(ProgressTracker::IsLoading());
+        json += ",\"active_count\":" + std::to_string(display.active_count) + ",\"tasks\":[";
+        constexpr const char* types[] = { "world", "download", "model", "terrain", "texture" };
+        for (uint32_t i = 0; i < display.count; ++i)
+        {
+            const auto& task = display.tasks[i];
+            if (i) json += ",";
+            json += "{\"id\":" + json_string(std::to_string(task.id));
+            json += ",\"type\":" + json_string(types[static_cast<size_t>(task.type)]);
+            json += ",\"title\":" + json_string(task.title);
+            json += ",\"step\":" + json_string(task.step);
+            json += ",\"detail\":" + json_string(task.detail);
+            json += ",\"fraction\":" + (task.fraction < 0 ? std::string("null") : std::to_string(task.fraction));
+            json += ",\"elapsed_seconds\":" + std::to_string(task.elapsed_seconds) + "}";
+        }
+        return json + "]}";
+    }
+
     std::string ExecuteMcpCommand(const McpRequest& request)
     {
         // a table rather than a chain of comparisons, so a command is one line to add and the cost of
@@ -13940,6 +13964,7 @@ namespace spartan
         {
             { "ping",                          [](const McpRequest&) { return command_ping(); } },
             { "engine_status",                 [](const McpRequest&) { return command_engine_status(); } },
+            { "progress_snapshot",             [](const McpRequest&) { return GetMcpProgressSnapshot(); } },
             { "profiler_snapshot",             command_profiler_snapshot },
             { "profiler_record",               command_profiler_record },
             { "meshlet_snapshot",              command_meshlet_snapshot },

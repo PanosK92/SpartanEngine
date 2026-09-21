@@ -52,6 +52,19 @@ namespace spartan
         // wait on futures that can only run on the same exhausted pool and the load freezes
         thread_local uint32_t parallel_depth = 0;
 
+        void complete_task()
+        {
+            // Flush tests this predicate while holding task_mutex. Updating it
+            // under the same lock prevents the last completion notification
+            // from landing between its predicate check and entering the wait.
+            {
+                lock_guard<mutex> lock(task_mutex);
+                working_count.fetch_sub(1, memory_order_relaxed);
+                pending_count.fetch_sub(1, memory_order_relaxed);
+            }
+            idle_cv.notify_all();
+        }
+
         bool execute_queued_task()
         {
             Task task;
@@ -69,9 +82,7 @@ namespace spartan
             }
 
             task();
-            working_count.fetch_sub(1, memory_order_relaxed);
-            pending_count.fetch_sub(1, memory_order_relaxed);
-            idle_cv.notify_all();
+            complete_task();
             return true;
         }
     }
@@ -102,11 +113,7 @@ namespace spartan
             // execute task - exceptions are handled by packaged_task if one is used
             task();
 
-            working_count.fetch_sub(1, memory_order_relaxed);
-            pending_count.fetch_sub(1, memory_order_relaxed);
-
-            // wake up any thread waiting in flush()
-            idle_cv.notify_all();
+            complete_task();
         }
     }
 

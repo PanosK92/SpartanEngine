@@ -250,6 +250,9 @@ namespace spartan
 
         sdl_initialize_subystems();
 
+        // MCP load/performance checks can run without taking desktop focus.
+        const bool mcp_hidden = Engine::HasArgument("--mcp-control") && Engine::HasArgument("--mcp-hidden");
+        m_show_splash_screen = !mcp_hidden;
         // show a splash screen
         if (m_show_splash_screen)
         {
@@ -258,7 +261,8 @@ namespace spartan
 
         // set window flags - borderless for custom title bar
         // rhi-specific flags (e.g. SDL_WINDOW_VULKAN) come from RHI_Context, set at compile time per-api
-        uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED | SDL_WINDOW_BORDERLESS | RHI_Context::sdl_window_flags;
+        uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_BORDERLESS | RHI_Context::sdl_window_flags;
+        flags |= mcp_hidden ? SDL_WINDOW_HIDDEN : SDL_WINDOW_MAXIMIZED;
 
         // create window
         window  = SDL_CreateWindow(

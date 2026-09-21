@@ -21,6 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========================
 #include "pch.h"
+#include "../../core/Stopwatch.h"
+#include "../../core/ThreadPool.h"
+#include "../../memory/MemoryCopy.h"
 #include <condition_variable>
 #include "../RHI_Device.h"
 #include "../RHI_Queue.h"
@@ -3395,14 +3398,57 @@ namespace spartan
         }
         else
         {
-            void* staging = RHI_Device::StagingBufferAcquire(size);
-            void* mapped = nullptr;
-            RHI_Device::MemoryMap(staging, mapped);
-            memcpy(mapped, data, size);
-            RHI_Device::MemoryUnmap(staging);
-            VkBufferCopy copy = {0, offset, size};
-            vkCmdCopyBuffer(vk_cmd_buffer, static_cast<VkBuffer>(staging), vk_buffer, 1, &copy);
-            RetainStagingBuffer(staging);
+            const Stopwatch upload_timer;
+            // Avoid pinning one multi-GB allocation on the calling thread.
+            // Each worker owns its staging pages; command recording and lifetime
+            // retention remain on this command list's thread after the joins.
+            constexpr uint64_t staging_chunk_size = 128ull * 1024 * 1024;
+            const uint64_t block_size = size >= 2 * staging_chunk_size ? staging_chunk_size : size;
+            struct StagingBlock { void* buffer = nullptr; void* mapped = nullptr; uint64_t start = 0, size = 0; };
+            vector<StagingBlock> blocks(static_cast<size_t>((size + block_size - 1) / block_size));
+            try
+            {
+                auto allocate = [&](uint32_t begin, uint32_t end)
+                {
+                    for (uint32_t i = begin; i < end; ++i)
+                    {
+                        auto& block = blocks[i];
+                        block.start = uint64_t(i) * block_size;
+                        block.size = min(block_size, size - block.start);
+                        block.buffer = RHI_Device::StagingBufferAcquire(block.size);
+                        if (!block.buffer) throw runtime_error("Unable to allocate geometry upload staging memory");
+                        RHI_Device::MemoryMap(block.buffer, block.mapped);
+                    }
+                };
+                if (blocks.size() > 1) ThreadPool::ParallelLoop(allocate, static_cast<uint32_t>(blocks.size()));
+                else allocate(0, 1);
+                const float allocation_ms = upload_timer.GetElapsedTimeMs();
+                auto copy = [&](uint32_t begin, uint32_t end)
+                {
+                    for (uint32_t i = begin; i < end; ++i)
+                    {
+                        auto& block = blocks[i];
+                        CopyToMappedMemory(block.mapped, static_cast<const uint8_t*>(data) + block.start, static_cast<size_t>(block.size));
+                        RHI_Device::MemoryUnmap(block.buffer);
+                    }
+                };
+                if (blocks.size() > 1) ThreadPool::ParallelLoop(copy, static_cast<uint32_t>(blocks.size()));
+                else copy(0, 1);
+                if (size >= 256ull * 1024 * 1024)
+                    SP_LOG_INFO("Large upload: %.1f MB, allocation %.2f ms, copy %.2f ms",
+                        size / (1024.0 * 1024.0), allocation_ms, upload_timer.GetElapsedTimeMs() - allocation_ms);
+            }
+            catch (...)
+            {
+                for (const auto& block : blocks) if (block.buffer) RHI_Device::StagingBufferRelease(block.buffer);
+                throw;
+            }
+            for (const auto& block : blocks)
+            {
+                VkBufferCopy copy = {0, offset + block.start, block.size};
+                vkCmdCopyBuffer(vk_cmd_buffer, static_cast<VkBuffer>(block.buffer), vk_buffer, 1, &copy);
+                RetainStagingBuffer(block.buffer);
+            }
         }
         m_force_memory_sync = true;
     }

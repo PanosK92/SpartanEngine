@@ -710,9 +710,11 @@ namespace spartan
             const vector<uint32_t>& tile_order,
             const uint32_t order_begin,
             const uint32_t order_end,
-            const float terrain_band
+            const float terrain_band,
+            vector<Render*>* bounds_pending
         )
         {
+            const bool defer_bounds = bounds_pending != nullptr;
             Entity* prototype = mesh->GetRootEntity();
             if (prototype)
             {
@@ -862,7 +864,8 @@ namespace spartan
                         material->SetProperty(MaterialProperty::TerrainCoatingScale, layer.coating_scale);
                     }
 
-                    render->SetInstances(packed_instances);
+                    render->SetInstances(packed_instances, !defer_bounds);
+                    if (defer_bounds) bounds_pending->push_back(render);
                     if (layer.flags & (TerrainScatterFlags_Canopy | TerrainScatterFlags_Scrub))
                     {
                         const Vector3 size = render->GetBoundingBoxMesh().GetSize();
@@ -917,27 +920,27 @@ namespace spartan
             const vector<Mesh*>& palette, const TerrainScatterLayer& layer,
             const vector<Entity*>& tiles, const vector<vector<Matrix>>& transforms,
             const vector<uint32_t>& tile_order, uint32_t order_begin, uint32_t order_end,
-            float terrain_band)
+            float terrain_band, vector<Render*>* bounds_pending = nullptr)
         {
             if (palette.size() == 1)
             {
-                attach_scatter_variant(palette.front(), layer, tiles, transforms, tile_order, order_begin, order_end, terrain_band);
+                attach_scatter_variant(palette.front(), layer, tiles, transforms, tile_order, order_begin, order_end, terrain_band, bounds_pending);
                 return;
             }
             // Place once, then assign each accepted instance to exactly one model.
             // This preserves density and reproduces the same choices on tile refresh.
-            for (uint32_t variant = 0; variant < palette.size(); ++variant)
+            vector<vector<vector<Matrix>>> selected(palette.size(), vector<vector<Matrix>>(transforms.size()));
+            for (uint32_t order = order_begin; order < order_end; ++order)
             {
-                vector<vector<Matrix>> selected(transforms.size());
-                for (uint32_t order = order_begin; order < order_end; ++order)
+                const uint32_t tile = tile_order[order];
+                for (uint32_t i = 0; i < transforms[tile].size(); ++i)
                 {
-                    const uint32_t tile = tile_order[order];
-                    for (uint32_t i = 0; i < transforms[tile].size(); ++i)
-                        if (terrain_habitat::variant(tile, i, layer.seed, static_cast<uint32_t>(palette.size())) == variant)
-                            selected[tile].push_back(transforms[tile][i]);
+                    const uint32_t variant = terrain_habitat::variant(tile, i, layer.seed, static_cast<uint32_t>(palette.size()));
+                    selected[variant][tile].push_back(transforms[tile][i]);
                 }
-                attach_scatter_variant(palette[variant], layer, tiles, selected, tile_order, order_begin, order_end, terrain_band);
             }
+            for (uint32_t variant = 0; variant < palette.size(); ++variant)
+                attach_scatter_variant(palette[variant], layer, tiles, selected[variant], tile_order, order_begin, order_end, terrain_band, bounds_pending);
         }
 
         // one gpu scatter slot, there are no entities for this, the populate pass reads the height map
@@ -1168,6 +1171,46 @@ namespace spartan
 
         terrain->RebuildPropMask();
 
+        if (World::IsPreparing())
+        {
+            // Imports own independent inactive hierarchies. Join before walking
+            // or publishing the scene, then retain the authored palette order.
+            // Built-in meshes use the owning thread's procedural resource maps.
+            vector<string> paths;
+            unordered_set<string> unique_paths;
+            auto add_path = [&](string path)
+            {
+                const size_t first = path.find_first_not_of(" \t\r\n");
+                if (first == string::npos) return;
+                path = path.substr(first, path.find_last_not_of(" \t\r\n") - first + 1);
+                if (path.rfind("builtin/", 0) != 0 && unique_paths.insert(path).second) paths.push_back(move(path));
+            };
+            for (const TerrainScatterLayer& layer : terrain->GetScatterLayers())
+            {
+                if (!terrain->IsScatterActive(layer)) continue;
+                add_path(layer.mesh_path);
+                size_t begin = 0;
+                while (begin < layer.mesh_variants.size())
+                {
+                    const size_t end = layer.mesh_variants.find(';', begin);
+                    add_path(layer.mesh_variants.substr(begin, end == string::npos ? end : end - begin));
+                    if (end == string::npos) break;
+                    begin = end + 1;
+                }
+            }
+            if (!paths.empty())
+            {
+                const Stopwatch imports;
+                atomic<uint32_t> next = 0;
+                ThreadPool::ParallelLoop([&](uint32_t, uint32_t)
+                {
+                    for (uint32_t i = next.fetch_add(1); i < paths.size(); i = next.fetch_add(1))
+                        resolve_scatter_mesh(paths[i]);
+                }, static_cast<uint32_t>(paths.size()));
+                SP_LOG_INFO("Vegetation asset imports: %zu assets, %.2f ms", paths.size(), imports.GetElapsedTimeMs());
+            }
+        }
+
         // tiles, every prop is parented to one so tile culling and tile teardown take it along
         const uint32_t tile_axis  = max(terrain->GetTileCountAxis(), 1u);
         const uint32_t tile_count = tile_axis * tile_axis;
@@ -1215,7 +1258,7 @@ namespace spartan
         // then yields to the editor. The terrain owns and cancels this work.
         return [terrain, tiles = std::move(tiles), tile_ids = std::move(tile_ids), tile_order, tile_count,
                 jobs = std::move(jobs), gpu_slot_pushed = std::array<bool, renderer_max_gpu_scatter_slots>{},
-                detail_slot_next = 1u, next_layer = 0u, order_done = 0u]() mutable -> bool
+                detail_slot_next = 1u, next_layer = 0u, order_done = 0u, scatter_ms = 0.0, attach_ms = 0.0]() mutable -> bool
         {
             if (!terrain->GetSpawnBiomeProps())
             {
@@ -1303,6 +1346,7 @@ namespace spartan
             // leave the terrain bare until the last tile of the last layer was done
             if (order_done < tile_count && !jobs.empty())
             {
+                const Stopwatch batch_timer;
                 const uint32_t batch_size = min(4u, tile_count - order_done);
                 const uint32_t order_end  = order_done + batch_size;
 
@@ -1385,8 +1429,15 @@ namespace spartan
                     const uint64_t projected = (static_cast<uint64_t>(job.placed) * tile_count) / order_end;
                     slots_projected         += static_cast<uint32_t>(projected) * job.slots_per_instance;
                 }
-                GeometryBuffer::Reserve(0, 0, 0, 0, 0, slots_projected);
+                // Loading builds the global buffer once after all instances are
+                // known. Extrapolating a dense early tile wastes hundreds of MB.
+                if (!World::IsPreparing()) GeometryBuffer::Reserve(0, 0, 0, 0, 0, slots_projected);
 
+                // Join bounds work once for the entire tile batch. Per-variant
+                // joins repeatedly leave most workers idle on small plant sets.
+                scatter_ms += batch_timer.GetElapsedTimeMs();
+                const Stopwatch attach_timer;
+                vector<Render*> bounds_pending;
                 for (scatter_job& job : jobs)
                 {
                     if (job.placed_batch == 0)
@@ -1402,7 +1453,8 @@ namespace spartan
                         tile_order,
                         order_done,
                         order_end,
-                        terrain->GetBlendHeight()
+                        terrain->GetBlendHeight(),
+                        World::IsPreparing() ? &bounds_pending : nullptr
                     );
 
                     // the editor reads this while the scatter runs, keeping it live makes the props count
@@ -1410,6 +1462,8 @@ namespace spartan
                     job.layer->instance_count = static_cast<uint32_t>(job.placed);
                 }
 
+                Render::RefreshBounds(bounds_pending);
+                attach_ms += attach_timer.GetElapsedTimeMs();
                 order_done += batch_size;
                 return false;
             }
@@ -1448,7 +1502,10 @@ namespace spartan
                 }
             }
 
+            const Stopwatch finalization;
             terrain->OnBiomePropsPopulated();
+            SP_LOG_INFO("Vegetation preparation: scatter %.2f ms, entities/bounds %.2f ms, finalization %.2f ms",
+                scatter_ms, attach_ms, finalization.GetElapsedTimeMs());
             return true;
         };
     }

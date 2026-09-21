@@ -2224,6 +2224,7 @@ namespace spartan
     {
         if (ProgressTracker::IsLoading() && !World::IsPreparing()) return;
         const Stopwatch timer;
+        const float budget_ms = World::IsPreparing() ? 20.0f : 3.0f;
         // Complete one road at a time, then yield the main thread back to rendering/input.
         while (!pending_road_regeneration.empty())
         {
@@ -2234,7 +2235,7 @@ namespace spartan
                 spline->GenerateRoadMesh();
                 spline->SnapshotState();
             }
-            if (timer.GetElapsedTimeMs() >= 3.0f) return;
+            if (timer.GetElapsedTimeMs() >= budget_ms) return;
         }
         // The entire network must have its final shared grades before any junction mesh is uploaded.
         if (road_junctions_dirty) return;
@@ -2247,7 +2248,7 @@ namespace spartan
                 spline->GenerateMesh(spline->m_junction_frames, spline->GetProfilePoints(), false);
                 spline->SnapshotState();
             }
-            if (timer.GetElapsedTimeMs() >= 3.0f) return;
+            if (timer.GetElapsedTimeMs() >= budget_ms) return;
         }
     }
 
@@ -3511,8 +3512,6 @@ namespace spartan
         vector<RHI_Vertex_PosTexNorTan> shoulder_vertices,paint_vertices;
         vector<uint32_t> shoulder_indices,paint_indices;
 
-        vertices.reserve(total_samples * profile_count * 4);
-
         // Material tiling happens after vertex decoding. Rebase by a full material repeat.
         float v_period = 1.0f;
         Material* uv_material = nullptr;
@@ -3554,9 +3553,31 @@ namespace spartan
             cache_hash.Add(patch.skirt_quads);
         }
         const auto cache_path = generated_cache::Path(World::GetResourceDirectory(), "roads", cache_hash.value);
-        if (!generated_cache::Load(cache_path, cache_hash.value, vertices, indices,
+        // Cache the completed meshes together, before GPU publication. A hit skips
+        // extrusion, welding, meshlet construction and bounds calculation for every layer.
+        auto prepared_hash = cache_hash;
+        prepared_hash.Add(uint32_t(1)); // prepared spline format / mesh processing version
+        prepared_hash.Add(sizeof(MeshLod));
+        prepared_hash.Add(sizeof(Sb_MeshletBounds));
+        const auto prepared_path = generated_cache::Path(World::GetResourceDirectory(), "spline_meshes", prepared_hash.value);
+        shared_ptr<Mesh> deck_mesh, sidewalk_mesh, shoulder_mesh, paint_mesh;
+        bool prepared_hit = false;
+        {
+            vector<uint8_t> deck, sidewalk, shoulder, paint;
+            auto restore = [](const vector<uint8_t>& bytes, shared_ptr<Mesh>& mesh)
+            {
+                if (bytes.empty()) return true; // absent optional layer
+                mesh = make_shared<Mesh>();
+                return mesh->LoadPrepared(bytes);
+            };
+            prepared_hit = generated_cache::Load(prepared_path, prepared_hash.value, deck, sidewalk, shoulder, paint) &&
+                !deck.empty() && restore(deck, deck_mesh) && restore(sidewalk, sidewalk_mesh) &&
+                restore(shoulder, shoulder_mesh) && restore(paint, paint_mesh);
+        }
+        if (!prepared_hit && !generated_cache::Load(cache_path, cache_hash.value, vertices, indices,
             sidewalk_vertices, sidewalk_indices, shoulder_vertices, shoulder_indices, paint_vertices, paint_indices))
         {
+            vertices.reserve(total_samples * profile_count * 4);
             vector<Vector2> previous_profile;
             vector<float> previous_u;
 
@@ -3766,17 +3787,43 @@ namespace spartan
                     }
                 }
             }
-
-            generated_cache::Save(cache_path, cache_hash.value, vertices, indices,
-                sidewalk_vertices, sidewalk_indices, shoulder_vertices, shoulder_indices, paint_vertices, paint_indices);
         }
+
+        if (!prepared_hit)
+        {
+            auto prepare = [](vector<RHI_Vertex_PosTexNorTan>& points, vector<uint32_t>& triangles)
+            {
+                shared_ptr<Mesh> mesh;
+                if (!triangles.empty())
+                {
+                    mesh = make_shared<Mesh>();
+                    mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                    mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
+                    mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessSkipCache), true);
+                    mesh->AddGeometry(points, triangles, false);
+                }
+                return mesh;
+            };
+            deck_mesh = prepare(vertices, indices);
+            sidewalk_mesh = prepare(sidewalk_vertices, sidewalk_indices);
+            shoulder_mesh = prepare(shoulder_vertices, shoulder_indices);
+            paint_mesh = prepare(paint_vertices, paint_indices);
+            auto encode = [](const shared_ptr<Mesh>& mesh) { return mesh ? mesh->SerializePrepared() : vector<uint8_t>{}; };
+            const auto deck = encode(deck_mesh), sidewalk = encode(sidewalk_mesh),
+                shoulder = encode(shoulder_mesh), paint = encode(paint_mesh);
+            // Never record a partially serialized result as an intentionally absent layer.
+            if (!deck.empty() && (!sidewalk_mesh || !sidewalk.empty()) &&
+                (!shoulder_mesh || !shoulder.empty()) && (!paint_mesh || !paint.empty()))
+                generated_cache::Save(prepared_path, prepared_hash.value, deck, sidewalk, shoulder, paint);
+        }
+        if (!deck_mesh) return;
 
         float total_length = frames.back().distance;
 
         if (island_finish)
         {
-            island_road_surface::SetLayer(m_entity_ptr,"spline_road_paint",paint_vertices,paint_indices,1);
-            island_road_surface::SetLayer(m_entity_ptr,"spline_road_shoulder",shoulder_vertices,shoulder_indices,2);
+            island_road_surface::SetLayer(m_entity_ptr,"spline_road_paint",paint_mesh,1);
+            island_road_surface::SetLayer(m_entity_ptr,"spline_road_shoulder",shoulder_mesh,2);
         }
         else
         {
@@ -3790,7 +3837,7 @@ namespace spartan
             sidewalk->RemoveComponent<Physics>();
             sidewalk->RemoveComponent<Render>();
         }
-        if (!sidewalk_indices.empty())
+        if (sidewalk_mesh)
         {
             if (!sidewalk)
             {
@@ -3802,11 +3849,8 @@ namespace spartan
                 sidewalk->SetScaleLocal(Vector3::One);
                 sidewalk->SetTransient(true);
             }
-            auto mesh = make_shared<Mesh>();
+            auto mesh = sidewalk_mesh;
             mesh->SetObjectName("sidewalk_" + to_string(m_entity_ptr->GetObjectId()));
-            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
-            mesh->AddGeometry(sidewalk_vertices, sidewalk_indices, false);
             mesh->CreateGpuBuffers();
             auto material = ResourceCache::GetByName<Material>("spline_concrete_pavers");
             if (!material)
@@ -3826,11 +3870,8 @@ namespace spartan
         }
 
         // create the mesh
-        m_mesh = make_shared<Mesh>();
+        m_mesh = deck_mesh;
         m_mesh->SetObjectName("spline_mesh");
-        m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-        m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
-        m_mesh->AddGeometry(vertices, indices, false);
         m_mesh->CreateGpuBuffers();
 
         // attach to a render component on this entity
@@ -3882,8 +3923,8 @@ namespace spartan
         Physics* physics = m_entity_ptr->AddComponent<Physics>();
         physics->SetBodyType(BodyType::Mesh);
 
-        SP_LOG_INFO("generated spline mesh: %u vertices, %u indices, %.1f m long",
-            static_cast<uint32_t>(vertices.size()), static_cast<uint32_t>(indices.size()),
+        SP_LOG_INFO("%s spline mesh: %u vertices, %u indices, %.1f m long",
+            prepared_hit ? "cached" : "prepared", m_mesh->GetVertexCount(), m_mesh->GetIndexCount(),
             total_length);
     }
 

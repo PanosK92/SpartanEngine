@@ -101,6 +101,8 @@ export const output_schemas = {
     loading: z.boolean().optional(),
     fps: z.number().optional(),
     frame_ms: z.number().optional(),
+    jobs_running: z.boolean().optional(),
+    working_threads: z.number().int().nonnegative().optional(),
   }),
   profiler_snapshot: with_error_fields({
     fps: z.number().optional(),

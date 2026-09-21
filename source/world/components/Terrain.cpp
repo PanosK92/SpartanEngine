@@ -2036,13 +2036,13 @@ namespace spartan
             {
                 num_chunks = 1;
             }
-            
+
             struct Bounds { float min_x, max_x, min_z, max_z; };
-            vector<Bounds> chunk_bounds(num_chunks, { 
+            vector<Bounds> chunk_bounds(num_chunks, {
                 numeric_limits<float>::max(), numeric_limits<float>::lowest(),
-                numeric_limits<float>::max(), numeric_limits<float>::lowest() 
+                numeric_limits<float>::max(), numeric_limits<float>::lowest()
             });
-            
+
             uint32_t chunk_size = (tri_count_bounds + num_chunks - 1) / num_chunks;
             auto parallel_bounds = [&](uint32_t start, uint32_t end)
             {
@@ -2051,7 +2051,7 @@ namespace spartan
                     uint32_t chunk_start = c * chunk_size;
                     uint32_t chunk_end   = min(chunk_start + chunk_size, tri_count_bounds);
                     Bounds& b            = chunk_bounds[c];
-                    
+
                     for (uint32_t i = chunk_start; i < chunk_end; i++)
                     {
                         const auto& tri = tile_triangle_data[i];
@@ -2066,7 +2066,7 @@ namespace spartan
                 }
             };
             ThreadPool::ParallelLoop(parallel_bounds, num_chunks);
-            
+
             // merge chunk results
             float tile_min_x = numeric_limits<float>::max();
             float tile_max_x = numeric_limits<float>::lowest();
@@ -2325,7 +2325,7 @@ namespace spartan
             {
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
                 const uint32_t max_attempts = 50;
-                
+
                 for (uint32_t i = start_index; i < end_index; i++)
                 {
                     // seeded per cluster, not per work chunk, so the layout does not follow the thread count
@@ -2333,7 +2333,7 @@ namespace spartan
                     Vector3 position;
                     uint32_t tri_idx;
                     uint32_t attempts = 0;
-                    
+
                     do
                     {
                         tri_idx           = acceptable_triangles[pick_weighted_local(generator)];
@@ -2346,16 +2346,16 @@ namespace spartan
                         float v       = r2 * sqrt_r1;
                         position      = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + tri.normal * layer.surface_offset;
                         attempts++;
-                        
+
                         if (!has_safe_zone || clump_radius <= 0.0f)
                         {
                             break;
                         }
-                            
+
                     } while (attempts < max_attempts &&
                              (position.x < safe_min_x || position.x > safe_max_x ||
                               position.z < safe_min_z || position.z > safe_max_z));
-                    
+
                     clusters[i] = { position, tri_idx };
                 }
             };
@@ -2365,12 +2365,12 @@ namespace spartan
             vector<vector<uint32_t>> cluster_nearby_tris(cluster_count);
             const float max_effective_radius = clump_radius * 1.6f;
             const float cell_size            = max(max_effective_radius, 1.0f);
-            
+
             int32_t grid_min_x  = static_cast<int32_t>(floorf(tile_min_x / cell_size));
             int32_t grid_min_z  = static_cast<int32_t>(floorf(tile_min_z / cell_size));
             int32_t grid_max_x  = static_cast<int32_t>(floorf(tile_max_x / cell_size));
             int32_t grid_width  = grid_max_x - grid_min_x + 1;
-            
+
             unordered_map<int64_t, vector<uint32_t>> spatial_grid;
             if (clump_radius > 0.0f)
             {
@@ -2384,7 +2384,7 @@ namespace spartan
                     spatial_grid[cell_key].push_back(t);
                 }
             }
-            
+
             // find triangles within cluster radius using organic noise shape
             auto compute_nearby = [&](uint32_t start_index, uint32_t end_index)
             {
@@ -2393,13 +2393,13 @@ namespace spartan
                     auto& nearby    = cluster_nearby_tris[c];
                     ClusterData& cluster = clusters[c];
                     Vector2 cluster_xz(cluster.center_position.x, cluster.center_position.z);
-                    
+
                     if (clump_radius <= 0.0f)
                     {
                         nearby.push_back(cluster.center_tri_idx);
                         continue;
                     }
-                    
+
                     // generate noise parameters from cluster position
                     float seed1 = (cluster.center_position.x * 12.9898f + cluster.center_position.z * 78.233f) * 43758.5453f;
                     float seed2 = (cluster.center_position.x * 39.346f + cluster.center_position.z * 11.135f) * 23421.631f;
@@ -2407,7 +2407,7 @@ namespace spartan
                     seed1 -= floorf(seed1);
                     seed2 -= floorf(seed2);
                     seed3 -= floorf(seed3);
-                    
+
                     float freq1  = 2.3f + seed1 * 1.4f;
                     float freq2  = 3.7f + seed2 * 2.1f;
                     float freq3  = 5.1f + seed3 * 2.8f;
@@ -2418,13 +2418,13 @@ namespace spartan
                     float phase3 = seed3 * pi_2;
                     float phase4 = (seed1 + seed2) * pi;
                     float phase5 = (seed2 + seed3) * pi;
-                    
+
                     // query nearby grid cells
                     float max_radius   = clump_radius * 1.6f;
                     int32_t cell_x     = static_cast<int32_t>(floorf(cluster_xz.x / cell_size)) - grid_min_x;
                     int32_t cell_z     = static_cast<int32_t>(floorf(cluster_xz.y / cell_size)) - grid_min_z;
                     int32_t cell_range = static_cast<int32_t>(ceilf(max_radius / cell_size));
-                    
+
                     for (int32_t dz = -cell_range; dz <= cell_range; dz++)
                     {
                         for (int32_t dx = -cell_range; dx <= cell_range; dx++)
@@ -2435,7 +2435,7 @@ namespace spartan
                             {
                                 continue;
                             }
-                            
+
                             for (uint32_t t : grid_it->second)
                             {
                                 uint32_t tri_idx  = acceptable_triangles[t];
@@ -2446,7 +2446,7 @@ namespace spartan
                                 float dist      = sqrtf(dist_sq);
                                 float angle     = atan2f(offset.y, offset.x);
                                 float norm_dist = dist / clump_radius;
-                                
+
                                 // layered noise for organic blob shape
                                 float noise1     = sinf(angle * freq1 + phase1) * 0.18f;
                                 float noise2     = sinf(angle * freq2 + phase2) * 0.14f;
@@ -2455,12 +2455,12 @@ namespace spartan
                                 float noise5     = sinf(angle * freq5 + phase5) * 0.06f;
                                 float dist_noise = sinf(norm_dist * 3.14159f + seed1 * 6.28f) * 0.12f * norm_dist;
                                 float pos_noise  = sinf(offset.x * 0.3f + seed2 * 10.0f) * cosf(offset.y * 0.3f + seed3 * 10.0f) * 0.08f;
-                                
+
                                 // raggedness of 0 leaves a clean circle, 1 is the full organic blob
                                 const float ragged     = saturate(layer.clump_raggedness);
                                 float radius_variation = 1.0f + (noise1 + noise2 + noise3 + noise4 + noise5 + dist_noise + pos_noise) * ragged;
                                 radius_variation       = fmaxf(0.4f, fminf(1.6f, radius_variation));
-                                
+
                                 float effective_radius = clump_radius * radius_variation;
                                 if (dist_sq <= effective_radius * effective_radius)
                                 {
@@ -2469,7 +2469,7 @@ namespace spartan
                             }
                         }
                     }
-                    
+
                     if (nearby.empty())
                     {
                         nearby.push_back(cluster.center_tri_idx);
@@ -2486,7 +2486,7 @@ namespace spartan
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
                 uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
                 uint32_t larger_cluster_size = base_instances_per_cluster + 1;
-                
+
                 for (uint32_t i = start_index; i < end_index; i++)
                 {
                     mt19937 generator(tile_index * 2000003u + i * 37u + layer.seed * 104729u + 67890u);
@@ -2501,7 +2501,7 @@ namespace spartan
                     {
                         cluster_idx = remainder_instances + (i - remainder_instances * larger_cluster_size) / base_instances_per_cluster;
                     }
-                    
+
                     auto& nearby = cluster_nearby_tris[cluster_idx];
                     if (nearby.empty())
                     {
@@ -3316,7 +3316,7 @@ namespace spartan
         // the sea the pipeline actually ran with, the water component wins over the terrain level,
         // and the entity height since the positions are local and the sea is world
         hash_float(GetSeaLevelLocal());
-        
+
         if (m_height_map_seed)
         {
             hash_combine(m_height_map_seed->GetWidth());
@@ -3648,7 +3648,7 @@ namespace spartan
         {
             TerrainSystem::SyncHeightDataFromPositions(m_height_data, m_positions);
         }
-    
+
         // This file stores the eroded heightfield. Prepared tiles and placement have
         // separate content-addressed caches so authored edits invalidate only their dependents.
         uint32_t width            = GetWidth();
@@ -3656,7 +3656,7 @@ namespace spartan
         uint32_t height_data_size = static_cast<uint32_t>(m_height_data.size());
         uint32_t position_count   = static_cast<uint32_t>(m_positions.size());
         uint64_t cache_hash       = ComputeCacheHash();
-    
+
         // header
         file.write(reinterpret_cast<const char*>(&cache_hash), sizeof(uint64_t));
         file.write(reinterpret_cast<const char*>(&width), sizeof(uint32_t));
@@ -3670,11 +3670,11 @@ namespace spartan
         // main data
         file.write(reinterpret_cast<const char*>(m_height_data.data()), height_data_size * sizeof(float));
         file.write(reinterpret_cast<const char*>(m_positions.data()), position_count * sizeof(Vector3));
-    
+
         file.close();
         SP_LOG_INFO("saved terrain cache: hash=%llu", cache_hash);
     }
-    
+
     void Terrain::LoadFromFile(const char* file_path)
     {
         ifstream file(file_path, ios::binary);
@@ -3682,11 +3682,11 @@ namespace spartan
         {
             return;
         }
-    
+
         // verify cache hash matches current parameters
         uint64_t stored_hash = 0;
         file.read(reinterpret_cast<char*>(&stored_hash), sizeof(uint64_t));
-        
+
         uint64_t current_hash = ComputeCacheHash();
         if (stored_hash != current_hash)
         {
@@ -3700,7 +3700,7 @@ namespace spartan
         uint32_t dense_width      = 0;
         uint32_t dense_height     = 0;
         float area_km2            = 0.0f;
-    
+
         file.read(reinterpret_cast<char*>(&m_width), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&m_height), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&height_data_size), sizeof(uint32_t));
@@ -3744,7 +3744,7 @@ namespace spartan
 
         m_height_data.resize(height_data_size);
         m_positions.resize(position_count);
-    
+
         file.read(reinterpret_cast<char*>(m_height_data.data()), height_data_size * sizeof(float));
         file.read(reinterpret_cast<char*>(m_positions.data()), position_count * sizeof(Vector3));
         if (!file.good())
@@ -3752,7 +3752,7 @@ namespace spartan
             reject("payload truncated");
             return;
         }
-    
+
         file.close();
         SP_LOG_INFO("loaded terrain from cache: hash=%llu", stored_hash);
     }
@@ -3786,158 +3786,152 @@ namespace spartan
             m_min_y = 0.0f;
             m_max_y = 755.0f;
         }
-    
+
         // the heightfield is about to be rebuilt from scratch, the old road grading no longer applies
         ClearRoadCarve();
 
-        // 8 cpu jobs, 1 gpu upload on the main thread
-        uint32_t job_count = 9;
-        ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "generating terrain...");
-    
-        // try loading from cache in the world resource directory
-        const string cache_file = get_terrain_cache_bin_path();
-        bool loaded_from_cache  = false;
-
-        LoadFromFile(cache_file.c_str());
-        if (!m_positions.empty())
+        m_progress = ProgressTracker::Begin(ProgressType::Terrain, GetEntity()->GetObjectName(), "Generating terrain");
+        try
         {
-            loaded_from_cache = true;
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("loaded from cache");
 
-            // old caches still have a flat coast, lock it without rerunning erosion
-            const bool shoreline_moved = ApplyShorelineLock();
-            if (shoreline_moved)
+            // try loading from cache in the world resource directory
+            const string cache_file = get_terrain_cache_bin_path();
+            bool loaded_from_cache  = false;
+
+            LoadFromFile(cache_file.c_str());
+            if (!m_positions.empty())
             {
-                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("locking shoreline...");
+                loaded_from_cache = true;
+                m_progress.SetStep("Loaded from cache");
+
+                // old caches still have a flat coast, lock it without rerunning erosion
+                const bool shoreline_moved = ApplyShorelineLock();
+                if (shoreline_moved)
+                {
+                    m_progress.SetStep("Locking shoreline");
+                    SaveToFile(cache_file.c_str());
+                }
+
+            }
+
+            if (!loaded_from_cache)
+            {
+                SP_LOG_INFO("generating terrain from scratch...");
+
+                // 1. process height map
+                m_progress.SetStep("Processing height map");
+                TerrainSystem::GetValuesFromHeightMap(m_height_data, m_height_map_seed, m_min_y, m_max_y, m_smoothing, m_create_border);
+                m_width  = m_height_map_seed->GetWidth();
+                m_height = m_height_map_seed->GetHeight();
+                TerrainSystem::DensifyHeightMap(m_height_data, m_width, m_height, m_density);
+                m_dense_width  = m_density * (m_width - 1) + 1;
+                m_dense_height = m_density * (m_height - 1) + 1;
+
+                // 2. generate positions
+                m_progress.SetStep("Generating positions");
+                m_positions.resize(m_dense_width * m_dense_height);
+                TerrainSystem::GeneratePositions(m_positions, m_height_data, m_dense_width, m_dense_height, m_density, m_scale);
+
+                // positions are entity local, so every step below gets the sea in the same frame the
+                // shoreline lock and the channel carve use, one sea for the whole pipeline
+                const float sea_local = GetSeaLevelLocal();
+
+                // 3. apply perlin noise
+                m_progress.SetStep("Applying perlin noise");
+                TerrainSystem::ApplyPerlinNoise(m_positions, m_dense_width, m_dense_height, sea_local);
+
+                // 4. apply erosion, keeping what it moved so the texturing can key off it
+                m_progress.SetStep("Applying erosion");
+                TerrainSystem::ApplyErosion(m_positions, m_dense_width, m_dense_height, sea_local, 1.0f, &m_erosion_maps);
+
+                // lift the real coastline above the waves and cut a beach
+                m_progress.SetStep("Locking shoreline");
+                ApplyShorelineLock();
+
+                m_progress.SetStep("Carving channels");
+                ApplyFlowChannelCarve();
+
+                // 5. generate vertices and indices
+                m_progress.SetStep("Generating mesh");
+                m_vertices.resize(m_dense_width * m_dense_height);
+                m_indices.resize((m_dense_width - 1) * (m_dense_height - 1) * 6);
+                TerrainSystem::GenerateVerticesAndIndices(m_vertices, m_indices, m_positions, m_dense_width, m_dense_height);
+
+                // Normals, tiles and placement are derived after sculpt/platform edits.
+                // Building them here would immediately discard and repeat the same work.
+
+                // surface area is expensive, computed once here so the cache carries it and a hit skips it
+                m_area_km2 = TerrainSystem::ComputeSurfaceAreaKm2(m_vertices, m_indices);
+
                 SaveToFile(cache_file.c_str());
             }
 
-            for (uint32_t i = 0; i < 8; i++)
+            // Erosion analysis affects placement and materials, even though the heights are already
+            // baked. Preserve it too, so the first load and subsequent loads use identical inputs.
+            generated_cache::Hash erosion_key;
+            erosion_key.Add(uint32_t(1)); erosion_key.Add(ComputeCacheHash()); erosion_key.Add(m_positions);
+            const auto erosion_path = generated_cache::Path(World::GetResourceDirectory(), "erosion", erosion_key.value);
+            if (loaded_from_cache)
             {
-                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+                m_erosion_maps = TerrainErosionMaps{};
+                if (!generated_cache::Load(erosion_path, erosion_key.value, m_erosion_maps.wear, m_erosion_maps.deposition) ||
+                    !m_erosion_maps.IsValid(m_positions.size())) m_erosion_maps = TerrainErosionMaps{};
             }
-        }
+            else if (m_erosion_maps.IsValid(m_positions.size()))
+            {
+                generated_cache::Save(erosion_path, erosion_key.value, m_erosion_maps.wear, m_erosion_maps.deposition);
+            }
 
-        if (!loaded_from_cache)
+            // the cache above is pure procedural ground, hand sculpting goes on top of it and the seed
+            // the pads paint from has to include it
+            m_progress.SetStep("Applying sculpt layer");
+            ApplySculptLayer();
+
+            SnapshotSeed();
+            m_live_pad_active = false;
+            m_live_pad_dirty  = false;
+
+            if (!ProgressTracker::IsLoading(ProgressType::World))
+            {
+                PruneOrphanPlatforms();
+            }
+
+            ApplyPlatformsToHeightfield();
+
+            // Prepared tiles include the final sculpt/platform surface. A warm load never needs
+            // the full-grid vertices, normals, placement triangles or individual LOD caches.
+            m_triangle_data.clear();
+            const float surface_ms = generation_timer.GetElapsedTimeMs();
+            BakeTerrainMaps(true);
+            BakeHeightMapPixels();
+            ReapplyPropMaskHoles();
+
+            // the dense erosion grid is only needed for the analysis bake above, it is tens of
+            // megabytes and nothing reads it afterwards
+            m_erosion_maps = TerrainErosionMaps();
+
+            // compute stats
+            m_height_samples = m_dense_width * m_dense_height;
+            m_vertex_count   = m_dense_width * m_dense_height;
+            m_index_count    = (m_dense_width - 1) * (m_dense_height - 1) * 6;
+            m_triangle_count = m_index_count / 3;
+
+            m_progress.SetStep("Building mesh");
+
+            m_mesh_pending.reset();
+            const float maps_ms = generation_timer.GetElapsedTimeMs();
+            BuildCpuMesh();
+            SP_LOG_INFO("Terrain load: surface %.2f ms, maps %.2f ms, mesh %.2f ms",
+                surface_ms, maps_ms - surface_ms, generation_timer.GetElapsedTimeMs() - maps_ms);
+
+            m_progress.SetStep("Waiting for scene preparation");
+            m_gpu_commit_pending.store(true, memory_order_release);
+        }
+        catch (...)
         {
-            SP_LOG_INFO("generating terrain from scratch...");
-    
-            // 1. process height map
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("processing height map...");
-            TerrainSystem::GetValuesFromHeightMap(m_height_data, m_height_map_seed, m_min_y, m_max_y, m_smoothing, m_create_border);
-            m_width  = m_height_map_seed->GetWidth();
-            m_height = m_height_map_seed->GetHeight();
-            TerrainSystem::DensifyHeightMap(m_height_data, m_width, m_height, m_density);
-            m_dense_width  = m_density * (m_width - 1) + 1;
-            m_dense_height = m_density * (m_height - 1) + 1;
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-    
-            // 2. generate positions
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating positions...");
-            m_positions.resize(m_dense_width * m_dense_height);
-            TerrainSystem::GeneratePositions(m_positions, m_height_data, m_dense_width, m_dense_height, m_density, m_scale);
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-
-            // positions are entity local, so every step below gets the sea in the same frame the
-            // shoreline lock and the channel carve use, one sea for the whole pipeline
-            const float sea_local = GetSeaLevelLocal();
-
-            // 3. apply perlin noise
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying perlin noise...");
-            TerrainSystem::ApplyPerlinNoise(m_positions, m_dense_width, m_dense_height, sea_local);
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-
-            // 4. apply erosion, keeping what it moved so the texturing can key off it
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying erosion...");
-            TerrainSystem::ApplyErosion(m_positions, m_dense_width, m_dense_height, sea_local, 1.0f, &m_erosion_maps);
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-
-            // lift the real coastline above the waves and cut a beach
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("locking shoreline...");
-            ApplyShorelineLock();
-
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("carving channels...");
-            ApplyFlowChannelCarve();
-
-            // 5. generate vertices and indices
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating mesh...");
-            m_vertices.resize(m_dense_width * m_dense_height);
-            m_indices.resize((m_dense_width - 1) * (m_dense_height - 1) * 6);
-            TerrainSystem::GenerateVerticesAndIndices(m_vertices, m_indices, m_positions, m_dense_width, m_dense_height);
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-    
-            // Normals, tiles and placement are derived after sculpt/platform edits.
-            // Building them here would immediately discard and repeat the same work.
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-
-            // surface area is expensive, computed once here so the cache carries it and a hit skips it
-            m_area_km2 = TerrainSystem::ComputeSurfaceAreaKm2(m_vertices, m_indices);
-
-            SaveToFile(cache_file.c_str());
+            FinishGenerate();
+            throw;
         }
-
-        // Erosion analysis affects placement and materials, even though the heights are already
-        // baked. Preserve it too, so the first load and subsequent loads use identical inputs.
-        generated_cache::Hash erosion_key;
-        erosion_key.Add(uint32_t(1)); erosion_key.Add(ComputeCacheHash()); erosion_key.Add(m_positions);
-        const auto erosion_path = generated_cache::Path(World::GetResourceDirectory(), "erosion", erosion_key.value);
-        if (loaded_from_cache)
-        {
-            m_erosion_maps = TerrainErosionMaps{};
-            if (!generated_cache::Load(erosion_path, erosion_key.value, m_erosion_maps.wear, m_erosion_maps.deposition) ||
-                !m_erosion_maps.IsValid(m_positions.size())) m_erosion_maps = TerrainErosionMaps{};
-        }
-        else if (m_erosion_maps.IsValid(m_positions.size()))
-        {
-            generated_cache::Save(erosion_path, erosion_key.value, m_erosion_maps.wear, m_erosion_maps.deposition);
-        }
-
-        // the cache above is pure procedural ground, hand sculpting goes on top of it and the seed
-        // the pads paint from has to include it
-        ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying sculpt layer...");
-        ApplySculptLayer();
-
-        SnapshotSeed();
-        m_live_pad_active = false;
-        m_live_pad_dirty  = false;
-
-        if (!ProgressTracker::GetProgress(ProgressType::World).IsProgressing())
-        {
-            PruneOrphanPlatforms();
-        }
-
-        ApplyPlatformsToHeightfield();
-
-        // Prepared tiles include the final sculpt/platform surface. A warm load never needs
-        // the full-grid vertices, normals, placement triangles or individual LOD caches.
-        m_triangle_data.clear();
-        const float surface_ms = generation_timer.GetElapsedTimeMs();
-        BakeTerrainMaps(true);
-        BakeHeightMapPixels();
-        ReapplyPropMaskHoles();
-
-        // the dense erosion grid is only needed for the analysis bake above, it is tens of
-        // megabytes and nothing reads it afterwards
-        m_erosion_maps = TerrainErosionMaps();
-
-        // compute stats
-        m_height_samples = m_dense_width * m_dense_height;
-        m_vertex_count   = m_dense_width * m_dense_height;
-        m_index_count    = (m_dense_width - 1) * (m_dense_height - 1) * 6;
-        m_triangle_count = m_index_count / 3;
-
-        ProgressTracker::GetProgress(ProgressType::Terrain).SetText("building mesh...");
-
-        m_mesh_pending.reset();
-        const float maps_ms = generation_timer.GetElapsedTimeMs();
-        BuildCpuMesh();
-        SP_LOG_INFO("Terrain load: surface %.2f ms, maps %.2f ms, mesh %.2f ms",
-            surface_ms, maps_ms - surface_ms, generation_timer.GetElapsedTimeMs() - maps_ms);
-
-        ProgressTracker::GetProgress(ProgressType::Terrain).SetText("waiting for scene preparation...");
-        m_gpu_commit_pending.store(true, memory_order_release);
     }
 
     void Terrain::FinishGenerate()
@@ -3953,7 +3947,7 @@ namespace spartan
         m_props_commit_pending.store(false, memory_order_release);
         m_props_population_step = {};
         m_mesh_pending.reset();
-        ProgressTracker::GetProgress(ProgressType::Terrain).Complete();
+        m_progress.Finish();
         m_is_generating.store(false, memory_order_release);
     }
 
@@ -4091,7 +4085,7 @@ namespace spartan
     void Terrain::CommitGpu()
     {
         const Stopwatch commit_timer;
-        ProgressTracker::GetProgress(ProgressType::Terrain).SetText("uploading gpu mesh...");
+        m_progress.SetStep("Uploading gpu mesh");
 
         DetachTileMeshes();
         ClearTileEntities();
@@ -4126,7 +4120,7 @@ namespace spartan
         m_props_dirty.Clear();
 
         CreateTileEntities();
-        ProgressTracker::GetProgress(ProgressType::Terrain).SetText("preparing terrain collision...");
+        m_progress.SetStep("Preparing terrain collision");
         RefreshPhysics();
         RefreshLayers();
         PushToRenderer();
@@ -4135,7 +4129,7 @@ namespace spartan
         DestroyAllPadRefines();
         RebuildCommittedRefines();
         const float terrain_ms = commit_timer.GetElapsedTimeMs();
-        ProgressTracker::GetProgress(ProgressType::Terrain).SetText("preparing terrain-conforming roads...");
+        m_progress.SetStep("Preparing terrain-conforming roads");
         generated_cache::Hash road_surface_hash;
         road_surface_hash.Add(uint32_t(1));
         road_surface_hash.Add(m_dense_width);
@@ -4170,8 +4164,6 @@ namespace spartan
         }
 
         SP_LOG_INFO("Terrain commit: terrain %.2f ms, queue roads %.2f ms", terrain_ms, commit_timer.GetElapsedTimeMs() - terrain_ms);
-        ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-        ProgressTracker::GetProgress(ProgressType::Terrain).Complete();
 
         m_vertices.clear();
         m_indices.clear();
@@ -4180,10 +4172,12 @@ namespace spartan
 
         if (m_spawn_biome_props)
         {
+            m_progress.SetStep("Populating vegetation and props");
             m_props_commit_pending.store(true, memory_order_release);
             return;
         }
 
+        m_progress.Finish();
         m_is_generating.store(false, memory_order_release);
     }
 
@@ -4206,12 +4200,20 @@ namespace spartan
             }
             m_props_population_step = WorldHelpers::BeginTerrainBiomeProps(this);
         }
-        if (!m_props_population_step())
+        // During loading there is no live scene to incrementally reveal. Keep
+        // publishing batches within a bounded slice instead of paying a whole
+        // editor frame (and another scene scan) for each four-tile batch.
+        const Stopwatch population_slice;
+        while (!m_props_population_step())
         {
-            m_props_commit_pending.store(true, memory_order_release);
-            return;
+            if (!World::IsPreparing() || population_slice.GetElapsedTimeMs() >= 20.0f)
+            {
+                m_props_commit_pending.store(true, memory_order_release);
+                return;
+            }
         }
         m_props_population_step = {};
+        m_progress.Finish();
         m_is_generating.store(false, memory_order_release);
     }
 
@@ -4272,6 +4274,11 @@ namespace spartan
 
         auto try_pad = [&](const TerrainPlatform& pad) -> bool
         {
+            // Any rotated rectangle fits inside this conservative square.
+            // Most ground probes are nowhere near a building; reject those
+            // before evaluating trigonometry for every platform in the world.
+            const float reach = (fabsf(pad.half_x) + fabsf(pad.half_z)) * 1.000001f + 0.01f;
+            if (fabsf(world_x - pad.center_x) > reach || fabsf(world_z - pad.center_z) > reach) return false;
             if (obb_outside_distance(
                 world_x,
                 world_z,
@@ -4305,7 +4312,18 @@ namespace spartan
         float local_z = world_z;
         if (Entity* entity = GetEntity())
         {
-            Vector3 local = entity->GetMatrix().Inverted() * Vector3(world_x, 0.0f, world_z);
+            // Cache only the inverse transform, never sampled terrain data.
+            // Matrix comparison keeps this valid across terrain edits/reloads,
+            // and each worker owns its cache.
+            static thread_local Matrix previous = Matrix::Identity;
+            static thread_local Matrix inverse = Matrix::Identity;
+            const Matrix& matrix = entity->GetMatrix();
+            if (matrix != previous)
+            {
+                previous = matrix;
+                inverse = matrix.Inverted();
+            }
+            Vector3 local = inverse * Vector3(world_x, 0.0f, world_z);
             local_x = local.x;
             local_z = local.z;
         }
@@ -6761,30 +6779,27 @@ namespace spartan
 
         auto on_road = [&](float world_x, float world_z) { return IsOnRoad(world_x, world_z); };
 
+        // Cache footprint rotations once, rather than evaluating sin/cos for
+        // every instance against every pad in the world.
+        struct Footprint { float x, z, half_x, half_z, c, s; };
+        vector<Footprint> footprints;
+        auto add_footprint = [&](const TerrainPlatform& pad)
+        {
+            footprints.push_back({pad.center_x, pad.center_z, pad.half_x, pad.half_z, cosf(pad.yaw), sinf(pad.yaw)});
+        };
+        if (m_live_pad_active) add_footprint(m_live_pad);
+        for (const TerrainPlatform& pad : m_platforms) add_footprint(pad);
         auto on_pad = [&](float world_x, float world_z) -> bool
         {
-            if (m_live_pad_active &&
-                obb_outside_distance(
-                    world_x, world_z,
-                    m_live_pad.center_x, m_live_pad.center_z,
-                    m_live_pad.half_x, m_live_pad.half_z,
-                    m_live_pad.yaw) <= 0.0f)
+            for (const Footprint& pad : footprints)
             {
-                return true;
+                const float dx = world_x - pad.x, dz = world_z - pad.z;
+                const float lx = dx * pad.c + dz * pad.s;
+                const float lz = -dx * pad.s + dz * pad.c;
+                const float ox = max(fabsf(lx) - pad.half_x, 0.0f);
+                const float oz = max(fabsf(lz) - pad.half_z, 0.0f);
+                if (sqrtf(ox * ox + oz * oz) <= 0.0f) return true;
             }
-
-            for (const TerrainPlatform& pad : m_platforms)
-            {
-                if (obb_outside_distance(
-                    world_x, world_z,
-                    pad.center_x, pad.center_z,
-                    pad.half_x, pad.half_z,
-                    pad.yaw) <= 0.0f)
-                {
-                    return true;
-                }
-            }
-
             return false;
         };
 
@@ -6837,6 +6852,14 @@ namespace spartan
             }
         }
 
+        struct PropFilter
+        {
+            Render* render;
+            Matrix world;
+            const vector<Matrix>* seed;
+            vector<Matrix> kept;
+        };
+        vector<PropFilter> filters;
         function<void(Entity*, bool)> visit = [&](Entity* entity, bool inside_prop)
         {
             if (!entity)
@@ -6853,19 +6876,7 @@ namespace spartan
                     auto seed = m_prop_instance_seed.find(id);
                     if (seed != m_prop_instance_seed.end())
                     {
-                        const Matrix world = entity->GetMatrix();
-                        vector<Matrix> kept;
-                        kept.reserve(seed->second.size());
-                        for (const Matrix& local : seed->second)
-                        {
-                            const Vector3 position = (local * world).GetTranslation();
-                            if (!on_road(position.x, position.z) && !on_pad(position.x, position.z))
-                            {
-                                kept.push_back(local);
-                            }
-                        }
-
-                        render->SetInstances(kept);
+                        filters.push_back({render, entity->GetMatrix(), &seed->second, {}});
                     }
                     else if (entity->GetChildrenCount() == 0)
                     {
@@ -6901,6 +6912,27 @@ namespace spartan
 
             visit(child, false);
         }
+
+        // Scene lookup and publication stay on the main thread. Workers only
+        // read immutable seeds, road footprints and captured transforms.
+        const Stopwatch filter_timer;
+        if (!filters.empty()) ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
+        {
+            for (uint32_t i = begin; i < end; ++i)
+            {
+                PropFilter& filter = filters[i];
+                filter.kept.reserve(filter.seed->size());
+                for (const Matrix& local : *filter.seed)
+                {
+                    const Vector3 position = (local * filter.world).GetTranslation();
+                    if (!on_road(position.x, position.z) && !on_pad(position.x, position.z))
+                        filter.kept.push_back(local);
+                }
+            }
+        }, static_cast<uint32_t>(filters.size()));
+        const float filter_ms = filter_timer.GetElapsedTimeMs();
+        for (PropFilter& filter : filters) filter.render->SetInstances(filter.kept);
+        SP_LOG_INFO("Vegetation road filtering: %.2f ms, publish %.2f ms", filter_ms, filter_timer.GetElapsedTimeMs() - filter_ms);
 
         // the seed holds the props at their original ground, a pad ring lowered or raised that ground
         // and snapped them to it, the rewrite above put the seed back so snap the rings again
@@ -7015,7 +7047,7 @@ namespace spartan
 
     void Terrain::OnBiomePropsPopulated()
     {
-        if (!ProgressTracker::GetProgress(ProgressType::World).IsProgressing())
+        if (!ProgressTracker::IsLoading(ProgressType::World))
         {
             PruneOrphanPlatforms();
         }
@@ -7786,7 +7818,7 @@ namespace spartan
 
     void Terrain::PruneVanishedPlatforms()
     {
-        if (ProgressTracker::GetProgress(ProgressType::World).IsProgressing())
+        if (ProgressTracker::IsLoading(ProgressType::World))
         {
             return;
         }
@@ -8906,10 +8938,48 @@ namespace spartan
             return;
         }
 
+        const Stopwatch bake_timer;
         const size_t cell_count = static_cast<size_t>(m_map_width) * m_map_height;
-        m_prop_mask_pixels.resize(cell_count * 4);
-        m_layer_dominant.resize(cell_count);
-        BakePropMaskCells(0, 0, static_cast<int32_t>(m_map_width) - 1, static_cast<int32_t>(m_map_height) - 1);
+        // Cache the unpunched mask. Road/building holes are reapplied by the
+        // caller, and live brush edits retain their existing regional repair path.
+        generated_cache::Hash key;
+        filesystem::path cache_path;
+        if (World::IsLoadingFromFile())
+        {
+            key.Add(uint32_t{1}); // BakePropMaskCells and terrain habitat algorithm version
+            key.Add(m_map_width); key.Add(m_map_height);
+            key.Add(m_dense_width); key.Add(m_dense_height);
+            key.Add(m_density); key.Add(m_scale); key.Add(m_layer_quality);
+            key.Add(GetSeaLevelLocal()); key.Add(GetSnowLevelLocal()); key.Add(m_snow_amount);
+            key.Add(World::GetWind());
+            key.Add(GetEntity() ? GetEntity()->GetMatrix().GetTranslation() : Vector3::Zero);
+            key.Add(generated_cache::HashBytes(m_positions.data(), m_positions.size() * sizeof(Vector3)));
+            key.Add(generated_cache::HashBytes(m_map_a_pixels.data(), m_map_a_pixels.size()));
+            key.Add(generated_cache::HashBytes(m_map_b_pixels.data(), m_map_b_pixels.size()));
+            const perlin_sampler noise = make_perlin_sampler();
+            key.Add(noise.width); key.Add(noise.height); key.Add(noise.stride);
+            if (noise.valid()) key.Add(generated_cache::HashBytes(noise.bytes, size_t(noise.width) * noise.height * noise.stride));
+            for (uint32_t i = 0; i < terrain_layer_max; ++i)
+            {
+                const auto& rule = m_layer_rules[i];
+                key.Add(IsLayerEnabled(i)); key.Add(rule.name); key.Add(rule.flags);
+                key.Add(rule.slope_min); key.Add(rule.slope_max); key.Add(rule.height_min); key.Add(rule.height_max);
+                key.Add(rule.curvature_influence); key.Add(rule.flow_influence); key.Add(rule.occlusion_influence);
+                key.Add(rule.insolation_influence); key.Add(rule.wear_influence); key.Add(rule.deposition_influence);
+                key.Add(rule.talus_influence); key.Add(rule.weight_bias);
+            }
+            cache_path = generated_cache::Path(World::GetResourceDirectory(), "prop_masks", key.value);
+        }
+        const bool cached = !cache_path.empty() && generated_cache::Load(cache_path, key.value, m_prop_mask_pixels, m_layer_dominant) &&
+            m_prop_mask_pixels.size() == cell_count * 4 && m_layer_dominant.size() == cell_count;
+        if (!cached)
+        {
+            m_prop_mask_pixels.resize(cell_count * 4);
+            m_layer_dominant.resize(cell_count);
+            BakePropMaskCells(0, 0, static_cast<int32_t>(m_map_width) - 1, static_cast<int32_t>(m_map_height) - 1);
+            if (!cache_path.empty()) generated_cache::Save(cache_path, key.value, m_prop_mask_pixels, m_layer_dominant);
+        }
+        SP_LOG_INFO("Vegetation mask: %s, %.2f ms", cached ? "cache hit" : "baked", bake_timer.GetElapsedTimeMs());
 
         uint32_t grass_hits = 0;
         uint32_t tree_hits  = 0;
@@ -9783,7 +9853,7 @@ namespace spartan
         SnapshotSeed();
         m_live_pad_active = false;
         m_live_pad_dirty  = false;
-        if (!ProgressTracker::GetProgress(ProgressType::World).IsProgressing())
+        if (!ProgressTracker::IsLoading(ProgressType::World))
         {
             PruneOrphanPlatforms();
         }

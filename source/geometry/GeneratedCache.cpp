@@ -6,17 +6,24 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#define XXH_INLINE_ALL
+#include "../../third_party/xxhash/xxhash.h"
 
 namespace spartan::generated_cache
 {
+    uint64_t HashBytes(const void* data, size_t size) { return XXH3_64bits(data, size); }
+
     namespace
     {
         constexpr uint64_t magic = 0x3145484341435053ull; // SPCACHE1
-        constexpr uint32_t version = 1;
+        constexpr uint32_t version = 2;
         constexpr size_t header_size = 40;
         std::array<std::mutex, 64> file_mutexes;
         std::mutex maintenance_mutex;
         std::atomic<uint64_t> serial = 0;
+        std::mutex checksum_mutex;
+        std::map<std::pair<uint64_t, uint64_t>, uint64_t> legacy_checksums;
+        struct ChecksumEntry { uint64_t original, size, fast; };
 
         std::mutex& FileMutex(const std::filesystem::path& path)
         {
@@ -28,17 +35,11 @@ namespace spartan::generated_cache
         }
 
         // Caller holds the file's lock. Never delete the previous file on a failed replacement.
-        void Write(const std::filesystem::path& path, uint64_t key, const std::vector<uint8_t>& bytes)
+        void WriteEncoded(const std::filesystem::path& path, uint64_t key, uint64_t checksum,
+            uint64_t raw_size, uint32_t codec, const void* payload, size_t payload_size)
         {
-            if (bytes.size() > maximum_payload_size) return;
-            const int size = static_cast<int>(bytes.size());
-            std::vector<char> compressed(static_cast<size_t>(LZ4_compressBound(size)));
-            const int packed_size = size ? LZ4_compress_default(reinterpret_cast<const char*>(bytes.data()), compressed.data(), size, static_cast<int>(compressed.size())) : 0;
-            const uint32_t codec = packed_size > 0 && static_cast<size_t>(packed_size) < bytes.size() ? 1u : 0u;
-            const uint64_t raw_size = bytes.size();
-            Hash hash; hash.Bytes(bytes.data(), bytes.size());
             std::error_code error;
-            std::filesystem::create_directories(path.parent_path(), error);
+            if (!path.parent_path().empty()) std::filesystem::create_directories(path.parent_path(), error);
             if (error) return;
             const auto temporary = path.string() + ".tmp." +
                 std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "." + std::to_string(serial++);
@@ -49,15 +50,25 @@ namespace spartan::generated_cache
             } cleanup{temporary};
             std::ofstream file(temporary, std::ios::binary | std::ios::trunc);
             file.write(reinterpret_cast<const char*>(&key), sizeof(key));
-            file.write(reinterpret_cast<const char*>(&hash.value), sizeof(hash.value));
+            file.write(reinterpret_cast<const char*>(&checksum), sizeof(checksum));
             file.write(reinterpret_cast<const char*>(&magic), sizeof(magic));
             file.write(reinterpret_cast<const char*>(&raw_size), sizeof(raw_size));
             file.write(reinterpret_cast<const char*>(&version), sizeof(version));
             file.write(reinterpret_cast<const char*>(&codec), sizeof(codec));
-            if (codec) file.write(compressed.data(), packed_size);
-            else if (size) file.write(reinterpret_cast<const char*>(bytes.data()), size);
+            if (payload_size) file.write(static_cast<const char*>(payload), static_cast<std::streamsize>(payload_size));
             file.close();
             if (file) std::filesystem::rename(temporary, path, error);
+        }
+
+        void Write(const std::filesystem::path& path, uint64_t key, const std::vector<uint8_t>& bytes)
+        {
+            if (bytes.size() > maximum_payload_size) return;
+            const int size = static_cast<int>(bytes.size());
+            std::vector<char> compressed(static_cast<size_t>(LZ4_compressBound(size)));
+            const int packed_size = size ? LZ4_compress_default(reinterpret_cast<const char*>(bytes.data()), compressed.data(), size, static_cast<int>(compressed.size())) : 0;
+            const bool packed = packed_size > 0 && static_cast<size_t>(packed_size) < bytes.size();
+            WriteEncoded(path, key, HashBytes(bytes.data(), bytes.size()), bytes.size(), packed ? 1u : 0u,
+                packed ? static_cast<const void*>(compressed.data()) : bytes.data(), packed ? packed_size : bytes.size());
         }
     }
 
@@ -87,7 +98,7 @@ namespace spartan::generated_cache
                 file.read(reinterpret_cast<char*>(&raw_size), sizeof(raw_size));
                 file.read(reinterpret_cast<char*>(&stored_version), sizeof(stored_version));
                 file.read(reinterpret_cast<char*>(&codec), sizeof(codec));
-                if (!file || stored_version != version || codec > 1) return false;
+                if (!file || (stored_version != 1 && stored_version != version) || codec > 1) return false;
                 payload_offset = header_size;
             }
             if (raw_size > maximum_payload_size) return false;
@@ -95,18 +106,45 @@ namespace spartan::generated_cache
             if ((!codec && stored_size != raw_size) || (codec && (stored_size == 0 || stored_size >= raw_size))) return false;
             std::vector<uint8_t> decoded(static_cast<size_t>(raw_size));
             file.seekg(static_cast<std::streamoff>(payload_offset));
+            std::vector<char> packed;
             if (codec)
             {
-                std::vector<char> packed(stored_size);
+                // Bulk reads also perform well when the compressed file is not
+                // resident in the OS cache; demand-paged decoding can stall on
+                // thousands of small disk faults during a cold world load.
+                packed.resize(stored_size);
                 if (!file.read(packed.data(), static_cast<std::streamsize>(packed.size()))) return false;
-                if (LZ4_decompress_safe(packed.data(), reinterpret_cast<char*>(decoded.data()), static_cast<int>(stored_size), static_cast<int>(raw_size)) != static_cast<int>(raw_size)) return false;
+                const char* source = packed.data();
+                if (LZ4_decompress_safe(source, reinterpret_cast<char*>(decoded.data()), static_cast<int>(stored_size), static_cast<int>(raw_size)) != static_cast<int>(raw_size)) return false;
             }
             else if (raw_size && !file.read(reinterpret_cast<char*>(decoded.data()), static_cast<std::streamsize>(raw_size))) return false;
-            file.close(); // Windows must release the reader before migration replaces the file.
-            Hash hash; hash.Bytes(decoded.data(), decoded.size());
-            if (hash.value != checksum) return false;
-            // Migration failure (read-only folder/full disk) must not invalidate a successful read.
-            if (legacy) { try { Write(path, key, decoded); } catch (const std::exception&) {} }
+            file.close();
+            const uint64_t fast_checksum = HashBytes(decoded.data(), decoded.size());
+            if (stored_version < 2)
+            {
+                // Learn a fast digest only after validating the original FNV
+                // checksum. The small index avoids rewriting multi-GB bake files
+                // merely to change their checksum algorithm.
+                const auto id = std::make_pair(checksum, raw_size);
+                bool known = false;
+                {
+                    std::lock_guard lock(checksum_mutex);
+                    const auto found = legacy_checksums.find(id);
+                    if (found != legacy_checksums.end())
+                    {
+                        if (found->second != fast_checksum) return false;
+                        known = true;
+                    }
+                }
+                if (!known)
+                {
+                    Hash hash; hash.Bytes(decoded.data(), decoded.size());
+                    if (hash.value != checksum) return false;
+                    std::lock_guard lock(checksum_mutex);
+                    legacy_checksums[id] = fast_checksum;
+                }
+            }
+            else if (fast_checksum != checksum) return false;
             std::error_code error;
             std::filesystem::last_write_time(path, std::filesystem::file_time_type::clock::now(), error);
             bytes = std::move(decoded);
@@ -121,12 +159,41 @@ namespace spartan::generated_cache
         catch (const std::exception&) {} // Cache storage is optional.
     }
 
+    void LoadChecksumIndex(const std::string& resources)
+    {
+        std::vector<ChecksumEntry> entries;
+        constexpr uint64_t key = 1;
+        if (!Load(Path(resources, "checksums", key), key, entries)) return;
+        std::lock_guard lock(checksum_mutex);
+        for (const auto& entry : entries)
+            legacy_checksums[{entry.original, entry.size}] = entry.fast;
+    }
+
+    void SaveChecksumIndex(const std::string& resources)
+    {
+        std::vector<ChecksumEntry> entries;
+        {
+            std::lock_guard lock(checksum_mutex);
+            entries.reserve(legacy_checksums.size());
+            for (const auto& [id, fast] : legacy_checksums)
+                entries.push_back({id.first, id.second, fast});
+        }
+        if (entries.empty()) return;
+        constexpr uint64_t key = 1;
+        Save(Path(resources, "checksums", key), key, entries);
+    }
+
     MaintenanceResult Maintain(const std::string& world_resources, uint64_t budget)
     {
         MaintenanceResult result;
         if (world_resources.empty()) return result;
         std::unique_lock maintenance_lock(maintenance_mutex, std::try_to_lock);
         if (!maintenance_lock) return result;
+        std::filesystem::file_time_type protect_since;
+        {
+            std::lock_guard lock(statistics_mutex);
+            protect_since = session_started;
+        }
         try
         {
             const auto root = std::filesystem::path(world_resources) / "generated_cache";
@@ -153,6 +220,7 @@ namespace spartan::generated_cache
             for (const auto& entry : entries)
             {
                 if (total <= budget) break;
+                if (entry.time >= protect_since) continue;
                 std::lock_guard lock(FileMutex(entry.path));
                 // A load/write since the scan makes this entry recent, so leave it alone.
                 error.clear();

@@ -117,8 +117,13 @@ namespace spartan
                 ox = (1.0f - std::fabs(oy)) * (tx >= 0.0f ? 1.0f : -1.0f);
                 oy = (1.0f - std::fabs(tx)) * (oy >= 0.0f ? 1.0f : -1.0f);
             }
-            int32_t qx = static_cast<int32_t>(std::lround(std::clamp(ox, -1.0f, 1.0f) * 32767.0f));
-            int32_t qy = static_cast<int32_t>(std::lround(std::clamp(oy, -1.0f, 1.0f) * 32767.0f));
+            // Inputs are bounded to snorm16: truncating after an exact double
+            // half-step gives lround's ties-away-from-zero result without CRT
+            // calls in vertex skinning/import hot loops.
+            const float x = std::clamp(ox, -1.0f, 1.0f) * 32767.0f;
+            const float y = std::clamp(oy, -1.0f, 1.0f) * 32767.0f;
+            int32_t qx = static_cast<int32_t>(static_cast<double>(x) + (x < 0.0f ? -0.5 : 0.5));
+            int32_t qy = static_cast<int32_t>(static_cast<double>(y) + (y < 0.0f ? -0.5 : 0.5));
             return (static_cast<uint32_t>(static_cast<uint16_t>(qx)))
                  | (static_cast<uint32_t>(static_cast<uint16_t>(qy)) << 16);
         }

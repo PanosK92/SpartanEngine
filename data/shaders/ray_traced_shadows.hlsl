@@ -234,15 +234,16 @@ void ray_gen()
 
     // The lighting pass samples these slots instead of the shadow atlas. Every
     // assigned local light must write its own visibility, even with no active sun.
-    for (uint light_i = 1u; light_i < buffer_frame.cluster_light_count; light_i++)
+    uint4 shadow_lights = uint4(pass_get_f4_value());
+    [unroll] for (uint slot = 0u; slot < nrd_local_shadow_max; slot++)
     {
-        LightParameters light = light_parameters[light_i];
-        uint slot = (light.flags >> 8u) & 7u;
-        if (slot == 0u || slot > nrd_local_shadow_max || (light.flags & (1u << 3)) == 0u)
+        uint light_i = shadow_lights[slot];
+        if (light_i == 0u || light_i >= buffer_frame.cluster_light_count)
             continue;
+        LightParameters light = light_parameters[light_i];
         float local_offset = 0.001f + min(camera_distance * 0.00001f, 0.002f);
         float normal_sign = thin_foliage && dot(normal_ws, light.position - pos_ws) < 0.0f ? -1.0f : 1.0f;
-        trace_local_light_shadow(launch_id, slot - 1u, light, pos_ws + normal_ws * (local_offset * normal_sign));
+        trace_local_light_shadow(launch_id, slot, light, pos_ws + normal_ws * (local_offset * normal_sign));
     }
 }
 

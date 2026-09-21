@@ -97,17 +97,13 @@ float2 pass_get_f2_value()  { return float2(buffer_pass.values[0].w, buffer_pass
 void pass_load_draw_data_from_buffer()          { _draw = draw_data[buffer_pass.draw_index]; }
 void pass_load_draw_data_from_vertex(uint mi)   { _draw.material_index = mi; } // pixel shader: restore material_index from vertex output
 
-// bindless array indices
+// Compact GPU texture layout, matching gpu_texture_types in Renderer::UpdateMaterials.
+// Roughness, metalness, occlusion and height use Packed; alpha uses Color.a.
 static const uint material_texture_slots_per_type  = 4;
 static const uint material_texture_index_albedo    = 0 * material_texture_slots_per_type;
-static const uint material_texture_index_roughness = 1 * material_texture_slots_per_type;
-static const uint material_texture_index_metalness = 2 * material_texture_slots_per_type;
-static const uint material_texture_index_normal    = 3 * material_texture_slots_per_type;
-static const uint material_texture_index_occlusion = 4 * material_texture_slots_per_type;
-static const uint material_texture_index_emission  = 5 * material_texture_slots_per_type;
-static const uint material_texture_index_height    = 6 * material_texture_slots_per_type;
-static const uint material_texture_index_mask      = 7 * material_texture_slots_per_type;
-static const uint material_texture_index_packed    = 8 * material_texture_slots_per_type;
+static const uint material_texture_index_normal    = 1 * material_texture_slots_per_type;
+static const uint material_texture_index_emission  = 2 * material_texture_slots_per_type;
+static const uint material_texture_index_packed    = 3 * material_texture_slots_per_type;
 
 static const uint sampler_compare_depth         = 0;
 static const uint sampler_point_clamp           = 0;

@@ -2793,8 +2793,13 @@ namespace spartan
                     flags_usage &
                     ~VK_BUFFER_USAGE_TRANSFER_DST_BIT
                 ) == 0;
+            // Multi-GB world uploads are filled by CPU workers. Prefer ordinary
+            // cached host pages for these transient copies; mapping huge WC
+            // allocations can stall for seconds on Windows. This is a preference,
+            // so devices without cached coherent host memory retain a fallback.
+            const bool bulk_upload = flags_usage == VK_BUFFER_USAGE_TRANSFER_SRC_BIT && size >= 64ull * 1024 * 1024;
             allocation_create_info.flags |=
-                cpu_readback
+                (cpu_readback || bulk_upload)
                     ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT
                     : VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
             allocation_create_info.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT; // mappable
