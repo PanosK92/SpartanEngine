@@ -991,7 +991,12 @@ namespace spartan
         // cache
         unordered_map<uint64_t, RHI_DescriptorSet> sets;
         unordered_map<uint64_t, shared_ptr<RHI_DescriptorSetLayout>> layouts;
-        unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> pipelines;
+        struct CachedPipeline
+        {
+            shared_ptr<RHI_DescriptorSetLayout> layout;
+            shared_ptr<RHI_Pipeline> pipeline;
+        };
+        unordered_map<uint64_t, CachedPipeline> pipelines;
         unordered_map<uint64_t, vector<RHI_Descriptor>> descriptor_cache;
         atomic<uint64_t> current_frame = 0;
 
@@ -2701,18 +2706,18 @@ namespace spartan
 
         lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
 
-        descriptor_set_layout = descriptors::get_or_create_descriptor_set_layout(pso).get();
-
-        // if no pipeline exists, create one
-        uint64_t hash = pso.GetHash();
+        // The descriptor layout is part of the compiled pipeline. A cache hit
+        // must not copy and hash shader reflection again on every bind.
+        const uint64_t hash = pso.GetHash();
         auto it = descriptors::pipelines.find(hash);
         if (it == descriptors::pipelines.end())
         {
-            // create a new pipeline
-            it = descriptors::pipelines.emplace(make_pair(hash, make_shared<RHI_Pipeline>(pso, descriptor_set_layout))).first;
+            auto layout = descriptors::get_or_create_descriptor_set_layout(pso);
+            auto created = make_shared<RHI_Pipeline>(pso, layout.get());
+            it = descriptors::pipelines.emplace(hash, descriptors::CachedPipeline{move(layout), move(created)}).first;
         }
-
-        pipeline = it->second.get();
+        descriptor_set_layout = it->second.layout.get();
+        pipeline = it->second.pipeline.get();
     }
 
     uint32_t RHI_Device::GetPipelineCount()

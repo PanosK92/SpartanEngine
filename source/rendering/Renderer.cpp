@@ -213,6 +213,7 @@ namespace spartan
 
         vector<Render*> ray_tracing_renders;
         vector<Render*> ray_tracing_build_work;
+        vector<Render*> ray_tracing_instanced_renders;
         double ray_tracing_prepared_at = -1.0;
         bool ray_tracing_pending_blas = false;
         bool ray_tracing_membership_dirty = false;
@@ -225,16 +226,18 @@ namespace spartan
             previous_renders.swap(ray_tracing_renders);
             ray_tracing_renders.clear();
             ray_tracing_build_work.clear();
+            ray_tracing_instanced_renders.clear();
             ray_tracing_pending_blas = false;
             Camera* camera = World::GetCamera();
             const Vector3 camera_position = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
             const auto& entries = render_scene_data();
-            struct Candidates { vector<Render*> renders; vector<Render*> builds; bool missing = false; };
+            struct Candidates { vector<Render*> renders; vector<Render*> builds; vector<Render*> instanced; bool missing = false; };
             static array<Candidates, 8> batches;
             for (auto& batch : batches)
             {
                 batch.renders.clear();
                 batch.builds.clear();
+                batch.instanced.clear();
                 batch.missing = false;
             }
             const uint32_t jobs = entries.size() >= 256 ? static_cast<uint32_t>(batches.size()) : 1u;
@@ -259,6 +262,7 @@ namespace spartan
                         }
                     }
                     batch.renders.push_back(render);
+                    if (!data.instances.empty()) batch.instanced.push_back(render);
                     const bool missing = !render->HasAccelerationStructure();
                     batch.missing |= missing;
                     if (missing || render->NeedsBlasRefit()) batch.builds.push_back(render);
@@ -271,6 +275,7 @@ namespace spartan
             {
                 ray_tracing_renders.insert(ray_tracing_renders.end(), batch.renders.begin(), batch.renders.end());
                 ray_tracing_build_work.insert(ray_tracing_build_work.end(), batch.builds.begin(), batch.builds.end());
+                ray_tracing_instanced_renders.insert(ray_tracing_instanced_renders.end(), batch.instanced.begin(), batch.instanced.end());
                 ray_tracing_pending_blas |= batch.missing;
             }
             ray_tracing_membership_dirty |= ray_tracing_renders != previous_renders;
@@ -4115,18 +4120,18 @@ namespace spartan
     // is cached, a tlas rebuild for a moving entity only copies it
     struct InstancedTlasCache
     {
+        uint64_t render_id       = 0;
+        uint64_t transform_revision = 0;
         Vector3 cull_center;
         float cull_radius       = 0.0f;
         uint64_t blas_address   = 0;
         uint32_t material_index = 0;
         uint32_t instance_count = 0;
         uint32_t group_count    = 0;
-        Matrix entity_matrix;
-        bool touched            = false;
         vector<RHI_AccelerationStructureInstance> instances;
         vector<Sb_GeometryInfo> geometry_infos;
     };
-    static unordered_map<const Render*, InstancedTlasCache> instanced_tlas_caches;
+    static vector<InstancedTlasCache> instanced_tlas_caches;
 
     struct SingleTlasCache
     {
@@ -4135,13 +4140,14 @@ namespace spartan
         bool transform_traceable = false;
         bool valid = false;
         bool invalid_transform = false;
+        bool instanced = false;
         RHI_AccelerationStructureInstance instance = {};
         Sb_GeometryInfo geometry = {};
     };
     static vector<SingleTlasCache> single_tlas_caches;
 
 
-    static bool refresh_instanced_tlas_cache(Render* render, Material* material, const Vector3& camera_position)
+    static bool refresh_instanced_tlas_cache(InstancedTlasCache& cache, Render* render, Material* material, const Vector3& camera_position)
     {
         // scatter beyond its shadow distance casts nothing in either path, the margin lets the
         // camera travel before the set has to be rebuilt
@@ -4151,15 +4157,14 @@ namespace spartan
 
         Entity* entity               = render->GetEntity();
         const uint64_t blas_address  = render->GetAccelerationStructureDeviceAddress();
-        InstancedTlasCache& cache    = instanced_tlas_caches[render];
-        cache.touched                = true;
         const bool stale =
+            cache.render_id != render->GetObjectId() ||
             cache.blas_address != blas_address ||
             cache.material_index != material->GetIndex() ||
             cache.instance_count != render->GetInstanceCount() ||
             cache.group_count != static_cast<uint32_t>(render->GetInstanceBoundsGroups().size()) ||
             cache.cull_radius != radius ||
-            !cache.entity_matrix.Equals(entity->GetMatrix()) ||
+            cache.transform_revision != entity->GetTransformRevision() ||
             Vector3::DistanceSquared(cache.cull_center, camera_position) > hysteresis * hysteresis;
         if (!stale)
         {
@@ -4167,12 +4172,13 @@ namespace spartan
         }
 
         cache.cull_center    = camera_position;
+        cache.render_id      = render->GetObjectId();
+        cache.transform_revision = entity->GetTransformRevision();
         cache.cull_radius    = radius;
         cache.blas_address   = blas_address;
         cache.material_index = material->GetIndex();
         cache.instance_count = render->GetInstanceCount();
         cache.group_count    = static_cast<uint32_t>(render->GetInstanceBoundsGroups().size());
-        cache.entity_matrix  = entity->GetMatrix();
         cache.instances.clear();
         cache.geometry_infos.clear();
 
@@ -4343,40 +4349,29 @@ namespace spartan
             // instanced renders are culled around the camera, a stale set is as good as a moved entity
             {
                 const Vector3 camera_position = m_cb_frame_cpu.camera_position;
-                for (auto& entry : instanced_tlas_caches)
+                SP_PROFILE_CPU_START("rt_instanced_cache");
+                // Both lists follow the same stable render order. Identity checks
+                // invalidate shifted slots after membership changes or entity reuse.
+                needs_tlas_rebuild |= instanced_tlas_caches.size() != ray_tracing_instanced_renders.size();
+                instanced_tlas_caches.resize(ray_tracing_instanced_renders.size());
+                for (size_t i = 0; i < ray_tracing_instanced_renders.size(); ++i)
                 {
-                    entry.second.touched = false;
-                }
-
-                for (Render* render : ray_tracing_renders)
-                {
-                    if (!render->HasInstancing())
-                        continue;
-
+                    Render* render = ray_tracing_instanced_renders[i];
+                    InstancedTlasCache& cache = instanced_tlas_caches[i];
                     Material* material = render->GetMaterial();
                     if (!material || render->GetAccelerationStructureDeviceAddress() == 0)
                     {
+                        needs_tlas_rebuild |= !cache.instances.empty();
+                        cache = {};
                         continue;
                     }
 
-                    if (refresh_instanced_tlas_cache(render, material, camera_position))
+                    if (refresh_instanced_tlas_cache(cache, render, material, camera_position))
                     {
                         needs_tlas_rebuild = true;
                     }
                 }
-
-                for (auto it = instanced_tlas_caches.begin(); it != instanced_tlas_caches.end();)
-                {
-                    if (!it->second.touched)
-                    {
-                        it = instanced_tlas_caches.erase(it);
-                        needs_tlas_rebuild = true;
-                    }
-                    else
-                    {
-                        ++it;
-                    }
-                }
+                SP_PROFILE_CPU_END();
             }
 
             if (!needs_tlas_rebuild)
@@ -4440,7 +4435,8 @@ namespace spartan
                     SingleTlasCache& cache = single_tlas_caches[i];
                     cache.valid = false;
                     cache.invalid_transform = false;
-                    if (render->HasInstancing()) continue;
+                    cache.instanced = render->HasInstancing();
+                    if (cache.instanced) continue;
                     Entity* entity = render->GetEntity();
                     Material* material = render->GetMaterial();
                     if (!material) continue;
@@ -4476,17 +4472,16 @@ namespace spartan
                 }
             }, jobs);
 
+            size_t instanced_index = 0;
             for (size_t i = 0; i < ray_tracing_renders.size(); ++i)
             {
                 Render* render = ray_tracing_renders[i];
                 const SingleTlasCache& cache = single_tlas_caches[i];
-                if (render->HasInstancing())
+                if (cache.instanced)
                 {
-                    if (auto it = instanced_tlas_caches.find(render); it != instanced_tlas_caches.end())
-                    {
-                        instances.insert(instances.end(), it->second.instances.begin(), it->second.instances.end());
-                        geometry_infos.insert(geometry_infos.end(), it->second.geometry_infos.begin(), it->second.geometry_infos.end());
-                    }
+                    const InstancedTlasCache& instanced = instanced_tlas_caches[instanced_index++];
+                    instances.insert(instances.end(), instanced.instances.begin(), instanced.instances.end());
+                    geometry_infos.insert(geometry_infos.end(), instanced.geometry_infos.begin(), instanced.geometry_infos.end());
                 }
                 else if (cache.valid)
                 {

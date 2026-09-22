@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================================
 #include "pch.h"
+#include "../profiling/Profiler.h"
 #include "Renderer_Internal.h"
 #include "../world/Entity.h"
 #include "../world/components/Light.h"
@@ -1416,16 +1417,9 @@ namespace spartan
 
         if (!is_transparent_pass && !IsSecondaryViewActive())
         {
-            // every renderable, not just this frame's draw list, a rotating car hides
-            // interior parts that later come back with a stale previous matrix and
-            // taa plus reflections then sparkle
-            for (Entity* entity : World::GetEntitiesWithRender())
-            {
-                if (entity)
-                {
-                    entity->SetMatrixPrevious(entity->GetMatrix());
-                }
-            }
+            SP_PROFILE_CPU_START("gbuffer_transform_history");
+            Entity::CommitTransformHistory();
+            SP_PROFILE_CPU_END();
         }
     }
 

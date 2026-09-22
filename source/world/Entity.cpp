@@ -74,6 +74,9 @@ namespace spartan
 
     namespace
     {
+        // Transform jobs finish before the primary renderer commits history.
+        // Workers only read this counter; entities retain their own first old pose.
+        atomic<uint64_t> transform_history_epoch{1};
         // Structural edits are infrequent. Serialize them and traversal construction;
         // steady-state traversal uses immutable snapshots without taking this lock.
         recursive_mutex hierarchy_mutex;
@@ -987,6 +990,17 @@ namespace spartan
         m_local_matrix_dirty = true;
     }
 
+    const Matrix& Entity::GetMatrixPrevious() const
+    {
+        return m_transform_history_epoch == transform_history_epoch.load(memory_order_relaxed)
+            ? m_matrix_previous : m_matrix;
+    }
+
+    void Entity::CommitTransformHistory()
+    {
+        transform_history_epoch.fetch_add(1, memory_order_relaxed);
+    }
+
     void Entity::UpdateTransformSelf()
     {
         const uint64_t parent_revision = m_parent ? m_parent->m_transform_revision : 0;
@@ -999,6 +1013,14 @@ namespace spartan
             if (m_parent) ++m_parent->m_child_data_revision;
             m_matrix_local = Matrix(m_position_local, m_rotation_local, m_scale_local);
             m_local_matrix_dirty = false;
+        }
+        // Capture once per rendered frame, before the first local or inherited
+        // change. Repeated edits retain the last rendered pose, including off-screen.
+        const uint64_t history_epoch = transform_history_epoch.load(memory_order_relaxed);
+        if (m_transform_history_epoch != history_epoch)
+        {
+            m_matrix_previous = m_matrix;
+            m_transform_history_epoch = history_epoch;
         }
         m_matrix = m_parent ? m_matrix_local * m_parent->m_matrix : m_matrix_local;
         m_transform_parent = m_parent;

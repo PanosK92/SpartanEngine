@@ -936,7 +936,7 @@ namespace spartan
         // external passes (xess) may have swapped the bound heaps, always restore before using engine handles
         bind_shader_visible_heaps(cmd_list);
 
-        const auto [tex_base, compare_base, revision] = d3d12_descriptors::GetBindlessSnapshot();
+        const auto [tex_base, compare_base, revision] = d3d12_descriptors::GetBindlessSnapshot(owner->GetWork());
         cmd_state::get(owner).bindless_revision[is_compute] = revision;
         const uint32_t buf_base = tex_base + d3d12_descriptors::GetBindlessTexturesCount();
 

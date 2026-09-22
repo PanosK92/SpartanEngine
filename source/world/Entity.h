@@ -212,8 +212,9 @@ namespace spartan
 
         const math::Matrix& GetMatrix() const              { return m_matrix; }
         const math::Matrix& GetLocalMatrix() const         { return m_matrix_local; }
-        const math::Matrix& GetMatrixPrevious() const      { return m_matrix_previous; }
-        void SetMatrixPrevious(const math::Matrix& matrix) { m_matrix_previous = matrix; }
+        const math::Matrix& GetMatrixPrevious() const;
+        // Commit only after the primary view has consumed this frame's transforms.
+        static void CommitTransformHistory();
         float GetTimeSinceLastTransform() const;
 
         // prefab support - if set, this entity saves as a prefab reference instead of its children
@@ -282,6 +283,7 @@ namespace spartan
 
         math::Matrix m_matrix          = math::Matrix::Identity;
         math::Matrix m_matrix_previous = math::Matrix::Identity;
+        uint64_t m_transform_history_epoch = 0;
         math::Matrix m_matrix_local    = math::Matrix::Identity;
         bool m_local_matrix_dirty = true;
         Entity* m_transform_parent = nullptr;

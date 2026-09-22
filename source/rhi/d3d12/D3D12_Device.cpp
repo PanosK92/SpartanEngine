@@ -386,7 +386,7 @@ namespace spartan
         constexpr uint32_t bindless_version_count = 16;
         struct BindlessVersion
         {
-            shared_ptr<const RHI_PendingWork> completion;
+            vector<RHI_Work> consumers;
         };
         array<BindlessVersion, bindless_version_count> bindless_versions;
         uint32_t bindless_version = UINT32_MAX;
@@ -1305,28 +1305,29 @@ namespace spartan::d3d12_descriptors
     }
 
     // Publish an immutable version. An old version remains intact until every
-    // command list that could have recorded its tables has finished.
+    // command list that recorded its tables has finished. Unrelated recordings
+    // can remain open indefinitely and must not pin descriptor versions.
     uint64_t GetBindlessRevision() { return spartan::descriptors::bindless_revision.load(memory_order_relaxed); }
 
-    BindlessTables GetBindlessSnapshot()
+    BindlessTables GetBindlessSnapshot(const RHI_Work& consumer)
     {
         using namespace spartan::descriptors;
         lock_guard<mutex> lock(bindless_mutex);
         if (bindless_dirty)
         {
-            if (bindless_version != UINT32_MAX)
-                bindless_versions[bindless_version].completion = RHI_CommandList::CapturePendingWork();
             uint32_t next = UINT32_MAX;
             for (uint32_t i = 0; i < bindless_version_count; i++)
             {
                 const auto& version = bindless_versions[i];
-                if (i != bindless_version && (!version.completion || version.completion->IsComplete()))
+                if (i != bindless_version && all_of(version.consumers.begin(), version.consumers.end(),
+                    [](const RHI_Work& work) { return work.IsComplete(); }))
                 {
                     next = i;
                     break;
                 }
             }
             SP_ASSERT_MSG(next != UINT32_MAX, "Bindless descriptor versions exhausted");
+            bindless_versions[next].consumers.clear();
             auto destination = heap_cbv_srv_uav->GetCPUDescriptorHandleForHeapStart();
             destination.ptr += static_cast<SIZE_T>(next) * bindless_count * cbv_srv_uav_descriptor_size;
             RHI_Context::device->CopyDescriptorsSimple(bindless_count, destination, GetBindlessCpuHandle(0), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -1336,6 +1337,13 @@ namespace spartan::d3d12_descriptors
             bindless_version = next;
             bindless_dirty = false;
         }
+        auto& consumers = bindless_versions[bindless_version].consumers;
+        const auto existing = find_if(consumers.begin(), consumers.end(),
+            [&consumer](const RHI_Work& work) { return work.timeline == consumer.timeline; });
+        if (existing == consumers.end())
+            consumers.push_back(consumer);
+        else
+            existing->value = max(existing->value, consumer.value);
         return {bindless_version * bindless_count, bindless_version * sampler_count, bindless_revision.load(memory_order_relaxed)};
     }
 

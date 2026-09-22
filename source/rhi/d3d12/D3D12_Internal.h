@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdint>
 #include <d3d12.h>
 #include "../RHI_Definitions.h"
+#include "../RHI_SyncPrimitive.h"
 #include "../../memory/GpuMemory.h"
 
 namespace spartan
@@ -79,7 +80,7 @@ namespace spartan::d3d12_descriptors
 
     // zone info
     struct BindlessTables { uint32_t textures; uint32_t samplers; uint64_t revision; };
-    BindlessTables GetBindlessSnapshot();
+    BindlessTables GetBindlessSnapshot(const RHI_Work& consumer);
     uint64_t GetBindlessRevision();
     uint32_t GetBindlessTexturesBase();
     uint32_t GetBindlessTexturesCount();
