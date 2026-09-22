@@ -30,7 +30,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    class RHI_CommandList;
+    class RHI_SyncPrimitive;
+
+    struct RHI_Work
+    {
+        std::shared_ptr<RHI_SyncPrimitive> timeline;
+        uint64_t value = 0;
+
+        bool IsComplete() const;
+    };
 
     enum class RHI_SyncPrimitive_Type
     {
@@ -56,23 +64,22 @@ namespace spartan
         uint64_t GetValue() const     { return m_value.load(std::memory_order_relaxed); }
         void* GetRhiResource()        { return m_rhi_resource; }
 
-        // signaler command list
-        void SetUserCmdList(RHI_CommandList* cmd_list) { m_user_cmd_list = cmd_list; }
-        RHI_CommandList* GetUserCmdList() const        { return m_user_cmd_list; }
+        // Capture the submission consuming this binary semaphore. Command lists
+        // can be recycled before the semaphore is reused, so their current work
+        // is not evidence of whether this particular wait has completed.
+        void SetConsumer(const RHI_Work& work) { m_consumer = work; }
+        const RHI_Work& GetConsumer() const   { return m_consumer; }
 
     private:
-        RHI_CommandList* m_user_cmd_list = nullptr;
+        RHI_Work m_consumer;
         RHI_SyncPrimitive_Type m_type    = RHI_SyncPrimitive_Type::Max;
         std::atomic<uint64_t> m_value    = 0;
         void* m_rhi_resource             = nullptr;
     };
-    struct RHI_Work
+    inline bool RHI_Work::IsComplete() const
     {
-        std::shared_ptr<RHI_SyncPrimitive> timeline;
-        uint64_t value = 0;
-
-        bool IsComplete() const { return !timeline || timeline->IsSignaled(value); }
-    };
+        return !timeline || timeline->IsSignaled(value);
+    }
 
     struct RHI_PendingWork
     {

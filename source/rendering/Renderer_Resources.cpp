@@ -321,8 +321,13 @@ namespace spartan
         const uint32_t particle_max = 100000;
         const uint32_t particle_counter_max = 64;
         uint32_t particle_counter_init[particle_counter_max] = {};
-        at(buffers, Renderer_Buffer::ParticleBufferA) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_Particle)),       particle_max, nullptr,                true, "particle_buffer_a");
-        at(buffers, Renderer_Buffer::ParticleCounter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),          particle_counter_max, particle_counter_init, true, "particle_counter");
+        // Simulation, emission and rendering own these buffers on the GPU.
+        // Initialize dead slots explicitly, then keep all reads and atomics in device memory.
+        at(buffers, Renderer_Buffer::ParticleBufferA) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_Particle)),       particle_max, nullptr, false, "particle_buffer_a");
+        at(buffers, Renderer_Buffer::ParticleCounter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), particle_counter_max, nullptr, false, "particle_counter");
+        vector<Sb_Particle> particles_initial(particle_max);
+        at(buffers, Renderer_Buffer::ParticleBufferA)->UploadSubRegion(particles_initial.data(), 0, particles_initial.size() * sizeof(Sb_Particle));
+        at(buffers, Renderer_Buffer::ParticleCounter)->UploadSubRegion(particle_counter_init, 0, sizeof(particle_counter_init));
         const uint32_t particle_emitter_max = 64; // upper bound on simultaneously rendered emitters
         at(buffers, Renderer_Buffer::ParticleEmitter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_EmitterParams)),  particle_emitter_max, nullptr,           true, "particle_emitter");
         const uint32_t particle_volume_voxel_count = renderer_particle_volume_width * renderer_particle_volume_height * renderer_particle_volume_depth;
@@ -343,11 +348,11 @@ namespace spartan
         );
         at(buffers, Renderer_Buffer::GrassCount) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
-            renderer_max_gpu_scatter_args * 3, nullptr, true, "grass_count"
+            renderer_max_gpu_scatter_args * 3, nullptr, false, "grass_count"
         );
         at(buffers, Renderer_Buffer::GrassIndirectArgs) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
-            renderer_max_gpu_scatter_args * 2, nullptr, true, "grass_indirect_args"
+            renderer_max_gpu_scatter_args * 2, nullptr, false, "grass_indirect_args"
         );
     }
 

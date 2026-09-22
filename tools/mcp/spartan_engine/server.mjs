@@ -28,6 +28,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { EngineClient } from "./engine_client.mjs";
+import { run_vehicle_validation } from "./vehicle_validation.mjs";
 import { append_debug_log, debug_log_path, read_debug_log } from "./debug_log.mjs";
 import { get_project_root, get_shared_codebase } from "./shared_codebase.mjs";
 import { component_schema_markdown, construction_grammar_guide, edit_rules, engine_overview, parametric_modeling_guide, scene_planning_guide, search_capability_catalog } from "./knowledge.mjs";
@@ -5949,6 +5950,16 @@ register_tool(
   { annotations: read_only },
 );
 
+register_local_tool("vehicle_validate", {
+  title: "Validate vehicle physics without rendering",
+  description: "Build and run all local car presets through production C++/PhysX: settle, acceleration, braking and hub dyno. Returns measurements, manufacturer references and CSV paths, never an implied calibration pass. Requires Windows/MSVC; use async_task_start for this long-running tool.",
+  inputSchema: {
+    hz: z.number().int().min(100).max(1000).optional(),
+    tire_temperature_c: z.number().min(-20).max(120).optional(),
+  },
+  annotations: edit_tool,
+}, async (args) => tool_result(await run_vehicle_validation(project_root, args)));
+
 register_tool(
   server,
   "vehicle_dyno",
@@ -6014,10 +6025,10 @@ register_tool(
 register_tool(
   server,
   "vehicle_shift",
-  "Shift gears on the occupied car: up, down, or neutral.",
+  "Select manual or automatic shift assistance, or request up, down, or neutral in manual mode. Rejected shifts return an error; vehicle status includes manual_shifting.",
   {
     id: z.string().optional(),
-    action: z.enum(["up", "down", "neutral"]),
+    action: z.enum(["up", "down", "neutral", "manual", "automatic"]),
   },
   "vehicle_shift",
   { annotations: edit_tool },
@@ -6063,10 +6074,12 @@ register_tool(
     "Returns the absolute path plus the csv header and the last max_rows data rows for handling diagnosis.",
     "Not an Excel file; it is a per-physics-tick csv written while a drivable car simulates with log_to_file enabled.",
     "Set recording to start or stop export. Starting after a stop replaces the previous recording, as in the F3 dashboard.",
+    "Includes a live physics_skeleton snapshot by default, even without a recording. CSV rows contain physics_skeleton_json with every assembly actor, shape, joint and corner mapping. Use small max_rows for full skeleton recordings.",
   ].join(" "),
   {
     max_rows: z.number().int().min(1).max(5000).optional(),
     include_csv: z.boolean().optional(),
+    include_skeleton: z.boolean().optional(),
     recording: z.boolean().optional(),
   },
   "vehicle_telemetry",

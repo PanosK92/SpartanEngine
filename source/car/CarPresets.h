@@ -250,6 +250,8 @@ namespace car
         float engine_redline_rpm;
         float engine_max_rpm;
         float engine_peak_torque;
+        // Net crankshaft curve at steady full-load boost, versus legacy gross combustion torque.
+        bool engine_torque_is_net;
         float engine_peak_torque_rpm;
         float engine_inertia;
         float engine_friction;
@@ -512,6 +514,7 @@ namespace car
 
         // traction control
         bool  tc_enabled;
+        bool  tc_use_tire_peak;       // target the current tire curve; legacy fixed slip otherwise
         float tc_slip_threshold;
         float tc_power_reduction;
         float tc_response_rate;
@@ -540,8 +543,9 @@ namespace car
         std::string name;
         std::string file_path;
 
-        // body visual, optional, a missing model uses a generic body
+        // body visual, optional, a missing model uses the Ferrari placeholder
         std::string body_model;
+        bool        body_is_placeholder = false;
         float       body_scale     = 1.0f;
         float       body_forward_z = 1.0f;         // sign of the local z axis the nose points at
         std::vector<std::string> body_hide_parts;  // baked in parts to deactivate, the spawned wheels replace them

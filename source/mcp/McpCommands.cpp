@@ -7328,6 +7328,7 @@ namespace spartan
                 json += ",\"steering\":" + std::to_string(physics->GetVehicleSteering());
                 json += ",\"handbrake\":" + std::to_string(physics->GetVehicleHandbrake());
                 json += ",\"gear\":" + json_string(physics->GetCurrentGearString());
+                json += ",\"manual_shifting\":" + json_bool(physics->GetManualTransmission());
                 json += ",\"engine_rpm\":" + std::to_string(physics->GetEngineRPM());
                 json += ",\"boost_pressure\":" + std::to_string(physics->GetBoostPressure());
                 json += ",\"abs_active\":" + json_bool(physics->IsAbsActiveAny());
@@ -7502,6 +7503,7 @@ namespace spartan
                 json += ",\"steering\":" + std::to_string(physics->GetVehicleSteering());
                 json += ",\"handbrake\":" + std::to_string(physics->GetVehicleHandbrake());
                 json += ",\"gear\":" + json_string(physics->GetCurrentGearString());
+                json += ",\"manual_shifting\":" + json_bool(physics->GetManualTransmission());
                 json += ",\"engine_rpm\":" + std::to_string(physics->GetEngineRPM());
                 json += ",\"speed_kmh\":" + std::to_string(velocity.Length() * 3.6f);
                 json += ",\"position\":" + json_vector3(root->GetPosition());
@@ -7642,6 +7644,7 @@ namespace spartan
                 const auto& s = d.samples.back();
                 json += ",\"rpm\":" + std::to_string(s.rpm) + ",\"axle_kw\":" + std::to_string(s.axle_kw);
                 json += ",\"axle_nm\":" + std::to_string(s.axle_nm) + ",\"combustion_kw\":" + std::to_string(s.combustion_kw);
+                json += ",\"engine_net_nm\":" + std::to_string(s.engine_net_nm) + ",\"engine_net_kw\":" + std::to_string(s.engine_net_kw);
             }
             return json + "}";
         }
@@ -7804,6 +7807,20 @@ namespace spartan
             }
 
             const std::string action = to_lower_copy(*action_arg);
+            if (action == "manual" || action == "automatic")
+            {
+                physics->SetManualTransmission(action == "manual");
+                return car_status_json(car);
+            }
+            if (action != "up" && action != "down" && action != "neutral")
+                return json_error("action must be up, down, neutral, manual, or automatic");
+            auto* simulation = physics->GetVehicleSimulation();
+            if (!simulation) return json_error("vehicle simulation not found");
+            if (!physics->GetManualTransmission())
+                return json_error("manual shifting is disabled; select action=manual before requesting a gear");
+            if (simulation->get_is_shifting())
+                return json_error("gear change already in progress");
+            const int previous_gear = simulation->get_current_gear();
             if (action == "up")
             {
                 physics->ShiftUp();
@@ -7816,10 +7833,8 @@ namespace spartan
             {
                 physics->ShiftToNeutral();
             }
-            else
-            {
-                return json_error("action must be up, down, or neutral");
-            }
+            if (simulation->get_current_gear() == previous_gear && action != "neutral")
+                return json_error("gear request exceeds the available gear range");
 
             car->SetExternallyControlled(true);
             return car_status_json(car);
@@ -7923,7 +7938,7 @@ namespace spartan
                 return json_error("target car has no vehicle simulation");
             }
 
-            int max_rows = 200;
+            int max_rows = 5;
             if (const std::optional<std::string> rows_arg = get_argument(request, "max_rows"))
             {
                 int32_t parsed = 0;
@@ -7943,6 +7958,9 @@ namespace spartan
                 }
             }
 
+            bool include_skeleton = true;
+            if (const auto value = get_argument(request, "include_skeleton"))
+                if (!parse_bool(*value, include_skeleton)) return json_error("invalid include_skeleton");
             std::string csv_text;
             std::string path;
             int total_lines = 0;
@@ -7954,14 +7972,18 @@ namespace spartan
                 if (recording && !simulation->open_telemetry_if_needed())
                     return json_error("failed to open telemetry recording");
             }
-            const bool ok = simulation->snapshot_telemetry_tail(max_rows, csv_text, path, total_lines);
+            // A live skeleton query must not scan a potentially multi-GB recording.
+            bool ok = true;
+            if (include_csv) ok = simulation->snapshot_telemetry_tail(max_rows, csv_text, path, total_lines);
+            else path = simulation->get_telemetry_path();
 
             std::string json = "{\"ok\":true";
             json += ",\"path\":" + json_string(path);
             json += ",\"log_to_file\":" + json_bool(simulation->get_log_to_file());
-            json += ",\"total_lines\":" + std::to_string(total_lines);
+            if (include_skeleton) json += ",\"physics_skeleton\":" + simulation->get_physics_telemetry_json();
+            json += ",\"total_lines\":" + (include_csv ? std::to_string(total_lines) : "null");
             json += ",\"returned_data_rows\":" + std::to_string(std::max(0, std::min(max_rows, std::max(0, total_lines - 1))));
-            json += ",\"file_ready\":" + json_bool(ok && total_lines > 0);
+            json += ",\"file_ready\":" + (include_csv ? json_bool(ok && total_lines > 0) : "null");
             if (include_csv)
             {
                 json += ",\"csv\":" + json_string(csv_text);

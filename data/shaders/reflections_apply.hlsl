@@ -198,7 +198,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     float4 sample_normal   = tex_normal.SampleLevel(samplers[sampler_point_clamp], uv, 0);
     float4 sample_material = tex_material.SampleLevel(samplers[sampler_point_clamp], uv, 0);
-    MaterialParameters mat = material_parameters[uint(sample_normal.a)];
+    MaterialParameters mat = material_parameters[unpack_material_index(sample_normal.a)];
     bool is_water_pixel    = (mat.flags & uint(1U << 13)) != 0;
     bool is_glass_pixel    = alpha > 0.0f && alpha < 1.0f;
 

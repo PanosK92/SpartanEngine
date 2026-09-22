@@ -225,9 +225,12 @@ namespace ImGui::TransformGizmo
                entity->GetObjectName().rfind("spline_point_", 0) == 0;
     }
 
-    static void merge_geometry_bounds(spartan::Entity* entity, spartan::math::BoundingBox& bounds, bool& has_bounds)
+    static void merge_geometry_bounds(spartan::Entity* entity, spartan::math::BoundingBox& bounds, bool& has_bounds, bool include_text)
     {
-        if (spartan::Render* render = entity->GetComponent<spartan::Render>(); render && render->GetMesh())
+        // Text annotations can sit far outside the object they label (for example, map labels
+        // above a building). Prefer the physical geometry when finding a group's pivot.
+        const bool is_text = entity->GetComponentByType(spartan::ComponentType::Text3D) != nullptr;
+        if (spartan::Render* render = entity->GetComponent<spartan::Render>(); render && render->GetMesh() && (include_text || !is_text))
         {
             // use the current transform, since the render bounds can lag behind a gizmo edit
             const spartan::math::BoundingBox box = render->HasInstancing()
@@ -253,7 +256,7 @@ namespace ImGui::TransformGizmo
 
         for (spartan::Entity* child : entity->GetChildren())
         {
-            merge_geometry_bounds(child, bounds, has_bounds);
+            merge_geometry_bounds(child, bounds, has_bounds, include_text);
         }
     }
 
@@ -268,7 +271,12 @@ namespace ImGui::TransformGizmo
 
         spartan::math::BoundingBox bounds;
         bool has_bounds = false;
-        merge_geometry_bounds(entity, bounds, has_bounds);
+        merge_geometry_bounds(entity, bounds, has_bounds, false);
+        // A selected text object (or a group containing only text) still needs its own gizmo.
+        if (!has_bounds)
+        {
+            merge_geometry_bounds(entity, bounds, has_bounds, true);
+        }
         return has_bounds ? bounds.GetCenter() : spartan::Spline::GetEditorHandlePosition(entity);
     }
 

@@ -97,7 +97,7 @@ struct Surface
         float4 sample_normal        = tex_normal.SampleLevel(samplers[sampler_point_clamp], uv, 0);
         float4 sample_material      = tex_material.SampleLevel(samplers[sampler_point_clamp], uv, 0);
         float sample_depth          = tex_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
-        MaterialParameters material = material_parameters[sample_normal.a];
+        MaterialParameters material = material_parameters[unpack_material_index(sample_normal.a)];
 
         // initialize properties
         depth                 = sample_depth;

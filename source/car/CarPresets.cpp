@@ -532,6 +532,7 @@ namespace car
             READ_FLOAT(engine_redline_rpm);
             READ_FLOAT(engine_max_rpm);
             READ_FLOAT(engine_peak_torque);
+            READ_BOOL(engine_torque_is_net);
             READ_FLOAT(engine_peak_torque_rpm);
             READ_FLOAT(engine_inertia);
             READ_FLOAT(engine_friction);
@@ -748,6 +749,7 @@ namespace car
             READ_FLOAT(abs_release_rate);
             READ_FLOAT(abs_pulse_frequency);
             READ_BOOL(tc_enabled);
+            READ_BOOL(tc_use_tire_peak);
             READ_FLOAT(tc_slip_threshold);
             READ_FLOAT(tc_power_reduction);
             READ_FLOAT(tc_response_rate);
@@ -860,6 +862,15 @@ namespace car
             definition.body_scale     = body.attribute("scale").as_float(1.0f);
             definition.body_forward_z = body.attribute("forward_z").as_float(1.0f);
             split_csv(body.attribute("hide_parts").as_string(""), definition.body_hide_parts);
+        }
+
+        if (definition.body_model.empty())
+        {
+            definition.body_model          = "project/models/ferrari_laferrari/scene.gltf";
+            definition.body_is_placeholder = true;
+            definition.body_scale          = 2.0f;
+            definition.body_forward_z      = -1.0f;
+            definition.body_hide_parts     = { "tire 1", "tire 2", "tire 3", "tire 4", "brakerear" };
         }
 
         if (pugi::xml_node wheels = root.child("wheels"))

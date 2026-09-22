@@ -39,9 +39,9 @@ typedef enum NVSDK_NGX_RayReconstruction_Hint_Render_Preset
                                                                             // NVSDK_NGX_RayReconstruction_Hint_Render_Preset_A removed, use preset D or E
                                                                             // NVSDK_NGX_RayReconstruction_Hint_Render_Preset_B removed, use preset D or E
                                                                             // NVSDK_NGX_RayReconstruction_Hint_Render_Preset_C removed, use preset D or E
-    NVSDK_NGX_RayReconstruction_Hint_Render_Preset_D = 4,                   // Default model (transformer)
+    NVSDK_NGX_RayReconstruction_Hint_Render_Preset_D = 4,                   // Transformer model
     NVSDK_NGX_RayReconstruction_Hint_Render_Preset_E = 5,                   // Latest transformer model (must use if DoF guide is needed)
-    NVSDK_NGX_RayReconstruction_Hint_Render_Preset_F = 6,                   // Do not use. reverts to default behavior
+    NVSDK_NGX_RayReconstruction_Hint_Render_Preset_F = 6,                   // Default model RR2
     NVSDK_NGX_RayReconstruction_Hint_Render_Preset_G = 7,                   // Do not use, reverts to default behavior
     NVSDK_NGX_RayReconstruction_Hint_Render_Preset_H = 8,                   // Do not use, reverts to default behavior
     NVSDK_NGX_RayReconstruction_Hint_Render_Preset_I = 9,                   // Do not use, reverts to default behavior

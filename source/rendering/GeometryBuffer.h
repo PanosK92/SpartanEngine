@@ -61,7 +61,11 @@ namespace spartan
 
         // update existing vertices in-place, used by deformable meshes like cloth and skinning
         // the cpu copy is immediate, the gpu copy is queued and coalesced by the next BuildIfDirty
-        static void UpdateVertices(const RHI_Vertex_PosTexNorTan* data, uint32_t offset, uint32_t count);
+        // track_motion retains the previous rendered pose for a stable, whole-mesh range
+        static void UpdateVertices(const RHI_Vertex_PosTexNorTan* data, uint32_t offset, uint32_t count, bool track_motion = false);
+
+        // relative offset into the same vertex arena, zero when this frame has no deformation
+        static uint32_t GetPreviousVertexOffset(uint32_t offset);
         static void UpdateIndices(const uint32_t* data, uint32_t offset, uint32_t count);
         static void UpdateMeshletBounds(const Sb_MeshletBounds* data, uint32_t offset, uint32_t count);
         static void UpdateMeshletVertices(const uint32_t* data, uint32_t offset, uint32_t count);

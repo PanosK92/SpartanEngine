@@ -70,7 +70,7 @@ float apply_decals(uint2 range, float3 position, float3 geometric_normal, float3
             float2 dy = float2(dot(dpdy, gx), dot(dpdy, gy)) * 0.5f;
             if (source.has_texture_albedo())
             {
-                float4 texel = material_textures[NonUniformResourceIndex(d.source_material + material_texture_index_albedo)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv, dx, dy);
+                float4 texel = material_textures[NonUniformResourceIndex(get_material_texture_index(d.source_material, material_texture_index_albedo))].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv, dx, dy);
                 if (source.is_albedo_srgb()) texel.rgb = srgb_to_linear(texel.rgb);
                 deposit_color = lerp(deposit_color, texel.rgb * source.color.rgb, 0.65f);
                 // Authored alpha textures can supply arbitrary decal shapes (impacts, logos, etc.).
@@ -82,7 +82,7 @@ float apply_decals(uint2 range, float3 position, float3 geometric_normal, float3
             }
             if (source.has_texture_normal())
             {
-                float2 xy = material_textures[NonUniformResourceIndex(d.source_material + material_texture_index_normal)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv, dx, dy).xy * 2.0f - 1.0f;
+                float2 xy = material_textures[NonUniformResourceIndex(get_material_texture_index(d.source_material, material_texture_index_normal))].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv, dx, dy).xy * 2.0f - 1.0f;
                 float3 grain = normalize(gx) * xy.x + normalize(gy) * xy.y;
                 gradient -= (grain - geometric_normal * dot(grain, geometric_normal)) * 0.25f;
             }

@@ -36,16 +36,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 struct Vertex_PosUvNorTan
 {
     float3 position;
+    uint   vertex_id;
     uint   uv_packed;
     uint   normal_packed;
     uint   tangent_packed;
     float4x4 instance_transform;
 };
 
-// matches the engine's input layout for RHI_Vertex_Type::PosUvNorTan, 24 bytes
+// matches the 24-byte PosUvNorTan input layout plus the system-provided vertex index
 // uv/normal/tangent are R32_Uint and decoded in shader, the instance fields are not part of the input layout
 struct Vertex_PosUvNorTan_Cpu
 {
+    uint   vertex_id      : SV_VertexID;
     float3 position       : POSITION;
     uint   uv_packed      : TEXCOORD;
     uint   normal_packed  : NORMAL;
@@ -57,6 +59,7 @@ Vertex_PosUvNorTan to_full_vertex(Vertex_PosUvNorTan_Cpu cpu_input)
 {
     Vertex_PosUvNorTan v;
     v.position            = cpu_input.position;
+    v.vertex_id           = cpu_input.vertex_id;
     v.uv_packed           = cpu_input.uv_packed;
     v.normal_packed       = cpu_input.normal_packed;
     v.tangent_packed      = cpu_input.tangent_packed;
@@ -90,6 +93,7 @@ Vertex_PosUvNorTan pull_vertex(uint vertex_id, uint instance_id, uint instance_o
 
     Vertex_PosUvNorTan v;
     v.position            = pulled.position;
+    v.vertex_id           = vertex_id;
     v.uv_packed           = pulled.uv;
     v.normal_packed       = pulled.normal;
     v.tangent_packed      = pulled.tangent;
@@ -919,7 +923,10 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     // transform position to world space
     float4 position_local    = float4(input.position, 1.0f);
     float3 position          = mul(position_local, transform).xyz;
-    float3 position_previous = mul(position_local, transform_previous).xyz;
+    float3 position_local_previous = input.position;
+    if (_draw.previous_vertex_offset != 0)
+        position_local_previous = geometry_vertices[input.vertex_id + _draw.previous_vertex_offset].position;
+    float3 position_previous = mul(float4(position_local_previous, 1.0f), transform_previous).xyz;
 
     // clipmap recentering is not water motion
     if (surface.is_water())
@@ -955,7 +962,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     float3 saved_tangent = vertex.tangent;
     
     // compute previous position (this will incorrectly modify vertex.normal/tangent, but we'll restore them)
-    vertex_processing::process_world_space(surface, position_previous, vertex, input.position, transform_previous, instance_id, -buffer_frame.delta_time);
+    vertex_processing::process_world_space(surface, position_previous, vertex, position_local_previous, transform_previous, instance_id, -buffer_frame.delta_time);
     
     // restore the correct normals from the current frame
     vertex.normal  = saved_normal;

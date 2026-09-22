@@ -1,6 +1,5 @@
-#pragma once
 /*
-* Copyright (c) 2021-2024 NVIDIA CORPORATION.  All rights reserved.
+* Copyright (c) 2021-2025 NVIDIA CORPORATION.  All rights reserved.
 *
 * NVIDIA Corporation and its licensors retain all intellectual property and proprietary
 * rights in and to this software, related documentation and any modifications thereto.
@@ -19,31 +18,33 @@
 * SUCH DAMAGES.
 */
 
+#pragma once
 
-#ifndef NVSDK_NGX_HELPERS_DLSSG_VK_H
-#define NVSDK_NGX_HELPERS_DLSSG_VK_H
+#ifndef NVSDK_NGX_HELPERS_DLSSG_H
+#define NVSDK_NGX_HELPERS_DLSSG_H
 
-#include <vulkan/vulkan.h>
+#include <stdint.h> // for uint64_t
+
+#include "nvsdk_ngx.h" // DX11/12 here
 #include "nvsdk_ngx_defs_dlssg.h"
 #include "nvsdk_ngx_params_dlssg.h"
-#include "nvsdk_ngx_vk.h" // VK here
 
-typedef struct NVSDK_NGX_VK_DLSSG_Eval_Params
+typedef struct NVSDK_NGX_D3D12_DLSSG_Eval_Params
 {
-    NVSDK_NGX_Resource_VK* pBackbuffer;
-    NVSDK_NGX_Resource_VK* pDepth;
-    NVSDK_NGX_Resource_VK* pMVecs;
-    NVSDK_NGX_Resource_VK* pHudless;                        // Optional
-    NVSDK_NGX_Resource_VK* pUI;                             // Optional
-    NVSDK_NGX_Resource_VK* pUIAlpha;                        // Optional
-    NVSDK_NGX_Resource_VK* pBidirectionalDistortionField;   // Optional
-    NVSDK_NGX_Resource_VK* pOutputInterpFrame;
-    NVSDK_NGX_Resource_VK* pOutputRealFrame;                // Optional. In some cases, the feature may modify this frame (e.g. debugging)
-    NVSDK_NGX_Resource_VK* pOutputDisableInterpolation;     // Optional
-} NVSDK_NGX_VK_DLSSG_Eval_Params;
+    ID3D12Resource* pBackbuffer;
+    ID3D12Resource* pDepth;
+    ID3D12Resource* pMVecs;
+    ID3D12Resource* pHudless;                       // Optional
+    ID3D12Resource* pUI;                            // Optional
+    ID3D12Resource* pUIAlpha;                       // Optional
+    ID3D12Resource* pBidirectionalDistortionField;  // Optional
+    ID3D12Resource* pOutputInterpFrame;
+    ID3D12Resource* pOutputRealFrame;               // Optional. In some cases, the feature may modify this frame (e.g. debugging)
+    ID3D12Resource* pOutputDisableInterpolation;    // Optional
+} NVSDK_NGX_D3D12_DLSSG_Eval_Params;
 
-static inline NVSDK_NGX_Result NGX_VK_CREATE_DLSSG(
-    VkCommandBuffer pInCmdBuf,
+static inline NVSDK_NGX_Result NGX_D3D12_CREATE_DLSSG(
+    ID3D12GraphicsCommandList* pInCmdList,
     unsigned int InCreationNodeMask,
     unsigned int InVisibilityNodeMask,
     NVSDK_NGX_Handle** ppOutHandle,
@@ -55,27 +56,30 @@ static inline NVSDK_NGX_Result NGX_VK_CREATE_DLSSG(
     NVSDK_NGX_Parameter_SetUI(pInParams, NVSDK_NGX_Parameter_Width, pInDlssgCreateParams->Width);
     NVSDK_NGX_Parameter_SetUI(pInParams, NVSDK_NGX_Parameter_Height, pInDlssgCreateParams->Height);
     NVSDK_NGX_Parameter_SetUI(pInParams, NVSDK_NGX_DLSSG_Parameter_BackbufferFormat, pInDlssgCreateParams->NativeBackbufferFormat);
+    NVSDK_NGX_Parameter_SetUI(pInParams, NVSDK_NGX_DLSSG_Parameter_InternalWidth, pInDlssgCreateParams->RenderWidth);
+    NVSDK_NGX_Parameter_SetUI(pInParams, NVSDK_NGX_DLSSG_Parameter_InternalHeight, pInDlssgCreateParams->RenderHeight);
+    NVSDK_NGX_Parameter_SetUI(pInParams, NVSDK_NGX_DLSSG_Parameter_DynamicResolution, pInDlssgCreateParams->DynamicResolutionScaling);
 
-    return NVSDK_NGX_VULKAN_CreateFeature(pInCmdBuf, NVSDK_NGX_Feature_FrameGeneration, pInParams, ppOutHandle);
+    return NVSDK_NGX_D3D12_CreateFeature(pInCmdList, NVSDK_NGX_Feature_FrameGeneration, pInParams, ppOutHandle);
 }
 
-static inline NVSDK_NGX_Result NGX_VK_EVALUATE_DLSSG(
-    VkCommandBuffer pInCmdBuf,
+static inline NVSDK_NGX_Result NGX_D3D12_EVALUATE_DLSSG(
+    ID3D12GraphicsCommandList* pInCmdList,
     NVSDK_NGX_Handle* pInHandle,
     NVSDK_NGX_Parameter* pInParams,
-    NVSDK_NGX_VK_DLSSG_Eval_Params* pInDlssgEvalParams,
+    NVSDK_NGX_D3D12_DLSSG_Eval_Params* pInDlssgEvalParams,
     NVSDK_NGX_DLSSG_Opt_Eval_Params* pInDlssgOptEvalParams)
 {
-    NVSDK_NGX_Parameter_SetVoidPointer(pInParams, NVSDK_NGX_DLSSG_Parameter_Backbuffer, pInDlssgEvalParams->pBackbuffer);
-    NVSDK_NGX_Parameter_SetVoidPointer(pInParams, NVSDK_NGX_DLSSG_Parameter_MVecs, pInDlssgEvalParams->pMVecs);
-    NVSDK_NGX_Parameter_SetVoidPointer(pInParams, NVSDK_NGX_DLSSG_Parameter_Depth, pInDlssgEvalParams->pDepth);
-    NVSDK_NGX_Parameter_SetVoidPointer(pInParams, NVSDK_NGX_DLSSG_Parameter_HUDLess, pInDlssgEvalParams->pHudless);
-    NVSDK_NGX_Parameter_SetVoidPointer(pInParams, NVSDK_NGX_DLSSG_Parameter_UI, pInDlssgEvalParams->pUI);
-    NVSDK_NGX_Parameter_SetVoidPointer(pInParams, NVSDK_NGX_DLSSG_Parameter_UIAlpha, pInDlssgEvalParams->pUIAlpha);
-    NVSDK_NGX_Parameter_SetVoidPointer(pInParams, NVSDK_NGX_DLSSG_Parameter_BidirectionalDistortionField, pInDlssgEvalParams->pBidirectionalDistortionField);
-    NVSDK_NGX_Parameter_SetVoidPointer(pInParams, NVSDK_NGX_DLSSG_Parameter_OutputInterpolated, pInDlssgEvalParams->pOutputInterpFrame);
-    NVSDK_NGX_Parameter_SetVoidPointer(pInParams, NVSDK_NGX_DLSSG_Parameter_OutputReal, pInDlssgEvalParams->pOutputRealFrame);
-    NVSDK_NGX_Parameter_SetVoidPointer(pInParams, NVSDK_NGX_DLSSG_Parameter_OutputDisableInterpolation, pInDlssgEvalParams->pOutputDisableInterpolation);
+    NVSDK_NGX_Parameter_SetD3d12Resource(pInParams, NVSDK_NGX_DLSSG_Parameter_Backbuffer, pInDlssgEvalParams->pBackbuffer);
+    NVSDK_NGX_Parameter_SetD3d12Resource(pInParams, NVSDK_NGX_DLSSG_Parameter_MVecs, pInDlssgEvalParams->pMVecs);
+    NVSDK_NGX_Parameter_SetD3d12Resource(pInParams, NVSDK_NGX_DLSSG_Parameter_Depth, pInDlssgEvalParams->pDepth);
+    NVSDK_NGX_Parameter_SetD3d12Resource(pInParams, NVSDK_NGX_DLSSG_Parameter_HUDLess, pInDlssgEvalParams->pHudless);
+    NVSDK_NGX_Parameter_SetD3d12Resource(pInParams, NVSDK_NGX_DLSSG_Parameter_UI, pInDlssgEvalParams->pUI);
+    NVSDK_NGX_Parameter_SetD3d12Resource(pInParams, NVSDK_NGX_DLSSG_Parameter_UIAlpha, pInDlssgEvalParams->pUIAlpha);
+    NVSDK_NGX_Parameter_SetD3d12Resource(pInParams, NVSDK_NGX_DLSSG_Parameter_BidirectionalDistortionField, pInDlssgEvalParams->pBidirectionalDistortionField);
+    NVSDK_NGX_Parameter_SetD3d12Resource(pInParams, NVSDK_NGX_DLSSG_Parameter_OutputInterpolated, pInDlssgEvalParams->pOutputInterpFrame);
+    NVSDK_NGX_Parameter_SetD3d12Resource(pInParams, NVSDK_NGX_DLSSG_Parameter_OutputReal, pInDlssgEvalParams->pOutputRealFrame);
+    NVSDK_NGX_Parameter_SetD3d12Resource(pInParams, NVSDK_NGX_DLSSG_Parameter_OutputDisableInterpolation, pInDlssgEvalParams->pOutputDisableInterpolation);
 
     if (pInDlssgOptEvalParams)
     {
@@ -165,7 +169,6 @@ static inline NVSDK_NGX_Result NGX_VK_EVALUATE_DLSSG(
         NVSDK_NGX_Parameter_SetUI(pInParams, NVSDK_NGX_DLSSG_Parameter_BidirectionalDistortionFieldSubrectBaseY, pInDlssgOptEvalParams->bidirectionalDistFieldSubrectBase.Y);
         NVSDK_NGX_Parameter_SetUI(pInParams, NVSDK_NGX_DLSSG_Parameter_BidirectionalDistortionFieldSubrectWidth, pInDlssgOptEvalParams->bidirectionalDistFieldSubrectSize.Width);
         NVSDK_NGX_Parameter_SetUI(pInParams, NVSDK_NGX_DLSSG_Parameter_BidirectionalDistortionFieldSubrectHeight, pInDlssgOptEvalParams->bidirectionalDistFieldSubrectSize.Height);
-
         NVSDK_NGX_Parameter_SetUI(pInParams, NVSDK_NGX_DLSSG_Parameter_BidirectionalDistortionField_LowPrecision_IsLowPrecision, pInDlssgOptEvalParams->bidirectionalDistFieldPrecisionInfo.IsLowPrecision);
         NVSDK_NGX_Parameter_SetF(pInParams, NVSDK_NGX_DLSSG_Parameter_BidirectionalDistortionField_LowPrecision_Bias, pInDlssgOptEvalParams->bidirectionalDistFieldPrecisionInfo.Bias);
         NVSDK_NGX_Parameter_SetF(pInParams, NVSDK_NGX_DLSSG_Parameter_BidirectionalDistortionField_LowPrecision_Scale, pInDlssgOptEvalParams->bidirectionalDistFieldPrecisionInfo.Scale);
@@ -188,11 +191,10 @@ static inline NVSDK_NGX_Result NGX_VK_EVALUATE_DLSSG(
         NVSDK_NGX_Parameter_SetUI(pInParams, NVSDK_NGX_DLSSG_Parameter_OutputRealSubrectHeight, pInDlssgOptEvalParams->outputRealSubrectSize.Height);
     }
 
-    // C version or cpp?
-    return NVSDK_NGX_VULKAN_EvaluateFeature_C(pInCmdBuf, pInHandle, pInParams, NULL);
+    return NVSDK_NGX_D3D12_EvaluateFeature_C(pInCmdList, pInHandle, pInParams, NULL);
 }
 
-static inline NVSDK_NGX_Result NGX_VK_ESTIMATE_VRAM_DLSSG(
+static inline NVSDK_NGX_Result NGX_D3D12_ESTIMATE_VRAM_DLSSG(
     NVSDK_NGX_Parameter* InParams,
     uint32_t mvecDepthWidth, uint32_t mvecDepthHeight,
     uint32_t colorWidth, uint32_t colorHeight,
@@ -224,4 +226,4 @@ static inline NVSDK_NGX_Result NGX_VK_ESTIMATE_VRAM_DLSSG(
     return NVSDK_NGX_Result_Success;
 }
 
-#endif
+#endif // NVSDK_NGX_HELPERS_DLSSG_H

@@ -121,7 +121,7 @@ namespace spartan
         }
         m_pass_state.cleared_rt_reflections = false;
 
-        // same gate as rt shadows, a blas written this list is not safe to closest-hit
+        // Initial scene preparation uses the same readiness gate as RT shadows.
         if (m_pass_state.skip_rt_trace)
         {
             return;

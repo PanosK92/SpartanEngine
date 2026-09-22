@@ -274,7 +274,7 @@ namespace spartan
             job.mesh->GetVertices().swap(animator->m_skinned_vertices);
             const auto& vertices = job.mesh->GetVertices();
             GeometryBuffer::UpdateVertices(vertices.data(), job.mesh->GetGlobalVertexOffset(),
-                static_cast<uint32_t>(vertices.size()));
+                static_cast<uint32_t>(vertices.size()), true);
             animator->MarkBlasNeedsRefit(job.mesh.get());
         }
         skinning_jobs.clear();
@@ -1534,7 +1534,7 @@ namespace spartan
             GeometryBuffer::UpdateVertices(
                 m_skinned_vertices.data(),
                 mesh->GetGlobalVertexOffset(),
-                static_cast<uint32_t>(m_skinned_vertices.size())
+                static_cast<uint32_t>(m_skinned_vertices.size()), true
             );
 
             MarkBlasNeedsRefit(mesh);

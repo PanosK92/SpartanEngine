@@ -94,7 +94,8 @@ The renderer is built around one principle: **the GPU owns the data.** Every res
 
 - **Variable rate shading** and **dynamic resolution scaling**
 - **TAAU**, temporal anti-aliasing with built-in upsampling, Halton-jittered with variance-clip history reprojection
-- **Intel XeSS 3** upscaling
+- **NVIDIA DLSS 4.5** Super Resolution (SDK 310.9.1)
+- **Intel XeSS** Super Resolution 2.0.2 (XeSS SDK 3.0.2)
 - **FXAA**
 - **Custom breadcrumbs** for GPU crash tracing and post-mortem debugging
 

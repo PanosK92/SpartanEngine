@@ -1,1 +1,1 @@
-310.7.0 static MT/MTd nvsdk_ngx_s rel
+310.9.1 (DLSS 4.5 Super Resolution) static MT/MTd nvsdk_ngx_khr_s rel

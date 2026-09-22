@@ -94,6 +94,8 @@ Use these first:
 - `sequencer_get`, `sequencer_set`, `sequencer_playback`, `sequencer_event_add`, `sequencer_event_update`, and `sequencer_event_remove` for the editor camera cut timeline, plus `sequencer_spline_add`, `sequencer_spline_update`, and `sequencer_spline_remove` for the spline follower track.
 - `renderer_debug_get`, `renderer_debug_set`, and `physics_state` for debug overlays and physics inspection.
 - `vehicle_list`, `vehicle_get`, `vehicle_enter`, `vehicle_set_input`, `vehicle_shift`, `vehicle_set_view`, `vehicle_reset`, `vehicle_exit`, and `vehicle_telemetry` for driving cars in play mode and reading `car_telemetry.csv`.
+  `vehicle_telemetry` includes a live physics skeleton; use `include_csv: false` to inspect it without scanning a recording. Full assembly snapshots are also appended to recorded CSV rows. See [schema and timing](../../car_validation/telemetry.md).
+- `vehicle_validate` runs all local presets through production C++/PhysX without rendering, exporting acceleration, braking, coastdown, turning and dyno data. It requires Windows/MSVC and supports `hz` and `tire_temperature_c`; use `async_task_start` for a background run. See [vehicle validation](../../car_validation/README.md) for test conditions, source evidence and calibration limits.
 - `profiler_snapshot` for frame timing, fps, stutter flags, rhi counters, and per-pass CPU/GPU time blocks to find optimization targets.
 - `selection_update`, `entity_clone`, and `entity_move_index` for editor selection and hierarchy operations.
 - `prefab_types`, `prefab_save`, and `prefab_load` for prefab discovery and file prefab workflows.

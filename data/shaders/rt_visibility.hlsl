@@ -52,7 +52,7 @@ bool rt_candidate_opaque(uint instance_index, uint primitive_index, float2 baryc
 
     float distance = length(hit_position - get_camera_position());
     float mip      = clamp(log2(max(distance, 1.0f)) - 2.0f, 0.0f, 4.0f);
-    float alpha    = material_textures[geo.material_index + material_texture_index_albedo].SampleLevel(
+    float alpha    = material_textures[get_material_texture_index(geo.material_index, material_texture_index_albedo)].SampleLevel(
         GET_SAMPLER(sampler_bilinear_wrap),
         texcoord,
         mip

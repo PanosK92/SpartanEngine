@@ -362,6 +362,10 @@ namespace spartan
         m_flushing_barriers   = false;
         m_render_pass_pending = false;
         ResetTrackedBindings();
+        // These point into the previous recording's resources, which may have
+        // been destroyed during a world change before this list is reused.
+        m_current_texture_usage.clear();
+        m_current_buffer_usage.clear();
         m_tracked_texture_history.clear();
         m_tracked_buffer_history.clear();
         m_tracked_texture_layouts.clear();

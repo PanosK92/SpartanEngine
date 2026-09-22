@@ -1054,7 +1054,7 @@ namespace spartan
         RHI_CommandList::BeginTimeblock("particles");
 
         // emit, one dispatch per emitter so each spawns from its own position and rate
-        RHI_CommandList::BeginMarker("particle_emit");
+        RHI_CommandList::BeginTimeblock("particle_emit");
         RHI_CommandList::SetShader(shader_emit, "particle_emit");
         RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_buffer_a), buf_a);
         RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_counter), buf_counter);
@@ -1071,10 +1071,10 @@ namespace spartan
 
             RHI_CommandList::Dispatch((emit_counts[i] + thread_group - 1) / thread_group, 1, 1);
         }
-        RHI_CommandList::EndMarker();
+        RHI_CommandList::EndTimeblock();
 
         // simulate
-        RHI_CommandList::BeginMarker("particle_simulate");
+        RHI_CommandList::BeginTimeblock("particle_simulate");
         {
             RHI_CommandList::SetShader(shader_simulate, "particle_simulate");
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_buffer_a), buf_a);
@@ -1088,13 +1088,13 @@ namespace spartan
             }
             RHI_CommandList::Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
         }
-        RHI_CommandList::EndMarker();
+        RHI_CommandList::EndTimeblock();
 
         // render, each particle becomes a camera facing quad with the emitter selected blend mode
         // one draw per emitter so each can bind its own smoke texture and only its own range is drawn
         RHI_Texture* tex_white  = GetStandardTexture(Renderer_StandardTexture::White);
         RHI_Texture* tex_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        RHI_CommandList::BeginMarker("particle_render");
+        RHI_CommandList::BeginTimeblock("particle_render");
         for (uint32_t i = 0; i < emitter_count; i++)
         {
             // Traffic cars retain their smoke emitters even when idle. Keep
@@ -1152,7 +1152,7 @@ namespace spartan
             RHI_CommandList::Draw(range_counts[i] * 6);
         }
 
-        RHI_CommandList::EndMarker();
+        RHI_CommandList::EndTimeblock();
 
         if (volume_shaders_ready && volume_present)
         {
@@ -1164,16 +1164,16 @@ namespace spartan
             RHI_Texture* tex_volume_write = m_pass_state.particle_volume_history.SelectWrite(tex_volume, tex_volume_history);
             RHI_Texture* tex_volume_read  = m_pass_state.particle_volume_history.SelectRead(tex_volume, tex_volume_history);
 
-            RHI_CommandList::BeginMarker("particle_volume_clear");
+            RHI_CommandList::BeginTimeblock("particle_volume_clear");
             {
                 RHI_CommandList::SetShader(shader_volume_clear, "particle_volume_clear");
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_volume_density), buf_volume_density);
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_volume_color), buf_volume_color);
                 RHI_CommandList::Dispatch((voxel_count + thread_group - 1) / thread_group, 1, 1);
             }
-            RHI_CommandList::EndMarker();
+            RHI_CommandList::EndTimeblock();
 
-            RHI_CommandList::BeginMarker("particle_volume_splat");
+            RHI_CommandList::BeginTimeblock("particle_volume_splat");
             {
                 RHI_CommandList::SetShader(shader_volume_splat, "particle_volume_splat");
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_buffer_a), buf_a);
@@ -1182,9 +1182,9 @@ namespace spartan
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_volume_color), buf_volume_color);
                 RHI_CommandList::Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
             }
-            RHI_CommandList::EndMarker();
+            RHI_CommandList::EndTimeblock();
 
-            RHI_CommandList::BeginMarker("particle_volume_resolve");
+            RHI_CommandList::BeginTimeblock("particle_volume_resolve");
             {
                 RHI_CommandList::SetShader(shader_volume_resolve, "particle_volume_resolve");
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_volume_density), buf_volume_density);
@@ -1195,9 +1195,9 @@ namespace spartan
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                 RHI_CommandList::Dispatch((renderer_particle_volume_width + 7) / 8, (renderer_particle_volume_height + 7) / 8, (renderer_particle_volume_depth + 3) / 4);
             }
-            RHI_CommandList::EndMarker();
+            RHI_CommandList::EndTimeblock();
 
-            RHI_CommandList::BeginMarker("particle_volume_composite");
+            RHI_CommandList::BeginTimeblock("particle_volume_composite");
             {
                 RHI_CommandList::SetShader(shader_volume_composite, "particle_volume_composite");
                 RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
@@ -1217,7 +1217,7 @@ namespace spartan
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::cluster_light_indices), GetBuffer(Renderer_Buffer::ClusterLightIndices));
                 RHI_CommandList::Dispatch(tex_render);
             }
-            RHI_CommandList::EndMarker();
+            RHI_CommandList::EndTimeblock();
 
             if (!IsSecondaryViewActive())
             {

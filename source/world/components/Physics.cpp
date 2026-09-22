@@ -3677,6 +3677,7 @@ namespace spartan
                         bound.position = p;
                         bound.tangent = t;
                         bound.bitangent = b;
+                        if (bound.lod_index == 0) pending->cage.include_contact_vertex(part.to_wheel * p);
                         bound.weights = pending->cage.bind(part.to_wheel * p,
                             part.to_wheel * t - origin, part.to_wheel * b - origin);
                         bindings.push_back(bound);
@@ -3715,7 +3716,8 @@ namespace spartan
         Vector3 normal = from_px_vec3(state.contact_normal);
         normal = rotation.Conjugate() * (m_vehicle_render_rotation * (m_vehicle_physics_rotation.Conjugate() * normal));
         const Vector3 point = rotation.Conjugate() * (TransformVehiclePointToRender(from_px_vec3(state.contact_point)) - hub);
-        const float distance = -normal.Dot(point);
+        float distance = -normal.Dot(point);
+        grounded &= car::prepare_tire_contact_plane(normal, distance, radius);
         const float stiffness = car::loaded_tire_stiffness(spec, state.pressure_bar) / std::max(spec.tire_vertical_stiffness, 1.0f);
         const float ambient_bar = m_vehicle_simulation->ambient_pressure / 100000.0f;
         // At rest, keep the solved shape until the support plane moves by a
@@ -3768,6 +3770,13 @@ namespace spartan
                 auto& vertices = part.mesh->GetVertices();
                 const auto& original = part.source->GetVertices();
                 const Vector3 origin = part.from_wheel * Vector3::Zero;
+                const Vector3 wheel_origin = part.to_wheel * Vector3::Zero;
+                const Vector3 plane_normal(
+                    normal.Dot(part.to_wheel * Vector3::Right - wheel_origin),
+                    normal.Dot(part.to_wheel * Vector3::Up - wheel_origin),
+                    normal.Dot(part.to_wheel * Vector3::Forward - wheel_origin));
+                const float plane_distance = normal.Dot(wheel_origin) + distance;
+                const Vector3 contact_direction = part.from_wheel * normal - origin;
                 SP_PROFILE_CPU_START("tire_mesh_prepare");
                 // Transform the 576 cage displacements once instead of applying
                 // three matrices to every affected render vertex.
@@ -3786,7 +3795,7 @@ namespace spartan
                     }
                 }
                 auto skin_range = [&part, &vertices, &original, &local_displacement,
-                    visual_ptr = visual.get(), current_lod](uint32_t begin, uint32_t end)
+                    visual_ptr = visual.get(), current_lod, grounded, plane_normal, plane_distance, contact_direction](uint32_t begin, uint32_t end)
                 {
                     for (uint32_t j = begin; j < end; ++j)
                     {
@@ -3807,6 +3816,11 @@ namespace spartan
                             t += d * bound.weights.tangent_weight[k];
                             b += d * bound.weights.bitangent_weight[k];
                         }
+                        // Contact belongs to actual rubber vertices, not to the
+                        // enclosing cage. Resolve interpolation error against
+                        // the same physical support plane, including its tangent
+                        // derivative, so a rounded tread cannot penetrate it.
+                        if (grounded) car::project_tire_vertex(p, t, b, plane_normal, plane_distance, contact_direction);
                         vertex.set_position(p);
                         const Vector3 n = t.Cross(b);
                         // Octahedral packing is scale invariant; no square roots needed.

@@ -1394,5 +1394,4 @@ namespace spartan
             if (entity->GetObjectName() == name) return entity;
         return nullptr;
     }
-
 }

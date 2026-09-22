@@ -75,7 +75,7 @@ void ray_gen()
 
     // source roughness drives the ray spread, the vndf sampler is mirror sharp at roughness 0
     float4 normal_sample = tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
-    uint material_index  = uint(normal_sample.a);
+    uint material_index  = unpack_material_index(normal_sample.a);
     MaterialParameters mat = material_parameters[material_index];
     float4 decal_material = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
     float roughness = decal_material.r;
@@ -144,7 +144,7 @@ void ray_gen()
     ReflectionSurface payload = reconstruct_reflection_surface(
         hit_record.hit_distance, hit_record.instance_index, hit_record.primitive_index, hit_record.barycentrics_packed, ray);
     tex_uav[launch_id]  = float4(payload.position, payload.hit_distance);
-    tex_uav2[launch_id] = float4(payload.normal, payload.material_index);
+    tex_uav2[launch_id] = float4(payload.normal, pack_material_index((uint)payload.material_index));
     tex_uav3[launch_id] = float4(payload.albedo, payload.roughness);
     tex_uav4[launch_id] = float4(payload.emission, 0.0f);
 #endif
@@ -242,7 +242,7 @@ ReflectionSurface reconstruct_reflection_surface(float ray_t, uint instance_inde
     // normal mapping, mild mip bias to avoid specular sparkle on detailed normal maps
     if (!terrain_shaded && mat.has_texture_normal())
     {
-        uint  normal_texture_index = material_index + material_texture_index_normal;
+        uint  normal_texture_index = get_material_texture_index(material_index, material_texture_index_normal);
         float normal_mip           = clamp(distance_mip + lerp(1.5f, 0.0f, n_dot_v_hit), 0.0f, 5.0f);
         float3 normal_sample       = material_textures[normal_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, normal_mip).xyz;
         // Match the G-buffer's BC5 decode. The texture's missing blue channel is zero,
@@ -266,7 +266,7 @@ ReflectionSurface reconstruct_reflection_surface(float ray_t, uint instance_inde
     }
     else if (mat.has_texture_albedo())
     {
-        uint  albedo_texture_index = material_index + material_texture_index_albedo;
+        uint  albedo_texture_index = get_material_texture_index(material_index, material_texture_index_albedo);
         float4 sampled_albedo = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
         if (mat.is_albedo_srgb())
         {
@@ -285,7 +285,7 @@ ReflectionSurface reconstruct_reflection_surface(float ray_t, uint instance_inde
     }
     else if (mat.has_texture_roughness())
     {
-        float4 packed = material_textures[material_index + material_texture_index_packed].SampleLevel(
+        float4 packed = material_textures[get_material_texture_index(material_index, material_texture_index_packed)].SampleLevel(
             GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
         roughness *= packed.g;
     }
@@ -298,7 +298,7 @@ ReflectionSurface reconstruct_reflection_surface(float ray_t, uint instance_inde
     }
     else if (mat.has_texture_emissive())
     {
-        float3 emission = material_textures[material_index + material_texture_index_emission].SampleLevel(
+        float3 emission = material_textures[get_material_texture_index(material_index, material_texture_index_emission)].SampleLevel(
             GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
         if (mat.is_emissive_srgb())
         {

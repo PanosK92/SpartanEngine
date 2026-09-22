@@ -493,25 +493,9 @@ void Viewport::OnTickVisible()
         }
     }
 
-    // entity transform gizmo (shows when entities are selected and facing the camera)
-    if (camera)
-    {
-        const std::vector<spartan::Entity*>& selected_entities = camera->GetSelectedEntities();
-        if (!selected_entities.empty())
-        {
-            spartan::Entity* primary_selected = selected_entities[0];
-            if (primary_selected)
-            {
-                spartan::Entity* camera_entity = camera->GetEntity();
-                spartan::math::Vector3 dir_to_entity = primary_selected->GetPosition() - camera_entity->GetPosition();
-                dir_to_entity.Normalize();
-                if (dir_to_entity.Dot(camera_entity->GetForward()) >= 0.0f)
-                {
-                    ImGui::TransformGizmo::tick();
-                }
-            }
-        }
-    }
+    // The gizmo projects its own pivot, which can be the geometry center of a hierarchy.
+    // Culling by the selected entity's origin hides visible gizmos on offset geometry.
+    ImGui::TransformGizmo::tick();
 
     // check if the engine wants cursor control
     if (camera && camera->GetFlag(spartan::CameraFlags::IsControlled))

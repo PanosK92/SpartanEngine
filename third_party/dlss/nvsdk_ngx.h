@@ -702,4 +702,11 @@ const wchar_t* NVSDK_CONV GetNGXResultAsString(NVSDK_NGX_Result InNGXResult);
 } // extern "C"
 #endif
 
+#if defined(NVSDK_NGX_HEADER_ONLY)
+#include "nvsdk_ngx_loader.h"
+#if !defined(NVSDK_NGX_NO_CUDA)
+#  include "nvsdk_ngx_standalone_cuda.h"
+#endif
+#endif /* NVSDK_NGX_HEADER_ONLY */
+
 #endif // #define NVSDK_NGX_H

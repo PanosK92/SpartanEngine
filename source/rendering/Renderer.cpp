@@ -249,6 +249,12 @@ namespace spartan
                     const RenderSceneData& data = *entries[i];
                     if (!data.active.load(memory_order_relaxed) || (data.flags & RenderFlags::ExcludeFromRayTracing)) continue;
                     Render* render = data.render;
+                    // Prepare resident geometry independently of TLAS visibility. Otherwise
+                    // travelling across a culling boundary starts another BLAS burst and
+                    // temporarily disables ray-traced lighting for the whole frame.
+                    const bool missing = !render->HasAccelerationStructure();
+                    batch.missing |= missing;
+                    if (missing) batch.builds.push_back(render);
                     // Keep the same off-screen shadow/reflection visibility budget.
                     if (camera && data.instances.empty())
                     {
@@ -263,9 +269,7 @@ namespace spartan
                     }
                     batch.renders.push_back(render);
                     if (!data.instances.empty()) batch.instanced.push_back(render);
-                    const bool missing = !render->HasAccelerationStructure();
-                    batch.missing |= missing;
-                    if (missing || render->NeedsBlasRefit()) batch.builds.push_back(render);
+                    if (!missing && render->NeedsBlasRefit()) batch.builds.push_back(render);
                 }
             };
             if (jobs == 1) collect(0, 1);
@@ -856,7 +860,11 @@ namespace spartan
         RHI_Device::Bind(RHI_Frame_List::Graphics);
 
         m_draw_data_count      = 0;
-        m_draw_data_gpu_synced = false;
+        // Only scene rendering has a bulk upload later in this frame. During
+        // loading, ImGui must upload its projection immediately; otherwise it
+        // reads stale transforms from the rotating frame slots and draws can
+        // disappear, exposing old swapchain contents.
+        m_draw_data_gpu_synced = !render_world;
         Entity* primary_camera_entity = nullptr;
         Entity* secondary_camera_entity = nullptr;
         Entity* secondary_render_root_entity = nullptr;
@@ -2192,8 +2200,8 @@ namespace spartan
         const bool ray_tracing_allowed = !secondary_render_root_active;
         const bool tlas_available      = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr && ray_tracing_allowed;
 
-        // frame cb is uploaded before blas builds, so shaders would still see rt on while
-        // skip_rt_trace is about to flip. any missing blas means spawn is in flight
+        // Initial preparation needs a TLAS before enabling tracing. Once one exists,
+        // spawning geometry must not switch lighting modes for the entire scene.
         bool pending_blas = ProgressTracker::IsLoading();
         if (ray_tracing_allowed && RHI_Device::IsSupportedRayTracing() && !ProgressTracker::IsLoading())
         {
@@ -2201,10 +2209,11 @@ namespace spartan
             pending_blas = ray_tracing_pending_blas;
         }
 
-        const bool ray_tracing_ready = ray_tracing_allowed && !pending_blas;
+        const bool ray_tracing_ready = ray_tracing_allowed && !ProgressTracker::IsLoading() &&
+            (!pending_blas || tlas_available);
         m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>() && ray_tracing_ready, 1 << 0);
         m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                                        1 << 1);
-        m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available && !pending_blas, 1 << 2);
+        m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available && ray_tracing_ready, 1 << 2);
         m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>() && ray_tracing_ready,              1 << 3);
     }
 
@@ -2923,6 +2932,7 @@ namespace spartan
         entry.instance_offset    = 0;
         entry.instance_index     = 0;
         entry.lod_vertex_offset  = 0;
+        entry.previous_vertex_offset = render ? GeometryBuffer::GetPreviousVertexOffset(render->GetVertexOffset()) : 0;
         entry.meshlet_vertex_base = 0;
         entry.meshlet_micro_base = 0;
 
@@ -2964,15 +2974,16 @@ namespace spartan
         static unordered_set<uint64_t> unique_material_ids;
         static bool capacity_warning_logged = false;
         uint32_t count = 0;
-        // Only shader-visible maps need descriptors. Reserving the five CPU-only
-        // source maps exhausted the table in plan.world and sent grass to index 0.
-        // Keep this order in sync with common_resources_buffers.hlsl; serialized
-        // MaterialTextureType indices remain unchanged.
+        // Materials and textures have independent indices. Share descriptors for reused
+        // textures and reserve slot 0 for absent maps, including textureless grass.
+        unordered_map<RHI_Texture*, uint32_t> texture_indices;
+        uint32_t texture_count = 1;
+        // Keep this order in sync with common_resources_buffers.hlsl.
         static constexpr array gpu_texture_types = {
             MaterialTextureType::Color, MaterialTextureType::Normal,
             MaterialTextureType::Emission, MaterialTextureType::Packed
         };
-        const uint32_t material_slot_count = static_cast<uint32_t>(gpu_texture_types.size()) * Material::slots_per_texture;
+        static_assert(gpu_texture_types.size() * Material::slots_per_texture == 16);
 
         auto should_decode_as_srgb = [](RHI_Texture* texture)
         {
@@ -2999,14 +3010,14 @@ namespace spartan
                    format == RHI_Format::BC7_Unorm;
         };
     
-        auto update_material = [&count, &should_decode_as_srgb, material_slot_count](Material* material)
+        auto update_material = [&count, &should_decode_as_srgb, &texture_indices, &texture_count](Material* material)
         {
             if (unique_material_ids.find(material->GetObjectId()) != unique_material_ids.end())
             {
                 return;
             }
 
-            if (count + material_slot_count > rhi_max_array_size)
+            if (count >= rhi_max_array_size)
             {
                 material->SetIndex(0);
                 if (!capacity_warning_logged)
@@ -3094,18 +3105,36 @@ namespace spartan
 
                     for (uint32_t slot = 0; slot < Material::slots_per_texture; slot++)
                     {
-                        uint32_t bindless_index = count + (type * Material::slots_per_texture) + slot;
-                        m_bindless_textures[bindless_index] = material->GetTexture(texture_type, slot);
+                        RHI_Texture* texture = material->GetTexture(texture_type, slot);
+                        if (!texture)
+                            continue;
+
+                        auto it = texture_indices.find(texture);
+                        if (it == texture_indices.end())
+                        {
+                            if (texture_count >= rhi_max_array_size)
+                            {
+                                if (!capacity_warning_logged)
+                                {
+                                    SP_LOG_ERROR("material texture descriptor capacity exceeded");
+                                    capacity_warning_logged = true;
+                                }
+                                continue;
+                            }
+                            it = texture_indices.emplace(texture, texture_count).first;
+                            m_bindless_textures[texture_count++] = texture;
+                        }
+                        properties[count].texture_indices[type * Material::slots_per_texture + slot] = it->second;
                     }
                 }
             }
     
             material->SetIndex(count);
 
-            count += material_slot_count;
+            ++count;
         };
     
-        auto update_entities = [update_material]()
+        auto update_entities = [&update_material]()
         {
             for (Entity* entity : render_entities())
             {
@@ -3201,7 +3230,7 @@ namespace spartan
                 entry.terrain_snow_level    = terrain.snow_level;
                 entry.terrain_layer_base    = layer_base;
                 entry.terrain_layer_count   = layer_count;
-                entry.terrain_layer_stride  = material_slot_count;
+                entry.terrain_layer_stride  = 1;
                 entry.terrain_snow_amount   = terrain.snow_amount;
                 entry.terrain_wetness       = terrain.wetness;
                 entry.terrain_flags         = (terrain.map_a && terrain.map_b) ? TerrainLayerFlags_HasMaps : 0u;
@@ -3873,6 +3902,7 @@ namespace spartan
                 draw_data.instance_offset    = render->GetGlobalInstanceOffset();
                 draw_data.instance_index     = 0;
                 draw_data.lod_vertex_offset  = render->GetVertexOffset(lod);
+                draw_data.previous_vertex_offset = GeometryBuffer::GetPreviousVertexOffset(draw_data.lod_vertex_offset);
                 draw_data.lod_meshlet_offset = render->GetGlobalMeshletOffset() + render->GetMeshletOffset(lod);
                 draw_data.meshlet_vertex_base = render->GetMesh()->GetGlobalMeshletVertexOffset();
                 draw_data.meshlet_micro_base = render->GetMesh()->GetGlobalMeshletMicroOffset();
@@ -4257,7 +4287,8 @@ namespace spartan
 
             constexpr uint32_t blas_builds_per_frame = 64;
             constexpr uint32_t blas_triangles_per_frame = 250000;
-            constexpr double blas_cpu_budget_ms = 2.0;
+            // Finish initial preparation faster; runtime additions keep the small budget.
+            const double blas_cpu_budget_ms = m_tlas ? 2.0 : 8.0;
             const auto blas_start = chrono::steady_clock::now();
             uint64_t blas_triangles = 0;
 
@@ -4305,8 +4336,11 @@ namespace spartan
             blas_burst_done = (blas_remaining == 0);
             blas_built_this_frame = blas_built > 0;
 
-            // a blas written this list is not safe to trace from batch b, skip until the burst settles
-            m_pass_state.skip_rt_trace = blas_built_this_frame || !blas_burst_done;
+            // Both backends barrier BLAS writes before TLAS construction, then TLAS
+            // writes before tracing. Compute batch B follows A on the same queue.
+            // Only initial preparation needs a blackout; runtime additions are safe
+            // to trace this frame, with still-unbuilt meshes omitted below.
+            m_pass_state.skip_rt_trace = !m_tlas && (blas_built_this_frame || !blas_burst_done);
 
             // free the shared static scratch only once the burst fully completes
             // freeing mid-burst would force a reallocation on next frame
@@ -4324,9 +4358,10 @@ namespace spartan
             SP_PROFILE_CPU_END();
         }
 
-        // skip tlas build until all blas are ready so we don't keep rebuilding it with an incomplete set
+        // Wait for the initial resident set, but keep an existing scene current while
+        // newly spawned geometry is budgeted in. Never retain invalidated BLAS references.
         Terrain* preparing_terrain = Terrain::FindActive();
-        if (!blas_burst_done || Spline::HasPendingRoadWork() || (preparing_terrain && preparing_terrain->IsGenerating()))
+        if ((!blas_burst_done && !m_tlas) || Spline::HasPendingRoadWork() || (preparing_terrain && preparing_terrain->IsGenerating()))
         {
             m_pass_state.skip_rt_trace = true;
             return;
@@ -4339,6 +4374,7 @@ namespace spartan
             const bool structural_tlas_rebuild =
                 !m_tlas ||
                 ray_tracing_membership_dirty ||
+                ray_tracing_pending_blas ||
                 materials_uploaded_this_frame ||
                 blas_refit_done ||
                 blas_built_this_frame;
@@ -4376,15 +4412,16 @@ namespace spartan
 
             if (!needs_tlas_rebuild)
             {
-                const float move_window_sec = max(
-                    static_cast<float>(Timer::GetDeltaTimeSec()) * 2.0f,
-                    0.05f
-                );
-
-                for (Render* render : ray_tracing_renders)
+                for (size_t i = 0; i < ray_tracing_renders.size(); ++i)
                 {
+                    Render* render = ray_tracing_renders[i];
+                    if (render->HasInstancing()) continue; // checked by the instanced cache above
                     Entity* entity = render->GetEntity();
-                    if (entity->GetTimeSinceLastTransform() <= move_window_sec)
+                    const SingleTlasCache& cache = single_tlas_caches[i];
+                    // Compare with the pose actually submitted, rather than rebuilding
+                    // for a time window after movement (or missing an older pending edit).
+                    if (cache.entity_id != entity->GetObjectId() ||
+                        cache.transform_revision != entity->GetTransformRevision())
                     {
                         needs_tlas_rebuild = true;
                         break;

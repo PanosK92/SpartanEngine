@@ -310,18 +310,20 @@ namespace spartan
                     : nullptr;
                 // Record the complete contact impulse for each vehicle even if
                 // the other actor has no entity (terrain/bench/static geometry).
-                PxVec3 vehicle_impulse(0);
                 for (PxU32 i = 0; i < pair_count; ++i)
                 {
+                    PxVec3 vehicle_impulse(0);
                     vector<PxContactPairPoint> contacts(pairs[i].contactCount);
                     PxU32 count = contacts.empty() ? 0 : pairs[i].extractContacts(contacts.data(), static_cast<PxU32>(contacts.size()));
                     for (PxU32 j = 0; j < count; ++j) vehicle_impulse += contacts[j].impulse;
+                    auto record = [&](Entity* entity, Entity* other, const PxVec3& impulse) {
+                        if (entity) if (auto* component = entity->GetComponent<Physics>())
+                            if (auto* simulation = component->GetVehicleSimulation())
+                                simulation->record_contact_impulse(impulse, other ? other->GetObjectId() : 0, count, unsigned(pairs[i].flags));
+                    };
+                    record(entity_a, entity_b, vehicle_impulse);
+                    record(entity_b, entity_a, -vehicle_impulse);
                 }
-                auto record = [&](Entity* entity, const PxVec3& impulse) {
-                    if (entity) if (auto* component = entity->GetComponent<Physics>())
-                        if (auto* simulation = component->GetVehicleSimulation()) simulation->record_contact_impulse(impulse);
-                };
-                record(entity_a, vehicle_impulse); record(entity_b, -vehicle_impulse);
                 if (!entity_a || !entity_b) return;
 
                 for (PxU32 i = 0; i < pair_count; ++i)

@@ -202,16 +202,12 @@ typedef enum NVSDK_NGX_DLSSG_ResourceFlags
 // Specifies if orthographic projection is used or not.
 #define NVSDK_NGX_DLSSG_Parameter_OrthoProjection            "DLSSG.OrthoProjection"
 
-#define NVSDK_NGX_Parameter_DLSSGGetCurrentSettingsCallback  "DLSSG.GetCurrentSettingsCallback"
-#define NVSDK_NGX_Parameter_DLSSGEstimateVRAMCallback        "DLSSG.EstimateVRAMCallback"
+#define NVSDK_NGX_DLSSG_Parameter_EstimateVRAMCallback       "DLSSG.EstimateVRAMCallback"
 
-#define NVSDK_NGX_Parameter_DLSSGMustCallEval                "DLSSG.MustCallEval"
-#define NVSDK_NGX_Parameter_DLSSGBurstCaptureRunning         "DLSSG.BurstCaptureRunning"
+#define NVSDK_NGX_DLSSG_Parameter_InvertXAxis        "DLSSG.InvertXAxis"
+#define NVSDK_NGX_DLSSG_Parameter_InvertYAxis        "DLSSG.InvertYAxis"
 
-#define NVSDK_NGX_Parameter_DLSSGInvertXAxis          "DLSSG.InvertXAxis"
-#define NVSDK_NGX_Parameter_DLSSGInvertYAxis          "DLSSG.InvertYAxis"
-
-#define NVSDK_NGX_DLSSG_Parameter_UserDebugText       "DLSSG.UserDebugText"
+#define NVSDK_NGX_DLSSG_Parameter_UserDebugText      "DLSSG.UserDebugText"
 
 #define NVSDK_NGX_DLSSG_Parameter_MvecInvalidValue   "DLSSG.MvecInvalidValue"
 #define NVSDK_NGX_DLSSG_Parameter_MvecDilated        "DLSSG.MvecDilated"

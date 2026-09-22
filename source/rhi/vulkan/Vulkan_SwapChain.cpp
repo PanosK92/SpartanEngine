@@ -596,18 +596,15 @@ namespace spartan
             // rotate acquire semaphores independently from swapchain images
             RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[semaphore_index].get();
 
-            // ensure the semaphore is free; wait for any command list that used this semaphore
-            if (RHI_CommandList* cmd_list = signal_semaphore->GetUserCmdList())
+            // Wait only for the submission that consumed this semaphore, not any
+            // newer work recorded into the same command-list object.
+            const RHI_Work& consumer = signal_semaphore->GetConsumer();
+            if (!consumer.IsComplete())
             {
-                if (cmd_list->GetState() == RHI_CommandListState::Submitted)
-                {
-                    ScopedTimeBlock time_block(
-                        "acquire_semaphore_wait"
-                    );
-                    cmd_list->WaitForExecution();
-                }
-                signal_semaphore->SetUserCmdList(nullptr);
+                ScopedTimeBlock time_block("acquire_semaphore_wait");
+                consumer.timeline->Wait(UINT64_MAX, consumer.value);
             }
+            signal_semaphore->SetConsumer({});
 
             // acquire with a reasonable timeout
             VkResult result;

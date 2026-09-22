@@ -1460,7 +1460,7 @@ namespace spartan
 
         if (semaphore_wait)
         {
-            semaphore_wait->SetUserCmdList(this);
+            semaphore_wait->SetConsumer(GetWork());
         }
 
         m_state = RHI_CommandListState::Submitted;
@@ -1719,8 +1719,9 @@ namespace spartan
                 color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
                 color_attachment.imageView                 = static_cast<VkImageView>(swapchain->GetRhiRtv());
                 color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(RHI_Image_Layout::General)];
-                color_attachment.loadOp                    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                color_attachment.loadOp                    = m_load_color_render_targets[0] ? VK_ATTACHMENT_LOAD_OP_LOAD : get_color_load_op(m_pso.clear_color[0]);
                 color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
+                color_attachment.clearValue.color          = { m_pso.clear_color[0].r, m_pso.clear_color[0].g, m_pso.clear_color[0].b, m_pso.clear_color[0].a };
     
                 SP_ASSERT(color_attachment.imageView != nullptr);
     
@@ -1823,7 +1824,8 @@ namespace spartan
         m_load_depth_render_target = m_pso.render_target_depth_texture != nullptr;
         for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
         {
-            m_load_color_render_targets[i] = m_pso.render_target_color_textures[i] != nullptr;
+            // A resumed UI pass must preserve the swapchain image just like an offscreen target.
+            m_load_color_render_targets[i] = m_pso.render_target_color_textures[i] != nullptr || (i == 0 && m_pso.render_target_swapchain);
         }
         m_render_pass_active = true;
     }
@@ -1840,7 +1842,8 @@ namespace spartan
             bool clear_pending = m_pso.render_target_depth_texture && !m_load_depth_render_target && m_pso.clear_depth != rhi_depth_load && m_pso.clear_depth != rhi_depth_dont_care;
             for (uint32_t i = 0; i < rhi_max_render_target_count && !clear_pending; i++)
             {
-                clear_pending = m_pso.render_target_color_textures[i] && !m_load_color_render_targets[i] && m_pso.clear_color[i] != rhi_color_load && m_pso.clear_color[i] != rhi_color_dont_care;
+                const bool has_color_target = m_pso.render_target_color_textures[i] || (i == 0 && m_pso.render_target_swapchain);
+                clear_pending = has_color_target && !m_load_color_render_targets[i] && m_pso.clear_color[i] != rhi_color_load && m_pso.clear_color[i] != rhi_color_dont_care;
             }
 
             if (clear_pending)

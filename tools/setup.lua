@@ -34,6 +34,20 @@ local LIBRARY_HASH     = "3477dc97dfef688c4e4348032e3c658ba6fbd6352f0fa39a387021
 local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "dxcompiler.dll"),
     path.join(LIBRARIES_DIR, "libxess.dll"),
+    path.join(LIBRARIES_DIR, "nvngx_dlss.dll"),
+}
+
+-- DLSS 4.5 Super Resolution; headers are vendored in third_party/dlss.
+local DLSS_VERSION = "310.9.1"
+local DLSS_URL = "https://raw.githubusercontent.com/NVIDIA/DLSS/v" .. DLSS_VERSION .. "/lib/Windows_x86_64/"
+-- Keep the KHR static MT/MTd libraries used by both graphics backends.
+local DLSS_FILES = {
+    { source = "rel/nvngx_dlss.dll", destination = "nvngx_dlss.dll",
+      sha256 = "3975567b8943c53acce397f2b72380092f84f162d00b0d2c7d08a1025c563983" },
+    { source = "khr/x64/nvsdk_ngx_khr_s.lib", destination = "nvsdk_ngx_s.lib",
+      sha256 = "2534d5fb31a38a7b37b11869272915d1f18c4b484ffd61a0b36956bab9ab739e" },
+    { source = "khr/x64/nvsdk_ngx_khr_s_dbg.lib", destination = "nvsdk_ngx_s_dbg.lib",
+      sha256 = "f2b62b2d2f4322cd6e267f9bdf814194a85ce3e9243f3432af6d95240b55e901" },
 }
 
 -- xess-sr overlay from github so upscaler stays current without libraries.7z churn
@@ -124,9 +138,15 @@ local function compute_sha256(p)
 
     local cmd
     if is_windows() then
+        -- Use .NET directly: PowerShell 7's inherited module path can hide
+        -- Get-FileHash from Windows PowerShell during project generation.
+        local literal_path = shell_path(p):gsub("'", "''")
         cmd = string.format(
-            'powershell -NoProfile -Command "(Get-FileHash -Algorithm SHA256 -LiteralPath %s).Hash.ToLower()"',
-            quote(p)
+            'powershell -NoProfile -Command "$s = [IO.File]::OpenRead(\'%s\'); ' ..
+            '$h = [Security.Cryptography.SHA256]::Create(); try { ' ..
+            '[BitConverter]::ToString($h.ComputeHash($s)).Replace(\'-\', \'\').ToLowerInvariant() ' ..
+            '} finally { $s.Dispose(); $h.Dispose() }"',
+            literal_path
         )
     else
         cmd = string.format("sha256sum %s | awk '{print $1}'", quote(p))
@@ -356,6 +376,8 @@ local function ensure_xess_sdk()
     }
 
     local present = read_text(XESS_STAMP) == XESS_VERSION
+        and compute_sha256(path.join(LIBRARIES_DIR, "libxess.dll")) == "251659dd84a3e84de67c886a4186e01f3eca49b00641906fe38bb6b807e5d5b7"
+        and compute_sha256(path.join(LIBRARIES_DIR, "libxess.lib")) == "5e16bf3745358b54ecfb52f04bc4327536409f981a317819005075f57e0be813"
     if present then
         for _, p in ipairs(required) do
             if not file_exists(p) then
@@ -413,6 +435,30 @@ local function ensure_xess_sdk()
     os.remove(XESS_ZIP)
 
     print("xess sdk " .. XESS_VERSION .. " installed")
+end
+
+local function ensure_dlss_sdk()
+    if not is_windows() then
+        print("  not windows, skipping dlss sdk")
+        return
+    end
+
+    -- Check actual files: extracting libraries.7z can overwrite a newer SDK.
+    for _, entry in ipairs(DLSS_FILES) do
+        local destination = path.join(LIBRARIES_DIR, entry.destination)
+        if compute_sha256(destination) ~= entry.sha256 then
+            local temporary = destination .. ".tmp"
+            print("downloading dlss " .. DLSS_VERSION .. ": " .. entry.destination)
+            local result, code = download_with_progress(DLSS_URL .. entry.source, temporary)
+            if result ~= "OK" or compute_sha256(temporary) ~= entry.sha256 then
+                os.remove(temporary)
+                error(string.format("dlss download or checksum failed: %s (http %s)", tostring(result), tostring(code)))
+            end
+            copy_file(temporary, destination)
+            os.remove(temporary)
+        end
+    end
+    print("dlss sdk " .. DLSS_VERSION .. " verified")
 end
 
 local function ensure_steamworks()
@@ -476,8 +522,9 @@ function setup.run()
     print("\n[3/7] extracting archive...")
     extract_archive()
 
-    print("\n[4/7] ensuring xess sdk...")
+    print("\n[4/7] ensuring upscaler sdks...")
     ensure_xess_sdk()
+    ensure_dlss_sdk()
 
     print("\n[5/7] ensuring d3d12 agility sdk...")
     ensure_agility_sdk()

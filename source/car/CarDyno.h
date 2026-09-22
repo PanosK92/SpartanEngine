@@ -29,6 +29,7 @@ namespace car
         float time, target_rpm, rpm, wheel_rpm, throttle;
         float combustion_nm, combustion_kw, axle_nm, axle_kw, motor_nm, motor_kw;
         float boost_bar, battery_soc, clutch_slip_rpm;
+        float engine_net_nm, engine_net_kw; // after engine losses, before rotor acceleration
     };
 
     // Speed-controlled hub fixture. No tire contact, roller inertia or road load.

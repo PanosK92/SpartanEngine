@@ -72,6 +72,17 @@ namespace spartan
             return std::max(preset.height * 0.5f, wheel_extent);
         }
 
+        float get_body_visual_offset_y(const car::car_definition& definition, Physics* physics)
+        {
+            // The shared Ferrari mesh keeps its original origin correction. Using the
+            // recipient's suspension height here would lower the buggy shell back
+            // down to the wheels and cancel its extra chassis clearance.
+            constexpr float ferrari_body_offset_y = -(1.116f * 0.5f + 0.3f) + 0.1f;
+            return definition.body_is_placeholder
+                ? ferrari_body_offset_y
+                : physics->GetVehicleSimulation()->get_chassis_visual_offset_y();
+        }
+
         enum class CarMaterialSlot
         {
             Unknown,
@@ -793,17 +804,9 @@ namespace spartan
             if (car->m_body_entity)
             {
                 car->m_body_entity->SetParent(car->m_vehicle_entity);
-                if (definition->body_model.empty())
-                {
-                    car->m_body_entity->SetPositionLocal(math::Vector3::Zero);
-                    car->m_body_entity->SetRotationLocal(math::Quaternion::Identity);
-                }
-                else
-                {
-                    car->m_body_entity->SetPositionLocal(math::Vector3(0.0f, physics->GetVehicleSimulation()->get_chassis_visual_offset_y(), 0.07f));
-                    car->m_body_entity->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Right, math::pi * 0.5f));
-                    car->m_body_entity->SetScaleLocal(1.1f);
-                }
+                car->m_body_entity->SetPositionLocal(math::Vector3(0.0f, get_body_visual_offset_y(*definition, physics), 0.07f));
+                car->m_body_entity->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Right, math::pi * 0.5f));
+                car->m_body_entity->SetScaleLocal(1.1f);
 
                 physics->SetChassisEntity(car->m_body_entity, excluded_wheel_entities);
             }
@@ -1142,17 +1145,9 @@ namespace spartan
             m_body_entity->SetParent(m_vehicle_entity);
             // play stop strips non transient play spawned entities, keep the body with the car
             mark_entity_tree_transient(m_body_entity);
-            if (definition->body_model.empty())
-            {
-                m_body_entity->SetPositionLocal(math::Vector3::Zero);
-                m_body_entity->SetRotationLocal(math::Quaternion::Identity);
-            }
-            else
-            {
-                m_body_entity->SetPositionLocal(math::Vector3(0.0f, physics->GetVehicleSimulation()->get_chassis_visual_offset_y(), 0.07f));
-                m_body_entity->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Right, math::pi * 0.5f));
-                m_body_entity->SetScaleLocal(1.1f);
-            }
+            m_body_entity->SetPositionLocal(math::Vector3(0.0f, get_body_visual_offset_y(*definition, physics), 0.07f));
+            m_body_entity->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Right, math::pi * 0.5f));
+            m_body_entity->SetScaleLocal(1.1f);
             physics->SetChassisEntity(m_body_entity, excluded_wheel_entities);
         }
 
@@ -2743,29 +2738,6 @@ namespace spartan
         {
             return nullptr;
         }
-        if (m_definition->body_model.empty())
-        {
-            const ::car::car_preset& preset = m_definition->performance;
-            Entity* car_entity = World::CreateEntity();
-            car_entity->SetObjectName(FileSystem::GetFileNameWithoutExtensionFromFilePath(m_definition->file_path));
-            car_entity->AddTag("body");
-            auto create_part = [&](const char* name, const math::Vector3& position, const math::Vector3& scale)
-            {
-                Entity* part = World::CreateEntity();
-                part->SetObjectName(name);
-                part->SetParent(car_entity);
-                part->SetPositionLocal(position);
-                part->SetScaleLocal(scale);
-                Render* render = part->AddComponent<Render>();
-                render->SetMesh(MeshType::Cube);
-                render->SetDefaultMaterial();
-            };
-            create_part("generic_lower_body", math::Vector3(0.0f, -preset.height * 0.18f, 0.0f), math::Vector3(preset.width * 0.92f, preset.height * 0.38f, preset.length * 0.84f));
-            create_part("generic_cabin", math::Vector3(0.0f, preset.height * 0.22f, -preset.length * 0.08f), math::Vector3(preset.width * 0.68f, preset.height * 0.42f, preset.length * 0.48f));
-            create_part("generic_roof", math::Vector3(0.0f, preset.height * 0.48f, -preset.length * 0.08f), math::Vector3(preset.width * 0.72f, preset.height * 0.05f, preset.length * 0.52f));
-            return car_entity;
-        }
-
         uint32_t mesh_flags  = Mesh::GetDefaultFlags();
         mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
         // Retain authored LOD 0, but let distant traffic use generated LODs.
@@ -3180,7 +3152,8 @@ namespace spartan
                 measured_placements.push_back({ vehicle_inverse * bounds.GetCenter(), radius });
             }
         }
-        if (measured_placements.size() == 4)
+        // A placeholder supplies only the shell, not the recipient's axle geometry.
+        if (!m_definition->body_is_placeholder && measured_placements.size() == 4)
         {
             float axle_midpoint = 0.0f;
             for (const WheelPlacement& placement : measured_placements)
@@ -3310,9 +3283,9 @@ namespace spartan
         }
 
         // wheels only car or unexpected model, fall back to the performance geometry
-        if (spots.size() != 4)
+        if (m_definition->body_is_placeholder || spots.size() != 4)
         {
-            if (!spots.empty())
+            if (!m_definition->body_is_placeholder && !spots.empty())
             {
                 SP_LOG_WARNING("expected 4 tire groups but measured %zu, using preset geometry for the wheels", spots.size());
             }

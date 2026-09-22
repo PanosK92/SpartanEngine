@@ -78,6 +78,14 @@ namespace car
 
     struct suspension_corner
     {
+        // Captured at force application, never reconstructed from a later pose.
+        struct force_sample
+        {
+            bool applied = false;
+            float elastic = 0, damper = 0, bump_stop = 0, packer = 0, unclamped = 0;
+            PxVec3 shock_on_chassis = PxVec3(0);
+            PxVec3 arb_on_upright = PxVec3(0);
+        } forces;
         PxRigidDynamic* upright = nullptr;
         PxRigidDynamic* wheel_body = nullptr;
         PxRevoluteJoint* wheel_joint = nullptr;

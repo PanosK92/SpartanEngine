@@ -23,9 +23,207 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CarSimulation.h"
 #include <deque>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
+#include <locale>
 
 namespace car
 {
+    // A topology-aware snapshot: indices are stable until the assembly is rebuilt.
+    // Never serialize addresses, and preserve invalid measurements as JSON null.
+    std::string Simulation::get_physics_telemetry_json() const
+    {
+        std::ostringstream out;
+        out.imbue(std::locale::classic());
+        out << std::setprecision(9);
+        auto number = [&](double value) { if (std::isfinite(value)) out << value; else out << "null"; };
+        auto vec = [&](const PxVec3& v) { out << '['; number(v.x); out << ','; number(v.y); out << ','; number(v.z); out << ']'; };
+        auto pose = [&](const PxTransform& p, bool world = false) {
+            out << "{\"p\":["; number(double(p.p.x) + (world ? scene_origin.x : 0)); out << ',';
+            number(double(p.p.y) + (world ? scene_origin.y : 0)); out << ',';
+            number(double(p.p.z) + (world ? scene_origin.z : 0)); out << "],\"q\":[";
+            number(p.q.x); out << ','; number(p.q.y); out << ','; number(p.q.z); out << ','; number(p.q.w); out << "]}";
+        };
+        auto actor_id = [&](const PxRigidActor* actor) {
+            if (!actor) return -1; // world attachment
+            if (actor == body) return 0;
+            for (int i = 0; i < multibody.actor_count; ++i) if (multibody.actors[i] == actor) return i + 1;
+            return -2; // external actor
+        };
+        auto joint_id = [&](const PxJoint* joint) {
+            for (int i = 0; joint && i < multibody.joint_count; ++i) if (multibody.joints[i] == joint) return i;
+            return -1;
+        };
+        out << "{\"schema\":1,\"state_phase\":\"latest_available_physx_state\",\"reaction_phase\":\"last_completed_solve\","
+               "\"applied_force_phase\":\"latest_vehicle_tick\","
+               "\"multibody_initialized\":" << (multibody.initialized ? "true" : "false")
+            << ",\"fallback_chassis\":" << (fallback_chassis ? "true" : "false") << ",\"actors\":[";
+        bool first = true;
+        for (int i = -1; i < multibody.actor_count; ++i)
+        {
+            const PxRigidDynamic* actor = i < 0 ? body : multibody.actors[i];
+            if (!actor) continue;
+            if (!first) out << ','; first = false;
+            out << "{\"id\":" << i + 1 << ",\"pose\":"; pose(actor->getGlobalPose(), true);
+            out << ",\"linear_velocity\":"; vec(actor->getLinearVelocity());
+            out << ",\"angular_velocity\":"; vec(actor->getAngularVelocity());
+            out << ",\"mass\":"; number(actor->getMass());
+            out << ",\"linear_damping_per_s\":"; number(actor->getLinearDamping());
+            out << ",\"angular_damping_per_s\":"; number(actor->getAngularDamping());
+            out << ",\"mass_frame_local\":"; pose(actor->getCMassLocalPose());
+            out << ",\"inertia_mass_frame\":"; vec(actor->getMassSpaceInertiaTensor());
+            PxU32 position_iterations, velocity_iterations;
+            actor->getSolverIterationCounts(position_iterations, velocity_iterations);
+            out << ",\"sleeping\":" << (actor->isSleeping() ? "true" : "false")
+                << ",\"body_flags\":" << unsigned(actor->getRigidBodyFlags())
+                << ",\"lock_flags\":" << unsigned(actor->getRigidDynamicLockFlags())
+                << ",\"solver_iterations\":[" << position_iterations << ',' << velocity_iterations << "]"
+                << ",\"shapes\":[";
+            std::vector<PxShape*> shapes(actor->getNbShapes());
+            actor->getShapes(shapes.data(), static_cast<PxU32>(shapes.size()));
+            for (size_t s = 0; s < shapes.size(); ++s)
+            {
+                if (s) out << ',';
+                const auto* shape = shapes[s];
+                out << "{\"type\":" << int(shape->getGeometry().getType()) << ",\"local_pose\":"; pose(shape->getLocalPose());
+                out << ",\"flags\":" << unsigned(shape->getFlags()) << ",\"contact_offset\":"; number(shape->getContactOffset());
+                out << ",\"rest_offset\":"; number(shape->getRestOffset());
+                const auto filter = shape->getSimulationFilterData();
+                out << ",\"simulation_filter\":[" << filter.word0 << ',' << filter.word1 << ',' << filter.word2 << ',' << filter.word3 << ']';
+                const auto& geometry = shape->getGeometry();
+                if (geometry.getType() == PxGeometryType::eBOX) {
+                    out << ",\"box_half_extents\":"; vec(static_cast<const PxBoxGeometry&>(geometry).halfExtents);
+                } else if (geometry.getType() == PxGeometryType::eSPHERE) {
+                    out << ",\"radius\":"; number(static_cast<const PxSphereGeometry&>(geometry).radius);
+                } else if (geometry.getType() == PxGeometryType::eCAPSULE) {
+                    const auto& capsule = static_cast<const PxCapsuleGeometry&>(geometry);
+                    out << ",\"radius\":"; number(capsule.radius); out << ",\"half_height\":"; number(capsule.halfHeight);
+                } else if (geometry.getType() == PxGeometryType::eCONVEXMESH) {
+                    const auto& convex = static_cast<const PxConvexMeshGeometry&>(geometry);
+                    out << ",\"mesh_scale\":"; vec(convex.scale.scale);
+                    out << ",\"mesh_vertices\":" << convex.convexMesh->getNbVertices();
+                }
+                PxBounds3 bounds = PxBounds3::empty();
+                const bool bounds_valid = PxGeometryQuery::computeGeomBounds(bounds, shape->getGeometry(), shape->getLocalPose());
+                out << ",\"bounds_valid\":" << (bounds_valid ? "true" : "false");
+                out << ",\"actor_local_bounds_min\":"; vec(bounds.minimum);
+                out << ",\"actor_local_bounds_max\":"; vec(bounds.maximum); out << '}';
+            }
+            out << "]}";
+        }
+        out << "],\"joints\":[";
+        first = true;
+        for (int i = 0; i < multibody.joint_count; ++i)
+        {
+            const PxJoint* joint = multibody.joints[i];
+            if (!joint) continue;
+            if (!first) out << ','; first = false;
+            PxRigidActor *a, *b; joint->getActors(a, b);
+            const PxTransform local_a = joint->getLocalPose(PxJointActorIndex::eACTOR0);
+            const PxTransform local_b = joint->getLocalPose(PxJointActorIndex::eACTOR1);
+            const PxTransform world_a = a ? a->getGlobalPose() * local_a : local_a;
+            const PxTransform world_b = b ? b->getGlobalPose() * local_b : local_b;
+            out << "{\"id\":" << i << ",\"type\":\"" << joint->getConcreteTypeName() << "\",\"actors\":[" << actor_id(a) << ',' << actor_id(b) << ']';
+            out << ",\"local_a\":"; pose(local_a); out << ",\"local_b\":"; pose(local_b);
+            out << ",\"world_a\":"; pose(world_a, true); out << ",\"world_b\":"; pose(world_b, true);
+            // Separation includes permitted motion; it is not universally a constraint error.
+            out << ",\"anchor_separation_m\":"; number((world_b.p - world_a.p).magnitude());
+            out << ",\"relative_pose\":"; pose(joint->getRelativeTransform());
+            out << ",\"relative_linear_velocity\":"; vec(joint->getRelativeLinearVelocity());
+            out << ",\"relative_angular_velocity\":"; vec(joint->getRelativeAngularVelocity());
+            PxVec3 force(0), torque(0);
+            if (joint->getConstraint()) joint->getConstraint()->getForce(force, torque);
+            out << ",\"reaction_available\":" << (joint->getConstraint() ? "true" : "false");
+            out << ",\"reaction_force_world\":"; vec(force); out << ",\"reaction_torque_world\":"; vec(torque);
+            out << ",\"flags\":" << unsigned(joint->getConstraintFlags());
+            if (const auto* d6 = joint->is<PxD6Joint>())
+            {
+                out << ",\"angular_drive_config\":" << int(d6->getAngularDriveConfig()) << ",\"motion\":[";
+                for (int axis = 0; axis < 6; ++axis) { if (axis) out << ','; out << int(d6->getMotion(PxD6Axis::Enum(axis))); }
+                out << "],\"drives\":[";
+                for (int drive = 0; drive < PxD6Drive::eCOUNT; ++drive)
+                {
+                    if (drive) out << ',';
+                    const auto d = d6->getDrive(PxD6Drive::Enum(drive));
+                    out << '['; number(d.stiffness); out << ','; number(d.damping); out << ','; number(d.forceLimit); out << ',' << unsigned(d.flags) << ']';
+                }
+                out << "],\"drive_pose\":"; pose(d6->getDrivePosition());
+                PxVec3 drive_linear, drive_angular; d6->getDriveVelocity(drive_linear, drive_angular);
+                out << ",\"drive_linear_velocity\":"; vec(drive_linear);
+                out << ",\"drive_angular_velocity\":"; vec(drive_angular);
+                out << ",\"linear_limits\":[";
+                for (int axis = 0; axis < 3; ++axis) {
+                    if (axis) out << ','; const auto limit = d6->getLinearLimit(PxD6Axis::Enum(axis));
+                    out << '['; number(limit.lower); out << ','; number(limit.upper); out << ']';
+                }
+                const auto twist = d6->getTwistLimit();
+                const auto swing = d6->getSwingLimit();
+                out << "],\"twist_limit\":["; number(twist.lower); out << ','; number(twist.upper);
+                out << "],\"swing_limit\":["; number(swing.yAngle); out << ','; number(swing.zAngle); out << ']';
+            }
+            if (const auto* distance = joint->is<PxDistanceJoint>()) {
+                out << ",\"distance\":"; number(distance->getDistance());
+                out << ",\"distance_limits\":["; number(distance->getMinDistance()); out << ','; number(distance->getMaxDistance());
+                out << "],\"distance_flags\":" << unsigned(distance->getDistanceJointFlags());
+            }
+            if (const auto* revolute = joint->is<PxRevoluteJoint>()) {
+                out << ",\"angle\":"; number(revolute->getAngle()); out << ",\"velocity\":"; number(revolute->getVelocity());
+            }
+            out << '}';
+        }
+        out << "],\"corners\":[";
+        for (int i = 0; i < wheel_count; ++i)
+        {
+            if (i) out << ',';
+            const auto& c = multibody.corners[i];
+            out << "{\"wheel\":" << i << ",\"upright\":" << actor_id(c.upright) << ",\"wheel_body\":" << actor_id(c.wheel_body)
+                << ",\"wheel_joint\":" << joint_id(c.wheel_joint) << ",\"travel_joint\":" << joint_id(c.travel_joint)
+                << ",\"steering_stop\":" << joint_id(c.steering_stop) << ",\"coilover_bodies\":[" << actor_id(c.coilover_unit.tube) << ',' << actor_id(c.coilover_unit.rod)
+                << "],\"coilover_joint\":" << joint_id(c.coilover_unit.spring_joint) << ",\"shock_top_local\":";
+            vec(c.chassis_shock_anchor); out << ",\"shock_bottom_local\":"; vec(c.upright_shock_anchor);
+            out << ",\"shock_stiffness\":"; number(c.shock_stiffness); out << ",\"shock_damping\":"; number(c.shock_damping);
+            out << ",\"forces_applied_this_tick\":" << (c.forces.applied ? "true" : "false");
+            out << ",\"elastic_force_n\":"; number(c.forces.elastic);
+            out << ",\"damper_force_n\":"; number(c.forces.damper);
+            out << ",\"bump_stop_force_n\":"; number(c.forces.bump_stop);
+            out << ",\"packer_force_n\":"; number(c.forces.packer);
+            out << ",\"unclamped_shock_force_n\":"; number(c.forces.unclamped);
+            out << ",\"shock_force_on_chassis_world\":"; vec(c.forces.shock_on_chassis);
+            out << ",\"arb_force_on_upright_world\":"; vec(c.forces.arb_on_upright);
+            out << ",\"rolling_resistance_torque_world_nm\":"; vec(wheels[i].force_debug.rolling_torque);
+            out << ",\"members\":[";
+            for (int m = 0; m < c.member_count; ++m) {
+                if (m) out << ','; const auto& member = c.members[m];
+                out << "{\"actor\":" << actor_id(member.actor) << ",\"pivot\":" << joint_id(member.pivot_joint)
+                    << ",\"bushing\":" << (member.pivot_is_bushing ? "true" : "false") << ",\"local_start\":";
+                vec(member.local_start); out << ",\"local_end\":"; vec(member.local_end); out << '}';
+            }
+            out << "]}";
+        }
+        out << "],\"rack\":" << actor_id(multibody.rack) << ",\"rack_joint\":" << joint_id(multibody.rack_joint);
+        auto arb = [&](const char* name, const anti_roll_bar& bar) {
+            out << ",\"" << name << "\":{\"actors\":[" << actor_id(bar.left_half) << ',' << actor_id(bar.right_half) << ','
+                << actor_id(bar.left_drop) << ',' << actor_id(bar.right_drop) << "],\"torsion_joint\":" << joint_id(bar.torsion_joint) << '}';
+        };
+        arb("front_arb", multibody.front_arb); arb("rear_arb", multibody.rear_arb);
+        const auto& d = multibody.driveline;
+        out << ",\"driveline\":{\"gearbox_output\":" << actor_id(d.gearbox_output) << ",\"axle_input\":" << actor_id(d.axle_input)
+            << ",\"torsion_joint\":" << joint_id(d.torsion_joint) << ",\"propshafts\":[" << actor_id(d.propshaft[0]) << ',' << actor_id(d.propshaft[1])
+            << "],\"differentials\":[" << actor_id(d.differential[0]) << ',' << actor_id(d.differential[1]) << "],\"halfshafts\":[";
+        for (int i = 0; i < wheel_count; ++i) { if (i) out << ','; out << actor_id(d.halfshaft[i]); }
+        out << "]},\"gravity\":"; vec(body && body->getScene() ? body->getScene()->getGravity() : PxVec3(0));
+        out << ",\"reset_count\":" << reset_count << ",\"contact_reports\":[";
+        for (size_t i = 0; i < contact_reports.size(); ++i)
+        {
+            if (i) out << ',';
+            const auto& report = contact_reports[i];
+            out << "{\"other_entity\":\"" << report.other_entity << "\",\"point_count\":" << report.point_count
+                << ",\"pair_flags\":" << report.pair_flags << ",\"impulse_world\":";
+            vec(report.impulse); out << '}';
+        }
+        out << "],\"contact_reports_dropped\":" << contact_reports_dropped << '}';
+        return out.str();
+    }
     void Simulation::set_telemetry_path(const std::string& path)
     { close_telemetry(); telemetry_path = path.empty() ? "car_telemetry.csv" : path; }
 
@@ -210,6 +408,8 @@ namespace car
                 for (const char* prefix : {"fl", "fr", "rl", "rr"})
                     fprintf(file, ",%s_surface_name,%s_surface_grip,%s_surface_rolling,%s_surface_mixed", prefix, prefix, prefix, prefix);
                 fputs(",stability_active,target_yaw_rate,fl_stability_brake_torque,fr_stability_brake_torque,rl_stability_brake_torque,rr_stability_brake_torque", file);
+                fputs(",engine_net_output_torque", file);
+                fputs(",physics_skeleton_json", file);
                 fputc('\n', file);
                 frame_counter = 0;
                 elapsed_time  = 0.0f;
@@ -232,6 +432,7 @@ namespace car
                 {
                     close_telemetry();
                     event_flags = 0; contact_impulse = PxVec3(0);
+                    contact_reports.clear(); contact_reports_dropped = 0;
                     return;
                 }
                 if (!open_telemetry_if_needed())
@@ -397,7 +598,16 @@ namespace car
                     assisted_actuators.target_yaw_rate, assisted_actuators.stability_brake_torque[0],
                     assisted_actuators.stability_brake_torque[1], assisted_actuators.stability_brake_torque[2],
                     assisted_actuators.stability_brake_torque[3]);
+                fprintf(file, ",%.6g", engine_net_output_torque);
+                fputs(",\"", file);
+                const std::string skeleton = get_physics_telemetry_json();
+                std::string escaped;
+                escaped.reserve(skeleton.size() + skeleton.size() / 4);
+                for (char c : skeleton) { if (c == '"') escaped += '"'; escaped += c; }
+                fwrite(escaped.data(), 1, escaped.size(), file);
                 event_flags = 0; contact_impulse = PxVec3(0);
+                contact_reports.clear(); contact_reports_dropped = 0;
+                fputc('"', file);
                 fputc('\n', file);
 
                 if (frame_counter % 200 == 0)

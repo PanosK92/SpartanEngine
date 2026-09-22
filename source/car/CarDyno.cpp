@@ -175,11 +175,11 @@ namespace spartan::car_hud
             ImGui::Text("Peak axle: %.1f kW / %.1f hp / %.0f Nm | Clutch slip %.0f RPM", peak_kw, peak_kw * 1.34102209f, peak_nm, s.clutch_slip_rpm);
         }
         ImGui::Separator();
-        graph("Torque", "Nm", d.samples, {{"Combustion (gross)", &sample::combustion_nm, orange}, {"Axle", &sample::axle_nm, blue}});
-        graph("Power", "kW", d.samples, {{"Combustion (gross)", &sample::combustion_kw, orange}, {"Axle", &sample::axle_kw, blue}, {"Motor shaft", &sample::motor_kw, green}}, false, &d.previous_samples);
+        graph("Torque", "Nm", d.samples, {{"Engine (net)", &sample::engine_net_nm, orange}, {"Axle", &sample::axle_nm, blue}});
+        graph("Power", "kW", d.samples, {{"Engine (net)", &sample::engine_net_kw, orange}, {"Axle", &sample::axle_kw, blue}, {"Motor shaft", &sample::motor_kw, green}}, false, &d.previous_samples);
         if (!d.previous_samples.empty()) ImGui::TextColored(ImVec4(0.8f, 0.6f, 0.94f, 1), "Purple: previous axle power / %s", d.previous_car.c_str());
         graph("RPM history", "RPM", d.samples, {{"Engine", &sample::rpm, orange}, {"Shaft target (engine equivalent)", &sample::target_rpm, blue}}, true);
-        ImGui::TextWrapped("Combustion is gross simulated torque before friction and rotor acceleration. Axle power includes clutch/gearbox losses and hybrid assist; it is not tire-contact wheel horsepower. No atmospheric correction is applied.");
+        ImGui::TextWrapped("Engine net output subtracts engine losses but precedes rotor acceleration. CSV also includes gross combustion output. Axle power includes clutch/gearbox losses and hybrid assist; it is not tire-contact wheel horsepower. No atmospheric correction is applied.");
         if (ImGui::CollapsingHeader("Gear ratios and theoretical speeds"))
         {
             ImGui::Text("Final drive %.4f | Drivetrain efficiency %.3f", spec.final_drive, spec.drivetrain_efficiency);

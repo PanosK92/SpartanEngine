@@ -150,6 +150,7 @@ namespace car
         PxVec3 lateral = PxVec3(0);
         PxVec3 rolling_point = PxVec3(0);
         PxVec3 rolling = PxVec3(0);
+        PxVec3 rolling_torque = PxVec3(0); // actual world-space resistance moment, Nm
         float brake_torque = 0; // signed torque actually applied, after the stopping clamp
     };
 

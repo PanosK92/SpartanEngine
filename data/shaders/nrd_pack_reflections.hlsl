@@ -77,7 +77,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // over blurs car paint and kills the sharp tube reflections the coat lobe traced
     float4 decal_material = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
     float roughness = decal_material.r;
-    uint  mat_index = uint(tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).a);
+    uint  mat_index = unpack_material_index(tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).a);
     MaterialParameters mat = material_parameters[mat_index];
     roughness = lerp(roughness, mat.clearcoat_roughness, saturate(mat.clearcoat) * (1.0f - decal_material.b));
     roughness = max(roughness, 0.04f);

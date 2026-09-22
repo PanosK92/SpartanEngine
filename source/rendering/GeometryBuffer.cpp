@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../core/Stopwatch.h"
 #include "GeometryBuffer.h"
+#include "Renderer.h"
+#include <map>
 #include "../geometry/GeneratedCache.h"
 #include "../rhi/RHI_CommandList.h"
 #include "../rhi/RHI_Buffer.h"
@@ -131,6 +133,15 @@ namespace spartan
             uint32_t count  = 0;
         };
         vector<DirtyRange> vertex_dirty_ranges;
+
+        // Only animated ranges get history storage; static geometry keeps its compact layout.
+        struct VertexHistory
+        {
+            uint32_t offset = 0;
+            uint32_t count = 0;
+            uint64_t frame = UINT64_MAX;
+        };
+        map<uint32_t, VertexHistory> vertex_history;
 
         // two ranges closer than this merge into one, re-uploading the untouched gap is far cheaper
         // than a second submit
@@ -380,11 +391,34 @@ namespace spartan
         return true;
     }
 
-    void GeometryBuffer::UpdateVertices(const RHI_Vertex_PosTexNorTan* data, uint32_t offset, uint32_t count)
+    void GeometryBuffer::UpdateVertices(const RHI_Vertex_PosTexNorTan* data, uint32_t offset, uint32_t count, bool track_motion)
     {
         lock_guard<mutex> lock(buffer_mutex);
 
         SP_ASSERT(offset + count <= static_cast<uint32_t>(vertices.size()));
+        if (track_motion && count > 0)
+        {
+            VertexHistory& history = vertex_history[offset];
+            if (history.count != count)
+            {
+                history.offset = static_cast<uint32_t>(vertices.size());
+                history.count = count;
+                history.frame = UINT64_MAX;
+                vertices.resize(vertices.size() + count);
+                dirty = true;
+            }
+
+            // Multiple animation/IK updates before a render must retain the last displayed pose.
+            const uint64_t frame = Renderer::GetFrameNumber();
+            if (history.frame != frame)
+            {
+                const auto* previous = offset + count <= vertex_count_committed ? vertices.data() + offset : data;
+                memcpy(vertices.data() + history.offset, previous, count * sizeof(RHI_Vertex_PosTexNorTan));
+                if (history.offset + count <= vertex_count_committed)
+                    vertex_dirty_ranges.push_back({history.offset, count});
+                history.frame = frame;
+            }
+        }
         memcpy(vertices.data() + offset, data, count * sizeof(RHI_Vertex_PosTexNorTan));
 
         // queued, the frame flush coalesces every deformable mesh into a few copies
@@ -392,6 +426,18 @@ namespace spartan
         {
             vertex_dirty_ranges.push_back({ offset, count });
         }
+    }
+
+    uint32_t GeometryBuffer::GetPreviousVertexOffset(uint32_t offset)
+    {
+        lock_guard<mutex> lock(buffer_mutex);
+        auto it = vertex_history.upper_bound(offset);
+        if (it == vertex_history.begin()) return 0;
+        --it;
+        const VertexHistory& history = it->second;
+        // A paused or throttled animator must not replay its last motion vector.
+        if (offset - it->first >= history.count || history.frame != Renderer::GetFrameNumber()) return 0;
+        return history.offset - it->first;
     }
 
     void GeometryBuffer::UpdateIndices(const uint32_t* data, const uint32_t offset, const uint32_t count)
@@ -808,6 +854,7 @@ namespace spartan
         meshlet_vertex_buffer      = nullptr;
         meshlet_micro_index_buffer = nullptr;
         instance_buffer            = nullptr;
+        vertex_history.clear();
         vertices.clear();
         vertices.shrink_to_fit();
         indices.clear();

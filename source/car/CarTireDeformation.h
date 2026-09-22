@@ -8,6 +8,19 @@
 
 namespace car
 {
+    // Plane covector and correction direction may be in a scaled mesh frame.
+    // Their dot product is one; separation and correction stay in world metres.
+    inline void project_tire_vertex(spartan::math::Vector3& p, spartan::math::Vector3& tangent,
+        spartan::math::Vector3& bitangent, const spartan::math::Vector3& normal, float distance,
+        const spartan::math::Vector3& direction)
+    {
+        const float separation = normal.Dot(p) + distance;
+        if (separation >= 0) return;
+        p -= direction * separation;
+        tangent -= direction * normal.Dot(tangent);
+        bitangent -= direction * normal.Dot(bitangent);
+    }
+
     // First-order pneumatic spring: rubber/belt stiffness in parallel with an
     // inflation-dependent contribution. K_ref is measured at p_ref (gauge bar).
     // The carcass fraction needs tire-specific load/deflection measurements;
@@ -23,6 +36,20 @@ namespace car
     inline float tire_compression_limit(float radius)
     {
         return std::min(radius * 0.25f, 0.05f);
+    }
+
+    // The cage and its skinned surface must use the same support plane.
+    // In particular, a deep contact must not bypass the rim-supported travel
+    // limit in a second projection after the cage has already been solved.
+    inline bool prepare_tire_contact_plane(spartan::math::Vector3& normal, float& distance, float radius)
+    {
+        const float length_squared = normal.LengthSquared();
+        if (!normal.IsFinite() || !std::isfinite(length_squared) || length_squared <= 1e-12f ||
+            !std::isfinite(distance)) return false;
+        const float inverse_length = 1.0f / std::sqrt(length_squared);
+        normal *= inverse_length;
+        distance = std::max(distance * inverse_length, radius - tire_compression_limit(radius));
+        return true;
     }
     // A collapsed sidewall progressively transfers load toward the rigid rim.
     // This second spring prevents low inflation from exhausting the bounded
@@ -61,12 +88,17 @@ namespace car
         struct face { int a, b, c; };
         std::vector<face> cavity_faces;
         float radius = 0, width = 0;
+        static constexpr int contact_lanes = 9;
+        struct contact_sample { V point; binding weights{}; float radial = 0; };
+        std::array<contact_sample, sectors * contact_lanes> contact_samples{};
+        bool has_contact_samples = false;
         static int index(int r, int x, int a) { return (r * lanes + x) * sectors + (a % sectors); }
         static bool pinned(int i) { return i < lanes * sectors; }
 
         void initialize(float r, float w)
         {
             radius = r; width = w; beams.clear(); cavity_faces.clear();
+            contact_samples = {}; has_contact_samples = false;
             for (int band = 0; band < bands; ++band)
                 for (int lane = 0; lane < lanes; ++lane)
                     for (int a = 0; a < sectors; ++a)
@@ -114,6 +146,50 @@ namespace car
             }
             position = rest;
             displacement.fill(V(0.0f));
+        }
+
+        // The cage encloses the rubber; its outer corners are not necessarily
+        // on the tire surface. Measure the crown at its axial sample locations
+        // instead of letting those empty corners collide with the road.
+        void include_contact_vertex(V p)
+        {
+            const float radial = std::sqrt(p.y * p.y + p.z * p.z);
+            if (radial <= radius * 0.73f) return;
+            float angle = std::atan2(p.z, p.y);
+            if (angle < 0) angle += spartan::math::pi_2;
+            const int sector = int(angle * sectors / spartan::math::pi_2 + 0.5f) % sectors;
+            const int lane = std::clamp(int((p.x / width + 0.5f) * (contact_lanes - 1) + 0.5f), 0, contact_lanes - 1);
+            auto& sample = contact_samples[lane * sectors + sector];
+            if (radial > sample.radial)
+            {
+                sample.point = p; sample.radial = radial;
+                sample.weights = bind(p, V(0.0f), V(0.0f));
+                has_contact_samples = true;
+            }
+        }
+
+        void project_contacts(V normal, float distance)
+        {
+            for (const auto& sample : contact_samples)
+            {
+                if (sample.radial == 0) continue;
+                V p = sample.point;
+                float inverse_mass = 0;
+                for (int k = 0; k < 8; ++k)
+                {
+                    const int node = sample.weights.nodes[k];
+                    const float weight = sample.weights.weight[k];
+                    p += (position[node] - rest[node]) * weight;
+                    if (!pinned(node)) inverse_mass += weight * weight;
+                }
+                const float penetration = -(normal.Dot(p) + distance);
+                if (penetration <= 0 || inverse_mass < 1e-8f) continue;
+                // Embedded surface contact: distribute its correction through
+                // the binding Jacobian, preserving the rim's pinned nodes.
+                for (int k = 0; k < 8; ++k)
+                    if (!pinned(sample.weights.nodes[k]))
+                        position[sample.weights.nodes[k]] += normal * (penetration * sample.weights.weight[k] / inverse_mass);
+            }
         }
 
         // Reduced membrane strip, loaded uniformly by air pressure. A parabola
@@ -187,7 +263,7 @@ namespace car
                             // The imported mesh is already inflated. Subtract
                             // its unloaded equilibrium, rather than inflating it twice.
                             V p = bead + chord * t + (outward * bow - axis * base_bow) * (4.0f * t * (1.0f - t));
-                            p += normal * std::max(-(normal.Dot(p) + distance), 0.0f);
+                            if (!has_contact_samples) p += normal * std::max(-(normal.Dot(p) + distance), 0.0f);
                             position[index(band, lane, a)] = p;
                         }
                     }
@@ -206,11 +282,7 @@ namespace car
         {
             position = rest;
             displacement.fill(V(0.0f));
-            if (!grounded || !normal.IsFinite() || !std::isfinite(distance)) return;
-            normal.Normalize();
-            // Same compression limit as the load-bearing tire contacts. The
-            // cage is reconstructed deterministically, independent of frame dt.
-            distance = std::max(distance, radius - tire_compression_limit(radius));
+            if (!grounded || !prepare_tire_contact_plane(normal, distance, radius)) return;
             const float pneumatic = std::clamp(stiffness_ratio, 0.05f, 8.0f);
             // Spring coefficients and the Jacobi diagonal do not change during
             // a solve. Compute them once, not for every relaxation iteration.
@@ -251,7 +323,7 @@ namespace car
                 for (int i = lanes * sectors; i < node_count; ++i)
                 {
                     position[i] += force[i] * step[i];
-                    position[i] += normal * std::max(-(normal.Dot(position[i]) + distance), 0.0f);
+                    if (!has_contact_samples) position[i] += normal * std::max(-(normal.Dot(position[i]) + distance), 0.0f);
                     moving[i] = (position[i] - rest[i]).LengthSquared() > 1e-16f;
                 }
                 // Couple the supported membrane back to the tread cage during
@@ -262,8 +334,15 @@ namespace car
                     for (int i = lanes * sectors; i < node_count; ++i)
                         moving[i] = (position[i] - rest[i]).LengthSquared() > 1e-16f;
                 }
+                if (has_contact_samples)
+                {
+                    project_contacts(normal, distance);
+                    for (int i = lanes * sectors; i < node_count; ++i)
+                        moving[i] = (position[i] - rest[i]).LengthSquared() > 1e-16f;
+                }
             }
             support_sidewalls(normal, distance, pressure_bar, reference_stiffness, ambient_bar);
+            if (has_contact_samples) project_contacts(normal, distance);
             for (int i = 0; i < node_count; ++i) displacement[i] = position[i] - rest[i];
         }
 

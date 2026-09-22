@@ -237,12 +237,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     float3 position       = gbuffer_position.xyz;
     float3 normal         = gbuffer_normal.xyz;
-    uint   material_index = uint(gbuffer_normal.w);
+    uint   material_index = unpack_material_index(gbuffer_normal.w);
     float3 albedo         = gbuffer_albedo.rgb;
     float  roughness      = gbuffer_albedo.a;
     float4 source_surface = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv_source, 0);
     float  source_roughness = source_surface.r;
-    uint   source_material_index = uint(tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv_source, 0).a);
+    uint   source_material_index = unpack_material_index(tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv_source, 0).a);
     MaterialParameters source_mat = material_parameters[source_material_index];
     source_roughness = lerp(source_roughness, source_mat.clearcoat_roughness, saturate(source_mat.clearcoat) * (1.0f - source_surface.b));
     float  source_alpha     = min(ggx_alpha_from_roughness(source_roughness), 0.6f);

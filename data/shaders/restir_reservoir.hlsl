@@ -1355,7 +1355,7 @@ float3 probe_emission(uint instance_index, uint primitive_index, float2 hit_bary
 
     if (!mat.emissive_from_albedo())
     {
-        float3 emission = material_textures[material_index + material_texture_index_emission].SampleLevel(
+        float3 emission = material_textures[get_material_texture_index(material_index, material_texture_index_emission)].SampleLevel(
             GET_SAMPLER(sampler_bilinear_wrap), uv, mip_level).rgb;
         if (mat.is_emissive_srgb())
             emission = srgb_to_linear(emission);
@@ -1367,7 +1367,7 @@ float3 probe_emission(uint instance_index, uint primitive_index, float2 hit_bary
         albedo = terrain_shade_lod(mat, hit_position, normal_world, uv, mip_level).albedo;
     else if (mat.has_texture_albedo())
     {
-        float3 sample_albedo = material_textures[material_index + material_texture_index_albedo].SampleLevel(
+        float3 sample_albedo = material_textures[get_material_texture_index(material_index, material_texture_index_albedo)].SampleLevel(
             GET_SAMPLER(sampler_bilinear_wrap), uv, mip_level).rgb;
         if (mat.is_albedo_srgb())
             sample_albedo = srgb_to_linear(sample_albedo);

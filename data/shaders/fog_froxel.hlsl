@@ -331,7 +331,7 @@ void fog_inject_cell(uint3 thread_id)
     float3 sample_pos = get_camera_position() + ray_direction * centre_distance;
     // Filter unresolved density noise to the cell footprint, along and across the ray.
     float cell_footprint = max((d1 - d0) * 0.5f, centre_distance / float(fog_height));
-    FogMedium medium = fog_sample_medium(sample_pos, get_camera_position().y + ray_direction.y * d0, get_camera_position().y + ray_direction.y * d1, cell_footprint);
+    FogMedium medium = fog_sample_medium(sample_pos, get_camera_position().y + ray_direction.y * d0, get_camera_position().y + ray_direction.y * d1, cell_footprint, true);
     // Preserve both source terms in interface cells. Lighting the entire cell
     // from its submerged centre makes the air above distant water alternate dark/light.
     float water_length = (d1 - d0) * medium.water;

@@ -215,6 +215,8 @@ namespace spartan
             return
                 strcmp(name, "frame_slot_wait") == 0 ||
                 strcmp(name, "frame_acquire") == 0 ||
+                strcmp(name, "acquire_semaphore_wait") == 0 ||
+                strcmp(name, "acquire_image_wait") == 0 ||
                 strcmp(name, "frame_present") == 0 ||
                 strcmp(name, "queue_present") == 0 ||
                 strcmp(name, "queue_wait_idle") == 0 ||

@@ -303,7 +303,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                     v.push_back({ "Intel XeSS", ver, "https://github.com/intel/xess" });
                 }
 
-                v.push_back({ "NVIDIA DLSS", "310.7.0", "https://github.com/NVIDIA/DLSS" });
+                v.push_back({ "NVIDIA DLSS 4.5", "310.9.1", "https://github.com/NVIDIA/DLSS" });
 #endif
 
                 {

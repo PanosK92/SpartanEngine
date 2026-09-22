@@ -232,6 +232,9 @@ struct PassBufferData
 // not here, so multiple renderables can share a material yet have per-instance uv tweaks
 struct MaterialParameters
 {
+    // Dense material records reference shared texture descriptors; absent maps use slot 0.
+    SHARED_UINT texture_indices[16];
+
     SHARED_FLOAT4 color SHARED_DEFAULT(spartan::math::Vector4::Zero);
 
     SHARED_FLOAT roughness  SHARED_DEFAULT(0.0f);
@@ -489,6 +492,7 @@ struct DrawData
     // this is critical for consolidated world-spanning entities (forest trees, rocks) where the per-entity cpu check always passes and the
     // gpu would otherwise burn cull task and survivor budget on instances far beyond the artist-set max render distance
     SHARED_FLOAT  max_render_distance_squared   SHARED_DEFAULT(0.0f);
+    SHARED_UINT   previous_vertex_offset SHARED_DEFAULT(0); // relative arena offset, zero means unchanged pose
 };
 
 // One CPU record describes up to 64 consecutive instances at one LOD. GPU

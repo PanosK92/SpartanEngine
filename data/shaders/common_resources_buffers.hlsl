@@ -115,8 +115,17 @@ static const uint sampler_bilinear_wrap         = 5;
 static const uint sampler_trilinear_clamp       = 6;
 static const uint sampler_anisotropic_wrap      = 7;
 
+// Material IDs must survive the RGBA16F normal targets without rounding above 2048.
+// Use normal, finite half-float bit patterns for all 16384 material records.
+float pack_material_index(uint index) { return f16tof32(index + 0x0400u); }
+uint unpack_material_index(float value) { return max(f32tof16(value), 0x0400u) - 0x0400u; }
+
 // bindless array access
-#define GET_TEXTURE(index_texture) material_textures[pass_get_material_index() + index_texture]
+uint get_material_texture_index(uint material_index, uint texture_slot)
+{
+    return material_parameters[material_index].texture_indices[texture_slot];
+}
+#define GET_TEXTURE(index_texture) material_textures[NonUniformResourceIndex(get_material_texture_index(pass_get_material_index(), index_texture))]
 MaterialParameters GetMaterial() { return material_parameters[pass_get_material_index()]; }
 #define GET_SAMPLER(index_sampler) samplers[index_sampler]
 

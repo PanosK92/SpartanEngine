@@ -1253,7 +1253,7 @@ namespace spartan
 
         if (semaphore_wait)
         {
-            semaphore_wait->SetUserCmdList(this);
+            semaphore_wait->SetConsumer(GetWork());
         }
 
         // detect a gpu crash early so the engine reports it instead of hanging on the next wait

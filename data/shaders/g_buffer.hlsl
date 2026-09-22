@@ -379,7 +379,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
                 MaterialParameters dominant = material_parameters[NonUniformResourceIndex(pick.index[0])];
                 float layer_scale           = dominant.terrain_tiling_scale;
                 float2 layer_uv             = parallax_occlusion_uv(
-                    pick.index[0] + material_texture_index_packed,
+                    get_material_texture_index(pick.index[0], material_texture_index_packed),
                     uv * layer_scale,
                     duvdx * layer_scale,
                     duvdy * layer_scale,
@@ -419,7 +419,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             float2 dy = ddy(vertex.uv_misc.xy);
 
             vertex.uv_misc.xy = parallax_occlusion_uv(
-                pass_get_material_index() + material_texture_index_packed,
+                get_material_texture_index(pass_get_material_index(), material_texture_index_packed),
                 vertex.uv_misc.xy,
                 dx,
                 dy,
@@ -641,7 +641,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // output
     gbuffer g_buffer;
     g_buffer.albedo   = albedo;
-    g_buffer.normal   = float4(normal, pass_get_material_index());
+    g_buffer.normal   = float4(normal, pack_material_index(pass_get_material_index()));
     g_buffer.material = float4(roughness, metalness, decal_coverage, occlusion);
     // previous surface depth lets temporal reconstruction validate object motion along the view axis.
     float previous_depth = vertex.position_previous.w > 0.0f ?

@@ -57,6 +57,7 @@ namespace car
         bool log_to_file = false;
         std::string telemetry_path = "car_telemetry.csv";
         PxRigidDynamic* body = nullptr;
+        bool fallback_chassis = false;
         PxMaterial*     material         = nullptr;
         config          cfg;
         car_preset      base_spec;
@@ -99,6 +100,14 @@ namespace car
         PxVec3          scene_origin = PxVec3(0); // physics positions + this = map positions
         bool            position_valid = false;
         PxVec3          contact_impulse = PxVec3(0);
+        struct contact_report
+        {
+            uint64_t other_entity;
+            unsigned point_count, pair_flags;
+            PxVec3 impulse;
+        };
+        std::vector<contact_report> contact_reports;
+        unsigned contact_reports_dropped = 0;
         unsigned        event_flags = 0;
         unsigned        reset_count = 0;
         bool            rev_limiter_active      = false;
@@ -116,6 +125,7 @@ namespace car
         PxRigidDynamicLockFlags parking_locks;
         float           engine_brake_torque     = 0.0f;
         float           engine_output_torque    = 0.0f;
+        float           engine_net_output_torque = 0.0f;
         float           axle_drive_torque       = 0.0f;
         aero_debug_data aero_debug;
         debug_sweep_data debug_sweep[wheel_count];
@@ -181,6 +191,7 @@ namespace car
         bool snapshot_telemetry_tail(int max_rows, std::string& out_text, std::string& out_path, int& out_total_lines);
         bool open_telemetry_if_needed();
         void write_telemetry_wheel_state(int i);
+        std::string get_physics_telemetry_json() const;
         void tick_telemetry(float dt, float speed_kmh);
         // Boundary conditions supplied by the world; defaults preserve standalone calibration.
         bool environment_enabled = false;
@@ -219,6 +230,7 @@ namespace car
         void update_stability_controller();
         const assist_command& get_assist_state() const { return assisted_actuators; }
         void update_assist_controller(bool traction_requested, bool braking_requested, float dt);
+        float get_traction_slip_target(int wheel_index);
         void update_burnout(float forward_speed_ms);
 
         // lateral grip peaks at a slightly negative camber and falls off quadratically
@@ -307,6 +319,7 @@ namespace car
         float get_driven_wheel_radius();
         float get_average_driven_angular_velocity(bool absolute, int* count = nullptr);
         void update_boost(float throttle, float rpm, float dt);
+        float get_boost_target(float throttle, float rpm, const car_preset* calibration = nullptr) const;
         float get_engine_torque(float rpm);
         float get_electric_motor_torque(float rpm, float throttle);
         float wheel_rpm_to_engine_rpm(float wheel_rpm, int gear);
@@ -361,6 +374,7 @@ namespace car
         void update_mass_properties();
         void apply_car_spec(const car_preset& preset, bool set_as_base);
         bool rebuild_vehicle_geometry();
+        void update_fallback_chassis();
         void reset_drivetrain_transients();
         void reset_wheel_thermals();
 
@@ -472,7 +486,14 @@ namespace car
         const hybrid_state& get_hybrid_state() const { return battery; }
         bool get_engine_running() const { return engine_running; }
         void set_starter(bool active) { starter_requested = active; wake_vehicle_assembly(); }
-        void record_contact_impulse(const PxVec3& impulse) { if (impulse.isFinite()) { contact_impulse += impulse; event_flags |= 4; } }
+        void record_contact_impulse(const PxVec3& impulse, uint64_t other_entity = 0, unsigned point_count = 0, unsigned pair_flags = 0)
+        {
+            if (!impulse.isFinite()) return;
+            contact_impulse += impulse;
+            event_flags |= 4;
+            if (contact_reports.size() < 64) contact_reports.push_back({other_entity, point_count, pair_flags, impulse});
+            else ++contact_reports_dropped;
+        }
         void record_reset() { event_flags |= 1; ++reset_count; position_valid = false; }
         float get_redline_rpm();
         float get_max_rpm();

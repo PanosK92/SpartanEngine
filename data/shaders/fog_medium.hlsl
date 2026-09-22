@@ -20,9 +20,24 @@ struct FogMedium
     float air_extinction;
 };
 
-FogMedium fog_sample_medium(float3 position, float y0, float y1, float footprint = 0.0f)
+FogMedium fog_sample_medium(float3 position, float y0, float y1, float footprint = 0.0f, bool skip_submerged_air = false)
 {
     FogMedium medium = (FogMedium)0;
+    // Injection never uses air density in entirely submerged cells. Avoid
+    // terrain, shelter and noise evaluation there, using the same measured
+    // wave bound as the full medium classification below.
+    float wave_bound = 0.001f;
+    if (buffer_frame.ocean_enabled > 0.5f)
+    {
+        [loop] for (uint cascade = 0u; cascade < buffer_frame.ocean_cascade_count; ++cascade)
+            wave_bound += asfloat(ocean_wave_bounds[cascade]);
+        wave_bound *= 1.00001f; // cover float accumulation and interpolation roundoff
+        if (skip_submerged_air && max(y0, y1) < buffer_frame.ocean_sea_level - wave_bound)
+        {
+            medium.water = 1.0f;
+            return medium;
+        }
+    }
     float terrain_valid;
     float terrain_y = sample_ocean_terrain_height(position.xz, terrain_valid);
     // Camera integration stops at opaque depth. Do not discard a whole cell
@@ -64,10 +79,6 @@ FogMedium fog_sample_medium(float3 position, float y0, float y1, float footprint
 
     if (buffer_frame.ocean_enabled > 0.5f)
     {
-        float wave_bound = 0.001f;
-        [loop] for (uint cascade = 0u; cascade < buffer_frame.ocean_cascade_count; ++cascade)
-            wave_bound += asfloat(ocean_wave_bounds[cascade]);
-        wave_bound *= 1.00001f; // cover float accumulation and interpolation roundoff
         // Entirely dry/submerged segments have exactly constant coverage.
         // Only segments intersecting the measured wave band need FFT inversion.
         if (min(y0, y1) > sea_level + wave_bound)
