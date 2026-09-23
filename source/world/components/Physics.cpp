@@ -810,7 +810,9 @@ namespace spartan
         m_vehicle_simulation->set_parked(m_car && !m_car->IsOccupied()
             && !m_car->IsExternallyControlled() && !m_vehicle_simulation->dyno.mounted);
 
-        if (m_vehicle_simulation_interval > 0.0f)
+        // explicit spring, damper and tire forces held over several physx steps go unstable,
+        // so a reduced rate only applies to the kinematic cheap mode
+        if (m_vehicle_simulation_interval > 0.0f && m_vehicle_sim_mode == VehicleSimMode::Cheap)
         {
             m_vehicle_simulation_accumulator += dt;
             if (m_vehicle_simulation_accumulator + 0.000001f < m_vehicle_simulation_interval)
@@ -1937,7 +1939,7 @@ namespace spartan
         simulation->set_simulation_enabled(active);
         if (active)
         {
-            simulation->set_force_retention(m_vehicle_simulation_interval > 0.0f);
+            simulation->set_force_retention(m_vehicle_simulation_interval > 0.0f && m_vehicle_sim_mode == VehicleSimMode::Cheap);
             m_wheel_offsets_synced = false;
             m_interpolation_initialized = false;
             if (m_vehicle_sim_mode == VehicleSimMode::Cheap)
@@ -2008,6 +2010,7 @@ namespace spartan
 
         m_vehicle_sim_mode = mode;
         m_vehicle_simulation_accumulator = 0.0f;
+        m_vehicle_simulation->set_force_retention(m_vehicle_simulation_interval > 0.0f && mode == VehicleSimMode::Cheap);
         m_interpolation_initialized = false;
     }
 
@@ -2019,7 +2022,7 @@ namespace spartan
         m_vehicle_simulation_interval = requested_interval > fixed_time_step ? requested_interval : 0.0f;
         m_vehicle_simulation_accumulator = 0.0f;
         simulation->clear_force_accumulators();
-        simulation->set_force_retention(m_vehicle_simulation_interval > 0.0f);
+        simulation->set_force_retention(m_vehicle_simulation_interval > 0.0f && m_vehicle_sim_mode == VehicleSimMode::Cheap);
     }
 
     void Physics::SetClothPinDirection(const Vector3& direction)

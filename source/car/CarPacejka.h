@@ -45,6 +45,7 @@ namespace car
     {
         float longitudinal = 0.0f;
         float lateral = 0.0f;
+        float camber = 0.0f; // camber thrust share of lateral, it acts at the patch centre and has no trail
     };
 
     inline float magic_formula(float slip, float stiffness, float shape, float peak, float curvature)
@@ -55,14 +56,22 @@ namespace car
 
     inline float combined_slip_weight(float slip, float stiffness, float shape, float curvature)
     {
+        // a shape above one swings the cosine negative and would erase the other axis during wheelspin,
+        // measured tires keep a fraction of their grip even at full combined slip
         float stiffness_slip = stiffness * slip;
-        float weight = cosf(shape * atanf(stiffness_slip - curvature * (stiffness_slip - atanf(stiffness_slip))));
-        return PxClamp(weight, 0.0f, 1.0f);
+        float weight = cosf(PxMin(shape, 1.0f) * atanf(stiffness_slip - curvature * (stiffness_slip - atanf(stiffness_slip))));
+        return PxClamp(weight, 0.1f, 1.0f);
     }
 
-    inline tire_force_result evaluate_magic_formula(const car_preset& preset, float slip_ratio, float slip_angle, float camber, float tire_load, float peak_force_longitudinal, float peak_force_lateral, float stiffness_scale, float camber_thrust_sign)
+    inline tire_force_result evaluate_magic_formula(const car_preset& preset, float slip_ratio, float slip_angle, float camber, float tire_load, float peak_force_longitudinal, float peak_force_lateral, float stiffness_scale, float camber_thrust_sign, float rolling_direction = 1.0f)
     {
         tire_force_result result;
+        // the simulation divides traction slip by wheel speed, pacejka coefficients are fitted to the sae
+        // slip ratio which divides by road speed, so convert the traction side back
+        if (slip_ratio * rolling_direction > 0.0f)
+        {
+            slip_ratio = slip_ratio / PxMax(1.0f - fabsf(slip_ratio), 0.1f);
+        }
         float load_ratio = PxClamp(tire_load / PxMax(preset.load_reference, 1.0f), 0.25f, 3.0f);
         float load_stiffness = powf(1.0f / PxMax(load_ratio, preset.load_B_scale_min), 0.4f);
         float longitudinal_stiffness = preset.long_B * load_stiffness * stiffness_scale;
@@ -75,7 +84,8 @@ namespace car
         float longitudinal_weight = combined_slip_weight(slip_angle, preset.combined_long_B, preset.combined_long_C, preset.combined_long_E);
         float lateral_weight = combined_slip_weight(slip_ratio, preset.combined_lat_B, preset.combined_lat_C, preset.combined_lat_E);
         result.longitudinal = pure_longitudinal * longitudinal_weight;
-        result.lateral = pure_lateral * lateral_weight + camber_thrust * lateral_weight;
+        result.camber = camber_thrust * lateral_weight;
+        result.lateral = pure_lateral * lateral_weight + result.camber;
         float normalized_longitudinal = result.longitudinal / PxMax(peak_force_longitudinal, 1.0f);
         float normalized_lateral = result.lateral / PxMax(peak_force_lateral, 1.0f);
         float normalized_force = sqrtf(normalized_longitudinal * normalized_longitudinal + normalized_lateral * normalized_lateral);
@@ -83,6 +93,7 @@ namespace car
         {
             result.longitudinal /= normalized_force;
             result.lateral /= normalized_force;
+            result.camber /= normalized_force;
         }
         return result;
     }
@@ -145,6 +156,7 @@ namespace car
         if (combined < 1e-6f)
         {
             result.lateral = camber_thrust;
+            result.camber = camber_thrust;
             return result;
         }
 
@@ -158,10 +170,31 @@ namespace car
         float adhesion = PxMax(1.0f - combined, 0.0f);
         float utilization = (1.0f - adhesion * adhesion * adhesion) * mu_scale;
 
-        result.longitudinal =  peak_force_longitudinal * utilization * normalized_long / combined;
-        result.lateral      = -peak_force_lateral      * utilization * normalized_lat  / combined;
+        // adhering tread pulls along its deflection, sliding tread along the sliding velocity, so the
+        // direction walks from one to the other as the sliding part of the patch grows
+        float direction_long = normalized_long / combined;
+        float direction_lat  = normalized_lat / combined;
+        float slide_long = practical_long / PxMax(peak_force_longitudinal, 1.0f);
+        float slide_lat  = practical_lat / PxMax(peak_force_lateral, 1.0f);
+        float slide_length = sqrtf(slide_long * slide_long + slide_lat * slide_lat);
+        if (slide_length > 1e-9f)
+        {
+            float sliding = PxMin(combined, 1.0f);
+            direction_long += (slide_long / slide_length - direction_long) * sliding;
+            direction_lat  += (slide_lat / slide_length - direction_lat) * sliding;
+            float direction_length = sqrtf(direction_long * direction_long + direction_lat * direction_lat);
+            if (direction_length > 1e-6f)
+            {
+                direction_long /= direction_length;
+                direction_lat  /= direction_length;
+            }
+        }
+
+        result.longitudinal =  peak_force_longitudinal * utilization * direction_long;
+        result.lateral      = -peak_force_lateral      * utilization * direction_lat;
         // camber thrust has to come out of the same friction budget, it cannot survive a full slide
-        result.lateral += camber_thrust * PxMax(1.0f - PxMin(combined, 1.0f), 0.0f);
+        result.camber = camber_thrust * PxMax(1.0f - PxMin(combined, 1.0f), 0.0f);
+        result.lateral += result.camber;
         return result;
     }
 

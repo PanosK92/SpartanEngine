@@ -86,19 +86,6 @@ namespace engine_sound
         bool operator!=(const engine_config& other) const;
     };
 
-    // live mix tuning, exposed in the hud
-    struct runtime_params
-    {
-        float exhaust_level = 1.0f;
-        float intake_level = 1.0f;
-        float turbo_level = 1.0f;
-        float mechanical_level = 1.0f;
-        float pop_rate = 1.0f;
-        float rasp = 1.0f;
-        float cabin_mix = 1.0f;
-        float master_gain = 1.0f;
-    };
-
     struct debug_data
     {
         float rpm = 0.0f;
@@ -138,12 +125,14 @@ namespace engine_sound
         synthesizer(const synthesizer&) = delete;
         synthesizer& operator=(const synthesizer&) = delete;
 
-        runtime_params params;
-
+        // initialize runs before any stream pulls; everything else below is safe while generate()
+        // runs on the audio thread, start, prime and reset are queued and applied at its next block
         void initialize(int sample_rate = tuning::sample_rate);
         void configure(const engine_config& config);
-        // Call before starting playback: crank, catch, flare, then follow live telemetry.
+        // on ignition: crank, catch, flare, then follow live telemetry
         void start();
+        // joining an engine that is already running: settle on the current controls, no starter
+        void prime();
         void set_parameters(
             float rpm,
             float throttle,
@@ -152,7 +141,10 @@ namespace engine_sound
             bool fuel_cut,
             int gear,
             bool shifting,
-            listener_view view
+            listener_view view,
+            float gearbox_rpm,
+            bool overrun,
+            float bank_pan
         );
         void generate(
             float* output_buffer,
@@ -163,7 +155,7 @@ namespace engine_sound
 
         bool is_initialized() const;
         const engine_config& get_config() const;
-        const debug_data& get_debug() const;
+        debug_data get_debug() const;
         bool begin_dump(float seconds);
         bool dump_ready() const;
         bool save_dump(const char* path);
@@ -177,6 +169,7 @@ namespace engine_sound
     void initialize(int sample_rate = tuning::sample_rate);
     void configure(const engine_config& config);
     void start();
+    void prime();
     void set_parameters(
         float rpm,
         float throttle,
@@ -185,7 +178,10 @@ namespace engine_sound
         bool fuel_cut,
         int gear,
         bool shifting,
-        listener_view view
+        listener_view view,
+        float gearbox_rpm,
+        bool overrun,
+        float bank_pan
     );
     void generate(
         float* buffer,
@@ -193,5 +189,5 @@ namespace engine_sound
         bool stereo = true
     );
     void reset();
-    const debug_data& get_debug();
+    debug_data get_debug();
 }

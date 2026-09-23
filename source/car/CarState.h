@@ -168,7 +168,10 @@ namespace car
         float        tire_load            = 0.0f;
         float        slip_angle           = 0.0f;
         float        slip_ratio           = 0.0f;
+        float        stiction_long        = 0.0f; // m, low speed tread deflection against the road
+        float        stiction_lat         = 0.0f; // m
         float        lateral_force        = 0.0f;
+        float        camber_force         = 0.0f; // camber thrust share of lateral_force
         float        longitudinal_force   = 0.0f;
         float        net_torque           = 0.0f;
         float        drive_torque         = 0.0f;
@@ -205,6 +208,9 @@ namespace car
         float        contact_patch_length = 0.0f;
         // fraction of the available friction the patch is using, one means fully sliding
         float        tire_saturation      = 0.0f;
+        // force over available grip for either tire model, and the friction work rate at the patch
+        float        friction_use         = 0.0f;
+        float        slip_power           = 0.0f; // W
         tire_probe_row contacts[max_tire_probe_rows];
         float        pressure_bar         = 2.2f;
         float        damage               = 0.0f;

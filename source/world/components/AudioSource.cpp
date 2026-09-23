@@ -163,6 +163,35 @@ namespace audio_device
     SDL_AudioSpec spec  = {};
     uint32_t id         = 0;
     uint32_t references = 0;
+    float limiter_gain  = 1.0f; // audio thread
+
+    // every source sums into one bus, keep the sum under full scale instead of letting it hard clip:
+    // instant attack to exactly the ceiling, slow release so the gain riding is inaudible
+    void SDLCALL master_limiter(void* userdata, const SDL_AudioSpec* mix_spec, float* buffer, int buffer_bytes)
+    {
+        const int channels = max(mix_spec->channels, 1);
+        const int frames   = buffer_bytes / static_cast<int>(sizeof(float) * channels);
+        const float ceiling = 0.97f;
+        const float release = 1.0f - expf(-1.0f / (0.15f * static_cast<float>(max(mix_spec->freq, 8000))));
+        for (int frame = 0; frame < frames; frame++)
+        {
+            float* samples = buffer + frame * channels;
+            float peak = 0.0f;
+            for (int c = 0; c < channels; c++)
+            {
+                peak = max(peak, fabsf(samples[c]));
+            }
+            const float target = peak > ceiling ? ceiling / peak : 1.0f;
+            limiter_gain = target < limiter_gain ? target : limiter_gain + (target - limiter_gain) * release;
+            if (limiter_gain < 1.0f)
+            {
+                for (int c = 0; c < channels; c++)
+                {
+                    samples[c] *= limiter_gain;
+                }
+            }
+        }
+    }
 
     // acquire the shared audio device, open it if it's not already open
     void acquire()
@@ -180,8 +209,19 @@ namespace audio_device
             {
                 SP_LOG_ERROR("%s", SDL_GetError());
             }
+            limiter_gain = 1.0f;
+            if (!SDL_SetAudioPostmixCallback(id, master_limiter, nullptr))
+            {
+                SP_LOG_ERROR("%s", SDL_GetError());
+            }
         }
         ++references;
+    }
+
+    int sample_rate()
+    {
+        lock_guard<mutex> lock(device_mutex);
+        return spec.freq > 0 ? spec.freq : 48000;
     }
 
     // release the shared audio device, close it when no one is using it
@@ -325,6 +365,12 @@ namespace spartan
             m_auto_play_consumed = true;
         }
 
+        // a stopped synthesis stream keeps playing its fade, release it once the audio thread reports silence
+        if (!m_is_playing && m_synthesis_mode && m_stream && m_synthesis_state.load(memory_order_acquire) == synthesis_silent)
+        {
+            DestroyStream();
+        }
+
         if (!m_is_playing)
         {
             return;
@@ -393,8 +439,8 @@ namespace spartan
                 BoundingBox transformed_box = volume->GetBoundingBox() * entity->GetMatrix();
                 if (transformed_box.Contains(source_position))
                 {
-                    // allocate reverb buffers if they haven't been yet
-                    if (m_reverb_buffer_l.empty())
+                    // allocate reverb buffers if they haven't been yet, a synthesis stream owns its own
+                    if (m_reverb_buffer_l.empty() && !m_synthesis_mode)
                     {
                         m_reverb_buffer_l.assign(reverb_buffer_size, 0.0f);
                         m_reverb_buffer_r.assign(reverb_buffer_size, 0.0f);
@@ -425,10 +471,10 @@ namespace spartan
             m_volume_reverb_active = found_reverb_volume;
         }
 
-        // feed audio based on mode
+        // clips are pushed from here, synthesis is pulled by the audio thread and only needs the mix
         if (m_synthesis_mode)
         {
-            FeedSynthesizedChunk();
+            PublishSynthesisMix();
         }
         else
         {
@@ -438,21 +484,20 @@ namespace spartan
 
     void AudioSource::SetSynthesisMode(bool enabled, SynthesisCallback callback)
     {
-        // stop any current playback when changing modes
-        if (m_is_playing && enabled != m_synthesis_mode)
+        // the audio thread calls the callback, so it can only be swapped once no stream pulls it
+        if (m_stream)
         {
-            if (m_synthesis_mode)
-            {
-                StopSynthesis();
-            }
-            else
-            {
-                StopClip();
-            }
+            DestroyStream();
         }
+        m_is_playing = false;
 
         m_synthesis_mode     = enabled;
         m_synthesis_callback = callback;
+    }
+
+    int AudioSource::GetDeviceSampleRate()
+    {
+        return audio_device::sample_rate();
     }
 
     void AudioSource::StartSynthesis()
@@ -464,9 +509,23 @@ namespace spartan
             return;
         }
 
-        // create stream for synthesis: stereo float32 at 48khz
+        // restarted inside its own fade: take the stream back unless it already went silent
+        if (m_stream)
+        {
+            int expected = synthesis_stopping;
+            if (m_synthesis_state.compare_exchange_strong(expected, synthesis_running, memory_order_acq_rel))
+            {
+                m_is_playing = true;
+                PublishSynthesisMix();
+                return;
+            }
+            DestroyStream();
+        }
+
+        // the synthesizers render at the device rate, so sdl only converts the format
+        m_synthesis_rate = audio_device::sample_rate();
         SDL_AudioSpec src_spec = {};
-        src_spec.freq          = 48000;
+        src_spec.freq          = m_synthesis_rate;
         src_spec.format        = SDL_AUDIO_F32;
         src_spec.channels      = 2;
         m_stream = SDL_CreateAudioStream(&src_spec, &audio_device::spec);
@@ -476,16 +535,19 @@ namespace spartan
             return;
         }
 
-        // initialize reverb buffers
+        // everything the audio thread touches is allocated here, before it can run
         m_reverb_buffer_l.assign(reverb_buffer_size, 0.0f);
         m_reverb_buffer_r.assign(reverb_buffer_size, 0.0f);
         m_reverb_write_pos = 0;
-
-        // Prime before binding: the device may already be playing other sources.
+        m_synthesis_chunk.assign(synthesis_chunk_frames * 2, 0.0f);
         m_synthesis_gain_l = m_synthesis_gain_r = 0.0f;
+        m_synthesis_state.store(synthesis_running, memory_order_release);
         m_is_playing = true;
-        FeedSynthesizedChunk();
+        PublishSynthesisMix();
+
+        CHECK_SDL_ERROR(SDL_SetAudioStreamGetCallback(m_stream, &AudioSource::SynthesisStreamCallback, this));
         CHECK_SDL_ERROR(SDL_BindAudioStream(audio_device::id, m_stream));
+        SetPitch(m_pitch);
         CHECK_SDL_ERROR(SDL_ResumeAudioStreamDevice(m_stream));
     }
 
@@ -496,103 +558,147 @@ namespace spartan
             return;
         }
 
+        // cutting mid waveform clicks, the audio thread fades to silence and Tick releases the stream
+        m_is_playing = false;
         if (m_stream)
         {
-            SDL_ClearAudioStream(m_stream);
-            SDL_DestroyAudioStream(m_stream);
-            m_stream = nullptr;
+            m_synthesis_state.store(synthesis_stopping, memory_order_release);
         }
-        m_is_playing = false;
     }
 
-    void AudioSource::FeedSynthesizedChunk()
+    void AudioSource::DestroyStream()
     {
-        if (!m_stream || !m_is_playing || !m_synthesis_callback)
+        if (!m_stream)
         {
             return;
         }
 
-        // loop-fill in small chunks so the queue always reaches the watermark in one tick,
-        // a single fixed-size chunk per tick underruns when the frame rate drops
-        const int low_water_mark   = 16384; // bytes, ~43 ms of stereo float at 48 khz
-        const uint32_t num_samples = 1024;
-        // Bound work if the device consumes faster than this producer can run.
-        for (int chunk = 0; chunk < 8; chunk++)
+        // unbinding takes the device lock, so no callback is running once this returns
+        SDL_ClearAudioStream(m_stream);
+        SDL_DestroyAudioStream(m_stream);
+        m_stream = nullptr;
+        m_synthesis_state.store(synthesis_running, memory_order_release);
+    }
+
+    void AudioSource::PublishSynthesisMix()
+    {
+        const float gain = m_volume * m_attenuation * (m_mute ? 0.0f : 1.0f);
+        m_synthesis_target_l.store(gain * sqrt(0.5f * (1.0f - m_pan)), memory_order_relaxed);
+        m_synthesis_target_r.store(gain * sqrt(0.5f * (1.0f + m_pan)), memory_order_relaxed);
+        m_synthesis_room_size.store(m_reverb_room_size, memory_order_relaxed);
+        m_synthesis_decay.store(m_reverb_decay, memory_order_relaxed);
+        m_synthesis_wet.store(m_reverb_wet, memory_order_relaxed);
+        m_synthesis_reverb.store(m_reverb_enabled, memory_order_relaxed);
+    }
+
+    void AudioSource::SynthesisStreamCallback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount)
+    {
+        if (additional_amount > 0)
         {
-            int queued = SDL_GetAudioStreamQueued(m_stream);
-            if (queued < 0)
+            static_cast<AudioSource*>(userdata)->RenderSynthesis(stream, additional_amount);
+        }
+    }
+
+    void AudioSource::RenderSynthesis(SDL_AudioStream* stream, int bytes_needed)
+    {
+        // audio thread: no allocation, no locks, only the atomics published by the main thread
+        const int state       = m_synthesis_state.load(memory_order_acquire);
+        const bool stopping   = state != synthesis_running;
+        const float target_l  = stopping ? 0.0f : m_synthesis_target_l.load(memory_order_relaxed);
+        const float target_r  = stopping ? 0.0f : m_synthesis_target_r.load(memory_order_relaxed);
+        const bool reverb     = m_synthesis_reverb.load(memory_order_relaxed) && !m_reverb_buffer_l.empty();
+        const float rate      = static_cast<float>(m_synthesis_rate);
+        // 5 ms slew hides frame-rate volume and pan steps, the stop fade reaches -80 db in about 40 ms
+        const float slew      = 1.0f - expf(-1.0f / (rate * (stopping ? 0.0045f : 0.005f)));
+
+        const uint32_t base_delays[6] = { 4799, 6907, 8893, 10007, 11903, 13313 };
+        const float room_scale        = 0.3f + m_synthesis_room_size.load(memory_order_relaxed) * 0.7f;
+        uint32_t delays[6];
+        for (int d = 0; d < 6; ++d)
+        {
+            delays[d] = static_cast<uint32_t>(base_delays[d] * room_scale);
+        }
+        const float tap_gain = 1.0f / 6.0f;
+        const float feedback = m_synthesis_decay.load(memory_order_relaxed) * 0.85f;
+        const float wet      = m_synthesis_wet.load(memory_order_relaxed);
+        const float dry      = 1.0f - wet * 0.4f;
+
+        int frames_needed = (bytes_needed + static_cast<int>(2 * sizeof(float)) - 1) / static_cast<int>(2 * sizeof(float));
+        float peak = 0.0f;
+        while (frames_needed > 0)
+        {
+            const int frames = min(frames_needed, static_cast<int>(synthesis_chunk_frames));
+            frames_needed -= frames;
+            float* chunk = m_synthesis_chunk.data();
+
+            if (state == synthesis_silent)
             {
-                SP_LOG_ERROR("%s", SDL_GetError());
-                return;
+                fill(chunk, chunk + frames * 2, 0.0f);
             }
-            if (queued >= low_water_mark) break;
-            m_stereo_chunk.resize(num_samples * 2);
-
-            // call the synthesis callback to generate samples
-            m_synthesis_callback(m_stereo_chunk.data(), num_samples);
-
-            // apply volume and panning
-            float gain         = m_volume * m_attenuation * (m_mute ? 0.0f : 1.0f);
-            float left_factor  = sqrt(0.5f * (1.0f - m_pan));
-            float right_factor = sqrt(0.5f * (1.0f + m_pan));
-            float left_gain    = gain * left_factor;
-            float right_gain   = gain * right_factor;
-
-            for (uint32_t i = 0; i < num_samples; ++i)
+            else
             {
-                // 5 ms gain slew prevents frame-rate volume/pan steps becoming clicks.
-                constexpr float slew = 0.004158f; // 1 - exp(-1 / (48000 * .005))
-                m_synthesis_gain_l += (left_gain - m_synthesis_gain_l) * slew;
-                m_synthesis_gain_r += (right_gain - m_synthesis_gain_r) * slew;
-                m_stereo_chunk[2 * i]     *= m_synthesis_gain_l;
-                m_stereo_chunk[2 * i + 1] *= m_synthesis_gain_r;
-            }
-
-            // apply reverb effect using a feedback delay network
-            // 6 taps with long delays for large-space character (tunnels, halls)
-            if (m_reverb_enabled && !m_reverb_buffer_l.empty())
-            {
-                const uint32_t base_delays[6] = { 4799, 6907, 8893, 10007, 11903, 13313 };
-                const float room_scale        = 0.3f + m_reverb_room_size * 0.7f;
-                uint32_t delays[6];
-                for (int d = 0; d < 6; ++d)
-                    delays[d] = static_cast<uint32_t>(base_delays[d] * room_scale);
-
-                const float tap_gain = 1.0f / 6.0f;
-                const float feedback = m_reverb_decay * 0.85f;
-                const float wet      = m_reverb_wet;
-                const float dry      = 1.0f - wet * 0.4f;
-
-                for (uint32_t i = 0; i < num_samples; ++i)
+                // once faded, stop pulling the shared synthesizer so the next car's stream owns it alone
+                if (stopping && max(m_synthesis_gain_l, m_synthesis_gain_r) < 1e-4f)
                 {
-                    float dry_l = m_stereo_chunk[2 * i];
-                    float dry_r = m_stereo_chunk[2 * i + 1];
-
-                    float reverb_l = 0.0f;
-                    float reverb_r = 0.0f;
-                    for (int d = 0; d < 6; ++d)
+                    fill(chunk, chunk + frames * 2, 0.0f);
+                }
+                else
+                {
+                    m_synthesis_callback(chunk, frames);
+                    for (int i = 0; i < frames; ++i)
                     {
-                        uint32_t read_pos_l = (m_reverb_write_pos + reverb_buffer_size - delays[d]) % reverb_buffer_size;
-                        uint32_t read_pos_r = (m_reverb_write_pos + reverb_buffer_size - delays[d] - 181) % reverb_buffer_size;
-                        reverb_l += m_reverb_buffer_l[read_pos_l] * tap_gain;
-                        reverb_r += m_reverb_buffer_r[read_pos_r] * tap_gain;
+                        m_synthesis_gain_l += (target_l - m_synthesis_gain_l) * slew;
+                        m_synthesis_gain_r += (target_r - m_synthesis_gain_r) * slew;
+                        chunk[2 * i]     *= m_synthesis_gain_l;
+                        chunk[2 * i + 1] *= m_synthesis_gain_r;
                     }
+                }
 
-                    m_reverb_buffer_l[m_reverb_write_pos] = dry_l + reverb_l * feedback;
-                    m_reverb_buffer_r[m_reverb_write_pos] = dry_r + reverb_r * feedback;
+                // feedback delay network, 6 long taps for large-space character (tunnels, halls)
+                if (reverb)
+                {
+                    for (int i = 0; i < frames; ++i)
+                    {
+                        float dry_l = chunk[2 * i];
+                        float dry_r = chunk[2 * i + 1];
 
-                    m_stereo_chunk[2 * i]     = dry_l * dry + reverb_l * wet;
-                    m_stereo_chunk[2 * i + 1] = dry_r * dry + reverb_r * wet;
+                        float reverb_l = 0.0f;
+                        float reverb_r = 0.0f;
+                        for (int d = 0; d < 6; ++d)
+                        {
+                            uint32_t read_pos_l = (m_reverb_write_pos + reverb_buffer_size - delays[d]) % reverb_buffer_size;
+                            uint32_t read_pos_r = (m_reverb_write_pos + reverb_buffer_size - delays[d] - 181) % reverb_buffer_size;
+                            reverb_l += m_reverb_buffer_l[read_pos_l] * tap_gain;
+                            reverb_r += m_reverb_buffer_r[read_pos_r] * tap_gain;
+                        }
 
-                    m_reverb_write_pos = (m_reverb_write_pos + 1) % reverb_buffer_size;
+                        m_reverb_buffer_l[m_reverb_write_pos] = dry_l + reverb_l * feedback;
+                        m_reverb_buffer_r[m_reverb_write_pos] = dry_r + reverb_r * feedback;
+
+                        chunk[2 * i]     = dry_l * dry + reverb_l * wet;
+                        chunk[2 * i + 1] = dry_r * dry + reverb_r * wet;
+
+                        m_reverb_write_pos = (m_reverb_write_pos + 1) % reverb_buffer_size;
+                    }
+                }
+
+                if (stopping)
+                {
+                    for (int i = 0; i < frames * 2; ++i)
+                    {
+                        peak = max(peak, fabsf(chunk[i]));
+                    }
                 }
             }
 
-            if (!SDL_PutAudioStreamData(m_stream, m_stereo_chunk.data(), static_cast<int>(m_stereo_chunk.size() * sizeof(float))))
-            {
-                SP_LOG_ERROR("%s", SDL_GetError());
-                return;
-            }
+            SDL_PutAudioStreamData(stream, chunk, frames * 2 * static_cast<int>(sizeof(float)));
+        }
+
+        // report silence once the fade and any reverb tail are done; a restart that raced us wins
+        if (state == synthesis_stopping && max(m_synthesis_gain_l, m_synthesis_gain_r) < 1e-4f && peak < 1e-4f)
+        {
+            int expected = synthesis_stopping;
+            m_synthesis_state.compare_exchange_strong(expected, synthesis_silent, memory_order_acq_rel);
         }
     }
 
@@ -835,17 +941,13 @@ namespace spartan
 
     void AudioSource::StopClip()
     {
-        if (!m_is_playing)
+        // a synthesis stream can still be fading after its source stopped playing, release it too
+        if (!m_is_playing && !m_stream)
         {
             return;
         }
 
-        if (m_stream)
-        {
-            SDL_ClearAudioStream(m_stream);
-            SDL_DestroyAudioStream(m_stream);
-            m_stream = nullptr;
-        }
+        DestroyStream();
         m_is_playing = false;
         m_position = 0;
     }

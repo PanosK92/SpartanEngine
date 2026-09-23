@@ -148,8 +148,8 @@ namespace car
             combined_lat_B = 6.0f;
             combined_lat_C = 1.0f;
             tire_model_type = static_cast<int>(tire_model::brush);
-            // calibrated so a 200 mm tread at 4 kN on a 320 mm wheel gives about 1000 N per degree
-            // of cornering stiffness, which is where a road radial of that size actually sits
+            // a 200 mm tread at 4 kN on a 320 mm wheel gives about 500 N per degree on a 250 kN/m carcass,
+            // car files tune these per tire, see the cornering stiffness check in CarPresets.cpp
             tread_stiffness_long = 2.0e7f;
             tread_stiffness_lat = 1.4e7f;
             tire_slide_friction_ratio = 0.85f;
@@ -429,8 +429,8 @@ namespace car
         float rolling_resistance;
         float drag_coeff;
         float frontal_area;
-        float lift_coeff_front;
-        float lift_coeff_rear;
+        float lift_coeff_front; // force along chassis up, negative is downforce
+        float lift_coeff_rear;  // negative is downforce
         bool  drs_enabled;
         float drs_rear_cl_factor;
         float side_area;

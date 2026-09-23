@@ -234,6 +234,7 @@ namespace spartan
         float m_tire_squeal_volume = 0.0f;
         engine_sound::engine_config m_engine_sound_config;
         bool m_engine_sound_configured = false;
+        bool m_engine_sound_cranking = false;
 
         // haptic feedback state
         float m_haptic_left  = 0.0f;

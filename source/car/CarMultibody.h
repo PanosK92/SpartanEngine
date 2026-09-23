@@ -98,7 +98,8 @@ namespace car
         int member_count = 0;
         PxVec3 chassis_shock_anchor = PxVec3(0.0f);
         PxVec3 upright_shock_anchor = PxVec3(0.0f);
-        float shock_rest_length = 0.0f;
+        float shock_rest_length = 0.0f;   // spring free length, preload lives only in the spring force
+        float shock_design_length = 0.0f; // length at ride height, travel, stops and packers are measured from here
         float shock_length = 0.0f;
         float shock_velocity = 0.0f;
         float design_motion_ratio = 1.0f;

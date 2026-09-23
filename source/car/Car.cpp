@@ -1517,7 +1517,7 @@ namespace spartan
             Renderer::DrawLine(shock_bottom, shock_bottom - spring_force_vector, spring_color, spring_color);
             // the shock carries three separate stages and only the first was ever drawn, so a car sitting
             // on its packers looked identical to one riding on its springs
-            const float current_compression = corner.shock_rest_length - corner.shock_length;
+            const float current_compression = corner.shock_design_length - corner.shock_length;
             const float shock_travel = config.suspension_travel * corner.design_motion_ratio;
             if (current_compression > shock_travel * preset.bump_stop_threshold)
             {
@@ -2282,6 +2282,7 @@ namespace spartan
         m_chase_camera = {};
         // the synth is shared, the next car to be entered has to push its own spec
         m_engine_sound_configured = false;
+        m_engine_sound_cranking = false;
 
         // restore mouse cursor if orbit was active
         if (m_orbit_mouse_active)
@@ -3347,11 +3348,6 @@ namespace spartan
     void Car::CreateAudioSources(Entity* parent_entity)
     {
         SP_PROFILE_CPU();
-        std::call_once(audio_synthesizers_once, []()
-        {
-            engine_sound::initialize(48000);
-            tire_squeal_sound::initialize(48000);
-        });
 
         // engine sound (synthesized)
         {
@@ -3364,6 +3360,14 @@ namespace spartan
             audio_source->SetPlayOnStart(false);
             audio_source->SetVolume(0.8f);
         }
+
+        // the source above holds the shared device open, so its native rate is known now
+        std::call_once(audio_synthesizers_once, []()
+        {
+            const int sample_rate = AudioSource::GetDeviceSampleRate();
+            engine_sound::initialize(sample_rate);
+            tire_squeal_sound::initialize(sample_rate);
+        });
 
         // door open/close
         {
@@ -3892,6 +3896,16 @@ namespace spartan
                 view = engine_sound::listener_view::cabin;
             }
 
+            // closed throttle above idle with the engine being driven by the wheels: the ecu cuts fuel
+            const bool overrun = simulation->get_engine_running() && throttle < 0.05f && engine_rpm > idle_rpm + 300.0f && simulation->get_engine_output_torque() <= 0.0f;
+            const float gearbox_rpm = simulation->get_gearbox_input_angular_velocity() * 60.0f / (2.0f * math::pi);
+            // bank 0 sits on the car's left, it moves to the right of the screen when looking at the nose
+            float bank_pan = 1.0f;
+            if (Camera* camera = World::GetCamera())
+            {
+                bank_pan = std::clamp(math::Vector3::Dot(m_vehicle_entity->GetRight(), camera->GetEntity()->GetRight()), -1.0f, 1.0f);
+            }
+
             engine_sound::set_parameters(
                 engine_rpm,
                 throttle,
@@ -3900,7 +3914,10 @@ namespace spartan
                 simulation->get_rev_limiter_active(),
                 simulation->get_current_gear(),
                 simulation->get_is_shifting(),
-                view
+                view,
+                gearbox_rpm,
+                overrun,
+                bank_pan
             );
 
             // the synth already breathes with load, this gain only adds the distance and the body
@@ -3908,12 +3925,26 @@ namespace spartan
             const float effort = std::max(throttle, load);
             float volume = (0.65f + rpm_normalized * 0.15f + effort * 0.2f) * engine_volume_scale;
             audio_engine->SetVolume(volume);
+
+            // only a real ignition plays the starter, joining a running engine settles on its live state
+            const bool cranking = simulation->get_starter_engaged();
             if (!audio_engine->IsPlaying())
             {
-                // Install this car's spec and live controls before the stream is primed.
-                engine_sound::start();
+                if (cranking)
+                {
+                    engine_sound::start();
+                }
+                else
+                {
+                    engine_sound::prime();
+                }
                 audio_engine->StartSynthesis();
             }
+            else if (cranking && !m_engine_sound_cranking)
+            {
+                engine_sound::start();
+            }
+            m_engine_sound_cranking = cranking;
         }
         else if (!m_is_occupied && audio_engine && audio_engine->IsPlaying())
         {
@@ -3925,28 +3956,53 @@ namespace spartan
         {
             float speed_kmh = physics->GetLinearVelocity().Length() * 3.6f;
 
-            float target_intensity = 0.0f;
             float contact_speed = 0.0f;
+            float power_squared = 0.0f;
+            float weighted_pan = 0.0f;
             car::Simulation* simulation = physics->GetVehicleSimulation();
+            Camera* camera = World::GetCamera();
 
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 4 && simulation; i++)
             {
                 WheelIndex wheel = static_cast<WheelIndex>(i);
-                if (physics->IsWheelGrounded(wheel))
+                if (!physics->IsWheelGrounded(wheel))
                 {
-                    float radius = simulation ? simulation->get_wheel_effective_radius(i) : 0.34f;
-                    float tread_speed = fabsf(physics->GetWheelAngularVelocity(wheel)) * radius;
-                    float rolling_speed = std::max(speed_kmh / 3.6f, tread_speed);
-                    float angle = fabsf(physics->GetWheelSlipAngle(wheel));
-                    float ratio = fabsf(physics->GetWheelSlipRatio(wheel));
-                    float lateral = std::clamp((angle - 0.09f) / 0.35f, 0.0f, 1.0f);
-                    float longitudinal = std::clamp((ratio - 0.12f) / 0.65f, 0.0f, 1.0f);
-                    float motion = std::clamp((rolling_speed - 0.7f) / 4.0f, 0.0f, 1.0f);
-                    float load = std::clamp(physics->GetWheelTireLoad(wheel) / 1500.0f, 0.0f, 1.0f);
-                    target_intensity = std::max(target_intensity, std::max(lateral, longitudinal) * motion * load);
-                    contact_speed = std::max(contact_speed, rolling_speed);
+                    continue;
+                }
+
+                const car::wheel& state = simulation->get_wheel_state(i);
+                float tread_speed = fabsf(physics->GetWheelAngularVelocity(wheel)) * simulation->get_wheel_effective_radius(i);
+                contact_speed = std::max(contact_speed, std::max(speed_kmh / 3.6f, tread_speed));
+
+                // rubber only sings on a hard paved surface, loose ground scrubs instead
+                float surface = 0.0f;
+                if (state.contact_surface == car::surface_asphalt || state.contact_surface == car::surface_concrete)
+                {
+                    surface = 1.0f;
+                }
+                else if (state.contact_surface == car::surface_wet_asphalt)
+                {
+                    surface = 0.35f;
+                }
+
+                // onset sits at the force peak: below it the patch still grips, past it the tread slides
+                float onset = std::clamp((state.friction_use - 0.8f) / 0.17f, 0.0f, 1.0f);
+                onset = onset * onset * (3.0f - 2.0f * onset);
+
+                // friction power against a full grip slide at about 3 m/s, so four sliding tires outsing one
+                float reference = std::max(state.tire_load, 500.0f) * 3.0f;
+                float power = std::clamp(state.slip_power / reference, 0.0f, 1.5f) * onset * surface;
+                power_squared += power * power;
+
+                if (camera)
+                {
+                    math::Vector3 to_wheel = (physics->GetWheelContactPoint(wheel) - camera->GetEntity()->GetPosition()).Normalized();
+                    weighted_pan += power * power * math::Vector3::Dot(to_wheel, camera->GetEntity()->GetRight());
                 }
             }
+            float target_intensity = std::clamp(sqrtf(power_squared), 0.0f, 1.0f);
+            // lean toward the sliding side, exaggerated a little since the wheels sit close together
+            float balance = power_squared > 1e-6f ? std::clamp(weighted_pan / power_squared * 2.0f, -1.0f, 1.0f) : 0.0f;
 
             // Frame-rate-independent release keeps the stream alive through the DSP tail.
             float dt = std::max(0.0f, static_cast<float>(Timer::GetDeltaTimeSec()));
@@ -3955,7 +4011,7 @@ namespace spartan
 
             // feed parameters into the synthesizer
             float speed_normalized = std::clamp(contact_speed / 55.0f, 0.0f, 1.0f);
-            tire_squeal_sound::set_parameters(target_intensity, speed_normalized);
+            tire_squeal_sound::set_parameters(target_intensity, speed_normalized, balance);
 
             if (m_tire_squeal_volume > 0.001f)
             {
@@ -3970,7 +4026,6 @@ namespace spartan
                 if (!audio_tire->IsPlaying())
                 {
                     tire_squeal_sound::reset();
-                    tire_squeal_sound::set_parameters(target_intensity, speed_normalized);
                     audio_tire->SetVolume(0.3f);
                     audio_tire->StartSynthesis();
                 }

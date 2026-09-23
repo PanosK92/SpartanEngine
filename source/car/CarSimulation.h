@@ -92,6 +92,7 @@ namespace car
         hybrid_state    battery;
         bool            engine_running = true;
         bool            starter_requested = false;
+        bool            starter_engaged = false; // cranking a stopped engine this tick
         float           regen_axle_torque = 0;
         double          clutch_heat_j = 0;
         double          gearbox_loss_j = 0;
@@ -211,6 +212,8 @@ namespace car
         // function local storage avoids duplicate definitions
         shape_2d& shape_data_ref();
         bool is_in_reverse();
+        // automatic mode drives reverse with the brake pedal, a manual gearbox keeps real brakes in r
+        bool is_brake_reverse_throttle();
         bool is_in_neutral();
         bool is_in_forward_gear();
 
@@ -485,6 +488,7 @@ namespace car
         float get_motor_power_kw();
         const hybrid_state& get_hybrid_state() const { return battery; }
         bool get_engine_running() const { return engine_running; }
+        bool get_starter_engaged() const { return starter_engaged; }
         void set_starter(bool active) { starter_requested = active; wake_vehicle_assembly(); }
         void record_contact_impulse(const PxVec3& impulse, uint64_t other_entity = 0, unsigned point_count = 0, unsigned pair_flags = 0)
         {

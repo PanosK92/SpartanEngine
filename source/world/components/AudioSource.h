@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= includes =========
 #include "Component.h"
+#include <atomic>
 #include <string>
 #include <vector>
 #include <functional>
@@ -40,6 +41,7 @@ namespace spartan
 {
     // callback type for audio synthesis: generates stereo samples into buffer
     // parameters: output buffer (stereo interleaved), number of sample frames
+    // runs on the sdl audio thread, so it must not block or allocate
     using SynthesisCallback     = std::function<void(float*, int)>;
 
     class AudioSource : public Component
@@ -71,7 +73,9 @@ namespace spartan
         void SetSynthesisMode(bool enabled, SynthesisCallback callback = nullptr);
         bool IsSynthesisMode() const { return m_synthesis_mode; }
         void StartSynthesis();  // start synthesis playback
-        void StopSynthesis();   // stop synthesis playback
+        void StopSynthesis();   // fade out, the stream is released once it is silent
+        // native rate of the shared output device, synthesizers render at it so sdl never resamples
+        static int GetDeviceSampleRate();
 
         bool IsPlaying() { return m_is_playing; }
         void PlayClip();
@@ -117,7 +121,10 @@ namespace spartan
 
     private:
         void FeedAudioChunk();
-        void FeedSynthesizedChunk();
+        void PublishSynthesisMix();
+        void RenderSynthesis(SDL_AudioStream* stream, int bytes_needed);
+        void DestroyStream();
+        static void SynthesisStreamCallback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount);
         void TickAmbient(bool in_play_mode);
 
         std::vector<float> m_stereo_chunk; // reused to avoid per-call allocation
@@ -145,11 +152,22 @@ namespace spartan
         float m_ambient_target = 0.0f;
         float m_ambient_update_timer = 0.0f;
 
-        // synthesis mode
+        // synthesis mode, the audio thread pulls; the main thread only publishes the mix below
+        enum SynthesisState : int { synthesis_running = 0, synthesis_stopping, synthesis_silent };
         bool m_synthesis_mode                           = false;
         SynthesisCallback m_synthesis_callback          = nullptr;
-        float m_synthesis_gain_l = 0.0f;
-        float m_synthesis_gain_r = 0.0f;
+        std::vector<float> m_synthesis_chunk;
+        static constexpr uint32_t synthesis_chunk_frames = 512;
+        int m_synthesis_rate                            = 48000;
+        float m_synthesis_gain_l                        = 0.0f; // audio thread
+        float m_synthesis_gain_r                        = 0.0f; // audio thread
+        std::atomic<float> m_synthesis_target_l         { 0.0f };
+        std::atomic<float> m_synthesis_target_r         { 0.0f };
+        std::atomic<bool> m_synthesis_reverb            { false };
+        std::atomic<float> m_synthesis_room_size        { 0.5f };
+        std::atomic<float> m_synthesis_decay            { 0.5f };
+        std::atomic<float> m_synthesis_wet              { 0.3f };
+        std::atomic<int> m_synthesis_state              { synthesis_running };
 
         // reverb state
         bool m_reverb_enabled         = false;

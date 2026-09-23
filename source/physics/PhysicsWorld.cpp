@@ -560,6 +560,8 @@ namespace spartan
                 const float fixed_time_step   = 1.0f / settings::hz;
                 // At 60 FPS this is normally three or four steps. A load, debugger
                 // stop or streaming hitch must not cause an unbounded catch-up spiral.
+                // The cap is 40 ms of simulation per frame, so below 25 FPS the world
+                // runs in slow motion. Keep that in mind when judging vehicle behaviour.
                 constexpr uint32_t max_steps_per_frame = 8;
                 const float elapsed = max(static_cast<float>(Timer::GetDeltaTimeSec()), 0.0f);
                 accumulated_time += min(elapsed, fixed_time_step * max_steps_per_frame);

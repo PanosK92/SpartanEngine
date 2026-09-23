@@ -353,11 +353,11 @@ void RenderOptions::OnTickVisible()
                         "Off",    // AA_Off_Upscale_Linear
                         "FXAA",   // AA_Fxaa_Upscale_Linear
                         "TAAU",   // AA_Taau_Upscale_Taau
-                        "XeSS SR 2.0.2 (SDK 3.0.2)" // AA_Xess_Upscale_Xess
+                        "XeSS 3" // AA_Xess_Upscale_Xess
                     };
                     if (RHI_Device::IsSupportedDlss())
                     {
-                        upsamplers.emplace_back("DLSS 4.5 (SDK 310.9.1)"); // AA_Dlss_Upscale_Dlss
+                        upsamplers.emplace_back("DLSS 4.5"); // AA_Dlss_Upscale_Dlss
                     }
 
                     uint32_t mode = cvar_antialiasing_upsampling.GetValueAs<uint32_t>();

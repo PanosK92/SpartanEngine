@@ -829,8 +829,9 @@ namespace spartan::car_hud
         const auto& aero = simulation->get_aero_debug();
         s.aero_valid = aero.valid;
         s.drag = aero.drag_force.magnitude();
-        s.front_downforce = aero.front_downforce.magnitude();
-        s.rear_downforce = aero.rear_downforce.magnitude();
+        // signed, a positive lift coefficient makes lift and reads negative here
+        s.front_downforce = spec.lift_coeff_front > 0 ? -aero.front_downforce.magnitude() : aero.front_downforce.magnitude();
+        s.rear_downforce = spec.lift_coeff_rear > 0 ? -aero.rear_downforce.magnitude() : aero.rear_downforce.magnitude();
         s.ride_height = aero.ride_height;
         s.optimal_temp = spec.tire_optimal_temp;
         s.temp_range = spec.tire_temp_range;
