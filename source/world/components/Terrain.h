@@ -307,8 +307,8 @@ namespace spartan
         uint32_t GetDenseHeight() const { return m_dense_height; }
         bool Raycast(const math::Ray& ray, math::Vector3& hit_out) const;
         bool SampleHeight(float world_x, float world_z, float& height_out) const;
-        // height with every road cut and fill taken back out, roads conform to this so they cannot
-        // chase the ground they just moved
+        // Sculpted ground before building pads and road carves; roads must not
+        // chase their own fill or a neighbouring building on regeneration.
         bool SampleHeightBase(float world_x, float world_z, float& height_out) const;
         bool HasRoadCarve() const { return !m_road_carve_delta.empty(); }
         // world-space unit normal at xz, returns false if no heightfield
@@ -530,8 +530,12 @@ namespace spartan
         void DestroyPadRefine(uint64_t entity_id);
         void DestroyAllPadRefines();
         void SyncPadRefine(const TerrainPlatform& pad, bool cook_physics);
+        void CookPadRefine(uint64_t entity_id);
+        void ApplyRoadHeightConstraints(
+            std::vector<math::Vector3>& positions, uint32_t stride, const TerrainGridMapping& mapping,
+            int32_t x0, int32_t z0, int32_t x1, int32_t z1, float plateau, std::vector<float>* deltas) const;
         void RebuildCommittedRefines();
-        void RestampPropsForPad(const TerrainPlatform& pad, bool restore);
+        void RestampPropsForPad(const TerrainPlatform& pad, bool restore, bool update_instances = true);
         void SnapPropsToSurface(
             float center_x,
             float center_z,
@@ -671,6 +675,8 @@ namespace spartan
         bool m_live_pad_active           = false;
         TerrainPlatform m_live_pad;
         bool m_live_pad_dirty            = false;
+        bool m_live_pad_props_dirty      = false;
+        TerrainPlatform m_live_pad_props_previous;
         double m_live_pad_changed_ms     = 0.0;
         uint64_t m_live_track_entity     = 0;
         math::Vector3 m_live_track_position = math::Vector3::Zero;
@@ -678,6 +684,7 @@ namespace spartan
         math::Vector3 m_live_track_scale = math::Vector3::One;
         // dense pad meshes, one per occupied floor, collision included
         std::unordered_map<uint64_t, std::shared_ptr<Mesh>> m_pad_refine_meshes;
+        std::unordered_map<uint64_t, std::array<uint32_t, 2>> m_pad_refine_grids;
         // dense cells edited since the last flush, and cells whose collision still needs a rebuild
         TerrainDirtyRect m_height_dirty;
         TerrainDirtyRect m_physics_dirty;

@@ -109,7 +109,7 @@
       <platform entity_id="9046000000000000362" min_x="-10482.2256" min_z="932.306335" max_x="-10466.5029" max_z="947.604431" center_x="-10474.3643" center_z="939.955383" half_x="6" half_z="5.5" yaw="-3.62155819" height="334.359985" margin="2" />
       <platform entity_id="9046000000000000376" min_x="-10455.1357" min_z="919.997009" max_x="-10438.5254" max_z="935.756897" center_x="-10446.8301" center_z="927.876953" half_x="6.5" half_z="5.5" yaw="-3.62155819" height="334.480011" margin="2" />
       <platform entity_id="9046000000000000391" min_x="-10428.5615" min_z="904.832275" max_x="-10413.7256" max_z="919.66864" center_x="-10421.1436" center_z="912.250488" half_x="5.5" half_z="5.5" yaw="-3.62155819" height="334.359985" margin="2" />
-      <platform entity_id="9057000000000000013" min_x="6202.07129" min_z="-2881.06958" max_x="6240.99512" max_z="-2838.90112" center_x="6221.5332" center_z="-2859.98535" half_x="18.5" half_z="16.5" yaw="1.39626265" height="16.2200012" margin="2.0999999" />
+      <platform entity_id="9057000000000000013" min_x="6190.03174" min_z="-2878.0957" max_x="6230.50928" max_z="-2834.62012" center_x="6210.27051" center_z="-2856.35791" half_x="18.5001831" half_z="16.5" yaw="1.34390247" height="11.6199989" margin="2.10002184" />
      </platforms>
     </terrain>
    </Entity>
@@ -64309,7 +64309,7 @@
    </Entity>
   </Entity>
   <Entity name="Player" id="9027000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="world_layer">
-   <Entity name="Player Home" id="9018000000000000022" active="true" position="12824.9 0 -1010.49" rotation="0 0.939693 0 0.34202" scale="1 1 1" tags="location_root,location_player_home">
+   <Entity name="Player Home" id="9018000000000000022" active="true" position="12901.4 -4.6 -1354.99" rotation="0 0.948324 0 0.317305" scale="1 1 1" tags="location_root,location_player_home">
     <Entity name="player_garage_hub" id="12848334842964081404" active="true" position="6245.06 16.9 -2825.09" rotation="0 0.939693 0 0.34202" scale="1 1 1" tags="location_player_home,landmark,home_garage">
      <Entity name="map_label" id="9003000000000000301" active="true" position="0 220 0" rotation="0 0 0 1" scale="1 1 1">
       <Entity name="map_label_a" id="9003000000000000302" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">

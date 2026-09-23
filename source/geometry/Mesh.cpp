@@ -896,6 +896,57 @@ namespace spartan
         return true;
     }
 
+    bool Mesh::UpdateVertices(const vector<RHI_Vertex_PosTexNorTan>& vertices)
+    {
+        lock_guard lock(m_mutex);
+        if (vertices.empty() || vertices.size() != m_vertices.size() ||
+            m_sub_meshes.size() != 1 || m_sub_meshes[0].lods.size() != 1)
+        {
+            return false;
+        }
+
+        m_vertices = vertices;
+        MeshLod& lod = m_sub_meshes[0].lods[0];
+        lod.aabb = BoundingBox(m_vertices.data(), static_cast<uint32_t>(m_vertices.size()));
+        const Vector3 minimum = lod.aabb.GetMin();
+        const Vector3 extent = lod.aabb.GetMax() - minimum;
+        const Vector3 safe_extent(max(extent.x, 1e-8f), max(extent.y, 1e-8f), max(extent.z, 1e-8f));
+        const float diagonal = safe_extent.Length();
+        auto unorm16 = [](float value)
+        {
+            return static_cast<uint32_t>(roundf(clamp(value, 0.0f, 1.0f) * 65535.0f));
+        };
+
+        // The index and meshlet topology has not changed. Refit conservative
+        // spheres from each cluster's referenced vertices instead of clustering again.
+        for (Sb_MeshletBounds& bounds : m_meshlets)
+        {
+            const uint32_t first = bounds.first_vertex_vert_count & MESHLET_FIRST_VERTEX_MASK;
+            const uint32_t count = bounds.first_vertex_vert_count >> MESHLET_VERT_COUNT_SHIFT;
+            BoundingBox cluster;
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                const auto& vertex = m_vertices[m_meshlet_vertices[first + i]];
+                const Vector3 point(vertex.pos[0], vertex.pos[1], vertex.pos[2]);
+                cluster.Merge(BoundingBox(point, point));
+            }
+            const Vector3 center = cluster.GetCenter();
+            const uint32_t cx = unorm16((center.x - minimum.x) / safe_extent.x);
+            const uint32_t cy = unorm16((center.y - minimum.y) / safe_extent.y);
+            const uint32_t cz = unorm16((center.z - minimum.z) / safe_extent.z);
+            // Cover center rounding and round radius upwards, matching the GPU decoder.
+            const float radius = cluster.GetSize().Length() * 0.5f + diagonal * (1.5f / 65535.0f);
+            const uint32_t packed_radius = static_cast<uint32_t>(ceilf(clamp(radius / diagonal, 0.0f, 1.0f) * 65535.0f));
+            bounds.center_xy = cx | (cy << 16);
+            bounds.center_z_radius = cz | (packed_radius << 16);
+            bounds.cone_axis_cutoff = 127u << 24; // old normal cones are invalid after deformation
+        }
+        GeometryBuffer::UpdateVertices(m_vertices.data(), m_global_vertex_offset, static_cast<uint32_t>(m_vertices.size()));
+        GeometryBuffer::UpdateMeshletBounds(m_meshlets.data(), m_global_meshlet_offset, static_cast<uint32_t>(m_meshlets.size()));
+        InvalidateAllBlas();
+        return true;
+    }
+
     void Mesh::UploadVertexRange(uint32_t vertex_offset, uint32_t vertex_count)
     {
         if (vertex_count == 0 || vertex_offset + vertex_count > m_vertices.size())

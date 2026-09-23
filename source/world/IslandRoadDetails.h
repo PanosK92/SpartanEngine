@@ -587,12 +587,12 @@ namespace spartan::island_road_details
         generated_cache::Save(generated_cache::Path(resources, "road_furniture", key), key, parts);
     }
 
-    inline uint64_t CacheKey(Entity* entity, Spline* spline)
+    inline uint64_t CacheKey(Entity* entity, Spline* spline, bool hazard_signature = false)
     {
         // Terrain grading and junction solving are finished before this stage.
         // Prefetch and publication can share one fingerprint per road; live
         // editing still evaluates the full recipe every time.
-        if (World::IsPreparing())
+        if (World::IsPreparing() && !hazard_signature)
             if (auto found = preparation_keys.find(entity->GetObjectId()); found != preparation_keys.end()) return found->second;
         generated_cache::Hash recipe;
         recipe.Add(uint32_t(6)); recipe.Add(sizeof(BakedPart)); recipe.Add(sizeof(MeshLod));
@@ -622,7 +622,18 @@ namespace spartan::island_road_details
                     const Vector3 sided=center+(probe-center)*side;
                     float height=0;
                     const bool valid=terrain->SampleHeight(sided.x,sided.z,height);
-                    recipe.Add(valid); if (valid) add(height);
+                    if (hazard_signature)
+                    {
+                        // Furniture depends on whether protection is needed, not every
+                        // centimetre a nearby building moves the soil. Keep the detailed
+                        // cache key for actual rebuilds and existing on-disk bakes.
+                        const Vector3 edge = center + (right * half + right.Normalized() * .8f) * side;
+                        recipe.Add(valid && edge.y - height > std::max(1.5f, offset * .35f));
+                    }
+                    else
+                    {
+                        recipe.Add(valid); if (valid) add(height);
+                    }
                 }
             }
         }
@@ -638,7 +649,7 @@ namespace spartan::island_road_details
             }
             recipe.Add(uint8_t(0));
         }
-        if (World::IsPreparing()) preparation_keys[entity->GetObjectId()] = hash;
+        if (World::IsPreparing() && !hazard_signature) preparation_keys[entity->GetObjectId()] = hash;
         return hash;
     }
 
@@ -696,8 +707,9 @@ namespace spartan::island_road_details
         Entity* entity=World::GetEntityById(record.id);
         Spline* spline=entity ? entity->GetComponent<Spline>() : nullptr;
         if (!spline || spline->GetRoadFrames().empty()) return;
+        const uint64_t signature = CacheKey(entity, spline, true);
+        if (record.signature == signature) return;
         const uint64_t hash = CacheKey(entity, spline);
-        if (record.signature==hash) return;
         // Keep a bounded pipeline: read/decode the next five roads while the
         // owning thread publishes this one. No scene access occurs in workers.
         if (World::IsPreparing() && guardrails_ready)
@@ -714,7 +726,7 @@ namespace spartan::island_road_details
         }
         auto progress = ProgressTracker::Begin(ProgressType::Terrain, entity->GetObjectName(), "Loading roadside details");
         const Stopwatch preparation_time;
-        record.signature=hash;
+        record.signature=signature;
         if (Entity* old=World::GetEntityById(record.detail_id)) World::RemoveEntity(old);
         Entity* group=Anchor(root,("details_"+entity->GetObjectName()).c_str(),Vector3::Zero,Vector3::Forward);
         record.detail_id=group->GetObjectId();

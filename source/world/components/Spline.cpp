@@ -157,18 +157,14 @@ namespace spartan
         // touched it, otherwise every rebuild would chase the fill it laid down last time
         float heightfield_y  = 0.0f;
         bool has_heightfield = false;
-        bool carved          = false;
         if (query.terrain)
         {
-            carved          = query.terrain->HasRoadCarve();
-            has_heightfield = carved
-                              ? query.terrain->SampleHeightBase(world_x, world_z, heightfield_y)
-                              : query.terrain->SampleHeight(world_x, world_z, heightfield_y);
+            has_heightfield = query.terrain->SampleHeightBase(world_x, world_z, heightfield_y);
         }
 
         const float sky_y = 10000.0f;
         PhysicsRaycastHit hit;
-        // The heightfield already contains sculpting and platforms. Avoid thousands of scene
+        // The base heightfield contains sculpting. Avoid thousands of scene
         // raycasts against another representation of the same ground; use rays only without terrain.
         bool ray_hit = !has_heightfield && PhysicsWorld::RaycastStatic(
             Vector3(world_x, sky_y, world_z),

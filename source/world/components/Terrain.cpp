@@ -3890,6 +3890,7 @@ namespace spartan
             SnapshotSeed();
             m_live_pad_active = false;
             m_live_pad_dirty  = false;
+            m_live_pad_props_dirty = false;
 
             if (!ProgressTracker::IsLoading(ProgressType::World))
             {
@@ -4131,22 +4132,16 @@ namespace spartan
         const float terrain_ms = commit_timer.GetElapsedTimeMs();
         m_progress.SetStep("Preparing terrain-conforming roads");
         generated_cache::Hash road_surface_hash;
-        road_surface_hash.Add(uint32_t(1));
+        road_surface_hash.Add(uint32_t(2));
         road_surface_hash.Add(m_dense_width);
         road_surface_hash.Add(m_dense_height);
         road_surface_hash.Add(m_density);
         road_surface_hash.Add(m_scale);
         road_surface_hash.Add(GetEntity()->GetMatrix());
-        // Fingerprint the actual sculpted/platform surface, excluding road feedback.
-        const bool carved = m_road_carve_delta.size() == m_positions.size();
-        for (size_t i = 0; i < m_positions.size(); i++)
-        {
-            Vector3 point = m_positions[i];
-            if (carved) point.y -= m_road_carve_delta[i];
-            road_surface_hash.Add(point);
-        }
-        for (const TerrainPlatform& pad : m_platforms)
-            for (float value : {pad.center_x, pad.center_z, pad.half_x, pad.half_z, pad.yaw, pad.height}) road_surface_hash.Add(value);
+        // Roads use the sculpted seed, independently of movable building pads.
+        // The same base must identify their bakes or saving a house invalidates every road.
+        const auto& road_base = m_positions_seed.size() == m_positions.size() ? m_positions_seed : m_positions;
+        for (const Vector3& point : road_base) road_surface_hash.Add(point);
         for (Entity* entity : World::GetEntities())
         {
             if (!entity)
@@ -5507,7 +5502,9 @@ namespace spartan
                 for (const Matrix& local : seed->second)
                 {
                     const Vector3 position = (local * world).GetTranslation();
-                    if (on_pad(position.x, position.z))
+                    // The seed predates road filtering. Restoring a building's old
+                    // footprint must not bring vegetation back onto a carriageway.
+                    if (on_pad(position.x, position.z) && !IsOnRoad(position.x, position.z))
                     {
                         kept.push_back(local);
                     }
@@ -5521,7 +5518,7 @@ namespace spartan
                 if (active != m_prop_entity_seed.end() &&
                     on_pad(entity->GetPosition().x, entity->GetPosition().z))
                 {
-                    entity->SetActive(active->second);
+                    entity->SetActive(active->second && !IsOnRoad(entity->GetPosition().x, entity->GetPosition().z));
                 }
             }
         }
@@ -5557,44 +5554,16 @@ namespace spartan
 
     bool Terrain::SampleHeightBase(float world_x, float world_z, float& height_out) const
     {
-        if (!SampleHeight(world_x, world_z, height_out))
-        {
-            return false;
-        }
+        if (!HasHeightfield()) return false;
 
-        if (m_road_carve_delta.size() != m_positions.size() || m_dense_width < 2 || m_dense_height < 2)
-        {
-            return true;
-        }
-
-        float local_x = world_x;
-        float local_z = world_z;
-        if (Entity* entity = GetEntity())
-        {
-            const Vector3 local = entity->GetMatrix().Inverted() * Vector3(world_x, 0.0f, world_z);
-            local_x = local.x;
-            local_z = local.z;
-        }
-
-        // bilinear over the carve delta, mirrors TerrainSystem::SampleHeight so the two stay aligned
-        const TerrainGridMapping mapping = GetGridMapping();
-        const float gx = (local_x + mapping.offset_x) / mapping.scale_x;
-        const float gz = (local_z + mapping.offset_z) / mapping.scale_z;
-        const int ix   = clamp(static_cast<int>(floorf(gx)), 0, static_cast<int>(m_dense_width) - 2);
-        const int iz   = clamp(static_cast<int>(floorf(gz)), 0, static_cast<int>(m_dense_height) - 2);
-        const float fx = clamp(gx - static_cast<float>(ix), 0.0f, 1.0f);
-        const float fz = clamp(gz - static_cast<float>(iz), 0.0f, 1.0f);
-
-        const size_t row0 = static_cast<size_t>(iz) * m_dense_width;
-        const size_t row1 = row0 + m_dense_width;
-        const float d00   = m_road_carve_delta[row0 + ix];
-        const float d10   = m_road_carve_delta[row0 + ix + 1];
-        const float d01   = m_road_carve_delta[row1 + ix];
-        const float d11   = m_road_carve_delta[row1 + ix + 1];
-        const float top   = d00 + fx * (d10 - d00);
-        const float bottom = d01 + fx * (d11 - d01);
-
-        height_out -= top + fz * (bottom - top);
+        Entity* entity = GetEntity();
+        const Matrix matrix = entity ? entity->GetMatrix() : Matrix::Identity;
+        const Vector3 local = entity ? matrix.Inverted() * Vector3(world_x, 0.0f, world_z) : Vector3(world_x, 0.0f, world_z);
+        // The seed includes sculpting, but excludes both building pads and road
+        // carves. Moving a building must not move a road on the next world load.
+        const auto& base = m_positions_seed.size() == m_positions.size() ? m_positions_seed : m_positions;
+        const float height = TerrainSystem::SampleHeight(base, m_dense_width, m_dense_height, local.x, local.z, GetGridMapping());
+        height_out = (matrix * Vector3(local.x, height, local.z)).y;
         return true;
     }
 
@@ -5841,112 +5810,8 @@ namespace spartan
             else
             {
                 ++bake_misses;
-                // two envelopes, the highest fill cone and the lowest cut cone
-                // the cut cone holds a flat plateau one grid cell wide around every road point, which is what
-                // guarantees the carved surface can never interpolate up through the deck between vertices
-                const size_t scratch_count = static_cast<size_t>(rect_width) * rect_height;
-                std::vector<float> raise_to(scratch_count, -numeric_limits<float>::max());
-                std::vector<float> lower_to(scratch_count,  numeric_limits<float>::max());
-
-                for (const RoadCarveJob& job : jobs)
-                {
-                    if (job.bounds[1] < rect_x0 || job.bounds[0] > rect_x1 ||
-                        job.bounds[3] < rect_z0 || job.bounds[2] > rect_z1)
-                    {
-                        continue;
-                    }
-
-                    for (size_t s = 0; s + 1 < job.points.size(); s++)
-                    {
-                        const Vector3& a = job.points[s];
-                        const Vector3& b = job.points[s + 1];
-                        const float half_a = job.half_widths[s];
-                        const float half_b = job.half_widths[s + 1];
-                        const float reach  = max(half_a, half_b) + job.shoulder;
-
-                        const int32_t sx0 = max(static_cast<int32_t>(floorf((min(a.x, b.x) - reach + mapping.offset_x) / mapping.scale_x)), rect_x0);
-                        const int32_t sx1 = min(static_cast<int32_t>(ceilf ((max(a.x, b.x) + reach + mapping.offset_x) / mapping.scale_x)), rect_x1);
-                        const int32_t sz0 = max(static_cast<int32_t>(floorf((min(a.z, b.z) - reach + mapping.offset_z) / mapping.scale_z)), rect_z0);
-                        const int32_t sz1 = min(static_cast<int32_t>(ceilf ((max(a.z, b.z) + reach + mapping.offset_z) / mapping.scale_z)), rect_z1);
-
-                        if (sx1 < sx0 || sz1 < sz0)
-                        {
-                            continue;
-                        }
-
-                        const float dx = b.x - a.x;
-                        const float dz = b.z - a.z;
-                        const float segment_length_sq = dx * dx + dz * dz;
-
-                        for (int32_t z = sz0; z <= sz1; z++)
-                        {
-                            const size_t row        = static_cast<size_t>(z) * m_dense_width;
-                            const size_t scratch_row = static_cast<size_t>(z - rect_z0) * rect_width;
-
-                            for (int32_t x = sx0; x <= sx1; x++)
-                            {
-                                const size_t index = row + static_cast<size_t>(x);
-                                const Vector3& cell = m_positions[index];
-
-                                float t = 0.0f;
-                                if (segment_length_sq > 1e-8f)
-                                {
-                                    t = ((cell.x - a.x) * dx + (cell.z - a.z) * dz) / segment_length_sq;
-                                    t = clamp(t, 0.0f, 1.0f);
-                                }
-
-                                const float px = a.x + dx * t;
-                                const float pz = a.z + dz * t;
-                                const float ox = cell.x - px;
-                                const float oz = cell.z - pz;
-                                const float distance = sqrtf(ox * ox + oz * oz);
-
-                                const float half = half_a + (half_b - half_a) * t;
-                                if (distance > half + job.shoulder)
-                                {
-                                    continue;
-                                }
-
-                                const size_t scratch = scratch_row + static_cast<size_t>(x - rect_x0);
-                                const float bed      = (a.y + (b.y - a.y) * t) - job.bed_drop;
-
-                                // fill cone, highest one wins so an embankment survives a neighbouring dip
-                                const float fill_over = max(0.0f, distance - half);
-                                raise_to[scratch] = max(raise_to[scratch], bed - fill_over * job.fill_slope);
-
-                                // cut cone, lowest one wins, the plateau keeps it at bed level for a whole grid
-                                // cell around the road so bilinear interpolation can never climb over the deck
-                                const float cut_over = max(0.0f, distance - half - plateau);
-                                lower_to[scratch] = min(lower_to[scratch], bed + cut_over * job.cut_slope);
-                            }
-                        }
-                    }
-                }
-
-                // resolve both envelopes against the untouched ground
-                for (int32_t z = rect_z0; z <= rect_z1; z++)
-                {
-                    const size_t row         = static_cast<size_t>(z) * m_dense_width;
-                    const size_t scratch_row = static_cast<size_t>(z - rect_z0) * rect_width;
-
-                    for (int32_t x = rect_x0; x <= rect_x1; x++)
-                    {
-                        const size_t scratch = scratch_row + static_cast<size_t>(x - rect_x0);
-                        if (lower_to[scratch] == numeric_limits<float>::max())
-                        {
-                            continue;
-                        }
-
-                        const size_t index = row + static_cast<size_t>(x);
-                        const float base   = m_positions[index].y;
-
-                        float target = max(base, raise_to[scratch]);
-                        target       = min(target, lower_to[scratch]);
-
-                        m_road_carve_delta[index] = target - base;
-                        m_positions[index].y      = target;
-                    }
-                }
+                ApplyRoadHeightConstraints(m_positions, m_dense_width, mapping,
+                    rect_x0, rect_z0, rect_x1, rect_z1, plateau, &m_road_carve_delta);
 
                 baked_heights.reserve(size_t(rect_width) * rect_height);
                 for (int32_t z = rect_z0; z <= rect_z1; ++z)
@@ -5959,8 +5824,149 @@ namespace spartan
             MarkHeightsDirty(rect_x0, rect_z0, rect_x1, rect_z1);
             FlushHeightEdits(true);
         }
+        // Existing fine patches must follow road edits and the first road bake too.
+        // Otherwise their pre-carve triangles can cover an otherwise protected deck.
+        for (const TerrainPlatform& pad : m_platforms)
+        {
+            float cx, cz, hx, hz, yaw, height;
+            platform_to_local(GetEntity(), pad, cx, cz, hx, hz, yaw, height);
+            float min_x, min_z, max_x, max_z;
+            obb_write_aabb(cx, cz, hx, hz, yaw, min_x, min_z, max_x, max_z);
+            const float margin = pad_deform_margin(pad, max(mapping.scale_x, mapping.scale_z));
+            const auto bounds = to_grid_bounds(min_x - margin, min_z - margin, max_x + margin, max_z + margin);
+            for (const auto& region : dirty_regions)
+            {
+                if (bounds[1] < region[0] || bounds[0] > region[1] ||
+                    bounds[3] < region[2] || bounds[2] > region[3]) continue;
+                SyncPadRefine(pad, true);
+                break;
+            }
+        }
         SP_LOG_INFO("Road carve bake: %u hits, %u misses (missing/stale/invalid), %.2f ms",
             bake_hits, bake_misses, bake_timer.GetElapsedTimeMs());
+    }
+
+    void Terrain::ApplyRoadHeightConstraints(
+        vector<Vector3>& positions, uint32_t stride, const TerrainGridMapping& mapping,
+        int32_t rect_x0, int32_t rect_z0, int32_t rect_x1, int32_t rect_z1,
+        float plateau, vector<float>* deltas) const
+    {
+        if (rect_x1 < rect_x0 || rect_z1 < rect_z0 || m_road_carve_jobs.empty()) return;
+        const uint32_t rect_width = static_cast<uint32_t>(rect_x1 - rect_x0 + 1);
+        const uint32_t rect_height = static_cast<uint32_t>(rect_z1 - rect_z0 + 1);
+        // Cached job bounds use the dense grid, including when constraining a finer patch.
+        const TerrainGridMapping dense = GetGridMapping();
+        const float dense_x0 = (rect_x0 * mapping.scale_x - mapping.offset_x + dense.offset_x) / dense.scale_x;
+        const float dense_x1 = (rect_x1 * mapping.scale_x - mapping.offset_x + dense.offset_x) / dense.scale_x;
+        const float dense_z0 = (rect_z0 * mapping.scale_z - mapping.offset_z + dense.offset_z) / dense.scale_z;
+        const float dense_z1 = (rect_z1 * mapping.scale_z - mapping.offset_z + dense.offset_z) / dense.scale_z;
+        // two envelopes, the highest fill cone and the lowest cut cone
+        // the cut cone holds a flat plateau one grid cell wide around every road point, which is what
+        // guarantees the carved surface can never interpolate up through the deck between vertices
+        const size_t scratch_count = static_cast<size_t>(rect_width) * rect_height;
+        std::vector<float> raise_to(scratch_count, -numeric_limits<float>::max());
+        std::vector<float> lower_to(scratch_count,  numeric_limits<float>::max());
+
+        for (const auto& [id, job] : m_road_carve_jobs)
+        {
+            if (job.bounds[1] < dense_x0 || job.bounds[0] > dense_x1 ||
+                job.bounds[3] < dense_z0 || job.bounds[2] > dense_z1)
+            {
+                continue;
+            }
+
+            for (size_t s = 0; s + 1 < job.points.size(); s++)
+            {
+                const Vector3& a = job.points[s];
+                const Vector3& b = job.points[s + 1];
+                const float half_a = job.half_widths[s];
+                const float half_b = job.half_widths[s + 1];
+                const float reach  = max(half_a, half_b) + job.shoulder;
+
+                const int32_t sx0 = max(static_cast<int32_t>(floorf((min(a.x, b.x) - reach + mapping.offset_x) / mapping.scale_x)), rect_x0);
+                const int32_t sx1 = min(static_cast<int32_t>(ceilf ((max(a.x, b.x) + reach + mapping.offset_x) / mapping.scale_x)), rect_x1);
+                const int32_t sz0 = max(static_cast<int32_t>(floorf((min(a.z, b.z) - reach + mapping.offset_z) / mapping.scale_z)), rect_z0);
+                const int32_t sz1 = min(static_cast<int32_t>(ceilf ((max(a.z, b.z) + reach + mapping.offset_z) / mapping.scale_z)), rect_z1);
+
+                if (sx1 < sx0 || sz1 < sz0)
+                {
+                    continue;
+                }
+
+                const float dx = b.x - a.x;
+                const float dz = b.z - a.z;
+                const float segment_length_sq = dx * dx + dz * dz;
+
+                for (int32_t z = sz0; z <= sz1; z++)
+                {
+                    const size_t row        = static_cast<size_t>(z) * stride;
+                    const size_t scratch_row = static_cast<size_t>(z - rect_z0) * rect_width;
+
+                    for (int32_t x = sx0; x <= sx1; x++)
+                    {
+                        const size_t index = row + static_cast<size_t>(x);
+                        const Vector3& cell = positions[index];
+
+                        float t = 0.0f;
+                        if (segment_length_sq > 1e-8f)
+                        {
+                            t = ((cell.x - a.x) * dx + (cell.z - a.z) * dz) / segment_length_sq;
+                            t = clamp(t, 0.0f, 1.0f);
+                        }
+
+                        const float px = a.x + dx * t;
+                        const float pz = a.z + dz * t;
+                        const float ox = cell.x - px;
+                        const float oz = cell.z - pz;
+                        const float distance = sqrtf(ox * ox + oz * oz);
+
+                        const float half = half_a + (half_b - half_a) * t;
+                        if (distance > half + job.shoulder)
+                        {
+                            continue;
+                        }
+
+                        const size_t scratch = scratch_row + static_cast<size_t>(x - rect_x0);
+                        const float bed      = (a.y + (b.y - a.y) * t) - job.bed_drop;
+
+                        // fill cone, highest one wins so an embankment survives a neighbouring dip
+                        const float fill_over = max(0.0f, distance - half);
+                        raise_to[scratch] = max(raise_to[scratch], bed - fill_over * job.fill_slope);
+
+                        // cut cone, lowest one wins, the plateau keeps it at bed level for a whole grid
+                        // cell around the road so bilinear interpolation can never climb over the deck
+                        const float cut_over = max(0.0f, distance - half - plateau);
+                        lower_to[scratch] = min(lower_to[scratch], bed + cut_over * job.cut_slope);
+                    }
+                }
+            }
+        }
+
+        // resolve both envelopes against the untouched ground
+        for (int32_t z = rect_z0; z <= rect_z1; z++)
+        {
+            const size_t row         = static_cast<size_t>(z) * stride;
+            const size_t scratch_row = static_cast<size_t>(z - rect_z0) * rect_width;
+
+            for (int32_t x = rect_x0; x <= rect_x1; x++)
+            {
+                const size_t scratch = scratch_row + static_cast<size_t>(x - rect_x0);
+                if (lower_to[scratch] == numeric_limits<float>::max())
+                {
+                    continue;
+                }
+
+                const size_t index = row + static_cast<size_t>(x);
+                const float base   = positions[index].y;
+
+                float target = max(base, raise_to[scratch]);
+                target       = min(target, lower_to[scratch]);
+
+                if (deltas) (*deltas)[index] = target - base;
+                positions[index].y      = target;
+            }
+        }
+
     }
 
     void Terrain::CollectTilesInRegion(
@@ -6164,6 +6170,7 @@ namespace spartan
 
     bool Terrain::FlushHeightEdits(bool commit)
     {
+        SP_PROFILE_CPU();
         if (!HasHeightfield())
         {
             m_height_dirty.Clear();
@@ -7195,11 +7202,19 @@ namespace spartan
         const int x1 = min(static_cast<int>(ceilf((max_x + mapping.offset_x) / step_x)), static_cast<int>(m_dense_width) - 1);
         const int z1 = min(static_cast<int>(ceilf((max_z + mapping.offset_z) / step_z)), static_cast<int>(m_dense_height) - 1);
 
-        // the pad writes straight from the seed, which has no road in it, so any road delta recorded
-        // on these cells is gone from the ground and must be forgotten too, otherwise the next road
-        // refresh subtracts a drop that is no longer there and the surface sinks twice
+        // Remove only this region's old road contribution before repainting. Reapply
+        // cached road envelopes below, without invalidating or rebuilding whole roads.
         const bool has_road_delta = m_road_carve_delta.size() == m_positions.size();
-        bool road_touched         = false;
+        if (has_road_delta)
+        {
+            for (int z = z0; z <= z1; ++z)
+            for (int x = x0; x <= x1; ++x)
+            {
+                const size_t index = static_cast<size_t>(z) * m_dense_width + x;
+                m_positions[index].y -= m_road_carve_delta[index];
+                m_road_carve_delta[index] = 0.0f;
+            }
+        }
 
         for (int z = z0; z <= z1; z++)
         {
@@ -7222,12 +7237,6 @@ namespace spartan
                     continue;
                 }
 
-                if (has_road_delta && m_road_carve_delta[index] != 0.0f)
-                {
-                    m_road_carve_delta[index] = 0.0f;
-                    road_touched              = true;
-                }
-
                 const float seed_y = m_positions_seed[index].y;
                 if (restore_only)
                 {
@@ -7246,10 +7255,8 @@ namespace spartan
             }
         }
 
-        if (road_touched)
-        {
-            MarkRoadCarvesDirtyInGridRect(x0, z0, x1, z1);
-        }
+        ApplyRoadHeightConstraints(m_positions, m_dense_width, mapping,
+            x0, z0, x1, z1, 0.75f * cell, has_road_delta ? &m_road_carve_delta : nullptr);
 
         // the flush repairs mesh, height texture and the flat height mirror for this rect only
         MarkHeightsDirty(x0, z0, x1, z1);
@@ -7375,6 +7382,7 @@ namespace spartan
         if (!m_entity_ptr || entity_id == 0)
         {
             m_pad_refine_meshes.erase(entity_id);
+            m_pad_refine_grids.erase(entity_id);
             return;
         }
 
@@ -7385,6 +7393,7 @@ namespace spartan
         }
 
         m_pad_refine_meshes.erase(entity_id);
+        m_pad_refine_grids.erase(entity_id);
     }
 
     void Terrain::DestroyAllPadRefines()
@@ -7403,10 +7412,12 @@ namespace spartan
         }
 
         m_pad_refine_meshes.clear();
+        m_pad_refine_grids.clear();
     }
 
     void Terrain::SyncPadRefine(const TerrainPlatform& pad, bool cook_physics)
     {
+        SP_PROFILE_CPU();
         if (!m_entity_ptr || pad.entity_id == 0 || !HasHeightfield())
         {
             return;
@@ -7499,6 +7510,18 @@ namespace spartan
             }
         }
 
+        TerrainGridMapping refine_mapping;
+        refine_mapping.scale_x = width / segs_x;
+        refine_mapping.scale_z = depth / segs_z;
+        refine_mapping.offset_x = -min_x;
+        refine_mapping.offset_z = -min_z;
+        // Apply the road ceiling AFTER the overlay offset too. A triangle touching
+        // the deck must have its neighbouring vertices constrained beneath it.
+        const float refine_plateau = sqrtf(refine_mapping.scale_x * refine_mapping.scale_x +
+                                           refine_mapping.scale_z * refine_mapping.scale_z);
+        ApplyRoadHeightConstraints(positions, verts_x, refine_mapping,
+            0, 0, segs_x, segs_z, refine_plateau, nullptr);
+
         vector<RHI_Vertex_PosTexNorTan> vertices(positions.size());
         vector<uint32_t> indices((verts_x - 1) * (verts_z - 1) * 6);
         TerrainSystem::GenerateVerticesAndIndices(vertices, indices, positions, verts_x, verts_z);
@@ -7515,7 +7538,6 @@ namespace spartan
 
         const string name = pad_refine_name(pad.entity_id);
         Entity* child = m_entity_ptr->GetChildByName(name);
-        bool created  = false;
         if (!child)
         {
             child = World::CreateEntity();
@@ -7524,7 +7546,6 @@ namespace spartan
             child->SetParent(m_entity_ptr);
             child->SetPositionLocal(Vector3::Zero);
             World::ProcessPendingAdditions();
-            created = true;
         }
 
         shared_ptr<Mesh>& mesh = m_pad_refine_meshes[pad.entity_id];
@@ -7537,7 +7558,13 @@ namespace spartan
         bool updated = false;
         if (mesh && render->GetMesh() == mesh.get())
         {
-            updated = mesh->UpdateGeometry(vertices, indices);
+            const auto grid = m_pad_refine_grids.find(pad.entity_id);
+            if (grid != m_pad_refine_grids.end() && grid->second == array<uint32_t, 2>{verts_x, verts_z})
+            {
+                updated = mesh->UpdateVertices(vertices);
+            }
+            if (!updated) updated = mesh->UpdateGeometry(vertices, indices);
+            if (updated) render->SetMesh(mesh.get());
         }
 
         if (!updated)
@@ -7559,24 +7586,33 @@ namespace spartan
             render->SetMesh(mesh.get());
         }
 
-        if (m_material)
+        if (m_material && render->GetMaterial() != m_material.get())
         {
             render->SetMaterial(m_material);
         }
 
-        if (created || cook_physics)
+        m_pad_refine_grids[pad.entity_id] = {verts_x, verts_z};
+        if (cook_physics)
         {
-            Physics* physics = child->GetComponent<Physics>();
-            if (!physics)
-            {
-                physics = child->AddComponent<Physics>();
-                physics->SetUseConvexHull(false);
-                physics->SetBodyType(BodyType::Mesh);
-            }
-            else
-            {
-                physics->Rebuild();
-            }
+            CookPadRefine(pad.entity_id);
+        }
+    }
+
+    void Terrain::CookPadRefine(uint64_t entity_id)
+    {
+        SP_PROFILE_CPU();
+        Entity* child = m_entity_ptr ? m_entity_ptr->GetChildByName(pad_refine_name(entity_id)) : nullptr;
+        if (!child) return;
+        Physics* physics = child->GetComponent<Physics>();
+        if (!physics)
+        {
+            physics = child->AddComponent<Physics>();
+            physics->SetUseConvexHull(false);
+            physics->SetBodyType(BodyType::Mesh);
+        }
+        else
+        {
+            physics->Rebuild();
         }
     }
 
@@ -7677,88 +7713,57 @@ namespace spartan
         }
     }
 
-    void Terrain::RestampPropsForPad(const TerrainPlatform& pad, bool restore)
+    void Terrain::RestampPropsForPad(const TerrainPlatform& pad, bool restore, bool update_instances)
     {
+        SP_PROFILE_CPU();
         const TerrainGridMapping mapping = GetGridMapping();
         const float cell = max(max(mapping.scale_x, mapping.scale_z), 1.0f);
         float deform_hx = 0.0f;
         float deform_hz = 0.0f;
         pad_deform_extents(pad, cell, deform_hx, deform_hz);
 
-        if (restore)
-        {
-            RestorePropMaskFootprint(
-                pad.center_x,
-                pad.center_z,
-                deform_hx,
-                deform_hz,
-                pad.yaw
-            );
-            RestoreFootprintProps(
-                pad.center_x,
-                pad.center_z,
-                deform_hx,
-                deform_hz,
-                pad.yaw
-            );
-            return;
-        }
+        RestorePropMaskFootprint(pad.center_x, pad.center_z, deform_hx, deform_hz, pad.yaw);
+        if (update_instances)
+            RestoreFootprintProps(pad.center_x, pad.center_z, deform_hx, deform_hz, pad.yaw);
+        if (restore) return;
 
-        RestorePropMaskFootprint(
-            pad.center_x,
-            pad.center_z,
-            deform_hx,
-            deform_hz,
-            pad.yaw
-        );
-        RestoreFootprintProps(
-            pad.center_x,
-            pad.center_z,
-            deform_hx,
-            deform_hz,
-            pad.yaw
-        );
-        PunchPropMaskFootprint(
-            pad.center_x,
-            pad.center_z,
-            pad.half_x,
-            pad.half_z,
-            pad.yaw
-        );
-        ClearFootprintProps(
-            pad.center_x,
-            pad.center_z,
-            pad.half_x,
-            pad.half_z,
-            pad.yaw
-        );
-        SnapPropsToSurface(
-            pad.center_x,
-            pad.center_z,
-            deform_hx,
-            deform_hz,
-            pad.half_x,
-            pad.half_z,
-            pad.yaw
-        );
+        PunchPropMaskFootprint(pad.center_x, pad.center_z, pad.half_x, pad.half_z, pad.yaw);
+        if (update_instances)
+        {
+            ClearFootprintProps(pad.center_x, pad.center_z, pad.half_x, pad.half_z, pad.yaw);
+            SnapPropsToSurface(pad.center_x, pad.center_z, deform_hx, deform_hz, pad.half_x, pad.half_z, pad.yaw);
+        }
     }
 
     void Terrain::SyncLivePadVisuals(const TerrainPlatform* restore, const TerrainPlatform* paint)
     {
+        SP_PROFILE_CPU();
         // heights were already painted by the caller and sit in the dirty rect, everything here is
         // region work, collision waits for the debounce so a drag never cooks a heightfield per frame
+        // Keep the last committed prop footprint; intermediate drag positions never
+        // changed CPU instances and therefore do not need restoring at commit.
+        if (!m_live_pad_props_dirty && (restore || paint))
+        {
+            m_live_pad_props_previous = restore ? *restore : *paint;
+            m_live_pad_props_dirty = true;
+        }
         if (restore)
         {
-            DestroyPadRefine(restore->entity_id);
-            RestampPropsForPad(*restore, true);
+            if (!paint || paint->entity_id != restore->entity_id)
+            {
+                DestroyPadRefine(restore->entity_id);
+            }
+            RestampPropsForPad(*restore, true, false);
         }
 
         if (paint)
         {
-            RestampPropsForPad(*paint, false);
+            RestampPropsForPad(*paint, false, false);
         }
         else
         {
+            if (m_live_pad_props_dirty) RestampPropsForPad(m_live_pad_props_previous, true);
+            m_live_pad_props_dirty = false;
             DestroyPadOverlays();
         }
 
@@ -7809,6 +7814,8 @@ namespace spartan
             return;
         }
 
+        if (m_live_pad_props_dirty) RestampPropsForPad(m_live_pad_props_previous, true);
+        m_live_pad_props_dirty = false;
         RestorePlatform(m_live_pad);
         m_live_pad_active   = false;
         m_live_pad_dirty    = false;
@@ -7825,27 +7832,12 @@ namespace spartan
 
         if (m_platforms.empty()) return;
 
-        // A dense island has tens of thousands of entities. Resolve all pad IDs
-        // in one pass instead of linearly searching the world once for every pad.
-        // This snapshot is used only during this main-thread call; nothing is
-        // cached across deletion, reimport or world reload. Missing IDs still
-        // use the existing pending-entity lookup and spatial rebinding below.
-        unordered_map<uint64_t, Entity*> occupants;
-        occupants.reserve(m_platforms.size());
-        for (const TerrainPlatform& pad : m_platforms)
-            if (pad.entity_id != 0) occupants.emplace(pad.entity_id, nullptr);
-        for (Entity* entity : World::GetEntities())
-        {
-            auto found = occupants.find(entity->GetObjectId());
-            if (found != occupants.end() && !found->second) found->second = entity;
-        }
-
+        // World resolves IDs through its index; there is no need to scan every entity each frame.
         vector<TerrainPlatform> gone;
         gone.reserve(m_platforms.size());
         for (TerrainPlatform& pad : m_platforms)
         {
-            auto found = occupants.find(pad.entity_id);
-            if (!platform_occupant_alive(pad, found != occupants.end() ? found->second : nullptr))
+            if (!platform_occupant_alive(pad))
             {
                 gone.push_back(pad);
             }
@@ -7859,6 +7851,11 @@ namespace spartan
 
     void Terrain::CommitLivePad(bool punch)
     {
+        SP_PROFILE_CPU();
+        if (!m_live_pad_dirty && !m_live_pad_props_dirty && m_height_dirty.IsEmpty() &&
+            m_physics_dirty.IsEmpty() && m_prop_mask_bake_dirty.IsEmpty()) return;
+        if (m_live_pad_props_dirty) RestampPropsForPad(m_live_pad_props_previous, true);
+        m_live_pad_props_dirty = false;
         if (punch)
         {
             RestampPropsForPad(m_live_pad, false);
@@ -7867,7 +7864,7 @@ namespace spartan
         // whatever the drag left unflushed, plus the deferred collision and mask for everything it touched
         FlushHeightEdits(true);
         const bool mask_recreated = UploadPropMask();
-        SyncPadRefine(m_live_pad, true);
+        CookPadRefine(m_live_pad.entity_id);
         DestroyPadOverlays();
 
         if (mask_recreated)
@@ -7949,6 +7946,10 @@ namespace spartan
             fabsf(Quaternion::Dot(track->GetRotation(), m_live_track_rotation)) > 0.99999f &&
             (track->GetScale() - m_live_track_scale).LengthSquared() < 0.0001f)
         {
+            if (m_live_pad_dirty && (Timer::GetTimeMs() - m_live_pad_changed_ms) > 250.0)
+            {
+                CommitLivePad(true);
+            }
             return;
         }
 
@@ -8103,6 +8104,11 @@ namespace spartan
             m_live_pad_active     = true;
             m_live_pad_changed_ms = Timer::GetTimeMs();
             m_live_pad_dirty      = !already_there;
+            if (already_there && m_pad_refine_meshes.find(wanted.entity_id) != m_pad_refine_meshes.end())
+            {
+                remember_track();
+                return;
+            }
 
             PaintPadFromSeed(
                 wanted.center_x,
@@ -8117,8 +8123,7 @@ namespace spartan
             RememberPlatform(wanted);
             SyncLivePadVisuals(nullptr, &wanted);
             // first contact cooks collision once so the object can rest on the pad, later moves debounce it
-            FlushPendingPhysics();
-            SyncPadRefine(wanted, true);
+            CommitLivePad(true);
             remember_track();
         }
     }
@@ -9853,6 +9858,7 @@ namespace spartan
         SnapshotSeed();
         m_live_pad_active = false;
         m_live_pad_dirty  = false;
+        m_live_pad_props_dirty = false;
         if (!ProgressTracker::IsLoading(ProgressType::World))
         {
             PruneOrphanPlatforms();
@@ -9981,6 +9987,7 @@ namespace spartan
         m_area_km2               = 0.0f;
         m_live_pad_active    = false;
         m_live_pad_dirty     = false;
+        m_live_pad_props_dirty = false;
         m_live_pad           = {};
         m_live_track_entity  = 0;
         m_height_dirty.Clear();
