@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/PanosK92/SpartanEngine/actions"><img src="https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg" alt="Build Status"></a>
   <a href="https://discord.gg/TG5r2BS"><img src="https://img.shields.io/discord/677302405263785986?logo=discord&label=Discord&color=5865F2&logoColor=white" alt="Discord"></a>
-  <a href="https://github.com/PanosK92/SpartanEngine/blob/master/license.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+  <a href="https://github.com/PanosK92/SpartanEngine/blob/master/license.md"><img src="https://img.shields.io/badge/license-Spartan_Engine-blue.svg" alt="License"></a>
 </p>
 
 <p align="center">
@@ -206,4 +206,18 @@ I cover the Dropbox hosting that makes the one-click setup work. If Spartan has 
 
 ## License
 
-**[MIT License](https://github.com/PanosK92/SpartanEngine/blob/master/license.md)**, free to use with attribution.
+**[Spartan Engine License 1.0](license.md)** permits free noncommercial use,
+modification, and redistribution, including reuse of covered code in other projects.
+Keep the copyright notice identifying **Panos Karabelas** and the license with
+redistributed code; compiled distributions must carry them in documentation or
+accessible legal notices.
+
+**Commercial use requires prior written permission and negotiated payment terms.**
+Fees, royalties, or a combination are agreed case by case, with no automatic rate
+or revenue threshold. This applies to the engine and covered code copied into
+other games, engines, libraries, tools, or applications. Contact
+[Panos Karabelas](https://panoskarabelas.com/) to discuss your project.
+
+Third-party components retain their own licenses. Copies and versions previously
+released under MIT retain their existing permissions. See [license.md](license.md)
+for the complete terms.
