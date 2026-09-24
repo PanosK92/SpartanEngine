@@ -94,6 +94,9 @@ namespace spartan
         static void RegisterForScripting(sol::state_view state);
         sol::reference AsLua(sol::state_view state) override;
 
+        // discard fps motion when gameplay replaces the camera pose
+        void ResetFpsMotion();
+
         // matrices
         const math::Matrix& GetViewMatrix() const           { return m_view; }
         const math::Matrix& GetProjectionMatrix() const     { return m_projection; }

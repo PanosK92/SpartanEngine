@@ -440,7 +440,7 @@ struct DecalParameters
     SHARED_FLOAT4 color; // linear albedo and opacity
     SHARED_FLOAT4 surface; // roughness, relief in metres, seed, grass fraction
     SHARED_UINT source_material SHARED_DEFAULT(0xffffffffu);
-    SHARED_UINT padding0 SHARED_DEFAULT(0);
+    SHARED_UINT kind SHARED_DEFAULT(0); // 0: deposit, 1: paint scratch (same buffer layout)
     SHARED_UINT padding1 SHARED_DEFAULT(0);
     SHARED_UINT padding2 SHARED_DEFAULT(0);
 };
@@ -623,7 +623,7 @@ struct GrassInstance
     SHARED_UINT  normal_yaw_scale; // normal_oct (high 16) | yaw_packed (8) | scale_packed (8)
 };
 
-// gpu particle (96 bytes)
+// gpu particle (160 bytes)
 struct Particle
 {
     SHARED_FLOAT3 position;
@@ -638,6 +638,10 @@ struct Particle
     SHARED_UINT   emitter_index SHARED_DEFAULT(0);    // emitter that spawned this particle
     SHARED_FLOAT  start_size    SHARED_DEFAULT(0.0f); // birth size, captured so later emitter changes do not resize live particles
     SHARED_FLOAT  end_size      SHARED_DEFAULT(0.0f); // death size, captured for the same reason
+    SHARED_FLOAT4 birth_color;
+    SHARED_FLOAT4 wake_origin;  // xyz = shed contact point, w = circulation strength
+    SHARED_FLOAT4 wake_axis;    // xyz = travel direction at birth, w = tire radius
+    SHARED_FLOAT4 birth_effect; // buoyancy, cooling rate, rollup, emissive strength
 };
 
 // gpu emitter parameters

@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../World.h"
 #include "../../input/Input.h"
+#include "../../car/Car.h"
 #include "../../rendering/Renderer.h"
 #include "../../rhi/RHI_Viewport.h"
 #include "../../display/Display.h"
@@ -991,11 +992,48 @@ namespace spartan
         SetFlag(CameraFlags::IsDirty, false);
     }
 
+    void Camera::ResetFpsMotion()
+    {
+        m_movement_speed        = Vector3::Zero;
+        m_jump_velocity         = 0.0f;
+        m_jump_time             = 0.0f;
+        m_lerp_to_target_p      = false;
+        m_lerp_to_target_r      = false;
+        m_anim_spring_offset    = Vector3::Zero;
+        m_anim_spring_velocity  = Vector3::Zero;
+        m_anim_offset_previous  = Vector3::Zero;
+        m_anim_rotation_previous = Quaternion::Identity;
+        m_gait_phase            = 0.0f;
+        m_gait_speed            = 0.0f;
+        m_breath_phase          = 0.0f;
+        m_fall_speed            = 0.0f;
+        m_strafe_speed          = 0.0f;
+        m_was_grounded          = true;
+    }
+
     void Camera::ProcessInput()
     {
         // only the camera the renderer is using responds to input, otherwise every camera in the world would move at once
         if (World::GetCamera() != this)
         {
+            return;
+        }
+
+        // car views can parent this camera to the player, body mesh, or vehicle physics.
+        // ownership, rather than the current parent's physics state, gates fps input.
+        if (Car::IsCameraControlled(GetEntity()))
+        {
+            ResetFpsMotion();
+            SetFlag(CameraFlags::IsControlled, false);
+            if (GetFlag(CameraFlags::WantsCursorHidden))
+            {
+                Input::SetMousePosition(m_mouse_last_position);
+                if (!Window::IsFullScreen())
+                {
+                    Input::SetMouseCursorVisible(true);
+                }
+                SetFlag(CameraFlags::WantsCursorHidden, false);
+            }
             return;
         }
 
@@ -1110,6 +1148,13 @@ namespace spartan
             return;
         }
 
+        // remove the previous head animation before look input changes its rotation basis.
+        // removing it after pitch input would bake part of the temporary lean into the view.
+        GetEntity()->SetPositionLocal(GetEntity()->GetPositionLocal() - m_anim_offset_previous);
+        GetEntity()->SetRotationLocal((GetEntity()->GetRotationLocal() * m_anim_rotation_previous.Inverse()).Normalized());
+        m_anim_offset_previous   = Vector3::Zero;
+        m_anim_rotation_previous = Quaternion::Identity;
+
         // deduce all states into booleans (some states exists as part of the class, so no need to deduce here)
         bool mouse_in_viewport    = Input::GetMouseIsInViewport();
         bool is_controlled        = GetFlag(CameraFlags::IsControlled);
@@ -1130,8 +1175,6 @@ namespace spartan
         // reset the body animation state on mode changes so no offset leaks into the new mode
         if (is_playing != m_was_playing)
         {
-            GetEntity()->SetPositionLocal(GetEntity()->GetPositionLocal() - m_anim_offset_previous);
-            GetEntity()->SetRotationLocal((GetEntity()->GetRotationLocal() * m_anim_rotation_previous.Inverse()).Normalized());
             m_anim_spring_offset     = Vector3::Zero;
             m_anim_spring_velocity   = Vector3::Zero;
             m_anim_offset_previous   = Vector3::Zero;
@@ -1149,6 +1192,7 @@ namespace spartan
             bool control_maintained = mouse_click_right && is_controlled;
             bool is_controlled_new  = control_initiated || control_maintained;
             SetFlag(CameraFlags::IsControlled, is_controlled_new);
+            is_controlled = is_controlled_new;
     
             if (is_controlled_new && !wants_cursor_hidden)
             {
@@ -1199,12 +1243,12 @@ namespace spartan
                 {
                     input_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
                 }
-                else if (is_gamepad_connected)
+                if (is_gamepad_connected)
                 {
                     // gamepad stick is a rate (rotation speed), not accumulated movement like mouse
                     // scale by delta_time and a base rotation speed for framerate-independent behavior
                     const float gamepad_rotation_speed = 120.0f; // degrees per second at full stick deflection
-                    input_delta = Input::GetGamepadThumbStickRight() * gamepad_rotation_speed * delta_time;
+                    input_delta += Input::GetGamepadThumbStickRight() * gamepad_rotation_speed * delta_time;
                 }
                 Quaternion yaw_increment   = Quaternion::FromAxisAngle(Vector3::Up, input_delta.x * deg_to_rad);
                 Quaternion pitch_increment = Quaternion::FromAxisAngle(Vector3::Right, input_delta.y * deg_to_rad);
@@ -1250,7 +1294,7 @@ namespace spartan
                     movement_direction += Vector3::Down;
                 }
             }
-            else if (is_gamepad_connected)
+            if (is_gamepad_connected)
             {
                 movement_direction += GetEntity()->GetBackward() * Input::GetGamepadThumbStickLeft().y;
                 movement_direction += GetEntity()->GetRight()    * Input::GetGamepadThumbStickLeft().x;
@@ -1364,14 +1408,13 @@ namespace spartan
             m_anim_spring_velocity += spring_accel * anim_dt;
             m_anim_spring_offset   += m_anim_spring_velocity * anim_dt;
 
-            // apply position as a delta in view relative space so nothing drifts
+            // apply this frame's animation to the unanimated view pose
             Vector3 right          = GetEntity()->GetRotationLocal() * Vector3::Right;
             Vector3 offset         = right * m_anim_spring_offset.x + Vector3::Up * m_anim_spring_offset.y;
-            Vector3 offset_delta   = offset - m_anim_offset_previous;
             m_anim_offset_previous = offset;
-            GetEntity()->SetPositionLocal(GetEntity()->GetPositionLocal() + offset_delta);
+            GetEntity()->SetPositionLocal(GetEntity()->GetPositionLocal() + offset);
 
-            // subtle roll from weight shift and strafe lean, subtle pitch nod from vertical motion, applied as a delta like the position
+            // subtle roll from weight shift and strafe lean, subtle pitch nod from vertical motion
             float strafe_speed_target = Vector3::Dot(velocity, right);
             m_strafe_speed            = math::lerp(
                 m_strafe_speed,
@@ -1382,7 +1425,7 @@ namespace spartan
             float roll               = -m_anim_spring_offset.x * 1.2f - m_strafe_speed * 0.01f;
             float pitch              = -m_anim_spring_velocity.y * 0.03f;
             Quaternion anim_rotation = Quaternion::FromAxisAngle(Vector3::Forward, roll) * Quaternion::FromAxisAngle(Vector3::Right, pitch);
-            GetEntity()->SetRotationLocal((GetEntity()->GetRotationLocal() * m_anim_rotation_previous.Inverse() * anim_rotation).Normalized());
+            GetEntity()->SetRotationLocal((GetEntity()->GetRotationLocal() * anim_rotation).Normalized());
             m_anim_rotation_previous = anim_rotation;
         }
     

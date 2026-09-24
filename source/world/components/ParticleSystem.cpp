@@ -841,7 +841,9 @@ namespace spartan
 
         if (count > 0)
         {
-            m_time_since_emission = 0.0f;
+            // Scripts can shorten the emitter lifetime while older particles are still alive.
+            // Keep the longest remaining lifetime, including the emit shader's 1.3x jitter.
+            m_live_time_remaining = max(m_live_time_remaining, max(m_lifetime, 0.0f) * 1.3f);
         }
 
         return min(count, m_max_particles);
@@ -849,8 +851,7 @@ namespace spartan
 
     bool ParticleSystem::HasLiveParticles() const
     {
-        // the emit shader jitters lifetime by up to 1.3, match it so the last puffs are not cut short
-        return m_time_since_emission < m_lifetime * 1.3f;
+        return m_live_time_remaining > 0.0f;
     }
 
     uint32_t ParticleSystem::GetEstimatedLiveParticles() const
@@ -888,7 +889,7 @@ namespace spartan
         m_last_position     = position;
         m_has_last_position = true;
 
-        m_time_since_emission = min(m_time_since_emission + max(delta_time, 0.0f), 1e9f);
+        m_live_time_remaining = max(m_live_time_remaining - max(delta_time, 0.0f), 0.0f);
     }
 
     const Vector3& ParticleSystem::GetEmitterVelocity() const

@@ -253,7 +253,8 @@ namespace spartan
         );
 
         // returns the entry index, or uint32_max when the frame budget is full, a null render writes an identity uv transform
-        uint32_t WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous = math::Matrix::Identity, uint32_t material_index = 0, uint32_t is_transparent = 0, const Render* render = nullptr);
+        // is_ui grants access to reserved entries so scene/outline draws cannot starve presentation
+        uint32_t WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous = math::Matrix::Identity, uint32_t material_index = 0, uint32_t is_transparent = 0, const Render* render = nullptr, bool is_ui = false);
 
         // wind
         const math::Vector3& GetWind();

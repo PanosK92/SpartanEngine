@@ -2189,7 +2189,7 @@ register_tool(server, "camera_snapshot", "Read the live editor camera position a
 register_tool(
   server,
   "camera_set_view",
-  "Set the editor camera position and rotation, or look at a target point. look_at is an alias for target.",
+  "Set the camera position and rotation in edit or paused play mode, or look at a target point. Exit an occupied car first to release its chase camera. look_at is an alias for target.",
   {
     position: vector3.optional(),
     rotation_euler: vector3.optional(),
@@ -5942,7 +5942,7 @@ register_tool(
 register_tool(
   server,
   "vehicle_get",
-  "Read live car status: occupancy, mcp control, camera view, pedals, gear, rpm, and speed. Omit id to use the occupied car or the only car in the world.",
+  "Read live car status: occupancy, mcp control, camera view, pedals, gear, rpm, speed, decal_count, scratch_count, and scratch receiver positions/normals. Omit id to use the occupied car or the only car in the world.",
   {
     id: z.string().optional(),
   },

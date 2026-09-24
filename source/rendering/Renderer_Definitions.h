@@ -70,8 +70,10 @@ namespace spartan
         }
     };
 
-    // world draw entries plus imgui draw cmds share this buffer, leave headroom for the editor ui
+    // Scene draws and ImGui projections share each frame slot. Only ImGui may
+    // consume the final entries (one projection per platform window).
     const uint32_t renderer_max_draw_calls         = 32768;
+    const uint32_t renderer_reserved_ui_draw_calls = 64;
     // One bound per prepass draw and one per indirect render in each frame slot.
     const uint32_t renderer_max_aabbs              = renderer_max_draw_calls * 2;
     const uint32_t renderer_max_cpu_indirect_draws = renderer_max_draw_calls * 8;

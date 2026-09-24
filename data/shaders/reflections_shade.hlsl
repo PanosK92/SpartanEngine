@@ -299,6 +299,24 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         bool is_area        = (light_p.flags & uint(1U << 6)) != 0;
         bool has_shadows    = (light_p.flags & uint(1U << 3)) != 0;
         
+        // Reject lights with zero contribution before constructing area bases,
+        // spot trigonometry and attenuation. Area range is measured from the
+        // rectangle, so expand the cheap sphere by its half diagonal.
+        if (pass_get_f3_value().z > 0.5f)
+        {
+            float3 center_to_light = is_directional ? -light_p.direction : light_p.position - position;
+            if (dot(normal, center_to_light) <= 0.0f)
+                continue;
+            if (!is_directional)
+            {
+                float extent = max(light_p.range, 0.0f);
+                if (is_area) extent += 0.5f * length(float2(light_p.area_width, light_p.area_height));
+                extent += 0.001f; // keep the boundary conservative after float roundoff
+                if (light_p.range <= 0.0f || dot(center_to_light, center_to_light) > extent * extent)
+                    continue;
+            }
+        }
+
         // Share range, cone and area attenuation with primary surface lighting.
         Light hit_light;
         hit_light.Build(i, hit_surface);

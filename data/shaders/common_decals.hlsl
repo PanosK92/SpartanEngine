@@ -24,8 +24,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPARTAN_DECALS
 StructuredBuffer<DecalParameters> decals : register(t66);
 
-float decal_height(float2 p, float seed, float grass)
+float decal_height(float2 p, float seed, float grass, uint kind)
 {
+    if (kind == 1)
+    {
+        // Broken parallel gouges along projector Y, with tapered, uneven ends.
+        float lane = floor(p.x * 9.0f);
+        float random = frac(sin(lane * 127.1f + seed * 17.7f) * 43758.5453f);
+        float streak_distance = abs(frac(p.x * 9.0f + 0.06f * sin(p.y * 11.0f + seed)) - 0.5f);
+        float ends = 1.0f - smoothstep(0.35f + random * 0.35f, 0.95f, abs(p.y));
+        float edges = 1.0f - smoothstep(0.65f, 1.0f, abs(p.x));
+        float broken = smoothstep(-0.65f, 0.1f, sin(p.y * (17.0f + random * 20.0f) + lane + seed));
+        return (1.0f - smoothstep(0.06f, 0.19f, streak_distance)) * ends * edges * lerp(0.3f, 1.0f, broken);
+    }
     float angle = atan2(p.y, p.x);
     float rim = 0.69f + 0.10f * sin(angle * 7.0f + seed) + 0.06f * sin(angle * 13.0f - seed);
     float blob = saturate((rim - length(p)) * 7.0f);
@@ -51,13 +62,13 @@ float apply_decals(uint2 range, float3 position, float3 geometric_normal, float3
         // Evaluate footprint explicitly: derivatives inside divergent decal bounds are undefined.
         float footprint = max(length(float2(dot(dpdx, gx), dot(dpdx, gy))),
                               length(float2(dot(dpdy, gx), dot(dpdy, gy))));
-        float h = decal_height(q.xy, d.surface.z, d.surface.w);
+        float h = decal_height(q.xy, d.surface.z, d.surface.w, d.kind);
         float coverage = smoothstep(0.0f, max(0.08f, footprint * 5.0f), h);
         float alpha = saturate(d.color.a * coverage * facing * (1.0f - smoothstep(0.65f, 1.0f, abs(q.z))));
         const float e = 0.006f;
         float2 slope = float2(
-            decal_height(q.xy + float2(e,0), d.surface.z, d.surface.w) - decal_height(q.xy - float2(e,0), d.surface.z, d.surface.w),
-            decal_height(q.xy + float2(0,e), d.surface.z, d.surface.w) - decal_height(q.xy - float2(0,e), d.surface.z, d.surface.w)) / (2.0f * e);
+            decal_height(q.xy + float2(e,0), d.surface.z, d.surface.w, d.kind) - decal_height(q.xy - float2(e,0), d.surface.z, d.surface.w, d.kind),
+            decal_height(q.xy + float2(0,e), d.surface.z, d.surface.w, d.kind) - decal_height(q.xy - float2(0,e), d.surface.z, d.surface.w, d.kind)) / (2.0f * e);
         float3 gradient = (slope.x * gx + slope.y * gy) * d.surface.y;
         gradient -= geometric_normal * dot(gradient, geometric_normal);
         float3 deposit_color = d.color.rgb;
@@ -92,7 +103,7 @@ float apply_decals(uint2 range, float3 position, float3 geometric_normal, float3
         normal = normalize(normal - gradient * alpha * detail_fade);
         albedo = lerp(albedo, deposit_color * lerp(0.72f, 1.12f, h), alpha);
         roughness = lerp(roughness, deposit_roughness, alpha);
-        metalness *= 1.0f - alpha;
+        metalness = lerp(metalness, d.kind == 1 ? 0.65f : 0.0f, alpha);
         occlusion *= 1.0f - alpha * h * 0.12f;
         emission *= 1.0f - alpha;
     }

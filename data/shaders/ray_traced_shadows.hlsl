@@ -241,6 +241,21 @@ void ray_gen()
         if (light_i == 0u || light_i >= buffer_frame.cluster_light_count)
             continue;
         LightParameters light = light_parameters[light_i];
+        // No reflected light reaches a receiver facing away from every point
+        // on the emitter. Keep transmission receivers and straddling rectangles
+        // on the full path; their back lighting still needs shadow visibility.
+        if (pass_get_f3_value().z > 0.5f && !has_scattering)
+        {
+            float facing = dot(normal_ws, light.position - pos_ws);
+            if ((light.flags & (1u << 6)) != 0u)
+            {
+                float3 right = normalize(light.direction_right);
+                float3 up = normalize(cross(light.direction, right));
+                facing += 0.5f * (light.area_width * abs(dot(normal_ws, right))
+                               + light.area_height * abs(dot(normal_ws, up)));
+            }
+            if (facing < -0.001f) continue;
+        }
         float local_offset = 0.001f + min(camera_distance * 0.00001f, 0.002f);
         float normal_sign = thin_foliage && dot(normal_ws, light.position - pos_ws) < 0.0f ? -1.0f : 1.0f;
         trace_local_light_shadow(launch_id, slot, light, pos_ws + normal_ws * (local_offset * normal_sign));

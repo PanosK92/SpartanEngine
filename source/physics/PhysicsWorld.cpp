@@ -269,9 +269,11 @@ namespace spartan
         static mutex contact_mutex;
         static vector<PhysicsContact> pending_contacts;
 
-        void queue_contact(Entity* entity_a, Entity* entity_b, const Vector3& position, const Vector3& normal, const Vector3& impulse)
+        void queue_contact(Entity* entity_a, Entity* entity_b, const Vector3& position, const Vector3& normal, const Vector3& impulse,
+            const Vector3& relative_velocity = Vector3::Zero, uint32_t vehicle_chassis_mask = 0,
+            const Vector3& local_a = Vector3::Zero, const Vector3& local_b = Vector3::Zero)
         {
-            if (!entity_a || !entity_b)
+            if ((!entity_a || !entity_b) && !vehicle_chassis_mask)
             {
                 return;
             }
@@ -282,6 +284,10 @@ namespace spartan
             contact.position = position;
             contact.normal = normal;
             contact.impulse = impulse;
+            contact.relative_velocity = relative_velocity;
+            contact.vehicle_chassis_mask = vehicle_chassis_mask;
+            contact.chassis_local_position[0] = local_a;
+            contact.chassis_local_position[1] = local_b;
 
             lock_guard<mutex> lock(contact_mutex);
             pending_contacts.push_back(contact);
@@ -324,14 +330,20 @@ namespace spartan
                     record(entity_a, entity_b, vehicle_impulse);
                     record(entity_b, entity_a, -vehicle_impulse);
                 }
-                if (!entity_a || !entity_b) return;
+                uint32_t chassis_mask = 0;
+                Entity* entities[] = {entity_a, entity_b};
+                for (uint32_t actor = 0; actor < 2; ++actor)
+                    if (entities[actor]) if (auto* component = entities[actor]->GetComponent<Physics>())
+                        if (auto* simulation = component->GetVehicleSimulation())
+                            if (simulation->get_body() == pair_header.actors[actor]) chassis_mask |= 1u << actor;
+                if ((!entity_a || !entity_b) && !chassis_mask) return;
 
                 for (PxU32 i = 0; i < pair_count; ++i)
                 {
                     const PxContactPair& pair = pairs[i];
                     // found + persists: a fast car can stay overlapping after a weak first touch
                     const PxU32 touch_events =
-                        PxPairFlag::eNOTIFY_TOUCH_FOUND | PxPairFlag::eNOTIFY_TOUCH_PERSISTS;
+                        PxPairFlag::eNOTIFY_TOUCH_FOUND | PxPairFlag::eNOTIFY_TOUCH_PERSISTS | PxPairFlag::eNOTIFY_TOUCH_CCD;
                     if (!(pair.events & touch_events))
                     {
                         continue;
@@ -344,6 +356,10 @@ namespace spartan
                     const PxU32 point_count = pair.extractContacts(points, 4);
                     if (point_count > 0)
                     {
+                        // Use an actual loaded point rather than a possibly unloaded manifold corner.
+                        for (PxU32 point = 1; point < point_count; ++point)
+                            if (points[point].impulse.magnitudeSquared() > points[0].impulse.magnitudeSquared())
+                                std::swap(points[0], points[point]);
                         // fetchResults can dispatch this callback on a worker
                         // while the caller holds physx_mutex. The origin is
                         // immutable for the whole simulate/fetch interval.
@@ -353,7 +369,34 @@ namespace spartan
                         impulse = Vector3(points[0].impulse.x, points[0].impulse.y, points[0].impulse.z);
                     }
 
-                    queue_contact(entity_a, entity_b, position, normal, impulse);
+                    Vector3 relative_velocity = Vector3::Zero;
+                    Vector3 local_position[2] = {};
+                    if (chassis_mask && point_count > 0 && pair_header.extraDataStreamSize)
+                    {
+                        const PxContactPairVelocity* velocity = nullptr;
+                        const PxContactPairPose* pose = nullptr;
+                        PxContactPairExtraDataIterator extra(pair_header.extraDataStream, pair_header.extraDataStreamSize);
+                        while (extra.nextItemSet() && extra.contactPairIndex <= i)
+                        {
+                            velocity = extra.preSolverVelocity;
+                            pose = extra.eventPose;
+                        }
+                        if (velocity && pose)
+                        {
+                            PxVec3 v[2];
+                            for (uint32_t actor = 0; actor < 2; ++actor)
+                            {
+                                const PxVec3 local = pose->globalPose[actor].transformInv(points[0].position);
+                                local_position[actor] = Vector3(local.x, local.y, local.z);
+                                PxTransform center = pose->globalPose[actor];
+                                if (auto* body = pair_header.actors[actor]->is<PxRigidBody>()) center *= body->getCMassLocalPose();
+                                v[actor] = velocity->linearVelocity[actor] + velocity->angularVelocity[actor].cross(points[0].position - center.p);
+                            }
+                            const PxVec3 relative = v[0] - v[1];
+                            relative_velocity = Vector3(relative.x, relative.y, relative.z);
+                        }
+                    }
+                    queue_contact(entity_a, entity_b, position, normal, impulse, relative_velocity, chassis_mask, local_position[0], local_position[1]);
                 }
             }
 
@@ -434,6 +477,8 @@ namespace spartan
                 pair_flags |= PxPairFlag::eNOTIFY_TOUCH_FOUND;
                 pair_flags |= PxPairFlag::eNOTIFY_TOUCH_PERSISTS;
                 pair_flags |= PxPairFlag::eNOTIFY_CONTACT_POINTS;
+                if (involves_vehicle)
+                    pair_flags |= PxPairFlag::ePRE_SOLVER_VELOCITY | PxPairFlag::eCONTACT_EVENT_POSE | PxPairFlag::eNOTIFY_TOUCH_CCD;
                 pair_flags |= PxPairFlag::eDETECT_CCD_CONTACT;
             }
 

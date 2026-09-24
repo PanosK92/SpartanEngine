@@ -122,6 +122,9 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     // random position within emission sphere
     float3 offset = random_in_sphere(seed) * emitter.radius;
+    // Contact-patch smoke starts above the road, not inside a sphere half buried in it.
+    if (emitter.rollup_strength > 0.0)
+        offset.y = abs(offset.y);
 
     // bias the launch upward and blend toward the emitter direction when requested
     float3 dir_random = random_direction(seed + 277803737u);
@@ -137,7 +140,9 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float r_speed = 0.5 + 1.0 * rng(seed + 7u);
 
     Particle p;
-    p.position     = emitter.position + offset;
+    // Distribute births over this frame's travelled segment instead of leaving
+    // disconnected clusters at the current position of a fast-moving emitter.
+    p.position     = emitter.position + offset - emitter.emitter_velocity * emitter.delta_time * rng(seed + 47u);
     p.lifetime     = emitter.lifetime * r_life;
     p.velocity     = dir * emitter.start_speed * r_speed + emitter.emitter_velocity * emitter.velocity_inheritance;
     p.previous_position = p.position;
@@ -149,6 +154,12 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     p.emitter_index = emitter_index;
     p.start_size    = emitter.start_size * r_size;
     p.end_size      = emitter.end_size * r_size;
+    p.birth_color  = emitter.start_color;
+    p.wake_origin  = float4(emitter.position, max(emitter.wake_strength, emitter.rollup_strength * 3.0));
+    float3 travel  = float3(emitter.emitter_velocity.x, 0.0, emitter.emitter_velocity.z);
+    float3 forward = safe_normalize(cross(emitter.vortex_axis, float3(0, 1, 0)), float3(0, 0, 1));
+    p.wake_axis    = float4(length(travel) > 2.0 ? normalize(travel) : forward, emitter.vortex_radius);
+    p.birth_effect = float4(emitter.thermal_strength, emitter.thermal_decay, emitter.rollup_strength, emitter.emissive_strength);
 
     particle_buffer_a[slot] = p;
 }
@@ -287,10 +298,8 @@ void apply_depth_collision(inout Particle p, inout float3 new_pos, EmitterParams
     {
         return;
     }
-    if (length(tex_velocity.Load(int3(pixel, 0)).xy) > 0.0005)
-    {
-        return;
-    }
+    // Screen velocity includes camera motion. It cannot identify moving geometry:
+    // rejecting it disables road collision from a moving chase camera.
 
     float linear_particle = linearize_depth(ndc_new.z);
     float linear_scene    = linearize_depth(scene_depth_raw);
@@ -508,20 +517,20 @@ static const float wake_pair_length    = 4.0;
 // the tread also drags a boundary layer around itself by no slip, but that layer is thin and the
 // tarmac blocks the bottom of the loop while separation kills it over the crown, so it is confined to
 // the rear lower quadrant rather than being a free orbit around the axle
-void apply_tire_aerodynamics(inout Particle p, EmitterParams emitter, float age)
+float3 apply_tire_aerodynamics(inout Particle p, EmitterParams emitter, float age_seconds)
 {
     if (emitter.vortex_strength == 0.0 &&
-        emitter.rollup_strength <= 0.0 &&
-        emitter.thermal_strength <= 0.0 &&
-        emitter.wake_strength <= 0.0)
+        p.birth_effect.z <= 0.0 &&
+        p.birth_effect.x <= 0.0 &&
+        p.wake_origin.w <= 0.0)
     {
-        return;
+        return 0.0;
     }
 
     float dt = emitter.delta_time;
 
     // the emitter lives in the contact patch, so its own height is the tarmac datum
-    float  height     = max(p.position.y - emitter.position.y, 0.0);
+    float  height     = max(p.position.y - p.wake_origin.y, 0.0);
     float3 axis       = safe_normalize(emitter.vortex_axis, float3(1.0, 0.0, 0.0));
     float3 horizontal = float3(p.velocity.x, 0.0, p.velocity.z);
     float  jet_speed  = length(horizontal);
@@ -552,62 +561,60 @@ void apply_tire_aerodynamics(inout Particle p, EmitterParams emitter, float age)
     }
 
     // shear rollup, emergent, this is the curl and it needs no hand placed vortex
-    if (emitter.rollup_strength > 0.0 && jet_speed > 0.001)
+    if (p.birth_effect.z > 0.0 && jet_speed > 0.001)
     {
         float ground_prox = saturate(1.0 - height / rollup_layer_height);
-        float lift        = jet_speed * ground_prox * emitter.rollup_strength;
+        float lift        = jet_speed * ground_prox * p.birth_effect.z;
         p.velocity.y += lift * dt;
 
         // the rise is bought with jet momentum, the sheet stalls as it stands up
-        p.velocity -= horizontal * (emitter.rollup_strength * ground_prox * 0.35) * dt;
+        p.velocity -= horizontal * (1.0 - exp(-p.birth_effect.z * ground_prox * 0.35 * dt));
 
         // a wall jet cannot go down, so it fans sideways, and which way is decided by the side of the
         // tread the parcel already sits on
-        float side = dot(p.position - emitter.position, axis) >= 0.0 ? 1.0 : -1.0;
-        p.velocity += axis * side * lift * 0.45 * dt;
+        float3 shed_axis = safe_normalize(cross(float3(0, 1, 0), p.wake_axis.xyz), axis);
+        float side = dot(p.position - p.wake_origin.xyz, shed_axis) >= 0.0 ? 1.0 : -1.0;
+        p.velocity += shed_axis * side * lift * 0.45 * dt;
     }
 
     // thermal, strong at birth then fading as cold air mixes in, the climb it already banked carries on
-    if (emitter.thermal_strength > 0.0)
+    if (p.birth_effect.x > 0.0)
     {
-        p.velocity.y += emitter.thermal_strength * exp(-age * emitter.thermal_decay) * dt;
+        // Cooling uses seconds, not a fraction of the authored lifetime. Mixing cools
+        // large billows faster; a long-lived trail must not remain a hot chimney.
+        float mixed = sqrt(saturate(p.start_size / max(p.size, 0.001)));
+        p.velocity.y += p.birth_effect.x * exp(-age_seconds * p.birth_effect.y) * mixed * dt;
     }
 
-    float travel_speed = length(emitter.emitter_velocity);
-    if (emitter.wake_strength <= 0.0 || travel_speed < 2.0 || tire_radius <= 0.0)
+    if (p.wake_origin.w <= 0.0 || p.wake_axis.w <= 0.0)
     {
-        return;
+        return 0.0;
     }
 
-    // counter rotating shoulder pair
-    float3 travel = emitter.emitter_velocity / travel_speed;
-    float3 rel_e  = p.position - emitter.position;
-    float  behind = -dot(rel_e, travel);
-    if (behind < -0.2 || behind > wake_pair_length)
+    // Superpose BOTH Lamb-Oseen cores. Selecting only the nearest core creates a
+    // discontinuity across the tread centre. The finite core has no singularity.
+    // Anchor the shed wake at birth so it survives lift-off and steering changes.
+    float3 travel = p.wake_axis.xyz;
+    float3 across = safe_normalize(cross(float3(0, 1, 0), travel), float3(1, 0, 0));
+    float radius = p.wake_axis.w;
+    float3 origin = p.wake_origin.xyz + buffer_frame.wind * emitter.wind_influence * age_seconds * 0.5;
+    float core_radius_sq = radius * radius * 0.30 + age_seconds * 0.045;
+    float fade = exp(-age_seconds * 0.65);
+    float3 flow = 0.0;
+    [unroll] for (uint i = 0; i < 2; i++)
     {
-        return;
+        float side = i == 0 ? -1.0 : 1.0;
+        float3 core = origin + across * side * (radius * 0.65 + age_seconds * 0.12)
+            + float3(0, radius * 0.65 + age_seconds * 0.18, 0);
+        float3 rel = p.position - core;
+        float axial = dot(rel, travel);
+        float3 radial = rel - travel * axial;
+        float r2 = dot(radial, radial);
+        float profile = (1.0 - exp(-r2 / core_radius_sq)) / max(r2, 0.0001);
+        float envelope = exp(-axial * axial / (wake_pair_length * wake_pair_length));
+        flow += cross(travel * side, radial) * profile * p.wake_origin.w * radius * 0.45 * fade * envelope;
     }
-
-    // one core per shoulder, a tread half width outboard and just clear of the tarmac
-    float  side  = dot(rel_e, axis) >= 0.0 ? 1.0 : -1.0;
-    float3 core  = emitter.position + axis * side * tire_radius * 0.5 + float3(0.0, tire_radius * 0.6, 0.0);
-    float3 rel_c = p.position - core;
-    float3 plane = rel_c - travel * dot(rel_c, travel);
-    float  d     = length(plane);
-    if (d < 0.0001)
-    {
-        return;
-    }
-
-    // rankine core, and the pair diffuses as it trails away
-    float core_radius = tire_radius * 0.8;
-    float profile     = d < core_radius ? d / core_radius : core_radius / d;
-    float decay       = saturate(1.0 - behind / wake_pair_length);
-
-    // signing the axis by side is what makes the two cores counter rotate, each one then sweeps the
-    // ground level wake outboard and lifts it once it is clear of the tread
-    float3 spin = cross(travel * side, plane) / d;
-    p.velocity += spin * emitter.wake_strength * profile * decay * dt;
+    return flow;
 }
 
 [numthreads(256, 1, 1)]
@@ -640,8 +647,10 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // integrate gravity
     p.velocity.y += emitter.gravity_modifier * 9.81 * dt;
 
-    // air drag, smoke loses its launch momentum quickly and settles instead of flying in a straight line
-    p.velocity *= saturate(1.0 - emitter.drag * dt);
+    // Drag approaches the surrounding air velocity instead of accelerating with wind forever.
+    // Exponential relaxation gives the same damping at different frame rates.
+    float3 air_velocity = buffer_frame.wind * emitter.wind_influence;
+    p.velocity = lerp(air_velocity, p.velocity, exp(-emitter.drag * dt));
 
     // entrainment
     //
@@ -666,7 +675,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
         // a parcel in a jet, not an isolated puff, so momentum spreads over a cross section rather than a
         // volume and the exponent is one, an isolated puff would be three and stops far too abruptly
-        p.velocity *= size_old / size_new;
+        p.velocity = air_velocity + relative * (size_old / size_new);
     }
 
     // divergence free turbulence, the plume shears and folds instead of inflating
@@ -674,18 +683,20 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // unwrapped one runs out of fractional precision after a while and the field starts to quantise
     float ts = fmod((float)buffer_frame.time, 600.0);
     p.velocity += curl_turbulence(p.position, p.size, ts) * emitter.turbulence_strength * dt;
-    p.velocity += buffer_frame.wind * emitter.wind_influence * dt;
 
     float age_for_collision = 1.0 - saturate(p.lifetime / max(p.max_lifetime, 0.0001));
-    apply_tire_aerodynamics(p, emitter, age_for_collision);
+    float age_seconds = max(p.max_lifetime - p.lifetime, 0.0);
+    float3 wake_velocity = apply_tire_aerodynamics(p, emitter, age_seconds);
 
     // the shoulder pair already models this wake properly, the generic radial push would double it
-    if (emitter.wake_strength <= 0.0)
+    if (p.wake_origin.w <= 0.0)
     {
         apply_moving_emitter_push(p, emitter);
     }
 
-    // predict next position
+    // Advect through the vortex field without accumulating its velocity as acceleration.
+    // Collision sees the total transport velocity; the free velocity is restored afterwards.
+    p.velocity += wake_velocity;
     float3 new_pos = p.position + p.velocity * dt;
 
     // fresh puffs need a short grace period to leave tight emitters such as exhaust tips
@@ -696,19 +707,15 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         particle_buffer_a[index] = p;
         return;
     }
-    if (!ballistic && age_for_collision > 0.18)
+    // Tire smoke is born against the road. A lifetime-relative grace period can
+    // leave it without collision for a full second, allowing the wake to bury it.
+    bool collision_ready = p.birth_effect.z > 0.0 ? age_seconds > 0.03 : age_for_collision > 0.18;
+    if (!ballistic && collision_ready && distance(p.position, emitter.position) > emitter.collision_clearance)
     {
     #ifdef RAY_TRACING_ENABLED
         if (emitter.collision_traced != 0u)
         {
-            // an exhaust tip sits down inside the bodywork, so collision has to stay off until the
-            // particle has actually left the emitter or it fights the pipe it just came out of, this is a
-            // distance because the grace above is a fraction of lifetime and a slow puff covers almost no
-            // ground in that time while a scrubbing tire covers metres
-            if (distance(p.position, emitter.position) > emitter.collision_clearance)
-            {
-                apply_traced_collision(p, new_pos, emitter);
-            }
+            apply_traced_collision(p, new_pos, emitter);
         }
         else
     #endif
@@ -719,6 +726,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     // commit the new position
     p.position = new_pos;
+    p.velocity -= wake_velocity;
 
     // age the particle
     p.lifetime -= dt;
@@ -732,13 +740,10 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // normalized age: 0 = just born, 1 = about to die
     float t = 1.0 - saturate(p.lifetime / p.max_lifetime);
 
-    // fade each particle from its own current value so emitter script changes do not pulse old smoke
-    float te = 1.0 - (1.0 - t) * (1.0 - t);
-    float end_pull = saturate(dt * (0.35 + t * 1.4));
-    p.color.rgb = lerp(p.color.rgb, emitter.end_color.rgb, end_pull);
-    p.color.a = min(p.color.a, lerp(p.color.a, emitter.end_color.a, end_pull));
-    float life_left = saturate(p.lifetime / max(p.max_lifetime, 0.0001));
-    p.color.a = min(p.color.a, emitter.start_color.a * smoothstep(0.0, 0.25, life_left));
+    // A narrow young jet expands into billows, then disperses. Birth colour is immutable:
+    // changing the throttle must not recolour or erase smoke already left behind.
+    float te = entrains ? 1.0 - (1.0 - t) * (1.0 - t) : t;
+    p.color.rgb = lerp(p.birth_color.rgb, emitter.end_color.rgb, t);
 
     // for an entraining parcel the authored ramp is a floor rather than the answer, so an effect still
     // reaches the size it was authored to reach when it is moving too slowly to entrain its way there,
@@ -746,6 +751,9 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // the tail of a dissipating trail looks like
     float size_ramp = lerp(p.start_size, p.end_size, te);
     p.size = entrains ? max(p.size, size_ramp) : size_ramp;
+    float dilution = entrains ? pow(saturate(p.start_size / max(p.size, 0.001)), 0.65) : 1.0;
+    float fade = entrains ? smoothstep(0.45, 1.0, t) : smoothstep(0.0, 1.0, t);
+    p.color.a = lerp(p.birth_color.a, emitter.end_color.a, fade) * dilution;
 
     particle_buffer_a[index] = p;
 }
@@ -771,6 +779,7 @@ struct ps_input
     float  churn          : TEXCOORD10;
     float4 clip_current   : TEXCOORD11;
     float4 clip_previous  : TEXCOORD12;
+    nointerpolation float2 emissive_shape : TEXCOORD13; // short flame, small spark
 };
 
 ps_input main_vs(uint vertex_id : SV_VertexID)
@@ -797,6 +806,7 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     o.flipbook  = float4((float)emitter.flipbook_rows, (float)emitter.flipbook_columns, emitter.flipbook_fps, 0.0);
     o.churn     = 0.0;
     o.clip_current = o.clip_previous = float4(0, 0, 0, 1);
+    o.emissive_shape = 0.0;
 
     Particle p = particle_buffer_a[index];
 
@@ -813,6 +823,11 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
         float2(-1.0,  1.0), float2(1.0, -1.0), float2( 1.0, 1.0)
     };
     float2 c = quad[corner];
+    bool luminous = emitter.lighting_mode == particle_lighting_emissive && emitter.blend_mode == particle_blend_additive;
+    float taper = p.end_size / max(p.start_size, 0.001);
+    bool flame = luminous && p.max_lifetime < 0.30 && taper > 0.10 && taper < 0.6;
+    bool spark = luminous && p.start_size < 0.075 && taper <= 0.12;
+    o.emissive_shape = float2(flame ? 1.0 : 0.0, spark ? 1.0 : 0.0);
 
     // screen aligned billboard basis, optionally stretched along the authored plume direction
     float3 right = safe_normalize(buffer_frame.camera_right, float3(1.0, 0.0, 0.0));
@@ -821,31 +836,45 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     float  velocity_len  = length(flow_velocity);
     float3 flow_axis     = safe_normalize(lerp(emitter.emission_direction, flow_velocity, 0.35), emitter.emission_direction);
     float3 velocity_axis = flow_axis - buffer_frame.camera_forward * dot(flow_axis, buffer_frame.camera_forward);
+    float projected_flow_length = length(velocity_axis);
     velocity_axis = safe_normalize(velocity_axis, right);
     float stretch = saturate(velocity_len * 0.08) * emitter.velocity_stretch;
-    right = safe_normalize(lerp(right, velocity_axis, saturate(stretch)), right);
+    float alignment = (flame || spark) ? 1.0 : saturate(stretch);
+    right = safe_normalize(lerp(right, velocity_axis, alignment), right);
     up    = safe_normalize(cross(buffer_frame.camera_forward, right), up);
     float half_size_x = p.size * (0.5 + stretch * 1.5);
     float half_size_y = p.size * (0.5 - saturate(stretch) * 0.2);
-    float3 world = p.position + right * c.x * half_size_x + up * c.y * half_size_y;
+    // A flame starts at its nozzle and extends downstream. Centred, fully
+    // stretched quads put half the jet back over the bumper in a chase view.
+    // Preserve foreshortening when looking along the exhaust direction.
+    if (flame)
+        half_size_x *= max(projected_flow_length, 0.2);
+    float longitudinal = c.x + (flame ? 1.0 : 0.0);
+    float3 world = p.position + right * longitudinal * half_size_x + up * c.y * half_size_y;
 
     float4 clip   = mul(float4(world, 1.0),      buffer_frame.view_projection);
     float4 clip_c = mul(float4(p.position, 1.0), buffer_frame.view_projection);
 
     // age driven fade in, rotation and spin, matches the old compute look
     float age_t    = 1.0 - saturate(p.lifetime / p.max_lifetime);
-    float fade_in  = saturate(age_t / 0.2);
+    float fade_in  = saturate(age_t / (luminous ? 0.04 : 0.2));
     float base_ang = rng(index * 2654435761u) * 6.28318530718;
     float spin     = (rng(index * 40503u + 13u) * 2.0 - 1.0) * 1.2;
     float ang      = base_ang + spin * age_t;
+    // The texture's flame tip points along the jet; random full rotations read as
+    // disconnected fire stickers. A little angular variation keeps the edge alive.
+    if (flame)
+        ang = -1.57079633 + spin * 0.16;
 
     float3 previous_right = normalize(float3(buffer_frame.view_previous[0][0], buffer_frame.view_previous[1][0], buffer_frame.view_previous[2][0]));
     float3 previous_up = normalize(float3(buffer_frame.view_previous[0][1], buffer_frame.view_previous[1][1], buffer_frame.view_previous[2][1]));
     float3 previous_forward = normalize(cross(previous_right, previous_up));
-    float3 previous_axis = safe_normalize(flow_axis - previous_forward * dot(flow_axis, previous_forward), previous_right);
-    previous_right = safe_normalize(lerp(previous_right, previous_axis, saturate(stretch)), previous_right);
+    float3 previous_projected_flow = flow_axis - previous_forward * dot(flow_axis, previous_forward);
+    float3 previous_axis = safe_normalize(previous_projected_flow, previous_right);
+    previous_right = safe_normalize(lerp(previous_right, previous_axis, alignment), previous_right);
     previous_up = safe_normalize(cross(previous_forward, previous_right), previous_up);
-    float3 previous_world = p.previous_position + previous_right * c.x * p.previous_size * (0.5 + stretch * 1.5)
+    float previous_length_scale = flame ? max(length(previous_projected_flow), 0.2) : 1.0;
+    float3 previous_world = p.previous_position + previous_right * longitudinal * p.previous_size * (0.5 + stretch * 1.5) * previous_length_scale
         + previous_up * c.y * p.previous_size * (0.5 - saturate(stretch) * 0.2);
     o.clip_current = mul(float4(world, 1), (pass_is_right_eye() ? buffer_frame.view_projection_unjittered_right : buffer_frame.view_projection_unjittered));
     o.clip_previous = mul(float4(previous_world, 1), get_view_projection_previous_unjittered());
@@ -858,7 +887,7 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     o.use_tex   = use_texture;
     o.position_world = p.position;
     o.age_t     = age_t;
-    o.render_params = float4((float)emitter.blend_mode, (float)emitter.lighting_mode, emitter.emissive_strength, emitter.soft_depth_scale);
+    o.render_params = float4((float)emitter.blend_mode, (float)emitter.lighting_mode, p.birth_effect.w, emitter.soft_depth_scale);
     o.flipbook  = float4((float)emitter.flipbook_rows, (float)emitter.flipbook_columns, emitter.flipbook_fps, rng(index * 1664525u + 1013904223u));
     o.churn     = emitter.churn_strength;
     return o;
@@ -1048,7 +1077,7 @@ particle_output main_ps(ps_input input)
     // carries a silhouette in its alpha and multiplying the ramp over the top of it rounds every puff
     // back into a smooth ball, which is what makes a dense plume read as a heap of spheres, so a
     // textured particle only gets a thin edge feather to hide the circular cut
-    bool  textured = input.use_tex > 0.5;
+    bool  textured = input.use_tex > 0.5 && input.emissive_shape.y < 0.5;
     float falloff  = textured ? saturate((1.0 - dist) * 3.0) : (1.0 - dist * dist);
 
     // soft depth test against the scene so billboards do not bleed through surfaces
@@ -1062,6 +1091,11 @@ particle_output main_ps(ps_input input)
 
     float3 base_color = input.color;
     float alpha_mask  = 1.0;
+    if (input.emissive_shape.y > 0.5)
+    {
+        // A hot grain has a narrow incandescent core, not a miniature smoke sprite.
+        alpha_mask = exp(-input.local.y * input.local.y * 45.0) * saturate(1.0 - input.local.x * input.local.x);
+    }
     if (textured)
     {
         // rotate the sample coords so each particle shows the texture at its own angle
@@ -1097,7 +1131,12 @@ particle_output main_ps(ps_input input)
         }
 
         float4 sample = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), tex_uv, 0);
-        base_color   *= sample.rgb;
+        // Keep the authored hot-core colour at birth; the orange texture should
+        // contribute its detail without filtering all the blue out of a fresh jet.
+        float brightness = dot(sample.rgb, float3(0.2126, 0.7152, 0.0722));
+        float3 texture_color = input.emissive_shape.x > 0.5
+            ? lerp(sample.rgb, brightness.xxx, 0.35 * (1.0 - smoothstep(0.1, 0.8, input.age_t))) : sample.rgb;
+        base_color   *= texture_color;
         alpha_mask    = sample.a;
     }
 
@@ -1111,6 +1150,8 @@ particle_output main_ps(ps_input input)
     else if (lighting_mode == particle_lighting_emissive)
     {
         lit_color = base_color * max(input.render_params.z, 1.0);
+        if (input.emissive_shape.x > 0.5)
+            lit_color *= lerp(0.5, 0.09, smoothstep(0.15, 1.0, input.age_t));
     }
 
     float alpha = saturate(alpha_mask * input.alpha * soft_factor * falloff);

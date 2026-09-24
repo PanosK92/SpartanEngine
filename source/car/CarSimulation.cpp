@@ -6073,6 +6073,19 @@ namespace car
     { return spec.tire_pressure; }
 
 
+    void Simulation::set_tire_pressure(float pressure_bar)
+    {
+        if (!std::isfinite(pressure_bar))
+            return;
+
+        spec.tire_pressure = PxClamp(pressure_bar, 0.05f, 4.0f);
+        for (auto& wheel : wheels)
+            wheel.pressure_bar = hot_tire_pressure(spec, wheel.thermal.core, wheel.damage, ambient_pressure / 100000.0f);
+        // Let a parked car settle onto the newly softened or stiffened tires.
+        wake_vehicle_assembly();
+    }
+
+
     float Simulation::get_tire_pressure_optimal()
     { return spec.tire_pressure_optimal; }
 

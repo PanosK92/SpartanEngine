@@ -2307,14 +2307,14 @@ namespace spartan
             }
         }
 
-        Entity* camera = m_body_entity ? m_body_entity->GetChildByName("component_camera") : nullptr;
-        if (!camera && default_camera)
-        {
-            camera = default_camera->GetChildByName("component_camera");
-        }
+        Entity* camera = FindCameraEntity();
 
         if (camera && default_camera)
         {
+            if (Camera* component = camera->GetComponent<Camera>())
+            {
+                component->ResetFpsMotion();
+            }
             camera->SetParent(default_camera);
             camera->SetRotationLocal(math::Quaternion::Identity);
         }
@@ -2591,6 +2591,18 @@ namespace spartan
         }
     }
 
+    bool Car::IsCameraControlled(Entity* camera)
+    {
+        for (Car* car : s_cars)
+        {
+            if (car && car->IsOccupied() && car->FindCameraEntity() == camera)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     void Car::CycleView()
     {
         m_current_view = static_cast<CarView>((static_cast<int>(m_current_view) + 1) % 3);
@@ -2630,6 +2642,11 @@ namespace spartan
         if (!camera)
         {
             return;
+        }
+
+        if (Camera* component = camera->GetComponent<Camera>())
+        {
+            component->ResetFpsMotion();
         }
 
         if (m_current_view == CarView::Chase)

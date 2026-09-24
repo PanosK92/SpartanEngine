@@ -2904,16 +2904,18 @@ namespace spartan
         }
     }
 
-    uint32_t Renderer::WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous, uint32_t material_index, uint32_t is_transparent, const Render* render)
+    uint32_t Renderer::WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous, uint32_t material_index, uint32_t is_transparent, const Render* render, bool is_ui)
     {
-        // soft fail, world draws and imgui share this buffer so a busy scene plus a dense asset
-        // browser can hit the ceiling, asserting here crashed the editor on folder navigation
-        if (m_draw_data_count >= renderer_max_draw_calls)
+        // A full scene must still leave room for the UI projection. Otherwise
+        // ImGui clears the back buffer and then drops every draw, presenting black.
+        // Apply the scene limit to editor geometry too (grids and selection outlines).
+        const uint32_t draw_limit = is_ui ? renderer_max_draw_calls : renderer_max_draw_calls - renderer_reserved_ui_draw_calls;
+        if (m_draw_data_count >= draw_limit)
         {
             static bool logged = false;
             if (!logged)
             {
-                SP_LOG_WARNING("draw data budget exhausted (%u), dropping further draws this frame", renderer_max_draw_calls);
+                SP_LOG_WARNING("draw data budget exhausted (%u), dropping further draws this frame (UI capacity is reserved)", draw_limit);
                 logged = true;
             }
             return numeric_limits<uint32_t>::max();

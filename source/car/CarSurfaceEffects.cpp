@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../profiling/Profiler.h"
 #include "../core/ThreadPool.h"
 #include "../geometry/Mesh.h"
+#include "../physics/PhysicsWorld.h"
 #include <atomic>
 #include <map>
 #include "../math/Ray.h"
@@ -153,6 +154,45 @@ namespace spartan
                     if (hit < distance) { distance = hit; normal = n.Normalized(); }
                 }
             }
+
+            void Nearest(uint32_t index, const Vector3& query, const Matrix& world,
+                float& distance_squared, Vector3& point, Vector3& normal) const
+            {
+                const auto& node = nodes[index];
+                // World-space distances keep the search radius correct for scaled imported panels.
+                if (((node.box * world).GetClosestPoint(query) - query).LengthSquared() >= distance_squared) return;
+                if (!node.count)
+                {
+                    Nearest(node.left, query, world, distance_squared, point, normal);
+                    Nearest(node.right, query, world, distance_squared, point, normal);
+                    return;
+                }
+                for (uint32_t i = node.first; i < node.first + node.count; ++i)
+                {
+                    const auto& t = triangles[i];
+                    const Vector3 a = world * t.a, b = world * t.b, c = world * t.c;
+                    const Vector3 ab = b - a, bc = c - b, ca = a - c;
+                    const Vector3 n = ab.Cross(c - a);
+                    const float area_squared = n.LengthSquared();
+                    if (area_squared < 1e-16f) continue;
+                    Vector3 candidate = query - n * ((query - a).Dot(n) / area_squared);
+                    if (ab.Cross(candidate - a).Dot(n) < 0.0f || bc.Cross(candidate - b).Dot(n) < 0.0f || ca.Cross(candidate - c).Dot(n) < 0.0f)
+                    {
+                        const Vector3 on_ab = a + ab * std::clamp((query - a).Dot(ab) / ab.LengthSquared(), 0.0f, 1.0f);
+                        const Vector3 on_bc = b + bc * std::clamp((query - b).Dot(bc) / bc.LengthSquared(), 0.0f, 1.0f);
+                        const Vector3 on_ca = c + ca * std::clamp((query - c).Dot(ca) / ca.LengthSquared(), 0.0f, 1.0f);
+                        candidate = (on_ab - query).LengthSquared() < (on_bc - query).LengthSquared() ? on_ab : on_bc;
+                        if ((on_ca - query).LengthSquared() < (candidate - query).LengthSquared()) candidate = on_ca;
+                    }
+                    const float distance = (candidate - query).LengthSquared();
+                    if (distance < distance_squared)
+                    {
+                        distance_squared = distance;
+                        point = candidate;
+                        normal = n.Normalized();
+                    }
+                }
+            }
         };
         struct Receiver
         {
@@ -182,6 +222,7 @@ namespace spartan
         std::vector<Drop> drops;
         Vector3 previous_position;
         bool active = false;
+        float scratch_cooldown = 0.0f;
         uint32_t random = 0x351a73u;
         float Random() { random ^= random << 13; random ^= random >> 17; random ^= random << 5; return (random & 0xffffff) / 16777216.0f; }
 
@@ -276,6 +317,62 @@ namespace spartan
             return e->GetComponent<ParticleSystem>();
         }
 
+        void Scratch(Entity* vehicle, float dt)
+        {
+            scratch_cooldown = std::max(0.0f, scratch_cooldown - dt);
+            if (scratch_cooldown > 0.0f) return;
+            for (const auto& contact : PhysicsWorld::GetFrameContacts())
+            {
+                const bool is_a = contact.entity_a == vehicle && (contact.vehicle_chassis_mask & 1u);
+                const bool is_b = contact.entity_b == vehicle && (contact.vehicle_chassis_mask & 2u);
+                if (!is_a && !is_b) continue;
+                const Vector3 outward = is_a ? -contact.normal : contact.normal;
+                const Vector3 velocity = is_a ? contact.relative_velocity : -contact.relative_velocity;
+                const float impact = std::max(0.0f, velocity.Dot(outward));
+                const Vector3 slide = velocity - outward * velocity.Dot(outward);
+                const float speed = slide.Length();
+                // Resting support, wheel contacts and very gentle nudges do not damage paint.
+                // CCD's first touch can have no reported impulse. Closing speed still identifies a hit.
+                if (impact < 1.2f && (speed < 1.5f || contact.impulse.LengthSquared() < 4.0f)) continue;
+                const Vector3 contact_position = vehicle->GetMatrix() * contact.chassis_local_position[is_a ? 0 : 1];
+                Render* target = nullptr;
+                Vector3 point, normal;
+                float closest = 0.45f * 0.45f;
+                for (const auto& receiver : receivers)
+                {
+                    Render* render = receiver.frame_render;
+                    if (!render || !receiver.collision->ready.load(std::memory_order_acquire) || receiver.collision->nodes.empty()) continue;
+                    float distance = closest;
+                    Vector3 p, n;
+                    receiver.collision->Nearest(0, contact_position, receiver.world, distance, p, n);
+                    if (distance >= closest) continue;
+                    closest = distance;
+                    target = render;
+                    point = p;
+                    normal = n.Dot(outward) < 0.0f ? -n : n;
+                }
+                // Include glass/trim in the proximity query so a hit on them cannot jump to paint behind them.
+                Material* material = target ? target->GetMaterial() : nullptr;
+                if (!material || material->IsTransparent() || material->GetProperty(MaterialProperty::PaintPreset) <= 0.0f) continue;
+                Vector3 tangent = slide - normal * slide.Dot(normal);
+                if (tangent.LengthSquared() < 0.0001f) tangent = normal.Cross(fabsf(normal.y) < 0.9f ? Vector3::Up : Vector3::Right);
+                tangent.Normalize();
+                const float severity = std::clamp(std::max(impact, speed * 0.35f) / 12.0f, 0.0f, 1.0f);
+                const Vector3 u = normal.Cross(tangent).Normalized() * (0.025f + severity * 0.085f);
+                const Vector3 v = tangent * std::clamp(0.06f + impact * 0.008f + speed * 0.018f, 0.06f, 0.45f);
+                const Vector3 w = normal * 0.045f;
+                Matrix projector(u.x,u.y,u.z,0, v.x,v.y,v.z,0, w.x,w.y,w.z,0, point.x,point.y,point.z,1);
+                DecalParameters decal;
+                decal.world_to_decal = projector.Inverted();
+                decal.kind = 1;
+                decal.color = Vector4(0.24f, 0.25f, 0.27f, 0.65f + severity * 0.35f);
+                decal.surface = Vector4(0.62f, -0.0003f, Random() * 100.0f, 0.0f);
+                target->AddDecal(decal);
+                scratch_cooldown = 0.06f;
+                break;
+            }
+        }
+
         bool Deposit(const Drop& drop, const Vector3& next, float fraction_start, float fraction_end, float step)
         {
             float closest = 1.0f;
@@ -342,11 +439,11 @@ namespace spartan
                 if (auto* p = e->GetComponent<ParticleSystem>()) p->SetEmissionRate(0.0f);
         if (!playing || !physics->IsVehicleSimulationActive())
         {
-            if (s.active && !playing)
+            if (!playing)
                 for (const auto& receiver : s.receivers)
                     if (Entity* e = World::GetEntityById(receiver.entity_id))
                         if (auto* r = e->GetComponent<Render>()) r->ClearDecals();
-            s.active = false; s.drops.clear(); s.remainder.fill(0.0f); return;
+            s.active = false; s.scratch_cooldown = 0.0f; s.drops.clear(); s.remainder.fill(0.0f); return;
         }
         // Traffic vehicles can be simulated across the island. Build mesh BVHs and
         // trace deposits only near the camera; preserve existing dirt when out of range.
@@ -376,6 +473,7 @@ namespace spartan
             s.CacheReceivers(vehicle, physics);
         if (teleport || mesh_changed)
         {
+            s.scratch_cooldown = 0.0f;
             s.drops.clear(); s.remainder.fill(0.0f);
             for (auto& receiver : s.receivers)
                 if (Entity* e = World::GetEntityById(receiver.entity_id)) receiver.previous = e->GetMatrix();
@@ -389,6 +487,7 @@ namespace spartan
                 receiver.inverse = receiver.world.Inverted();
                 receiver.old_inverse = receiver.previous.Inverted();
             }
+        if (!teleport && !mesh_changed) s.Scratch(vehicle, dt);
         // Existing droplets land before this frame's newly launched particles; no instant appearance.
         const int steps = std::max(1, static_cast<int>(ceilf(dt * 120.0f)));
         const float step = dt / steps;

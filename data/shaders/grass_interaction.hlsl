@@ -32,8 +32,10 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     float distance = length(world - buffer_pass.values[2].xy);
     float recovery = smoothstep(buffer_pass.values[2].z, buffer_pass.values[2].z + 3.0f, distance);
     state *= exp(-dt * buffer_pass.values[2].w * recovery);
-    // Fade completely before history scrolls out of this 32 m field, even at high speed.
-    float boundary = 1.0f - smoothstep(13.5f, 15.5f, distance);
+    // Derive the fade from the field extent so larger fields preserve distant tracks.
+    // Leave a margin for the snapped origin and filtering before history scrolls out.
+    float field_radius = float(min(width, height)) * cell * 0.5f;
+    float boundary = 1.0f - smoothstep(field_radius - 10.0f, field_radius - 2.0f, distance);
     if (state.z > boundary)
         state *= boundary / max(state.z, 0.0001f);
 

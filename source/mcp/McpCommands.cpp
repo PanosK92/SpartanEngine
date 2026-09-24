@@ -7159,7 +7159,8 @@ namespace spartan
             }
             if (!is_edit_mode())
             {
-                return json_error("camera view changes require edit mode");
+                if (!Engine::IsFlagSet(EngineMode::Paused))
+                    return json_error("camera view changes require edit mode or paused play mode");
             }
 
             Camera* camera = World::GetCamera();
@@ -7482,15 +7483,34 @@ namespace spartan
             }
             json += ",\"occupied\":" + json_bool(car->IsOccupied());
             uint32_t decal_count = 0;
+            uint32_t scratch_count = 0;
+            std::string scratches = "[";
             if (root)
             {
                 std::vector<Entity*> receivers;
                 root->GetDescendants(&receivers);
                 receivers.push_back(root);
                 for (Entity* receiver : receivers)
-                    if (Render* render = receiver->GetComponent<Render>()) decal_count += render->GetDecalCount();
+                    if (Render* render = receiver->GetComponent<Render>())
+                    {
+                        decal_count += render->GetDecalCount();
+                        for (const auto& decal : render->GetDecals())
+                        {
+                            if (decal.parameters.kind != 1) continue;
+                            if (scratch_count++) scratches += ",";
+                            const auto projector = decal.parameters.world_to_decal.Inverted();
+                            const auto position = receiver->GetMatrix() * (projector * math::Vector3::Zero);
+                            const auto normal = (receiver->GetMatrix() * (projector * math::Vector3::Forward) - position).Normalized();
+                            scratches += "{\"receiver_id\":" + json_string(std::to_string(receiver->GetObjectId()));
+                            scratches += ",\"receiver_name\":" + json_string(receiver->GetObjectName());
+                            scratches += ",\"position\":" + json_vector3(position);
+                            scratches += ",\"normal\":" + json_vector3(normal) + "}";
+                        }
+                    }
             }
             json += ",\"decal_count\":" + std::to_string(decal_count);
+            json += ",\"scratch_count\":" + std::to_string(scratch_count);
+            json += ",\"scratches\":" + scratches + "]";
             json += ",\"mcp_controlled\":" + json_bool(car->IsExternallyControlled());
             json += ",\"view\":" + json_string(car_view_to_name(car->GetCurrentView()));
             json += ",\"show_telemetry\":" + json_bool(car->GetShowTelemetry());

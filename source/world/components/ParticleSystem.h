@@ -294,7 +294,7 @@ namespace spartan
         math::Vector3 m_emitter_velocity    = math::Vector3::Zero;
         bool m_has_last_position            = false;
 
-        // starts large so an emitter that never emits is never treated as live
-        float m_time_since_emission         = 1e9f;
+        // Starts empty; emission extends this without shortening older particles' lifetimes.
+        float m_live_time_remaining         = 0.0f;
     };
 }

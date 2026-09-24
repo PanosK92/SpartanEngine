@@ -60,11 +60,12 @@ namespace spartan
             "use grass-only shading, compact vertex exports and mesh bounds; disable for comparison");
         TConsoleVar<float> cvar_grass_lod_pixels("r.grass_lod_pixels", 1.0f,
             "estimated blade simplification error in output pixels; zero keeps authored mesh detail");
-        constexpr uint32_t grass_interaction_resolution = 512;
-        constexpr float grass_interaction_size = 32.0f;
-        TConsoleVar<float> cvar_grass_track_radius("r.grass_track_radius", 8.0f,
-            "distance from the car in metres within which pressed grass stays down (1 to 12)");
-        TConsoleVar<float> cvar_grass_track_recovery("r.grass_track_recovery", 1.5f,
+        // 12.5 cm cells retain tire detail across a much larger history field (32 MiB total).
+        constexpr uint32_t grass_interaction_resolution = 1024;
+        constexpr float grass_interaction_size = 128.0f;
+        TConsoleVar<float> cvar_grass_track_radius("r.grass_track_radius", 48.0f,
+            "distance from the car in metres within which pressed grass stays down (1 to 52)");
+        TConsoleVar<float> cvar_grass_track_recovery("r.grass_track_recovery", 0.05f,
             "grass recovery rate after the car leaves, in inverse seconds");
 
         // Matches GrassWheelContact in grass_interaction.hlsl.
@@ -1978,8 +1979,8 @@ namespace spartan
             m_pcb_pass_cpu.v[7] = dt;
             m_pcb_pass_cpu.v[8] = center.x;
             m_pcb_pass_cpu.v[9] = center.z;
-            m_pcb_pass_cpu.v[10] = clamp(cvar_grass_track_radius.GetValue(), 1.0f, 12.0f);
-            m_pcb_pass_cpu.v[11] = max(cvar_grass_track_recovery.GetValue(), 0.1f);
+            m_pcb_pass_cpu.v[10] = clamp(cvar_grass_track_radius.GetValue(), 1.0f, grass_interaction_size * 0.5f - 12.0f);
+            m_pcb_pass_cpu.v[11] = max(cvar_grass_track_recovery.GetValue(), 0.001f);
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
             RHI_CommandList::Dispatch(history.fields[current].get());
         }

@@ -56,9 +56,16 @@ namespace spartan
         if (!world_decal.world_to_decal.IsFinite() || HasInstancing()) return;
         DecalParameters decal = world_decal;
         decal.world_to_decal = m_entity_ptr->GetMatrix() * world_decal.world_to_decal;
-        // Bounded history, composited in emission order. ClearDecals also supports washing/reset.
-        if (m_decals.size() == decal_capacity)
-            m_decals.erase(m_decals.begin());
+        // Keep up to 16 damage marks; fresh dirt must not silently repair scratched paint.
+        const auto scratch_count = std::count_if(m_decals.begin(), m_decals.end(),
+            [](const Decal& d) { return d.parameters.kind == 1; });
+        if ((decal.kind == 1 && scratch_count >= 16) || m_decals.size() == decal_capacity)
+        {
+            const bool replace_scratch = decal.kind == 1 && scratch_count >= 16;
+            const auto oldest = std::find_if(m_decals.begin(), m_decals.end(),
+                [replace_scratch](const Decal& d) { return (d.parameters.kind == 1) == replace_scratch; });
+            if (oldest != m_decals.end()) m_decals.erase(oldest);
+        }
         m_decals.push_back({decal, source_material});
         m_scene->has_decals = true;
     }

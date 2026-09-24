@@ -34,7 +34,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // the exact dashboard usable in the offscreen layout check. Units are SI unless named.
 namespace spartan::car_hud::telemetry
 {
-    inline constexpr float design_height = 744.0f;
+    inline constexpr float design_height = 802.0f;
+    inline constexpr float psi_per_bar = 14.503774f;
     inline constexpr float vehicle_controls_height = 58.0f;
     inline constexpr float window_content_height = design_height + vehicle_controls_height;
     enum class control { none, abs, traction, stability, steering, automatic, drs, turbo };
@@ -243,6 +244,39 @@ namespace spartan::car_hud::telemetry
         ImGui::SetCursorScreenPos(cursor);
     }
 
+    inline bool draw_tire_pressure(const painter& p, bool enabled, float& pressure_bar, float default_bar)
+    {
+        const ImVec2 cursor = ImGui::GetCursorScreenPos();
+        ImGui::PushID("tire_pressure");
+        ImGui::PushFont(nullptr, 14 * p.scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6 * p.scale, 3 * p.scale));
+        p.rect(0, 752, 1200, 50, IM_COL32(20, 31, 43, 250), 9);
+        p.text(12, 760, 12, muted, "TIRE PRESSURE / ALL TIRES");
+        p.text(12, 780, 11, muted, "Cold setting; live PSI shown above");
+        ImGui::BeginDisabled(!enabled);
+        ImGui::SetCursorScreenPos(p.point(285, 765));
+        ImGui::SetNextItemWidth(470 * p.scale);
+        float psi = pressure_bar * psi_per_bar;
+        bool changed = ImGui::SliderFloat("##psi", &psi, 0.05f * psi_per_bar, 4.0f * psi_per_bar,
+            "%.1f PSI", ImGuiSliderFlags_AlwaysClamp);
+        if (changed) pressure_bar = psi / psi_per_bar;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Lower pressure softens the tires and increases deformation. Higher pressure stiffens them.\nApplies live to all four tires. Ctrl+click to type a value.\nLive pressure also depends on temperature and damage.");
+        ImGui::SetCursorScreenPos(p.point(777, 765));
+        if (ImGui::Button("Reset pressure", ImVec2(150 * p.scale, 0)))
+        {
+            pressure_bar = default_bar;
+            changed = true;
+        }
+        ImGui::EndDisabled();
+        p.label(950, 771, 12, muted, "DEFAULT %.1f PSI", default_bar * psi_per_bar);
+        ImGui::PopStyleVar();
+        ImGui::PopFont();
+        ImGui::PopID();
+        ImGui::SetCursorScreenPos(cursor);
+        return changed;
+    }
+
     inline control draw_controls(const painter& p, const snapshot& s)
     {
         control result = control::none;
@@ -318,7 +352,7 @@ namespace spartan::car_hud::telemetry
             p.label(zx + 3, y + 61, 13, heat(w.surface[z], s), "%.0f", w.surface[z]);
         }
         p.label(x + 112, y + 37, 25, ink, "%.0f C", w.core);
-        p.label(x + 113, y + 66, 12, muted, "CORE   %.2f bar", w.pressure);
+        p.label(x + 113, y + 66, 12, muted, "%.1f PSI", w.pressure * psi_per_bar);
         p.label(x + 15, y + 89, 12, muted, "WEAR %.0f%%", w.wear * 100);
         p.bar(x + 89, y + 93, 37, 4, w.wear, w.wear > 0.7f ? red : amber);
         p.label(x + 139, y + 89, 12, w.brake_efficiency < 0.8f ? red : ink, "BRK %.0f C", w.brake_temp);

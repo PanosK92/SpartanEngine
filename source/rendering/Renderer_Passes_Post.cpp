@@ -1114,17 +1114,19 @@ namespace spartan
 
             RHI_CommandList::SetPass("particle_render");
             RHI_CommandList::SetShaders(shader_render_v, shader_render_p);
-            RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
-            RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
-            RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
-            RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
-            RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
             RHI_CommandList::SetBlendState(GetBlendState(to_blend_state(emitters[i]->GetBlendMode())));
             RHI_CommandList::SetColorTargets(tex_render,
                 GetRenderTarget(m_pass_state.cloud_history.valid && !IsSecondaryViewActive() ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity),
                 GetRenderTarget(Renderer_RenderTarget::dlss_reactivity));
             RHI_CommandList::SetResolutionScale(true);
 
+            // Bind resources after the graphics pipeline is complete. Setting the targets
+            // replaces the previous compute pipeline and clears its descriptor bindings.
+            RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
+            RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
+            RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
+            RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
+            RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_buffer_a), buf_a);
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::particle_emitter), buf_emitter);
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::cluster_light_grid), GetBuffer(Renderer_Buffer::ClusterLightGrid));

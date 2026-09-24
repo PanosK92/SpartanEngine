@@ -192,6 +192,11 @@ float3 volume_detail_phase(float age, float time)
 // parcel coherently rather than the octaves sliding apart from one another
 float volume_detail_noise(float3 position, float3 phase)
 {
+    // Bend the detail coordinates into sheets before sampling the small scales.
+    // The low-frequency warp breaks up round noise cells without doubling noise taps.
+    float3 warp = sin(position.yzx * 0.47f + phase.zxy * 0.31f)
+                + sin(position.zxy * 0.31f - phase.yzx * 0.23f);
+    position += warp * 0.42f;
     float sum  = 0.0f;
     float amp  = 0.5f;
     float freq = 1.0f;
@@ -217,11 +222,14 @@ float volume_carve_density(float density, float3 position, float time, float age
     // one minus the threshold and saturated, which put back the exact clip the resolve stopped applying,
     // so every gain in dynamic range died here
     float e = (1.0f - n) * volume_detail_amount * volume_detail_reference;
-    float carved = max(density - e, 0.0f);
+    // Absolute erosion erased young, sparse smoke behind a moving car. Bound it
+    // by local density so detail can shape a thin wisp without deleting it.
+    float carved = max(density - min(e, density * 0.75f), 0.0f);
 
     // erosion alone only ever shows around the fringe because the core stands far above the threshold,
     // so the field needs a multiplicative term as well to break up the middle
-    return carved * lerp(1.0f - volume_detail_contrast, 1.0f, n);
+    float filament = smoothstep(0.24f, 0.72f, n);
+    return carved * lerp(1.0f - volume_detail_contrast, 1.15f, filament);
 }
 
 // the shadow ray only needs to know roughly how much medium stands in the way, so it runs the shaping
@@ -234,7 +242,7 @@ float volume_carve_density_coarse(float density, float3 position, float time, fl
     float n = volume_value_noise(p);
     float e = (1.0f - n) * volume_detail_amount * volume_detail_reference;
 
-    return max(density - e, 0.0f);
+    return max(density - min(e, density * 0.75f), 0.0f);
 }
 
 float3 volume_world_position(uint3 voxel)
@@ -377,11 +385,6 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     }
 
     float3 ndc = clip.xyz / clip.w;
-    if (ndc.x < -1.0f || ndc.x > 1.0f || ndc.y < -1.0f || ndc.y > 1.0f)
-    {
-        return;
-    }
-
     float distance_camera = distance(particle.position, get_camera_position());
     if (distance_camera <= 0.01f || distance_camera >= volume_max_distance)
     {
@@ -402,14 +405,21 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // its own range instead and let it come out below a slice, the trilinear filter carries the remainder
     float radius_world = max(particle.size * 0.5f, 0.001f);
     float thickness    = max(volume_slice_thickness(distance_camera), 0.001f);
-    float want_xy      = radius_world / max(distance_camera, 0.25f) * (float)volume_height * 3.1f;
-    float want_x       = want_xy * lerp(0.72f, 1.08f, volume_hash(uint3(3u, 17u, 41u), particle_seed));
-    float want_y       = want_xy * lerp(0.65f, 1.00f, volume_hash(uint3(5u, 23u, 59u), particle_seed));
+    float4x4 projection = get_projection();
+    float2 projected_radius = radius_world / max(clip.w, 0.25f)
+        * abs(float2(projection[0][0], projection[1][1])) * float2(volume_width, volume_height) * 0.5f;
+    float want_x       = projected_radius.x * lerp(0.72f, 1.08f, volume_hash(uint3(3u, 17u, 41u), particle_seed));
+    float want_y       = projected_radius.y * lerp(0.65f, 1.00f, volume_hash(uint3(5u, 23u, 59u), particle_seed));
     float want_d       = radius_world / thickness * lerp(0.78f, 1.16f, volume_hash(uint3(7u, 29u, 67u), particle_seed));
 
     float radius_x = clamp(want_x, 0.5f, 10.0f);
     float radius_y = clamp(want_y, 0.5f, 10.0f);
     float radius_d = clamp(want_d, 0.35f, 6.0f);
+    // Cull the footprint, not its centre, so smoke rolls through the screen edge
+    // without losing an entire puff while some of it is still visible.
+    if (center.x + radius_x < 0.0f || center.x - radius_x >= volume_width ||
+        center.y + radius_y < 0.0f || center.y - radius_y >= volume_height)
+        return;
 
     // the footprint is clamped for cost at one end and by the grid floor at the other, and a clamped
     // footprint no longer matches the particle, a near puff was spread thinner than it is and a far one
@@ -649,7 +659,11 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     float2 uv = (float2(pixel) + 0.5f) / buffer_frame.resolution_render;
     float depth_raw = tex_depth.Load(int3(pixel, 0)).r;
-    float scene_distance = min(linearize_depth(depth_raw), volume_max_distance);
+    float3 scene_pos = get_position(depth_raw, render_uv_to_screen_uv(uv));
+    // The grid and ray parameter use radial distance, whereas linearized depth
+    // is distance along camera Z. Mixing them clips smoke before the ground,
+    // especially at the bottom of a wide-FOV chase camera.
+    float scene_distance = min(length(scene_pos - get_camera_position()), volume_max_distance);
     if (scene_distance <= 0.05f)
     {
         return;
@@ -657,7 +671,6 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     float transmittance = 1.0f;
     float3 scattering = 0.0f;
-    float3 scene_pos = get_position(depth_raw, render_uv_to_screen_uv(uv));
     float3 ray_direction = normalize(scene_pos - get_camera_position());
     // the drift offset gets multiplied by the octave frequency, so an unwrapped clock runs out of
     // fractional precision after a while and the field starts to quantise, ten minutes is long enough
@@ -697,10 +710,10 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             continue;
         }
 
-        // half a slice, so the march always reads finer than the grid it is sampling and never steps
-        // over a billow, the exponential split already widens the slices with range so this tracks it
-        // and stops the near field from being oversampled at a fixed tenth of a metre
-        float fine_step = clamp(volume_slice_thickness(t) * 0.5f, 0.05f, 0.5f);
+        // Resolve dense billows at half a slice, but spend fewer samples in the thin
+        // dissipating fringe. Range still controls the step through the grid spacing.
+        float slice_fraction = lerp(1.2f, 0.5f, saturate(sample.a * 2.0f));
+        float fine_step = clamp(volume_slice_thickness(t) * slice_fraction, 0.05f, 0.5f);
         float3 sample_pos = get_camera_position() + ray_direction * t;
         float density = volume_carve_density(sample.a, sample_pos, time, sample.g);
 

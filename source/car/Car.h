@@ -131,6 +131,7 @@ namespace spartan
         bool IsExternallyControlled() const { return m_externally_controlled; }
 
         // view control
+        static bool IsCameraControlled(Entity* camera);
         void CycleView();
         void SetView(CarView view);
         CarView GetCurrentView() const { return m_current_view; }

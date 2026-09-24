@@ -955,6 +955,9 @@ namespace spartan::car_hud
                     break;
                 case telemetry::control::none: break;
             }
+            float tire_pressure = simulation->get_tire_pressure();
+            if (telemetry::draw_tire_pressure(painter, s.full_simulation, tire_pressure, simulation->get_base_spec().tire_pressure))
+                simulation->set_tire_pressure(tire_pressure);
             ImGui::PopID();
             ImGui::PopID();
             ImGui::SetCursorScreenPos(start);

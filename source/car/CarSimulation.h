@@ -453,6 +453,7 @@ namespace car
         float get_wheel_surface_temp(int i, int zone);
         float get_wheel_core_temp(int i);
         float get_tire_pressure();
+        void set_tire_pressure(float pressure_bar);
         float get_tire_pressure_optimal();
         float get_chassis_visual_offset_y();
         void set_abs_enabled(bool enabled);

@@ -47,6 +47,12 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace
+    {
+        TConsoleVar<bool> cvar_rt_light_culling("r.rt_light_culling", true,
+            "Skip zero-contribution lights in reflections and back-facing local shadow rays");
+    }
+
     // The estimator already includes the primary BSDF and returns radiance.
     static const float restir_composition_intensity = 1.0f;
 
@@ -209,7 +215,7 @@ namespace spartan
                 }
             }
             
-            m_pcb_pass_cpu.set_f3_value(static_cast<float>(m_count_active_lights), static_cast<float>(tex_skysphere->GetMipCount()));
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(m_count_active_lights), static_cast<float>(tex_skysphere->GetMipCount()), cvar_rt_light_culling.GetValue() ? 1.0f : 0.0f);
             RHI_CommandList::Dispatch(tex_reflections);
         }
         RHI_CommandList::EndTimeblock();
@@ -374,6 +380,7 @@ namespace spartan
                         shadow_lights[slot - 1] = static_cast<float>(i);
                 }
                 m_pcb_pass_cpu.set_f4_value(shadow_lights[0], shadow_lights[1], shadow_lights[2], shadow_lights[3]);
+                m_pcb_pass_cpu.set_f3_value(0.0f, 0.0f, cvar_rt_light_culling.GetValue() ? 1.0f : 0.0f);
 
                 uint32_t width  = tex_shadows->GetWidth();
                 uint32_t height = tex_shadows->GetHeight();

@@ -58,6 +58,9 @@ namespace spartan
         math::Vector3 position = math::Vector3::Zero;
         math::Vector3 normal = math::Vector3::Up;
         math::Vector3 impulse = math::Vector3::Zero;
+        math::Vector3 relative_velocity = math::Vector3::Zero; // actor A minus B at the contact, before solving
+        uint32_t vehicle_chassis_mask = 0; // bit 0: A, bit 1: B; excludes wheel/suspension actors
+        math::Vector3 chassis_local_position[2] = {}; // contact-time actor space, before later substeps move the car
     };
 
     class PhysicsWorld
