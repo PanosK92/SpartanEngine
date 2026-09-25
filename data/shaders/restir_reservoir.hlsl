@@ -41,7 +41,8 @@ float get_restir_m_cap_decorrelated(float duplication)
     return lerp(get_restir_m_cap(), RESTIR_C_CAP_DUPLICATED, d);
 }
 uint  get_restir_max_path_length()     { return RESTIR_MAX_PATH_LENGTH; }
-uint  get_restir_light_candidates()    { return 16u; }
+// unshadowed ris candidates for the primary analytic light pick, lin 2026 6.1
+uint  get_restir_light_candidates()    { return 32u; }
 // Use several initial trees for robustness at disocclusions. Explicit emitter
 // sampling replaces half the trees when the emissive pool is available.
 uint  get_restir_initial_candidates()  { return buffer_frame.restir_pt_emissive_tri_count > 0.5f ? 4u : 8u; }
@@ -84,6 +85,40 @@ float restir_range_window(float dist, float range)
     float ratio2 = ratio * ratio;
     float window = saturate(1.0f - ratio2 * ratio2);
     return window * window;
+}
+
+// spot cone shared by the primary nee candidate and the reuse re-evaluation
+float restir_spot_factor(LightParameters light, float3 dir_to_light)
+{
+    if ((light.flags & (1u << 2)) == 0u)
+    {
+        return 1.0f;
+    }
+    return lighting_spot_attenuation(dot(-dir_to_light, light.direction), light.angle);
+}
+
+// incident radiance of a point or spot light at pos, the dirac endpoint has no area measure so
+// reuse re-evaluates it at the destination with a unit jacobian instead of reconnecting a surface
+bool restir_dirac_light_radiance(uint light_index, float3 pos, out float3 radiance)
+{
+    radiance = 0.0f;
+    LightParameters light = light_parameters[light_index];
+    if ((light.flags & ((1u << 1) | (1u << 2))) == 0u || light.intensity <= 0.0f)
+    {
+        return false;
+    }
+
+    float3 to   = light.position - pos;
+    float  dist = length(to);
+    if (dist < 1e-3f || light.range <= 0.0f || dist >= light.range)
+    {
+        return true;
+    }
+
+    float attenuation = restir_range_window(dist, light.range) / (dist * dist + 0.0001f);
+    attenuation      *= restir_spot_factor(light, to / dist);
+    radiance          = light.color.rgb * light.intensity * attenuation;
+    return true;
 }
 
 // urena, fajardo, king 2013 spherical rectangle solid angle sampling
@@ -1190,6 +1225,34 @@ ShiftResult try_reconnection_shift(
         result.sample.F = src.F;
         result.jacobian = 1.0f;
         result.ok = all(isfinite(src.F)) && any(src.F > 0.0f);
+        return result;
+    }
+
+    // primary nee on a point or spot light, the endpoint is the light itself so there is no rc
+    // surface whose area density could change, falloff and cone are re-evaluated at dst
+    float3 dirac_radiance;
+    if (is_nee_sample(src) && src.path_length == 2u && src.endpoint_light < uint(buffer_frame.restir_pt_light_count) &&
+        restir_dirac_light_radiance(src.endpoint_light, dst_pos, dirac_radiance))
+    {
+        float3 to_light = src.rc_pos - dst_pos;
+        float  dist     = length(to_light);
+        if (dist < 1e-3f || all(dirac_radiance <= 0.0f))
+            return result;
+
+        float3 dir = to_light / dist;
+        if (dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT)
+            return result;
+
+        float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir, restir_primary_specular_blend(dst_roughness));
+        if (all(brdf_cos <= 0.0f))
+            return result;
+
+        result.f_dst            = brdf_cos * dirac_radiance;
+        result.jacobian         = 1.0f;
+        result.ok               = true;
+        result.sample.F         = result.f_dst;
+        result.sample.rc_L_nee  = dirac_radiance;
+        result.sample.rc_normal = -dir;
         return result;
     }
 

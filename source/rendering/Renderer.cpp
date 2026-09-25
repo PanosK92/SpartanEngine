@@ -2207,6 +2207,16 @@ namespace spartan
         m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                                        1 << 1);
         m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available && ray_tracing_ready, 1 << 2);
         m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>() && ray_tracing_ready,              1 << 3);
+
+        // the reservoirs hold a different integrand with and without direct light, so switching
+        // ownership must drop history instead of letting stale samples resolve into the new one
+        const bool restir_direct = cvar_restir_pt.GetValueAs<bool>() && cvar_restir_pt_direct.GetValueAs<bool>() && ray_tracing_ready;
+        if (restir_direct != ((m_cb_frame_cpu.options & (1u << 4)) != 0))
+        {
+            m_pass_state.restir_history_invalid    = true;
+            m_pass_state.restir_accumulation_valid = false;
+        }
+        m_cb_frame_cpu.set_bit(restir_direct, 1 << 4);
     }
 
     void Renderer::UpdateFrameCb_StereoXr()

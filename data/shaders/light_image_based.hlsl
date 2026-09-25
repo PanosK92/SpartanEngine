@@ -222,19 +222,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         diffuse_ibl = 0.0f;
     }
 
-    // restir replaces diffuse ibl so its visibility controls both dark and lit regions
-    // restir_pt_nrd_pack marks any texel past nrd's denoising range as invalid and zeroes its
-    // radiance, so the replacement has to fade back to the sky term over that last stretch or
-    // distant surfaces lose all ambient and read as black
+    // restir replaces diffuse ibl so its visibility controls both dark and lit regions, with
+    // unified lighting the same signal also carries direct diffuse from every analytic light
     if (pass_get_f3_value().y > 0.5f &&
         !surface.is_water() &&
         !surface.is_transparent())
     {
-        float view_z          = abs(get_position_view_space(surface.uv).z);
-        float denoising_range = max(buffer_frame.camera_far * 0.99f, 1.0f);
-        float fade_start      = denoising_range * 0.9f;
-        float coverage        = 1.0f - saturate((view_z - fade_start) / max(denoising_range - fade_start, 1e-3f));
-
+        float coverage = restir_coverage(surface.uv);
         if (coverage > 0.0f)
         {
             float3 restir_gi = sample_restir_gi_bilateral(

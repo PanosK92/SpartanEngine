@@ -343,11 +343,21 @@ static const float wind_world_period = 80.0f;
 static const float wind_flow_uv_per_second  = 0.03f;
 static const float wind_micro_uv_per_second = 0.12f;
 
-// gust fronts: the pressure channel is stretched across the wind into long bands that roll downwind
-static const float wind_gust_length  = 64.0f;  // meters along the wind per texture tile, sets front depth and spacing
-static const float wind_gust_width   = 170.0f; // meters across the wind per texture tile, sets front length
-static const float wind_gust_speed   = 6.5f;   // meters per second the fronts travel downwind
-static const float wind_gust_release = 1.1f;   // seconds a front keeps pressing after it has passed
+// gust fronts: bands of pressure that roll downwind, the pressure channel sets where they are strong
+static const float wind_gust_length   = 64.0f;  // meters along the wind per texture tile for the gust strength patches
+static const float wind_gust_width    = 170.0f; // meters across the wind per texture tile, long patches make long fronts
+static const float wind_gust_speed    = 6.0f;   // meters per second the fronts travel downwind
+static const float wind_front_spacing = 16.0f;  // meters between successive fronts of the primary train
+
+// one front per unit phase, the downwind edge rises sharply and the tail relaxes slowly,
+// so each blade snaps over when a front arrives and recovers once it has passed
+float wind_front(float phase)
+{
+    float s    = frac(phase);
+    float rise = smoothstep(1.0f, 0.86f, s);
+    float tail = smoothstep(0.2f, 0.86f, s);
+    return rise * tail * tail;
+}
 
 // grass and flowers are light, a 2 m/s breeze already lays them over noticeably, so the response
 // rises fast and saturates instead of growing linearly with wind speed
@@ -357,7 +367,8 @@ float grass_wind_response()
 }
 
 // shaped gust pressure at a world position, 0..1, the same value drives bending and the wind sheen
-// the second tap reads the front that passed release seconds ago, blades snap over and recover slowly
+// two front trains travel with the pressure patches, the flow channel bends the front lines so they
+// curve and break up, and calm stretches between patches keep the fronts readable
 float wind_gust(float2 world_xz, float time)
 {
     float2 wind_xz  = buffer_frame.wind.xz;
@@ -365,13 +376,15 @@ float wind_gust(float2 world_xz, float time)
     float2 along    = wind_mag > 1e-4f ? wind_xz / wind_mag : float2(0.0f, 1.0f);
     float2 across   = float2(-along.y, along.x);
 
-    float2 uv = float2(
-        (dot(world_xz, along) - time * wind_gust_speed) / wind_gust_length,
-        dot(world_xz, across) / wind_gust_width
-    );
-    float lead  = tex_wind_field.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv, 0).b;
-    float trail = tex_wind_field.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv + float2(wind_gust_release * wind_gust_speed / wind_gust_length, 0.0f), 0).b;
-    return max(lead, trail * 0.65f);
+    float  travel = dot(world_xz, along) - time * wind_gust_speed;
+    float  side   = dot(world_xz, across);
+    float4 field  = tex_wind_field.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), float2(travel / wind_gust_length, side / wind_gust_width), 0);
+
+    float front_a  = wind_front(travel / wind_front_spacing + field.r * 0.45f + field.g * 0.2f);
+    float front_b  = wind_front(travel / (wind_front_spacing * 1.63f) + side / (wind_front_spacing * 7.0f) + field.g * 0.5f + 0.37f);
+    float front    = max(front_a, front_b * 0.7f);
+    float strength = smoothstep(0.3f, 0.75f, field.b);
+    return saturate(strength * (0.28f + 0.72f * front));
 }
 
 // shared wind sample for grass, flowers, and trees

@@ -3516,7 +3516,7 @@ namespace spartan
         if (m_is_occupied)
         {
             Physics* hud_physics = m_vehicle_entity ? m_vehicle_entity->GetComponent<Physics>() : nullptr;
-            car_hud::draw_driver_hud(hud_physics);
+            car_hud::draw_driver_hud(hud_physics, !m_show_telemetry);
             if (m_show_telemetry)
             {
                 car_hud::draw_telemetry_hud(this, hud_physics);

@@ -914,6 +914,16 @@ float3 restir_gi_demodulator(float3 albedo)
     return max(albedo * lift, 1e-3f);
 }
 
+// weight of the restir signal on a surface, restir_pt_nrd_pack zeroes texels past nrd's
+// denoising range so the last stretch fades back to the raster terms instead of going black
+float restir_coverage(float2 uv)
+{
+    float view_z          = abs(get_position_view_space(uv).z);
+    float denoising_range = max(buffer_frame.camera_far * 0.99f, 1.0f);
+    float fade_start      = denoising_range * 0.9f;
+    return 1.0f - saturate((view_z - fade_start) / max(denoising_range - fade_start, 1e-3f));
+}
+
 /*------------------------------------------------------------------------------
     HASHES & NOISE
 ------------------------------------------------------------------------------*/
