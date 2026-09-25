@@ -541,36 +541,52 @@ namespace spartan
 
     void Renderer::Pass_Text(RHI_Texture* tex_out)
     {
-        const auto& shader_v  = GetShader(Renderer_Shader::font_v);
-        const auto& shader_p  = GetShader(Renderer_Shader::font_p);
-        shared_ptr<Font> font = GetFont();
+        const auto& shader_v = GetShader(Renderer_Shader::font_v);
+        const auto& shader_p = GetShader(Renderer_Shader::font_p);
 
-        if (!font->HasText())
+        bool has_text = false;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_Font::Max); i++)
+        {
+            const shared_ptr<Font>& font = GetFont(static_cast<Renderer_Font>(i));
+            has_text |= font && font->HasText();
+        }
+
+        if (!has_text)
         {
             return;
         }
 
         RHI_CommandList::BeginPass("text");
         {
-            font->UpdateVertexAndIndexBuffers();
-
             RHI_CommandList::SetShaders(shader_v, shader_p);
             RHI_CommandList::SetBlendState(GetBlendState(Renderer_BlendState::Alpha));
             RHI_CommandList::SetColorTarget(tex_out);
-            RHI_CommandList::SetBufferVertex(font->GetVertexBuffer());
-            RHI_CommandList::SetBufferIndex(font->GetIndexBuffer());
             RHI_CommandList::SetCullMode(RHI_CullMode::Back);
 
-            if (font->GetOutline() != Font_Outline_None && font->GetOutlineSize() != 0)
+            for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_Font::Max); i++)
             {
-                m_pcb_pass_cpu.set_f4_value(font->GetColorOutline());
-                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), font->GetAtlasOutline().get());
-                RHI_CommandList::DrawIndexed(font->GetIndexCount());
-            }
+                const shared_ptr<Font>& font = GetFont(static_cast<Renderer_Font>(i));
+                if (!font || !font->HasText())
+                {
+                    continue;
+                }
 
-            {
-                m_pcb_pass_cpu.set_f4_value(font->GetColor());
+                font->UpdateVertexAndIndexBuffers();
+                RHI_CommandList::SetBufferVertex(font->GetVertexBuffer());
+                RHI_CommandList::SetBufferIndex(font->GetIndexBuffer());
+
+                if (font->GetOutline() != Font_Outline_None && font->GetOutlineSize() != 0 && font->GetAtlasOutline())
+                {
+                    Color outline = font->GetColorOutline();
+                    outline.a     = 1.0f;
+                    m_pcb_pass_cpu.set_f4_value(outline);
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                    RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), font->GetAtlasOutline().get());
+                    RHI_CommandList::DrawIndexed(font->GetIndexCount());
+                }
+
+                // zero alpha tells the shader to use the per vertex color
+                m_pcb_pass_cpu.set_f4_value(0.0f, 0.0f, 0.0f, 0.0f);
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), font->GetAtlas().get());
                 RHI_CommandList::DrawIndexed(font->GetIndexCount());

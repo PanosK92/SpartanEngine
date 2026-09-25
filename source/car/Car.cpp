@@ -3519,7 +3519,7 @@ namespace spartan
             car_hud::draw_driver_hud(hud_physics);
             if (m_show_telemetry)
             {
-                car_hud::draw_telemetry_window(this, hud_physics, &m_show_telemetry);
+                car_hud::draw_telemetry_hud(this, hud_physics);
             }
         }
 
@@ -3678,7 +3678,7 @@ namespace spartan
             ResetToSpawn();
         }
 
-        // toggle telemetry window
+        // toggle telemetry hud
         if (Input::GetKeyDown(KeyCode::F3) || Input::GetKeyDown(KeyCode::Touchpad))
         {
             m_show_telemetry = !m_show_telemetry;

@@ -139,6 +139,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (surface.is_sky())
         return;
 
+    // the opaque pass lit everything else before the refraction background was copied
+    if (pass_is_transparent() && !surface.is_transparent())
+        return;
+
     // view and energy calculations
     const float3 view_dir = normalize(-surface.camera_to_pixel);
     const float n_dot_v   = saturate(dot(surface.normal, view_dir));

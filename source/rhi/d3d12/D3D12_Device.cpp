@@ -1748,7 +1748,7 @@ namespace spartan
         return nullptr;
     }
 
-    void RHI_Device::MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t flags_usage, uint32_t flags_memory, const void* data, const char* name)
+    void RHI_Device::MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t flags_usage, uint32_t flags_memory, const void* data, const char* name, const bool transient)
     {
         // d3d12 buffers are created directly in RHI_Buffer
     }

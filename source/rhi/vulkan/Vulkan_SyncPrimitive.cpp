@@ -80,7 +80,14 @@ namespace spartan
             VkResult result = vkWaitSemaphores(RHI_Context::device, &semaphore_wait_info, timeout);
             if (result == VK_ERROR_DEVICE_LOST)
             {
+                Log::SetLogToFile(true);
+                SP_LOG_ERROR("VK_ERROR_DEVICE_LOST waiting on timeline semaphore (value %llu)", static_cast<unsigned long long>(value));
+                if (Debugging::IsBreadcrumbsEnabled())
+                {
+                    Breadcrumbs::OnDeviceLost();
+                }
                 RHI_Device::SetDeviceLost();
+                return;
             }
             if (result == VK_TIMEOUT)
             {

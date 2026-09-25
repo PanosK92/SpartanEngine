@@ -99,6 +99,7 @@ namespace spartan
             uint32_t restir_reference_mode = 0;
             bool restir_history_invalid = true;
             uint64_t restir_scene_signature = 0;
+            uint64_t restir_motion_signature = 0;
 
             bool     sky_first_frame           = true;
             bool     sky_had_directional_light = false;

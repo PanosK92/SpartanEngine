@@ -105,11 +105,11 @@ namespace spartan::road_guardrail
     inline bool IsBatch(const std::string& name) { return name.find("roadside_guardrail_") == 0; }
     inline const char* InstanceName(Module module)
     {
-        return module==Post ? "roadside_guardrail_posts" : module==Splice ? "roadside_guardrail_splices" : "roadside_guardrail_markers";
+        return module==Beam ? "roadside_guardrail_beams" : module==Post ? "roadside_guardrail_posts" : module==Splice ? "roadside_guardrail_splices" : "roadside_guardrail_markers";
     }
     inline Module InstanceModule(const std::string& name)
     {
-        for (Module module:{Post,Splice,Reflector}) if (name==InstanceName(module)) return module;
+        for (Module module:{Beam,Post,Splice,Reflector}) if (name==InstanceName(module)) return module;
         return ModuleCount;
     }
     inline std::shared_ptr<Mesh> SharedMesh(Module module)
@@ -291,9 +291,26 @@ namespace spartan::road_guardrail
                         }
                     }
                 };
+                // a 4 m chord departs from the tightest guarded bend by about a centimetre, so one shared
+                // straight module replaces a bent copy per chunk; the left side is rotated, never mirrored
+                auto beam=[&](float at,float length)
+                {
+                    auto rail=[&](const Station& s){return s.center+s.right*side*(s.half_width+.8f+s.sidewalk);};
+                    const Station a=sample(at), b=sample(at+length), m=sample(at+length*.5f);
+                    const Vector3 start=rail(a), end=rail(b);
+                    const float chord=(end-start).Length();
+                    if (chord<.001f) return;
+                    const Vector3 z=(end-start)/chord*side;
+                    const Vector3 y=(m.up-z*m.up.Dot(z)).Normalized();
+                    Vector3 x=m.right*side;
+                    x=(x-z*x.Dot(z)-y*x.Dot(y)).Normalized();
+                    const Vector3 zs=z*(chord/module_length);
+                    const Vector3 p=(side>0 ? start : end)-origin;
+                    instances[Beam].emplace_back(x.x,x.y,x.z,0.0f,y.x,y.y,y.z,0.0f,zs.x,zs.y,zs.z,0.0f,p.x,p.y,p.z,1.0f);
+                };
                 for (float d=chunk;d<chunk_end-.01f;d+=module_length)
                 {
-                    append(Beam,d,std::min(module_length,chunk_end-d)/module_length);
+                    beam(d,std::min(module_length,chunk_end-d));
                     if (d>start+.01f) instance(Splice,d);
                 }
                 for (float d=chunk;d<chunk_end-.01f;d+=post_spacing)
@@ -316,7 +333,7 @@ namespace spartan::road_guardrail
             auto& instances = output.instances;
             for (size_t finish=0;finish<2;++finish)
                 if (!geometry[finish][0].vertices.empty()) create_batch(origin,finish,geometry[finish]);
-            for (Module module:{Post,Splice,Reflector})
+            for (Module module:{Beam,Post,Splice,Reflector})
                 if (!instances[module].empty()) create_instances(origin,module,instances[module]);
         }
     }

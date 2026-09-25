@@ -181,8 +181,8 @@ namespace spartan
 
         // clumping, a radius of zero scatters evenly
         // the gpu kinds read the same three fields as a procedural patch field instead of as placed
-        // clusters, radius is the pocket scale, raggedness is the edge fringe and also drives the bare
-        // scars inside a pocket, and clump_count is unused because there is nothing to place
+        // clusters, radius is the pocket scale, raggedness is the edge fringe, and clump_count is unused
+        // because there is nothing to place
         float clump_radius          = 0.0f; // meters
         uint32_t clump_count        = 1;    // instances per clump
         float clump_raggedness      = 1.0f; // 0 is a clean circle, 1 is an organic blob

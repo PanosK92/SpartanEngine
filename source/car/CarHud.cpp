@@ -780,7 +780,7 @@ namespace spartan::car_hud
         ImGui::PopStyleVar(2);
     }
 
-    void draw_telemetry_window(Car* car_instance, Physics* physics, bool* p_open)
+    void draw_telemetry_hud(Car* car_instance, Physics* physics)
     {
         if (!car_instance || !physics || !physics->GetVehicleSimulation())
             return;
@@ -880,45 +880,100 @@ namespace spartan::car_hud
         options.collision = car_instance->GetSkeletonShowCollision();
         const double now = ImGui::GetTime();
         history.update(s, now);
-        const ImGuiViewport* viewport = ImGui::GetMainViewport();
-        const ImVec2 available(viewport->WorkSize.x - 24, viewport->WorkSize.y - 24);
-        if (available.x < 200 || available.y < 200)
-            return;
-        const float default_scale = std::min({1.0f, (available.x - 24) / 1200, (available.y - 76) / telemetry::window_content_height});
-        const ImVec2 size(1200 * default_scale + 24, telemetry::window_content_height * default_scale + 76);
-        ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + available.x - size.x + 12,
-            viewport->WorkPos.y + 12), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSizeConstraints(ImVec2(std::min(960.0f, available.x), std::min(620.0f, available.y)), available);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12, 10));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10);
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.035f, 0.065f, 0.095f, 0.97f));
-        const ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
-            ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoNavInputs |
-            ImGuiWindowFlags_NoFocusOnAppearing;
-        if (ImGui::Begin("Telemetry", p_open, flags))
+        // same region as the driver hud: the editor viewport when the editor is visible, otherwise the whole window
+        const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
+        ImVec2 region_pos = main_viewport->Pos;
+        ImVec2 region_size = main_viewport->Size;
+        const math::Vector2& vp_pos = Viewport::GetScreenPosition();
+        const math::Vector2& vp_size = Viewport::GetScreenSize();
+        if (Engine::IsFlagSet(EngineMode::EditorVisible) && vp_size.x > 100.0f && vp_size.y > 100.0f)
         {
-            bool recording = simulation->get_log_to_file();
-            if (ImGui::Checkbox("Record CSV", &recording))
-                simulation->set_log_to_file(recording);
-            hud_tooltip("Start or stop CSV telemetry export. Starting a new recording replaces the previous CSV.");
-            ImGui::SameLine();
-            ImGui::TextDisabled("%s | CSV export", recording ? "Recording" : "Stopped");
-            hud_tooltip(simulation->get_telemetry_path().c_str());
-            ImGui::SameLine();
-            bool wind_shake = car_instance->GetCameraWindShake();
-            if (ImGui::Checkbox("Experimental wind shake", &wind_shake))
-                car_instance->SetCameraWindShake(wind_shake);
-            hud_tooltip("Subtle chase-camera wind buffeting above 54 km/h, increasing with speed. Disable for a steady view.");
-            ImGui::Separator();
-            const ImVec2 content = ImGui::GetContentRegionAvail();
-            const float footer_height = ImGui::GetFrameHeightWithSpacing() + 4;
-            const float scale = std::max(0.01f, std::min(content.x / 1200, (content.y - footer_height) / telemetry::window_content_height));
-            const ImVec2 start = ImGui::GetCursorScreenPos();
-            const ImVec2 origin(start.x + (content.x - 1200 * scale) * 0.5f, start.y);
-            telemetry::draw_vehicle_options({ImGui::GetWindowDrawList(), origin, scale}, options);
-            const telemetry::painter painter{ImGui::GetWindowDrawList(),
-                ImVec2(origin.x, origin.y + telemetry::vehicle_controls_height * scale), scale};
+            region_pos = ImVec2(vp_pos.x, vp_pos.y);
+            region_size = ImVec2(vp_size.x, vp_size.y);
+        }
+        if (region_size.x < 400 || region_size.y < 300)
+            return;
+
+        // design space is 1200 units tall, and at least wide enough for both side columns and the tire cards
+        const float scale = std::clamp(std::min(region_size.y * 0.9f / 1080.0f, region_size.x / 2000.0f), 0.4f, 1.6f);
+        const float width = region_size.x / scale;
+        const float height = region_size.y / scale;
+        const float center_x = width * 0.5f;
+        // the chase camera frames the car in the lower half, about a third of the screen wide
+        const float car_half_w = 400;
+        const float margin = 24;
+        const float gap = 12;
+        const float front_y = height * 0.47f;
+        const float rear_y = front_y + telemetry::corner_h + 16;
+        const float strip_x = center_x - telemetry::strip_w * 0.5f;
+        const float strip_y = 18;
+        const float strip_pad = 10;
+        const float header_y = strip_y + telemetry::strip_h + strip_pad + gap;
+        const float column_y = header_y; // high enough that the left column clears the driver hud input bars
+        const ImU32 panel_fill = IM_COL32(14, 22, 31, 200);
+        static bool setup_open = false;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
+        const ImGuiWindowFlags base_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
+
+        // read only panels ring the car and let every click through to the viewport
+        // NoBringToFrontOnFocus would create this window behind the editor dockspace, NoInputs already keeps it from taking focus
+        ImGui::SetNextWindowPos(region_pos, ImGuiCond_Always);
+        ImGui::SetNextWindowSize(region_size, ImGuiCond_Always);
+        if (ImGui::Begin("##telemetry_hud_panels", nullptr, base_flags | ImGuiWindowFlags_NoInputs))
+        {
+            const telemetry::painter hud{ImGui::GetWindowDrawList(), region_pos, scale, panel_fill};
+            if (s.full_simulation)
+            {
+                telemetry::draw_header(hud.at(center_x - telemetry::header_w * 0.5f, header_y), s);
+
+                // tire cards sit at their physical corners around the car
+                telemetry::draw_corner(hud, center_x - car_half_w - telemetry::corner_w, front_y, 0, s);
+                telemetry::draw_corner(hud, center_x + car_half_w, front_y, 1, s);
+                telemetry::draw_corner(hud, center_x - car_half_w - telemetry::corner_w, rear_y, 2, s);
+                telemetry::draw_corner(hud, center_x + car_half_w, rear_y, 3, s);
+
+                // left edge: dynamics
+                float y = column_y;
+                telemetry::draw_g_force(hud.at(margin, y), s, history, now);
+                y += telemetry::g_force_h + gap;
+                telemetry::draw_inputs(hud.at(margin, y), s);
+                y += telemetry::inputs_h + gap;
+                telemetry::draw_history(hud.at(margin, y), s, history, now, telemetry::g_force_w, telemetry::trace_kind::speed);
+                y += telemetry::history_h + gap;
+                telemetry::draw_history(hud.at(margin, y), s, history, now, telemetry::g_force_w, telemetry::trace_kind::pedals);
+
+                // right edge: powertrain and platform
+                const float right_x = width - margin - telemetry::powertrain_w;
+                y = column_y;
+                telemetry::draw_powertrain(hud.at(right_x, y), s);
+                y += telemetry::powertrain_h + gap;
+                telemetry::draw_aero(hud.at(right_x, y), s);
+                y += telemetry::aero_h + gap;
+                telemetry::draw_history(hud.at(right_x, y), s, history, now, telemetry::aero_w, telemetry::trace_kind::travel);
+                y += telemetry::history_h + gap;
+                telemetry::draw_chassis(hud.at(right_x, y), s);
+            }
+            else
+            {
+                const float below_strip = strip_y + telemetry::strip_h + strip_pad + gap + (setup_open ? telemetry::setup_h + gap : 0.0f);
+                telemetry::draw_limited(hud.at(center_x - 300, below_strip), s);
+            }
+        }
+        ImGui::End();
+
+        // the top strip is the only part that takes the mouse
+        const float controls_h = telemetry::strip_h + (setup_open ? strip_pad + gap + telemetry::setup_h : 0.0f);
+        ImGui::SetNextWindowPos(ImVec2(region_pos.x + (strip_x - strip_pad) * scale, region_pos.y + (strip_y - strip_pad) * scale), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2((telemetry::strip_w + strip_pad * 2) * scale, (controls_h + strip_pad * 2) * scale), ImGuiCond_Always);
+        if (ImGui::Begin("##telemetry_hud_controls", nullptr, base_flags))
+        {
+            const telemetry::painter painter{ImGui::GetWindowDrawList(), ImVec2(region_pos.x + strip_x * scale, region_pos.y + strip_y * scale), scale, panel_fill};
+            painter.rect(-strip_pad, -strip_pad, telemetry::strip_w + strip_pad * 2, telemetry::strip_h + strip_pad * 2, IM_COL32(8, 13, 19, 150), 10);
             ImGui::PushID(physics);
             ImGui::PushID(s.name.c_str());
             // Remember the actual configured strength per car/preset, rather than
@@ -927,7 +982,7 @@ namespace spartan::car_hud
             const ImGuiID steering_key = ImGui::GetID("steering_assist_strength");
             if (s.steering_enabled)
                 storage->SetFloat(steering_key, spec.assists.steering_speed_reduction);
-            switch (telemetry::draw(painter, s, history, now))
+            switch (telemetry::draw_strip(painter, s, setup_open))
             {
                 case telemetry::control::abs: physics->SetAbsEnabled(!s.abs_enabled); break;
                 case telemetry::control::traction: physics->SetTcEnabled(!s.tc_enabled); break;
@@ -941,14 +996,40 @@ namespace spartan::car_hud
                     break;
                 case telemetry::control::none: break;
             }
-            float tire_pressure = simulation->get_tire_pressure();
-            if (telemetry::draw_tire_pressure(painter, s.full_simulation, tire_pressure, simulation->get_base_spec().tire_pressure))
-                simulation->set_tire_pressure(tire_pressure);
+            if (setup_open)
+            {
+                // opaque, the menu opens over the header card
+                telemetry::painter setup = painter.at(0, telemetry::strip_h + strip_pad + gap);
+                setup.fill = IM_COL32(20, 31, 43, 250);
+                telemetry::draw_vehicle_options(setup, options);
+                float tire_pressure = simulation->get_tire_pressure();
+                if (telemetry::draw_tire_pressure(setup.at(0, 58), s.full_simulation, tire_pressure, simulation->get_base_spec().tire_pressure))
+                    simulation->set_tire_pressure(tire_pressure);
+
+                // csv export and camera options, 1200 x 34
+                const telemetry::painter row = setup.at(0, 116);
+                row.rect(0, 0, 1200, 34, setup.fill, 9);
+                ImGui::PushFont(nullptr, 14 * scale);
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4 * scale, 2 * scale));
+                ImGui::SetCursorScreenPos(row.point(12, 6));
+                bool recording = simulation->get_log_to_file();
+                if (ImGui::Checkbox("Record CSV", &recording))
+                    simulation->set_log_to_file(recording);
+                hud_tooltip("Start or stop CSV telemetry export. Starting a new recording replaces the previous CSV.");
+                row.text(150, 10, 12, recording ? telemetry::red : telemetry::muted, recording ? "RECORDING" : "STOPPED");
+                ImGui::SetCursorScreenPos(row.point(150, 6));
+                ImGui::InvisibleButton("##csv_path", ImVec2(90 * scale, 22 * scale));
+                hud_tooltip(simulation->get_telemetry_path().c_str());
+                ImGui::SetCursorScreenPos(row.point(430, 6));
+                bool wind_shake = car_instance->GetCameraWindShake();
+                if (ImGui::Checkbox("Experimental wind shake", &wind_shake))
+                    car_instance->SetCameraWindShake(wind_shake);
+                hud_tooltip("Subtle chase-camera wind buffeting above 54 km/h, increasing with speed. Disable for a steady view.");
+                ImGui::PopStyleVar();
+                ImGui::PopFont();
+            }
             ImGui::PopID();
             ImGui::PopID();
-            ImGui::SetCursorScreenPos(start);
-            ImGui::Dummy(ImVec2(content.x, telemetry::window_content_height * scale));
-            ImGui::TextDisabled("I/C/O: tread zones | Blue: cold  Green: target  Amber: hot | Inputs: %%");
         }
         ImGui::End();
         ImGui::PopStyleColor();

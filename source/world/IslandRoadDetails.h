@@ -100,7 +100,7 @@ namespace spartan::island_road_details
     // separate render entities for every 64 metres of otherwise identical hardware.
     inline void PublishGuardrailInstances(Entity* group, std::array<std::vector<Matrix>, road_guardrail::ModuleCount>& instances)
     {
-        for (const auto module : {road_guardrail::Post, road_guardrail::Splice, road_guardrail::Reflector})
+        for (const auto module : {road_guardrail::Beam, road_guardrail::Post, road_guardrail::Splice, road_guardrail::Reflector})
         {
             auto& transforms = instances[module];
             if (transforms.empty()) continue;
@@ -112,6 +112,7 @@ namespace spartan::island_road_details
             Render* render = batch->GetComponent<Render>();
             render->SetOwnedMesh(road_guardrail::SharedMesh(module));
             render->SetInstances(transforms);
+            if (module == road_guardrail::Beam) road_guardrail::AddCollision(batch);
         }
     }
 
@@ -356,6 +357,45 @@ namespace spartan::island_road_details
         pending_bakes.clear();
     }
 
+    // restores arrive in bursts from one road (collision streaming), keeping the last blocks
+    // avoids rereading a whole 32 mb block for every mesh inside it
+    inline bool ReadBlockSlice(const std::string& resources, uint64_t key, uint32_t block, uint32_t offset, uint32_t size, std::vector<uint8_t>& out)
+    {
+        struct CachedBlock
+        {
+            uint64_t id = 0;
+            std::shared_ptr<const std::vector<uint8_t>> bytes;
+        };
+        static std::mutex cache_mutex;
+        static std::array<CachedBlock, 2> cache;
+        static uint32_t cache_next = 0;
+
+        generated_cache::Hash block_key; block_key.Add(key); block_key.Add(block);
+        std::shared_ptr<const std::vector<uint8_t>> bytes;
+        {
+            std::lock_guard lock(cache_mutex);
+            for (const CachedBlock& entry : cache)
+            {
+                if (entry.bytes && entry.id == block_key.value)
+                {
+                    bytes = entry.bytes;
+                }
+            }
+        }
+        if (!bytes)
+        {
+            auto loaded = std::make_shared<std::vector<uint8_t>>();
+            if (!generated_cache::ReadPayload(generated_cache::Path(resources, "road_furniture_blocks", block_key.value), block_key.value, *loaded)) return false;
+            bytes = loaded;
+            std::lock_guard lock(cache_mutex);
+            cache[cache_next++ % cache.size()] = {block_key.value, bytes};
+        }
+        if (bytes->size() < sizeof(uint64_t) + uint64_t(offset) + size) return false;
+        const uint8_t* begin = bytes->data() + sizeof(uint64_t) + offset;
+        out.assign(begin, begin + size);
+        return true;
+    }
+
     inline bool ReadDetails(BakedRoad& data, const std::string& resources, uint64_t key)
     {
         auto& parts = data.parts;
@@ -439,6 +479,10 @@ namespace spartan::island_road_details
                 {
                     meshes[i] = std::make_shared<Mesh>();
                     loaded = meshes[i]->LoadPrepared(bytes);
+                    meshes[i]->SetCpuGeometrySource([resources, key, block = part.block, offset = part.offset, size = part.size](std::vector<uint8_t>& prepared)
+                    {
+                        return ReadBlockSlice(resources, key, block, offset, size, prepared);
+                    });
                 }
                 if (!loaded) valid.store(false, std::memory_order_relaxed);
             }
@@ -520,6 +564,14 @@ namespace spartan::island_road_details
             entities.push_back(entity);
         }
         PublishGuardrailInstances(group, hardware);
+        // the gpu has them now, collision cooking restores the few it needs from the bake
+        for (size_t i = 0; i < parts.size(); ++i)
+        {
+            if (parts[i].shape == 2 && meshes[i])
+            {
+                meshes[i]->ReleaseCpuGeometry();
+            }
+        }
         return true;
     }
 
@@ -598,7 +650,7 @@ namespace spartan::island_road_details
         if (World::IsPreparing() && !hazard_signature)
             if (auto found = preparation_keys.find(entity->GetObjectId()); found != preparation_keys.end()) return found->second;
         generated_cache::Hash recipe;
-        recipe.Add(uint32_t(6)); recipe.Add(sizeof(BakedPart)); recipe.Add(sizeof(MeshLod));
+        recipe.Add(uint32_t(7)); recipe.Add(sizeof(BakedPart)); recipe.Add(sizeof(MeshLod));
         recipe.Add(road_guardrail::asset_hash);
         recipe.Add(spline->GetRoadFrames()); recipe.Add(spline->GetControlPointCount());
         for (const auto& f : spline->GetRoadFrames()) recipe.Add(spline->GetSidewalkWidthAt(f.t));

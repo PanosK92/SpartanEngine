@@ -27,16 +27,36 @@ namespace spartan
         const uint8_t ASCII_TAB      = 9;
         const uint8_t ASCII_NEW_LINE = 10;
         const uint8_t ASCII_SPACE    = 32;
+
+        // the shader treats a negative u as a solid quad that ignores the atlas
+        const float uv_solid = -1.0f;
+
+        // r8g8b8a8_unorm, red in the lowest byte
+        uint32_t pack_color(const Color& color)
+        {
+            auto to_byte = [](const float value)
+            {
+                return static_cast<uint32_t>(clamp(value, 0.0f, 1.0f) * 255.0f + 0.5f);
+            };
+
+            return to_byte(color.r) | (to_byte(color.g) << 8) | (to_byte(color.b) << 16) | (to_byte(color.a) << 24);
+        }
+
+        bool is_digit(const char character)
+        {
+            return character >= '0' && character <= '9';
+        }
     }
 
-    Font::Font(const string& file_path, const uint32_t font_size, const Color& color) : IResource(ResourceType::Font)
+    Font::Font(const string& file_path, const uint32_t font_size, const Color& color, const Font_Outline_Type outline) : IResource(ResourceType::Font)
     {
         for (uint32_t i = 0; i < buffer_count; i++)
         {
             m_buffers_vertex[i] = make_shared<RHI_Buffer>();
             m_buffers_index[i]  = make_shared<RHI_Buffer>();
         }
-        m_color = color;
+        m_color   = color;
+        m_outline = outline;
 
         SetSize(font_size);
         LoadFromFile(file_path);
@@ -59,92 +79,147 @@ namespace spartan
         }
 
         // find max character height (todo, actually get spacing from FreeType)
-        for (const auto& char_info : m_glyphs)
+        for (const auto& [char_code, glyph] : m_glyphs)
         {
-            m_char_max_width  = max(char_info.second.width, m_char_max_width);
-            m_char_max_height = max(char_info.second.height, m_char_max_height);
+            m_char_max_width  = max(glyph.width, m_char_max_width);
+            m_char_max_height = max(glyph.height, m_char_max_height);
+            m_ascent          = max(glyph.offset_y, m_ascent);
+            m_descent         = max(static_cast<int32_t>(glyph.height) - glyph.offset_y, m_descent);
+
+            if (char_code >= '0' && char_code <= '9')
+            {
+                m_digit_advance = max(glyph.horizontal_advance, m_digit_advance);
+            }
         }
 
         SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
     }
 
-    void Font::AddText(const char* text, const Vector2& position_screen_percentage)
+    void Font::add_quad(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, const uint32_t color)
+    {
+        // pixels have a top left origin with y down, the orthographic projection is centered with y up
+        const float half_width  = 0.5f * Renderer::GetViewport().width;
+        const float half_height = 0.5f * Renderer::GetViewport().height;
+        x0 -= half_width;
+        x1 -= half_width;
+        y0  = half_height - y0;
+        y1  = half_height - y1;
+
+        auto push_vertex = [this, color](const float x, const float y, const float u, const float v)
+        {
+            RHI_Vertex_Pos2dTexCol8& vertex = m_vertices.emplace_back();
+            vertex.pos[0] = x;
+            vertex.pos[1] = y;
+            vertex.tex[0] = u;
+            vertex.tex[1] = v;
+            vertex.col    = color;
+        };
+
+        const uint32_t vertex_offset = static_cast<uint32_t>(m_vertices.size());
+        push_vertex(x0, y0, u0, v0);
+        push_vertex(x1, y1, u1, v1);
+        push_vertex(x0, y1, u0, v1);
+        push_vertex(x1, y0, u1, v0);
+
+        // same winding as before, front facing under back face culling
+        const uint32_t quad_indices[6] = { 0, 1, 2, 0, 3, 1 };
+        for (const uint32_t index : quad_indices)
+        {
+            m_indices.push_back(vertex_offset + index);
+        }
+    }
+
+    void Font::add_text_baseline(const char* text, float x, float y, const uint32_t color, const bool tabular_digits)
     {
         // define a maximum vertex limit
         const uint32_t max_vertices = 100'000;
-        uint32_t vertex_offset      = static_cast<uint32_t>(m_vertices.size());
 
-        const float viewport_width  = Renderer::GetViewport().width;
-        const float viewport_height = Renderer::GetViewport().height;
+        // whole pixels keep the atlas texels aligned with the screen, so glyphs stay sharp
+        const float origin_x = floor(x + 0.5f);
+        float cursor_x       = origin_x;
+        float cursor_y       = floor(y + 0.5f);
 
-        // convert screen percentage to pixel coordinates
-        Vector2 position;
-        position.x = viewport_width  * position_screen_percentage.x;
-        position.y = viewport_height * (-position_screen_percentage.y); // flip y-axis to match the screen space coordinates (y is positive downwards in screen space)
-
-        // make the origin be the top left corner
-        position.x -= 0.5f * viewport_width;
-        position.y += 0.5f * viewport_height;
-    
-        // generate vertices - draw each letter onto a quad
-        Vector2 cursor = position;
         for (const char* p = text; *p != '\0'; ++p)
         {
-            char character = *p;
+            const char character = *p;
 
-            // check if adding this character would exceed the vertex limit
-            if (m_vertices.size() + 6 > max_vertices)
+            if (m_vertices.size() + 4 > max_vertices)
             {
                 return;
             }
-    
-            Glyph& glyph = m_glyphs[character];
-    
+
+            const Glyph& glyph = m_glyphs[character];
+
             if (character == ASCII_TAB)
             {
                 // use max character width for consistent tab stops (works reliably across all resolutions)
-                const float tab_spacing  = static_cast<float>(m_char_max_width) * 4.0f;
-                float relative_x         = cursor.x - position.x;
-                float next_tab_stop      = (floor(relative_x / tab_spacing) + 1.0f) * tab_spacing;
-                cursor.x                 = position.x + next_tab_stop;
+                const float tab_spacing   = static_cast<float>(m_char_max_width) * 4.0f;
+                const float relative_x    = cursor_x - origin_x;
+                const float next_tab_stop = (floor(relative_x / tab_spacing) + 1.0f) * tab_spacing;
+                cursor_x                  = origin_x + next_tab_stop;
             }
             else if (character == ASCII_NEW_LINE)
             {
-                cursor.x  = position.x;
-                cursor.y -= m_char_max_height;
+                cursor_x  = origin_x;
+                cursor_y += m_char_max_height;
             }
             else if (character == ASCII_SPACE)
             {
-                cursor.x += glyph.horizontal_advance;
+                cursor_x += glyph.horizontal_advance;
             }
             else
             {
-                // first triangle in quad
-                m_vertices.push_back({cursor.x + glyph.offset_x,               cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top});
-                m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom});
-                m_vertices.push_back({cursor.x + glyph.offset_x,               cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_left,  glyph.uv_y_bottom});
-    
-                // second triangle in quad
-                m_vertices.push_back({cursor.x + glyph.offset_x,               cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top});
-                m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_right, glyph.uv_y_top});
-                m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom});
-    
-                // add indices for the two triangles
-                for (uint32_t i = 0; i < 6; ++i)
-                {
-                    m_indices.push_back(vertex_offset + i);
-                }
-    
-                // advance the cursor and vertex offset
-                cursor.x      += glyph.horizontal_advance;
-                vertex_offset += 6;
+                const bool tabular = tabular_digits && is_digit(character);
+                const float advance = static_cast<float>(tabular ? m_digit_advance : glyph.horizontal_advance);
+                const float center  = tabular ? floor((advance - static_cast<float>(glyph.horizontal_advance)) * 0.5f) : 0.0f;
+
+                const float left = cursor_x + center + glyph.offset_x;
+                const float top  = cursor_y - glyph.offset_y;
+                add_quad(left, top, left + glyph.width, top + glyph.height, glyph.uv_x_left, glyph.uv_y_top, glyph.uv_x_right, glyph.uv_y_bottom, color);
+
+                cursor_x += advance;
             }
         }
     }
 
+    void Font::AddText(const char* text, const Vector2& position_screen_percentage)
+    {
+        const float x = Renderer::GetViewport().width  * position_screen_percentage.x;
+        const float y = Renderer::GetViewport().height * position_screen_percentage.y;
+        add_text_baseline(text, x, y, pack_color(m_color), false);
+    }
+
+    void Font::AddText(const char* text, const Vector2& position_pixels, const Color& color, const bool tabular_digits)
+    {
+        add_text_baseline(text, position_pixels.x, position_pixels.y + static_cast<float>(m_ascent), pack_color(color), tabular_digits);
+    }
+
+    float Font::GetTextWidth(const char* text, const bool tabular_digits)
+    {
+        float width = 0.0f;
+        for (const char* p = text; *p != '\0' && *p != ASCII_NEW_LINE; ++p)
+        {
+            const bool tabular = tabular_digits && is_digit(*p);
+            width += static_cast<float>(tabular ? m_digit_advance : m_glyphs[*p].horizontal_advance);
+        }
+
+        return width;
+    }
+
+    void Font::AddRect(const Vector2& min_pixels, const Vector2& max_pixels, const Color& color)
+    {
+        if (color.a <= 0.0f || max_pixels.x <= min_pixels.x || max_pixels.y <= min_pixels.y)
+        {
+            return;
+        }
+
+        add_quad(min_pixels.x, min_pixels.y, max_pixels.x, max_pixels.y, uv_solid, uv_solid, uv_solid, uv_solid, pack_color(color));
+    }
+
     bool Font::HasText() const
     {
-        return !m_vertices.empty() && !m_indices.empty();
+        // the screenshot and the output both draw text in the same frame, the second one reuses the upload
+        return !m_vertices.empty() || (m_upload_frame == Renderer::GetFrameNumber() && m_index_count[m_buffer_index] != 0);
     }
 
     void Font::SetSize(const uint32_t size)
@@ -154,7 +229,13 @@ namespace spartan
 
     void Font::UpdateVertexAndIndexBuffers()
     {
+        if (m_vertices.empty())
+        {
+            return;
+        }
+
         m_buffer_index = (m_buffer_index + 1) % buffer_count;
+        m_upload_frame = Renderer::GetFrameNumber();
 
         const uint32_t vertex_stride = static_cast<uint32_t>(sizeof(m_vertices[0]));
         const uint32_t index_stride  = static_cast<uint32_t>(sizeof(m_indices[0]));

@@ -2022,4 +2022,31 @@ namespace spartan
         }
         cmd_list->copy_buffer_to_buffer(source, destination, size);
     }
+
+    void RHI_CommandList::CopyBufferContents(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
+    {
+        if (!source || !destination || size == 0)
+        {
+            return;
+        }
+
+        const bool immediate      = !RHI_Device::IsRecording();
+        RHI_CommandList* cmd_list = immediate ? ImmediateExecutionBegin(RHI_Queue_Type::Graphics) : RHI_Device::Cmd();
+        if (!cmd_list)
+        {
+            return;
+        }
+
+        cmd_list->InsertBarrier(RHI_Barrier::buffer_sync(source).from(RHI_Barrier_Scope::All).to(RHI_Barrier_Scope::Transfer));
+        cmd_list->InsertBarrier(RHI_Barrier::buffer_sync(destination).from(RHI_Barrier_Scope::All).to(RHI_Barrier_Scope::Transfer));
+        cmd_list->FlushBarriers();
+        cmd_list->copy_buffer_to_buffer(source, destination, size);
+        cmd_list->InsertBarrier(RHI_Barrier::buffer_sync(destination).from(RHI_Barrier_Scope::Transfer).to(RHI_Barrier_Scope::All));
+        cmd_list->FlushBarriers();
+
+        if (immediate)
+        {
+            ImmediateExecutionEnd(cmd_list, false);
+        }
+    }
 }

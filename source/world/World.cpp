@@ -47,6 +47,10 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../physics/PhysicsWorld.h"
 #include "../input/Input.h"
 #include "../core/Timer.h"
+#include "../memory/Allocator.h"
+#include "../memory/GpuMemory.h"
+#include "../rhi/RHI_Device.h"
+#include "../geometry/Mesh.h"
 #include <algorithm>
 #include <cstdlib>
 #include <filesystem>
@@ -69,11 +73,205 @@ namespace spartan
 {
     namespace
     {
+        void log_cpu_memory(const char* label)
+        {
+            constexpr double mb = 1024.0 * 1024.0;
+            uint64_t mesh_bytes    = 0;
+            uint64_t texture_bytes = 0;
+            uint32_t mesh_count    = 0;
+            vector<pair<uint64_t, string>> largest_meshes;
+            for (const shared_ptr<IResource>& resource : ResourceCache::GetResourcesSnapshot())
+            {
+                if (resource->GetResourceType() == ResourceType::Mesh)
+                {
+                    const Mesh* mesh     = static_cast<const Mesh*>(resource.get());
+                    const uint64_t bytes = mesh->GetCpuBytes();
+                    mesh_bytes += bytes;
+                    mesh_count++;
+                    largest_meshes.emplace_back(bytes, mesh->GetObjectName());
+                }
+                else if (resource->GetResourceType() == ResourceType::Texture)
+                {
+                    texture_bytes += static_cast<const RHI_Texture*>(resource.get())->GetCpuBytes();
+                }
+            }
+            sort(largest_meshes.begin(), largest_meshes.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+
+            SP_LOG_INFO("Cpu memory (%s): heap %.0f MB (peak %.0f MB), working set %.0f MB, meshes %.0f MB (%u), geometry mirror %.0f MB, texture data %.0f MB",
+                label,
+                Allocator::GetMemoryAllocatedMb(),
+                Allocator::GetMemoryAllocatedPeakMb(),
+                Allocator::GetMemoryProcessUsedMb(),
+                mesh_bytes / mb,
+                mesh_count,
+                GeometryBuffer::GetCpuBytes() / mb,
+                texture_bytes / mb);
+            for (size_t i = 0; i < largest_meshes.size() && i < 8; i++)
+            {
+                SP_LOG_INFO("Cpu memory (%s):   mesh %s %.1f MB", label, largest_meshes[i].second.c_str(), largest_meshes[i].first / mb);
+            }
+            Allocator::LogLargestAllocationSites(label, 40);
+
+            vector<GpuMemoryBlock> blocks;
+            GpuMemory::GetBlocks(blocks);
+            uint64_t kind_bytes[static_cast<size_t>(GpuMemoryKind::Count)] = {};
+            unordered_map<string, uint64_t> name_bytes;
+            unordered_map<uint64_t, uint64_t> heap_bytes;
+            for (const GpuMemoryBlock& block : blocks)
+            {
+                kind_bytes[static_cast<size_t>(block.kind)] += block.size;
+                name_bytes[block.name[0] ? block.name : "(unnamed)"] += block.size;
+                heap_bytes[block.heap_id] = max(heap_bytes[block.heap_id], block.heap_size);
+            }
+            uint64_t committed = 0;
+            for (const auto& [heap, bytes] : heap_bytes)
+            {
+                committed += bytes;
+            }
+            SP_LOG_INFO("Gpu memory (%s): device local %.0f MB, tracked %.0f MB in %zu allocations, %zu heaps committing %.0f MB", label, RHI_Device::MemoryGetAllocatedMb(), GpuMemory::GetAllocatedBytes() / mb, blocks.size(), heap_bytes.size(), committed / mb);
+            {
+                struct heap_use
+                {
+                    uint64_t used  = 0;
+                    uint32_t count = 0;
+                    string largest;
+                    uint64_t largest_size = 0;
+                };
+                unordered_map<uint64_t, heap_use> heap_uses;
+                for (const GpuMemoryBlock& block : blocks)
+                {
+                    heap_use& use = heap_uses[block.heap_id];
+                    use.used += block.size;
+                    use.count++;
+                    if (block.size > use.largest_size)
+                    {
+                        use.largest_size = block.size;
+                        use.largest      = block.name;
+                    }
+                }
+                vector<pair<uint64_t, uint64_t>> slack;
+                for (const auto& [heap, use] : heap_uses)
+                {
+                    slack.emplace_back(heap_bytes[heap] - min(heap_bytes[heap], use.used), heap);
+                }
+                sort(slack.begin(), slack.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+                for (size_t i = 0; i < slack.size() && i < 12 && slack[i].first > 0; i++)
+                {
+                    const heap_use& use = heap_uses[slack[i].second];
+                    SP_LOG_INFO("Gpu memory (%s):   heap %.0f MB, used %.1f MB by %u allocations (largest %s %.1f MB)", label, heap_bytes[slack[i].second] / mb, use.used / mb, use.count, use.largest.c_str(), use.largest_size / mb);
+                }
+            }
+            for (size_t kind = 0; kind < static_cast<size_t>(GpuMemoryKind::Count); kind++)
+            {
+                if (kind_bytes[kind] > 0)
+                {
+                    SP_LOG_INFO("Gpu memory (%s):   %s %.0f MB", label, GpuMemory::GetKindName(static_cast<GpuMemoryKind>(kind)), kind_bytes[kind] / mb);
+                }
+            }
+            vector<pair<uint64_t, string>> largest_names;
+            for (const auto& [name, bytes] : name_bytes)
+            {
+                largest_names.emplace_back(bytes, name);
+            }
+            sort(largest_names.begin(), largest_names.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+            for (size_t i = 0; i < largest_names.size() && i < 30; i++)
+            {
+                SP_LOG_INFO("Gpu memory (%s):   %8.1f MB %s", label, largest_names[i].first / mb, largest_names[i].second.c_str());
+            }
+            vector<const GpuMemoryBlock*> textures;
+            for (const GpuMemoryBlock& block : blocks)
+            {
+                if (block.kind == GpuMemoryKind::Texture)
+                {
+                    textures.push_back(&block);
+                }
+            }
+            sort(textures.begin(), textures.end(), [](const GpuMemoryBlock* a, const GpuMemoryBlock* b) { return a->size > b->size; });
+            for (size_t i = 0; i < textures.size() && i < 25; i++)
+            {
+                const GpuMemoryBlock& block = *textures[i];
+                SP_LOG_INFO("Gpu memory (%s):   texture %6.1f MB %ux%ux%u mips %u %s %s %s", label, block.size / mb, block.width, block.height, block.depth, block.mip_count, block.format, block.name, block.path);
+            }
+        }
+
         ProgressTask world_progress;
         WorldWorkCounters work_counters;
+        vector<Entity*> entities;
+        bool memory_steady_log_pending = false;
+
+        void release_uploaded_cpu_geometry()
+        {
+            uint32_t released = 0;
+            for (Entity* entity : entities)
+            {
+                Render* render = entity ? entity->GetComponent<Render>() : nullptr;
+                Mesh* mesh     = render ? render->GetMesh() : nullptr;
+                if (mesh && mesh->ReleaseCpuGeometry())
+                {
+                    released++;
+                }
+            }
+            if (released > 0)
+            {
+                SP_LOG_INFO("Released cpu geometry of %u uploaded meshes, %u restores so far", released, Mesh::GetCpuGeometryRestoreCount());
+            }
+        }
+
+        void log_gpu_geometry(const char* label)
+        {
+            struct group_totals
+            {
+                uint64_t vertices     = 0;
+                uint64_t indices      = 0;
+                uint64_t lod0_indices = 0;
+                uint32_t meshes       = 0;
+                uint32_t entities     = 0;
+            };
+            unordered_map<const Mesh*, string> mesh_groups;
+            unordered_map<string, group_totals> groups;
+            for (Entity* entity : entities)
+            {
+                Render* render = entity ? entity->GetComponent<Render>() : nullptr;
+                Mesh* mesh     = render ? render->GetMesh() : nullptr;
+                if (!mesh)
+                {
+                    continue;
+                }
+                auto found = mesh_groups.find(mesh);
+                if (found == mesh_groups.end())
+                {
+                    string name = mesh->GetObjectName();
+                    while (!name.empty() && (isdigit(static_cast<unsigned char>(name.back())) || name.back() == '_'))
+                    {
+                        name.pop_back();
+                    }
+                    found = mesh_groups.emplace(mesh, name).first;
+                    group_totals& totals = groups[name];
+                    totals.vertices += mesh->GetVertexCount();
+                    totals.indices  += mesh->GetIndexCount();
+                    totals.meshes++;
+                    for (uint32_t i = 0; i < mesh->GetSubMeshCount(); i++)
+                    {
+                        const SubMesh& sub_mesh = mesh->GetSubMesh(i);
+                        totals.lod0_indices += sub_mesh.lods.empty() ? 0 : sub_mesh.lods[0].index_count;
+                    }
+                }
+                groups[found->second].entities++;
+            }
+            vector<pair<uint64_t, string>> largest;
+            for (const auto& [name, totals] : groups)
+            {
+                largest.emplace_back(totals.vertices * sizeof(RHI_Vertex_PosTexNorTan) + totals.indices * sizeof(uint32_t), name);
+            }
+            sort(largest.begin(), largest.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+            for (size_t i = 0; i < largest.size() && i < 30; i++)
+            {
+                const group_totals& totals = groups[largest[i].second];
+                SP_LOG_INFO("Gpu geometry (%s): %8.1f MB %s, %u meshes, %u entities, %llu vertices, %llu indices (lod0 %llu)", label, largest[i].first / (1024.0 * 1024.0), largest[i].second.c_str(), totals.meshes, totals.entities, totals.vertices, totals.indices, totals.lod0_indices);
+            }
+        }
         uint64_t work_counter_tick = 0;
         sol::state lua_state;
-        vector<Entity*> entities;
         unordered_map<uint64_t, Entity*> entities_by_id; // published entities, guarded by entity_access_mutex
         // Cached views borrow entities owned by the world. Keep invalidation and
         // removal together so no view can retain a destroyed entity.
@@ -1399,6 +1597,15 @@ namespace spartan
         ++work_counter_tick;
         ScopedWorldWork work_scope(work_counters);
         CountWorldWork(WorldWork::entities_total, entities.size());
+        {
+            static float census_logged_mb = 0.0f;
+            const float heap_mb           = Allocator::GetMemoryAllocatedMb();
+            if (heap_mb > census_logged_mb + 1024.0f)
+            {
+                census_logged_mb = heap_mb;
+                Allocator::LogLargestAllocationSites("rising", 12);
+            }
+        }
         // only world file loads park the tick, model importer progress from warm preloads must not freeze play
         if (world_io_state.load(memory_order_acquire) == WorldIoState::Loading)
         {
@@ -1518,6 +1725,10 @@ namespace spartan
             GeometryBuffer::SaveWorldLoadCapacity(GetResourceDirectory());
             GeometryBuffer::BuildIfDirty();
             SP_LOG_INFO("World preparation complete: %.2f ms", preparation_timer.GetElapsedTimeMs());
+            release_uploaded_cpu_geometry();
+            log_cpu_memory("world ready");
+            log_gpu_geometry("world ready");
+            memory_steady_log_pending = true;
             for (const string& line : generated_cache::GetStatistics()) SP_LOG_INFO("Bake cache %s", line.c_str());
             // Cache eviction only removes reproducible data and runs off the editor thread.
             ThreadPool::AddTask([resources = GetResourceDirectory()]()
@@ -1527,6 +1738,16 @@ namespace spartan
             });
             world_progress.Finish();
             world_io_state.store(WorldIoState::Idle, memory_order_release);
+        }
+        else if (work_counter_tick % 1800 == 0)
+        {
+            // meshes built after the world became ready, e.g. edited roads
+            release_uploaded_cpu_geometry();
+            if (memory_steady_log_pending)
+            {
+                memory_steady_log_pending = false;
+                log_cpu_memory("steady");
+            }
         }
 
         // notify listeners on the first tick after loading completes

@@ -87,5 +87,11 @@ namespace spartan
 
         // true when capacity was exceeded and the buffers moved, invalidates address dependent caches, cleared on read
         static bool WasRebuilt();
+
+        // heap held by the cpu side accumulators
+        static uint64_t GetCpuBytes();
+
+        // appended bytes still waiting for BuildIfDirty
+        static uint64_t GetPendingUploadBytes();
     };
 }

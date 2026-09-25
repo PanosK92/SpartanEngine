@@ -88,6 +88,17 @@ namespace spartan
         float yaw          = 0.0f;
         float height       = 0.0f;
         float margin       = 0.0f;
+
+        // owner world transform the pad was stamped for, when the owner is found elsewhere the pad
+        // is carried along with it instead of staying behind as a mound under nothing
+        bool anchored                    = false;
+        math::Vector3 anchor_position    = math::Vector3::Zero;
+        math::Quaternion anchor_rotation = math::Quaternion::Identity;
+
+        // runtime only, the pad moves once its owner has been still for a moment
+        math::Vector3 seen_position    = math::Vector3::Zero;
+        math::Quaternion seen_rotation = math::Quaternion::Identity;
+        double seen_changed_ms         = 0.0;
     };
 
     // inclusive cell rect on a grid, empty until something merges into it
@@ -505,6 +516,7 @@ namespace spartan
         void RestoreLivePad();
         void RestorePlatform(const TerrainPlatform& pad);
         void PruneVanishedPlatforms();
+        void FollowPlatformOwners();
         void RestorePropMaskFootprint(
             float center_x,
             float center_z,

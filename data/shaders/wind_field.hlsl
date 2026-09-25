@@ -15,7 +15,6 @@ static const int   FREQ_CURL_BASE = 4;    // base octave cycles across one tile
 static const int   FREQ_MICRO     = 32;   // micro turbulence cycles across one tile
 static const int   CURL_OCTAVES   = 4;    // 4 -> top freq 32 cycles per tile
 static const float CURL_DRIFT     = 0.03; // per-octave tile fraction drifted per second
-static const float GUST_SPEED     = 0.065; // average tile fractions per second
 static const float MICRO_SPEED    = 0.12;  // tile fractions per second the micro pattern slides
 static const float LIFE_RATE      = 0.55; // octave breathing rate, controls birth/death of features
 
@@ -117,9 +116,10 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float  flow_y = fbm_evolving(uv + flow_advect - warp.yx, t * 1.07, 2.71);
     float2 flow   = clamp(float2(flow_x, flow_y) * 1.6, -1.0, 1.0);
 
-    // Advected, domain-warped pressure fronts. Independent octave drift changes
-    // their silhouette continuously instead of carrying fixed elliptical stamps.
-    float2 gust_uv = uv - wind_dir * t * GUST_SPEED;
+    // Domain-warped pressure fronts. Independent octave drift changes their silhouette
+    // continuously; the downwind travel and the stretch across the wind are applied by
+    // wind_gust() at sample time, so the fronts stay coherent in world space.
+    float2 gust_uv = uv;
     float2 distortion = float2(
         gnoise_tiled(gust_uv * 4.0 + float2(t * 0.041, -t * 0.023), 4),
         gnoise_tiled(gust_uv * 4.0 + float2(-t * 0.027, t * 0.037) + 7.3, 4)

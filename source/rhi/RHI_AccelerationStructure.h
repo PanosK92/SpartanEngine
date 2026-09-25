@@ -12,10 +12,13 @@ Commercial use requires written permission and negotiated payment terms.
 #include "RHI_Definitions.h"
 #include <vector>
 #include <array>
+#include <memory>
 //================================
 
 namespace spartan
 {
+    struct RHI_PendingWork;
+
    enum class RHI_AccelerationStructureType
     {
         Bottom,
@@ -67,8 +70,16 @@ namespace spartan
         // call after a build burst completes to reclaim that memory
         static void FreeSharedBlasScratch();
 
+        // static blas are built with worst case storage, once the gpu has finished a build this copies it
+        // into storage sized to the compacted result (roughly half), returns true when any blas device address
+        // changed so the tlas has to be rebuilt against the new addresses
+        static bool CompactBottomLevels();
+        static void DestroyCompactionResources();
+        static uint64_t GetBottomLevelBytes() { return s_blas_bytes; }
+
     private:
         void Destroy();
+        void CancelCompaction();
 
         // misc
         RHI_AccelerationStructureType m_type = RHI_AccelerationStructureType::Max;
@@ -97,5 +108,13 @@ namespace spartan
         // building 2148 blas with per-instance scratch oom'd the gpu, sharing one keeps it bounded
         static void* s_blas_scratch_buffer;
         static uint64_t s_blas_scratch_buffer_size;
+
+        // compaction
+        uint32_t m_compaction_query = UINT32_MAX;
+        uint64_t m_compaction_generation = 0;
+        std::shared_ptr<const RHI_PendingWork> m_compaction_ready;
+        static std::vector<RHI_AccelerationStructure*> s_compaction_pending;
+        static uint64_t s_blas_bytes;
+        static uint64_t s_compaction_generation;
     };
 }

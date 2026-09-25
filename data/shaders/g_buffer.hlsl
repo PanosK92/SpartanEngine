@@ -438,6 +438,15 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             height_percent,
             variation
         );
+
+        // wind sheen: blades laid over by a gust turn their pale, glossy flank to the light,
+        // so fronts read as bright waves rolling across the field, strongest at the tips
+        float gust  = wind_gust(position_world.xz, (float)buffer_frame.time);
+        float sheen = smoothstep(0.12f, 0.62f, gust) * grass_wind_response();
+        sheen      *= smoothstep(0.1f, 0.9f, height_percent);
+        float3 flank = lerp(albedo.rgb, luminance(albedo.rgb) * float3(1.08f, 1.04f, 0.78f), 0.4f) * 1.55f;
+        albedo.rgb   = lerp(albedo.rgb, flank, sheen * 0.75f);
+        roughness    = lerp(roughness, roughness * 0.72f, sheen);
     }
     else if (surface.is_flower())
     {

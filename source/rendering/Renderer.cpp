@@ -845,6 +845,12 @@ namespace spartan
         RHI_Device::BeginFrame(can_render);
         RHI_Device::Bind(RHI_Frame_List::Graphics);
 
+        // a file load publishes gigabytes of geometry, streaming it out keeps it from piling up in the upload tail
+        if (World::IsLoadingFromFile() && GeometryBuffer::GetPendingUploadBytes() >= 256ull * 1024 * 1024)
+        {
+            GeometryBuffer::BuildIfDirty();
+        }
+
         m_draw_data_count      = 0;
         // Only scene rendering has a bulk upload later in this frame. During
         // loading, ImGui must upload its projection immediately; otherwise it
@@ -2394,65 +2400,132 @@ namespace spartan
     {
         // skip when restir off, the buffer stays at whatever data it had previously, the count
         // is set to zero so the shader treats the pool as empty regardless of buffer contents
+        // the pool persists across frames and is only rebuilt when an emitter changes, pulling lod 0
+        // geometry of every emitter each frame cost seconds per frame on large worlds
+        static uint64_t   pool_signature = 0;
+        static RHI_Buffer* pool_buffer   = nullptr;
+        static uint32_t   pool_count     = 0;
+
         if (!cvar_restir_pt.GetValueAs<bool>())
         {
             m_cb_frame_cpu.restir_pt_emissive_tri_count = 0.0f;
             m_pass_state.restir_history_invalid = true;
+            pool_signature = 0;
             return;
         }
 
-        // statics avoid per frame heap thrash, the vectors are reused across frames and the
-        // capacity ratchets up to the largest emissive render seen so far
-        static vector<Sb_EmissiveTriangle>      tris;
-        static vector<uint32_t>                 indices;
-        static vector<RHI_Vertex_PosTexNorTan>  vertices;
-        tris.clear();
-        uint64_t scene_signature = 14695981039346656037ull;
-        auto mix_scene = [&](uint64_t value) { scene_signature = (scene_signature ^ value) * 1099511628211ull; };
+        const uint64_t fnv_basis  = 14695981039346656037ull;
+        uint64_t scene_signature  = fnv_basis;
+        uint64_t motion_signature = fnv_basis;
+        uint64_t emitter_signature = fnv_basis;
+        auto mix = [](uint64_t& signature, uint64_t value) { signature = (signature ^ value) * 1099511628211ull; };
+        auto mix_float = [&mix](uint64_t& signature, float value)
+        {
+            uint32_t bits = 0;
+            memcpy(&bits, &value, sizeof(bits));
+            mix(signature, bits);
+        };
 
-        for (Entity* entity : render_entities())
+        // authored emitters only, matching the bit 15 flag in UpdateMaterials
+        // an emission texture is deliberately not accepted here, the radiance below is derived
+        // from the flat material color and cannot see the texture, so an imported asset that
+        // merely ships a black emission map would enter as a full brightness emitter, that both
+        // injects light from surfaces that emit nothing and floods the pool past its cap, the
+        // closest hit shader samples those textures properly so brdf sampling already covers them
+        auto emitter_material = [](Entity* entity, Render*& render_out) -> Material*
         {
             if (!is_secondary_view_entity(entity))
             {
-                continue;
+                return nullptr;
             }
-            Render* render = entity->GetComponent<Render>();
-            if (!render)
+            render_out = entity->GetComponent<Render>();
+            Material* material = render_out ? render_out->GetMaterial() : nullptr;
+            if (!material || material->GetProperty(MaterialProperty::EmissiveFromAlbedo) <= 0.0f)
+            {
+                return nullptr;
+            }
+            return material;
+        };
+
+        // This pool represents constant radiance on non-instanced meshes.
+        // When it cannot represent an emitter, leave all authored emission
+        // to BRDF/environment sampling, rather than suppressing unsampled emitters.
+        // A partial pool would suppress the missing emitter at ray hits.
+        bool pool_representable = true;
+        for (Entity* entity : render_entities())
+        {
+            if (!is_secondary_view_entity(entity) || !entity->GetComponent<Render>())
             {
                 continue;
             }
 
-            mix_scene(entity->GetObjectId());
-            mix_scene(entity->GetTransformRevision());
-            mix_scene(entity->GetChildDataRevision());
-            Material* material = render->GetMaterial();
+            mix(scene_signature, entity->GetObjectId());
+            mix(motion_signature, entity->GetTransformRevision());
+            mix(motion_signature, entity->GetChildDataRevision());
+
+            Render* render     = nullptr;
+            Material* material = emitter_material(entity, render);
             if (!material)
             {
                 continue;
             }
 
-            // authored emitters only, matching the bit 15 flag in UpdateMaterials
-            // an emission texture is deliberately not accepted here, the radiance below is derived
-            // from the flat material color and cannot see the texture, so an imported asset that
-            // merely ships a black emission map would enter as a full brightness emitter, that both
-            // injects light from surfaces that emit nothing and floods the pool past its cap, the
-            // closest hit shader samples those textures properly so brdf sampling already covers them
-            const float emissive_from_albedo = material->GetProperty(MaterialProperty::EmissiveFromAlbedo);
-            if (emissive_from_albedo <= 0.0f)
-            {
-                continue;
-            }
-
-            // This pool represents constant radiance on non-instanced meshes.
-            // When it cannot represent an emitter, leave all authored emission
-            // to BRDF/environment sampling, rather than suppressing unsampled emitters.
-            // A partial pool would suppress the missing emitter at ray hits.
             if (material->HasTextureOfType(MaterialTextureType::Color) ||
                 material->GetProperty(MaterialProperty::IsTerrain) != 0.0f || render->HasInstancing())
             {
-                m_cb_frame_cpu.restir_pt_emissive_tri_count = 0.0f;
-                m_pass_state.restir_accumulation_valid = false;
-                return;
+                pool_representable = false;
+            }
+
+            mix(emitter_signature, entity->GetObjectId());
+            mix(emitter_signature, entity->GetTransformRevision());
+            mix(emitter_signature, reinterpret_cast<uintptr_t>(render->GetMesh()));
+            mix(emitter_signature, render->GetSubMeshIndex());
+            mix_float(emitter_signature, material->GetProperty(MaterialProperty::EmissiveFromAlbedo));
+            mix_float(emitter_signature, material->GetProperty(MaterialProperty::ColorR));
+            mix_float(emitter_signature, material->GetProperty(MaterialProperty::ColorG));
+            mix_float(emitter_signature, material->GetProperty(MaterialProperty::ColorB));
+        }
+        mix(emitter_signature, pool_representable ? 1u : 0u);
+
+        // a change in the set of renderables clears the reservoirs, motion only restarts the progressive
+        // accumulation, a moving car would otherwise leave restir without temporal reuse every frame
+        if (scene_signature != m_pass_state.restir_scene_signature)
+        {
+            m_pass_state.restir_accumulation_valid = false;
+            m_pass_state.restir_history_invalid = true;
+        }
+        if (motion_signature != m_pass_state.restir_motion_signature)
+        {
+            m_pass_state.restir_accumulation_valid = false;
+        }
+        m_pass_state.restir_scene_signature  = scene_signature;
+        m_pass_state.restir_motion_signature = motion_signature;
+
+        RHI_Buffer* emissive_triangles_buffer = GetBuffer(Renderer_Buffer::EmissiveTriangles);
+        if (emitter_signature == pool_signature && emissive_triangles_buffer == pool_buffer)
+        {
+            m_cb_frame_cpu.restir_pt_emissive_tri_count = static_cast<float>(pool_count);
+            return;
+        }
+
+        // statics avoid heap thrash on rebuilds, the capacity ratchets up to the largest pool seen so far
+        static vector<Sb_EmissiveTriangle>      tris;
+        static vector<uint32_t>                 indices;
+        static vector<RHI_Vertex_PosTexNorTan>  vertices;
+        tris.clear();
+
+        for (Entity* entity : render_entities())
+        {
+            if (!pool_representable)
+            {
+                break;
+            }
+
+            Render* render     = nullptr;
+            Material* material = emitter_material(entity, render);
+            if (!material)
+            {
+                continue;
             }
 
             Vector3 emission(
@@ -2463,7 +2536,7 @@ namespace spartan
 
             // nits calibration matching light_composition, otherwise emitters glow on screen but bounce no light
             const float luminous_efficacy = lighting::lighting_luminous_efficacy;
-            const float nits              = emissive_from_albedo * lighting::lighting_emissive_nits_from_albedo;
+            const float nits              = material->GetProperty(MaterialProperty::EmissiveFromAlbedo) * lighting::lighting_emissive_nits_from_albedo;
             emission *= nits / luminous_efficacy;
 
             float emission_lum = 0.299f * emission.x + 0.587f * emission.y + 0.114f * emission.z;
@@ -2528,13 +2601,6 @@ namespace spartan
             }
         }
 
-        if (scene_signature != m_pass_state.restir_scene_signature)
-        {
-            m_pass_state.restir_accumulation_valid = false;
-            m_pass_state.restir_history_invalid = true;
-        }
-        m_pass_state.restir_scene_signature = scene_signature;
-
         // build the prefix sum over picking weight, the last entry's cdf is the total weight
         // and the shader normalizes a uniform xi against it to area sample a triangle
         float total_weight = 0.0f;
@@ -2544,21 +2610,21 @@ namespace spartan
             t.cdf         = total_weight;
         }
 
-        if (!tris.empty() && total_weight > 0.0f)
+        pool_count = 0;
+        if (pool_representable && !tris.empty() && total_weight > 0.0f)
         {
             EnsureEmissiveTriangleCapacity(static_cast<uint32_t>(tris.size()));
-            RHI_Buffer* emissive_triangles_buffer = GetBuffer(Renderer_Buffer::EmissiveTriangles);
+            emissive_triangles_buffer = GetBuffer(Renderer_Buffer::EmissiveTriangles);
             emissive_triangles_buffer->ResetOffset();
             emissive_triangles_buffer->Update(
                 tris.data(),
                 static_cast<uint32_t>(tris.size() * sizeof(Sb_EmissiveTriangle))
             );
-            m_cb_frame_cpu.restir_pt_emissive_tri_count = static_cast<float>(tris.size());
+            pool_count = static_cast<uint32_t>(tris.size());
         }
-        else
-        {
-            m_cb_frame_cpu.restir_pt_emissive_tri_count = 0.0f;
-        }
+        pool_signature = emitter_signature;
+        pool_buffer    = emissive_triangles_buffer;
+        m_cb_frame_cpu.restir_pt_emissive_tri_count = static_cast<float>(pool_count);
     }
 
     const Vector3& Renderer::GetWind()
@@ -3501,16 +3567,63 @@ namespace spartan
             m_bindless_lights[0].direction_right = Vector3(1.0f, 0.0f, 0.0f);
         }
         // Progressive GI must react to changes in light intensity, placement and shape.
+        // only the fields that shape emitted radiance are compared, the shadow matrices and atlas
+        // placement follow the camera, comparing them wiped all restir history on every camera move
+        // a light that changes restarts the progressive accumulation but keeps the reservoirs, the
+        // temporal confidence cap ages stale radiance out within a few frames, only a change in the
+        // light set clears them, otherwise a moving sun or headlight leaves restir with no temporal reuse
         if (cvar_restir_pt.GetValueAs<bool>())
         {
-            static vector<Sb_Light> previous_lights;
+            struct light_transport
+            {
+                Color    color;
+                Vector3  position;
+                float    intensity;
+                Vector3  direction;
+                float    range;
+                float    angle;
+                uint32_t flags;
+                float    area_width;
+                float    area_height;
+            };
+            auto transport_of = [](const Sb_Light& light)
+            {
+                light_transport transport = {};
+                transport.color       = light.color;
+                transport.position    = light.position;
+                transport.intensity   = light.intensity;
+                transport.direction   = light.direction;
+                transport.range       = light.range;
+                transport.angle       = light.angle;
+                transport.flags       = light.flags;
+                transport.area_width  = light.area_width;
+                transport.area_height = light.area_height;
+                return transport;
+            };
+
+            static vector<light_transport> previous_lights;
             const uint32_t count = max(m_count_active_lights, 1u);
-            if (previous_lights.size() != count ||
-                memcmp(previous_lights.data(), m_bindless_lights.data(), count * sizeof(Sb_Light)) != 0)
+            if (previous_lights.size() != count)
             {
                 m_pass_state.restir_accumulation_valid = false;
-                m_pass_state.restir_history_invalid = true;
-                previous_lights.assign(m_bindless_lights.begin(), m_bindless_lights.begin() + count);
+                m_pass_state.restir_history_invalid    = true;
+            }
+            else
+            {
+                for (uint32_t i = 0; i < count; i++)
+                {
+                    const light_transport current = transport_of(m_bindless_lights[i]);
+                    if (memcmp(&current, &previous_lights[i], sizeof(light_transport)) != 0)
+                    {
+                        m_pass_state.restir_accumulation_valid = false;
+                        break;
+                    }
+                }
+            }
+            previous_lights.resize(count);
+            for (uint32_t i = 0; i < count; i++)
+            {
+                previous_lights[i] = transport_of(m_bindless_lights[i]);
             }
         }
         buffer->Update(&m_bindless_lights[0], buffer->GetStride() * max(m_count_active_lights, 1u));
@@ -4077,6 +4190,26 @@ namespace spartan
     }
 
     // one tlas instance and its hit shader record for a world matrix
+    // bit 0 = opaque, bit 1 = transparent, bit 2 = grass, bit 3 = casts no shadow
+    // Grass casts through screen-space depth only. Authored blades and renders with shadow
+    // casting turned off get their own bits so shadow rays (masks 0x01 and 0x03) skip them
+    // while reflection and GI surface rays (0xFF) still see them.
+    // GPU procedural grass has no entities and never enters this TLAS.
+    static uint32_t tlas_instance_mask(Render* render, Material* material)
+    {
+        if (material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f)
+        {
+            return 0x04;
+        }
+
+        if (!render->HasFlag(RenderFlags::CastsShadows))
+        {
+            return 0x08;
+        }
+
+        return material->IsTransparent() ? 0x02 : 0x01;
+    }
+
     static void build_tlas_instance(
         Render* render,
         Material* material,
@@ -4091,11 +4224,7 @@ namespace spartan
 
         const RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
 
-        // Grass casts through screen-space depth only. Give authored blades their own
-        // mask so shadow rays skip them while reflection and GI surface rays still see them.
-        // GPU procedural grass has no entities and never enters this TLAS.
-        const uint32_t instance_mask = material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f
-            ? 0x04 : (material->IsTransparent() ? 0x02 : 0x01);
+        const uint32_t instance_mask = tlas_instance_mask(render, material);
 
         // cutouts stay non opaque so inline shadow queries can alpha test them, everything else
         // is force opaque and never yields a candidate to the shader
@@ -4107,7 +4236,7 @@ namespace spartan
 
         instance                                             = {};
         instance.instance_custom_index                       = material->GetIndex(); // for hit shader material lookup
-        instance.mask                                        = instance_mask;        // bit 0 = opaque, bit 1 = transparent, bit 2 = grass
+        instance.mask                                        = instance_mask;
         instance.instance_shader_binding_table_record_offset = 0;                    // sbt hit group offset
         instance.flags                                       = flags;
         instance.device_address                              = blas_address;
@@ -4146,6 +4275,7 @@ namespace spartan
         uint32_t material_index = 0;
         uint32_t instance_count = 0;
         uint32_t group_count    = 0;
+        uint32_t mask           = 0;
         vector<RHI_AccelerationStructureInstance> instances;
         vector<Sb_GeometryInfo> geometry_infos;
     };
@@ -4179,6 +4309,7 @@ namespace spartan
             cache.render_id != render->GetObjectId() ||
             cache.blas_address != blas_address ||
             cache.material_index != material->GetIndex() ||
+            cache.mask != tlas_instance_mask(render, material) ||
             cache.instance_count != render->GetInstanceCount() ||
             cache.group_count != static_cast<uint32_t>(render->GetInstanceBoundsGroups().size()) ||
             cache.cull_radius != radius ||
@@ -4195,6 +4326,7 @@ namespace spartan
         cache.cull_radius    = radius;
         cache.blas_address   = blas_address;
         cache.material_index = material->GetIndex();
+        cache.mask           = tlas_instance_mask(render, material);
         cache.instance_count = render->GetInstanceCount();
         cache.group_count    = static_cast<uint32_t>(render->GetInstanceBoundsGroups().size());
         cache.instances.clear();
@@ -4349,6 +4481,13 @@ namespace spartan
         // Wait for the initial resident set, but keep an existing scene current while
         // newly spawned geometry is budgeted in. Never retain invalidated BLAS references.
         Terrain* preparing_terrain = Terrain::FindActive();
+        // no tlas references the initial burst yet, compacting as builds retire keeps the whole scene from sitting uncompacted at once
+        if (!m_tlas && !blas_burst_done)
+        {
+            RHI_CommandList::BeginMarker("blas_compact");
+            RHI_AccelerationStructure::CompactBottomLevels();
+            RHI_CommandList::EndMarker();
+        }
         if ((!blas_burst_done && !m_tlas) || Spline::HasPendingRoadWork() || (preparing_terrain && preparing_terrain->IsGenerating()))
         {
             m_pass_state.skip_rt_trace = true;
@@ -4356,6 +4495,11 @@ namespace spartan
         }
 
         if (materials_uploaded_this_frame) instanced_tlas_caches.clear();
+
+        // every path below rebuilds or drops the tlas, so it never keeps pointing at pre-compaction storage
+        RHI_CommandList::BeginMarker("blas_compact");
+        const bool blas_compacted = RHI_AccelerationStructure::CompactBottomLevels();
+        RHI_CommandList::EndMarker();
 
         // static scenes keep a valid tlas, only rebuild when transforms, materials, or blas move
         {
@@ -4365,7 +4509,8 @@ namespace spartan
                 ray_tracing_pending_blas ||
                 materials_uploaded_this_frame ||
                 blas_refit_done ||
-                blas_built_this_frame;
+                blas_built_this_frame ||
+                blas_compacted;
             materials_uploaded_this_frame = false;
 
             bool needs_tlas_rebuild = structural_tlas_rebuild;
@@ -4484,7 +4629,7 @@ namespace spartan
                         cache.instance.device_address != device_address ||
                         cache.instance.instance_custom_index != material->GetIndex() ||
                         cache.instance.flags != ((static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) == RHI_CullMode::None ? 2u : 0u) | (material->IsAlphaTested() ? 0u : 4u)) ||
-                        cache.instance.mask != (material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f ? 4u : (material->IsTransparent() ? 2u : 1u)) ||
+                        cache.instance.mask != tlas_instance_mask(render, material) ||
                         cache.geometry.vertex_offset != render->GetVertexOffset(0) ||
                         cache.geometry.index_offset != render->GetIndexOffset(0))
                     {
@@ -5257,6 +5402,9 @@ namespace spartan
     {
         Pass_Light(false, eye_layer);
         Pass_Light_Composition(false, eye_layer);
+        // the refraction background is copied below, so opaque ambient has to be in it already,
+        // otherwise anything behind glass that is not in direct light reads as black
+        Pass_Light_Ibl(false, eye_layer);
 
         const bool clouds_prepared = Pass_Clouds_Prepare(eye_layer);
         RHI_CommandList::Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
@@ -5280,7 +5428,10 @@ namespace spartan
         // trace after transparent gbuffer so glass pixels own their reflection rays instead of whatever was behind them
         Pass_Reflections_Trace(eye_layer);
 
-        Pass_Light_Ibl(eye_layer);
+        if (m_transparents_present)
+        {
+            Pass_Light_Ibl(true, eye_layer);
+        }
         Pass_Reflections_Shade(eye_layer);
         Pass_Reflections_Denoise(eye_layer);
 

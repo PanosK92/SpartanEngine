@@ -23,6 +23,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Buffer.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_VendorTechnology.h"
+#include "../RHI_AccelerationStructure.h"
 #include "../../memory/GpuMemory.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
@@ -858,6 +859,32 @@ namespace spartan
             SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &allocator));
         }
 
+        // small blocks, an emptied block is released instead of lingering at the default 256 mb
+        VmaPool transient_pool = nullptr;
+        VmaPool get_transient_pool(const VkBufferCreateInfo& buffer_info, const VmaAllocationCreateInfo& allocation_info)
+        {
+            lock_guard<mutex> lock(mutex_allocator);
+            if (!transient_pool)
+            {
+                uint32_t memory_type = 0;
+                if (vmaFindMemoryTypeIndexForBufferInfo(allocator, &buffer_info, &allocation_info, &memory_type) != VK_SUCCESS)
+                {
+                    return nullptr;
+                }
+                VmaPoolCreateInfo pool_info = {};
+                pool_info.memoryTypeIndex   = memory_type;
+                pool_info.blockSize         = 32ull * 1024 * 1024;
+                pool_info.priority          = allocation_info.priority;
+                if (vmaCreatePool(allocator, &pool_info, &transient_pool) != VK_SUCCESS)
+                {
+                    transient_pool = nullptr;
+                    return nullptr;
+                }
+                vmaSetPoolName(allocator, transient_pool, "transient");
+            }
+            return transient_pool;
+        }
+
         void destroy()
         {
             SP_ASSERT(allocator != nullptr);
@@ -869,6 +896,11 @@ namespace spartan
                     info.pName ? info.pName : "unnamed", static_cast<unsigned long long>(info.size));
             }
             SP_ASSERT_MSG(allocations.empty(), "There are still allocations");
+            if (transient_pool)
+            {
+                vmaDestroyPool(allocator, transient_pool);
+                transient_pool = nullptr;
+            }
             vmaDestroyAllocator(allocator);
             allocator = nullptr;
         }
@@ -2305,6 +2337,7 @@ namespace spartan
         // destroy queues
         QueueWaitAll();
         queues::destroy();
+        RHI_AccelerationStructure::DestroyCompactionResources();
 
         // pipeline cache - save to disk before destroying
         descriptors::save_pipeline_cache();
@@ -2730,7 +2763,7 @@ namespace spartan
         return nullptr;
     }
 
-    void RHI_Device::MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t flags_usage, uint32_t flags_memory, const void* data, const char* name)
+    void RHI_Device::MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t flags_usage, uint32_t flags_memory, const void* data, const char* name, const bool transient)
     {
         // buffer info
         VkBufferCreateInfo buffer_create_info = {};
@@ -2770,6 +2803,10 @@ namespace spartan
         if (size >= size_16_mb)
         {
             allocation_create_info.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+        }
+        else if (transient && flags_memory == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        {
+            allocation_create_info.pool = vulkan_memory_allocator::get_transient_pool(buffer_create_info, allocation_create_info);
         }
 
         bool is_mappable = (flags_memory & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
@@ -2820,6 +2857,13 @@ namespace spartan
                 reinterpret_cast<VkBuffer*>(&resource),
                 &allocation,
                 &allocation_info);
+
+        // the pool is bound to one memory type, a buffer whose requirements exclude it falls back to the default pools
+        if (result != VK_SUCCESS && allocation_create_info.pool)
+        {
+            allocation_create_info.pool = nullptr;
+            result = vmaCreateBuffer(vulkan_memory_allocator::allocator, &buffer_create_info, &allocation_create_info, reinterpret_cast<VkBuffer*>(&resource), &allocation, &allocation_info);
+        }
 
         if (result != VK_SUCCESS)
         {

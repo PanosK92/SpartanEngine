@@ -105,6 +105,7 @@ namespace spartan
 
         // misc
         void ClearData();
+        uint64_t GetCpuBytes() const;
         void PrepareForGpu(bool stream = false);
         // overwrite a sub-rectangle of mip 0, layer 0 on an already created, uncompressed 2d texture
         // data is tightly packed rows of width * bytes per pixel, the cpu mirror is patched too when kept

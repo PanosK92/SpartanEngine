@@ -341,8 +341,38 @@ float3x3 rotation_matrix(float3 axis, float angle)
 // every wind_world_period meters the texture wraps once, smaller values give smaller, more chaotic gusts
 static const float wind_world_period = 80.0f;
 static const float wind_flow_uv_per_second  = 0.03f;
-static const float wind_gust_uv_per_second  = 0.065f;
 static const float wind_micro_uv_per_second = 0.12f;
+
+// gust fronts: the pressure channel is stretched across the wind into long bands that roll downwind
+static const float wind_gust_length  = 64.0f;  // meters along the wind per texture tile, sets front depth and spacing
+static const float wind_gust_width   = 170.0f; // meters across the wind per texture tile, sets front length
+static const float wind_gust_speed   = 6.5f;   // meters per second the fronts travel downwind
+static const float wind_gust_release = 1.1f;   // seconds a front keeps pressing after it has passed
+
+// grass and flowers are light, a 2 m/s breeze already lays them over noticeably, so the response
+// rises fast and saturates instead of growing linearly with wind speed
+float grass_wind_response()
+{
+    return 1.0f - exp(-length(buffer_frame.wind.xz) * 0.3f);
+}
+
+// shaped gust pressure at a world position, 0..1, the same value drives bending and the wind sheen
+// the second tap reads the front that passed release seconds ago, blades snap over and recover slowly
+float wind_gust(float2 world_xz, float time)
+{
+    float2 wind_xz  = buffer_frame.wind.xz;
+    float  wind_mag = length(wind_xz);
+    float2 along    = wind_mag > 1e-4f ? wind_xz / wind_mag : float2(0.0f, 1.0f);
+    float2 across   = float2(-along.y, along.x);
+
+    float2 uv = float2(
+        (dot(world_xz, along) - time * wind_gust_speed) / wind_gust_length,
+        dot(world_xz, across) / wind_gust_width
+    );
+    float lead  = tex_wind_field.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv, 0).b;
+    float trail = tex_wind_field.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv + float2(wind_gust_release * wind_gust_speed / wind_gust_length, 0.0f), 0).b;
+    return max(lead, trail * 0.65f);
+}
 
 // shared wind sample for grass, flowers, and trees
 // reading from the once-per-frame baked wind_field texture: rg = flow vector, b = gust pressure, a = micro turbulence
@@ -376,10 +406,6 @@ wind_sample evaluate_wind(
             wind_dir *
             history_delta *
             wind_flow_uv_per_second;
-        float2 gust_uv = uv +
-            wind_dir *
-            history_delta *
-            wind_gust_uv_per_second;
         float2 micro_uv = uv -
             float2(0.31f, -0.27f) *
             history_delta *
@@ -390,17 +416,13 @@ wind_sample evaluate_wind(
             flow_uv,
             0
         ).rg;
-        wf.b = tex_wind_field.SampleLevel(
-            GET_SAMPLER(sampler_bilinear_wrap),
-            gust_uv,
-            0
-        ).b;
         wf.a = tex_wind_field.SampleLevel(
             GET_SAMPLER(sampler_bilinear_wrap),
             micro_uv,
             0
         ).a;
     }
+    wf.b = wind_gust(world_position.xz, (float)buffer_frame.time + time_offset);
 
     // bias the bend direction with the local flow vector so the field is not purely along the macro wind
     float2 dir_xz = wind_dir + wf.rg * 0.55f;
@@ -415,7 +437,7 @@ wind_sample evaluate_wind(
         0.55f,
         wf.b
     );
-    float wind_response = saturate(wind_mag * 0.10f);
+    float wind_response = grass_wind_response();
     s.bend_strength = wind_response * (
         ambient_pressure +
         gust_pressure * 1.35f
@@ -661,10 +683,7 @@ struct vertex_processing
                 time * nat_freq +
                 instance_phase
             ) * 0.03f;
-            float wind_response = saturate(
-                length(buffer_frame.wind.xz) *
-                0.10f
-            );
+            float wind_response = grass_wind_response();
             float ambient_wobble = (
                 sin(
                     time * 0.80f +
@@ -681,10 +700,16 @@ struct vertex_processing
             float micro_jitter = ws.micro *
                 0.035f *
                 ws.bend_strength;
+            // blades inside a front flutter against the pressure, the shimmer that sells a passing gust
+            float gust_flutter = (
+                sin(time * (5.5f + nat_freq * 1.6f) + instance_phase * 3.1f) * 0.7f +
+                sin(time * (8.3f + nat_freq * 2.1f) + instance_phase * 5.3f) * 0.3f
+            ) * smoothstep(0.15f, 0.6f, ws.gust) * wind_response * (5.0f * DEG_TO_RAD);
             float angle        = (
                 bend_amp * (55.0f * DEG_TO_RAD) +
                 ambient_wobble +
-                micro_jitter
+                micro_jitter +
+                gust_flutter
             ) * h_cantilever;
 
             // never let the blade rotate below horizontal

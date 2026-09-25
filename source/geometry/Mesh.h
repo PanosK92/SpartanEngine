@@ -104,6 +104,7 @@ namespace spartan
         bool GetGeometryLod(uint32_t sub_mesh_index, uint32_t lod_index, std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices);
         uint32_t GetLodCount(uint32_t sub_mesh_index) const;
         uint32_t GetMemoryUsage() const;
+        uint64_t GetCpuBytes() const;
         void AddLod(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const uint32_t sub_mesh_index);
         void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, uint32_t* sub_mesh_index = nullptr);
         // writes into a pre-reserved slot, the auto-allocating overload races on size() when ParseMesh runs in parallel
@@ -120,10 +121,16 @@ namespace spartan
         void RefreshLodBounds(uint32_t sub_mesh_index);
         // pre-allocate sub-mesh slots so concurrent AddGeometry calls with explicit indices target stable positions
         void ReserveSubMeshes(const uint32_t count);
-        std::vector<RHI_Vertex_PosTexNorTan>& GetVertices()    { return m_vertices; }
-        std::vector<uint32_t>& GetIndices()                    { return m_indices; }
+        std::vector<RHI_Vertex_PosTexNorTan>& GetVertices()    { RestoreCpuGeometry(); return m_vertices; }
+        std::vector<uint32_t>& GetIndices()                    { RestoreCpuGeometry(); return m_indices; }
         const SubMesh& GetSubMesh(const uint32_t index) const  { return m_sub_meshes[index]; }
-        const std::vector<Sb_MeshletBounds>& GetMeshlets() const { return m_meshlets; }
+        const std::vector<Sb_MeshletBounds>& GetMeshlets() const { RestoreCpuGeometry(); return m_meshlets; }
+
+        // once uploaded the gpu holds the geometry, a mesh with a source can drop its cpu copy and refill it
+        // from the source (prepared bytes, see SerializePrepared) the next time a cpu reader asks for it
+        void SetCpuGeometrySource(std::function<bool(std::vector<uint8_t>&)> source);
+        bool ReleaseCpuGeometry();
+        static uint32_t GetCpuGeometryRestoreCount();
 
         // get counts
         uint32_t GetVertexCount() const;
@@ -204,6 +211,14 @@ namespace spartan
         std::vector<Sb_MeshletBounds> m_meshlets;        // per-lod meshlet bounding spheres + index ranges
         std::vector<uint32_t> m_meshlet_vertices;        // packed unique-vertex remaps across all lods
         std::vector<uint32_t> m_meshlet_micro_indices;   // packed micro-indices across all lods
+
+        // released cpu geometry, the counts keep answering while the arrays are empty
+        bool RestoreCpuGeometry() const;
+        bool restore_cpu_geometry_locked();
+        std::function<bool(std::vector<uint8_t>&)> m_cpu_geometry_source;
+        bool m_cpu_geometry_released     = false;
+        uint32_t m_released_vertex_count = 0;
+        uint32_t m_released_index_count  = 0;
 
         // global geometry buffer offsets (base offsets into the shared vertex/index/meshlet buffers)
         uint32_t m_global_vertex_offset         = 0;

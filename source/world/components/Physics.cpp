@@ -4455,6 +4455,12 @@ namespace spartan
                 collision_hash.Add(PhysicsWorld::GetGravity());
                 collision_hash.Add(target_index_count);
                 collision_hash.Add(preserve_geometry);
+                // preserved geometry includes 3 mm guardrail sheet, a centimetre weld folds both faces into nothing
+                const float weld_tolerance = preserve_geometry ? 0.001f : 0.01f;
+                if (preserve_geometry)
+                {
+                    collision_hash.Add(weld_tolerance);
+                }
                 collision_hash.Add(cook_convex);
                 collision_hash.Add(render->HasInstancing());
                 const auto collision_path = generated_cache::Path(World::GetResourceDirectory(), "collision", collision_hash.value);
@@ -4537,7 +4543,7 @@ namespace spartan
                     params.buildTriangleAdjacencies        = true;
                     params.buildGPUData                    = false;
                     params.meshPreprocessParams           |= PxMeshPreprocessingFlag::eWELD_VERTICES;
-                    params.meshWeldTolerance               = 0.01f;
+                    params.meshWeldTolerance               = weld_tolerance;
                     params.meshAreaMinLimit                = 0.0f;
                     params.meshEdgeLengthMaxLimit          = 500.0f;
                     params.gaussMapLimit                   = 32;

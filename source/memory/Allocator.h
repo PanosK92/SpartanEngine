@@ -60,5 +60,8 @@ namespace spartan
 
         // get tag name as string
         static const char* GetTagName(MemoryTag tag);
+
+        // logs the call sites holding the most live bytes, only records when SPARTAN_HEAP_CENSUS=1 is set
+        static void LogLargestAllocationSites(const char* label, uint32_t count);
     };
 }

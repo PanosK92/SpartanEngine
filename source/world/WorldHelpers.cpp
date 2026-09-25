@@ -1041,11 +1041,6 @@ namespace spartan
             params.patch_coverage = clamp(layer.clump_coverage, 0.05f, 1.0f);
             params.patch_size_m   = max(layer.clump_radius, 0.0f);
             params.patch_edge     = clamp(layer.clump_raggedness, 0.0f, 1.0f);
-            // the same knob that frays the outline breaks up the interior, a clean edged pocket with a
-            // pockmarked middle would read as two unrelated effects. this is no longer pushed, the
-            // shader derives it from the edge with the same ratio, so grass_patch_scar_ratio in
-            // grass_populate.hlsl has to track this number. it still feeds the cpu density boost
-            params.patch_scar     = params.patch_edge * 0.3f;
             params.patch_invert   = layer.clump_invert;
 
             // how far the ground creeps over this prop, sized off the chip itself, the size range here

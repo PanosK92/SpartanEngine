@@ -45,15 +45,26 @@ namespace spartan
     class Font : public IResource
     {
     public:
-        Font(const std::string& file_path, const uint32_t font_size, const Color& color);
+        Font(const std::string& file_path, const uint32_t font_size, const Color& color, const Font_Outline_Type outline = Font_Outline_Positive);
         ~Font() = default;
 
         // iresource
         void SaveToFile(const std::string& file_path) override;
         void LoadFromFile(const std::string& file_path) override;
 
-        // text
+        // text, the screen percentage variant places the first baseline at the position and uses the font color
         void AddText(const char* text, const math::Vector2& position_screen_percentage);
+
+        // pixel space with a top left origin, the position is the top of the line box
+        // tabular digits share one advance so changing numbers do not shift the layout
+        void AddText(const char* text, const math::Vector2& position_pixels, const Color& color, const bool tabular_digits = true);
+        float GetTextWidth(const char* text, const bool tabular_digits = true);
+        float GetAscent() const     { return static_cast<float>(m_ascent); }
+        float GetLineHeight() const { return static_cast<float>(m_ascent + m_descent); }
+
+        // solid quad in pixel space, drawn in submission order with the text of this font
+        void AddRect(const math::Vector2& min_pixels, const math::Vector2& max_pixels, const Color& color);
+
         bool HasText() const;
 
         // color
@@ -92,6 +103,9 @@ namespace spartan
         void SetGlyph(const uint32_t char_code, const Glyph& glyph) { m_glyphs[char_code] = glyph; }
 
     private:
+        void add_text_baseline(const char* text, float x, float y, const uint32_t color, const bool tabular_digits);
+        void add_quad(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, const uint32_t color);
+
         uint32_t m_font_size        = 14;
         uint32_t m_outline_size     = 2;
         bool m_force_autohint       = false;
@@ -101,14 +115,18 @@ namespace spartan
         Color m_color_outline       = Color(0.0f, 0.0f, 0.0f, 1.0f);
         uint32_t m_char_max_width   = 0;
         uint32_t m_char_max_height  = 0;
+        uint32_t m_digit_advance    = 0;
+        int32_t m_ascent            = 0;
+        int32_t m_descent           = 0;
         std::unordered_map<uint32_t, Glyph> m_glyphs;
         std::shared_ptr<RHI_Texture> m_atlas;
         std::shared_ptr<RHI_Texture> m_atlas_outline;
-        std::vector<RHI_Vertex_PosTex> m_vertices;
+        std::vector<RHI_Vertex_Pos2dTexCol8> m_vertices;
         std::vector<uint32_t> m_indices;
 
         static const uint32_t buffer_count               = 8;
         uint32_t m_buffer_index                          = 0;
+        uint64_t m_upload_frame                          = UINT64_MAX;
         std::array<uint32_t, buffer_count> m_index_count = { 0 };
         std::array<std::shared_ptr<RHI_Buffer>, buffer_count> m_buffers_index;
         std::array<std::shared_ptr<RHI_Buffer>, buffer_count> m_buffers_vertex;

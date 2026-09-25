@@ -172,7 +172,6 @@ namespace spartan
             float patch_size_m       = 0.0f;  // pocket scale in metres
             float patch_coverage     = 0.45f; // fraction of the eligible ground the pockets take
             float patch_edge         = 0.35f; // 0 is a hard boundary, 1 is a wide fringe
-            float patch_scar         = 0.25f; // bare ground punched through pocket interiors
             // take the complement of the field, for a slot that belongs on the ground the pockets
             // left bare. it only lines up if both slots use the same patch_size_m
             bool patch_invert        = false;
@@ -336,7 +335,7 @@ namespace spartan
         // cluster shading telemetry, last frame's count of clusters that exceeded CLUSTER_MAX_LIGHTS
         uint32_t GetClusterOverflowCount();
         std::shared_ptr<Mesh>& GetStandardMesh(const MeshType type);
-        std::shared_ptr<Font>& GetFont();
+        std::shared_ptr<Font>& GetFont(Renderer_Font font = Renderer_Font::Standard);
         std::shared_ptr<Material>& GetStandardMaterial();
         void ClearMaterialTextureReferences();
         void UpdateFrameConstantBuffer();
@@ -419,7 +418,7 @@ namespace spartan
         void Pass_Fog_Composite(uint32_t eye_layer = rhi_all_mips);
         void Pass_Light(const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         void Pass_Light_Composition(const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
-        void Pass_Light_Ibl(uint32_t eye_layer = rhi_all_mips);
+        void Pass_Light_Ibl(const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         void Pass_Lut_BrdfSpecular();
         void Pass_Lut_AtmosphericScattering();
         void Pass_CloudNoise();

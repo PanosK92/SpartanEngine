@@ -217,9 +217,20 @@ namespace spartan
                 Renderer::SetResolutionOutput(output_w, output_h);
                 bool dynamic_resolution = root.child("r_dynamic_resolution").text().as_bool();
 
+                // Older builds persisted these short-lived grass defaults. Let the renderer's
+                // new defaults replace that exact pair; preserve deliberately customized values.
+                const bool legacy_grass_tracks =
+                    root.child("r_grass_track_radius").text().as_float() == 8.0f &&
+                    root.child("r_grass_track_recovery").text().as_float() == 1.5f;
+
                 // load render options from xml
                 for (const auto& [name, cvar] : ConsoleRegistry::Get().GetAll())
                 {
+                    if (legacy_grass_tracks &&
+                        (name == "r.grass_track_radius" || name == "r.grass_track_recovery"))
+                    {
+                        continue;
+                    }
                     // Ignore diagnostic views left in settings by older builds.
                     if (name == "r.fog.debug")
                     {

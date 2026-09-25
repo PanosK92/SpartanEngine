@@ -381,6 +381,18 @@ namespace spartan
         }
         frame_wait_timeline = nullptr;
         frame_wait_value    = 0;
+
+        // a frame that never reached the compute batches still holds their lists open, and their reserved
+        // completion values would never signal, stalling every deferred deletion captured after them
+        for (RHI_Frame_List list : { RHI_Frame_List::ComputeA, RHI_Frame_List::ComputeB })
+        {
+            RHI_CommandList* compute_list = frame_lists[frame_list_index(list)];
+            if (compute_list && compute_list->GetState() == RHI_CommandListState::Recording)
+            {
+                compute_list->Submit(nullptr, false);
+            }
+        }
+
         RHI_CommandList* cmd_list = frame_lists[frame_list_index(RHI_Frame_List::Graphics)];
         if (!cmd_list)
         {

@@ -944,6 +944,7 @@ namespace spartan
             if (occupant)
             {
                 pad.entity_id = occupant->GetObjectId();
+                pad.anchored  = false;
                 return true;
             }
 
@@ -2960,6 +2961,16 @@ namespace spartan
             pad.append_attribute("yaw")       = platform.yaw;
             pad.append_attribute("height")    = platform.height;
             pad.append_attribute("margin")    = platform.margin;
+            if (platform.anchored)
+            {
+                pad.append_attribute("anchor_x")  = platform.anchor_position.x;
+                pad.append_attribute("anchor_y")  = platform.anchor_position.y;
+                pad.append_attribute("anchor_z")  = platform.anchor_position.z;
+                pad.append_attribute("anchor_qx") = platform.anchor_rotation.x;
+                pad.append_attribute("anchor_qy") = platform.anchor_rotation.y;
+                pad.append_attribute("anchor_qz") = platform.anchor_rotation.z;
+                pad.append_attribute("anchor_qw") = platform.anchor_rotation.w;
+            }
         }
 
         // flat terrain dims, used when there is no height map seed
@@ -3212,6 +3223,14 @@ namespace spartan
                 platform.yaw       = pad.attribute("yaw").as_float(0.0f);
                 platform.height    = pad.attribute("height").as_float(0.0f);
                 platform.margin    = min(pad.attribute("margin").as_float(0.0f), 6.0f);
+                if (pad.attribute("anchor_qw"))
+                {
+                    platform.anchored        = true;
+                    platform.anchor_position = Vector3(pad.attribute("anchor_x").as_float(), pad.attribute("anchor_y").as_float(), pad.attribute("anchor_z").as_float());
+                    platform.anchor_rotation = Quaternion(pad.attribute("anchor_qx").as_float(), pad.attribute("anchor_qy").as_float(), pad.attribute("anchor_qz").as_float(), pad.attribute("anchor_qw").as_float(1.0f));
+                    platform.seen_position   = platform.anchor_position;
+                    platform.seen_rotation   = platform.anchor_rotation;
+                }
                 if (platform.half_x <= 0.05f || platform.half_z <= 0.05f)
                 {
                     platform.center_x = (platform.min_x + platform.max_x) * 0.5f;
@@ -6958,8 +6977,22 @@ namespace spartan
         }
     }
 
-    void Terrain::RememberPlatform(const TerrainPlatform& platform)
+    void Terrain::RememberPlatform(const TerrainPlatform& platform_in)
     {
+        // a pad is stamped for where its owner stands right now
+        TerrainPlatform platform = platform_in;
+        if (!platform.anchored)
+        {
+            if (Entity* owner = World::GetEntityById(platform.entity_id))
+            {
+                platform.anchored        = true;
+                platform.anchor_position = owner->GetPosition();
+                platform.anchor_rotation = owner->GetRotation();
+                platform.seen_position   = platform.anchor_position;
+                platform.seen_rotation   = platform.anchor_rotation;
+            }
+        }
+
         auto area = [](const TerrainPlatform& pad) -> float
         {
             if (pad.half_x > 0.0f && pad.half_z > 0.0f)
@@ -7006,11 +7039,18 @@ namespace spartan
                 m_platforms.end(),
                 [](TerrainPlatform& pad)
                 {
+                    // an anchored pad whose owner is alive is carried along by FollowPlatformOwners
+                    if (pad.anchored && pad.entity_id != 0 && World::GetEntityById(pad.entity_id))
+                    {
+                        return false;
+                    }
+
                     // geometry only, a pad whose building walked away is an orphan even if it is alive
                     Entity* occupant = platform_find_occupant(pad);
-                    if (occupant)
+                    if (occupant && occupant->GetObjectId() != pad.entity_id)
                     {
                         pad.entity_id = occupant->GetObjectId();
+                        pad.anchored  = false;
                     }
 
                     return occupant == nullptr;
@@ -7835,6 +7875,146 @@ namespace spartan
         }
     }
 
+    void Terrain::FollowPlatformOwners()
+    {
+        if (ProgressTracker::IsLoading(ProgressType::World) || m_platforms.empty())
+        {
+            return;
+        }
+
+        // any move counts, the editor drag, a parent, undo, scripts, mcp or a rewritten world file
+        const double now = Timer::GetTimeMs();
+        vector<pair<TerrainPlatform, TerrainPlatform>> moves;
+        for (TerrainPlatform& pad : m_platforms)
+        {
+            if (pad.entity_id == 0 || (m_live_pad_active && pad.entity_id == m_live_pad.entity_id))
+            {
+                continue;
+            }
+
+            Entity* owner = World::GetEntityById(pad.entity_id);
+            if (!owner || !owner->GetActive())
+            {
+                continue;
+            }
+
+            const Vector3 position    = owner->GetPosition();
+            const Quaternion rotation = owner->GetRotation();
+            if (!pad.anchored)
+            {
+                pad.anchored        = true;
+                pad.anchor_position = position;
+                pad.anchor_rotation = rotation;
+                pad.seen_position   = position;
+                pad.seen_rotation   = rotation;
+                continue;
+            }
+
+            auto same_transform = [&](const Vector3& p, const Quaternion& q)
+            {
+                return (position - p).LengthSquared() < 0.0001f && fabsf(Quaternion::Dot(rotation, q)) > 0.99999f;
+            };
+
+            if (same_transform(pad.anchor_position, pad.anchor_rotation))
+            {
+                pad.seen_position = position;
+                pad.seen_rotation = rotation;
+                continue;
+            }
+
+            // wait for the owner to settle so an animated or scripted move does not recut the ground every frame
+            if (!same_transform(pad.seen_position, pad.seen_rotation))
+            {
+                pad.seen_position   = position;
+                pad.seen_rotation   = rotation;
+                pad.seen_changed_ms = now;
+                continue;
+            }
+
+            if (now - pad.seen_changed_ms < 250.0)
+            {
+                continue;
+            }
+
+            const Quaternion delta = rotation * pad.anchor_rotation.Inverse();
+            const Vector3 offset   = delta * Vector3(pad.center_x - pad.anchor_position.x, 0.0f, pad.center_z - pad.anchor_position.z);
+            const Vector3 axis     = delta * Vector3(cosf(pad.yaw), 0.0f, sinf(pad.yaw));
+
+            TerrainPlatform moved = pad;
+            moved.center_x        = position.x + offset.x;
+            moved.center_z        = position.z + offset.z;
+            moved.yaw             = atan2f(axis.z, axis.x);
+            moved.height          = pad.height + (position.y - pad.anchor_position.y);
+            moved.anchor_position = position;
+            moved.anchor_rotation = rotation;
+
+            // keep whatever slack the stored bounds had around the oriented box
+            float old_min_x, old_min_z, old_max_x, old_max_z;
+            obb_write_aabb(pad.center_x, pad.center_z, pad.half_x, pad.half_z, pad.yaw, old_min_x, old_min_z, old_max_x, old_max_z);
+            const float slack_x = max(((pad.max_x - pad.min_x) - (old_max_x - old_min_x)) * 0.5f, 0.0f);
+            const float slack_z = max(((pad.max_z - pad.min_z) - (old_max_z - old_min_z)) * 0.5f, 0.0f);
+            obb_write_aabb(moved.center_x, moved.center_z, moved.half_x, moved.half_z, moved.yaw, moved.min_x, moved.min_z, moved.max_x, moved.max_z);
+            moved.min_x -= slack_x;
+            moved.max_x += slack_x;
+            moved.min_z -= slack_z;
+            moved.max_z += slack_z;
+
+            moves.emplace_back(pad, moved);
+        }
+
+        if (moves.empty())
+        {
+            return;
+        }
+
+        for (const auto& [previous, moved] : moves)
+        {
+            PaintPadFromSeed(previous.center_x, previous.center_z, previous.half_x, previous.half_z, previous.yaw, previous.height, previous.margin, true);
+            DestroyPadRefine(previous.entity_id);
+            ForgetPlatform(previous.entity_id);
+            RestampPropsForPad(previous, true);
+        }
+
+        // restoring goes back to the seed, so neighbours overlapping a vacated footprint are stamped again
+        auto overlaps = [](const TerrainPlatform& a, const TerrainPlatform& b)
+        {
+            const float reach = max(a.margin, 0.0f) + max(b.margin, 0.0f);
+            return a.min_x - reach <= b.max_x && b.min_x - reach <= a.max_x && a.min_z - reach <= b.max_z && b.min_z - reach <= a.max_z;
+        };
+        for (const TerrainPlatform& other : m_platforms)
+        {
+            for (const auto& [previous, moved] : moves)
+            {
+                if (overlaps(other, previous))
+                {
+                    PaintPadFromSeed(other.center_x, other.center_z, other.half_x, other.half_z, other.yaw, other.height, other.margin, false);
+                    break;
+                }
+            }
+        }
+
+        for (const auto& [previous, moved] : moves)
+        {
+            PaintPadFromSeed(moved.center_x, moved.center_z, moved.half_x, moved.half_z, moved.yaw, moved.height, moved.margin, false);
+            RememberPlatform(moved);
+            RestampPropsForPad(moved, false);
+            SP_LOG_INFO("terrain pad of entity %llu followed its owner to %.1f, %.1f", static_cast<unsigned long long>(moved.entity_id), moved.center_x, moved.center_z);
+        }
+
+        FlushHeightEdits(true);
+        const bool mask_recreated = UploadPropMask();
+        for (const auto& [previous, moved] : moves)
+        {
+            CookPadRefine(moved.entity_id);
+        }
+
+        if (mask_recreated)
+        {
+            PushToRenderer();
+            WorldHelpers::RefreshTerrainGpuScatter(this);
+        }
+    }
+
     void Terrain::CommitLivePad(bool punch)
     {
         SP_PROFILE_CPU();
@@ -7885,6 +8065,8 @@ namespace spartan
         {
             return;
         }
+
+        FollowPlatformOwners();
 
         vector<Entity*> selected;
         if (Camera* camera = World::GetCamera())

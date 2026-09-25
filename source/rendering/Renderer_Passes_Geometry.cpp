@@ -191,17 +191,15 @@ namespace spartan
         //
         // pulling a slot into pockets empties most of the ring, spreading the same budget over what is
         // left is what makes clustering buy density rather than cost it
-        float gpu_scatter_patch_boost(const float patch_size, const float coverage, const float scar)
+        float gpu_scatter_patch_boost(const float patch_size, const float coverage)
         {
             if (patch_size <= 0.0f || coverage >= 1.0f)
             {
                 return 1.0f;
             }
 
-            // the threshold keeps coverage exactly and the scar field independently removes the mean of
-            // its own smoothstep, which for the band the shader uses is 0.26
-            const float expected = clamp(coverage, 0.0f, 1.0f) *
-                                   (1.0f - 0.26f * clamp(scar, 0.0f, 1.0f));
+            // the threshold keeps coverage exactly and the fringe is symmetric about it
+            const float expected = clamp(coverage, 0.0f, 1.0f);
 
             return min(1.0f / max(expected, 0.08f), gpu_scatter_patch_max_boost);
         }
@@ -1580,11 +1578,7 @@ namespace spartan
                 // slot it mirrors left bare, so the two have to be authored at the same size to interlock
                 const float patch_size  = max(state.params.patch_size_m, 0.0f);
                 const float patch_push  = state.params.patch_invert ? -patch_size : patch_size;
-                const float patch_boost = gpu_scatter_patch_boost(
-                    patch_size,
-                    state.params.patch_coverage,
-                    state.params.patch_scar
-                );
+                const float patch_boost = gpu_scatter_patch_boost(patch_size, state.params.patch_coverage);
 
                 // the same argument applies to the part of the circle the camera cannot see, and the
                 // two multiply, this has to track grass_max_boost in grass_populate.hlsl
@@ -1644,8 +1638,7 @@ namespace spartan
                     m_pcb_pass_cpu.v[12] = patch_push;
                     m_pcb_pass_cpu.v[13] = state.params.patch_coverage;
                     m_pcb_pass_cpu.v[14] = state.params.patch_edge;
-                    // the scar amount is always a fixed fraction of the edge, so the shader derives it
-                    // and this float carries the ground type bits instead, every other one is taken
+                    // this float carries the ground type bits, every other one is taken
                     m_pcb_pass_cpu.v[15] = static_cast<float>(state.params.ground_mask);
                     m_pcb_pass_cpu.v[16] = min_slope_cos;
                     m_pcb_pass_cpu.v[17] = state.params.slope_bias;

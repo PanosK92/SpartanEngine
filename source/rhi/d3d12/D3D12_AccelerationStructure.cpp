@@ -189,6 +189,23 @@ namespace spartan
 
     void* RHI_AccelerationStructure::s_blas_scratch_buffer         = nullptr;
     uint64_t RHI_AccelerationStructure::s_blas_scratch_buffer_size = 0;
+    vector<RHI_AccelerationStructure*> RHI_AccelerationStructure::s_compaction_pending;
+    uint64_t RHI_AccelerationStructure::s_blas_bytes = 0;
+    uint64_t RHI_AccelerationStructure::s_compaction_generation = 0;
+
+    // d3d12 builds without compaction, the vulkan path is the one that ships ray tracing
+    bool RHI_AccelerationStructure::CompactBottomLevels()
+    {
+        return false;
+    }
+
+    void RHI_AccelerationStructure::DestroyCompactionResources()
+    {
+    }
+
+    void RHI_AccelerationStructure::CancelCompaction()
+    {
+    }
 
     void RHI_AccelerationStructure::FreeSharedBlasScratch()
     {

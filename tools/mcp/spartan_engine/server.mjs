@@ -1730,6 +1730,18 @@ register_tool(
 
 register_tool(
   server,
+  "gpu_memory_snapshot",
+  "Read the GPU memory tracker behind the editor memory viewer: device-local usage against the driver budget, totals by kind, the largest groups by resource name and the largest single allocations. Use it to find what fills VRAM.",
+  {
+    top: z.number().int().min(1).max(500).optional(),
+    kind: z.string().optional(),
+  },
+  "gpu_memory_snapshot",
+  { annotations: read_only },
+);
+
+register_tool(
+  server,
   "engine_set_mode",
   "Set play, edit, pause, resume, or individual engine flags.",
   {

@@ -20,6 +20,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../logging/Log.h"
 #include "../physics/PhysicsWorld.h"
 #include "../profiling/Profiler.h"
+#include "../memory/GpuMemory.h"
 #include "../world/World.h"
 #include "../world/Entity.h"
 #include "../world/components/Camera.h"
@@ -3403,6 +3404,157 @@ namespace spartan
                 ",\"alpha_meshlets\":" + std::to_string(alpha_count) +
                 ",\"instance_capacity\":" + std::to_string(survivors->GetElementCount()) +
                 ",\"meshlet_capacity_per_category\":" + std::to_string(meshlet_list->GetElementCount() / 2u) + "}";
+        }
+
+        std::string command_gpu_memory_snapshot(const McpRequest& request)
+        {
+            uint32_t top = 40;
+            if (const std::optional<std::string> value = get_argument(request, "top"))
+            {
+                uint64_t parsed = 0;
+                if (parse_uint64(*value, parsed) && parsed > 0)
+                {
+                    top = static_cast<uint32_t>(parsed);
+                }
+            }
+
+            std::string kind_filter;
+            if (const std::optional<std::string> value = get_argument(request, "kind"))
+            {
+                kind_filter = to_lower_copy(*value);
+            }
+
+            std::vector<GpuMemoryBlock> blocks;
+            GpuMemory::GetBlocks(blocks);
+
+            std::array<uint64_t, static_cast<size_t>(GpuMemoryKind::Count)> kind_bytes = {};
+            std::array<uint32_t, static_cast<size_t>(GpuMemoryKind::Count)> kind_count = {};
+            uint64_t tracked_bytes   = 0;
+            uint64_t dedicated_bytes = 0;
+            std::unordered_map<uint64_t, uint64_t> heap_sizes;
+            for (const GpuMemoryBlock& block : blocks)
+            {
+                kind_bytes[static_cast<size_t>(block.kind)] += block.size;
+                kind_count[static_cast<size_t>(block.kind)]++;
+                tracked_bytes += block.size;
+                if (block.heap_id == 0)
+                {
+                    dedicated_bytes += block.size;
+                }
+                else
+                {
+                    heap_sizes[block.heap_id] = block.heap_size;
+                }
+            }
+            uint64_t pooled_heap_bytes = 0;
+            for (const auto& [heap_id, heap_size] : heap_sizes)
+            {
+                pooled_heap_bytes += heap_size;
+            }
+
+            // the filter only narrows the groups and the allocation list, the totals always cover everything
+            std::vector<const GpuMemoryBlock*> filtered;
+            filtered.reserve(blocks.size());
+            for (const GpuMemoryBlock& block : blocks)
+            {
+                if (kind_filter.empty() || to_lower_copy(GpuMemory::GetKindName(block.kind)) == kind_filter)
+                {
+                    filtered.push_back(&block);
+                }
+            }
+
+            struct group
+            {
+                std::string name;
+                const char* kind = nullptr;
+                uint32_t count   = 0;
+                uint64_t bytes   = 0;
+            };
+            std::unordered_map<std::string, group> groups;
+            for (const GpuMemoryBlock* block : filtered)
+            {
+                const char* name = block->name[0] ? block->name : "(unnamed)";
+                const char* kind = GpuMemory::GetKindName(block->kind);
+                group& entry = groups[std::string(name) + '\t' + kind];
+                if (entry.count == 0)
+                {
+                    entry.name = name;
+                    entry.kind = kind;
+                }
+                entry.count++;
+                entry.bytes += block->size;
+            }
+            std::vector<const group*> sorted_groups;
+            sorted_groups.reserve(groups.size());
+            for (const auto& [key, entry] : groups)
+            {
+                sorted_groups.push_back(&entry);
+            }
+            std::sort(sorted_groups.begin(), sorted_groups.end(), [](const group* a, const group* b) { return a->bytes > b->bytes; });
+            std::sort(filtered.begin(), filtered.end(), [](const GpuMemoryBlock* a, const GpuMemoryBlock* b) { return a->size > b->size; });
+
+            auto to_mb = [](uint64_t bytes) { return json_number(static_cast<double>(bytes) / (1024.0 * 1024.0)); };
+
+            std::string json = "{\"ok\":true";
+            json += ",\"device_local_usage_mb\":" + std::to_string(RHI_Device::MemoryGetAllocatedMb());
+            json += ",\"device_local_budget_mb\":" + std::to_string(RHI_Device::MemoryGetAvailableMb());
+            json += ",\"device_local_total_mb\":" + std::to_string(RHI_Device::MemoryGetTotalMb());
+            json += ",\"tracked_mb\":" + to_mb(tracked_bytes);
+            json += ",\"dedicated_allocations_mb\":" + to_mb(dedicated_bytes);
+            json += ",\"pooled_heaps_mb\":" + to_mb(pooled_heap_bytes);
+            json += ",\"pooled_heap_count\":" + std::to_string(heap_sizes.size());
+            json += ",\"allocation_count\":" + std::to_string(blocks.size());
+
+            json += ",\"by_kind\":[";
+            bool first = true;
+            for (uint8_t i = 0; i < static_cast<uint8_t>(GpuMemoryKind::Count); i++)
+            {
+                if (kind_count[i] == 0)
+                {
+                    continue;
+                }
+                json += first ? "" : ",";
+                first = false;
+                json += "{\"kind\":" + json_string(GpuMemory::GetKindName(static_cast<GpuMemoryKind>(i)));
+                json += ",\"count\":" + std::to_string(kind_count[i]);
+                json += ",\"mb\":" + to_mb(kind_bytes[i]) + "}";
+            }
+            json += "]";
+
+            json += ",\"by_name\":[";
+            for (size_t i = 0; i < sorted_groups.size() && i < top; i++)
+            {
+                const group* entry = sorted_groups[i];
+                json += i == 0 ? "" : ",";
+                json += "{\"name\":" + json_string(entry->name);
+                json += ",\"kind\":" + json_string(entry->kind);
+                json += ",\"count\":" + std::to_string(entry->count);
+                json += ",\"mb\":" + to_mb(entry->bytes) + "}";
+            }
+            json += "]";
+
+            json += ",\"largest\":[";
+            for (size_t i = 0; i < filtered.size() && i < top; i++)
+            {
+                const GpuMemoryBlock* block = filtered[i];
+                json += i == 0 ? "" : ",";
+                json += "{\"name\":" + json_string(block->name[0] ? block->name : "(unnamed)");
+                json += ",\"kind\":" + json_string(GpuMemory::GetKindName(block->kind));
+                json += ",\"mb\":" + to_mb(block->size);
+                json += ",\"dedicated\":" + json_bool(block->heap_id == 0);
+                if (block->width > 0)
+                {
+                    json += ",\"size\":[" + std::to_string(block->width) + "," + std::to_string(block->height) + "," + std::to_string(block->depth) + "]";
+                    json += ",\"mips\":" + std::to_string(block->mip_count);
+                }
+                if (block->format[0])
+                {
+                    json += ",\"format\":" + json_string(block->format);
+                }
+                json += "}";
+            }
+            json += "]}";
+            return json;
         }
 
         std::string command_profiler_snapshot(const McpRequest& request)
@@ -13996,6 +14148,7 @@ namespace spartan
             { "engine_status",                 [](const McpRequest&) { return command_engine_status(); } },
             { "progress_snapshot",             [](const McpRequest&) { return GetMcpProgressSnapshot(); } },
             { "profiler_snapshot",             command_profiler_snapshot },
+            { "gpu_memory_snapshot",           command_gpu_memory_snapshot },
             { "world_work_snapshot", [](const McpRequest&)
                 {
                     std::string json = "{\"ok\":true,\"world_tick\":" + std::to_string(World::GetWorkCounterTick());

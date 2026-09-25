@@ -13,7 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 // counts reservoirs in the surrounding 17x17 window that carry the same replay seed as this
 // pixel, i.e. shifted copies of the same initial candidate, the normalized score feeds the
 // adaptive confidence cap in the temporal pass to decorrelate firefly blobs
-// input on tex is reservoir texture 2 whose x channel stores the replay seed
+// input on tex is reservoir texture 3 whose x channel stores the replay seed
 
 static const int DUPLICATION_WINDOW_RADIUS = 8;
 static const int DUPLICATION_TILE_X        = THREAD_GROUP_COUNT_X + 2 * DUPLICATION_WINDOW_RADIUS;

@@ -1461,7 +1461,7 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
         {
             changed |= property_float("Patch Size", &layer.clump_radius, 0.5f, 0.0f, 500.0f, "pocket scale, 0 turns pockets off and spreads evenly, around 26 m reads as meadows and 8 to 12 m as tufty ground", "%.1f m");
             changed |= property_float("Coverage", &layer.clump_coverage, 0.01f, 0.05f, 1.0f, "share of the eligible ground the pockets take, 1 covers it all evenly, lower packs the same budget into tighter and thicker pockets", "%.2f");
-            changed |= property_float("Raggedness", &layer.clump_raggedness, 0.01f, 0.0f, 1.0f, "frays the pocket edge into a fringe and breaks the interior with bare scars", "%.2f");
+            changed |= property_float("Raggedness", &layer.clump_raggedness, 0.01f, 0.0f, 1.0f, "widens the fringe where a pocket fades out, the interior always stays at full density", "%.2f");
             changed |= property_toggle("Invert", &layer.clump_invert, "take the ground the pockets left bare instead, for chips and litter that belong between the tufts, it only lines up against a layer using the same patch size");
         }
         card_end();

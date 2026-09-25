@@ -13,7 +13,9 @@ Commercial use requires written permission and negotiated payment terms.
 #if defined(_WIN32)
 #include <Windows.h>
 #include <psapi.h>
+#include <DbgHelp.h>
 #pragma comment(lib, "psapi.lib")
+#pragma comment(lib, "dbghelp.lib")
 #elif defined(__linux__)
 #include <unistd.h>
 #include <sys/resource.h>
@@ -57,8 +59,85 @@ namespace spartan
             uint32_t  offset;     // bytes from raw allocation to user pointer (32-bit is enough)
             size_t    size;       // requested size
             MemoryTag tag;        // memory tag for tracking
-            uint8_t   padding[7]; // pad to maintain alignment
+            uint8_t   padding[5]; // pad to maintain alignment
+            uint16_t  site;       // census slot + 1, 0 when untracked
         };
+
+#if defined(_WIN32)
+        // call site census, it can't allocate since it runs inside the allocator
+        namespace census
+        {
+            constexpr size_t   min_size    = 16 * 1024;
+            constexpr uint32_t frame_count = 20;
+            constexpr uint32_t slot_count  = 8192;
+
+            struct site
+            {
+                ULONG  hash;
+                void*  frames[frame_count];
+                USHORT frame_used;
+                int64_t bytes;
+                int64_t allocations;
+            };
+
+            site slots[slot_count] = {};
+            uint32_t slots_used    = 0;
+            SRWLOCK lock           = SRWLOCK_INIT;
+            int enabled            = -1;
+
+            bool is_enabled()
+            {
+                if (enabled < 0)
+                {
+                    char value[4] = {};
+                    enabled = (GetEnvironmentVariableA("SPARTAN_HEAP_CENSUS", value, sizeof(value)) > 0 && value[0] == '1') ? 1 : 0;
+                }
+                return enabled == 1;
+            }
+
+            uint16_t record(size_t size)
+            {
+                void* frames[frame_count];
+                ULONG hash        = 0;
+                USHORT frame_used = RtlCaptureStackBackTrace(2, frame_count, frames, &hash);
+
+                AcquireSRWLockExclusive(&lock);
+                uint32_t index = hash % slot_count;
+                for (uint32_t probe = 0; probe < slot_count; probe++, index = (index + 1) % slot_count)
+                {
+                    site& slot = slots[index];
+                    if (slot.frame_used == 0)
+                    {
+                        if (slots_used >= slot_count - 1)
+                        {
+                            break;
+                        }
+                        slots_used++;
+                        slot.hash       = hash;
+                        slot.frame_used = frame_used;
+                        memcpy(slot.frames, frames, frame_used * sizeof(void*));
+                    }
+                    if (slot.hash == hash && slot.frame_used == frame_used && memcmp(slot.frames, frames, frame_used * sizeof(void*)) == 0)
+                    {
+                        slot.bytes       += static_cast<int64_t>(size);
+                        slot.allocations += 1;
+                        ReleaseSRWLockExclusive(&lock);
+                        return static_cast<uint16_t>(index + 1);
+                    }
+                }
+                ReleaseSRWLockExclusive(&lock);
+                return 0;
+            }
+
+            void release(uint16_t site_id, size_t size)
+            {
+                AcquireSRWLockExclusive(&lock);
+                slots[site_id - 1].bytes       -= static_cast<int64_t>(size);
+                slots[site_id - 1].allocations -= 1;
+                ReleaseSRWLockExclusive(&lock);
+            }
+        }
+#endif
 
         // thread-local cache entry
         struct cache_entry
@@ -178,6 +257,11 @@ namespace spartan
             header->offset = static_cast<uint32_t>(user_addr - raw_addr);
             header->size   = size;
             header->tag    = tag;
+#if defined(_WIN32)
+            header->site   = (size >= census::min_size && census::is_enabled()) ? census::record(size) : 0;
+#else
+            header->site   = 0;
+#endif
 
 #if defined(_DEBUG) || defined(DEBUG)
             // poison allocated memory in debug builds to catch uninitialized reads
@@ -220,6 +304,13 @@ namespace spartan
             size_t    size   = header->size;
             uint32_t  offset = header->offset;
             MemoryTag tag    = header->tag;
+
+#if defined(_WIN32)
+            if (header->site != 0)
+            {
+                census::release(header->site, size);
+            }
+#endif
 
             // mark as freed before actually freeing
             header->magic = allocation_magic_freed;
@@ -441,6 +532,99 @@ namespace spartan
             return 0.0f;
         }
         return static_cast<float>(bytes_by_tag[index].load(memory_order_relaxed)) / (1024.0f * 1024.0f);
+    }
+
+    void Allocator::LogLargestAllocationSites(const char* label, uint32_t count)
+    {
+#if defined(_WIN32)
+        if (!census::is_enabled())
+        {
+            return;
+        }
+
+        constexpr uint32_t max_report = 64;
+        count = min(count, max_report);
+        census::site top[max_report] = {};
+        uint32_t top_used             = 0;
+        int64_t tracked_bytes         = 0;
+        AcquireSRWLockShared(&census::lock);
+        for (const census::site& slot : census::slots)
+        {
+            if (slot.frame_used == 0 || slot.bytes <= 0)
+            {
+                continue;
+            }
+            tracked_bytes += slot.bytes;
+            uint32_t position = top_used;
+            while (position > 0 && top[position - 1].bytes < slot.bytes)
+            {
+                if (position < count)
+                {
+                    top[position] = top[position - 1];
+                }
+                position--;
+            }
+            if (position < count)
+            {
+                top[position] = slot;
+                top_used      = min(top_used + 1, count);
+            }
+        }
+        ReleaseSRWLockShared(&census::lock);
+
+        HANDLE process = GetCurrentProcess();
+        static bool symbols_ready = false;
+        if (!symbols_ready)
+        {
+            SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+            symbols_ready = SymInitialize(process, nullptr, TRUE) == TRUE;
+        }
+
+        constexpr double mb = 1024.0 * 1024.0;
+        SP_LOG_INFO("Heap census (%s): %.0f MB live in allocations of %zu KB or more, %.0f MB total heap", label, tracked_bytes / mb, census::min_size / 1024, GetMemoryAllocatedMb());
+        for (uint32_t i = 0; i < top_used; i++)
+        {
+            char line[2048] = {};
+            size_t length   = 0;
+            uint32_t shown  = 0;
+            for (USHORT f = 0; f < top[i].frame_used && shown < 5; f++)
+            {
+                char symbol_buffer[sizeof(SYMBOL_INFO) + 256] = {};
+                SYMBOL_INFO* symbol  = reinterpret_cast<SYMBOL_INFO*>(symbol_buffer);
+                symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+                symbol->MaxNameLen   = 255;
+                DWORD64 displacement = 0;
+                const DWORD64 address = reinterpret_cast<DWORD64>(top[i].frames[f]);
+                if (!SymFromAddr(process, address, &displacement, symbol))
+                {
+                    continue;
+                }
+                const char* name = symbol->Name;
+                if (strstr(name, "std::") || strstr(name, "operator new") || strstr(name, "Allocator::") || strstr(name, "_Allocate") || strstr(name, "allocate"))
+                {
+                    continue;
+                }
+                IMAGEHLP_LINE64 source_line = {};
+                source_line.SizeOfStruct    = sizeof(IMAGEHLP_LINE64);
+                DWORD line_displacement     = 0;
+                if (SymGetLineFromAddr64(process, address, &line_displacement, &source_line))
+                {
+                    const char* file = strrchr(source_line.FileName, '\\');
+                    length += snprintf(line + length, sizeof(line) - length, "%s%s (%s:%lu)", shown ? " <- " : "", name, file ? file + 1 : source_line.FileName, source_line.LineNumber);
+                }
+                else
+                {
+                    length += snprintf(line + length, sizeof(line) - length, "%s%s", shown ? " <- " : "", name);
+                }
+                shown++;
+                if (length >= sizeof(line) - 1)
+                {
+                    break;
+                }
+            }
+            SP_LOG_INFO("Heap census (%s): %8.1f MB in %lld allocations: %s", label, top[i].bytes / mb, top[i].allocations, line);
+        }
+#endif
     }
 
     const char* Allocator::GetTagName(MemoryTag tag)

@@ -162,6 +162,7 @@ namespace spartan
     void Mesh::Clear()
     {
         m_ready_for_blas = false;
+        m_cpu_geometry_released = false;
 
         m_indices.clear();
         m_indices.shrink_to_fit();
@@ -193,6 +194,7 @@ namespace spartan
 
     function<void()> Mesh::CreateSaveTask(const string& file_path)
     {
+        RestoreCpuGeometry();
         return [file_path, m_type = m_type, m_flags = m_flags, m_sub_meshes = m_sub_meshes, m_vertices = m_vertices, m_indices = m_indices, m_meshlets = m_meshlets, m_meshlet_vertices = m_meshlet_vertices, m_meshlet_micro_indices = m_meshlet_micro_indices, m_object_name = m_object_name]()
         {
             ofstream outfile(file_path, ios::binary);
@@ -418,6 +420,87 @@ namespace spartan
         SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
     }
 
+    namespace
+    {
+        atomic<uint32_t> cpu_geometry_restores = 0;
+    }
+
+    void Mesh::SetCpuGeometrySource(function<bool(vector<uint8_t>&)> source)
+    {
+        lock_guard lock(m_mutex);
+        m_cpu_geometry_source = move(source);
+    }
+
+    bool Mesh::ReleaseCpuGeometry()
+    {
+        lock_guard lock(m_mutex);
+        if (m_cpu_geometry_released || !m_cpu_geometry_source || m_dynamic || IsSkinned() || !m_ready_for_blas.load(memory_order_acquire))
+        {
+            return false;
+        }
+
+        m_released_vertex_count = static_cast<uint32_t>(m_vertices.size());
+        m_released_index_count  = static_cast<uint32_t>(m_indices.size());
+        vector<RHI_Vertex_PosTexNorTan>().swap(m_vertices);
+        vector<uint32_t>().swap(m_indices);
+        vector<Sb_MeshletBounds>().swap(m_meshlets);
+        vector<uint32_t>().swap(m_meshlet_vertices);
+        vector<uint32_t>().swap(m_meshlet_micro_indices);
+        m_cpu_geometry_released = true;
+        return true;
+    }
+
+    uint32_t Mesh::GetCpuGeometryRestoreCount()
+    {
+        return cpu_geometry_restores.load(memory_order_relaxed);
+    }
+
+    bool Mesh::RestoreCpuGeometry() const
+    {
+        Mesh* self = const_cast<Mesh*>(this);
+        lock_guard lock(self->m_mutex);
+        return self->restore_cpu_geometry_locked();
+    }
+
+    bool Mesh::restore_cpu_geometry_locked()
+    {
+        if (!m_cpu_geometry_released)
+        {
+            return true;
+        }
+
+        vector<uint8_t> bytes;
+        vector<RHI_Vertex_PosTexNorTan> vertices;
+        vector<uint32_t> indices, remaps, micro;
+        vector<Sb_MeshletBounds> meshlets;
+        vector<MeshLod> lods;
+        if (!m_cpu_geometry_source(bytes) ||
+            !generated_cache::Decode(span<const uint8_t>(bytes), vertices, indices, meshlets, remaps, micro, lods) ||
+            vertices.size() != m_released_vertex_count || indices.size() != m_released_index_count)
+        {
+            SP_LOG_ERROR("Failed to restore cpu geometry of mesh '%s', its source no longer matches", m_object_name.c_str());
+            return false;
+        }
+
+        m_vertices              = move(vertices);
+        m_indices               = move(indices);
+        m_meshlets              = move(meshlets);
+        m_meshlet_vertices      = move(remaps);
+        m_meshlet_micro_indices = move(micro);
+        m_cpu_geometry_released = false;
+        cpu_geometry_restores.fetch_add(1, memory_order_relaxed);
+        return true;
+    }
+
+    uint64_t Mesh::GetCpuBytes() const
+    {
+        return m_vertices.capacity() * sizeof(RHI_Vertex_PosTexNorTan) +
+            m_indices.capacity() * sizeof(uint32_t) +
+            m_meshlets.capacity() * sizeof(Sb_MeshletBounds) +
+            m_meshlet_vertices.capacity() * sizeof(uint32_t) +
+            m_meshlet_micro_indices.capacity() * sizeof(uint32_t);
+    }
+
     uint32_t Mesh::GetMemoryUsage() const
     {
         uint32_t size  = 0;
@@ -452,6 +535,7 @@ namespace spartan
         // lock for the duration of the read so concurrent AddGeometry/AddLod calls cannot
         // reallocate m_vertices/m_indices and invalidate the iterators we are reading from
         lock_guard lock(m_mutex);
+        restore_cpu_geometry_locked();
 
         if (sub_mesh_index >= m_sub_meshes.size())
         {
@@ -549,14 +633,14 @@ namespace spartan
 
     void Mesh::SavePrepared(const string& path, uint64_t key) const
     {
-        if (m_sub_meshes.size() != 1) return;
+        if (m_sub_meshes.size() != 1 || !RestoreCpuGeometry()) return;
         generated_cache::Save(path, key, m_vertices, m_indices, m_meshlets,
             m_meshlet_vertices, m_meshlet_micro_indices, m_sub_meshes[0].lods);
     }
 
     vector<uint8_t> Mesh::SerializePrepared() const
     {
-        if (m_sub_meshes.size() != 1) return {};
+        if (m_sub_meshes.size() != 1 || !RestoreCpuGeometry()) return {};
         return generated_cache::Encode(m_vertices, m_indices, m_meshlets,
             m_meshlet_vertices, m_meshlet_micro_indices, m_sub_meshes[0].lods);
     }
@@ -853,6 +937,7 @@ namespace spartan
 
         {
             lock_guard lock(m_mutex);
+            m_cpu_geometry_released = false;
             m_vertices              = vertices;
             m_indices               = indices;
             m_meshlets              = meshlets;
@@ -885,6 +970,7 @@ namespace spartan
     bool Mesh::UpdateVertices(const vector<RHI_Vertex_PosTexNorTan>& vertices)
     {
         lock_guard lock(m_mutex);
+        restore_cpu_geometry_locked();
         if (vertices.empty() || vertices.size() != m_vertices.size() ||
             m_sub_meshes.size() != 1 || m_sub_meshes[0].lods.size() != 1)
         {
@@ -935,6 +1021,7 @@ namespace spartan
 
     void Mesh::UploadVertexRange(uint32_t vertex_offset, uint32_t vertex_count)
     {
+        RestoreCpuGeometry();
         if (vertex_count == 0 || vertex_offset + vertex_count > m_vertices.size())
         {
             return;
@@ -955,6 +1042,7 @@ namespace spartan
         }
 
         lock_guard lock(m_mutex);
+        restore_cpu_geometry_locked();
         SubMesh& sub_mesh = m_sub_meshes[sub_mesh_index];
         for (MeshLod& lod : sub_mesh.lods)
         {
@@ -988,12 +1076,12 @@ namespace spartan
 
     uint32_t Mesh::GetVertexCount() const
     {
-        return static_cast<uint32_t>(m_vertices.size());
+        return m_cpu_geometry_released ? m_released_vertex_count : static_cast<uint32_t>(m_vertices.size());
     }
 
     uint32_t Mesh::GetIndexCount() const
     {
-        return static_cast<uint32_t>(m_indices.size());
+        return m_cpu_geometry_released ? m_released_index_count : static_cast<uint32_t>(m_indices.size());
     }
 
     uint32_t Mesh::GetDefaultFlags()
@@ -1008,6 +1096,7 @@ namespace spartan
 
     shared_ptr<Mesh> Mesh::CreateSkinnedInstance()
     {
+        RestoreCpuGeometry();
         if (!m_ready_for_blas.load(memory_order_acquire) || m_vertices.empty())
         {
             SP_LOG_WARNING("Mesh::CreateSkinnedInstance: source mesh is not gpu-ready");
@@ -1066,6 +1155,7 @@ namespace spartan
         {
             return;
         }
+        RestoreCpuGeometry();
 
         auto get_dynamic_capacity = [](const size_t count)
         {

@@ -1224,7 +1224,7 @@ namespace spartan
             m_parent = new_parent;
             if (m_parent) m_parent->AddChild(this);
         }
-        UpdateActiveState();
+        UpdateActiveState(); 
         UpdateTransform();
     }
 

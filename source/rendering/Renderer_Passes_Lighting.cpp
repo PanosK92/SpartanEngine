@@ -1537,14 +1537,15 @@ namespace spartan
         RHI_CommandList::EndPass();
     }
 
-    void Renderer::Pass_Light_Ibl(uint32_t eye_layer /*= rhi_all_mips*/)
+    void Renderer::Pass_Light_Ibl(const bool is_transparent_pass, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         RHI_Shader* shader   = GetShader(Renderer_Shader::light_image_based_c);
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_render);
 
-        Renderer::BeginPass("light_image_based", eye_layer);
+        Renderer::BeginPass(is_transparent_pass ? "light_image_based_transparent" : "light_image_based", eye_layer);
         {
             RHI_CommandList::SetShader(shader);
+            m_pcb_pass_cpu.is_transparent = is_transparent_pass ? 1 : 0;
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_out, rhi_all_mips, 0, true);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex_sss), GetRenderTarget(Renderer_RenderTarget::sss), rhi_all_mips, 0, true);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));

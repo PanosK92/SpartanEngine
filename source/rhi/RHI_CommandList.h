@@ -373,6 +373,9 @@ namespace spartan
         static void CopyBufferToBuffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size);
         static void CopyBufferToBuffer(RHI_CommandList* cmd_list, RHI_Buffer* source, RHI_Buffer* destination, uint64_t size);
 
+        // copies the first size bytes, ordered after all earlier work on either buffer and before all later work
+        static void CopyBufferContents(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size);
+
     private:
         friend class RHI_Texture;
         friend class RHI_VendorTechnology;

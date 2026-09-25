@@ -15,6 +15,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../core/ThreadPool.h"
 #include "../core/Debugging.h"
 #include "../core/Timer.h"
+#include "../core/Window.h"
+#include "../font/Font.h"
 #include "../rendering/Renderer.h"
 #include "../rhi/RHI_Viewport.h"
 #include "../display/Display.h"
@@ -85,6 +87,12 @@ namespace spartan
         constexpr double fps_update_interval_sec = 0.25;
         double fps_elapsed_sec = 0.0;
         uint32_t fps_frame_count = 0;
+
+        // every presented frame, including pacing, feeds the overlay graph and the percentile lows
+        const uint32_t frame_history_size = 512;
+        array<float, frame_history_size> frame_history_ms = {};
+        uint32_t frame_history_head  = 0;
+        uint32_t frame_history_count = 0;
 
         // time blocks (double buffered)
         int m_time_block_index = -1;
@@ -1225,6 +1233,10 @@ namespace spartan
                 fps_elapsed_sec = 0.0;
                 fps_frame_count = 0;
             }
+
+            frame_history_ms[frame_history_head] = static_cast<float>(delta_sec * 1000.0);
+            frame_history_head                   = (frame_history_head + 1) % frame_history_size;
+            frame_history_count                  = min(frame_history_count + 1, frame_history_size);
         }
 
         // measure frame duration for timeline
@@ -1551,6 +1563,9 @@ namespace spartan
         fps_elapsed_sec = 0.0;
         fps_frame_count = 0;
 
+        frame_history_head  = 0;
+        frame_history_count = 0;
+
         time_frame_avg  = 0.0f;
         time_frame_min  = numeric_limits<float>::max();
         time_frame_max  = numeric_limits<float>::lowest();
@@ -1677,131 +1692,614 @@ namespace spartan
         return nullptr;
     }
 
-    void Profiler::DrawPerformanceMetrics()
+    namespace
     {
-        static char metrics_buffer[16384]            = { 0 };
-        static double metrics_time_since_last_update = fps_update_interval_sec;
-        metrics_time_since_last_update              += Timer::GetDeltaTimeSec();
-
-        if (metrics_time_since_last_update >= fps_update_interval_sec)
+        // the overlay palette, one hue per meaning so a glance is enough
+        namespace overlay_color
         {
-            metrics_time_since_last_update = 0.0;
-            int offset = 0;
-
-            // fps and frames
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "FPS:\t\t%.1f\n"
-                "Time:\t\t%.2f ms\n"
-                "Frame:\t\t%llu\n\n",
-                m_fps, m_fps > 0.0f ? 1000.0f / m_fps : 0.0f, Renderer::GetFrameNumber());
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-
-            // timings
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "\t\tavg\tmin\tmax\tlast\n"
-                "Total:\t\t%.2f\t%.2f\t%.2f\t%.2f ms\n"
-                "CPU:\t\t%.2f\t%.2f\t%.2f\t%.2f ms\n"
-                "GPU:\t\t%.2f\t%.2f\t%.2f\t%.2f ms\n\n",
-                time_frame_avg, time_frame_min, time_frame_max, time_frame_last,
-                time_cpu_avg, time_cpu_min, time_cpu_max, time_cpu_last,
-                time_gpu_avg, time_gpu_min, time_gpu_max, time_gpu_last);
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-
-            // gpu
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "GPU\n"
-                "Name:\t\t%s\n"
-                "Memory:\t\t%u/%u MB\n"
-                "API:\t\t%s %s\n"
-                "Driver:\t\t%s %s\n\n",
-                RHI_Device::GetPrimaryPhysicalDevice()->GetName(),
-                static_cast<unsigned int>(RHI_Device::MemoryGetAllocatedMb()),
-                static_cast<unsigned int>(RHI_Device::MemoryGetAvailableMb()),
-                RHI_Context::api_type_str,
-                RHI_Context::api_version_cstr ? RHI_Context::api_version_cstr : "N/A",
-                RHI_Device::GetPrimaryPhysicalDevice() ? RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() : "N/A",
-                RHI_Device::GetPrimaryPhysicalDevice()->GetDriverVersion());
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-
-            // cpu
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "CPU\n"
-                "Name:\t\t%s\n"
-                "Threads:\t\t%u/%u\n"
-                "AVX2:\t\t%s\n\n",
-                cpu_name,
-                static_cast<unsigned int>(ThreadPool::GetWorkingThreadCount()),
-                static_cast<unsigned int>(ThreadPool::GetThreadCount()),
-#ifdef __AVX2__
-                "Yes"
-#else
-                "No"
-#endif
-            );
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-
-            // memory
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Memory\n"
-                "Allocated:\t%.2f MB (Peak: %.2f MB)\n"
-                "Process:\t\t%.2f MB (Avail: %.2f MB, Total: %.2f MB)\n\n",
-                Allocator::GetMemoryAllocatedMb(),
-                Allocator::GetMemoryAllocatedPeakMb(),
-                Allocator::GetMemoryProcessUsedMb(),
-                Allocator::GetMemoryAvailableMb(),
-                Allocator::GetMemoryTotalMb());
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-
-            // display
-            const auto& res_render = Renderer::GetResolutionRender();
-            const auto& res_output = Renderer::GetResolutionOutput();
-            const auto& vp = Renderer::GetViewport();
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Display\n"
-                "Name:\t\t%s\n"
-                "Hz:\t\t%d\n"
-                "HDR:\t\t%s\n"
-                "Max nits:\t\t%u\n"
-                "Render:\t\t%u x %u (%.0f%%)\n"
-                "Output:\t\t%u x %u\n"
-                "Viewport:\t\t%u x %u\n\n",
-                Display::GetName(),
-                static_cast<int>(Display::GetRefreshRate()),
-                RHI_Device::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled",
-                static_cast<uint32_t>(Display::GetLuminanceMax()),
-                static_cast<uint32_t>(res_render.x),
-                static_cast<uint32_t>(res_render.y),
-                Renderer::GetResolutionScale() * 100.0f,
-                static_cast<uint32_t>(res_output.x),
-                static_cast<uint32_t>(res_output.y),
-                static_cast<uint32_t>(vp.width),
-                static_cast<uint32_t>(vp.height));
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-
-            // graphics api
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Graphics API\n"
-                "Draw:\t\t%u\n"
-                "Instances:\t%u\n"
-                "Index bindings:\t%u\n"
-                "Vertex bindings:\t%u\n"
-                "Barriers:\t\t%u (%u layout)\n"
-                "Pipeline bindings:\t%u/%u\n"
-                "Descriptor sets:\t%u/%u",
-                static_cast<uint32_t>(m_rhi_draw),
-                static_cast<uint32_t>(m_rhi_instance_count),
-                static_cast<uint32_t>(m_rhi_bindings_buffer_index),
-                static_cast<uint32_t>(m_rhi_bindings_buffer_vertex),
-                static_cast<uint32_t>(m_rhi_pipeline_barriers),
-                static_cast<uint32_t>(m_rhi_layout_barriers),
-                static_cast<uint32_t>(m_rhi_bindings_pipeline),
-                static_cast<uint32_t>(RHI_Device::GetPipelineCount()),
-                static_cast<uint32_t>(m_rhi_descriptor_set_count),
-                static_cast<uint32_t>(rhi_max_descriptor_set_count));
-            SP_ASSERT(offset < sizeof(metrics_buffer));
+            // matches color_accent_1 of the editor's default theme
+            const Color accent  = Color(0.439f, 0.831f, 1.000f, 1.0f);
+            const Color panel   = Color(0.031f, 0.037f, 0.047f, 0.86f);
+            const Color border  = Color(1.0f, 1.0f, 1.0f, 0.06f);
+            const Color divider = Color(1.0f, 1.0f, 1.0f, 0.07f);
+            const Color track   = Color(1.0f, 1.0f, 1.0f, 0.07f);
+            const Color text    = Color(0.94f, 0.95f, 0.97f, 1.0f);
+            const Color muted   = Color(0.62f, 0.66f, 0.72f, 1.0f);
+            const Color dim     = Color(0.43f, 0.47f, 0.53f, 1.0f);
+            const Color good    = Color(0.36f, 0.86f, 0.55f, 1.0f);
+            const Color warn    = Color(1.00f, 0.72f, 0.26f, 1.0f);
+            const Color bad     = Color(1.00f, 0.37f, 0.37f, 1.0f);
+            const Color cpu     = accent;
+            const Color gpu     = Color(0.70f, 0.54f, 1.00f, 1.0f);
+            const Color graph   = Color(accent.r, accent.g, accent.b, 0.80f);
+            const Color memory  = Color(0.56f, 0.63f, 0.73f, 1.0f);
+            const Color peak    = Color(1.0f, 1.0f, 1.0f, 0.65f);
+            const Color budget  = Color(1.0f, 1.0f, 1.0f, 0.30f);
         }
 
-        // draw directly from the static buffer
-        Renderer::DrawString(metrics_buffer, math::Vector2(0.005f, 0.02f));
+        // numbers refresh a few times a second so they can be read, the graph moves every frame
+        struct OverlaySnapshot
+        {
+            float fps             = 0.0f;
+            float frame_ms        = 0.0f;
+            float low_1_fps       = 0.0f;
+            float low_01_fps      = 0.0f;
+            float target_hz       = 60.0f;
+            float budget_ms       = 1000.0f / 60.0f;
+            float graph_max_ms    = 1000.0f / 30.0f;
+            float cpu_ms          = 0.0f;
+            float cpu_peak_ms     = 0.0f;
+            float gpu_ms          = 0.0f;
+            float gpu_peak_ms     = 0.0f;
+            bool gpu_valid        = false;
+            bool capped           = false;
+            uint64_t frame        = 0;
+            uint32_t draws        = 0;
+            uint32_t instances    = 0;
+            uint32_t barriers     = 0;
+            uint32_t layouts      = 0;
+            uint32_t pipelines    = 0;
+            uint32_t pipeline_max = 0;
+            uint32_t descriptors  = 0;
+            uint32_t vertex_binds = 0;
+            float vram_used_mb    = 0.0f;
+            float vram_budget_mb  = 0.0f;
+            float ram_used_mb     = 0.0f;
+            float ram_total_mb    = 0.0f;
+        };
+
+        void format_count(char* out, const size_t size, const uint64_t value)
+        {
+            char digits[32];
+            const int count = snprintf(digits, sizeof(digits), "%llu", static_cast<unsigned long long>(value));
+            size_t length   = 0;
+            for (int i = 0; i < count && length + 2 < size; i++)
+            {
+                if (i > 0 && (count - i) % 3 == 0)
+                {
+                    out[length++] = ',';
+                }
+                out[length++] = digits[i];
+            }
+            out[length] = '\0';
+        }
+
+        void format_memory(char* out, const size_t size, const float used_mb, const float total_mb)
+        {
+            if (total_mb >= 1024.0f)
+            {
+                snprintf(out, size, "%.1f / %.1f GB", used_mb / 1024.0f, total_mb / 1024.0f);
+            }
+            else
+            {
+                snprintf(out, size, "%.0f / %.0f MB", used_mb, total_mb);
+            }
+        }
+
+        Color with_alpha(Color color, const float alpha)
+        {
+            color.a = alpha;
+            return color;
+        }
+
+        // health follows what the player feels, 60 fps or the pacing target if that is lower is smooth, under 30 is not
+        float comfort_ms(const float budget_ms)
+        {
+            return max(budget_ms, 1000.0f / 60.0f);
+        }
+
+        float struggle_ms(const float budget_ms)
+        {
+            return max(comfort_ms(budget_ms) * 1.5f, 1000.0f / 30.0f);
+        }
+
+        Color health_color(const float value_ms, const float budget_ms)
+        {
+            if (value_ms <= comfort_ms(budget_ms) * 1.05f)
+            {
+                return overlay_color::good;
+            }
+
+            return value_ms <= struggle_ms(budget_ms) ? overlay_color::warn : overlay_color::bad;
+        }
+
+        // brand strings carry trademarks and core counts that only cost width
+        string clean_cpu_name(const char* name)
+        {
+            string cleaned = name;
+            for (const char* noise : { "(R)", "(r)", "(TM)", "(tm)", " Processor", " CPU" })
+            {
+                for (size_t position = cleaned.find(noise); position != string::npos; position = cleaned.find(noise))
+                {
+                    cleaned.erase(position, strlen(noise));
+                }
+            }
+
+            const size_t core = cleaned.find("-Core");
+            if (core != string::npos)
+            {
+                size_t start = cleaned.rfind(' ', core);
+                start        = start == string::npos ? 0 : start;
+                cleaned.erase(start, core + strlen("-Core") - start);
+            }
+
+            string collapsed;
+            for (const char character : cleaned)
+            {
+                if (character == ' ' && (collapsed.empty() || collapsed.back() == ' '))
+                {
+                    continue;
+                }
+                collapsed += character;
+            }
+            while (!collapsed.empty() && collapsed.back() == ' ')
+            {
+                collapsed.pop_back();
+            }
+
+            return collapsed;
+        }
+
+        // 616.92.0.0 reads as 616.92
+        string clean_driver_version(const char* version)
+        {
+            string cleaned = version ? version : "";
+            while (cleaned.size() > 2 && cleaned.compare(cleaned.size() - 2, 2, ".0") == 0)
+            {
+                cleaned.erase(cleaned.size() - 2);
+            }
+
+            return cleaned;
+        }
+
+        void refresh_snapshot(OverlaySnapshot& snapshot, const bool has_samples)
+        {
+            snapshot.fps      = m_fps;
+            snapshot.frame_ms = m_fps > 0.0f ? 1000.0f / m_fps : 0.0f;
+            snapshot.frame    = Renderer::GetFrameNumber();
+
+            // the budget is whatever the frame is paced to, an unlocked frame is judged against the display
+            const FpsLimitType limit_type = Timer::GetFpsLimitType();
+            snapshot.target_hz            = limit_type == FpsLimitType::Unlocked ? Display::GetRefreshRate() : Timer::GetFpsLimit();
+            if (snapshot.target_hz <= 0.0f)
+            {
+                snapshot.target_hz = 60.0f;
+            }
+            snapshot.budget_ms = 1000.0f / snapshot.target_hz;
+
+            // percentile lows describe stutter far better than a min that is dominated by one hitch
+            static vector<float> sorted;
+            sorted.assign(frame_history_ms.begin(), frame_history_ms.begin() + frame_history_count);
+            float p99 = 0.0f;
+            if (!sorted.empty())
+            {
+                auto percentile = [](vector<float>& values, const float fraction)
+                {
+                    const size_t index = min(values.size() - 1, static_cast<size_t>(fraction * static_cast<float>(values.size() - 1) + 0.5f));
+                    nth_element(values.begin(), values.begin() + index, values.end());
+                    return values[index];
+                };
+
+                p99                 = percentile(sorted, 0.99f);
+                const float p999    = percentile(sorted, 0.999f);
+                snapshot.low_1_fps  = p99 > 0.0f ? 1000.0f / p99 : 0.0f;
+                snapshot.low_01_fps = p999 > 0.0f ? 1000.0f / p999 : 0.0f;
+            }
+
+            // typical frames sit around half height, rare hitches clip at the top where they are already red
+            const float graph_target = max({ snapshot.budget_ms * 2.0f, snapshot.frame_ms * 2.0f, p99 * 1.25f });
+            snapshot.graph_max_ms    = graph_target > snapshot.graph_max_ms ? graph_target : lerp(snapshot.graph_max_ms, graph_target, 0.25f);
+
+            // peak hold like an audio meter, a spike stays visible for a moment and then decays
+            const float peak_decay = 0.85f;
+            snapshot.cpu_ms        = time_cpu_avg;
+            snapshot.cpu_peak_ms   = has_samples ? max(time_cpu_last, snapshot.cpu_peak_ms * peak_decay) : 0.0f;
+            snapshot.gpu_valid     = Debugging::IsGpuTimingEnabled() && time_gpu_avg > 0.0f;
+            snapshot.gpu_ms        = snapshot.gpu_valid ? time_gpu_avg : 0.0f;
+            snapshot.gpu_peak_ms   = snapshot.gpu_valid && has_samples ? max(time_gpu_last, snapshot.gpu_peak_ms * peak_decay) : 0.0f;
+
+            // the limiter or vsync sets the pace when the frame lands on the limit and neither processor fills it
+            const bool on_limit = snapshot.frame_ms <= snapshot.budget_ms * 1.15f;
+            snapshot.capped     = limit_type != FpsLimitType::Unlocked && on_limit && max(snapshot.cpu_ms, snapshot.gpu_ms) < snapshot.frame_ms * 0.8f;
+
+            snapshot.draws        = Profiler::m_rhi_draw;
+            snapshot.instances    = Profiler::m_rhi_instance_count;
+            snapshot.barriers     = Profiler::m_rhi_pipeline_barriers;
+            snapshot.layouts      = Profiler::m_rhi_layout_barriers;
+            snapshot.pipelines    = Profiler::m_rhi_bindings_pipeline;
+            snapshot.pipeline_max = static_cast<uint32_t>(RHI_Device::GetPipelineCount());
+            snapshot.descriptors  = Profiler::m_rhi_descriptor_set_count;
+            snapshot.vertex_binds = Profiler::m_rhi_bindings_buffer_vertex;
+
+            snapshot.vram_used_mb   = static_cast<float>(RHI_Device::MemoryGetAllocatedMb());
+            snapshot.vram_budget_mb = static_cast<float>(RHI_Device::MemoryGetAvailableMb());
+            snapshot.ram_used_mb    = Allocator::GetMemoryProcessUsedMb();
+            snapshot.ram_total_mb   = Allocator::GetMemoryTotalMb();
+        }
+    }
+
+    void Profiler::DrawPerformanceMetrics()
+    {
+        using math::Vector2;
+        namespace col = overlay_color;
+
+        Font* font_shapes = Renderer::GetFont(Renderer_Font::Standard).get();
+        Font* font_small  = Renderer::GetFont(Renderer_Font::OverlaySmall).get();
+        Font* font_body   = Renderer::GetFont(Renderer_Font::Overlay).get();
+        Font* font_large  = Renderer::GetFont(Renderer_Font::OverlayLarge).get();
+        if (!font_shapes || !font_small || !font_body || !font_large)
+        {
+            return;
+        }
+
+        static OverlaySnapshot snapshot;
+        static double time_since_refresh = fps_update_interval_sec;
+        time_since_refresh += Timer::GetDeltaTimeSec();
+        if (time_since_refresh >= fps_update_interval_sec)
+        {
+            time_since_refresh = 0.0;
+            refresh_snapshot(snapshot, timing_sample_count > 0);
+        }
+
+        // 1 is the full panel, 2 keeps only the headline and the frame time graph
+        const bool compact = cvar_performance_metrics.GetValueAs<float>() >= 2.0f;
+
+        const float dpi = Window::GetDpiScale();
+        auto px = [dpi](const float value)
+        {
+            return floor(value * dpi + 0.5f);
+        };
+
+        // shapes are collected and emitted after the panel background, all of them land below the text fonts
+        struct OverlayRect
+        {
+            float x0, y0, x1, y1;
+            Color color;
+        };
+        static vector<OverlayRect> rects;
+        rects.clear();
+        auto rect = [](const float x0, const float y0, const float x1, const float y1, const Color& color)
+        {
+            rects.push_back({ x0, y0, x1, y1, color });
+        };
+        auto text = [](Font* font, const char* value, const float x, const float y, const Color& color)
+        {
+            font->AddText(value, Vector2(x, y), color);
+        };
+        auto text_right = [](Font* font, const char* value, const float right, const float y, const Color& color)
+        {
+            font->AddText(value, Vector2(right - font->GetTextWidth(value), y), color);
+        };
+        // top of a line whose capitals are centered on mid, the ascent includes accents so caps sit a bit lower
+        auto center_top = [](Font* font, const float mid)
+        {
+            return floor(mid - font->GetAscent() * 0.58f + 0.5f);
+        };
+
+        // system lines, left is the device name and right its details, built first because they decide the panel width
+        struct SystemLine
+        {
+            string left;
+            char right[128];
+        };
+        static array<SystemLine, 3> system_lines;
+        const float system_gap = px(16.0f);
+        float system_width     = 0.0f;
+        if (!compact)
+        {
+            static const string cpu_display_name = clean_cpu_name(cpu_name);
+            const RHI_PhysicalDevice* gpu        = RHI_Device::GetPrimaryPhysicalDevice();
+            static const string driver_version   = clean_driver_version(gpu ? gpu->GetDriverVersion() : nullptr);
+
+            system_lines[0].left = gpu ? gpu->GetName() : "Unknown GPU";
+            snprintf(system_lines[0].right, sizeof(system_lines[0].right), "%s %s  |  %s", RHI_Context::api_type_str, RHI_Context::api_version_cstr ? RHI_Context::api_version_cstr : "", driver_version.c_str());
+
+#ifdef __AVX2__
+            const char* avx2 = "  |  AVX2";
+#else
+            const char* avx2 = "";
+#endif
+            system_lines[1].left = cpu_display_name;
+            snprintf(system_lines[1].right, sizeof(system_lines[1].right), "%u threads%s", static_cast<uint32_t>(ThreadPool::GetThreadCount()), avx2);
+
+            system_lines[2].left = Display::GetName();
+            if (RHI_Device::GetSwapChain() && RHI_Device::GetSwapChain()->IsHdr())
+            {
+                snprintf(system_lines[2].right, sizeof(system_lines[2].right), "%.0f Hz  |  HDR %.0f nits", Display::GetRefreshRate(), Display::GetLuminanceMax());
+            }
+            else
+            {
+                snprintf(system_lines[2].right, sizeof(system_lines[2].right), "%.0f Hz  |  SDR", Display::GetRefreshRate());
+            }
+
+            for (SystemLine& line : system_lines)
+            {
+                system_width = max(system_width, font_small->GetTextWidth(line.left.c_str()) + system_gap + font_small->GetTextWidth(line.right));
+            }
+        }
+
+        // the panel grows to fit the longest device name, so nothing is ever cut off
+        const RHI_Viewport& viewport = Renderer::GetViewport();
+        const float margin           = px(12.0f);
+        const float padding          = px(14.0f);
+        const float panel_width      = ceil(max(px(320.0f), system_width + padding * 2.0f));
+        const float panel_x0         = max(margin, viewport.width - margin - panel_width);
+        const float panel_x1         = panel_x0 + panel_width;
+        const float panel_y0         = margin;
+        const float left             = panel_x0 + padding;
+        const float right            = panel_x1 - padding;
+        const float inner_width      = right - left;
+        const float hairline         = max(1.0f, floor(dpi));
+        float y                      = panel_y0 + padding;
+
+        char buffer[128];
+
+        // headline, frame rate on the left, frame time and the limiting factor on the right
+        const Color status = health_color(snapshot.frame_ms, snapshot.budget_ms);
+        const bool healthy = snapshot.frame_ms <= comfort_ms(snapshot.budget_ms) * 1.05f;
+        {
+            // the number only takes a color when something is wrong
+            snprintf(buffer, sizeof(buffer), "%.0f", snapshot.fps);
+            text(font_large, buffer, left, y, healthy ? col::text : status);
+
+            const float baseline = y + font_large->GetAscent();
+            text(font_small, "FPS", left + font_large->GetTextWidth(buffer) + px(5.0f), baseline - font_small->GetAscent(), col::muted);
+
+            snprintf(buffer, sizeof(buffer), "%.2f ms", snapshot.frame_ms);
+            text_right(font_body, buffer, right, y, col::text);
+
+            // the chip shares its hue with the meter of whatever limits the frame
+            const char* verdict = nullptr;
+            Color verdict_color = col::muted;
+            if (snapshot.capped)
+            {
+                verdict = "FPS CAP";
+            }
+            else if (snapshot.gpu_valid)
+            {
+                const bool gpu_bound = snapshot.gpu_ms >= snapshot.cpu_ms;
+                verdict              = gpu_bound ? "GPU BOUND" : "CPU BOUND";
+                verdict_color        = gpu_bound ? col::gpu : col::cpu;
+            }
+
+            const float chip_height = font_small->GetLineHeight() + px(4.0f);
+            if (verdict)
+            {
+                const float chip_width = font_small->GetTextWidth(verdict, false) + px(12.0f);
+                const float chip_y0    = baseline - chip_height + px(2.0f);
+                rect(right - chip_width, chip_y0, right, chip_y0 + chip_height, with_alpha(verdict_color, 0.14f));
+                text(font_small, verdict, right - chip_width + px(6.0f), chip_y0 + px(2.0f), verdict_color);
+            }
+
+            y = baseline + px(8.0f);
+        }
+
+        // stutter summary
+        {
+            auto stat = [&](const char* label, const char* value, float x, const bool align_right)
+            {
+                const float gap   = px(5.0f);
+                const float width = font_small->GetTextWidth(label, false) + gap + font_small->GetTextWidth(value);
+                if (align_right)
+                {
+                    x -= width;
+                }
+                text(font_small, label, x, y, col::dim);
+                text(font_small, value, x + font_small->GetTextWidth(label, false) + gap, y, col::text);
+            };
+
+            snprintf(buffer, sizeof(buffer), "%.0f", snapshot.low_1_fps);
+            stat("1% LOW", buffer, left, false);
+            snprintf(buffer, sizeof(buffer), "%.0f", snapshot.low_01_fps);
+            stat("0.1% LOW", buffer, left + floor(inner_width * 0.36f), false);
+            format_count(buffer, sizeof(buffer), snapshot.frame);
+            stat("FRAME", buffer, right, true);
+
+            y += font_small->GetLineHeight() + px(12.0f);
+        }
+
+        // frame time graph, newest frame on the right, bars are only colored when they miss the budget
+        {
+            text(font_small, "FRAME TIME", left, y, col::dim);
+            snprintf(buffer, sizeof(buffer), "budget %.1f ms  |  %.0f Hz", snapshot.budget_ms, snapshot.target_hz);
+            text_right(font_small, buffer, right, y, col::dim);
+            y += font_small->GetLineHeight() + px(5.0f);
+
+            const float graph_height = px(52.0f);
+            const float graph_y1     = y + graph_height;
+            rect(left, y, right, graph_y1, col::track);
+
+            // a one pixel gap keeps individual frames readable instead of merging into a block
+            const float pitch      = max(2.0f, px(2.0f));
+            const uint32_t columns = min(static_cast<uint32_t>(inner_width / pitch), frame_history_count);
+            const float warn_ms    = comfort_ms(snapshot.budget_ms) * 1.05f;
+            const float bad_ms     = struggle_ms(snapshot.budget_ms);
+            for (uint32_t i = 0; i < columns; i++)
+            {
+                const uint32_t index = (frame_history_head + frame_history_size - 1 - i) % frame_history_size;
+                const float value_ms = frame_history_ms[index];
+                const float height   = max(hairline, min(value_ms / snapshot.graph_max_ms, 1.0f) * graph_height);
+                const float x1       = right - static_cast<float>(i) * pitch;
+
+                Color color = col::graph;
+                if (value_ms > warn_ms)
+                {
+                    color = value_ms > bad_ms ? col::bad : col::warn;
+                }
+                rect(x1 - pitch + 1.0f, graph_y1 - height, x1, graph_y1, color);
+            }
+
+            // dashed budget line
+            if (snapshot.budget_ms < snapshot.graph_max_ms)
+            {
+                const float line_y = floor(graph_y1 - snapshot.budget_ms / snapshot.graph_max_ms * graph_height);
+                const float dash   = px(4.0f);
+                for (float x = left; x < right; x += dash + px(3.0f))
+                {
+                    rect(x, line_y, min(x + dash, right), line_y + hairline, col::budget);
+                }
+            }
+
+            y = graph_y1 + px(14.0f);
+        }
+
+        if (!compact)
+        {
+            const float label_width = px(40.0f);
+            const float value_width = px(92.0f);
+            const float track_x0    = left + label_width;
+            const float track_x1    = right - value_width;
+            const float track_h     = px(6.0f);
+            const float row_height  = max(font_body->GetLineHeight(), px(16.0f));
+
+            // horizontal meter, full width is the budget or the capacity, the tick marks the peak
+            auto meter = [&](const char* label, const float fraction, const float peak_fraction, const Color& fill, const char* value, const Color& value_color)
+            {
+                const float mid = y + row_height * 0.5f;
+                text(font_small, label, left, center_top(font_small, mid), col::muted);
+
+                const float ty0 = floor(mid - track_h * 0.5f);
+                const float ty1 = ty0 + track_h;
+                rect(track_x0, ty0, track_x1, ty1, col::track);
+                if (fraction > 0.0f)
+                {
+                    rect(track_x0, ty0, track_x0 + (track_x1 - track_x0) * min(fraction, 1.0f), ty1, fill);
+                }
+                if (peak_fraction > 0.0f)
+                {
+                    const float peak_x = floor(track_x0 + (track_x1 - track_x0) * min(peak_fraction, 1.0f));
+                    rect(peak_x - hairline, ty0 - px(3.0f), peak_x + hairline, ty1 + px(3.0f), col::peak);
+                }
+
+                text_right(font_body, value, right, center_top(font_body, mid), value_color);
+                y += row_height;
+            };
+
+            auto divider = [&]()
+            {
+                y += px(9.0f);
+                rect(left, y, right, y + hairline, col::divider);
+                y += hairline + px(9.0f);
+            };
+
+            // workload, both on the scale of the frame so the longer bar is the bottleneck, with headroom for the peaks
+            {
+                const float scale = max(snapshot.frame_ms, snapshot.budget_ms) * 1.2f;
+                snprintf(buffer, sizeof(buffer), "%.2f ms", snapshot.cpu_ms);
+                meter("CPU", snapshot.cpu_ms / scale, snapshot.cpu_peak_ms / scale, col::cpu, buffer, col::text);
+                y += px(5.0f);
+
+                if (snapshot.gpu_valid)
+                {
+                    snprintf(buffer, sizeof(buffer), "%.2f ms", snapshot.gpu_ms);
+                    meter("GPU", snapshot.gpu_ms / scale, snapshot.gpu_peak_ms / scale, col::gpu, buffer, col::text);
+                }
+                else
+                {
+                    meter("GPU", 0.0f, 0.0f, col::gpu, "timing off", col::dim);
+                }
+            }
+
+            divider();
+
+            // memory, colored as it approaches the budget
+            {
+                auto memory_color = [](const float fraction)
+                {
+                    if (fraction > 0.9f)
+                    {
+                        return col::bad;
+                    }
+
+                    return fraction > 0.75f ? col::warn : col::memory;
+                };
+
+                const float vram_fraction = snapshot.vram_budget_mb > 0.0f ? snapshot.vram_used_mb / snapshot.vram_budget_mb : 0.0f;
+                format_memory(buffer, sizeof(buffer), snapshot.vram_used_mb, snapshot.vram_budget_mb);
+                meter("VRAM", vram_fraction, 0.0f, memory_color(vram_fraction), buffer, col::text);
+                y += px(5.0f);
+
+                const float ram_fraction = snapshot.ram_total_mb > 0.0f ? snapshot.ram_used_mb / snapshot.ram_total_mb : 0.0f;
+                format_memory(buffer, sizeof(buffer), snapshot.ram_used_mb, snapshot.ram_total_mb);
+                meter("RAM", ram_fraction, 0.0f, memory_color(ram_fraction), buffer, col::text);
+            }
+
+            divider();
+
+            // render statistics, two columns of label and right aligned value
+            {
+                const float column_gap   = px(20.0f);
+                const float column_width = (inner_width - column_gap) * 0.5f;
+                const float line_height  = font_body->GetLineHeight() + px(3.0f);
+
+                auto cell = [&](const uint32_t column, const char* label, const char* value)
+                {
+                    const float x0  = left + static_cast<float>(column) * (column_width + column_gap);
+                    const float mid = y + line_height * 0.5f;
+                    text(font_small, label, x0, center_top(font_small, mid), col::muted);
+                    text_right(font_body, value, x0 + column_width, center_top(font_body, mid), col::text);
+                };
+
+                format_count(buffer, sizeof(buffer), snapshot.draws);
+                cell(0, "Draws", buffer);
+                format_count(buffer, sizeof(buffer), snapshot.instances);
+                cell(1, "Instances", buffer);
+                y += line_height;
+
+                format_count(buffer, sizeof(buffer), snapshot.barriers);
+                cell(0, "Barriers", buffer);
+                format_count(buffer, sizeof(buffer), snapshot.layouts);
+                cell(1, "Layouts", buffer);
+                y += line_height;
+
+                format_count(buffer, sizeof(buffer), snapshot.pipeline_max);
+                cell(0, "Pipelines", buffer);
+                format_count(buffer, sizeof(buffer), snapshot.pipelines);
+                cell(1, "Pipeline binds", buffer);
+                y += line_height;
+
+                format_count(buffer, sizeof(buffer), snapshot.vertex_binds);
+                cell(0, "Vertex binds", buffer);
+                snprintf(buffer, sizeof(buffer), "%u / %u", snapshot.descriptors, rhi_max_descriptor_set_count);
+                cell(1, "Desc. sets", buffer);
+                y += line_height + px(4.0f);
+
+                const Vector2& render = Renderer::GetResolutionRender();
+                const Vector2& output = Renderer::GetResolutionOutput();
+                snprintf(buffer, sizeof(buffer), "%u x %u  %.0f%%", static_cast<uint32_t>(render.x), static_cast<uint32_t>(render.y), Renderer::GetResolutionScale() * 100.0f);
+                text(font_small, "RENDER", left, y, col::dim);
+                text(font_small, buffer, left + font_small->GetTextWidth("RENDER", false) + px(5.0f), y, col::text);
+                snprintf(buffer, sizeof(buffer), "%u x %u", static_cast<uint32_t>(output.x), static_cast<uint32_t>(output.y));
+                text_right(font_small, buffer, right, y, col::text);
+                text_right(font_small, "OUTPUT", right - font_small->GetTextWidth(buffer) - px(5.0f), y, col::dim);
+                y += font_small->GetLineHeight();
+            }
+
+            divider();
+
+            // system, secondary information in small muted type
+            {
+                const float line_height = font_small->GetLineHeight() + px(2.0f);
+                for (const SystemLine& line : system_lines)
+                {
+                    text(font_small, line.left.c_str(), left, y, col::muted);
+                    text_right(font_small, line.right, right, y, col::dim);
+                    y += line_height;
+                }
+                y -= px(2.0f);
+            }
+        }
+
+        // panel, the leading edge carries the engine accent
+        const float panel_y1 = y + padding - px(4.0f);
+        font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y1), col::panel);
+        font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y0 + hairline), col::border);
+        font_shapes->AddRect(Vector2(panel_x0, panel_y1 - hairline), Vector2(panel_x1, panel_y1), col::border);
+        font_shapes->AddRect(Vector2(panel_x1 - hairline, panel_y0 + hairline), Vector2(panel_x1, panel_y1 - hairline), col::border);
+        font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x0 + px(3.0f), panel_y1), col::accent);
+        for (const OverlayRect& shape : rects)
+        {
+            font_shapes->AddRect(Vector2(shape.x0, shape.y0), Vector2(shape.x1, shape.y1), shape.color);
+        }
     }
 }

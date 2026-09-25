@@ -17,8 +17,8 @@ namespace spartan
         // always-on cockpit overlay anchored to the bottom of the viewport
         void draw_driver_hud(Physics* physics);
 
-        // single glanceable dashboard, p_open is bound to the F3 toggle state
-        void draw_telemetry_window(Car* car, Physics* physics, bool* p_open);
+        // full telemetry laid out around the car on screen, toggled with F3
+        void draw_telemetry_hud(Car* car, Physics* physics);
 
     }
 }

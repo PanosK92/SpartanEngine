@@ -160,7 +160,7 @@ namespace spartan
     TConsoleVar<float> cvar_transform_snap_scale           ("r.transform_snap_scale",           0.1f,                                                    "scale snap step");
     TConsoleVar<float> cvar_selection_outline              ("r.selection_outline",              1.0f,                                                    "draw selection outline");
     TConsoleVar<float> cvar_entity_icons                   ("r.entity_icons",                   1.0f,                                                    "draw entity icons and debug visuals");
-    TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,                                                    "show performance metrics",                on_performance_metrics_change);
+    TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,                                                    "performance overlay, 1 full, 2 compact", on_performance_metrics_change);
     TConsoleVar<float> cvar_physics                        ("r.physics",                        0.0f,                                                    "draw physics debug");
     TConsoleVar<float> cvar_ragdoll                        ("r.ragdoll",                        0.0f,                                                    "draw ragdoll capsules and joints in play mode");
     TConsoleVar<float> cvar_wireframe                      ("r.wireframe",                      0.0f,                                                    "render in wireframe mode");

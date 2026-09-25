@@ -182,6 +182,16 @@ namespace spartan
         AA_Dlss_Upscale_Dlss
     };
 
+    // fonts are drawn in this order, so later fonts land on top of earlier ones
+    enum class Renderer_Font : uint32_t
+    {
+        Standard,
+        OverlaySmall,
+        Overlay,
+        OverlayLarge,
+        Max
+    };
+
     enum class Renderer_BindingsCb : uint32_t
     {
         frame

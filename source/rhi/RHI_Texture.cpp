@@ -912,6 +912,19 @@ namespace spartan
          m_slices.shrink_to_fit();
     }
 
+    uint64_t RHI_Texture::GetCpuBytes() const
+    {
+        uint64_t bytes = 0;
+        for (const RHI_Texture_Slice& slice : m_slices)
+        {
+            for (const RHI_Texture_Mip& mip : slice.mips)
+            {
+                bytes += mip.bytes.capacity();
+            }
+        }
+        return bytes;
+    }
+
     bool RHI_Texture::UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data, bool defer_to_frame)
     {
         if (!m_rhi_resource || !data || width == 0 || height == 0)

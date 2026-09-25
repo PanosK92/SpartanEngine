@@ -11,6 +11,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Device.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
+#include "../RHI_SyncPrimitive.h"
+#include <mutex>
 //=======================================
 
 //= NAMESPACES =====
@@ -19,16 +21,67 @@ using namespace std;
 
 namespace
 {
-    PFN_vkGetAccelerationStructureBuildSizesKHR    as_get_build_sizes    = nullptr;
-    PFN_vkCreateAccelerationStructureKHR           as_create             = nullptr;
-    PFN_vkCmdBuildAccelerationStructuresKHR        as_build              = nullptr;
-    PFN_vkGetAccelerationStructureDeviceAddressKHR as_get_device_address = nullptr;
+    PFN_vkGetAccelerationStructureBuildSizesKHR       as_get_build_sizes    = nullptr;
+    PFN_vkCreateAccelerationStructureKHR              as_create             = nullptr;
+    PFN_vkCmdBuildAccelerationStructuresKHR           as_build              = nullptr;
+    PFN_vkGetAccelerationStructureDeviceAddressKHR    as_get_device_address = nullptr;
+    PFN_vkCmdWriteAccelerationStructuresPropertiesKHR as_write_properties   = nullptr;
+    PFN_vkCmdCopyAccelerationStructureKHR             as_copy               = nullptr;
+
+    namespace compaction
+    {
+        // one query per blas awaiting its compacted size, a blas that finds the pool exhausted stays uncompacted
+        // the initial burst queues every static blas before the first tlas exists, and plan.world alone has over 8k
+        constexpr uint32_t query_count = 32768;
+        // bounds the transient memory of a burst, the old storage lives until the gpu retires the copy
+        constexpr uint32_t copies_per_frame = 256;
+        VkQueryPool query_pool = VK_NULL_HANDLE;
+        std::vector<uint32_t> free_queries;
+        std::mutex mutex;
+        uint64_t bytes_before = 0;
+        uint64_t bytes_after  = 0;
+        uint32_t compacted    = 0;
+        uint32_t not_ready    = 0;
+        uint32_t not_smaller  = 0;
+
+        uint32_t acquire_query()
+        {
+            if (query_pool == VK_NULL_HANDLE)
+            {
+                VkQueryPoolCreateInfo info = { VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
+                info.queryType             = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR;
+                info.queryCount            = query_count;
+                if (vkCreateQueryPool(spartan::RHI_Context::device, &info, nullptr, &query_pool) != VK_SUCCESS)
+                {
+                    query_pool = VK_NULL_HANDLE;
+                    return UINT32_MAX;
+                }
+                free_queries.resize(query_count);
+                for (uint32_t i = 0; i < query_count; i++)
+                {
+                    free_queries[i] = query_count - 1 - i;
+                }
+            }
+
+            if (free_queries.empty())
+            {
+                return UINT32_MAX;
+            }
+
+            const uint32_t query = free_queries.back();
+            free_queries.pop_back();
+            return query;
+        }
+    }
 }
 
 namespace spartan
 {
     void* RHI_AccelerationStructure::s_blas_scratch_buffer         = nullptr;
     uint64_t RHI_AccelerationStructure::s_blas_scratch_buffer_size = 0;
+    vector<RHI_AccelerationStructure*> RHI_AccelerationStructure::s_compaction_pending;
+    uint64_t RHI_AccelerationStructure::s_blas_bytes = 0;
+    uint64_t RHI_AccelerationStructure::s_compaction_generation = 0;
 
     void RHI_AccelerationStructure::FreeSharedBlasScratch()
     {
@@ -52,6 +105,8 @@ namespace spartan
             as_create             = reinterpret_cast<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(RHI_Context::device, "vkCreateAccelerationStructureKHR"));
             as_build              = reinterpret_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(RHI_Context::device, "vkCmdBuildAccelerationStructuresKHR"));
             as_get_device_address = reinterpret_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkGetDeviceProcAddr(RHI_Context::device, "vkGetAccelerationStructureDeviceAddressKHR"));
+            as_write_properties   = reinterpret_cast<PFN_vkCmdWriteAccelerationStructuresPropertiesKHR>(vkGetDeviceProcAddr(RHI_Context::device, "vkCmdWriteAccelerationStructuresPropertiesKHR"));
+            as_copy               = reinterpret_cast<PFN_vkCmdCopyAccelerationStructureKHR>(vkGetDeviceProcAddr(RHI_Context::device, "vkCmdCopyAccelerationStructureKHR"));
         }
     }
 
@@ -62,6 +117,13 @@ namespace spartan
 
     void RHI_AccelerationStructure::Destroy()
     {
+        if (m_type == RHI_AccelerationStructureType::Bottom)
+        {
+            lock_guard lock(compaction::mutex);
+            CancelCompaction();
+            s_blas_bytes -= min(s_blas_bytes, m_size);
+        }
+
         m_device_address = 0;
         m_tlas_instance_count = m_tlas_refit_count = 0;
         if (m_type == RHI_AccelerationStructureType::Top && m_rhi_resource)
@@ -158,6 +220,10 @@ namespace spartan
         {
             build_info.flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
         }
+        else
+        {
+            build_info.flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
+        }
         build_info.mode          = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
         build_info.geometryCount = static_cast<uint32_t>(vk_geometries.size());
         build_info.pGeometries   = vk_geometries.data();
@@ -171,7 +237,7 @@ namespace spartan
         // create result buffer
         VkBufferUsageFlags usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        RHI_Device::MemoryBufferCreate(m_rhi_resource_results, size_info.accelerationStructureSize, usage, properties, nullptr, m_object_name.c_str());
+        RHI_Device::MemoryBufferCreate(m_rhi_resource_results, size_info.accelerationStructureSize, usage, properties, nullptr, m_object_name.c_str(), !allow_update);
 
         // bail if alloc failed, calling as_create with a null buffer would crash the driver
         if (!m_rhi_resource_results)
@@ -188,6 +254,11 @@ namespace spartan
         as_create(device, &create_info, nullptr, reinterpret_cast<VkAccelerationStructureKHR*>(&m_rhi_resource));
         m_device_address = 0;
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::AccelerationStructure, m_object_name.c_str());
+        {
+            lock_guard lock(compaction::mutex);
+            m_size        = size_info.accelerationStructureSize;
+            s_blas_bytes += m_size;
+        }
 
         // static blas share one growing scratch buffer, per-instance scratch oom'd the gpu, overallocated so the address can be aligned at use
         const uint64_t alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
@@ -205,7 +276,7 @@ namespace spartan
                 RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, *scratch_target);
                 *scratch_target = nullptr;
             }
-            RHI_Device::MemoryBufferCreate(*scratch_target, scratch_size, usage, properties, nullptr, (m_object_name + "_scratch").c_str());
+            RHI_Device::MemoryBufferCreate(*scratch_target, scratch_size, usage, properties, nullptr, (m_object_name + "_scratch").c_str(), true);
             if (!*scratch_target)
             {
                 SP_LOG_WARNING("BLAS scratch buffer alloc failed (%llu bytes) for %s, skipping build", scratch_size, m_object_name.c_str());
@@ -265,6 +336,185 @@ namespace spartan
         {
             m_scratch_buffer      = nullptr;
             m_scratch_buffer_size = 0;
+
+            // the compacted size is only known once the gpu has run the build, CompactBottomLevels picks it up later
+            if (as_write_properties && as_copy)
+            {
+                lock_guard lock(compaction::mutex);
+                CancelCompaction();
+                const uint32_t query = compaction::acquire_query();
+                if (query != UINT32_MAX)
+                {
+                    VkCommandBuffer cmd                  = static_cast<VkCommandBuffer>(cmd_list->GetRhiResource());
+                    VkAccelerationStructureKHR as_handle = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
+                    vkCmdResetQueryPool(cmd, compaction::query_pool, query, 1);
+                    as_write_properties(cmd, 1, &as_handle, VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR, compaction::query_pool, query);
+                    m_compaction_query = query;
+                    m_compaction_ready = RHI_CommandList::CapturePendingWork();
+                    s_compaction_pending.push_back(this);
+                }
+            }
+        }
+    }
+
+    void RHI_AccelerationStructure::CancelCompaction()
+    {
+        // caller holds compaction::mutex
+        if (m_compaction_query == UINT32_MAX)
+        {
+            return;
+        }
+
+        compaction::free_queries.push_back(m_compaction_query);
+        m_compaction_query = UINT32_MAX;
+        m_compaction_ready = nullptr;
+        erase(s_compaction_pending, this);
+    }
+
+    bool RHI_AccelerationStructure::CompactBottomLevels()
+    {
+        lock_guard lock(compaction::mutex);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        if (s_compaction_pending.empty() || !cmd_list || !as_copy)
+        {
+            return false;
+        }
+
+        VkCommandBuffer cmd = static_cast<VkCommandBuffer>(cmd_list->GetRhiResource());
+        VkDevice device     = static_cast<VkDevice>(RHI_Context::device);
+        uint32_t copies     = 0;
+        size_t retained     = 0;
+        for (size_t i = 0; i < s_compaction_pending.size(); i++)
+        {
+            RHI_AccelerationStructure* blas = s_compaction_pending[i];
+            if (copies >= compaction::copies_per_frame || !blas->m_compaction_ready || !blas->m_compaction_ready->IsComplete())
+            {
+                s_compaction_pending[retained++] = blas;
+                continue;
+            }
+
+            // the build has retired, so the query holds this build's result and not a previous owner's
+            uint64_t compacted_size = 0;
+            const VkResult result   = vkGetQueryPoolResults(device, compaction::query_pool, blas->m_compaction_query, 1, sizeof(uint64_t), &compacted_size, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
+            compaction::free_queries.push_back(blas->m_compaction_query);
+            blas->m_compaction_query = UINT32_MAX;
+            blas->m_compaction_ready = nullptr;
+
+            if (result != VK_SUCCESS || compacted_size == 0)
+            {
+                compaction::not_ready++;
+                continue;
+            }
+
+            // not worth a copy when the driver cannot shrink it meaningfully
+            if (compacted_size + compacted_size / 10 >= blas->m_size)
+            {
+                compaction::not_smaller++;
+                continue;
+            }
+
+            void* compacted_buffer = nullptr;
+            VkBufferUsageFlags usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+            RHI_Device::MemoryBufferCreate(compacted_buffer, compacted_size, usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, blas->m_object_name.c_str());
+            if (!compacted_buffer)
+            {
+                continue;
+            }
+
+            VkAccelerationStructureCreateInfoKHR create_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR };
+            create_info.buffer                               = static_cast<VkBuffer>(compacted_buffer);
+            create_info.size                                 = compacted_size;
+            create_info.type                                 = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+            VkAccelerationStructureKHR compacted             = VK_NULL_HANDLE;
+            if (as_create(device, &create_info, nullptr, &compacted) != VK_SUCCESS)
+            {
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, compacted_buffer);
+                continue;
+            }
+            RHI_Device::SetResourceName(compacted, RHI_Resource_Type::AccelerationStructure, blas->m_object_name.c_str());
+
+            VkCopyAccelerationStructureInfoKHR copy_info = { VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR };
+            copy_info.src                                = static_cast<VkAccelerationStructureKHR>(blas->m_rhi_resource);
+            copy_info.dst                                = compacted;
+            copy_info.mode                               = VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR;
+            as_copy(cmd, &copy_info);
+
+            // the previous tlas and this frame's copy still read the old storage, the deletion queue waits for both
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::AccelerationStructure, blas->m_rhi_resource);
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, blas->m_rhi_resource_results);
+
+            compaction::bytes_before += blas->m_size;
+            compaction::bytes_after  += compacted_size;
+            compaction::compacted++;
+            s_blas_bytes -= min(s_blas_bytes, blas->m_size);
+            s_blas_bytes += compacted_size;
+
+            blas->m_rhi_resource         = compacted;
+            blas->m_rhi_resource_results = compacted_buffer;
+            blas->m_size                 = compacted_size;
+            blas->m_device_address       = 0;
+            blas->GetDeviceAddress();
+            copies++;
+        }
+        s_compaction_pending.resize(retained);
+
+        if (s_compaction_pending.empty() && (compaction::compacted > 0 || compaction::not_ready > 0 || compaction::not_smaller > 0))
+        {
+            SP_LOG_INFO("Ray tracing: compacted %u BLAS from %.1f MB to %.1f MB (%u unreadable, %u not worth it), resident BLAS %.1f MB",
+                compaction::compacted,
+                static_cast<double>(compaction::bytes_before) / (1024.0 * 1024.0),
+                static_cast<double>(compaction::bytes_after) / (1024.0 * 1024.0),
+                compaction::not_ready,
+                compaction::not_smaller,
+                static_cast<double>(s_blas_bytes) / (1024.0 * 1024.0));
+            compaction::bytes_before = 0;
+            compaction::bytes_after  = 0;
+            compaction::compacted    = 0;
+            compaction::not_ready    = 0;
+            compaction::not_smaller  = 0;
+        }
+
+        if (copies == 0)
+        {
+            return false;
+        }
+        s_compaction_generation++;
+
+        // the tlas build and every ray query read the compacted copies
+        {
+            VkMemoryBarrier2 memory_barrier = {};
+            memory_barrier.sType            = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+            memory_barrier.srcStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+            memory_barrier.srcAccessMask    = VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+            memory_barrier.dstStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+            memory_barrier.dstAccessMask    = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_SHADER_READ_BIT;
+
+            VkDependencyInfo dependency_info   = {};
+            dependency_info.sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency_info.memoryBarrierCount = 1;
+            dependency_info.pMemoryBarriers    = &memory_barrier;
+
+            vkCmdPipelineBarrier2(cmd, &dependency_info);
+        }
+
+        return true;
+    }
+
+    void RHI_AccelerationStructure::DestroyCompactionResources()
+    {
+        lock_guard lock(compaction::mutex);
+        for (RHI_AccelerationStructure* blas : s_compaction_pending)
+        {
+            blas->m_compaction_query = UINT32_MAX;
+            blas->m_compaction_ready = nullptr;
+        }
+        s_compaction_pending.clear();
+        compaction::free_queries.clear();
+
+        if (compaction::query_pool != VK_NULL_HANDLE)
+        {
+            vkDestroyQueryPool(static_cast<VkDevice>(RHI_Context::device), compaction::query_pool, nullptr);
+            compaction::query_pool = VK_NULL_HANDLE;
         }
     }
 
@@ -521,7 +771,9 @@ namespace spartan
             m_size = size_info.accelerationStructureSize;
         }
     
-        const bool refit = m_tlas_instance_count == primitive_count && m_tlas_refit_count < 60;
+        // a refit keeps the old hierarchy, it must not outlive the blas storage that compaction moved
+        const bool refit = m_tlas_instance_count == primitive_count && m_tlas_refit_count < 60 && m_compaction_generation == s_compaction_generation;
+        m_compaction_generation = s_compaction_generation;
         build_info.mode = refit ? VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR : VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
         build_info.srcAccelerationStructure = refit ? static_cast<VkAccelerationStructureKHR>(m_rhi_resource) : VK_NULL_HANDLE;
         build_info.dstAccelerationStructure = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);

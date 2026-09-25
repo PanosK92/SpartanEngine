@@ -61,7 +61,7 @@ namespace spartan
         // asset resources
         array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_StandardTexture::Max)> standard_textures;
         array<shared_ptr<Mesh>, static_cast<uint32_t>(MeshType::Max)>                        standard_meshes;
-        shared_ptr<Font>                                                                     standard_font;
+        array<shared_ptr<Font>, static_cast<uint32_t>(Renderer_Font::Max)>                   fonts;
         shared_ptr<Material>                                                                 standard_material;
 
         // five reservoirs across current, previous and spatial slots, the 5th slot holds the source g-buffer for brdf and jacobian
@@ -220,9 +220,10 @@ namespace spartan
         );
 
         // Initial allocation; larger scenes grow the pool instead of disabling emissive NEE.
+        // host visible because BuildEmissiveTriangleNeePool fills it with RHI_Buffer::Update every frame
         at(buffers, Renderer_Buffer::EmissiveTriangles) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_EmissiveTriangle)),
-            restir_emissive_tri_initial_capacity, nullptr, false, "emissive_triangles"
+            restir_emissive_tri_initial_capacity, nullptr, true, "emissive_triangles"
         );
 
         // three concatenated tileable pairing tables, uploaded once when the restir reservoirs initialize
@@ -582,7 +583,7 @@ namespace spartan
         while (capacity < count)
             capacity *= 2;
         buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, sizeof(Sb_EmissiveTriangle),
-            capacity, nullptr, false, "emissive_triangles");
+            capacity, nullptr, true, "emissive_triangles");
         SP_LOG_INFO("ReSTIR emissive sampler: %u triangles, capacity %u", count, capacity);
     }
 
@@ -1159,7 +1160,7 @@ namespace spartan
             { Renderer_Shader::fxaa_c,                                RHI_Shader_Type::Compute, "fxaa/fxaa.hlsl"                                                             },
             { Renderer_Shader::taau_c,                                RHI_Shader_Type::Compute, "taau.hlsl"                                                                  },
             { Renderer_Shader::dlss_reactivity_c,                      RHI_Shader_Type::Compute, "dlss_reactivity.hlsl"                                                     },
-            { Renderer_Shader::font_v,                                RHI_Shader_Type::Vertex,  "font.hlsl",                                  RHI_Vertex_Type::PosUv         },
+            { Renderer_Shader::font_v,                                RHI_Shader_Type::Vertex,  "font.hlsl",                                  RHI_Vertex_Type::Pos2dUvCol8   },
             { Renderer_Shader::font_p,                                RHI_Shader_Type::Pixel,   "font.hlsl"                                                                  },
             { Renderer_Shader::film_grain_c,                          RHI_Shader_Type::Compute, "film_grain.hlsl"                                                            },
             { Renderer_Shader::chromatic_aberration_c,                RHI_Shader_Type::Compute, "chromatic_aberration.hlsl"                                                  },
@@ -1281,8 +1282,19 @@ namespace spartan
     {
         const string dir_font = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "/";
 
-        uint32_t size = static_cast<uint32_t>(10 * Window::GetDpiScale());
-        standard_font = make_shared<Font>(dir_font + "OpenSans/OpenSans-Medium.ttf", size, Color(0.9f, 0.9f, 0.9f, 1.0f));
+        const float dpi_scale = Window::GetDpiScale();
+        auto size = [dpi_scale](const float points)
+        {
+            return static_cast<uint32_t>(points * dpi_scale + 0.5f);
+        };
+
+        const Color white = Color(0.9f, 0.9f, 0.9f, 1.0f);
+        fonts[static_cast<uint32_t>(Renderer_Font::Standard)]     = make_shared<Font>(dir_font + "OpenSans/OpenSans-Medium.ttf", size(10.0f), white);
+
+        // the performance overlay sits on its own panel, so its fonts skip the outline and stay crisp
+        fonts[static_cast<uint32_t>(Renderer_Font::OverlaySmall)] = make_shared<Font>(dir_font + "Inter/Inter-Regular.ttf",  size(8.0f),  white, Font_Outline_None);
+        fonts[static_cast<uint32_t>(Renderer_Font::Overlay)]      = make_shared<Font>(dir_font + "Inter/Inter-SemiBold.ttf", size(10.0f), white, Font_Outline_None);
+        fonts[static_cast<uint32_t>(Renderer_Font::OverlayLarge)] = make_shared<Font>(dir_font + "Inter/Inter-SemiBold.ttf", size(22.0f), white, Font_Outline_None);
     }
 
     void Renderer::CreateStandardMeshes()
@@ -1550,7 +1562,7 @@ namespace spartan
 
         m_frame_resources.fill(FrameResource{});
 
-        standard_font     = nullptr;
+        fonts.fill(nullptr);
         standard_material = nullptr;
     }
 
@@ -1674,9 +1686,9 @@ namespace spartan
         return standard_meshes[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<Font>& Renderer::GetFont()
+    shared_ptr<Font>& Renderer::GetFont(const Renderer_Font font)
     {
-        return standard_font;
+        return fonts[static_cast<uint32_t>(font)];
     }
 
     shared_ptr<Material>& Renderer::GetStandardMaterial()

@@ -148,11 +148,17 @@ static const float grass_patch_max_boost = 4.0f;
 // past it would be work the atomic cap refuses to accept anyway
 static const float grass_max_boost = 12.0f;
 // how far above its own gate the biome mask has to climb before a slot runs at full density, a
-// narrow band here is what keeps meadow cores thick while the mask edges still fade out
-static const float grass_biome_gain = 0.25f;
-// share of the edge fringe amount that also punches bare scars through a pocket interior, a clean
-// edged pocket with a pockmarked middle would read as two unrelated effects. mirrored on the cpu
-static const float grass_patch_scar_ratio = 0.3f;
+// narrow band here is what keeps meadow cores thick while the mask edges still fade out. grass is
+// thousands of individual blades, it only reads as a field at full density, so a wide ramp here
+// left whole meadows sitting on a mid mask value half thinned
+static const float grass_biome_gain = 0.06f;
+// width of the pocket fringe in the uniform patch space, per unit of edge. the threshold alone sets
+// the outline, this only decides how far either side of it the density ramps, and anything wide
+// turns most of a pocket into fringe so its core never reaches full thickness
+static const float grass_patch_fringe = 0.08f;
+// the slope gate fades density over this many radians below the slope ceiling instead of across the
+// whole band, a gentle hillside is still a meadow and has to be as thick as the flat ground
+static const float grass_slope_fade = 0.07f;
 // terrain_layer_max, the dominant layer index in the mask alpha can never exceed this
 static const uint grass_ground_layer_max = 8u;
 
@@ -182,7 +188,6 @@ float grass_patch_weight(
     float  patch_size,
     float  coverage,
     float  edge,
-    float  scar,
     bool   invert
 )
 {
@@ -213,47 +218,34 @@ float grass_patch_weight(
     // as the slot it mirrors, so the two tile the ground with no gap and no overlap
     float share = invert ? (1.0f - coverage) : coverage;
     float t     = 1.0f - share;
-    float e     = max(edge * 0.5f, 1e-3f);
+    float e     = max(edge * grass_patch_fringe, 1e-3f);
     float w     = smoothstep(t - e, t + e, u);
     if (invert)
     {
         w = 1.0f - w;
     }
 
-    // bare scars. real ground inside a meadow is broken by paths, outcrops and dry spots, and
-    // without them a patch interior reads as a printed texture no matter how good its edge is.
-    // applied after the flip so an inverted slot gets broken up too, and so the average cost is the
-    // same either way and the density compensation stays one formula
-    if (scar > 0.0f)
-    {
-        float s = grass_gaussian_cdf(
-            grass_fbm(world_xz * inv * 3.7f + 31.0f, grass_patch_seed + 1409u) / grass_patch_sigma
-        );
-        w *= 1.0f - scar * smoothstep(0.62f, 0.86f, s);
-    }
-
     return w;
 }
 
-// what fraction of the eligible ground survives the patch field on average. the threshold keeps
-// coverage exactly, and the scar field independently removes the mean of its own smoothstep, which
-// for the 0.62 to 0.86 band above is 0.26
-float grass_patch_coverage_expected(float patch_size, float coverage, float scar)
+// what fraction of the eligible ground survives the patch field on average, the threshold keeps
+// coverage exactly and the fringe is symmetric about it so it costs nothing on average
+float grass_patch_coverage_expected(float patch_size, float coverage)
 {
     if (patch_size <= 0.0f || coverage >= 1.0f)
     {
         return 1.0f;
     }
 
-    return coverage * (1.0f - 0.26f * scar);
+    return coverage;
 }
 
 // pulling grass into pockets empties most of the ring, so the same budget spread over what is left
 // is what turns a thin even carpet into a thick patchy one. this is the whole reason clustering buys
 // density rather than costing it
-float grass_patch_density_boost(float patch_size, float coverage, float scar)
+float grass_patch_density_boost(float patch_size, float coverage)
 {
-    float expected = grass_patch_coverage_expected(patch_size, coverage, scar);
+    float expected = grass_patch_coverage_expected(patch_size, coverage);
 
     return min(1.0f / max(expected, 0.08f), grass_patch_max_boost);
 }
@@ -407,9 +399,6 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     bool  patch_invert      = patch_size_signed < 0.0f;
     float patch_coverage    = saturate(buffer_pass.values[3].y);
     float patch_edge        = saturate(buffer_pass.values[3].z);
-    // the knob that frays the outline also breaks the interior, one is a fixed fraction of the other
-    // so it is derived here rather than pushed, which frees the float for the ground type bits
-    float patch_scar        = patch_edge * grass_patch_scar_ratio;
     uint  ground_mask       = (uint)buffer_pass.values[3].w;
 
     // the same shaping the cpu placer applies, a slope floor, a bias toward one end of the slope band
@@ -455,7 +444,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // the patches reject most of the ring, so the cell has to be handed proportionally more threads
     // or the budget is simply lost and clustering costs density instead of buying it. the cpu sizes
     // dispatch z from the identical expression
-    float patch_boost = grass_patch_density_boost(patch_size, patch_coverage, patch_scar);
+    float patch_boost = grass_patch_density_boost(patch_size, patch_coverage);
 
     // the same argument applies to the part of the circle the camera cannot see, and the two multiply
     float total_boost = min(patch_boost * grass_frustum_density_boost(), grass_max_boost);
@@ -670,7 +659,6 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         patch_size,
         patch_coverage,
         patch_edge,
-        patch_scar,
         patch_invert
     );
 
@@ -719,7 +707,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     if (biome_min >= 0.0f)
     {
-        float slope_fit = saturate((surface_normal.y - max_slope_cos) / max(1.0f - max_slope_cos, 1e-4f));
+        float slope_fit = saturate((acos(saturate(max_slope_cos)) - acos(saturate(surface_normal.y))) / grass_slope_fade);
         float biome_roll = hash_unit(hash_mix(h0 ^ 0x27d4eb2du));
         if (biome_roll > biome_ground * slope_fit) return;
     }
@@ -784,14 +772,14 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         {
             wind_sample current_wind = evaluate_wind(root, 0.0f);
             wind_sample previous_wind = evaluate_wind(root, -buffer_frame.delta_time);
-            float response = saturate(length(buffer_frame.wind.xz) * 0.10f);
+            float response = grass_wind_response();
             float pressure = max(current_wind.bend_strength, previous_wind.bend_strength);
             float gust = max(current_wind.gust, previous_wind.gust);
-            // Upper envelope includes spring, ambient wobble, micro flutter and the
+            // Upper envelope includes spring, ambient wobble, micro and gust flutter and the
             // largest resting arch, at both motion-vector times. Clamping the bend
             // introduces a kink, so use a larger error envelope in that case.
             float angle = pressure * (1.03f * 55.0f * DEG_TO_RAD + 0.0175f) +
-                          response * 2.3f * DEG_TO_RAD +
+                          response * (2.3f + 5.0f) * DEG_TO_RAD +
                           22.0f * DEG_TO_RAD * (1.0f + response * (0.10f + 0.14f * gust));
             float limit = max(0.0f, 75.0f * DEG_TO_RAD - acos(saturate(surface_normal.y)));
             // Cantilever r(t)=t*R(A*t^1.5): chord error <= max|r''|/72
