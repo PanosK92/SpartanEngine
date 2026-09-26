@@ -119,6 +119,10 @@ namespace spartan
         static math::Vector3 SampleWind(const math::Vector3& position, float time);
         static void SetWind(const math::Vector3& wind);
 
+        // puddliness: 0 = dry ground, 1 = standing water in every low spot of terrain and roads
+        static float GetPuddliness();
+        static void SetPuddliness(float puddliness);
+
         // clouds, horizontal noise offset in meters, rerolled on every world load
         static const math::Vector2& GetCloudSeedOffset();
 

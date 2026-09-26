@@ -201,6 +201,7 @@ namespace spartan
         node.append_attribute("distance_shadows")    = m_distance_shadows;
         node.append_attribute("distance_volumetric") = m_distance_volumetric;
         node.append_attribute("cloud_coverage")      = m_cloud_coverage;
+        node.append_attribute("rain")                = m_rain;
     }
 
     void Light::Load(pugi::xml_node& node)
@@ -235,6 +236,7 @@ namespace spartan
         m_distance_shadows     = node.attribute("distance_shadows").as_float(m_distance_shadows);
         m_distance_volumetric  = node.attribute("distance_volumetric").as_float(m_distance_volumetric);
         m_cloud_coverage       = node.attribute("cloud_coverage").as_float(m_cloud_coverage);
+        m_rain                 = clamp(node.attribute("rain").as_float(0.0f), 0.0f, 1.0f);
         m_screen_space_shadows_slice_index = 0;
 
         if (m_light_type != LightType::Directional || !(m_flags & LightFlags::Shadows))
@@ -341,6 +343,8 @@ namespace spartan
             "SetTimeOfDay",                 [](Light& Self, float time_of_day) { Self.SetTimeOfDay(time_of_day); },
             "SetCloudCoverage",             &Light::SetCloudCoverage,
             "GetCloudCoverage",             &Light::GetCloudCoverage,
+            "SetRain",                      &Light::SetRain,
+            "GetRain",                      &Light::GetRain,
 
             "GetSliceCount",                &Light::GetSliceCount,
 
@@ -653,6 +657,17 @@ namespace spartan
     void Light::SetCloudCoverage(const float coverage)
     {
         m_cloud_coverage = clamp(coverage, 0.0f, 1.0f);
+    }
+
+    void Light::SetRain(const float rain)
+    {
+        if (isfinite(rain))
+            m_rain = clamp(rain, 0.0f, 1.0f);
+    }
+
+    float Light::GetCloudCoverageEffective() const
+    {
+        return m_rain > 0.0f ? max(m_cloud_coverage, 0.72f + 0.26f * m_rain) : m_cloud_coverage;
     }
 
     float Light::GetIntensityRadiometric() const

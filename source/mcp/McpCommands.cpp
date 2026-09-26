@@ -22,6 +22,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../profiling/Profiler.h"
 #include "../memory/GpuMemory.h"
 #include "../world/World.h"
+#include "../world/Weather.h"
 #include "../world/Entity.h"
 #include "../world/components/Camera.h"
 #include "../world/components/Component.h"
@@ -3949,6 +3950,10 @@ namespace spartan
             json += ",\"audio_source_count\":" + std::to_string(World::GetAudioSourceCount());
             json += ",\"time_of_day\":" + std::to_string(World::GetTimeOfDay(false));
             json += ",\"wind\":" + json_vector3(wind);
+            json += ",\"puddliness\":" + std::to_string(World::GetPuddliness());
+            json += ",\"rain\":" + std::to_string(Weather::GetRain());
+            json += ",\"wetness\":" + std::to_string(Weather::GetWetness());
+            json += ",\"rain_puddliness\":" + std::to_string(Weather::GetRainPuddliness());
             json += ",\"bounding_box\":" + json_bounding_box(World::GetBoundingBox());
             json += "}";
             return json;
@@ -4232,6 +4237,36 @@ namespace spartan
                 }
 
                 World::SetWind(parsed);
+                changed = true;
+            }
+
+            if (const std::optional<std::string> puddliness = get_argument(request, "puddliness"))
+            {
+                float parsed = 0.0f;
+                if (!parse_float(*puddliness, parsed) || parsed < 0.0f || parsed > 1.0f)
+                {
+                    return json_error("invalid puddliness");
+                }
+
+                World::SetPuddliness(parsed);
+                changed = true;
+            }
+
+            if (const std::optional<std::string> rain = get_argument(request, "rain"))
+            {
+                float parsed = 0.0f;
+                if (!parse_float(*rain, parsed) || parsed < 0.0f || parsed > 1.0f)
+                {
+                    return json_error("invalid rain");
+                }
+
+                Light* light = World::GetDirectionalLight();
+                if (!light)
+                {
+                    return json_error("rain needs a directional light");
+                }
+
+                light->SetRain(parsed);
                 changed = true;
             }
 

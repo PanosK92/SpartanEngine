@@ -30,6 +30,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "world/components/Navigation.h"
 #include "world/components/Terrain.h"
 #include "world/WorldHelpers.h"
+#include "world/Weather.h"
 #include "core/ThreadPool.h"
 #include "world/components/Camera.h"
 #include "world/components/Volume.h"
@@ -1130,6 +1131,19 @@ void Properties::ShowLight(spartan::Light* light) const
                 "%.2f"))
             {
                 light->SetCloudCoverage(cloud_coverage);
+            }
+
+            float rain = light->GetRain();
+            if (property_float("Rain", &rain, 0.005f, 0.0f, 1.0f, "0 = dry, 1 = downpour, clouds close in, surfaces soak and puddles fill over a minute of steady rain", "%.2f"))
+            {
+                light->SetRain(rain);
+            }
+            ImGui::Text("Wetness %.0f%% | Puddles %.0f%%", Weather::GetWetness() * 100.0f, Weather::GetRainPuddliness() * 100.0f);
+
+            float puddliness = World::GetPuddliness();
+            if (property_float("Puddliness", &puddliness, 0.005f, 0.0f, 1.0f, "standing water on terrain and roads, pools grow out of the low spots first, 0 = dry", "%.2f"))
+            {
+                World::SetPuddliness(puddliness);
             }
         }
 

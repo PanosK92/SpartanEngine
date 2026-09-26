@@ -105,6 +105,9 @@ namespace spartan
         at(buffers, Renderer_Buffer::Decals) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(DecalParameters)),
             renderer_max_decals * renderer_draw_data_buffer_count, nullptr, true, "decals");
+        at(buffers, Renderer_Buffer::RainOcclusion) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(float)),
+            RAIN_OCCLUSION_RESOLUTION * RAIN_OCCLUSION_RESOLUTION * renderer_draw_data_buffer_count, nullptr, true, "rain_occlusion");
         at(buffers, Renderer_Buffer::DrawData) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)),
             renderer_max_draw_calls * renderer_draw_data_buffer_count, nullptr, true,

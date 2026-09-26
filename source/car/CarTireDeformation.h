@@ -77,7 +77,7 @@ namespace car
         using V = spartan::math::Vector3;
         static constexpr int sectors = 64, lanes = 3, bands = 5;
         static constexpr int node_count = sectors * lanes * bands;
-        struct beam { int a, b; float length, stiffness; bool pneumatic; };
+        struct beam { int a, b; V axis; float stiffness; bool pneumatic; };
         struct binding
         {
             uint16_t nodes[8];
@@ -110,7 +110,7 @@ namespace car
                     }
             auto connect = [&](int a, int b, float stiffness, bool pneumatic)
             {
-                beams.push_back({a, b, (rest[b] - rest[a]).Length(), stiffness, pneumatic});
+                beams.push_back({a, b, (rest[b] - rest[a]).Normalized(), stiffness, pneumatic});
             };
             for (int band = 1; band < bands; ++band)
                 for (int lane = 0; lane < lanes; ++lane)
@@ -310,14 +310,13 @@ namespace car
                 for (size_t j = 0; j < beams.size(); ++j)
                 {
                     const beam& b = beams[j];
-                    // Unloaded arcs remain exactly at rest. Do not evaluate
-                    // their square roots; ignore sub-10 nm numerical motion.
+                    // Unloaded arcs remain exactly at rest; ignore sub-10 nm numerical motion.
                     if (!moving[b.a] && !moving[b.b]) continue;
-                    V delta = position[b.b] - position[b.a];
-                    float length = delta.Length();
-                    if (length < 1e-8f) continue;
-                    float k = coefficients[j];
-                    V f = delta * (k * (length - b.length) / length);
+                    // Springs act along their rest axis. Length springs buckle once the
+                    // flattened patch compresses the circumferential beams, and the solve
+                    // then jumps between buckled shapes as pressure or load changes.
+                    const V stretch = (position[b.b] - rest[b.b]) - (position[b.a] - rest[b.a]);
+                    V f = b.axis * (coefficients[j] * stretch.Dot(b.axis));
                     force[b.a] += f; force[b.b] -= f;
                 }
                 for (int i = lanes * sectors; i < node_count; ++i)

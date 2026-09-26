@@ -127,6 +127,7 @@ namespace editor_history
             environment.append_attribute("daily_amplitude") = settings.daily_amplitude;
             environment.append_attribute("sea_level_pressure") = settings.sea_level_pressure;
             write("wind", World::GetWind());
+            root.append_child("puddliness").append_attribute("value") = World::GetPuddliness();
         }
         return Xml(root);
     }
@@ -200,6 +201,7 @@ namespace editor_history
             Environment::SetSettings(settings);
         }
         if (root.child("wind") && Xml(root.child("wind")) != Xml(old.child("wind"))) World::SetWind(vector(root.child("wind")));
+        if (root.child("puddliness") && Xml(root.child("puddliness")) != Xml(old.child("puddliness"))) World::SetPuddliness(root.child("puddliness").attribute("value").as_float());
         auto list = root.child("components");
         auto old_list = old.child("components");
         for (auto n : old_list.children())

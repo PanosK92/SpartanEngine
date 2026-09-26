@@ -16,6 +16,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "WorldHelpers.h"
 #include "IslandWildlife.h"
 #include "IslandRoadDetails.h"
+#include "Weather.h"
 #include "../car/Car.h"
 #include "../geometry/GeneratedCache.h"
 #include "../rendering/GeometryBuffer.h"
@@ -838,6 +839,8 @@ namespace spartan
             WorldTable["SetTimeOfDay"]              = &World::SetTimeOfDay;
             WorldTable["GetWind"]                   = &World::GetWind;
             WorldTable["SetWind"]                   = &World::SetWind;
+            WorldTable["GetPuddliness"]             = &World::GetPuddliness;
+            WorldTable["SetPuddliness"]             = &World::SetPuddliness;
             WorldTable["SetDateUtc"] = &Environment::SetDate;
             WorldTable["GetAirTemperature"] = []() { return World::GetEnvironment().air_temperature; };
             WorldTable["GetRoadTemperature"] = []() { return World::GetEnvironment().road_temperature; };
@@ -1184,6 +1187,11 @@ namespace spartan
 
         }
 
+    }
+
+    namespace world_weather
+    {
+        float puddliness = 0.0f;
     }
 
     namespace world_clouds
@@ -2061,6 +2069,9 @@ namespace spartan
             SP_PROFILE_CPU_END();
         }
 
+        // after the camera settled for the frame, its drops, grid and sound follow it
+        Weather::Tick(static_cast<float>(Timer::GetDeltaTimeSec()));
+
         ProcessPendingAdditions();
 
         // resolve if needed
@@ -2812,6 +2823,7 @@ namespace spartan
         environment_node.append_attribute("wind_x") = GetWind().x;
         environment_node.append_attribute("wind_y") = GetWind().y;
         environment_node.append_attribute("wind_z") = GetWind().z;
+        environment_node.append_attribute("puddliness") = GetPuddliness();
 
         // console variables (only those explicitly overridden by this world are persisted)
         if (!world_console_variables.empty())
@@ -3234,6 +3246,7 @@ namespace spartan
                     environment_node.attribute("wind_y").as_float(default_wind.y),
                     environment_node.attribute("wind_z").as_float(default_wind.z)
                 ));
+                SetPuddliness(environment_node.attribute("puddliness").as_float(0.0f));
 
                 // console variables: apply any cvars defined by the world
                 // format:
@@ -3895,7 +3908,7 @@ namespace spartan
     {
         Light* light = GetDirectionalLight();
         return Environment::Evaluate(light && light->GetFlag(LightFlags::DayNightCycle) && light->GetFlag(LightFlags::RealTimeCycle),
-            light ? light->GetCloudCoverage() : 0.0f, GetWind().Length());
+            light ? light->GetCloudCoverageEffective() : 0.0f, GetWind().Length());
     }
 
     const Vector3& World::GetWind()
@@ -3912,6 +3925,17 @@ namespace spartan
     {
         if (std::isfinite(wind.x) && std::isfinite(wind.y) && std::isfinite(wind.z))
             world_wind::wind = Vector3(std::clamp(wind.x, -100.0f, 100.0f), std::clamp(wind.y, -100.0f, 100.0f), std::clamp(wind.z, -100.0f, 100.0f));
+    }
+
+    float World::GetPuddliness()
+    {
+        return world_weather::puddliness;
+    }
+
+    void World::SetPuddliness(float puddliness)
+    {
+        if (std::isfinite(puddliness))
+            world_weather::puddliness = std::clamp(puddliness, 0.0f, 1.0f);
     }
 
     const Vector2& World::GetCloudSeedOffset()

@@ -932,6 +932,7 @@ namespace spartan
             params.flipbook_fps         = emitter->GetFlipbookFps();
             params.emitter_velocity     = emitter->GetEmitterVelocity();
             params.ground_plane         = emitter->GetGroundPlane();
+            params.rain_occluded        = emitter->GetRainOccluded() ? 1u : 0u;
         }
 
         // the volumetric path costs a clear, a scatter, a full grid resolve and a full resolution ray

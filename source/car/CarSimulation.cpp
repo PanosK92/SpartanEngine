@@ -484,7 +484,7 @@ namespace car
         relative_velocity -= w.contact_normal * relative_velocity.dot(w.contact_normal);
         const float peak = spec.tire_friction * load_sensitive_grip(w.tire_load) * surface
             * (is_rear(i) ? spec.rear_grip_ratio : 1.0f) * w.condition_grip
-            * water_grip(spec, relative_velocity.magnitude(), w.pressure_bar, w.water_depth);
+            * water_grip(spec, relative_velocity.magnitude(), w.pressure_bar, w.water_depth, w.wear);
         const float peak_long = peak * fabsf(spec.long_D);
         const float peak_lat = peak * fabsf(spec.lat_D) * get_camber_grip_factor(w.dynamic_camber);
         const auto brush = evaluate_brush_params(spec, w.effective_radius, cfg.wheel_width_for(i), w.tire_load, w.condition_stiffness, w.pressure_bar);
@@ -3188,6 +3188,10 @@ namespace car
                 w.surface_grip = 0.0f;
                 w.surface_rolling = 0.0f;
                 w.mixed_surface = false;
+                if (water_resolver)
+                {
+                    w.water_depth = 0.0f;
+                }
                 w.tire_load = 0.0f;
                 w.contact_actor = nullptr;
                 w.contact_normal = local_up;
@@ -3320,6 +3324,16 @@ namespace car
                     }
                     w.contact_surface = static_cast<surface_type>(dominant);
                     w.mixed_surface = loaded_surfaces > 1;
+                }
+                if (water_resolver)
+                {
+                    w.water_depth = PxMax(water_resolver(aggregate_point, w.contact_surface), 0.0f);
+                    // sealed ground under a visible film reads as wet for sound, skid marks and the hud,
+                    // the grip loss itself comes from water_grip() so the name alone changes nothing
+                    if (w.water_depth > 0.0002f && (w.contact_surface == surface_asphalt || w.contact_surface == surface_concrete))
+                    {
+                        w.contact_surface = surface_wet_asphalt;
+                    }
                 }
                 w.contact_point = aggregate_point;
                 w.contact_normal = aggregate_normal;
@@ -4302,7 +4316,7 @@ namespace car
                 // rear grip ratio represents compound differences between axles
                 float axle_grip_scale = is_rear(i) ? spec.rear_grip_ratio : 1.0f;
                 // camber modifies lateral grip only
-                float shared_grip     = base_grip * surface_factor * axle_grip_scale * water_grip(spec, ground_speed, w.pressure_bar, w.water_depth);
+                float shared_grip     = base_grip * surface_factor * axle_grip_scale * water_grip(spec, ground_speed, w.pressure_bar, w.water_depth, w.wear);
                 float long_grip_scale = w.condition_grip;
                 float lat_grip_scale  = w.condition_grip * camber_factor;
                 float peak_force_long = shared_grip * long_grip_scale * fabsf(spec.long_D);
@@ -4569,7 +4583,7 @@ namespace car
                 w.dissipated_energy_j += slip_energy;
                 if (w.thermal.avg_surface() > spec.tire_damage_temp)
                     w.damage = PxClamp(w.damage + slip_energy / spec.tire_damage_energy, 0.0f, 1.0f);
-                integrate_tire_thermal(w.thermal, spec, zone_share, sum_slip_power * substep_inverse, rolling_power, environment_enabled ? (body->getLinearVelocity() - wind_velocity).magnitude() : ground_speed, dt, environment_enabled ? ambient_temperature : NAN, environment_enabled ? road_temperature : NAN, environment_enabled ? 1.0f : 0.0f);
+                integrate_tire_thermal(w.thermal, spec, zone_share, sum_slip_power * substep_inverse, rolling_power, environment_enabled ? (body->getLinearVelocity() - wind_velocity).magnitude() : ground_speed, dt, environment_enabled ? ambient_temperature : NAN, environment_enabled ? road_temperature : NAN, environment_enabled ? 1.0f : 0.0f, PxClamp(w.water_depth / 0.0005f, 0.0f, 1.0f));
 
                 // --- tire wear (per-zone based on local temperature) ---
                 float total_wear = 0.0f;
@@ -4611,6 +4625,15 @@ namespace car
                     }
                 }
                 else safe_add_force_at_pos(force_body, tire_force, fpos);
+
+                // the tread ploughs the standing water ahead of it, a bow wave that drags on the car even once the
+                // patch has no grip left, so a puddle under one side tugs the steering toward it
+                const float plough_depth = PxMin(PxMax(w.water_depth - 0.0005f, 0.0f), 0.05f);
+                if (w.grounded && plough_depth > 0.0f && ground_speed > 0.5f)
+                {
+                    const float plough_drag = 0.5f * 1000.0f * 0.7f * cfg.wheel_width_for(i) * plough_depth * ground_speed * ground_speed;
+                    safe_add_force_at_pos(force_body, -(wheel_fwd * vx + wheel_lat * vy) * (plough_drag / ground_speed), fpos);
+                }
 
                 if (wheel_actor)
                 {
@@ -5774,7 +5797,7 @@ namespace car
                     const float shares[3] = { 1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f };
                     for (int i = 0; i < wheel_count; i++)
                     {
-                        integrate_tire_thermal(wheels[i].thermal, spec, shares, 0.0f, 0.0f, wind_velocity.magnitude(), dt, environment_enabled ? ambient_temperature : NAN, environment_enabled ? road_temperature : NAN, environment_enabled && wheels[i].grounded ? 1.0f : 0.0f);
+                        integrate_tire_thermal(wheels[i].thermal, spec, shares, 0.0f, 0.0f, wind_velocity.magnitude(), dt, environment_enabled ? ambient_temperature : NAN, environment_enabled ? road_temperature : NAN, environment_enabled && wheels[i].grounded ? 1.0f : 0.0f, PxClamp(wheels[i].water_depth / 0.0005f, 0.0f, 1.0f));
                         float retention = expf(-spec.brake_cooling_base * dt / PxMax(spec.brake_thermal_mass * spec.brake_specific_heat, 1.0f));
                         wheels[i].brake_temp = (environment_enabled ? ambient_temperature : spec.brake_ambient_temp) + (wheels[i].brake_temp - (environment_enabled ? ambient_temperature : spec.brake_ambient_temp)) * retention;
                     }

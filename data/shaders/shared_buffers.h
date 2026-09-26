@@ -48,6 +48,9 @@ Commercial use requires written permission and negotiated payment terms.
 #endif
 
 // constant buffer - updates once per frame
+// rain occlusion grid cells per side, the cpu fills it with downward physics rays around the camera
+#define RAIN_OCCLUSION_RESOLUTION 128
+
 struct FrameBufferData
 {
     SHARED_MATRIX view;
@@ -158,7 +161,7 @@ struct FrameBufferData
 
     SHARED_UINT   terrain_blend_material;  // bindless index of the terrain surface material
     SHARED_FLOAT  terrain_blend_tiling;    // terrain uv repeats per metre, matches the surface material
-    SHARED_FLOAT  padding_terrain_blend_0;
+    SHARED_FLOAT  puddliness;              // 0 dry, 1 standing water in every low spot of terrain and roads
     SHARED_FLOAT  padding_terrain_blend_1;
 
     // radial motion blur wheel hubs, xy = screen uv, z = signed per-frame rotation angle in radians, w = projected radius in output pixels
@@ -173,6 +176,22 @@ struct FrameBufferData
     SHARED_FLOAT4 equatorial_x;
     SHARED_FLOAT4 equatorial_y;
     SHARED_FLOAT4 equatorial_z;
+
+    // weather, x = rain intensity 0-1, y = how soaked exposed surfaces are 0-1, z = authored puddliness, w = puddliness the rain has filled
+    SHARED_FLOAT4 weather;
+    // rain occlusion grid, xy = world xz of the grid's min corner, z = cell size in metres, w = element offset of this frame's slice
+    SHARED_FLOAT4 rain_occlusion;
+    // droplets on the occupied car (draws flagged with bit 7), world space
+    // lean xyz = how far the drops sway under the car's g forces and airflow, in g, w = how soaked the car is, it carries its water under a roof
+    // vein xyz = the pull the running water follows, gravity included and slowed down so the wetted paths lag it, in g
+    // axis[p] xyz = the car's x, y and z axes, a face tracks the plane whose normal it lines up with best
+    // slide[p * 4 + n] xyz = how far the drops of size bucket n (largest first) have slid over faces of plane p, metres
+    // flow[p * 4 + n] xyz = how fast they slide right now, m/s
+    SHARED_FLOAT4 rain_vehicle_lean;
+    SHARED_FLOAT4 rain_vehicle_vein;
+    SHARED_FLOAT4 rain_vehicle_axis[3];
+    SHARED_FLOAT4 rain_vehicle_slide[12];
+    SHARED_FLOAT4 rain_vehicle_flow[12];
 
 #ifdef __cplusplus
     void set_bit(const bool set, const uint32_t bit)
@@ -439,6 +458,7 @@ struct DecalParameters
 // flags bit 4: alpha-tested material (triangle pass routes survivors to the alpha half so the depth prepass can run opaque depth-only)
 // flags bit 5: skip hi-z (recently moved, last frame occluder depth would pop the mesh)
 // flags bit 6: exclude this draw from terrain blending/coating
+// flags bit 7: part of the occupied car, its rain droplets answer the car's g forces
 // flags bits 8-10: lod index of this draw, bits 11-13: mesh lod count, instance cull keeps the instance only on the lod its screen coverage wants
 // lod_first_index/lod_vertex_offset hold the global geometry offsets for the lod (replaces what indirect_draw_args used to carry)
 struct DrawData
@@ -695,6 +715,8 @@ struct EmitterParams
     // how far a particle has to get from the emitter before collision engages, an emitter buried inside
     // geometry such as an exhaust tip needs enough of this to clear the bodywork around it
     SHARED_FLOAT  collision_clearance SHARED_DEFAULT(0.0f);
+    // weather rain, particles die where the rain occlusion grid says a roof or the ground stops them
+    SHARED_UINT   rain_occluded SHARED_DEFAULT(0);
 };
 
 // c++ backward compatibility aliases

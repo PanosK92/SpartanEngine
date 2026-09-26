@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES =========
 #include "common.hlsl"
 #include "fog_volume.hlsl"
+#include "common_rain.hlsl"
 #ifdef RENDER
 #include "brdf.hlsl"
 #include "shadow_mapping.hlsl"
@@ -111,6 +112,13 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // Contact-patch smoke starts above the road, not inside a sphere half buried in it.
     if (emitter.rollup_strength > 0.0)
         offset.y = abs(offset.y);
+    // rain fills a uniform slab over the camera, a sphere would thin out overhead and at the sides
+    if (emitter.rain_occluded != 0u)
+    {
+        float r     = sqrt(rng(seed + 1301u)) * emitter.radius;
+        float theta = rng(seed + 1303u) * 6.28318530718;
+        offset      = float3(r * cos(theta), (rng(seed + 1307u) * 2.0 - 1.0) * emitter.radius * 0.45, r * sin(theta));
+    }
 
     // bias the launch upward and blend toward the emitter direction when requested
     float3 dir_random = random_direction(seed + 277803737u);
@@ -675,7 +683,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float3 wake_velocity = apply_tire_aerodynamics(p, emitter, age_seconds);
 
     // the shoulder pair already models this wake properly, the generic radial push would double it
-    if (p.wake_origin.w <= 0.0)
+    // rain follows the camera, it must not be shoved aside by it
+    if (p.wake_origin.w <= 0.0 && emitter.rain_occluded == 0u)
     {
         apply_moving_emitter_push(p, emitter);
     }
@@ -684,6 +693,18 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // Collision sees the total transport velocity; the free velocity is restored afterwards.
     p.velocity += wake_velocity;
     float3 new_pos = p.position + p.velocity * dt;
+
+    // a drop ends on the first thing above it, the ground in the open, a roof over a garage
+    if (emitter.rain_occluded != 0u)
+    {
+        float cell_size = buffer_frame.rain_occlusion.z;
+        if (cell_size > 0.0 && new_pos.y < rain_occluder_height(int2(floor(new_pos.xz / cell_size))))
+        {
+            p.lifetime = 0.0;
+            particle_buffer_a[index] = p;
+            return;
+        }
+    }
 
     // fresh puffs need a short grace period to leave tight emitters such as exhaust tips
     const bool ballistic = dot(p.ground_plane.xyz, p.ground_plane.xyz) > 0.5;
@@ -696,7 +717,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // Tire smoke is born against the road. A lifetime-relative grace period can
     // leave it without collision for a full second, allowing the wake to bury it.
     bool collision_ready = p.birth_effect.z > 0.0 ? age_seconds > 0.03 : age_for_collision > 0.18;
-    if (!ballistic && collision_ready && distance(p.position, emitter.position) > emitter.collision_clearance)
+    if (!ballistic && emitter.rain_occluded == 0u && collision_ready && distance(p.position, emitter.position) > emitter.collision_clearance)
     {
     #ifdef RAY_TRACING_ENABLED
         if (emitter.collision_traced != 0u)
@@ -835,6 +856,12 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     // Preserve foreshortening when looking along the exhaust direction.
     if (flame)
         half_size_x *= max(projected_flow_length, 0.2);
+    // a raindrop is a couple of millimetres across, what the eye sees is the streak it draws during one exposure
+    if (emitter.rain_occluded != 0u)
+    {
+        half_size_x = max(velocity_len * 0.011 * projected_flow_length, p.size);
+        half_size_y = p.size * 0.5;
+    }
     float longitudinal = c.x + (flame ? 1.0 : 0.0);
     float3 world = p.position + right * longitudinal * half_size_x + up * c.y * half_size_y;
 

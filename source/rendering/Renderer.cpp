@@ -43,6 +43,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Water.h"
 #include "../world/components/Terrain.h"
 #include "../world/components/Spline.h"
+#include "../world/Weather.h"
 #include "../core/ProgressTracker.h"
 #include "../math/Rectangle.h"
 #include "../resource/import/ImageImporter.h"
@@ -158,6 +159,13 @@ namespace spartan
                         )
                     )
                 );
+        }
+
+        // the occupied car's parts, their rain droplets answer its g forces
+        bool is_drops_vehicle(const Entity* entity)
+        {
+            Entity* vehicle = Weather::GetDropsVehicle();
+            return vehicle && entity && (entity == vehicle || entity->IsDescendantOf(vehicle));
         }
 
         // a secondary view borrows the frame from the primary camera, the entity history
@@ -1523,6 +1531,16 @@ namespace spartan
             else
                 RHI_CommandList::UpdateBuffer(buffer, offset, size, m_decal_data.data());
         }
+        if (Weather::GetWetness() > 0.0f)
+        {
+            RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::RainOcclusion);
+            const uint32_t size = Weather::occlusion_resolution * Weather::occlusion_resolution * sizeof(float);
+            const uint32_t offset = m_frame_resource_index * size;
+            if (void* mapped = buffer->GetMappedData())
+                memcpy(static_cast<char*>(mapped) + offset, Weather::GetOcclusionHeights(), size);
+            else
+                RHI_CommandList::UpdateBuffer(buffer, offset, size, Weather::GetOcclusionHeights());
+        }
         // mark synced even when empty so later imgui/editor WriteDrawData can stage mid-frame on d3d12
         m_draw_data_gpu_synced = true;
         static bool draw_data_descriptor_set = false;
@@ -2082,7 +2100,26 @@ namespace spartan
             0.0f;
         m_cb_frame_cpu.restir_pt_light_count = static_cast<float>(m_count_active_lights);
         m_cb_frame_cpu.wind                  = World::GetWind();
-        m_cb_frame_cpu.cloud_coverage        = World::GetDirectionalLight() ? World::GetDirectionalLight()->GetCloudCoverage() : 0.0f;
+        m_cb_frame_cpu.puddliness            = Weather::GetPuddliness();
+        m_cb_frame_cpu.weather               = Vector4(Weather::GetRain(), Weather::GetWetness(), World::GetPuddliness(), Weather::GetRainPuddliness());
+        {
+            const Vector2 occlusion_min = Weather::GetOcclusionMin();
+            const uint32_t slice        = m_frame_resource_index * Weather::occlusion_resolution * Weather::occlusion_resolution;
+            m_cb_frame_cpu.rain_occlusion = Vector4(occlusion_min.x, occlusion_min.y, Weather::occlusion_cell_size, static_cast<float>(slice));
+
+            m_cb_frame_cpu.rain_vehicle_lean = Vector4(Weather::GetDropsLean(), Weather::GetDropsWetness());
+            m_cb_frame_cpu.rain_vehicle_vein = Vector4(Weather::GetDropsVeinPull(), 0.0f);
+            for (uint32_t plane = 0; plane < 3; plane++)
+            {
+                m_cb_frame_cpu.rain_vehicle_axis[plane] = Vector4(Weather::GetDropsAxis(plane), 0.0f);
+                for (uint32_t size_class = 0; size_class < Weather::drop_class_count; size_class++)
+                {
+                    m_cb_frame_cpu.rain_vehicle_slide[plane * 4 + size_class] = Vector4(Weather::GetDropsSlide(size_class, plane), 0.0f);
+                    m_cb_frame_cpu.rain_vehicle_flow[plane * 4 + size_class]  = Vector4(Weather::GetDropsFlow(size_class, plane), 0.0f);
+                }
+            }
+        }
+        m_cb_frame_cpu.cloud_coverage        = World::GetDirectionalLight() ? World::GetDirectionalLight()->GetCloudCoverageEffective() : 0.0f;
         m_cb_frame_cpu.cloud_seed_offset     = World::GetCloudSeedOffset();
         {
             // match the directional light's day cycle source so stars lock to the same clock as the sun
@@ -2993,6 +3030,7 @@ namespace spartan
         entry.aabb_index         = 0;
         entry.lod_first_index    = 0;
         entry.flags              = render && render->ExcludesTerrainBlend() ? (1u << 6) : 0u;
+        entry.flags             |= render && is_drops_vehicle(render->GetEntity()) ? (1u << 7) : 0u;
         entry.instance_offset    = 0;
         entry.instance_index     = 0;
         entry.lod_vertex_offset  = 0;
@@ -3986,6 +4024,11 @@ namespace spartan
 
             if (render->ExcludesTerrainBlend())
                 base_flags |= 1u << 6;
+
+            if (is_drops_vehicle(entity))
+            {
+                base_flags |= 1u << 7;
+            }
 
             const float max_distance    = render->GetMaxRenderDistance();
             const bool  finite_distance = max_distance > 0.0f && max_distance < numeric_limits<float>::max() * 0.5f;
@@ -5137,7 +5180,7 @@ namespace spartan
         const bool has_directional_light = directional_light != nullptr;
         const Quaternion light_rotation  = has_directional_light && directional_light->GetEntity() ? directional_light->GetEntity()->GetRotation() : Quaternion::Identity;
         const float light_intensity      = has_directional_light ? directional_light->GetIntensityPhotometric() : 0.0f;
-        const float cloud_coverage       = has_directional_light ? directional_light->GetCloudCoverage() : 0.0f;
+        const float cloud_coverage       = has_directional_light ? directional_light->GetCloudCoverageEffective() : 0.0f;
         const Vector3 wind               = World::GetWind();
         const Vector2 cloud_seed_offset  = World::GetCloudSeedOffset();
         const double expected_time       = m_pass_state.cloud_time + static_cast<double>(m_cb_frame_cpu.delta_time);
@@ -5209,6 +5252,7 @@ namespace spartan
         RHI_CommandList::SetConstantBuffer(0u, GetBuffer(Renderer_Buffer::ConstantFrame));
         RHI_CommandList::SetTexture("tex_perlin", GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
         RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::decals), GetBuffer(Renderer_Buffer::Decals));
+        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::rain_occlusion), GetBuffer(Renderer_Buffer::RainOcclusion));
 
         RHI_Texture* tex_exposure = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
         if (tex_exposure)

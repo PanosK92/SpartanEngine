@@ -153,6 +153,10 @@ namespace spartan
         const math::Vector4& GetGroundPlane() const { return m_ground_plane; }
         void SetGroundPlane(const math::Vector4& plane) { m_ground_plane = plane; }
 
+        // weather rain, particles are born in a slab instead of a sphere and die on the first surface the rain occlusion grid says is above them
+        bool GetRainOccluded() const          { return m_rain_occluded; }
+        void SetRainOccluded(bool occluded)   { m_rain_occluded = occluded; }
+
         // simulation
         float GetDrag() const;
         void SetDrag(float drag);
@@ -253,6 +257,7 @@ namespace spartan
         float m_volume_anisotropy           = 0.35f;
         float m_volume_shadowing            = 0.5f;
         math::Vector4 m_ground_plane = math::Vector4::Zero;
+        bool m_rain_occluded         = false;
         float m_drag                        = 1.2f;
         float m_turbulence_strength         = 0.3f;
         float m_wind_influence              = 0.0f;

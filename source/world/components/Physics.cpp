@@ -23,6 +23,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../car/CarSimulation.h"
 #include "../../car/CarCalibration.h"
 #include "../../car/CarChassisCollision.h"
+#include "../Weather.h"
 #include "../../geometry/Mesh.h"
 #include "../../geometry/GeneratedCache.h"
 #include "../../geometry/GeometryProcessing.h"
@@ -203,6 +204,18 @@ namespace spartan
                 return car::surface_concrete;
             }
             return car::surface_asphalt;
+        }
+
+        float resolve_water_depth(const PxVec3& point, car::surface_type surface)
+        {
+            // a surface authored as wet already carries its friction, ice is frozen water
+            if (surface == car::surface_ice || surface == car::surface_wet_asphalt)
+            {
+                return 0.0f;
+            }
+
+            const bool porous = surface == car::surface_dirt || surface == car::surface_grass || surface == car::surface_gravel;
+            return Weather::GetWaterDepth(Vector3(point.x, point.y, point.z), porous);
         }
 
         // tag all shapes on an actor with a collision type in word2
@@ -825,6 +838,7 @@ namespace spartan
 
         // Classify each contact before its force is evaluated in this substep.
         m_vehicle_simulation->surface_resolver = classify_ground_actor;
+        m_vehicle_simulation->water_resolver   = resolve_water_depth;
         const auto& environment = World::GetEnvironment();
         if (!m_vehicle_simulation->environment_enabled)
         {

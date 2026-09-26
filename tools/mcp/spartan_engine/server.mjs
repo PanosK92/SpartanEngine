@@ -3324,10 +3324,12 @@ register_tool(
 register_tool(
   server,
   "world_set_environment",
-  "Set world time of day, wind, or description in edit mode.",
+  "Set world time of day, wind, puddliness, rain, or description in edit mode. puddliness 0 to 1 pools standing water on terrain and roads, low spots fill first. rain 0 to 1 is stored on the directional light: clouds close in, exposed surfaces soak within seconds, puddles fill over about a minute, drops fall around the camera and rain is heard; covered areas stay dry.",
   {
     time_of_day: z.number().min(0).max(1).optional(),
     wind: vector3.optional(),
+    puddliness: z.number().min(0).max(1).optional(),
+    rain: z.number().min(0).max(1).optional(),
     description: z.string().optional(),
   },
   "world_set_environment",

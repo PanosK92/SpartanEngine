@@ -126,6 +126,8 @@ namespace car
     public:
 
         surface_type (*surface_resolver)(const PxRigidActor*) = nullptr;
+        // metres of water standing at a contact point, when set it overrides any authored wheel water_depth
+        float (*water_resolver)(const PxVec3& point, surface_type surface) = nullptr;
         static float get_surface_rolling_resistance(surface_type surface);
         Simulation() = default;
         ~Simulation();

@@ -124,6 +124,13 @@ namespace spartan
         void SetCloudCoverage(const float coverage);
         float GetCloudCoverage() const { return m_cloud_coverage; }
 
+        // rain, 0 = dry, 1 = downpour, directional lights only, the weather wets the world and fills puddles from it
+        void SetRain(const float rain);
+        float GetRain() const { return m_rain; }
+
+        // what the sky actually renders, rain needs a sky full of cloud to fall from
+        float GetCloudCoverageEffective() const;
+
         // range
         void SetRange(float range);
         auto GetRange() const { return m_range; }
@@ -200,6 +207,7 @@ namespace spartan
         float m_range                    = 32.0f;
         float m_angle_rad                = math::deg_to_rad * 30.0f;
         float m_cloud_coverage           = 0.8f;
+        float m_rain                     = 0.0f;
         float m_area_width               = 1.0f;  // area light width in meters
         float m_area_height              = 1.0f;  // area light height in meters
         uint32_t m_index                 = 0;

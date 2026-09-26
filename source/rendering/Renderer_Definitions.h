@@ -306,6 +306,7 @@ namespace spartan
         meshlet_micro_indices  = 59,
         tree_wind_cache       = 60,
         decals                = 66,
+        rain_occlusion        = 68,
         // per-instance cull tasks for gpu-driven culling
         cull_tasks             = 44,
         // two-phase culling: phase a survivor list + its indirect dispatch args
@@ -648,6 +649,7 @@ namespace spartan
         SurvivingInstances,        // phase a survivor list, phase b dispatches one workgroup per entry
         InstanceDispatchArgs,      // single-slot indirect dispatch args buffer driving the meshlet cull pass (phase b)
         Decals,
+        RainOcclusion,             // topmost static surface height per cell around the camera, ring-buffered per frame
         DrawData,                  // bindless per-draw data (transforms, material index, etc.)
         // clustered lighting
         ClusterLightGrid,          // one uint2 per cluster: (first_index, count) into ClusterLightIndices

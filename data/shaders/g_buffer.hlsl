@@ -10,6 +10,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_tessellation.hlsl"
 #include "common_road.hlsl"
 #include "common_decals.hlsl"
+#include "common_puddles.hlsl"
+#include "common_rain.hlsl"
 //=================================
 
 struct gbuffer
@@ -329,6 +331,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // one evaluator produces albedo, normal and orm from the same layer weights, the old path
     // blended three maps three separate times with the weights recomputed for each
     bool terrain_shaded = false;
+    float puddle_relief = 0.0f;
     if (surface.is_terrain() && material.terrain_layer_count > 0)
     {
         float3 dpdx = dpdx_world;
@@ -390,6 +393,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         metalness       = terrain.metalness;
         occlusion       = terrain.occlusion;
         terrain_shaded  = true;
+
+        // gullies and drainage lines fill first and ridges stay dry, the layer height lets water settle
+        // between the stones, soil drains so it holds a little less than sealed asphalt
+        puddle_relief = analysis.curvature * 0.06f + (analysis.flow - 0.35f) * 0.06f + (0.5f - terrain.height) * 0.05f - 0.035f;
     }
 
     if (surface.has_texture_height() && !surface.is_terrain() && !surface.is_grass_blade() && !surface.is_flower() && !surface.is_water())
@@ -617,10 +624,67 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
     albedo.a = lerp(albedo.a, 1.0f, decal_coverage);
 
+    // standing water, ground surfaces only so interiors and props stay dry
+    bool is_road            = (material.flags & (1u << 22)) != 0;
+    bool is_paint           = (material.flags & (1u << 23)) != 0;
+    bool is_ground          = terrain_shaded || is_road || is_paint;
+    float3 geometric_normal = normalize(vertex.normal);
+    float footprint         = max(length(dpdx_world), length(dpdy_world));
+    // what the sky can reach, authored puddles stand everywhere but rain only lands in the open
+    float rain_exposed      = rain_weather_wetness() > 0.0f ? rain_exposure(position_world, geometric_normal) : 0.0f;
+    float ground_porosity   = terrain_shaded ? 0.6f : (is_paint ? 0.15f : 0.5f);
+    float puddle_water      = 0.0f;
+    if (pass_is_opaque() && is_ground)
+    {
+        // asphalt crevices carry low ambient occlusion, that is where the water sits
+        float relief     = terrain_shaded ? puddle_relief : (1.0f - occlusion) * 0.08f;
+        // soil soaks up most of what falls on it, only sealed road surfaces flood to the full level
+        float puddliness = max(rain_authored_puddles(), rain_weather_puddles() * rain_exposed * (terrain_shaded ? 0.55f : 1.0f));
+        puddle_water     = puddle_apply(puddliness, position_world, geometric_normal, ground_porosity, relief, footprint,
+            albedo.rgb, normal, roughness, metalness, occlusion);
+    }
+
+    // rain, the soak, beads and rivulets on everything the sky reaches
+    bool rain_detail = false;
+#if defined(INDIRECT_DRAW)
+    bool rain_vehicle = (_draw.flags & (1u << 7)) != 0;
+#elif !defined(GRASS_INSTANCED) && !defined(GRASS_SPECIALIZED)
+    bool rain_vehicle = (draw_data[buffer_pass.draw_index].flags & (1u << 7)) != 0;
+#else
+    bool rain_vehicle = false;
+#endif
+    if ((rain_exposed > 0.0f || puddle_water > 0.0f || (rain_vehicle && buffer_frame.rain_vehicle_lean.w > 0.0f)) && !surface.is_water())
+    {
+#if defined(INDIRECT_DRAW)
+        float4x4 object_transform = _draw.transform;
+#elif !defined(GRASS_INSTANCED) && !defined(GRASS_SPECIALIZED)
+        float4x4 object_transform = draw_data[buffer_pass.draw_index].transform;
+#else
+        float4x4 object_transform = float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+#endif
+        RainSurface rain_surface;
+        rain_surface.vehicle          = rain_vehicle;
+        rain_surface.position         = position_world;
+        rain_surface.geometric_normal = geometric_normal;
+        rain_surface.object_origin    = object_transform[3].xyz;
+        rain_surface.object_rotation  = float3x3(normalize(object_transform[0].xyz), normalize(object_transform[1].xyz), normalize(object_transform[2].xyz));
+        // no authored porosity, rough dielectrics drink water and metals and coatings shed it
+        rain_surface.porosity         = is_ground ? (terrain_shaded ? 0.88f : ground_porosity) : saturate((roughness - 0.3f) * 1.8f) * (1.0f - metalness);
+        rain_surface.water            = puddle_water;
+        rain_surface.footprint        = footprint;
+        rain_surface.exposure         = rain_exposed;
+#if defined(GRASS_INSTANCED) || defined(GRASS_SPECIALIZED)
+        rain_surface.detail           = false;
+#else
+        rain_surface.detail           = !is_ground;
+#endif
+        rain_detail = rain_apply(rain_surface, albedo.rgb, normal, roughness, metalness, pass_is_transparent()) > 0.0f;
+    }
+
     // geometric specular antialiasing, yamada 2018, the screen space normal variance is folded
     // into the ggx width so sub pixel detail rolls off into roughness instead of shimmering
     // water has analytic normals rather than a normal texture so it is admitted explicitly
-    if (surface.has_texture_normal() || surface.is_water() || terrain_shaded || vertex.decal_range.y > 0)
+    if (surface.has_texture_normal() || surface.is_water() || terrain_shaded || vertex.decal_range.y > 0 || rain_detail)
     {
         const float SPECULAR_AA_SIGMA2 = 0.25f;
         const float SPECULAR_AA_KAPPA  = 0.18f;
