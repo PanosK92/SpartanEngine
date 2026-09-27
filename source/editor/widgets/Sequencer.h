@@ -237,6 +237,7 @@ private:
     void EvaluateCamera(int index, bool cut);
     void EvaluateDrives(float delta_time);
     void StageDrives();
+    bool WaitForDrives(float delta_time);
     void ReleaseDrives();
     bool BuildDrivePath(const DriveEvent& event, DriveRuntime& runtime);
     void TickRender();
@@ -280,6 +281,8 @@ private:
     bool m_preview        = false;
     bool m_was_previewing = false;
     bool m_skip_advance   = false;
+    float m_drive_wait    = 0.0f;  // seconds playback has been held waiting for drive cars to stage
+    bool m_drive_wait_expired = false;
     int m_last_event      = -1;
     int m_selected        = -1;
     int m_dragging        = -1;

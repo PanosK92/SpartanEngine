@@ -42,6 +42,7 @@ MCP_DEBUG.jsonl*
 # World XML only; all supporting assets belong in binaries/project.
 /worlds/*
 !/worlds/*.world
+!/worlds/*.lua
 !/worlds/README.md
 
 # generated Python bytecode for tools

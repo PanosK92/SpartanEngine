@@ -424,7 +424,7 @@ export function normalize_result(result) {
   };
 }
 
-function is_zod_schema(value) {
+export function is_zod_schema(value) {
   return Boolean(value?._zod);
 }
 

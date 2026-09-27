@@ -9796,10 +9796,16 @@ bool AssetViewer::PreviewPath(
         error = "path is required";
         return false;
     }
+    const string extension = lower_copy(FileSystem::GetExtensionFromFilePath(path));
+    if (extension == ".glb" || extension == ".gltf" || extension == ".fbx" || extension == ".obj")
+    {
+        error = "model files import as entity hierarchies, not previewable paths; preview an entity that uses the model (e.g. a car wheel) with asset_viewer_preview_entity {id}";
+        return false;
+    }
     if (!path_is_in_viewer_roots(path))
     {
         error =
-            "path must be inside the asset library or mcp blockout";
+            "path must be inside the asset library or mcp blockout, for anything else in the world use asset_viewer_preview_entity {id}";
         return false;
     }
     if (!FileSystem::Exists(path))

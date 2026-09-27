@@ -12,6 +12,10 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 export const agent_memory_path = path.join(__dirname, "AGENT_MEMORY.md");
+export const agent_memory_archive_path = path.join(__dirname, "AGENT_MEMORY_ARCHIVE.md");
+export const agent_memory_max_chars = 32000;
+export const agent_memory_note_max_chars = 1200;
+const archive_section = "Lessons";
 const agent_memory_lock_path = `${agent_memory_path}.lock`;
 const agent_memory_lock_owner_path = path.join(
   agent_memory_lock_path,
@@ -246,19 +250,38 @@ export async function read_agent_memory()
   return fs.readFile(agent_memory_path, "utf8");
 }
 
+function to_lf(text)
+{
+  return String(text ?? "").replace(/\r\n/g, "\n");
+}
+
+// keeps whatever line ending the file already uses so appends never mix CRLF and LF
+async function agent_memory_eol()
+{
+  try
+  {
+    return (await fs.readFile(agent_memory_path, "utf8")).includes("\r\n") ? "\r\n" : "\n";
+  }
+  catch
+  {
+    return "\n";
+  }
+}
+
 async function write_agent_memory_unlocked(text)
 {
-  const value = String(text ?? "").trimEnd();
+  const value = to_lf(text).trimEnd();
   if (!value.startsWith("# Spartan Agent Memory"))
   {
     throw new Error("memory must start with # Spartan Agent Memory");
   }
-  if (value.length > 32000)
+  if (value.length > agent_memory_max_chars)
   {
-    throw new Error("memory is too large, prune stale notes before saving");
+    throw new Error(`memory is ${value.length} chars, the limit is ${agent_memory_max_chars}; prune stale notes or move old ones to ${path.basename(agent_memory_archive_path)}`);
   }
 
-  await fs.writeFile(agent_memory_path, `${value}\n`, "utf8");
+  const eol = await agent_memory_eol();
+  await fs.writeFile(agent_memory_path, `${value}\n`.replace(/\n/g, eol), "utf8");
   return read_agent_memory();
 }
 
@@ -269,6 +292,87 @@ export async function write_agent_memory(text)
   );
 }
 
+function find_section(memory, heading)
+{
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`^${escaped}[ \\t]*$`, "m").exec(memory);
+  if (!match)
+  {
+    return null;
+  }
+  const body_start = match.index + match[0].length;
+  const next = memory.indexOf("\n## ", body_start);
+  return {
+    start: match.index,
+    body_start,
+    end: next === -1 ? memory.length : next,
+  };
+}
+
+function split_bullets(body)
+{
+  const bullets = [];
+  for (const line of body.split("\n"))
+  {
+    if (line.startsWith("- ") || bullets.length === 0)
+    {
+      bullets.push(line);
+    }
+    else
+    {
+      bullets[bullets.length - 1] += `\n${line}`;
+    }
+  }
+  return bullets.map((bullet) => bullet.trimEnd()).filter((bullet) => bullet.startsWith("- "));
+}
+
+async function archive_bullets(bullets)
+{
+  let archive = "";
+  try
+  {
+    archive = to_lf(await fs.readFile(agent_memory_archive_path, "utf8"));
+  }
+  catch
+  {
+    archive = "# Spartan Agent Memory Archive\n\nOlder lessons moved out of AGENT_MEMORY.md when it reached its size limit. Search it with agent_memory_read {archive_query}.\n";
+  }
+  await fs.writeFile(agent_memory_archive_path, `${archive.trimEnd()}\n${bullets.join("\n")}\n`, "utf8");
+}
+
+// moves the oldest lessons to the archive until the memory fits, so appends never get rejected for size
+async function fit_agent_memory(memory)
+{
+  if (memory.length <= agent_memory_max_chars)
+  {
+    return { memory, archived: [] };
+  }
+
+  const section = find_section(memory, `## ${archive_section}`);
+  if (!section)
+  {
+    return { memory, archived: [] };
+  }
+
+  const bullets = split_bullets(memory.slice(section.body_start, section.end));
+  const archived = [];
+  let excess = memory.length - agent_memory_max_chars;
+  while (excess > 0 && bullets.length > 1)
+  {
+    const bullet = bullets.shift();
+    archived.push(bullet);
+    excess -= bullet.length + 1;
+  }
+  if (archived.length === 0)
+  {
+    return { memory, archived };
+  }
+
+  await archive_bullets(archived);
+  const rebuilt = `${memory.slice(0, section.body_start)}\n${bullets.join("\n")}\n${memory.slice(section.end)}`;
+  return { memory: rebuilt, archived };
+}
+
 export async function append_agent_memory(section, note)
 {
   const section_name = String(section ?? "").trim();
@@ -277,10 +381,14 @@ export async function append_agent_memory(section, note)
   {
     throw new Error("section and note are required");
   }
+  if (note_text.length > agent_memory_note_max_chars)
+  {
+    throw new Error(`note is ${note_text.length} chars, keep one note under ${agent_memory_note_max_chars}: state the rule and where it lives, drop the story`);
+  }
 
   return with_agent_memory_lock(async () =>
   {
-    const memory = await read_agent_memory();
+    const memory = to_lf(await read_agent_memory());
     const heading = `## ${section_name}`;
     const bullet = note_text.startsWith("- ")
       ? note_text
@@ -290,29 +398,39 @@ export async function append_agent_memory(section, note)
       return memory;
     }
 
-    const heading_index = memory.indexOf(heading);
-    if (heading_index === -1)
+    let updated;
+    const existing = find_section(memory, heading);
+    if (!existing)
     {
-      return write_agent_memory_unlocked(
-        `${memory.trimEnd()}\n\n${heading}\n${bullet}\n`,
-      );
+      updated = `${memory.trimEnd()}\n\n${heading}\n${bullet}\n`;
+    }
+    else
+    {
+      const before = memory.slice(0, existing.end).trimEnd();
+      const after = memory.slice(existing.end);
+      updated = `${before}\n${bullet}\n${after.trimEnd()}\n`;
     }
 
-    const next_heading_index = memory.indexOf(
-      "\n## ",
-      heading_index + heading.length,
-    );
-    if (next_heading_index === -1)
-    {
-      return write_agent_memory_unlocked(
-        `${memory.trimEnd()}\n${bullet}\n`,
-      );
-    }
+    const fitted = await fit_agent_memory(updated.trimEnd());
+    return write_agent_memory_unlocked(fitted.memory);
+  });
+}
 
-    const before = memory.slice(0, next_heading_index).trimEnd();
-    const after = memory.slice(next_heading_index);
-    return write_agent_memory_unlocked(
-      `${before}\n${bullet}\n${after.trimEnd()}\n`,
-    );
+export async function search_agent_memory_archive(query)
+{
+  let archive = "";
+  try
+  {
+    archive = to_lf(await fs.readFile(agent_memory_archive_path, "utf8"));
+  }
+  catch
+  {
+    return [];
+  }
+  const terms = String(query ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+  return split_bullets(archive).filter((bullet) =>
+  {
+    const text = bullet.toLowerCase();
+    return terms.every((term) => text.includes(term));
   });
 }

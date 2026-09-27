@@ -240,6 +240,9 @@ namespace spartan
         // scatter layers, the prop rule set, authored per world and saved with it
         const std::array<TerrainScatterLayer, terrain_scatter_max>& GetScatterLayers() const { return m_scatter_layers; }
         std::array<TerrainScatterLayer, terrain_scatter_max>& GetScatterLayers()             { return m_scatter_layers; }
+        // one scatter layer as the <layer> attributes the world file uses, index picks the engine default slot
+        static void SaveScatterLayer(pugi::xml_node& node, const TerrainScatterLayer& layer);
+        static void LoadScatterLayer(const pugi::xml_node& node, TerrainScatterLayer& layer, uint32_t index);
         // a layer only scatters when it is switched on, has an asset, and nothing else is soloed
         bool IsScatterSoloed() const;
         bool IsScatterActive(const TerrainScatterLayer& layer) const;

@@ -2818,6 +2818,165 @@ namespace spartan
         Renderer::SetTerrain(params);
     }
 
+    void Terrain::SaveScatterLayer(pugi::xml_node& layer_node, const TerrainScatterLayer& layer)
+    {
+        layer_node.append_attribute("name")                = layer.name.c_str();
+        layer_node.append_attribute("mesh_path")            = layer.mesh_path.c_str();
+        layer_node.append_attribute("mesh_variants")        = layer.mesh_variants.c_str();
+        layer_node.append_attribute("habitat")              = layer.habitat;
+        layer_node.append_attribute("material_folder")      = layer.material_folder.c_str();
+        layer_node.append_attribute("enabled")              = layer.enabled;
+        layer_node.append_attribute("kind")                 = static_cast<uint32_t>(layer.kind);
+        layer_node.append_attribute("mountain_rocks")       = layer.mountain_rocks;
+        layer_node.append_attribute("formation_spacing")    = layer.formation_spacing;
+        layer_node.append_attribute("formation_length")     = layer.formation_length;
+        layer_node.append_attribute("formation_width")      = layer.formation_width;
+        layer_node.append_attribute("formation_height")     = layer.formation_height;
+        layer_node.append_attribute("formation_jitter")     = layer.formation_jitter;
+        layer_node.append_attribute("embed_fraction")       = layer.embed_fraction;
+        layer_node.append_attribute("coating")              = layer.coating;
+        layer_node.append_attribute("coating_scale")        = layer.coating_scale;
+        layer_node.append_attribute("density")              = layer.density;
+        layer_node.append_attribute("max_per_tile")         = layer.max_per_tile;
+        layer_node.append_attribute("seed")                 = layer.seed;
+        layer_node.append_attribute("slope_min")            = layer.slope_min;
+        layer_node.append_attribute("slope_max")            = layer.slope_max;
+        layer_node.append_attribute("slope_bias")           = layer.slope_bias;
+        layer_node.append_attribute("height_min")           = layer.height_min;
+        layer_node.append_attribute("height_max")           = layer.height_max;
+        layer_node.append_attribute("height_fade")          = layer.height_fade;
+        layer_node.append_attribute("curvature")            = layer.curvature_influence;
+        layer_node.append_attribute("flow")                 = layer.flow_influence;
+        layer_node.append_attribute("occlusion")            = layer.occlusion_influence;
+        layer_node.append_attribute("insolation")           = layer.insolation_influence;
+        layer_node.append_attribute("wear")                 = layer.wear_influence;
+        layer_node.append_attribute("deposition")           = layer.deposition_influence;
+        layer_node.append_attribute("talus")                = layer.talus_influence;
+        layer_node.append_attribute("ground_mask")          = layer.ground_mask;
+        layer_node.append_attribute("mask_channel")         = layer.mask_channel;
+        layer_node.append_attribute("mask_min")             = layer.mask_min;
+        layer_node.append_attribute("clump_radius")         = layer.clump_radius;
+        layer_node.append_attribute("clump_count")          = layer.clump_count;
+        layer_node.append_attribute("clump_raggedness")     = layer.clump_raggedness;
+        layer_node.append_attribute("clump_coverage")       = layer.clump_coverage;
+        layer_node.append_attribute("clump_invert")         = layer.clump_invert;
+        layer_node.append_attribute("mesh_scale")           = layer.mesh_scale;
+        layer_node.append_attribute("size_min")             = layer.size_min;
+        layer_node.append_attribute("size_max")             = layer.size_max;
+        layer_node.append_attribute("size_from_slope")      = layer.size_from_slope;
+        layer_node.append_attribute("size_from_altitude")   = layer.size_from_altitude;
+        layer_node.append_attribute("altitude_span")        = layer.altitude_span;
+        layer_node.append_attribute("giant_chance")         = layer.giant_chance;
+        layer_node.append_attribute("giant_size")           = layer.giant_size;
+        layer_node.append_attribute("align_to_normal")      = layer.align_to_normal;
+        layer_node.append_attribute("surface_offset")       = layer.surface_offset;
+        layer_node.append_attribute("sink")                 = layer.sink;
+        layer_node.append_attribute("blend_height")         = layer.blend_height;
+        layer_node.append_attribute("blend_sharpness")      = layer.blend_sharpness;
+        layer_node.append_attribute("render_distance")      = layer.render_distance;
+        layer_node.append_attribute("shadow_distance")      = layer.shadow_distance;
+        layer_node.append_attribute("foliage_tint_r")       = layer.foliage_tint[0];
+        layer_node.append_attribute("foliage_tint_g")       = layer.foliage_tint[1];
+        layer_node.append_attribute("foliage_tint_b")       = layer.foliage_tint[2];
+        layer_node.append_attribute("foliage_scattering")   = layer.foliage_scattering;
+        layer_node.append_attribute("grass_ring_0")         = layer.grass_ring_radius[0];
+        layer_node.append_attribute("grass_ring_1")         = layer.grass_ring_radius[1];
+        layer_node.append_attribute("grass_ring_2")         = layer.grass_ring_radius[2];
+        layer_node.append_attribute("grass_cell_0")         = layer.grass_cell_size[0];
+        layer_node.append_attribute("grass_cell_1")         = layer.grass_cell_size[1];
+        layer_node.append_attribute("grass_cell_2")         = layer.grass_cell_size[2];
+        layer_node.append_attribute("flags")                = layer.flags;
+    }
+
+    void Terrain::LoadScatterLayer(const pugi::xml_node& layer_node, TerrainScatterLayer& layer, uint32_t index)
+    {
+        layer.name                 = layer_node.attribute("name").as_string("");
+        layer.mesh_path            = layer_node.attribute("mesh_path").as_string("");
+        layer.mesh_variants        = layer_node.attribute("mesh_variants").as_string("");
+        layer.habitat              = layer_node.attribute("habitat").as_uint(0);
+        layer.material_folder      = layer_node.attribute("material_folder").as_string("");
+        layer.enabled              = layer_node.attribute("enabled").as_bool(false);
+        layer.mountain_rocks       = layer_node.attribute("mountain_rocks").as_bool(false);
+        layer.formation_spacing    = layer_node.attribute("formation_spacing").as_float(300.0f);
+        layer.formation_length     = layer_node.attribute("formation_length").as_float(300.0f);
+        layer.formation_width      = layer_node.attribute("formation_width").as_float(130.0f);
+        layer.formation_height     = layer_node.attribute("formation_height").as_float(90.0f);
+        layer.formation_jitter     = layer_node.attribute("formation_jitter").as_float(15.0f);
+        layer.embed_fraction       = layer_node.attribute("embed_fraction").as_float(0.45f);
+        layer.coating              = layer_node.attribute("coating").as_float(layer.mountain_rocks ? 0.65f : 0.0f);
+        layer.coating_scale        = layer_node.attribute("coating_scale").as_float(3.0f);
+        layer.kind                 = static_cast<TerrainScatterKind>(
+            min(layer_node.attribute("kind").as_uint(0), static_cast<uint32_t>(TerrainScatterKind::Max) - 1u));
+        layer.density              = layer_node.attribute("density").as_float(8.0f);
+        layer.max_per_tile         = layer_node.attribute("max_per_tile").as_uint(0);
+        layer.seed                 = layer_node.attribute("seed").as_uint(0);
+        layer.slope_min            = layer_node.attribute("slope_min").as_float(0.0f);
+        layer.slope_max            = layer_node.attribute("slope_max").as_float(35.0f);
+        layer.slope_bias           = layer_node.attribute("slope_bias").as_float(0.0f);
+        layer.height_min           = layer_node.attribute("height_min").as_float(1.0f);
+        layer.height_max           = layer_node.attribute("height_max").as_float(100000.0f);
+        layer.height_fade          = layer_node.attribute("height_fade").as_float(0.0f);
+        layer.curvature_influence  = layer_node.attribute("curvature").as_float(0.0f);
+        layer.flow_influence       = layer_node.attribute("flow").as_float(0.0f);
+        layer.occlusion_influence  = layer_node.attribute("occlusion").as_float(0.0f);
+        layer.insolation_influence = layer_node.attribute("insolation").as_float(0.0f);
+        layer.wear_influence       = layer_node.attribute("wear").as_float(0.0f);
+        layer.deposition_influence = layer_node.attribute("deposition").as_float(0.0f);
+        layer.talus_influence      = layer_node.attribute("talus").as_float(0.0f);
+        layer.ground_mask          = layer_node.attribute("ground_mask").as_uint(0);
+        layer.mask_channel         = layer_node.attribute("mask_channel").as_int(-1);
+        layer.mask_min             = layer_node.attribute("mask_min").as_float(0.0f);
+        layer.clump_radius         = layer_node.attribute("clump_radius").as_float(0.0f);
+        layer.clump_count          = max(layer_node.attribute("clump_count").as_uint(1), 1u);
+        layer.clump_raggedness     = layer_node.attribute("clump_raggedness").as_float(1.0f);
+
+        // a world saved before ground cover grew in pockets has no coverage attribute, and it
+        // wrote a zero radius because the gpu kinds ignored that field back then. reading it
+        // back would load the new look switched off, so those slots take the whole patch set
+        // from the engine default instead. only the patch fields, the ring tuning in the file
+        // is authored and stays
+        if (layer_node.attribute("clump_coverage"))
+        {
+            layer.clump_coverage = layer_node.attribute("clump_coverage").as_float(0.0f);
+            layer.clump_invert   = layer_node.attribute("clump_invert").as_bool(false);
+        }
+        else if (layer.kind != TerrainScatterKind::Mesh)
+        {
+            const TerrainScatterLayer& defaults = TerrainScatterDefaults::Get()[index];
+            layer.clump_radius     = defaults.clump_radius;
+            layer.clump_raggedness = defaults.clump_raggedness;
+            layer.clump_coverage   = defaults.clump_coverage;
+            layer.clump_invert     = defaults.clump_invert;
+        }
+
+        layer.mesh_scale           = layer_node.attribute("mesh_scale").as_float(1.0f);
+        layer.size_min             = layer_node.attribute("size_min").as_float(0.8f);
+        layer.size_max             = layer_node.attribute("size_max").as_float(1.2f);
+        layer.size_from_slope      = layer_node.attribute("size_from_slope").as_float(0.0f);
+        layer.size_from_altitude   = layer_node.attribute("size_from_altitude").as_float(0.0f);
+        layer.altitude_span        = layer_node.attribute("altitude_span").as_float(180.0f);
+        layer.giant_chance         = layer_node.attribute("giant_chance").as_float(0.0f);
+        layer.giant_size           = layer_node.attribute("giant_size").as_float(0.0f);
+        layer.align_to_normal      = layer_node.attribute("align_to_normal").as_float(1.0f);
+        layer.surface_offset       = layer_node.attribute("surface_offset").as_float(0.05f);
+        layer.sink                 = layer_node.attribute("sink").as_float(0.0f);
+        layer.blend_height         = layer_node.attribute("blend_height").as_float(1.0f);
+        layer.blend_sharpness      = layer_node.attribute("blend_sharpness").as_float(0.5f);
+        layer.render_distance      = layer_node.attribute("render_distance").as_float(0.0f);
+        layer.shadow_distance      = layer_node.attribute("shadow_distance").as_float(150.0f);
+        layer.foliage_tint[0]       = layer_node.attribute("foliage_tint_r").as_float(-1.0f);
+        layer.foliage_tint[1]       = layer_node.attribute("foliage_tint_g").as_float(-1.0f);
+        layer.foliage_tint[2]       = layer_node.attribute("foliage_tint_b").as_float(-1.0f);
+        layer.foliage_scattering    = clamp(layer_node.attribute("foliage_scattering").as_float(0.35f), 0.0f, 1.0f);
+        layer.grass_ring_radius[0] = layer_node.attribute("grass_ring_0").as_float(55.0f);
+        layer.grass_ring_radius[1] = layer_node.attribute("grass_ring_1").as_float(180.0f);
+        layer.grass_ring_radius[2] = layer_node.attribute("grass_ring_2").as_float(500.0f);
+        layer.grass_cell_size[0]   = layer_node.attribute("grass_cell_0").as_float(0.36f);
+        layer.grass_cell_size[1]   = layer_node.attribute("grass_cell_1").as_float(0.82f);
+        layer.grass_cell_size[2]   = layer_node.attribute("grass_cell_2").as_float(2.1f);
+        layer.flags                = layer_node.attribute("flags").as_uint(TerrainScatterFlags_CastShadows);
+    }
+
     void Terrain::Save(pugi::xml_node& node)
     {
         // height map seed texture path
@@ -2876,72 +3035,7 @@ namespace spartan
         {
             pugi::xml_node layer_node = scatter_node.append_child("layer");
 
-            layer_node.append_attribute("name")                = layer.name.c_str();
-            layer_node.append_attribute("mesh_path")            = layer.mesh_path.c_str();
-            layer_node.append_attribute("mesh_variants")        = layer.mesh_variants.c_str();
-            layer_node.append_attribute("habitat")              = layer.habitat;
-            layer_node.append_attribute("material_folder")      = layer.material_folder.c_str();
-            layer_node.append_attribute("enabled")              = layer.enabled;
-            layer_node.append_attribute("kind")                 = static_cast<uint32_t>(layer.kind);
-            layer_node.append_attribute("mountain_rocks")       = layer.mountain_rocks;
-            layer_node.append_attribute("formation_spacing")    = layer.formation_spacing;
-            layer_node.append_attribute("formation_length")     = layer.formation_length;
-            layer_node.append_attribute("formation_width")      = layer.formation_width;
-            layer_node.append_attribute("formation_height")     = layer.formation_height;
-            layer_node.append_attribute("formation_jitter")     = layer.formation_jitter;
-            layer_node.append_attribute("embed_fraction")       = layer.embed_fraction;
-            layer_node.append_attribute("coating")              = layer.coating;
-            layer_node.append_attribute("coating_scale")        = layer.coating_scale;
-            layer_node.append_attribute("density")              = layer.density;
-            layer_node.append_attribute("max_per_tile")         = layer.max_per_tile;
-            layer_node.append_attribute("seed")                 = layer.seed;
-            layer_node.append_attribute("slope_min")            = layer.slope_min;
-            layer_node.append_attribute("slope_max")            = layer.slope_max;
-            layer_node.append_attribute("slope_bias")           = layer.slope_bias;
-            layer_node.append_attribute("height_min")           = layer.height_min;
-            layer_node.append_attribute("height_max")           = layer.height_max;
-            layer_node.append_attribute("height_fade")          = layer.height_fade;
-            layer_node.append_attribute("curvature")            = layer.curvature_influence;
-            layer_node.append_attribute("flow")                 = layer.flow_influence;
-            layer_node.append_attribute("occlusion")            = layer.occlusion_influence;
-            layer_node.append_attribute("insolation")           = layer.insolation_influence;
-            layer_node.append_attribute("wear")                 = layer.wear_influence;
-            layer_node.append_attribute("deposition")           = layer.deposition_influence;
-            layer_node.append_attribute("talus")                = layer.talus_influence;
-            layer_node.append_attribute("ground_mask")          = layer.ground_mask;
-            layer_node.append_attribute("mask_channel")         = layer.mask_channel;
-            layer_node.append_attribute("mask_min")             = layer.mask_min;
-            layer_node.append_attribute("clump_radius")         = layer.clump_radius;
-            layer_node.append_attribute("clump_count")          = layer.clump_count;
-            layer_node.append_attribute("clump_raggedness")     = layer.clump_raggedness;
-            layer_node.append_attribute("clump_coverage")       = layer.clump_coverage;
-            layer_node.append_attribute("clump_invert")         = layer.clump_invert;
-            layer_node.append_attribute("mesh_scale")           = layer.mesh_scale;
-            layer_node.append_attribute("size_min")             = layer.size_min;
-            layer_node.append_attribute("size_max")             = layer.size_max;
-            layer_node.append_attribute("size_from_slope")      = layer.size_from_slope;
-            layer_node.append_attribute("size_from_altitude")   = layer.size_from_altitude;
-            layer_node.append_attribute("altitude_span")        = layer.altitude_span;
-            layer_node.append_attribute("giant_chance")         = layer.giant_chance;
-            layer_node.append_attribute("giant_size")           = layer.giant_size;
-            layer_node.append_attribute("align_to_normal")      = layer.align_to_normal;
-            layer_node.append_attribute("surface_offset")       = layer.surface_offset;
-            layer_node.append_attribute("sink")                 = layer.sink;
-            layer_node.append_attribute("blend_height")         = layer.blend_height;
-            layer_node.append_attribute("blend_sharpness")      = layer.blend_sharpness;
-            layer_node.append_attribute("render_distance")      = layer.render_distance;
-            layer_node.append_attribute("shadow_distance")      = layer.shadow_distance;
-            layer_node.append_attribute("foliage_tint_r")       = layer.foliage_tint[0];
-            layer_node.append_attribute("foliage_tint_g")       = layer.foliage_tint[1];
-            layer_node.append_attribute("foliage_tint_b")       = layer.foliage_tint[2];
-            layer_node.append_attribute("foliage_scattering")   = layer.foliage_scattering;
-            layer_node.append_attribute("grass_ring_0")         = layer.grass_ring_radius[0];
-            layer_node.append_attribute("grass_ring_1")         = layer.grass_ring_radius[1];
-            layer_node.append_attribute("grass_ring_2")         = layer.grass_ring_radius[2];
-            layer_node.append_attribute("grass_cell_0")         = layer.grass_cell_size[0];
-            layer_node.append_attribute("grass_cell_1")         = layer.grass_cell_size[1];
-            layer_node.append_attribute("grass_cell_2")         = layer.grass_cell_size[2];
-            layer_node.append_attribute("flags")                = layer.flags;
+            SaveScatterLayer(layer_node, layer);
         }
 
         // pads cut for snapped floors, regenerate rebuilds them from this list
@@ -3087,91 +3181,7 @@ namespace spartan
                     continue;
                 }
 
-                layer.name                 = layer_node.attribute("name").as_string("");
-                layer.mesh_path            = layer_node.attribute("mesh_path").as_string("");
-                layer.mesh_variants        = layer_node.attribute("mesh_variants").as_string("");
-                layer.habitat              = layer_node.attribute("habitat").as_uint(0);
-                layer.material_folder      = layer_node.attribute("material_folder").as_string("");
-                layer.enabled              = layer_node.attribute("enabled").as_bool(false);
-                layer.mountain_rocks       = layer_node.attribute("mountain_rocks").as_bool(false);
-                layer.formation_spacing    = layer_node.attribute("formation_spacing").as_float(300.0f);
-                layer.formation_length     = layer_node.attribute("formation_length").as_float(300.0f);
-                layer.formation_width      = layer_node.attribute("formation_width").as_float(130.0f);
-                layer.formation_height     = layer_node.attribute("formation_height").as_float(90.0f);
-                layer.formation_jitter     = layer_node.attribute("formation_jitter").as_float(15.0f);
-                layer.embed_fraction       = layer_node.attribute("embed_fraction").as_float(0.45f);
-                layer.coating              = layer_node.attribute("coating").as_float(layer.mountain_rocks ? 0.65f : 0.0f);
-                layer.coating_scale        = layer_node.attribute("coating_scale").as_float(3.0f);
-                layer.kind                 = static_cast<TerrainScatterKind>(
-                    min(layer_node.attribute("kind").as_uint(0), static_cast<uint32_t>(TerrainScatterKind::Max) - 1u));
-                layer.density              = layer_node.attribute("density").as_float(8.0f);
-                layer.max_per_tile         = layer_node.attribute("max_per_tile").as_uint(0);
-                layer.seed                 = layer_node.attribute("seed").as_uint(0);
-                layer.slope_min            = layer_node.attribute("slope_min").as_float(0.0f);
-                layer.slope_max            = layer_node.attribute("slope_max").as_float(35.0f);
-                layer.slope_bias           = layer_node.attribute("slope_bias").as_float(0.0f);
-                layer.height_min           = layer_node.attribute("height_min").as_float(1.0f);
-                layer.height_max           = layer_node.attribute("height_max").as_float(100000.0f);
-                layer.height_fade          = layer_node.attribute("height_fade").as_float(0.0f);
-                layer.curvature_influence  = layer_node.attribute("curvature").as_float(0.0f);
-                layer.flow_influence       = layer_node.attribute("flow").as_float(0.0f);
-                layer.occlusion_influence  = layer_node.attribute("occlusion").as_float(0.0f);
-                layer.insolation_influence = layer_node.attribute("insolation").as_float(0.0f);
-                layer.wear_influence       = layer_node.attribute("wear").as_float(0.0f);
-                layer.deposition_influence = layer_node.attribute("deposition").as_float(0.0f);
-                layer.talus_influence      = layer_node.attribute("talus").as_float(0.0f);
-                layer.ground_mask          = layer_node.attribute("ground_mask").as_uint(0);
-                layer.mask_channel         = layer_node.attribute("mask_channel").as_int(-1);
-                layer.mask_min             = layer_node.attribute("mask_min").as_float(0.0f);
-                layer.clump_radius         = layer_node.attribute("clump_radius").as_float(0.0f);
-                layer.clump_count          = max(layer_node.attribute("clump_count").as_uint(1), 1u);
-                layer.clump_raggedness     = layer_node.attribute("clump_raggedness").as_float(1.0f);
-
-                // a world saved before ground cover grew in pockets has no coverage attribute, and it
-                // wrote a zero radius because the gpu kinds ignored that field back then. reading it
-                // back would load the new look switched off, so those slots take the whole patch set
-                // from the engine default instead. only the patch fields, the ring tuning in the file
-                // is authored and stays
-                if (layer_node.attribute("clump_coverage"))
-                {
-                    layer.clump_coverage = layer_node.attribute("clump_coverage").as_float(0.0f);
-                    layer.clump_invert   = layer_node.attribute("clump_invert").as_bool(false);
-                }
-                else if (layer.kind != TerrainScatterKind::Mesh)
-                {
-                    const TerrainScatterLayer& defaults = TerrainScatterDefaults::Get()[index];
-                    layer.clump_radius     = defaults.clump_radius;
-                    layer.clump_raggedness = defaults.clump_raggedness;
-                    layer.clump_coverage   = defaults.clump_coverage;
-                    layer.clump_invert     = defaults.clump_invert;
-                }
-
-                layer.mesh_scale           = layer_node.attribute("mesh_scale").as_float(1.0f);
-                layer.size_min             = layer_node.attribute("size_min").as_float(0.8f);
-                layer.size_max             = layer_node.attribute("size_max").as_float(1.2f);
-                layer.size_from_slope      = layer_node.attribute("size_from_slope").as_float(0.0f);
-                layer.size_from_altitude   = layer_node.attribute("size_from_altitude").as_float(0.0f);
-                layer.altitude_span        = layer_node.attribute("altitude_span").as_float(180.0f);
-                layer.giant_chance         = layer_node.attribute("giant_chance").as_float(0.0f);
-                layer.giant_size           = layer_node.attribute("giant_size").as_float(0.0f);
-                layer.align_to_normal      = layer_node.attribute("align_to_normal").as_float(1.0f);
-                layer.surface_offset       = layer_node.attribute("surface_offset").as_float(0.05f);
-                layer.sink                 = layer_node.attribute("sink").as_float(0.0f);
-                layer.blend_height         = layer_node.attribute("blend_height").as_float(1.0f);
-                layer.blend_sharpness      = layer_node.attribute("blend_sharpness").as_float(0.5f);
-                layer.render_distance      = layer_node.attribute("render_distance").as_float(0.0f);
-                layer.shadow_distance      = layer_node.attribute("shadow_distance").as_float(150.0f);
-                layer.foliage_tint[0]       = layer_node.attribute("foliage_tint_r").as_float(-1.0f);
-                layer.foliage_tint[1]       = layer_node.attribute("foliage_tint_g").as_float(-1.0f);
-                layer.foliage_tint[2]       = layer_node.attribute("foliage_tint_b").as_float(-1.0f);
-                layer.foliage_scattering    = clamp(layer_node.attribute("foliage_scattering").as_float(0.35f), 0.0f, 1.0f);
-                layer.grass_ring_radius[0] = layer_node.attribute("grass_ring_0").as_float(55.0f);
-                layer.grass_ring_radius[1] = layer_node.attribute("grass_ring_1").as_float(180.0f);
-                layer.grass_ring_radius[2] = layer_node.attribute("grass_ring_2").as_float(500.0f);
-                layer.grass_cell_size[0]   = layer_node.attribute("grass_cell_0").as_float(0.36f);
-                layer.grass_cell_size[1]   = layer_node.attribute("grass_cell_1").as_float(0.82f);
-                layer.grass_cell_size[2]   = layer_node.attribute("grass_cell_2").as_float(2.1f);
-                layer.flags                = layer_node.attribute("flags").as_uint(TerrainScatterFlags_CastShadows);
+                LoadScatterLayer(layer_node, layer, index);
             }
         }
         else

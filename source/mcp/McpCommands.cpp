@@ -38,6 +38,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Text3D.h"
 #include "../world/Prefab.h"
 #include "../world/GameReady.h"
+#include "../world/WorldHelpers.h"
+#include "../io/pugixml.hpp"
 #include "../car/Car.h"
 #include "../car/CarSimulation.h"
 #include "../car/CarState.h"
@@ -49,6 +51,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rhi/RHI_Texture.h"
 #include "../rhi/RHI_Buffer.h"
 #include "../rhi/RHI_Device.h"
+#include "../rhi/RHI_Shader.h"
 #include "../rendering/Material.h"
 #include "../rendering/Renderer.h"
 #include "../math/Vector2.h"
@@ -56,6 +59,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <cctype>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <initializer_list>
 #include <limits>
@@ -1391,9 +1395,6 @@ namespace spartan
             {
                 "r.resolution_scale",
                 "r.hdr",
-                "r.ray_traced_reflections",
-                "r.ray_traced_shadows",
-                "r.variable_rate_shading",
                 "r.antialiasing_upsampling"
             };
 
@@ -3868,6 +3869,370 @@ namespace spartan
             }
 
             return command_cvar_get(request);
+        }
+
+        std::string shader_stage_name(RHI_Shader_Type stage)
+        {
+            switch (stage)
+            {
+                case RHI_Shader_Type::Vertex:  return "vertex";
+                case RHI_Shader_Type::Hull:    return "hull";
+                case RHI_Shader_Type::Domain:  return "domain";
+                case RHI_Shader_Type::Pixel:   return "pixel";
+                case RHI_Shader_Type::Compute: return "compute";
+                default:                       return "other";
+            }
+        }
+
+        // recompiles shaders whose source files (or includes) differ from what they were compiled from,
+        // the same path the shader editor uses, pipelines pick the new modules up through the shader hash
+        std::string command_shader_reload(const McpRequest& request)
+        {
+            const std::string filter = to_lower_copy(get_argument(request, "name").value_or(""));
+            bool force = false;
+            if (const std::optional<std::string> force_arg = get_argument(request, "force"))
+            {
+                if (!parse_bool(*force_arg, force))
+                {
+                    return json_error("force must be true or false");
+                }
+            }
+            if (force && filter.empty())
+            {
+                return json_error("force needs a name filter, recompiling every shader at once stalls the engine for minutes");
+            }
+
+            std::unordered_map<std::string, std::string> disk_sources;
+            auto read_disk = [&disk_sources](const std::string& path) -> const std::string&
+            {
+                auto it = disk_sources.find(path);
+                if (it == disk_sources.end())
+                {
+                    std::ifstream in(path);
+                    std::stringstream content;
+                    content << in.rdbuf();
+                    it = disk_sources.emplace(path, content.str()).first;
+                }
+                return it->second;
+            };
+
+            std::string recompiled = "[";
+            std::string failed     = "[";
+            uint32_t recompiled_count = 0;
+            uint32_t compiling_count  = 0;
+            uint32_t failed_count     = 0;
+            uint32_t matched_count    = 0;
+            for (const std::shared_ptr<RHI_Shader>& shader : Renderer::GetShaders())
+            {
+                if (!shader || shader->GetFilePath().empty())
+                {
+                    continue;
+                }
+
+                const std::vector<std::string>& file_paths = shader->GetFilePaths();
+                if (!filter.empty())
+                {
+                    bool matches = false;
+                    for (const std::string& file_path : file_paths)
+                    {
+                        if (to_lower_copy(FileSystem::GetFileNameFromFilePath(file_path)).find(filter) != std::string::npos)
+                        {
+                            matches = true;
+                            break;
+                        }
+                    }
+                    if (!matches)
+                    {
+                        continue;
+                    }
+                }
+                matched_count++;
+
+                const RHI_ShaderCompilationState state = shader->GetCompilationState();
+                if (state == RHI_ShaderCompilationState::Compiling)
+                {
+                    compiling_count++;
+                    continue;
+                }
+
+                bool changed = force;
+                const std::vector<std::string>& sources = shader->GetSources();
+                for (size_t i = 0; !changed && i < file_paths.size() && i < sources.size(); i++)
+                {
+                    changed = read_disk(file_paths[i]) != sources[i];
+                }
+
+                if (!changed)
+                {
+                    if (state == RHI_ShaderCompilationState::Failed)
+                    {
+                        if (failed_count++ != 0)
+                        {
+                            failed += ",";
+                        }
+                        failed += json_string(shader->GetObjectName());
+                    }
+                    continue;
+                }
+
+                shader->Compile(shader->GetShaderStage(), shader->GetFilePath(), true, shader->GetVertexType());
+                if (recompiled_count++ != 0)
+                {
+                    recompiled += ",";
+                }
+                recompiled += "{\"name\":" + json_string(shader->GetObjectName());
+                recompiled += ",\"stage\":" + json_string(shader_stage_name(shader->GetShaderStage())) + "}";
+                compiling_count++;
+            }
+            recompiled += "]";
+            failed     += "]";
+
+            std::string json = "{\"ok\":true";
+            json += ",\"shader_directory\":" + json_string(ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders));
+            json += ",\"matched\":" + std::to_string(matched_count);
+            json += ",\"recompiled_count\":" + std::to_string(recompiled_count);
+            json += ",\"recompiled\":" + recompiled;
+            json += ",\"compiling\":" + std::to_string(compiling_count);
+            json += ",\"failed\":" + failed;
+            json += ",\"note\":" + json_string(compiling_count != 0 ?
+                "compiling in the background, call shader_reload again until compiling is 0, then check failed and console_read for compiler errors" :
+                "nothing is compiling");
+            json += "}";
+            return json;
+        }
+
+        Terrain* find_terrain_from_request(const McpRequest& request, std::string& error)
+        {
+            if (get_argument(request, "id"))
+            {
+                Entity* entity = get_entity_from_request(request, error);
+                if (entity == nullptr)
+                {
+                    return nullptr;
+                }
+                Terrain* terrain = entity->GetComponent<Terrain>();
+                if (terrain == nullptr)
+                {
+                    error = "entity has no terrain component";
+                }
+                return terrain;
+            }
+
+            Terrain* found = nullptr;
+            for (Entity* entity : World::GetEntities())
+            {
+                Terrain* terrain = entity ? entity->GetComponent<Terrain>() : nullptr;
+                if (terrain == nullptr)
+                {
+                    continue;
+                }
+                if (found != nullptr)
+                {
+                    error = "the world has more than one terrain, pass id";
+                    return nullptr;
+                }
+                found = terrain;
+            }
+            if (found == nullptr)
+            {
+                error = "the world has no terrain";
+            }
+            return found;
+        }
+
+        // pugi writes every attribute as text, hand numbers and booleans back as json values
+        std::string xml_attribute_to_json(const pugi::xml_attribute& attribute)
+        {
+            const std::string value = attribute.as_string();
+            if (value == "true" || value == "false")
+            {
+                return value;
+            }
+            char* end = nullptr;
+            const double number = std::strtod(value.c_str(), &end);
+            if (!value.empty() && end == value.c_str() + value.size() && std::isfinite(number))
+            {
+                return value;
+            }
+            return json_string(value);
+        }
+
+        std::string scatter_layer_json(const TerrainScatterLayer& layer, uint32_t index)
+        {
+            pugi::xml_document document;
+            pugi::xml_node node = document.append_child("layer");
+            Terrain::SaveScatterLayer(node, layer);
+
+            std::string json = "{\"index\":" + std::to_string(index);
+            json += ",\"instance_count\":" + std::to_string(layer.instance_count);
+            json += ",\"coverage\":" + json_number(layer.coverage);
+            json += ",\"attributes\":{";
+            bool first = true;
+            for (const pugi::xml_attribute& attribute : node.attributes())
+            {
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                json += json_string(attribute.name()) + ":" + xml_attribute_to_json(attribute);
+            }
+            json += "}}";
+            return json;
+        }
+
+        std::atomic<bool> terrain_rescatter_running = false;
+
+        std::string command_terrain_scatter_get(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Terrain* terrain = find_terrain_from_request(request, error);
+            if (terrain == nullptr)
+            {
+                return json_error(error);
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"terrain_id\":" + json_string(std::to_string(terrain->GetEntity()->GetObjectId()));
+            json += ",\"mesh_rescatter_running\":" + json_bool(terrain_rescatter_running.load());
+            json += ",\"kinds\":{\"0\":\"mesh\",\"1\":\"grass\",\"2\":\"detail\"}";
+            json += ",\"layers\":[";
+            const auto& layers = terrain->GetScatterLayers();
+            for (uint32_t i = 0; i < layers.size(); i++)
+            {
+                if (i != 0)
+                {
+                    json += ",";
+                }
+                json += scatter_layer_json(layers[i], i);
+            }
+            json += "]}";
+            return json;
+        }
+
+        std::string command_terrain_scatter_set(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("terrain scatter edits require edit mode");
+            }
+
+            std::string error;
+            Terrain* terrain = find_terrain_from_request(request, error);
+            if (terrain == nullptr)
+            {
+                return json_error(error);
+            }
+
+            auto& layers = terrain->GetScatterLayers();
+            const std::optional<std::string> layer_arg = get_argument(request, "layer");
+            if (!layer_arg)
+            {
+                return json_error("missing layer, pass a slot index or layer name");
+            }
+            uint32_t index = terrain_scatter_max;
+            uint64_t parsed_index = 0;
+            if (parse_uint64(*layer_arg, parsed_index))
+            {
+                index = parsed_index < terrain_scatter_max ? static_cast<uint32_t>(parsed_index) : terrain_scatter_max;
+            }
+            else
+            {
+                for (uint32_t i = 0; i < layers.size(); i++)
+                {
+                    if (layers[i].name == *layer_arg)
+                    {
+                        index = i;
+                        break;
+                    }
+                }
+            }
+            if (index >= terrain_scatter_max)
+            {
+                return json_error("no scatter layer matches '" + *layer_arg + "', call terrain_scatter_get for names and indices");
+            }
+
+            uint64_t count = 0;
+            const std::optional<std::string> count_arg = get_argument(request, "count");
+            if (!count_arg || !parse_uint64(*count_arg, count) || count == 0 || count > 96)
+            {
+                return json_error("count must be between 1 and 96");
+            }
+
+            pugi::xml_document document;
+            pugi::xml_node node = document.append_child("layer");
+            Terrain::SaveScatterLayer(node, layers[index]);
+            for (uint64_t i = 0; i < count; i++)
+            {
+                const std::optional<std::string> name  = get_argument(request, "attribute_" + std::to_string(i));
+                const std::optional<std::string> value = get_argument(request, "value_" + std::to_string(i));
+                if (!name || !value)
+                {
+                    return json_error("missing attribute or value at index " + std::to_string(i));
+                }
+                pugi::xml_attribute attribute = node.attribute(name->c_str());
+                if (!attribute)
+                {
+                    return json_error("unknown scatter attribute '" + *name + "', call terrain_scatter_get for the attribute names");
+                }
+                attribute.set_value(value->c_str());
+            }
+
+            const TerrainScatterKind kind_before = layers[index].kind;
+            TerrainScatterLayer updated          = layers[index];
+            Terrain::LoadScatterLayer(node, updated, index);
+            layers[index] = updated;
+
+            // gpu layers own no entities, pushing their params is instant; mesh layers have to be placed again
+            std::string rescatter = "none";
+            bool rescatter_requested = true;
+            if (const std::optional<std::string> rescatter_arg = get_argument(request, "rescatter"))
+            {
+                if (!parse_bool(*rescatter_arg, rescatter_requested))
+                {
+                    return json_error("rescatter must be true or false");
+                }
+            }
+            const bool gpu_touched  = kind_before != TerrainScatterKind::Mesh || updated.kind != TerrainScatterKind::Mesh;
+            const bool mesh_touched = kind_before == TerrainScatterKind::Mesh || updated.kind == TerrainScatterKind::Mesh;
+            if (rescatter_requested && gpu_touched)
+            {
+                WorldHelpers::RefreshTerrainGpuScatter(terrain);
+                rescatter = "gpu_refreshed";
+            }
+            if (rescatter_requested && mesh_touched)
+            {
+                bool expected = false;
+                if (terrain_rescatter_running.compare_exchange_strong(expected, true))
+                {
+                    ThreadPool::AddTask([terrain]()
+                    {
+                        WorldHelpers::PopulateTerrainBiomeProps(terrain);
+                        terrain_rescatter_running.store(false);
+                    });
+                    rescatter = gpu_touched ? "gpu_refreshed_and_mesh_rescatter_started" : "mesh_rescatter_started";
+                }
+                else
+                {
+                    rescatter = "mesh_rescatter_busy, call again with rescatter true once terrain_scatter_get shows mesh_rescatter_running false";
+                }
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"rescatter\":" + json_string(rescatter);
+            json += ",\"note\":" + json_string("mesh rescatter runs in the background and re-rolls every mesh layer; world_save persists the layers with the world");
+            json += ",\"layer\":" + scatter_layer_json(layers[index], index);
+            json += "}";
+            return json;
         }
 
         std::string command_console_read(const McpRequest& request)
@@ -7330,12 +7695,6 @@ namespace spartan
             {
                 return json_error("world is loading");
             }
-            if (!is_edit_mode())
-            {
-                if (!Engine::IsFlagSet(EngineMode::Paused))
-                    return json_error("camera view changes require edit mode or paused play mode");
-            }
-
             Camera* camera = World::GetCamera();
             if (camera == nullptr || camera->GetEntity() == nullptr)
             {
@@ -7343,6 +7702,26 @@ namespace spartan
             }
 
             Entity* entity = camera->GetEntity();
+
+            // in play mode the eye is a child of the player capsule, moving only the eye gets undone by the
+            // controller and leaves the body behind (streaming then unloads its chunk and it falls), so move the body
+            Physics* player = nullptr;
+            if (!is_edit_mode())
+            {
+                if (Entity* parent = entity->GetParent())
+                {
+                    Physics* physics = parent->GetComponent<Physics>();
+                    if (physics && physics->GetBodyType() == BodyType::Controller)
+                    {
+                        player = physics;
+                    }
+                }
+                if (!player && !Engine::IsFlagSet(EngineMode::Paused))
+                {
+                    return json_error("camera view changes require edit mode, paused play mode, or a player controller camera");
+                }
+            }
+
             if (const std::optional<std::string> position = get_argument(request, "position"))
             {
                 math::Vector3 parsed;
@@ -7350,7 +7729,19 @@ namespace spartan
                 {
                     return json_error("invalid position");
                 }
-                entity->SetPosition(parsed);
+                if (player)
+                {
+                    Entity* body            = entity->GetParent();
+                    const math::Vector3 eye = player->GetControllerTopLocal();
+                    const math::Vector3 capsule_position = parsed - body->GetRotation() * eye;
+                    player->SetBodyTransform(capsule_position, body->GetRotation(), false);
+                    body->SetPosition(capsule_position);
+                    entity->SetPositionLocal(eye);
+                }
+                else
+                {
+                    entity->SetPosition(parsed);
+                }
             }
 
             if (const std::optional<std::string> rotation_euler = get_argument(request, "rotation_euler"))
@@ -7644,6 +8035,8 @@ namespace spartan
             return nullptr;
         }
 
+        constexpr float tire_psi_per_bar = 14.503774f;
+
         std::string car_status_json(Car* car)
         {
             Entity* root = car->GetRootEntity();
@@ -7703,9 +8096,52 @@ namespace spartan
                 json += ",\"linear_velocity\":" + json_vector3(velocity);
                 json += ",\"abs_active\":" + json_bool(physics->IsAbsActiveAny());
                 json += ",\"tc_active\":" + json_bool(physics->IsTcActive());
+                json += ",\"tire_pressure_bar\":" + std::to_string(physics->GetTirePressure());
+                json += ",\"tire_pressure_psi\":" + std::to_string(physics->GetTirePressure() * tire_psi_per_bar);
+                json += ",\"tire_pressure_optimal_bar\":" + std::to_string(physics->GetTirePressureOptimal());
             }
             json += "}";
             return json;
+        }
+
+        std::string command_vehicle_set_tire_pressure(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (car == nullptr)
+            {
+                return json_error(error);
+            }
+            Physics* physics = car->GetRootEntity() ? car->GetRootEntity()->GetComponent<Physics>() : nullptr;
+            ::car::Simulation* simulation = physics ? physics->GetVehicleSimulation() : nullptr;
+            if (!simulation)
+            {
+                return json_error("vehicle has no simulation, enter play mode first");
+            }
+
+            float bar = 0.0f;
+            const std::optional<std::string> psi_arg = get_argument(request, "psi");
+            const std::optional<std::string> bar_arg = get_argument(request, "bar");
+            if (psi_arg.has_value() == bar_arg.has_value())
+            {
+                return json_error("pass exactly one of psi or bar");
+            }
+            if (!parse_float(psi_arg ? *psi_arg : *bar_arg, bar) || !std::isfinite(bar) || bar <= 0.0f)
+            {
+                return json_error("pressure must be a positive number");
+            }
+            if (psi_arg)
+            {
+                bar /= tire_psi_per_bar;
+            }
+
+            simulation->set_tire_pressure(bar);
+            return car_status_json(car);
         }
 
         std::string command_vehicle_list()
@@ -14200,6 +14636,9 @@ namespace spartan
             { "cvar_list",                     [](const McpRequest&) { return command_cvar_list(); } },
             { "cvar_get",                      command_cvar_get },
             { "cvar_set",                      command_cvar_set },
+            { "shader_reload",                 command_shader_reload },
+            { "terrain_scatter_get",           command_terrain_scatter_get },
+            { "terrain_scatter_set",           command_terrain_scatter_set },
             { "console_read",                  command_console_read },
             { "world_summary",                 [](const McpRequest&) { return command_world_summary(); } },
             { "world_load",                    command_world_load },
@@ -14270,6 +14709,7 @@ namespace spartan
             { "vehicle_enter",                 command_vehicle_enter },
             { "vehicle_exit",                  command_vehicle_exit },
             { "vehicle_set_input",             command_vehicle_set_input },
+            { "vehicle_set_tire_pressure",     command_vehicle_set_tire_pressure },
             { "vehicle_shift",                 command_vehicle_shift },
             { "vehicle_reset",                 command_vehicle_reset },
             { "vehicle_set_view",              command_vehicle_set_view },

@@ -515,7 +515,9 @@ void Sequencer::SetPlayback(Playback action)
             {
                 m_time = 0.0f;
             }
-            m_playing = true;
+            m_playing            = true;
+            m_drive_wait         = 0.0f;
+            m_drive_wait_expired = false;
             StageDrives();
             break;
         case Playback::Pause:
@@ -526,8 +528,10 @@ void Sequencer::SetPlayback(Playback action)
             {
                 FinishRender();
             }
-            m_playing = false;
-            m_time    = 0.0f;
+            m_playing            = false;
+            m_time               = 0.0f;
+            m_drive_wait         = 0.0f;
+            m_drive_wait_expired = false;
             ReleaseDrives();
             break;
     }
@@ -740,7 +744,8 @@ void Sequencer::OnWorldTicked()
 
     const float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
     const bool frozen      = Engine::IsFlagSet(EngineMode::Playing) && Engine::IsFlagSet(EngineMode::Paused);
-    if (m_playing && !m_skip_advance && !frozen)
+    const bool waiting     = !frozen && WaitForDrives(delta_time);
+    if (m_playing && !m_skip_advance && !frozen && !waiting)
     {
         m_time += delta_time;
         if (m_time >= m_duration)
@@ -760,7 +765,10 @@ void Sequencer::OnWorldTicked()
     m_skip_advance = false;
 
     Evaluate(frozen ? 0.0f : delta_time);
-    TickRender();
+    if (!waiting)
+    {
+        TickRender();
+    }
 
     // playback that ran off the end hands the cars back
     if (!m_playing && !m_render_status.active && any_of(m_drive_runtime.begin(), m_drive_runtime.end(), [](const DriveRuntime& r) { return r.staged; }))
@@ -1090,6 +1098,55 @@ void Sequencer::StageDrives()
         runtime.staged           = true;
         runtime.telemetry.staged = true;
     }
+}
+
+// playback started in edit mode, or in the frames before the cars exist at play entry, leaves drive events
+// unstaged and the cars parked, so restage every tick and hold the timeline until they are placed
+bool Sequencer::WaitForDrives(float delta_time)
+{
+    if (!Engine::IsFlagSet(EngineMode::Playing))
+    {
+        m_drive_wait         = 0.0f;
+        m_drive_wait_expired = false;
+        return false;
+    }
+    if (!m_playing || m_drive_events.empty() || m_drive_wait_expired)
+    {
+        return false;
+    }
+
+    bool pending    = false;
+    bool any_staged = false;
+    for (size_t i = 0; i < m_drive_events.size(); i++)
+    {
+        const bool staged = i < m_drive_runtime.size() && m_drive_runtime[i].staged;
+        any_staged       |= staged;
+        if (!staged && World::GetEntityById(m_drive_events[i].car_entity_id))
+        {
+            pending = true;
+        }
+    }
+    if (!pending)
+    {
+        m_drive_wait = 0.0f;
+        return false;
+    }
+
+    // nothing staged yet means playback ran without the cars, start the shot over once they are placed
+    if (m_drive_wait == 0.0f && !any_staged)
+    {
+        m_time = 0.0f;
+    }
+
+    StageDrives();
+    m_drive_wait += delta_time;
+    if (m_drive_wait > 10.0f)
+    {
+        m_drive_wait_expired = true;
+        SP_LOG_WARNING("sequencer: drive cars could not be staged after 10 s (missing vehicle physics or drive path), playing without them");
+        return false;
+    }
+    return true;
 }
 
 void Sequencer::ReleaseDrives()

@@ -58,6 +58,7 @@ namespace spartan
         const std::shared_ptr<RHI_InputLayout>& GetInputLayout() const { return m_input_layout; } // only valid for a vertex shader
         const auto& GetFilePath()                                const { return m_file_path; }
         RHI_Shader_Type GetShaderStage()                         const { return m_shader_type; }
+        RHI_Vertex_Type GetVertexType()                          const { return m_vertex_type; }
         uint64_t GetHash()                                       const { return m_hash; }
         const char* GetEntryPoint()                              const;
         const char* GetTargetProfile()                           const;

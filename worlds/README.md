@@ -1,24 +1,42 @@
-# World files and project assets
+# Worlds, their scripts and their resources
 
-Keep only `.world` files (XML scene definitions) in this directory. This README is
-the only exception. Do not put supporting assets or generated output here.
+Each world has two homes:
 
-All project assets belong in `binaries/project/`, which is excluded from Git and
-distributed through the Dropbox `project.7z` download. This includes materials,
-textures, models, Lua scripts, `.car` definitions, particle effects, audio,
-previews, sequencer data, map exports and backups.
+- `worlds/` (this directory, version controlled) holds what defines the world as text:
+  the `<world>.world` XML and the world's own Lua scripts. Name the main script
+  `<world>.lua` and the rest `<world>_<part>.lua`, for example `liminal_space.lua`,
+  `liminal_space_stalker.lua` and `liminal_space_soundscape.lua`. Keep the directory
+  flat; the Git ignore rules allow only `*.world`, `*.lua` and this README.
+- `binaries/project/<world>_resources/` holds every asset the world owns: materials,
+  textures, audio, meshes, prefabs, the offline scripts that generate them (under
+  `sources/`) and the engine's `generated_cache/`. For example, `liminal_space`
+  keeps its materials at the root of `liminal_space_resources/`, plus `textures/`,
+  `audio/` and `sources/`. `binaries/` is excluded from Git and distributed through
+  the Dropbox `project.7z` download.
+
+Do not put one world's content in shared folders. That means no world assets in
+`project/scripts/`, `project/music/`, `project/mcp/blockout/`, other worlds'
+resource folders or `tools/`. `tools/` is for engine and project tooling, not for
+generators of a single world's assets; those go in `<world>_resources/sources/`.
+Only content that several worlds share lives outside a resource folder:
+`project/materials/` (texture library), `project/models/`, `project/cars/` and
+shared scripts in `project/scripts/`, such as `footsteps.lua` and `sun.lua`.
+
+MCP tools write to `project/mcp/blockout/` by default (materials, textures,
+screenshots). When something made there becomes part of a world, move it into
+that world's resource folder and update its references. The folder a world uses
+is reported by `world_resource_directory_get`.
 
 The engine runs from `binaries/`, so references in worlds and scripts use paths
-such as `project/scripts/sun.lua`, `project/cars/ferrari_laferrari.car`, or
-`project/dreamcore_materials/porcelain.xml`. Tools run from the repository root
-must use `binaries/project/...` to access the same files. Keep `.world` references
-in the root `worlds/` directory.
+such as `project/liminal_space_resources/audio/door_slam.wav` for assets and
+`../worlds/liminal_space.lua` for world scripts, both in script components and in
+`dofile`. Tools run from the repository root use `binaries/project/...` for the
+same files.
 
 When adding or moving an asset, update its references and any tools that generate
-or load it. Keep new assets out of Git, and include them in the Dropbox project
+or load it. Keep assets out of Git, and include them in the Dropbox project
 package when publishing an asset update. A local move does not update that
-download automatically. Do not force-add assets or create resource subdirectories
-here; the Git ignore rules intentionally allow only `.world` files and this note.
+download automatically.
 
 Generated world caches use lossless LZ4 compression automatically. Existing raw
 caches are accepted and converted on a successful read; incompressible payloads

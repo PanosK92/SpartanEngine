@@ -18,8 +18,8 @@ import { run_vehicle_validation } from "./vehicle_validation.mjs";
 import { append_debug_log, debug_log_path, read_debug_log } from "./debug_log.mjs";
 import { get_project_root, get_shared_codebase } from "./shared_codebase.mjs";
 import { component_schema_markdown, construction_grammar_guide, edit_rules, engine_overview, parametric_modeling_guide, scene_planning_guide, search_capability_catalog } from "./knowledge.mjs";
-import { json_schema_from_raw_shape, normalize_result, output_schemas, parse_raw_shape, structured_error } from "./schemas.mjs";
-import { agent_memory_path, append_agent_memory, ensure_agent_memory, read_agent_memory, write_agent_memory } from "./agent_memory.mjs";
+import { is_zod_schema, json_schema_from_raw_shape, normalize_result, output_schemas, parse_raw_shape, structured_error } from "./schemas.mjs";
+import { agent_memory_archive_path, agent_memory_note_max_chars, agent_memory_path, append_agent_memory, ensure_agent_memory, read_agent_memory, search_agent_memory_archive, write_agent_memory } from "./agent_memory.mjs";
 import { calibrate_existing_light } from "./light_calibration.mjs";
 import { audit_scene_quality } from "./scene_quality.mjs";
 import {
@@ -377,7 +377,10 @@ function register_local_tool(name, config, handler) {
     return;
   }
 
-  const input_schema = config.inputSchema ?? {};
+  // loose so args added to the engine after this server started still reach it instead of being stripped
+  const input_schema = is_zod_schema(config.inputSchema)
+    ? config.inputSchema
+    : z.looseObject(config.inputSchema ?? {});
   const validated_handler = async (args) => {
     const started_at = Date.now();
     let result;
@@ -1627,21 +1630,29 @@ register_local_tool("get_capability_details", {
 
 register_local_tool("agent_memory_read", {
   title: "Agent Memory Read",
-  description: "Read the shared Spartan agent memory markdown file. Use this early for project-specific lessons and maintainer advice.",
-  inputSchema: {},
+  description: "Read the shared Spartan agent memory markdown file. Use this early for project-specific lessons and maintainer advice. Older lessons are moved to AGENT_MEMORY_ARCHIVE.md when the file fills up; pass archive_query (space separated words, all must match) to also search that archive.",
+  inputSchema: {
+    archive_query: z.string().optional(),
+  },
   outputSchema: output_schemas.agent_memory,
   annotations: read_only,
-}, async () => {
-  return tool_result({
+}, async ({ archive_query } = {}) => {
+  const result = {
     ok: true,
     path: agent_memory_path,
     memory: await read_agent_memory(),
-  });
+  };
+  if (archive_query)
+  {
+    result.archive_path = agent_memory_archive_path;
+    result.archive_matches = await search_agent_memory_archive(archive_query);
+  }
+  return tool_result(result);
 });
 
 register_local_tool("agent_memory_append", {
   title: "Agent Memory Append",
-  description: "Append one durable lesson to a named section in the shared Spartan agent memory file.",
+  description: `Append one durable lesson (under ${agent_memory_note_max_chars} chars) to a named section in the shared Spartan agent memory file. Dated lessons belong in the Lessons section; when the file is full the oldest lessons move to AGENT_MEMORY_ARCHIVE.md automatically.`,
   inputSchema: {
     section: z.string(),
     note: z.string(),
@@ -1684,6 +1695,20 @@ register_local_tool("agent_memory_replace", {
       suggested_action: "keep the memory concise, preserve the title, and retry",
     }));
   }
+});
+
+register_local_tool("engine_command", {
+  title: "Engine Command",
+  description: "Send any native engine bridge command by name with an args object. Use it for commands added to the engine after this MCP server started (they have no dedicated tool until Cursor respawns the server), or when a dedicated tool is missing an argument. Prefer the dedicated tool when one exists.",
+  inputSchema: {
+    command: z.string().min(1),
+    args: z.record(z.string(), z.any()).optional(),
+  },
+  outputSchema: output_schemas.generic,
+  annotations: edit_tool,
+  traceLocal: false,
+}, async ({ command, args }) => {
+  return tool_result(await send_engine_command(command, args ?? {}));
 });
 
 register_local_tool("debug_log_read", {
@@ -1790,6 +1815,70 @@ register_tool(
   },
   "cvar_set",
   { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "shader_reload",
+  "Hot reload shaders without restarting the engine. Recompiles every shader whose .hlsl file or any of its includes changed on disk since it was compiled (edit files under the repo's data/shaders, the path is returned as shader_directory). name filters by file name substring (e.g. g_buffer or common_rain) and force recompiles the matches even if unchanged. Compilation runs in the background: call again until compiling is 0, then read failed and console_read for compiler errors.",
+  {
+    name: z.string().optional(),
+    force: z.boolean().optional(),
+  },
+  "shader_reload",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "terrain_scatter_get",
+  "Read the terrain scatter layers (vegetation, rocks, grass: up to 12 slots) with every attribute exactly as the world file stores them in <terrain><scatter><layer>, plus instance_count and coverage from the last scatter. kind 0 mesh (placed entities), 1 grass and 2 detail (gpu rings). id is optional when the world has one terrain.",
+  {
+    id: z.string().optional(),
+  },
+  "terrain_scatter_get",
+  { annotations: read_only },
+);
+
+register_tool(
+  server,
+  "terrain_scatter_set",
+  "Edit one terrain scatter layer in edit mode. layer is the slot index or layer name, values maps attribute names from terrain_scatter_get to new values (e.g. {density: 600, render_distance: 2400, enabled: true}). Grass/detail layers update instantly; mesh layers start a background rescatter that re-rolls every mesh layer (poll terrain_scatter_get until mesh_rescatter_running is false, then screenshot). rescatter false only stores the values. world_save persists them.",
+  {
+    id: z.string().optional(),
+    layer: z.union([z.number().int().min(0).max(11), z.string()]),
+    values: z.record(z.string(), z.union([z.number(), z.boolean(), z.string()])),
+    rescatter: z.boolean().optional(),
+  },
+  "terrain_scatter_set",
+  {
+    annotations: edit_tool,
+    map_args: (args) => {
+      const entries = Object.entries(args.values ?? {});
+      if (entries.length === 0)
+      {
+        throw new Error("values must set at least one attribute");
+      }
+      const mapped = {
+        layer: args.layer,
+        count: entries.length,
+      };
+      if (args.id !== undefined)
+      {
+        mapped.id = args.id;
+      }
+      if (args.rescatter !== undefined)
+      {
+        mapped.rescatter = args.rescatter;
+      }
+      entries.forEach(([name, value], i) =>
+      {
+        mapped[`attribute_${i}`] = name;
+        mapped[`value_${i}`] = value;
+      });
+      return mapped;
+    },
+  },
 );
 
 register_tool(
@@ -2187,7 +2276,7 @@ register_tool(server, "camera_snapshot", "Read the live editor camera position a
 register_tool(
   server,
   "camera_set_view",
-  "Set the camera position and rotation in edit or paused play mode, or look at a target point. Exit an occupied car first to release its chase camera. look_at is an alias for target.",
+  "Set the camera position and rotation in edit or paused play mode, or look at a target point. In play mode (running or paused) with the first person player camera this teleports the player: position is the eye position and the controller capsule moves with it. Exit an occupied car first to release its chase camera. look_at is an alias for target.",
   {
     position: vector3.optional(),
     rotation_euler: vector3.optional(),
@@ -6132,6 +6221,19 @@ register_tool(
     handbrake: z.number().min(0).max(1).optional(),
   },
   "vehicle_set_input",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "vehicle_set_tire_pressure",
+  "Set the cold tire pressure of a car (all four tires) in play mode, the same value as the driver hud PSI slider. Pass exactly one of psi or bar; the engine clamps to 0.05 to 4 bar (about 0.7 to 58 psi). vehicle_get reports tire_pressure_bar, tire_pressure_psi and tire_pressure_optimal_bar.",
+  {
+    id: z.string().optional(),
+    psi: z.number().positive().optional(),
+    bar: z.number().positive().optional(),
+  },
+  "vehicle_set_tire_pressure",
   { annotations: edit_tool },
 );
 
