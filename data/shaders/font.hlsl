@@ -40,6 +40,11 @@ float4 main_ps(vertex_out input) : SV_TARGET
 
     // the outline pass passes its color with a non zero alpha, the fill pass passes zero and uses the vertex color
     float4 outline = pass_get_f4_value();
+
+    // when drawing into the swapchain-encoded output, colors are brought to sdr white like the imgui pass
+    float hdr_mode = pass_get_f3_value().x > 0.5f ? buffer_frame.hdr_enabled : 0.0f;
+    float ui_nits  = buffer_frame.hdr_sdr_white_nits > 0.0f ? buffer_frame.hdr_sdr_white_nits : 203.0f;
+
     if (outline.a > 0.0f)
     {
         if (is_solid)
@@ -47,8 +52,8 @@ float4 main_ps(vertex_out input) : SV_TARGET
             discard;
         }
 
-        return float4(outline.rgb, coverage * input.color.a);
+        return float4(ui_to_display(outline.rgb, hdr_mode, ui_nits), coverage * input.color.a);
     }
 
-    return float4(input.color.rgb, input.color.a * (is_solid ? 1.0f : coverage));
+    return float4(ui_to_display(input.color.rgb, hdr_mode, ui_nits), input.color.a * (is_solid ? 1.0f : coverage));
 }

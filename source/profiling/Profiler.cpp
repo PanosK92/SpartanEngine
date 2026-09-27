@@ -1696,24 +1696,24 @@ namespace spartan
         // the overlay palette, one hue per meaning so a glance is enough
         namespace overlay_color
         {
-            // matches color_accent_1 of the editor's default theme
-            const Color accent  = Color(0.439f, 0.831f, 1.000f, 1.0f);
-            const Color panel   = Color(0.031f, 0.037f, 0.047f, 0.86f);
-            const Color border  = Color(1.0f, 1.0f, 1.0f, 0.06f);
-            const Color divider = Color(1.0f, 1.0f, 1.0f, 0.07f);
-            const Color track   = Color(1.0f, 1.0f, 1.0f, 0.07f);
-            const Color text    = Color(0.94f, 0.95f, 0.97f, 1.0f);
-            const Color muted   = Color(0.62f, 0.66f, 0.72f, 1.0f);
-            const Color dim     = Color(0.43f, 0.47f, 0.53f, 1.0f);
-            const Color good    = Color(0.36f, 0.86f, 0.55f, 1.0f);
-            const Color warn    = Color(1.00f, 0.72f, 0.26f, 1.0f);
-            const Color bad     = Color(1.00f, 0.37f, 0.37f, 1.0f);
+            // a quieter take on color_accent_1 and the panel tones of the editor's default theme
+            const Color accent  = Color(0.36f, 0.70f, 0.84f, 1.0f);
+            const Color panel   = Color(0.071f, 0.075f, 0.086f, 0.78f);
+            const Color border  = Color(1.0f, 1.0f, 1.0f, 0.05f);
+            const Color divider = Color(1.0f, 1.0f, 1.0f, 0.06f);
+            const Color track   = Color(1.0f, 1.0f, 1.0f, 0.06f);
+            const Color text    = Color(0.80f, 0.82f, 0.85f, 1.0f);
+            const Color muted   = Color(0.55f, 0.58f, 0.63f, 1.0f);
+            const Color dim     = Color(0.42f, 0.45f, 0.50f, 1.0f);
+            const Color good    = Color(0.38f, 0.74f, 0.53f, 1.0f);
+            const Color warn    = Color(0.88f, 0.66f, 0.32f, 1.0f);
+            const Color bad     = Color(0.90f, 0.42f, 0.42f, 1.0f);
             const Color cpu     = accent;
-            const Color gpu     = Color(0.70f, 0.54f, 1.00f, 1.0f);
-            const Color graph   = Color(accent.r, accent.g, accent.b, 0.80f);
-            const Color memory  = Color(0.56f, 0.63f, 0.73f, 1.0f);
-            const Color peak    = Color(1.0f, 1.0f, 1.0f, 0.65f);
-            const Color budget  = Color(1.0f, 1.0f, 1.0f, 0.30f);
+            const Color gpu     = Color(0.60f, 0.52f, 0.84f, 1.0f);
+            const Color graph   = Color(accent.r, accent.g, accent.b, 0.60f);
+            const Color memory  = Color(0.50f, 0.56f, 0.65f, 1.0f);
+            const Color peak    = Color(1.0f, 1.0f, 1.0f, 0.45f);
+            const Color budget  = Color(1.0f, 1.0f, 1.0f, 0.22f);
         }
 
         // numbers refresh a few times a second so they can be read, the graph moves every frame
@@ -2292,7 +2292,7 @@ namespace spartan
         font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x1, panel_y0 + hairline), col::border);
         font_shapes->AddRect(Vector2(panel_x0, panel_y1 - hairline), Vector2(panel_x1, panel_y1), col::border);
         font_shapes->AddRect(Vector2(panel_x1 - hairline, panel_y0 + hairline), Vector2(panel_x1, panel_y1 - hairline), col::border);
-        font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x0 + px(3.0f), panel_y1), col::accent);
+        font_shapes->AddRect(Vector2(panel_x0, panel_y0), Vector2(panel_x0 + px(2.0f), panel_y1), Color(col::accent.r, col::accent.g, col::accent.b, 0.55f));
         for (const OverlayRect& shape : rects)
         {
             font_shapes->AddRect(Vector2(shape.x0, shape.y0), Vector2(shape.x1, shape.y1), shape.color);

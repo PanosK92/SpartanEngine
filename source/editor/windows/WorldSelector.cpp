@@ -161,37 +161,9 @@ namespace
         colors.primary_active     = with_alpha(accent, 0.62f);
     }
 
-    void push_button_style(bool primary)
-    {
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, scaled(6.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, scaled_vec(12.0f, 6.0f));
-
-        if (primary)
-        {
-            ImGui::PushStyleColor(ImGuiCol_Button,        colors.primary);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors.primary_hover);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  colors.primary_active);
-        }
-        else
-        {
-            ImGui::PushStyleColor(ImGuiCol_Button,        colors.button);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors.button_hover);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  colors.button_active);
-        }
-    }
-
-    void pop_button_style()
-    {
-        ImGui::PopStyleColor(3);
-        ImGui::PopStyleVar(2);
-    }
-
     bool launcher_button(const char* label, const ImVec2& size, bool primary = false)
     {
-        push_button_style(primary);
-        bool pressed = ImGui::Button(label, size);
-        pop_button_style();
-        return pressed;
+        return ImGuiSp::command_button(label, size, primary);
     }
 
     void draw_panel_background(const ImVec2& min_pos, const ImVec2& max_pos)
@@ -1488,10 +1460,10 @@ namespace
     void draw_header(float content_w)
     {
         const float start_x = ImGui::GetCursorPosX();
-        ImGui::TextColored(ImGui::Style::color_accent_1, "SPARTAN ENGINE");
+        ImGui::EditorUi::micro_label("Spartan Engine", ImGui::Style::color_accent_1, Editor::font_bold);
         if (Editor::font_bold)
         {
-            ImGui::PushFont(Editor::font_bold, scaled(26.0f));
+            ImGui::PushFont(Editor::font_bold, scaled(30.0f));
         }
         ImGui::TextUnformatted("Your worlds");
         if (Editor::font_bold)
@@ -1579,7 +1551,7 @@ namespace
         ImGui::Dummy(ImVec2(0.0f, scaled(8.0f)));
         if (Editor::font_bold)
         {
-            ImGui::PushFont(Editor::font_bold, 0.0f);
+            ImGui::PushFont(Editor::font_bold, scaled(20.0f));
         }
         ImGui::TextUnformatted(world->name.c_str());
         if (Editor::font_bold)
@@ -1598,10 +1570,12 @@ namespace
             ImGui::TextDisabled("No description available");
         }
 
-        ImGui::Dummy(ImVec2(0.0f, scaled(12.0f)));
-        ImGui::TextDisabled("Location");
+        ImGui::Dummy(ImVec2(0.0f, scaled(14.0f)));
+        ImGui::EditorUi::micro_label("Location", ImGui::Style::color_text_faint, Editor::font_bold);
         ImGui::PushTextWrapPos();
-        ImGui::TextDisabled("%s", world->file_path.c_str());
+        ImGui::PushFont(Editor::font_mono, 0.0f);
+        ImGui::TextColored(ImGui::Style::color_text_muted, "%s", world->file_path.c_str());
+        ImGui::PopFont();
         ImGui::PopTextWrapPos();
 
         ImGui::EndChild();

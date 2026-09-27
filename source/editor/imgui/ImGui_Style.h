@@ -215,7 +215,7 @@ namespace ImGui::Style
         style.Colors[ImGuiCol_TitleBg]          = color_canvas_deep;
         style.Colors[ImGuiCol_TitleBgActive]    = color_canvas_deep;
         style.Colors[ImGuiCol_TitleBgCollapsed] = color_canvas_deep;
-        style.Colors[ImGuiCol_MenuBarBg]        = color_void;
+        style.Colors[ImGuiCol_MenuBarBg]        = lerp(color_canvas_deep, color_canvas, 0.55f);
 
         style.Colors[ImGuiCol_Tab]                       = {0, 0, 0, 0};
         style.Colors[ImGuiCol_TabDimmed]                 = {0, 0, 0, 0};

@@ -519,6 +519,22 @@ namespace ImGui::EditorUi
         draw_list->AddLine(ImVec2(max.x - h, max.y - length), ImVec2(max.x - h, max.y), tint, thickness);
     }
 
+    // a stroked chevron, open 0 points right and 1 points down, anything between rotates it
+    inline void draw_chevron(ImDrawList* draw_list, const ImVec2& center, const float size, const float open, const ImVec4& tint)
+    {
+        const float angle     = open * IM_PI * 0.5f;
+        const float c         = cosf(angle);
+        const float s         = sinf(angle);
+        const float half      = size * 0.5f;
+        const ImVec2 local[3] = { ImVec2(-half * 0.5f, -half), ImVec2(half * 0.5f, 0.0f), ImVec2(-half * 0.5f, half) };
+        ImVec2 points[3];
+        for (int i = 0; i < 3; i++)
+        {
+            points[i] = ImVec2(center.x + local[i].x * c - local[i].y * s, center.y + local[i].x * s + local[i].y * c);
+        }
+        draw_list->AddPolyline(points, 3, color(tint), ImMax(1.25f, scaled(1.5f)));
+    }
+
     inline float toolbar_icon_size()
     {
         return scaled(18.0f);

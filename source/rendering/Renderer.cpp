@@ -5145,7 +5145,7 @@ namespace spartan
             if (!secondary_render_root_active)
             {
                 Pass_PostProcess_EditorOverlays(tex_sdr);
-                Pass_Text(tex_sdr);
+                Pass_Text(tex_sdr, false);
             }
         }
         RHI_CommandList::EndMarker();
@@ -5826,7 +5826,7 @@ namespace spartan
         RHI_Device::Bind(RHI_Frame_List::Graphics);
         if (!secondary_render_root_active)
         {
-            Pass_Text(rt_output);
+            Pass_Text(rt_output, true);
         }
 
         if (!secondary_render_root_active)

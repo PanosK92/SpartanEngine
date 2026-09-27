@@ -413,7 +413,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
     float list_btn_w     = ImGui::CalcTextSize("List").x + ImGui::GetStyle().FramePadding.x * 2;
     float slider_width   = is_grid_mode && ImGui::GetWindowWidth() >= 520.0f ? 80.0f : 0.0f;
     float slider_gap     = slider_width > 0.0f ? 8.0f : 0.0f;
-    float action_width   = m_toolbar_action ? ImGui::CalcTextSize(m_toolbar_action_label.c_str()).x + ImGui::GetStyle().FramePadding.x * 2 : 0.0f;
+    float action_width   = m_toolbar_action ? ImGuiSp::command_button_width(m_toolbar_action_label.c_str()) : 0.0f;
     float action_gap     = m_toolbar_action ? 8.0f : 0.0f;
     float item_spacing   = ImGui::GetStyle().ItemSpacing.x;
     float controls_width = action_width + action_gap + grid_btn_w + item_spacing + list_btn_w + slider_gap + slider_width;
@@ -577,45 +577,35 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
 
         if (m_toolbar_action)
         {
-            const ImVec4 accent = ImGui::Style::color_accent_1;
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(accent.x, accent.y, accent.z, 0.26f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(accent.x, accent.y, accent.z, 0.42f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(accent.x, accent.y, accent.z, 0.58f));
-            if (ImGui::Button(m_toolbar_action_label.c_str()))
+            if (ImGuiSp::command_button(m_toolbar_action_label.c_str(), ImVec2(action_width, button_height), true))
             {
                 m_toolbar_action();
             }
-            ImGui::PopStyleColor(3);
             ImGui::SameLine(0, action_gap);
         }
 
-        // grid view button
-        if (is_grid_mode)
+        // view toggles speak the title bar's language, the active one takes the signal
+        auto view_button = [](const char* label, const bool active)
         {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0.15f));
-        }
-        if (ImGui::Button("Grid"))
+            const ImVec4 accent = ImGui::Style::color_accent_1;
+            ImGui::PushStyleColor(ImGuiCol_Button, active ? ImGui::EditorUi::alpha(accent, 0.16f) : ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, active ? ImGui::EditorUi::alpha(accent, 0.24f) : ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.08f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, active ? ImGui::EditorUi::alpha(accent, 0.32f) : ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.14f));
+            ImGui::PushStyleColor(ImGuiCol_Text, active ? accent : ImGui::Style::color_text_muted);
+            const bool pressed = ImGui::Button(label);
+            ImGui::PopStyleColor(4);
+            return pressed;
+        };
+
+        if (view_button("Grid", is_grid_mode))
         {
             m_view_mode = View_Grid;
         }
-        if (is_grid_mode)
-        {
-            ImGui::PopStyleColor();
-        }
         ImGui::SameLine();
 
-        // list view button
-        if (is_list_mode)
-        {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0.15f));
-        }
-        if (ImGui::Button("List"))
+        if (view_button("List", is_list_mode))
         {
             m_view_mode = View_List;
-        }
-        if (is_list_mode)
-        {
-            ImGui::PopStyleColor();
         }
 
         // size slider (grid view only)
@@ -855,7 +845,9 @@ void FileDialog::RenderGridView()
                 (icon.uv_max.x - icon.uv_min.x) * static_cast<float>(icon.texture->GetWidth()),
                 (icon.uv_max.y - icon.uv_min.y) * static_cast<float>(icon.texture->GetHeight())
             );
-            float scale = min(icon_area / img_size.x, icon_area / img_size.y);
+            // atlas glyphs are white line art, they sit quietly and a little smaller than thumbnails until pointed at
+            const bool is_glyph = icon.texture == spartan::ResourceCache::GetIcon(spartan::IconType::Folder).texture;
+            float scale = min(icon_area / img_size.x, icon_area / img_size.y) * (is_glyph ? 0.72f : 1.0f);
             img_size.x *= scale;
             img_size.y *= scale;
 
@@ -863,12 +855,21 @@ void FileDialog::RenderGridView()
             float img_x = card_min.x + (item_width - 4 - img_size.x) * 0.5f;
             float img_y = card_min.y + grid_item_padding + (icon_area - img_size.y) * 0.5f;
 
+            ImU32 icon_tint     = IM_COL32_WHITE;
+            if (is_glyph)
+            {
+                const float lit = ImGui::EditorUi::animate(card_id ^ 0x91c0f00du, is_hovered || is_selected ? 1.0f : 0.0f, 14.0f);
+                const ImVec4 rest = item.IsDirectory() ? ImGui::Style::lerp(ImGui::Style::color_text_muted, ImGui::Style::color_accent_1, 0.18f) : ImGui::Style::color_text_muted;
+                icon_tint = ImGui::EditorUi::color(ImGui::Style::lerp(rest, is_selected ? ImGui::Style::color_accent_hi : ImGui::Style::color_text, lit));
+            }
+
             draw_list->AddImage(
                 reinterpret_cast<ImTextureID>(icon.texture),
                 ImVec2(img_x, img_y),
                 ImVec2(img_x + img_size.x, img_y + img_size.y),
                 ImVec2(icon.uv_min.x, icon.uv_min.y),
-                ImVec2(icon.uv_max.x, icon.uv_max.y)
+                ImVec2(icon.uv_max.x, icon.uv_max.y),
+                icon_tint
             );
         }
 

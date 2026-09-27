@@ -448,15 +448,17 @@ void WorldViewer::OnTickVisible()
 void WorldViewer::DrawToolbar()
 {
     const string count_text = entity_filter.IsActive() ? to_string(filter_match_count) + (filter_match_count == 1 ? " result" : " results") : to_string(entity_count) + (entity_count == 1 ? " entity" : " entities");
-    ImGui::PushFont(Editor::font_bold, 0.0f);
-    ImGui::TextUnformatted("Scene hierarchy");
-    ImGui::PopFont();
+    // a tracked caption with the count as a readout on the right, like a label on an instrument
+    const float title_width = ImGui::EditorUi::micro_label_width("Scene hierarchy", Editor::font_bold);
+    ImGui::EditorUi::micro_label("Scene hierarchy", ImGui::Style::color_text_muted, Editor::font_bold);
+    ImGui::PushFont(Editor::font_mono, ImGui::GetFontSize() * 0.9f);
     const float count_width = ImGui::CalcTextSize(count_text.c_str()).x;
-    if (ImGui::GetContentRegionAvail().x > ImGui::CalcTextSize("Scene hierarchy").x + count_width + 24.0f)
+    if (ImGui::GetContentRegionAvail().x > title_width + count_width + 24.0f)
     {
         ImGui::SameLine(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - count_width);
-        ImGui::TextDisabled("%s", count_text.c_str());
+        ImGui::TextColored(ImGui::Style::color_text_faint, "%s", count_text.c_str());
     }
+    ImGui::PopFont();
 
     ImGui::SetNextItemWidth(-FLT_MIN);
     ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F, ImGuiInputFlags_Tooltip);
@@ -679,16 +681,29 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0, 0, 0, 0));
+    // imgui's filled arrow is hidden, a stroked chevron is drawn in its place below
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 0));
 
     // start tree node
     const void* node_id     = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
     const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, "");
 
-    ImGui::PopStyleColor(3);
+    ImGui::PopStyleColor(4);
 
     // get the full tree node rect (including arrow) for hover detection
     ImVec2 tree_node_min = ImGui::GetItemRectMin();
     ImVec2 tree_node_max = ImGui::GetItemRectMax();
+
+    if (has_children)
+    {
+        const float font_size  = ImGui::GetFontSize();
+        const float open       = ImGui::EditorUi::animate(ImGui::GetID(node_id) ^ 0xc4e7a0u, is_node_open ? 1.0f : 0.0f, 16.0f);
+        const ImVec2 center    = ImVec2(IM_ROUND(tree_node_min.x + ImGui::GetStyle().FramePadding.x + font_size * 0.5f), IM_ROUND((tree_node_min.y + tree_node_max.y) * 0.5f));
+        const float hit        = font_size * 0.8f;
+        const bool hovered     = ImGui::IsMouseHoveringRect(ImVec2(center.x - hit, tree_node_min.y), ImVec2(center.x + hit, tree_node_max.y));
+        const ImVec4 tint      = hovered ? ImGui::Style::color_text : ImGui::Style::color_text_muted;
+        ImGui::EditorUi::draw_chevron(dl, center, font_size * 0.5f, open, tint);
+    }
 
     // scroll to selected entity, but only if selection was programmatic (not from user click)
     if (first_time_selected && primary_selected)

@@ -163,13 +163,28 @@ namespace
         }
     }
 
+    // title bar labels sit a step below full text so the bar reads as part of the chrome
+    ImVec4 title_text_color()
+    {
+        return ImGui::Style::lerp(ImGui::Style::color_text, ImGui::Style::color_text_muted, 0.45f);
+    }
+
     namespace buttons_menu
     {
+        // the soft color is popped before the menu's items are drawn, so only the label is affected
+        bool begin_menu(const char* label)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, title_text_color());
+            const bool open = ImGui::BeginMenu(label);
+            ImGui::PopStyleColor();
+            return open;
+        }
+
         void file()
         {
             bool open_new_world_confirmation = false;
             const bool world_saving = spartan::World::IsSaving();
-            if (ImGui::BeginMenu("File"))
+            if (begin_menu("File"))
             {
                 if (
                     ImGui::MenuItem(
@@ -274,7 +289,7 @@ namespace
 
         void edit()
         {
-            if (ImGui::BeginMenu("Edit"))
+            if (begin_menu("Edit"))
             {
                 if (ImGui::MenuItem("Undo", "Ctrl+Z"))
                 {
@@ -292,7 +307,7 @@ namespace
 
         void view()
         {
-            if (ImGui::BeginMenu("View"))
+            if (begin_menu("View"))
             {
                 if (ImGui::MenuItem("Reset workspace layout"))
                 {
@@ -333,7 +348,7 @@ namespace
 
         void help()
         {
-            if (ImGui::BeginMenu("Help"))
+            if (begin_menu("Help"))
             {
                 bool* about_visible = GeneralWindows::GetVisibilityWindowAbout();
                 if (ImGui::MenuItem("About", nullptr, *about_visible))
@@ -378,11 +393,12 @@ namespace
     void draw_title_separator(const float x, const float menubar_height)
     {
         const float dpi      = spartan::Window::GetDpiScale();
-        const float height   = 18.0f * dpi;
+        const float height   = 20.0f * dpi;
+        const float width    = max(1.0f, IM_ROUND(dpi));
         const ImVec2 window  = ImGui::GetWindowPos();
-        const float line_x   = IM_ROUND(window.x + x) + 0.5f;
+        const float line_x   = IM_ROUND(window.x + x);
         const float center_y = window.y + menubar_height * 0.5f;
-        ImGui::GetWindowDrawList()->AddLine(ImVec2(line_x, IM_ROUND(center_y - height * 0.5f)), ImVec2(line_x, IM_ROUND(center_y + height * 0.5f)), ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.26f)), 1.0f);
+        ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(line_x, IM_ROUND(center_y - height * 0.5f)), ImVec2(line_x + width, IM_ROUND(center_y + height * 0.5f)), ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.22f)));
     }
 
     namespace buttons_toolbar
@@ -507,20 +523,31 @@ namespace
             return max(0.0f, (menubar_height - height) * 0.5f);
         }
 
+        // the accent is pulled toward the muted text so active tools read as lit, not neon
+        ImVec4 active_tint()
+        {
+            return ImGui::Style::lerp(ImGui::Style::color_accent_1, ImGui::Style::color_text_muted, 0.35f);
+        }
+
+        ImVec4 idle_tint()
+        {
+            return ImGui::Style::color_text_muted;
+        }
+
         void push_button_colors(bool is_active)
         {
             const ImVec4 accent = ImGui::Style::color_accent_1;
             if (is_active)
             {
-                ImGui::PushStyleColor(ImGuiCol_Button,        with_alpha(accent, 0.16f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, with_alpha(accent, 0.24f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive,  with_alpha(accent, 0.32f));
+                ImGui::PushStyleColor(ImGuiCol_Button,        with_alpha(accent, 0.09f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, with_alpha(accent, 0.15f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive,  with_alpha(accent, 0.21f));
             }
             else
             {
                 ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0, 0, 0, 0));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, with_alpha(ImGui::Style::color_text, 0.08f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive,  with_alpha(ImGui::Style::color_text, 0.14f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, with_alpha(ImGui::Style::color_text, 0.06f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive,  with_alpha(ImGui::Style::color_text, 0.10f));
             }
         }
 
@@ -539,8 +566,8 @@ namespace
             push_button_colors(is_active);
 
             const ImVec4 tint = is_active
-                ? ImGui::Style::color_accent_1
-                : ImGui::Style::color_text_muted;
+                ? active_tint()
+                : idle_tint();
 
             // image_button derives its id from the icon type, so two buttons sharing an icon share
             // an id, the tooltip is unique per button and makes the id unique whatever the icon is
@@ -599,7 +626,7 @@ namespace
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, tool_padding());
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
             push_button_colors(active);
-            ImGui::PushStyleColor(ImGuiCol_Text, active ? ImGui::Style::color_accent_1 : ImGui::Style::color_text_muted);
+            ImGui::PushStyleColor(ImGuiCol_Text, active ? active_tint() : idle_tint());
             ImGui::PushFont(Editor::font_mono_medium, ImGui::GetFontSize() * 0.92f);
 
             if (ImGui::Button(label, ImVec2(tool_button_width(), tool_button_height())))
@@ -624,7 +651,7 @@ namespace
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, tool_padding());
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
             push_button_colors(false);
-            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::Style::color_text);
+            ImGui::PushStyleColor(ImGuiCol_Text, idle_tint());
             ImGui::PushFont(Editor::font_mono_medium, ImGui::GetFontSize() * 0.72f);
 
             if (ImGui::Button(is_world ? "WLD" : "LOC", ImVec2(tool_button_width(), tool_button_height())))
@@ -650,8 +677,8 @@ namespace
             push_button_colors(snap_enabled);
 
             const ImVec4 tint = snap_enabled
-                ? ImGui::Style::color_accent_1
-                : ImGui::Style::color_text_muted;
+                ? active_tint()
+                : idle_tint();
             if (ImGuiSp::image_button(spartan::IconType::Snap, spartan::math::Vector2(tool_icon_size(), tool_icon_size()), false, tint))
             {
                 spartan::ConsoleRegistry::Get().SetValueFromString("r.transform_snap", snap_enabled ? "0" : "1");
@@ -705,8 +732,8 @@ namespace
             push_button_colors(is_running || is_visible);
 
             const ImVec4 tint = is_running || is_visible
-                ? ImGui::Style::color_accent_1
-                : ImGui::Style::color_text_muted;
+                ? active_tint()
+                : idle_tint();
             if (ImGuiSp::image_button(spartan::IconType::Mcp, spartan::math::Vector2(tool_icon_size(), tool_icon_size()), false, tint))
             {
                 if (assistant)
@@ -791,17 +818,17 @@ namespace
                 const float rounding   = height * 0.5f;
                 const float live       = ImGui::EditorUi::animate(ImGui::GetID("##transport_live"), is_live ? 1.0f : 0.0f, 8.0f);
                 const float held       = is_paused ? 1.0f : live;
-                const ImVec4 signal    = is_paused ? ImGui::Style::color_warning : ImGui::Style::color_accent_1;
+                const ImVec4 signal    = is_paused ? ImGui::Style::color_warning : active_tint();
                 ImDrawList* draw_list  = ImGui::GetWindowDrawList();
                 const float breathe    = live > 0.01f ? 0.85f + 0.15f * sinf(static_cast<float>(ImGui::GetTime()) * 3.0f) : 1.0f;
                 if (held > 0.01f)
                 {
-                    ImGui::EditorUi::draw_glow(draw_list, min_pos, max_pos, signal, rounding, 14.0f * scale, held * breathe);
+                    ImGui::EditorUi::draw_glow(draw_list, min_pos, max_pos, signal, rounding, 12.0f * scale, 0.6f * held * breathe);
                 }
-                draw_list->AddRectFilled(min_pos, max_pos, ImGui::EditorUi::color(ImGui::Style::lerp(ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.06f), ImGui::EditorUi::alpha(signal, 0.14f), held)), rounding);
+                draw_list->AddRectFilled(min_pos, max_pos, ImGui::EditorUi::color(ImGui::Style::lerp(ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.05f), ImGui::EditorUi::alpha(signal, 0.10f), held)), rounding);
                 if (held > 0.01f)
                 {
-                    draw_list->AddRect(min_pos, max_pos, ImGui::EditorUi::color(ImGui::EditorUi::alpha(signal, 0.75f * held)), rounding, max(1.0f, scale));
+                    draw_list->AddRect(min_pos, max_pos, ImGui::EditorUi::color(ImGui::EditorUi::alpha(signal, 0.45f * held)), rounding, max(1.0f, scale));
                 }
             }
 
@@ -812,7 +839,7 @@ namespace
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, transport_button_height() * 0.5f);
             push_button_colors(is_live);
 
-            const ImVec4 play_tint = is_live ? ImGui::Style::color_accent_hi : ImGui::Style::color_text;
+            const ImVec4 play_tint = is_live ? active_tint() : title_text_color();
             if (ImGuiSp::image_button(spartan::IconType::Play, spartan::math::Vector2(transport_icon_size(), transport_icon_size()), false, play_tint))
             {
                 toggle_playing();
@@ -1066,7 +1093,7 @@ namespace
             );
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(button_padding_x * dpi, button_padding_y * dpi));
 
-            if (ImGuiSp::image_button(spartan::IconType::Minimize, icon_size, false))
+            if (ImGuiSp::image_button(spartan::IconType::Minimize, icon_size, false, title_text_color()))
             {
                 spartan::Window::Minimize();
             }
@@ -1076,7 +1103,7 @@ namespace
             ImGui::SetCursorPosY(offset_y);
 
             // maximize/restore button
-            if (ImGuiSp::image_button(spartan::IconType::Maximize, icon_size, false))
+            if (ImGuiSp::image_button(spartan::IconType::Maximize, icon_size, false, title_text_color()))
             {
                 spartan::Window::Maximize();
             }
@@ -1092,7 +1119,7 @@ namespace
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.75f, 0.12f, 0.12f, 0.92f));
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.62f, 0.08f, 0.08f, 1.0f));
 
-            if (ImGuiSp::image_button(spartan::IconType::X, icon_size, false))
+            if (ImGuiSp::image_button(spartan::IconType::X, icon_size, false, title_text_color()))
             {
                 spartan::Window::Close();
             }
@@ -1223,7 +1250,7 @@ void MenuBar::Tick()
                 const float hover       = ImGui::EditorUi::animate(ImGui::GetID("##wordmark_hover"), ImGui::IsItemHovered() ? 1.0f : 0.0f, 12.0f);
                 const ImVec2 item_min   = ImGui::GetItemRectMin();
                 const ImVec2 position   = ImVec2(IM_ROUND(item_min.x), IM_ROUND(item_min.y + frame_padding_y));
-                const ImVec4 tint       = ImGui::Style::lerp(ImGui::Style::color_text, ImGui::Style::color_accent_hi, hover);
+                const ImVec4 tint       = ImGui::Style::lerp(title_text_color(), buttons_toolbar::active_tint(), hover);
                 ImGui::EditorUi::draw_text_tracked(ImGui::GetWindowDrawList(), position, ImGui::EditorUi::color(tint), wordmark, tracking, Editor::font_bold, font_size);
                 ImGuiSp::tooltip("Spartan Engine by Panos Karabelas");
             }
@@ -1273,7 +1300,7 @@ void MenuBar::Tick()
 
                         ImGui::EditorUi::status_dot(draw, ImVec2(min_pos.x + 3.0f * dpi, IM_ROUND((min_pos.y + max_pos.y) * 0.5f)), 2.5f * dpi, signal, loading);
                         draw->PushClipRect(ImVec2(min_pos.x + chip_padding_x, min_pos.y), ImVec2(max_pos.x, max_pos.y), true);
-                        draw->AddText(ImVec2(min_pos.x + chip_padding_x + 3.0f * dpi, text_y), ImGui::EditorUi::color(ImGui::Style::color_text), world_name.c_str());
+                        draw->AddText(ImVec2(min_pos.x + chip_padding_x + 3.0f * dpi, text_y), ImGui::EditorUi::color(title_text_color()), world_name.c_str());
                         draw->PopClipRect();
 
                         ImGuiSp::tooltip(world_name.c_str());
@@ -1311,8 +1338,8 @@ void MenuBar::Tick()
                 const float y         = window.y + menubar_height - 1.0f;
                 const float center_x  = window.x + width * 0.5f;
                 const float spread    = width * 0.28f * intensity;
-                const ImU32 clear     = ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_accent_1, 0.0f));
-                const ImU32 signal    = ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_accent_1, intensity));
+                const ImU32 clear     = ImGui::EditorUi::color(ImGui::EditorUi::alpha(buttons_toolbar::active_tint(), 0.0f));
+                const ImU32 signal    = ImGui::EditorUi::color(ImGui::EditorUi::alpha(buttons_toolbar::active_tint(), 0.7f * intensity));
                 draw_list->AddRectFilledMultiColor(ImVec2(center_x - spread, y), ImVec2(center_x, y + 1.0f), clear, signal, signal, clear);
                 draw_list->AddRectFilledMultiColor(ImVec2(center_x, y), ImVec2(center_x + spread, y + 1.0f), signal, clear, clear, signal);
             }

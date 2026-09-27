@@ -539,7 +539,7 @@ namespace spartan
         }
     }
 
-    void Renderer::Pass_Text(RHI_Texture* tex_out)
+    void Renderer::Pass_Text(RHI_Texture* tex_out, const bool display_encoded)
     {
         const auto& shader_v = GetShader(Renderer_Shader::font_v);
         const auto& shader_p = GetShader(Renderer_Shader::font_p);
@@ -562,6 +562,7 @@ namespace spartan
             RHI_CommandList::SetBlendState(GetBlendState(Renderer_BlendState::Alpha));
             RHI_CommandList::SetColorTarget(tex_out);
             RHI_CommandList::SetCullMode(RHI_CullMode::Back);
+            m_pcb_pass_cpu.set_f3_value(display_encoded ? 1.0f : 0.0f, 0.0f, 0.0f);
 
             for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_Font::Max); i++)
             {

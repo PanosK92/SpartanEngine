@@ -54,31 +54,29 @@ vertex main_vs(Vertex_Pos2dUvColor input)
     return output;
 }
 
-// rec.709 (srgb primaries) linear values to hdr10 (rec.2020 + st.2084 pq curve)
-float3 linear_to_hdr10(float3 color, float white_point)
+// inverse of linear_to_hdr10, returns rec.709 linear values where 1.0 = white_point nits
+float3 hdr10_to_linear(float3 color, float white_point)
 {
-    {
-        static const float3x3 from709to2020 =
-        {
-            { 0.6274040f, 0.3292820f, 0.0433136f },
-            { 0.0690970f, 0.9195400f, 0.0113612f },
-            { 0.0163916f, 0.0880132f, 0.8955950f }
-        };
-        color = mul(from709to2020, color);
-    }
-
-    // normalize hdr scene values to the st.2084 [0..1] domain where 1.0 = 10000 nits
-    const float st2084_max = 10000.0f;
-    color *= white_point / st2084_max;
-
     {
         static const float m1 = 2610.0 / 4096.0 / 4;
         static const float m2 = 2523.0 / 4096.0 * 128;
         static const float c1 = 3424.0 / 4096.0;
         static const float c2 = 2413.0 / 4096.0 * 32;
         static const float c3 = 2392.0 / 4096.0 * 32;
-        float3 cp = pow(abs(color), m1);
-        color = pow((c1 + c2 * cp) / (1 + c3 * cp), m2);
+        float3 ep = pow(abs(color), 1.0f / m2);
+        color = pow(max(ep - c1, 0.0f) / (c2 - c3 * ep), 1.0f / m1);
+    }
+
+    color *= 10000.0f / white_point;
+
+    {
+        static const float3x3 from2020to709 =
+        {
+            {  1.6604910f, -0.5876411f, -0.0728499f },
+            { -0.1245505f,  1.1328999f, -0.0083494f },
+            { -0.0181508f, -0.1005789f,  1.1187297f }
+        };
+        color = mul(from2020to709, color);
     }
 
     return color;
@@ -103,6 +101,7 @@ float4 main_ps(vertex input) : SV_Target
     uint point_sampling   = (flags & (1 << 8))  != 0 ? 1 : 0;
     uint is_visualized    = (flags & (1 << 9))  != 0 ? 1 : 0;
     uint is_frame_texture = (flags & (1 << 10)) != 0 ? 1 : 0;
+    uint is_sdr_capture   = (flags & (1 << 11)) != 0 ? 1 : 0;
 
     float4 channels = float4(channel_r, channel_g, channel_b, channel_a);
 
@@ -145,7 +144,16 @@ float4 main_ps(vertex input) : SV_Target
     float3 color_hdr    = buffer_frame.hdr_enabled > 1.5f
         ? color_linear * (ui_nits / 80.0f)
         : linear_to_hdr10(color_linear, ui_nits);
-    color.rgb           = lerp(color.rgb, color_hdr, apply_hdr);
+    color.rgb           = lerp(color.rgb, color_hdr, apply_hdr * (1.0f - float(is_sdr_capture)));
+
+    // an 8 bit screenshot wants sdr, so the display-encoded frame texture is brought back to srgb
+    if (is_sdr_capture != 0 && is_frame_texture != 0 && buffer_frame.hdr_enabled != 0.0f)
+    {
+        float3 frame_linear = buffer_frame.hdr_enabled > 1.5f
+            ? color.rgb * (80.0f / ui_nits)
+            : hdr10_to_linear(color.rgb, ui_nits);
+        color.rgb = linear_to_srgb(saturate(frame_linear));
+    }
 
     return color;
 }

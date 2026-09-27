@@ -750,6 +750,94 @@ namespace ImGuiSp
         return pressed;
     }
 
+    struct CommandLabel
+    {
+        char text[128];
+        ImFont* font;
+        float size;
+        float tracking;
+        float width;
+    };
+
+    static CommandLabel command_label(const char* label)
+    {
+        CommandLabel result;
+        const std::string visible(label, ImGui::FindRenderedTextEnd(label));
+        ImGui::EditorUi::to_upper(visible.c_str(), result.text, sizeof(result.text));
+        result.font     = Editor::font_bold ? Editor::font_bold : ImGui::GetFont();
+        result.size     = ImGui::GetFontSize() * 0.86f;
+        result.tracking = result.size * 0.14f;
+        result.width    = ImGui::EditorUi::calc_text_tracked(result.text, result.tracking, result.font, result.size);
+        return result;
+    }
+
+    // the width a command button needs to show its label with breathing room on both sides
+    static float command_button_width(const char* label)
+    {
+        return IM_ROUND(command_label(label).width + ImGui::EditorUi::scaled(28.0f));
+    }
+
+    // a console key: a dark well with a lit rim and a tracked uppercase label, primary keys carry the signal color
+    static bool command_button(const char* label, const ImVec2& size_arg, const bool primary = true, const ImVec4* tint_override = nullptr)
+    {
+        ImGuiWindow* window = ImGui::GetCurrentWindow();
+        if (window->SkipItems)
+        {
+            return false;
+        }
+
+        const ImGuiID id           = window->GetID(label);
+        const CommandLabel caption = command_label(label);
+        const char* upper          = caption.text;
+        ImFont* font               = caption.font;
+        const float size_px        = caption.size;
+        const float tracking       = caption.tracking;
+        const float text_w         = caption.width;
+        const float height         = size_arg.y > 0.0f ? size_arg.y : IM_ROUND(ImGui::GetFrameHeight() + ImGui::EditorUi::scaled(8.0f));
+        const float width          = size_arg.x > 0.0f ? size_arg.x : (size_arg.x < 0.0f ? ImMax(ImGui::GetContentRegionAvail().x + size_arg.x + 1.0f, text_w) : command_button_width(label));
+
+        const ImVec2 pos = window->DC.CursorPos;
+        const ImRect bb(pos, ImVec2(IM_ROUND(pos.x + width), IM_ROUND(pos.y + height)));
+        ImGui::ItemSize(bb);
+        if (!ImGui::ItemAdd(bb, id))
+        {
+            return false;
+        }
+
+        bool hovered = false;
+        bool held    = false;
+        const bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held);
+
+        const float hover       = ImGui::EditorUi::animate(id ^ 0x5eed0001u, hovered ? 1.0f : 0.0f, 14.0f);
+        const float press       = ImGui::EditorUi::animate(id ^ 0x5eed0002u, held ? 1.0f : 0.0f, 24.0f);
+        const ImVec4 signal     = tint_override ? *tint_override : (primary ? ImGui::Style::color_accent_1 : ImGui::Style::color_text);
+        const float rounding    = ImGui::EditorUi::scaled(4.0f);
+        ImDrawList* draw_list   = window->DrawList;
+
+        if (hover > 0.01f)
+        {
+            ImGui::EditorUi::draw_glow(draw_list, bb.Min, bb.Max, signal, rounding, ImGui::EditorUi::scaled(10.0f), (primary ? 0.75f : 0.35f) * hover);
+        }
+
+        // the well darkens under the finger and lifts toward the signal under the pointer
+        const float lift        = (primary ? 0.10f : 0.05f) + (primary ? 0.10f : 0.06f) * hover - 0.06f * press;
+        const ImVec4 well_top   = ImGui::Style::lerp(ImGui::Style::color_surface, signal, lift);
+        const ImVec4 well_base  = ImGui::Style::lerp(ImGui::Style::color_canvas_deep, signal, lift * 0.5f);
+        const int vtx_start     = draw_list->VtxBuffer.Size;
+        draw_list->AddRectFilled(bb.Min, bb.Max, IM_COL32_WHITE, rounding);
+        ImGui::EditorUi::shade_vertical(draw_list, vtx_start, bb.Min.y, bb.Max.y, well_top, well_base);
+
+        const ImVec4 rim_top    = ImGui::EditorUi::alpha(signal, (primary ? 0.70f : 0.22f) + 0.30f * hover);
+        const ImVec4 rim_bottom = ImGui::EditorUi::alpha(signal, (primary ? 0.18f : 0.06f) + 0.14f * hover);
+        ImGui::EditorUi::draw_lit_rim(draw_list, bb.Min, bb.Max, rounding, rim_top, rim_bottom, bb.GetHeight());
+
+        const ImVec4 label_tint = primary ? ImGui::Style::lerp(ImGui::Style::color_accent_hi, ImVec4(1, 1, 1, 1), 0.35f * hover) : ImGui::Style::lerp(ImGui::Style::color_text_muted, ImGui::Style::color_text, 0.4f + 0.6f * hover);
+        const ImVec2 text_pos   = ImVec2(IM_ROUND(bb.Min.x + (width - text_w) * 0.5f), IM_ROUND(bb.Min.y + (height - size_px) * 0.5f + press));
+        ImGui::EditorUi::draw_text_tracked(draw_list, text_pos, ImGui::EditorUi::color(label_tint), upper, tracking, font, size_px);
+
+        return pressed;
+    }
+
     inline ButtonPress window_yes_no(const char* title, const char* text)
     {
         // Set position

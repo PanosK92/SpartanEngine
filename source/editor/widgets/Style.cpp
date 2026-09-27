@@ -23,7 +23,7 @@ using namespace ImGui::Style;
 namespace
 {
     constexpr uint32_t style_magic   = 0x53505448;
-    constexpr uint32_t style_version = 6;
+    constexpr uint32_t style_version = 7;
 }
 
 Style::Style(Editor* editor) : Widget(editor)

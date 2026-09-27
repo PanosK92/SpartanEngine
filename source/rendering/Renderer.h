@@ -453,7 +453,7 @@ namespace spartan
         void Pass_DebugTriangles(RHI_Texture* tex_out);
         void Pass_Outline(RHI_Texture* tex_out);
         void Pass_Icons(RHI_Texture* tex_out);
-        void Pass_Text(RHI_Texture* tex_out);
+        void Pass_Text(RHI_Texture* tex_out, const bool display_encoded);
         // asset preview backdrop and wireframe recolour, secondary views only
         void Pass_PreviewStudio(RHI_Texture* tex_out);
         // passes - post-process

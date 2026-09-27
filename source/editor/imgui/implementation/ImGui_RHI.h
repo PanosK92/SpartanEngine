@@ -465,7 +465,7 @@ namespace ImGui::RHI
         };
 
         // a replay into the ui screenshot target must not run user callbacks, they record external passes
-        auto draw_pass = [&](const char* name, const bool gpu_timing, const bool run_callbacks)
+        auto draw_pass = [&](const char* name, const bool gpu_timing, const bool run_callbacks, const bool sdr_capture)
         {
             RHI_CommandList::BeginTimeblock(name, true, spartan::cvar_debug_gpu_timing.GetValue() && gpu_timing);
             setup_render_state();
@@ -592,6 +592,7 @@ namespace ImGui::RHI
                             }
                             flags |= is_texture_visualised ? (1u << 9) : 0;
                             flags |= is_frame_texture      ? (1u << 10) : 0;
+                            flags |= sdr_capture           ? (1u << 11) : 0;
 
                             if (!state_valid || flags != flags_last || mip_level != mip_level_last || array_level != array_level_last)
                             {
@@ -616,7 +617,7 @@ namespace ImGui::RHI
             RHI_CommandList::EndTimeblock();
         };
 
-        draw_pass(is_main_window ? "imgui_window_main" : "imgui_window_child", is_main_window, true);
+        draw_pass(is_main_window ? "imgui_window_main" : "imgui_window_child", is_main_window, true, false);
 
         if (is_main_window)
         {
@@ -627,7 +628,7 @@ namespace ImGui::RHI
                 pso.render_target_swapchain         = nullptr;
                 pso.render_target_color_textures[0] = capture;
                 pso.clear_color[0]                  = rhi_color_load;
-                draw_pass("imgui_screenshot", false, false);
+                draw_pass("imgui_screenshot", false, false, true);
                 pso.render_target_color_textures[0] = nullptr;
                 Renderer::SetUiScreenshotRecorded();
             }

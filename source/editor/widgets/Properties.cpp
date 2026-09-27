@@ -283,14 +283,23 @@ namespace
             const float center_y   = IM_ROUND((header_min.y + header_max.y) * 0.5f);
             const float font_size  = ImGui::GetFontSize();
             const float chevron    = font_size * 0.55f;
+            const bool hovered     = ImGui::IsItemHovered();
+            const float open       = ImGui::EditorUi::animate(ImGui::GetID("##chevron"), is_expanded ? 1.0f : 0.0f, 16.0f);
             const ImVec2 arrow_pos = ImVec2(IM_ROUND(header_min.x + 10.0f * dpi), IM_ROUND(center_y - chevron * 0.5f));
-            ImGui::RenderArrow(draw_list, arrow_pos, ImGui::EditorUi::color(ImGui::Style::color_text_muted), is_expanded ? ImGuiDir_Down : ImGuiDir_Right, 0.55f);
+            const ImVec4 arrow_tint = hovered || is_expanded ? ImGui::Style::color_text : ImGui::Style::color_text_muted;
+            ImGui::EditorUi::draw_chevron(draw_list, ImVec2(arrow_pos.x + chevron * 0.5f, center_y), chevron, open, arrow_tint);
 
-            // the color tab is what makes a component recognisable at a glance
+            // the color tab is what makes a component recognisable at a glance, it lights up while the component is open
             const float tab_x = IM_ROUND(arrow_pos.x + chevron + 12.0f * dpi);
             const float tab_w = IM_ROUND(3.0f * dpi);
             const float tab_h = IM_ROUND(font_size * 0.95f);
-            draw_list->AddRectFilled(ImVec2(tab_x, center_y - tab_h * 0.5f), ImVec2(tab_x + tab_w, center_y + tab_h * 0.5f), ImGui::EditorUi::color(accent_color), tab_w);
+            const ImVec2 tab_min(tab_x, center_y - tab_h * 0.5f);
+            const ImVec2 tab_max(tab_x + tab_w, center_y + tab_h * 0.5f);
+            if (open > 0.01f)
+            {
+                ImGui::EditorUi::draw_glow(draw_list, tab_min, tab_max, accent_color, tab_w, 6.0f * dpi, 0.9f * open);
+            }
+            draw_list->AddRectFilled(tab_min, tab_max, ImGui::EditorUi::color(ImGui::Style::lerp(ImGui::EditorUi::alpha(accent_color, 0.75f), ImGui::Style::lerp(accent_color, ImVec4(1, 1, 1, 1), 0.2f), open)), tab_w);
 
             ImFont* font           = Editor::font_bold ? Editor::font_bold : ImGui::GetFont();
             const ImVec4 name_tint = is_expanded ? ImGui::Style::color_text : ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.82f);
@@ -300,29 +309,27 @@ namespace
         // gear icon for context menu
         if (options)
         {
-            // size based on header height
+            // a quiet glyph that only brightens under the pointer, the header's name stays the loudest thing on it
             const float header_height = header_max.y - header_min.y;
-            const float v_padding     = 5.0f;
-            const float r_padding     = 8.0f;  // small padding from right edge
-            const float icon_size     = header_height - v_padding * 2.0f;
-
-            // position: near right edge with small padding
-            float icon_x = header_max.x - icon_size - r_padding;
-            float icon_y = header_min.y + v_padding;
+            const float icon_size     = IM_ROUND(header_height * 0.52f);
+            const float pad           = IM_ROUND((header_height - icon_size) * 0.5f);
+            const float r_padding     = 6.0f * dpi;
+            const float icon_x        = header_max.x - icon_size - pad * 2.0f - r_padding;
+            const float icon_y        = header_min.y;
+            const bool gear_hovered   = ImGui::IsMouseHoveringRect(ImVec2(icon_x, icon_y), ImVec2(icon_x + icon_size + pad * 2.0f, header_max.y));
+            const ImVec4 gear_tint    = gear_hovered ? ImGui::Style::color_text : ImGui::EditorUi::alpha(ImGui::Style::color_text_muted, 0.8f);
 
             ImGui::SetCursorScreenPos(ImVec2(icon_x, icon_y));
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-            ImGui::PushStyleColor(
-                ImGuiCol_ButtonHovered,
-                ImGui::Style::color_surface_hover
-            );
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
-            if (ImGuiSp::image_button(IconType::Gear, icon_size, false))
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.06f));
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(pad, pad));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f * dpi);
+            if (ImGuiSp::image_button(IconType::Gear, icon_size, false, gear_tint))
             {
                 context_menu_id = name;
                 ImGui::OpenPopup(context_menu_id.c_str());
             }
-            ImGui::PopStyleVar();
+            ImGui::PopStyleVar(2);
             ImGui::PopStyleColor(2);
 
             if (component_instance && context_menu_id == name)
@@ -4024,53 +4031,28 @@ void Properties::ShowAddComponentButton() const
 {
     ImGui::Dummy(ImVec2(0, design::spacing_lg));
 
-    // centered add button
-    float button_width = 140.0f * spartan::Window::GetDpiScale();
-    ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - button_width) * 0.5f + ImGui::GetCursorPosX());
+    // one row of console keys, the primary action leads and the prefab key sits beside it
+    Entity* entity        = get_selected_entity();
+    const bool can_prefab = entity && !entity->IsCodePrefab();
+    const float gap       = design::spacing_md * spartan::Window::GetDpiScale();
+    const float avail     = ImGui::GetContentRegionAvail().x;
+    const float add_width = can_prefab ? IM_ROUND((avail - gap) * 0.5f) : avail;
 
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(design::spacing_lg, design::spacing_md));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.4f, 0.55f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.5f, 0.65f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.2f, 0.35f, 0.5f, 1.0f));
-
-    if (ImGuiSp::button("+ Add Component", ImVec2(button_width, 0)))
+    if (ImGuiSp::command_button("Add Component", ImVec2(add_width, 0.0f), true))
     {
         ImGui::OpenPopup("##ComponentContextMenu_Add");
     }
-
-    ImGui::PopStyleColor(3);
-    ImGui::PopStyleVar(2);
-
     ComponentContextMenu_Add();
 
-    // save as prefab button, hidden for code prefabs since baking one to a file loses its code behavior
-    if (Entity* entity = get_selected_entity())
+    // hidden for code prefabs since baking one to a file loses its code behavior
+    if (can_prefab)
     {
-        if (!entity->IsCodePrefab())
+        ImGui::SameLine(0.0f, gap);
+        if (ImGuiSp::command_button("Save as Prefab", ImVec2(avail - add_width - gap, 0.0f), false))
         {
-            ImGui::Dummy(ImVec2(0, design::spacing_sm));
-
-            float save_button_width = 160.0f * spartan::Window::GetDpiScale();
-            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - save_button_width) * 0.5f + ImGui::GetCursorPosX());
-
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(design::spacing_lg, design::spacing_md));
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.50f, 0.35f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.60f, 0.40f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.25f, 0.45f, 0.30f, 1.0f));
-
-            if (ImGuiSp::button("Save as Prefab...", ImVec2(save_button_width, 0)))
-            {
-                ImGui::OpenPopup("##SaveAsPrefab");
-            }
-
-            ImGui::PopStyleColor(3);
-            ImGui::PopStyleVar(2);
-
-            // save-as-prefab popup
-            ShowSaveAsPrefabPopup(entity);
+            ImGui::OpenPopup("##SaveAsPrefab");
         }
+        ShowSaveAsPrefabPopup(entity);
     }
 }
 
