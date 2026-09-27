@@ -9,7 +9,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include <fstream>
 #include "../../profiling/Profiler.h"
-#include "../core/Debugging.h"
 #include "../rendering/Renderer.h"
 #include "../RHI_Texture.h"
 #include "../RHI_Device.h"
@@ -223,7 +222,7 @@ namespace spartan
         {
             // debug utils
             {
-                if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled())
+                if (cvar_debug_validation_layer.GetValue() || cvar_debug_gpu_assisted_validation.GetValue())
                 {
                     load(reinterpret_cast<void**>(&create_messenger), "vkCreateDebugUtilsMessengerEXT");
                     load(reinterpret_cast<void**>(&destroy_messenger), "vkDestroyDebugUtilsMessengerEXT");
@@ -231,7 +230,7 @@ namespace spartan
                     load(reinterpret_cast<void**>(&set_object_name), "vkSetDebugUtilsObjectNameEXT");
                 }
     
-                if (Debugging::IsGpuMarkingEnabled())
+                if (cvar_debug_gpu_marking.GetValue())
                 {
                     load(reinterpret_cast<void**>(&marker_begin), "vkCmdBeginDebugUtilsLabelEXT");
                     load(reinterpret_cast<void**>(&marker_end), "vkCmdEndDebugUtilsLabelEXT");
@@ -318,7 +317,7 @@ namespace spartan
             for (const auto& requested : extensions_device)
             {
                 const bool ray_tracing_extension = strcmp(requested, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0 || strcmp(requested, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0 || strcmp(requested, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) == 0 || strcmp(requested, VK_KHR_RAY_QUERY_EXTENSION_NAME) == 0 || strcmp(requested, VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME) == 0;
-                if (Debugging::IsRenderdocEnabled() && ray_tracing_extension)
+                if (cvar_debug_renderdoc.GetValue() && ray_tracing_extension)
                 {
                     continue;
                 }
@@ -351,7 +350,7 @@ namespace spartan
 
         vector<const char*> get_extensions_instance()
         {
-            if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled())
+            if (cvar_debug_validation_layer.GetValue() || cvar_debug_gpu_assisted_validation.GetValue())
             {
                 extensions_instance.emplace_back("VK_EXT_debug_report");
                 extensions_instance.emplace_back("VK_EXT_debug_utils");
@@ -360,7 +359,7 @@ namespace spartan
             }
 
             // gpu markers (also uses debug utils, but it's already added above if validation is on)
-            if (Debugging::IsGpuMarkingEnabled() && (!Debugging::IsValidationLayerEnabled() && !Debugging::IsGpuAssistedValidationEnabled()))
+            if (cvar_debug_gpu_marking.GetValue() && (!cvar_debug_validation_layer.GetValue() && !cvar_debug_gpu_assisted_validation.GetValue()))
             {
                 extensions_instance.emplace_back("VK_EXT_debug_utils");
             }
@@ -373,7 +372,7 @@ namespace spartan
 
             // layer-provided extensions (e.g. VK_EXT_layer_settings, VK_EXT_validation_features) are only
             // returned when enumerating with the layer name, not from the loader-level enumeration above
-            if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled())
+            if (cvar_debug_validation_layer.GetValue() || cvar_debug_gpu_assisted_validation.GetValue())
             {
                 uint32_t layer_ext_count = 0;
                 vkEnumerateInstanceExtensionProperties("VK_LAYER_KHRONOS_validation", &layer_ext_count, nullptr);
@@ -546,7 +545,7 @@ namespace spartan
         static vector<VkLayerSettingEXT> settings_storage; // persistent storage for VkLayerSettingEXT
         vector<VkLayerSettingEXT>& get_settings()
         {
-            SP_ASSERT(Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled());
+            SP_ASSERT(cvar_debug_validation_layer.GetValue() || cvar_debug_gpu_assisted_validation.GetValue());
         
             // check layer availability
             {
@@ -585,7 +584,7 @@ namespace spartan
                 { layer_name, "duplicate_message_limit",        VK_LAYER_SETTING_TYPE_UINT32_EXT, 1, &setting_duplicate_message_limit },
             };
 
-            if (Debugging::IsGpuAssistedValidationEnabled())
+            if (cvar_debug_gpu_assisted_validation.GetValue())
             {
                 settings_storage.push_back({ layer_name, "gpuav_enable", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_bool_true });
             }
@@ -1819,7 +1818,7 @@ namespace spartan
 
                 // ray tracing
                 {
-                    *is_ray_tracing_supported = !Debugging::IsRenderdocEnabled() && support_accel_struct.accelerationStructure == VK_TRUE && support_ray_tracing_pipeline.rayTracingPipeline == VK_TRUE && support_ray_query.rayQuery == VK_TRUE;
+                    *is_ray_tracing_supported = !cvar_debug_renderdoc.GetValue() && support_accel_struct.accelerationStructure == VK_TRUE && support_ray_tracing_pipeline.rayTracingPipeline == VK_TRUE && support_ray_query.rayQuery == VK_TRUE;
 
                     if (*is_ray_tracing_supported)
                     {
@@ -2005,7 +2004,7 @@ namespace spartan
             // check if the validation layer is actually installed before trying to enable it,
             // some loaders silently accept a missing layer instead of returning VK_ERROR_LAYER_NOT_PRESENT
             bool validation_layer_available = false;
-            if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled())
+            if (cvar_debug_validation_layer.GetValue() || cvar_debug_gpu_assisted_validation.GetValue())
             {
                 uint32_t layer_count = 0;
                 vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
@@ -2066,7 +2065,7 @@ namespace spartan
                     // fallback: VkValidationFeaturesEXT for loaders that don't expose VK_EXT_layer_settings
                     enabled_features.push_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
                     enabled_features.push_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
-                    if (Debugging::IsGpuAssistedValidationEnabled())
+                    if (cvar_debug_gpu_assisted_validation.GetValue())
                     {
                         enabled_features.push_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);
                     }
@@ -2168,7 +2167,7 @@ namespace spartan
                 m_shader_group_base_alignment              = ray_tracing_properties.shaderGroupBaseAlignment;
 
                 // disable profiler if timestamps are not supported
-                if (Debugging::IsGpuTimingEnabled())
+                if (cvar_debug_gpu_timing.GetValue())
                 {
                     SP_ASSERT_MSG(properties_device.properties.limits.timestampComputeAndGraphics, "Device doesn't support timestamps");
                 }
@@ -2356,7 +2355,7 @@ namespace spartan
         descriptors::descriptor_pools.clear();
 
         // debug messenger
-        if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled())
+        if (cvar_debug_validation_layer.GetValue() || cvar_debug_gpu_assisted_validation.GetValue())
         {
             validation_layer::logging::shutdown(RHI_Context::instance);
         }
@@ -2832,7 +2831,7 @@ namespace spartan
                     : VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
             allocation_create_info.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT; // mappable
 
-            if (Debugging::IsRenderdocEnabled())
+            if (cvar_debug_renderdoc.GetValue())
             {
                 VkPhysicalDeviceMemoryProperties memory_properties;
                 vkGetPhysicalDeviceMemoryProperties(RHI_Context::device_physical, &memory_properties);
@@ -3210,7 +3209,7 @@ namespace spartan
 
     void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const char* name)
     {
-        if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled()) // function pointers are not initialized if validation disabled
+        if (cvar_debug_validation_layer.GetValue() || cvar_debug_gpu_assisted_validation.GetValue()) // function pointers are not initialized if validation disabled
         {
             SP_ASSERT(resource != nullptr);
             SP_ASSERT(functions::set_object_name != nullptr);

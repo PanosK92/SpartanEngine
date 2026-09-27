@@ -270,7 +270,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // Two-sided leaf cards and solid modelled leaves also need a lighting
     // normal on the visible side; otherwise their backs shade almost black.
     // Procedural blades/petals flip after their curved normal is constructed below.
-    if (!is_front_face && !surface.is_grass_blade() && !surface.is_flower() &&
+    const bool is_impostor = (vertex.draw_flags & draw_flag_impostor) != 0u;
+    if (!is_front_face && !is_impostor && !surface.is_grass_blade() && !surface.is_flower() &&
         (pass_is_transparent() || material.is_alpha_tested() || surface.is_foliage() || material.subsurface_scattering > 0.0f))
     {
         vertex.normal  = -vertex.normal;
@@ -303,6 +304,19 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // taken at top level, the terrain paths below sit behind branches where a derivative is undefined
     float3 dpdx_world = ddx(position_world);
     float3 dpdy_world = ddy(position_world);
+
+    // impostor texels name the source uv and carry the crown normal, the prepass already cut the silhouette with the same pick
+    float impostor_mip = 0.0f;
+    if (is_impostor)
+    {
+        float2 impostor_uv;
+        float3 normal_frame;
+        impostor_resolve(vertex.uv_misc.xy, GET_TEXTURE(material_texture_index_albedo), get_alpha_threshold(position_world), impostor_uv, normal_frame, impostor_mip);
+        float3 bitangent  = cross(vertex.normal, vertex.tangent);
+        normal            = normalize(normal_frame.x * vertex.tangent + normal_frame.y * bitangent + normal_frame.z * vertex.normal);
+        vertex.uv_misc.xy = impostor_uv;
+        surface.flags    &= ~((1u << 0) | (1u << 1));
+    }
 
     // world space uv transformation
     // the full uv state is per-renderable, forwarded by the vs through uv_xform_ts/uv_xform_ir
@@ -428,7 +442,9 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float4 albedo_sample = 1.0f;
     if (!terrain_shaded && surface.has_texture_albedo())
     {
-        albedo_sample     = sample_texture(vertex, material_texture_index_albedo);
+        albedo_sample     = is_impostor
+            ? GET_TEXTURE(material_texture_index_albedo).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy, impostor_mip)
+            : sample_texture(vertex, material_texture_index_albedo);
         if (material.is_albedo_srgb())
         {
             albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
@@ -653,7 +669,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 #else
     bool rain_vehicle = false;
 #endif
-    if ((rain_exposed > 0.0f || puddle_water > 0.0f || (rain_vehicle && buffer_frame.rain_vehicle_lean.w > 0.0f)) && !surface.is_water())
+    if ((rain_exposed > 0.0f || puddle_water > 0.0f || (rain_vehicle && (buffer_frame.rain_vehicle.x > 0.0f || rain_car_active()))) && !surface.is_water())
     {
 #if defined(INDIRECT_DRAW)
         float4x4 object_transform = _draw.transform;

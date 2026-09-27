@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "Renderer_Internal.h"
 #include "../world/World.h"
 #include "../world/components/Light.h"
+#include "../world/CarRain.h"
 #include "../rhi/RHI_CommandList.h"
 #include "../rhi/RHI_Shader.h"
 //=============================================
@@ -472,6 +473,68 @@ namespace spartan
             RHI_CommandList::SetShader(shader);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_wind, rhi_all_mips, 0, true);
             RHI_CommandList::Dispatch(tex_wind);
+        }
+        RHI_CommandList::EndPass();
+    }
+
+    void Renderer::Pass_CarRain()
+    {
+        static uint32_t version_uploaded = 0;
+        if (!CarRain::IsActive())
+            return;
+
+        // a new bake or a reset, the textures are rebuilt from the cpu copies, which already hold this frame's changes
+        if (CarRain::GetVersion() != version_uploaded)
+        {
+            version_uploaded = CarRain::GetVersion();
+            CreateCarRainTargets(CarRain::GetAtlasWidth(), CarRain::GetAtlasHeight(), CarRain::GetSurface().data(), CarRain::GetMicro().data());
+        }
+
+        RHI_Texture* tex_micro     = GetRenderTarget(Renderer_RenderTarget::car_rain_micro);
+        RHI_Texture* tex_ids       = GetRenderTarget(Renderer_RenderTarget::car_rain_ids);
+        RHI_Shader* shader_clear   = GetShader(Renderer_Shader::car_rain_clear_c);
+        RHI_Shader* shader_splat   = GetShader(Renderer_Shader::car_rain_splat_c);
+        RHI_Shader* shader_texels  = GetShader(Renderer_Shader::car_rain_texels_c);
+        if (!tex_micro || !tex_ids || !shader_clear || !shader_clear->IsCompiled() || !shader_splat || !shader_splat->IsCompiled() || !shader_texels || !shader_texels->IsCompiled())
+            return;
+
+        const uint32_t width       = CarRain::GetAtlasWidth();
+        const uint32_t height      = CarRain::GetAtlasHeight();
+        const uint32_t drop_count  = min(static_cast<uint32_t>(CarRain::GetDrops().size()), CarRain::drops_max);
+        const uint32_t texel_count = min(static_cast<uint32_t>(CarRain::GetTexels().size()), CarRain::texels_max);
+
+        RHI_CommandList::BeginPass("car_rain");
+        {
+            // which drop covers each texel, from scratch every frame
+            RHI_CommandList::SetShader(shader_clear);
+            RHI_CommandList::SetTexture("tex_car_rain_ids_uav", tex_ids);
+            m_pcb_pass_cpu.set_f3_value(0.0f, 0.0f, static_cast<float>(width));
+            m_pcb_pass_cpu.set_f3_value2(static_cast<float>(height), CarRain::GetTexelSize(), 0.0f);
+            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+            RHI_CommandList::Dispatch((width + 7) / 8, (height + 7) / 8);
+
+            if (drop_count > 0)
+            {
+                RHI_CommandList::SetShader(shader_splat);
+                RHI_CommandList::SetTexture("tex_car_rain_ids_uav", tex_ids);
+                RHI_CommandList::SetBuffer("car_rain_drops", GetBuffer(Renderer_Buffer::CarRainDrops));
+                m_pcb_pass_cpu.set_f3_value(static_cast<float>(m_frame_resource_index * CarRain::drops_max), static_cast<float>(drop_count), static_cast<float>(width));
+                m_pcb_pass_cpu.set_f3_value2(static_cast<float>(height), CarRain::GetTexelSize(), 0.0f);
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                RHI_CommandList::Dispatch((drop_count + 63) / 64, 1);
+            }
+
+            // the micro water the simulation changed this frame
+            if (texel_count > 0)
+            {
+                RHI_CommandList::SetShader(shader_texels);
+                RHI_CommandList::SetTexture("tex_car_rain_micro_uav", tex_micro);
+                RHI_CommandList::SetBuffer("car_rain_texels", GetBuffer(Renderer_Buffer::CarRainTexels));
+                m_pcb_pass_cpu.set_f3_value(static_cast<float>(m_frame_resource_index * CarRain::texels_max), static_cast<float>(texel_count), static_cast<float>(width));
+                m_pcb_pass_cpu.set_f3_value2(static_cast<float>(height), CarRain::GetTexelSize(), 0.0f);
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                RHI_CommandList::Dispatch((texel_count + 63) / 64, 1);
+            }
         }
         RHI_CommandList::EndPass();
     }

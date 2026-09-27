@@ -13,7 +13,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rhi/RHI_Implementation.h"
 #include "../rhi/RHI_SwapChain.h"
 #include "../core/ThreadPool.h"
-#include "../core/Debugging.h"
 #include "../core/Timer.h"
 #include "../core/Window.h"
 #include "../font/Font.h"
@@ -538,7 +537,7 @@ namespace spartan
                         "vulkan" :
                         "d3d12";
             const bool gpu_timing_enabled =
-                Debugging::IsGpuTimingEnabled();
+                cvar_debug_gpu_timing.GetValue();
             const bool gpu_timing_valid =
                 any_of(
                     m_time_blocks_read.begin(),
@@ -1175,9 +1174,9 @@ namespace spartan
         }
         capture_this_frame = capture_requested;
         // Consecutive GPU samples are necessary for diagnosing short stalls.
-        capture_gpu_sample_this_frame = capture_this_frame && Debugging::IsGpuTimingEnabled();
+        capture_gpu_sample_this_frame = capture_this_frame && cvar_debug_gpu_timing.GetValue();
         if (capture_this_frame || (continuous && is_visualized)) poll = true;
-        if (poll && Debugging::IsGpuTimingEnabled())
+        if (poll && cvar_debug_gpu_timing.GetValue())
         {
             for (RHI_Queue_Type queue : {RHI_Queue_Type::Graphics, RHI_Queue_Type::Compute, RHI_Queue_Type::Copy})
                 gpu_calibrations[static_cast<size_t>(queue)] = RHI_Device::GetTimestampCalibration(queue);
@@ -1489,7 +1488,7 @@ namespace spartan
         }
 
         const bool can_profile_cpu = (type == TimeBlockType::Cpu) && profile_cpu;
-        const bool can_profile_gpu = (type == TimeBlockType::Gpu) && profile_gpu && Debugging::IsGpuTimingEnabled();
+        const bool can_profile_gpu = (type == TimeBlockType::Gpu) && profile_gpu && cvar_debug_gpu_timing.GetValue();
         if (!can_profile_cpu && !can_profile_gpu)
         {
             return;
@@ -1894,7 +1893,7 @@ namespace spartan
             const float peak_decay = 0.85f;
             snapshot.cpu_ms        = time_cpu_avg;
             snapshot.cpu_peak_ms   = has_samples ? max(time_cpu_last, snapshot.cpu_peak_ms * peak_decay) : 0.0f;
-            snapshot.gpu_valid     = Debugging::IsGpuTimingEnabled() && time_gpu_avg > 0.0f;
+            snapshot.gpu_valid     = cvar_debug_gpu_timing.GetValue() && time_gpu_avg > 0.0f;
             snapshot.gpu_ms        = snapshot.gpu_valid ? time_gpu_avg : 0.0f;
             snapshot.gpu_peak_ms   = snapshot.gpu_valid && has_samples ? max(time_gpu_last, snapshot.gpu_peak_ms * peak_decay) : 0.0f;
 
@@ -2071,29 +2070,26 @@ namespace spartan
                 text(font_small, verdict, right - chip_width + px(6.0f), chip_y0 + px(2.0f), verdict_color);
             }
 
-            y = baseline + px(8.0f);
+            y = baseline + px(14.0f);
         }
 
-        // stutter summary
+        // stutter summary, three columns anchored to the left edge, the center and the right edge
         {
-            auto stat = [&](const char* label, const char* value, float x, const bool align_right)
+            auto stat = [&](const char* label, const char* value, float x, const float anchor)
             {
-                const float gap   = px(5.0f);
+                const float gap   = px(6.0f);
                 const float width = font_small->GetTextWidth(label, false) + gap + font_small->GetTextWidth(value);
-                if (align_right)
-                {
-                    x -= width;
-                }
+                x                 = floor(x - width * anchor);
                 text(font_small, label, x, y, col::dim);
                 text(font_small, value, x + font_small->GetTextWidth(label, false) + gap, y, col::text);
             };
 
             snprintf(buffer, sizeof(buffer), "%.0f", snapshot.low_1_fps);
-            stat("1% LOW", buffer, left, false);
+            stat("1% LOW", buffer, left, 0.0f);
             snprintf(buffer, sizeof(buffer), "%.0f", snapshot.low_01_fps);
-            stat("0.1% LOW", buffer, left + floor(inner_width * 0.36f), false);
+            stat("0.1% LOW", buffer, left + inner_width * 0.5f, 0.5f);
             format_count(buffer, sizeof(buffer), snapshot.frame);
-            stat("FRAME", buffer, right, true);
+            stat("FRAME", buffer, right, 1.0f);
 
             y += font_small->GetLineHeight() + px(12.0f);
         }

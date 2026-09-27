@@ -45,7 +45,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "rhi/RHI_PipelineState.h"
 #include "rhi/RHI_RasterizerState.h"
 #include "rhi/RHI_DepthStencilState.h"
-#include <Debugging.h>
+#include <Settings.h>
 SP_WARNINGS_OFF
 #include <SDL3/SDL_video.h>
 SP_WARNINGS_ON
@@ -447,6 +447,7 @@ namespace ImGui::RHI
         pso.blend_state                      = g_blend_state.get();
         pso.depth_stencil_state              = g_depth_stencil_state.get();
         pso.render_target_swapchain          = swapchain;
+        pso.render_target_color_textures.fill(nullptr);
         pso.clear_color[0]                   = clear ? Color::standard_black : rhi_color_dont_care;
         pso.use_standard_resources           = false;
 
@@ -463,14 +464,12 @@ namespace ImGui::RHI
             RHI_CommandList::SetCullMode(RHI_CullMode::None);
         };
 
-        // start the pass
-        const char* name = is_main_window ? "imgui_window_main" : "imgui_window_child";
-        bool gpu_timing  = is_main_window;
-        RHI_CommandList::BeginTimeblock(name, true, spartan::Debugging::IsGpuTimingEnabled() && gpu_timing);
-        setup_render_state();
-
-        // render
+        // a replay into the ui screenshot target must not run user callbacks, they record external passes
+        auto draw_pass = [&](const char* name, const bool gpu_timing, const bool run_callbacks)
         {
+            RHI_CommandList::BeginTimeblock(name, true, spartan::cvar_debug_gpu_timing.GetValue() && gpu_timing);
+            setup_render_state();
+
             const float L = draw_data->DisplayPos.x;
             const float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
             const float T = draw_data->DisplayPos.y;
@@ -504,6 +503,11 @@ namespace ImGui::RHI
 
                     if (pcmd->UserCallback != nullptr)
                     {
+                        if (!run_callbacks)
+                        {
+                            continue;
+                        }
+
                         if (pcmd->UserCallback != GetPlatformIO().DrawCallback_ResetRenderState)
                         {
                             pcmd->UserCallback(cmd_list_imgui, pcmd);
@@ -608,9 +612,26 @@ namespace ImGui::RHI
                 global_idx_offset += static_cast<uint32_t>(cmd_list_imgui->IdxBuffer.Size);
                 global_vtx_offset += static_cast<uint32_t>(cmd_list_imgui->VtxBuffer.Size);
             }
-        }
 
-        RHI_CommandList::EndTimeblock();
+            RHI_CommandList::EndTimeblock();
+        };
+
+        draw_pass(is_main_window ? "imgui_window_main" : "imgui_window_child", is_main_window, true);
+
+        if (is_main_window)
+        {
+            if (RHI_Texture* capture = Renderer::GetUiScreenshotTarget(swapchain->GetWidth(), swapchain->GetHeight()))
+            {
+                // cleared once up front, a render pass restart (texture transitions) must load, not clear again
+                RHI_CommandList::ClearTexture(capture, Color::standard_black);
+                pso.render_target_swapchain         = nullptr;
+                pso.render_target_color_textures[0] = capture;
+                pso.clear_color[0]                  = rhi_color_load;
+                draw_pass("imgui_screenshot", false, false);
+                pso.render_target_color_textures[0] = nullptr;
+                Renderer::SetUiScreenshotRecorded();
+            }
+        }
 
         // for child windows, submit and prepare for presentation
         if (!is_main_window)

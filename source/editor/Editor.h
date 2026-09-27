@@ -47,8 +47,10 @@ public:
         }
     }
 
-    inline static ImFont* font_normal = nullptr;
-    inline static ImFont* font_bold   = nullptr;
+    inline static ImFont* font_normal      = nullptr;
+    inline static ImFont* font_bold        = nullptr;
+    inline static ImFont* font_mono        = nullptr;
+    inline static ImFont* font_mono_medium = nullptr;
 
 private:
     template<typename T>

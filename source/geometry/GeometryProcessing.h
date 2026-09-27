@@ -25,6 +25,37 @@ namespace spartan::geometry_processing
         const bool prune_components = false // distance LODs may remove small disconnected details
     );
 
+    // distance lod for leaf cards, error driven simplification prunes every card at once because each
+    // one is smaller than the error bound, this keeps a nested subset of whole cards instead and grows
+    // them about their centre so the crown keeps its cover, large connected pieces pass through untouched
+    void thin_foliage_cards(
+        std::vector<uint32_t>& indices,
+        std::vector<RHI_Vertex_PosTexNorTan>& vertices,
+        size_t target_index_count
+    );
+
+    // direction of hemi-octahedral impostor frame (x, y) out of frames per axis, and the image plane basis it
+    // was baked with, impostor.hlsl decodes the same way so a card lines up with the frame it samples
+    math::Vector3 impostor_frame_direction(uint32_t x, uint32_t y, uint32_t frames);
+    void impostor_frame_basis(const math::Vector3& direction, math::Vector3& right, math::Vector3& up);
+
+    // orthographic views of a mesh from every frame direction, per texel and per layer, nearest first:
+    // word 0 is the source uv as unorm16 inside [uv_min, uv_min + uv_scale], word 1 is the frame space
+    // normal as oct unorm8, the depth toward the viewer as unorm15 over [-radius, radius] and a coverage bit
+    // texel (px, py) of layer l in frame (fx, fy) starts at ((((fy * frames + fx) * res + py) * res + px) * layers + l) * 2
+    void bake_impostor(
+        const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
+        const std::vector<uint32_t>& indices,
+        uint32_t frames,
+        uint32_t resolution,
+        uint32_t layers,
+        const math::Vector3& center,
+        float radius,
+        const math::Vector2& uv_min,
+        const math::Vector2& uv_scale,
+        std::vector<uint32_t>& texels_out
+    );
+
     void optimize(
         std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         std::vector<uint32_t>& indices

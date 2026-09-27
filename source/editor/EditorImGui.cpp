@@ -72,6 +72,12 @@ void editor_imgui::initialize()
         scaled_font_size,
         &config
     );
+
+    // numerics and micro labels, falls back to the text font so a missing file never takes the editor down
+    const string mono_regular = dir_fonts + "JetBrainsMono/JetBrainsMono-Regular.ttf";
+    const string mono_medium  = dir_fonts + "JetBrainsMono/JetBrainsMono-Medium.ttf";
+    Editor::font_mono        = spartan::FileSystem::Exists(mono_regular) ? io.Fonts->AddFontFromFileTTF(mono_regular.c_str(), scaled_font_size, &config) : Editor::font_normal;
+    Editor::font_mono_medium = spartan::FileSystem::Exists(mono_medium) ? io.Fonts->AddFontFromFileTTF(mono_medium.c_str(), scaled_font_size, &config) : Editor::font_bold;
     ImGui::GetStyle().FontScaleMain = font_scale;
 
     SP_ASSERT_MSG(

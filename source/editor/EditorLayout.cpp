@@ -81,26 +81,19 @@ void editor_layout::begin_root(Editor* editor)
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->WorkPos);
     ImGui::SetNextWindowSize(viewport->WorkSize);
+    // pinned, otherwise an overlapping floating window (the launcher) makes imgui spawn a separate os window for the whole editor
+    ImGui::SetNextWindowViewport(viewport->ID);
 
-    {
-        ImDrawList* draw_list = ImGui::GetForegroundDrawList();
-        ImVec2 min = viewport->Pos;
-        ImVec2 max = ImVec2(
-            viewport->Pos.x + viewport->Size.x,
-            viewport->Pos.y + viewport->Size.y
-        );
-        ImU32 border_color = ImGui::ColorConvertFloat4ToU32(
-            ImGui::Style::color_border
-        );
-        draw_list->AddRect(min, max, border_color, 0.0f, 1.0f);
-    }
-
+    // the root is the black the panels sit in, the margin matches the gutters between them
+    const float margin = ImGui::GetStyle().DockingSeparatorSize;
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,   0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    ImVec2(0.0f, 0.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    ImVec2(margin, margin));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImGui::Style::color_void);
 
     bool open = true;
     ImGui::Begin(root_window_name, &open, window_flags);
+    ImGui::PopStyleColor();
     ImGui::PopStyleVar(3);
 
     if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
@@ -112,12 +105,15 @@ void editor_layout::begin_root(Editor* editor)
             reset_requested = false;
         }
 
+        // a passthru dockspace fills around its central node with the window background, which would hide the gutters
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
         ImGui::DockSpace(
             window_id,
             ImVec2(0.0f, 0.0f),
             ImGuiDockNodeFlags_PassthruCentralNode
         );
+        ImGui::PopStyleColor();
         ImGui::PopStyleVar();
     }
 }

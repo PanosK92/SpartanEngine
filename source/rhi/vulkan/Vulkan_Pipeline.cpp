@@ -19,7 +19,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Device.h"
 #include "../RHI_Texture.h"
 #include "../RHI_VendorTechnology.h"
-#include "../core/Debugging.h"
 #include "../world/components/Render.h"
 #include "../rendering/Renderer_Buffers.h"
 //=====================================

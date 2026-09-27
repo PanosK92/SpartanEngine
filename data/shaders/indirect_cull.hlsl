@@ -45,6 +45,7 @@ groupshared bool     gs_skip_hiz;
 groupshared bool     gs_two_sided;
 groupshared bool     gs_is_alpha;
 groupshared bool     gs_wind;
+groupshared uint     gs_wind_slot;
 groupshared uint     gs_meshlet_offset;
 groupshared uint     gs_meshlet_count;
 
@@ -92,12 +93,16 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
         gs_wind               = (material_parameters[gs_draw.material_index].flags & (1u << 9)) != 0u;
         gs_meshlet_offset     = gs_draw.lod_meshlet_offset;
         gs_meshlet_count      = gs_draw.lod_meshlet_count;
-        if (split_opaque_alpha && gs_wind && surv_index < wind_cache_limit)
+        // keyed by global instance, not survivor order, the refine cull reorders survivors after the depth prepass and
+        // both passes must agree on cached vs local evaluation or the equal depth test rejects the whole instance
+        uint wind_slot        = gs_draw.instance_offset + si.instance_index;
+        gs_wind_slot          = split_opaque_alpha && gs_wind && is_per_instance && wind_slot < wind_cache_limit ? wind_slot + 1u : 0u;
+        if (gs_wind_slot != 0u)
         {
             float4x4 instance = pull_instance_transform(gs_draw.instance_offset, si.instance_index);
             TreeWindState current = evaluate_tree_wind(mul(instance, gs_draw.transform), 0.0f);
             TreeWindState previous = evaluate_tree_wind(mul(instance, gs_draw.transform_previous), -buffer_frame.delta_time);
-            tree_wind_cache[surv_index] = pack_tree_wind(current, previous);
+            tree_wind_cache[wind_slot] = pack_tree_wind(current, previous);
         }
     }
     GroupMemoryBarrierWithGroupSync();
@@ -117,7 +122,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
             out_mi.draw_index     = gs_draw_index;
             out_mi.meshlet_index  = global_meshlet;
             out_mi.instance_index = gs_instance_index;
-            out_mi.padding0       = split_opaque_alpha && gs_wind && surv_index < wind_cache_limit ? surv_index + 1u : 0u;
+            out_mi.padding0       = gs_wind_slot;
 
             if (gs_skinned)
             {

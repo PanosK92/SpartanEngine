@@ -10,7 +10,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Device.h"
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_Implementation.h"
-#include "../../core/Debugging.h"
 #include "../../profiling/Breadcrumbs.h"
 //================================
 
@@ -82,7 +81,7 @@ namespace spartan
             {
                 Log::SetLogToFile(true);
                 SP_LOG_ERROR("VK_ERROR_DEVICE_LOST waiting on timeline semaphore (value %llu)", static_cast<unsigned long long>(value));
-                if (Debugging::IsBreadcrumbsEnabled())
+                if (cvar_debug_breadcrumbs.GetValue())
                 {
                     Breadcrumbs::OnDeviceLost();
                 }
@@ -94,7 +93,7 @@ namespace spartan
                 // full hmd frames can exceed the wait without a hard device loss, dump breadcrumbs then fail soft
                 Log::SetLogToFile(true);
                 SP_LOG_ERROR("VK_TIMEOUT waiting on timeline semaphore (value %llu)", static_cast<unsigned long long>(value));
-                if (Debugging::IsBreadcrumbsEnabled())
+                if (cvar_debug_breadcrumbs.GetValue())
                 {
                     Breadcrumbs::OnDeviceLost();
                 }

@@ -25,6 +25,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "commands/CommandEntityDelete.h"
 #include "input/Input.h"
 #include "../imgui/ImGui_Extension.h"
+#include "../imgui/ImGui_EditorUi.h"
+#include "../imgui/ImGui_Properties.h"
 #include <unordered_set>
 SP_WARNINGS_OFF
 #include "../imgui/source/imgui_stdlib.h"
@@ -298,6 +300,26 @@ namespace
             try_commit();
             rename_entity_id = 0;
         }
+    }
+
+    // the same colors the properties panel gives each component, so an entity reads as what it is before its name is read
+    ImVec4 component_to_tint(Entity* entity)
+    {
+        if (entity->GetComponent<Light>())                                        return editor_ui::design::accent_light();
+        if (entity->GetComponent<Camera>())                                       return editor_ui::design::accent_camera();
+        if (entity->GetComponent<ParticleSystem>())                               return editor_ui::design::accent_particles();
+        if (entity->GetComponent<AudioSource>())                                  return editor_ui::design::accent_audio();
+        if (entity->GetComponent<Terrain>())                                      return editor_ui::design::accent_terrain();
+        if (entity->GetComponentByType(ComponentType::Water))                     return editor_ui::design::accent_water();
+        if (entity->GetComponentByType(ComponentType::Spline))                    return editor_ui::design::accent_spline();
+        if (entity->GetComponentByType(ComponentType::Navigation))                return editor_ui::design::accent_spline();
+        if (entity->GetComponentByType(ComponentType::SplineFollower))            return editor_ui::design::accent_spline_follower();
+        if (entity->GetComponentByType(ComponentType::Script))                    return editor_ui::design::accent_script();
+        if (entity->GetComponentByType(ComponentType::Text3D))                    return editor_ui::design::accent_text_3d();
+        if (entity->GetComponentByType(ComponentType::Volume))                    return editor_ui::design::accent_volume();
+        if (entity->GetComponent<Render>())                                       return editor_ui::design::accent_render();
+        if (entity->GetComponentByType(ComponentType::Physics))                   return editor_ui::design::accent_physics();
+        return ImGui::Style::color_text_muted;
     }
 
     Icon component_to_image(Entity* entity)
@@ -745,9 +767,13 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     bool show_hover_highlight = is_row_hovered && !is_in_reorder_zone;
     if (is_selected || show_hover_highlight)
     {
+        // the highlight spans the whole panel and its accent bar lives in the window padding, clear of arrows and icons
+        const ImGuiWindow* window = ImGui::GetCurrentWindow();
+        const float inset         = ImGui::GetStyle().WindowPadding.x * 0.5f;
+        const ImVec2 row_min      = ImVec2(ImMax(window->WorkRect.Min.x - inset, dl->GetClipRectMin().x), content_min.y);
+        const ImVec2 row_max      = ImVec2(ImMin(window->WorkRect.Max.x + inset, dl->GetClipRectMax().x), content_max.y);
         dl->ChannelsSetCurrent(0); // background channel
-        ImU32 highlight_color = is_selected ? ImGui::GetColorU32(ImGuiCol_Header) : ImGui::GetColorU32(ImGuiCol_HeaderHovered);
-        dl->AddRectFilled(content_min, content_max, highlight_color);
+        ImGui::EditorUi::draw_row_highlight(row_min, row_max, show_hover_highlight, is_selected);
         dl->ChannelsSetCurrent(1); // back to foreground
     }
 
@@ -840,7 +866,8 @@ void WorldViewer::TreeAddEntity(Entity* entity)
         );
         ImVec2 icon_max       = ImVec2(icon_min.x + icon_size, icon_min.y + icon_size);
         dl->AddImage(reinterpret_cast<ImTextureID>(entry.texture), icon_min, icon_max,
-            ImVec2(entry.uv_min.x, entry.uv_min.y), ImVec2(entry.uv_max.x, entry.uv_max.y));
+            ImVec2(entry.uv_min.x, entry.uv_min.y), ImVec2(entry.uv_max.x, entry.uv_max.y),
+            ImGui::EditorUi::color(is_selected ? ImGui::Style::lerp(component_to_tint(entity), ImVec4(1.0f, 1.0f, 1.0f, 1.0f), 0.25f) : ImGui::EditorUi::alpha(component_to_tint(entity), 0.85f)));
         next_x                = icon_max.x + ImGui::GetStyle().ItemSpacing.x;
     }
 

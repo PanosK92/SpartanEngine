@@ -11,11 +11,11 @@ Commercial use requires written permission and negotiated payment terms.
 // shared gpu culling primitives, the hi-z helpers take the hi-z texture as a parameter so the meshlet cull
 // can pass its occluder hi-z (tex) and grass populate can pass the same occluder hi-z on a different slot (tex2)
 
-// Conservative envelope for tree rotations (under 4 degrees combined) and
+// Conservative envelope for tree rotations (under 9 degrees combined) and
 // centimetre leaf detail. Includes distance from the root for canopy-only bounds.
 float tree_wind_cull_padding(float3 center, float radius, float3 root)
 {
-    return (length(center - root) + radius) * 0.07f + 0.03f;
+    return (length(center - root) + radius) * 0.16f + 0.05f;
 }
 
 // extracts the four side planes of the camera frustum from view_projection in world space
@@ -196,14 +196,9 @@ bool sphere_contributes(float3 center_world, float radius_world, float min_exten
     return max(extent_pixels.x, extent_pixels.y) >= min_extent_pixels;
 }
 
-// same screen-height fractions as Render::UpdateLodIndices, near-plane straddlers keep lod 0
-uint sphere_lod_index(float3 center_world, float radius_world, uint lod_count)
+// near-plane straddlers count as full screen
+float sphere_screen_fraction(float3 center_world, float radius_world)
 {
-    if (lod_count <= 1u)
-    {
-        return 0u;
-    }
-
     float2 min_ndc, max_ndc;
     float  closest_z;
     uint   status = sphere_project_ndc(center_world, radius_world, min_ndc, max_ndc, closest_z);
@@ -218,6 +213,18 @@ uint sphere_lod_index(float3 center_world, float radius_world, uint lod_count)
         float2 extent_ndc = (max_ndc - min_ndc) * 0.5f;
         screen_fraction   = max(extent_ndc.x, extent_ndc.y);
     }
+    return screen_fraction;
+}
+
+// same screen-height fractions as Render::UpdateLodIndices
+uint sphere_lod_index(float3 center_world, float radius_world, uint lod_count)
+{
+    if (lod_count <= 1u)
+    {
+        return 0u;
+    }
+
+    float screen_fraction = sphere_screen_fraction(center_world, radius_world);
 
     uint lod = lod_count - 1u;
     if (screen_fraction >= 0.20f)
@@ -242,6 +249,19 @@ uint sphere_lod_index(float3 center_world, float radius_world, uint lod_count)
     }
 
     return min(lod, lod_count - 1u);
+}
+
+// foliage with a baked impostor swaps to it below this screen fraction, about 30 px tall at 1080p
+static const float impostor_screen_fraction = 0.03f;
+
+// the impostor is always the last lod, the mesh chain never selects it
+uint sphere_lod_index_impostor(float3 center_world, float radius_world, uint lod_count)
+{
+    if (sphere_screen_fraction(center_world, radius_world) < impostor_screen_fraction)
+    {
+        return lod_count - 1u;
+    }
+    return min(sphere_lod_index(center_world, radius_world, lod_count), lod_count - 2u);
 }
 
 // largest world-axis scale of the upper 3x3, used to lift a local-space radius into world units

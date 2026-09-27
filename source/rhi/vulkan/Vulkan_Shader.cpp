@@ -7,7 +7,6 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ============================
 #include "pch.h"
-#include "../core/Debugging.h"
 #include "../profiling/Profiler.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
@@ -143,7 +142,7 @@ namespace spartan
             }
 
             // debug: disable optimizations and embed HLSL source in the shaders
-            if (!Debugging::IsShaderOptimizationEnabled())
+            if (!cvar_debug_shader_optimization.GetValue())
             {
                 arguments.emplace_back("-Od");           // disable optimizations
                 arguments.emplace_back("-Zi");           // enable debug information

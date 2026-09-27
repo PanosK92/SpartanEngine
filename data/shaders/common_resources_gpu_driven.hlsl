@@ -96,6 +96,9 @@ uint meshlet_micro_index_load(uint corner)
     return (meshlet_micro_indices[corner >> 2u] >> ((corner & 3u) * 8u)) & 0xFFu;
 }
 
+// foliage impostor atlases, per texel and layer word 0 is the source uv and word 1 the packed normal, depth and coverage
+StructuredBuffer<uint> impostor_texels : register(t76);
+
 // per-instance cull tasks populated by the cpu
 StructuredBuffer<CullTask> cull_tasks : register(t44);
 

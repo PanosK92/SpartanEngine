@@ -14,6 +14,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../geometry/Mesh.h"
 #include "../geometry/GeometryGeneration.h"
 #include "../world/components/Light.h"
+#include "../world/CarRain.h"
 #include "../resource/ResourceCache.h"
 #include "../display/Display.h"
 #include "../rhi/RHI_Texture.h"
@@ -28,7 +29,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../profiling/Profiler.h"
 #include "../xr/Xr.h"
 #include "../core/ThreadPool.h"
-#include "../core/Debugging.h"
 #include <fstream>
 #ifdef _MSC_VER
 #include "../rhi/RHI_VendorTechnology.h"
@@ -78,7 +78,7 @@ namespace spartan
 
     void Renderer::CreateBuffers()
     {
-        const bool capture_mode                  = Debugging::IsRenderdocEnabled();
+        const bool capture_mode                  = cvar_debug_renderdoc.GetValue();
         const uint32_t indirect_draw_capacity    = capture_mode ? 32 * 1024 : renderer_max_indirect_draws;
         const uint32_t survivor_capacity = capture_mode ? 2 * 1024 * 1024 : renderer_max_instance_cull_entries;
         const uint32_t cull_task_capacity = capture_mode ? survivor_capacity / INSTANCE_CULL_BATCH_SIZE + renderer_max_indirect_draws : renderer_max_cull_tasks;
@@ -108,6 +108,12 @@ namespace spartan
         at(buffers, Renderer_Buffer::RainOcclusion) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(float)),
             RAIN_OCCLUSION_RESOLUTION * RAIN_OCCLUSION_RESOLUTION * renderer_draw_data_buffer_count, nullptr, true, "rain_occlusion");
+        at(buffers, Renderer_Buffer::CarRainDrops) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(CarRainDropGpu)),
+            CarRain::drops_max * renderer_draw_data_buffer_count, nullptr, true, "car_rain_drops");
+        at(buffers, Renderer_Buffer::CarRainTexels) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(CarRainTexelGpu)),
+            CarRain::texels_max * renderer_draw_data_buffer_count, nullptr, true, "car_rain_texels");
         at(buffers, Renderer_Buffer::DrawData) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)),
             renderer_max_draw_calls * renderer_draw_data_buffer_count, nullptr, true,
@@ -334,7 +340,7 @@ namespace spartan
             renderer_max_gpu_scatter_instances, nullptr, false, "grass_instances"
         );
         at(buffers, Renderer_Buffer::GrassLodParameters) = make_shared<RHI_Buffer>(
-            RHI_Buffer_Type::Storage, sizeof(Vector4), renderer_max_gpu_scatter_slots + 1, nullptr, false, "grass_lod_parameters"
+            RHI_Buffer_Type::Storage, sizeof(Vector4), renderer_max_gpu_scatter_slots + 1 + renderer_max_gpu_scatter_args, nullptr, false, "grass_lod_parameters"
         );
         at(buffers, Renderer_Buffer::GrassCount) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
@@ -891,6 +897,9 @@ namespace spartan
         {
             // wind field, baked once per frame, sampled by all wind-driven geometry
             at(render_targets, Renderer_RenderTarget::wind_field) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 256, 256, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "wind_field");
+
+            // the car's water atlas, a placeholder until a car is baked, then sized to it
+            CreateCarRainTargets(4, 4, nullptr, nullptr);
         };
 
         auto create_ocean = [&]()
@@ -1227,6 +1236,11 @@ namespace spartan
             // wind field
             { Renderer_Shader::wind_field_c,                          RHI_Shader_Type::Compute, "wind_field.hlsl"                                                                                    },
 
+            // water on the occupied car
+            { Renderer_Shader::car_rain_clear_c,                      RHI_Shader_Type::Compute, "car_rain.hlsl",                              RHI_Vertex_Type::Max, "CLEAR"                          },
+            { Renderer_Shader::car_rain_splat_c,                      RHI_Shader_Type::Compute, "car_rain.hlsl",                              RHI_Vertex_Type::Max, "SPLAT"                          },
+            { Renderer_Shader::car_rain_texels_c,                     RHI_Shader_Type::Compute, "car_rain.hlsl",                              RHI_Vertex_Type::Max, "TEXELS"                         },
+
             // fft ocean
             { Renderer_Shader::ocean_spectrum_init_c,                 RHI_Shader_Type::Compute, "ocean/ocean_spectrum.hlsl",                  RHI_Vertex_Type::Max, "INIT"                           },
             { Renderer_Shader::ocean_spectrum_update_c,               RHI_Shader_Type::Compute, "ocean/ocean_spectrum.hlsl",                  RHI_Vertex_Type::Max, "UPDATE"                         },
@@ -1256,6 +1270,7 @@ namespace spartan
             { Renderer_Shader::texture_compress_bc1_c,                RHI_Shader_Type::Compute, "texture_compress_bc1.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         false },
             { Renderer_Shader::texture_compress_bc3_c,                RHI_Shader_Type::Compute, "texture_compress_bc3.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         false },
             { Renderer_Shader::texture_compress_bc5_c,                RHI_Shader_Type::Compute, "texture_compress_bc5.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         false },
+            { Renderer_Shader::texture_compress_bc7_c,                RHI_Shader_Type::Compute, "texture_compress_bc7.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         false },
         };
 
         for (const ShaderEntry& e : table)
@@ -1567,6 +1582,36 @@ namespace spartan
 
         fonts.fill(nullptr);
         standard_material = nullptr;
+    }
+
+    void Renderer::CreateCarRainTargets(uint32_t width, uint32_t height, const float* surface, const float* micro)
+    {
+        const size_t texels = static_cast<size_t>(width) * height;
+
+        vector<RHI_Texture_Slice> surface_slices(1);
+        surface_slices[0].mips.resize(1);
+        surface_slices[0].mips[0].bytes.resize(texels * sizeof(float));
+        if (surface)
+        {
+            memcpy(surface_slices[0].mips[0].bytes.data(), surface, texels * sizeof(float));
+        }
+        else
+        {
+            vector<float> none(texels, 1.0e30f);
+            memcpy(surface_slices[0].mips[0].bytes.data(), none.data(), texels * sizeof(float));
+        }
+
+        vector<RHI_Texture_Slice> micro_slices(1);
+        micro_slices[0].mips.resize(1);
+        micro_slices[0].mips[0].bytes.resize(texels * sizeof(float) * 2);
+        if (micro)
+        {
+            memcpy(micro_slices[0].mips[0].bytes.data(), micro, texels * sizeof(float) * 2);
+        }
+
+        at(render_targets, Renderer_RenderTarget::car_rain_surface) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32_Float, RHI_Texture_Srv, "car_rain_surface", move(surface_slices));
+        at(render_targets, Renderer_RenderTarget::car_rain_micro)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32_Float, RHI_Texture_Uav | RHI_Texture_Srv, "car_rain_micro", move(micro_slices));
+        at(render_targets, Renderer_RenderTarget::car_rain_ids)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32_Uint, RHI_Texture_Uav | RHI_Texture_Srv, "car_rain_ids");
     }
 
     array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)>& Renderer::GetRenderTargets()

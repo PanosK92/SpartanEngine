@@ -56,6 +56,12 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index          = _draw.material_index;
+#ifdef INDIRECT_DRAW
+    if ((_draw.flags & draw_flag_impostor) != 0u)
+    {
+        vertex.uv_misc.z = -1.0f - (float)mi.draw_index;
+    }
+#endif
     return transform_to_clip_space(vertex, position_world, position_world_previous, view_id);
 }
 
@@ -77,6 +83,18 @@ void main_ps(gbuffer_vertex vertex)
     const float2 screen_uv      = vertex.position.xy / get_render_resolution_active();
     const float3 position_world = get_position_for_view(vertex.position.z, screen_uv, vertex.view_id);
     const float alpha_threshold = get_alpha_threshold(position_world);
+
+    // impostor cards carry -(draw index + 1) in z so the texel lookup can reach their draw record
+    if (vertex.uv_misc.z < -0.5f)
+    {
+        _draw = indirect_draw_data[(uint)round(-vertex.uv_misc.z) - 1u];
+        float2 impostor_uv;
+        float3 normal_frame;
+        float mip;
+        if (!impostor_resolve(vertex.uv_misc.xy, GET_TEXTURE(material_texture_index_albedo), alpha_threshold, impostor_uv, normal_frame, mip))
+            discard;
+        return;
+    }
 
     float a = GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a;
     if (a <= alpha_threshold)

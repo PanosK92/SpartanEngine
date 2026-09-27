@@ -547,6 +547,7 @@ namespace ImGuiSp
 
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
         bool changed = ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
+        ImGui::EditorUi::decorate_field();
         ImGui::PopID();
 
         return changed;
@@ -567,7 +568,17 @@ namespace ImGuiSp
         // preview: direct pointer into existing string buffer
         const char* preview = option_count ? options[*selection_index].data() : "";
 
-        if (ImGui::BeginCombo(label, preview))
+        // the arrow is a bare chevron on the well rather than a separate button block
+        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgHovered));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::Style::color_text);
+        const bool open = ImGui::BeginCombo(label, preview);
+        ImGui::PopStyleColor(3);
+        if (!open)
+        {
+            ImGui::EditorUi::decorate_field();
+        }
+        if (open)
         {
             for (uint32_t i = 0; i < option_count; ++i)
             {
@@ -677,17 +688,18 @@ namespace ImGuiSp
         const ImGuiID id        = window->GetID(label);
         const ImVec2 label_size = ImGui::CalcTextSize(label, nullptr, true);
 
-        // switch dimensions
-        const float height       = ImGui::GetFrameHeight();
-        const float width        = height * 1.75f;
+        // the switch is slimmer than a frame and centered on the row, so it lines up with the fields around it
+        const float frame_height = ImGui::GetFrameHeight();
+        const float height       = IM_ROUND(frame_height * 0.78f);
+        const float width        = IM_ROUND(height * 1.85f);
         const float radius       = height * 0.5f;
-        const float knob_radius  = radius * 0.8f;
-        const float knob_padding = radius - knob_radius;
+        const float knob_radius  = radius - ImMax(2.0f, ImGui::EditorUi::scaled(2.0f));
 
         // layout: switch on the left, label on the right
         const ImVec2 pos          = window->DC.CursorPos;
-        const ImRect switch_bb    = ImRect(pos, ImVec2(pos.x + width, pos.y + height));
-        const ImRect total_bb     = ImRect(pos, ImVec2(pos.x + width + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f), pos.y + height));
+        const float switch_y      = IM_ROUND(pos.y + (frame_height - height) * 0.5f);
+        const ImRect switch_bb    = ImRect(ImVec2(pos.x, switch_y), ImVec2(pos.x + width, switch_y + height));
+        const ImRect total_bb     = ImRect(pos, ImVec2(pos.x + width + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f), pos.y + frame_height));
 
         ImGui::ItemSize(total_bb, style.FramePadding.y);
         if (!ImGui::ItemAdd(total_bb, id))
@@ -704,44 +716,35 @@ namespace ImGuiSp
             ImGui::MarkItemEdited(id);
         }
 
-        const float target = *v ? 1.0f : 0.0f;
-        const float t = ImGui::EditorUi::animate(id, target, 12.0f);
+        const float t     = ImGui::EditorUi::animate(id, *v ? 1.0f : 0.0f, 14.0f);
+        const float hover = ImGui::EditorUi::animate(id ^ 0x4a11c0deu, hovered ? 1.0f : 0.0f, 16.0f);
+        const ImVec4 accent = ImGui::Style::color_accent_1;
 
-        ImU32 col_bg_off      = ImGui::EditorUi::color(ImGui::Style::color_surface);
-        ImU32 col_bg_on       = ImGui::EditorUi::color(ImGui::Style::color_accent_2);
-        ImU32 col_knob        = ImGui::EditorUi::color(ImGui::Style::color_text);
-        ImU32 col_knob_shadow = IM_COL32(0, 0, 0, 40);
-
-        // interpolate background color
-        ImVec4 bg_off = ImGui::ColorConvertU32ToFloat4(col_bg_off);
-        ImVec4 bg_on  = ImGui::ColorConvertU32ToFloat4(col_bg_on);
-        ImVec4 bg_lerp;
-        bg_lerp.x = bg_off.x + (bg_on.x - bg_off.x) * t;
-        bg_lerp.y = bg_off.y + (bg_on.y - bg_off.y) * t;
-        bg_lerp.z = bg_off.z + (bg_on.z - bg_off.z) * t;
-        bg_lerp.w = bg_off.w + (bg_on.w - bg_off.w) * t;
-        ImU32 col_bg = ImGui::ColorConvertFloat4ToU32(bg_lerp);
-
-        // draw track (pill shape as a single rounded rectangle)
+        // off, the track is sunk into the panel, on, it is lit with the signal and glows
         ImDrawList* draw_list = window->DrawList;
-        draw_list->AddRectFilled(switch_bb.Min, switch_bb.Max, col_bg, radius);
+        if (t > 0.01f)
+        {
+            ImGui::EditorUi::draw_glow(draw_list, switch_bb.Min, switch_bb.Max, accent, radius, ImGui::EditorUi::scaled(7.0f), (0.55f + 0.35f * hover) * t);
+        }
+        const ImVec4 track_off = ImGui::Style::lerp(ImGui::Style::color_canvas_deep, ImGui::Style::color_surface, 0.25f * hover);
+        const ImVec4 track_on  = ImGui::Style::lerp(ImGui::Style::lerp(ImGui::Style::color_accent_2, accent, 0.80f), accent, hover);
+        draw_list->AddRectFilled(switch_bb.Min, switch_bb.Max, ImGui::EditorUi::color(ImGui::Style::lerp(track_off, track_on, t)), radius);
+        draw_list->AddRect(switch_bb.Min, switch_bb.Max, ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.08f * (1.0f - t))), radius, ImMax(1.0f, ImGui::EditorUi::scaled(1.0f)));
 
-        // knob position (interpolated)
-        float knob_x_off = switch_bb.Min.x + radius;
-        float knob_x_on  = switch_bb.Max.x - radius;
-        float knob_x     = knob_x_off + (knob_x_on - knob_x_off) * t;
-        float knob_y     = switch_bb.Min.y + radius;
-
-        // draw knob shadow (offset slightly down and right)
-        draw_list->AddCircleFilled(ImVec2(knob_x + 1.0f, knob_y + 2.0f), knob_radius, col_knob_shadow, 24);
-
-        // draw knob
-        draw_list->AddCircleFilled(ImVec2(knob_x, knob_y), knob_radius, col_knob, 24);
+        // the knob casts a soft shadow onto the track and gives slightly under the pointer while pressed
+        const float knob_x_off = switch_bb.Min.x + radius;
+        const float knob_x_on  = switch_bb.Max.x - radius;
+        const float knob_x     = knob_x_off + (knob_x_on - knob_x_off) * t;
+        const float knob_y     = switch_bb.Min.y + radius;
+        const float press      = held ? 0.9f : 1.0f;
+        draw_list->AddCircleFilled(ImVec2(knob_x, knob_y + ImGui::EditorUi::scaled(1.0f)), knob_radius * press + 1.0f, IM_COL32(0, 0, 0, 90), 32);
+        const ImVec4 knob = ImGui::Style::lerp(ImGui::Style::color_text_muted, ImVec4(1.0f, 1.0f, 1.0f, 1.0f), t);
+        draw_list->AddCircleFilled(ImVec2(knob_x, knob_y), knob_radius * press, ImGui::EditorUi::color(knob), 32);
 
         // draw label
         if (label_size.x > 0.0f)
         {
-            ImGui::RenderText(ImVec2(switch_bb.Max.x + style.ItemInnerSpacing.x, switch_bb.Min.y + style.FramePadding.y), label);
+            ImGui::RenderText(ImVec2(switch_bb.Max.x + style.ItemInnerSpacing.x, pos.y + style.FramePadding.y), label);
         }
 
         return pressed;

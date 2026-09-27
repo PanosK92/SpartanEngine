@@ -13,7 +13,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_CommandList.h"
 #include "../RHI_Queue.h"
 #include "../RHI_SyncPrimitive.h"
-#include "../core/Debugging.h"
 #include "../display/Display.h"
 #include "../../profiling/Breadcrumbs.h"
 #include "../core/Event.h"
@@ -263,7 +262,7 @@ namespace spartan
         Microsoft::WRL::ComPtr<IDXGIFactory4> factory;
         {
             UINT dxgi_factory_flags = 0;
-            if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled())
+            if (cvar_debug_validation_layer.GetValue() || cvar_debug_gpu_assisted_validation.GetValue())
             {
                 dxgi_factory_flags |= DXGI_CREATE_FACTORY_DEBUG;
             }
@@ -544,7 +543,7 @@ namespace spartan
             if (result == DXGI_ERROR_DEVICE_REMOVED || result == DXGI_ERROR_DEVICE_RESET)
             {
                 RHI_Device::SetDeviceLost();
-                if (Debugging::IsBreadcrumbsEnabled())
+                if (cvar_debug_breadcrumbs.GetValue())
                 {
                     Breadcrumbs::OnDeviceLost();
                     SP_LOG_ERROR("GPU crashed. Check 'log.txt' for breadcrumbs report.");

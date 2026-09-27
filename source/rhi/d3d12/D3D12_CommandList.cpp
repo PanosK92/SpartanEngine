@@ -20,7 +20,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_AccelerationStructure.h"
 #include "../../profiling/Profiler.h"
-#include "../../core/Debugging.h"
 #include "../../profiling/Breadcrumbs.h"
 #include "../../xr/Xr.h"
 #include "D3D12_Internal.h"
@@ -842,7 +841,7 @@ namespace spartan
             CmdListQueries& q = get(cmd);
 
             // timestamp heap, copy queue does not support timestamps in d3d12
-            if (Debugging::IsGpuTimingEnabled())
+            if (cvar_debug_gpu_timing.GetValue())
             {
                 D3D12_QUERY_HEAP_DESC desc = {};
                 desc.Type    = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
@@ -1246,7 +1245,7 @@ namespace spartan
         if (FAILED(RHI_Context::device->GetDeviceRemovedReason()))
         {
             RHI_Device::SetDeviceLost();
-            if (Debugging::IsBreadcrumbsEnabled())
+            if (cvar_debug_breadcrumbs.GetValue())
             {
                 Breadcrumbs::OnDeviceLost();
                 SP_ERROR_WINDOW("GPU crashed. Check 'log.txt' for breadcrumbs report.");
@@ -3331,7 +3330,7 @@ namespace spartan
     uint32_t RHI_CommandList::begin_timestamp()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        if (!Debugging::IsGpuTimingEnabled() || !m_rhi_query_pool_timestamps)
+        if (!cvar_debug_gpu_timing.GetValue() || !m_rhi_query_pool_timestamps)
         {
             return UINT32_MAX;
         }
@@ -3357,7 +3356,7 @@ namespace spartan
     uint32_t RHI_CommandList::end_timestamp()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        if (!Debugging::IsGpuTimingEnabled() || !m_rhi_query_pool_timestamps)
+        if (!cvar_debug_gpu_timing.GetValue() || !m_rhi_query_pool_timestamps)
         {
             return UINT32_MAX;
         }
@@ -3524,18 +3523,18 @@ namespace spartan
         // cpu profiler block, queue type lets the profiler keep gpu/compute lanes separate
         RHI_Queue_Type queue_type = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
         Profiler::TimeBlockStart(name, TimeBlockType::Cpu, this, queue_type);
-        if (Debugging::IsGpuTimingEnabled() && gpu_timing)
+        if (cvar_debug_gpu_timing.GetValue() && gpu_timing)
         {
             Profiler::TimeBlockStart(name, TimeBlockType::Gpu, this, queue_type);
         }
 
         // gpu marker (PIX), kept independent of breadcrumbs so it works in the absence of breadcrumb infra
-        if (Debugging::IsGpuMarkingEnabled() && gpu_marker)
+        if (cvar_debug_gpu_marking.GetValue() && gpu_marker)
         {
             RHI_Device::MarkerBegin(this, name, math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
         }
 
-        if (Debugging::IsBreadcrumbsEnabled())
+        if (cvar_debug_breadcrumbs.GetValue())
         {
             Breadcrumbs::BeginMarker(name);
             int32_t gpu_slot = Breadcrumbs::GpuMarkerBegin(name, queue_type);
@@ -3553,14 +3552,14 @@ namespace spartan
 
     void RHI_CommandList::end_timeblock()
     {
-        if (Debugging::IsGpuMarkingEnabled())
+        if (cvar_debug_gpu_marking.GetValue())
         {
             RHI_Device::MarkerEnd(this);
         }
 
         RHI_Queue_Type queue_type = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
 
-        if (Debugging::IsBreadcrumbsEnabled())
+        if (cvar_debug_breadcrumbs.GetValue())
         {
             Breadcrumbs::EndMarker();
             if (!m_breadcrumb_gpu_slots.empty())
@@ -3575,7 +3574,7 @@ namespace spartan
             }
         }
 
-        if (Debugging::IsGpuTimingEnabled())
+        if (cvar_debug_gpu_timing.GetValue())
         {
             Profiler::TimeBlockEnd(TimeBlockType::Gpu, this);
         }
@@ -3584,12 +3583,12 @@ namespace spartan
 
     void RHI_CommandList::begin_marker(const char* name)
     {
-        if (Debugging::IsGpuMarkingEnabled())
+        if (cvar_debug_gpu_marking.GetValue())
         {
             RHI_Device::MarkerBegin(this, name, math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
         }
 
-        if (Debugging::IsBreadcrumbsEnabled())
+        if (cvar_debug_breadcrumbs.GetValue())
         {
             Breadcrumbs::BeginMarker(name);
             RHI_Queue_Type queue_type = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
@@ -3608,12 +3607,12 @@ namespace spartan
 
     void RHI_CommandList::end_marker()
     {
-        if (Debugging::IsGpuMarkingEnabled())
+        if (cvar_debug_gpu_marking.GetValue())
         {
             RHI_Device::MarkerEnd(this);
         }
 
-        if (Debugging::IsBreadcrumbsEnabled())
+        if (cvar_debug_breadcrumbs.GetValue())
         {
             Breadcrumbs::EndMarker();
             if (!m_breadcrumb_gpu_slots.empty())

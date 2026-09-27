@@ -28,7 +28,6 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 
 - `resource_read` is an assistant alias: material path or name reads use `material_get`; list queries use `resource_list`.
 - `prefab_create` is an assistant alias for `prefab_save`. Focused assets still allow only the finalizer to save the prefab.
-- `async_task_start`, `async_task_get`, and `async_task_list` are available through both the MCP server and Cursor custom bridge; nested async tasks are rejected.
 - `scene_benchmark_score` executes locally in the Cursor bridge and must not be forwarded to C++.
 - `scene_quality_audit` supports the canonical `prop` profile. It requires one renderable material and skips scene lights, scene-scale counts, advanced-mesh pressure, per-part collision, and spatial-layout checks.
 - Focused assets use one construction pass, one game-ready pass, one stable catalog upsert, and one Asset Viewer screenshot. There is no version or promotion stage.
@@ -58,7 +57,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Use resource lifecycle tools for asset cache load/reload/save/remove and new material creation.
 - Use `viewport_frame` and `camera_set_view` before manual camera transform scripts.
 - Use `renderer_debug_set` and `physics_state` for visual debugging and vehicle/rigid body inspection.
-- To drive and inspect a car: `engine_set_mode` play, `vehicle_enter`, hold `vehicle_set_input` for a stretch, then `vehicle_telemetry` and report anomalies. Agents cannot compile; stop at diagnosis unless the user asks for code changes.
+- To drive and inspect a car: `engine_set_mode` play, `vehicle_enter`, hold `vehicle_set_input` for a stretch, then `vehicle_telemetry` and report anomalies.
 - Use `screenshot_take` when visual verification matters; it waits briefly for the async save and returns the image when ready.
 - Before deleting or rebuilding geometry that should preserve look, call `entity_render_materials` on the target and reuse material names.
 - Focused reusable assets have no authored part, component, material or triangle cap. Create as many as the object needs. Hero bodies use dense loft profiles (24 to 64 points, 12 to 32 stations). Merge geometry that shares a material on save, and put fasteners, print and wear into textures.
@@ -71,7 +70,6 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Use `world_raycast` for ground or surface-relative placement when possible.
 - Simple live scene edits should use deterministic tools; anything unmatched falls back to the Cursor agent with the engine MCP tools.
 - Scene construction prompts such as `build a level`, `make rooms`, `backrooms`, or `liminal space` are live scene edits, not source-code search requests.
-- Recurring gaps worth a dedicated fast path should be logged under Advice To Maintainers.
 - Simple entity deletes should resolve the target and call `entity_delete` directly, not fall through to Cursor fallback.
 - Do not route delete plus rebuild prompts to `entity_delete`; preserve materials first, then rebuild through a complex scene path.
 - Simple primitive creation, such as `create a physics cone`, should route directly to `entity_create_primitive`.
@@ -101,16 +99,11 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 
 ## Verified Patterns
 - A parent entity plus a single batch or Lua script is usually better than many individual entity tool calls.
-- A small receipt after each meaningful engine action helps the editor assistant UI stay understandable.
 - `material_textured_create` accepts `emissive_from_albedo: 1` directly; the albedo color drives emission. Use `entity_create_light` separately when an actual scene light is needed.
 - To sync sequencer cuts to a spline follower, set the follower speed, run `spline_query` for per camera `pass_time_seconds`, then place each cut at the midpoint between consecutive pass times; every camera then sees the car arrive, pass centered in its shot, and leave before the next cut.
-- Gas-station style blockouts succeed with `entity_resolve` then one `entity_create_primitive_batch`; dockyard failed when the agent fell into Lua API probing instead.
-- Dockyard lights were hand-rolled at 25-55 lumens and looked invisible; always use `entity_create_light`, which calibrates photometric intensity and related properties.
-- Dockyard blockout (2026-07-08 retry): succeeded with entity_create_empty at ground via world_raycast, then entity_create_primitive_batch for pad/warehouse/containers/crane/fences and entity_create_light for pole/area/spot lights. No Lua.
-- Use `lights_calibrate` for bulk light correction; it applies role-aware photometric defaults without Lua.
+- Blockouts succeed with `entity_resolve` or `entity_create_empty` at a `world_raycast` ground point, one `entity_create_primitive_batch`, and `entity_create_light`; they fail when the agent falls into Lua API probing.
 
 ## Corrections
-- Add corrections here when a previous note turns out to be wrong or incomplete.
 - `mesh_generate` `mirror_axis` reflects in place by default. Set `mirror_copy: true` to keep the original plus its reflection for symmetric pairs; this does not weld or boolean-union the surfaces.
 - `material_textured_create` accepts texture and material controls together on both bridges. `height` is texture pixels; `displacement_height` sets material displacement. Glass, emission, flakes/pearl/coat tint, anisotropy and texture transforms are applied after attaching maps.
 - `texture_generate` at a path that is already loaded writes the maps to the next free suffix (`name_2.png`) and rebinds `material_path` to it, because the resource cache keeps serving the texture it already has. Read `path` from the response, it may differ from what was asked for; `requested_path` and `note` are present when it moved.
@@ -131,9 +124,6 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 
 ## Advice To Future Agents
 - Treat this file as advice, not absolute truth.
-- Update this file only when a durable lesson was learned.
-- Prefer replacing stale bullets over appending duplicates.
-- Keep entries concise and tied to observed behavior.
 - Rounded-box generators map each face across the full 0-1 UV range; use a dedicated raw mesh UV island for unique non-tiled cover art or labels.
 
 ## Advice To Maintainers
@@ -153,7 +143,8 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Engine sound aggression (CarEngineSoundSynthesis.cpp): lack of scream came from rasp ~40 dB under the pulses and a fixed tanh ceiling flattening WOT. Fixed with pulse-gated turbulent flow noise (900-7000 Hz, gain 6 * gas_speed^3), pulse strength * (rpm/idle)^0.3, and a collector ceiling that opens to 2.5x at redline*load. Front steepening via a variable delay was tried and only smeared peaks, don't retry. Offline harness + metrics live in %TEMP%/engine_audio_audit (A-weighted growth, 1.5-5k band, crest); MCP cannot capture audio.
 - 2026-09-26 tire deformation (source/car/CarTireDeformation.h tire_cage::solve): visual tire snapped between shapes as PSI changed because the cage beams were nonlinear length springs; the flattened patch compresses circumferential beams, they buckle and the solve jumped between buckled equilibria (23 mm crown jumps at 1.30/2.51/3.78 bar, worse with more iterations). Beams now act along their rest axis (linear), result is converged at 32 iterations, max step per 0.01 bar is 0.4 mm. No MCP tool sets tire pressure (only the F3 telemetry HUD slider -> Simulation::set_tire_pressure), so sweep offline: compile a harness including car/CarTireDeformation.h with /I source, drive cage.solve with deflection = tire_spring_deflection(load, tire_radial_stiffness(...)). Screenshots stop (frame_number frozen) while play is paused or the window is minimized (swapchain tiny).
 - 2026-09-26 puddliness: World::Get/SetPuddliness (0-1, saved as Environment puddliness in the .world, Lua World.SetPuddliness, editor slider under the sun's Weather section, MCP world_set_environment puddliness) -> Cb_Frame.puddliness -> data/shaders/common_puddles.hlsl puddle_apply, called from g_buffer.hlsl for terrain and road asphalt/paint (material flag bits 22/23) only, so interiors/props stay dry. One water level rises through a world-space basin field so low spots fill first. Ray traced reflection/restir hit shaders do not apply puddles yet (road_weathering is the place they share). A running MCP server keeps its old zod schema and silently strips new tool args until it is restarted; use the Lua binding meanwhile. plan.world test stretch: flat 4-lane road at (4575..4625, y 4.9, z -3885).
-- 2026-09-26 rain: Light::SetRain 0-1 (sun, Lua World.GetDirectionalLight():SetRain) drives source/world/Weather.cpp: wetness, rain puddles, a camera-centred static-geometry height grid (t68 rain_occlusion) keeping covered areas dry, transient rain particles and synthesized sound. Look: data/shaders/common_rain.hlsl. Garage interior (6213,12.8,-2857) is the dry test. frame_number frozen = window minimized. Wet tires: Weather::GetWaterDepth mirrors puddle_basin, Physics.cpp water_resolver -> wheel.water_depth -> water_grip() (CarCalibration.h). Car drops: occupied car draws flag bit 7; Weather integrates slide per bucket per axis plane with gravity; rain_veins = rivulets on fixed 20deg plane dirs. See: vehicle_set_view wheel, crop png.
+- 2026-09-26 rain: Light::SetRain 0-1 (sun, Lua World.GetDirectionalLight():SetRain) drives source/world/Weather.cpp: wetness, rain puddles, a camera-centred static-geometry height grid (t68 rain_occlusion) keeping covered areas dry, transient rain particles and synthesized sound. Look: data/shaders/common_rain.hlsl. Garage interior (6213,12.8,-2857) is the dry test. frame_number frozen = window minimized. Wet tires: Weather::GetWaterDepth mirrors puddle_basin, Physics.cpp water_resolver -> wheel.water_depth -> water_grip() (CarCalibration.h). Car water: CarRain.cpp drop sim on last driven car (6 ortho maps), shader rain_car(); inspect via vehicle_exit, pause, camera_set_view.
+- 2026-09-26 forest foliage: assets in binaries/project/models/forest (Poly Haven CC0 scans), built by sources/build_forest.py (budgets, twig atlas, leaf_quads in forest.json), installed by sources/install_forest.py (rewrites only the 7 vegetation layers of plan.world; scatter layers are not MCP-editable, tune there + world_load; density changes re-roll placement). Conifer needles are clustered into twig cards; broadleaf leaves decimate to nothing, so leaf_quads replaces each leaf island with one PCA quad. *_foliage materials get thin_foliage_cards LODs; stems need *_twig_wood alphaMode MASK. Density = per ha x tree mask x woodland habitat (both soft, edges thin out); all 12 scatter slots used. Eye-level forest ~36 ms GPU at pine 1000 / understory 1800 / regeneration 500 / tree distance 2400. Tree wind cache is keyed by global instance: Pass_IndirectCull_Refine reorders survivors after the depth prepass, and cache-vs-mesh-evaluator fp differences failed the equal depth test (white/black screen rectangles; r.hiz_occlusion 0 skips refine). Check wind with a two-frame pixel diff against a wind [0,0,0] control. Warm foliage_transmission_tint turns backlit canopies orange.
 
 ## Memory
 - Measuring memory: log.txt gets 'Cpu memory (world ready|steady)', 'Gpu memory (...)' (per kind, top names, top textures, VMA heaps with used vs committed = slack) and 'Gpu geometry (world ready)' (per-mesh share of the global geometry buffer). Windows counter '\GPU Process Memory(pid_N*)\Dedicated Usage' is the ground truth for VRAM (MiB). SPARTAN_HEAP_CENSUS=1 env var enables callstack heap census (Allocator::LogLargestAllocationSites). The editor Memory Viewer widget exports the same GpuMemory data to CSV but only via its button; the MCP cannot click it. plan.world after 2026-09 fixes: peak VRAM ~6.8 GiB, CPU working set ~6.6 GiB (was 14+ GB VRAM, 20 GB CPU).

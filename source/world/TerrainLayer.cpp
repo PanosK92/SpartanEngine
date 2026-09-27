@@ -193,7 +193,7 @@ namespace spartan
         {
             TerrainScatterLayer& s = layers[0];
             s.name                 = "trees";
-            s.mesh_path            = "project/models/tree/tree.fbx";
+            s.mesh_path            = "project/models/forest/pine/pine_a.gltf";
             s.enabled              = true;
             s.density              = 9.0f;
             s.slope_max            = 36.0f;
@@ -203,9 +203,9 @@ namespace spartan
             s.mask_min             = 0.05f;
             s.clump_radius         = 14.0f;
             s.clump_count          = 4;
-            s.mesh_scale           = 0.026f;
-            s.size_min             = 0.22f;
-            s.size_max             = 1.35f;
+            s.mesh_scale           = 1.0f;
+            s.size_min             = 0.72f;
+            s.size_max             = 1.18f;
             s.align_to_normal      = 0.0f;
             s.surface_offset       = 0.05f;
             // bark meets soil on a fairly definite line, the root flare is what softens it and that is

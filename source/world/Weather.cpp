@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ============================
 #include "pch.h"
 #include "Weather.h"
+#include "CarRain.h"
 #include "World.h"
 #include "Entity.h"
 #include "RainSoundSynthesis.h"
@@ -20,6 +21,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../car/CarSimulation.h"
 #include "../physics/PhysicsWorld.h"
 #include "../profiling/Profiler.h"
+#include "../core/Engine.h"
 #include <array>
 #include <vector>
 #include <mutex>
@@ -78,38 +80,14 @@ namespace spartan
         uint64_t sound_entity_id = 0;
         once_flag sound_once;
 
-        // droplets riding on the occupied car, all car local
-        // a drop is pinned by contact angle hysteresis until the force along the paint beats it, the pinning
-        // grows with the contact line (radius) and the push with volume, so big drops let go first
-        struct drop_class
-        {
-            float threshold;                // m/s^2 of specific force along the paint before the contact line lets go
-            float mobility;                 // m/s of sliding per m/s^2 over the threshold
-            float aero;                     // m/s^2 of airflow push per (m/s)^2 of airspeed, boundary layer included
-            // one per car axis plane (normal x, y, z), a face slides with the plane it is closest to, so the sides
-            // and the nose feel gravity pull their drops down while the hood and roof only feel the g forces
-            array<Vector3, 3> slide = {}; // metres slid so far
-            array<Vector3, 3> flow  = {}; // m/s right now
-        };
-        // largest first, at motorway speed the airflow alone beats every threshold, around town only the big drops creep
-        array<drop_class, Weather::drop_class_count> drop_classes =
-        {
-            drop_class{ 1.5f, 0.030f, 0.012f },
-            drop_class{ 2.5f, 0.022f, 0.014f },
-            drop_class{ 4.0f, 0.015f, 0.018f },
-            drop_class{ 6.0f, 0.010f, 0.022f }
-        };
-        constexpr float drop_frequency = 3.0f;  // hz, how fast a pinned drop sways back after a jolt
-        constexpr float drop_damping   = 0.25f; // of critical, a few visible rocks before it settles
-        constexpr float drop_wrap      = 24.0f; // metres, keeps float precision, the shader repeats its drop pattern over exactly this distance
-        constexpr float vein_memory    = 1.5f;  // seconds, the wetted paths lag the pull, water keeps to the old path for a while
-        Vector3 drop_lean              = Vector3::Zero; // g
-        Vector3 drop_lean_velocity     = Vector3::Zero;
-        Vector3 drop_vein_pull         = Vector3(0.0f, -1.0f, 0.0f); // g, gravity included
-        Entity* drop_vehicle           = nullptr;
-        Entity* drop_wetness_owner     = nullptr;
-        float drop_wetness             = 0.0f;
-        Quaternion drop_rotation       = Quaternion::Identity;
+        // the occupied car, its water is simulated drop by drop in CarRain
+        constexpr float acceleration_smoothing = 0.03f; // seconds, keeps suspension chatter out while a crash still lands in full
+        Entity* drop_vehicle       = nullptr;
+        Entity* drop_wetness_owner = nullptr;
+        float drop_wetness         = 0.0f;
+        Quaternion drop_rotation   = Quaternion::Identity;
+        Vector3 drop_velocity_last = Vector3::Zero; // world, m/s
+        Vector3 drop_acceleration  = Vector3::Zero; // world, m/s^2
 
         int32_t wrap(int32_t value)
         {
@@ -344,36 +322,74 @@ namespace spartan
 
         void tick_vehicle_drops(float delta_time)
         {
-            drop_vehicle = nullptr;
-            if ((wetness <= 0.0f && drop_wetness <= 0.0f) || delta_time <= 0.0f)
-                return;
+            // the water on the car lives on the car's clock, it holds still while the game is paused
+            if (Engine::IsFlagSet(EngineMode::Paused))
+            {
+                delta_time = 0.0f;
+            }
 
+            drop_vehicle = nullptr;
+            if (wetness <= 0.0f && drop_wetness <= 0.0f)
+            {
+                CarRain::Tick(nullptr, CarRain::Conditions(), delta_time);
+                return;
+            }
+
+            // the water stays on the car the player last drove, stepping out does not dry it
             Car* occupied = nullptr;
+            Car* previous = nullptr;
             for (Car* car : Car::GetAll())
             {
-                if (car && car->IsOccupied())
+                if (!car)
+                    continue;
+
+                if (car->IsOccupied())
                 {
                     occupied = car;
                     break;
                 }
+
+                if (drop_wetness_owner && car->GetRootEntity() == drop_wetness_owner)
+                {
+                    previous = car;
+                }
+            }
+            if (!occupied)
+            {
+                occupied = previous;
             }
             Entity* root                = occupied ? occupied->GetRootEntity() : nullptr;
             Physics* physics            = root ? root->GetComponent<Physics>() : nullptr;
             car::Simulation* simulation = physics ? physics->GetVehicleSimulation() : nullptr;
             if (!simulation)
+            {
+                CarRain::Tick(nullptr, CarRain::Conditions(), delta_time);
                 return;
+            }
 
             // the car carries its water, it stays wet driving under a roof and dries over minutes, faster in the airflow
-            const Vector3 velocity = root->GetRotation().Inverse() * physics->GetLinearVelocity();
-            const float airspeed   = velocity.Length();
-            const float soak       = rain * grid_exposure(root->GetPosition() + Vector3(0.0f, 1.5f, 0.0f));
-            const Vector3 gravity = root->GetRotation().Inverse() * Vector3(0.0f, -9.81f, 0.0f);
+            const Quaternion to_car       = root->GetRotation().Inverse();
+            const Vector3 velocity_world  = physics->GetLinearVelocity();
+            const Vector3 velocity        = to_car * velocity_world;
+            const float airspeed          = velocity.Length();
+            const float exposure          = grid_exposure(root->GetPosition() + Vector3(0.0f, 1.5f, 0.0f));
+            const float soak              = rain * exposure;
             if (root != drop_wetness_owner)
             {
                 drop_wetness_owner = root;
-                drop_wetness       = wetness * grid_exposure(root->GetPosition() + Vector3(0.0f, 1.5f, 0.0f));
-                drop_vein_pull     = gravity / 9.81f;
+                drop_wetness       = wetness * exposure;
+                drop_velocity_last = velocity_world;
+                drop_acceleration  = Vector3::Zero;
             }
+
+            // measured from the body's own velocity, so braking, cornering, bumps and crashes all reach the water
+            if (delta_time > 0.0f)
+            {
+                const Vector3 acceleration = (velocity_world - drop_velocity_last) / delta_time;
+                drop_acceleration          = Vector3::Lerp(drop_acceleration, acceleration, min(1.0f, delta_time / acceleration_smoothing));
+                drop_velocity_last         = velocity_world;
+            }
+
             if (soak > 0.0f)
             {
                 drop_wetness = min(1.0f, drop_wetness + delta_time * (0.02f + 0.13f * rain) * soak);
@@ -386,42 +402,14 @@ namespace spartan
             drop_vehicle  = root;
             drop_rotation = root->GetRotation();
 
-            // specific force on a drop in the car's frame, the inertial push opposes the car's acceleration
-            // (the filtered g forces the hud shows) and the airflow over the paint blows it downstream
-            const Vector3 inertial = Vector3(-simulation->get_lateral_accel(), 0.0f, -simulation->get_longitudinal_accel());
-            const Vector3 airflow  = airspeed > 0.1f ? -velocity / airspeed : Vector3::Zero;
-
-            // pinned drops, a damped spring driven by that force, substepped so a long frame cannot blow it up
-            const float omega = 2.0f * pi * drop_frequency;
-            const Vector3 lean_target = (inertial + airflow * drop_classes[0].aero * airspeed * airspeed) / 9.81f;
-            const uint32_t steps      = static_cast<uint32_t>(ceilf(delta_time * 240.0f));
-            const float step          = delta_time / steps;
-            for (uint32_t i = 0; i < steps; i++)
-            {
-                const Vector3 acceleration = (lean_target - drop_lean) * (omega * omega) - drop_lean_velocity * (2.0f * drop_damping * omega);
-                drop_lean_velocity        += acceleration * step;
-                drop_lean                 += drop_lean_velocity * step;
-            }
-            drop_vein_pull = Vector3::Lerp(drop_vein_pull, gravity / 9.81f + drop_lean, min(1.0f, delta_time / vein_memory));
-
-            // loose drops, they slide at a speed set by how far the force along the paint beats the pinning,
-            // gravity included, worked out once per car axis plane since that is how the shader lays the drops out
-            for (drop_class& c : drop_classes)
-            {
-                const Vector3 force = inertial + airflow * c.aero * airspeed * airspeed + gravity;
-                for (uint32_t plane = 0; plane < 3; plane++)
-                {
-                    const Vector3 along = Vector3(plane == 0 ? 0.0f : force.x, plane == 1 ? 0.0f : force.y, plane == 2 ? 0.0f : force.z);
-                    const float magnitude = along.Length();
-                    const Vector3 target  = magnitude > c.threshold ? along * ((magnitude - c.threshold) * c.mobility / magnitude) : Vector3::Zero;
-                    // a drop takes a moment to get going and to stop again
-                    c.flow[plane]   = Vector3::Lerp(c.flow[plane], target, min(1.0f, delta_time * 8.0f));
-                    c.slide[plane] += c.flow[plane] * delta_time;
-                    c.slide[plane].x = fmodf(c.slide[plane].x, drop_wrap);
-                    c.slide[plane].y = fmodf(c.slide[plane].y, drop_wrap);
-                    c.slide[plane].z = fmodf(c.slide[plane].z, drop_wrap);
-                }
-            }
+            CarRain::Conditions conditions;
+            conditions.velocity     = velocity;
+            conditions.acceleration = to_car * drop_acceleration;
+            conditions.gravity      = to_car * Vector3(0.0f, -9.81f, 0.0f);
+            conditions.wind         = to_car * World::GetWind();
+            conditions.rain         = rain;
+            conditions.exposure     = exposure;
+            CarRain::Tick(root, conditions, delta_time);
         }
 
         void tick_audio()
@@ -448,7 +436,7 @@ namespace spartan
 
             if (rain > 0.0f)
             {
-                audio->SetVolume(1.0f);
+                audio->SetVolume(0.5f);
                 if (!audio->IsPlaying())
                 {
                     audio->StartSynthesis();
@@ -479,6 +467,7 @@ namespace spartan
             grid.initialized = false;
             drop_wetness_owner = nullptr;
             drop_wetness       = 0.0f;
+            CarRain::Clear();
         }
 
         // soaking takes seconds in a downpour, drying takes minutes
@@ -593,29 +582,9 @@ namespace spartan
         return drop_vehicle ? drop_wetness : 0.0f;
     }
 
-    Vector3 Weather::GetDropsLean()
-    {
-        return drop_rotation * drop_lean;
-    }
-
-    Vector3 Weather::GetDropsVeinPull()
-    {
-        return drop_rotation * drop_vein_pull;
-    }
-
     Vector3 Weather::GetDropsAxis(uint32_t plane)
     {
         return drop_rotation * (plane == 0 ? Vector3::Right : (plane == 1 ? Vector3::Up : Vector3::Forward));
-    }
-
-    Vector3 Weather::GetDropsSlide(uint32_t size_class, uint32_t plane)
-    {
-        return drop_rotation * drop_classes[min(size_class, drop_class_count - 1)].slide[min(plane, 2u)];
-    }
-
-    Vector3 Weather::GetDropsFlow(uint32_t size_class, uint32_t plane)
-    {
-        return drop_rotation * drop_classes[min(size_class, drop_class_count - 1)].flow[min(plane, 2u)];
     }
 
     const float* Weather::GetOcclusionHeights()

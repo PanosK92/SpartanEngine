@@ -156,7 +156,7 @@ Viewport::Viewport(Editor* editor) : Widget(editor)
     m_dock          = WidgetDock::Center;
     m_size_initial  = Vector2(400, 250);
     m_flags        |= ImGuiWindowFlags_NoScrollbar;
-    m_padding       = Vector2(2.0f);
+    m_padding       = Vector2(0.0f);
 }
 
 void Viewport::OnTickVisible()
@@ -213,101 +213,63 @@ void Viewport::OnTickVisible()
     if (!World::GetCamera())
     {
         ImDrawList* draw = ImGui::GetWindowDrawList();
-        draw->AddRectFilled(image_rect_min, image_rect_max, ImGui::EditorUi::color(ImGui::Style::color_canvas_deep));
+        draw->AddRectFilled(image_rect_min, image_rect_max, ImGui::EditorUi::color(ImGui::Style::color_void));
         const ImVec2 center((image_rect_min.x + image_rect_max.x) * 0.5f, (image_rect_min.y + image_rect_max.y) * 0.5f);
-        const float title_size = ImGui::EditorUi::scaled(28.0f);
-        ImFont* font = Editor::font_bold ? Editor::font_bold : ImGui::GetFont();
-        const ImVec2 title_extent = font->CalcTextSizeA(title_size, FLT_MAX, 0.0f, "SPARTAN");
-        const char* hint = "Open a world to start creating.";
-        const ImVec2 hint_extent = ImGui::CalcTextSize(hint);
-        if (image_rect_max.x - image_rect_min.x > hint_extent.x + ImGui::EditorUi::scaled(32.0f))
+        const float title_size = ImGui::EditorUi::scaled(34.0f);
+        const float tracking   = title_size * 0.55f;
+        ImFont* font           = Editor::font_bold ? Editor::font_bold : ImGui::GetFont();
+        const float title_w    = ImGui::EditorUi::calc_text_tracked("SPARTAN", tracking, font, title_size);
+        const char* hint       = "no world loaded  /  open a world to begin";
+        const float hint_w     = ImGui::EditorUi::micro_label_width(hint, Editor::font_mono_medium);
+        if (image_rect_max.x - image_rect_min.x > ImMax(title_w, hint_w) + ImGui::EditorUi::scaled(48.0f))
         {
-            draw->AddLine(ImVec2(center.x - ImGui::EditorUi::scaled(18.0f), center.y - ImGui::EditorUi::scaled(36.0f)),
-                ImVec2(center.x + ImGui::EditorUi::scaled(18.0f), center.y - ImGui::EditorUi::scaled(36.0f)),
-                ImGui::EditorUi::color(ImGui::Style::color_accent_1), ImGui::EditorUi::scaled(2.0f));
-            draw->AddText(font, title_size, ImVec2(center.x - title_extent.x * 0.5f, center.y - title_extent.y),
-                ImGui::EditorUi::color(ImGui::Style::color_text), "SPARTAN");
-            draw->AddText(ImVec2(center.x - hint_extent.x * 0.5f, center.y + ImGui::EditorUi::scaled(12.0f)),
-                ImGui::EditorUi::color(ImGui::Style::color_text_muted), hint);
+            const float rule_y  = IM_ROUND(center.y + ImGui::EditorUi::scaled(10.0f));
+            const float rule_w  = title_w * 0.5f;
+            const ImU32 clear   = ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_accent_1, 0.0f));
+            const ImU32 lit     = ImGui::EditorUi::color(ImGui::Style::color_accent_1);
+            ImGui::EditorUi::draw_text_tracked(draw, ImVec2(IM_ROUND(center.x - title_w * 0.5f), IM_ROUND(center.y - title_size - ImGui::EditorUi::scaled(4.0f))), ImGui::EditorUi::color(ImGui::Style::color_text), "SPARTAN", tracking, font, title_size);
+            draw->AddRectFilledMultiColor(ImVec2(center.x - rule_w, rule_y), ImVec2(center.x, rule_y + 1.0f), clear, lit, lit, clear);
+            draw->AddRectFilledMultiColor(ImVec2(center.x, rule_y), ImVec2(center.x + rule_w, rule_y + 1.0f), lit, clear, clear, lit);
+            ImGui::EditorUi::draw_micro_label(draw, ImVec2(IM_ROUND(center.x - hint_w * 0.5f), rule_y + ImGui::EditorUi::scaled(12.0f)), ImGui::GetTextLineHeight(), hint, ImGui::Style::color_text_muted, Editor::font_mono_medium);
         }
     }
 
     if (Engine::IsFlagSet(EngineMode::Playing))
     {
-        const bool paused = Engine::IsFlagSet(EngineMode::Paused);
-        const char* label = paused ? "Paused" : "Playing";
-        const ImVec4 status_color = paused ? ImGui::Style::color_warning : ImGui::Style::color_ok;
-        const ImVec4 border_color = ImGui::Style::color_accent_1;
-        const ImVec2 text_size = ImGui::CalcTextSize(label);
-        const ImVec2 padding = ImGui::EditorUi::scaled(
-            ImVec2(9.0f, 4.0f)
-        );
-        const float dot_size = ImGui::EditorUi::scaled(6.0f);
-        const float margin = ImGui::EditorUi::scaled(12.0f);
-        const float badge_width =
-            text_size.x +
-            padding.x * 2.0f +
-            dot_size +
-            ImGui::EditorUi::scaled(6.0f);
-        const ImVec2 badge_min(
-            image_rect_max.x - margin - badge_width,
-            image_rect_min.y + margin
-        );
-        const ImVec2 badge_max(
-            badge_min.x + badge_width,
-            badge_min.y + text_size.y + padding.y * 2.0f
-        );
+        // a heads up display: the frame edges glow inward with the signal, a status readout floats in the top left, clear of the performance overlay
+        const bool paused     = Engine::IsFlagSet(EngineMode::Paused);
+        const ImVec4 signal   = paused ? ImGui::Style::color_warning : ImGui::Style::color_accent_1;
+        const float inset     = ImGui::EditorUi::scaled(14.0f);
+        const ImVec2 hud_min  = ImVec2(image_rect_min.x + inset, image_rect_min.y + inset);
+        const ImVec2 hud_max  = ImVec2(image_rect_max.x - inset, image_rect_max.y - inset);
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRect(
-            image_rect_min,
-            image_rect_max,
-            ImGui::EditorUi::color(
-                ImGui::EditorUi::alpha(border_color, 0.72f)
-            ),
-            0.0f,
-            ImGui::EditorUi::scaled(2.0f),
-            0
-        );
-        draw_list->AddRectFilled(
-            badge_min,
-            badge_max,
-            ImGui::EditorUi::color(
-                ImGui::EditorUi::alpha(
-                    ImGui::Style::color_panel,
-                    0.90f
-                )
-            ),
-            ImGui::EditorUi::scaled(8.0f)
-        );
-        draw_list->AddRect(
-            badge_min,
-            badge_max,
-            ImGui::EditorUi::color(
-                ImGui::EditorUi::alpha(status_color, 0.48f)
-            ),
-            ImGui::EditorUi::scaled(8.0f)
-        );
-        const ImVec2 dot_center(
-            badge_min.x + padding.x + dot_size * 0.5f,
-            (badge_min.y + badge_max.y) * 0.5f
-        );
-        draw_list->AddCircleFilled(
-            dot_center,
-            dot_size * 0.5f,
-            ImGui::EditorUi::color(status_color)
-        );
-        draw_list->AddText(
-            ImVec2(
-                dot_center.x +
-                dot_size * 0.5f +
-                ImGui::EditorUi::scaled(6.0f),
-                badge_min.y + padding.y
-            ),
-            ImGui::EditorUi::color(
-                ImGui::Style::color_text
-            ),
-            label
-        );
+
+        {
+            const float breathe = 0.85f + 0.15f * sinf(static_cast<float>(ImGui::GetTime()) * 2.2f);
+            const float depth   = ImGui::EditorUi::scaled(44.0f);
+            const ImU32 lit     = ImGui::EditorUi::color(ImGui::EditorUi::alpha(signal, 0.20f * breathe));
+            const ImU32 clear   = ImGui::EditorUi::color(ImGui::EditorUi::alpha(signal, 0.0f));
+            const ImVec2 a      = image_rect_min;
+            const ImVec2 b      = image_rect_max;
+            draw_list->AddRectFilledMultiColor(a, ImVec2(b.x, a.y + depth), lit, lit, clear, clear);
+            draw_list->AddRectFilledMultiColor(ImVec2(a.x, b.y - depth), b, clear, clear, lit, lit);
+            draw_list->AddRectFilledMultiColor(a, ImVec2(a.x + depth, b.y), lit, clear, clear, lit);
+            draw_list->AddRectFilledMultiColor(ImVec2(b.x - depth, a.y), b, clear, lit, lit, clear);
+        }
+
+        const char* label      = paused ? "paused" : "live";
+        const float pill_h     = ImGui::EditorUi::scaled(20.0f);
+        const float pad        = ImGui::EditorUi::scaled(9.0f);
+        const float dot_r      = ImGui::EditorUi::scaled(3.0f);
+        const float label_w    = ImGui::EditorUi::micro_label_width(label, Editor::font_mono_medium);
+        const float pill_w     = pad * 2.0f + dot_r * 2.0f + ImGui::EditorUi::scaled(8.0f) + label_w;
+        const ImVec2 pill_min  = ImVec2(IM_ROUND(hud_min.x), IM_ROUND(hud_min.y));
+        const ImVec2 pill_max  = ImVec2(pill_min.x + pill_w, pill_min.y + pill_h);
+        ImGui::EditorUi::draw_glow(draw_list, pill_min, pill_max, signal, pill_h * 0.5f, ImGui::EditorUi::scaled(10.0f), 0.8f);
+        draw_list->AddRectFilled(pill_min, pill_max, ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_void, 0.80f)), pill_h * 0.5f);
+        ImGui::EditorUi::draw_lit_rim(draw_list, pill_min, pill_max, pill_h * 0.5f, ImGui::EditorUi::alpha(signal, 0.9f), ImGui::EditorUi::alpha(signal, 0.25f), pill_h);
+        ImGui::EditorUi::status_dot(draw_list, ImVec2(pill_min.x + pad + dot_r, (pill_min.y + pill_max.y) * 0.5f), dot_r, signal, !paused);
+        ImGui::EditorUi::draw_micro_label(draw_list, ImVec2(pill_min.x + pad + dot_r * 2.0f + ImGui::EditorUi::scaled(8.0f), pill_min.y), pill_h, label, signal, Editor::font_mono_medium);
     }
 
     // let the input system know if the mouse is within the viewport

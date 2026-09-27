@@ -161,6 +161,7 @@ namespace spartan
     TConsoleVar<float> cvar_selection_outline              ("r.selection_outline",              1.0f,                                                    "draw selection outline");
     TConsoleVar<float> cvar_entity_icons                   ("r.entity_icons",                   1.0f,                                                    "draw entity icons and debug visuals");
     TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,                                                    "performance overlay, 1 full, 2 compact", on_performance_metrics_change);
+    TConsoleVar<float> cvar_screenshot_ui                  ("r.screenshot_ui",                  0.0f,                                                    "screenshots capture the whole editor window, ui included");
     TConsoleVar<float> cvar_physics                        ("r.physics",                        0.0f,                                                    "draw physics debug");
     TConsoleVar<float> cvar_ragdoll                        ("r.ragdoll",                        0.0f,                                                    "draw ragdoll capsules and joints in play mode");
     TConsoleVar<float> cvar_wireframe                      ("r.wireframe",                      0.0f,                                                    "render in wireframe mode");
@@ -210,6 +211,7 @@ namespace spartan
     TConsoleVar<float> cvar_dynamic_resolution             ("r.dynamic_resolution",             0.0f,                                                    "automatic resolution scaling");
     // misc
     TConsoleVar<float> cvar_hiz_occlusion                  ("r.hiz_occlusion",                  1.0f,                                                    "hi-z occlusion culling for gpu-driven rendering");
+    TConsoleVar<float> cvar_foliage_impostors              ("r.foliage_impostors",              1.0f,                                                    "draw distant foliage as its baked impostor card, the final gpu lod");
     TConsoleVar<float> cvar_meshlet_cull_skinned           ("r.meshlet_cull_skinned",           0.0f,                                                    "enable per-meshlet hi-z culling for skinned meshes (off by default since the local sphere is inexact after skinning)");
     TConsoleVar<float> cvar_meshlet_visualize              ("r.meshlet_visualize",              0.0f,                                                    "meshlet debug visualisation written to debug_output (0 off, 1 color by meshlet id, 2 wireframe by meshlet id, 3 color by post-cull draw id, 4 wireframe by post-cull draw id)");
     TConsoleVar<float> cvar_cluster_visualize              ("r.cluster_visualize",              0.0f,                                                    "clustered lighting debug heatmap written to debug_output (0 off, 1 lights per cluster, 2 cluster slice z)");

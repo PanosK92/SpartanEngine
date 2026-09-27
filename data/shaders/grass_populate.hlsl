@@ -457,15 +457,19 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
                             max(cells_in_ring, 1.0f);
     uint  blades_per_cell = max(1u, (uint)ceil(per_cell));
     float cell_keep       = saturate(per_cell / float(blades_per_cell));
-    if (dispatch_thread_id.x >= cells_per_axis ||
-        dispatch_thread_id.y >= cells_per_axis ||
+
+    // the cpu dispatches only the window of cells the view pyramid reaches, its origin follows the
+    // slot lod entries, so a cell keeps the same index and hash as on the full grid
+    uint2 cell_id = dispatch_thread_id.xy + (uint2)grass_lod_parameters[4u + count_index].xy;
+    if (cell_id.x >= cells_per_axis ||
+        cell_id.y >= cells_per_axis ||
         dispatch_thread_id.z >= blades_per_cell)
         return;
 
     // signed cell index in the camera-relative grid, centered on the snapped camera position
     int half_cells = (int)(cells_per_axis / 2u);
-    int cell_x_s   = (int)dispatch_thread_id.x - half_cells;
-    int cell_z_s   = (int)dispatch_thread_id.y - half_cells;
+    int cell_x_s   = (int)cell_id.x - half_cells;
+    int cell_z_s   = (int)cell_id.y - half_cells;
 
     // integer world coordinates of the cell, stable as the camera moves
     int world_cell_x = (int)floor(camera_xz_anchor.x / cell_size) + cell_x_s;

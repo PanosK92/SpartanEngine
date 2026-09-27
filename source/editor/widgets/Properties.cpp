@@ -256,52 +256,46 @@ namespace
     {
         ImGui::PushID(name);
 
-        // header styling
-        ImVec4 header_bg = ImGui::Style::lerp(
-            ImGui::Style::color_panel,
-            accent_color,
-            0.12f
-        );
-        ImVec4 header_hovered = ImGui::Style::lerp(
-            ImGui::Style::color_surface_hover,
-            accent_color,
-            0.18f
-        );
-        ImVec4 header_active = ImGui::Style::lerp(
-            ImGui::Style::color_surface_active,
-            accent_color,
-            0.20f
-        );
+        // imgui's own label and arrow stay invisible, the header is drawn below: chevron, the component's color tab, its name
+        const float dpi = spartan::Window::GetDpiScale();
+        ImGui::PushStyleColor(ImGuiCol_Header, ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.055f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.085f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.11f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f * dpi, 7.0f * dpi));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f * dpi);
 
-        ImGui::PushStyleColor(ImGuiCol_Header, header_bg);
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, header_hovered);
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive, header_active);
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(design::spacing_md, design::spacing_md));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-
-        // draw collapsing header
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_AllowOverlap;
         if (default_open)
         {
             flags |= ImGuiTreeNodeFlags_DefaultOpen;
         }
 
-        ImGui::PushFont(Editor::font_bold, 0.0f);
         const bool is_expanded = ImGuiSp::collapsing_header(name, flags);
-        ImGui::PopFont();
 
         ImGui::PopStyleVar(2);
-        ImGui::PopStyleColor(3);
+        ImGui::PopStyleColor(4);
 
-        // accent bar on the left of header
-        ImVec2 header_min = ImGui::GetItemRectMin();
-        ImVec2 header_max = ImGui::GetItemRectMax();
-        ImGui::GetWindowDrawList()->AddRectFilled(
-            ImVec2(header_min.x, header_min.y + 2.0f),
-            ImVec2(header_min.x + 3.0f, header_max.y - 2.0f),
-            ImGui::ColorConvertFloat4ToU32(accent_color),
-            2.0f
-        );
+        ImVec2 header_min     = ImGui::GetItemRectMin();
+        ImVec2 header_max     = ImGui::GetItemRectMax();
+        {
+            ImDrawList* draw_list  = ImGui::GetWindowDrawList();
+            const float center_y   = IM_ROUND((header_min.y + header_max.y) * 0.5f);
+            const float font_size  = ImGui::GetFontSize();
+            const float chevron    = font_size * 0.55f;
+            const ImVec2 arrow_pos = ImVec2(IM_ROUND(header_min.x + 10.0f * dpi), IM_ROUND(center_y - chevron * 0.5f));
+            ImGui::RenderArrow(draw_list, arrow_pos, ImGui::EditorUi::color(ImGui::Style::color_text_muted), is_expanded ? ImGuiDir_Down : ImGuiDir_Right, 0.55f);
+
+            // the color tab is what makes a component recognisable at a glance
+            const float tab_x = IM_ROUND(arrow_pos.x + chevron + 12.0f * dpi);
+            const float tab_w = IM_ROUND(3.0f * dpi);
+            const float tab_h = IM_ROUND(font_size * 0.95f);
+            draw_list->AddRectFilled(ImVec2(tab_x, center_y - tab_h * 0.5f), ImVec2(tab_x + tab_w, center_y + tab_h * 0.5f), ImGui::EditorUi::color(accent_color), tab_w);
+
+            ImFont* font           = Editor::font_bold ? Editor::font_bold : ImGui::GetFont();
+            const ImVec4 name_tint = is_expanded ? ImGui::Style::color_text : ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.82f);
+            draw_list->AddText(font, font_size, ImVec2(IM_ROUND(tab_x + tab_w + 10.0f * dpi), IM_ROUND(center_y - font_size * 0.5f)), ImGui::EditorUi::color(name_tint), name);
+        }
 
         // gear icon for context menu
         if (options)
@@ -342,12 +336,8 @@ namespace
         {
             component_content_active = true;
 
-            // content background
-            const ImVec4 content_bg = ImGui::Style::lerp(
-                ImGui::Style::color_canvas,
-                ImGui::Style::color_panel,
-                0.35f
-            );
+            // content sits on the panel itself, so the value wells are the darkest thing in it
+            const ImVec4 content_bg = ImVec4(0, 0, 0, 0);
 
             ImGui::PushStyleColor(ImGuiCol_ChildBg, content_bg);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(design::spacing_lg, design::spacing_md));
@@ -406,44 +396,38 @@ namespace
         // move to value column
         ImGui::SameLine(layout::label_width());
 
-        // use full remaining width for the 3 inputs
-        float total_avail     = ImGui::GetContentRegionAvail().x;
-        float axis_label_w    = 10.0f;
-        float label_to_input  = 10.0f;  // space between X/Y/Z label and input box
-        float between_groups  = 8.0f;   // space between groups
-        float input_width     = (total_avail - axis_label_w * 3 - label_to_input * 3 - between_groups * 2) / 3.0f;
-
-        const ImU32 colors[3] =
-        {
-            ImGui::EditorUi::color(ImGui::EditorUi::axis_color(0)),
-            ImGui::EditorUi::color(ImGui::EditorUi::axis_color(1)),
-            ImGui::EditorUi::color(ImGui::EditorUi::axis_color(2))
-        };
-        const char* axis[3] = { "X", "Y", "Z" };
-        float* values[3] = { &vec.x, &vec.y, &vec.z };
+        // three fields sharing the value column, each carries its axis as a colored cap on its left end
+        const float dpi         = spartan::Window::GetDpiScale();
+        const float between     = 6.0f * dpi;
+        const float input_width = (ImGui::GetContentRegionAvail().x - between * 2.0f) / 3.0f;
+        const char* axis[3]     = { "X", "Y", "Z" };
+        float* values[3]        = { &vec.x, &vec.y, &vec.z };
 
         for (int i = 0; i < 3; ++i)
         {
             if (i > 0)
             {
-                ImGui::SameLine(0, between_groups);
+                ImGui::SameLine(0, between);
             }
 
-            // axis label with color
-            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(colors[i]));
-            ImGui::AlignTextToFramePadding();
-            ImGui::TextUnformatted(axis[i]);
-            ImGui::PopStyleColor();
-
-            // SPACE between label and input
-            ImGui::SameLine(0, label_to_input);
-
-            // input field - wide
             ImGui::PushItemWidth(input_width);
             ImGui::PushID(i);
             ImGuiSp::draw_float_wrap("##v", values[i], 0.01f);
+            const bool active = ImGui::IsItemActive();
             ImGui::PopID();
             ImGui::PopItemWidth();
+
+            const ImVec2 field_min = ImGui::GetItemRectMin();
+            const ImVec2 field_max = ImGui::GetItemRectMax();
+            const float cap_width  = IM_ROUND((field_max.y - field_min.y) * 0.8f);
+            const ImVec4 tint      = ImGui::EditorUi::axis_color(i);
+            ImDrawList* draw_list  = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(field_min, ImVec2(field_min.x + cap_width, field_max.y), ImGui::EditorUi::color(ImGui::EditorUi::alpha(tint, active ? 0.50f : 0.28f)), ImGui::GetStyle().FrameRounding, ImDrawFlags_RoundCornersLeft);
+            ImFont* font            = Editor::font_bold ? Editor::font_bold : ImGui::GetFont();
+            const float font_size   = ImGui::GetFontSize();
+            const float letter_w    = font->CalcTextSizeA(font_size, FLT_MAX, 0.0f, axis[i]).x;
+            const ImVec2 letter_pos = ImVec2(IM_ROUND(field_min.x + (cap_width - letter_w) * 0.5f), IM_ROUND(field_min.y + (field_max.y - field_min.y - font_size) * 0.5f));
+            draw_list->AddText(font, font_size, letter_pos, ImGui::EditorUi::color(ImGui::Style::lerp(tint, ImVec4(1.0f, 1.0f, 1.0f, 1.0f), 0.25f)), axis[i]);
         }
 
         ImGui::PopID();

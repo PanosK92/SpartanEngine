@@ -41,6 +41,9 @@ namespace spartan
         // index 0 is reserved for the identity instance used by non-instanced draws
         static uint32_t AppendInstances(const Instance* data, uint32_t count);
 
+        // append a foliage impostor atlas, returns the base texel word offset
+        static uint32_t AppendImpostorTexels(const uint32_t* data, uint32_t count);
+
         // overwrite instances in-place inside a range a previous append returned, false when the range is invalid
         // the cpu copy is immediate, the gpu copy is queued and coalesced by the next BuildIfDirty
         static bool UpdateInstances(const Instance* data, uint32_t offset, uint32_t count);
@@ -84,6 +87,7 @@ namespace spartan
         static RHI_Buffer* GetMeshletVertexBuffer();
         static RHI_Buffer* GetMeshletMicroIndexBuffer();
         static RHI_Buffer* GetInstanceBuffer();
+        static RHI_Buffer* GetImpostorTexelBuffer();
 
         // true when capacity was exceeded and the buffers moved, invalidates address dependent caches, cleared on read
         static bool WasRebuilt();

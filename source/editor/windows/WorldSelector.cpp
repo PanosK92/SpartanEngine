@@ -1799,6 +1799,15 @@ void WorldSelector::Initialize(Editor* editor_in)
 
 void WorldSelector::Tick()
 {
+    // a world loading from anywhere else (menu, mcp, command line) makes the launcher redundant
+    static bool was_loading = false;
+    const bool is_loading   = spartan::World::IsLoadingFromFile();
+    if (is_loading && !was_loading)
+    {
+        visible_world_list = false;
+    }
+    was_loading = is_loading;
+
     window_download_prompt();
     window_update_prompt();
     window_world_list();

@@ -8,7 +8,6 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES =============================================
 #include "pch.h"
 #include "Steam.h"
-#include "../core/Debugging.h"
 #include "../world/World.h"
 // the steamworks sdk is vendored locally, compile to no-ops when it is absent
 #if __has_include("steam/steam_api.h")
@@ -68,7 +67,7 @@ namespace spartan
     void Steam::Initialize()
     {
 #if SP_STEAM_ENABLED
-        if (!Debugging::IsSteamEnabled())
+        if (!cvar_debug_steam.GetValue())
         {
             SP_LOG_INFO("steam disabled via debugging.h");
             return;

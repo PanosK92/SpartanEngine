@@ -26,7 +26,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_DepthStencilState.h"
 #include "../RHI_VendorTechnology.h"
 #include "../../profiling/Profiler.h"
-#include "../core/Debugging.h"
 #include "../../profiling/Breadcrumbs.h"
 #include "../../xr/Xr.h"
 //=====================================
@@ -1100,12 +1099,12 @@ namespace spartan
             return VK_PIPELINE_BIND_POINT_COMPUTE;
         }
 
-        void set_dynamic(const RHI_PipelineState& pso, void* resource, void* pipeline_layout, RHI_DescriptorSetLayout* layout, void*& descriptor_set_bound, void*& pipeline_layout_bound, uint8_t& pipeline_type_bound, array<uint32_t, 10>& dynamic_offsets_bound, uint32_t& dynamic_offset_count_bound)
+        void set_dynamic(const RHI_PipelineState& pso, void* resource, void* pipeline_layout, RHI_DescriptorSetLayout* layout, void*& descriptor_set_bound, void*& pipeline_layout_bound, uint8_t& pipeline_type_bound, array<uint32_t, rhi_max_dynamic_offsets>& dynamic_offsets_bound, uint32_t& dynamic_offset_count_bound)
         {
             lock_guard<mutex> lock(RHI_Device::GetDescriptorSetMutex());
             VkDescriptorSet descriptor_set = static_cast<VkDescriptorSet>(layout->GetOrCreateDescriptorSet());
 
-            array<uint32_t, 10> dynamic_offsets = {};
+            array<uint32_t, rhi_max_dynamic_offsets> dynamic_offsets = {};
             uint32_t dynamic_offset_count = 0;
             layout->GetDynamicOffsets(&dynamic_offsets, &dynamic_offset_count);
             const uint8_t pipeline_type = pso.IsGraphics() ? 1 : (pso.IsRayTracing() ? 2 : 0);
@@ -1167,7 +1166,7 @@ namespace spartan
                 timestamps.fill(0);
                 availability.fill(0);
 
-                if (Debugging::IsGpuTimingEnabled())
+                if (cvar_debug_gpu_timing.GetValue())
                 {
                     query_count_to_read = min(query_count_to_read, query_count);
                     if (query_count_to_read == 0)
@@ -1208,7 +1207,7 @@ namespace spartan
 
             void reset(void* cmd_list, void*& query_pool)
             {
-                if (Debugging::IsGpuTimingEnabled())
+                if (cvar_debug_gpu_timing.GetValue())
                 {
                     vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, query_count);
                 }
@@ -1275,7 +1274,7 @@ namespace spartan
         void initialize(void*& pool_timestamp, void*& pool_occlusion, void*& pool_pipeline_statistics)
         {
             // timestamps
-            if (Debugging::IsGpuTimingEnabled())
+            if (cvar_debug_gpu_timing.GetValue())
             {
                 VkQueryPoolCreateInfo query_pool_info = {};
                 query_pool_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
@@ -2967,12 +2966,12 @@ namespace spartan
 
     void RHI_CommandList::begin_marker(const char* name)
     {
-        if (Debugging::IsGpuMarkingEnabled())
+        if (cvar_debug_gpu_marking.GetValue())
         {
             RHI_Device::MarkerBegin(this, name, Vector4::Zero);
         }
 
-        if (Debugging::IsBreadcrumbsEnabled())
+        if (cvar_debug_breadcrumbs.GetValue())
         {
             Breadcrumbs::BeginMarker(name);
 
@@ -2993,12 +2992,12 @@ namespace spartan
 
     void RHI_CommandList::end_marker()
     {
-        if (Debugging::IsGpuMarkingEnabled())
+        if (cvar_debug_gpu_marking.GetValue())
         {
             RHI_Device::MarkerEnd(this);
         }
 
-        if (Debugging::IsBreadcrumbsEnabled())
+        if (cvar_debug_breadcrumbs.GetValue())
         {
             Breadcrumbs::EndMarker();
 
@@ -3071,7 +3070,7 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         if (
-            !Debugging::IsGpuTimingEnabled() ||
+            !cvar_debug_gpu_timing.GetValue() ||
             !m_rhi_query_pool_timestamps
         )
         {
@@ -3106,7 +3105,7 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         if (
-            !Debugging::IsGpuTimingEnabled() ||
+            !cvar_debug_gpu_timing.GetValue() ||
             !m_rhi_query_pool_timestamps
         )
         {
@@ -3265,20 +3264,20 @@ namespace spartan
         // timing - pass the queue type so the profiler knows which lane this block belongs to
         RHI_Queue_Type queue_type = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
         Profiler::TimeBlockStart(name, TimeBlockType::Cpu, this, queue_type);
-        if (Debugging::IsGpuTimingEnabled() && gpu_timing)
+        if (cvar_debug_gpu_timing.GetValue() && gpu_timing)
         {
             Profiler::TimeBlockStart(name, TimeBlockType::Gpu, this, queue_type);
         }
     
         // markers (support nesting)
-        if (Debugging::IsGpuMarkingEnabled() && gpu_marker)
+        if (cvar_debug_gpu_marking.GetValue() && gpu_marker)
         {
             RHI_Device::MarkerBegin(this, name, Vector4::Zero);
             m_debug_label_stack.push(name);
         }
 
         // gpu breadcrumbs
-        if (Debugging::IsBreadcrumbsEnabled())
+        if (cvar_debug_breadcrumbs.GetValue())
         {
             Breadcrumbs::BeginMarker(name);
 
@@ -3304,14 +3303,14 @@ namespace spartan
         SP_ASSERT(!m_active_timeblocks.empty());
     
         // markers (only end if one was started)
-        if (Debugging::IsGpuMarkingEnabled() && !m_debug_label_stack.empty())
+        if (cvar_debug_gpu_marking.GetValue() && !m_debug_label_stack.empty())
         {
             RHI_Device::MarkerEnd(this);
             m_debug_label_stack.pop();
         }
 
         // gpu breadcrumbs
-        if (Debugging::IsBreadcrumbsEnabled())
+        if (cvar_debug_breadcrumbs.GetValue())
         {
             Breadcrumbs::EndMarker();
 
@@ -3330,7 +3329,7 @@ namespace spartan
         }
     
         // timing
-        if (Debugging::IsGpuTimingEnabled())
+        if (cvar_debug_gpu_timing.GetValue())
         {
             Profiler::TimeBlockEnd(TimeBlockType::Gpu, this);
         }

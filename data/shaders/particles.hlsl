@@ -675,7 +675,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // divergence free turbulence, the plume shears and folds instead of inflating
     // the clock is wrapped because the drift offset is multiplied by the octave frequency and an
     // unwrapped one runs out of fractional precision after a while and the field starts to quantise
-    float ts = fmod((float)buffer_frame.time, 600.0);
+    float ts = fmod((float)buffer_frame.time, 600.0f);
     p.velocity += curl_turbulence(p.position, p.size, ts) * emitter.turbulence_strength * dt;
 
     float age_for_collision = 1.0 - saturate(p.lifetime / max(p.max_lifetime, 0.0001));

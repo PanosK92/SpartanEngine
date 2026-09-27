@@ -73,9 +73,34 @@ namespace spartan
     // only sheds a few triangles costs memory and a draw range while looking identical
     static constexpr float mesh_lod_min_reduction = 0.9f;
 
+    // the level after the last simplified one of a foliage crown, a forest a kilometre out is hundreds of
+    // thousands of crowns a few pixels tall and no amount of card thinning makes that cheap
+    //
+    // one camera facing card per instance, it looks up a hemi-octahedral atlas of the crown seen from
+    // frames x frames directions above the horizon. a texel keeps the source uv rather than a colour, so the
+    // card samples the crown's own material, and a few depth sorted layers, so a cutout texel can fall
+    // through to the needle behind it instead of punching a hole through the crown
+    static constexpr uint32_t mesh_impostor_frames     = 8;
+    static constexpr uint32_t mesh_impostor_resolution = 64;
+    static constexpr uint32_t mesh_impostor_layers     = 2;
+
+    struct MeshImpostor
+    {
+        MeshLod lod;                      // the card, it lives in the regular geometry streams
+        std::vector<uint32_t> texels;     // two words per layer
+        uint32_t texel_offset = 0;        // into the global impostor texel buffer
+        math::Vector3 center  = math::Vector3::Zero;
+        float radius          = 0.0f;
+        math::Vector2 uv_min   = math::Vector2::Zero;
+        math::Vector2 uv_scale = math::Vector2::One;
+    };
+
     struct SubMesh
     {
         std::vector<MeshLod> lods; // list of LOD levels for this sub-mesh
+        // not one of the lods, serialization and the cpu lod pick never see it, the gpu lod pick
+        // addresses it as index lods.size()
+        std::shared_ptr<MeshImpostor> impostor;
     };
 
     class Mesh : public IResource
@@ -108,7 +133,7 @@ namespace spartan
         void AddLod(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const uint32_t sub_mesh_index);
         void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, uint32_t* sub_mesh_index = nullptr);
         // writes into a pre-reserved slot, the auto-allocating overload races on size() when ParseMesh runs in parallel
-        void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, const uint32_t sub_mesh_index_in, const bool preserve_lod0 = false);
+        void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, const uint32_t sub_mesh_index_in, const bool preserve_lod0 = false, const bool foliage_cards = false);
         bool UpdateGeometry(
             std::vector<RHI_Vertex_PosTexNorTan>& vertices,
             std::vector<uint32_t>& indices
@@ -204,6 +229,8 @@ namespace spartan
         bool CanRefitBlas(uint32_t sub_mesh_index) const;
 
     private:
+        void AddImpostor(const std::vector<RHI_Vertex_PosTexNorTan>& vertices, const std::vector<uint32_t>& indices, const uint32_t sub_mesh_index);
+
         // geometry
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices; // all vertices of a model file
         std::vector<uint32_t> m_indices;                 // all indices of a model file

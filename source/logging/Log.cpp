@@ -12,7 +12,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include <fstream>
 #include <filesystem>
 #include <system_error>
-#include "../core/Debugging.h"
 //============================
 
 //= NAMESPACES =====
@@ -103,7 +102,7 @@ namespace spartan
         logs.clear();
         history.clear();
 
-        if (log_to_file || Debugging::IsLoggingToFileEnabled())
+        if (log_to_file || cvar_debug_log_to_file.GetValue())
         {
             // the log that gets truncated here is the only record of why the last run died, so it is kept as
             // log_previous.txt. a crash is only diagnosable if its log survives the restart that follows it
@@ -177,7 +176,7 @@ namespace spartan
                 logs.emplace_back(buffer, type);
             }
 
-            if (log_to_file || !logger || Debugging::IsLoggingToFileEnabled())
+            if (log_to_file || !logger || cvar_debug_log_to_file.GetValue())
             {
                 write_to_file(buffer, type);
             }

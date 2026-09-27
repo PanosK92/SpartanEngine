@@ -181,17 +181,21 @@ struct FrameBufferData
     SHARED_FLOAT4 weather;
     // rain occlusion grid, xy = world xz of the grid's min corner, z = cell size in metres, w = element offset of this frame's slice
     SHARED_FLOAT4 rain_occlusion;
-    // droplets on the occupied car (draws flagged with bit 7), world space
-    // lean xyz = how far the drops sway under the car's g forces and airflow, in g, w = how soaked the car is, it carries its water under a roof
-    // vein xyz = the pull the running water follows, gravity included and slowed down so the wetted paths lag it, in g
-    // axis[p] xyz = the car's x, y and z axes, a face tracks the plane whose normal it lines up with best
-    // slide[p * 4 + n] xyz = how far the drops of size bucket n (largest first) have slid over faces of plane p, metres
-    // flow[p * 4 + n] xyz = how fast they slide right now, m/s
-    SHARED_FLOAT4 rain_vehicle_lean;
-    SHARED_FLOAT4 rain_vehicle_vein;
+    // the occupied car (draws flagged with bit 7), x = how soaked it is, it carries its water under a roof
+    SHARED_FLOAT4 rain_vehicle;
+    // its x, y and z axes in world space, the frame its water is simulated in
     SHARED_FLOAT4 rain_vehicle_axis[3];
-    SHARED_FLOAT4 rain_vehicle_slide[12];
-    SHARED_FLOAT4 rain_vehicle_flow[12];
+    // its water, simulated drop by drop on the cpu (CarRain.h)
+    // origin xyz = world position of the car's frame, w = the evaporation clock
+    // box xyz = car local min corner of the atlas, w = texel size in metres
+    // atlas x = width, y = height, z = element offset of this frame's drops, w = 1 while the simulation runs
+    // micro x = how long micro water lasts on the clock, y = milligrams of residue a sliding drop leaves per texel
+    // faces[f] xy = origin of map f in the atlas, zw = its size, texels, the maps are +x -x +y -y +z -z
+    SHARED_FLOAT4 rain_car_origin;
+    SHARED_FLOAT4 rain_car_box;
+    SHARED_FLOAT4 rain_car_atlas;
+    SHARED_FLOAT4 rain_car_micro;
+    SHARED_FLOAT4 rain_car_faces[6];
 
 #ifdef __cplusplus
     void set_bit(const bool set, const uint32_t bit)
@@ -499,6 +503,14 @@ struct DrawData
     // gpu would otherwise burn cull task and survivor budget on instances far beyond the artist-set max render distance
     SHARED_FLOAT  max_render_distance_squared   SHARED_DEFAULT(0.0f);
     SHARED_UINT   previous_vertex_offset SHARED_DEFAULT(0); // relative arena offset, zero means unchanged pose
+
+    // foliage impostor, only read when flag bit 14 marks this draw as the camera facing card
+    SHARED_UINT   impostor_texel_offset SHARED_DEFAULT(0);
+    SHARED_UINT   impostor_layout       SHARED_DEFAULT(0); // frames | resolution << 8 | layers << 24
+    SHARED_FLOAT3 impostor_center       SHARED_DEFAULT(spartan::math::Vector3::Zero);
+    SHARED_FLOAT  impostor_radius       SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT2 impostor_uv_min       SHARED_DEFAULT(spartan::math::Vector2::Zero);
+    SHARED_FLOAT2 impostor_uv_scale     SHARED_DEFAULT(spartan::math::Vector2::One);
 };
 
 // One CPU record describes up to 64 consecutive instances at one LOD. GPU
@@ -521,8 +533,9 @@ struct SurvivingInstance
     SHARED_UINT instance_index SHARED_DEFAULT(0);
 };
 
-// Optional root-wind cache. Overflow falls back to the identical mesh evaluator.
-#define TREE_WIND_CACHE_CAPACITY 65536u
+// Optional root-wind cache, indexed by global instance. Overflow falls back to the mesh evaluator, which is not
+// bit-identical to the compute one, so the slot choice must not depend on per-pass survivor order.
+#define TREE_WIND_CACHE_CAPACITY 262144u
 struct CachedTreeWind
 {
     SHARED_FLOAT4 current_axis_drive;

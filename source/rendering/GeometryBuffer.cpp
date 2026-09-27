@@ -69,6 +69,7 @@ namespace spartan
         Stream<uint32_t> meshlet_vertices;
         Stream<uint8_t> meshlet_micro_indices;
         Stream<Instance> instances;
+        Stream<uint32_t> impostor_texels;
 
         // micro index packing, a corner is a meshlet local vertex id below MESHLET_MAX_VERTICES so a byte is enough
         // every append pads to a multiple of this so a mesh block never straddles a uint and sub-region uploads stay aligned
@@ -86,6 +87,8 @@ namespace spartan
         unique_ptr<RHI_Buffer> meshlet_vertex_buffer;
         unique_ptr<RHI_Buffer> meshlet_micro_index_buffer;
         unique_ptr<RHI_Buffer> instance_buffer;
+        unique_ptr<RHI_Buffer> impostor_texel_buffer;
+        uint32_t impostor_texel_capacity = 0;
 
         // actual gpu buffer element counts, only written after a successful alloc
         uint32_t vertex_capacity         = 0;
@@ -323,6 +326,20 @@ namespace spartan
                 tail.resize(tail.size() + (micro_indices_per_uint - remainder), 0u);
             }
 
+            dirty = true;
+        }
+
+        return base_offset;
+    }
+
+    uint32_t GeometryBuffer::AppendImpostorTexels(const uint32_t* data, uint32_t count)
+    {
+        lock_guard<mutex> lock(buffer_mutex);
+
+        uint32_t base_offset = impostor_texels.size();
+        if (count > 0)
+        {
+            impostor_texels.tail.insert(impostor_texels.tail.end(), data, data + count);
             dirty = true;
         }
 
@@ -667,6 +684,27 @@ namespace spartan
             );
         }
 
+        // impostor atlases grow on their own, a crown's atlas outweighs its geometry so it must not drag
+        // the other streams into a rebuild, and one tiny buffer always exists so the binding is never empty
+        const uint32_t impostor_texel_count = max(impostor_texels.size(), 1u);
+        if (!impostor_texel_buffer || impostor_texel_count > impostor_texel_capacity)
+        {
+            const uint32_t capacity = max(static_cast<uint32_t>(static_cast<double>(impostor_texel_count) * growth_factor), impostor_texel_count);
+            auto replacement = make_unique<RHI_Buffer>(
+                RHI_Buffer_Type::Storage,
+                sizeof(uint32_t),
+                capacity,
+                nullptr,
+                false,
+                "geometry_buffer_impostor_texels"
+            );
+            if (replacement->GetRhiResource())
+            {
+                adopt(impostor_texel_buffer, replacement, static_cast<uint64_t>(impostor_texels.committed) * sizeof(uint32_t));
+                impostor_texel_capacity = capacity;
+            }
+        }
+
         // Appends already store the exact packed micro bytes, including block padding.
         upload_tail(vertices, vertex_buffer.get());
         upload_tail(indices, index_buffer.get());
@@ -674,6 +712,10 @@ namespace spartan
         upload_tail(meshlet_vertices, meshlet_vertex_buffer.get());
         upload_tail(meshlet_micro_indices, meshlet_micro_index_buffer.get());
         upload_tail(instances, instance_buffer.get());
+        if (impostor_texel_buffer && impostor_texels.size() <= impostor_texel_capacity)
+        {
+            upload_tail(impostor_texels, impostor_texel_buffer.get());
+        }
 
         dirty = false;
     }
@@ -693,7 +735,8 @@ namespace spartan
             meshlet_bounds.tail.capacity() * sizeof(Sb_MeshletBounds) +
             meshlet_vertices.tail.capacity() * sizeof(uint32_t) +
             meshlet_micro_indices.tail.capacity() +
-            instances.tail.capacity() * sizeof(Instance);
+            instances.tail.capacity() * sizeof(Instance) +
+            impostor_texels.tail.capacity() * sizeof(uint32_t);
         for (const auto& [offset, data] : vertex_writes) bytes += data.capacity() * sizeof(RHI_Vertex_PosTexNorTan);
         for (const auto& [offset, data] : instance_writes) bytes += data.capacity() * sizeof(Instance);
         for (const auto& [offset, history] : vertex_history) bytes += history.pose.capacity() * sizeof(RHI_Vertex_PosTexNorTan);
@@ -708,7 +751,8 @@ namespace spartan
             meshlet_bounds.tail.size() * sizeof(Sb_MeshletBounds) +
             meshlet_vertices.tail.size() * sizeof(uint32_t) +
             meshlet_micro_indices.tail.size() +
-            instances.tail.size() * sizeof(Instance);
+            instances.tail.size() * sizeof(Instance) +
+            impostor_texels.tail.size() * sizeof(uint32_t);
     }
 
     void GeometryBuffer::Reserve(
@@ -763,6 +807,9 @@ namespace spartan
         meshlet_vertex_buffer      = nullptr;
         meshlet_micro_index_buffer = nullptr;
         instance_buffer            = nullptr;
+        impostor_texel_buffer      = nullptr;
+        impostor_texel_capacity    = 0;
+        impostor_texels.reset();
         vertex_history.clear();
         vertices.reset();
         indices.reset();
@@ -818,5 +865,10 @@ namespace spartan
     RHI_Buffer* GeometryBuffer::GetInstanceBuffer()
     {
         return instance_buffer.get();
+    }
+
+    RHI_Buffer* GeometryBuffer::GetImpostorTexelBuffer()
+    {
+        return impostor_texel_buffer.get();
     }
 }

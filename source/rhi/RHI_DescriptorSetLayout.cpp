@@ -254,7 +254,7 @@ namespace spartan
         return it->second.GetResource();
     }
 
-    void RHI_DescriptorSetLayout::GetDynamicOffsets(array<uint32_t, 10>* offsets, uint32_t* count)
+    void RHI_DescriptorSetLayout::GetDynamicOffsets(array<uint32_t, rhi_max_dynamic_offsets>* offsets, uint32_t* count)
     {
         *count = 0;
         for (size_t i = 0; i < m_descriptors.size(); ++i)
@@ -263,6 +263,7 @@ namespace spartan
             if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer || 
                 descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
             {
+                SP_ASSERT_MSG(*count < rhi_max_dynamic_offsets, "Pipeline has more dynamic buffers than rhi_max_dynamic_offsets");
                 (*offsets)[(*count)++] = m_bindings[i].dynamic_offset;
             }
         }

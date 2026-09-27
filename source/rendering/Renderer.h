@@ -64,6 +64,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_selection_outline;
     extern TConsoleVar<float> cvar_entity_icons;
     extern TConsoleVar<float> cvar_performance_metrics;
+    extern TConsoleVar<float> cvar_screenshot_ui;
     extern TConsoleVar<float> cvar_physics;
     extern TConsoleVar<float> cvar_ragdoll;
     extern TConsoleVar<float> cvar_wireframe;
@@ -109,6 +110,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_dynamic_resolution;
     extern TConsoleVar<float> cvar_hiz_occlusion;
     extern TConsoleVar<float> cvar_meshlet_cull_skinned;
+    extern TConsoleVar<float> cvar_foliage_impostors;
     extern TConsoleVar<float> cvar_meshlet_visualize;
     extern TConsoleVar<float> cvar_cluster_visualize;
     extern TConsoleVar<float> cvar_cluster_visualize_cap;
@@ -237,6 +239,9 @@ namespace spartan
         bool ScreenshotSecondary(
             const std::string& file_path
         );
+        // with r.screenshot_ui set, the editor records its final ui frame into this target, null when no such capture is pending
+        RHI_Texture* GetUiScreenshotTarget(uint32_t width, uint32_t height);
+        void SetUiScreenshotRecorded();
 
         // returns the entry index, or uint32_max when the frame budget is full, a null render writes an identity uv transform
         // is_ui grants access to reserved entries so scene/outline draws cannot starve presentation
@@ -358,6 +363,8 @@ namespace spartan
         void CreateShaders();
         void CreateSamplers();
         void CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic);
+        // sized to the car's atlas, surface is one float per texel and micro two, null leaves them empty
+        void CreateCarRainTargets(uint32_t width, uint32_t height, const float* surface, const float* micro);
         void EnsureScreenshotTargets();
         void UpdateOptionalRenderTargets();
         void CreateFonts();
@@ -383,7 +390,7 @@ namespace spartan
         void Pass_IndirectCull_Meshlets();
         void Pass_IndirectCull_Refine();
         void Pass_Depth_Prepass();
-        void Pass_GBuffer(const bool is_transparent_pass);
+        void Pass_GBuffer(const bool is_transparent_pass, const bool submit_before_scatter = false);
         void Pass_SkidMarks();
         void Pass_GBuffer_Indirect();
         void Pass_GBuffer_TessellatedAndTransparent(const bool is_transparent_pass);
@@ -432,6 +439,8 @@ namespace spartan
         void Pass_Grass_Draw();
         // passes - wind field
         void Pass_WindField();
+        // passes - water on the occupied car
+        void Pass_CarRain();
         // passes - fft ocean
         void Pass_Ocean();
         bool ResolveOceanHeightReadback(

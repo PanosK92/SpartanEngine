@@ -651,6 +651,7 @@ namespace spartan
     const uint8_t  rhi_max_render_target_count   = 8;
     const uint8_t  rhi_max_constant_buffer_count = 8;
     const uint32_t rhi_max_resource_slots        = 96; // per-pass SRV/UAV registers, including fog u64
+    const uint32_t rhi_max_dynamic_offsets       = 16; // structured + constant buffers per pipeline, vulkan guarantees at least 8 dynamic storage and 8 dynamic uniform
     const uint32_t rhi_max_array_size            = 16384;
     const uint32_t rhi_max_sampler_count         = 9;
     const uint32_t rhi_max_descriptor_set_count  = 512;

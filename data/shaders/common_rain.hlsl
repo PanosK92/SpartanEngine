@@ -126,41 +126,16 @@ float2 rain_ripples(float2 xz, float rain, float time)
     return slope;
 }
 
-// droplets, a grid of cells where each cell may hold one drop
+// droplets on props, a grid of cells where each cell may hold one drop
 // the grid lies on whichever of the object's axis planes the face looks along, so it never turns with the normal,
 // and every offset inside a drop is lifted from that plane back onto the face before it is measured, so a drop
-// stays round on the paint however the panel curves or tilts
-// every drop leans with the specific force along the face, gravity and on the occupied car its g forces and airflow
-// through a damped spring on the cpu, big drops deform the most as the bond number grows with radius squared
-// on the occupied car every drop also belongs to a size bucket that lets go once the force beats its contact angle
-// hysteresis, big drops first, then slides by the distance the cpu integrated for that bucket and leaves a thinning
-// trail that pinches off into beads, gravity included, so drops on the sides and the nose run down
-#define RAIN_DROP_BUCKETS 4
-// metres, the cpu wraps every slide over this distance (drop_wrap in Weather.cpp), so the drop pattern repeats over it
-static const float rain_drop_wrap = 24.0f;
-
+// stays round on the paint however the panel curves or tilts, every drop sags under gravity
+// the occupied car does not use this, its water is simulated drop by drop (rain_car below)
 struct RainDropForces
 {
     float3 lean;       // object space specific force, in g
-    bool vehicle;      // the occupied car, its drops slide
     float3x3 rotation; // rows are the object's world axes
 };
-
-// how far and how fast a bucket (largest first) has slid over faces whose normal runs along an object axis, object space
-// the cpu tracks the travel per car axis plane, the object axis picks the plane it lines up with
-void rain_drop_motion(RainDropForces forces, uint axis, uint bucket, out float3 slide, out float3 flow)
-{
-    slide = 0.0f;
-    flow  = 0.0f;
-    if (!forces.vehicle)
-        return;
-
-    float3 axis_world = axis == 0u ? forces.rotation[0] : (axis == 1u ? forces.rotation[1] : forces.rotation[2]);
-    float3 match      = abs(float3(dot(axis_world, buffer_frame.rain_vehicle_axis[0].xyz), dot(axis_world, buffer_frame.rain_vehicle_axis[1].xyz), dot(axis_world, buffer_frame.rain_vehicle_axis[2].xyz)));
-    uint plane        = match.x > match.y ? (match.x > match.z ? 0u : 2u) : (match.y > match.z ? 1u : 2u);
-    slide             = mul(forces.rotation, buffer_frame.rain_vehicle_slide[plane * 4u + bucket].xyz);
-    flow              = mul(forces.rotation, buffer_frame.rain_vehicle_flow[plane * 4u + bucket].xyz);
-}
 
 struct RainDrop
 {
@@ -271,55 +246,21 @@ void rain_drop_shade(float3 o, float3 lean, float3 e1, float3 e2, float seed, fl
     rim         = max(rim, smoothstep(0.7f, 0.97f, s2) * resolved);
 }
 
-// one population of drops on one projection plane, slide and flow are how far and how fast it has moved along the face
+// one population of drops on one projection plane
 void rain_drop_population(float2 uv, uint axis, float3 n, float cell_size, int period, uint salt, float density, float lifetime, float resolved,
-    float3 lean, float3 slide, float3 flow, float time, inout float coverage, inout float3 slope, inout float rim)
+    float3 lean, float time, inout float coverage, inout float3 slope, inout float rim)
 {
-    float3 flow_t   = flow - n * dot(flow, n);
-    float speed     = length(flow_t);
-    float3 dir_t    = speed > 1e-4f ? flow_t / speed : 0.0f;
-    float2 dir_p    = rain_plane(dir_t, axis);
-    float plane_len = length(dir_p);
-    dir_p           = plane_len > 1e-4f ? dir_p / plane_len : 0.0f;
-    // the trail is what the drop wetted over the last half second
-    float trail_m   = min(speed * 0.5f, 2.5f * cell_size);
-    float trail_c   = trail_m * plane_len / cell_size;
-    float2 p        = (uv - rain_plane(slide, axis)) / cell_size;
-    float3 moving   = lean + dir_t * saturate(speed / 0.1f) * 0.8f;
-    float3 e1       = normalize(rain_lift(float2(1.0f, 0.0f), axis, n));
-    float3 e2       = cross(n, e1);
+    float2 p      = uv / cell_size;
+    float3 e1     = normalize(rain_lift(float2(1.0f, 0.0f), axis, n));
+    float3 e2     = cross(n, e1);
+    int2 cell     = int2(floor(p));
+    RainDrop drop = rain_drop_in_cell(cell, period, salt, density, time, lifetime);
+    if (!drop.present)
+        return;
 
-    [unroll]
-    for (uint j = 0; j < 3; j++)
-    {
-        // drops further along the flow may trail back over this pixel
-        if (j > 0 && trail_c < float(j) - 0.5f)
-            break;
-
-        int2 cell     = int2(floor(p + dir_p * float(j)));
-        RainDrop drop = rain_drop_in_cell(cell, period, salt, density, time, lifetime);
-        if (!drop.present)
-            continue;
-
-        float radius = drop.radius * cell_size;
-        float3 rel   = rain_lift((p - cell - drop.centre) * cell_size, axis, n);
-        rain_drop_shade(rel / radius, moving * 1.5f, e1, e2, drop.seed, resolved, coverage, slope, rim);
-
-        // the trail, a thin film left on the paint that thins toward the tail and pinches off into beads
-        float t = dot(rel, -dir_t) / max(trail_m, 1e-5f);
-        if (trail_m > 0.05f * cell_size && t > 0.0f && t < 1.0f)
-        {
-            float3 across = rel + dir_t * (t * trail_m);
-            float width   = radius * lerp(0.45f, 0.12f, t);
-            float beading = 0.6f + 0.4f * sin(t * trail_c * 9.0f + drop.seed * 6.2832f);
-            float trail   = (1.0f - smoothstep(width * 0.5f, width, length(across))) * (1.0f - t) * (1.0f - t) * beading * 0.75f * resolved;
-            if (trail > coverage)
-            {
-                coverage = trail;
-                slope    = -across / width * 0.35f * resolved;
-            }
-        }
-    }
+    float radius = drop.radius * cell_size;
+    float3 rel   = rain_lift((p - cell - drop.centre) * cell_size, axis, n);
+    rain_drop_shade(rel / radius, lean * 1.5f, e1, e2, drop.seed, resolved, coverage, slope, rim);
 }
 
 // the two object axis planes a face is laid out on, near where they meet both carry half, so no seam shows
@@ -445,14 +386,8 @@ float rain_veins(float3 p, float3 n, float3 pull, float density, float footprint
         if (pull_l < 0.02f)
             continue;
 
-        // how far the water has run, the car's integrated slide, anything else runs at a steady pace under gravity
-        float2 travel = forces.vehicle ? 0.0f : pull_p / pull_l * (time * 0.12f * pull_l);
-        if (forces.vehicle)
-        {
-            float3 slide, flow;
-            rain_drop_motion(forces, axis, 1u, slide, flow);
-            travel = rain_plane(slide, axis);
-        }
+        // how far the water has run, at a steady pace under gravity
+        float2 travel = pull_p / pull_l * (time * 0.12f * pull_l);
 
         // fixed directions every 20 degrees, the paths of the two either side fade into each other as the pull turns,
         // old paths dry out and new ones form instead of the whole pattern swinging round
@@ -514,30 +449,147 @@ float rain_drops(float3 p, float3 n, float density, float footprint, float time,
             float lifetime      = 3.0f + 4.0f * layer;
             float2 layer_uv     = uv + float2(0.53f, 0.19f) * (layer * cell_size);
             uint salt           = 21u + layer * 16u + axis * 97u;
-            if (layer == 0)
-            {
-                // the mist holds on the hardest, it creeps at half the pace of the smallest bucket
-                float3 slide, flow;
-                rain_drop_motion(forces, axis, RAIN_DROP_BUCKETS - 1u, slide, flow);
-                int period = int(round(rain_drop_wrap * 0.5f / cell_size));
-                rain_drop_population(layer_uv, axis, n, cell_size, period, salt, layer_density, lifetime, resolved, lean * deform, slide * 0.5f, flow * 0.5f, time, coverage, slope, rim);
-            }
-            else
-            {
-                // two buckets per size, the 2.4 cm drops hold on the least
-                uint bucket = layer == 2 ? 0u : 2u;
-                int period  = int(round(rain_drop_wrap / cell_size));
-                [unroll]
-                for (uint b = 0; b < 2; b++)
-                {
-                    float3 slide, flow;
-                    rain_drop_motion(forces, axis, bucket + b, slide, flow);
-                    rain_drop_population(layer_uv, axis, n, cell_size, period, salt + b * 8u, layer_density * 0.5f, lifetime, resolved, lean * deform, slide, flow, time, coverage, slope, rim);
-                }
-            }
+            int period = int(round(24.0f / cell_size));
+            rain_drop_population(layer_uv, axis, n, cell_size, period, salt, layer_density, lifetime, resolved, lean * deform, time, coverage, slope, rim);
         }
     }
     return coverage;
+}
+
+// the occupied car's water, the state of a drop by drop simulation on the cpu (CarRain.cpp)
+// the body is baked into six orthographic height maps packed in one atlas, a pixel finds its texel through the map its
+// normal looks along, and anything the maps do not see (the cabin behind the glass, a door jamb, the wheels) stays dry
+// every texel holds micro droplets, too small to ever slide, and the id of the drop covering it
+struct CarRainDrop
+{
+    float2 uv;     // atlas texel coordinates of the centre
+    float  radius; // metres, 0 for a free slot
+    float  seed;
+    float3 lean;   // car local, the force along the paint over the pinning force
+    float  speed;  // m/s
+};
+
+StructuredBuffer<CarRainDrop> car_rain_drops : register(t69);
+Texture2D<float> tex_car_rain_surface        : register(t70);
+Texture2D<float2> tex_car_rain_micro         : register(t71);
+Texture2D<uint> tex_car_rain_ids             : register(t72);
+
+bool rain_car_active()
+{
+    return buffer_frame.rain_car_atlas.w > 0.0f;
+}
+
+// milligrams of micro water left on a texel, negative where a drop swept it and left only its residue
+float rain_car_micro(int2 texel)
+{
+    float2 m   = tex_car_rain_micro.Load(int3(texel, 0));
+    float left = saturate(1.0f - (buffer_frame.rain_car_origin.w - m.y) / buffer_frame.rain_car_micro.x);
+    return m.x * left;
+}
+
+// returns how much of the pixel a drop or micro droplet covers, slope is the world space tilt of its cap
+// film is the residue the running drops wetted the paint with, film_slope the tilt of that film's edges
+// false when the pixel is not paint the simulation knows
+bool rain_car(float3 position, float3 geometric_normal, float footprint, out float coverage, out float3 slope_world, out float rim, out float film, out float3 film_slope_world)
+{
+    coverage         = 0.0f;
+    slope_world      = 0.0f;
+    rim              = 0.0f;
+    film             = 0.0f;
+    film_slope_world = 0.0f;
+
+    // car local, rows of r are the car's axes
+    float3x3 r = float3x3(buffer_frame.rain_vehicle_axis[0].xyz, buffer_frame.rain_vehicle_axis[1].xyz, buffer_frame.rain_vehicle_axis[2].xyz);
+    float3 p   = mul(r, position - buffer_frame.rain_car_origin.xyz);
+    float3 n   = mul(r, geometric_normal);
+    float3 a   = abs(n);
+    uint axis  = a.x > a.y ? (a.x > a.z ? 0u : 2u) : (a.y > a.z ? 1u : 2u);
+    float nd   = axis == 0u ? n.x : (axis == 1u ? n.y : n.z);
+    float pd   = axis == 0u ? p.x : (axis == 1u ? p.y : p.z);
+    uint face  = axis * 2u + (nd < 0.0f ? 1u : 0u);
+
+    float s     = buffer_frame.rain_car_box.w;
+    float4 rect = buffer_frame.rain_car_faces[face];
+    float2 uv   = (rain_plane(p, axis) - rain_plane(buffer_frame.rain_car_box.xyz, axis)) / s + 1.0f;
+    if (any(uv < 1.0f) || any(uv >= rect.zw - 1.0f))
+        return false;
+
+    float2 atlas = rect.xy + uv;
+    int2 texel   = int2(floor(atlas));
+    if (abs(pd - tex_car_rain_surface.Load(int3(texel, 0))) > 0.015f)
+        return false;
+
+    float3 e1    = normalize(rain_lift(float2(1.0f, 0.0f), axis, n));
+    float3 e2    = cross(n, e1);
+    float3 slope = 0.0f;
+
+    // the residue, bilinear so its edges follow the paths instead of the texel grid
+    {
+        float2 f  = atlas - 0.5f;
+        int2 t0   = int2(floor(f));
+        float2 w  = f - floor(f);
+        float4 m  = float4(rain_car_micro(t0), rain_car_micro(t0 + int2(1, 0)), rain_car_micro(t0 + int2(0, 1)), rain_car_micro(t0 + int2(1, 1)));
+        float4 wet = saturate(-m / max(buffer_frame.rain_car_micro.y, 1e-6f));
+        float value = lerp(lerp(wet.x, wet.y, w.x), lerp(wet.z, wet.w, w.x), w.y);
+        film        = smoothstep(0.2f, 0.6f, value);
+        float2 grad = float2(lerp(wet.y - wet.x, wet.w - wet.z, w.y), lerp(wet.z - wet.x, wet.w - wet.y, w.x));
+        float3 film_slope = rain_lift(-grad, axis, n) * 0.08f;
+        film_slope_world  = mul(film_slope, r);
+    }
+
+    // micro droplets, a few per texel at spots of their own, too small to ever slide, gone when a drop sweeps by
+    float micro_mg = rain_car_micro(texel);
+    if (micro_mg > 0.004f)
+    {
+        uint count       = min(4u, uint(ceil(micro_mg / 0.1f)));
+        float bead_mass  = micro_mg / float(count) * 1.0e-6f;
+        float bead_r     = pow(3.0f * bead_mass / (2.0f * 3.14159265f * 1000.0f), 1.0f / 3.0f);
+        float resolved   = 1.0f - saturate(footprint / bead_r * 0.35f - 0.5f);
+        float margin     = min(0.45f, bead_r / s);
+        if (resolved > 0.0f)
+        {
+            for (uint k = 0; k < count; k++)
+            {
+                float2 h      = rain_hash2(texel, 40u + k);
+                float2 centre = margin + h * (1.0f - 2.0f * margin);
+                float3 rel    = rain_lift((atlas - float2(texel) - centre) * s, axis, n);
+                rain_drop_shade(rel / bead_r, 0.0f, e1, e2, h.x, resolved, coverage, slope, rim);
+            }
+        }
+    }
+
+    // the drops, whichever covers this texel or its neighbours
+    uint ids[5];
+    ids[0] = tex_car_rain_ids.Load(int3(texel, 0));
+    ids[1] = tex_car_rain_ids.Load(int3(texel + int2(1, 0), 0));
+    ids[2] = tex_car_rain_ids.Load(int3(texel - int2(1, 0), 0));
+    ids[3] = tex_car_rain_ids.Load(int3(texel + int2(0, 1), 0));
+    ids[4] = tex_car_rain_ids.Load(int3(texel - int2(0, 1), 0));
+    for (uint i = 0; i < 5; i++)
+    {
+        uint index = ids[i] & 0x1ffffu;
+        if (index == 0u)
+            continue;
+        bool seen = false;
+        for (uint j = 0; j < i; j++)
+        {
+            seen = seen || (ids[j] & 0x1ffffu) == index;
+        }
+        if (seen)
+            continue;
+
+        CarRainDrop drop = car_rain_drops[uint(buffer_frame.rain_car_atlas.z) + index - 1u];
+        if (drop.radius <= 0.0f)
+            continue;
+
+        float3 rel      = rain_lift((atlas - drop.uv) * s, axis, n);
+        float3 lean     = drop.lean - n * dot(drop.lean, n);
+        float resolved  = 1.0f - saturate(footprint / drop.radius * 0.35f - 0.5f);
+        rain_drop_shade(rel / drop.radius, lean, e1, e2, drop.seed, max(resolved, 0.3f), coverage, slope, rim);
+    }
+
+    slope_world = mul(slope, r);
+    return true;
 }
 
 struct RainSurface
@@ -561,12 +613,12 @@ float rain_apply(RainSurface s, inout float3 albedo, inout float3 normal, inout 
     float rain = rain_weather_rain() * s.exposure;
     if (s.vehicle)
     {
-        wet = max(wet, buffer_frame.rain_vehicle_lean.w);
+        wet = max(wet, buffer_frame.rain_vehicle.x);
     }
-    if (wet <= 0.0f && s.water <= 0.0f)
+    if (wet <= 0.0f && s.water <= 0.0f && !(s.vehicle && rain_car_active()))
         return 0.0f;
 
-    float time = (float)fmod(buffer_frame.time, 3600.0);
+    float time = fmod((float)buffer_frame.time, 3600.0f);
     float3 n   = s.geometric_normal;
     float up   = n.y;
 
@@ -598,16 +650,52 @@ float rain_apply(RainSurface s, inout float3 albedo, inout float3 normal, inout 
         }
     }
 
+    // the occupied car carries the water its simulation put there, nothing procedural
+    if (s.vehicle && rain_car_active())
+    {
+        float coverage, rim, film;
+        float3 slope, film_slope;
+        if (rain_car(s.position, n, s.footprint, coverage, slope, rim, film, film_slope))
+        {
+            // the residue is a few microns of water on paint the rain already wets, it only sharpens the reflection a little
+            // and its edges bend it, a strong contrast reads as dried salt rather than water
+            if (film > 0.0f)
+            {
+                normal    = normalize(normal + film_slope * film);
+                roughness = lerp(roughness, min(roughness, 0.06f), film * 0.5f);
+                if (!transparent)
+                {
+                    albedo *= lerp(1.0f, 0.96f, film);
+                }
+                water = max(water, film * 0.2f);
+            }
+
+            if (coverage > 0.0f)
+            {
+                float3 bead_normal = normalize(n + slope);
+                normal    = normalize(lerp(normal, bead_normal, coverage));
+                roughness = lerp(roughness, 0.02f, coverage);
+                metalness = lerp(metalness, metalness * 0.6f, coverage);
+                if (!transparent)
+                {
+                    // the contact line refracts the paint out of view, a thin dark ring around each drop
+                    albedo *= lerp(1.0f, 0.9f, coverage) * (1.0f - 0.35f * rim);
+                }
+                water = max(water, coverage);
+            }
+        }
+        return max(water, s.water);
+    }
+
     if (s.detail && wet > 0.0f)
     {
         // smooth coatings shed water into beads, a rough porous surface just drinks it
         float smooth_surface = saturate(1.0f - dry_roughness * 1.8f) * (1.0f - saturate(s.porosity));
 
-        // everything in the object's frame, gravity sags every drop, the occupied car adds its g forces, airflow and sliding
+        // everything in the object's frame, gravity sags every drop
         float3x3 r = s.object_rotation;
         RainDropForces forces;
-        forces.lean     = mul(r, float3(0.0f, -1.0f, 0.0f) + (s.vehicle ? buffer_frame.rain_vehicle_lean.xyz : 0.0f));
-        forces.vehicle  = s.vehicle;
+        forces.lean     = mul(r, float3(0.0f, -1.0f, 0.0f));
         forces.rotation = r;
 
         // beads, on anything not facing the ground
@@ -634,9 +722,8 @@ float rain_apply(RainSurface s, inout float3 albedo, inout float3 normal, inout 
             }
         }
 
-        // veins, wherever the pull along the face is strong enough the water runs down wetted paths, on the car the
-        // pull is gravity plus its g forces and the airflow, so at speed the veins rake back over the hood and glass
-        float3 pull  = s.vehicle ? buffer_frame.rain_vehicle_vein.xyz : float3(0.0f, -1.0f, 0.0f);
+        // veins, wherever gravity along the face is strong enough the water runs down wetted paths
+        float3 pull  = float3(0.0f, -1.0f, 0.0f);
         float along  = length(pull - n * dot(pull, n));
         float steep  = smoothstep(0.2f, 0.55f, along) * step(-0.3f, up);
         float vein_resolved = 1.0f - saturate(s.footprint * 180.0f - 1.0f);

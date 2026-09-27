@@ -128,8 +128,12 @@ float3 subsurface_scattering(Surface surface, Light light)
 {
     float3 L = -light.to_pixel;
     float3 V = -surface.camera_to_pixel;
-    float response = subsurface_diffuse_response(dot(surface.normal, L), dot(V, -L), surface.is_foliage());
-    return light.radiance * response;
+    if (surface.is_foliage())
+    {
+        float response = foliage_transmission_response(dot(surface.normal, L), dot(V, -L));
+        return light.radiance * response * foliage_transmission_tint(surface.albedo.rgb);
+    }
+    return light.radiance * subsurface_diffuse_response(dot(surface.normal, L));
 }
 
 // evaluates a single light against the surface, accumulates into the out parameters
@@ -303,9 +307,11 @@ void evaluate_light(
         surface.roughness       = original_roughness;
         surface.roughness_alpha = original_roughness_alpha;
 
+        // a leaf transmits on top of reflecting, only solid scattering media trade one for the other
         if (has_brdf && !is_transparent)
         {
-            L_diffuse_term += BRDF_Diffuse(surface, angular_info) * (1.0f - scattering_fraction);
+            float reflected_fraction = surface.is_foliage() ? 1.0f : 1.0f - scattering_fraction;
+            L_diffuse_term += BRDF_Diffuse(surface, angular_info) * reflected_fraction;
         }
     }
 

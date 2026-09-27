@@ -9,7 +9,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "D3D12_Internal.h"
-#include "../core/Debugging.h"
 #include <wrl/client.h>
 #include <vector>
 #include <cstdint>
@@ -18,7 +17,7 @@ Commercial use requires written permission and negotiated payment terms.
 // translates the legacy D3D12_RESOURCE_BARRIER descriptions that the command list builds into enhanced
 // barriers, so all of the existing state tracking, dedup and compute queue masking is preserved while
 // submission becomes a single batched ID3D12GraphicsCommandList7::Barrier call
-// the legacy path stays reachable through Debugging::IsD3D12EnhancedBarriersEnabled
+// the legacy path stays reachable through the debug.d3d12_enhanced_barriers cvar
 //
 // the sync, access and layout mapping below is validated against the compatibility tables in the
 // enhanced barriers spec, layout is derived from the already masked access so the two cannot disagree
@@ -351,7 +350,7 @@ namespace spartan::d3d12_barriers
 
     void Initialize()
     {
-        enabled = d3d12_caps::IsEnhancedBarriersSupported() && Debugging::IsD3D12EnhancedBarriersEnabled();
+        enabled = d3d12_caps::IsEnhancedBarriersSupported() && cvar_debug_d3d12_enhanced_barriers.GetValue();
 
         if (enabled)
         {
@@ -363,7 +362,7 @@ namespace spartan::d3d12_barriers
         }
         else
         {
-            SP_LOG_INFO("D3D12 barriers: legacy (disabled in Debugging)");
+            SP_LOG_INFO("D3D12 barriers: legacy (debug.d3d12_enhanced_barriers is off)");
         }
     }
 

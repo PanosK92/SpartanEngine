@@ -107,8 +107,8 @@ namespace ImGui::EditorUi
         {
             background = Style::lerp(
                 Style::color_panel,
-                Style::color_accent_2,
-                0.30f
+                Style::color_accent_1,
+                0.10f
             );
         }
         else if (hovered)
@@ -142,7 +142,7 @@ namespace ImGui::EditorUi
         );
 
         const ImVec4 border = selected
-            ? Style::color_accent_1
+            ? Style::color_accent_line
             : hovered
                 ? Style::color_border_strong
                 : Style::color_border;
@@ -151,7 +151,7 @@ namespace ImGui::EditorUi
             max,
             color(border),
             scaled(rounding),
-            scaled(selected ? 1.5f : 1.0f),
+            scaled(1.0f),
             0
         );
     }
@@ -175,8 +175,9 @@ namespace ImGui::EditorUi
             min,
             max,
             color(background),
-            scaled(8.0f)
+            scaled(4.0f)
         );
+        draw_list->AddRect(min, max, color(alpha(foreground, 0.22f)), scaled(4.0f), scaled(1.0f));
         draw_list->AddText(
             ImVec2(min.x + padding.x, min.y + padding.y),
             color(foreground),
@@ -196,7 +197,7 @@ namespace ImGui::EditorUi
         );
         ImGui::PushStyleColor(
             ImGuiCol_ButtonHovered,
-            Style::lerp(Style::color_accent_1, ImVec4(1, 1, 1, 1), 0.18f)
+            Style::color_accent_hi
         );
         ImGui::PushStyleColor(
             ImGuiCol_ButtonActive,
@@ -206,11 +207,11 @@ namespace ImGui::EditorUi
                 0.20f
             )
         );
-        // Bright accents need dark labels; retain white labels for the darker presets.
+        // bright accents need dark labels, darker presets keep white ones
         const ImVec4 accent = Style::color_accent_1;
         const float brightness = accent.x * 0.2126f + accent.y * 0.7152f + accent.z * 0.0722f;
         ImGui::PushStyleColor(ImGuiCol_Text, brightness > 0.55f
-            ? ImVec4(0.035f, 0.080f, 0.120f, 1.0f)
+            ? ImVec4(0.039f, 0.059f, 0.078f, 1.0f)
             : ImVec4(1, 1, 1, 1));
     }
 
@@ -263,15 +264,11 @@ namespace ImGui::EditorUi
         );
         ImGui::PushStyleColor(
             ImGuiCol_TableRowBg,
-            Style::color_canvas
+            ImVec4(0, 0, 0, 0)
         );
         ImGui::PushStyleColor(
             ImGuiCol_TableRowBgAlt,
-            Style::lerp(
-                Style::color_canvas,
-                Style::color_panel,
-                0.32f
-            )
+            alpha(Style::color_text, 0.025f)
         );
         ImGui::PushStyleColor(
             ImGuiCol_TableBorderStrong,
@@ -288,6 +285,83 @@ namespace ImGui::EditorUi
         ImGui::PopStyleColor(5);
     }
 
+    // soft halo around a rect, rings fading outward, cheap enough for every frame
+    inline void draw_glow(
+        ImDrawList* draw_list,
+        const ImVec2& min,
+        const ImVec2& max,
+        const ImVec4& tint,
+        const float rounding,
+        const float radius,
+        const float strength = 1.0f
+    )
+    {
+        constexpr int rings = 6;
+        const float step    = radius / static_cast<float>(rings);
+        for (int i = 0; i < rings; i++)
+        {
+            const float t       = (static_cast<float>(i) + 0.5f) / static_cast<float>(rings);
+            const float expand  = step * (static_cast<float>(i) + 0.5f);
+            const float falloff = (1.0f - t) * (1.0f - t);
+            draw_list->AddRect(
+                ImVec2(min.x - expand, min.y - expand),
+                ImVec2(max.x + expand, max.y + expand),
+                color(alpha(tint, tint.w * falloff * 0.30f * strength)),
+                rounding + expand,
+                step + 0.5f
+            );
+        }
+    }
+
+    // recolours the vertices added since vtx_start with a vertical gradient, anti-aliasing fringes keep their fade
+    inline void shade_vertical(ImDrawList* draw_list, const int vtx_start, const float y0, const float y1, const ImVec4& top, const ImVec4& bottom)
+    {
+        const float height = ImMax(y1 - y0, 1.0f);
+        for (int i = vtx_start; i < draw_list->VtxBuffer.Size; i++)
+        {
+            ImDrawVert& vertex = draw_list->VtxBuffer[i];
+            ImVec4 value       = ImGui::Style::lerp(top, bottom, ImSaturate((vertex.pos.y - y0) / height));
+            value.w           *= static_cast<float>((vertex.col >> IM_COL32_A_SHIFT) & 0xFF) / 255.0f;
+            vertex.col         = color(value);
+        }
+    }
+
+    // an edge catching light from above: bright along the top, dissolved by fade_height below it
+    inline void draw_lit_rim(ImDrawList* draw_list, const ImVec2& min, const ImVec2& max, const float rounding, const ImVec4& top, const ImVec4& bottom, const float fade_height)
+    {
+        const int vtx_start = draw_list->VtxBuffer.Size;
+        draw_list->AddRect(ImVec2(min.x + 0.5f, min.y + 0.5f), ImVec2(max.x - 0.5f, max.y - 0.5f), IM_COL32_WHITE, rounding, ImMax(1.0f, scaled(1.0f)));
+        shade_vertical(draw_list, vtx_start, min.y, min.y + fade_height, top, bottom);
+    }
+
+    // call right after a frame widget: it lifts on hover and takes a lit accent rim while it is being edited
+    inline void decorate_field(const float rounding = -1.0f)
+    {
+        const ImGuiID id = ImGui::GetItemID();
+        if (id == 0)
+        {
+            return;
+        }
+
+        const float hover = animate(id ^ 0x4a11c0deu, ImGui::IsItemHovered() ? 1.0f : 0.0f, 16.0f);
+        const float focus = animate(id ^ 0x7f1e1d00u, ImGui::IsItemActive() ? 1.0f : 0.0f, 16.0f);
+        if (hover < 0.01f && focus < 0.01f)
+        {
+            return;
+        }
+
+        const ImVec2 min      = ImGui::GetItemRectMin();
+        const ImVec2 max      = ImGui::GetItemRectMax();
+        const float radius    = rounding >= 0.0f ? rounding : ImGui::GetStyle().FrameRounding;
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        if (focus > 0.01f)
+        {
+            draw_glow(draw_list, min, max, Style::color_accent_1, radius, scaled(6.0f), 0.8f * focus);
+        }
+        const ImVec4 rim = Style::lerp(alpha(Style::color_text, 0.14f * hover), alpha(Style::color_accent_1, 0.90f), focus);
+        draw_list->AddRect(min, max, color(rim), radius, ImMax(1.0f, scaled(1.0f)));
+    }
+
     inline void draw_row_highlight(
         const ImVec2& min,
         const ImVec2& max,
@@ -300,16 +374,149 @@ namespace ImGui::EditorUi
             return;
         }
 
-        ImVec4 fill = selected
-            ? Style::color_accent_2
-            : Style::color_surface_hover;
-        fill.w = selected ? 0.34f : 0.58f;
-        ImGui::GetWindowDrawList()->AddRectFilled(
-            min,
-            max,
-            color(fill),
-            scaled(3.0f)
-        );
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        if (!selected)
+        {
+            draw_list->AddRectFilled(min, max, color(alpha(Style::color_text, 0.045f)));
+            return;
+        }
+
+        // a beam: a lit bar on the edge whose light fades out across the row
+        const ImU32 strong = color(alpha(Style::color_accent_1, 0.26f));
+        const ImU32 weak   = color(alpha(Style::color_accent_1, 0.06f));
+        draw_list->AddRectFilledMultiColor(min, max, strong, weak, weak, strong);
+        const float bar    = ImMax(2.0f, IM_ROUND(scaled(2.0f)));
+        const ImVec2 b_min = ImVec2(min.x, min.y);
+        const ImVec2 b_max = ImVec2(min.x + bar, max.y);
+        draw_glow(draw_list, b_min, b_max, Style::color_accent_1, 0.0f, scaled(6.0f), 0.9f);
+        draw_list->AddRectFilled(b_min, b_max, color(Style::color_accent_hi));
+    }
+
+    // letter spacing is in pixels, the uppercase micro labels use roughly a tenth of the font size
+    inline float calc_text_tracked(const char* text, const float tracking, ImFont* font = nullptr, float font_size = 0.0f)
+    {
+        font      = font ? font : ImGui::GetFont();
+        font_size = font_size > 0.0f ? font_size : ImGui::GetFontSize();
+
+        float width = 0.0f;
+        int glyphs  = 0;
+        for (const char* c = text; *c;)
+        {
+            unsigned int codepoint = 0;
+            const int length = ImMax(ImTextCharFromUtf8(&codepoint, c, nullptr), 1);
+            width += font->CalcTextSizeA(font_size, FLT_MAX, 0.0f, c, c + length).x;
+            c += length;
+            glyphs++;
+        }
+
+        return width + tracking * static_cast<float>(ImMax(glyphs - 1, 0));
+    }
+
+    inline void draw_text_tracked(
+        ImDrawList* draw_list,
+        ImVec2 position,
+        const ImU32 tint,
+        const char* text,
+        const float tracking,
+        ImFont* font = nullptr,
+        float font_size = 0.0f
+    )
+    {
+        font      = font ? font : ImGui::GetFont();
+        font_size = font_size > 0.0f ? font_size : ImGui::GetFontSize();
+
+        for (const char* c = text; *c;)
+        {
+            unsigned int codepoint = 0;
+            const int length = ImMax(ImTextCharFromUtf8(&codepoint, c, nullptr), 1);
+            draw_list->AddText(font, font_size, position, tint, c, c + length);
+            position.x += font->CalcTextSizeA(font_size, FLT_MAX, 0.0f, c, c + length).x + tracking;
+            c += length;
+        }
+    }
+
+    inline void to_upper(const char* text, char* buffer, const size_t buffer_size)
+    {
+        size_t i = 0;
+        for (; text[i] && i + 1 < buffer_size; i++)
+        {
+            buffer[i] = (text[i] >= 'a' && text[i] <= 'z') ? static_cast<char>(text[i] - 32) : text[i];
+        }
+        buffer[i] = '\0';
+    }
+
+    inline float micro_label_size()
+    {
+        return ImGui::GetFontSize() * 0.80f;
+    }
+
+    inline float micro_label_width(const char* text, ImFont* font = nullptr)
+    {
+        char upper[128];
+        to_upper(text, upper, sizeof(upper));
+        const float size = micro_label_size();
+        return calc_text_tracked(upper, size * 0.12f, font, size);
+    }
+
+    // uppercase, tracked, drawn at the given position and vertically centered on a line of the given height
+    inline float draw_micro_label(ImDrawList* draw_list, const ImVec2& position, const float line_height, const char* text, const ImVec4& tint, ImFont* font = nullptr)
+    {
+        char upper[128];
+        to_upper(text, upper, sizeof(upper));
+        const float size     = micro_label_size();
+        const float tracking = size * 0.12f;
+        const float y        = position.y + (line_height - size) * 0.5f;
+        draw_text_tracked(draw_list, ImVec2(position.x, IM_ROUND(y)), color(tint), upper, tracking, font, size);
+        return calc_text_tracked(upper, tracking, font, size);
+    }
+
+    inline void micro_label(const char* text, const ImVec4& tint, ImFont* font = nullptr)
+    {
+        const ImVec2 position   = ImGui::GetCursorScreenPos();
+        const float line_height = ImGui::GetTextLineHeight();
+        const float width       = draw_micro_label(ImGui::GetWindowDrawList(), position, line_height, text, tint, font);
+        ImGui::Dummy(ImVec2(width, line_height));
+    }
+
+    // "LABEL ——————" a tracked label followed by a hairline running to the edge of the content region
+    inline void section_rule(const char* text, ImFont* font = nullptr)
+    {
+        ImDrawList* draw_list   = ImGui::GetWindowDrawList();
+        const ImVec2 position   = ImGui::GetCursorScreenPos();
+        const float line_height = ImGui::GetTextLineHeight();
+        const float width       = draw_micro_label(draw_list, position, line_height, text, Style::color_text_muted, font);
+        const float right       = position.x + ImGui::GetContentRegionAvail().x;
+        const float y           = IM_ROUND(position.y + line_height * 0.5f);
+        const float x           = position.x + width + scaled(10.0f);
+        if (right > x)
+        {
+            draw_list->AddLine(ImVec2(x, y), ImVec2(right, y), color(Style::color_border), 1.0f);
+        }
+        ImGui::Dummy(ImVec2(ImGui::GetContentRegionAvail().x, line_height));
+    }
+
+    inline void status_dot(ImDrawList* draw_list, const ImVec2& center, const float radius, const ImVec4& tint, const bool pulse = false)
+    {
+        if (pulse)
+        {
+            const float t = static_cast<float>(fmod(ImGui::GetTime(), 1.8)) / 1.8f;
+            draw_list->AddCircleFilled(center, radius * (1.0f + t * 1.6f), color(alpha(tint, 0.35f * (1.0f - t))), 20);
+        }
+        draw_list->AddCircleFilled(center, radius * 2.2f, color(alpha(tint, 0.14f)), 20);
+        draw_list->AddCircleFilled(center, radius, color(tint), 16);
+    }
+
+    inline void corner_brackets(ImDrawList* draw_list, const ImVec2& min, const ImVec2& max, const float length, const float thickness, const ImU32 tint)
+    {
+        const float h = thickness * 0.5f;
+        draw_list->AddLine(ImVec2(min.x, min.y + h), ImVec2(min.x + length, min.y + h), tint, thickness);
+        draw_list->AddLine(ImVec2(min.x + h, min.y), ImVec2(min.x + h, min.y + length), tint, thickness);
+        draw_list->AddLine(ImVec2(max.x - length, min.y + h), ImVec2(max.x, min.y + h), tint, thickness);
+        draw_list->AddLine(ImVec2(max.x - h, min.y), ImVec2(max.x - h, min.y + length), tint, thickness);
+        draw_list->AddLine(ImVec2(min.x, max.y - h), ImVec2(min.x + length, max.y - h), tint, thickness);
+        draw_list->AddLine(ImVec2(min.x + h, max.y - length), ImVec2(min.x + h, max.y), tint, thickness);
+        draw_list->AddLine(ImVec2(max.x - length, max.y - h), ImVec2(max.x, max.y - h), tint, thickness);
+        draw_list->AddLine(ImVec2(max.x - h, max.y - length), ImVec2(max.x - h, max.y), tint, thickness);
     }
 
     inline float toolbar_icon_size()

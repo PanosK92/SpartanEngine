@@ -12,7 +12,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Queue.h"
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_VendorTechnology.h"
-#include "../core/Debugging.h"
 #include "../../profiling/Breadcrumbs.h"
 #include "../../profiling/Profiler.h"
 //==================================
@@ -340,7 +339,7 @@ namespace spartan
     
             if (result == VK_ERROR_DEVICE_LOST)
             {
-                if (Debugging::IsBreadcrumbsEnabled())
+                if (cvar_debug_breadcrumbs.GetValue())
                 {
                     Breadcrumbs::OnDeviceLost();
                     SP_ERROR_WINDOW("GPU crashed. Check 'log.txt' for breadcrumbs report.");

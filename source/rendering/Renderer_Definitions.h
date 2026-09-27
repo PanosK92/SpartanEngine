@@ -306,6 +306,7 @@ namespace spartan
         meshlet_micro_indices  = 59,
         tree_wind_cache       = 60,
         decals                = 66,
+        impostor_texels       = 76,
         rain_occlusion        = 68,
         // per-instance cull tasks for gpu-driven culling
         cull_tasks             = 44,
@@ -437,6 +438,10 @@ namespace spartan
         restir_pt_nrd_unpack_c,
         // baked wind field
         wind_field_c,
+        // water on the occupied car
+        car_rain_clear_c,
+        car_rain_splat_c,
+        car_rain_texels_c,
         // fft ocean
         ocean_spectrum_init_c,
         ocean_spectrum_update_c,
@@ -477,6 +482,7 @@ namespace spartan
         texture_compress_bc1_c,
         texture_compress_bc3_c,
         texture_compress_bc5_c,
+        texture_compress_bc7_c,
         max
     };
     
@@ -600,6 +606,10 @@ namespace spartan
         restir_shift2,
         // baked wind field, written each frame, sampled by depth_prepass/g_buffer/depth_light
         wind_field,
+        // water on the occupied car, see CarRain.h
+        car_rain_surface, // axis coordinate of the paint per atlas texel, uploaded once per bake
+        car_rain_micro,   // micro water mass and clock stamp per texel, patched every frame from the cpu's changes
+        car_rain_ids,     // the drop covering each texel, splatted every frame
         // fft ocean, texture2d arrays with one slice per cascade
         ocean_spectrum,              // persistent h0 spectrum
         ocean_fft_a,                 // working: height + x displacement
@@ -650,6 +660,8 @@ namespace spartan
         InstanceDispatchArgs,      // single-slot indirect dispatch args buffer driving the meshlet cull pass (phase b)
         Decals,
         RainOcclusion,             // topmost static surface height per cell around the camera, ring-buffered per frame
+        CarRainDrops,              // the occupied car's drops, ring-buffered per frame
+        CarRainTexels,             // the car's micro water changes this frame, ring-buffered per frame
         DrawData,                  // bindless per-draw data (transforms, material index, etc.)
         // clustered lighting
         ClusterLightGrid,          // one uint2 per cluster: (first_index, count) into ClusterLightIndices

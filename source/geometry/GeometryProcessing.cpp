@@ -10,6 +10,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "GeometryProcessing.h"
 #include "../core/ThreadPool.h"
 #include <unordered_map>
+#include <algorithm>
+#include <cfloat>
 #include <cmath>
 SP_WARNINGS_OFF
 #include "meshoptimizer/meshoptimizer.h"
@@ -228,6 +230,137 @@ namespace spartan::geometry_processing
         );
 
         vertices.assign(optimized_vertices.begin(), optimized_vertices.begin() + optimized_vertex_count);
+    }
+
+    void thin_foliage_cards(std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t target_index_count)
+    {
+        // a card is a handful of triangles, anything bigger is a branchlet or a sheet that must not be scaled
+        constexpr uint32_t card_triangles_max = 64;
+        // thinned cards win back most but not all of the lost cover, a full compensation reads as inflated
+        constexpr float cover     = 0.92f;
+        constexpr float scale_max = 1.6f;
+
+        const size_t index_count  = indices.size();
+        const size_t vertex_count = vertices.size();
+        if (target_index_count >= index_count || index_count < 12)
+        {
+            return;
+        }
+
+        std::vector<uint32_t> parent(vertex_count);
+        for (uint32_t i = 0; i < vertex_count; i++)
+        {
+            parent[i] = i;
+        }
+        auto find = [&parent](uint32_t v)
+        {
+            while (parent[v] != v)
+            {
+                parent[v] = parent[parent[v]];
+                v         = parent[v];
+            }
+            return v;
+        };
+        for (size_t i = 0; i < index_count; i += 3)
+        {
+            const uint32_t a = find(indices[i]);
+            parent[find(indices[i + 1])] = a;
+            parent[find(indices[i + 2])] = a;
+        }
+
+        struct Card
+        {
+            uint32_t triangles = 0;
+            uint32_t vertices  = 0;
+            math::Vector3 center = math::Vector3::Zero;
+            uint32_t rank      = 0;
+            bool keep          = true;
+        };
+        std::unordered_map<uint32_t, Card> cards;
+        for (size_t i = 0; i < index_count; i += 3)
+        {
+            cards[find(indices[i])].triangles++;
+        }
+        for (uint32_t v = 0; v < vertex_count; v++)
+        {
+            auto it = cards.find(find(v));
+            if (it == cards.end())
+            {
+                continue;
+            }
+            it->second.vertices++;
+            it->second.center += math::Vector3(vertices[v].pos[0], vertices[v].pos[1], vertices[v].pos[2]);
+        }
+
+        size_t small_indices = 0;
+        std::vector<Card*> small;
+        for (auto& [root, card] : cards)
+        {
+            card.center /= static_cast<float>(card.vertices);
+            if (card.triangles > card_triangles_max)
+            {
+                continue;
+            }
+            // the centre survives the scaling below, so hashing it gives every lod the same order and each one keeps a subset of the last
+            const int32_t qx = static_cast<int32_t>(std::floor(card.center.x * 256.0f));
+            const int32_t qy = static_cast<int32_t>(std::floor(card.center.y * 256.0f));
+            const int32_t qz = static_cast<int32_t>(std::floor(card.center.z * 256.0f));
+            uint32_t h = static_cast<uint32_t>(qx) * 73856093u ^ static_cast<uint32_t>(qy) * 19349663u ^ static_cast<uint32_t>(qz) * 83492791u;
+            h ^= h >> 16;
+            h *= 0x7feb352du;
+            h ^= h >> 15;
+            card.rank = h;
+            small.push_back(&card);
+            small_indices += card.triangles * 3;
+        }
+        if (small.empty())
+        {
+            return;
+        }
+
+        const size_t large_indices = index_count - small_indices;
+        const float keep = std::clamp(static_cast<float>(static_cast<double>(target_index_count) - static_cast<double>(large_indices)) / static_cast<float>(small_indices), 0.02f, 1.0f);
+        if (keep >= 1.0f)
+        {
+            return;
+        }
+        std::sort(small.begin(), small.end(), [](const Card* a, const Card* b) { return a->rank < b->rank; });
+        const size_t kept = std::max<size_t>(1, static_cast<size_t>(static_cast<float>(small.size()) * keep));
+        for (size_t i = kept; i < small.size(); i++)
+        {
+            small[i]->keep = false;
+        }
+
+        const float scale = std::clamp(cover / std::sqrt(keep), 1.0f, scale_max);
+        std::vector<RHI_Vertex_PosTexNorTan> scaled = vertices;
+        for (uint32_t v = 0; v < vertex_count; v++)
+        {
+            auto it = cards.find(find(v));
+            if (it == cards.end() || it->second.triangles > card_triangles_max)
+            {
+                continue;
+            }
+            const math::Vector3 c = it->second.center;
+            scaled[v].pos[0] = c.x + (vertices[v].pos[0] - c.x) * scale;
+            scaled[v].pos[1] = c.y + (vertices[v].pos[1] - c.y) * scale;
+            scaled[v].pos[2] = c.z + (vertices[v].pos[2] - c.z) * scale;
+        }
+
+        std::vector<uint32_t> thinned;
+        thinned.reserve(index_count);
+        for (size_t i = 0; i < index_count; i += 3)
+        {
+            if (cards[find(indices[i])].keep)
+            {
+                thinned.insert(thinned.end(), { indices[i], indices[i + 1], indices[i + 2] });
+            }
+        }
+
+        std::vector<RHI_Vertex_PosTexNorTan> compacted(vertex_count);
+        const size_t compacted_count = meshopt_optimizeVertexFetch(compacted.data(), thinned.data(), thinned.size(), scaled.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan));
+        compacted.resize(compacted_count);
+        indices  = std::move(thinned);
+        vertices = std::move(compacted);
     }
 
     void optimize(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices)
@@ -598,5 +731,204 @@ namespace spartan::geometry_processing
         };
 
         ThreadPool::ParallelLoop(build_tile, total_tiles);
+    }
+
+    math::Vector3 impostor_frame_direction(uint32_t x, uint32_t y, uint32_t frames)
+    {
+        // the frame grid is the square rotated 45 degrees onto the upper octahedron, every centre lands
+        // above the horizon and the corners of the grid meet it
+        const float ox = (static_cast<float>(x) + 0.5f) / static_cast<float>(frames) * 2.0f - 1.0f;
+        const float oy = (static_cast<float>(y) + 0.5f) / static_cast<float>(frames) * 2.0f - 1.0f;
+        const float px = (ox + oy) * 0.5f;
+        const float pz = (ox - oy) * 0.5f;
+        return math::Vector3(px, 1.0f - fabsf(px) - fabsf(pz), pz).Normalized();
+    }
+
+    void impostor_frame_basis(const math::Vector3& direction, math::Vector3& right, math::Vector3& up)
+    {
+        const math::Vector3 reference = direction.y > 0.999f ? math::Vector3(0.0f, 0.0f, 1.0f) : math::Vector3(0.0f, 1.0f, 0.0f);
+        right = math::Vector3::Cross(reference, direction).Normalized();
+        up    = math::Vector3::Cross(direction, right);
+    }
+
+    void bake_impostor(
+        const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
+        const std::vector<uint32_t>& indices,
+        uint32_t frames,
+        uint32_t resolution,
+        uint32_t layers,
+        const math::Vector3& center,
+        float radius,
+        const math::Vector2& uv_min,
+        const math::Vector2& uv_scale,
+        std::vector<uint32_t>& texels_out
+    )
+    {
+        const size_t frame_texels = static_cast<size_t>(resolution) * resolution;
+        const size_t frame_words  = frame_texels * layers * 2;
+        texels_out.assign(frame_words * frames * frames, 0u);
+        if (vertices.empty() || indices.size() < 3 || radius <= 0.0f)
+        {
+            return;
+        }
+
+        std::vector<math::Vector3> positions(vertices.size());
+        std::vector<math::Vector3> normals(vertices.size());
+        std::vector<math::Vector2> uvs(vertices.size());
+        for (size_t i = 0; i < vertices.size(); i++)
+        {
+            positions[i] = vertices[i].get_position() - center;
+            normals[i]   = vertices[i].get_normal();
+            uvs[i]       = vertices[i].get_uv();
+        }
+
+        const float inv_radius  = 1.0f / radius;
+        const float resolution_f = static_cast<float>(resolution);
+        const math::Vector2 inv_uv_scale(1.0f / std::max(uv_scale.x, 1e-6f), 1.0f / std::max(uv_scale.y, 1e-6f));
+
+        struct Projected
+        {
+            float x;
+            float y;
+            float z;
+        };
+        std::vector<Projected> projected(vertices.size());
+        std::vector<float> depth(frame_texels * layers);
+
+        for (uint32_t fy = 0; fy < frames; fy++)
+        {
+            for (uint32_t fx = 0; fx < frames; fx++)
+            {
+                const math::Vector3 direction = impostor_frame_direction(fx, fy, frames);
+                math::Vector3 right;
+                math::Vector3 up;
+                impostor_frame_basis(direction, right, up);
+
+                // +z points at the viewer, so the nearest surface is the largest z
+                for (size_t i = 0; i < positions.size(); i++)
+                {
+                    const math::Vector3& p = positions[i];
+                    projected[i].x = (math::Vector3::Dot(p, right) * inv_radius * 0.5f + 0.5f) * resolution_f;
+                    projected[i].y = (math::Vector3::Dot(p, up) * inv_radius * 0.5f + 0.5f) * resolution_f;
+                    projected[i].z = math::Vector3::Dot(p, direction);
+                }
+                std::fill(depth.begin(), depth.end(), -FLT_MAX);
+                uint32_t* frame = texels_out.data() + (static_cast<size_t>(fy) * frames + fx) * frame_words;
+
+                auto write = [&](uint32_t px, uint32_t py, float z, const math::Vector2& uv, const math::Vector3& normal)
+                {
+                    const size_t texel = static_cast<size_t>(py) * resolution + px;
+                    float* texel_depth = depth.data() + texel * layers;
+                    uint32_t slot      = layers;
+                    for (uint32_t l = 0; l < layers; l++)
+                    {
+                        if (z > texel_depth[l])
+                        {
+                            slot = l;
+                            break;
+                        }
+                    }
+                    if (slot == layers)
+                    {
+                        return;
+                    }
+
+                    uint32_t* words = frame + texel * layers * 2;
+                    for (uint32_t l = layers - 1; l > slot; l--)
+                    {
+                        texel_depth[l]      = texel_depth[l - 1];
+                        words[l * 2]        = words[(l - 1) * 2];
+                        words[l * 2 + 1]    = words[(l - 1) * 2 + 1];
+                    }
+
+                    // a two sided card seen from behind lights with its front normal flipped toward the viewer
+                    float nx = math::Vector3::Dot(normal, right);
+                    float ny = math::Vector3::Dot(normal, up);
+                    float nz = math::Vector3::Dot(normal, direction);
+                    if (nz < 0.0f)
+                    {
+                        nx = -nx;
+                        ny = -ny;
+                        nz = -nz;
+                    }
+                    const float n_sum = std::max(fabsf(nx) + fabsf(ny) + nz, 1e-6f);
+                    const uint32_t ox = static_cast<uint32_t>(std::clamp((nx / n_sum) * 0.5f + 0.5f, 0.0f, 1.0f) * 255.0f + 0.5f);
+                    const uint32_t oy = static_cast<uint32_t>(std::clamp((ny / n_sum) * 0.5f + 0.5f, 0.0f, 1.0f) * 255.0f + 0.5f);
+                    const uint32_t dz = static_cast<uint32_t>(std::clamp(z * inv_radius * 0.5f + 0.5f, 0.0f, 1.0f) * 32767.0f + 0.5f);
+                    const uint32_t u  = static_cast<uint32_t>(std::clamp((uv.x - uv_min.x) * inv_uv_scale.x, 0.0f, 1.0f) * 65535.0f + 0.5f);
+                    const uint32_t v  = static_cast<uint32_t>(std::clamp((uv.y - uv_min.y) * inv_uv_scale.y, 0.0f, 1.0f) * 65535.0f + 0.5f);
+
+                    texel_depth[slot]  = z;
+                    words[slot * 2]     = u | (v << 16);
+                    words[slot * 2 + 1] = ox | (oy << 8) | (dz << 16) | (1u << 31);
+                };
+
+                for (size_t t = 0; t + 2 < indices.size(); t += 3)
+                {
+                    const uint32_t i0 = indices[t];
+                    const uint32_t i1 = indices[t + 1];
+                    const uint32_t i2 = indices[t + 2];
+                    const Projected& a = projected[i0];
+                    const Projected& b = projected[i1];
+                    const Projected& c = projected[i2];
+
+                    const float area = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+                    const int32_t x0 = std::max(static_cast<int32_t>(floorf(std::min({a.x, b.x, c.x}))), 0);
+                    const int32_t y0 = std::max(static_cast<int32_t>(floorf(std::min({a.y, b.y, c.y}))), 0);
+                    const int32_t x1 = std::min(static_cast<int32_t>(floorf(std::max({a.x, b.x, c.x}))), static_cast<int32_t>(resolution) - 1);
+                    const int32_t y1 = std::min(static_cast<int32_t>(floorf(std::max({a.y, b.y, c.y}))), static_cast<int32_t>(resolution) - 1);
+                    if (x0 > x1 || y0 > y1)
+                    {
+                        continue;
+                    }
+
+                    bool covered = false;
+                    if (fabsf(area) > 1e-12f)
+                    {
+                        const float inv_area = 1.0f / area;
+                        for (int32_t py = y0; py <= y1; py++)
+                        {
+                            for (int32_t px = x0; px <= x1; px++)
+                            {
+                                const float sx = static_cast<float>(px) + 0.5f;
+                                const float sy = static_cast<float>(py) + 0.5f;
+                                const float w0 = ((b.x - sx) * (c.y - sy) - (b.y - sy) * (c.x - sx)) * inv_area;
+                                const float w1 = ((c.x - sx) * (a.y - sy) - (c.y - sy) * (a.x - sx)) * inv_area;
+                                const float w2 = 1.0f - w0 - w1;
+                                if (w0 < 0.0f || w1 < 0.0f || w2 < 0.0f)
+                                {
+                                    continue;
+                                }
+
+                                covered = true;
+                                write(
+                                    static_cast<uint32_t>(px),
+                                    static_cast<uint32_t>(py),
+                                    a.z * w0 + b.z * w1 + c.z * w2,
+                                    uvs[i0] * w0 + uvs[i1] * w1 + uvs[i2] * w2,
+                                    (normals[i0] * w0 + normals[i1] * w1 + normals[i2] * w2).Normalized()
+                                );
+                            }
+                        }
+                    }
+
+                    // a needle thinner than a texel misses every texel centre, it still has to leave its mark
+                    // or the distant crown bakes out as bare branches
+                    if (!covered)
+                    {
+                        const float third = 1.0f / 3.0f;
+                        const uint32_t px = static_cast<uint32_t>(std::clamp((a.x + b.x + c.x) * third, 0.0f, resolution_f - 1.0f));
+                        const uint32_t py = static_cast<uint32_t>(std::clamp((a.y + b.y + c.y) * third, 0.0f, resolution_f - 1.0f));
+                        write(
+                            px,
+                            py,
+                            (a.z + b.z + c.z) * third,
+                            (uvs[i0] + uvs[i1] + uvs[i2]) * third,
+                            (normals[i0] + normals[i1] + normals[i2]).Normalized()
+                        );
+                    }
+                }
+            }
+        }
     }
 }

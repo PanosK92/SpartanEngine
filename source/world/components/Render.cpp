@@ -71,6 +71,10 @@ namespace spartan
             }
 
             const SubMesh& sub_mesh = mesh->GetSubMesh(sub_mesh_index);
+            if (lod == sub_mesh.lods.size() && sub_mesh.impostor)
+            {
+                return &sub_mesh.impostor->lod;
+            }
             if (lod >= sub_mesh.lods.size())
             {
                 return nullptr;
@@ -883,6 +887,18 @@ namespace spartan
         return m_scene->mesh->GetLodCount(m_scene->sub_mesh_index);
     }
 
+    const MeshImpostor* Render::GetImpostor() const
+    {
+        Mesh* mesh = m_scene->mesh;
+        if (!mesh || m_scene->sub_mesh_index >= mesh->GetSubMeshCount())
+        {
+            return nullptr;
+        }
+
+        const MeshImpostor* impostor = mesh->GetSubMesh(m_scene->sub_mesh_index).impostor.get();
+        return impostor && impostor->lod.meshlet_count > 0 ? impostor : nullptr;
+    }
+
     void Render::SetFlag(const RenderFlags flag, const bool enable /*= true*/)
     {
         bool enabled      = false;
@@ -1002,7 +1018,7 @@ namespace spartan
                     m_instance_bounds[i] = bounds;
                     // Same conservative envelope as tree_wind_cull_padding in common_culling.hlsl.
                     m_instance_wind_padding[i] = ((bounds.GetCenter() - world_instance.GetTranslation()).Length()
-                        + bounds.GetExtents().Length()) * 0.07f + 0.03f;
+                        + bounds.GetExtents().Length()) * 0.16f + 0.05f;
                     m_scene->bounding_box.Merge(bounds);
                 }
 

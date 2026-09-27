@@ -692,7 +692,7 @@ namespace spartan
             {
                 texture_color->SetFlag(RHI_Texture_Compress);
                 const bool has_alpha = texture_color->HasAlphaPixels();
-                texture_color->SetCompressionFormat(has_alpha ? RHI_Format::BC3_Unorm : RHI_Format::BC1_Unorm);
+                texture_color->SetCompressionFormat(has_alpha ? RHI_Format::BC3_Unorm : RHI_Format::BC7_Unorm);
                 if (has_alpha)
                 {
                     texture_color->SetFlag(RHI_Texture_Transparent, true);

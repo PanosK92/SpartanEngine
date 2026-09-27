@@ -1030,11 +1030,12 @@ namespace spartan
                 material = ResourceCache::Load<Material>(material_path);
             }
 
+            // a cached material can be shared by meshes importing in parallel, only a fresh one may have its path written
             if (!material)
             {
                 material = make_shared<Material>();
+                material->SetResourceFilePath(material_path);
             }
-            material->SetResourceFilePath(material_path);
             const Material::ScopedEdit edit(*material);
 
             const string extension = normalize_for_lookup(FileSystem::GetExtensionFromFilePath(ctx.file_path));
@@ -2181,7 +2182,14 @@ namespace spartan
         // AddGeometry locks only the shared appends; optimization and meshlet
         // construction run independently. Skin weights retain Assimp vertex order.
         // Until LOD generation remaps influences too, skinned meshes use LOD 0.
-        ctx.mesh->AddGeometry(vertices, indices, !ctx.mesh->GetSkeleton(), sub_mesh_index, true);
+        bool foliage_cards = false;
+        if (assimp_mesh->mMaterialIndex < ctx.scene->mNumMaterials)
+        {
+            // same naming rule load_material uses to mark foliage
+            const string material_name = ctx.scene->mMaterials[assimp_mesh->mMaterialIndex]->GetName().C_Str();
+            foliage_cards = material_name.find("_foliage") != string::npos;
+        }
+        ctx.mesh->AddGeometry(vertices, indices, !ctx.mesh->GetSkeleton(), sub_mesh_index, true, foliage_cards);
     }
 
     void ModelImporter::ParseSkeleton(ImportContext& ctx)

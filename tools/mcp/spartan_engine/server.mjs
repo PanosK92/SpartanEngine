@@ -2577,10 +2577,11 @@ register_tool(
 
 register_local_tool("screenshot_take", {
   title: "screenshot take",
-  description: "Request a renderer screenshot and return the target PNG path. If the async save completes quickly, the PNG is also returned as image content.",
+  description: "Request a renderer screenshot and return the target PNG path. If the async save completes quickly, the PNG is also returned as image content. Pass ui true to capture the whole editor window with its ImGui panels instead of the pre-tonemap scene (same as cvar r.screenshot_ui 1).",
   inputSchema: {
     path: z.string().optional().describe("png path inside the engine screenshots directory"),
     wait_ms: z.number().int().min(0).max(10000).optional(),
+    ui: z.boolean().optional().describe("capture the full editor window, ui included"),
   },
   outputSchema: output_schemas.screenshot_take,
   annotations: edit_tool,
@@ -2620,10 +2621,22 @@ register_local_tool("screenshot_take", {
   }
 
   const request_started_ms = Date.now();
+  // the engine reads r.screenshot_ui when the request is queued, so it can be restored right after
+  let previous_ui = null;
+  if (args.ui !== undefined)
+  {
+    const cvar = await send_engine_command("cvar_get", { name: "r.screenshot_ui" });
+    previous_ui = cvar.ok ? String(cvar.value ?? "0") : "0";
+    await send_engine_command("cvar_set", { name: "r.screenshot_ui", value: args.ui ? "1" : "0" });
+  }
   const result = await send_engine_command(
     "screenshot_take",
     { path: requested_path },
   );
+  if (previous_ui !== null)
+  {
+    await send_engine_command("cvar_set", { name: "r.screenshot_ui", value: previous_ui });
+  }
   if (!result.ok || !result.path)
   {
     return tool_result(result);

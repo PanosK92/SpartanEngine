@@ -247,8 +247,163 @@ namespace spartan
             return static_cast<uint32_t>(clamp(normalized, 0.0f, 1.0f) * 255.0f + 0.5f);
         }
 
+        // xz bounds of the view pyramid clipped to a box, the near plane is ignored so the result only
+        // over covers, false means the pyramid misses the box. the populate pass dispatches over this
+        // window instead of the whole ring square, most of which sits behind the camera
+        bool gpu_scatter_frustum_xz_bounds(const Matrix& view_projection_inverted, const Vector3& eye, const Vector3& box_min, const Vector3& box_max, Vector2& out_min, Vector2& out_max)
+        {
+            // corner rays from two finite depths, so reverse z, infinite far and a regular far plane all work
+            const float corners[4][2] = { { -1.0f, -1.0f }, { 1.0f, -1.0f }, { 1.0f, 1.0f }, { -1.0f, 1.0f } };
+            array<Vector3, 4> edges;
+            Vector3 forward = Vector3::Zero;
+            for (uint32_t i = 0; i < 4; i++)
+            {
+                Vector3 a = Vector3(corners[i][0], corners[i][1], 0.25f) * view_projection_inverted;
+                Vector3 b = Vector3(corners[i][0], corners[i][1], 0.75f) * view_projection_inverted;
+                if (Vector3::DistanceSquared(a, eye) > Vector3::DistanceSquared(b, eye))
+                {
+                    swap(a, b);
+                }
+                edges[i] = Vector3::Normalize(b - a);
+                forward += edges[i];
+            }
+
+            array<Vector3, 4> normals;
+            for (uint32_t i = 0; i < 4; i++)
+            {
+                normals[i] = Vector3::Normalize(Vector3::Cross(edges[i], edges[(i + 1) % 4]));
+                if (Vector3::Dot(normals[i], forward) < 0.0f)
+                {
+                    normals[i] = normals[i] * -1.0f;
+                }
+            }
+
+            const auto inside_pyramid = [&](const Vector3& p)
+            {
+                const Vector3 to_p    = p - eye;
+                const float tolerance = -1e-3f * (1.0f + to_p.Length());
+                for (const Vector3& normal : normals)
+                {
+                    if (Vector3::Dot(normal, to_p) < tolerance)
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            };
+
+            const auto inside_box = [&](const Vector3& p)
+            {
+                return p.x >= box_min.x && p.x <= box_max.x && p.y >= box_min.y && p.y <= box_max.y && p.z >= box_min.z && p.z <= box_max.z;
+            };
+
+            bool any = false;
+            const auto add = [&](const Vector3& p)
+            {
+                if (!any)
+                {
+                    out_min = Vector2(p.x, p.z);
+                    out_max = Vector2(p.x, p.z);
+                    any     = true;
+                    return;
+                }
+                out_min.x = min(out_min.x, p.x);
+                out_min.y = min(out_min.y, p.z);
+                out_max.x = max(out_max.x, p.x);
+                out_max.y = max(out_max.y, p.z);
+            };
+
+            // the clipped pyramid is convex, its vertices are the apex, where the corner rays cross the
+            // box, where the box edges cross the side planes and the box corners inside the pyramid
+            if (inside_box(eye))
+            {
+                add(eye);
+            }
+
+            const float eye_axes[3]     = { eye.x, eye.y, eye.z };
+            const float box_min_axes[3] = { box_min.x, box_min.y, box_min.z };
+            const float box_max_axes[3] = { box_max.x, box_max.y, box_max.z };
+            for (const Vector3& direction : edges)
+            {
+                const float direction_axes[3] = { direction.x, direction.y, direction.z };
+                float t_enter = 0.0f;
+                float t_exit  = numeric_limits<float>::max();
+                bool hit      = true;
+                for (uint32_t axis = 0; axis < 3 && hit; axis++)
+                {
+                    const float origin = eye_axes[axis];
+                    const float d      = direction_axes[axis];
+                    if (fabsf(d) < 1e-8f)
+                    {
+                        hit = origin >= box_min_axes[axis] && origin <= box_max_axes[axis];
+                        continue;
+                    }
+                    float t0 = (box_min_axes[axis] - origin) / d;
+                    float t1 = (box_max_axes[axis] - origin) / d;
+                    if (t0 > t1)
+                    {
+                        swap(t0, t1);
+                    }
+                    t_enter = max(t_enter, t0);
+                    t_exit  = min(t_exit, t1);
+                    hit     = t_enter <= t_exit;
+                }
+                if (hit)
+                {
+                    add(eye + direction * t_enter);
+                    add(eye + direction * t_exit);
+                }
+            }
+
+            array<Vector3, 8> box_corners;
+            for (uint32_t i = 0; i < 8; i++)
+            {
+                box_corners[i] = Vector3((i & 1) ? box_max.x : box_min.x, (i & 2) ? box_max.y : box_min.y, (i & 4) ? box_max.z : box_min.z);
+                if (inside_pyramid(box_corners[i]))
+                {
+                    add(box_corners[i]);
+                }
+            }
+
+            for (uint32_t i = 0; i < 8; i++)
+            {
+                for (uint32_t bit = 1; bit < 8; bit <<= 1)
+                {
+                    if (i & bit)
+                    {
+                        continue;
+                    }
+                    const Vector3& p0 = box_corners[i];
+                    const Vector3& p1 = box_corners[i | bit];
+                    for (const Vector3& normal : normals)
+                    {
+                        const float d0 = Vector3::Dot(normal, p0 - eye);
+                        const float d1 = Vector3::Dot(normal, p1 - eye);
+                        if ((d0 < 0.0f) == (d1 < 0.0f))
+                        {
+                            continue;
+                        }
+                        const Vector3 p = p0 + (p1 - p0) * (d0 / (d0 - d1));
+                        if (inside_pyramid(p))
+                        {
+                            add(p);
+                        }
+                    }
+                }
+            }
+
+            return any;
+        }
+
+        void bind_impostor_texels()
+        {
+            RHI_Buffer* impostor_texels = GeometryBuffer::GetImpostorTexelBuffer();
+            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::impostor_texels), impostor_texels ? impostor_texels : GeometryBuffer::GetMeshletVertexBuffer());
+        }
+
         void bind_mesh_shader_geometry()
         {
+            bind_impostor_texels();
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::tree_wind_cache), Renderer::GetBuffer(Renderer_Buffer::TreeWindCache));
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::indirect_draw_data), Renderer::GetBuffer(Renderer_Buffer::IndirectDrawData));
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_instances), Renderer::GetBuffer(Renderer_Buffer::MeshletInstances));
@@ -966,6 +1121,7 @@ namespace spartan
                         RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_instances), GetBuffer(Renderer_Buffer::MeshletInstances));
                         RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::visible_triangles), GetBuffer(Renderer_Buffer::VisibleTriangles));
                         RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_bounds), GeometryBuffer::GetMeshletBoundsBuffer());
+                        bind_impostor_texels();
                         m_pcb_pass_cpu.set_f4_value(0.0f, 0.0f, 0.0f, 0.0f);
                         RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                         RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), 0);
@@ -997,6 +1153,7 @@ namespace spartan
                         RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_instances), GetBuffer(Renderer_Buffer::MeshletInstances));
                         RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::visible_triangles), GetBuffer(Renderer_Buffer::VisibleTriangles));
                         RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_bounds), GeometryBuffer::GetMeshletBoundsBuffer());
+                        bind_impostor_texels();
                         m_pcb_pass_cpu.set_f4_value(static_cast<float>(GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2), 0.0f, 0.0f, 0.0f);
                         RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                         RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
@@ -1153,6 +1310,7 @@ namespace spartan
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_instances), GetBuffer(Renderer_Buffer::MeshletInstances));
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::visible_triangles), GetBuffer(Renderer_Buffer::VisibleTriangles));
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_bounds), GeometryBuffer::GetMeshletBoundsBuffer());
+                bind_impostor_texels();
                 m_pcb_pass_cpu.set_f4_value(0.0f, 0.0f, 0.0f, 0.0f);
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                 RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), 0);
@@ -1187,6 +1345,7 @@ namespace spartan
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_instances), GetBuffer(Renderer_Buffer::MeshletInstances));
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::visible_triangles), GetBuffer(Renderer_Buffer::VisibleTriangles));
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_bounds), GeometryBuffer::GetMeshletBoundsBuffer());
+                bind_impostor_texels();
                 m_pcb_pass_cpu.set_f4_value(static_cast<float>(GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2), 0.0f, 0.0f, 0.0f);
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                 RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
@@ -1370,13 +1529,22 @@ namespace spartan
             RHI_CommandList::EndTimeblock();
     }
 
-    void Renderer::Pass_GBuffer(const bool is_transparent_pass)
+    void Renderer::Pass_GBuffer(const bool is_transparent_pass, const bool submit_before_scatter)
     {
         RHI_CommandList::BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
         {
             if (!is_transparent_pass)
             {
                 Pass_GBuffer_Indirect();
+                if (submit_before_scatter)
+                {
+                    // the meshlet g-buffer never reads procedural scatter, submitting it here lets it overlap the
+                    // populate compute, only the grass draw and what follows waits for the scatter queue
+                    RHI_CommandList::EndTimeblock();
+                    RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
+                    RHI_Device::Bind(RHI_Frame_List::Graphics);
+                    RHI_CommandList::BeginTimeblock("g_buffer_scatter");
+                }
                 // procedural grass runs after the indirect path, the draw call binds its own pipeline that reads grass_instances directly
                 Pass_Grass_Draw();
             }
@@ -1435,7 +1603,8 @@ namespace spartan
         RHI_Buffer* road_exclusions = road_terrain->GetRoadExclusionBuffer();
 
         static_assert(renderer_max_gpu_scatter_args == 9 && renderer_max_gpu_scatter_slots == 3);
-        std::array<Vector4, renderer_max_gpu_scatter_slots + 1> detail_parameters{};
+        // per slot lod parameters, the protected vehicle region, then the cell window of every ring
+        std::array<Vector4, renderer_max_gpu_scatter_slots + 1 + renderer_max_gpu_scatter_args> detail_parameters{};
         for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; ++slot)
         {
             const auto& state = m_pass_state.gpu_scatter[slot];
@@ -1470,8 +1639,98 @@ namespace spartan
         if (detail_car)
         {
             const Vector3 position = detail_car->GetRootEntity()->GetPosition();
-            detail_parameters.back() = Vector4(position.x, position.y, position.z, 32.0f);
+            detail_parameters[renderer_max_gpu_scatter_slots] = Vector4(position.x, position.y, position.z, 32.0f);
         }
+
+        // only the cells the view pyramid can reach get threads, the shader adds the window origin to
+        // its thread id so every (cell, blade) keeps the hash and the placement it had on the full grid
+        std::array<std::array<uint32_t, 4>, renderer_max_gpu_scatter_args> cell_windows{};
+        {
+            const Vector3 eye              = m_cb_frame_cpu.camera_position;
+            const bool perspective         = fabsf(m_cb_frame_cpu.projection.m33) < 0.5f;
+            const bool use_windows         = perspective && !Xr::IsSessionRunning();
+            const float tan_half_h         = 1.0f / max(fabsf(m_cb_frame_cpu.projection.m00), 1e-4f);
+            const float tan_half_v         = 1.0f / max(fabsf(m_cb_frame_cpu.projection.m11), 1e-4f);
+            const float tan_half_min       = min(tan_half_h, tan_half_v);
+            const float sin_half_min       = tan_half_min / sqrtf(1.0f + tan_half_min * tan_half_min);
+            for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
+            {
+                const PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
+                if (!gpu_scatter_ready(state))
+                {
+                    continue;
+                }
+
+                // the shader culls a sphere around each instance, the planes pushed out by its radius meet
+                // behind the eye, so the margin grows as the field of view narrows
+                float root_radius = 0.0f;
+                if (state.mesh->GetSubMeshCount() > 0)
+                {
+                    for (const auto& mesh_lod : state.mesh->GetSubMesh(0).lods)
+                    {
+                        root_radius = max(root_radius, mesh_lod.aabb.GetCenter().Length() + mesh_lod.aabb.GetExtents().Length());
+                    }
+                }
+                const float largest_scale = clamp(max(state.params.size_min, state.params.size_max), 0.01f, 100.0f);
+                const float cull_radius   = max(1.5f, root_radius) * largest_scale * 1.05f;
+                const float cull_height   = 0.5f * largest_scale;
+
+                for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
+                {
+                    const float cell_size   = state.params.cell_size_m[lod];
+                    const float ring_radius = state.params.ring_radii_m[lod];
+                    if (cell_size <= 0.0f || ring_radius <= 0.0f)
+                    {
+                        continue;
+                    }
+
+                    const uint32_t cells_per_axis = 2u * static_cast<uint32_t>(ceilf(ring_radius / cell_size)) + 2u;
+                    std::array<uint32_t, 4>& window = cell_windows[renderer_gpu_scatter_arg_index(slot, lod)];
+                    window = { 0u, 0u, cells_per_axis, cells_per_axis };
+                    if (!use_windows)
+                    {
+                        continue;
+                    }
+
+                    const float margin = cull_radius / max(sin_half_min, 0.05f) + 2.0f * cell_size;
+                    const float reach  = (static_cast<float>(cells_per_axis / 2u) + 1.0f) * cell_size;
+                    const float y_min  = max(state.params.height_min, eye.y - 4000.0f) - cull_radius;
+                    const float y_max  = min(state.params.height_max, eye.y + 4000.0f) + cull_height + cull_radius;
+                    Vector2 bounds_min;
+                    Vector2 bounds_max;
+                    const bool visible = y_min <= y_max && gpu_scatter_frustum_xz_bounds(
+                        m_cb_frame_cpu.view_projection_inverted,
+                        eye,
+                        Vector3(eye.x - reach - margin, y_min, eye.z - reach - margin),
+                        Vector3(eye.x + reach + margin, y_max, eye.z + reach + margin),
+                        bounds_min,
+                        bounds_max
+                    );
+                    if (!visible)
+                    {
+                        window = { 0u, 0u, 0u, 0u };
+                        continue;
+                    }
+
+                    // same cell indexing as the shader, one spare cell per side absorbs cpu/gpu rounding
+                    const int half_cells  = static_cast<int>(cells_per_axis / 2u);
+                    const int anchor_x    = static_cast<int>(floorf(eye.x / cell_size));
+                    const int anchor_z    = static_cast<int>(floorf(eye.z / cell_size));
+                    const int last        = static_cast<int>(cells_per_axis) - 1;
+                    const int x0          = clamp(static_cast<int>(floorf((bounds_min.x - margin) / cell_size)) - anchor_x + half_cells - 1, 0, last);
+                    const int x1          = clamp(static_cast<int>(floorf((bounds_max.x + margin) / cell_size)) - anchor_x + half_cells + 1, 0, last);
+                    const int z0          = clamp(static_cast<int>(floorf((bounds_min.y - margin) / cell_size)) - anchor_z + half_cells - 1, 0, last);
+                    const int z1          = clamp(static_cast<int>(floorf((bounds_max.y + margin) / cell_size)) - anchor_z + half_cells + 1, 0, last);
+                    window = { static_cast<uint32_t>(x0), static_cast<uint32_t>(z0), static_cast<uint32_t>(x1 - x0 + 1), static_cast<uint32_t>(z1 - z0 + 1) };
+                }
+            }
+
+            for (uint32_t arg = 0; arg < renderer_max_gpu_scatter_args; arg++)
+            {
+                detail_parameters[renderer_max_gpu_scatter_slots + 1 + arg] = Vector4(static_cast<float>(cell_windows[arg][0]), static_cast<float>(cell_windows[arg][1]), 0.0f, 0.0f);
+            }
+        }
+
         RHI_Buffer* detail_buffer = GetBuffer(Renderer_Buffer::GrassLodParameters);
         RHI_CommandList::UpdateBuffer(detail_buffer, 0, sizeof(detail_parameters), detail_parameters.data(), false);
         RHI_CommandList::BeginPass("gpu_scatter_populate");
@@ -1666,7 +1925,13 @@ namespace spartan
                             ceilf(ring_radius / cell_size)
                         ) +
                         2u;
-                    const uint32_t groups = (cells_per_axis + 7u) / 8u;
+                    const std::array<uint32_t, 4>& window = cell_windows[renderer_gpu_scatter_arg_index(slot, lod)];
+                    const uint32_t groups_x = (min(window[2], cells_per_axis) + 7u) / 8u;
+                    const uint32_t groups_z = (min(window[3], cells_per_axis) + 7u) / 8u;
+                    if (groups_x == 0 || groups_z == 0)
+                    {
+                        continue;
+                    }
                     const float ring_area = math::pi * (
                         (ring_radius * ring_radius) -
                         (inner_radius * inner_radius)
@@ -1683,7 +1948,7 @@ namespace spartan
                         1u,
                         static_cast<uint32_t>(std::ceil(per_cell))
                     );
-                    RHI_CommandList::Dispatch(groups, groups, blades_per_cell);
+                    RHI_CommandList::Dispatch(groups_x, groups_z, blades_per_cell);
                 }
             }
 

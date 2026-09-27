@@ -32,7 +32,7 @@ namespace spartan
         void SetAccelerationStructure(uint32_t slot, RHI_AccelerationStructure* tlas);
 
         // dynamic offsets for bound buffers
-        void GetDynamicOffsets(std::array<uint32_t, 10>* offsets, uint32_t* count);
+        void GetDynamicOffsets(std::array<uint32_t, rhi_max_dynamic_offsets>* offsets, uint32_t* count);
 
         // state management
         void ClearBindings();

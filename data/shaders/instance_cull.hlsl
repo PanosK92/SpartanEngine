@@ -96,8 +96,10 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
             uint lod_count = (draw.flags >> 11u) & 7u;
             if (lod_count > 1u)
             {
-                uint draw_lod = (draw.flags >> 8u) & 7u;
-                survives      = sphere_lod_index(center_world, lod_radius, lod_count) == draw_lod;
+                uint draw_lod     = (draw.flags >> 8u) & 7u;
+                bool has_impostor = (draw.flags & (1u << 15)) != 0u;
+                uint wanted_lod   = has_impostor ? sphere_lod_index_impostor(center_world, lod_radius, lod_count) : sphere_lod_index(center_world, lod_radius, lod_count);
+                survives          = wanted_lod == draw_lod;
             }
         }
 

@@ -475,7 +475,7 @@ namespace spartan
         void* m_dynamic_descriptor_set = nullptr;
         void* m_dynamic_pipeline_layout = nullptr;
         uint8_t m_dynamic_pipeline_type = static_cast<uint8_t>(-1);
-        std::array<uint32_t, 10> m_dynamic_offsets = {};
+        std::array<uint32_t, rhi_max_dynamic_offsets> m_dynamic_offsets = {};
         uint32_t m_dynamic_offset_count = 0;
         bool m_pipeline_state_dirty = false;
         bool m_resources_dirty = true;

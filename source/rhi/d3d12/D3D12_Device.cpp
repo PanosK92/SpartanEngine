@@ -18,7 +18,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Sampler.h"
 #include <wrl/client.h>
 #include "../RHI_Queue.h"
-#include "../core/Debugging.h"
 #include "D3D12_Internal.h"
 #include <unordered_map>
 #include <mutex>
@@ -103,7 +102,7 @@ namespace spartan
 
         void initialize()
         {
-            if (!Debugging::IsValidationLayerEnabled() && !Debugging::IsGpuAssistedValidationEnabled())
+            if (!cvar_debug_validation_layer.GetValue() && !cvar_debug_gpu_assisted_validation.GetValue())
             {
                 return;
             }
@@ -710,7 +709,7 @@ namespace spartan
         m_shader_group_base_alignment   = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;     // 64
 
         UINT dxgi_factory_flags = 0;
-        if (Debugging::IsValidationLayerEnabled() || Debugging::IsGpuAssistedValidationEnabled())
+        if (cvar_debug_validation_layer.GetValue() || cvar_debug_gpu_assisted_validation.GetValue())
         {
             validation::load_debug_runtime();
             Microsoft::WRL::ComPtr<ID3D12Debug1> debug_interface;
@@ -722,7 +721,7 @@ namespace spartan
 
                 // gpu-based validation requires the debug layer and adds significant overhead,
                 // so it is gated on its own flag and only enabled when explicitly requested
-                if (Debugging::IsGpuAssistedValidationEnabled())
+                if (cvar_debug_gpu_assisted_validation.GetValue())
                 {
                     debug_interface->SetEnableGPUBasedValidation(TRUE);
                     debug_interface->SetEnableSynchronizedCommandQueueValidation(TRUE);
@@ -2007,7 +2006,7 @@ namespace spartan
 
     void RHI_Device::MarkerBegin(RHI_CommandList* cmd_list, const char* name, const math::Vector4& color)
     {
-        if (!Debugging::IsGpuMarkingEnabled() || !cmd_list || !name)
+        if (!cvar_debug_gpu_marking.GetValue() || !cmd_list || !name)
         {
             return;
         }
@@ -2025,7 +2024,7 @@ namespace spartan
 
     void RHI_Device::MarkerEnd(RHI_CommandList* cmd_list)
     {
-        if (!Debugging::IsGpuMarkingEnabled() || !cmd_list)
+        if (!cvar_debug_gpu_marking.GetValue() || !cmd_list)
         {
             return;
         }

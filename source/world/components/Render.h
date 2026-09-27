@@ -108,6 +108,8 @@ namespace spartan
         void ClearMesh();
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
         uint32_t GetLodCount() const;
+        // the per-lod getters address it as lod GetLodCount()
+        const MeshImpostor* GetImpostor() const;
         uint32_t GetLodIndex() const { return m_scene->lod_index; }
         uint32_t GetIndexOffset(const uint32_t lod = 0) const;
         uint32_t GetIndexCount(const uint32_t lod = 0) const;

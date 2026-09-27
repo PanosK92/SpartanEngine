@@ -19,7 +19,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "ThreadPool.h"
 #include "../profiling/RenderDoc.h"
 #include "../profiling/Profiler.h"
-#include "../core/Debugging.h"
 #include "../core/Window.h"
 #include "../core/Timer.h"
 #include "../file_system/FileSystem.h"
@@ -44,6 +43,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Terrain.h"
 #include "../world/components/Spline.h"
 #include "../world/Weather.h"
+#include "../world/CarRain.h"
 #include "../core/ProgressTracker.h"
 #include "../math/Rectangle.h"
 #include "../resource/import/ImageImporter.h"
@@ -115,11 +115,13 @@ namespace spartan
             bool pending  = false;
             bool ready    = false;
             bool secondary_view = false;
+            bool ui = false;
             uint64_t secondary_generation = 0;
         };
 
         mutex screenshot_mutex;
         screenshot_request screenshot;
+        shared_ptr<RHI_Texture> screenshot_ui_target;
         uint32_t screenshot_index = 0;
         Entity* secondary_camera_request = nullptr;
         Entity* secondary_render_root_request = nullptr;
@@ -470,6 +472,17 @@ namespace spartan
             {
                 void* sdr_data = sdr_staging->GetMappedData();
 
+                // imgui blending leaves destination alpha at zero under chrome, a window capture is always opaque
+                if (request.ui && channel_count == 4 && bits_per_channel == 8)
+                {
+                    uint8_t* pixels = static_cast<uint8_t*>(sdr_data);
+                    const size_t count = static_cast<size_t>(width) * height;
+                    for (size_t i = 0; i < count; i++)
+                    {
+                        pixels[i * 4 + 3] = 255;
+                    }
+                }
+
                 if (!request.file_path.empty())
                 {
                     ensure_screenshot_directory_exists(request.png_path);
@@ -518,6 +531,7 @@ namespace spartan
             request.file_path = file_path;
             request.pending   = true;
             request.secondary_view = secondary_view;
+            request.ui             = !secondary_view && cvar_screenshot_ui.GetValueAs<bool>();
             request.secondary_generation =
                 secondary_view
                     ? secondary_view_request_generation
@@ -530,7 +544,7 @@ namespace spartan
             }
 
             uint32_t index  = screenshot_index++;
-            request.save_exr = true;
+            request.save_exr = !request.ui;
             request.exr_path = "screenshot_" + to_string(index) + ".exr";
             request.png_path = "screenshot_" + to_string(index) + ".png";
             return request;
@@ -667,7 +681,7 @@ namespace spartan
 
     void Renderer::Initialize()
     {
-        if (Debugging::IsRenderdocEnabled())
+        if (cvar_debug_renderdoc.GetValue())
         {
             RenderDoc::OnPreDeviceCreation();
         }
@@ -687,7 +701,7 @@ namespace spartan
         });
         RHI_Device::SetPassResetCallback(reset_common_bind);
 
-        if (Debugging::IsBreadcrumbsEnabled())
+        if (cvar_debug_breadcrumbs.GetValue())
         {
             Breadcrumbs::Initialize();
         }
@@ -798,7 +812,7 @@ namespace spartan
         RenderDoc::Shutdown();
 
         // breadcrumbs
-        if (Debugging::IsBreadcrumbsEnabled())
+        if (cvar_debug_breadcrumbs.GetValue())
         {
             Breadcrumbs::Shutdown();
         }
@@ -822,7 +836,7 @@ namespace spartan
         tick_dynamic_resolution_scale();
         // Jitter generation and vendor dispatch must use this frame's active render size.
         RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), GetResolutionScale());
-        if (Debugging::IsBreadcrumbsEnabled())
+        if (cvar_debug_breadcrumbs.GetValue())
         {
             Breadcrumbs::StartFrame();
         }
@@ -1541,6 +1555,26 @@ namespace spartan
             else
                 RHI_CommandList::UpdateBuffer(buffer, offset, size, Weather::GetOcclusionHeights());
         }
+        if (CarRain::IsActive())
+        {
+            auto upload = [](RHI_Buffer* buffer, uint32_t offset, uint32_t size, const void* data)
+            {
+                if (size == 0)
+                    return;
+                if (void* mapped = buffer->GetMappedData())
+                    memcpy(static_cast<char*>(mapped) + offset, data, size);
+                else
+                    RHI_CommandList::UpdateBuffer(buffer, offset, size, data);
+            };
+
+            const vector<CarRainDropGpu>& drops = CarRain::GetDrops();
+            const uint32_t drop_count           = min(static_cast<uint32_t>(drops.size()), CarRain::drops_max);
+            upload(GetBuffer(Renderer_Buffer::CarRainDrops), m_frame_resource_index * CarRain::drops_max * sizeof(CarRainDropGpu), drop_count * sizeof(CarRainDropGpu), drops.data());
+
+            const vector<CarRainTexelGpu>& texels = CarRain::GetTexels();
+            const uint32_t texel_count            = min(static_cast<uint32_t>(texels.size()), CarRain::texels_max);
+            upload(GetBuffer(Renderer_Buffer::CarRainTexels), m_frame_resource_index * CarRain::texels_max * sizeof(CarRainTexelGpu), texel_count * sizeof(CarRainTexelGpu), texels.data());
+        }
         // mark synced even when empty so later imgui/editor WriteDrawData can stage mid-frame on d3d12
         m_draw_data_gpu_synced = true;
         static bool draw_data_descriptor_set = false;
@@ -2107,16 +2141,26 @@ namespace spartan
             const uint32_t slice        = m_frame_resource_index * Weather::occlusion_resolution * Weather::occlusion_resolution;
             m_cb_frame_cpu.rain_occlusion = Vector4(occlusion_min.x, occlusion_min.y, Weather::occlusion_cell_size, static_cast<float>(slice));
 
-            m_cb_frame_cpu.rain_vehicle_lean = Vector4(Weather::GetDropsLean(), Weather::GetDropsWetness());
-            m_cb_frame_cpu.rain_vehicle_vein = Vector4(Weather::GetDropsVeinPull(), 0.0f);
+            m_cb_frame_cpu.rain_vehicle = Vector4(Weather::GetDropsWetness(), 0.0f, 0.0f, 0.0f);
             for (uint32_t plane = 0; plane < 3; plane++)
             {
                 m_cb_frame_cpu.rain_vehicle_axis[plane] = Vector4(Weather::GetDropsAxis(plane), 0.0f);
-                for (uint32_t size_class = 0; size_class < Weather::drop_class_count; size_class++)
-                {
-                    m_cb_frame_cpu.rain_vehicle_slide[plane * 4 + size_class] = Vector4(Weather::GetDropsSlide(size_class, plane), 0.0f);
-                    m_cb_frame_cpu.rain_vehicle_flow[plane * 4 + size_class]  = Vector4(Weather::GetDropsFlow(size_class, plane), 0.0f);
-                }
+            }
+
+            Entity* car           = Weather::GetDropsVehicle();
+            const bool car_water  = car && CarRain::IsActive();
+            m_cb_frame_cpu.rain_car_origin = Vector4(car ? car->GetPosition() : Vector3::Zero, CarRain::GetClock());
+            m_cb_frame_cpu.rain_car_box    = Vector4(CarRain::GetBoxMin(), CarRain::GetTexelSize());
+            m_cb_frame_cpu.rain_car_atlas  = Vector4(
+                static_cast<float>(CarRain::GetAtlasWidth()),
+                static_cast<float>(CarRain::GetAtlasHeight()),
+                static_cast<float>(m_frame_resource_index * CarRain::drops_max),
+                car_water ? 1.0f : 0.0f
+            );
+            m_cb_frame_cpu.rain_car_micro = Vector4(CarRain::GetMicroLife(), CarRain::GetResidueMass(), 0.0f, 0.0f);
+            for (uint32_t face = 0; face < 6; face++)
+            {
+                m_cb_frame_cpu.rain_car_faces[face] = CarRain::GetFaceRect(face);
             }
         }
         m_cb_frame_cpu.cloud_coverage        = World::GetDirectionalLight() ? World::GetDirectionalLight()->GetCloudCoverageEffective() : 0.0f;
@@ -3959,10 +4003,14 @@ namespace spartan
 
             // instanced tiles share one cpu lod, so a forest next to the camera pins every tree at lod 0,
             // submit every lod and let instance cull keep each instance on the lod its screen coverage wants
+            // foliage with a baked impostor gets it as one extra gpu lod after the mesh chain, the count must fit in three flag bits
             const uint32_t mesh_lod_count = max(render->GetLodCount(), 1u);
             const bool gpu_lod            = is_instanced && !is_skinned && mesh_lod_count > 1u;
+            const bool impostors_enabled  = cvar_foliage_impostors.GetValueAs<bool>();
+            const MeshImpostor* impostor  = (impostors_enabled && gpu_lod && mesh_lod_count < 7u) ? render->GetImpostor() : nullptr;
+            const uint32_t gpu_lod_count  = mesh_lod_count + (impostor ? 1u : 0u);
             const uint32_t lod_first      = gpu_lod ? 0u : dc.lod_index;
-            const uint32_t lod_last       = gpu_lod ? mesh_lod_count : (dc.lod_index + 1u);
+            const uint32_t lod_last       = gpu_lod ? gpu_lod_count : (dc.lod_index + 1u);
 
             uint32_t lods_emit      = 0;
             uint32_t meshlets_worst = 0;
@@ -4030,6 +4078,11 @@ namespace spartan
                 base_flags |= 1u << 7;
             }
 
+            if (impostor)
+            {
+                base_flags |= 1u << 15;
+            }
+
             const float max_distance    = render->GetMaxRenderDistance();
             const bool  finite_distance = max_distance > 0.0f && max_distance < numeric_limits<float>::max() * 0.5f;
             const float max_distance_sq = finite_distance ? (max_distance * max_distance) : 0.0f;
@@ -4052,7 +4105,18 @@ namespace spartan
                 draw_data.is_transparent     = 0;
                 draw_data.aabb_index         = render_aabb_slot;
                 draw_data.lod_first_index    = render->GetIndexOffset(lod);
-                draw_data.flags              = base_flags | ((lod & 7u) << 8u) | ((mesh_lod_count & 7u) << 11u);
+                draw_data.flags              = base_flags | ((lod & 7u) << 8u) | ((gpu_lod_count & 7u) << 11u);
+                if (impostor && lod == mesh_lod_count)
+                {
+                    // the card turns to face the camera, so winding and meshlet cones mean nothing for it
+                    draw_data.flags                |= (1u << 14) | 8u;
+                    draw_data.impostor_texel_offset = impostor->texel_offset;
+                    draw_data.impostor_layout       = mesh_impostor_frames | (mesh_impostor_resolution << 8) | (mesh_impostor_layers << 24);
+                    draw_data.impostor_center       = impostor->center;
+                    draw_data.impostor_radius       = impostor->radius;
+                    draw_data.impostor_uv_min       = impostor->uv_min;
+                    draw_data.impostor_uv_scale     = impostor->uv_scale;
+                }
                 draw_data.instance_offset    = render->GetGlobalInstanceOffset();
                 draw_data.instance_index     = 0;
                 draw_data.lod_vertex_offset  = render->GetVertexOffset(lod);
@@ -5002,6 +5066,36 @@ namespace spartan
         return true;
     }
 
+    RHI_Texture* Renderer::GetUiScreenshotTarget(uint32_t width, uint32_t height)
+    {
+        lock_guard<mutex> lock(screenshot_mutex);
+        if (!screenshot.pending || screenshot.ready || !screenshot.ui || width == 0 || height == 0)
+        {
+            return nullptr;
+        }
+
+        if (!screenshot_ui_target || screenshot_ui_target->GetWidth() != width || screenshot_ui_target->GetHeight() != height)
+        {
+            screenshot_ui_target = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2D, width, height, 1, 1,
+                RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "screenshot_ui"
+            );
+        }
+
+        return screenshot_ui_target->GetRhiResource() ? screenshot_ui_target.get() : nullptr;
+    }
+
+    void Renderer::SetUiScreenshotRecorded()
+    {
+        lock_guard<mutex> lock(screenshot_mutex);
+        if (screenshot.pending && screenshot.ui)
+        {
+            screenshot.exr_color_space = ImageColorSpace::Srgb;
+            screenshot.pending         = false;
+            screenshot.ready           = true;
+        }
+    }
+
     void Renderer::Pass_Screenshot(RHI_Texture* tex_pre_tonemap)
     {
         {
@@ -5010,6 +5104,7 @@ namespace spartan
                 !screenshot.pending ||
                 screenshot.ready ||
                 screenshot.secondary_view ||
+                screenshot.ui ||
                 secondary_render_root_active ||
                 !tex_pre_tonemap
             )
@@ -5074,6 +5169,7 @@ namespace spartan
                 !screenshot.pending ||
                 screenshot.ready ||
                 screenshot.secondary_view ||
+                screenshot.ui ||
                 secondary_render_root_active
             )
             {
@@ -5129,11 +5225,13 @@ namespace spartan
         RHI_Device::QueueWaitAll(true);
 
         RHI_Texture* tex_sdr =
-            request.secondary_view
-                ? secondary_view_output.get()
-                : GetRenderTarget(
-                    Renderer_RenderTarget::screenshot_sdr
-                );
+            request.ui
+                ? screenshot_ui_target.get()
+                : request.secondary_view
+                    ? secondary_view_output.get()
+                    : GetRenderTarget(
+                        Renderer_RenderTarget::screenshot_sdr
+                    );
         if (!tex_sdr)
         {
             return;
@@ -5141,7 +5239,7 @@ namespace spartan
 
         shared_ptr<RHI_Buffer> sdr_staging = copy_texture_to_staging(tex_sdr);
         shared_ptr<RHI_Buffer> exr_staging;
-        if (request.save_exr && !request.secondary_view && !Xr::IsSessionRunning())
+        if (request.save_exr && !request.secondary_view && !request.ui && !Xr::IsSessionRunning())
         {
             exr_staging = copy_texture_to_staging(GetRenderTarget(Renderer_RenderTarget::frame_output));
         }
@@ -5253,6 +5351,10 @@ namespace spartan
         RHI_CommandList::SetTexture("tex_perlin", GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
         RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::decals), GetBuffer(Renderer_Buffer::Decals));
         RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::rain_occlusion), GetBuffer(Renderer_Buffer::RainOcclusion));
+        if (RHI_Buffer* impostor_texels = GeometryBuffer::GetImpostorTexelBuffer() ? GeometryBuffer::GetImpostorTexelBuffer() : GeometryBuffer::GetMeshletVertexBuffer())
+        {
+            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::impostor_texels), impostor_texels);
+        }
 
         RHI_Texture* tex_exposure = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
         if (tex_exposure)
@@ -5265,6 +5367,15 @@ namespace spartan
         if (is_graphics_queue && tex_wind)
         {
             RHI_CommandList::SetTexture("tex_wind_field", tex_wind);
+        }
+
+        // the occupied car's water, read by the g-buffer
+        if (is_graphics_queue)
+        {
+            RHI_CommandList::SetTexture("tex_car_rain_surface", GetRenderTarget(Renderer_RenderTarget::car_rain_surface));
+            RHI_CommandList::SetTexture("tex_car_rain_micro", GetRenderTarget(Renderer_RenderTarget::car_rain_micro));
+            RHI_CommandList::SetTexture("tex_car_rain_ids", GetRenderTarget(Renderer_RenderTarget::car_rain_ids));
+            RHI_CommandList::SetBuffer("car_rain_drops", GetBuffer(Renderer_Buffer::CarRainDrops));
         }
 
         // terrain analysis maps, bound globally because the raster, reflection and gi paths all
@@ -5443,7 +5554,7 @@ namespace spartan
             RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
             RHI_Device::Bind(RHI_Frame_List::Graphics);
         }
-        Pass_GBuffer(false);
+        Pass_GBuffer(false, scatter_prepared_async);
         Pass_MeshletVisualize();
     }
 
@@ -5581,6 +5692,7 @@ namespace spartan
 
         RHI_Device::Bind(RHI_Frame_List::Graphics);
         Pass_WindField();
+        Pass_CarRain();
         Pass_Ocean();
 
         if (Camera* camera = World::GetCamera())

@@ -223,6 +223,12 @@ namespace spartan
                     block_bytes         = 16;
                     pso_name            = "texture_compress_bc5";
                     break;
+                case RHI_Format::BC7_Unorm:
+                    shader_type         = Renderer_Shader::texture_compress_bc7_c;
+                    output_element_size = sizeof(uint32_t) * 4; // uint4
+                    block_bytes         = 16;
+                    pso_name            = "texture_compress_bc7";
+                    break;
                 default:
                     return false;
             }
@@ -1039,7 +1045,7 @@ namespace spartan
             m_slices[0].mips.size() == 1 && m_format == RHI_Format::R8G8B8A8_Unorm &&
             !World::GetResourceDirectory().empty())
         {
-            if (target == RHI_Format::BC1_Unorm && HasAlphaPixels())
+            if ((target == RHI_Format::BC1_Unorm || target == RHI_Format::BC7_Unorm) && HasAlphaPixels())
             {
                 target = RHI_Format::BC3_Unorm;
                 m_flags |= RHI_Texture_Transparent;
@@ -1098,7 +1104,7 @@ namespace spartan
             bool not_compressed = !IsCompressedFormat();
             if (compress && not_compressed)
             {
-                if (target == RHI_Format::BC1_Unorm && HasAlphaPixels())
+                if ((target == RHI_Format::BC1_Unorm || target == RHI_Format::BC7_Unorm) && HasAlphaPixels())
                 {
                     target = RHI_Format::BC3_Unorm;
                     m_flags |= RHI_Texture_Transparent;

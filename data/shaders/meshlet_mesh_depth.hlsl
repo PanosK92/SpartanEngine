@@ -124,6 +124,10 @@ void main_ms(
         depth_mesh_vertex out_v;
         out_v.position       = clipped.position;
         out_v.uv_misc        = clipped.uv_misc;
+        if ((gs_draw.flags & draw_flag_impostor) != 0u)
+        {
+            out_v.uv_misc.z = -1.0f - (float)gs_mi.draw_index;
+        }
         out_v.material_index = clipped.material_index;
         out_v.view_id        = clipped.view_id;
         out_vertices[v_index] = out_v;

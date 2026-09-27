@@ -761,7 +761,7 @@ namespace spartan
         }
     }
 
-    void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const bool generate_lods, const uint32_t sub_mesh_index_in, const bool preserve_lod0)
+    void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const bool generate_lods, const uint32_t sub_mesh_index_in, const bool preserve_lod0, const bool foliage_cards)
     {
         // caller must have reserved this slot via ReserveSubMeshes or the auto-allocating overload above
         SP_ASSERT(sub_mesh_index_in < m_sub_meshes.size());
@@ -835,7 +835,7 @@ namespace spartan
                 // actual input geometry, target and policy so asset edits and
                 // terrain-border protection cannot reuse an incompatible result.
                 generated_cache::Hash lod_hash;
-                lod_hash.Add(uint32_t(1)); // simplification policy/cache version
+                lod_hash.Add(uint32_t(foliage_cards ? 2 : 1)); // simplification policy/cache version
                 lod_hash.Add(lod_vertices);
                 lod_hash.Add(lod_indices);
                 lod_hash.Add(static_cast<uint64_t>(target_index_count));
@@ -845,7 +845,10 @@ namespace spartan
                 const bool cache_lods = !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
                 if (!cache_lods || !generated_cache::Load(lod_path, lod_hash.value, lod_vertices, lod_indices))
                 {
-                    geometry_processing::simplify(lod_indices, lod_vertices, target_index_count, preserve_uvs, preserve_edges, !preserve_edges);
+                    if (foliage_cards)
+                        geometry_processing::thin_foliage_cards(lod_indices, lod_vertices, target_index_count);
+                    else
+                        geometry_processing::simplify(lod_indices, lod_vertices, target_index_count, preserve_uvs, preserve_edges, !preserve_edges);
                     if (cache_lods) generated_cache::Save(lod_path, lod_hash.value, lod_vertices, lod_indices);
                 }
 
@@ -863,7 +866,110 @@ namespace spartan
                 prev_vertices = move(lod_vertices);
                 prev_indices  = move(lod_indices);
             }
+
+            if (foliage_cards && m_skeleton == nullptr)
+            {
+                AddImpostor(vertices, indices, current_sub_mesh_index);
+            }
         }
+    }
+
+    void Mesh::AddImpostor(const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices, const uint32_t sub_mesh_index)
+    {
+        if (vertices.empty() || indices.size() < 3)
+        {
+            return;
+        }
+
+        auto impostor = make_shared<MeshImpostor>();
+
+        // the card spans the bounding sphere so every frame fits whichever way the crown is turned
+        BoundingBox aabb(vertices.data(), static_cast<uint32_t>(vertices.size()));
+        impostor->center = aabb.GetCenter();
+        Vector2 uv_lo(FLT_MAX, FLT_MAX);
+        Vector2 uv_hi(-FLT_MAX, -FLT_MAX);
+        for (const RHI_Vertex_PosTexNorTan& vertex : vertices)
+        {
+            impostor->radius = max(impostor->radius, (vertex.get_position() - impostor->center).Length());
+            const Vector2 uv = vertex.get_uv();
+            uv_lo = Vector2(min(uv_lo.x, uv.x), min(uv_lo.y, uv.y));
+            uv_hi = Vector2(max(uv_hi.x, uv.x), max(uv_hi.y, uv.y));
+        }
+        if (impostor->radius <= 0.0f)
+        {
+            return;
+        }
+        impostor->uv_min   = uv_lo;
+        impostor->uv_scale = Vector2(max(uv_hi.x - uv_lo.x, 1e-6f), max(uv_hi.y - uv_lo.y, 1e-6f));
+
+        generated_cache::Hash hash;
+        hash.Add(uint32_t(1)); // impostor bake version
+        hash.Add(mesh_impostor_frames);
+        hash.Add(mesh_impostor_resolution);
+        hash.Add(mesh_impostor_layers);
+        hash.Add(vertices);
+        hash.Add(indices);
+        const auto path  = generated_cache::Path(World::GetResourceDirectory(), "impostors", hash.value);
+        const bool cache = !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
+        const size_t expected_words = static_cast<size_t>(mesh_impostor_frames) * mesh_impostor_frames *
+            mesh_impostor_resolution * mesh_impostor_resolution * mesh_impostor_layers * 2;
+        if (!cache || !generated_cache::Load(path, hash.value, impostor->texels) || impostor->texels.size() != expected_words)
+        {
+            geometry_processing::bake_impostor(
+                vertices,
+                indices,
+                mesh_impostor_frames,
+                mesh_impostor_resolution,
+                mesh_impostor_layers,
+                impostor->center,
+                impostor->radius,
+                impostor->uv_min,
+                impostor->uv_scale,
+                impostor->texels
+            );
+            if (cache) generated_cache::Save(path, hash.value, impostor->texels);
+        }
+
+        // the corners ride in the uv, the vertex stage turns the card toward the camera, the positions
+        // only have to give the lod aabb and the meshlet sphere a volume that holds the card in any orientation
+        const float r = impostor->radius;
+        const Vector3& c = impostor->center;
+        vector<RHI_Vertex_PosTexNorTan> card =
+        {
+            RHI_Vertex_PosTexNorTan(c + Vector3(-r, -r, -r), Vector2(0.0f, 0.0f), Vector3::Forward, Vector3::Right),
+            RHI_Vertex_PosTexNorTan(c + Vector3( r, -r,  r), Vector2(1.0f, 0.0f), Vector3::Forward, Vector3::Right),
+            RHI_Vertex_PosTexNorTan(c + Vector3( r,  r, -r), Vector2(1.0f, 1.0f), Vector3::Forward, Vector3::Right),
+            RHI_Vertex_PosTexNorTan(c + Vector3(-r,  r,  r), Vector2(0.0f, 1.0f), Vector3::Forward, Vector3::Right)
+        };
+        vector<uint32_t> card_indices = { 0, 2, 1, 0, 3, 2 };
+
+        vector<Sb_MeshletBounds> meshlets;
+        vector<uint32_t> unique_vertices;
+        vector<uint32_t> micro_indices;
+        BoundingBox card_aabb;
+        geometry_processing::build_meshlets(card, card_indices, meshlets, unique_vertices, micro_indices, card_aabb);
+
+        lock_guard lock(m_mutex);
+        MeshLod& lod       = impostor->lod;
+        lod.vertex_offset  = static_cast<uint32_t>(m_vertices.size());
+        lod.vertex_count   = static_cast<uint32_t>(card.size());
+        lod.index_offset   = static_cast<uint32_t>(m_indices.size());
+        lod.index_count    = static_cast<uint32_t>(card_indices.size());
+        lod.aabb           = card_aabb;
+        lod.meshlet_offset = static_cast<uint32_t>(m_meshlets.size());
+        lod.meshlet_count  = static_cast<uint32_t>(meshlets.size());
+        const uint32_t meshlet_vertex_offset = static_cast<uint32_t>(m_meshlet_vertices.size());
+        const uint32_t meshlet_micro_offset  = static_cast<uint32_t>(m_meshlet_micro_indices.size());
+        for (Sb_MeshletBounds& bounds : meshlets)
+        {
+            offset_meshlet_unique_ranges(bounds, meshlet_vertex_offset, meshlet_micro_offset);
+        }
+        m_vertices.insert(m_vertices.end(), card.begin(), card.end());
+        m_indices.insert(m_indices.end(), card_indices.begin(), card_indices.end());
+        m_meshlets.insert(m_meshlets.end(), meshlets.begin(), meshlets.end());
+        m_meshlet_vertices.insert(m_meshlet_vertices.end(), unique_vertices.begin(), unique_vertices.end());
+        m_meshlet_micro_indices.insert(m_meshlet_micro_indices.end(), micro_indices.begin(), micro_indices.end());
+        m_sub_meshes[sub_mesh_index].impostor = move(impostor);
     }
 
     bool Mesh::UpdateGeometry(
@@ -1263,6 +1369,15 @@ namespace spartan
                     gpu_meshlets.data(),
                     m_global_meshlet_capacity
                 );
+        }
+
+        for (SubMesh& sub_mesh : m_sub_meshes)
+        {
+            if (sub_mesh.impostor && !sub_mesh.impostor->texels.empty())
+            {
+                MeshImpostor& impostor = *sub_mesh.impostor;
+                impostor.texel_offset  = GeometryBuffer::AppendImpostorTexels(impostor.texels.data(), static_cast<uint32_t>(impostor.texels.size()));
+            }
         }
 
         // normalize scale

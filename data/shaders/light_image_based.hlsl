@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 // = INCLUDES ========================
 #include "brdf.hlsl"
 #include "spherical_harmonics.hlsl"
+#include "subsurface_scattering.hlsl"
 //====================================
 
 float3 sample_restir_gi_bilateral(
@@ -199,20 +200,21 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         sky_sh,
         ibl_visibility
     );
-    if (surface.is_foliage())
+    // Thin leaves also receive sky through their reverse side, with the same deeper green the
+    // sun picks up on the way through. A single screen-space visibility estimate cannot resolve
+    // both sides, the occlusion is kept for transmission too so interiors of a crown stay dark.
+    float3 transmitted_sky = 0.0f;
+    if (surface.is_foliage() && !surface.is_transparent())
     {
-        // Thin leaves also receive sky through their reverse side. Share the
-        // diffuse budget with reflection rather than adding an ambient glow.
-        // A single screen-space visibility estimate cannot resolve both sides;
-        // retain its occlusion for transmission too, avoiding light leaks.
-        float3 transmitted_sky = sh_irradiance_l2(-surface.normal, sky_sh, ibl_visibility);
-        float transmission = saturate(surface.subsurface_scattering) * 0.70f;
-        diffuse_skysphere = lerp(diffuse_skysphere, transmitted_sky, transmission);
+        transmitted_sky = sh_irradiance_l2(-surface.normal, sky_sh, ibl_visibility) *
+                          saturate(surface.subsurface_scattering) *
+                          foliage_transmission_tint(surface.albedo.rgb);
     }
     float3 multi_bounce = gtao_multi_bounce(ibl_visibility, surface.albedo.rgb);
     float3 bounce_boost = multi_bounce / ibl_visibility;
     // SH convolution returns irradiance, so the Lambert BRDF still needs 1/pi.
-    float3 diffuse_ibl  = diffuse_skysphere * INV_PI * bounce_boost * diffuse_energy * surface.albedo.rgb;
+    float3 diffuse_ibl          = diffuse_skysphere * INV_PI * bounce_boost * diffuse_energy * surface.albedo.rgb;
+    float3 diffuse_ibl_transmit = transmitted_sky * INV_PI * diffuse_energy * surface.albedo.rgb;
     float3 specular_ibl = specular_skysphere * specular_energy * specular_occlusion;
 
     // transparents have no diffuse lobe, transmission is composited in reflections_apply, a sky
@@ -244,6 +246,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             diffuse_ibl = lerp(diffuse_ibl, restir_ibl, coverage);
         }
     }
+
+    // restir paths start on the viewed side of a leaf, the reverse side sky stays analytic
+    diffuse_ibl += diffuse_ibl_transmit;
 
     // ray traced reflections replace specular ibl
     if (is_ray_traced_reflections_enabled())

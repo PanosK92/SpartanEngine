@@ -25,7 +25,34 @@ using namespace spartan::math;
 namespace spartan
 {
     namespace
-    { 
+    {
+        // device, instance and query pool creation depend on these, so they are frozen after the pre-init load
+        unordered_map<const CVarVariant*, CVarVariant> startup_values;
+
+        void startup_only(const CVarVariant& value)
+        {
+            auto it = startup_values.find(&value);
+            if (it != startup_values.end() && value != it->second)
+            {
+                const_cast<CVarVariant&>(value) = it->second;
+                SP_LOG_WARNING("This debug setting is read at startup, edit spartan.xml and restart");
+            }
+        }
+    }
+
+    TConsoleVar<bool> cvar_debug_validation_layer("debug.validation_layer", false, "api validation layer for error detection and debug messages", startup_only);
+    TConsoleVar<bool> cvar_debug_gpu_assisted_validation("debug.gpu_assisted_validation", false, "gpu-based validation, extremely slow and breaks on first error", startup_only);
+    TConsoleVar<bool> cvar_debug_log_to_file("debug.log_to_file", false, "write diagnostic and validation messages to a persistent log file");
+    TConsoleVar<bool> cvar_debug_breadcrumbs("debug.breadcrumbs", false, "record gpu execution markers to find the cause of gpu crashes", startup_only);
+    TConsoleVar<bool> cvar_debug_renderdoc("debug.renderdoc", false, "renderdoc integration for frame capture, disables ray tracing", startup_only);
+    TConsoleVar<bool> cvar_debug_gpu_marking("debug.gpu_marking", false, "gpu debug markers, enable only while capturing with an external gpu debugger", startup_only);
+    TConsoleVar<bool> cvar_debug_gpu_timing("debug.gpu_timing", true, "gpu timestamp queries for profiling", startup_only);
+    TConsoleVar<bool> cvar_debug_shader_optimization("debug.shader_optimization", true, "shader compiler optimizations, applies to shaders compiled afterwards");
+    TConsoleVar<bool> cvar_debug_steam("debug.steam", false, "initialize steamworks", startup_only);
+    TConsoleVar<bool> cvar_debug_d3d12_enhanced_barriers("debug.d3d12_enhanced_barriers", false, "d3d12 only, submit barriers through ID3D12GraphicsCommandList7, see D3D12_Barriers.cpp for the interop prerequisites", startup_only);
+
+    namespace
+    {
         bool m_has_loaded_user_settings = false;
         string file_path                = "spartan.xml";
 
@@ -94,6 +121,41 @@ namespace spartan
             return result;
         }
 
+        bool is_render_cvar(string_view name)
+        {
+            return name.size() >= 2 && name[0] == 'r' && name[1] == '.';
+        }
+
+        bool is_debug_cvar(string_view name)
+        {
+            return name.starts_with("debug.");
+        }
+
+        void load_debug_cvars(const pugi::xml_node& root)
+        {
+            for (const auto& [name, cvar] : ConsoleRegistry::Get().GetAll())
+            {
+                if (is_debug_cvar(name))
+                {
+                    if (pugi::xml_node child = root.child(cvar_name_to_xml(string(name).c_str()).c_str()))
+                    {
+                        ConsoleRegistry::Get().SetValueFromString(name, child.text().as_string());
+                    }
+                }
+            }
+        }
+
+        void lock_startup_cvars()
+        {
+            for (const auto& [name, cvar] : ConsoleRegistry::Get().GetAll())
+            {
+                if (is_debug_cvar(name) && cvar.m_on_change == startup_only)
+                {
+                    startup_values[cvar.m_value_ptr] = *cvar.m_value_ptr;
+                }
+            }
+        }
+
         void save()
         {
             pugi::xml_document doc;
@@ -134,7 +196,7 @@ namespace spartan
                     {
                         continue;
                     }
-                    if (name.size() >= 2 && name[0] == 'r' && name[1] == '.')
+                    if (is_render_cvar(name) || is_debug_cvar(name))
                     {
                         pugi::xml_text text = root.append_child(cvar_name_to_xml(string(name).c_str()).c_str()).text();
                         if (name == "r.resolution_scale" && cvar_dynamic_resolution.GetValueAs<bool>())
@@ -237,7 +299,7 @@ namespace spartan
                         cvar_fog_debug.SetValue(0.0f);
                         continue;
                     }
-                    if (name.size() >= 2 && name[0] == 'r' && name[1] == '.')
+                    if (is_render_cvar(name))
                     {
                         pugi::xml_node child = root.child(cvar_name_to_xml(string(name).c_str()).c_str());
                         if (child)
@@ -268,22 +330,20 @@ namespace spartan
     void Settings::LoadPreInitSettings()
     {
         resolve_file_path();
-        if (!FileSystem::Exists(file_path))
-        {
-            return;
-        }
 
         pugi::xml_document doc;
-        if (!doc.load_file(file_path.c_str()))
+        if (FileSystem::Exists(file_path) && doc.load_file(file_path.c_str()))
         {
-            return;
+            pugi::xml_node root = doc.child("Settings");
+            if (pugi::xml_node use_root_shader_directory = root.child("UseRootShaderDirectory"))
+            {
+                ResourceCache::SetUseRootShaderDirectory(use_root_shader_directory.text().as_bool());
+            }
+
+            load_debug_cvars(root);
         }
 
-        pugi::xml_node root = doc.child("Settings");
-        if (pugi::xml_node use_root_shader_directory = root.child("UseRootShaderDirectory"))
-        {
-            ResourceCache::SetUseRootShaderDirectory(use_root_shader_directory.text().as_bool());
-        }
+        lock_startup_cvars();
     }
 
     void Settings::Initialize()

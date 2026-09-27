@@ -52,22 +52,22 @@ namespace editor_ui
         constexpr float row_height     = 26.0f;
         constexpr float section_gap    = 6.0f;
 
-        // component accent colors (subtle, professional)
-        inline ImVec4 accent_entity()     { return ImVec4(0.45f, 0.55f, 0.70f, 1.0f); }
-        inline ImVec4 accent_light()      { return ImVec4(0.85f, 0.75f, 0.35f, 1.0f); }
-        inline ImVec4 accent_camera()     { return ImVec4(0.50f, 0.70f, 0.55f, 1.0f); }
-        inline ImVec4 accent_render()     { return ImVec4(0.60f, 0.50f, 0.70f, 1.0f); }
-        inline ImVec4 accent_material()   { return ImVec4(0.70f, 0.55f, 0.50f, 1.0f); }
-        inline ImVec4 accent_physics()    { return ImVec4(0.55f, 0.65f, 0.80f, 1.0f); }
-        inline ImVec4 accent_audio()      { return ImVec4(0.70f, 0.45f, 0.55f, 1.0f); }
-        inline ImVec4 accent_terrain()    { return ImVec4(0.50f, 0.70f, 0.45f, 1.0f); }
-        inline ImVec4 accent_volume()     { return ImVec4(0.55f, 0.55f, 0.75f, 1.0f); }
-        inline ImVec4 accent_spline()          { return ImVec4(0.30f, 0.75f, 0.70f, 1.0f); }
-        inline ImVec4 accent_spline_follower() { return ImVec4(0.35f, 0.80f, 0.65f, 1.0f); }
-        inline ImVec4 accent_script()          { return ImVec4(0.60f, 0.70f, 0.50f, 1.0f); }
-        inline ImVec4 accent_particles() { return ImVec4(0.90f, 0.55f, 0.30f, 1.0f); }
-        inline ImVec4 accent_water()     { return ImVec4(0.30f, 0.60f, 0.80f, 1.0f); }
-        inline ImVec4 accent_text_3d()   { return ImVec4(0.75f, 0.55f, 0.85f, 1.0f); }
+        // component accent colors, saturated and far apart so each component type is identifiable by color alone
+        inline ImVec4 accent_entity()     { return ImVec4(0.62f, 0.78f, 1.00f, 1.0f); }
+        inline ImVec4 accent_light()      { return ImVec4(1.00f, 0.78f, 0.30f, 1.0f); }
+        inline ImVec4 accent_camera()     { return ImVec4(0.40f, 0.88f, 0.60f, 1.0f); }
+        inline ImVec4 accent_render()     { return ImVec4(0.66f, 0.52f, 1.00f, 1.0f); }
+        inline ImVec4 accent_material()   { return ImVec4(1.00f, 0.52f, 0.42f, 1.0f); }
+        inline ImVec4 accent_physics()    { return ImVec4(0.36f, 0.62f, 1.00f, 1.0f); }
+        inline ImVec4 accent_audio()      { return ImVec4(1.00f, 0.42f, 0.66f, 1.0f); }
+        inline ImVec4 accent_terrain()    { return ImVec4(0.55f, 0.85f, 0.35f, 1.0f); }
+        inline ImVec4 accent_volume()     { return ImVec4(0.58f, 0.58f, 1.00f, 1.0f); }
+        inline ImVec4 accent_spline()          { return ImVec4(0.25f, 0.88f, 0.82f, 1.0f); }
+        inline ImVec4 accent_spline_follower() { return ImVec4(0.30f, 0.92f, 0.62f, 1.0f); }
+        inline ImVec4 accent_script()          { return ImVec4(0.80f, 0.90f, 0.40f, 1.0f); }
+        inline ImVec4 accent_particles() { return ImVec4(1.00f, 0.60f, 0.25f, 1.0f); }
+        inline ImVec4 accent_water()     { return ImVec4(0.25f, 0.70f, 1.00f, 1.0f); }
+        inline ImVec4 accent_text_3d()   { return ImVec4(0.82f, 0.55f, 1.00f, 1.0f); }
 
         // states
         inline ImVec4 warning() { return ImGui::Style::color_warning; }
@@ -143,19 +143,19 @@ namespace editor_ui
             ImGui::Dummy(ImVec2(0, design::section_gap));
         }
 
-        // draw a subtle horizontal separator
+        // a soft rule that fades out toward both ends
         inline void separator()
         {
             ImGui::Dummy(ImVec2(0, design::spacing_sm));
-            ImVec2 p = ImGui::GetCursorScreenPos();
-            ImGui::GetWindowDrawList()->AddLine(
-                ImVec2(p.x, p.y),
-                ImVec2(p.x + ImGui::GetContentRegionAvail().x, p.y),
-                ImGui::EditorUi::color(
-                    ImGui::Style::color_border
-                ),
-                1.0f
-            );
+            const ImVec2 p       = ImGui::GetCursorScreenPos();
+            const float width    = ImGui::GetContentRegionAvail().x;
+            const float center_x = IM_ROUND(p.x + width * 0.5f);
+            const float y        = IM_ROUND(p.y);
+            const ImU32 lit      = ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.10f));
+            const ImU32 clear    = ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_text, 0.0f));
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilledMultiColor(ImVec2(p.x, y), ImVec2(center_x, y + 1.0f), clear, lit, lit, clear);
+            draw_list->AddRectFilledMultiColor(ImVec2(center_x, y), ImVec2(p.x + width, y + 1.0f), lit, clear, clear, lit);
             ImGui::Dummy(ImVec2(0, design::spacing_md));
         }
 
@@ -225,6 +225,7 @@ namespace editor_ui
             static_cast<int>(min),
             static_cast<int>(max)
         );
+        ImGui::EditorUi::decorate_field();
         if (changed)
         {
             *value = static_cast<uint32_t>(v < 0 ? 0 : v);
@@ -258,6 +259,7 @@ namespace editor_ui
             flags |= ImGuiInputTextFlags_ReadOnly;
         }
         ImGui::InputText(("##" + std::string(label)).c_str(), text, flags);
+        ImGui::EditorUi::decorate_field();
     }
 
     // read only path with a browse button, true when the user asked to browse

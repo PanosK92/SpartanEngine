@@ -42,21 +42,12 @@ namespace spartan
         // porous ground (soil, grass, gravel) drinks the film and holds less standing water
         static float GetWaterDepth(const math::Vector3& position, bool porous);
 
-        // droplets on the occupied car, null when nobody drives or nothing is wet, the renderer flags its draws
-        static constexpr uint32_t drop_class_count = 4; // size buckets, largest first
+        // the occupied car, null when nobody drives or nothing is wet, the renderer flags its draws, CarRain simulates its water
         static Entity* GetDropsVehicle();
         // how soaked that car is, it keeps its water under a roof and dries over minutes
         static float GetDropsWetness();
-        // how far the pinned drops sway under the car's g forces and airflow, world space, in g
-        static math::Vector3 GetDropsLean();
-        // the pull the running water follows, gravity plus the lean, slowed down since water keeps to its wetted paths, world space, in g
-        static math::Vector3 GetDropsVeinPull();
-        // the car's x, y and z axes in world space, each is the normal of a plane the loose drops are tracked on
+        // the car's x, y and z axes in world space, the frame its water is simulated in
         static math::Vector3 GetDropsAxis(uint32_t plane);
-        // how far the loose drops of a size class have slid over faces facing along that axis, world space, metres
-        static math::Vector3 GetDropsSlide(uint32_t size_class, uint32_t plane);
-        // how fast they slide right now, world space, m/s
-        static math::Vector3 GetDropsFlow(uint32_t size_class, uint32_t plane);
 
         // occlusion_resolution squared heights of the topmost static surface, addressed toroidally by world cell
         static const float* GetOcclusionHeights();

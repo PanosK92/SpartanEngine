@@ -366,6 +366,12 @@ float grass_wind_response()
     return 1.0f - exp(-length(buffer_frame.wind.xz) * 0.3f);
 }
 
+// trees and shrubs use the same saturating curve, a light breeze already moves the canopy
+float tree_wind_response()
+{
+    return 1.0f - exp(-length(buffer_frame.wind.xz) * 0.35f);
+}
+
 // shaped gust pressure at a world position, 0..1, the same value drives bending and the wind sheen
 // two front trains travel with the pressure patches, the flow channel bends the front lines so they
 // curve and break up, and calm stretches between patches keep the fronts readable
@@ -512,7 +518,7 @@ TreeWindState evaluate_tree_wind(float4x4 transform, float time_offset)
     float3 up = normalize(transform[1].xyz);
     state.wind = evaluate_wind(root, time_offset);
     state.phase_freq = wind_instance_phase_freq(root);
-    state.response = saturate(length(buffer_frame.wind.xz) * 0.10f);
+    state.response = tree_wind_response();
     float3 raw_axis = cross(up, state.wind.bend_dir_world);
     float axis_length_sq = dot(raw_axis, raw_axis);
     state.axis = axis_length_sq > 1e-8f ? raw_axis * rsqrt(axis_length_sq) : normalize(transform[0].xyz);
@@ -520,7 +526,7 @@ TreeWindState evaluate_tree_wind(float4x4 transform, float time_offset)
     float sway = sin(slow_time + state.phase_freq.x) * 0.55f
                + sin(slow_time * 1.37f + state.phase_freq.x * 2.17f) * 0.30f
                + sin(slow_time * 0.73f + state.phase_freq.x * 0.61f) * 0.15f;
-    state.trunk_drive = state.response * (0.8f + 0.45f * sway + 0.7f * state.wind.gust) * DEG_TO_RAD;
+    state.trunk_drive = state.response * (0.9f + 0.6f * sway + 1.5f * state.wind.gust) * DEG_TO_RAD;
     return state;
 }
 
@@ -801,7 +807,7 @@ struct vertex_processing
         }
         else if (surface.has_wind_animation())
         {
-            float response = saturate(length(buffer_frame.wind.xz) * 0.10f);
+            float response = tree_wind_response();
             if (response <= 0.0f)
                 return;
 
@@ -819,21 +825,29 @@ struct vertex_processing
             float3 axis = state.axis;
             float3 offset = position_world - instance_pos;
             float height = max(0.0f, dot(offset, instance_up));
-            float flexible = height / (height + 8.0f);
-            float root_weight = smoothstep(0.0f, 1.5f, height);
-            float trunk_angle = state.trunk_drive * flexible * root_weight;
+            float root_weight = smoothstep(0.0f, 0.4f, height);
+
+            // Two bends about the root: a slow sway that grows with height (trunks) and a
+            // faster shake that fades with height, so shrubs and saplings visibly move
+            // while tall trunks only pick up a little of it.
+            float slow_weight = height / (height + 5.0f);
+            float fast_weight = 1.0f / (1.0f + height * 0.4f);
+            float fast_wave = sin(time * (3.2f + inst.y * 0.21f) + inst.x) * 0.6f
+                            + sin(time * (5.3f + inst.y * 0.17f) + inst.x * 1.7f) * 0.4f;
+            float fast_drive = response * (0.6f + 1.2f * ws.gust) * fast_wave * 4.0f * DEG_TO_RAD;
+            float trunk_angle = (state.trunk_drive * slow_weight + fast_drive * fast_weight) * root_weight;
             float3x3 trunk_rotation = rotation_matrix(axis, trunk_angle);
 
             // Smooth spatial branch modes avoid hard sectors or random per-vertex
             // phases, which tear leaf cards. Outer branches flex more than the core.
             float3 radial = offset - instance_up * dot(offset, instance_up);
             float radius = length(radial);
-            float branch_weight = smoothstep(0.3f, 3.0f, radius) * root_weight;
+            float branch_weight = smoothstep(0.1f, 2.0f, radius) * root_weight;
             float branch_phase = inst.x + dot(offset, float3(0.37f, 0.19f, 0.29f));
             float branch_wave = sin(time * (1.15f + inst.y * 0.14f) + branch_phase) * 0.65f
                               + sin(time * (1.83f + inst.y * 0.11f) + branch_phase * 0.83f) * 0.35f;
             float branch_angle = response * branch_weight
-                               * (0.35f + 0.65f * ws.gust + branch_wave * 0.45f)
+                               * (1.2f + 2.5f * ws.gust + branch_wave * 1.2f)
                                * DEG_TO_RAD;
             float3x3 branch_rotation = rotation_matrix(axis, branch_angle);
             float3 branch_pivot = instance_up * dot(offset, instance_up);
@@ -852,7 +866,7 @@ struct vertex_processing
                               * sin(time * 3.7f + branch_phase);
                 float flutter_angle = response * branch_weight * detail
                                     * (0.35f + ws.gust * 0.65f)
-                                    * (flutter + ws.micro * 0.3f) * 0.018f / max(radius, 1.0f);
+                                    * (flutter + ws.micro * 0.3f) * 0.045f / max(radius, 1.0f);
                 float3x3 leaf_rotation = rotation_matrix(axis, flutter_angle);
                 offset = branch_pivot + mul(leaf_rotation, offset - branch_pivot);
                 vertex.normal = mul(leaf_rotation, vertex.normal);
@@ -865,6 +879,76 @@ struct vertex_processing
         }
     }
 };
+
+// foliage impostors, the frame math must match geometry_processing::impostor_frame_direction/basis on the cpu
+static const uint draw_flag_impostor = 1u << 14;
+
+float3 impostor_frame_direction(uint2 frame, uint frames)
+{
+    float2 o = (float2(frame) + 0.5f) / (float)frames * 2.0f - 1.0f;
+    float px = (o.x + o.y) * 0.5f;
+    float pz = (o.x - o.y) * 0.5f;
+    return normalize(float3(px, 1.0f - abs(px) - abs(pz), pz));
+}
+
+void impostor_frame_basis(float3 direction, out float3 right, out float3 up)
+{
+    float3 reference = direction.y > 0.999f ? float3(0.0f, 0.0f, 1.0f) : float3(0.0f, 1.0f, 0.0f);
+    right            = normalize(cross(reference, direction));
+    up               = cross(direction, right);
+}
+
+// nearest baked frame for a mesh local view direction, views from below reuse the horizon ring
+uint2 impostor_nearest_frame(float3 view_local, uint frames)
+{
+    view_local.y = max(view_local.y, 0.0f);
+    float s      = max(abs(view_local.x) + view_local.y + abs(view_local.z), 1e-6f);
+    float2 p     = view_local.xz / s;
+    float2 o     = float2(p.x + p.y, p.x - p.y);
+    float2 f     = (o * 0.5f + 0.5f) * (float)frames - 0.5f;
+    return (uint2)clamp(round(f), 0.0f, (float)(frames - 1));
+}
+
+// uv holds frame + position inside the frame, returns the first layer whose source texel survives the cutout
+bool impostor_resolve(float2 uv_frames, Texture2D albedo_texture, float alpha_threshold, out float2 uv, out float3 normal_frame, out float mip)
+{
+    uint frames      = _draw.impostor_layout & 0xFFu;
+    uint resolution  = (_draw.impostor_layout >> 8) & 0xFFFFu;
+    uint layers      = _draw.impostor_layout >> 24;
+    uint2 frame      = min((uint2)floor(uv_frames), frames - 1u);
+    uint2 texel      = min((uint2)(frac(uv_frames) * (float)resolution), resolution - 1u);
+    uint frame_words = resolution * resolution * layers * 2u;
+    uint base        = _draw.impostor_texel_offset + (frame.y * frames + frame.x) * frame_words + (texel.y * resolution + texel.x) * layers * 2u;
+
+    // one impostor texel covers many source texels, a coarse mip keeps the cutout from sparkling
+    uint width, height, mip_count;
+    albedo_texture.GetDimensions(0, width, height, mip_count);
+    mip = max(log2((float)max(width, 1u)) - log2((float)resolution) - 1.0f, 0.0f);
+
+    uv           = 0.0f;
+    normal_frame = float3(0.0f, 0.0f, 1.0f);
+    for (uint layer = 0; layer < layers; layer++)
+    {
+        uint geometry = impostor_texels[base + layer * 2u + 1u];
+        if ((geometry & (1u << 31)) == 0u)
+        {
+            break;
+        }
+
+        uint packed_uv = impostor_texels[base + layer * 2u];
+        float2 source  = float2(packed_uv & 0xFFFFu, packed_uv >> 16) * (1.0f / 65535.0f);
+        float2 layer_uv = _draw.impostor_uv_min + source * _draw.impostor_uv_scale;
+        float a         = albedo_texture.SampleLevel(samplers[sampler_anisotropic_wrap], layer_uv, mip).a;
+        if (a > alpha_threshold)
+        {
+            float2 o     = float2(geometry & 0xFFu, (geometry >> 8) & 0xFFu) * (2.0f / 255.0f) - 1.0f;
+            normal_frame = normalize(float3(o, max(1.0f - abs(o.x) - abs(o.y), 0.0f)));
+            uv           = layer_uv;
+            return true;
+        }
+    }
+    return false;
+}
 
 gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform, inout float3 position_world, inout float3 position_world_previous)
 {
@@ -991,6 +1075,31 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     // restore the correct normals from the current frame
     vertex.normal  = saved_normal;
     vertex.tangent = saved_tangent;
+
+    // the impostor card turns to the baked frame nearest the camera, wind is baked out so the result replaces it
+    if ((_draw.flags & draw_flag_impostor) != 0u)
+    {
+        uint frames         = _draw.impostor_layout & 0xFFu;
+        float3x3 basis      = (float3x3)transform;
+        float3 center_world = mul(float4(_draw.impostor_center, 1.0f), transform).xyz;
+        float3 axis_scale   = float3(dot(basis[0], basis[0]), dot(basis[1], basis[1]), dot(basis[2], basis[2]));
+        float3 view_local   = normalize(mul(basis, buffer_frame.camera_position - center_world) / max(axis_scale, 1e-8f));
+        uint2 frame         = impostor_nearest_frame(view_local, frames);
+        float3 direction    = impostor_frame_direction(frame, frames);
+        float3 right;
+        float3 up;
+        impostor_frame_basis(direction, right, up);
+
+        float2 offset       = (input_uv * 2.0f - 1.0f) * _draw.impostor_radius;
+        float3 card_local   = _draw.impostor_center + right * offset.x + up * offset.y;
+        position            = mul(float4(card_local, 1.0f), transform).xyz;
+        position_previous   = mul(float4(card_local, 1.0f), transform_previous).xyz;
+        vertex.normal       = normalize(mul(direction, cofactor) * orientation);
+        float3 card_tangent = mul(right, (float3x3)transform);
+        vertex.tangent      = normalize(card_tangent - vertex.normal * dot(card_tangent, vertex.normal));
+        vertex.uv_misc.xy   = float2(frame) + 0.002f + input_uv * 0.996f;
+        vertex.uv_misc.z    = -1.0f;
+    }
 
     position_world          = position;
     position_world_previous = position_previous;
