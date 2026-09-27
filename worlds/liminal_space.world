@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
-<World name="liminal_space" description="Endless waiting rooms, windowed atriums and fluorescent passages. Follow the light; the building keeps going.">
+<World name="liminal_space" description="One endless building that keeps changing: backrooms, offices, hotels, schools, parking decks, malls and pool rooms. Follow the light; the building keeps going.">
  <ConsoleVariables>
   <Variable name="r.atmosphere.mist_density" value="1.400000" />
-  <Variable name="r.vhs" value="1.000000" />
+  <Variable name="r.vhs" value="0.000000" />
   <Variable name="r.film_grain" value="0.000000" />
   <Variable name="r.chromatic_aberration" value="0.000000" />
  </ConsoleVariables>
@@ -21,8 +21,8 @@
   <Entity name="table_template" id="7734000000000000004" active="false" position="0 -80 0" rotation="0 0 0 1" scale="1 1 1">
    <prefab file="project/mcp/library/prefabs/gustav_2.prefab" />
   </Entity>
-  <Entity name="backrooms_generator" id="7734000000000000001" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="project/scripts/backrooms.lua" district_chunks="3" feature_chance="0.58" landmark_ceiling="9.6" />
+  <Entity name="liminal_generator" id="7734000000000000001" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <script file_path="project/scripts/liminal.lua" district_chunks="3" />
   </Entity>
   <Entity name="fluorescent_hum" id="7734000000000000002" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <audio_source path="project/music/ambient/fluorescent_hum.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.075" pitch="0.97" reverb_enabled="true" reverb_room_size="0.65" reverb_decay="0.45" reverb_wet="0.20" />

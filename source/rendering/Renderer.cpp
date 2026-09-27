@@ -167,6 +167,17 @@ namespace spartan
                 );
         }
 
+        // the nee pool derives radiance from the flat material color, a color texture or terrain
+        // layers would make it disagree with what a ray hit sees, those emitters stay on brdf hits
+        bool is_pooled_emitter_material(Material* material)
+        {
+            return
+                material &&
+                material->GetProperty(MaterialProperty::EmissiveFromAlbedo) > 0.0f &&
+                !material->HasTextureOfType(MaterialTextureType::Color) &&
+                material->GetProperty(MaterialProperty::IsTerrain) == 0.0f;
+        }
+
         // the occupied car's parts, their rain droplets answer its g forces
         bool is_drops_vehicle(const Entity* entity)
         {
@@ -2581,17 +2592,14 @@ namespace spartan
             }
             render_out = entity->GetComponent<Render>();
             Material* material = render_out ? render_out->GetMaterial() : nullptr;
-            if (!material || material->GetProperty(MaterialProperty::EmissiveFromAlbedo) <= 0.0f)
-            {
-                return nullptr;
-            }
-            return material;
+            return is_pooled_emitter_material(material) ? material : nullptr;
         };
 
-        // This pool represents constant radiance on non-instanced meshes.
-        // When it cannot represent an emitter, leave all authored emission
-        // to BRDF/environment sampling, rather than suppressing unsampled emitters.
-        // A partial pool would suppress the missing emitter at ray hits.
+        // This pool represents constant radiance on non-instanced meshes. Textured
+        // emitters carry no pooled flag, so ray hits keep their emission and they are
+        // simply left out. An instanced mesh shares the pooled flag with every copy the
+        // pool cannot enumerate, so one of those leaves all emission to BRDF sampling,
+        // otherwise hits on the missing copies would be suppressed.
         bool pool_representable = true;
         for (Entity* entity : render_entities())
         {
@@ -2611,8 +2619,7 @@ namespace spartan
                 continue;
             }
 
-            if (material->HasTextureOfType(MaterialTextureType::Color) ||
-                material->GetProperty(MaterialProperty::IsTerrain) != 0.0f || render->HasInstancing())
+            if (render->HasInstancing())
             {
                 pool_representable = false;
             }
@@ -2625,6 +2632,10 @@ namespace spartan
             mix_float(emitter_signature, material->GetProperty(MaterialProperty::ColorR));
             mix_float(emitter_signature, material->GetProperty(MaterialProperty::ColorG));
             mix_float(emitter_signature, material->GetProperty(MaterialProperty::ColorB));
+        }
+        if (!cvar_restir_pt_emissive_pool.GetValueAs<bool>())
+        {
+            pool_representable = false;
         }
         mix(emitter_signature, pool_representable ? 1u : 0u);
 
@@ -2654,6 +2665,18 @@ namespace spartan
         static vector<uint32_t>                 indices;
         static vector<RHI_Vertex_PosTexNorTan>  vertices;
         tris.clear();
+
+        // flickering fixtures and streaming chunks rebuild the pool many times a second, and cpu
+        // geometry is usually evicted, so restoring it per emitter per rebuild dropped frames to
+        // single digits, the local space triangles of each mesh are read once and only transformed
+        struct local_triangles
+        {
+            vector<Vector3> positions;
+            uint64_t        rebuild_seen = 0;
+        };
+        static unordered_map<uint64_t, local_triangles> geometry_cache;
+        static uint64_t rebuild_index = 0;
+        rebuild_index++;
 
         for (Entity* entity : render_entities())
         {
@@ -2686,36 +2709,52 @@ namespace spartan
                 continue;
             }
 
-            // pull lod 0 geometry, GetGeometry copies into the static vectors so the inner
-            // loop reads from contiguous memory without further indirection
-            indices.clear();
-            vertices.clear();
-            render->GetGeometry(&indices, &vertices);
-            if (indices.empty() || vertices.empty() || (indices.size() % 3u) != 0)
+            Mesh* mesh = render->GetMesh();
+            if (!mesh)
+            {
+                continue;
+            }
+            const uint64_t geometry_key = (mesh->GetObjectId() * 1099511628211ull) ^ render->GetSubMeshIndex();
+            local_triangles& local = geometry_cache[geometry_key];
+            if (local.positions.empty())
+            {
+                // lod 0 geometry, flattened to three positions per triangle, a mesh still loading
+                // comes back empty and is read again on the next rebuild
+                indices.clear();
+                vertices.clear();
+                render->GetGeometry(&indices, &vertices);
+                if (!indices.empty() && !vertices.empty() && (indices.size() % 3u) == 0)
+                {
+                    local.positions.reserve(indices.size());
+                    for (size_t i = 0; i + 2 < indices.size(); i += 3)
+                    {
+                        const uint32_t i0 = indices[i + 0];
+                        const uint32_t i1 = indices[i + 1];
+                        const uint32_t i2 = indices[i + 2];
+                        if (i0 >= vertices.size() || i1 >= vertices.size() || i2 >= vertices.size())
+                        {
+                            continue;
+                        }
+                        local.positions.emplace_back(vertices[i0].pos[0], vertices[i0].pos[1], vertices[i0].pos[2]);
+                        local.positions.emplace_back(vertices[i1].pos[0], vertices[i1].pos[1], vertices[i1].pos[2]);
+                        local.positions.emplace_back(vertices[i2].pos[0], vertices[i2].pos[1], vertices[i2].pos[2]);
+                    }
+                }
+            }
+            local.rebuild_seen = rebuild_index;
+            if (local.positions.empty())
             {
                 continue;
             }
 
             const Matrix& transform = entity->GetMatrix();
 
-            uint32_t tri_count = static_cast<uint32_t>(indices.size() / 3u);
-            for (uint32_t i = 0; i < tri_count; i++)
+            const size_t tri_count = local.positions.size() / 3u;
+            for (size_t i = 0; i < tri_count; i++)
             {
-                uint32_t i0 = indices[i * 3u + 0u];
-                uint32_t i1 = indices[i * 3u + 1u];
-                uint32_t i2 = indices[i * 3u + 2u];
-                if (i0 >= vertices.size() || i1 >= vertices.size() || i2 >= vertices.size())
-                {
-                    continue;
-                }
-
-                Vector3 p0(vertices[i0].pos[0], vertices[i0].pos[1], vertices[i0].pos[2]);
-                Vector3 p1(vertices[i1].pos[0], vertices[i1].pos[1], vertices[i1].pos[2]);
-                Vector3 p2(vertices[i2].pos[0], vertices[i2].pos[1], vertices[i2].pos[2]);
-
-                p0 = transform * p0;
-                p1 = transform * p1;
-                p2 = transform * p2;
+                const Vector3 p0 = transform * local.positions[i * 3u + 0u];
+                const Vector3 p1 = transform * local.positions[i * 3u + 1u];
+                const Vector3 p2 = transform * local.positions[i * 3u + 2u];
 
                 Vector3 e1     = p1 - p0;
                 Vector3 e2     = p2 - p0;
@@ -2742,6 +2781,11 @@ namespace spartan
             }
         }
 
+        for (auto it = geometry_cache.begin(); it != geometry_cache.end();)
+        {
+            it = it->second.rebuild_seen == rebuild_index ? next(it) : geometry_cache.erase(it);
+        }
+
         // build the prefix sum over picking weight, the last entry's cdf is the total weight
         // and the shader normalizes a uniform xi against it to area sample a triangle
         float total_weight = 0.0f;
@@ -2756,11 +2800,15 @@ namespace spartan
         {
             EnsureEmissiveTriangleCapacity(static_cast<uint32_t>(tris.size()));
             emissive_triangles_buffer = GetBuffer(Renderer_Buffer::EmissiveTriangles);
-            emissive_triangles_buffer->ResetOffset();
-            emissive_triangles_buffer->Update(
-                tris.data(),
-                static_cast<uint32_t>(tris.size() * sizeof(Sb_EmissiveTriangle))
-            );
+            const uint64_t upload_size = static_cast<uint64_t>(tris.size()) * sizeof(Sb_EmissiveTriangle);
+            if (RHI_Device::IsRecording())
+            {
+                RHI_CommandList::UpdateBuffer(emissive_triangles_buffer, 0, upload_size, tris.data(), false);
+            }
+            else
+            {
+                emissive_triangles_buffer->UploadSubRegion(tris.data(), 0, upload_size);
+            }
             pool_count = static_cast<uint32_t>(tris.size());
         }
         pool_signature = emitter_signature;
@@ -3290,6 +3338,7 @@ namespace spartan
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsFoliage)                 ? (1U << 21) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsRoadSurface)             ? (1U << 22) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsRoadPaint)               ? (1U << 23) : 0;
+                properties[count].flags |= is_pooled_emitter_material(material)                                ? (1U << 24) : 0;
                 // keep in sync with Surface struct in common_structs.hlsl
             }
     

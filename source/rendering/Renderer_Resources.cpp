@@ -229,10 +229,11 @@ namespace spartan
         );
 
         // Initial allocation; larger scenes grow the pool instead of disabling emissive NEE.
-        // host visible because BuildEmissiveTriangleNeePool fills it with RHI_Buffer::Update every frame
+        // device local, every ReSTIR vertex binary searches it, which over host memory cost
+        // around 100 ms a frame once a world had tens of thousands of emissive triangles
         at(buffers, Renderer_Buffer::EmissiveTriangles) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_EmissiveTriangle)),
-            restir_emissive_tri_initial_capacity, nullptr, true, "emissive_triangles"
+            restir_emissive_tri_initial_capacity, nullptr, false, "emissive_triangles"
         );
 
         // three concatenated tileable pairing tables, uploaded once when the restir reservoirs initialize
@@ -592,7 +593,7 @@ namespace spartan
         while (capacity < count)
             capacity *= 2;
         buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, sizeof(Sb_EmissiveTriangle),
-            capacity, nullptr, true, "emissive_triangles");
+            capacity, nullptr, false, "emissive_triangles");
         SP_LOG_INFO("ReSTIR emissive sampler: %u triangles, capacity %u", count, capacity);
     }
 

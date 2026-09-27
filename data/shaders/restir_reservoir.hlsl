@@ -1377,7 +1377,7 @@ float3 probe_emission(uint instance_index, uint primitive_index, float2 hit_bary
     uint material_index = geo.material_index;
     MaterialParameters mat = material_parameters[material_index];
     if ((!mat.emissive_from_albedo() && !mat.has_texture_emissive()) ||
-        (mat.emissive_from_albedo() && is_emtri_pool_active()))
+        (mat.is_pooled_emitter() && is_emtri_pool_active()))
         return 0.0f;
 
     // This is part of the radiance estimator, not just a sampling weight. Using

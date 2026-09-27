@@ -188,10 +188,10 @@ PathSurface reconstruct_path_surface(float ray_t, uint instance_index, uint prim
     }
     if (mat.emissive_from_albedo())
     {
-        // the nee pool holds authored emitters only, so zero them here while it is active to keep
-        // the two strategies from double counting, texture emitters stay on this path because the
-        // pool derives radiance from the flat material color and cannot evaluate their texture
-        emission = is_emtri_pool_active()
+        // pooled emitters are sampled by the nee pool, zero them here while it is active to keep
+        // the two strategies from double counting, color textured emitters are not in the pool
+        // because it derives radiance from the flat material color, so they stay on this path
+        emission = mat.is_pooled_emitter() && is_emtri_pool_active()
             ? float3(0.0f, 0.0f, 0.0f)
             : albedo * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
     }

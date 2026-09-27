@@ -89,6 +89,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_restir_pt;
     extern TConsoleVar<float> cvar_restir_pt_scale;
     extern TConsoleVar<float> cvar_restir_pt_direct;
+    extern TConsoleVar<float> cvar_restir_pt_emissive_pool;
     extern TConsoleVar<float> cvar_restir_pt_reference;
     extern TConsoleVar<float> cvar_motion_blur;
     extern TConsoleVar<float> cvar_depth_of_field;

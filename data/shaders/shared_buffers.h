@@ -338,6 +338,8 @@ struct MaterialParameters
     bool is_emissive_srgb()      { return (flags & (1 << 18)) != 0; }
     bool is_motion_blur_radial() { return (flags & (1 << 19)) != 0; }
     bool is_skid_mark()          { return (flags & (1 << 20)) != 0; }
+    // a flat color emitter the emissive triangle pool samples directly, its hits must not add emission again
+    bool is_pooled_emitter()     { return (flags & (1 << 24)) != 0; }
 
     // terrain_flags bits, see TerrainLayer.h
     bool terrain_layer_biplanar() { return (terrain_flags & (1 << 0)) != 0; }

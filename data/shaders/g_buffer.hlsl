@@ -572,6 +572,31 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         // foam reads as whitewater in the transparency pass, keep its roughness moderate here so its reflection stays bright enough to light the foam, a full rough surface collapses the reflection to black
         roughness  = lerp(roughness, 0.5f, foam);
     }
+    // enclosed water such as pools has no fft ocean, crossing wavelets keep the surface alive
+    else if (surface.is_water() && normal.y > 0.7f)
+    {
+        const float4 wavelets[5] =
+        {
+            float4( 0.82f,  0.57f, 3.1f, 1.9f),
+            float4(-0.47f,  0.88f, 4.7f, 2.3f),
+            float4( 0.13f, -0.99f, 6.9f, 2.9f),
+            float4(-0.91f, -0.41f, 9.8f, 3.6f),
+            float4( 0.64f, -0.77f, 14.3f, 4.4f)
+        };
+        float time  = fmod((float)buffer_frame.time, 3600.0f);
+        float2 slope = 0.0f;
+        [unroll]
+        for (uint i = 0; i < 5; i++)
+        {
+            float2 direction = wavelets[i].xy;
+            float k          = wavelets[i].z;
+            float amplitude  = 0.018f / k;
+            slope           += direction * k * amplitude * cos(dot(direction, position_world.xz) * k + time * wavelets[i].w);
+        }
+        // far wavelets alias into sparkle, let them settle into a flat mirror
+        slope  *= saturate(1.0f - distance / 80.0f);
+        normal  = normalize(normal + float3(-slope.x, 0.0f, -slope.y));
+    }
 
     if (material.flake_strength > 0.0f)
     {

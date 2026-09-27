@@ -1592,7 +1592,8 @@ namespace spartan
             "GetBodyType",                  &Physics::GetBodyType,
             "SetBodyType",                  &Physics::SetBodyType,
             "IsStatic",                     &Physics::IsStatic,
-            "SetStatic",                    &Physics::SetStatic
+            "SetStatic",                    &Physics::SetStatic,
+            "SetBodyTransform",             [](Physics& physics, const Vector3& position, const Quaternion& rotation) { physics.SetBodyTransform(position, rotation, false); }
             );
 
     }

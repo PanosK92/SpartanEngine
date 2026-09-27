@@ -785,6 +785,21 @@ namespace spartan
             InputTable["GetKeyUp"]       = &Input::GetKeyUp;
             InputTable["GetMouseDelta"]  = &Input::GetMouseDelta;
 
+            sol::table ConsoleTable = lua_state.create_named_table("Console");
+            ConsoleTable["Set"] = [](const std::string& name, const std::string& value) -> bool
+            {
+                return ConsoleRegistry::Get().SetValueFromString(name, value);
+            };
+            ConsoleTable["Get"] = [](const std::string& name) -> sol::object
+            {
+                optional<string> value = ConsoleRegistry::Get().GetValueAsString(name);
+                if (!value)
+                {
+                    return sol::nil;
+                }
+                return sol::make_object(lua_state, *value);
+            };
+
             lua_state.new_usertype<BoundingBox>("BoundingBox",
                 sol::call_constructor,      sol::constructors<BoundingBox(), BoundingBox(Vector3, Vector3)>(),
 
