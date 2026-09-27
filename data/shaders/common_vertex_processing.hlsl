@@ -950,7 +950,7 @@ bool impostor_resolve(float2 uv_frames, Texture2D albedo_texture, float alpha_th
     return false;
 }
 
-gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform, inout float3 position_world, inout float3 position_world_previous)
+gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform, inout float3 position_world, inout float3 position_world_previous, inout float3 position_relative, inout float3 position_relative_previous)
 {
     MaterialParameters material = GetMaterial();
     Surface surface;
@@ -1036,6 +1036,17 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         position_local_previous = geometry_vertices[input.vertex_id + _draw.previous_vertex_offset].position;
     float3 position_previous = mul(float4(position_local_previous, 1.0f), transform_previous).xyz;
 
+    // the same vertex relative to the camera, subtracting two nearby floats is exact so the translation
+    // keeps full precision, while the world space result above is rounded to the float spacing at km scale
+    matrix transform_relative          = transform;
+    matrix transform_relative_previous = transform_previous;
+    transform_relative[3].xyz          -= buffer_frame.camera_position;
+    transform_relative_previous[3].xyz -= buffer_frame.camera_position_previous;
+    position_relative                  = mul(position_local, transform_relative).xyz;
+    position_relative_previous         = mul(float4(position_local_previous, 1.0f), transform_relative_previous).xyz;
+    const float3 position_unmodified          = position;
+    const float3 position_unmodified_previous = position_previous;
+
     // clipmap recentering is not water motion
     if (surface.is_water())
     {
@@ -1101,21 +1112,33 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         vertex.uv_misc.z    = -1.0f;
     }
 
+    // wind, water and impostor edits are small offsets, carry them over without touching the precise part
+    position_relative          += position - position_unmodified;
+    position_relative_previous += position_previous - position_unmodified_previous;
+
     position_world          = position;
     position_world_previous = position_previous;
     return vertex;
 }
 
-gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex, float3 position, float3 position_previous, uint view_id = 0)
+gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform, inout float3 position_world, inout float3 position_world_previous)
+{
+    float3 position_relative          = 0.0f;
+    float3 position_relative_previous = 0.0f;
+    return transform_to_world_space(input, instance_id, transform, position_world, position_world_previous, position_relative, position_relative_previous);
+}
+
+// positions are relative to camera_position and camera_position_previous, see transform_to_world_space
+gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex, float3 position_relative, float3 position_relative_previous, uint view_id = 0)
 {
     vertex.view_id = view_id;
 
     // select per-eye matrices when rendering in multiview stereo
-    matrix vp      = (buffer_frame.is_multiview && view_id == 1) ? buffer_frame.view_projection_right           : buffer_frame.view_projection;
-    matrix vp_prev = (buffer_frame.is_multiview && view_id == 1) ? buffer_frame.view_projection_previous_right  : buffer_frame.view_projection_previous;
+    matrix vp      = (buffer_frame.is_multiview && view_id == 1) ? buffer_frame.view_projection_relative_right          : buffer_frame.view_projection_relative;
+    matrix vp_prev = (buffer_frame.is_multiview && view_id == 1) ? buffer_frame.view_projection_previous_relative_right : buffer_frame.view_projection_previous_relative;
 
-    vertex.position          = mul(float4(position, 1.0f), vp);
-    vertex.position_previous = mul(float4(position_previous, 1.0f), vp_prev);
-    
+    vertex.position          = mul(float4(position_relative, 1.0f), vp);
+    vertex.position_previous = mul(float4(position_relative_previous, 1.0f), vp_prev);
+
     return vertex;
 }

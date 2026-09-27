@@ -258,7 +258,14 @@ namespace spartan::math
 
         static Matrix CreateLookAtLH(const Vector3& position, const Vector3& target, const Vector3& up)
         {
-            const Vector3 axis_z = Vector3::Normalize(target - position);
+            return CreateLookToLH(position, target - position, up);
+        }
+
+        // prefer this over CreateLookAtLH far from the origin, position + direction rounds to the float spacing
+        // there (~0.5 mm at 5 km) and the recovered direction wobbles as the camera moves
+        static Matrix CreateLookToLH(const Vector3& position, const Vector3& direction, const Vector3& up)
+        {
+            const Vector3 axis_z = Vector3::Normalize(direction);
             const Vector3 axis_x = Vector3::Normalize(Vector3::Cross(up, axis_z));
             const Vector3 axis_y = Vector3::Cross(axis_z, axis_x);
 

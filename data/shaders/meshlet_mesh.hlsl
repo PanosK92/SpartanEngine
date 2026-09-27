@@ -108,11 +108,13 @@ void main_ms(
         uint global_vertex_id = local_vertex_id + gs_draw.lod_vertex_offset;
         Vertex_PosUvNorTan input = pull_vertex(global_vertex_id, gs_mi.instance_index, gs_draw.instance_offset);
 
-        float3 position_world          = 0.0f;
-        float3 position_world_previous = 0.0f;
-        gbuffer_vertex vertex          = transform_to_world_space(input, gs_mi.instance_index, gs_draw.transform, position_world, position_world_previous);
-        vertex.material_index          = gs_draw.material_index;
-        gbuffer_vertex clipped         = transform_to_clip_space(vertex, position_world, position_world_previous, 0);
+        float3 position_world             = 0.0f;
+        float3 position_world_previous    = 0.0f;
+        float3 position_relative          = 0.0f;
+        float3 position_relative_previous = 0.0f;
+        gbuffer_vertex vertex             = transform_to_world_space(input, gs_mi.instance_index, gs_draw.transform, position_world, position_world_previous, position_relative, position_relative_previous);
+        vertex.material_index             = gs_draw.material_index;
+        gbuffer_vertex clipped            = transform_to_clip_space(vertex, position_relative, position_relative_previous, 0);
         out_vertices[v_index]          = pack_gbuffer_indirect(clipped, gs_mi.draw_index);
         gs_world[v_index]              = position_world;
         gs_ndc_w[v_index] = float3(clipped.position.xy / clipped.position.w, clipped.position.w);

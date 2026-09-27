@@ -44,6 +44,7 @@ namespace spartan
         bool reset_deadline = true;
         bool has_sample     = false;
         bool vsync_enabled  = false;
+        double fixed_delta_ms = 0.0;
 
         float get_monitor_fps()
         {
@@ -78,6 +79,17 @@ namespace spartan
         const Clock::time_point pacing_start = Clock::now();
         Clock::time_point frame_end          = pacing_start;
         pacing_time_ms                      = 0.0;
+
+        if (fixed_delta_ms > 0.0)
+        {
+            delta_time_ms          = fixed_delta_ms;
+            time_ms               += fixed_delta_ms;
+            delta_time_smoothed_ms = fixed_delta_ms;
+            has_sample             = true;
+            last_tick_time         = frame_end;
+            reset_deadline         = true;
+            return;
+        }
 
         // the maximum value is the existing UI/settings sentinel for unlocked
         if (fps_limit < fps_max)
@@ -192,6 +204,18 @@ namespace spartan
         {
             SetFpsLimit(fps_limit_previous);
         }
+    }
+
+    void Timer::SetFixedDeltaSec(double seconds)
+    {
+        fixed_delta_ms = isfinite(seconds) && seconds > 0.0 ? seconds * 1000.0 : 0.0;
+        last_tick_time = Clock::now();
+        reset_deadline = true;
+    }
+
+    double Timer::GetFixedDeltaSec()
+    {
+        return fixed_delta_ms / 1000.0;
     }
 
     double Timer::GetTimeMs()

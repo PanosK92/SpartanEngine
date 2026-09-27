@@ -220,11 +220,13 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     _draw = draw_data[buffer_pass.draw_index];
 #endif
 
-    float3 position_world          = 0.0f;
-    float3 position_world_previous = 0.0f;
-    gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
-    vertex.material_index          = _draw.material_index;
-    vertex = transform_to_clip_space(vertex, position_world, position_world_previous, view_id);
+    float3 position_world             = 0.0f;
+    float3 position_world_previous    = 0.0f;
+    float3 position_relative          = 0.0f;
+    float3 position_relative_previous = 0.0f;
+    gbuffer_vertex vertex             = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous, position_relative, position_relative_previous);
+    vertex.material_index             = _draw.material_index;
+    vertex = transform_to_clip_space(vertex, position_relative, position_relative_previous, view_id);
 #if defined(GRASS_SPECIALIZED) && defined(GRASS_INSTANCED)
     return pack_gbuffer_scatter(vertex);
 #elif defined(INDIRECT_DRAW)

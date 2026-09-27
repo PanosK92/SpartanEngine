@@ -52,9 +52,11 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     _draw = draw_data[buffer_pass.draw_index];
 #endif
 
-    float3 position_world          = 0.0f;
-    float3 position_world_previous = 0.0f;
-    gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
+    float3 position_world             = 0.0f;
+    float3 position_world_previous    = 0.0f;
+    float3 position_relative          = 0.0f;
+    float3 position_relative_previous = 0.0f;
+    gbuffer_vertex vertex             = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous, position_relative, position_relative_previous);
     vertex.material_index          = _draw.material_index;
 #ifdef INDIRECT_DRAW
     if ((_draw.flags & draw_flag_impostor) != 0u)
@@ -62,7 +64,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
         vertex.uv_misc.z = -1.0f - (float)mi.draw_index;
     }
 #endif
-    return transform_to_clip_space(vertex, position_world, position_world_previous, view_id);
+    return transform_to_clip_space(vertex, position_relative, position_relative_previous, view_id);
 }
 
 #ifdef ALPHA_TEST_INDIRECT

@@ -116,6 +116,16 @@ namespace spartan
         void SetExternallyControlled(bool controlled) { m_externally_controlled = controlled; }
         bool IsExternallyControlled() const { return m_externally_controlled; }
 
+        // a timeline drives the car for a shot, the driver overlays and controls cheat sheet stay hidden
+        void SetCinematic(bool cinematic) { m_cinematic = cinematic; }
+        bool IsCinematic() const { return m_cinematic; }
+
+        // wheelbase in meters, full lock road wheel angle in radians and the steering input exponent, for drivers that steer by geometry
+        bool GetSteeringGeometry(float& wheelbase, float& max_steer_angle, float& linearity) const;
+
+        // teleports the car to rest with its wheels on the given road surface point, used to stage a take
+        void PlaceAt(const math::Vector3& ground_position, const math::Quaternion& rotation);
+
         // view control
         static bool IsCameraControlled(Entity* camera);
         void CycleView();
@@ -195,6 +205,7 @@ namespace spartan
         bool              m_camera_follows  = false;    // auto-enter car when play mode starts
         bool              m_was_playing     = false;    // tracks play mode state for auto-enter
         bool              m_externally_controlled  = false;    // external control owns vehicle input and interaction
+        bool              m_cinematic       = false;
         CarView           m_current_view    = CarView::Chase;
         CarVisualizationPreset m_visualization_preset = CarVisualizationPreset::Full;
         bool              m_skeleton_show_collision = false;

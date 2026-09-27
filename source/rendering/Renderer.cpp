@@ -123,6 +123,10 @@ namespace spartan
         screenshot_request screenshot;
         shared_ptr<RHI_Texture> screenshot_ui_target;
         uint32_t screenshot_index = 0;
+        atomic<uint32_t> screenshot_saves_in_flight = 0;
+        atomic<uint32_t> screenshot_save_failures   = 0;
+        bool clean_capture       = false;
+        bool camera_cut_pending  = false;
         Entity* secondary_camera_request = nullptr;
         Entity* secondary_render_root_request = nullptr;
         Entity* secondary_render_root_active = nullptr;
@@ -468,8 +472,14 @@ namespace spartan
                 return;
             }
 
+            screenshot_saves_in_flight++;
             ThreadPool::AddTask([request, sdr_staging, width, height, channel_count, bits_per_channel]()
             {
+                struct in_flight_guard
+                {
+                    ~in_flight_guard() { screenshot_saves_in_flight--; }
+                } guard;
+
                 void* sdr_data = sdr_staging->GetMappedData();
 
                 // imgui blending leaves destination alpha at zero under chrome, a window capture is always opaque
@@ -500,6 +510,12 @@ namespace spartan
                         FileSystem::Delete(request.png_path);
                     }
                     FileSystem::Rename(temp_file_path, request.png_path);
+                    if (!FileSystem::Exists(request.png_path))
+                    {
+                        screenshot_save_failures++;
+                        SP_LOG_ERROR("Screenshot '%s' was not written, is the disk full?", request.png_path.c_str());
+                        return;
+                    }
                     SP_LOG_INFO("Screenshot saved as '%s'", request.png_path.c_str());
                     return;
                 }
@@ -2056,6 +2072,14 @@ namespace spartan
         m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
         m_cb_frame_cpu.view_projection_inverted = Matrix::Invert(m_cb_frame_cpu.view_projection);
 
+        // the camera view translates by -camera_position, so relative to it only the rotation is left
+        Matrix view_rotation = m_cb_frame_cpu.view;
+        view_rotation.m30    = 0.0f;
+        view_rotation.m31    = 0.0f;
+        view_rotation.m32    = 0.0f;
+        m_cb_frame_cpu.view_projection_previous_relative = m_cb_frame_cpu.view_projection_relative;
+        m_cb_frame_cpu.view_projection_relative          = view_rotation * m_cb_frame_cpu.projection;
+
         if (Camera* camera = World::GetCamera())
         {
             m_cb_frame_cpu.view_projection_previous_unjittered = m_cb_frame_cpu.view_projection_unjittered;
@@ -2330,6 +2354,21 @@ namespace spartan
             m_cb_frame_cpu.is_multiview                              = 1;
 
             // record per-eye view projection so next frame's right-eye history exists, mono path tracks left eye via shared view_projection
+            // eye views are not built around camera_position, fold it in with doubles so the km scale terms cancel exactly
+            auto relative_to = [](const Matrix& m, const Vector3& origin) -> Matrix
+            {
+                Matrix result = m;
+                result.m30 = static_cast<float>(static_cast<double>(origin.x) * m.m00 + static_cast<double>(origin.y) * m.m10 + static_cast<double>(origin.z) * m.m20 + m.m30);
+                result.m31 = static_cast<float>(static_cast<double>(origin.x) * m.m01 + static_cast<double>(origin.y) * m.m11 + static_cast<double>(origin.z) * m.m21 + m.m31);
+                result.m32 = static_cast<float>(static_cast<double>(origin.x) * m.m02 + static_cast<double>(origin.y) * m.m12 + static_cast<double>(origin.z) * m.m22 + m.m32);
+                result.m33 = static_cast<float>(static_cast<double>(origin.x) * m.m03 + static_cast<double>(origin.y) * m.m13 + static_cast<double>(origin.z) * m.m23 + m.m33);
+                return result;
+            };
+            m_cb_frame_cpu.view_projection_relative                = relative_to(m_cb_frame_cpu.view_projection, m_cb_frame_cpu.camera_position);
+            m_cb_frame_cpu.view_projection_previous_relative       = relative_to(m_cb_frame_cpu.view_projection_previous_unjittered, m_cb_frame_cpu.camera_position_previous);
+            m_cb_frame_cpu.view_projection_relative_right          = relative_to(m_cb_frame_cpu.view_projection_right, m_cb_frame_cpu.camera_position);
+            m_cb_frame_cpu.view_projection_previous_relative_right = relative_to(m_cb_frame_cpu.view_projection_previous_right, m_cb_frame_cpu.camera_position_previous);
+
             m_view_projection_previous_right           = m_cb_frame_cpu.view_projection_right;
             m_view_projection_previous_unjittered_left = m_cb_frame_cpu.view_projection;
         }
@@ -2470,7 +2509,16 @@ namespace spartan
         // a secondary view renders a different camera into the primary frame, keeping the
         // primary history here means every pixel reports a huge velocity, which reads as
         // motion blur and taa smear over the whole preview
-        if (secondary_render_root_active)
+        const bool camera_cut = camera_cut_pending;
+        camera_cut_pending    = false;
+        if (camera_cut)
+        {
+            m_taau_reset_history = true;
+            m_pass_state.ssao_history.Reset();
+            m_pass_state.fog_history.Reset();
+            m_pass_state.restir_history_invalid = true;
+        }
+        if (secondary_render_root_active || camera_cut)
         {
             m_cb_frame_cpu.view_previous                       = m_cb_frame_cpu.view;
             m_cb_frame_cpu.projection_previous                 = m_cb_frame_cpu.projection;
@@ -2478,6 +2526,8 @@ namespace spartan
             m_cb_frame_cpu.view_projection_previous_unjittered = m_cb_frame_cpu.view_projection_unjittered;
             m_cb_frame_cpu.camera_position_previous            = m_cb_frame_cpu.camera_position;
             m_cb_frame_cpu.taa_jitter_previous                 = m_cb_frame_cpu.taa_jitter_current;
+            m_cb_frame_cpu.view_projection_previous_relative       = m_cb_frame_cpu.view_projection_relative;
+            m_cb_frame_cpu.view_projection_previous_relative_right = m_cb_frame_cpu.view_projection_relative_right;
         }
 
         // emissive triangle nee pool, must precede the cb upload because it writes the count
@@ -5029,6 +5079,26 @@ namespace spartan
         return true;
     }
 
+    uint32_t Renderer::GetScreenshotSavesInFlight()
+    {
+        return screenshot_saves_in_flight.load();
+    }
+
+    uint32_t Renderer::GetScreenshotSaveFailures()
+    {
+        return screenshot_save_failures.load();
+    }
+
+    void Renderer::SetCleanCapture(bool enabled)
+    {
+        clean_capture = enabled;
+    }
+
+    void Renderer::NotifyCameraCut()
+    {
+        camera_cut_pending = true;
+    }
+
     bool Renderer::ScreenshotSecondary(
         const string& file_path
     )
@@ -5142,7 +5212,7 @@ namespace spartan
                 RHI_CommandList::Copy(tex_in, tex_sdr, false);
             }
 
-            if (!secondary_render_root_active)
+            if (!secondary_render_root_active && !clean_capture)
             {
                 Pass_PostProcess_EditorOverlays(tex_sdr);
                 Pass_Text(tex_sdr, false);

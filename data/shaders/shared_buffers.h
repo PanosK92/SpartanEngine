@@ -197,6 +197,13 @@ struct FrameBufferData
     SHARED_FLOAT4 rain_car_micro;
     SHARED_FLOAT4 rain_car_faces[6];
 
+    // clip transforms for positions relative to camera_position (current) and camera_position_previous (previous)
+    // world space float math loses ~0.5 mm a few km from the origin and the jitter reshuffles that rounding every frame
+    SHARED_MATRIX view_projection_relative;
+    SHARED_MATRIX view_projection_previous_relative;
+    SHARED_MATRIX view_projection_relative_right;
+    SHARED_MATRIX view_projection_previous_relative_right;
+
 #ifdef __cplusplus
     void set_bit(const bool set, const uint32_t bit)
     {

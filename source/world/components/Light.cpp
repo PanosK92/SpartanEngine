@@ -883,12 +883,12 @@ namespace spartan
         else if (m_light_type == LightType::Spot)
         {
             // use the entity's own up vector so a forward of world up or down does not collapse the cross product
-            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + GetEntity()->GetForward(), GetEntity()->GetUp());
+            m_matrix_view[0] = Matrix::CreateLookToLH(position, GetEntity()->GetForward(), GetEntity()->GetUp());
         }
         else if (m_light_type == LightType::Area)
         {
             // use the entity's own up vector so a forward of world up or down does not collapse the cross product
-            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + GetEntity()->GetForward(), GetEntity()->GetUp());
+            m_matrix_view[0] = Matrix::CreateLookToLH(position, GetEntity()->GetForward(), GetEntity()->GetUp());
         }
         else if (m_light_type == LightType::Point)
         {

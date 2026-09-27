@@ -83,6 +83,9 @@ namespace spartan
         // discard fps motion when gameplay replaces the camera pose
         void ResetFpsMotion();
 
+        // re-derives the matrices after the entity was moved outside the entity tick, e.g. by a timeline after physics
+        void RefreshMatrices();
+
         // matrices
         const math::Matrix& GetViewMatrix() const           { return m_view; }
         const math::Matrix& GetProjectionMatrix() const     { return m_projection; }

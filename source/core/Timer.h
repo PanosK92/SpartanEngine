@@ -31,6 +31,12 @@ namespace spartan
         static FpsLimitType GetFpsLimitType();
         static void OnVsyncToggled(const bool enabled);
 
+        // Offline capture: every frame reports exactly this delta and skips pacing, so
+        // simulated time advances by one video frame no matter how long a frame takes.
+        // Zero or negative returns to real time.
+        static void SetFixedDeltaSec(double seconds);
+        static double GetFixedDeltaSec();
+
         // Frame-boundary snapshots in a monotonic clock domain. Raw deltas include
         // pacing and stalls; smoothed deltas are for display, not simulation.
         static double GetTimeMs();

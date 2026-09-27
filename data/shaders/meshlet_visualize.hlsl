@@ -48,10 +48,12 @@ vis_vertex main_vs(uint vertex_id : SV_VertexID, uint view_id : SV_ViewID)
     Vertex_PosUvNorTan input = pull_visible_triangle_vertex(vertex_id, mi);
     uint instance_id         = mi.instance_index;
 
-    float3 position_world          = 0.0f;
-    float3 position_world_previous = 0.0f;
-    gbuffer_vertex base            = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
-    base                           = transform_to_clip_space(base, position_world, position_world_previous, view_id);
+    float3 position_world             = 0.0f;
+    float3 position_world_previous    = 0.0f;
+    float3 position_relative          = 0.0f;
+    float3 position_relative_previous = 0.0f;
+    gbuffer_vertex base               = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous, position_relative, position_relative_previous);
+    base                              = transform_to_clip_space(base, position_relative, position_relative_previous, view_id);
 
     vis_vertex o;
     o.position      = base.position;

@@ -62,6 +62,7 @@ namespace spartan
         // World
         WorldUnloading,                // world is about to drop the resource cache
         WorldLoaded,                   // a world finished loading and entities are ready
+        WorldTicked,                   // entities and physics have ticked for this frame, rendering has not started
         // Max
         Max
     };

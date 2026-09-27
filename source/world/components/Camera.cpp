@@ -232,6 +232,17 @@ namespace spartan
         ComputeMatrices();
     }
 
+    void Camera::RefreshMatrices()
+    {
+        const Matrix& current_matrix = GetEntity()->GetMatrix();
+        if (m_matrix_previous != current_matrix)
+        {
+            m_matrix_previous = current_matrix;
+            SetFlag(CameraFlags::IsDirty, true);
+        }
+        ComputeMatrices();
+    }
+
     void Camera::Save(pugi::xml_node& node)
     {
         node.append_attribute("aperture")      = m_aperture;
@@ -1676,7 +1687,7 @@ namespace spartan
         Vector3 up       = Vector3(m.m10, m.m11, m.m12).Normalized();
 
         // compute view matrix
-        return Matrix::CreateLookAtLH(position, position + forward, up);
+        return Matrix::CreateLookToLH(position, forward, up);
     }
 
     Matrix Camera::ComputeProjection(const float near_plane, const float far_plane)

@@ -2491,6 +2491,44 @@ namespace spartan
         m_chase_camera = {};
     }
 
+    bool Car::GetSteeringGeometry(float& wheelbase, float& max_steer_angle, float& linearity) const
+    {
+        Physics* physics = m_vehicle_entity ? m_vehicle_entity->GetComponent<Physics>() : nullptr;
+        const ::car::Simulation* simulation = physics ? physics->GetVehicleSimulation() : nullptr;
+        if (!simulation)
+        {
+            return false;
+        }
+
+        const ::car::car_preset& spec = simulation->get_spec();
+        wheelbase       = spec.wheelbase;
+        max_steer_angle = spec.max_steer_angle;
+        linearity       = spec.steering_linearity;
+        return true;
+    }
+
+    void Car::PlaceAt(const math::Vector3& ground_position, const math::Quaternion& rotation)
+    {
+        if (!m_vehicle_entity)
+        {
+            return;
+        }
+
+        math::Vector3 position = ground_position;
+        position.y += (m_definition ? get_car_lower_extent(m_definition->performance) : 0.6f) + 0.05f;
+
+        m_haptic_initialized = false;
+        if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
+        {
+            physics->SetBodyTransform(position, rotation);
+            physics->SetLinearVelocity(math::Vector3::Zero);
+            physics->SetAngularVelocity(math::Vector3::Zero);
+        }
+        m_vehicle_entity->SetPosition(position);
+        m_vehicle_entity->SetRotation(rotation);
+        m_chase_camera = {};
+    }
+
     void Car::SummonToPlayer()
     {
         if (!m_vehicle_entity || m_is_occupied)
@@ -3513,7 +3551,7 @@ namespace spartan
         TickSummon();
         TickVisualization();
 
-        if (m_is_occupied)
+        if (m_is_occupied && !m_cinematic)
         {
             Physics* hud_physics = m_vehicle_entity ? m_vehicle_entity->GetComponent<Physics>() : nullptr;
             car_hud::draw_driver_hud(hud_physics, !m_show_telemetry);
@@ -3524,7 +3562,7 @@ namespace spartan
         }
 
         // osd controls cheat sheet, top left as tidy rows, each row reads action then keyboard or mouse then gamepad
-        if (m_is_occupied)
+        if (m_is_occupied && !m_cinematic)
         {
             Renderer::DrawString(
                 "CONTROLS   key / mouse  >  gamepad\n"

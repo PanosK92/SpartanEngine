@@ -239,6 +239,14 @@ namespace spartan
         bool ScreenshotSecondary(
             const std::string& file_path
         );
+        // png encodes still running on the thread pool, a frame sequence waits on this so staging buffers cannot pile up
+        uint32_t GetScreenshotSavesInFlight();
+        // screenshots whose file never appeared on disk since startup, a frame sequence compares this before and after
+        uint32_t GetScreenshotSaveFailures();
+        // screenshots skip text and editor overlays, for cinematic frame sequences
+        void SetCleanCapture(bool enabled);
+        // the next frame is a hard cut, temporal history and motion vectors must not bridge it
+        void NotifyCameraCut();
         // with r.screenshot_ui set, the editor records its final ui frame into this target, null when no such capture is pending
         RHI_Texture* GetUiScreenshotTarget(uint32_t width, uint32_t height);
         void SetUiScreenshotRecorded();

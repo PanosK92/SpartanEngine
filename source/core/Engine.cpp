@@ -180,6 +180,7 @@ namespace spartan
         Input::Tick();
         PhysicsWorld::Tick();
         World::Tick();
+        SP_FIRE_EVENT(EventType::WorldTicked);
         PhysicsWorld::DrawDebugVisualization();
         Xr::Tick();
         Renderer::Tick();

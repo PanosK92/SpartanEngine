@@ -2198,19 +2198,20 @@ register_tool(
   { annotations: edit_tool, outputSchema: output_schemas.camera_snapshot },
 );
 
-register_tool(server, "sequencer_get", "Read the sequencer state: duration, loop, playback time, the sorted list of camera cut events, and the spline_events track (each with start_time, end_time and the follower entity driven along its spline during that window).", {}, "sequencer_get", {
+register_tool(server, "sequencer_get", "Read the sequencer state: duration, loop, playback time, preview flag, the sorted camera shots (with rig fields when animated), the spline_events track, the drive_events track (each with its speed keys and a live autopilot readout: staged, active, distance, speed_kmh, target_kmh, lateral_error, throttle, brake, steering) and the render status (active, frames_written, frames_total, directory, last_error).", {}, "sequencer_get", {
   annotations: read_only,
 });
 
 register_tool(
   server,
   "sequencer_set",
-  "Set sequencer duration in seconds, loop flag, playhead time, or widget visibility. Only the arguments you pass change.",
+  "Set sequencer duration in seconds, loop flag, playhead time, widget visibility, or preview. preview true keeps the shot under the playhead driving the render camera while paused, so camera shots can be framed with sequencer_set time + screenshot_take. Only the arguments you pass change.",
   {
     duration: z.number().min(1).max(3600).optional(),
     loop: z.boolean().optional(),
     time: z.number().min(0).optional(),
     visible: z.boolean().optional(),
+    preview: z.boolean().optional(),
   },
   "sequencer_set",
   { annotations: edit_tool },
@@ -2219,7 +2220,7 @@ register_tool(
 register_tool(
   server,
   "sequencer_playback",
-  "Control sequencer playback. While playing, the event under the playhead drives the render camera.",
+  "Control sequencer playback. While playing, the event under the playhead drives the render camera. In play mode, play stages every drive event car at its start pose; stop rewinds and hands the cars back.",
   {
     action: z.enum(["play", "pause", "stop"]),
   },
@@ -2227,14 +2228,40 @@ register_tool(
   { annotations: edit_tool },
 );
 
+const sequencer_shot_schema = {
+  camera: z.union([z.string(), z.number().int()]).optional().describe("camera entity id or name, omit for animated shots to use the shared sequencer_camera (created on demand, copies the live camera's lens and exposure)"),
+  target: z.union([z.string(), z.number().int()]).optional().describe("entity to look at; with a target the look points are offsets in the target's local space. 'none' clears"),
+  rig: z.boolean().optional().describe("animated shot, turned on automatically by any motion argument"),
+  space: z.enum(["world", "anchor", "heading"]).optional().describe("world: fixed world positions. anchor: rigidly mounted on the anchor, rolls and pitches with it (bumper, wheel, hood cams). heading: follows the anchor's position and yaw but stays level (camera car, tracking and orbit shots)"),
+  anchor: z.union([z.string(), z.number().int()]).optional().describe("entity the shot space follows, a car prefab resolves to its physics root. In anchor space +z is forward, +x right, +y up"),
+  position_start: vector3.optional().describe("camera position at the shot start, in the shot space"),
+  position_end: vector3.optional().describe("camera position at the shot end, in the shot space"),
+  position: vector3.optional().describe("sets start and end together, a locked-off camera"),
+  look_start: vector3.optional().describe("point looked at at the shot start, in the shot space (or offset from target)"),
+  look_end: vector3.optional(),
+  look: vector3.optional().describe("sets look start and end together"),
+  fov: z.number().min(1).max(150).optional().describe("horizontal fov degrees for the whole shot, ~20 telephoto, ~40 normal, ~75 wide"),
+  fov_start: z.number().min(0).max(150).optional(),
+  fov_end: z.number().min(0).max(150).optional().describe("animate to this fov, a zoom"),
+  aperture: z.number().min(0).max(32).optional().describe("f-stop, low values (1.4-2.8) give shallow depth of field with auto focus on the screen centre"),
+  roll: z.number().min(-45).max(45).optional().describe("dutch angle degrees"),
+  shake: z.number().min(0).max(3).optional().describe("handheld sway 0-1, anchor space also adds engine vibration"),
+  lag: z.number().min(0).max(2).optional().describe("heading space only, seconds the camera heading trails the car so it swings out into corners"),
+  ease: z.enum(["linear", "in_out", "in", "out"]).optional().describe("motion curve from start to end over the shot, default in_out"),
+};
+
 register_tool(
   server,
   "sequencer_event_add",
-  "Add a camera cut event at a time in seconds. The camera stays active from its event time until the next event. camera accepts an entity id or an entity name that has a Camera component. target optionally locks the camera onto an entity (id or name) so it pans to keep it in view while the event is active.",
+  [
+    "Add a camera shot at a time in seconds; it stays live until the next shot.",
+    "A plain cut takes camera (+ optional target lock). An animated shot moves the camera from position_start to position_end and look_start to look_end over its duration in a chosen space",
+    "(world, anchor rigidly mounted on a car, heading = level camera car following a car), with fov zoom, aperture, roll, handheld shake and ease.",
+    "Camera poses are applied after physics and before rendering, so car mounted shots never lag. Consecutive shots cut hard: temporal history is reset.",
+  ].join(" "),
   {
     time: z.number().min(0),
-    camera: z.union([z.string(), z.number().int()]),
-    target: z.union([z.string(), z.number().int()]).optional(),
+    ...sequencer_shot_schema,
   },
   "sequencer_event_add",
   { annotations: edit_tool },
@@ -2243,14 +2270,87 @@ register_tool(
 register_tool(
   server,
   "sequencer_event_update",
-  "Change the time, camera or lock target of an existing event by index. Pass target 'none' to clear the lock. Events are re-sorted by time, so re-read indices from the returned state.",
+  "Change any field of an existing shot by index (time, camera, target, or any rig field). Pass target 'none' to clear the lock, rig false to turn animation off. Events are re-sorted by time, so re-read indices from the returned state.",
   {
     index: z.number().int().min(0),
     time: z.number().min(0).optional(),
-    camera: z.union([z.string(), z.number().int()]).optional(),
-    target: z.union([z.string(), z.number().int()]).optional(),
+    ...sequencer_shot_schema,
   },
   "sequencer_event_update",
+  { annotations: edit_tool },
+);
+
+const sequencer_drive_schema = {
+  car: z.union([z.string(), z.number().int()]).optional().describe("any entity of a drivable car, defaults to the first drivable car"),
+  spline: z.union([z.string(), z.number().int()]).optional().describe("road spline entity id or name the car follows"),
+  start_distance: z.number().min(0).optional().describe("meters along the (possibly reversed) spline where the car is staged at rest"),
+  lane_offset: z.number().optional().describe("meters right of the spline centerline"),
+  max_lateral_g: z.number().min(0.1).max(2).optional().describe("corner speed limit, the autopilot brakes ahead of corners to respect it, ~0.7 wet, ~1.0 dry"),
+  reverse: z.boolean().optional().describe("drive from the spline end toward its start"),
+  speed_keys: z.array(z.number()).optional().describe("flat pairs of absolute timeline seconds and target km/h, e.g. [2,0,6,160,9,70]; linear between keys, held past the ends"),
+};
+
+register_tool(
+  server,
+  "sequencer_drive_add",
+  [
+    "Add a drive event on the third track: during [start, end] a drivable car is driven along a road spline by an autopilot through the real vehicle simulation",
+    "(pure pursuit steering, speed keys, corner speed limiting), so the body pitches, rolls and the rain on it reacts to real accelerations.",
+    "Only works in play mode: sequencer_playback play (or sequencer_render start) stages the car at rest at start_distance, holds it on the handbrake until start, and after end brakes it to a stop.",
+  ].join(" "),
+  {
+    start: z.number().min(0),
+    end: z.number().min(0),
+    ...sequencer_drive_schema,
+  },
+  "sequencer_drive_add",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "sequencer_drive_update",
+  "Change any field of an existing drive event by index. speed_keys replaces the whole profile.",
+  {
+    index: z.number().int().min(0),
+    start: z.number().min(0).optional(),
+    end: z.number().min(0).optional(),
+    ...sequencer_drive_schema,
+  },
+  "sequencer_drive_update",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "sequencer_drive_remove",
+  "Remove one drive event by index, or pass all=true to clear every drive event.",
+  {
+    index: z.number().int().min(0).optional(),
+    all: z.boolean().optional(),
+  },
+  "sequencer_drive_remove",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "sequencer_render",
+  [
+    "Render the sequence to a png frame sequence (frame_00000.png ...) at a fixed timestep: every frame advances simulation, physics and rain by exactly 1/fps however long it takes to draw,",
+    "text and editor overlays are left out, and the playback restarts from a preroll before time 0 so staged cars settle. Drive events need play mode (unpaused).",
+    "action start returns immediately, poll with action status or sequencer_get until render.active is false. directory is relative to the engine working directory (binaries). stride keeps every nth frame for quick previews; start/end capture a sub range but always simulate from 0.",
+  ].join(" "),
+  {
+    action: z.enum(["start", "stop", "status"]),
+    fps: z.number().min(1).max(120).optional(),
+    start: z.number().min(0).optional(),
+    end: z.number().min(0).optional(),
+    preroll: z.number().min(0).max(30).optional(),
+    stride: z.number().int().min(1).optional(),
+    directory: z.string().optional(),
+  },
+  "sequencer_render",
   { annotations: edit_tool },
 );
 
