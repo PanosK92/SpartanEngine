@@ -17,22 +17,16 @@ static const float OCEAN_PHILLIPS_A = 0.002; // base phillips constant, sized so
 static const float OCEAN_DIR_SPREAD = 2.0;   // cos power for wind alignment, higher is tighter
 static const float OCEAN_CAPILLARY  = 0.003; // sub-capillary cutoff in metres, only the finest ripples below this are damped
 
-// push constant unpack, the cascade lengths are packed across the value slots by Pass_Ocean
-float2 ocean_wind_dir()    { return pass_get_f3_value().xy; }
-float  ocean_wind_speed()  { return pass_get_f3_value().z; }
-float  ocean_amplitude()   { return pass_get_f4_value().x; }
-float  ocean_choppiness()  { return pass_get_f4_value().y; }
-float  ocean_disp_scale()  { return pass_get_f4_value().z; }
-float  ocean_normal_str()  { return pass_get_f4_value().w; }
+float2 ocean_wind_dir()    { return pass_float2(pass_ocean::wind_direction); }
+float  ocean_wind_speed()  { return pass_float(pass_ocean::wind_speed); }
+float  ocean_amplitude()   { return pass_float(pass_ocean::amplitude); }
+float  ocean_choppiness()  { return pass_float(pass_ocean::choppiness); }
+float  ocean_disp_scale()  { return pass_float(pass_ocean::displacement_scale); }
+float  ocean_normal_str()  { return pass_float(pass_ocean::normal_strength); }
 
 float ocean_cascade_length(uint cascade)
 {
-    float3 l012 = pass_get_f3_value2();
-    float  l3   = pass_get_f2_value().x;
-    if (cascade == 0) { return l012.x; }
-    if (cascade == 1) { return l012.y; }
-    if (cascade == 2) { return l012.z; }
-    return l3;
+    return pass_float4(pass_ocean::cascade_lengths)[min(cascade, 3u)];
 }
 
 float2 ocean_cmul(float2 a, float2 b)

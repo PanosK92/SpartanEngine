@@ -5,10 +5,10 @@ https://github.com/PanosK92/SpartanEngine/blob/master/license.md
 Commercial use requires written permission and negotiated payment terms.
 */
 
-//= INCLUDES ======================
+//= INCLUDES ===================
 #include "pch.h"
-#include "../RHI_RasterizerState.h"
-//=================================
+#include "RHI_RasterizerState.h"
+//==============================
 
 //= NAMESPACES =====
 using namespace std;
@@ -25,7 +25,6 @@ namespace spartan
         const float depth_bias_slope_scaled /*= 0.0f */,
         const float line_width              /*= 1.0f */)
     {
-        // save
         m_polygon_mode            = polygon_mode;
         m_depth_clip_enabled      = depth_clip_enabled;
         m_depth_bias              = depth_bias;
@@ -33,7 +32,6 @@ namespace spartan
         m_depth_bias_slope_scaled = depth_bias_slope_scaled;
         m_line_width              = line_width;
 
-        // hash
         hash<float> hasher;
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_polygon_mode));
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_depth_clip_enabled));
@@ -42,10 +40,5 @@ namespace spartan
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(hasher(m_depth_bias_clamp)));
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(hasher(m_depth_bias_slope_scaled)));
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(hasher(m_line_width)));
-    }
-    
-    RHI_RasterizerState::~RHI_RasterizerState()
-    {
-    
     }
 }

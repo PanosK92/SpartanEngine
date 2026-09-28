@@ -55,11 +55,11 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
     uint surv_index = group_id.x;
     uint lid        = group_thread_id.x;
 
-    float max_mip_level         = pass_get_f4_value().x;
-    uint  max_meshlet_instances = (uint)pass_get_f4_value().y;
-    bool  split_opaque_alpha    = pass_get_f4_value().z > 0.5f;
+    float max_mip_level         = pass_float(pass_indirect_cull::max_hiz_mip);
+    uint  max_meshlet_instances = pass_uint(pass_indirect_cull::max_meshlet_instances);
+    bool  split_opaque_alpha    = pass_bool(pass_indirect_cull::split_opaque_alpha);
     uint  region_cap            = max_meshlet_instances / 2u;
-    uint  wind_cache_limit      = min((uint)max(pass_get_f4_value().w, 0.0f), TREE_WIND_CACHE_CAPACITY);
+    uint  wind_cache_limit      = min(pass_uint(pass_indirect_cull::wind_cache_limit), TREE_WIND_CACHE_CAPACITY);
 
     // wave-uniform, the compiler scalarizes the plane extraction across the wave
     float4 plane_l, plane_r, plane_b, plane_t;
@@ -167,7 +167,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
                 // The pyramid is rebuilt this frame; draws marked to bypass it
                 // still keep their conservative visibility policy.
                 if (is_visible && !gs_skip_hiz)
-                    is_visible = sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, pass_get_f3_value().x);
+                    is_visible = sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, pass_float(pass_indirect_cull::hiz_depth_bias));
             }
         }
 

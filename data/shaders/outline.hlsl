@@ -36,7 +36,7 @@ vertex main_vs(vertex_in input)
 float4 main_ps(vertex input) : SV_Target
 {
     // just a color
-    return pass_get_f4_value();
+    return pass_float4(pass_outline::color);
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]

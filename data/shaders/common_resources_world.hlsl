@@ -49,6 +49,9 @@ Texture2D<float4> tex_wind_field : register(t29);
 Texture2DArray<float4> tex_ocean_displacement : register(t30);
 Texture2DArray<float4> tex_ocean_normal       : register(t31);
 
+// shoreline field for the breaking surf, r = signed distance to the coast (m, positive offshore), gb = shoreward direction, a = beach slope
+Texture2D<float4> tex_ocean_shore : register(t78);
+
 // Unified air/water transport, shared by scene composition and transparency.
 Texture3D<float4> tex_fog_extinction    : register(t35); // r = air extinction, g = water fraction of the cell
 Texture3D<float4> tex_fog_scattering    : register(t36);
@@ -65,6 +68,9 @@ Texture3D<float>  tex_fog_sky_visibility : register(t40); // coarse grid, r = sk
 // nrd sigma local lights, one array slice per light, r = visibility
 Texture2DArray<float4> tex_rt_shadows_local : register(t32);
 [[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_uav_rt_shadows_local : register(u26);
+
+// ies profiles, square candela / peak tiles stacked vertically, see IesProfile.h
+Texture2D<float> tex_ies : register(t77);
 
 // geometry info buffer for ray tracing (per-blas-instance offsets)
 StructuredBuffer<GeometryInfo> geometry_infos : register(t20);

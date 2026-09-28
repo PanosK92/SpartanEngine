@@ -69,9 +69,9 @@ PixelInput main_vs(uint vertex_id : SV_VertexID)
 
     PixelInput output;
     const float2 corner     = positions[vertex_id];
-    const float disc_size   = max(pass_get_f2_value().x, 1.0f);
+    const float disc_size   = max(pass_float(pass_light_flare::disc_size), 1.0f);
     const float2 resolution = max(get_render_resolution_active(), float2(1.0f, 1.0f));
-    output.light_index      = (uint)pass_get_f3_value2().z;
+    output.light_index      = pass_uint(pass_light_flare::light_index);
     output.visible          = output.light_index > 0u && output.light_index < buffer_frame.cluster_light_count ? 1.0f : 0.0f;
 
     LightParameters light = light_parameters[min(output.light_index, max(buffer_frame.cluster_light_count, 1u) - 1u)];
@@ -98,12 +98,12 @@ float4 main_ps(PixelInput input) : SV_TARGET
         discard;
     }
 
-    float near_distance     = max(pass_get_f3_value().x, 0.0f);
-    float size_scale        = max(pass_get_f3_value().y, 0.01f);
-    float intensity_scale   = max(pass_get_f3_value().z, 0.01f);
-    float max_size_px       = max(pass_get_f3_value2().x, 1.0f);
-    bool  occlusion_enabled = pass_get_f3_value2().y > 0.5f;
-    float fade_length       = max(pass_get_f2_value().y, 0.1f);
+    float near_distance     = max(pass_float(pass_light_flare::near_distance), 0.0f);
+    float size_scale        = max(pass_float(pass_light_flare::size_scale), 0.01f);
+    float intensity_scale   = max(pass_float(pass_light_flare::intensity_scale), 0.01f);
+    float max_size_px       = max(pass_float(pass_light_flare::max_size), 1.0f);
+    bool  occlusion_enabled = pass_bool(pass_light_flare::occlusion);
+    float fade_length       = max(pass_float(pass_light_flare::fade_length), 0.1f);
 
     float3 camera_pos = get_camera_position();
     float3 to_light   = light.position.xyz - camera_pos;

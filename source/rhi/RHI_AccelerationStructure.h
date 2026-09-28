@@ -93,9 +93,10 @@ namespace spartan
         void* m_rhi_resource         = nullptr;
         void* m_rhi_resource_results = nullptr;
 
-        // reusable buffers - double buffered to avoid frame-to-frame synchronization issues
-        // when frame N is being processed by the GPU while frame N+1 updates the buffers
-        static const uint32_t buffer_count = 2;
+        // one instance upload per frame in flight, the renderer runs up to renderer_draw_data_buffer_count (4)
+        // frames ahead of the gpu, with fewer copies the cpu overwrites the transforms of a frame the gpu has not
+        // built yet, so moving geometry (the player car) traces against a pose from a later frame
+        static const uint32_t buffer_count = 4;
         uint32_t m_buffer_index            = 0;
         void* m_scratch_buffer                                    = nullptr;
         uint64_t m_scratch_buffer_size                            = 0;

@@ -98,7 +98,6 @@ namespace spartan
     extern TConsoleVar<float> cvar_chromatic_aberration;
     extern TConsoleVar<float> cvar_dithering;
     extern TConsoleVar<float> cvar_sharpness;
-    extern TConsoleVar<float> cvar_anisotropy;
     extern TConsoleVar<float> cvar_tonemapping;
     extern TConsoleVar<float> cvar_antialiasing_upsampling;
     extern TConsoleVar<float> cvar_dlss_reactivity;
@@ -115,8 +114,6 @@ namespace spartan
     extern TConsoleVar<float> cvar_meshlet_visualize;
     extern TConsoleVar<float> cvar_cluster_visualize;
     extern TConsoleVar<float> cvar_cluster_visualize_cap;
-    extern TConsoleVar<float> cvar_auto_exposure_adaptation_speed;
-    extern TConsoleVar<float> cvar_auto_exposure_compensation;
 
     enum class Renderer_SecondaryViewMode
     {
@@ -221,8 +218,6 @@ namespace spartan
         void DrawDirectionalArrow(const math::Vector3& start, const math::Vector3& end, float arrow_size, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
         void DrawPlane(const math::Plane& plane, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
         void DrawString(const char* text, const math::Vector2& position_screen_percentage);
-        void DrawIcon(RHI_Texture* icon, const math::Vector2& position_screen_percentage);
-
 
         void SetPresentInRenderer(bool enabled);
         void SetFrameCompletion(RHI_SyncPrimitive* timeline, uint64_t value);
@@ -255,10 +250,6 @@ namespace spartan
         // returns the entry index, or uint32_max when the frame budget is full, a null render writes an identity uv transform
         // is_ui grants access to reserved entries so scene/outline draws cannot starve presentation
         uint32_t WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous = math::Matrix::Identity, uint32_t material_index = 0, uint32_t is_transparent = 0, const Render* render = nullptr, bool is_ui = false);
-
-        // wind
-        const math::Vector3& GetWind();
-        void SetWind(const math::Vector3& wind);
 
         // gpu scatter, camera relative rings populated on the gpu with no entities behind them, slot 0
         // is grass and the higher slots are micro detail, the caller keeps ownership of the mesh,
@@ -494,8 +485,6 @@ namespace spartan
         void AddLinesToBeRendered();
         void UpdatePersistentLines();
         void SetCommonTextures(uint32_t eye_layer = rhi_all_mips, bool bind_ssao = true);
-        void BeginPass(const char* name, uint32_t eye_layer, bool bind_ssao = true);
-        void SetPass(const char* name, uint32_t eye_layer, bool bind_ssao = true);
         void DestroyResources();
         void UpdateShadowAtlas();
 

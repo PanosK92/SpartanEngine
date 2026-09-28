@@ -21,7 +21,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
 {
     Vertex_PosUvNorTan input = to_full_vertex(cpu_input);
     // pull the per-instance transform from the dedicated procedural grass buffer
-    uint slot        = instance_id + (uint)buffer_pass.values[0].z;
+    uint slot        = instance_id + pass_uint(pass_grass_draw::lod_base);
     GrassInstance gi = grass_instances[slot];
     input.instance_transform = compose_instance_transform(gi.pos_x, gi.pos_y, gi.pos_z,
         (gi.normal_yaw_scale >> 16) & 0xFFFFu, (gi.normal_yaw_scale >> 8) & 0xFFu, gi.normal_yaw_scale & 0xFFu);
@@ -111,7 +111,7 @@ void main_ps(gbuffer_vertex vertex)
     // in multiview the depth prepass is drawn once for both eyes, so buffer_pass.eye_index is
     // static and cannot be used to pick the right eye's inverse vp; drive the per-fragment
     // eye from the interpolated SV_ViewID (vertex.view_id) instead.
-    const bool has_albedo       = pass_get_f3_value().y == 1.0f;
+    const bool has_albedo       = pass_bool(pass_depth_prepass::has_albedo);
     const float2 screen_uv      = vertex.position.xy / get_render_resolution_active();
     const float3 position_world = get_position_for_view(vertex.position.z, screen_uv, vertex.view_id);
     const float alpha_threshold = get_alpha_threshold(position_world);

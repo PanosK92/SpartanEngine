@@ -41,6 +41,12 @@ namespace spartan
         RHI_ShaderCompilationState GetCompilationState() const { return m_compilation_state; }
         bool IsCompiled() const                                { return m_compilation_state == RHI_ShaderCompilationState::Succeeded; }
 
+        // hot reload, a compiled shader recompiles into a staged copy and keeps serving its last good
+        // module until ApplyReload swaps the result in, on the main thread before a frame records
+        bool IsReloading() const   { return m_reloading; }
+        bool ReloadFailed() const  { return m_reload_failed; }
+        void ApplyReload();
+
         // source
         void LoadFromDrive(const std::string& file_path);
         const std::vector<std::string>& GetNames()     const { return m_names; }
@@ -82,6 +88,11 @@ namespace spartan
         RHI_Shader_Type m_shader_type                              = RHI_Shader_Type::Max;
         RHI_Vertex_Type m_vertex_type                               = RHI_Vertex_Type::Max;
         uint64_t m_hash                                             = 0;
+
+        std::shared_ptr<RHI_Shader> m_reload;
+        std::atomic<bool> m_reloading    = false;
+        std::atomic<bool> m_reload_ready = false;
+        bool m_reload_failed             = false;
 
         void* m_rhi_resource = nullptr;
     };

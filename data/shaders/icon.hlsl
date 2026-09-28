@@ -26,8 +26,8 @@ PixelInput main_vs(vertex_in input)
 {
     PixelInput output;
     const float2 corner         = input.uv;
-    const float2 icon_size      = pass_get_f2_value();
-    const float2 resolution     = max(pass_get_f4_value().xy, float2(1.0f, 1.0f));
+    const float2 icon_size      = pass_float2(pass_icon::icon_size);
+    const float2 resolution     = max(pass_float2(pass_icon::resolution), float2(1.0f, 1.0f));
     float3 world_position       = input.position + buffer_frame.camera_forward.xyz * 0.001f;
     const float3 camera_to_icon = normalize(world_position - buffer_frame.camera_position.xyz);
     output.visible              = dot(buffer_frame.camera_forward.xyz, camera_to_icon) > 0.5f ? 1.0f : 0.0f;

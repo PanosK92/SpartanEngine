@@ -359,6 +359,10 @@ namespace spartan
         void UpdateCheapWheelTransforms();
         void CaptureCheapWheelRestPoses();
         void Create();
+        bool CreateController();
+        bool CreateVehicle();
+        bool CreateConvexCompound();
+        bool CreateShapes();
         void CreateBodies();
         void RebuildInstanceActors();
         void CreateCloth();

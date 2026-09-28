@@ -12,9 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "Entity.h"
 #include "components/Render.h"
 #include "components/Physics.h"
-#include "components/AudioSource.h"
 #include "components/Terrain.h"
-#include "components/Water.h"
 #include "components/Camera.h"
 #include "TerrainHabitat.h"
 #include "../core/ThreadPool.h"
@@ -113,101 +111,6 @@ namespace spartan
         {
             SP_LOG_INFO("biome props: removed %zu stale prop roots", doomed.size());
         }
-    }
-
-    // fft ocean surface, the water component owns the clipmap mesh and drives the gpu simulation
-    static Entity* create_water(const Vector3& position)
-    {
-        Entity* water = World::CreateEntity();
-        water->SetObjectName("water");
-        water->SetPosition(position);
-        Water* water_component = water->AddComponent<Water>();
-        water_component->SetAmplitude(0.18f);
-        water_component->SetChoppiness(0.30f);
-        water_component->SetDisplacementScale(0.35f);
-        water_component->SetNormalStrength(0.65f);
-        water_component->SetTurbidity(1.20f);
-        water_component->SetCausticsIntensity(0.40f);
-
-        return water;
-    }
-
-    void WorldHelpers::BuildForest(Entity* builder_entity)
-    {
-        // pre-size the global geometry buffer high enough for the whole forest so worker threads streaming
-        // mesh data in cannot trip a mid-load rebuild from the renderer's per-frame BuildIfDirty
-        GeometryBuffer::Reserve(
-            12u * 1024u * 1024u, // ~12M vertices
-            32u * 1024u * 1024u, // ~32M indices
-            128u * 1024u,        // ~128K meshlet bounds
-            10u * 1024u * 1024u, // ~10M unique verts (~index/3)
-            32u * 1024u * 1024u, // ~32M micro indices (~index count)
-            256u * 1024u         // ~256K instances
-        );
-
-        // terrain root
-        Entity* terrain_entity = World::CreateEntity();
-        terrain_entity->SetObjectName("terrain");
-        terrain_entity->SetParent(builder_entity);
-
-        // audio
-        {
-            Entity* entity = World::CreateEntity();
-            entity->SetObjectName("audio");
-            entity->SetParent(builder_entity);
-
-            // forest ambience
-            {
-                Entity* sound = World::CreateEntity();
-                sound->SetObjectName("forest_river");
-                sound->SetParent(entity);
-                AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                audio_source->SetAudioClip("project/music/ambient/forest_river.wav");
-                audio_source->SetLoop(true);
-            }
-
-            // wind
-            {
-                Entity* sound = World::CreateEntity();
-                sound->SetObjectName("wind");
-                sound->SetParent(entity);
-                AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                audio_source->SetAudioClip("project/music/ambient/wind.wav");
-                audio_source->SetLoop(true);
-            }
-
-            // underwater
-            {
-                Entity* sound = World::CreateEntity();
-                sound->SetObjectName("underwater");
-                sound->SetParent(entity);
-                AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                audio_source->SetAudioClip("project/music/ambient/underwater.wav");
-                audio_source->SetPlayOnStart(false);
-            }
-        }
-
-        // terrain component
-        Terrain* terrain = terrain_entity->AddComponent<Terrain>();
-        {
-            // terrain material, the layer set is built by the component from project/materials
-            terrain->ApplyDefaultMaterial();
-
-            // height map generation
-            shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project/height_maps/height_map.png");
-            if (height_map)
-            {
-                height_map->PrepareForGpu();
-            }
-            terrain->SetHeightMapSeed(height_map.get());
-            // generate also stands up the static heightfield collision for the whole surface
-            terrain->Generate();
-        }
-
-        // water
-        create_water(Vector3::Zero);
-
-        // generate already calls PopulateTerrainBiomeProps when spawn_biome_props is on
     }
 
     namespace
@@ -1761,9 +1664,5 @@ namespace spartan
                 return mesh ? mesh.get() : nullptr;
             }
         );
-
-        // forest builder
-        sol::table forest = state.create_named_table("Forest");
-        forest["Build"] = [](Entity* builder_entity) { WorldHelpers::BuildForest(builder_entity); };
     }
 }

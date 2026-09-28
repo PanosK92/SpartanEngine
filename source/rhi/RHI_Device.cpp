@@ -66,8 +66,8 @@ namespace spartan
     bool RHI_Device::m_is_mesh_shaders_supported                    = false;
     bool RHI_Device::m_is_shader_base_instance_supported            = false;
     void (*RHI_Device::m_pipeline_bound_callback)(RHI_CommandList*) = nullptr;
-    void (*RHI_Device::m_default_push_constants_callback)(RHI_CommandList*) = nullptr;
-    void (*RHI_Device::m_pass_reset_callback)() = nullptr;
+    const void* RHI_Device::m_default_push_constants                = nullptr;
+    uint32_t RHI_Device::m_default_push_constants_size              = 0;
     uint32_t (*RHI_Device::m_scale_dimension_callback)(uint32_t, float) = nullptr;
     RHI_Buffer* RHI_Device::m_dummy_vertex_buffer                   = nullptr;
 
@@ -138,30 +138,16 @@ namespace spartan
         }
     }
 
-    void RHI_Device::SetDefaultPushConstantsCallback(void (*callback)(RHI_CommandList*))
+    void RHI_Device::SetDefaultPushConstants(const void* data, uint32_t size)
     {
-        m_default_push_constants_callback = callback;
+        m_default_push_constants      = data;
+        m_default_push_constants_size = size;
     }
 
-    void RHI_Device::InvokeDefaultPushConstants(RHI_CommandList* cmd_list)
+    const void* RHI_Device::GetDefaultPushConstants(uint32_t& size)
     {
-        if (m_default_push_constants_callback)
-        {
-            m_default_push_constants_callback(cmd_list);
-        }
-    }
-
-    void RHI_Device::SetPassResetCallback(void (*callback)())
-    {
-        m_pass_reset_callback = callback;
-    }
-
-    void RHI_Device::InvokePassReset()
-    {
-        if (m_pass_reset_callback)
-        {
-            m_pass_reset_callback();
-        }
+        size = m_default_push_constants_size;
+        return m_default_push_constants;
     }
 
     void RHI_Device::SetScaleDimensionCallback(uint32_t (*callback)(uint32_t, float))

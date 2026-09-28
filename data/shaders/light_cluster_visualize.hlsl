@@ -71,9 +71,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     uint  flat_id = cluster_flat(cid);
     uint2 range   = cluster_light_grid[flat_id];
 
-    // pass_get_f3_value().x carries the visualization mode, .y carries the saturation cap for the count ramp
-    uint  mode = (uint)pass_get_f3_value().x;
-    float cap  = max(pass_get_f3_value().y, 1.0f);
+    uint  mode = pass_uint(pass_light_cluster_visualize::mode);
+    float cap  = max(pass_float(pass_light_cluster_visualize::cap), 1.0f);
 
     float3 color = float3(0.0f, 0.0f, 0.0f);
 

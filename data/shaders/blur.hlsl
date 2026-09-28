@@ -54,10 +54,9 @@ float3 gaussian_blur(const uint2 pos, float2 resolution_in, float2 resolution_ou
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    const float3 f3_value  = pass_get_f3_value();
-    const float radius     = f3_value.x;
+    const float radius     = pass_float(pass_blur::radius);
     const float sigma      = radius / 3.0f;
-    const float2 direction = f3_value.y == 1.0f ? float2(0.0f, 1.0f) : float2(1.0f, 0.0f);
+    const float2 direction = pass_bool(pass_blur::vertical) ? float2(0.0f, 1.0f) : float2(1.0f, 0.0f);
 
     float2 resolution_in;
     tex.GetDimensions(resolution_in.x, resolution_in.y);

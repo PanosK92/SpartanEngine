@@ -45,6 +45,10 @@ namespace spartan
             PushToRenderer(true);
         }
 
+        // Offshore swell height in metres that breaks on the terrain shoreline, 0 turns the surf off.
+        float GetSurfSize() const { return m_surf_size; }
+        void SetSurfSize(float size) { m_surf_size = Sanitize(size, 0.0f, 3.0f, 0.9f); }
+
         float GetClarity() const { return 1.0f - m_turbidity / 4.0f; }
         void SetClarity(float clarity)
         {
@@ -170,6 +174,7 @@ namespace spartan
         float m_displacement_scale  = 1.0f;
         float m_normal_strength     = 1.0f;
         float m_sea_level           = 0.0f;
+        float m_surf_size           = 0.9f;
 
         // water body optics, read by the renderer each frame, they do not touch the spectrum
         float m_turbidity           = 1.0f; // suspended particles, affects transmission and underwater lighting

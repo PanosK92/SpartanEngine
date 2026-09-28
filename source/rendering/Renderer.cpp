@@ -14,6 +14,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include <cmath>
 #include "Renderer_Internal.h"
 #include "Material.h"
+#include "IesProfile.h"
+#include "OceanShore.h"
 #include "../../data/shaders/shared_lighting.h"
 #include "GeometryBuffer.h"
 #include "ThreadPool.h"
@@ -69,38 +71,15 @@ namespace spartan
 
     namespace
     {
-        bool s_common_bind = false;
-        bool s_common_ssao = true;
-        uint32_t s_common_eye = rhi_all_mips;
-
-        void reset_common_bind()
-        {
-            s_common_bind = false;
-            s_common_ssao = true;
-            s_common_eye = rhi_all_mips;
-        }
-
         // set by TickUploadMaterials, consumed by UpdateAccelerationStructures
         bool materials_uploaded_this_frame = false;
         // Residency swaps replace SRVs without changing material slots or ray tracing geometry.
         bool bindless_textures_dirty = false;
     }
 
-    // constant and push constant buffers
-
-    // bindless draw data
-
-    // per-frame rotated buffers
-
-    // line and icon rendering
-
-    // misc
-
-
     namespace
     {
         const uint8_t  swap_chain_buffer_count    = 2;
-        const uint32_t resolution_shadow_min      = 128;
         float          near_plane                 = 0.0f;
         float          far_plane                  = 1.0f;
         bool           dirty_orthographic_projection = true;
@@ -477,11 +456,6 @@ namespace spartan
         )
         {
             SP_ASSERT_MSG(sdr_staging && sdr_staging->GetMappedData(), "Staging buffer not mappable");
-            if (!sdr_staging || !sdr_staging->GetMappedData())
-            {
-                SP_LOG_ERROR("Failed to map SDR screenshot staging buffer");
-                return;
-            }
 
             screenshot_saves_in_flight++;
             ThreadPool::AddTask([request, sdr_staging, width, height, channel_count, bits_per_channel]()
@@ -718,15 +692,11 @@ namespace spartan
             RHI_Device::Bind(cmd_list);
             SetStandardResources(cmd_list);
         });
-        RHI_Device::SetDefaultPushConstantsCallback([](RHI_CommandList* cmd_list)
-        {
-            RHI_CommandList::PushConstants(cmd_list, m_pcb_pass_cpu);
-        });
+        RHI_Device::SetDefaultPushConstants(&m_pcb_pass_cpu, sizeof(m_pcb_pass_cpu));
         RHI_Device::SetScaleDimensionCallback([](uint32_t dimension, float scale)
         {
             return GetScaledDimension(dimension, scale);
         });
-        RHI_Device::SetPassResetCallback(reset_common_bind);
 
         if (cvar_debug_breadcrumbs.GetValue())
         {
@@ -817,6 +787,7 @@ namespace spartan
         {
             DestroyResources();
             GeometryBuffer::Shutdown();
+            ies::shutdown();
             RHI_Device::DestroySwapChain();
             m_icons_vertex_buffer = nullptr;
             m_tlas                = nullptr;
@@ -1853,16 +1824,14 @@ namespace spartan
                 ? (wires_on_light ? 2.0f : 1.0f)
                 : 0.0f;
 
-        Renderer::BeginPass("preview_studio", rhi_all_mips);
+        RHI_CommandList::BeginPass("preview_studio");
+        SetCommonTextures();
         {
             RHI_CommandList::SetShader(shader_c);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_out, rhi_all_mips, 0, true);
-            m_pcb_pass_cpu.set_f3_value(tint);
-            m_pcb_pass_cpu.set_f3_value2(
-                replace_sky ? 1.0f : 0.0f,
-                wire_mode,
-                0.0f
-            );
+            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
+            m_pcb_pass_cpu.set(pass_preview_studio::backdrop_tint, tint);
+            m_pcb_pass_cpu.set(pass_preview_studio::replace_sky, replace_sky);
+            m_pcb_pass_cpu.set(pass_preview_studio::wire_mode, wire_mode);
             RHI_CommandList::Dispatch(tex_out);
         }
         RHI_CommandList::EndPass();
@@ -2225,10 +2194,14 @@ namespace spartan
             m_cb_frame_cpu.ocean_enabled            = 1.0f;
             m_cb_frame_cpu.ocean_turbidity          = water->GetTurbidity();
             m_cb_frame_cpu.ocean_caustics_intensity = water->GetCausticsIntensity();
+            m_cb_frame_cpu.ocean_shore_mapping      = ocean_shore::get_mapping();
+            m_cb_frame_cpu.ocean_shore_wave         = ocean_shore::get_wave();
+            m_cb_frame_cpu.ocean_shore_swell        = ocean_shore::get_swell();
         }
         else
         {
-            m_cb_frame_cpu.ocean_enabled = 0.0f;
+            m_cb_frame_cpu.ocean_enabled    = 0.0f;
+            m_cb_frame_cpu.ocean_shore_wave = Vector4::Zero;
         }
 
         m_cb_frame_cpu.terrain_height_mapping = Vector4::Zero;
@@ -2816,16 +2789,6 @@ namespace spartan
         m_cb_frame_cpu.restir_pt_emissive_tri_count = static_cast<float>(pool_count);
     }
 
-    const Vector3& Renderer::GetWind()
-    {
-        return World::GetWind();
-    }
-
-    void Renderer::SetWind(const math::Vector3& wind)
-    {
-        World::SetWind(wind);
-    }
-
     void Renderer::EnableGpuScatter(
         uint32_t slot,
         Mesh* mesh,
@@ -3022,6 +2985,7 @@ namespace spartan
         m_pass_state.ocean_displacement_produced = false;
         m_pass_state.ocean_history.Reset();
         ResetOceanHeightReadback();
+        ocean_shore::reset();
     }
 
     bool Renderer::IsOceanEnabled()
@@ -3066,16 +3030,6 @@ namespace spartan
         }
     }
 
-    void Renderer::DrawIcon(RHI_Texture* icon, const math::Vector2& position_screen_percentage)
-    {
-        Vector3 world_position = World::GetCamera()->ScreenToWorldCoordinates(position_screen_percentage, 0.5f);
-
-        if (icon)
-        {
-            m_icons.emplace_back(make_tuple(icon, world_position));
-        }
-    }
-
     void Renderer::SetPresentInRenderer(const bool enabled)
     {
         m_present_in_renderer = enabled;
@@ -3107,22 +3061,6 @@ namespace spartan
     uint64_t Renderer::GetFrameNumber()
     {
         return m_frame_num;
-    }
-
-    void Renderer::BeginPass(const char* name, uint32_t eye_layer, bool bind_ssao)
-    {
-        RHI_CommandList::BeginPass(name);
-        s_common_bind = true;
-        s_common_eye = eye_layer;
-        s_common_ssao = bind_ssao;
-    }
-
-    void Renderer::SetPass(const char* name, uint32_t eye_layer, bool bind_ssao)
-    {
-        RHI_CommandList::SetPass(name);
-        s_common_bind = true;
-        s_common_eye = eye_layer;
-        s_common_ssao = bind_ssao;
     }
 
     void Renderer::SetCommonTextures(uint32_t eye_layer /*= rhi_all_mips*/, bool bind_ssao /*= true*/)
@@ -3556,6 +3494,7 @@ namespace spartan
             light_buffer_entry.flags                            |= has_screen_space_shadows                                  ? (1 << 4) : 0;
             light_buffer_entry.flags                            |= volumetric_effective                                      ? (1 << 5) : 0;
             light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Area        ? (1 << 6) : 0;
+            light_buffer_entry.flags                            |= (light_component->GetIesSlot() & 0xFFu) << 16;
             // bit 7 is set by the caller for flare-only lights past draw distance
 
             // compact volumetric index list, slot 0 is skipped because the sun is already evaluated unconditionally
@@ -5312,8 +5251,8 @@ namespace spartan
         RHI_CommandList::BeginMarker("screenshot_xr");
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::blit_c), "screenshot_xr_left");
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_sdr, rhi_all_mips, 0, true);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_stereo, rhi_all_mips, 0, 0);
+            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_sdr);
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_stereo);
             RHI_CommandList::Dispatch(tex_sdr);
         }
         RHI_CommandList::EndMarker();
@@ -5466,13 +5405,15 @@ namespace spartan
         {
             return;
         }
-        RHI_CommandList::SetConstantBuffer(0u, GetBuffer(Renderer_Buffer::ConstantFrame));
+        RHI_CommandList::SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
         RHI_CommandList::SetTexture("tex_perlin", GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
-        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::decals), GetBuffer(Renderer_Buffer::Decals));
-        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::rain_occlusion), GetBuffer(Renderer_Buffer::RainOcclusion));
+        RHI_Texture* tex_ies = ies::get_atlas();
+        RHI_CommandList::SetTexture("tex_ies", tex_ies && tex_ies->GetRhiSrv() ? tex_ies : GetStandardTexture(Renderer_StandardTexture::Black));
+        RHI_CommandList::SetBuffer(Renderer_BindingsUav::decals, GetBuffer(Renderer_Buffer::Decals));
+        RHI_CommandList::SetBuffer(Renderer_BindingsUav::rain_occlusion, GetBuffer(Renderer_Buffer::RainOcclusion));
         if (RHI_Buffer* impostor_texels = GeometryBuffer::GetImpostorTexelBuffer() ? GeometryBuffer::GetImpostorTexelBuffer() : GeometryBuffer::GetMeshletVertexBuffer())
         {
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::impostor_texels), impostor_texels);
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::impostor_texels, impostor_texels);
         }
 
         RHI_Texture* tex_exposure = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
@@ -5521,6 +5462,9 @@ namespace spartan
                 "tex_terrain_height",
                 height_ready ? height : fallback
             );
+
+            RHI_Texture* shore = ocean_shore::get_texture();
+            RHI_CommandList::SetTexture("tex_ocean_shore", shore ? shore : fallback);
         }
 
         Renderer_RenderTarget ocean_displacement_current = m_pass_state.ocean_history.SelectWrite(
@@ -5556,11 +5500,6 @@ namespace spartan
         {
             RHI_CommandList::SetTexture("tex_ocean_normal", tex_ocean_norm);
         }
-
-        if (s_common_bind)
-        {
-            SetCommonTextures(s_common_eye, s_common_ssao);
-        }
     }
 
     void Renderer::Pass_VariableRateShading()
@@ -5591,8 +5530,8 @@ namespace spartan
         RHI_CommandList::BeginPass("variable_rate_shading");
         {
             RHI_CommandList::SetShader(shader_c);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_in);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex_uint), tex_out, rhi_all_mips, 0, true);
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_in);
+            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex_uint, tex_out);
             RHI_CommandList::Dispatch(tex_out);
         }
         RHI_CommandList::EndPass();
@@ -5753,6 +5692,15 @@ namespace spartan
     void Renderer::ProduceFrame()
     {
         SP_PROFILE_CPU();
+
+        // hot reloaded shaders swap in here, before anything this frame builds a pipeline from them
+        for (const auto& shader : GetShaders())
+        {
+            if (shader)
+            {
+                shader->ApplyReload();
+            }
+        }
 
         // wait until every shader has finished compiling, null entries are safe to skip
         static bool shaders_ready = false;

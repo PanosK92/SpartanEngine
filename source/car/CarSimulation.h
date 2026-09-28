@@ -342,6 +342,8 @@ namespace car
         // geometry asks for, and it builds faster than it releases
         void relax_tire_slip(wheel& w, float raw_slip_ratio, float raw_slip_angle, float ground_speed, float surface_speed, float dt);
         void apply_tire_forces(float dt);
+        // spin, brake heat and tread temperature of a wheel with nothing under it, no tire force
+        void integrate_airborne_wheel(int i, PxRigidDynamic* wheel_actor, const PxVec3& wheel_axis, float wmoi, float dt);
         void apply_self_aligning_torque();
 
         // used by car bench to seed scenario start speed

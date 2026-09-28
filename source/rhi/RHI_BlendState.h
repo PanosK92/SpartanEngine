@@ -27,7 +27,7 @@ namespace spartan
             const RHI_Blend_Operation blend_op_alpha = RHI_Blend_Operation::Add,
             const float blend_factor                 = 0.0f
         );
-        ~RHI_BlendState();
+        ~RHI_BlendState() = default;
 
         auto GetBlendEnabled()                        const { return m_blend_enabled; }
         auto GetSourceBlend()                         const { return m_source_blend; }

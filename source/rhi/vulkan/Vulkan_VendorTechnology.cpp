@@ -184,18 +184,17 @@ namespace spartan
         }
 
         // directional rt shadows, sigma penumbra reconstruction
-        void fill_preset_shadows(nrd::SigmaSettings& settings, const float light_direction[3], float delta_time, bool is_local)
+        void fill_preset_shadows(nrd::SigmaSettings& settings, const float light_direction[3], bool is_local)
         {
             settings                          = {};
             settings.lightDirection[0]        = is_local ? 0.0f : light_direction[0];
             settings.lightDirection[1]        = is_local ? 0.0f : light_direction[1];
             settings.lightDirection[2]        = is_local ? 0.0f : light_direction[2];
             settings.planeDistanceSensitivity = is_local ? 0.04f : 0.02f;
-            // local lights trace to the emitter center so the input is already stable, the
-            // stabilize pass would only reproject the penumbra of a mover and smear it
-            settings.maxStabilizedFrameNum    = is_local
-                ? 0
-                : get_accumulated_frame_num(nrd::SIGMA_DEFAULT_ACCUMULATION_TIME, nrd::SIGMA_MAX_HISTORY_FRAME_NUM, delta_time);
+            // the stabilize pass reprojects a receiver's history with the receiver's motion, so the shadow
+            // of a moving occluder (the player car) trails behind it and smears out with speed, taau
+            // already stabilizes the jittered sun penumbra
+            settings.maxStabilizedFrameNum    = 0;
         }
     }
 
@@ -1259,7 +1258,6 @@ namespace spartan
             nrd_common::fill_preset_shadows(
                 sigma,
                 light_dir,
-                common::cb_frame->delta_time,
                 shadow_denoiser_index != 0
             );
             if (pool.integration.SetDenoiserSettings(denoiser_id, &sigma) != nrd::Result::SUCCESS)

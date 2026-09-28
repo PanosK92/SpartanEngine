@@ -31,8 +31,8 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
     uint mi_idx       = gid.x;
     uint triangle_idx = lid.x;
 
-    uint max_meshlet_instances = (uint)pass_get_f4_value().x;
-    uint region_cap            = (uint)pass_get_f4_value().y; // per-half capacity, doubles as the alpha region base offset
+    uint max_meshlet_instances = pass_uint(pass_indirect_cull_triangle::max_meshlet_instances);
+    uint region_cap            = pass_uint(pass_indirect_cull_triangle::region_cap);
 
     // header load is wave-uniform across the workgroup, one thread reads, all threads consume after the barrier
     if (lid.x == 0)

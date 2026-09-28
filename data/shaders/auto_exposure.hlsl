@@ -102,7 +102,7 @@ void main_cs(uint group_index : SV_GroupIndex)
     key = lerp(0.018f, key, dark_t * dark_t);
 
     // exposure compensation is an artist controlled bias in stops, positive brightens
-    float exposure_compensation = pass_get_f3_value().y;
+    float exposure_compensation = pass_float(pass_auto_exposure::exposure_compensation);
 
     // map the metered average to the key in display units where 1 is paper white
     // Limit the meter before compensation, so +1 stop always doubles exposure,
@@ -117,7 +117,7 @@ void main_cs(uint group_index : SV_GroupIndex)
     }
 
     // adapt in ev space, the eye adjusts to bright scenes faster than to dark ones
-    float adaptation_speed = pass_get_f3_value().x;
+    float adaptation_speed = pass_float(pass_auto_exposure::adaptation_speed);
     float speed            = target_exposure < prev_exposure ? adaptation_speed * 6.0f : adaptation_speed * 2.0f;
     float alpha            =
         adaptation_speed <= 0.0f ?

@@ -1132,7 +1132,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float2 previous_uv = ndc_to_uv(previous_clip.xy / max(previous_clip.w, 1e-6));
     float motion = saturate(length((previous_uv - uv) * float2(width, height)) * 0.125);
 
-    bool history_valid = buffer_pass.values[0].x <= 0.5 && motion < 0.5 && previous_clip.w > 0.0 && all(previous_uv > 0.0) && all(previous_uv < 1.0);
+    bool history_valid = !pass_bool(pass_clouds::reset_history) && motion < 0.5 && previous_clip.w > 0.0 && all(previous_uv > 0.0) && all(previous_uv < 1.0);
     float4 history = current;
     float history_distance = current_distance;
     if (history_valid)
@@ -1268,8 +1268,8 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     uint height;
     tex_uav.GetDimensions(width, height);
 
-    // progressive strip bake, cpu packs the pixel y offset into pass f3.x
-    uint2 pixel = tid.xy + uint2(0, (uint)pass_get_f3_value().x);
+    // progressive strip bake
+    uint2 pixel = tid.xy + uint2(0, pass_uint(pass_clouds::environment_row));
     if (any(pixel >= uint2(width, height)))
     {
         return;

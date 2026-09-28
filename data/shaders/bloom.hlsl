@@ -102,7 +102,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float2 uv = (float2(thread_id.xy) + 0.5f) / float2(width, height);
     float3 high = tex_uav[thread_id.xy].rgb;
     float3 low = bloom_upsample(tex, uv);
-    float scatter = clamp(pass_get_f3_value().x, 0.05f, 0.95f);
+    float scatter = clamp(pass_float(pass_bloom::scatter), 0.05f, 0.95f);
     // A normalized scale mixture keeps DC gain independent of the mip count.
     tex_uav[thread_id.xy] = float4(lerp(high, low, scatter), 1.0f);
 }
@@ -121,7 +121,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 glow = bloom_upsample(tex2, uv);
     // r.bloom = 1 redistributes about 4% of light into the halo. Exposure applies
     // later to both terms together; constant scenes retain their brightness.
-    float amount = 1.0f - exp2(-0.06f * max(pass_get_f3_value().x, 0.0f));
+    float amount = 1.0f - exp2(-0.06f * max(pass_float(pass_bloom::intensity), 0.0f));
     tex_uav[thread_id.xy] = float4(lerp(scene.rgb, glow, amount), scene.a);
 }
 #endif

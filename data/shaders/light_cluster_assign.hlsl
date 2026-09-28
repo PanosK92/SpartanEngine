@@ -31,6 +31,11 @@ bool light_intersects_cluster(LightParameters light, float3 aabb_min, float3 aab
     if (is_spot)
     {
         float angle    = max(light.angle, 1e-3f);
+        // an ies tile is the square frustum around the cone, its corners reach sqrt(2) further in tangent space
+        if (light_ies_slot(light.flags) != 0u)
+        {
+            angle = min(atan(1.41421356f * tan(angle)), 1.5697963f);
+        }
         float cos_half = cos(angle);
         float sin_half = sin(angle);
 

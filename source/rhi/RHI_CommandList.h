@@ -15,6 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "RHI_PipelineState.h"
 #include "RHI_Buffer.h"
 #include "RHI_SyncPrimitive.h"
+#include "RHI_Viewport.h"
 #include "../core/SpartanObject.h"
 #include <stack>
 //============================================
@@ -23,6 +24,11 @@ namespace spartan
 {
     // forward declaration
     namespace math { class Rectangle; }
+
+    // binding slots, defined by the renderer, the enum type tells srv from uav from constant buffer
+    enum class Renderer_BindingsCb : uint32_t;
+    enum class Renderer_BindingsSrv : uint32_t;
+    enum class Renderer_BindingsUav : uint32_t;
 
     enum class RHI_CommandListState : uint8_t
     {
@@ -85,6 +91,27 @@ namespace spartan
         bool ready = false;
     };
 
+    // a binding made inside a pass, it stays bound until the pass ends and is replayed after every pipeline bind
+    struct RHI_Pass_Binding
+    {
+        enum class Kind : uint8_t
+        {
+            Texture,
+            Buffer,
+            ConstantBuffer,
+            AccelerationStructure
+        };
+
+        Kind kind            = Kind::Texture;
+        const char* name     = nullptr; // resolved against the bound pipeline, used instead of slot when set
+        uint32_t slot        = 0;
+        bool uav             = false;
+        void* resource       = nullptr;
+        uint32_t mip_index   = 0;
+        uint32_t mip_range   = 0;
+        uint32_t array_layer = 0;
+    };
+
     class RHI_CommandList : public SpartanObject
     {
     public:
@@ -129,40 +156,11 @@ namespace spartan
 
     private:
         void set_pipeline_state(RHI_PipelineState& pso);
-        const RHI_PipelineState& get_pipeline_state() const { return m_pso; }
 
-        // pass, mutates the pending pso and binds when it is complete
-        void begin_pass(const char* name);
-        void end_pass();
-        void set_pass(const char* name);
-        void set_shader(RHI_Shader* shader, const char* name = nullptr);
-        void set_shaders(RHI_Shader* shader_a, RHI_Shader* shader_b, RHI_Shader* shader_c = nullptr);
-        void set_color_target(RHI_Texture* texture);
-        void set_color_targets(
-            RHI_Texture* t0,
-            RHI_Texture* t1 = nullptr,
-            RHI_Texture* t2 = nullptr,
-            RHI_Texture* t3 = nullptr,
-            RHI_Texture* t4 = nullptr,
-            RHI_Texture* t5 = nullptr,
-            RHI_Texture* t6 = nullptr,
-            RHI_Texture* t7 = nullptr
-        );
-        void set_depth_target(RHI_Texture* texture);
-        void set_swap_chain(RHI_SwapChain* swapchain);
-        void set_blend_state(RHI_BlendState* state);
-        void set_rasterizer_state(RHI_RasterizerState* state);
-        void set_depth_stencil_state(RHI_DepthStencilState* state);
-        void set_primitive_topology(RHI_PrimitiveTopology topology);
-        void set_clear_color(uint32_t index, const Color& color);
-        void set_clear_depth(float depth);
-        void set_vrs_texture(RHI_Texture* texture);
-        void set_resolution_scale(bool enabled);
-        void set_multiview(bool enabled);
-        void set_array_index(uint32_t index);
+        // pass state setters, they record into the pending pso which is bound at the next draw, dispatch or trace
+        void reset_pass(const char* name);
 
         // clear
-        void clear_pipeline_state_render_targets(RHI_PipelineState& pipeline_state);
         void clear_texture(
             RHI_Texture* texture,
             const Color& clear_color     = rhi_color_load,
@@ -264,12 +262,11 @@ namespace spartan
 
     public:
         // bound list, Class::Method, no instance pointer
-        static const RHI_PipelineState& GetPipelineState();
         static void SetPipelineState(RHI_PipelineState& pso);
-        static void SetPipelineState(RHI_CommandList* cmd_list, RHI_PipelineState& pso);
-        static void BeginPass(const char* name);
+        // the one scope, nestable, it times the work (cpu, and gpu when gpu_timing is set), labels it for debuggers
+        // and gives it clean state: begin and end both drop the pending pipeline, bindings, dynamic state and push constants
+        static void BeginPass(const char* name, const bool gpu_timing = true);
         static void EndPass();
-        static void SetPass(const char* name);
         static void SetShader(RHI_Shader* shader, const char* name = nullptr);
         static void SetShaders(RHI_Shader* shader_a, RHI_Shader* shader_b, RHI_Shader* shader_c = nullptr);
         static void SetColorTarget(RHI_Texture* texture);
@@ -295,7 +292,6 @@ namespace spartan
         static void SetResolutionScale(bool enabled);
         static void SetMultiview(bool enabled);
         static void SetArrayIndex(uint32_t index);
-        static void ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state);
         static void ClearTexture(
             RHI_Texture* texture,
             const Color& clear_color = rhi_color_load,
@@ -309,7 +305,6 @@ namespace spartan
         static void DrawIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset);
         static void DrawMeshTasksIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset = 0);
         static void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1);
-        static void Dispatch(RHI_CommandList* cmd_list, uint32_t x, uint32_t y, uint32_t z = 1);
         static void Dispatch(RHI_Texture* texture, float resolution_scale = 1.0f);
         static void DispatchIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset = 0);
         static void TraceRays(const uint32_t width, const uint32_t height);
@@ -319,13 +314,10 @@ namespace spartan
         static void BlitToXrSwapchain(RHI_Texture* source);
         static void PrepareForPresent(RHI_SwapChain* swapchain);
         static void PrepareTextureForUpload(RHI_Texture* texture);
-        static void PrepareTextureForUpload(RHI_CommandList* cmd_list, RHI_Texture* texture);
         static void PrepareTexturesForSampling(const std::array<RHI_Texture*, rhi_max_array_size>* textures);
         static void PrepareTextureForCompute(RHI_Texture* texture);
         static void PrepareBufferForCompute(RHI_Buffer* buffer);
-        static void PrepareBufferForCompute(RHI_CommandList* cmd_list, RHI_Buffer* buffer);
         static void PrepareBufferForReadback(RHI_Buffer* buffer);
-        static void PrepareBufferForReadback(RHI_CommandList* cmd_list, RHI_Buffer* buffer);
         static void PrepareBufferForGraphics(RHI_Buffer* buffer);
         static void Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips);
         static void Copy(RHI_Texture* source, RHI_SwapChain* destination);
@@ -335,26 +327,39 @@ namespace spartan
         static void SetBufferVertex(const RHI_Buffer* vertex, RHI_Buffer* instance = nullptr);
         static void SetBufferIndex(const RHI_Buffer* buffer);
         static void SetBuffer(const uint32_t slot, RHI_Buffer* buffer);
-        static void SetBuffer(RHI_CommandList* cmd_list, const uint32_t slot, RHI_Buffer* buffer);
         static void SetBuffer(const char* name, RHI_Buffer* buffer);
         static void SetConstantBuffer(const uint32_t slot, RHI_Buffer* constant_buffer);
         static void SetConstantBuffer(const char* name, RHI_Buffer* constant_buffer);
         static void PushConstants(const uint32_t offset, const uint32_t size, const void* data);
-        static void PushConstants(RHI_CommandList* cmd_list, const uint32_t offset, const uint32_t size, const void* data);
         template<typename T>
         static void PushConstants(const T& data)
         {
             PushConstants(0, sizeof(T), &data);
         }
-        template<typename T>
-        static void PushConstants(RHI_CommandList* cmd_list, const T& data)
-        {
-            PushConstants(cmd_list, 0, sizeof(T), &data);
-        }
         static void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const bool uav = false, const uint32_t array_layer = rhi_all_mips);
         static void SetTexture(const char* name, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const uint32_t array_layer = rhi_all_mips);
         static void SetAccelerationStructure(const uint32_t slot, RHI_AccelerationStructure* tlas);
         static void SetAccelerationStructure(const char* name, RHI_AccelerationStructure* tlas);
+        static void SetTexture(const Renderer_BindingsSrv slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const uint32_t array_layer = rhi_all_mips)
+        {
+            SetTexture(static_cast<uint32_t>(slot), texture, mip_index, mip_range, false, array_layer);
+        }
+        static void SetTexture(const Renderer_BindingsUav slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const uint32_t array_layer = rhi_all_mips)
+        {
+            SetTexture(static_cast<uint32_t>(slot), texture, mip_index, mip_range, true, array_layer);
+        }
+        static void SetBuffer(const Renderer_BindingsUav slot, RHI_Buffer* buffer)
+        {
+            SetBuffer(static_cast<uint32_t>(slot), buffer);
+        }
+        static void SetConstantBuffer(const Renderer_BindingsCb slot, RHI_Buffer* constant_buffer)
+        {
+            SetConstantBuffer(static_cast<uint32_t>(slot), constant_buffer);
+        }
+        static void SetAccelerationStructure(const Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas)
+        {
+            SetAccelerationStructure(static_cast<uint32_t>(slot), tlas);
+        }
         static void BeginMarker(const char* name);
         static void EndMarker();
         static void WriteGpuBreadcrumb(RHI_Buffer* buffer, uint32_t slot, uint32_t value);
@@ -363,15 +368,12 @@ namespace spartan
         static void BeginOcclusionQuery(const uint64_t entity_id);
         static void EndOcclusionQuery();
         static void UpdateOcclusionQueries();
-        static void BeginTimeblock(const char* name, const bool gpu_marker = true, const bool gpu_timing = true);
-        static void EndTimeblock();
         static void UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data, const bool use_mapped_memory = true);
         static void RenderPassEnd();
         static void RestoreAfterExternalPass();
         static void CopyTextureToBuffer(RHI_Texture* source, RHI_Buffer* destination);
         static void CopyBufferToBuffer(void* source, RHI_Buffer* destination, uint64_t size);
         static void CopyBufferToBuffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size);
-        static void CopyBufferToBuffer(RHI_CommandList* cmd_list, RHI_Buffer* source, RHI_Buffer* destination, uint64_t size);
 
         // copies the first size bytes, ordered after all earlier work on either buffer and before all later work
         static void CopyBufferContents(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size);
@@ -399,6 +401,11 @@ namespace spartan
         void PrepareDispatch();
         void TryBindPendingPipeline();
         bool IsPendingPipelineReady() const;
+        bool IsPipelineBound() const { return m_pipeline && !m_pipeline_state_dirty; }
+        void CommitPendingClear();
+        void ResetPassState();
+        void Bind(const RHI_Pass_Binding& binding);
+        void ApplyBinding(const RHI_Pass_Binding& binding);
         void RenderPassBegin();
         void TrackTextureUsage(uint32_t slot, RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, uint32_t array_layer, bool uav);
         void TrackBufferUsage(uint32_t slot, RHI_Buffer* buffer, RHI_Resource_Access access);
@@ -467,6 +474,7 @@ namespace spartan
         // compute cull writes then mesh draws read, one barrier per dirty window is enough
         bool m_mesh_cull_barrier_satisfied                   = false;
         std::stack<const char*> m_active_timeblocks;
+        std::stack<bool> m_timeblock_gpu_timing;
         std::stack<const char*> m_debug_label_stack;
         std::stack<int32_t> m_breadcrumb_gpu_slots;
         bool m_bind_dynamic = false;
@@ -492,6 +500,18 @@ namespace spartan
         bool m_flushing_barriers = false;
         RHI_PipelineState m_pso;
         RHI_PipelineState m_pso_pending;
+
+        // pass state, recorded by the setters and applied once the pending pipeline is bound
+        std::vector<RHI_Pass_Binding> m_pass_bindings;
+        bool m_binding_replay                 = false;
+        bool m_pending_viewport_set           = false;
+        RHI_Viewport m_pending_viewport;
+        bool m_pending_scissor_set            = false;
+        std::array<float, 4> m_pending_scissor = {};
+        RHI_CullMode m_pending_cull_mode      = RHI_CullMode::Max;
+        std::array<uint8_t, 256> m_pending_push_constants = {};
+        uint32_t m_pending_push_offset        = 0;
+        uint32_t m_pending_push_size          = 0;
         std::vector<PendingBarrierInfo> m_pending_barriers;
         RHI_Queue* m_queue = nullptr;
         bool m_load_depth_render_target = false;

@@ -26,8 +26,8 @@ static const uint sampler_point_clamp    = 0;
 static const uint sampler_bilinear_clamp = 3;
 
 float3 pack(float3 value)          { return value * 0.5f + 0.5f; }
-float3 pass_get_f3_value()         { return buffer_pass.values[0].xyz; }
-float2 pass_get_f2_value()         { return float2(buffer_pass.values[0].w, buffer_pass.values[1].w); }
+float  pass_float(uint slot)       { return buffer_pass.values[slot / 4][slot % 4]; }
+uint   pass_uint(uint slot)        { return asuint(pass_float(slot)); }
 
 struct Vertex_Pos2dUvColor
 {
@@ -84,10 +84,7 @@ float3 hdr10_to_linear(float3 color, float white_point)
 
 float4 main_ps(vertex input) : SV_Target
 {
-    // extract push constant data
-    float3 flags_packed = pass_get_f3_value();
-    uint flags          = asuint(flags_packed.x); // m00 contains bitfield
-    float2 mip_array    = pass_get_f2_value();    // mip_level, array_level
+    uint flags = pass_uint(pass_imgui::flags);
 
     // extract booleans
     uint channel_r        = (flags & (1 << 0))  != 0 ? 1 : 0;
@@ -107,8 +104,8 @@ float4 main_ps(vertex input) : SV_Target
 
     // sample texture
     float4 color_texture;
-    float mip_level             = mip_array.x;
-    float array_level           = mip_array.y;
+    float mip_level             = pass_float(pass_imgui::mip_level);
+    float array_level           = pass_float(pass_imgui::array_level);
     float is_array              = array_level > 0.0f ? 1.0f : 0.0f; // not needed anymore
     float3 uv_array             = float3(input.uv, array_level);
     float4 sample_point_wrap    = tex.SampleLevel(samplers[sampler_point_clamp], input.uv, mip_level);

@@ -33,10 +33,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (any(thread_id.xy >= uint2(resolution)))
         return;
 
-    const float3 backdrop_tint = pass_get_f3_value();
-    const float  replace_sky   = pass_get_f3_value2().x;
+    const float3 backdrop_tint = pass_float3(pass_preview_studio::backdrop_tint);
+    const bool   replace_sky   = pass_bool(pass_preview_studio::replace_sky);
     // 0 leaves the shaded wires alone, 1 picks the bright wire, 2 picks the dark wire
-    const float  wire_mode     = pass_get_f3_value2().y;
+    const float  wire_mode     = pass_float(pass_preview_studio::wire_mode);
 
     float2 uv        = (thread_id.xy + 0.5f) / resolution;
     float2 uv_depth  = uv * get_render_uv_scale();
@@ -53,7 +53,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     if (is_background)
     {
-        if (replace_sky < 0.5f)
+        if (!replace_sky)
             return;
 
         float  falloff  = saturate(length(uv - 0.5f) * VIGNETTE_REACH);

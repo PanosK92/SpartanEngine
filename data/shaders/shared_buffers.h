@@ -22,6 +22,8 @@ Commercial use requires written permission and negotiated payment terms.
 
 // shared type abstraction - resolves to native types on each side
 #ifdef __cplusplus
+    #include <bit>
+
     #define SHARED_FLOAT    float
     #define SHARED_FLOAT2   spartan::math::Vector2
     #define SHARED_FLOAT3   spartan::math::Vector3
@@ -164,6 +166,11 @@ struct FrameBufferData
     SHARED_FLOAT  puddliness;              // 0 dry, 1 standing water in every low spot of terrain and roads
     SHARED_FLOAT  padding_terrain_blend_1;
 
+    // breaking surf on the terrain shoreline, see common_ocean_shore.hlsl
+    SHARED_FLOAT4 ocean_shore_mapping; // xy = world xz of the field origin, zw = 1 / world size
+    SHARED_FLOAT4 ocean_shore_wave;    // x = offshore swell height (m), y = period (s), z = wrapped time (s), w = enabled
+    SHARED_FLOAT4 ocean_shore_swell;   // xy = direction the swell travels, z = reach offshore (m), w = unused
+
     // radial motion blur wheel hubs, xy = screen uv, z = signed per-frame rotation angle in radians, w = projected radius in output pixels
     SHARED_FLOAT4 radial_blur_hubs[8];
     SHARED_FLOAT  radial_blur_hub_count;
@@ -215,7 +222,9 @@ struct FrameBufferData
 // push constant buffer - carries per-draw and per-pass data
 // draw_index indexes into the bindless draw data buffer for transforms and material info
 // material_index and is_transparent are pass-level state for compute shaders
-// values[] carries generic per-pass parameters (5 x float4)
+// the 20 parameter slots are addressed by the pass_* tables below, set(slot, value) on the cpu,
+// pass_float/pass_uint/pass_bool(slot) in hlsl, a vector takes consecutive slots, uints and
+// bools are stored bit exact
 struct PassBufferData
 {
     SHARED_UINT draw_index     SHARED_DEFAULT(0);
@@ -224,25 +233,363 @@ struct PassBufferData
     SHARED_UINT eye_index      SHARED_DEFAULT(0); // 0 = left / monoscopic, 1 = right
 
 #ifdef __cplusplus
-    // c++ uses a flat float array with setter helpers
-    // the last two float4s have no named setter, passes that need them write v[12..19] directly
     float v[20] = {};
 
-    void set_f3_value(const spartan::math::Vector3& value) { v[0] = value.x; v[1] = value.y; v[2] = value.z; }
-    void set_f3_value(float x, float y = 0.0f, float z = 0.0f) { v[0] = x; v[1] = y; v[2] = z; }
-
-    void set_f3_value2(const spartan::math::Vector3& value) { v[4] = value.x; v[5] = value.y; v[6] = value.z; }
-    void set_f3_value2(float x, float y, float z) { v[4] = x; v[5] = y; v[6] = z; }
-
-    void set_f4_value(const spartan::Color& color) { v[8] = color.r; v[9] = color.g; v[10] = color.b; v[11] = color.a; }
-    void set_f4_value(float x, float y, float z, float w) { v[8] = x; v[9] = y; v[10] = z; v[11] = w; }
-
-    void set_f2_value(float x, float y) { v[3] = x; v[7] = y; }
+    void set(const uint32_t slot, const float value)                   { v[slot] = value; }
+    void set(const uint32_t slot, const uint32_t value)                { v[slot] = std::bit_cast<float>(value); }
+    void set(const uint32_t slot, const bool value)                    { set(slot, value ? 1u : 0u); }
+    void set(const uint32_t slot, const spartan::math::Vector2& value) { v[slot] = value.x; v[slot + 1] = value.y; }
+    void set(const uint32_t slot, const spartan::math::Vector3& value) { v[slot] = value.x; v[slot + 1] = value.y; v[slot + 2] = value.z; }
+    void set(const uint32_t slot, const spartan::math::Vector4& value) { v[slot] = value.x; v[slot + 1] = value.y; v[slot + 2] = value.z; v[slot + 3] = value.w; }
+    void set(const uint32_t slot, const spartan::Color& value)         { v[slot] = value.r; v[slot + 1] = value.g; v[slot + 2] = value.b; v[slot + 3] = value.a; }
 #else
-    // hlsl uses float4 array with swizzle accessors
     float4 values[5];
 #endif
 };
+
+// pass parameter slots, one table per shader, a slot number is followed by the type it holds
+// two names may share a slot when they belong to different kernels of the same shader
+
+// common_vertex_processing.hlsl, visible triangle draws (depth prepass, g-buffer, meshlet visualize)
+namespace pass_visible_triangles
+{
+    static const SHARED_UINT region_base = 0; // uint, 0 for the opaque half, the half capacity for the alpha half
+}
+
+namespace pass_meshlet_visualize
+{
+    static const SHARED_UINT color_by_draw_id = 1; // bool
+}
+
+namespace pass_depth_prepass
+{
+    static const SHARED_UINT has_albedo = 1; // bool
+}
+
+namespace pass_depth_light
+{
+    static const SHARED_UINT has_albedo  = 0; // bool
+    static const SHARED_UINT light_index = 1; // uint
+    static const SHARED_UINT array_index = 2; // uint
+}
+
+// g_buffer.hlsl and common_vertex_processing.hlsl, grass scatter draws
+namespace pass_grass_draw
+{
+    static const SHARED_UINT uv_patch        = 0;  // float
+    static const SHARED_UINT reverse_count   = 1;  // uint, coarse blades fill the allocation from its end
+    static const SHARED_UINT lod_base        = 2;  // uint
+    static const SHARED_UINT tracks          = 3;  // float4, origin xz, 1 / size, valid
+    static const SHARED_UINT tracks_previous = 7;  // float4, same layout
+    static const SHARED_UINT body            = 11; // float4, active, center xz, contact radius
+}
+
+namespace pass_grass_populate
+{
+    static const SHARED_UINT cell_size             = 0;  // float
+    static const SHARED_UINT ring_radius           = 1;  // float
+    static const SHARED_UINT lod_base              = 2;  // uint
+    static const SHARED_UINT max_instances_per_lod = 3;  // uint
+    static const SHARED_UINT height_min            = 4;  // float
+    static const SHARED_UINT height_max            = 5;  // float
+    static const SHARED_UINT max_slope_cos         = 6;  // float
+    static const SHARED_UINT inner_radius          = 7;  // float
+    static const SHARED_UINT terrain_mapping       = 8;  // float4, map origin xz, 1 / map size xz
+    static const SHARED_UINT patch_size            = 12; // float, signed
+    static const SHARED_UINT patch_coverage        = 13; // float
+    static const SHARED_UINT patch_edge            = 14; // float
+    static const SHARED_UINT ground_mask           = 15; // uint
+    static const SHARED_UINT min_slope_cos         = 16; // float
+    static const SHARED_UINT slope_bias            = 17; // float
+    static const SHARED_UINT height_fade           = 18; // float
+    static const SHARED_UINT root_radius           = 19; // float, 0 when the blade mesh is not bounded
+}
+
+namespace pass_grass_indirect_args
+{
+    static const SHARED_UINT lod_caps  = 0; // uint x 3
+    static const SHARED_UINT lod_count = 3; // uint
+}
+
+namespace pass_grass_interaction
+{
+    static const SHARED_UINT origin          = 0;  // float2
+    static const SHARED_UINT cell_size       = 2;  // float
+    static const SHARED_UINT history_valid   = 3;  // bool
+    static const SHARED_UINT origin_previous = 4;  // float2
+    static const SHARED_UINT contact_count   = 6;  // uint
+    static const SHARED_UINT delta_time      = 7;  // float
+    static const SHARED_UINT track_center    = 8;  // float2
+    static const SHARED_UINT track_radius    = 10; // float
+    static const SHARED_UINT track_recovery  = 11; // float
+}
+
+namespace pass_instance_cull
+{
+    static const SHARED_UINT hiz_depth_bias = 0; // float
+    static const SHARED_UINT task_count     = 1; // uint
+    static const SHARED_UINT max_hiz_mip    = 2; // float
+    static const SHARED_UINT max_instances  = 3; // uint
+}
+
+namespace pass_indirect_cull
+{
+    static const SHARED_UINT hiz_depth_bias        = 0; // float
+    static const SHARED_UINT max_hiz_mip           = 1; // float
+    static const SHARED_UINT max_meshlet_instances = 2; // uint
+    static const SHARED_UINT split_opaque_alpha    = 3; // bool
+    static const SHARED_UINT wind_cache_limit      = 4; // uint
+}
+
+namespace pass_indirect_cull_triangle
+{
+    static const SHARED_UINT max_meshlet_instances = 0; // uint
+    static const SHARED_UINT region_cap            = 1; // uint, per half capacity, doubles as the alpha region base
+}
+
+namespace pass_reflections_shade
+{
+    static const SHARED_UINT light_count   = 0; // uint
+    static const SHARED_UINT mip_count     = 1; // float, skysphere mips
+    static const SHARED_UINT light_culling = 2; // bool
+}
+
+namespace pass_ray_traced_shadows
+{
+    static const SHARED_UINT light_culling       = 0; // bool
+    static const SHARED_UINT local_shadow_lights = 1; // uint x nrd_local_shadow_max, light index per sigma slot, 0 is empty
+}
+
+// nrd_pack_shadows.hlsl and nrd_unpack_shadows.hlsl
+namespace pass_nrd_shadows
+{
+    static const SHARED_UINT tan_light_angular_radius = 0; // float
+    static const SHARED_UINT local_slice              = 1; // uint
+    static const SHARED_UINT is_local                 = 2; // bool
+}
+
+namespace pass_restir_nrd_unpack
+{
+    static const SHARED_UINT reset_accumulation = 0; // bool
+}
+
+namespace pass_bend_sss
+{
+    static const SHARED_UINT light_coordinate       = 0;  // float4
+    static const SHARED_UINT wave_offset            = 4;  // float2
+    static const SHARED_UINT inv_depth_texture_size = 6;  // float2
+    static const SHARED_UINT near_depth             = 8;  // float
+    static const SHARED_UINT far_depth              = 9;  // float
+    static const SHARED_UINT array_slice            = 10; // uint
+}
+
+namespace pass_light_cluster_visualize
+{
+    static const SHARED_UINT mode = 0; // uint
+    static const SHARED_UINT cap  = 1; // float, lights per cluster that map to full red
+}
+
+namespace pass_light_flare
+{
+    static const SHARED_UINT near_distance   = 0; // float
+    static const SHARED_UINT size_scale      = 1; // float
+    static const SHARED_UINT intensity_scale = 2; // float
+    static const SHARED_UINT disc_size       = 3; // float, pixels
+    static const SHARED_UINT max_size        = 4; // float, pixels
+    static const SHARED_UINT occlusion       = 5; // bool
+    static const SHARED_UINT light_index     = 6; // uint
+    static const SHARED_UINT fade_length     = 7; // float
+}
+
+// fog_froxel.hlsl and fog_medium.hlsl
+namespace pass_fog
+{
+    static const SHARED_UINT reset_history  = 0; // bool, inject
+    static const SHARED_UINT mist_density   = 1; // float, inject
+    static const SHARED_UINT mist_height    = 2; // float, inject
+    static const SHARED_UINT ground_mist    = 3; // float, inject
+    static const SHARED_UINT mist_variation = 4; // float, inject
+    static const SHARED_UINT debug_mode     = 0; // float, composite
+}
+
+namespace pass_light_image_based
+{
+    static const SHARED_UINT environment_mip_count = 0; // float
+    static const SHARED_UINT restir_enabled        = 1; // bool
+    static const SHARED_UINT restir_intensity      = 2; // float
+}
+
+namespace pass_light_integration
+{
+    static const SHARED_UINT mip_level = 0; // uint
+    static const SHARED_UINT mip_count = 1; // uint
+}
+
+namespace pass_skysphere
+{
+    static const SHARED_UINT warmup_blend = 0; // float, 0 in steady state selects the partial dispatch
+}
+
+namespace pass_clouds
+{
+    static const SHARED_UINT reset_history   = 0; // bool, temporal
+    static const SHARED_UINT environment_row = 0; // uint, environment, first pixel row of the strip
+}
+
+namespace pass_car_rain
+{
+    static const SHARED_UINT offset       = 0; // uint, first element of this frame's drops or texels
+    static const SHARED_UINT count        = 1; // uint
+    static const SHARED_UINT atlas_width  = 2; // uint
+    static const SHARED_UINT atlas_height = 3; // uint
+    static const SHARED_UINT texel_size   = 4; // float, metres
+}
+
+// every ocean shader through ocean_common.hlsl
+namespace pass_ocean
+{
+    static const SHARED_UINT wind_direction     = 0;  // float2
+    static const SHARED_UINT wind_speed         = 2;  // float
+    static const SHARED_UINT reset_history      = 3;  // bool
+    static const SHARED_UINT cascade_lengths    = 4;  // float4, metres
+    static const SHARED_UINT amplitude          = 8;  // float
+    static const SHARED_UINT choppiness         = 9;  // float
+    static const SHARED_UINT displacement_scale = 10; // float
+    static const SHARED_UINT normal_strength    = 11; // float
+}
+
+namespace pass_ssao
+{
+    static const SHARED_UINT reset_history = 0; // bool
+}
+
+namespace pass_depth_of_field
+{
+    static const SHARED_UINT aperture = 0; // float
+}
+
+namespace pass_motion_blur
+{
+    static const SHARED_UINT shutter_speed = 0; // float
+    static const SHARED_UINT mode          = 1; // float, above 1.5 shows the radial mask
+}
+
+namespace pass_cas
+{
+    static const SHARED_UINT sharpness = 0; // float
+}
+
+namespace pass_film_grain
+{
+    static const SHARED_UINT iso = 0; // float
+}
+
+namespace pass_chromatic_aberration
+{
+    static const SHARED_UINT aperture = 0; // float
+}
+
+namespace pass_vhs
+{
+    static const SHARED_UINT force_sdr = 0; // bool
+}
+
+namespace pass_bloom
+{
+    static const SHARED_UINT scatter   = 0; // float, upsample
+    static const SHARED_UINT intensity = 0; // float, composite
+}
+
+namespace pass_output
+{
+    static const SHARED_UINT tonemapping = 0; // uint
+    static const SHARED_UINT force_sdr   = 1; // bool
+}
+
+namespace pass_dlss_reactivity
+{
+    static const SHARED_UINT scale = 0; // float
+}
+
+namespace pass_taau
+{
+    static const SHARED_UINT reset_history = 0; // bool
+    static const SHARED_UINT write_history = 1; // bool, mono only, writes the history into the post-process scratch
+}
+
+namespace pass_auto_exposure
+{
+    static const SHARED_UINT adaptation_speed      = 0; // float
+    static const SHARED_UINT exposure_compensation = 1; // float
+}
+
+namespace pass_spd
+{
+    static const SHARED_UINT mip_count        = 0; // uint
+    static const SHARED_UINT work_group_count = 1; // uint
+    static const SHARED_UINT resolution       = 2; // float2
+}
+
+namespace pass_blur
+{
+    static const SHARED_UINT radius   = 0; // float
+    static const SHARED_UINT vertical = 1; // bool
+}
+
+namespace pass_particles
+{
+    static const SHARED_UINT emitter_index = 0; // uint
+    static const SHARED_UINT use_texture   = 1; // bool
+}
+
+namespace pass_particles_volumetric
+{
+    static const SHARED_UINT reset_history = 0; // bool
+}
+
+namespace pass_icon
+{
+    static const SHARED_UINT icon_size  = 0; // float2, pixels
+    static const SHARED_UINT resolution = 2; // float2
+}
+
+namespace pass_font
+{
+    static const SHARED_UINT display_encoded = 0; // bool
+    static const SHARED_UINT outline_color   = 1; // float4, zero alpha uses the per vertex color
+}
+
+namespace pass_outline
+{
+    static const SHARED_UINT color = 0; // float4
+}
+
+namespace pass_imgui
+{
+    static const SHARED_UINT flags       = 0; // uint
+    static const SHARED_UINT mip_level   = 1; // float
+    static const SHARED_UINT array_level = 2; // float
+}
+
+// texture_compress_bc1/3/5/7.hlsl
+namespace pass_texture_compress
+{
+    static const SHARED_UINT block_count_x  = 0; // uint
+    static const SHARED_UINT block_count    = 1; // uint
+    static const SHARED_UINT quality        = 2; // float
+    static const SHARED_UINT input_offset   = 3; // uint
+    static const SHARED_UINT output_offset  = 4; // uint
+    static const SHARED_UINT mip_width      = 5; // uint
+    static const SHARED_UINT mip_height     = 6; // uint
+    static const SHARED_UINT groups_per_row = 7; // uint
+}
+
+namespace pass_preview_studio
+{
+    static const SHARED_UINT backdrop_tint = 0; // float3
+    static const SHARED_UINT replace_sky   = 3; // bool
+    static const SHARED_UINT wire_mode     = 4; // float, 0 keeps the shaded wires, 1 bright, 2 dark
+}
 
 // note, the full uv state (tiling, offset, invert, rotation, world_space_uv) lives on DrawData,
 // not here, so multiple renderables can share a material yet have per-instance uv tweaks

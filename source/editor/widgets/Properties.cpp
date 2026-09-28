@@ -1168,6 +1168,27 @@ void Properties::ShowLight(spartan::Light* light) const
         if (light->GetLightType() == LightType::Spot)
         {
             property_float("Angle", &angle, 0.5f, 1.0f, 179.0f, "cone angle in degrees", "%.1f°");
+
+            std::string ies_profile = light->GetIesProfile();
+            property_resource("IES Profile", &ies_profile, "measured ies lm-63 distribution, replaces the cone and sets the angle to the profile extent", [light](const std::string& path)
+            {
+                if (FileSystem::GetExtensionFromFilePath(path) == ".ies")
+                {
+                    light->SetIesProfile(FileSystem::GetRelativePath(path));
+                }
+            });
+
+            // a profile picked this frame moved the angle, keep the map below from writing the old one back
+            if (ies_profile != light->GetIesProfile())
+            {
+                angle = light->GetAngle() * math::rad_to_deg * 2.0f;
+            }
+            if (light->GetIesSlot() != 0)
+            {
+                char ies_summary[96];
+                snprintf(ies_summary, sizeof(ies_summary), "%.0f cd peak, %.0f lm", light->GetIesPeakCandela(), light->GetIesLumens());
+                property_text("IES Output", ies_summary, "what the file specifies, set the intensity to its lumens for the measured output");
+            }
         }
 
         // area dimensions

@@ -18,7 +18,7 @@ static const float reference_fstop        = 4.0; // reference f-stop for baselin
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     // get camera aperture (f-stop)
-    float camera_aperture   = pass_get_f3_value().x;
+    float camera_aperture   = pass_float(pass_chromatic_aberration::aperture);
 
     // compute effect strength based on aperture
     float aperture_scale    = reference_fstop / max(camera_aperture, 0.1); // avoid division by zero, wider aperture = stronger effect

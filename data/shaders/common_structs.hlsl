@@ -159,6 +159,46 @@ struct Surface
     }
 };
 
+// flags bits 16 to 23 hold the 1 based ies atlas tile of a spot, 0 means the analytic cone
+uint light_ies_slot(uint flags)
+{
+    return (flags >> 16u) & 0xFFu;
+}
+
+// a tile spans the spot's shadow frustum, u = x / z and v = y / z over tan(angle) in the light's right/up/forward frame
+float light_ies_attenuation(uint slot, float3 dir_from_light, float3 forward, float3 right, float angle)
+{
+    float z = dot(dir_from_light, forward);
+    if (z <= 1e-4f)
+        return 0.0f;
+
+    float3 up   = cross(forward, right);
+    float2 p    = float2(dot(dir_from_light, right), dot(dir_from_light, up)) / (z * tan(angle));
+    float  edge = max(abs(p.x), abs(p.y));
+    if (edge >= 1.0f)
+        return 0.0f;
+
+    uint width, height;
+    tex_ies.GetDimensions(width, height);
+    float tiles = max(float(height) / float(max(width, 1u)), 1.0f);
+    float inset = 0.5f / float(max(width, 1u));
+    float2 uv   = clamp(float2(0.5f + 0.5f * p.x, 0.5f - 0.5f * p.y), inset, 1.0f - inset);
+    uv.y        = (float(slot - 1u) + uv.y) / tiles;
+
+    // the tile border would otherwise print a hard square where a profile still carries light
+    return tex_ies.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f) * saturate((1.0f - edge) * 50.0f);
+}
+
+// angular emission of a spot, the measured profile when one is attached, otherwise the soft cone
+float light_spot_factor(uint flags, float3 dir_from_light, float3 forward, float3 right, float angle)
+{
+    uint slot = light_ies_slot(flags);
+    if (slot != 0u)
+        return light_ies_attenuation(slot, dir_from_light, forward, right, angle);
+
+    return lighting_spot_attenuation(dot(dir_from_light, forward), angle);
+}
+
 struct Light
 {
     // properties
@@ -219,6 +259,10 @@ struct Light
 
     float compute_attenuation_angle()
     {
+        uint ies_slot = light_ies_slot(flags);
+        if (ies_slot != 0u)
+            return light_ies_attenuation(ies_slot, to_pixel, forward, right, angle);
+
         // cos_outer, cos_inner, angle_scale are precomputed once in Build
         float cd          = dot(to_pixel, forward);
         float attenuation = saturate((cd - cos_outer) * angle_scale);
@@ -348,10 +392,18 @@ struct Light
             if (is_spot())
             {
                 // direction from light to point, cos_outer/inner/angle_scale precomputed in Build
-                float3 to_vol     = normalize(vol_position - position);
-                float cd          = dot(to_vol, forward);
-                float atten_angle = saturate((cd - cos_outer) * angle_scale);
-                atten *= atten_angle * atten_angle;
+                float3 to_vol = normalize(vol_position - position);
+                uint ies_slot = light_ies_slot(flags);
+                if (ies_slot != 0u)
+                {
+                    atten *= light_ies_attenuation(ies_slot, to_vol, forward, right, angle);
+                }
+                else
+                {
+                    float cd          = dot(to_vol, forward);
+                    float atten_angle = saturate((cd - cos_outer) * angle_scale);
+                    atten *= atten_angle * atten_angle;
+                }
             }
             else if (is_area())
             {

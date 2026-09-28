@@ -29,7 +29,7 @@ namespace spartan
             const RHI_Stencil_Operation stencil_depth_fail_op         = RHI_Stencil_Operation::Zero,
             const RHI_Stencil_Operation stencil_pass_op               = RHI_Stencil_Operation::Zero
         );
-        ~RHI_DepthStencilState();
+        ~RHI_DepthStencilState() = default;
 
         bool GetDepthTestEnabled()                             const { return m_depth_test_enabled; }
         bool GetDepthWriteEnabled()                            const { return m_depth_write_enabled; }

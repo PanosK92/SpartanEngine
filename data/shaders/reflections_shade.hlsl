@@ -237,7 +237,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // miss returns sky color, prefiltered by source surface roughness so smooth metals get sharp sky
     if (hit_distance == 0.0f)
     {
-        float mip_count        = pass_get_f3_value().y;
+        float mip_count        = pass_float(pass_reflections_shade::mip_count);
         float sky_mip          = source_roughness * source_roughness * (mip_count - 1.0f);
         float3 ray_dir         = position;
         float2 sky_uv          = direction_sphere_uv(ray_dir);
@@ -274,7 +274,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     Surface hit_surface = (Surface)0;
     hit_surface.position = position;
     hit_surface.normal = normal;
-    uint light_count = uint(pass_get_f3_value().x);
+    uint light_count = pass_uint(pass_reflections_shade::light_count);
     for (uint i = 0; i < light_count; i++)
     {
         LightParameters light_p = light_parameters[i];
@@ -288,7 +288,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // Reject lights with zero contribution before constructing area bases,
         // spot trigonometry and attenuation. Area range is measured from the
         // rectangle, so expand the cheap sphere by its half diagonal.
-        if (pass_get_f3_value().z > 0.5f)
+        if (pass_bool(pass_reflections_shade::light_culling))
         {
             float3 center_to_light = is_directional ? -light_p.direction : light_p.position - position;
             if (dot(normal, center_to_light) <= 0.0f)
@@ -361,7 +361,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         out_specular += specular;
     }
     
-    float mip_count = pass_get_f3_value().y;
+    float mip_count = pass_float(pass_reflections_shade::mip_count);
 
     // one sky visibility ray shared by diffuse and specular ibl, bias toward the reflection
     // direction on metals where specular ibl dominates

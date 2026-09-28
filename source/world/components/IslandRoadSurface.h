@@ -7,11 +7,15 @@
 
 namespace spartan::island_road_surface
 {
+    // Metres per asphalt texture repeat, puts the aggregate at its real 5-12 mm stone size.
+    // Must match road_asphalt_repeat in common_road.hlsl.
+    constexpr float asphalt_repeat=1.5f;
+
     // The island opts into a layered road finish; generic spline materials keep
     // their existing UV/profile contract, including editor test fixtures.
     inline bool Enabled(Entity* entity)
     {
-        return World::GetName()=="plan.world" && entity && entity->GetParent()
+        return World::GetIslandFeatures() && entity && entity->GetParent()
             && entity->GetParent()->GetObjectName()=="roads";
     }
 
@@ -25,19 +29,24 @@ namespace spartan::island_road_surface
         const std::string base="project/materials/island_roads/";
         const std::string asset=layer==2 ? "gravel_road" : "asphalt_track";
         const std::string size=layer==2 ? "2k" : "4k";
-        auto texture=[&](MaterialTextureType type,const char* channel)
+        auto texture=[&](MaterialTextureType type,const char* channel,const char* extension=".jpg")
         {
-            material->SetTexture(type,base+asset+"_"+channel+"_"+size+".jpg");
+            material->SetTexture(type,base+asset+"_"+channel+"_"+size+extension);
         };
-        if (layer!=1) texture(MaterialTextureType::Color,"diff");
+        // Paint samples the asphalt diffuse untinted, road_weathering composes it over the
+        // asphalt where the paint is worn or ragged. Both share the height for parallax.
+        texture(MaterialTextureType::Color,"diff");
         texture(MaterialTextureType::Normal,"nor_gl");
         texture(MaterialTextureType::Roughness,"rough");
         texture(MaterialTextureType::Occlusion,"ao");
-        material->SetColor(layer==1 ? Color(.72f,.71f,.65f,1) :
+        if (layer!=2) texture(MaterialTextureType::Height,"height",".png");
+        material->SetColor(layer==1 ? Color(1,1,1,1) :
             layer==2 ? Color(.66f,.63f,.58f,1) : Color(1.6f,1.65f,1.7f,1));
         material->SetProperty(MaterialProperty::Metalness,0);
-        material->SetProperty(MaterialProperty::Roughness,layer==1 ? .92f : 1.0f);
-        material->SetProperty(MaterialProperty::Normal,layer==2 ? .55f : .32f);
+        material->SetProperty(MaterialProperty::Roughness,1.0f);
+        material->SetProperty(MaterialProperty::Normal,layer==2 ? .55f : 1.0f);
+        // POM depth is height * 0.04 uv, 1.5 m per uv, so ~7 mm of aggregate relief.
+        if (layer!=2) material->SetProperty(MaterialProperty::Height,.12f);
         material->SetProperty(MaterialProperty::TerrainBlend,layer==2 ? .8f : 0);
         material->SetProperty(MaterialProperty::TerrainCoating,0);
         material->SetProperty(MaterialProperty::IsRoadSurface,layer==0 ? 1.0f : 0.0f);
@@ -117,8 +126,12 @@ namespace spartan::island_road_surface
                         : ar*(1-p.y)+bl*(1-p.x)+br*(p.x+p.y-1);
                     const Vector3 up=(a.up+(b.up-a.up)*p.y).Normalized();
                     const Vector3 right=(a.right+(b.right-a.right)*p.y).Normalized();
-                    vertices.emplace_back(position+up*.008f,
-                        Vector2(p.x,(a.distance+span*p.y-floorf(start/3)*3)/3),up,right);
+                    // 3 mm is real thermoplastic thickness. U matches the asphalt
+                    // (lateral metres / repeat) so the paint carries the grain beneath it.
+                    const float width=width_a+(width_b-width_a)*p.y;
+                    const float r=asphalt_repeat;
+                    vertices.emplace_back(position+up*.003f,
+                        Vector2((p.x-.5f)*width/r,(a.distance+span*p.y-floorf(start/r)*r)/r),up,right);
                 }
                 for (uint32_t i=1;i+1<static_cast<uint32_t>(polygon.size());++i)
                     indices.insert(indices.end(),{base,base+i,base+i+1});

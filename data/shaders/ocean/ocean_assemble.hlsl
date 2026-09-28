@@ -107,7 +107,7 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     float inject = 1.0 - smoothstep(0.2, 0.65, stretch_min);
     // The shortest ripples sharpen reflections but do not make persistent whitecaps.
     inject *= smoothstep(2.0, 6.0, length_m * 0.1);
-    bool reset   = pass_get_f2_value().y > 0.5;
+    bool reset   = pass_bool(pass_ocean::reset_history);
     float2 history = reset ? float2(0.0, 0.0) : tex_ocean_normal_uav[id].zw;
     float prev   = saturate(history.x);
     float dt     = max(buffer_frame.delta_time, 0.0);

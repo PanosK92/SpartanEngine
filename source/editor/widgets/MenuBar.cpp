@@ -41,10 +41,11 @@ namespace
     bool show_file_dialog          = false;
     bool show_imgui_metrics_window = false;
     bool show_imgui_style_window   = false;
-    bool show_imgui_demo_widow     = false;
+    bool show_imgui_demo_window    = false;
     Editor* editor                 = nullptr;
     string file_dialog_selection_path;
     unique_ptr<FileDialog> file_dialog;
+    vector<pair<float, float>> titlebar_interactive_spans; // window x ranges covered by titlebar widgets
 
     void menu_entry(Widget* widget)
     {
@@ -337,7 +338,9 @@ namespace
                 {
                     ImGui::MenuItem("Metrics", nullptr, &show_imgui_metrics_window);
                     ImGui::MenuItem("Style", nullptr, &show_imgui_style_window);
-                    ImGui::MenuItem("Demo", nullptr, &show_imgui_demo_widow);
+#if defined(DEBUG) || defined(DEVELOPMENT)
+                    ImGui::MenuItem("Demo", nullptr, &show_imgui_demo_window);
+#endif
 
                     ImGui::EndMenu();
                 }
@@ -1027,6 +1030,7 @@ namespace
             {
                 draw_transport_group(menubar_height, transport_min_x);
                 draw_compact_tools(menubar_height, transport_min_x + transport_width + group_gap());
+                titlebar_interactive_spans.emplace_back(transport_min_x, transport_min_x + transport_width + group_gap() + 64.0f * dpi());
                 return;
             }
             float transport_pos_x        = (size_avail_x - transport_width) * 0.5f;
@@ -1042,6 +1046,8 @@ namespace
 
             draw_transport_group(menubar_height, transport_pos_x);
             draw_right_groups(menubar_height, right_start_x, visible_widget_count, show_overflow);
+            titlebar_interactive_spans.emplace_back(transport_pos_x, transport_pos_x + transport_width);
+            titlebar_interactive_spans.emplace_back(right_start_x, size_avail_x);
         }
     }
 
@@ -1310,7 +1316,10 @@ void MenuBar::Tick()
             }
 
             // transport + tool buttons
+            titlebar_interactive_spans.clear();
+            titlebar_interactive_spans.emplace_back(0.0f, left_content_end_x);
             buttons_toolbar::tick(menubar_height, left_content_end_x);
+            spartan::Window::SetTitleBarInteractiveSpans(titlebar_interactive_spans);
 
             // window control buttons (minimize, maximize, close)
             buttons_titlebar::tick(menubar_height);
@@ -1357,10 +1366,12 @@ void MenuBar::Tick()
             ImGui::ShowMetricsWindow();
         }
 
-        if (show_imgui_demo_widow)
+#if defined(DEBUG) || defined(DEVELOPMENT)
+        if (show_imgui_demo_window)
         {
-            ImGui::ShowDemoWindow(&show_imgui_demo_widow);
+            ImGui::ShowDemoWindow(&show_imgui_demo_window);
         }
+#endif
 
         editor->GetWidget<Style>()->SetVisible(show_imgui_style_window);
     }

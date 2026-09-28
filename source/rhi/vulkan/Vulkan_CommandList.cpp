@@ -1425,6 +1425,7 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // end recording: flush any pending layout transitions, then close the command buffer
+        CommitPendingClear();
         render_pass_end();
         FlushBarriers();
         SP_ASSERT_VK(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)));
@@ -1848,65 +1849,6 @@ namespace spartan
     
         vkCmdEndRendering(static_cast<VkCommandBuffer>(m_rhi_resource));
         m_render_pass_active = false;
-    }
-
-    void RHI_CommandList::clear_pipeline_state_render_targets(RHI_PipelineState& pipeline_state)
-    {
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
-        uint32_t attachment_count = 0;
-        array<VkClearAttachment, rhi_max_render_target_count + 1> attachments; // +1 for depth-stencil
-
-        for (uint8_t i = 0; i < rhi_max_render_target_count; i++)
-        { 
-            if (pipeline_state.clear_color[i] != rhi_color_load)
-            {
-                VkClearAttachment& attachment = attachments[attachment_count++];
-
-                attachment.aspectMask                  = VK_IMAGE_ASPECT_COLOR_BIT;
-                attachment.colorAttachment             = 0;
-                attachment.clearValue.color.float32[0] = pipeline_state.clear_color[i].r;
-                attachment.clearValue.color.float32[1] = pipeline_state.clear_color[i].g;
-                attachment.clearValue.color.float32[2] = pipeline_state.clear_color[i].b;
-                attachment.clearValue.color.float32[3] = pipeline_state.clear_color[i].a;
-            }
-        }
-
-        bool clear_depth   = pipeline_state.clear_depth   != rhi_depth_load   && pipeline_state.clear_depth   != rhi_depth_dont_care;
-        bool clear_stencil = pipeline_state.clear_stencil != rhi_stencil_load && pipeline_state.clear_stencil != rhi_stencil_dont_care;
-
-        if (clear_depth || clear_stencil)
-        {
-            VkClearAttachment& attachment = attachments[attachment_count++];
-
-            attachment.aspectMask = 0;
-
-            if (clear_depth)
-            {
-                attachment.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
-            }
-
-            if (clear_stencil)
-            {
-                attachment.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-            }
-        
-            attachment.clearValue.depthStencil.depth   = pipeline_state.clear_depth;
-            attachment.clearValue.depthStencil.stencil = static_cast<uint32_t>(pipeline_state.clear_stencil);
-        }
-
-        VkClearRect clear_rect        = {};
-        clear_rect.baseArrayLayer     = 0;
-        clear_rect.layerCount         = 1;
-        clear_rect.rect.extent.width  = pipeline_state.GetWidth();
-        clear_rect.rect.extent.height = pipeline_state.GetHeight();
-
-        if (attachment_count == 0)
-        {
-            return;
-        }
-
-        vkCmdClearAttachments(static_cast<VkCommandBuffer>(m_rhi_resource), attachment_count, attachments.data(), 1, &clear_rect);
     }
 
     void RHI_CommandList::clear_texture(
@@ -3264,10 +3206,12 @@ namespace spartan
         // timing - pass the queue type so the profiler knows which lane this block belongs to
         RHI_Queue_Type queue_type = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
         Profiler::TimeBlockStart(name, TimeBlockType::Cpu, this, queue_type);
-        if (cvar_debug_gpu_timing.GetValue() && gpu_timing)
+        const bool time_gpu = cvar_debug_gpu_timing.GetValue() && gpu_timing;
+        if (time_gpu)
         {
             Profiler::TimeBlockStart(name, TimeBlockType::Gpu, this, queue_type);
         }
+        m_timeblock_gpu_timing.push(time_gpu);
     
         // markers (support nesting)
         if (cvar_debug_gpu_marking.GetValue() && gpu_marker)
@@ -3328,10 +3272,14 @@ namespace spartan
             }
         }
     
-        // timing
-        if (cvar_debug_gpu_timing.GetValue())
+        // timing, an untimed block must not close the gpu block of the pass it is nested in
+        if (!m_timeblock_gpu_timing.empty())
         {
-            Profiler::TimeBlockEnd(TimeBlockType::Gpu, this);
+            if (m_timeblock_gpu_timing.top())
+            {
+                Profiler::TimeBlockEnd(TimeBlockType::Gpu, this);
+            }
+            m_timeblock_gpu_timing.pop();
         }
         Profiler::TimeBlockEnd(TimeBlockType::Cpu, this);
     

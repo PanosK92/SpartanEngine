@@ -702,7 +702,8 @@ bool ShaderEditor::SaveAndCompile()
     m_shader->Compile(
         m_shader->GetShaderStage(),
         m_shader->GetFilePath(),
-        async
+        async,
+        m_shader->GetVertexType()
     );
     m_index_displayed = -1;
     m_source_dirty = false;

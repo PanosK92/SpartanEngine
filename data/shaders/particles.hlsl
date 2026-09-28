@@ -86,7 +86,7 @@ float3 random_in_cone(uint seed, float3 axis, float cone_angle)
 [numthreads(256, 1, 1)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
-    uint emitter_index    = (uint)pass_get_f3_value().x;
+    uint emitter_index    = pass_uint(pass_particles::emitter_index);
     EmitterParams emitter = particle_emitter[emitter_index];
     if (emitter.emitter_count == 0 || emitter.range_count == 0)
     {
@@ -791,8 +791,8 @@ struct ps_input
 
 ps_input main_vs(uint vertex_id : SV_VertexID)
 {
-    uint  emitter_index = (uint)pass_get_f3_value().x;
-    float use_texture   = pass_get_f3_value().y;
+    uint  emitter_index = pass_uint(pass_particles::emitter_index);
+    float use_texture   = pass_bool(pass_particles::use_texture) ? 1.0f : 0.0f;
     EmitterParams emitter = particle_emitter[emitter_index];
 
     uint index  = emitter.range_start + vertex_id / 6;

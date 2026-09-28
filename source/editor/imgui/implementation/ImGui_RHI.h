@@ -458,7 +458,7 @@ namespace ImGui::RHI
                 RHI_Device::Bind(RHI_Frame_List::Graphics);
             }
             RHI_CommandList::SetPipelineState(pso);
-            RHI_CommandList::SetConstantBuffer(static_cast<uint32_t>(Renderer_BindingsCb::frame), Renderer::GetBuffer(Renderer_Buffer::ConstantFrame));
+            RHI_CommandList::SetConstantBuffer(Renderer_BindingsCb::frame, Renderer::GetBuffer(Renderer_Buffer::ConstantFrame));
             RHI_CommandList::SetBufferVertex(vertex_buffer);
             RHI_CommandList::SetBufferIndex(index_buffer);
             RHI_CommandList::SetCullMode(RHI_CullMode::None);
@@ -467,7 +467,7 @@ namespace ImGui::RHI
         // a replay into the ui screenshot target must not run user callbacks, they record external passes
         auto draw_pass = [&](const char* name, const bool gpu_timing, const bool run_callbacks, const bool sdr_capture)
         {
-            RHI_CommandList::BeginTimeblock(name, true, spartan::cvar_debug_gpu_timing.GetValue() && gpu_timing);
+            RHI_CommandList::BeginPass(name, gpu_timing);
             setup_render_state();
 
             const float L = draw_data->DisplayPos.x;
@@ -483,7 +483,6 @@ namespace ImGui::RHI
             );
             const uint32_t draw_index = Renderer::WriteDrawData(projection, Matrix::Identity, 0, 0, nullptr, true);
             rhi_resources->push_constant_buffer_pass.draw_index = draw_index;
-            // bind pass constants before the first settexture, validation runs on that bind
             RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);
 
             uint32_t global_vtx_offset = 0;
@@ -572,7 +571,7 @@ namespace ImGui::RHI
                             }
                             if (!state_valid || texture_bound != texture_last)
                             {
-                                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), texture_bound);
+                                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, texture_bound);
                                 texture_last = texture_bound;
                             }
 
@@ -596,8 +595,9 @@ namespace ImGui::RHI
 
                             if (!state_valid || flags != flags_last || mip_level != mip_level_last || array_level != array_level_last)
                             {
-                                rhi_resources->push_constant_buffer_pass.set_f3_value(*reinterpret_cast<float*>(&flags), 0.0f, 0.0f);
-                                rhi_resources->push_constant_buffer_pass.set_f2_value(mip_level, array_level);
+                                rhi_resources->push_constant_buffer_pass.set(pass_imgui::flags, flags);
+                                rhi_resources->push_constant_buffer_pass.set(pass_imgui::mip_level, mip_level);
+                                rhi_resources->push_constant_buffer_pass.set(pass_imgui::array_level, array_level);
                                 RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);
                                 flags_last       = flags;
                                 mip_level_last   = mip_level;
@@ -614,7 +614,7 @@ namespace ImGui::RHI
                 global_vtx_offset += static_cast<uint32_t>(cmd_list_imgui->VtxBuffer.Size);
             }
 
-            RHI_CommandList::EndTimeblock();
+            RHI_CommandList::EndPass();
         };
 
         draw_pass(is_main_window ? "imgui_window_main" : "imgui_window_child", is_main_window, true, false);

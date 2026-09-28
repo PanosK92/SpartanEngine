@@ -181,10 +181,9 @@ namespace spartan
         // renderer hooks, keeps the rhi from including renderer headers
         static void SetPipelineBoundCallback(void (*callback)(RHI_CommandList*));
         static void InvokePipelineBound(RHI_CommandList* cmd_list);
-        static void SetDefaultPushConstantsCallback(void (*callback)(RHI_CommandList*));
-        static void InvokeDefaultPushConstants(RHI_CommandList* cmd_list);
-        static void SetPassResetCallback(void (*callback)());
-        static void InvokePassReset();
+        // pushed before a draw or dispatch that uses standard resources and pushed nothing itself, data must outlive the device
+        static void SetDefaultPushConstants(const void* data, uint32_t size);
+        static const void* GetDefaultPushConstants(uint32_t& size);
         static void SetScaleDimensionCallback(uint32_t (*callback)(uint32_t, float));
         static uint32_t ScaleDimension(uint32_t dimension, float scale = -1.0f);
         static void SetDummyVertexBuffer(RHI_Buffer* buffer);
@@ -222,8 +221,8 @@ namespace spartan
         static bool m_is_mesh_shaders_supported;
         static bool m_is_shader_base_instance_supported;
         static void (*m_pipeline_bound_callback)(RHI_CommandList*);
-        static void (*m_default_push_constants_callback)(RHI_CommandList*);
-        static void (*m_pass_reset_callback)();
+        static const void* m_default_push_constants;
+        static uint32_t m_default_push_constants_size;
         static uint32_t (*m_scale_dimension_callback)(uint32_t, float);
         static RHI_Buffer* m_dummy_vertex_buffer;
 

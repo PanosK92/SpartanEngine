@@ -159,9 +159,17 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
 
     if (light.is_spot())
     {
-        float cd = dot(-light_dir, light.forward);
-        float t  = saturate((cd - light.cos_outer) * light.angle_scale);
-        local_atten *= t * t;
+        uint ies_slot = light_ies_slot(light.flags);
+        if (ies_slot != 0u)
+        {
+            local_atten *= light_ies_attenuation(ies_slot, -light_dir, light.forward, light.right, light.angle);
+        }
+        else
+        {
+            float cd = dot(-light_dir, light.forward);
+            float t  = saturate((cd - light.cos_outer) * light.angle_scale);
+            local_atten *= t * t;
+        }
     }
 }
 

@@ -398,25 +398,25 @@ namespace spartan
         void bind_impostor_texels()
         {
             RHI_Buffer* impostor_texels = GeometryBuffer::GetImpostorTexelBuffer();
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::impostor_texels), impostor_texels ? impostor_texels : GeometryBuffer::GetMeshletVertexBuffer());
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::impostor_texels, impostor_texels ? impostor_texels : GeometryBuffer::GetMeshletVertexBuffer());
         }
 
         void bind_mesh_shader_geometry()
         {
             bind_impostor_texels();
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::tree_wind_cache), Renderer::GetBuffer(Renderer_Buffer::TreeWindCache));
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::indirect_draw_data), Renderer::GetBuffer(Renderer_Buffer::IndirectDrawData));
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_instances), Renderer::GetBuffer(Renderer_Buffer::MeshletInstances));
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_bounds), GeometryBuffer::GetMeshletBoundsBuffer());
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_vertices), GeometryBuffer::GetMeshletVertexBuffer());
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_micro_indices), GeometryBuffer::GetMeshletMicroIndexBuffer());
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::tree_wind_cache, Renderer::GetBuffer(Renderer_Buffer::TreeWindCache));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::indirect_draw_data, Renderer::GetBuffer(Renderer_Buffer::IndirectDrawData));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_instances, Renderer::GetBuffer(Renderer_Buffer::MeshletInstances));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_vertices, GeometryBuffer::GetMeshletVertexBuffer());
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_micro_indices, GeometryBuffer::GetMeshletMicroIndexBuffer());
         }
 
         void push_mesh_draw_constants(Pcb_Pass& pcb)
         {
-            // the opaque/alpha split is a shader variant now, f4 is unused by the mesh path
+            // the opaque/alpha split is a shader variant now, the region base is unused by the mesh path
             // the push still runs because the alpha pixel shaders read the other pass fields
-            pcb.set_f4_value(0.0f, 0.0f, 0.0f, 0.0f);
+            pcb.set(pass_visible_triangles::region_base, 0u);
             RHI_CommandList::PushConstants(pcb);
         }
     }
@@ -583,7 +583,7 @@ namespace spartan
         pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::shadow_atlas);
         pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_directional);
 
-        RHI_CommandList::BeginTimeblock(pso.name);
+        RHI_CommandList::BeginPass(pso.name);
         {
             RHI_CommandList::SetPipelineState(pso);
 
@@ -617,7 +617,8 @@ namespace spartan
 
                         m_pcb_pass_cpu.draw_index     = numeric_limits<uint32_t>::max();
                         m_pcb_pass_cpu.is_transparent = 0;
-                        m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(slice.array_index), 0.0f);
+                        m_pcb_pass_cpu.set(pass_depth_light::light_index, static_cast<uint32_t>(light->GetIndex()));
+                        m_pcb_pass_cpu.set(pass_depth_light::array_index, static_cast<uint32_t>(slice.array_index));
                         RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                         RHI_CommandList::SetCullMode(batch.cull_mode);
                         RHI_CommandList::SetBufferVertex(batch.vertex_buffer);
@@ -645,8 +646,9 @@ namespace spartan
                     m_pcb_pass_cpu.draw_index     = draw_call.draw_data_index;
                     m_pcb_pass_cpu.is_transparent = 0;
                     m_pcb_pass_cpu.material_index = material->GetIndex();
-                    m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
-                    m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(slice.array_index), 0.0f);
+                    m_pcb_pass_cpu.set(pass_depth_light::has_albedo, material->HasTextureOfType(MaterialTextureType::Color));
+                    m_pcb_pass_cpu.set(pass_depth_light::light_index, static_cast<uint32_t>(light->GetIndex()));
+                    m_pcb_pass_cpu.set(pass_depth_light::array_index, static_cast<uint32_t>(slice.array_index));
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                     RHI_CommandList::SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
                     RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
@@ -724,7 +726,7 @@ namespace spartan
                 }
             }
         }
-        RHI_CommandList::EndTimeblock();
+        RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_HiZ_BuildFromDepth(RHI_Texture* tex_depth)
@@ -743,7 +745,7 @@ namespace spartan
     {
         // renders major occluders and builds the hi-z chain, always cleared and rebuilt so the cull shader never reads stale depth
 
-        RHI_CommandList::BeginTimeblock("hiz");
+        RHI_CommandList::BeginPass("hiz");
 
         RHI_Texture* tex_occluders     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders);
         RHI_Texture* tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
@@ -883,7 +885,7 @@ namespace spartan
         Pass_Blit(tex_occluders, tex_occluders_hiz);
         Pass_Downscale(tex_occluders_hiz, Renderer_DownsampleFilter::Min);
 
-        RHI_CommandList::EndTimeblock();
+        RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_IndirectCull()
@@ -901,20 +903,18 @@ namespace spartan
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::instance_cull_c));
 
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_occluders_hiz);
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
 
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::indirect_draw_data), GetBuffer(Renderer_Buffer::IndirectDrawData));
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::cull_tasks), GetBuffer(Renderer_Buffer::CullTasks));
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::surviving_instances), GetBuffer(Renderer_Buffer::SurvivingInstances));
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::instance_dispatch_args), GetBuffer(Renderer_Buffer::InstanceDispatchArgs));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::cull_tasks, GetBuffer(Renderer_Buffer::CullTasks));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::surviving_instances, GetBuffer(Renderer_Buffer::SurvivingInstances));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::instance_dispatch_args, GetBuffer(Renderer_Buffer::InstanceDispatchArgs));
 
-            // f4_value: x = instance task count, y = max hiz mip, z = surviving instances cap (drop survivors past this)
-            m_pcb_pass_cpu.set_f3_value(clamp(cvar_hiz_depth_bias.GetValueAs<float>(), 0.0f, 1.0f), 0.0f, 0.0f);
-            m_pcb_pass_cpu.set_f4_value(
-                static_cast<float>(m_cull_task_count),
-                max_hiz_mip,
-                static_cast<float>(GetBuffer(Renderer_Buffer::SurvivingInstances)->GetElementCount()),
-                0.0f);
+            // survivors past max_instances are dropped
+            m_pcb_pass_cpu.set(pass_instance_cull::hiz_depth_bias, clamp(cvar_hiz_depth_bias.GetValueAs<float>(), 0.0f, 1.0f));
+            m_pcb_pass_cpu.set(pass_instance_cull::task_count, m_cull_task_count);
+            m_pcb_pass_cpu.set(pass_instance_cull::max_hiz_mip, max_hiz_mip);
+            m_pcb_pass_cpu.set(pass_instance_cull::max_instances, GetBuffer(Renderer_Buffer::SurvivingInstances)->GetElementCount());
 
             const uint32_t groups_x = min(m_cull_task_count, INSTANCE_CULL_DISPATCH_WIDTH);
             const uint32_t groups_y = (m_cull_task_count + INSTANCE_CULL_DISPATCH_WIDTH - 1u) / INSTANCE_CULL_DISPATCH_WIDTH;
@@ -944,23 +944,21 @@ namespace spartan
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::indirect_cull_c));
 
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_occluders_hiz);
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
 
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::indirect_draw_data), GetBuffer(Renderer_Buffer::IndirectDrawData));
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_bounds), GeometryBuffer::GetMeshletBoundsBuffer());
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::surviving_instances), GetBuffer(Renderer_Buffer::SurvivingInstances));
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_instances), GetBuffer(Renderer_Buffer::MeshletInstances));
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::triangle_dispatch_args), GetBuffer(Renderer_Buffer::TriangleDispatchArgs));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::surviving_instances, GetBuffer(Renderer_Buffer::SurvivingInstances));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::triangle_dispatch_args, GetBuffer(Renderer_Buffer::TriangleDispatchArgs));
 
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::tree_wind_cache), GetBuffer(Renderer_Buffer::TreeWindCache));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::tree_wind_cache, GetBuffer(Renderer_Buffer::TreeWindCache));
 
-            // f4_value: x = max hiz mip, y = meshlet instances cap, z = opaque/alpha region split, w = wind cache limit
-            m_pcb_pass_cpu.set_f3_value(clamp(cvar_hiz_depth_bias.GetValueAs<float>(), 0.0f, 1.0f), 0.0f, 0.0f);
-            m_pcb_pass_cpu.set_f4_value(
-                max_hiz_mip,
-                static_cast<float>(GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount() / (use_mesh_shaders() ? 1u : 2u)),
-                use_mesh_shaders() ? 1.0f : 0.0f,
-                clamp(cvar_tree_wind_cache_entries.GetValueAs<float>(), 0.0f, static_cast<float>(TREE_WIND_CACHE_CAPACITY)));
+            m_pcb_pass_cpu.set(pass_indirect_cull::hiz_depth_bias, clamp(cvar_hiz_depth_bias.GetValueAs<float>(), 0.0f, 1.0f));
+            m_pcb_pass_cpu.set(pass_indirect_cull::max_hiz_mip, max_hiz_mip);
+            m_pcb_pass_cpu.set(pass_indirect_cull::max_meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount() / (use_mesh_shaders() ? 1u : 2u));
+            m_pcb_pass_cpu.set(pass_indirect_cull::split_opaque_alpha, use_mesh_shaders());
+            m_pcb_pass_cpu.set(pass_indirect_cull::wind_cache_limit, static_cast<uint32_t>(clamp(cvar_tree_wind_cache_entries.GetValueAs<float>(), 0.0f, static_cast<float>(TREE_WIND_CACHE_CAPACITY))));
 
             RHI_CommandList::DispatchIndirect(GetBuffer(Renderer_Buffer::InstanceDispatchArgs), 0);
         }
@@ -974,17 +972,15 @@ namespace spartan
             {
                 RHI_CommandList::SetShader(GetShader(Renderer_Shader::indirect_cull_triangle_c));
 
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::indirect_draw_args), GetBuffer(Renderer_Buffer::IndirectDrawArgs));
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::indirect_draw_data), GetBuffer(Renderer_Buffer::IndirectDrawData));
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_bounds), GeometryBuffer::GetMeshletBoundsBuffer());
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_instances), GetBuffer(Renderer_Buffer::MeshletInstances));
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::visible_triangles), GetBuffer(Renderer_Buffer::VisibleTriangles));
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::indirect_draw_args, GetBuffer(Renderer_Buffer::IndirectDrawArgs));
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances));
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::visible_triangles, GetBuffer(Renderer_Buffer::VisibleTriangles));
 
-                // f4_value: x = meshlet instances cap, y = per-half visible triangle cap (also the alpha region base, drop survivors past it)
-                m_pcb_pass_cpu.set_f4_value(
-                    static_cast<float>(GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount()),
-                    static_cast<float>(GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2),
-                    0.0f, 0.0f);
+                // survivors past the per half cap are dropped
+                m_pcb_pass_cpu.set(pass_indirect_cull_triangle::max_meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount());
+                m_pcb_pass_cpu.set(pass_indirect_cull_triangle::region_cap, GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2);
 
                 RHI_CommandList::DispatchIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), 0);
             }
@@ -1006,7 +1002,7 @@ namespace spartan
             return;
         }
 
-        RHI_CommandList::BeginTimeblock("meshlet_cull_refine");
+        RHI_CommandList::BeginPass("meshlet_cull_refine");
 
         Pass_HiZ_BuildFromDepth(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
 
@@ -1049,7 +1045,7 @@ namespace spartan
         }
 
         Pass_IndirectCull();
-        RHI_CommandList::EndTimeblock();
+        RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_Depth_Prepass()
@@ -1063,7 +1059,7 @@ namespace spartan
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid);
         rasterizer_state                      = is_wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : rasterizer_state;
 
-        RHI_CommandList::BeginTimeblock("depth_prepass");
+        RHI_CommandList::BeginPass("depth_prepass");
         {
             // two draws over the split survivor list, opaque with no pixel shader for double-speed depth, alpha with the cutout ps
             // mesh path: one workgroup per opaque/alpha meshlet via DrawMeshTasksIndirect, vs path: DrawIndirect over visible triangles
@@ -1117,12 +1113,12 @@ namespace spartan
                     }
                     else
                     {
-                        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::indirect_draw_data), GetBuffer(Renderer_Buffer::IndirectDrawData));
-                        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_instances), GetBuffer(Renderer_Buffer::MeshletInstances));
-                        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::visible_triangles), GetBuffer(Renderer_Buffer::VisibleTriangles));
-                        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_bounds), GeometryBuffer::GetMeshletBoundsBuffer());
+                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
+                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances));
+                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::visible_triangles, GetBuffer(Renderer_Buffer::VisibleTriangles));
+                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
                         bind_impostor_texels();
-                        m_pcb_pass_cpu.set_f4_value(0.0f, 0.0f, 0.0f, 0.0f);
+                        m_pcb_pass_cpu.set(pass_visible_triangles::region_base, 0u);
                         RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                         RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), 0);
                     }
@@ -1149,12 +1145,12 @@ namespace spartan
                     }
                     else
                     {
-                        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::indirect_draw_data), GetBuffer(Renderer_Buffer::IndirectDrawData));
-                        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_instances), GetBuffer(Renderer_Buffer::MeshletInstances));
-                        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::visible_triangles), GetBuffer(Renderer_Buffer::VisibleTriangles));
-                        RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_bounds), GeometryBuffer::GetMeshletBoundsBuffer());
+                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
+                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances));
+                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::visible_triangles, GetBuffer(Renderer_Buffer::VisibleTriangles));
+                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
                         bind_impostor_texels();
-                        m_pcb_pass_cpu.set_f4_value(static_cast<float>(GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2), 0.0f, 0.0f, 0.0f);
+                        m_pcb_pass_cpu.set(pass_visible_triangles::region_base, GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2);
                         RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                         RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
                     }
@@ -1209,7 +1205,7 @@ namespace spartan
                     m_pcb_pass_cpu.draw_index     = draw_call.draw_data_index;
                     m_pcb_pass_cpu.is_transparent = 0;
                     m_pcb_pass_cpu.material_index = material->GetIndex();
-                    m_pcb_pass_cpu.set_f3_value(0.0f, has_color_texture ? 1.0f : 0.0f, static_cast<float>(i));
+                    m_pcb_pass_cpu.set(pass_depth_prepass::has_albedo, has_color_texture);
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
                     RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
@@ -1230,12 +1226,12 @@ namespace spartan
             }
 
         }
-        RHI_CommandList::EndTimeblock();
+        RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_GBuffer_Indirect()
     {
-        RHI_CommandList::BeginTimeblock("g_buffer_indirect");
+        RHI_CommandList::BeginPass("g_buffer_indirect");
 
         const bool xr_multiview = Xr::IsSessionRunning() && Xr::GetStereoMode();
         const bool mesh_path    = use_mesh_shaders();
@@ -1290,7 +1286,7 @@ namespace spartan
         const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
         m_pcb_pass_cpu.is_transparent = 0;
 
-        RHI_CommandList::BeginTimeblock("g_buffer_indirect_opaque");
+        RHI_CommandList::BeginPass("g_buffer_indirect_opaque");
         // opaque half, reads the opaque depth the prepass wrote, clears the g-buffer targets
         // the clear runs unconditionally so the transparent ocean composites over a fresh g-buffer when no opaque geometry is visible
         RHI_CommandList::SetPipelineState(pso);
@@ -1306,18 +1302,18 @@ namespace spartan
             }
             else
             {
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::indirect_draw_data), GetBuffer(Renderer_Buffer::IndirectDrawData));
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_instances), GetBuffer(Renderer_Buffer::MeshletInstances));
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::visible_triangles), GetBuffer(Renderer_Buffer::VisibleTriangles));
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_bounds), GeometryBuffer::GetMeshletBoundsBuffer());
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances));
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::visible_triangles, GetBuffer(Renderer_Buffer::VisibleTriangles));
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
                 bind_impostor_texels();
-                m_pcb_pass_cpu.set_f4_value(0.0f, 0.0f, 0.0f, 0.0f);
+                m_pcb_pass_cpu.set(pass_visible_triangles::region_base, 0u);
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                 RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), 0);
             }
 
-            RHI_CommandList::EndTimeblock();
-            RHI_CommandList::BeginTimeblock("g_buffer_indirect_alpha");
+            RHI_CommandList::EndPass();
+            RHI_CommandList::BeginPass("g_buffer_indirect_alpha");
             // alpha-tested half, same equal-z pixel shader, loads the g-buffer so the opaque output survives
             pso.clear_color[0] = rhi_color_load;
             pso.clear_color[1] = rhi_color_load;
@@ -1341,24 +1337,24 @@ namespace spartan
             }
             else
             {
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::indirect_draw_data), GetBuffer(Renderer_Buffer::IndirectDrawData));
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_instances), GetBuffer(Renderer_Buffer::MeshletInstances));
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::visible_triangles), GetBuffer(Renderer_Buffer::VisibleTriangles));
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_bounds), GeometryBuffer::GetMeshletBoundsBuffer());
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances));
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::visible_triangles, GetBuffer(Renderer_Buffer::VisibleTriangles));
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
                 bind_impostor_texels();
-                m_pcb_pass_cpu.set_f4_value(static_cast<float>(GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2), 0.0f, 0.0f, 0.0f);
+                m_pcb_pass_cpu.set(pass_visible_triangles::region_base, GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2);
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                 RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
             }
         }
 
-        RHI_CommandList::EndTimeblock();
-        RHI_CommandList::EndTimeblock();
+        RHI_CommandList::EndPass();
+        RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_GBuffer_TessellatedAndTransparent(const bool is_transparent_pass)
     {
-        RHI_CommandList::BeginTimeblock(is_transparent_pass ? "g_buffer_transparent_draw" : "g_buffer_tessellated");
+        RHI_CommandList::BeginPass(is_transparent_pass ? "g_buffer_transparent_draw" : "g_buffer_tessellated");
 
         const bool xr_multiview = Xr::IsSessionRunning() && Xr::GetStereoMode();
 
@@ -1461,7 +1457,7 @@ namespace spartan
             pso.clear_depth = rhi_depth_load;
         }
 
-        RHI_CommandList::EndTimeblock();
+        RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_SkidMarks()
@@ -1510,7 +1506,7 @@ namespace spartan
 
             if (!pipeline_set)
             {
-                RHI_CommandList::BeginTimeblock("skid_marks");
+                RHI_CommandList::BeginPass("skid_marks");
                 RHI_CommandList::SetPipelineState(pso);
                 RHI_CommandList::SetCullMode(RHI_CullMode::None);
                 pipeline_set = true;
@@ -1526,12 +1522,12 @@ namespace spartan
                 render->GetVertexOffset(draw.lod_index), render->GetGlobalInstanceOffset() + draw.instance_index, draw.instance_count);
         }
         if (pipeline_set)
-            RHI_CommandList::EndTimeblock();
+            RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_GBuffer(const bool is_transparent_pass, const bool submit_before_scatter)
     {
-        RHI_CommandList::BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
+        RHI_CommandList::BeginPass(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
         {
             if (!is_transparent_pass)
             {
@@ -1540,10 +1536,10 @@ namespace spartan
                 {
                     // the meshlet g-buffer never reads procedural scatter, submitting it here lets it overlap the
                     // populate compute, only the grass draw and what follows waits for the scatter queue
-                    RHI_CommandList::EndTimeblock();
+                    RHI_CommandList::EndPass();
                     RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
                     RHI_Device::Bind(RHI_Frame_List::Graphics);
-                    RHI_CommandList::BeginTimeblock("g_buffer_scatter");
+                    RHI_CommandList::BeginPass("g_buffer_scatter");
                 }
                 // procedural grass runs after the indirect path, the draw call binds its own pipeline that reads grass_instances directly
                 Pass_Grass_Draw();
@@ -1558,15 +1554,15 @@ namespace spartan
             {
                 // opaque depth blit moved here from the prepass, all opaque geometry including grass has rasterized so the
                 // opaque output carries grass occlusion, batch b consumers run after phase 1 so this write is visible to them
-                RHI_CommandList::BeginTimeblock("g_buffer_depth_blit");
+                RHI_CommandList::BeginPass("g_buffer_depth_blit");
                 RHI_Texture* tex_depth        = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
                 RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output);
                 RHI_CommandList::Blit(tex_depth, tex_depth_output, false, Renderer::GetResolutionScale());
-                RHI_CommandList::EndTimeblock();
+                RHI_CommandList::EndPass();
             }
 
         }
-        RHI_CommandList::EndTimeblock();
+        RHI_CommandList::EndPass();
 
         if (!is_transparent_pass && !IsSecondaryViewActive())
         {
@@ -1787,14 +1783,14 @@ namespace spartan
                     continue;
                 }
 
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::grass_instances), buf_instances);
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::grass_count), buf_count);
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::grass_instances, buf_instances);
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::grass_count, buf_count);
                 // the populate shader samples the terrain heightmap through the tex slot
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), state.heightmap);
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, state.heightmap);
                 // occluder hi-z on tex2 drives the per-instance frustum + occlusion cull, built by Pass_HiZ which runs earlier this frame
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz));
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz));
                 // biome prop mask on tex3, the slot picks the channel, black means nothing is suitable
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3), state.prop_mask ?
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, state.prop_mask ?
                         state.prop_mask :
                         GetStandardTexture(Renderer_StandardTexture::Black));
 
@@ -1866,11 +1862,6 @@ namespace spartan
                     const uint32_t lod_base   = renderer_gpu_scatter_base(slot, lod);
                     const uint32_t lod_cap    = gpu_scatter_lod_cap(slot, lod, state.params.density);
 
-                    // layout mirrors grass_populate.hlsl values[0..4]
-                    // values[0] = (cell_size, ring_radius, lod_base, max_instances_per_lod)
-                    // values[1] = (height_min, height_max, max_slope_cos, inner_radius)
-                    // values[2] = (map_origin_x, map_origin_z, map_inv_x, map_inv_z)
-                    // values[4] = (min_slope_cos, slope_bias, height_fade, optional grass root radius)
                     // heightmap is r32 local y, material_index bitcast is the entity y plus the layer's
                     // seating offset
                     // is_transparent bitcast carries biome_min_weight, negative disables the mask gate
@@ -1882,27 +1873,23 @@ namespace spartan
                                                     (scale_max    << 20) |
                                                     (tilt         << 28);
                     m_pcb_pass_cpu.material_index = *reinterpret_cast<const uint32_t*>(&seat_y);
-                    m_pcb_pass_cpu.v[0]  = cell_size;
-                    m_pcb_pass_cpu.v[1]  = ring_radius;
-                    m_pcb_pass_cpu.v[2]  = static_cast<float>(lod_base);
-                    m_pcb_pass_cpu.v[3]  = static_cast<float>(lod_cap);
-                    m_pcb_pass_cpu.v[4]  = state.params.height_min;
-                    m_pcb_pass_cpu.v[5]  = state.params.height_max;
-                    m_pcb_pass_cpu.v[6]  = max_slope_cos;
-                    m_pcb_pass_cpu.v[7]  = inner_radius;
-                    m_pcb_pass_cpu.v[8]  = terrain_mapping.x;
-                    m_pcb_pass_cpu.v[9]  = terrain_mapping.y;
-                    m_pcb_pass_cpu.v[10] = terrain_mapping.z;
-                    m_pcb_pass_cpu.v[11] = terrain_mapping.w;
-                    m_pcb_pass_cpu.v[12] = patch_push;
-                    m_pcb_pass_cpu.v[13] = state.params.patch_coverage;
-                    m_pcb_pass_cpu.v[14] = state.params.patch_edge;
-                    // this float carries the ground type bits, every other one is taken
-                    m_pcb_pass_cpu.v[15] = static_cast<float>(state.params.ground_mask);
-                    m_pcb_pass_cpu.v[16] = min_slope_cos;
-                    m_pcb_pass_cpu.v[17] = state.params.slope_bias;
-                    m_pcb_pass_cpu.v[18] = state.params.height_fade;
-                    m_pcb_pass_cpu.v[19] = 0.0f;
+                    m_pcb_pass_cpu.set(pass_grass_populate::cell_size, cell_size);
+                    m_pcb_pass_cpu.set(pass_grass_populate::ring_radius, ring_radius);
+                    m_pcb_pass_cpu.set(pass_grass_populate::lod_base, lod_base);
+                    m_pcb_pass_cpu.set(pass_grass_populate::max_instances_per_lod, lod_cap);
+                    m_pcb_pass_cpu.set(pass_grass_populate::height_min, state.params.height_min);
+                    m_pcb_pass_cpu.set(pass_grass_populate::height_max, state.params.height_max);
+                    m_pcb_pass_cpu.set(pass_grass_populate::max_slope_cos, max_slope_cos);
+                    m_pcb_pass_cpu.set(pass_grass_populate::inner_radius, inner_radius);
+                    m_pcb_pass_cpu.set(pass_grass_populate::terrain_mapping, terrain_mapping);
+                    m_pcb_pass_cpu.set(pass_grass_populate::patch_size, patch_push);
+                    m_pcb_pass_cpu.set(pass_grass_populate::patch_coverage, state.params.patch_coverage);
+                    m_pcb_pass_cpu.set(pass_grass_populate::patch_edge, state.params.patch_edge);
+                    m_pcb_pass_cpu.set(pass_grass_populate::ground_mask, state.params.ground_mask);
+                    m_pcb_pass_cpu.set(pass_grass_populate::min_slope_cos, min_slope_cos);
+                    m_pcb_pass_cpu.set(pass_grass_populate::slope_bias, state.params.slope_bias);
+                    m_pcb_pass_cpu.set(pass_grass_populate::height_fade, state.params.height_fade);
+                    m_pcb_pass_cpu.set(pass_grass_populate::root_radius, 0.0f);
                     if (cvar_grass_specialized.GetValue() && state.material &&
                         state.material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f &&
                         state.material->GetProperty(MaterialProperty::IsWater) == 0.0f &&
@@ -1913,7 +1900,7 @@ namespace spartan
                         // the shader applies the maximum packed instance scale separately.
                         const auto& lods = state.mesh->GetSubMesh(0).lods;
                         const auto& bounds = lods[lod < lods.size() ? lod : 0u].aabb;
-                        m_pcb_pass_cpu.v[19] = bounds.GetCenter().Length() + bounds.GetExtents().Length() + 0.001f;
+                        m_pcb_pass_cpu.set(pass_grass_populate::root_radius, bounds.GetCenter().Length() + bounds.GetExtents().Length() + 0.001f);
                     }
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
@@ -1959,11 +1946,11 @@ namespace spartan
                     "grass_indirect_args"
                 );
 
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::grass_count), buf_count);
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::grass_indirect_args), buf_args);
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::grass_count, buf_count);
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::grass_indirect_args, buf_args);
 
-                // values[0] = (cap_lod0, cap_lod1, cap_lod2, lod_count), the args shader clamps each
-                // atomic counter against its own cap, draw_index is the first args entry of the slot
+                // the args shader clamps each atomic counter against its own lod cap, draw_index is
+                // the first args entry of the slot
                 static_assert(renderer_max_gpu_scatter_lods == 3, "grass_indirect_args push constant layout assumes 3 lods");
 
                 for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
@@ -1977,10 +1964,11 @@ namespace spartan
                     m_pcb_pass_cpu.material_index = 0;
                     m_pcb_pass_cpu.is_transparent = 0;
                     m_pcb_pass_cpu.draw_index     = renderer_gpu_scatter_arg_index(slot, 0);
-                    m_pcb_pass_cpu.v[0] = static_cast<float>(gpu_scatter_lod_cap(slot, 0, state.params.density));
-                    m_pcb_pass_cpu.v[1] = static_cast<float>(gpu_scatter_lod_cap(slot, 1, state.params.density));
-                    m_pcb_pass_cpu.v[2] = static_cast<float>(gpu_scatter_lod_cap(slot, 2, state.params.density));
-                    m_pcb_pass_cpu.v[3] = static_cast<float>(renderer_max_gpu_scatter_lods);
+                    for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
+                    {
+                        m_pcb_pass_cpu.set(pass_grass_indirect_args::lod_caps + lod, gpu_scatter_lod_cap(slot, lod, state.params.density));
+                    }
+                    m_pcb_pass_cpu.set(pass_grass_indirect_args::lod_count, renderer_max_gpu_scatter_lods);
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
                     RHI_CommandList::Dispatch(1, 1, 1);
@@ -2210,21 +2198,18 @@ namespace spartan
                 RHI_CommandList::UpdateBuffer(history.contacts.get(), 0, count * sizeof(GrassWheelContact), contacts.data(), false);
             RHI_CommandList::SetShader(shader);
             RHI_CommandList::SetBuffer("grass_wheel_contacts", history.contacts.get());
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), history.fields[previous].get());
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), history.fields[current].get(), rhi_all_mips, 0, true);
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, history.fields[previous].get());
+            RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, history.fields[current].get());
             m_pcb_pass_cpu = {};
-            m_pcb_pass_cpu.v[0] = origin.x;
-            m_pcb_pass_cpu.v[1] = origin.y;
-            m_pcb_pass_cpu.v[2] = cell;
-            m_pcb_pass_cpu.v[3] = history.valid ? 1.0f : 0.0f;
-            m_pcb_pass_cpu.v[4] = history.origins[previous].x;
-            m_pcb_pass_cpu.v[5] = history.origins[previous].y;
-            m_pcb_pass_cpu.v[6] = static_cast<float>(count);
-            m_pcb_pass_cpu.v[7] = dt;
-            m_pcb_pass_cpu.v[8] = center.x;
-            m_pcb_pass_cpu.v[9] = center.z;
-            m_pcb_pass_cpu.v[10] = clamp(cvar_grass_track_radius.GetValue(), 1.0f, grass_interaction_size * 0.5f - 12.0f);
-            m_pcb_pass_cpu.v[11] = max(cvar_grass_track_recovery.GetValue(), 0.001f);
+            m_pcb_pass_cpu.set(pass_grass_interaction::origin, origin);
+            m_pcb_pass_cpu.set(pass_grass_interaction::cell_size, cell);
+            m_pcb_pass_cpu.set(pass_grass_interaction::history_valid, history.valid);
+            m_pcb_pass_cpu.set(pass_grass_interaction::origin_previous, history.origins[previous]);
+            m_pcb_pass_cpu.set(pass_grass_interaction::contact_count, count);
+            m_pcb_pass_cpu.set(pass_grass_interaction::delta_time, dt);
+            m_pcb_pass_cpu.set(pass_grass_interaction::track_center, Vector2(center.x, center.z));
+            m_pcb_pass_cpu.set(pass_grass_interaction::track_radius, clamp(cvar_grass_track_radius.GetValue(), 1.0f, grass_interaction_size * 0.5f - 12.0f));
+            m_pcb_pass_cpu.set(pass_grass_interaction::track_recovery, max(cvar_grass_track_recovery.GetValue(), 0.001f));
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
             RHI_CommandList::Dispatch(history.fields[current].get());
         }
@@ -2286,7 +2271,7 @@ namespace spartan
         pso.clear_color[4]                   = rhi_color_load;
         pso.clear_depth                      = rhi_depth_load;
 
-        RHI_CommandList::BeginTimeblock("g_buffer_grass");
+        RHI_CommandList::BeginPass("g_buffer_grass");
 
         // grass blades are double sided and a stone chip is closed, but both are cheap enough that one
         // raster state for every slot is not worth a second pipeline
@@ -2350,47 +2335,46 @@ namespace spartan
                     state.material->GetProperty(MaterialProperty::IsWater) == 0.0f &&
                     state.material->GetProperty(MaterialProperty::IsFlower) == 0.0f &&
                     state.material->GetProperty(MaterialProperty::IsSkidMark) == 0.0f;
-                pso.shaders[RHI_Shader_Type::Vertex] = grass_specialized ? grass_vertex : GetShader(Renderer_Shader::grass_gbuffer_v);
-                pso.shaders[RHI_Shader_Type::Pixel] = grass_specialized ? grass_pixel : GetShader(Renderer_Shader::gbuffer_p);
+                RHI_Shader* shader_vertex = grass_specialized ? grass_vertex : GetShader(Renderer_Shader::grass_gbuffer_v);
+                RHI_Shader* shader_pixel  = grass_specialized ? grass_pixel : GetShader(Renderer_Shader::gbuffer_p);
+                if (!shader_vertex || !shader_vertex->IsCompiled() || !shader_pixel || !shader_pixel->IsCompiled())
+                {
+                    continue;
+                }
+                pso.shaders[RHI_Shader_Type::Vertex] = shader_vertex;
+                pso.shaders[RHI_Shader_Type::Pixel]  = shader_pixel;
                 RHI_CommandList::SetPipelineState(pso);
                 RHI_CommandList::SetCullMode(RHI_CullMode::None);
-                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::grass_instances), buf_instances);
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::grass_instances, buf_instances);
                 RHI_CommandList::SetBuffer("grass_bodies", tracks.bodies.get());
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex),
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex,
                     tracks.valid ? tracks.fields[tracks.current].get() : fallback);
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2),
+                RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2,
                     tracks.valid ? tracks.fields[1 - tracks.current].get() : fallback);
                 RHI_CommandList::SetBufferVertex(mesh->GetVertexBuffer(), binding1_instance);
                 RHI_CommandList::SetBufferIndex(mesh->GetIndexBuffer());
 
-                // values[0] = (uv_patch, 0, lod_base, lod_index), the scatter vs reads lod_base from values[0].z
                 m_pcb_pass_cpu.draw_index     = 0;
                 m_pcb_pass_cpu.is_transparent = 0;
                 m_pcb_pass_cpu.material_index = state.material->GetIndex();
-                m_pcb_pass_cpu.v[0] = state.params.uv_patch;
-                m_pcb_pass_cpu.v[1] = 0.0f;
-                m_pcb_pass_cpu.v[2] = static_cast<float>(lod_base);
-                m_pcb_pass_cpu.v[3] = static_cast<float>(lod);
+                m_pcb_pass_cpu.set(pass_grass_draw::uv_patch, state.params.uv_patch);
+                m_pcb_pass_cpu.set(pass_grass_draw::reverse_count, 0u);
+                m_pcb_pass_cpu.set(pass_grass_draw::lod_base, lod_base);
                 for (uint32_t frame = 0; frame < 2; ++frame)
                 {
                     const Vector2 origin = tracks.origins[frame == 0 ? tracks.current : 1 - tracks.current];
-                    const uint32_t base = 4 + frame * 4;
-                    m_pcb_pass_cpu.v[base] = origin.x;
-                    m_pcb_pass_cpu.v[base + 1] = origin.y;
-                    m_pcb_pass_cpu.v[base + 2] = 1.0f / grass_interaction_size;
-                    m_pcb_pass_cpu.v[base + 3] = tracks.valid && (frame == 0 || tracks.previous_valid) ? 1.0f : 0.0f;
+                    const bool valid     = tracks.valid && (frame == 0 || tracks.previous_valid);
+                    const uint32_t slot_tracks = frame == 0 ? pass_grass_draw::tracks : pass_grass_draw::tracks_previous;
+                    m_pcb_pass_cpu.set(slot_tracks, Vector4(origin.x, origin.y, 1.0f / grass_interaction_size, valid ? 1.0f : 0.0f));
                 }
-                m_pcb_pass_cpu.v[12] = tracks.valid ? 1.0f : 0.0f;
-                m_pcb_pass_cpu.v[13] = body_center.x;
-                m_pcb_pass_cpu.v[14] = body_center.y;
-                m_pcb_pass_cpu.v[15] = contact_radius;
+                m_pcb_pass_cpu.set(pass_grass_draw::body, Vector4(tracks.valid ? 1.0f : 0.0f, body_center.x, body_center.y, contact_radius));
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
                 // an empty ring bakes instance_count 0 into the args so the gpu skips it at near-zero cost
                 RHI_CommandList::DrawIndexedIndirect(buf_args, renderer_gpu_scatter_arg_index(slot, lod) * arg_stride);
                 if (lod == 0)
                 {
-                    m_pcb_pass_cpu.v[1] = static_cast<float>(gpu_scatter_lod_cap(slot, lod, state.params.density));
+                    m_pcb_pass_cpu.set(pass_grass_draw::reverse_count, gpu_scatter_lod_cap(slot, lod, state.params.density));
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                     RHI_CommandList::DrawIndexedIndirect(buf_args,
                         (renderer_max_gpu_scatter_args + renderer_gpu_scatter_arg_index(slot, lod)) * arg_stride);
@@ -2398,7 +2382,7 @@ namespace spartan
             }
         }
 
-        RHI_CommandList::EndTimeblock();
+        RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_MeshletVisualize()
@@ -2423,7 +2407,7 @@ namespace spartan
 
         bool xr_multiview = Xr::IsSessionRunning() && Xr::GetStereoMode();
 
-        RHI_CommandList::BeginTimeblock("meshlet_visualize");
+        RHI_CommandList::BeginPass("meshlet_visualize");
         {
             // mode 1/2 color/wireframe by meshlet id, mode 3/4 color/wireframe by post-cull draw id
             bool wireframe                  = (mode == 2 || mode == 4);
@@ -2445,27 +2429,26 @@ namespace spartan
             pso.clear_color[0]                   = Color::standard_black;
             RHI_CommandList::SetPipelineState(pso);
 
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::indirect_draw_data), GetBuffer(Renderer_Buffer::IndirectDrawData));
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_instances), GetBuffer(Renderer_Buffer::MeshletInstances));
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::visible_triangles), GetBuffer(Renderer_Buffer::VisibleTriangles));
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::meshlet_bounds), GeometryBuffer::GetMeshletBoundsBuffer());
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_instances, GetBuffer(Renderer_Buffer::MeshletInstances));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::visible_triangles, GetBuffer(Renderer_Buffer::VisibleTriangles));
+            RHI_CommandList::SetBuffer(Renderer_BindingsUav::meshlet_bounds, GeometryBuffer::GetMeshletBoundsBuffer());
 
             // wireframe shows both faces so rear edges of thin meshlets stay visible, solid mode leaves culling to the triangle cull pass
             RHI_CommandList::SetCullMode(RHI_CullMode::None);
 
-            // f3.x: 0 = color by global meshlet index, 1 = color by post-cull draw id
-            // f4.x carries the visible-triangle region base, draw the opaque half then the alpha half
+            // draw the opaque half then the alpha half
             const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
-            m_pcb_pass_cpu.set_f3_value(color_by_draw_id ? 1.0f : 0.0f, 0.0f, 0.0f);
+            m_pcb_pass_cpu.set(pass_meshlet_visualize::color_by_draw_id, color_by_draw_id);
 
-            m_pcb_pass_cpu.set_f4_value(0.0f, 0.0f, 0.0f, 0.0f);
+            m_pcb_pass_cpu.set(pass_visible_triangles::region_base, 0u);
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
             RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), 0);
 
-            m_pcb_pass_cpu.set_f4_value(static_cast<float>(GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2), 0.0f, 0.0f, 0.0f);
+            m_pcb_pass_cpu.set(pass_visible_triangles::region_base, GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2);
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
             RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
         }
-        RHI_CommandList::EndTimeblock();
+        RHI_CommandList::EndPass();
     }
 }

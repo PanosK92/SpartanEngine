@@ -1684,20 +1684,39 @@ namespace
 
     void window_world_list()
     {
+        static bool was_visible     = false;
+        static int placement_frames = 0;
         if (!visible_world_list)
         {
+            was_visible = false;
             return;
         }
 
         update_colors();
 
+        // every open starts centered on the viewport and fully on screen, a restored ini position can sit off screen,
+        // placement is held for a few frames since the docked viewport has no final position on the frames it opens
+        if (!was_visible)
+        {
+            placement_frames = 10;
+        }
+        was_visible = true;
+        const ImGuiCond placement_cond = placement_frames > 0 ? ImGuiCond_Always : ImGuiCond_Appearing;
+        placement_frames = max(placement_frames - 1, 0);
+
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         const ImVec2 available(viewport->WorkSize.x * 0.92f, viewport->WorkSize.y * 0.92f);
-        // Fit the initial placement to the editor, then let ImGui preserve the user's
-        // position and size, including a detached platform window on another monitor.
-        ImGui::SetNextWindowSize(ImVec2(min(scaled(1440.0f), available.x), min(scaled(880.0f), available.y)), ImGuiCond_FirstUseEver);
+        const ImVec2 size(min(scaled(1440.0f), available.x), min(scaled(880.0f), available.y));
+        const spartan::math::Vector2 center = editor->GetWidget<Viewport>()->GetCenter();
+        const ImVec2 work_min = viewport->WorkPos;
+        const ImVec2 work_max = ImVec2(viewport->WorkPos.x + viewport->WorkSize.x, viewport->WorkPos.y + viewport->WorkSize.y);
+        const ImVec2 position(
+            clamp(center.x - size.x * 0.5f, work_min.x, max(work_min.x, work_max.x - size.x)),
+            clamp(center.y - size.y * 0.5f, work_min.y, max(work_min.y, work_max.y - size.y))
+        );
+        ImGui::SetNextWindowSize(size, placement_cond);
         ImGui::SetNextWindowSizeConstraints(scaled_vec(480.0f, 320.0f), ImVec2(FLT_MAX, FLT_MAX));
-        ImGui::SetNextWindowPos(viewport->GetWorkCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowPos(position, placement_cond);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, scaled_vec(16.0f, 16.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, scaled(panel_rounding));

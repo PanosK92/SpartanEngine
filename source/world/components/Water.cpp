@@ -32,6 +32,7 @@ namespace spartan
     Water::Water(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_GET_SET(GetWaveSize, SetWaveSize, float);
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetSurfSize, SetSurfSize, float);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetClarity, SetClarity, float);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_sea_level, SetSeaLevel, float);
     }
@@ -135,6 +136,7 @@ namespace spartan
     {
         pugi::xml_node water = node.append_child("water");
         water.append_attribute("wave_size") = GetWaveSize();
+        water.append_attribute("surf_size") = m_surf_size;
         water.append_attribute("clarity")   = GetClarity();
         water.append_attribute("sea_level") = m_sea_level;
     }
@@ -154,6 +156,7 @@ namespace spartan
             * water.attribute("displacement_scale").as_float(1.0f);
         float legacy_clarity = 1.0f - water.attribute("turbidity").as_float(1.0f) / 4.0f;
         SetWaveSize(water.attribute("wave_size").as_float(legacy_size));
+        SetSurfSize(water.attribute("surf_size").as_float(m_surf_size));
         SetClarity(water.attribute("clarity").as_float(legacy_clarity));
         SetSeaLevel(water.attribute("sea_level").as_float(m_sea_level));
 

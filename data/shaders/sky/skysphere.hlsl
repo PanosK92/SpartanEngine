@@ -556,7 +556,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     //            pixel refreshes every 16 frames or ~267 ms at 60 fps. the coarse dispatch
     //            is the real saver, an early-return scheme does not skip wave time because
     //            gpu lockstep execution pays for every wave with one active lane
-    const float warmup_blend = buffer_pass.values[0].x;
+    const float warmup_blend = pass_float(pass_skysphere::warmup_blend);
     const bool  warmup       = warmup_blend > 0.0;
     uint2 pixel;
     if (warmup)

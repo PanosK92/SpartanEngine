@@ -1,0 +1,645 @@
+<?xml version="1.0"?>
+<World name="car_playground" description="Car playground: flat test pad with the LaFerrari, ramps, jumps, slalom cones, speed bumps and a skidpad for quick handling and suspension tests">
+ <Environment utc_days="9665.2506397366524" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="2" wind_y="0" wind_z="1" puddliness="0" />
+ <ConsoleVariables>
+  <Variable name="r.atmosphere.mist_density" value="1.000000" />
+  <Variable name="r.atmosphere.mist_height" value="300.000000" />
+  <Variable name="r.atmosphere.ground_mist" value="1.000000" />
+  <Variable name="r.atmosphere.mist_variation" value="0.650000" />
+  <Variable name="r.grid" value="0.000000" />
+ </ConsoleVariables>
+ <Entities>
+  <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="-4 1 -168" rotation="0 0 0 1" scale="1 1 1">
+   <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+   <Entity name="component_camera" id="1001000000000000002" active="true" position="-2 1.2 0" rotation="0.0658897 0.289097 -0.0199498 0.954821" scale="1 1 1">
+    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="400" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="17" />
+   </Entity>
+  </Entity>
+  <Entity name="light_directional" id="1001000000000000003" active="true" position="0 2 0" rotation="0.403058 0.272532 -0.127084 0.864361" scale="1 1 1">
+   <light flags="3" light_type="0" color_r="1.11340952" color_g="0.97980392" color_b="0.866113305" temperature="5700" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="2" area_width="1" area_height="1" draw_distance="512" distance_shadows="150" distance_volumetric="32" cloud_coverage="0.800000012" rain="0" />
+  </Entity>
+  <Entity name="playground" id="15496944013398704011" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="asphalt_pad" id="2662192371777656178" active="true" position="0 -0.5 0" rotation="0 0 0 1" scale="360 1 360">
+    <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="asphalt" material_path="project/car_playground_resources/asphalt.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="grass_field" id="7388558140773552390" active="true" position="0 -0.53 0" rotation="0 0 0 1" scale="1400 1 1400">
+    <physics mass="1" friction="0.699999988" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="grass" material_path="project/car_playground_resources/grass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="jumps" id="17999008525315727426" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="kicker_small" id="4802515734970623385" active="true" position="35 -0.098 -98.012" rotation="-0.104528 0 0 0.994522" scale="4 1.018 3.848">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="tabletop_up" id="9848904590432317555" active="true" position="35 -0.097 -37.4197" rotation="-0.121869 0 0 0.992546" scale="5 1.4367 4.9603">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="tabletop_deck" id="9846399454924074730" active="true" position="35 0.6 -30.1871" rotation="0 0 0 1" scale="5 1.2 10">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="tabletop_down" id="9846509302880596709" active="true" position="35 -0.097 -22.9544" rotation="0.121869 0 0 0.992546" scale="5 1.4367 4.9603">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gap_kicker" id="9847040400684299096" active="true" position="35 -0.0951 43.0932" rotation="-0.156434 0 0 0.987688" scale="5 2.0926 5.8249">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gap_landing_deck" id="9847012671695284831" active="true" position="35 0.9 65.5398" rotation="0 0 0 1" scale="6 1.8 4">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gap_landing_ramp" id="9846557652147133283" active="true" position="35 -0.0978 71.5619" rotation="0.104528 0 0 0.994522" scale="6 2.0402 8.6575">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="gap_landing_face" id="9847318622260234920" active="true" position="35 0.9 63.5298" rotation="0 0 0 1" scale="6 1.8 0.02">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="kerb_red" material_path="project/car_playground_resources/kerb_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="tabletop_face_stripe" id="9844243892956110593" active="true" position="32.49 0.6 -30.2" rotation="0 0 0 1" scale="0.02 0.3 10">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="kerb_red" material_path="project/car_playground_resources/kerb_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="tabletop_face_stripe" id="9844517989034774577" active="true" position="37.51 0.6 -30.2" rotation="0 0 0 1" scale="0.02 0.3 10">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="kerb_red" material_path="project/car_playground_resources/kerb_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="suspension" id="17572857146004765947" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="speed_bump" id="10245923520238133185" active="true" position="70 0 -130" rotation="0 0 0.707107 0.707107" scale="0.08 6 0.45">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="bump_yellow" material_path="project/car_playground_resources/bump_yellow.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="speed_bump" id="10242501750701960543" active="true" position="70 0 -118" rotation="0 0 0.707107 0.707107" scale="0.08 6 0.45">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="bump_yellow" material_path="project/car_playground_resources/bump_yellow.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="speed_bump" id="10242219799637790729" active="true" position="70 0 -106" rotation="0 0 0.707107 0.707107" scale="0.08 6 0.45">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="bump_yellow" material_path="project/car_playground_resources/bump_yellow.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10242745782222025297" active="true" position="70 0 -80" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10242398444683979568" active="true" position="70 0 -79.3" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10242944120415865990" active="true" position="70 0 -78.6" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10242694574150768528" active="true" position="70 0 -77.9" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10240453037794709023" active="true" position="70 0 -77.2" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10240379149808728399" active="true" position="70 0 -76.5" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10240168176909328287" active="true" position="70 0 -75.8" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10240723464015695972" active="true" position="70 0 -75.1" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10240673184001245649" active="true" position="70 0 -74.4" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10241399229518474622" active="true" position="70 0 -73.7" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10241346331674548236" active="true" position="70 0 -73" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10240927692183282830" active="true" position="70 0 -72.3" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10241268475083847021" active="true" position="70 0 -71.6" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10238993270404451883" active="true" position="70 0 -70.9" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10238764605201872228" active="true" position="70 0 -70.2" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10239335566598785299" active="true" position="70 0 -69.5" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10239301544399339035" active="true" position="70 0 -68.8" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10240010567357225958" active="true" position="70 0 -68.1" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10239563172425632228" active="true" position="70 0 -67.4" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10240096688458402896" active="true" position="70 0 -66.7" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10240326920687269375" active="true" position="70 0 -66" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10239797482820634283" active="true" position="70 0 -65.3" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10237591871351133892" active="true" position="70 0 -64.6" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10237536201279491531" active="true" position="70 0 -63.9" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10238271399860084957" active="true" position="70 0 -63.2" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10237938320054679503" active="true" position="70 0 -62.5" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10238006012590379230" active="true" position="70 0 -61.8" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10238561249838790723" active="true" position="70 0 -61.1" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="washboard" id="10238227725389650513" active="true" position="70 0 -60.4" rotation="0 0 0.707107 0.707107" scale="0.035 6 0.18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="roll_bump" id="10238673980658380375" active="true" position="68.5 0 -30" rotation="0 0 0.707107 0.707107" scale="0.15 2.6 0.6">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="kerb_red" material_path="project/car_playground_resources/kerb_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="roll_bump" id="10238811028587639576" active="true" position="71.5 0 -22" rotation="0 0 0.707107 0.707107" scale="0.15 2.6 0.6">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="kerb_red" material_path="project/car_playground_resources/kerb_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="roll_bump" id="10236568450156179733" active="true" position="68.5 0 -14" rotation="0 0 0.707107 0.707107" scale="0.15 2.6 0.6">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="kerb_red" material_path="project/car_playground_resources/kerb_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="roll_bump" id="10236237429288321802" active="true" position="71.5 0 -6" rotation="0 0 0.707107 0.707107" scale="0.15 2.6 0.6">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="kerb_red" material_path="project/car_playground_resources/kerb_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="roll_bump" id="10236331756506034282" active="true" position="68.5 0 2" rotation="0 0 0.707107 0.707107" scale="0.15 2.6 0.6">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="kerb_red" material_path="project/car_playground_resources/kerb_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="roll_bump" id="10236531094243276772" active="true" position="71.5 0 10" rotation="0 0 0.707107 0.707107" scale="0.15 2.6 0.6">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="kerb_red" material_path="project/car_playground_resources/kerb_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="twist_ramp_up" id="10236461782269268759" active="true" position="68.6 -0.0985 41.4793" rotation="-0.0871557 0 0 0.996195" scale="1.6 0.7077 2.8794">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="twist_ramp_deck" id="10237026508734888744" active="true" position="68.6 0.25 44.8356" rotation="0 0 0 1" scale="1.6 0.5 4">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="twist_ramp_down" id="10236772234859659796" active="true" position="68.6 -0.0985 48.192" rotation="0.0871557 0 0 0.996195" scale="1.6 0.7077 2.8794">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="crests" id="17462412956545005317" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="crest_long" id="8127752101027408558" active="true" position="110 0 -60" rotation="0 0 0.707107 0.707107" scale="1.4 8 18">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="crest_sharp" id="8128049949327355752" active="true" position="110 0 30" rotation="0 0 0.707107 0.707107" scale="0.9 8 8">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="crest_small" id="8129071598306572335" active="true" position="110 0 90" rotation="0 0 0.707107 0.707107" scale="0.45 8 5">
+     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="concrete" material_path="project/car_playground_resources/concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="drag_strip" id="17232083193944617649" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="drag_line" id="12086572692446863728" active="true" position="0 0.005 -150" rotation="0 0 0 1" scale="12 0.01 0.5">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="drag_line" id="12083286306011734603" active="true" position="0 0.005 -50" rotation="0 0 0 1" scale="12 0.01 0.5">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="drag_line" id="12083416180041446465" active="true" position="0 0.005 50" rotation="0 0 0 1" scale="12 0.01 0.5">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="drag_line" id="12083536450129460043" active="true" position="0 0.005 150" rotation="0 0 0 1" scale="12 0.01 0.5">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="drag_edge" id="12083559472978744340" active="true" position="-6 0.005 10" rotation="0 0 0 1" scale="0.15 0.01 330">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="drag_edge" id="12084046931935534536" active="true" position="6 0.005 10" rotation="0 0 0 1" scale="0.15 0.01 330">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="drag_center" id="12084276363893208336" active="true" position="0 0.005 10" rotation="0 0 0 1" scale="0.12 0.01 330">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="skidpad" id="13758410956410801956" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="primitive" id="10012332449424640052" active="true" position="-108.43 0.005 29.9589" rotation="0 0.0261769 0 0.999657" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10012543075659136910" active="true" position="-105.307 0.005 29.6307" rotation="0 0.0784591 0 0.996917" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10010250011397131067" active="true" position="-102.235 0.005 28.9778" rotation="0 0.130526 0 0.991445" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10010540624873167403" active="true" position="-99.249 0.005 28.0074" rotation="0 0.182236 0 0.983255" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10010685739925735470" active="true" position="-96.3803 0.005 26.7302" rotation="0 0.233445 0 0.97237" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10010445281533804232" active="true" position="-93.6608 0.005 25.1601" rotation="0 0.284015 0 0.95882" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10011150981714804245" active="true" position="-91.1204 0.005 23.3144" rotation="0 0.333807 0 0.942641" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10008540990646805405" active="true" position="-88.7868 0.005 21.2132" rotation="0 0.382683 0 0.92388" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10008640471137461052" active="true" position="-86.6856 0.005 18.8796" rotation="0 0.430511 0 0.902585" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10008810141473671324" active="true" position="-84.8399 0.005 16.3392" rotation="0 0.477159 0 0.878817" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10009502511848756484" active="true" position="-83.2698 0.005 13.6197" rotation="0 0.522499 0 0.85264" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10009967610385319065" active="true" position="-81.9926 0.005 10.751" rotation="0 0.566406 0 0.824126" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10009717538129772340" active="true" position="-81.0222 0.005 7.7646" rotation="0 0.608761 0 0.793353" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10007095766642679085" active="true" position="-80.3693 0.005 4.693" rotation="0 0.649448 0 0.760406" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10007726668890320202" active="true" position="-80.0411 0.005 1.5701" rotation="0 0.688355 0 0.725374" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10007907759729320276" active="true" position="-80.0411 0.005 -1.5701" rotation="0 0.725374 0 0.688355" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="9997528383726035502" active="true" position="-80.3693 0.005 -4.693" rotation="0 0.760406 0 0.649448" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="9997726147058243828" active="true" position="-81.0222 0.005 -7.7646" rotation="0 0.793353 0 0.608761" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="9998116206475872357" active="true" position="-81.9926 0.005 -10.751" rotation="0 0.824126 0 0.566406" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="9998357480666360530" active="true" position="-83.2698 0.005 -13.6197" rotation="0 0.85264 0 0.522499" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="9996292513254492023" active="true" position="-84.8399 0.005 -16.3392" rotation="0 0.878817 0 0.477159" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="9996369454683596639" active="true" position="-86.6856 0.005 -18.8796" rotation="0 0.902585 0 0.430511" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="9997019359383351307" active="true" position="-88.7868 0.005 -21.2132" rotation="0 0.92388 0 0.382683" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="9997388191291877765" active="true" position="-91.1204 0.005 -23.3144" rotation="0 0.942641 0 0.333807" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="9994847014058467123" active="true" position="-93.6608 0.005 -25.1601" rotation="0 0.95882 0 0.284015" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="9994963438319575017" active="true" position="-96.3803 0.005 -26.7302" rotation="0 0.97237 0 0.233445" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="9993701597316611284" active="true" position="-99.249 0.005 -28.0074" rotation="0 0.983255 0 0.182236" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="9992260931151541838" active="true" position="-102.235 0.005 -28.9778" rotation="0 0.991445 0 0.130526" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="9992460836488849251" active="true" position="-105.307 0.005 -29.6307" rotation="0 0.996917 0 0.0784591" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="10071669493029722559" active="true" position="-108.43 0.005 -29.9589" rotation="0 0.999657 0 0.026177" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3364238096296342085" active="true" position="-111.57 0.005 -29.9589" rotation="0 0.0261769 0 0.999657" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3362375618711958452" active="true" position="-114.693 0.005 -29.6307" rotation="0 0.0784591 0 0.996917" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3362666856501569179" active="true" position="-117.765 0.005 -28.9778" rotation="0 0.130526 0 0.991445" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3362440197271322812" active="true" position="-120.751 0.005 -28.0074" rotation="0 0.182236 0 0.983255" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3361068927646818988" active="true" position="-123.62 0.005 -26.7302" rotation="0 0.233445 0 0.97237" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3361341771934314870" active="true" position="-126.339 0.005 -25.1601" rotation="0 0.284015 0 0.95882" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3361161057726817419" active="true" position="-128.88 0.005 -23.3144" rotation="0 0.333807 0 0.942641" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3361434959583861284" active="true" position="-131.213 0.005 -21.2132" rotation="0 0.382683 0 0.92388" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3359081404124887979" active="true" position="-133.314 0.005 -18.8796" rotation="0 0.430511 0 0.902585" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3359508675111155943" active="true" position="-135.16 0.005 -16.3392" rotation="0 0.477159 0 0.878817" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3359864103964637604" active="true" position="-136.73 0.005 -13.6197" rotation="0 0.522499 0 0.85264" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3360366111672059495" active="true" position="-138.007 0.005 -10.751" rotation="0 0.566406 0 0.824126" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3357799297665837035" active="true" position="-138.978 0.005 -7.7646" rotation="0 0.608761 0 0.793353" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3358146828259683708" active="true" position="-139.631 0.005 -4.693" rotation="0 0.649448 0 0.760406" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3356481726845461814" active="true" position="-139.959 0.005 -1.5701" rotation="0 0.688355 0 0.725374" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3357135789297824312" active="true" position="-139.959 0.005 1.5701" rotation="0 0.725374 0 0.688355" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3357311216048380339" active="true" position="-139.631 0.005 4.693" rotation="0 0.760406 0 0.649448" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3354860029027886196" active="true" position="-138.978 0.005 7.7646" rotation="0 0.793353 0 0.608761" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3355291194047720769" active="true" position="-138.007 0.005 10.751" rotation="0 0.824126 0 0.566406" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3356097461408230620" active="true" position="-136.73 0.005 13.6197" rotation="0 0.85264 0 0.522499" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3353508982246650408" active="true" position="-135.16 0.005 16.3392" rotation="0 0.878817 0 0.477159" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3353860964717224976" active="true" position="-133.314 0.005 18.8796" rotation="0 0.902585 0 0.430511" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3354134438396458546" active="true" position="-131.213 0.005 21.2132" rotation="0 0.92388 0 0.382683" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3354676632068900040" active="true" position="-128.88 0.005 23.3144" rotation="0 0.942641 0 0.333807" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3352065623826159916" active="true" position="-126.339 0.005 25.1601" rotation="0 0.95882 0 0.284015" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3352452065253387649" active="true" position="-123.62 0.005 26.7302" rotation="0 0.97237 0 0.233445" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3353160528978588357" active="true" position="-120.751 0.005 28.0074" rotation="0 0.983255 0 0.182236" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3350659815983406671" active="true" position="-117.765 0.005 28.9778" rotation="0 0.991445 0 0.130526" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3349842005766463607" active="true" position="-114.693 0.005 29.6307" rotation="0 0.996917 0 0.0784591" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="primitive" id="3349856870070139688" active="true" position="-111.57 0.005 29.9589" rotation="0 0.999657 0 0.026177" scale="2.8903 0.01 0.2">
+     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="paint_white" material_path="project/car_playground_resources/paint_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="cones" id="5465523136988749904" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="slalom_cone" id="6728463916946822670" active="true" position="-35 0.355 -110" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="slalom_cone" id="6724511476001274402" active="true" position="-35 0.355 -92" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="slalom_cone" id="6273576705573671472" active="true" position="-35 0.355 -74" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="slalom_cone" id="6270758446502260731" active="true" position="-35 0.355 -56" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="slalom_cone" id="6268137503071676313" active="true" position="-35 0.355 -38" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="slalom_cone" id="6263002001507704872" active="true" position="-35 0.355 -20" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="slalom_cone" id="6258908120123641297" active="true" position="-35 0.355 -2" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="slalom_cone" id="6247726092408467737" active="true" position="-35 0.355 16" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="slalom_cone" id="6234429971039698373" active="true" position="-35 0.355 34" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="slalom_cone" id="6300974306460770427" active="true" position="-35 0.355 52" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="slalom_cone" id="6290682421486419528" active="true" position="-35 0.355 70" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="slalom_cone" id="6286531767404068420" active="true" position="-35 0.355 88" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="slalom_cone" id="6278180609780262930" active="true" position="-35 0.355 106" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="slalom_gate_cone" id="6182759627565937063" active="true" position="-38.5 0.355 -128" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="slalom_gate_cone" id="6180198880636769432" active="true" position="-31.5 0.355 -128" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="skidpad_cone" id="6177265542643855110" active="true" position="-110 0.355 33" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="skidpad_cone" id="6175351792974851517" active="true" position="-86.6655 0.355 23.3345" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="skidpad_cone" id="6171997063352352229" active="true" position="-77 0.355 0" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="skidpad_cone" id="6169089496429299820" active="true" position="-86.6655 0.355 -23.3345" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="skidpad_cone" id="6166892040639527718" active="true" position="-110 0.355 -33" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="skidpad_cone" id="6164102167169933273" active="true" position="-133.335 0.355 -23.3345" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="skidpad_cone" id="6157878843685523655" active="true" position="-143 0.355 0" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="skidpad_cone" id="6155582031810956849" active="true" position="-133.335 0.355 23.3345" rotation="0 0 0 1" scale="0.18 0.35 0.18">
+     <physics mass="3" friction="0.899999976" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="standard_cone" mesh_path="" sub_mesh_index="0" material_name="cone_orange" material_path="project/car_playground_resources/cone_orange.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="trees" id="2571600834905875608" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="pine_skidpad" id="4264713000475820985" active="true" position="-110 0 0" rotation="0 0 0 1" scale="0.7 0.7 0.7">
+     <Entity name="pine_a_1" id="4264698067842859366" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_2" id="4264721603024649091" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="1" material_name="pine_tree_01_trunk_a" material_path="./project/car_playground_resources/pine_tree_01_trunk_a.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_3" id="4264710424583610660" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="2" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_4" id="4264710681611090929" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="3" material_name="pine_tree_01_dead_branches" material_path="./project/car_playground_resources/pine_tree_01_dead_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_5" id="4264720413859356968" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+    </Entity>
+    <Entity name="olive_start" id="13624277026142117001" active="true" position="16 -0.03 -192" rotation="0 0.34202 0 0.939693" scale="1 1 1">
+     <Entity name="olive_a_1" id="13624284052099824847" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="0" material_name="island_tree_01" material_path="./project/car_playground_resources/island_tree_01.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="olive_a_2" id="13624382169442388553" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="1" material_name="olive_foliage" material_path="./project/car_playground_resources/olive_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="olive_a_3" id="13624380763676671549" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="2" material_name="island_tree_01_branches" material_path="./project/car_playground_resources/island_tree_01_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+    </Entity>
+    <Entity name="pine_east" id="10903811962804908551" active="true" position="196 -0.03 40" rotation="0 0.866025 0 0.5" scale="0.75 0.75 0.75">
+     <Entity name="pine_b_1" id="10903980993358494777" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_2" id="10903972950551013609" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="1" material_name="pine_tree_01_trunk_b" material_path="./project/car_playground_resources/pine_tree_01_trunk_b.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_3" id="10903988551748734326" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="2" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_4" id="10903918740830054382" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="3" material_name="pine_tree_01_dead_branches" material_path="./project/car_playground_resources/pine_tree_01_dead_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_5" id="10903932796042242757" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+    </Entity>
+    <Entity name="pine_east_2" id="4144529618314138313" active="true" position="207 -0.03 57" rotation="0 0.819152 -0 -0.573576" scale="0.6 0.6 0.6">
+     <Entity name="pine_b_1" id="4144545024100533893" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_2" id="4144486996026036345" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="1" material_name="pine_tree_01_trunk_b" material_path="./project/car_playground_resources/pine_tree_01_trunk_b.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_3" id="4144438847241823565" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="2" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_4" id="4145135093657931133" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="3" material_name="pine_tree_01_dead_branches" material_path="./project/car_playground_resources/pine_tree_01_dead_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_b_5" id="4145011727113138538" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_b" mesh_path="./project/car_playground_resources/pine_b.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+    </Entity>
+    <Entity name="olive_west" id="4116295234283559642" active="true" position="-197 -0.03 -64" rotation="0 0.996195 -0 -0.0871558" scale="1.15 1.15 1.15">
+     <Entity name="olive_a_1" id="4116382011066345711" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="0" material_name="island_tree_01" material_path="./project/car_playground_resources/island_tree_01.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="olive_a_2" id="4116341521983900108" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="1" material_name="olive_foliage" material_path="./project/car_playground_resources/olive_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="olive_a_3" id="4116887820678735559" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="olive_a" mesh_path="./project/car_playground_resources/olive_a.mesh" sub_mesh_index="2" material_name="island_tree_01_branches" material_path="./project/car_playground_resources/island_tree_01_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+    </Entity>
+    <Entity name="pine_west" id="3569777509450290387" active="true" position="-203 -0.03 118" rotation="0 0.573576 0 0.819152" scale="0.8 0.8 0.8">
+     <Entity name="pine_a_1" id="3569681742147815056" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="0" material_name="pine_tree_01_bark" material_path="./project/car_playground_resources/pine_tree_01_bark.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_2" id="3570305557486508310" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="1" material_name="pine_tree_01_trunk_a" material_path="./project/car_playground_resources/pine_tree_01_trunk_a.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_3" id="3570282946604585044" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="2" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_4" id="3570159642747742806" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="3" material_name="pine_tree_01_dead_branches" material_path="./project/car_playground_resources/pine_tree_01_dead_branches.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+     <Entity name="pine_a_5" id="3566624471338906598" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+      <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+     </Entity>
+    </Entity>
+   </Entity>
+  </Entity>
+  <Entity name="player_car_prefab" id="5601201501308041116" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <prefab file="project/car_playground_resources/prefabs/player_car.prefab" />
+  </Entity>
+ </Entities>
+</World>

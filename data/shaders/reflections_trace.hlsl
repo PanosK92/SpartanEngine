@@ -293,7 +293,7 @@ ReflectionSurface reconstruct_reflection_surface(float ray_t, uint instance_inde
         payload.emission = emission * photometric_to_radiometric(lighting_emissive_nits_texture);
     }
 
-    road_weathering(mat.flags,hit_pos,albedo,roughness,exp2(mip_level)*3.0/4096.0);
+    road_weathering(mat.flags,hit_pos,texcoord,.6,albedo,roughness,exp2(mip_level)*road_asphalt_repeat/4096.0);
     float decal_metalness = mat.metalness, decal_occlusion = 1.0f;
     float3 decal_tangent = normalize(tangent_world);
     float3 decal_bitangent = normalize(cross(normal_world, decal_tangent));

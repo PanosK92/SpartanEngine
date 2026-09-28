@@ -226,13 +226,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // fft ocean foam, the water color below is built purely from reflection and refraction so the diffuse
     // foam written into the g-buffer never surfaces, it has to be injected here from the same cascade map
     float foam = 0.0f;
+    OceanShore shore = (OceanShore)0;
     if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
     {
         // recover the undisplaced fft grid so foam sits on the crest that produced it
         float2 grid_xz = get_ocean_grid_xz(surface.position.xz);
         float view_distance = length(surface.position - get_camera_position());
         float wave_activity;
-        foam = get_ocean_foam(grid_xz, surface.position, view_distance, wave_activity);
+        foam = get_ocean_foam(grid_xz, surface.position, view_distance, wave_activity, shore);
         float2 uv_foam = (thread_id.xy + 0.5f) / resolution_out;
         foam = max(foam, ocean_contact_foam(uv_foam, surface.position, surface.depth, ocean_foam_footprint(view_distance), wave_activity));
     }
@@ -426,6 +427,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // has to be transmitted in here, the frame only holds its analytic specular
         float3 kT            = float3(1.0f, 1.0f, 1.0f) - F;
         float3 surface_color = specular_reflection + refraction * kT;
+
+        // a steep shore wave is thin enough near its crest for daylight to scatter through it, suspended
+        // sand and plankton turn that light green, strongest looking through the face toward the sun
+        if (shore.height > 0.05f)
+        {
+            float3 to_sun    = -light_parameters[0].direction;
+            float visibility = is_ray_traced_shadows_enabled()
+                ? saturate(tex3.SampleLevel(samplers[sampler_bilinear_clamp], surface.uv, 0.0f).r) : 1.0f;
+            float forward    = pow(saturate(dot(view_dir_normalized, to_sun) * 0.5f + 0.5f), 3.0f);
+            float glow       = pow(shore.crest, 0.7f) * lerp(0.5f, 1.0f, shore.face);
+            float thin       = (0.25f + 0.75f * glow) * (1.0f - 0.4f * shore.breaking);
+            float body       = smoothstep(0.05f, 0.5f, shore.height);
+            float3 light_in  = get_sun_radiance() * visibility * saturate(to_sun.y + 0.2f) + get_sky_fill_radiance() * 0.5f;
+            float3 scatter   = light_in * float3(0.06f, 0.36f, 0.24f) * (0.8f + 1.5f * forward) * thin * body / PI;
+            surface_color   += scatter * kT;
+        }
+
         tex_uav[thread_id.xy] += float4(surface_color, 0.0f);
     }
     else

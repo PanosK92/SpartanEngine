@@ -52,6 +52,36 @@ namespace spartan
             return;
         }
 
+        // a live shader must never be seen half compiled: clearing its reflection or changing its hash
+        // mid frame caches pipelines built from the old module under the new hash, which then never rebuild
+        if (m_compilation_state == RHI_ShaderCompilationState::Succeeded && m_rhi_resource)
+        {
+            if (m_reloading)
+            {
+                return;
+            }
+
+            shared_ptr<RHI_Shader> staged = make_shared<RHI_Shader>();
+            staged->m_defines = m_defines;
+            m_reloading       = true;
+            auto reload = [this, staged, shader_type, file_path, vertex_type]()
+            {
+                staged->Compile(shader_type, file_path, false, vertex_type);
+                m_reload       = staged;
+                m_reload_ready = true;
+            };
+
+            if (async)
+            {
+                ThreadPool::AddTask(reload);
+            }
+            else
+            {
+                reload();
+            }
+            return;
+        }
+
         // clear
         m_input_layout = nullptr;
         m_descriptors.clear();
@@ -116,6 +146,38 @@ namespace spartan
                 compile();
             }
         }
+    }
+
+    void RHI_Shader::ApplyReload()
+    {
+        if (!m_reload_ready)
+        {
+            return;
+        }
+
+        shared_ptr<RHI_Shader> staged = move(m_reload);
+        m_reload_ready  = false;
+        m_reload_failed = !staged->IsCompiled();
+
+        // the sources always follow the disk, so a failed reload is not retried until the file changes again
+        m_names               = move(staged->m_names);
+        m_file_paths          = move(staged->m_file_paths);
+        m_sources             = move(staged->m_sources);
+        m_file_paths_multiple = move(staged->m_file_paths_multiple);
+
+        // a failed reload keeps serving the last good module
+        if (!m_reload_failed)
+        {
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Shader, m_rhi_resource);
+            m_rhi_resource          = staged->m_rhi_resource;
+            staged->m_rhi_resource  = nullptr;
+            m_descriptors           = move(staged->m_descriptors);
+            m_input_layout          = move(staged->m_input_layout);
+            m_preprocessed_source   = move(staged->m_preprocessed_source);
+            m_hash                  = staged->m_hash;
+        }
+
+        m_reloading = false;
     }
 
     void RHI_Shader::PreprocessIncludeDirectives(const string& file_path, set<string>& processed_files)

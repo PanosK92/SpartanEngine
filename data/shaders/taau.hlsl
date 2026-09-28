@@ -24,7 +24,7 @@ float4 read_current_tile(uint i)
     return float4(current_tile_y[i], current_tile_co[i], current_tile_cg[i], current_tile_depth[i]);
 }
 
-float reset_history() { return pass_get_f3_value().x; }
+bool reset_history() { return pass_bool(pass_taau::reset_history); }
 
 static const float sky_depth          = 1e-7f;
 static const float reuse_depth_tol = 0.02f;
@@ -350,7 +350,7 @@ float4 taau(uint2 px_out, float2 res_out, int2 tile_origin, uint tile_width, boo
 
     float2 inset           = 0.5f / res_out;
     bool   uv_prev_valid   = all(uv_prev >= inset) && all(uv_prev <= 1.0f - inset);
-    bool   history_invalid = reset_history() > 0.5f || !uv_prev_valid;
+    bool   history_invalid = reset_history() || !uv_prev_valid;
 
     if (!current_valid)
     {
@@ -508,8 +508,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_id : SV_GroupID,
         return;
 
     float4 result = taau(thread_id.xy, resolution_out, tile_origin, tile_size.x, use_tile);
-    tex_uav[thread_id.xy] = float4(result.rgb, pass_get_f3_value().y > 0.5f ? 1.0f : result.a);
-    // y enables the mono history write into the post-process scratch.
-    if (pass_get_f3_value().y > 0.5f)
+    bool write_history = pass_bool(pass_taau::write_history);
+    tex_uav[thread_id.xy] = float4(result.rgb, write_history ? 1.0f : result.a);
+    if (write_history)
         tex_uav2[thread_id.xy] = result;
 }

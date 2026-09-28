@@ -260,6 +260,10 @@ namespace spartan
 
     private:
         static void SolveRoadJunctions(const std::vector<Spline*>& members);
+        // state and phases of the junction solver for one connected road network
+        struct JunctionSolve;
+        // deck, sidewalk, shoulder and paint buffers of a road mesh before gpu upload
+        struct RoadGeometry;
         // regenerate the mesh after the world finishes loading
         void OnWorldLoaded();
 
@@ -285,9 +289,13 @@ namespace spartan
         // produce a dense list of frames in this entity local space, either from
         // own control points or by sampling the attached source spline
         std::vector<SplineFrame> SampleFrames(uint32_t samples_per_span) const;
+        std::vector<SplineFrame> SampleAttachedFrames(uint32_t samples_per_span) const;
 
         // generalized mesh extrusion using a precomputed list of frames
         void GenerateMesh(const std::vector<SplineFrame>& frames, const std::vector<math::Vector2>& profile_points, bool close_profile);
+        void ExtrudeRoadGeometry(const std::vector<SplineFrame>& frames, const std::vector<math::Vector2>& profile_points, bool close_profile, float v_period, RoadGeometry& geometry) const;
+        void AppendJunctionGeometry(RoadGeometry& geometry) const;
+        void AttachSidewalk(const std::shared_ptr<Mesh>& sidewalk_mesh);
 
         // resolve the runtime source spline entity pointer from the stored id
         void ResolveSourceSplineEntity();

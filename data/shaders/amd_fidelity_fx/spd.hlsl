@@ -23,7 +23,7 @@ groupshared AU1 spd_counter;
 
 AF4 SpdLoadSourceImage(ASU2 p, AU1 slice)
 {
-    float2 resolution_out = pass_get_f3_value2().xy;
+    float2 resolution_out = pass_float2(pass_spd::resolution);
 #if AVERAGE
     float2 uv             = (p + 0.5f) / resolution_out;
     return tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
@@ -140,9 +140,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 [numthreads(256, 1, 1)]
 void main_cs(uint3 work_group_id : SV_GroupID, uint local_thread_index : SV_GroupIndex)
 {
-    const float3 f3_value  = pass_get_f3_value();
-    float mip_count        = f3_value.x;
-    float work_group_count = f3_value.y;
+    uint mip_count        = pass_uint(pass_spd::mip_count);
+    uint work_group_count = pass_uint(pass_spd::work_group_count);
     SpdDownsample(work_group_id.xy, local_thread_index, mip_count, work_group_count, work_group_id.z);
 }
 #endif

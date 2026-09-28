@@ -1,0 +1,5 @@
+# Spartan Agent Memory Archive
+
+Older lessons moved out of AGENT_MEMORY.md when it reached its size limit. Search it with agent_memory_read {archive_query}.
+- 2026-09-24: glass behind interiors rendered black because frame_render_opaque was blitted before Pass_Light_Ibl; IBL now runs for opaque before the blit and for transparents after. Terrain pads store an owner anchor and Terrain::FollowPlatformOwners carries a pad when its owner moves by any means (debounced 250 ms). home_garage installer computes the pad from the hub's composed world transform.
+- 2026-09-25 ReSTIR PT: history was wiped every frame by whole-Sb_Light memcmp and per-transform emissive pool hashing; now only light count or renderable set changes clear reservoirs. EmissiveTriangles must be mappable and the pool is cached by emitter signature (plan.world ~774k emissive triangles). Follows Lin 2026 ReSTIR PT Enhanced; unified direct+indirect is r.restir_pt_direct. Not done: light tiles, postponed reconnection past x2, 64-byte reservoirs, replay compaction. r.restir_pt 1 drops the garage to 1 fps.

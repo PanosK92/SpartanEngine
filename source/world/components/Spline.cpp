@@ -1572,9 +1572,9 @@ namespace spartan
         for (const auto& [id, group] : groups) SolveRoadJunctions(group);
     }
 
-    void Spline::SolveRoadJunctions(const vector<Spline*>& members)
+    // one connected road network, the phases below run in order over this state
+    struct Spline::JunctionSolve
     {
-        const Stopwatch solve_timer;
         struct Road
         {
             Spline* spline;
@@ -1598,8 +1598,27 @@ namespace spartan
             float radius;
             vector<Border> borders;
         };
+
+        Stopwatch timer;
         vector<Road> roads;
         map<string, vector<Node>> nodes;
+        vector<Junction> junctions;
+        generated_cache::Hash network_hash;
+        bool cache_network = false;
+
+        void CollectRoads(const vector<Spline*>& members);
+        void HashNetwork();
+        filesystem::path CachePath(size_t index) const;
+        bool RestoreCached();
+        void BuildJunctions();
+        void SolveHeights();
+        void BuildPatches();
+        uint32_t Commit();
+        void SaveCache();
+    };
+
+    void Spline::JunctionSolve::CollectRoads(const vector<Spline*>& members)
+    {
         for (Spline* spline : members)
         {
             Entity* entity = spline->m_entity_ptr;
@@ -1643,10 +1662,12 @@ namespace spartan
             spline->m_junction_patches.clear();
             roads.push_back(move(road));
         }
+    }
 
-        generated_cache::Hash network_hash;
+    void Spline::JunctionSolve::HashNetwork()
+    {
         network_hash.Add(uint32_t(2)); // per-connected-network junction solver and border generator version
-        bool cache_network = !roads.empty();
+        cache_network = !roads.empty();
         for (const Road& road : roads)
         {
             const Spline* spline = road.spline;
@@ -1673,70 +1694,78 @@ namespace spartan
         }
         if (Water* water = find_active_water()) network_hash.Add(water->GetSeaLevel());
         else if (Terrain* terrain = Terrain::FindActive()) network_hash.Add(terrain->GetSeaLevel());
-        auto network_path = [&](size_t index)
+    }
+
+    filesystem::path Spline::JunctionSolve::CachePath(size_t index) const
+    {
+        generated_cache::Hash hash = network_hash;
+        hash.Add(index);
+        return generated_cache::Path(World::GetResourceDirectory(), "junctions", hash.value);
+    }
+
+    bool Spline::JunctionSolve::RestoreCached()
+    {
+        struct CachedRoad { vector<SplineFrame> frames; vector<uint8_t> segments; vector<JunctionPatch> patches; vector<SplineCarveSample> carves; };
+        vector<CachedRoad> cached(roads.size());
+        bool valid = true;
+        for (size_t i = 0; valid && i < roads.size(); i++)
         {
-            auto hash = network_hash; hash.Add(index);
-            return generated_cache::Path(World::GetResourceDirectory(), "junctions", hash.value);
-        };
-        if (cache_network)
+            vector<uint64_t> counts;
+            vector<Vector3> points;
+            auto& entry = cached[i];
+            valid = generated_cache::Load(CachePath(i), network_hash.value, entry.frames, entry.segments, counts, points, entry.carves) &&
+                entry.frames.size() == roads[i].frames.size() && entry.segments.size() + 1 == entry.frames.size() && counts.size() % 3 == 0;
+            size_t cursor = 0;
+            for (size_t k = 0; valid && k < counts.size(); k += 3)
+            {
+                if (cursor >= points.size()) { valid = false; break; }
+                JunctionPatch patch;
+                patch.center = points[cursor++];
+                size_t part = 0;
+                for (auto* output : {&patch.boundary, &patch.sidewalk_quads, &patch.skirt_quads})
+                {
+                    const uint64_t count = counts[k + part++];
+                    if (count > points.size() - cursor) { valid = false; break; }
+                    output->assign(points.begin() + cursor, points.begin() + cursor + count);
+                    cursor += static_cast<size_t>(count);
+                }
+                if (patch.boundary.size() < 3 || patch.sidewalk_quads.size() % 4 || patch.skirt_quads.size() % 4) valid = false;
+                entry.patches.push_back(move(patch));
+            }
+            valid &= cursor == points.size();
+        }
+        if (valid)
         {
-            struct CachedRoad { vector<SplineFrame> frames; vector<uint8_t> segments; vector<JunctionPatch> patches; vector<SplineCarveSample> carves; };
-            vector<CachedRoad> cached(roads.size());
-            bool valid = true;
-            for (size_t i = 0; valid && i < roads.size(); i++)
+            for (size_t i = 0; i < roads.size(); i++)
             {
-                vector<uint64_t> counts;
-                vector<Vector3> points;
-                auto& entry = cached[i];
-                valid = generated_cache::Load(network_path(i), network_hash.value, entry.frames, entry.segments, counts, points, entry.carves) &&
-                    entry.frames.size() == roads[i].frames.size() && entry.segments.size() + 1 == entry.frames.size() && counts.size() % 3 == 0;
-                size_t cursor = 0;
-                for (size_t k = 0; valid && k < counts.size(); k += 3)
+                Spline* spline = roads[i].spline;
+                const auto& entry = cached[i];
+                const bool same_frames = entry.frames.size() == spline->m_junction_frames.size() &&
+                    (entry.frames.empty() || memcmp(entry.frames.data(), spline->m_junction_frames.data(), entry.frames.size() * sizeof(SplineFrame)) == 0);
+                const bool same_segments = entry.segments.size() == roads[i].previous_segments.size() &&
+                    equal(entry.segments.begin(), entry.segments.end(), roads[i].previous_segments.begin());
+                const bool same_patches = entry.patches.size() == roads[i].previous_patches.size() &&
+                    equal(entry.patches.begin(), entry.patches.end(), roads[i].previous_patches.begin(), [](const JunctionPatch& a, const JunctionPatch& b)
+                    { return a.center == b.center && a.boundary == b.boundary && a.sidewalk_quads == b.sidewalk_quads && a.skirt_quads == b.skirt_quads; });
+                spline->m_junction_frames = move(cached[i].frames);
+                spline->m_junction_segments.assign(cached[i].segments.begin(), cached[i].segments.end());
+                spline->m_junction_patches = move(cached[i].patches);
+                spline->m_carve_samples = move(cached[i].carves);
+                if (!same_frames || !same_segments || !same_patches)
                 {
-                    if (cursor >= points.size()) { valid = false; break; }
-                    JunctionPatch patch;
-                    patch.center = points[cursor++];
-                    size_t part = 0;
-                    for (auto* output : {&patch.boundary, &patch.sidewalk_quads, &patch.skirt_quads})
-                    {
-                        const uint64_t count = counts[k + part++];
-                        if (count > points.size() - cursor) { valid = false; break; }
-                        output->assign(points.begin() + cursor, points.begin() + cursor + count);
-                        cursor += static_cast<size_t>(count);
-                    }
-                    if (patch.boundary.size() < 3 || patch.sidewalk_quads.size() % 4 || patch.skirt_quads.size() % 4) valid = false;
-                    entry.patches.push_back(move(patch));
+                    pending_road_uploads.insert(spline);
+                    if (Terrain* terrain = Terrain::FindActive()) terrain->MarkSplineHeightCarvesDirty(spline->m_entity_ptr->GetObjectId());
                 }
-                valid &= cursor == points.size();
             }
-            if (valid)
-            {
-                for (size_t i = 0; i < roads.size(); i++)
-                {
-                    Spline* spline = roads[i].spline;
-                    const auto& entry = cached[i];
-                    const bool same_frames = entry.frames.size() == spline->m_junction_frames.size() &&
-                        (entry.frames.empty() || memcmp(entry.frames.data(), spline->m_junction_frames.data(), entry.frames.size() * sizeof(SplineFrame)) == 0);
-                    const bool same_segments = entry.segments.size() == roads[i].previous_segments.size() &&
-                        equal(entry.segments.begin(), entry.segments.end(), roads[i].previous_segments.begin());
-                    const bool same_patches = entry.patches.size() == roads[i].previous_patches.size() &&
-                        equal(entry.patches.begin(), entry.patches.end(), roads[i].previous_patches.begin(), [](const JunctionPatch& a, const JunctionPatch& b)
-                        { return a.center == b.center && a.boundary == b.boundary && a.sidewalk_quads == b.sidewalk_quads && a.skirt_quads == b.skirt_quads; });
-                    spline->m_junction_frames = move(cached[i].frames);
-                    spline->m_junction_segments.assign(cached[i].segments.begin(), cached[i].segments.end());
-                    spline->m_junction_patches = move(cached[i].patches);
-                    spline->m_carve_samples = move(cached[i].carves);
-                    if (!same_frames || !same_segments || !same_patches)
-                    {
-                        pending_road_uploads.insert(spline);
-                        if (Terrain* terrain = Terrain::FindActive()) terrain->MarkSplineHeightCarvesDirty(spline->m_entity_ptr->GetObjectId());
-                    }
-                }
-                SP_LOG_INFO("restored baked junctions for %zu roads in %.2f ms", roads.size(), solve_timer.GetElapsedTimeMs());
-                return;
-            }
+            SP_LOG_INFO("restored baked junctions for %zu roads in %.2f ms", roads.size(), timer.GetElapsedTimeMs());
+            return true;
         }
 
+        return false;
+    }
+
+    void Spline::JunctionSolve::BuildJunctions()
+    {
         // Nearby graph nodes can describe a single traffic island or staggered junction.
         // Combine only nodes sharing a road, never unrelated geometric crossings.
         vector<string> node_names;
@@ -1791,7 +1820,6 @@ namespace spartan
             }
         }
 
-        vector<Junction> junctions;
         for (const auto& [name, members] : groups)
         {
             if (members.size() < 2) continue;
@@ -1938,7 +1966,10 @@ namespace spartan
             }
             if (!accepted) SP_LOG_WARNING("road junction %s: approaches too close or acute for a simple junction, leaving them intact", name.c_str());
         }
+    }
 
+    void Spline::JunctionSolve::SolveHeights()
+    {
         // Solve shared elevations against the available run BETWEEN the flat junction decks.
         struct Constraint { size_t a; size_t b; float rise; };
         vector<Constraint> constraints;
@@ -2031,6 +2062,10 @@ namespace spartan
                     spline->m_carve_samples[i].half_width = max(spline->m_carve_samples[i].half_width, junctions[j].radius);
             }
         }
+    }
+
+    void Spline::JunctionSolve::BuildPatches()
+    {
         for (Junction& junction : junctions)
         {
             Road& owner = roads[junction.cuts.front().road];
@@ -2133,6 +2168,10 @@ namespace spartan
             }
             owner.spline->m_junction_patches.push_back(move(patch));
         }
+    }
+
+    uint32_t Spline::JunctionSolve::Commit()
+    {
         uint32_t rebuilt = 0;
         for (Road& road : roads)
         {
@@ -2162,29 +2201,52 @@ namespace spartan
                 terrain->MarkSplineHeightCarvesDirty(id);
             }
         }
-        if (cache_network)
+
+        return rebuilt;
+    }
+
+    void Spline::JunctionSolve::SaveCache()
+    {
+        for (size_t i = 0; i < roads.size(); i++)
         {
-            for (size_t i = 0; i < roads.size(); i++)
+            Spline* spline = roads[i].spline;
+            vector<uint8_t> segments(spline->m_junction_segments.begin(), spline->m_junction_segments.end());
+            vector<uint64_t> counts;
+            vector<Vector3> points;
+            for (const JunctionPatch& patch : spline->m_junction_patches)
             {
-                Spline* spline = roads[i].spline;
-                vector<uint8_t> segments(spline->m_junction_segments.begin(), spline->m_junction_segments.end());
-                vector<uint64_t> counts;
-                vector<Vector3> points;
-                for (const JunctionPatch& patch : spline->m_junction_patches)
+                points.push_back(patch.center);
+                for (const auto* part : {&patch.boundary, &patch.sidewalk_quads, &patch.skirt_quads})
                 {
-                    points.push_back(patch.center);
-                    for (const auto* part : {&patch.boundary, &patch.sidewalk_quads, &patch.skirt_quads})
-                    {
-                        counts.push_back(part->size());
-                        points.insert(points.end(), part->begin(), part->end());
-                    }
+                    counts.push_back(part->size());
+                    points.insert(points.end(), part->begin(), part->end());
                 }
-                generated_cache::Save(network_path(i), network_hash.value,
-                    spline->m_junction_frames, segments, counts, points, spline->m_carve_samples);
             }
+            generated_cache::Save(CachePath(i), network_hash.value,
+                spline->m_junction_frames, segments, counts, points, spline->m_carve_samples);
+        }
+    }
+
+    void Spline::SolveRoadJunctions(const vector<Spline*>& members)
+    {
+        JunctionSolve solve;
+        solve.CollectRoads(members);
+        solve.HashNetwork();
+        if (solve.cache_network && solve.RestoreCached())
+        {
+            return;
+        }
+
+        solve.BuildJunctions();
+        solve.SolveHeights();
+        solve.BuildPatches();
+        const uint32_t rebuilt = solve.Commit();
+        if (solve.cache_network)
+        {
+            solve.SaveCache();
         }
         SP_LOG_INFO("solved %u road junctions in %.2f ms, queued %u of %u spline meshes",
-            static_cast<uint32_t>(junctions.size()), solve_timer.GetElapsedTimeMs(), rebuilt, static_cast<uint32_t>(roads.size()));
+            static_cast<uint32_t>(solve.junctions.size()), solve.timer.GetElapsedTimeMs(), rebuilt, static_cast<uint32_t>(solve.roads.size()));
     }
 
     void Spline::QueueRoadRegeneration(uint64_t surface_hash)
@@ -2970,6 +3032,53 @@ namespace spartan
         return m_profile == SplineProfile::Tube;
     }
 
+    // keep splitting sample intervals whose midpoint drifts from the ground until every chord fits
+    template<typename GroundAt>
+    static void refine_conform_samples(vector<float>& sample_ts, const GroundAt& ground_at_t)
+    {
+        const float tolerance      = conform_sag;
+        const uint32_t pass_count  = 6;
+        const size_t sample_budget = 8192;
+
+        for (uint32_t pass = 0; pass < pass_count && sample_ts.size() < sample_budget; pass++)
+        {
+            vector<float> refined;
+            refined.reserve(sample_ts.size() * 2);
+
+            bool inserted = false;
+            for (size_t i = 0; i + 1 < sample_ts.size(); i++)
+            {
+                refined.push_back(sample_ts[i]);
+
+                const float t_mid = (sample_ts[i] + sample_ts[i + 1]) * 0.5f;
+
+                float height_a   = 0.0f;
+                float height_b   = 0.0f;
+                float height_mid = 0.0f;
+                if (!ground_at_t(sample_ts[i], height_a) ||
+                    !ground_at_t(sample_ts[i + 1], height_b) ||
+                    !ground_at_t(t_mid, height_mid))
+                {
+                    continue;
+                }
+
+                if (fabsf(height_mid - (height_a + height_b) * 0.5f) > tolerance)
+                {
+                    refined.push_back(t_mid);
+                    inserted = true;
+                }
+            }
+
+            refined.push_back(sample_ts.back());
+            sample_ts = move(refined);
+
+            if (!inserted)
+            {
+                break;
+            }
+        }
+    }
+
     vector<SplineFrame> Spline::SampleFrames(uint32_t samples_per_span) const
     {
         vector<SplineFrame> frames;
@@ -2977,141 +3086,7 @@ namespace spartan
         // attached path: sample the source spline and offset by the chosen edge
         if (IsAttached() && m_source_spline_entity)
         {
-            Spline* source = m_source_spline_entity->GetComponent<Spline>();
-            if (!source || source->GetControlPointCount() < 2)
-            {
-                return frames;
-            }
-
-            // determine the side sign for the lateral offset
-            float side = 0.0f;
-            switch (m_attach_mode)
-            {
-                case SplineAttachMode::LeftEdge:
-                case SplineAttachMode::LeftOuter:  side = -1.0f; break;
-                case SplineAttachMode::RightEdge:
-                case SplineAttachMode::RightOuter: side = +1.0f; break;
-                default:                           side =  0.0f; break;
-            }
-
-            // does the source profile expose a sidewalk on its outer edge
-
-            // use source resolution unless the user pinned a sample count
-            uint32_t source_point_count = source->GetControlPointCount();
-            uint32_t source_span_count  = source->GetClosedLoop() ? source_point_count : (source_point_count - 1);
-            uint32_t total_samples      = (m_attach_sample_count > 0)
-                                          ? m_attach_sample_count
-                                          : source_span_count * samples_per_span;
-            if (total_samples < 1)
-            {
-                total_samples = 1;
-            }
-
-            Matrix world_inv = m_entity_ptr ? m_entity_ptr->GetMatrix().Inverted() : Matrix::Identity;
-            GroundQuery attach_ground = make_ground_query(m_entity_ptr);
-
-            float accumulated_distance = 0.0f;
-            Vector3 prev_local_position;
-
-            frames.reserve(total_samples + 1);
-
-            for (uint32_t i = 0; i <= total_samples; i++)
-            {
-                float t = static_cast<float>(i) / static_cast<float>(total_samples);
-
-                Vector3 world_pos = source->GetPoint(t);
-                Vector3 world_tan = source->GetTangent(t);
-                if (world_tan.LengthSquared() < 1e-6f)
-                {
-                    world_tan = Vector3::Forward;
-                }
-                world_tan.Normalize();
-
-                Vector3 world_up = Vector3::Up;
-                if (abs(world_tan.Dot(Vector3::Up)) > 0.99f)
-                {
-                    world_up = Vector3::Forward;
-                }
-
-                Vector3 world_right = world_tan.Cross(world_up);
-                world_right.Normalize();
-                world_up = world_right.Cross(world_tan);
-                world_up.Normalize();
-
-                // edge offset based on the source road width (interpolated start to end)
-                float source_half_width = (source->GetRoadWidth() + (source->GetRoadWidthEnd() - source->GetRoadWidth()) * t) * 0.5f;
-                float edge_offset       = 0.0f;
-                if (m_attach_mode == SplineAttachMode::LeftEdge || m_attach_mode == SplineAttachMode::RightEdge)
-                {
-                    edge_offset = source_half_width;
-                }
-                else if (m_attach_mode == SplineAttachMode::LeftOuter || m_attach_mode == SplineAttachMode::RightOuter)
-                {
-                    edge_offset = source_half_width + source->GetSidewalkWidthAt(t);
-                }
-
-                // outward push for non centerline modes, plain right shift for centerline
-                float lateral = (m_attach_mode == SplineAttachMode::Centerline)
-                                ? m_attach_lateral_offset
-                                : side * (edge_offset + m_attach_lateral_offset);
-
-                Vector3 offset_world = world_pos + world_right * lateral + Vector3::Up * m_attach_vertical_offset;
-
-                // the source path is a curve through its control points, it does not know about the ground
-                if (m_conform_to_terrain)
-                {
-                    float ground_height = 0.0f;
-                    if (sample_ground_height(
-                        offset_world.x,
-                        offset_world.z,
-                        attach_ground,
-                        ground_height
-                    ))
-                    {
-                        offset_world.y = ground_height + applied_terrain_offset(m_terrain_offset) + m_attach_vertical_offset;
-                    }
-                }
-
-                // transform position and direction vectors into this entity local space
-                Vector3 local_pos = world_inv * offset_world;
-                Vector3 local_origin = world_inv * Vector3::Zero;
-                Vector3 local_tan   = (world_inv * world_tan)   - local_origin;
-                Vector3 local_right = (world_inv * world_right) - local_origin;
-                Vector3 local_up    = (world_inv * world_up)    - local_origin;
-
-                if (local_tan.LengthSquared() < 1e-6f)
-                {
-                    local_tan   = Vector3::Forward;
-                }
-                if (local_right.LengthSquared() < 1e-6f)
-                {
-                    local_right = Vector3::Right;
-                }
-                if (local_up.LengthSquared() < 1e-6f)
-                {
-                    local_up    = Vector3::Up;
-                }
-                local_tan.Normalize();
-                local_right.Normalize();
-                local_up.Normalize();
-
-                if (i > 0)
-                {
-                    accumulated_distance += local_pos.Distance(prev_local_position);
-                }
-                prev_local_position = local_pos;
-
-                SplineFrame frame;
-                frame.position = local_pos;
-                frame.tangent  = local_tan;
-                frame.right    = local_right;
-                frame.up       = local_up;
-                frame.t        = t;
-                frame.distance = accumulated_distance;
-                frames.push_back(frame);
-            }
-
-            return frames;
+            return SampleAttachedFrames(samples_per_span);
         }
 
         // standalone path: walk own control points
@@ -3150,53 +3125,11 @@ namespace spartan
         // keep splitting segments whose midpoint drifts from the ground until they all fit
         if (m_conform_to_terrain)
         {
-            const float tolerance      = conform_sag;
-            const uint32_t pass_count  = 6;
-            const size_t sample_budget = 8192;
-
-            auto ground_at_t = [this, &spline_points, &world_matrix, &ground_query](float t, float& height_out)
+            refine_conform_samples(sample_ts, [this, &spline_points, &world_matrix, &ground_query](float t, float& height_out)
             {
                 const Vector3 world_pos = world_matrix * EvaluatePoint(spline_points, t);
                 return sample_ground_height(world_pos.x, world_pos.z, ground_query, height_out);
-            };
-
-            for (uint32_t pass = 0; pass < pass_count && sample_ts.size() < sample_budget; pass++)
-            {
-                vector<float> refined;
-                refined.reserve(sample_ts.size() * 2);
-
-                bool inserted = false;
-                for (size_t i = 0; i + 1 < sample_ts.size(); i++)
-                {
-                    refined.push_back(sample_ts[i]);
-
-                    const float t_mid = (sample_ts[i] + sample_ts[i + 1]) * 0.5f;
-
-                    float height_a   = 0.0f;
-                    float height_b   = 0.0f;
-                    float height_mid = 0.0f;
-                    if (!ground_at_t(sample_ts[i], height_a) ||
-                        !ground_at_t(sample_ts[i + 1], height_b) ||
-                        !ground_at_t(t_mid, height_mid))
-                    {
-                        continue;
-                    }
-
-                    if (fabsf(height_mid - (height_a + height_b) * 0.5f) > tolerance)
-                    {
-                        refined.push_back(t_mid);
-                        inserted = true;
-                    }
-                }
-
-                refined.push_back(sample_ts.back());
-                sample_ts = move(refined);
-
-                if (!inserted)
-                {
-                    break;
-                }
-            }
+            });
         }
 
         // half of the widest part of the cross section, the edges have to clear the ground too
@@ -3396,6 +3329,145 @@ namespace spartan
         return frames;
     }
 
+    vector<SplineFrame> Spline::SampleAttachedFrames(uint32_t samples_per_span) const
+    {
+        vector<SplineFrame> frames;
+
+        Spline* source = m_source_spline_entity->GetComponent<Spline>();
+        if (!source || source->GetControlPointCount() < 2)
+        {
+            return frames;
+        }
+
+        // determine the side sign for the lateral offset
+        float side = 0.0f;
+        switch (m_attach_mode)
+        {
+            case SplineAttachMode::LeftEdge:
+            case SplineAttachMode::LeftOuter:  side = -1.0f; break;
+            case SplineAttachMode::RightEdge:
+            case SplineAttachMode::RightOuter: side = +1.0f; break;
+            default:                           side =  0.0f; break;
+        }
+
+        // use source resolution unless the user pinned a sample count
+        uint32_t source_point_count = source->GetControlPointCount();
+        uint32_t source_span_count  = source->GetClosedLoop() ? source_point_count : (source_point_count - 1);
+        uint32_t total_samples      = (m_attach_sample_count > 0)
+                                      ? m_attach_sample_count
+                                      : source_span_count * samples_per_span;
+        if (total_samples < 1)
+        {
+            total_samples = 1;
+        }
+
+        Matrix world_inv = m_entity_ptr ? m_entity_ptr->GetMatrix().Inverted() : Matrix::Identity;
+        GroundQuery attach_ground = make_ground_query(m_entity_ptr);
+
+        float accumulated_distance = 0.0f;
+        Vector3 prev_local_position;
+
+        frames.reserve(total_samples + 1);
+
+        for (uint32_t i = 0; i <= total_samples; i++)
+        {
+            float t = static_cast<float>(i) / static_cast<float>(total_samples);
+
+            Vector3 world_pos = source->GetPoint(t);
+            Vector3 world_tan = source->GetTangent(t);
+            if (world_tan.LengthSquared() < 1e-6f)
+            {
+                world_tan = Vector3::Forward;
+            }
+            world_tan.Normalize();
+
+            Vector3 world_up = Vector3::Up;
+            if (abs(world_tan.Dot(Vector3::Up)) > 0.99f)
+            {
+                world_up = Vector3::Forward;
+            }
+
+            Vector3 world_right = world_tan.Cross(world_up);
+            world_right.Normalize();
+            world_up = world_right.Cross(world_tan);
+            world_up.Normalize();
+
+            // edge offset based on the source road width (interpolated start to end)
+            float source_half_width = (source->GetRoadWidth() + (source->GetRoadWidthEnd() - source->GetRoadWidth()) * t) * 0.5f;
+            float edge_offset       = 0.0f;
+            if (m_attach_mode == SplineAttachMode::LeftEdge || m_attach_mode == SplineAttachMode::RightEdge)
+            {
+                edge_offset = source_half_width;
+            }
+            else if (m_attach_mode == SplineAttachMode::LeftOuter || m_attach_mode == SplineAttachMode::RightOuter)
+            {
+                edge_offset = source_half_width + source->GetSidewalkWidthAt(t);
+            }
+
+            // outward push for non centerline modes, plain right shift for centerline
+            float lateral = (m_attach_mode == SplineAttachMode::Centerline)
+                            ? m_attach_lateral_offset
+                            : side * (edge_offset + m_attach_lateral_offset);
+
+            Vector3 offset_world = world_pos + world_right * lateral + Vector3::Up * m_attach_vertical_offset;
+
+            // the source path is a curve through its control points, it does not know about the ground
+            if (m_conform_to_terrain)
+            {
+                float ground_height = 0.0f;
+                if (sample_ground_height(
+                    offset_world.x,
+                    offset_world.z,
+                    attach_ground,
+                    ground_height
+                ))
+                {
+                    offset_world.y = ground_height + applied_terrain_offset(m_terrain_offset) + m_attach_vertical_offset;
+                }
+            }
+
+            // transform position and direction vectors into this entity local space
+            Vector3 local_pos = world_inv * offset_world;
+            Vector3 local_origin = world_inv * Vector3::Zero;
+            Vector3 local_tan   = (world_inv * world_tan)   - local_origin;
+            Vector3 local_right = (world_inv * world_right) - local_origin;
+            Vector3 local_up    = (world_inv * world_up)    - local_origin;
+
+            if (local_tan.LengthSquared() < 1e-6f)
+            {
+                local_tan   = Vector3::Forward;
+            }
+            if (local_right.LengthSquared() < 1e-6f)
+            {
+                local_right = Vector3::Right;
+            }
+            if (local_up.LengthSquared() < 1e-6f)
+            {
+                local_up    = Vector3::Up;
+            }
+            local_tan.Normalize();
+            local_right.Normalize();
+            local_up.Normalize();
+
+            if (i > 0)
+            {
+                accumulated_distance += local_pos.Distance(prev_local_position);
+            }
+            prev_local_position = local_pos;
+
+            SplineFrame frame;
+            frame.position = local_pos;
+            frame.tangent  = local_tan;
+            frame.right    = local_right;
+            frame.up       = local_up;
+            frame.t        = t;
+            frame.distance = accumulated_distance;
+            frames.push_back(frame);
+        }
+
+        return frames;
+    }
+
     void Spline::SetSourceSplineEntityId(uint64_t id)
     {
         if (m_source_spline_entity_id == id)
@@ -3472,6 +3544,18 @@ namespace spartan
         return hash;
     }
 
+    struct Spline::RoadGeometry
+    {
+        vector<RHI_Vertex_PosTexNorTan> vertices;
+        vector<uint32_t> indices;
+        vector<RHI_Vertex_PosTexNorTan> sidewalk_vertices;
+        vector<uint32_t> sidewalk_indices;
+        vector<RHI_Vertex_PosTexNorTan> shoulder_vertices;
+        vector<uint32_t> shoulder_indices;
+        vector<RHI_Vertex_PosTexNorTan> paint_vertices;
+        vector<uint32_t> paint_indices;
+    };
+
     void Spline::GenerateMesh(const vector<SplineFrame>& frames, const vector<Vector2>& profile_points, bool close_profile)
     {
         if (m_profile == SplineProfile::Road) m_generated_road_frames = frames;
@@ -3480,19 +3564,11 @@ namespace spartan
             return;
         }
 
-        bool width_varies     = (m_road_width_end != m_road_width);
         const bool embankment = UsesEmbankment();
         const bool island_finish = m_profile==SplineProfile::Road && island_road_surface::Enabled(m_entity_ptr);
 
-        uint32_t total_samples = static_cast<uint32_t>(frames.size()) - 1;
-        uint32_t profile_count = static_cast<uint32_t>(profile_points.size()) + (embankment ? 2u : 0u);
 
-        vector<RHI_Vertex_PosTexNorTan> vertices;
-        vector<uint32_t> indices;
-        vector<RHI_Vertex_PosTexNorTan> sidewalk_vertices;
-        vector<uint32_t> sidewalk_indices;
-        vector<RHI_Vertex_PosTexNorTan> shoulder_vertices,paint_vertices;
-        vector<uint32_t> shoulder_indices,paint_indices;
+        RoadGeometry geometry;
 
         // Material tiling happens after vertex decoding. Rebase by a full material repeat.
         float v_period = 1.0f;
@@ -3511,8 +3587,9 @@ namespace spartan
         }
 
         generated_cache::Hash cache_hash;
-        cache_hash.Add(uint32_t(1)); // road extrusion, junction skirts and paint generator version
+        cache_hash.Add(uint32_t(2)); // road extrusion, junction skirts and paint generator version
         cache_hash.Add(sizeof(RHI_Vertex_PosTexNorTan));
+        cache_hash.Add(island_road_surface::asphalt_repeat);
         cache_hash.Add(frames);
         cache_hash.Add(profile_points);
         cache_hash.Add(close_profile);
@@ -3556,219 +3633,11 @@ namespace spartan
                 !deck.empty() && restore(deck, deck_mesh) && restore(sidewalk, sidewalk_mesh) &&
                 restore(shoulder, shoulder_mesh) && restore(paint, paint_mesh);
         }
-        if (!prepared_hit && !generated_cache::Load(cache_path, cache_hash.value, vertices, indices,
-            sidewalk_vertices, sidewalk_indices, shoulder_vertices, shoulder_indices, paint_vertices, paint_indices))
+        if (!prepared_hit && !generated_cache::Load(cache_path, cache_hash.value, geometry.vertices, geometry.indices,
+            geometry.sidewalk_vertices, geometry.sidewalk_indices, geometry.shoulder_vertices, geometry.shoulder_indices, geometry.paint_vertices, geometry.paint_indices))
         {
-            vertices.reserve(total_samples * profile_count * 4);
-            vector<Vector2> previous_profile;
-            vector<float> previous_u;
-
-            for (uint32_t i = 0; i < frames.size(); i++)
-            {
-                const SplineFrame& frame = frames[i];
-
-                // interpolate width if it varies along the spline, the skirt depth varies per frame
-                float current_width = width_varies ? (m_road_width + (m_road_width_end - m_road_width) * frame.t) : m_road_width;
-                vector<Vector2> cur_profile;
-                if (embankment)
-                {
-                    cur_profile = GetProfileForFrame(current_width, frame.fill_left, frame.fill_right);
-                }
-                else
-                {
-                    cur_profile = width_varies ? GetProfilePointsForWidth(current_width) : profile_points;
-                }
-                uint32_t cur_profile_count = static_cast<uint32_t>(cur_profile.size());
-
-                if (island_finish && embankment)
-                {
-                    // A low, irregular gravel verge, not an asphalt-coated cliff.
-                    const float verge=.85f+.08f*sinf(frame.distance*.047f)+.035f*sinf(frame.distance*.119f);
-                    cur_profile.front().x-=verge;
-                    cur_profile.back().x+=verge;
-                }
-
-                if (m_profile == SplineProfile::Road && m_sidewalk_enabled)
-                {
-                    const uint32_t first = embankment ? 1u : 0u;
-                    const float width = GetSidewalkWidthAt(frame.t);
-                    const float height = m_curb_height * width / max(m_sidewalk_width, 0.001f);
-                    cur_profile[first].x = -current_width * 0.5f - width;
-                    cur_profile[first + 5].x = current_width * 0.5f + width;
-                    for (uint32_t k : {0u, 1u, 4u, 5u}) cur_profile[first + k].y = height;
-                    if (embankment)
-                    {
-                        cur_profile.front().x += m_sidewalk_width - width;
-                        cur_profile.back().x -= m_sidewalk_width - width;
-                    }
-                }
-
-                vector<float> u = spline_geometry::profile_u(cur_profile, m_profile == SplineProfile::Road, close_profile, current_width);
-                if (i == 0)
-                {
-                    previous_profile = move(cur_profile);
-                    previous_u = move(u);
-                    continue;
-                }
-                const float v0 = frames[i - 1].distance / max(fabsf(m_road_width), 0.001f) * m_uv_tiling_v;
-                const float v1 = frame.distance / max(fabsf(m_road_width), 0.001f) * m_uv_tiling_v;
-                const float origin = spline_geometry::uv_origin(min(v0, v1), v_period);
-                const uint32_t edge_count = close_profile ? cur_profile_count : cur_profile_count - 1;
-                if (i - 1 < m_junction_segments.size() && m_junction_segments[i - 1])
-                {
-                    previous_profile = move(cur_profile);
-                    previous_u = move(u);
-                    continue;
-                }
-                for (uint32_t j = 0; j < edge_count; j++)
-                {
-                    const uint32_t next = (j + 1) % cur_profile_count;
-                    const uint32_t first = embankment ? 1u : 0u;
-                    const bool sidewalk = m_profile == SplineProfile::Road && m_sidewalk_enabled &&
-                        j >= first && j < first + 5 && j != first + 2;
-                    if (sidewalk && GetSidewalkWidthAt(frames[i - 1].t) == 0.0f && GetSidewalkWidthAt(frame.t) == 0.0f) continue;
-                    const bool shoulder=island_finish && embankment && (j==0 || next==cur_profile_count-1);
-                    auto& target_vertices = sidewalk ? sidewalk_vertices : shoulder ? shoulder_vertices : vertices;
-                    auto& target_indices = sidewalk ? sidewalk_indices : shoulder ? shoulder_indices : indices;
-                    const uint32_t base = static_cast<uint32_t>(target_vertices.size());
-                    for (uint32_t row = 0; row < 2; row++)
-                    {
-                        const auto& section = row == 0 ? previous_profile : cur_profile;
-                        const auto& section_u = row == 0 ? previous_u : u;
-                        const SplineFrame& f = frames[i - 1 + row];
-                        const Vector2 edge = section[next] - section[j];
-                        Vector3 normal = f.right * -edge.y + f.up * edge.x;
-                        if (close_profile) normal = -normal;
-                        normal.Normalize();
-                        Vector3 tangent = f.right * edge.x + f.up * edge.y;
-                        tangent.Normalize();
-                        for (uint32_t side = 0; side < 2; side++)
-                        {
-                            const uint32_t k = side == 0 ? j : next;
-                            Vector3 n = normal;
-                            Vector3 t = tangent;
-                            if (close_profile)
-                            {
-                                n = f.right * section[k].x + f.up * section[k].y;
-                                n.Normalize();
-                                t = f.right * -section[k].y + f.up * section[k].x;
-                                t.Normalize();
-                            }
-                            const float tex_u = (close_profile && side == 1 && next == 0) ? 1.0f : section_u[k];
-                            const float paving_v = f.distance * 0.5f;
-                            const float paving_origin = floorf(frames[i - 1].distance * 0.5f);
-                            const float repeat=shoulder ? 2.0f : 3.0f;
-                            const Vector2 finish_uv(section[k].x/repeat,
-                                f.distance/repeat-floorf(frames[i-1].distance/repeat));
-                            target_vertices.emplace_back(f.position + f.right * section[k].x + f.up * section[k].y,
-                                sidewalk ? Vector2((section[k].x + section[k].y) * 0.5f, paving_v - paving_origin) :
-                                island_finish ? finish_uv : Vector2(tex_u * m_uv_tiling_u, (row == 0 ? v0 : v1) - origin), n, t);
-                        }
-                    }
-                    target_indices.insert(target_indices.end(), {base, base + 1, base + 2, base + 1, base + 3, base + 2});
-                }
-                if (island_finish)
-                    island_road_surface::Markings(frames[i-1],frame,
-                        m_road_width+(m_road_width_end-m_road_width)*frames[i-1].t,current_width,paint_vertices,paint_indices);
-                previous_profile = move(cur_profile);
-                previous_u = move(u);
-            }
-
-            // Continue the approach paving and skirts around the exposed junction perimeter.
-            auto append_border = [](const vector<Vector3>& quads, vector<RHI_Vertex_PosTexNorTan>& output, vector<uint32_t>& triangles)
-            {
-                for (size_t i = 0; i + 3 < quads.size(); i += 4)
-                {
-                    const Vector3 across = quads[i + 1] - quads[i];
-                    const Vector3 along = quads[i + 2] - quads[i];
-                    Vector3 normal = along.Cross(across);
-                    if (normal.LengthSquared() < 1e-10f) normal = along.Cross(quads[i + 3] - quads[i]);
-                    if (normal.LengthSquared() < 1e-10f) continue;
-                    normal.Normalize();
-                    const Vector3 tangent = along.Normalized();
-                    const uint32_t base = static_cast<uint32_t>(output.size());
-                    output.emplace_back(quads[i], Vector2(0, 0), normal, tangent);
-                    output.emplace_back(quads[i + 1], Vector2(across.Length() * .5f, 0.0f), normal, tangent);
-                    output.emplace_back(quads[i + 2], Vector2(0.0f, along.Length() * .5f), normal, tangent);
-                    output.emplace_back(quads[i + 3], Vector2((quads[i + 3] - quads[i + 2]).Length() * .5f, along.Length() * .5f), normal, tangent);
-                    triangles.insert(triangles.end(), {base, base + 2, base + 1, base + 1, base + 2, base + 3});
-                }
-            };
-            for (const JunctionPatch& patch : m_junction_patches)
-            {
-                append_border(patch.sidewalk_quads, sidewalk_vertices, sidewalk_indices);
-                append_border(patch.skirt_quads, island_finish ? shoulder_vertices : vertices, island_finish ? shoulder_indices : indices);
-            }
-
-            // A junction is part of one participating road's render AND collision mesh.
-            for (const JunctionPatch& patch : m_junction_patches)
-            {
-                if (island_finish)
-                {
-                    // Same unpainted aggregate as the deck: no atlas mirroring or
-                    // stripes leaking into the junction. Rebase before half packing.
-                    const Vector2 origin(floorf(patch.center.x/3),floorf(patch.center.z/3));
-                    for (size_t i=0;i<patch.boundary.size();++i)
-                    {
-                        const Vector3 a=patch.boundary[i],b=patch.boundary[(i+1)%patch.boundary.size()];
-                        const Vector3 normal=(b-patch.center).Cross(a-patch.center).Normalized();
-                        const uint32_t base=static_cast<uint32_t>(vertices.size());
-                        for (const Vector3 p:{patch.center,b,a})
-                            vertices.emplace_back(p,Vector2(p.x/3-origin.x,p.z/3-origin.y),normal,Vector3::Right);
-                        indices.insert(indices.end(),{base,base+1,base+2});
-                    }
-                    continue;
-                }
-                // Tile a paint-free band at the same texel density as the approach deck.
-                // Clip at mirrored U repeats so interpolation never crosses lane markings.
-                const float width = max(fabsf(m_road_width), 0.001f);
-                const float strip_width = width * 0.24f;
-                auto clip_x = [](const vector<Vector3>& polygon, float x, bool keep_right)
-                {
-                    vector<Vector3> result;
-                    if (polygon.empty()) return result;
-                    Vector3 previous = polygon.back();
-                    bool previous_inside = keep_right ? previous.x >= x : previous.x <= x;
-                    for (const Vector3& current : polygon)
-                    {
-                        const bool inside = keep_right ? current.x >= x : current.x <= x;
-                        if (inside != previous_inside)
-                            result.push_back(previous + (current - previous) * ((x - previous.x) / (current.x - previous.x)));
-                        if (inside) result.push_back(current);
-                        previous = current;
-                        previous_inside = inside;
-                    }
-                    return result;
-                };
-                for (size_t i = 0; i < patch.boundary.size(); i++)
-                {
-                    const Vector3 a = patch.boundary[i];
-                    const Vector3 b = patch.boundary[(i + 1) % patch.boundary.size()];
-                    const Vector3 normal = (b - patch.center).Cross(a - patch.center).Normalized();
-                    const vector<Vector3> triangle = {patch.center, b, a};
-                    const float min_x = min(patch.center.x, min(a.x, b.x));
-                    const float max_x = max(patch.center.x, max(a.x, b.x));
-                    const int first = static_cast<int>(floorf((min_x - patch.center.x) / strip_width));
-                    const int last = static_cast<int>(floorf((max_x - patch.center.x) / strip_width));
-                    for (int strip = first; strip <= last; strip++)
-                    {
-                        const float x = patch.center.x + strip * strip_width;
-                        const vector<Vector3> polygon = clip_x(clip_x(triangle, x, true), x + strip_width, false);
-                        if (polygon.size() < 3) continue;
-                        const uint32_t base = static_cast<uint32_t>(vertices.size());
-                        const bool mirror = strip % 2 != 0;
-                        for (const Vector3& p : polygon)
-                        {
-                            float u = clamp((p.x - x) / strip_width, 0.0f, 1.0f);
-                            if (mirror) u = 1.0f - u;
-                            vertices.emplace_back(p, Vector2(0.15f + u * 0.24f, (p.z - patch.center.z) / width * m_uv_tiling_v),
-                                normal, mirror ? -Vector3::Right : Vector3::Right);
-                        }
-                        for (uint32_t k = 1; k + 1 < polygon.size(); k++)
-                            indices.insert(indices.end(), {base, base + k, base + k + 1});
-                    }
-                }
-            }
+            ExtrudeRoadGeometry(frames, profile_points, close_profile, v_period, geometry);
+            AppendJunctionGeometry(geometry);
         }
 
         if (!prepared_hit)
@@ -3786,10 +3655,10 @@ namespace spartan
                 }
                 return mesh;
             };
-            deck_mesh = prepare(vertices, indices);
-            sidewalk_mesh = prepare(sidewalk_vertices, sidewalk_indices);
-            shoulder_mesh = prepare(shoulder_vertices, shoulder_indices);
-            paint_mesh = prepare(paint_vertices, paint_indices);
+            deck_mesh = prepare(geometry.vertices, geometry.indices);
+            sidewalk_mesh = prepare(geometry.sidewalk_vertices, geometry.sidewalk_indices);
+            shoulder_mesh = prepare(geometry.shoulder_vertices, geometry.shoulder_indices);
+            paint_mesh = prepare(geometry.paint_vertices, geometry.paint_indices);
             auto encode = [](const shared_ptr<Mesh>& mesh) { return mesh ? mesh->SerializePrepared() : vector<uint8_t>{}; };
             const auto deck = encode(deck_mesh), sidewalk = encode(sidewalk_mesh),
                 shoulder = encode(shoulder_mesh), paint = encode(paint_mesh);
@@ -3813,43 +3682,7 @@ namespace spartan
                 if (Entity* child=m_entity_ptr->GetChildByName(name)) World::RemoveEntity(child);
         }
 
-        Entity* sidewalk = m_entity_ptr->GetChildByName("spline_sidewalk");
-        if (sidewalk)
-        {
-            sidewalk->RemoveComponent<Physics>();
-            sidewalk->RemoveComponent<Render>();
-        }
-        if (sidewalk_mesh)
-        {
-            if (!sidewalk)
-            {
-                sidewalk = World::CreateEntity();
-                sidewalk->SetObjectName("spline_sidewalk");
-                sidewalk->SetParent(m_entity_ptr);
-                sidewalk->SetPositionLocal(Vector3::Zero);
-                sidewalk->SetRotationLocal(Quaternion::Identity);
-                sidewalk->SetScaleLocal(Vector3::One);
-                sidewalk->SetTransient(true);
-            }
-            auto mesh = sidewalk_mesh;
-            mesh->SetObjectName("sidewalk_" + to_string(m_entity_ptr->GetObjectId()));
-            mesh->CreateGpuBuffers();
-            auto material = ResourceCache::GetByName<Material>("spline_concrete_pavers");
-            if (!material)
-            {
-                material = make_shared<Material>();
-                material->SetObjectName("spline_concrete_pavers");
-                material->SetProperty(MaterialProperty::Roughness, 0.92f);
-                material->SetProperty(MaterialProperty::Metalness, 0.0f);
-                material->SetTexture(MaterialTextureType::Color, "data/textures/sidewalk/concrete_pavers.png");
-            }
-            Render* paving = sidewalk->AddComponent<Render>();
-            paving->SetOwnedMesh(mesh);
-            paving->SetMaterial(material);
-            paving->SetFlag(RenderFlags::ExcludeFromTerrainBlend, true);
-            paving->SetFlag(RenderFlags::PreserveCollisionGeometry, true);
-            sidewalk->AddComponent<Physics>()->SetBodyType(BodyType::Mesh);
-        }
+        AttachSidewalk(sidewalk_mesh);
 
         // create the mesh
         m_mesh = deck_mesh;
@@ -3908,6 +3741,273 @@ namespace spartan
         SP_LOG_INFO("%s spline mesh: %u vertices, %u indices, %.1f m long",
             prepared_hit ? "cached" : "prepared", m_mesh->GetVertexCount(), m_mesh->GetIndexCount(),
             total_length);
+    }
+
+    void Spline::ExtrudeRoadGeometry(const vector<SplineFrame>& frames, const vector<Vector2>& profile_points, bool close_profile, float v_period, RoadGeometry& geometry) const
+    {
+        const bool width_varies      = m_road_width_end != m_road_width;
+        const bool embankment        = UsesEmbankment();
+        const bool island_finish     = m_profile == SplineProfile::Road && island_road_surface::Enabled(m_entity_ptr);
+        const uint32_t total_samples = static_cast<uint32_t>(frames.size()) - 1;
+        const uint32_t profile_count = static_cast<uint32_t>(profile_points.size()) + (embankment ? 2u : 0u);
+
+        geometry.vertices.reserve(total_samples * profile_count * 4);
+        vector<Vector2> previous_profile;
+        vector<float> previous_u;
+
+        for (uint32_t i = 0; i < frames.size(); i++)
+        {
+            const SplineFrame& frame = frames[i];
+
+            // interpolate width if it varies along the spline, the skirt depth varies per frame
+            float current_width = width_varies ? (m_road_width + (m_road_width_end - m_road_width) * frame.t) : m_road_width;
+            vector<Vector2> cur_profile;
+            if (embankment)
+            {
+                cur_profile = GetProfileForFrame(current_width, frame.fill_left, frame.fill_right);
+            }
+            else
+            {
+                cur_profile = width_varies ? GetProfilePointsForWidth(current_width) : profile_points;
+            }
+            uint32_t cur_profile_count = static_cast<uint32_t>(cur_profile.size());
+
+            if (island_finish && embankment)
+            {
+                // A low, irregular gravel verge, not an asphalt-coated cliff.
+                const float verge=.85f+.08f*sinf(frame.distance*.047f)+.035f*sinf(frame.distance*.119f);
+                cur_profile.front().x-=verge;
+                cur_profile.back().x+=verge;
+            }
+
+            if (m_profile == SplineProfile::Road && m_sidewalk_enabled)
+            {
+                const uint32_t first = embankment ? 1u : 0u;
+                const float width = GetSidewalkWidthAt(frame.t);
+                const float height = m_curb_height * width / max(m_sidewalk_width, 0.001f);
+                cur_profile[first].x = -current_width * 0.5f - width;
+                cur_profile[first + 5].x = current_width * 0.5f + width;
+                for (uint32_t k : {0u, 1u, 4u, 5u}) cur_profile[first + k].y = height;
+                if (embankment)
+                {
+                    cur_profile.front().x += m_sidewalk_width - width;
+                    cur_profile.back().x -= m_sidewalk_width - width;
+                }
+            }
+
+            vector<float> u = spline_geometry::profile_u(cur_profile, m_profile == SplineProfile::Road, close_profile, current_width);
+            if (i == 0)
+            {
+                previous_profile = move(cur_profile);
+                previous_u = move(u);
+                continue;
+            }
+            const float v0 = frames[i - 1].distance / max(fabsf(m_road_width), 0.001f) * m_uv_tiling_v;
+            const float v1 = frame.distance / max(fabsf(m_road_width), 0.001f) * m_uv_tiling_v;
+            const float origin = spline_geometry::uv_origin(min(v0, v1), v_period);
+            const uint32_t edge_count = close_profile ? cur_profile_count : cur_profile_count - 1;
+            if (i - 1 < m_junction_segments.size() && m_junction_segments[i - 1])
+            {
+                previous_profile = move(cur_profile);
+                previous_u = move(u);
+                continue;
+            }
+            for (uint32_t j = 0; j < edge_count; j++)
+            {
+                const uint32_t next = (j + 1) % cur_profile_count;
+                const uint32_t first = embankment ? 1u : 0u;
+                const bool sidewalk = m_profile == SplineProfile::Road && m_sidewalk_enabled &&
+                    j >= first && j < first + 5 && j != first + 2;
+                if (sidewalk && GetSidewalkWidthAt(frames[i - 1].t) == 0.0f && GetSidewalkWidthAt(frame.t) == 0.0f) continue;
+                const bool shoulder=island_finish && embankment && (j==0 || next==cur_profile_count-1);
+                auto& target_vertices = sidewalk ? geometry.sidewalk_vertices : shoulder ? geometry.shoulder_vertices : geometry.vertices;
+                auto& target_indices = sidewalk ? geometry.sidewalk_indices : shoulder ? geometry.shoulder_indices : geometry.indices;
+                const uint32_t base = static_cast<uint32_t>(target_vertices.size());
+                for (uint32_t row = 0; row < 2; row++)
+                {
+                    const auto& section = row == 0 ? previous_profile : cur_profile;
+                    const auto& section_u = row == 0 ? previous_u : u;
+                    const SplineFrame& f = frames[i - 1 + row];
+                    const Vector2 edge = section[next] - section[j];
+                    Vector3 normal = f.right * -edge.y + f.up * edge.x;
+                    if (close_profile) normal = -normal;
+                    normal.Normalize();
+                    Vector3 tangent = f.right * edge.x + f.up * edge.y;
+                    tangent.Normalize();
+                    for (uint32_t side = 0; side < 2; side++)
+                    {
+                        const uint32_t k = side == 0 ? j : next;
+                        Vector3 n = normal;
+                        Vector3 t = tangent;
+                        if (close_profile)
+                        {
+                            n = f.right * section[k].x + f.up * section[k].y;
+                            n.Normalize();
+                            t = f.right * -section[k].y + f.up * section[k].x;
+                            t.Normalize();
+                        }
+                        const float tex_u = (close_profile && side == 1 && next == 0) ? 1.0f : section_u[k];
+                        const float paving_v = f.distance * 0.5f;
+                        const float paving_origin = floorf(frames[i - 1].distance * 0.5f);
+                        const float repeat=shoulder ? 2.0f : island_road_surface::asphalt_repeat;
+                        const Vector2 finish_uv(section[k].x/repeat,
+                            f.distance/repeat-floorf(frames[i-1].distance/repeat));
+                        target_vertices.emplace_back(f.position + f.right * section[k].x + f.up * section[k].y,
+                            sidewalk ? Vector2((section[k].x + section[k].y) * 0.5f, paving_v - paving_origin) :
+                            island_finish ? finish_uv : Vector2(tex_u * m_uv_tiling_u, (row == 0 ? v0 : v1) - origin), n, t);
+                    }
+                }
+                target_indices.insert(target_indices.end(), {base, base + 1, base + 2, base + 1, base + 3, base + 2});
+            }
+            if (island_finish)
+                island_road_surface::Markings(frames[i-1],frame,
+                    m_road_width+(m_road_width_end-m_road_width)*frames[i-1].t,current_width,geometry.paint_vertices,geometry.paint_indices);
+            previous_profile = move(cur_profile);
+            previous_u = move(u);
+        }
+    }
+
+    void Spline::AppendJunctionGeometry(RoadGeometry& geometry) const
+    {
+        const bool island_finish = m_profile == SplineProfile::Road && island_road_surface::Enabled(m_entity_ptr);
+
+        // Continue the approach paving and skirts around the exposed junction perimeter.
+        auto append_border = [](const vector<Vector3>& quads, vector<RHI_Vertex_PosTexNorTan>& output, vector<uint32_t>& triangles)
+        {
+            for (size_t i = 0; i + 3 < quads.size(); i += 4)
+            {
+                const Vector3 across = quads[i + 1] - quads[i];
+                const Vector3 along = quads[i + 2] - quads[i];
+                Vector3 normal = along.Cross(across);
+                if (normal.LengthSquared() < 1e-10f) normal = along.Cross(quads[i + 3] - quads[i]);
+                if (normal.LengthSquared() < 1e-10f) continue;
+                normal.Normalize();
+                const Vector3 tangent = along.Normalized();
+                const uint32_t base = static_cast<uint32_t>(output.size());
+                output.emplace_back(quads[i], Vector2(0, 0), normal, tangent);
+                output.emplace_back(quads[i + 1], Vector2(across.Length() * .5f, 0.0f), normal, tangent);
+                output.emplace_back(quads[i + 2], Vector2(0.0f, along.Length() * .5f), normal, tangent);
+                output.emplace_back(quads[i + 3], Vector2((quads[i + 3] - quads[i + 2]).Length() * .5f, along.Length() * .5f), normal, tangent);
+                triangles.insert(triangles.end(), {base, base + 2, base + 1, base + 1, base + 2, base + 3});
+            }
+        };
+        for (const JunctionPatch& patch : m_junction_patches)
+        {
+            append_border(patch.sidewalk_quads, geometry.sidewalk_vertices, geometry.sidewalk_indices);
+            append_border(patch.skirt_quads, island_finish ? geometry.shoulder_vertices : geometry.vertices, island_finish ? geometry.shoulder_indices : geometry.indices);
+        }
+
+        // A junction is part of one participating road's render AND collision mesh.
+        for (const JunctionPatch& patch : m_junction_patches)
+        {
+            if (island_finish)
+            {
+                // Same unpainted aggregate as the deck: no atlas mirroring or
+                // stripes leaking into the junction. Rebase before half packing.
+                const float r=island_road_surface::asphalt_repeat;
+                const Vector2 origin(floorf(patch.center.x/r),floorf(patch.center.z/r));
+                for (size_t i=0;i<patch.boundary.size();++i)
+                {
+                    const Vector3 a=patch.boundary[i],b=patch.boundary[(i+1)%patch.boundary.size()];
+                    const Vector3 normal=(b-patch.center).Cross(a-patch.center).Normalized();
+                    const uint32_t base=static_cast<uint32_t>(geometry.vertices.size());
+                    for (const Vector3 p:{patch.center,b,a})
+                        geometry.vertices.emplace_back(p,Vector2(p.x/r-origin.x,p.z/r-origin.y),normal,Vector3::Right);
+                    geometry.indices.insert(geometry.indices.end(),{base,base+1,base+2});
+                }
+                continue;
+            }
+            // Tile a paint-free band at the same texel density as the approach deck.
+            // Clip at mirrored U repeats so interpolation never crosses lane markings.
+            const float width = max(fabsf(m_road_width), 0.001f);
+            const float strip_width = width * 0.24f;
+            auto clip_x = [](const vector<Vector3>& polygon, float x, bool keep_right)
+            {
+                vector<Vector3> result;
+                if (polygon.empty()) return result;
+                Vector3 previous = polygon.back();
+                bool previous_inside = keep_right ? previous.x >= x : previous.x <= x;
+                for (const Vector3& current : polygon)
+                {
+                    const bool inside = keep_right ? current.x >= x : current.x <= x;
+                    if (inside != previous_inside)
+                        result.push_back(previous + (current - previous) * ((x - previous.x) / (current.x - previous.x)));
+                    if (inside) result.push_back(current);
+                    previous = current;
+                    previous_inside = inside;
+                }
+                return result;
+            };
+            for (size_t i = 0; i < patch.boundary.size(); i++)
+            {
+                const Vector3 a = patch.boundary[i];
+                const Vector3 b = patch.boundary[(i + 1) % patch.boundary.size()];
+                const Vector3 normal = (b - patch.center).Cross(a - patch.center).Normalized();
+                const vector<Vector3> triangle = {patch.center, b, a};
+                const float min_x = min(patch.center.x, min(a.x, b.x));
+                const float max_x = max(patch.center.x, max(a.x, b.x));
+                const int first = static_cast<int>(floorf((min_x - patch.center.x) / strip_width));
+                const int last = static_cast<int>(floorf((max_x - patch.center.x) / strip_width));
+                for (int strip = first; strip <= last; strip++)
+                {
+                    const float x = patch.center.x + strip * strip_width;
+                    const vector<Vector3> polygon = clip_x(clip_x(triangle, x, true), x + strip_width, false);
+                    if (polygon.size() < 3) continue;
+                    const uint32_t base = static_cast<uint32_t>(geometry.vertices.size());
+                    const bool mirror = strip % 2 != 0;
+                    for (const Vector3& p : polygon)
+                    {
+                        float u = clamp((p.x - x) / strip_width, 0.0f, 1.0f);
+                        if (mirror) u = 1.0f - u;
+                        geometry.vertices.emplace_back(p, Vector2(0.15f + u * 0.24f, (p.z - patch.center.z) / width * m_uv_tiling_v),
+                            normal, mirror ? -Vector3::Right : Vector3::Right);
+                    }
+                    for (uint32_t k = 1; k + 1 < polygon.size(); k++)
+                        geometry.indices.insert(geometry.indices.end(), {base, base + k, base + k + 1});
+                }
+            }
+        }
+    }
+
+    void Spline::AttachSidewalk(const shared_ptr<Mesh>& sidewalk_mesh)
+    {
+        Entity* sidewalk = m_entity_ptr->GetChildByName("spline_sidewalk");
+        if (sidewalk)
+        {
+            sidewalk->RemoveComponent<Physics>();
+            sidewalk->RemoveComponent<Render>();
+        }
+        if (sidewalk_mesh)
+        {
+            if (!sidewalk)
+            {
+                sidewalk = World::CreateEntity();
+                sidewalk->SetObjectName("spline_sidewalk");
+                sidewalk->SetParent(m_entity_ptr);
+                sidewalk->SetPositionLocal(Vector3::Zero);
+                sidewalk->SetRotationLocal(Quaternion::Identity);
+                sidewalk->SetScaleLocal(Vector3::One);
+                sidewalk->SetTransient(true);
+            }
+            auto mesh = sidewalk_mesh;
+            mesh->SetObjectName("sidewalk_" + to_string(m_entity_ptr->GetObjectId()));
+            mesh->CreateGpuBuffers();
+            auto material = ResourceCache::GetByName<Material>("spline_concrete_pavers");
+            if (!material)
+            {
+                material = make_shared<Material>();
+                material->SetObjectName("spline_concrete_pavers");
+                material->SetProperty(MaterialProperty::Roughness, 0.92f);
+                material->SetProperty(MaterialProperty::Metalness, 0.0f);
+                material->SetTexture(MaterialTextureType::Color, "data/textures/sidewalk/concrete_pavers.png");
+            }
+            Render* paving = sidewalk->AddComponent<Render>();
+            paving->SetOwnedMesh(mesh);
+            paving->SetMaterial(material);
+            paving->SetFlag(RenderFlags::ExcludeFromTerrainBlend, true);
+            paving->SetFlag(RenderFlags::PreserveCollisionGeometry, true);
+            sidewalk->AddComponent<Physics>()->SetBodyType(BodyType::Mesh);
+        }
     }
 
     // knot intervals for the non uniform form, degenerate spans borrow from the middle one

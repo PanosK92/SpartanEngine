@@ -13,6 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../World.h"
 #include "../Entity.h"
 #include "../../rendering/Renderer.h"
+#include "../../rendering/IesProfile.h"
 #include "../../rhi/RHI_Texture.h"
 #include "../../../data/shaders/shared_lighting.h"
 SP_WARNINGS_OFF
@@ -202,6 +203,10 @@ namespace spartan
         node.append_attribute("distance_volumetric") = m_distance_volumetric;
         node.append_attribute("cloud_coverage")      = m_cloud_coverage;
         node.append_attribute("rain")                = m_rain;
+        if (!m_ies_file_path.empty())
+        {
+            node.append_attribute("ies_profile") = m_ies_file_path.c_str();
+        }
     }
 
     void Light::Load(pugi::xml_node& node)
@@ -238,6 +243,7 @@ namespace spartan
         m_cloud_coverage       = node.attribute("cloud_coverage").as_float(m_cloud_coverage);
         m_rain                 = clamp(node.attribute("rain").as_float(0.0f), 0.0f, 1.0f);
         m_screen_space_shadows_slice_index = 0;
+        SetIesProfile(node.attribute("ies_profile").as_string(""));
 
         if (m_light_type != LightType::Directional || !(m_flags & LightFlags::Shadows))
         {
@@ -316,6 +322,11 @@ namespace spartan
 
             "SetRange",                     &Light::SetRange,
             "GetRange",                     &Light::GetRange,
+
+            "SetIesProfile",                &Light::SetIesProfile,
+            "GetIesProfile",                &Light::GetIesProfile,
+            "GetIesLumens",                 &Light::GetIesLumens,
+            "GetIesPeakCandela",            &Light::GetIesPeakCandela,
 
             "SetAreaWidth",                 &Light::SetAreaWidth,
             "GetAreaWidth",                 &Light::GetAreaWidth,
@@ -694,6 +705,12 @@ namespace spartan
 
         if (m_light_type == LightType::Spot)
         {
+            // the gpu scales the peak normalized profile, so the flux spreads over the profile's own solid angle
+            if (const IesProfileInfo* profile = ies::get_info(m_ies_slot))
+            {
+                return radiant_flux / max(profile->solid_angle, 1e-6f);
+            }
+
             // Normalize the complete beam, including its soft angular falloff.
             return radiant_flux / lighting::lighting_spot_solid_angle(m_angle_rad);
         }
@@ -735,6 +752,44 @@ namespace spartan
         }
 
         UpdateMatrices();
+    }
+
+    void Light::SetIesProfile(const string& file_path)
+    {
+        if (file_path.empty())
+        {
+            m_ies_file_path.clear();
+            m_ies_slot = 0;
+            return;
+        }
+
+        const uint32_t slot = ies::acquire(file_path);
+        if (slot == 0)
+        {
+            return;
+        }
+
+        m_ies_file_path = file_path;
+        m_ies_slot      = slot;
+
+        // the atlas tile spans the shadow frustum of a spot with exactly this half angle
+        if (const IesProfileInfo* profile = ies::get_info(slot))
+        {
+            m_angle_rad = lighting::lighting_spot_half_angle(profile->extent_rad);
+            UpdateMatrices();
+        }
+    }
+
+    float Light::GetIesLumens() const
+    {
+        const IesProfileInfo* profile = ies::get_info(m_ies_slot);
+        return profile ? profile->lumens : 0.0f;
+    }
+
+    float Light::GetIesPeakCandela() const
+    {
+        const IesProfileInfo* profile = ies::get_info(m_ies_slot);
+        return profile ? profile->peak_candela : 0.0f;
     }
 
     void Light::SetAreaWidth(float width)

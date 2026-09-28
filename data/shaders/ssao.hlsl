@@ -320,7 +320,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         && (neighbor_motion_px - motion_px) > g_wake_delta_px;
 
     float2 inset         = 2.0f / resolution_out;
-    bool   history_valid = pass_get_f3_value().x < 0.5f
+    bool   history_valid = !pass_bool(pass_ssao::reset_history)
         && !in_wake
         && motion_px < g_motion_reject_px
         && all(uv_prev > inset)

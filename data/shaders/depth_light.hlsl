@@ -31,9 +31,8 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     _draw                    = draw_data[buffer_pass.draw_index];
 #endif
 
-    float3 f3_value_2 = pass_get_f3_value2();
-    uint index_light  = (uint)f3_value_2.x;
-    uint index_array  = (uint)f3_value_2.y;
+    uint index_light = pass_uint(pass_depth_light::light_index);
+    uint index_array = pass_uint(pass_depth_light::array_index);
 
     // validate light index to prevent out-of-bounds buffer access
     uint light_count, light_stride;
@@ -84,7 +83,7 @@ void main_ps(gbuffer_vertex vertex)
 #ifdef INDEXED_MULTI_DRAW
     const bool has_albedo       = GetMaterial().has_texture_albedo();
 #else
-    const bool has_albedo       = pass_get_f3_value().x == 1.0f;
+    const bool has_albedo       = pass_bool(pass_depth_light::has_albedo);
 #endif
     const float3 position_world = vertex.position_previous.xyz;
     float alpha_threshold       = get_alpha_threshold(position_world);

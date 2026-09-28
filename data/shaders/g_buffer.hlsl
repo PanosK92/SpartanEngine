@@ -180,10 +180,10 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
 {
     Vertex_PosUvNorTan input = to_full_vertex(cpu_input);
     // pull the per-instance transform from the dedicated procedural grass buffer
-    // lod_base in values[0].z lets the same vs handle all three lod rings
+    // lod_base lets the same vs handle all three lod rings
     // Coarse blades occupy the same allocation from its end, in reverse order.
-    uint reverse_count = (uint)buffer_pass.values[0].y;
-    uint slot = (uint)buffer_pass.values[0].z + (reverse_count > 0u ? reverse_count - 1u - instance_id : instance_id);
+    uint reverse_count = pass_uint(pass_grass_draw::reverse_count);
+    uint slot = pass_uint(pass_grass_draw::lod_base) + (reverse_count > 0u ? reverse_count - 1u - instance_id : instance_id);
     GrassInstance gi = grass_instances[slot];
     input.instance_transform = compose_instance_transform(gi.pos_x, gi.pos_y, gi.pos_z,
         (gi.normal_yaw_scale >> 16) & 0xFFFFu, (gi.normal_yaw_scale >> 8) & 0xFFu, gi.normal_yaw_scale & 0xFFu);
@@ -197,7 +197,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     // a solid detail instance, a stone chip, has a planar uv that covers the whole material, so every
     // one of them would carry an identical copy of the texture. give each a small random patch of it
     // instead and a field of chips reads as many different pieces of the same stone
-    float uv_patch = buffer_pass.values[0].x;
+    float uv_patch = pass_float(pass_grass_draw::uv_patch);
     if (uv_patch > 0.0f)
     {
         uint h = (asuint(gi.pos_x) * 73856093u) ^
@@ -542,6 +542,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     }
     
     // packed material texture (occlusion, roughness, metalness)
+    float height_map = 0.6f;
     if (
         !terrain_shaded &&
         (
@@ -555,9 +556,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         occlusion     = lerp(occlusion, packed.r, (float)material.has_texture_occlusion());
         roughness    *= lerp(1.0f, packed.g, (float)material.has_texture_roughness());
         metalness    *= lerp(1.0f, packed.b, (float)material.has_texture_metalness());
+        height_map    = surface.has_texture_height() ? packed.a : height_map;
     }
 
-    road_weathering(material.flags,position_world,albedo.rgb,roughness,max(length(dpdx_world),length(dpdy_world)));
+    float road_footprint = max(length(dpdx_world), length(dpdy_world));
+    float road_macro     = road_macro_height(material.flags, height_map);
+    float road_paint     = road_weathering(material.flags, position_world, vertex.uv_misc.xy, height_map, albedo.rgb, roughness, road_footprint);
+    road_surface_detail(material.flags, position_world, vertex.uv_misc.xy, normalize(vertex.normal), height_map, road_paint, albedo.rgb, normal, occlusion);
 
     // fft ocean shading, normal from the displaced surface so lighting follows the swell
     if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
@@ -680,9 +685,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     if (pass_is_opaque() && is_ground)
     {
         // asphalt crevices carry low ambient occlusion, that is where the water sits
-        float relief     = terrain_shaded ? puddle_relief : (1.0f - occlusion) * 0.08f;
-        // soil soaks up most of what falls on it, only sealed road surfaces flood to the full level
-        float puddliness = max(rain_authored_puddles(), rain_weather_puddles() * rain_exposed * (terrain_shaded ? 0.55f : 1.0f));
+        // wheel paths are worn into shallow ruts, so the first water on a road collects in them
+        float relief     = terrain_shaded ? puddle_relief : (1.0f - occlusion) * 0.08f + (is_road ? road_wheel_paths(vertex.uv_misc.xy, position_world.xz) * 0.05f : 0.0f);
+        // soil soaks up most of what falls on it and road camber sheds much of it, so rain pools in ruts and dips
+        float puddliness = max(rain_authored_puddles(), rain_weather_puddles() * rain_exposed * (terrain_shaded ? 0.55f : 0.7f));
         puddle_water     = puddle_apply(puddliness, position_world, geometric_normal, ground_porosity, relief, footprint,
             albedo.rgb, normal, roughness, metalness, occlusion);
     }
@@ -716,6 +722,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         rain_surface.water            = puddle_water;
         rain_surface.footprint        = footprint;
         rain_surface.exposure         = rain_exposed;
+        rain_surface.macro_height     = road_macro;
 #if defined(GRASS_INSTANCED) || defined(GRASS_SPECIALIZED)
         rain_surface.detail           = false;
 #else

@@ -348,6 +348,7 @@ namespace spartan
         m_flushing_barriers   = false;
         m_render_pass_pending = false;
         ResetTrackedBindings();
+        ResetPassState();
         // These point into the previous recording's resources, which may have
         // been destroyed during a world change before this list is reused.
         m_current_texture_usage.clear();
@@ -1321,170 +1322,14 @@ namespace spartan
         set_acceleration_structure(slot, tlas);
     }
 
-    void RHI_CommandList::begin_pass(const char* name)
+    void RHI_CommandList::reset_pass(const char* name)
     {
-        begin_timeblock(name);
-        set_pass(name);
-    }
-
-    void RHI_CommandList::end_pass()
-    {
-        end_timeblock();
-        m_pso_pending = RHI_PipelineState();
-        m_pipeline_state_dirty = false;
-        RHI_Device::InvokePassReset();
-    }
-
-    void RHI_CommandList::set_pass(const char* name)
-    {
-        RHI_Device::InvokePassReset();
-        m_pso_pending = RHI_PipelineState();
-        m_pso_pending.name = name;
-        m_pipeline_state_dirty = true;
-        m_pass_boundary = true;
-    }
-
-    void RHI_CommandList::set_shader(RHI_Shader* shader, const char* name)
-    {
-        SP_ASSERT(shader != nullptr);
-
-        const RHI_Shader_Type stage = shader->GetShaderStage();
-        if (stage == RHI_Shader_Type::Compute)
-        {
-            const char* keep_name = name ? name : m_pso_pending.name;
-            m_pso_pending = RHI_PipelineState();
-            m_pso_pending.name = keep_name;
-        }
-        else if (name)
-        {
-            m_pso_pending.name = name;
-        }
-
-        m_pso_pending.shaders[static_cast<uint32_t>(stage)] = shader;
-        m_pipeline_state_dirty = true;
-        TryBindPendingPipeline();
-    }
-
-    void RHI_CommandList::set_shaders(RHI_Shader* shader_a, RHI_Shader* shader_b, RHI_Shader* shader_c)
-    {
-        if (shader_a)
-        {
-            set_shader(shader_a);
-        }
-        if (shader_b)
-        {
-            set_shader(shader_b);
-        }
-        if (shader_c)
-        {
-            set_shader(shader_c);
-        }
-    }
-
-    void RHI_CommandList::set_color_target(RHI_Texture* texture)
-    {
-        set_color_targets(texture);
-    }
-
-    void RHI_CommandList::set_color_targets(
-        RHI_Texture* t0,
-        RHI_Texture* t1,
-        RHI_Texture* t2,
-        RHI_Texture* t3,
-        RHI_Texture* t4,
-        RHI_Texture* t5,
-        RHI_Texture* t6,
-        RHI_Texture* t7
-    )
-    {
-        m_pso_pending.SetColorTargets(t0, t1, t2, t3, t4, t5, t6, t7);
-        m_pipeline_state_dirty = true;
-        TryBindPendingPipeline();
-    }
-
-    void RHI_CommandList::set_depth_target(RHI_Texture* texture)
-    {
-        m_pso_pending.SetDepthTarget(texture);
-        m_pipeline_state_dirty = true;
-        TryBindPendingPipeline();
-    }
-
-    void RHI_CommandList::set_swap_chain(RHI_SwapChain* swapchain)
-    {
-        m_pso_pending.render_target_swapchain = swapchain;
-        m_pipeline_state_dirty = true;
-        TryBindPendingPipeline();
-    }
-
-    void RHI_CommandList::set_blend_state(RHI_BlendState* state)
-    {
-        m_pso_pending.blend_state = state;
-        m_pipeline_state_dirty = true;
-        TryBindPendingPipeline();
-    }
-
-    void RHI_CommandList::set_rasterizer_state(RHI_RasterizerState* state)
-    {
-        m_pso_pending.rasterizer_state = state;
-        m_pipeline_state_dirty = true;
-        TryBindPendingPipeline();
-    }
-
-    void RHI_CommandList::set_depth_stencil_state(RHI_DepthStencilState* state)
-    {
-        m_pso_pending.depth_stencil_state = state;
-        m_pipeline_state_dirty = true;
-        TryBindPendingPipeline();
-    }
-
-    void RHI_CommandList::set_primitive_topology(RHI_PrimitiveTopology topology)
-    {
-        m_pso_pending.primitive_topology = topology;
-        m_pipeline_state_dirty = true;
-        TryBindPendingPipeline();
-    }
-
-    void RHI_CommandList::set_clear_color(uint32_t index, const Color& color)
-    {
-        SP_ASSERT(index < rhi_max_render_target_count);
-        m_pso_pending.clear_color[index] = color;
-        m_pipeline_state_dirty = true;
-        TryBindPendingPipeline();
-    }
-
-    void RHI_CommandList::set_clear_depth(float depth)
-    {
-        m_pso_pending.clear_depth = depth;
-        m_pipeline_state_dirty = true;
-        TryBindPendingPipeline();
-    }
-
-    void RHI_CommandList::set_vrs_texture(RHI_Texture* texture)
-    {
-        m_pso_pending.vrs_input_texture = texture;
-        m_pipeline_state_dirty = true;
-        TryBindPendingPipeline();
-    }
-
-    void RHI_CommandList::set_resolution_scale(bool enabled)
-    {
-        m_pso_pending.resolution_scale = enabled;
-        m_pipeline_state_dirty = true;
-        TryBindPendingPipeline();
-    }
-
-    void RHI_CommandList::set_multiview(bool enabled)
-    {
-        m_pso_pending.is_multiview = enabled;
-        m_pipeline_state_dirty = true;
-        TryBindPendingPipeline();
-    }
-
-    void RHI_CommandList::set_array_index(uint32_t index)
-    {
-        m_pso_pending.render_target_array_index = index;
-        m_pipeline_state_dirty = true;
-        TryBindPendingPipeline();
+        CommitPendingClear();
+        ResetPassState();
+        m_pso_pending          = RHI_PipelineState();
+        m_pso_pending.name     = name;
+        m_pipeline_state_dirty = name != nullptr;
+        m_pass_boundary        = true;
     }
 
     bool RHI_CommandList::IsPendingPipelineReady() const
@@ -1492,7 +1337,7 @@ namespace spartan
         if (m_pso_pending.IsCompute())
         {
             RHI_Shader* shader = m_pso_pending.shaders[static_cast<uint32_t>(RHI_Shader_Type::Compute)];
-            return m_pso_pending.name != nullptr && shader && shader->IsCompiled();
+            return shader && shader->IsCompiled();
         }
 
         if (m_pso_pending.IsRayTracing())
@@ -1500,8 +1345,7 @@ namespace spartan
             RHI_Shader* raygen = m_pso_pending.shaders[static_cast<uint32_t>(RHI_Shader_Type::RayGeneration)];
             RHI_Shader* miss = m_pso_pending.shaders[static_cast<uint32_t>(RHI_Shader_Type::RayMiss)];
             RHI_Shader* hit = m_pso_pending.shaders[static_cast<uint32_t>(RHI_Shader_Type::RayHit)];
-            return m_pso_pending.name != nullptr
-                && raygen && raygen->IsCompiled()
+            return raygen && raygen->IsCompiled()
                 && miss && miss->IsCompiled()
                 && hit && hit->IsCompiled();
         }
@@ -1516,7 +1360,7 @@ namespace spartan
             RHI_Shader* ms = m_pso_pending.shaders[static_cast<uint32_t>(RHI_Shader_Type::MeshShader)];
             const bool has_compiled_shader =
                 (vs && vs->IsCompiled()) || (ms && ms->IsCompiled());
-            return m_pso_pending.name != nullptr && has_target && has_compiled_shader;
+            return has_target && has_compiled_shader;
         }
 
         return false;
@@ -1524,17 +1368,170 @@ namespace spartan
 
     void RHI_CommandList::TryBindPendingPipeline()
     {
-        if (!m_pipeline_state_dirty)
+        if (!m_pipeline_state_dirty || !IsPendingPipelineReady())
         {
             return;
         }
 
-        if (!IsPendingPipelineReady())
+        // an unnamed pass takes the name of its first shader
+        if (!m_pso_pending.name)
         {
-            return;
+            for (RHI_Shader* shader : m_pso_pending.shaders)
+            {
+                if (shader)
+                {
+                    m_pso_pending.name = shader->GetObjectName().c_str();
+                    break;
+                }
+            }
         }
 
+        // indirect argument reads are tracked right before the draw that binds the pipeline
+        const auto buffers_read = m_tracked_buffers_read;
+
+        m_binding_replay = true;
         set_pipeline_state(m_pso_pending);
+        m_tracked_buffers_read = buffers_read;
+        m_resources_dirty      = true;
+
+        for (const RHI_Pass_Binding& binding : m_pass_bindings)
+        {
+            ApplyBinding(binding);
+        }
+
+        if (m_pending_viewport_set)
+        {
+            set_viewport(m_pending_viewport);
+            m_pending_viewport_set = false;
+        }
+
+        if (m_pending_scissor_set)
+        {
+            set_scissor_rectangle(math::Rectangle(m_pending_scissor[0], m_pending_scissor[1], m_pending_scissor[2], m_pending_scissor[3]));
+            m_pending_scissor_set = false;
+        }
+
+        if (m_pending_cull_mode != RHI_CullMode::Max)
+        {
+            set_cull_mode(m_pending_cull_mode);
+            m_pending_cull_mode = RHI_CullMode::Max;
+        }
+
+        if (m_pending_push_size != 0)
+        {
+            push_constants(m_pending_push_offset, m_pending_push_size, m_pending_push_constants.data());
+            m_pending_push_size = 0;
+        }
+        m_binding_replay = false;
+    }
+
+    void RHI_CommandList::CommitPendingClear()
+    {
+        // a graphics pipeline that clears its targets must clear them even when nothing is drawn
+        if (m_pipeline_state_dirty && m_pso_pending.IsGraphics() && m_pso_pending.HasClearValues())
+        {
+            TryBindPendingPipeline();
+        }
+    }
+
+    void RHI_CommandList::ResetPassState()
+    {
+        m_pass_bindings.clear();
+        m_pending_viewport_set = false;
+        m_pending_scissor_set  = false;
+        m_pending_cull_mode    = RHI_CullMode::Max;
+        m_pending_push_size    = 0;
+    }
+
+    void RHI_CommandList::Bind(const RHI_Pass_Binding& binding)
+    {
+        // bindings made while a pipeline binds (standard resources) belong to that pipeline, not to the pass
+        if (!m_binding_replay)
+        {
+            auto same_target = [&binding](const RHI_Pass_Binding& other)
+            {
+                if (other.kind != binding.kind || other.uav != binding.uav)
+                {
+                    return false;
+                }
+                if (other.name || binding.name)
+                {
+                    return other.name && binding.name && strcmp(other.name, binding.name) == 0;
+                }
+                return other.slot == binding.slot;
+            };
+
+            auto it = find_if(m_pass_bindings.begin(), m_pass_bindings.end(), same_target);
+            if (it != m_pass_bindings.end())
+            {
+                m_pass_bindings.erase(it);
+            }
+            m_pass_bindings.push_back(binding);
+        }
+
+        if (m_binding_replay || IsPipelineBound())
+        {
+            ApplyBinding(binding);
+        }
+    }
+
+    void RHI_CommandList::ApplyBinding(const RHI_Pass_Binding& binding)
+    {
+        switch (binding.kind)
+        {
+        case RHI_Pass_Binding::Kind::Texture:
+        {
+            RHI_Texture* texture = static_cast<RHI_Texture*>(binding.resource);
+            if (binding.name)
+            {
+                set_texture(binding.name, texture, binding.mip_index, binding.mip_range, binding.array_layer);
+            }
+            else
+            {
+                set_texture(binding.slot, texture, binding.mip_index, binding.mip_range, binding.uav, binding.array_layer);
+            }
+            break;
+        }
+        case RHI_Pass_Binding::Kind::Buffer:
+        {
+            RHI_Buffer* buffer = static_cast<RHI_Buffer*>(binding.resource);
+            if (binding.name)
+            {
+                set_buffer(binding.name, buffer);
+            }
+            else
+            {
+                set_buffer(binding.slot, buffer);
+            }
+            break;
+        }
+        case RHI_Pass_Binding::Kind::ConstantBuffer:
+        {
+            RHI_Buffer* buffer = static_cast<RHI_Buffer*>(binding.resource);
+            if (binding.name)
+            {
+                set_constant_buffer(binding.name, buffer);
+            }
+            else
+            {
+                set_constant_buffer(binding.slot, buffer);
+            }
+            break;
+        }
+        case RHI_Pass_Binding::Kind::AccelerationStructure:
+        {
+            RHI_AccelerationStructure* tlas = static_cast<RHI_AccelerationStructure*>(binding.resource);
+            if (binding.name)
+            {
+                set_acceleration_structure(binding.name, tlas);
+            }
+            else
+            {
+                set_acceleration_structure(binding.slot, tlas);
+            }
+            break;
+        }
+        }
     }
 
     void RHI_CommandList::PrepareDispatch()
@@ -1546,57 +1543,86 @@ namespace spartan
         }
         if (m_pso.use_standard_resources && m_push_constant_size == 0)
         {
-            RHI_Device::InvokeDefaultPushConstants(this);
+            uint32_t size = 0;
+            if (const void* data = RHI_Device::GetDefaultPushConstants(size))
+            {
+                push_constants(0, size, data);
+            }
         }
-    }
-
-    const RHI_PipelineState& RHI_CommandList::GetPipelineState()
-    {
-        return RHI_Device::Cmd()->get_pipeline_state();
     }
 
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
     {
-        RHI_Device::Cmd()->set_pipeline_state(pso);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->CommitPendingClear();
+        cmd_list->m_pso_pending          = pso;
+        cmd_list->m_pipeline_state_dirty = true;
     }
 
-    void RHI_CommandList::SetPipelineState(RHI_CommandList* cmd_list, RHI_PipelineState& pso)
+    void RHI_CommandList::BeginPass(const char* name, const bool gpu_timing)
     {
-        if (!cmd_list)
-        {
-            return;
-        }
-        cmd_list->set_pipeline_state(pso);
-    }
-
-    void RHI_CommandList::BeginPass(const char* name)
-    {
-        RHI_Device::Cmd()->begin_pass(name);
+        // a pass can outlive the list it began on (submit and rebind mid pass), the stack remembers where it started
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        SP_ASSERT(cmd_list != nullptr);
+        cmd_list->CommitPendingClear();
+        cmd_list->begin_timeblock(name, true, gpu_timing);
+        timeblock_cmd_lists.push(cmd_list);
+        cmd_list->reset_pass(name);
     }
 
     void RHI_CommandList::EndPass()
     {
-        RHI_Device::Cmd()->end_pass();
-    }
+        SP_ASSERT(!timeblock_cmd_lists.empty());
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        if (cmd_list)
+        {
+            cmd_list->CommitPendingClear();
+            cmd_list->reset_pass(nullptr);
+        }
 
-    void RHI_CommandList::SetPass(const char* name)
-    {
-        RHI_Device::Cmd()->set_pass(name);
+        RHI_CommandList* cmd_list_begin = timeblock_cmd_lists.top();
+        timeblock_cmd_lists.pop();
+        cmd_list_begin->end_timeblock();
     }
 
     void RHI_CommandList::SetShader(RHI_Shader* shader, const char* name)
     {
-        RHI_Device::Cmd()->set_shader(shader, name);
+        SP_ASSERT(shader != nullptr);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        RHI_PipelineState& pso    = cmd_list->m_pso_pending;
+
+        // a compute shader is a whole pipeline on its own, so it starts from a clean state
+        const RHI_Shader_Type stage = shader->GetShaderStage();
+        if (stage == RHI_Shader_Type::Compute)
+        {
+            cmd_list->CommitPendingClear();
+            const char* keep_name = name ? name : pso.name;
+            pso      = RHI_PipelineState();
+            pso.name = keep_name;
+        }
+        else if (name)
+        {
+            pso.name = name;
+        }
+
+        pso.shaders[static_cast<uint32_t>(stage)] = shader;
+        cmd_list->m_pipeline_state_dirty          = true;
     }
 
     void RHI_CommandList::SetShaders(RHI_Shader* shader_a, RHI_Shader* shader_b, RHI_Shader* shader_c)
     {
-        RHI_Device::Cmd()->set_shaders(shader_a, shader_b, shader_c);
+        for (RHI_Shader* shader : { shader_a, shader_b, shader_c })
+        {
+            if (shader)
+            {
+                SetShader(shader);
+            }
+        }
     }
 
     void RHI_CommandList::SetColorTarget(RHI_Texture* texture)
     {
-        RHI_Device::Cmd()->set_color_target(texture);
+        SetColorTargets(texture);
     }
 
     void RHI_CommandList::SetColorTargets(
@@ -1610,77 +1636,104 @@ namespace spartan
         RHI_Texture* t7
     )
     {
-        RHI_Device::Cmd()->set_color_targets(t0, t1, t2, t3, t4, t5, t6, t7);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->CommitPendingClear();
+        cmd_list->m_pso_pending.SetColorTargets(t0, t1, t2, t3, t4, t5, t6, t7);
+        cmd_list->m_pipeline_state_dirty = true;
     }
 
     void RHI_CommandList::SetDepthTarget(RHI_Texture* texture)
     {
-        RHI_Device::Cmd()->set_depth_target(texture);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->CommitPendingClear();
+        cmd_list->m_pso_pending.SetDepthTarget(texture);
+        cmd_list->m_pipeline_state_dirty = true;
     }
 
     void RHI_CommandList::SetSwapChain(RHI_SwapChain* swapchain)
     {
-        RHI_Device::Cmd()->set_swap_chain(swapchain);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->CommitPendingClear();
+        cmd_list->m_pso_pending.render_target_swapchain = swapchain;
+        cmd_list->m_pipeline_state_dirty                = true;
     }
 
     void RHI_CommandList::SetBlendState(RHI_BlendState* state)
     {
-        RHI_Device::Cmd()->set_blend_state(state);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->m_pso_pending.blend_state = state;
+        cmd_list->m_pipeline_state_dirty    = true;
     }
 
     void RHI_CommandList::SetRasterizerState(RHI_RasterizerState* state)
     {
-        RHI_Device::Cmd()->set_rasterizer_state(state);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->m_pso_pending.rasterizer_state = state;
+        cmd_list->m_pipeline_state_dirty         = true;
     }
 
     void RHI_CommandList::SetDepthStencilState(RHI_DepthStencilState* state)
     {
-        RHI_Device::Cmd()->set_depth_stencil_state(state);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->m_pso_pending.depth_stencil_state = state;
+        cmd_list->m_pipeline_state_dirty            = true;
     }
 
     void RHI_CommandList::SetPrimitiveTopology(RHI_PrimitiveTopology topology)
     {
-        RHI_Device::Cmd()->set_primitive_topology(topology);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->m_pso_pending.primitive_topology = topology;
+        cmd_list->m_pipeline_state_dirty           = true;
     }
 
     void RHI_CommandList::SetClearColor(uint32_t index, const Color& color)
     {
-        RHI_Device::Cmd()->set_clear_color(index, color);
+        SP_ASSERT(index < rhi_max_render_target_count);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->m_pso_pending.clear_color[index] = color;
+        cmd_list->m_pipeline_state_dirty           = true;
     }
 
     void RHI_CommandList::SetClearDepth(float depth)
     {
-        RHI_Device::Cmd()->set_clear_depth(depth);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->m_pso_pending.clear_depth = depth;
+        cmd_list->m_pipeline_state_dirty    = true;
     }
 
     void RHI_CommandList::SetVrsTexture(RHI_Texture* texture)
     {
-        RHI_Device::Cmd()->set_vrs_texture(texture);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->m_pso_pending.vrs_input_texture = texture;
+        cmd_list->m_pipeline_state_dirty          = true;
     }
 
     void RHI_CommandList::SetResolutionScale(bool enabled)
     {
-        RHI_Device::Cmd()->set_resolution_scale(enabled);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->m_pso_pending.resolution_scale = enabled;
+        cmd_list->m_pipeline_state_dirty         = true;
     }
 
     void RHI_CommandList::SetMultiview(bool enabled)
     {
-        RHI_Device::Cmd()->set_multiview(enabled);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->m_pso_pending.is_multiview = enabled;
+        cmd_list->m_pipeline_state_dirty     = true;
     }
 
     void RHI_CommandList::SetArrayIndex(uint32_t index)
     {
-        RHI_Device::Cmd()->set_array_index(index);
-    }
-
-    void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
-    {
-        RHI_Device::Cmd()->clear_pipeline_state_render_targets(pipeline_state);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->m_pso_pending.render_target_array_index = index;
+        cmd_list->m_pipeline_state_dirty                  = true;
     }
 
     void RHI_CommandList::ClearTexture(RHI_Texture* texture, const Color& clear_color, const float clear_depth, const uint32_t clear_stencil)
     {
-        RHI_Device::Cmd()->clear_texture(texture, clear_color, clear_depth, clear_stencil);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->CommitPendingClear();
+        cmd_list->clear_texture(texture, clear_color, clear_depth, clear_stencil);
     }
 
     void RHI_CommandList::Draw(const uint32_t vertex_count, const uint32_t vertex_start_index)
@@ -1718,15 +1771,6 @@ namespace spartan
         RHI_Device::Cmd()->dispatch(x, y, z);
     }
 
-    void RHI_CommandList::Dispatch(RHI_CommandList* cmd_list, uint32_t x, uint32_t y, uint32_t z)
-    {
-        if (!cmd_list)
-        {
-            return;
-        }
-        cmd_list->dispatch(x, y, z);
-    }
-
     void RHI_CommandList::Dispatch(RHI_Texture* texture, float resolution_scale)
     {
         RHI_Device::Cmd()->dispatch(texture, resolution_scale);
@@ -1749,7 +1793,9 @@ namespace spartan
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_SwapChain* destination)
     {
-        RHI_Device::Cmd()->blit(source, destination);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->CommitPendingClear();
+        cmd_list->blit(source, destination);
     }
 
     void RHI_CommandList::BlitToArrayLayer(RHI_Texture* source, RHI_Texture* destination, uint32_t dst_layer)
@@ -1764,21 +1810,14 @@ namespace spartan
 
     void RHI_CommandList::PrepareForPresent(RHI_SwapChain* swapchain)
     {
-        RHI_Device::Cmd()->prepare_for_present(swapchain);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->CommitPendingClear();
+        cmd_list->prepare_for_present(swapchain);
     }
 
     void RHI_CommandList::PrepareTextureForUpload(RHI_Texture* texture)
     {
         RHI_Device::Cmd()->prepare_texture_for_upload(texture);
-    }
-
-    void RHI_CommandList::PrepareTextureForUpload(RHI_CommandList* cmd_list, RHI_Texture* texture)
-    {
-        if (!cmd_list)
-        {
-            return;
-        }
-        cmd_list->prepare_texture_for_upload(texture);
     }
 
     void RHI_CommandList::PrepareTexturesForSampling(const std::array<RHI_Texture*, rhi_max_array_size>* textures)
@@ -1802,27 +1841,9 @@ namespace spartan
         RHI_Device::Cmd()->prepare_buffer_for_compute(buffer);
     }
 
-    void RHI_CommandList::PrepareBufferForCompute(RHI_CommandList* cmd_list, RHI_Buffer* buffer)
-    {
-        if (!cmd_list)
-        {
-            return;
-        }
-        cmd_list->prepare_buffer_for_compute(buffer);
-    }
-
     void RHI_CommandList::PrepareBufferForReadback(RHI_Buffer* buffer)
     {
         RHI_Device::Cmd()->prepare_buffer_for_readback(buffer);
-    }
-
-    void RHI_CommandList::PrepareBufferForReadback(RHI_CommandList* cmd_list, RHI_Buffer* buffer)
-    {
-        if (!cmd_list)
-        {
-            return;
-        }
-        cmd_list->prepare_buffer_for_readback(buffer);
     }
 
     void RHI_CommandList::PrepareBufferForGraphics(RHI_Buffer* buffer)
@@ -1837,22 +1858,44 @@ namespace spartan
 
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_SwapChain* destination)
     {
-        RHI_Device::Cmd()->copy(source, destination);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->CommitPendingClear();
+        cmd_list->copy(source, destination);
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
     {
-        RHI_Device::Cmd()->set_viewport(viewport);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        if (cmd_list->IsPipelineBound())
+        {
+            cmd_list->set_viewport(viewport);
+            return;
+        }
+        cmd_list->m_pending_viewport     = viewport;
+        cmd_list->m_pending_viewport_set = true;
     }
 
     void RHI_CommandList::SetScissorRectangle(const math::Rectangle& scissor_rectangle)
     {
-        RHI_Device::Cmd()->set_scissor_rectangle(scissor_rectangle);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        if (cmd_list->IsPipelineBound())
+        {
+            cmd_list->set_scissor_rectangle(scissor_rectangle);
+            return;
+        }
+        cmd_list->m_pending_scissor     = { scissor_rectangle.x, scissor_rectangle.y, scissor_rectangle.width, scissor_rectangle.height };
+        cmd_list->m_pending_scissor_set = true;
     }
 
     void RHI_CommandList::SetCullMode(const RHI_CullMode cull_mode)
     {
-        RHI_Device::Cmd()->set_cull_mode(cull_mode);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        if (cmd_list->IsPipelineBound())
+        {
+            cmd_list->set_cull_mode(cull_mode);
+            return;
+        }
+        cmd_list->m_pending_cull_mode = cull_mode;
     }
 
     void RHI_CommandList::SetBufferVertex(const RHI_Buffer* vertex, RHI_Buffer* instance)
@@ -1867,65 +1910,95 @@ namespace spartan
 
     void RHI_CommandList::SetBuffer(const uint32_t slot, RHI_Buffer* buffer)
     {
-        RHI_Device::Cmd()->set_buffer(slot, buffer);
-    }
-
-    void RHI_CommandList::SetBuffer(RHI_CommandList* cmd_list, const uint32_t slot, RHI_Buffer* buffer)
-    {
-        if (!cmd_list)
-        {
-            return;
-        }
-        cmd_list->set_buffer(slot, buffer);
+        RHI_Pass_Binding binding;
+        binding.kind     = RHI_Pass_Binding::Kind::Buffer;
+        binding.slot     = slot;
+        binding.resource = buffer;
+        RHI_Device::Cmd()->Bind(binding);
     }
 
     void RHI_CommandList::SetBuffer(const char* name, RHI_Buffer* buffer)
     {
-        RHI_Device::Cmd()->set_buffer(name, buffer);
+        RHI_Pass_Binding binding;
+        binding.kind     = RHI_Pass_Binding::Kind::Buffer;
+        binding.name     = name;
+        binding.resource = buffer;
+        RHI_Device::Cmd()->Bind(binding);
     }
 
     void RHI_CommandList::SetConstantBuffer(const uint32_t slot, RHI_Buffer* constant_buffer)
     {
-        RHI_Device::Cmd()->set_constant_buffer(slot, constant_buffer);
+        RHI_Pass_Binding binding;
+        binding.kind     = RHI_Pass_Binding::Kind::ConstantBuffer;
+        binding.slot     = slot;
+        binding.resource = constant_buffer;
+        RHI_Device::Cmd()->Bind(binding);
     }
 
     void RHI_CommandList::SetConstantBuffer(const char* name, RHI_Buffer* constant_buffer)
     {
-        RHI_Device::Cmd()->set_constant_buffer(name, constant_buffer);
+        RHI_Pass_Binding binding;
+        binding.kind     = RHI_Pass_Binding::Kind::ConstantBuffer;
+        binding.name     = name;
+        binding.resource = constant_buffer;
+        RHI_Device::Cmd()->Bind(binding);
     }
 
     void RHI_CommandList::PushConstants(const uint32_t offset, const uint32_t size, const void* data)
     {
-        RHI_Device::Cmd()->push_constants(offset, size, data);
-    }
-
-    void RHI_CommandList::PushConstants(RHI_CommandList* cmd_list, const uint32_t offset, const uint32_t size, const void* data)
-    {
-        if (!cmd_list || !cmd_list->m_pipeline)
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        if (cmd_list->m_binding_replay || cmd_list->IsPipelineBound())
         {
+            cmd_list->push_constants(offset, size, data);
             return;
         }
-        cmd_list->push_constants(offset, size, data);
+        SP_ASSERT(offset + size <= cmd_list->m_pending_push_constants.size());
+        memcpy(cmd_list->m_pending_push_constants.data() + offset, data, size);
+        cmd_list->m_pending_push_offset = offset;
+        cmd_list->m_pending_push_size   = size;
     }
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index, uint32_t mip_range, const bool uav, const uint32_t array_layer)
     {
-        RHI_Device::Cmd()->set_texture(slot, texture, mip_index, mip_range, uav, array_layer);
+        RHI_Pass_Binding binding;
+        binding.kind        = RHI_Pass_Binding::Kind::Texture;
+        binding.slot        = slot;
+        binding.uav         = uav;
+        binding.resource    = texture;
+        binding.mip_index   = mip_index;
+        binding.mip_range   = mip_range;
+        binding.array_layer = array_layer;
+        RHI_Device::Cmd()->Bind(binding);
     }
 
     void RHI_CommandList::SetTexture(const char* name, RHI_Texture* texture, const uint32_t mip_index, uint32_t mip_range, const uint32_t array_layer)
     {
-        RHI_Device::Cmd()->set_texture(name, texture, mip_index, mip_range, array_layer);
+        RHI_Pass_Binding binding;
+        binding.kind        = RHI_Pass_Binding::Kind::Texture;
+        binding.name        = name;
+        binding.resource    = texture;
+        binding.mip_index   = mip_index;
+        binding.mip_range   = mip_range;
+        binding.array_layer = array_layer;
+        RHI_Device::Cmd()->Bind(binding);
     }
 
     void RHI_CommandList::SetAccelerationStructure(const uint32_t slot, RHI_AccelerationStructure* tlas)
     {
-        RHI_Device::Cmd()->set_acceleration_structure(slot, tlas);
+        RHI_Pass_Binding binding;
+        binding.kind     = RHI_Pass_Binding::Kind::AccelerationStructure;
+        binding.slot     = slot;
+        binding.resource = tlas;
+        RHI_Device::Cmd()->Bind(binding);
     }
 
     void RHI_CommandList::SetAccelerationStructure(const char* name, RHI_AccelerationStructure* tlas)
     {
-        RHI_Device::Cmd()->set_acceleration_structure(name, tlas);
+        RHI_Pass_Binding binding;
+        binding.kind     = RHI_Pass_Binding::Kind::AccelerationStructure;
+        binding.name     = name;
+        binding.resource = tlas;
+        RHI_Device::Cmd()->Bind(binding);
     }
 
     void RHI_CommandList::BeginMarker(const char* name)
@@ -1955,7 +2028,9 @@ namespace spartan
 
     void RHI_CommandList::BeginOcclusionQuery(const uint64_t entity_id)
     {
-        RHI_Device::Cmd()->begin_occlusion_query(entity_id);
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->TryBindPendingPipeline();
+        cmd_list->begin_occlusion_query(entity_id);
     }
 
     void RHI_CommandList::EndOcclusionQuery()
@@ -1968,22 +2043,6 @@ namespace spartan
         RHI_Device::Cmd()->update_occlusion_queries();
     }
 
-    void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
-    {
-        RHI_CommandList* cmd_list = RHI_Device::Cmd();
-        SP_ASSERT(cmd_list != nullptr);
-        cmd_list->begin_timeblock(name, gpu_marker, gpu_timing);
-        timeblock_cmd_lists.push(cmd_list);
-    }
-
-    void RHI_CommandList::EndTimeblock()
-    {
-        SP_ASSERT(!timeblock_cmd_lists.empty());
-        RHI_CommandList* cmd_list = timeblock_cmd_lists.top();
-        timeblock_cmd_lists.pop();
-        cmd_list->end_timeblock();
-    }
-
     void RHI_CommandList::UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data, const bool use_mapped_memory)
     {
         RHI_Device::Cmd()->update_buffer(buffer, offset, size, data, use_mapped_memory);
@@ -1991,7 +2050,9 @@ namespace spartan
 
     void RHI_CommandList::RenderPassEnd()
     {
-        RHI_Device::Cmd()->render_pass_end();
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        cmd_list->CommitPendingClear();
+        cmd_list->render_pass_end();
     }
 
     void RHI_CommandList::RestoreAfterExternalPass()
@@ -2012,15 +2073,6 @@ namespace spartan
     void RHI_CommandList::CopyBufferToBuffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
     {
         RHI_Device::Cmd()->copy_buffer_to_buffer(source, destination, size);
-    }
-
-    void RHI_CommandList::CopyBufferToBuffer(RHI_CommandList* cmd_list, RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
-    {
-        if (!cmd_list)
-        {
-            return;
-        }
-        cmd_list->copy_buffer_to_buffer(source, destination, size);
     }
 
     void RHI_CommandList::CopyBufferContents(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)

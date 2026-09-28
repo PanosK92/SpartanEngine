@@ -22,11 +22,11 @@ Commercial use requires written permission and negotiated payment terms.
 void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
 {
     uint task_index = group_id.x + group_id.y * INSTANCE_CULL_DISPATCH_WIDTH;
-    uint task_count = (uint)pass_get_f4_value().x;
+    uint task_count = pass_uint(pass_instance_cull::task_count);
 
     // wave-uniform inputs, the planes are extracted once and the compiler scalarizes the load across the wave
-    float max_mip_level = pass_get_f4_value().y;
-    uint  max_instances = (uint)pass_get_f4_value().z;
+    float max_mip_level = pass_float(pass_instance_cull::max_hiz_mip);
+    uint  max_instances = pass_uint(pass_instance_cull::max_instances);
     float4 plane_l, plane_r, plane_b, plane_t;
     get_frustum_side_planes(plane_l, plane_r, plane_b, plane_t);
 
@@ -105,7 +105,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
 
         if (survives)
         {
-            survives = skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, pass_get_f3_value().x);
+            survives = skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, pass_float(pass_instance_cull::hiz_depth_bias));
         }
     }
 

@@ -90,13 +90,12 @@ Vertex_PosUvNorTan pull_vertex(uint vertex_id, uint instance_id, uint instance_o
 
 // gpu-driven path entry, populates _draw and the meshlet handle from the visible triangle list
 // vertex_id is sv_vertexid for a non-instanced indirect draw, vertex_count = visible_triangle_count * 3
-// f4_value.x carries the region base, 0 for the opaque half and the half capacity for the alpha half,
-// both draws issue with first_vertex 0 so the base must be added here rather than relying on sv_vertexid (api dependent)
+// both draws issue with first_vertex 0 so the region base must be added here rather than relying on sv_vertexid (api dependent)
 Vertex_PosUvNorTan pull_visible_triangle_vertex(uint vertex_id, out MeshletInstance mi_out)
 {
     uint local_triangle = vertex_id / 3u;
     uint corner         = vertex_id - local_triangle * 3u;
-    uint triangle_slot  = (uint)pass_get_f4_value().x + local_triangle;
+    uint triangle_slot  = pass_uint(pass_visible_triangles::region_base) + local_triangle;
 
     uint packed       = visible_triangles[triangle_slot];
     uint mi_idx       = VISIBLE_TRI_MI(packed);
@@ -589,7 +588,7 @@ struct vertex_processing
 #ifdef GRASS_INSTANCED
         if (surface.is_grass_blade())
         {
-            float4 mapping = time_offset < 0.0f ? buffer_pass.values[2] : buffer_pass.values[1];
+            float4 mapping = time_offset < 0.0f ? pass_float4(pass_grass_draw::tracks_previous) : pass_float4(pass_grass_draw::tracks);
             float2 uv = (instance_pos.xz - mapping.xy) * mapping.z;
             if (mapping.w > 0.5f && all(uv > 0.0f) && all(uv < 1.0f))
             {
@@ -642,7 +641,17 @@ struct vertex_processing
             float above = position_world.y - buffer_frame.ocean_sea_level;
             disp *= lerp(1.0f, 0.22f, saturate(above / 1.5f));
 
-            position_world += disp;
+            // breaking surf and the swash sheet on the sand, the open sea only
+            float floor_y = -100000.0f;
+            if (above < 0.5f)
+            {
+                OceanShore shore = ocean_shore_evaluate(world_xz, ocean_shore_time(time_offset < 0.0f ? -buffer_frame.delta_time : 0.0f));
+                disp   += shore.displacement;
+                floor_y = shore.floor_y;
+            }
+
+            position_world   += disp;
+            position_world.y  = max(position_world.y, floor_y);
             return;
         }
 
@@ -790,13 +799,14 @@ struct vertex_processing
             vertex.normal   = normalize(mul(rot, vertex.normal));
             vertex.tangent  = normalize(mul(rot, vertex.tangent));
 #if defined(GRASS_INSTANCED)
-            if (surface.is_grass_blade() && buffer_pass.values[3].x > 0.5f)
+            float4 body = pass_float4(pass_grass_draw::body);
+            if (surface.is_grass_blade() && body.x > 0.5f)
             {
                 MaterialParameters grass_material = GetMaterial();
                 float blade_reach = grass_material.local_height * length(transform[1].xyz)
                     + grass_material.local_width * length(transform[0].xyz);
-                float2 body_offset = instance_pos.xz - buffer_pass.values[3].yz;
-                float contact_radius = buffer_pass.values[3].w + blade_reach + 0.04f;
+                float2 body_offset = instance_pos.xz - body.yz;
+                float contact_radius = body.w + blade_reach + 0.04f;
                 if (dot(body_offset, body_offset) <= contact_radius * contact_radius)
                 {
                     bend_grass_around_body(grass_body_load(time_offset < 0.0f ? 1 : 0), instance_pos, blade_reach,

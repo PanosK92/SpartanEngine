@@ -35,7 +35,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float film_grain =  noise * g_film_grain_intensity;
 
     // iso noise
-    float camera_iso = pass_get_f3_value().x;
+    float camera_iso = pass_float(pass_film_grain::iso);
     float iso_noise  = hash(frac(uv.x * uv.y * buffer_frame.frame)) * camera_iso * 0.000002f;
     
     // additive blending

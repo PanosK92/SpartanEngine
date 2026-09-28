@@ -340,13 +340,6 @@ namespace spartan
 
             Breadcrumbs::EndMarker(); // buffer_create
 
-            auto uint_as_float = [](uint32_t val) -> float
-            {
-                float f;
-                memcpy(&f, &val, sizeof(float));
-                return f;
-            };
-
             // one cmd list for the copy, every mip dispatch and the readback, each mip writes a disjoint slice so only the boundaries need barriers
             Breadcrumbs::BeginMarker("texture_compress_gpu_dispatch");
             {
@@ -358,19 +351,19 @@ namespace spartan
                     return false;
                 }
 
-                RHI_CommandList::CopyBufferToBuffer(cmd_list, pool::staging.get(), pool::input.get(), staging_size);
-                RHI_CommandList::PrepareBufferForCompute(cmd_list, pool::input.get());
+                RHI_CommandList::CopyBufferToBuffer(pool::staging.get(), pool::input.get(), staging_size);
+                RHI_CommandList::PrepareBufferForCompute(pool::input.get());
 
                 RHI_PipelineState pso;
                 pso.name = pso_name;
                 pso.shaders[static_cast<uint32_t>(RHI_Shader_Type::Compute)] = shader;
-                RHI_CommandList::SetPipelineState(cmd_list, pso);
+                RHI_CommandList::SetPipelineState(pso);
 
-                RHI_CommandList::SetBuffer(cmd_list, 40, pool::input.get());
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::compress_input, pool::input.get());
                 const bool is_bc1 = target_format == RHI_Format::BC1_Unorm;
-                const uint32_t output_binding = is_bc1 ? 42u : 41u;
+                const Renderer_BindingsUav output_binding = is_bc1 ? Renderer_BindingsUav::compress_output_bc1 : Renderer_BindingsUav::compress_output;
                 RHI_Buffer* output_buffer = is_bc1 ? pool::output_bc1.get() : pool::output.get();
-                RHI_CommandList::SetBuffer(cmd_list, output_binding, output_buffer);
+                RHI_CommandList::SetBuffer(output_binding, output_buffer);
 
                 // dispatch from smallest to largest mip so the shader pipeline is warm by the
                 // time the heaviest dispatch runs
@@ -378,29 +371,29 @@ namespace spartan
                 {
                     uint32_t mip_h = max(1u, height >> mip);
 
-                    Pcb_Pass pass = {};
-                    pass.v[0]     = uint_as_float(mip_blocks_x[mip]);
-                    pass.v[1]     = uint_as_float(mip_block_counts[mip]);
-                    pass.v[2]     = 0.6f;
-                    pass.v[3]     = uint_as_float(mip_input_offsets[mip]);
-                    pass.v[4]     = uint_as_float(mip_output_offsets[mip]);
-                    pass.v[5]     = uint_as_float(mip_widths[mip]);
-                    pass.v[6]     = uint_as_float(mip_h);
-
                     constexpr uint32_t max_groups = 65535;
                     uint32_t total_groups         = (mip_block_counts[mip] + 3) / 4;
                     uint32_t dispatch_x           = min(total_groups, max_groups);
                     uint32_t dispatch_y           = (total_groups + dispatch_x - 1) / dispatch_x;
-                    pass.v[7]                     = uint_as_float(dispatch_x);
 
-                    RHI_CommandList::PushConstants(cmd_list, pass);
-                    RHI_CommandList::Dispatch(cmd_list, dispatch_x, dispatch_y, 1);
+                    Pcb_Pass pass = {};
+                    pass.set(pass_texture_compress::block_count_x, mip_blocks_x[mip]);
+                    pass.set(pass_texture_compress::block_count, mip_block_counts[mip]);
+                    pass.set(pass_texture_compress::quality, 0.6f);
+                    pass.set(pass_texture_compress::input_offset, mip_input_offsets[mip]);
+                    pass.set(pass_texture_compress::output_offset, mip_output_offsets[mip]);
+                    pass.set(pass_texture_compress::mip_width, mip_widths[mip]);
+                    pass.set(pass_texture_compress::mip_height, mip_h);
+                    pass.set(pass_texture_compress::groups_per_row, dispatch_x);
+
+                    RHI_CommandList::PushConstants(pass);
+                    RHI_CommandList::Dispatch(dispatch_x, dispatch_y, 1);
                 }
 
-                RHI_CommandList::PrepareBufferForReadback(cmd_list, output_buffer);
+                RHI_CommandList::PrepareBufferForReadback(output_buffer);
 
                 uint64_t copy_size = static_cast<uint64_t>(total_blocks) * output_element_size;
-                RHI_CommandList::CopyBufferToBuffer(cmd_list, output_buffer, pool::readback.get(), copy_size);
+                RHI_CommandList::CopyBufferToBuffer(output_buffer, pool::readback.get(), copy_size);
 
                 RHI_CommandList::ImmediateExecutionEnd(cmd_list);
             }

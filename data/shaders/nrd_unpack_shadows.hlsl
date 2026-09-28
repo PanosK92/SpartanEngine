@@ -28,8 +28,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     const float2 uv = (thread_id.xy + 0.5f) / float2(resolution);
     float depth = get_depth(uv);
-    const uint  local_slice = (uint)pass_get_f3_value().y;
-    const bool  is_local    = pass_get_f3_value().z > 0.5f;
+    const uint  local_slice = pass_uint(pass_nrd_shadows::local_slice);
+    const bool  is_local    = pass_bool(pass_nrd_shadows::is_local);
     if (depth <= 0.0f)
     {
         if (is_local)

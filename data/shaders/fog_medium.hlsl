@@ -55,9 +55,9 @@ FogMedium fog_sample_medium(float3 position, float y0, float y1, float footprint
         shelter = saturate(analysis.b * 0.6f + analysis.g * 0.25f + saturate(analysis.r * 2.0f - 1.0f) * 0.35f);
     }
 
-    float height_scale = max(pass_get_f3_value2().x, 1.0f);
-    float ground_amount = max(pass_get_f3_value2().y, 0.0f);
-    float breakup = saturate(pass_get_f3_value2().z);
+    float height_scale = max(pass_float(pass_fog::mist_height), 1.0f);
+    float ground_amount = max(pass_float(pass_fog::ground_mist), 0.0f);
+    float breakup = saturate(pass_float(pass_fog::mist_variation));
     float3 advected = position - buffer_frame.wind * (float(buffer_frame.time) * 0.08f);
     // Filter unresolved density detail to its mean instead of letting a far
     // voxel sample unrelated noise peaks as the camera moves through the grid.
@@ -72,7 +72,7 @@ FogMedium fog_sample_medium(float3 position, float y0, float y1, float footprint
     float noise = coarse * 0.7f + fine * 0.3f;
     float structure = lerp(1.0f, smoothstep(0.18f, 0.82f, noise) * 1.8f, breakup);
     float wind_mixing = rcp(1.0f + length(buffer_frame.wind) * (1.0f - shelter) * 0.06f);
-    float air = max(pass_get_f3_value().y, 0.0f) * (
+    float air = max(pass_float(pass_fog::mist_density), 0.0f) * (
         0.00025f * exp(-max(position.y - sea_level, 0.0f) / height_scale)
         + 0.0012f * ground_amount * exp(-above_ground / 35.0f)
             * (0.25f + shelter * 1.75f) * wind_mixing * structure);

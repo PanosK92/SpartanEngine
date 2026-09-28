@@ -38,7 +38,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     float4 const0;
     float4 const1;
-    float sharpness = pass_get_f3_value().x;
+    float sharpness = pass_float(pass_cas::sharpness);
     CasSetup(const0, const1, sharpness, resolution_out.x, resolution_out.y, resolution_out.x, resolution_out.y);
 
     float3 color = 0.0f;

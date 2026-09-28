@@ -158,7 +158,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // specular reflection setup
     float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, view_dir, surface.roughness);
-    float mip_count_environment        = pass_get_f3_value().x;
+    float mip_count_environment        = pass_float(pass_light_image_based::environment_mip_count);
     float mip_level                    = surface.roughness * surface.roughness * (mip_count_environment - 1.0f);
     
     // specular occlusion stack, three terms in sequence
@@ -226,7 +226,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // restir replaces diffuse ibl so its visibility controls both dark and lit regions, with
     // unified lighting the same signal also carries direct diffuse from every analytic light
-    if (pass_get_f3_value().y > 0.5f &&
+    if (pass_bool(pass_light_image_based::restir_enabled) &&
         !surface.is_water() &&
         !surface.is_transparent())
     {
@@ -241,7 +241,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             float3 restir_ibl =
                 restir_gi *
                 restir_gi_demodulator(surface.albedo.rgb) *
-                pass_get_f3_value().z;
+                pass_float(pass_light_image_based::restir_intensity);
 
             diffuse_ibl = lerp(diffuse_ibl, restir_ibl, coverage);
         }

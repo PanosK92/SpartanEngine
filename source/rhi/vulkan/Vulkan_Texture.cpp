@@ -297,7 +297,7 @@ namespace spartan
             {
                 RHI_Image_Layout layout = RHI_Image_Layout::General;
         
-                RHI_CommandList::PrepareTextureForUpload(cmd_list, texture);
+                RHI_CommandList::PrepareTextureForUpload(texture);
         
                 vkCmdCopyBufferToImage(
                     static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
@@ -378,7 +378,7 @@ namespace spartan
 
             // the image already sits in general, so the layout tracker emits nothing, the memory
             // dependency against in flight shader reads still has to be spelled out by hand
-            RHI_CommandList::PrepareTextureForUpload(cmd_list, this);
+            RHI_CommandList::PrepareTextureForUpload(this);
 
             VkImageMemoryBarrier2 barrier{};
             barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;

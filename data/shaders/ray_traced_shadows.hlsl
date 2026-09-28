@@ -220,17 +220,16 @@ void ray_gen()
 
     // The lighting pass samples these slots instead of the shadow atlas. Every
     // assigned local light must write its own visibility, even with no active sun.
-    uint4 shadow_lights = uint4(pass_get_f4_value());
     [unroll] for (uint slot = 0u; slot < nrd_local_shadow_max; slot++)
     {
-        uint light_i = shadow_lights[slot];
+        uint light_i = pass_uint(pass_ray_traced_shadows::local_shadow_lights + slot);
         if (light_i == 0u || light_i >= buffer_frame.cluster_light_count)
             continue;
         LightParameters light = light_parameters[light_i];
         // No reflected light reaches a receiver facing away from every point
         // on the emitter. Keep transmission receivers and straddling rectangles
         // on the full path; their back lighting still needs shadow visibility.
-        if (pass_get_f3_value().z > 0.5f && !has_scattering)
+        if (pass_bool(pass_ray_traced_shadows::light_culling) && !has_scattering)
         {
             float facing = dot(normal_ws, light.position - pos_ws);
             if ((light.flags & (1u << 6)) != 0u)

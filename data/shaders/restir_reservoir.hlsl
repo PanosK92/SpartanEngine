@@ -94,7 +94,7 @@ float restir_spot_factor(LightParameters light, float3 dir_to_light)
     {
         return 1.0f;
     }
-    return lighting_spot_attenuation(dot(-dir_to_light, light.direction), light.angle);
+    return light_spot_factor(light.flags, -dir_to_light, light.direction, light.direction_right, light.angle);
 }
 
 // incident radiance of a point or spot light at pos, the dirac endpoint has no area measure so
@@ -1697,8 +1697,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
 
             if (is_spot)
             {
-                float cos_angle = dot(-light_dir, light.direction);
-                attenuation *= lighting_spot_attenuation(cos_angle, light.angle);
+                attenuation *= light_spot_factor(light_flags, -light_dir, light.direction, light.direction_right, light.angle);
             }
         }
         else

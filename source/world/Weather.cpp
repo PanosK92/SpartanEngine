@@ -436,7 +436,8 @@ namespace spartan
 
             if (rain > 0.0f)
             {
-                audio->SetVolume(0.5f);
+                // 2d and unattenuated, so it sits well under the car's 3d sources
+                audio->SetVolume(0.05f);
                 if (!audio->IsPlaying())
                 {
                     audio->StartSynthesis();

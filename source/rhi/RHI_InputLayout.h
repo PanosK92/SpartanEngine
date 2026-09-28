@@ -40,7 +40,7 @@ namespace spartan
     {
     public:
         RHI_InputLayout() = default;
-        ~RHI_InputLayout();
+        ~RHI_InputLayout() = default;
 
         void Create(const RHI_Vertex_Type vertex_type)
         {
@@ -114,15 +114,9 @@ namespace spartan
 
         bool operator==(const RHI_InputLayout& rhs) const { return m_vertex_type == rhs.GetVertexType(); }
 
-        void* GetRhiResource() const { return m_rhi_resource; }
-
     private:
         RHI_Vertex_Type m_vertex_type;
         uint32_t m_vertex_size;
-        bool _CreateResource();
         std::vector<VertexAttribute> m_vertex_attributes;
-
-        // RHI Resource
-        void* m_rhi_resource = nullptr;
     };
 }

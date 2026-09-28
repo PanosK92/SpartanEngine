@@ -139,6 +139,14 @@ namespace spartan
         void SetAngle(float angle_rad);
         auto GetAngle() const { return m_angle_rad; }
 
+        // measured distribution (ies lm-63) for spot lights, it replaces the soft cone and sets the angle to the profile's extent
+        // intensity stays the emitted flux in lumens, GetIesLumens is the flux the file itself specifies
+        void SetIesProfile(const std::string& file_path);
+        const std::string& GetIesProfile() const { return m_ies_file_path; }
+        uint32_t GetIesSlot() const              { return m_light_type == LightType::Spot ? m_ies_slot : 0; }
+        float GetIesLumens() const;
+        float GetIesPeakCandela() const;
+
         // area light dimensions
         void SetAreaWidth(float width);
         float GetAreaWidth() const { return m_area_width; }
@@ -210,6 +218,8 @@ namespace spartan
         float m_rain                     = 0.0f;
         float m_area_width               = 1.0f;  // area light width in meters
         float m_area_height              = 1.0f;  // area light height in meters
+        std::string m_ies_file_path;
+        uint32_t m_ies_slot              = 0;     // 1 based ies atlas tile, 0 for the analytic cone
         uint32_t m_index                 = 0;
         uint32_t m_screen_space_shadows_slice_index = 0;
         math::BoundingBox m_bounding_box = math::BoundingBox::Zero;

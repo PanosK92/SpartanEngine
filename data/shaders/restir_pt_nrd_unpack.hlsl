@@ -27,7 +27,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 radiance = max(REBLUR_BackEnd_UnpackRadianceAndNormHitDist(tex[thread_id.xy]).xyz, 0.0f);
     float count = 1.0f;
     float2 uv = (float2(thread_id.xy) + 0.5f) / float2(resolution);
-    if (buffer_pass.values[0].x < 0.5f)
+    if (!pass_bool(pass_restir_nrd_unpack::reset_accumulation))
     {
         float4 history = tex2[thread_id.xy];
         float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;

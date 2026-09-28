@@ -22,19 +22,20 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     if (id.x >= width || id.y >= height)
         return;
 
-    float2 origin = buffer_pass.values[0].xy;
-    float cell = buffer_pass.values[0].z;
+    float2 origin = pass_float2(pass_grass_interaction::origin);
+    float cell = pass_float(pass_grass_interaction::cell_size);
     float2 world = origin + (float2(id.xy) + 0.5f) * cell;
-    float dt = buffer_pass.values[1].w;
+    float dt = pass_float(pass_grass_interaction::delta_time);
     // Integer scrolling preserves the exact history: bilinear reprojection would diffuse tracks.
-    int2 previous = int2(id.xy) + int2(round((origin - buffer_pass.values[1].xy) / cell));
+    int2 previous = int2(id.xy) + int2(round((origin - pass_float2(pass_grass_interaction::origin_previous)) / cell));
     float4 state = 0.0f;
-    if (buffer_pass.values[0].w > 0.5f && all(previous >= 0) && all(previous < int2(width, height)))
+    if (pass_bool(pass_grass_interaction::history_valid) && all(previous >= 0) && all(previous < int2(width, height)))
         state = tex.Load(int3(previous, 0));
 
-    float distance = length(world - buffer_pass.values[2].xy);
-    float recovery = smoothstep(buffer_pass.values[2].z, buffer_pass.values[2].z + 3.0f, distance);
-    state *= exp(-dt * buffer_pass.values[2].w * recovery);
+    float distance = length(world - pass_float2(pass_grass_interaction::track_center));
+    float track_radius = pass_float(pass_grass_interaction::track_radius);
+    float recovery = smoothstep(track_radius, track_radius + 3.0f, distance);
+    state *= exp(-dt * pass_float(pass_grass_interaction::track_recovery) * recovery);
     // Derive the fade from the field extent so larger fields preserve distant tracks.
     // Leave a margin for the snapped origin and filtering before history scrolls out.
     float field_radius = float(min(width, height)) * cell * 0.5f;
@@ -42,7 +43,7 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     if (state.z > boundary)
         state *= boundary / max(state.z, 0.0001f);
 
-    uint count = (uint)buffer_pass.values[1].z;
+    uint count = pass_uint(pass_grass_interaction::contact_count);
     for (uint i = 0; i < count; ++i)
     {
         GrassWheelContact wheel = grass_wheel_contacts[i];

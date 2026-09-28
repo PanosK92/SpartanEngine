@@ -18,16 +18,12 @@ namespace spartan
 {
     class Entity;
 
-    // engine side helpers exposed to the lua world builder scripts
-    // these wrap the heavy multithreaded construction that used to live in game.cpp
+    // terrain prop scatter and the lua helpers world builder scripts use
     class WorldHelpers
     {
     public:
-        // registers material, resource cache, renderer grass, geometry buffer and forest helpers with the lua state
+        // registers material, resource cache, renderer grass and geometry buffer helpers with the lua state
         static void RegisterForScripting(sol::state_view state);
-
-        // builds the procedural forest world, terrain, water, props and gpu grass
-        static void BuildForest(Entity* builder_entity);
 
         // spawn biome-masked grass, rocks and trees on an existing terrain
         static void PopulateTerrainBiomeProps(class Terrain* terrain);

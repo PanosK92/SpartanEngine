@@ -99,7 +99,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         return;
     }
 
-    float scale = saturate(pass_get_f3_value().x);
+    float scale = saturate(pass_float(pass_dlss_reactivity::scale));
     float2 velocity_ndc = tex_velocity[px].xy;
     float disocclusion = 1.0f - history_reuse(px, res, px_max, velocity_ndc);
     float edge = velocity_edge(px, res, px_max, velocity_ndc);

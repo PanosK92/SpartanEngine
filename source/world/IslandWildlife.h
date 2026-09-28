@@ -515,7 +515,7 @@ namespace spartan::island_wildlife
 
     inline void Tick(float dt)
     {
-        if (World::GetName() != "plan.world" || !World::GetCamera()) return;
+        if (!World::GetIslandFeatures() || !World::GetCamera()) return;
         Terrain* terrain = Terrain::FindActive();
         if (!terrain || !terrain->HasHeightfield()) return;
         const Vector3 viewer = World::GetCamera()->GetEntity()->GetPosition();

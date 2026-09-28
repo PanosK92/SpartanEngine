@@ -34,10 +34,6 @@ import {
   audit_scene_layout,
 } from "./scene_planning.mjs";
 import {
-  calculate_benchmark_metrics,
-  compare_benchmark_results,
-} from "./scene_benchmarks.mjs";
-import {
   create_design_brief,
   infer_design_template,
   suggest_scene_plan,
@@ -186,7 +182,6 @@ const engine_tool_names = new Set([
   "world_material_publish",
   "resource_read",
   "prefab_create",
-  "scene_benchmark_score",
   "async_task_start",
   "async_task_get",
   "async_task_list",
@@ -2518,51 +2513,6 @@ async function dispatch_assistant_command(
       };
     }
   }
-  if (command === "scene_benchmark_score")
-  {
-    if (
-      !args.result ||
-      typeof args.result !== "object" ||
-      Array.isArray(args.result)
-    )
-    {
-      return {
-        ok: false,
-        error:
-          "scene_benchmark_score requires result as an object",
-        code: "invalid_arguments",
-      };
-    }
-    if (
-      args.baseline !== undefined &&
-      (
-        !args.baseline ||
-        typeof args.baseline !== "object" ||
-        Array.isArray(args.baseline)
-      )
-    )
-    {
-      return {
-        ok: false,
-        error:
-          "scene_benchmark_score baseline must be an object",
-        code: "invalid_arguments",
-      };
-    }
-    const score =
-      calculate_benchmark_metrics(args.result);
-    const comparison =
-      args.baseline
-        ? compare_benchmark_results(
-            args.result,
-            args.baseline,
-          )
-        : undefined;
-    return {
-      ...score,
-      comparison,
-    };
-  }
   if (command === "async_task_start")
   {
     const target = String(args.tool ?? "").trim();
@@ -3441,12 +3391,6 @@ async function dispatch_assistant_command(
         optional: ["args"],
         note: "forwards {command, args} to the named engine command",
       },
-      scene_benchmark_score: {
-        required: ["result"],
-        optional: ["baseline"],
-        note:
-          "result and baseline are benchmark result objects scored locally",
-      },
       async_task_start: {
         required: ["tool"],
         optional: ["args"],
@@ -4243,7 +4187,7 @@ const spartan_engine_command_tool = {
   description: [
     "Execute one Spartan Engine command against the live editor.",
     "This bridge supports native commands and composite helpers.",
-    "Local helpers include resource_read, prefab_create, scene_benchmark_score, async_task_start, async_task_get, and async_task_list.",
+    "Local helpers include resource_read, prefab_create, async_task_start, async_task_get, and async_task_list.",
     "resource_read accepts exactly one material name or path, or a resource list query; empty arguments list all resources.",
     "async_task_start accepts tool and optional args, then returns an id for async_task_get polling.",
     "Use this as the primary tool for all scene reads and edits.",

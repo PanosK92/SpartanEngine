@@ -602,6 +602,7 @@ struct RainSurface
     float  water;            // standing water already on this pixel from the puddles
     float  footprint;        // metres per pixel
     float  exposure;         // 0 under cover to 1 in the open
+    float  macro_height;     // aggregate height, 0 voids to 1 stone tops, negative when the surface has no macrotexture
     bool   detail;           // beads and rivulets, only on props, not on the ground
     bool   vehicle;          // part of the occupied car, its drops answer the car's g forces and it carries its own wetness
 };
@@ -630,8 +631,25 @@ float rain_apply(RainSurface s, inout float3 albedo, inout float3 normal, inout 
     {
         albedo *= lerp(1.0f, lerp(0.92f, 0.5f, porosity), wet);
     }
-    float wet_roughness = lerp(0.05f, 0.62f, porosity * porosity);
-    roughness = lerp(roughness, min(roughness, wet_roughness), wet * lerp(0.9f, 0.6f, saturate(-up * 2.0f + 1.0f) * (1.0f - saturate(up))));
+    if (s.macro_height >= 0.0f)
+    {
+        // asphalt is stones in bitumen, the film fills the voids first and the stone tops stay proud of it,
+        // so a wet road is dark water broken by wet glinting aggregate rather than one glazed sheet
+        float level     = wet * lerp(0.5f, 0.72f, rain) + s.water;
+        float submerged = smoothstep(s.macro_height - 0.1f, s.macro_height + 0.1f, level);
+        // unresolved stones average into the share of the surface under water, and at grazing
+        // distances the film is all the eye sees, so far wet roads keep their blurred sky sheen
+        float resolved  = 1.0f - saturate(s.footprint * 200.0f - 0.5f);
+        submerged       = lerp(saturate(level * 1.1f), submerged, resolved);
+        float stone     = lerp(roughness, max(0.32f, roughness * 0.55f), wet);
+        roughness       = lerp(stone, 0.06f, submerged);
+        normal          = normalize(lerp(normal, n, submerged * 0.85f));
+    }
+    else
+    {
+        float wet_roughness = lerp(0.05f, 0.62f, porosity * porosity);
+        roughness = lerp(roughness, min(roughness, wet_roughness), wet * lerp(0.9f, 0.6f, saturate(-up * 2.0f + 1.0f) * (1.0f - saturate(up))));
+    }
 
     float water = 0.0f;
 

@@ -28,11 +28,6 @@ namespace spartan
     {
         // callbacks for cascading changes and validation
 
-        void on_anisotropy_change(const CVarVariant&)
-        {
-            *ConsoleRegistry::Get().Find("r.anisotropy")->m_value_ptr = 16.0f;
-        }
-
         void on_resolution_scale_change(const CVarVariant& value)
         {
             float v = clamp(get<float>(value), 0.25f, 1.0f);
@@ -197,7 +192,6 @@ namespace spartan
     TConsoleVar<float> cvar_dithering                      ("r.dithering",                      0.0f,                                                    "dithering to reduce banding");
     TConsoleVar<float> cvar_sharpness                      ("r.sharpness",                      0.0f,                                                    "sharpening intensity");
     // quality settings
-    TConsoleVar<float> cvar_anisotropy                     ("r.anisotropy",                     16.0f,                                                   "anisotropic filtering, always 16x",      on_anisotropy_change);
     TConsoleVar<float> cvar_tonemapping                    ("r.tonemapping",                    4.0f,                                                    "tonemapping algorithm index");
     TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau), "aa/upsampling method index",              on_antialiasing_change);
     TConsoleVar<float> cvar_dlss_reactivity            ("r.dlss_reactivity",               1.0f,                                                    "shared temporal upscaler current-frame bias on disocclusion; particles add coverage rejection");
@@ -217,6 +211,4 @@ namespace spartan
     TConsoleVar<float> cvar_meshlet_visualize              ("r.meshlet_visualize",              0.0f,                                                    "meshlet debug visualisation written to debug_output (0 off, 1 color by meshlet id, 2 wireframe by meshlet id, 3 color by post-cull draw id, 4 wireframe by post-cull draw id)");
     TConsoleVar<float> cvar_cluster_visualize              ("r.cluster_visualize",              0.0f,                                                    "clustered lighting debug heatmap written to debug_output (0 off, 1 lights per cluster, 2 cluster slice z)");
     TConsoleVar<float> cvar_cluster_visualize_cap          ("r.cluster_visualize_cap",          4.0f,                                                    "lights per cluster mapped to full red on the heatmap, lower for more contrast in lightly populated scenes");
-    TConsoleVar<float> cvar_auto_exposure_adaptation_speed ("r.auto_exposure_adaptation_speed", 0.0f,                                                    "deprecated, automatic exposure settings are camera owned");
-    TConsoleVar<float> cvar_auto_exposure_compensation     ("r.auto_exposure_compensation",     0.0f,                                                    "deprecated, automatic exposure settings are camera owned");
 }

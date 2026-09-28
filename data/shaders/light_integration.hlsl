@@ -105,8 +105,8 @@ float3 prefilter_environment(float2 uv)
 {
     float resolution        = 4096.0f;
     float base_resolution   = 2048.0f;
-    uint mip_level          = pass_get_f3_value().x;
-    uint mip_count          = pass_get_f3_value().y;
+    uint mip_level          = pass_uint(pass_light_integration::mip_level);
+    uint mip_count          = pass_uint(pass_light_integration::mip_count);
     const uint sample_count = 512 / max(mip_level, 1);
     float roughness         = (float)mip_level / (float)(mip_count - 1);
     

@@ -322,12 +322,15 @@ float terrain_layer_weight(
 
 // Sand stays visibly granular when wet. Flow-map basins at sea level must not
 // turn an entire beach into the same near-black mirror used for inland pools.
+// With surf, the sand darkens where the swash last ran and dries within seconds of it draining.
 float terrain_coastal_wetness(float3 position_world, float3 normal_world)
 {
     if (buffer_frame.ocean_enabled < 0.5f) return 0.0f;
     float altitude = position_world.y - buffer_frame.ocean_sea_level;
-    return (1.0f - smoothstep(0.15f, 1.25f, altitude))
-        * smoothstep(0.75f, 0.95f, normal_world.y);
+    float flat     = smoothstep(0.75f, 0.95f, normal_world.y);
+    if (buffer_frame.ocean_shore_wave.w > 0.5f && altitude < 3.0f)
+        return ocean_shore_evaluate(position_world.xz, ocean_shore_time(0.0f)).wet * flat;
+    return (1.0f - smoothstep(0.15f, 1.25f, altitude)) * flat;
 }
 
 struct TerrainLayerPick

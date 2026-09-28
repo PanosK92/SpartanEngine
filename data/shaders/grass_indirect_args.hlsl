@@ -30,7 +30,7 @@ Commercial use requires written permission and negotiated payment terms.
 [numthreads(8, 1, 1)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
-    uint lod_count = (uint)buffer_pass.values[0].w;
+    uint lod_count = pass_uint(pass_grass_indirect_args::lod_count);
     uint slot_base = buffer_pass.draw_index;
 
     uint lod = dispatch_thread_id.x;
@@ -38,8 +38,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         return;
 
     // pull the matching per-lod cap, the populate dispatch may have raced past it
-    float caps[3]              = { buffer_pass.values[0].x, buffer_pass.values[0].y, buffer_pass.values[0].z };
-    uint  max_instances_per_lod = (uint)caps[lod];
+    uint max_instances_per_lod = pass_uint(pass_grass_indirect_args::lod_caps + lod);
 
     // clamp the atomic counter so the raster never tries to draw more instances than the range can hold
     uint entry          = slot_base + lod;

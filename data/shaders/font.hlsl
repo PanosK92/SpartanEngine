@@ -39,10 +39,10 @@ float4 main_ps(vertex_out input) : SV_TARGET
     float coverage = tex.Sample(samplers[sampler_bilinear_clamp], input.uv).r;
 
     // the outline pass passes its color with a non zero alpha, the fill pass passes zero and uses the vertex color
-    float4 outline = pass_get_f4_value();
+    float4 outline = pass_float4(pass_font::outline_color);
 
     // when drawing into the swapchain-encoded output, colors are brought to sdr white like the imgui pass
-    float hdr_mode = pass_get_f3_value().x > 0.5f ? buffer_frame.hdr_enabled : 0.0f;
+    float hdr_mode = pass_bool(pass_font::display_encoded) ? buffer_frame.hdr_enabled : 0.0f;
     float ui_nits  = buffer_frame.hdr_sdr_white_nits > 0.0f ? buffer_frame.hdr_sdr_white_nits : 203.0f;
 
     if (outline.a > 0.0f)

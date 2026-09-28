@@ -27,7 +27,7 @@ namespace spartan
             const float depth_bias_slope_scaled = 0.0f,
             const float line_width              = 1.0f
         );
-        ~RHI_RasterizerState();
+        ~RHI_RasterizerState() = default;
 
         RHI_PolygonMode GetPolygonMode() const { return m_polygon_mode; }
         bool GetDepthClipEnabled()       const { return m_depth_clip_enabled; }

@@ -11,7 +11,7 @@ Commercial use requires written permission and negotiated payment terms.
 float vhs_hdr_mode()
 {
     // Screenshots and the HMD have already been forced to SDR by the tone mapper.
-    return pass_get_f3_value().x > 0.5f ? 0.0f : buffer_frame.hdr_enabled;
+    return pass_bool(pass_vhs::force_sdr) ? 0.0f : buffer_frame.hdr_enabled;
 }
 
 float vhs_white_nits()

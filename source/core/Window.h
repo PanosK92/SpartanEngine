@@ -54,6 +54,7 @@ namespace spartan
         // custom title bar
         static void SetTitleBarHeight(float height);
         static void SetTitleBarButtonWidth(float width);
+        static void SetTitleBarInteractiveSpans(const std::vector<std::pair<float, float>>& spans);
         static void SetTitleBarHovered(bool hovered);
         static void PumpEvents();
 

@@ -129,6 +129,9 @@ namespace spartan
         // world metadata
         static const std::string& GetDescription();
         static void SetDescription(const std::string& description);
+        // island road finish, roadside details and wildlife, opted into per world
+        static bool GetIslandFeatures();
+        static void SetIslandFeatures(bool enabled);
 
         // read metadata from a world file without fully loading it
         static bool ReadMetadata(const std::string& world_file_path, WorldMetadata& metadata);

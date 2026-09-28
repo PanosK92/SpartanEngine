@@ -271,9 +271,8 @@ float grass_frustum_density_boost()
 // 0 at the terrain's world minimum, 1 at its maximum, the range test lives in this space
 float2 terrain_world_to_normalized(float2 world_xz)
 {
-    float2 origin   = buffer_pass.values[2].xy;
-    float2 inv_size = buffer_pass.values[2].zw;
-    return (world_xz - origin) * inv_size;
+    float4 mapping = pass_float4(pass_grass_populate::terrain_mapping);
+    return (world_xz - mapping.xy) * mapping.zw;
 }
 
 // the terrain grid stores one sample per texel, sample 0 at the world minimum and sample n-1 at the
@@ -333,7 +332,7 @@ float3 sample_terrain_normal(
     float2 texel_uv = 1.0f / max(height_size, 1.0f);
 
     // world distance covered by one texel step, the grid spans n-1 intervals not n
-    float2 inv_size      = buffer_pass.values[2].zw;
+    float2 inv_size      = pass_float4(pass_grass_populate::terrain_mapping).zw;
     float2 world_per_tap = 1.0f / (max(inv_size, 1e-8f) * max(height_size - 1.0f, 1.0f));
 
     float y_r = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(texel_uv.x, 0.0f), 0).r;
@@ -381,31 +380,30 @@ GrassInstance build_grass_instance(float3 position, float3 normal, float yaw_01,
 [numthreads(8, 8, 1)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
-    // unpack the push constant payload
-    float cell_size             = buffer_pass.values[0].x;
-    float ring_radius           = buffer_pass.values[0].y;
-    uint  lod_base              = (uint)buffer_pass.values[0].z;
-    uint  max_instances_per_lod = (uint)buffer_pass.values[0].w;
+    float cell_size             = pass_float(pass_grass_populate::cell_size);
+    float ring_radius           = pass_float(pass_grass_populate::ring_radius);
+    uint  lod_base              = pass_uint(pass_grass_populate::lod_base);
+    uint  max_instances_per_lod = pass_uint(pass_grass_populate::max_instances_per_lod);
 
-    float height_min    = buffer_pass.values[1].x;
-    float height_max    = buffer_pass.values[1].y;
-    float max_slope_cos = buffer_pass.values[1].z;
-    float inner_radius  = buffer_pass.values[1].w;
+    float height_min    = pass_float(pass_grass_populate::height_min);
+    float height_max    = pass_float(pass_grass_populate::height_max);
+    float max_slope_cos = pass_float(pass_grass_populate::max_slope_cos);
+    float inner_radius  = pass_float(pass_grass_populate::inner_radius);
 
     // a negative size is the slot asking for the complement of the patch field, the magnitude is
     // still the pocket scale and has to match the slot it is inverting or the two will not interlock
-    float patch_size_signed = buffer_pass.values[3].x;
+    float patch_size_signed = pass_float(pass_grass_populate::patch_size);
     float patch_size        = abs(patch_size_signed);
     bool  patch_invert      = patch_size_signed < 0.0f;
-    float patch_coverage    = saturate(buffer_pass.values[3].y);
-    float patch_edge        = saturate(buffer_pass.values[3].z);
-    uint  ground_mask       = (uint)buffer_pass.values[3].w;
+    float patch_coverage    = saturate(pass_float(pass_grass_populate::patch_coverage));
+    float patch_edge        = saturate(pass_float(pass_grass_populate::patch_edge));
+    uint  ground_mask       = pass_uint(pass_grass_populate::ground_mask);
 
     // the same shaping the cpu placer applies, a slope floor, a bias toward one end of the slope band
     // and a density ramp above the height floor
-    float min_slope_cos = buffer_pass.values[4].x;
-    float slope_bias    = buffer_pass.values[4].y;
-    float height_fade   = buffer_pass.values[4].z;
+    float min_slope_cos = pass_float(pass_grass_populate::min_slope_cos);
+    float slope_bias    = pass_float(pass_grass_populate::slope_bias);
+    float height_fade   = pass_float(pass_grass_populate::height_fade);
 
     uint  packed_index  = buffer_pass.draw_index;
     uint  lod_index     = packed_index & 0xFu;
@@ -423,7 +421,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float largest_scale = exp2(lerp(-6.643856f, 6.643856f, scale_01_max));
     // Grass bends rotate about its planted root, preserving radial length.
     // Zero retains the general scatter bound for stones and custom materials.
-    float root_radius = buffer_pass.values[4].w;
+    float root_radius = pass_float(pass_grass_populate::root_radius);
     float cull_radius = (root_radius > 0.0f ? root_radius : grass_cull_radius) * largest_scale;
     float cull_height = root_radius > 0.0f ? 0.0f : grass_cull_half_height * largest_scale;
 

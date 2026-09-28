@@ -18,14 +18,14 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_resources_buffers.hlsl"
 #include "common_resources_gpu_driven.hlsl"
 
-uint  get_num_block_x()      { return asuint(buffer_pass.values[0].x); }
-uint  get_num_total_blocks() { return asuint(buffer_pass.values[0].y); }
-float get_quality()          { return buffer_pass.values[0].z; }
-uint  get_input_mip_offset() { return asuint(buffer_pass.values[0].w); }
-uint  get_output_offset()    { return asuint(buffer_pass.values[1].x); }
-uint  get_mip_width()        { return asuint(buffer_pass.values[1].y); }
-uint  get_mip_height()       { return asuint(buffer_pass.values[1].z); }
-uint  get_groups_per_row()   { return asuint(buffer_pass.values[1].w); }
+uint  get_num_block_x()      { return pass_uint(pass_texture_compress::block_count_x); }
+uint  get_num_total_blocks() { return pass_uint(pass_texture_compress::block_count); }
+float get_quality()          { return pass_float(pass_texture_compress::quality); }
+uint  get_input_mip_offset() { return pass_uint(pass_texture_compress::input_offset); }
+uint  get_output_offset()    { return pass_uint(pass_texture_compress::output_offset); }
+uint  get_mip_width()        { return pass_uint(pass_texture_compress::mip_width); }
+uint  get_mip_height()       { return pass_uint(pass_texture_compress::mip_height); }
+uint  get_groups_per_row()   { return pass_uint(pass_texture_compress::groups_per_row); }
 
 float4 unpack_rgba8(uint packed)
 {

@@ -616,8 +616,7 @@ namespace spartan
         SP_ASSERT(m_type == RHI_AccelerationStructureType::Top);
         SP_ASSERT(!instances.empty());
 
-        // use double buffering to avoid frame-to-frame synchronization issues
-        // while frame N's GPU is reading from buffer set 0, frame N+1's CPU writes to buffer set 1
+        // one buffer set per frame in flight, so the cpu never writes a set the gpu has not consumed yet
         uint32_t buf_idx = m_buffer_index;
         m_buffer_index   = (m_buffer_index + 1) % buffer_count;
 

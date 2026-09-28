@@ -758,7 +758,7 @@ namespace engine_sound
             float pop_rate = 1.0f;
             float rasp = 1.0f;
             float cabin_mix = 1.0f;
-            float master_gain = 1.0f;
+            float master_gain = 1.6f; // drives the output limiter, peaks stay under 0.85 while the body gets louder
         };
 
         enum command_bits : std::uint32_t

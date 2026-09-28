@@ -35,9 +35,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float depth = get_depth(uv);
     float view_z = abs(get_position_view_space(uv).z);
     const float denoising_range = max(buffer_frame.camera_far * 0.99f, 1.0f);
-    const float tan_light_angular_radius = pass_get_f3_value().x;
-    const uint  local_slice = (uint)pass_get_f3_value().y;
-    const bool  is_local    = pass_get_f3_value().z > 0.5f;
+    const float tan_light_angular_radius = pass_float(pass_nrd_shadows::tan_light_angular_radius);
+    const uint  local_slice = pass_uint(pass_nrd_shadows::local_slice);
+    const bool  is_local    = pass_bool(pass_nrd_shadows::is_local);
 
     if (depth <= 0.0f || view_z >= denoising_range)
     {

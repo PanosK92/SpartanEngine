@@ -399,7 +399,7 @@ float4 motion_blur_reconstruction(
     }
 
     // debug view, r.motion_blur = 2 shows the radial mask in red and hub association in green
-    if (pass_get_f3_value().y > 1.5f)
+    if (pass_float(pass_motion_blur::mode) > 1.5f)
     {
         float4 debug_color = center_color;
         float4 debug_hub;
@@ -639,7 +639,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         return;
     }
 
-    float shutter_speed = pass_get_f3_value().x;
+    float shutter_speed = pass_float(pass_motion_blur::shutter_speed);
     float frame_time =
         max(
             buffer_frame.delta_time,

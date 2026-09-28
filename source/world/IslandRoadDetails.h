@@ -714,7 +714,7 @@ namespace spartan::island_road_details
         // follows those roads; rediscovery and terrain cache-key sampling belong
         // to authoring, and resume when returning to the editor.
         if (Engine::IsFlagSet(EngineMode::Playing) && !World::IsPreparing()) return;
-        if (World::GetName()!="plan.world" || !Terrain::FindActive()) return;
+        if (!World::GetIslandFeatures() || !Terrain::FindActive()) return;
         // Junction solving can replace every road frame. Wait for its final meshes
         // before building furniture, otherwise startup repeatedly discards these batches.
         if (Spline::HasPendingRoadWork()) return;
@@ -806,7 +806,7 @@ namespace spartan::island_road_details
     }
     inline bool PrepareWorld()
     {
-        if (World::GetName() != "plan.world" || !Terrain::FindActive()) return true;
+        if (!World::GetIslandFeatures() || !Terrain::FindActive()) return true;
         const Stopwatch slice;
         do
         {

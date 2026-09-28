@@ -406,7 +406,7 @@ void fog_inject_cell(uint3 thread_id)
     // repeatedly mixed neighbouring cells, accumulating coastal rings.
     // Interface cells stay current; their split cannot be reprojected as air.
     float density = medium.air_extinction;
-    if (pass_get_f3_value().x < 0.5f && density > 0.0f && medium.water < 0.001f)
+    if (!pass_bool(pass_fog::reset_history) && density > 0.0f && medium.water < 0.001f)
     {
         float4 previous = mul(float4(sample_pos, 1.0f), get_view_projection_previous_unjittered());
         float previous_distance = length(sample_pos - buffer_frame.camera_position_previous);
@@ -426,7 +426,7 @@ void fog_inject_cell(uint3 thread_id)
             scatter_rate = lerp(scatter_rate, history.rgb, keep);
         }
     }
-    if (pass_get_f3_value().x < 0.5f && medium.water > 0.999f && d1 <= fog_detail_far)
+    if (!pass_bool(pass_fog::reset_history) && medium.water > 0.999f && d1 <= fog_detail_far)
     {
         float4 previous = mul(float4(sample_pos, 1.0f), get_view_projection_previous_unjittered());
         float previous_distance = length(sample_pos - buffer_frame.camera_position_previous);
@@ -620,7 +620,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (!surface.is_sky() && buffer_frame.cluster_light_count > 0u)
         volume = integrate_camera_atmosphere(surface, volume);
     float4 color = tex_uav[thread_id.xy];
-    float mode = pass_get_f3_value().x;
+    float mode = pass_float(pass_fog::debug_mode);
     if (mode < 0.5f)
         color.rgb = color.rgb * volume.transmittance + volume.scattering;
     else if (mode < 1.5f)

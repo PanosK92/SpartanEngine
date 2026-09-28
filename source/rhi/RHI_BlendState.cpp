@@ -5,14 +5,10 @@ https://github.com/PanosK92/SpartanEngine/blob/master/license.md
 Commercial use requires written permission and negotiated payment terms.
 */
 
-//= INCLUDES =================
+//= INCLUDES ==============
 #include "pch.h"
-#include "../RHI_BlendState.h"
-//============================
-
-//= NAMESPACES =====
-using namespace std;
-//==================
+#include "RHI_BlendState.h"
+//=========================
 
 namespace spartan
 {
@@ -28,7 +24,6 @@ namespace spartan
         const float blend_factor                  /*= 0.0f*/
     )
     {
-        // save
         m_blend_enabled      = blend_enabled;
         m_source_blend       = source_blend;
         m_dest_blend         = dest_blend;
@@ -38,7 +33,6 @@ namespace spartan
         m_blend_op_alpha     = blend_op_alpha;
         m_blend_factor       = blend_factor;
 
-        // hash
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_blend_enabled));
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_source_blend));
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_dest_blend));
@@ -47,10 +41,5 @@ namespace spartan
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_dest_blend_alpha));
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_blend_op_alpha));
         m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_blend_factor));
-    }
-
-    RHI_BlendState::~RHI_BlendState()
-    {
-
     }
 }

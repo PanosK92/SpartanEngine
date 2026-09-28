@@ -118,6 +118,20 @@ namespace spartan
         float titlebar_button_width = 150.0f; // default width, updated by editor  
         const float resize_border   = 8.0f;   // thickness of resize borders
         int titlebar_hovered_frames = 0;      // persistence counter for hover state
+        vector<pair<float, float>> titlebar_interactive_spans; // x ranges of titlebar widgets, updated by editor
+
+        bool is_in_titlebar_interactive_span(const int x)
+        {
+            for (const pair<float, float>& span : titlebar_interactive_spans)
+            {
+                if (x >= static_cast<int>(span.first) && x < static_cast<int>(span.second))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         SDL_HitTestResult hit_test_callback(SDL_Window* win, const SDL_Point* area, void* data)
         {
@@ -178,8 +192,9 @@ namespace spartan
                 }
             }
 
-            // remaining titlebar area is draggable when imgui is not interacting with anything
-            if (y < static_cast<int>(titlebar_height) && titlebar_hovered_frames == 0)
+            // widgets must never be caption, windows sends no client mouse moves over caption, so imgui would never
+            // see the hover that makes them interactive again, the rest of the titlebar drags when imgui is idle
+            if (y < static_cast<int>(titlebar_height) && titlebar_hovered_frames == 0 && !is_in_titlebar_interactive_span(x))
             {
                 return SDL_HITTEST_DRAGGABLE;
             }
@@ -701,6 +716,11 @@ namespace spartan
     void Window::SetTitleBarButtonWidth(float width)
     {
         titlebar_button_width = width;
+    }
+
+    void Window::SetTitleBarInteractiveSpans(const vector<pair<float, float>>& spans)
+    {
+        titlebar_interactive_spans = spans;
     }
 
     bool Window::IsMaximized()

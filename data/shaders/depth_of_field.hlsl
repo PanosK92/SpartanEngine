@@ -298,7 +298,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupI
     // one thread per group computes the lens constants and shares them with the rest
     if (group_index == 0)
     {
-        float aperture_fstop = max(pass_get_f3_value().x, 0.5f);
+        float aperture_fstop = max(pass_float(pass_depth_of_field::aperture), 0.5f);
 
         // physical focal length from horizontal fov and full frame sensor width
         float fov_h    = max(buffer_frame.camera_fov, 0.01f);

@@ -303,6 +303,7 @@ namespace spartan
         string file_path;
         string world_name; // cached to avoid per-frame allocation
         string world_description;
+        bool island_features = false;
         mutex resource_cleanup_mutex;
         vector<string> last_resource_cleanup;
         vector<string> last_resource_cleanup_failures;
@@ -1597,6 +1598,7 @@ namespace spartan
         file_path.clear();
         world_name.clear();
         world_description.clear();
+        island_features = false;
         Environment::SetSettings(EnvironmentSettings{});
 
         // every load passes through here, so the next world gets a fresh cloudscape
@@ -2823,6 +2825,10 @@ namespace spartan
         pugi::xml_node world_node = doc.append_child("World");
         world_node.append_attribute("name")        = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path).c_str();
         world_node.append_attribute("description") = world_description.c_str();
+        if (island_features)
+        {
+            world_node.append_attribute("island_features") = true;
+        }
         auto environment_node = world_node.append_child("Environment");
         const auto& environment = Environment::GetSettings();
         environment_node.append_attribute("utc_days") = environment.utc_days;
@@ -3239,6 +3245,7 @@ namespace spartan
 
                 // read metadata
                 world_description = world_node.attribute("description").as_string();
+                island_features   = world_node.attribute("island_features").as_bool(false);
                 EnvironmentSettings environment;
                 auto environment_node = world_node.child("Environment");
                 environment.utc_days = environment_node.attribute("utc_days").as_double(environment.utc_days);
@@ -3966,6 +3973,16 @@ namespace spartan
     void World::SetDescription(const string& description)
     {
         world_description = description;
+    }
+
+    bool World::GetIslandFeatures()
+    {
+        return island_features;
+    }
+
+    void World::SetIslandFeatures(const bool enabled)
+    {
+        island_features = enabled;
     }
 
     bool World::ReadMetadata(const string& world_file_path, WorldMetadata& metadata)

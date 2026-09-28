@@ -252,7 +252,9 @@ float ocean_cascade_depth_scale(float depth, float wavelength)
     return lerp(0.4f, 1.0f, s);
 }
 
-// summed cascade displacement in the undisplaced grid the fft writes into
+#include "common_ocean_shore.hlsl"
+
+// summed cascade displacement in the undisplaced grid the fft writes into, plus the shore surf
 float3 get_ocean_displacement(float2 grid_xz)
 {
     float3 displacement = 0.0f;
@@ -269,7 +271,7 @@ float3 get_ocean_displacement(float2 grid_xz)
             0.0f
         ).xyz * scale;
     }
-    return displacement;
+    return displacement + ocean_shore_evaluate(grid_xz, ocean_shore_time(0.0f)).displacement;
 }
 
 // recover the fft grid xz from a displaced world point, g = p - displacement(g)
@@ -286,7 +288,8 @@ float2 get_ocean_grid_xz(float2 world_xz)
 float get_ocean_height(float2 world_xz)
 {
     float2 grid_xz = get_ocean_grid_xz(world_xz);
-    return buffer_frame.ocean_sea_level + get_ocean_displacement(grid_xz).y;
+    float floor_y  = ocean_shore_evaluate(grid_xz, ocean_shore_time(0.0f)).floor_y;
+    return max(buffer_frame.ocean_sea_level + get_ocean_displacement(grid_xz).y, floor_y);
 }
 
 // One sunlight path for surface caustics and the participating water medium.
@@ -393,36 +396,9 @@ float ocean_foam_footprint(float view_distance)
     return 2.0f * view_distance / max(abs(buffer_frame.projection[1][1]) * buffer_frame.resolution_render.y, 1.0f);
 }
 
-// Evaluate the bed at the actual displaced surface position, never at the FFT grid.
-float get_ocean_shore_foam(float3 water_position, float footprint, float wave_activity)
-{
-    float valid = 0.0f;
-    float terrain_y = sample_ocean_terrain_height(water_position.xz, valid);
-    if (valid < 0.5f)
-    {
-        return 0.0f;
-    }
-
-    float clearance = water_position.y - terrain_y;
-    if (clearance > 1.5f || clearance < 0.0f)
-    {
-        return 0.0f;
-    }
-    float activity = smoothstep(0.01f, 0.15f, wave_activity);
-    // A connected advancing lip, followed by a softer, lacy wash. Both use
-    // the moving surface/bed intersection, so there is only one shoreline.
-    float surge = saturate(0.5f + (water_position.y - buffer_frame.ocean_sea_level)
-        / max(4.0f * wave_activity, 0.08f));
-    float width = 0.35f + min(wave_activity, 0.55f) * lerp(0.65f, 1.5f, surge);
-    float edge = 1.0f - smoothstep(0.0f, width, clearance);
-    float lip = 1.0f - smoothstep(0.0f, width * 0.22f, clearance);
-    float2 drift = buffer_frame.wind.xz * (float)buffer_frame.time * 0.015f;
-    float wash = shape_ocean_foam(edge * activity, water_position.xz - drift, footprint);
-    return saturate(max(wash, lip * activity * 0.55f));
-}
-
 // Residual whitewater survives in troughs; only production depends on compression.
-float get_ocean_foam(float2 grid_xz, float3 water_position, float view_distance, out float wave_activity)
+// The beach whitewater comes from the breaking surf and its swash, not from a band around the waterline.
+float get_ocean_foam(float2 grid_xz, float3 water_position, float view_distance, out float wave_activity, out OceanShore shore)
 {
     float foam   = 0.0f;
     float depth = get_ocean_water_depth(grid_xz);
@@ -442,8 +418,8 @@ float get_ocean_foam(float2 grid_xz, float3 water_position, float view_distance,
     // Keeping both masks here produces a second white band behind the lip.
     float coastal_fade = smoothstep(0.15f, 1.5f, max(get_ocean_water_depth(water_position.xz), 0.0f));
     float shaped = shape_ocean_foam(foam * coastal_fade, grid_xz, footprint);
-    float shore  = get_ocean_shore_foam(water_position, footprint, wave_activity);
-    return saturate(max(shaped, shore));
+    shore = ocean_shore_evaluate(grid_xz, ocean_shore_time(0.0f));
+    return saturate(max(shaped, ocean_shore_foam_shape(shore, water_position.xz, footprint)));
 }
 
 // analytic fft slopes with distance fade, all cascades keep their ripple
@@ -452,7 +428,6 @@ void sample_ocean_surface(float2 grid_xz, float3 water_position, float view_dist
     uint cascades = buffer_frame.ocean_cascade_count;
     float2 slope  = 0.0f;
     float depth   = get_ocean_water_depth(grid_xz);
-    float wave_energy = 0.0f;
     foam          = 0.0f;
 
     [loop] for (uint c = 0; c < cascades; ++c)
@@ -468,16 +443,29 @@ void sample_ocean_surface(float2 grid_xz, float3 water_position, float view_dist
         );
         slope  += slope_foam.xy * fade * ocean_cascade_depth_scale(depth, L);
         foam    = max(foam, slope_foam.z);
-        float scale = ocean_cascade_depth_scale(depth, L);
-        wave_energy += max(slope_foam.w, 0.0f) * scale * scale;
     }
 
-    float str   = buffer_frame.ocean_normal_strength;
-    normal      = normalize(float3(-slope.x * str, 1.0f, -slope.y * str));
+    float str       = buffer_frame.ocean_normal_strength;
+    slope          *= str;
     float footprint = ocean_foam_footprint(view_distance);
+
+    // the surf is analytic, differentiate its displaced surface in the fft grid like the vertices do
+    float time       = ocean_shore_time(0.0f);
+    OceanShore shore = ocean_shore_evaluate(grid_xz, time);
+    if (shore.height > 0.0f || shore.floor_y > -1000.0f)
+    {
+        float eps  = clamp(footprint, 0.1f, 2.0f);
+        float3 p0  = ocean_shore_surface(grid_xz, time);
+        float3 px  = ocean_shore_surface(grid_xz + float2(eps, 0.0f), time);
+        float3 pz  = ocean_shore_surface(grid_xz + float2(0.0f, eps), time);
+        float3 n   = cross(pz - p0, px - p0);
+        slope     += -n.xz / max(n.y, 1e-4f);
+    }
+    normal = normalize(float3(-slope.x, 1.0f, -slope.y));
+
     float coastal_fade = smoothstep(0.15f, 1.5f, max(get_ocean_water_depth(water_position.xz), 0.0f));
     foam = shape_ocean_foam(foam * coastal_fade, grid_xz, footprint);
-    foam = saturate(max(foam, get_ocean_shore_foam(water_position, footprint, sqrt(wave_energy))));
+    foam = saturate(max(foam, ocean_shore_foam_shape(shore, water_position.xz, footprint)));
 }
 
 // chromaticity preserving hdr clamp, the engine sky panorama is clamped to keep huge sun

@@ -475,7 +475,7 @@ namespace spartan
             return;
         }
 
-        // double buffer the instance descriptor uploads so frame N gpu reads do not race frame N+1 cpu writes
+        // one instance descriptor upload per frame in flight so gpu reads never race later cpu writes
         uint32_t buf_idx = m_buffer_index;
         m_buffer_index   = (m_buffer_index + 1) % buffer_count;
 

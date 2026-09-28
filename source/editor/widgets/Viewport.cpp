@@ -236,26 +236,12 @@ void Viewport::OnTickVisible()
 
     if (Engine::IsFlagSet(EngineMode::Playing))
     {
-        // a heads up display: the frame edges glow inward with the signal, a status readout floats in the top left, clear of the performance overlay
+        // a status readout floats in the top left, clear of the performance overlay
         const bool paused     = Engine::IsFlagSet(EngineMode::Paused);
         const ImVec4 signal   = paused ? ImGui::Style::color_warning : ImGui::Style::color_accent_1;
         const float inset     = ImGui::EditorUi::scaled(14.0f);
         const ImVec2 hud_min  = ImVec2(image_rect_min.x + inset, image_rect_min.y + inset);
-        const ImVec2 hud_max  = ImVec2(image_rect_max.x - inset, image_rect_max.y - inset);
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
-        {
-            const float breathe = 0.85f + 0.15f * sinf(static_cast<float>(ImGui::GetTime()) * 2.2f);
-            const float depth   = ImGui::EditorUi::scaled(44.0f);
-            const ImU32 lit     = ImGui::EditorUi::color(ImGui::EditorUi::alpha(signal, 0.20f * breathe));
-            const ImU32 clear   = ImGui::EditorUi::color(ImGui::EditorUi::alpha(signal, 0.0f));
-            const ImVec2 a      = image_rect_min;
-            const ImVec2 b      = image_rect_max;
-            draw_list->AddRectFilledMultiColor(a, ImVec2(b.x, a.y + depth), lit, lit, clear, clear);
-            draw_list->AddRectFilledMultiColor(ImVec2(a.x, b.y - depth), b, clear, clear, lit, lit);
-            draw_list->AddRectFilledMultiColor(a, ImVec2(a.x + depth, b.y), lit, clear, clear, lit);
-            draw_list->AddRectFilledMultiColor(ImVec2(b.x - depth, a.y), b, clear, lit, lit, clear);
-        }
 
         const char* label      = paused ? "paused" : "live";
         const float pill_h     = ImGui::EditorUi::scaled(20.0f);

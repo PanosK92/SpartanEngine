@@ -71,14 +71,13 @@ matrix get_view_projection_for_view(uint view_id)     { return is_right_eye_for_
 matrix get_view_projection_inverted_for_view(uint v)  { return is_right_eye_for_view(v)       ? buffer_frame.view_projection_inverted_right : buffer_frame.view_projection_inverted; }
 float3 get_camera_position_for_view(uint view_id)     { return is_right_eye_for_view(view_id) ? buffer_frame.camera_position_right          : buffer_frame.camera_position; }
 
-// generic pass parameter accessors - read from push constant values[]
-// values[0].xyz = f3_value, values[0].w = f2_value.x
-// values[1].xyz = f3_value2, values[1].w = f2_value.y
-// values[2]     = f4_value
-float3 pass_get_f3_value()  { return buffer_pass.values[0].xyz; }
-float3 pass_get_f3_value2() { return buffer_pass.values[1].xyz; }
-float4 pass_get_f4_value()  { return buffer_pass.values[2]; }
-float2 pass_get_f2_value()  { return float2(buffer_pass.values[0].w, buffer_pass.values[1].w); }
+// pass parameters, slot comes from the pass_* tables in shared_buffers.h
+float  pass_float(uint slot)  { return buffer_pass.values[slot / 4][slot % 4]; }
+float2 pass_float2(uint slot) { return float2(pass_float(slot), pass_float(slot + 1)); }
+float3 pass_float3(uint slot) { return float3(pass_float(slot), pass_float(slot + 1), pass_float(slot + 2)); }
+float4 pass_float4(uint slot) { return float4(pass_float(slot), pass_float(slot + 1), pass_float(slot + 2), pass_float(slot + 3)); }
+uint   pass_uint(uint slot)   { return asuint(pass_float(slot)); }
+bool   pass_bool(uint slot)   { return pass_uint(slot) != 0; }
 
 // helper to populate _draw from the appropriate source
 void pass_load_draw_data_from_buffer()          { _draw = draw_data[buffer_pass.draw_index]; }

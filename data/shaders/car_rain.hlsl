@@ -40,7 +40,7 @@ StructuredBuffer<CarRainTexelData> car_rain_texels : register(t75);
 [numthreads(8, 8, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    uint2 size = uint2(buffer_pass.values[0].z, buffer_pass.values[1].x);
+    uint2 size = uint2(pass_uint(pass_car_rain::atlas_width), pass_uint(pass_car_rain::atlas_height));
     if (any(thread_id.xy >= size))
         return;
 
@@ -52,18 +52,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 [numthreads(64, 1, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    uint count = uint(buffer_pass.values[0].y);
+    uint count = pass_uint(pass_car_rain::count);
     if (thread_id.x >= count)
         return;
 
-    CarRainDropData drop = car_rain_drops[uint(buffer_pass.values[0].x) + thread_id.x];
+    CarRainDropData drop = car_rain_drops[pass_uint(pass_car_rain::offset) + thread_id.x];
     if (drop.radius <= 0.0f)
         return;
 
     // the key sorts by radius in micrometres, the index sits below it, 0 stays free for no drop
     uint key       = (min(uint(drop.radius * 1.0e6f), 32767u) << 17) | (thread_id.x + 1u);
-    float reach    = drop.radius / buffer_pass.values[1].y + 0.75f;
-    int2 size      = int2(buffer_pass.values[0].z, buffer_pass.values[1].x);
+    float reach    = drop.radius / pass_float(pass_car_rain::texel_size) + 0.75f;
+    int2 size      = int2(pass_uint(pass_car_rain::atlas_width), pass_uint(pass_car_rain::atlas_height));
     int2 centre    = int2(floor(drop.uv));
     int extent     = min(4, int(ceil(reach)));
     for (int y = -extent; y <= extent; y++)
@@ -87,12 +87,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 [numthreads(64, 1, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    uint count = uint(buffer_pass.values[0].y);
+    uint count = pass_uint(pass_car_rain::count);
     if (thread_id.x >= count)
         return;
 
-    CarRainTexelData change = car_rain_texels[uint(buffer_pass.values[0].x) + thread_id.x];
-    uint width              = uint(buffer_pass.values[0].z);
+    CarRainTexelData change = car_rain_texels[pass_uint(pass_car_rain::offset) + thread_id.x];
+    uint width              = pass_uint(pass_car_rain::atlas_width);
     tex_car_rain_micro_uav[uint2(change.texel % width, change.texel / width)] = float2(change.mass, change.stamp);
 }
 #endif

@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "McpCommandsCommon.h"
 #include "../core/Engine.h"
+#include "../file_system/FileSystem.h"
 #include "../world/World.h"
 #include "../world/Entity.h"
 #include "../world/components/Component.h"
@@ -201,6 +202,18 @@ namespace spartan::mcp_common
             return static_cast<char>(std::tolower(c));
         });
         return value;
+    }
+
+    bool parse_uint32(const std::string& value, uint32_t& result)
+    {
+        uint64_t parsed = 0;
+        if (!parse_uint64(value, parsed) || parsed > std::numeric_limits<uint32_t>::max())
+        {
+            return false;
+        }
+
+        result = static_cast<uint32_t>(parsed);
+        return true;
     }
 
     //==============================================================================
@@ -411,4 +424,163 @@ namespace spartan::mcp_common
 
     //==============================================================================
 
+    //= RESOURCES =================================================================
+    std::string resource_type_to_name(ResourceType type)
+    {
+        switch (type)
+        {
+        case ResourceType::Texture:
+            return "texture";
+        case ResourceType::Audio:
+            return "audio";
+        case ResourceType::Material:
+            return "material";
+        case ResourceType::Mesh:
+            return "mesh";
+        case ResourceType::Cubemap:
+            return "cubemap";
+        case ResourceType::Animation:
+            return "animation";
+        case ResourceType::Font:
+            return "font";
+        case ResourceType::Shader:
+            return "shader";
+        case ResourceType::Unknown:
+            return "unknown";
+        default:
+            return "all";
+        }
+    }
+
+    std::string resource_to_json(IResource* resource)
+    {
+        if (resource == nullptr)
+        {
+            return "null";
+        }
+
+        std::string json = "{";
+        json += "\"id\":" + json_string(std::to_string(resource->GetObjectId()));
+        json += ",\"name\":" + json_string(resource->GetObjectName());
+        json += ",\"type\":" + json_string(resource_type_to_name(resource->GetResourceType()));
+        json += ",\"path\":" + json_string(resource->GetResourceFilePath());
+        json += ",\"state\":" + std::to_string(static_cast<uint32_t>(resource->GetResourceState()));
+        json += ",\"flags\":" + std::to_string(resource->GetFlags());
+        json += "}";
+        return json;
+    }
+
+    bool path_is_within(
+        const std::filesystem::path& path,
+        const std::filesystem::path& directory
+    )
+    {
+        const std::filesystem::path normalized_path =
+            std::filesystem::absolute(path).lexically_normal();
+        const std::filesystem::path normalized_directory =
+            std::filesystem::absolute(directory).lexically_normal();
+
+        auto path_it = normalized_path.begin();
+        auto directory_it = normalized_directory.begin();
+        for (
+            ;
+            directory_it != normalized_directory.end();
+            ++directory_it, ++path_it
+        )
+        {
+            if (path_it == normalized_path.end())
+            {
+                return false;
+            }
+            if (
+                to_lower_copy(path_it->string()) !=
+                to_lower_copy(directory_it->string())
+            )
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    std::optional<std::string> resolve_mcp_output_path(
+        const std::string& requested_path,
+        const char* directory_name,
+        const std::string& extension,
+        std::string& error
+    )
+    {
+        const std::filesystem::path directory =
+            std::filesystem::path(
+                World::GetGeneratedResourceDirectory()
+            ) /
+            directory_name;
+        const std::filesystem::path requested(
+            requested_path
+        );
+        std::filesystem::path resolved;
+        if (path_is_within(requested, directory))
+        {
+            resolved = requested;
+        }
+        else
+        {
+            resolved = directory / requested.filename();
+        }
+        if (
+            to_lower_copy(resolved.extension().string()) !=
+            extension
+        )
+        {
+            resolved.replace_extension(extension);
+        }
+        resolved = std::filesystem::absolute(
+            resolved
+        ).lexically_normal();
+        if (!path_is_within(resolved, directory))
+        {
+            error =
+                "resource path must be inside project/mcp/blockout/" +
+                std::string(directory_name);
+            return std::nullopt;
+        }
+        return FileSystem::GetRelativePath(
+            resolved.generic_string()
+        );
+    }
+
+    //==============================================================================
+
+    //= BATCHES ===================================================================
+    // a batch runs its items through the singular handler and reads the reply back, which is the only
+    // thing a handler hands over
+    bool item_succeeded(const std::string& item_result)
+    {
+        return item_result.find("\"ok\":true") != std::string::npos;
+    }
+
+    // a batch stops at the first item that fails and does not undo the ones before it, several of them
+    // have already written files or created entities. so the reply says how far it got and where it
+    // stopped, which is what lets a caller carry on from there instead of guessing or starting over.
+    // items_field names the list the way the singular command does, created for entities and so on
+    std::string json_batch_failure(
+        const std::string& error,
+        const std::string& items_field,
+        const std::string& applied_items,
+        const uint32_t applied_count,
+        const uint64_t failed_index,
+        const std::string& failure
+    )
+    {
+        std::string json = "{\"ok\":false,\"error\":" + json_string(error);
+        json += ",\"" + items_field + "\":" + applied_items + "]";
+        json += ",\"" + items_field + "_count\":" + std::to_string(applied_count);
+        json += ",\"failed_index\":" + std::to_string(failed_index);
+        json += ",\"failure\":" + failure;
+        json += "}";
+        return json;
+    }
+
+    //==============================================================================
 }

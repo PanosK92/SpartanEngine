@@ -1208,6 +1208,7 @@ namespace spartan
         SP_ASSERT(m_rhi_resource != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
+        CommitPendingClear();
         render_pass_end();
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
@@ -1663,11 +1664,6 @@ namespace spartan
                 SetTrackedTextureLayout(depth, 0, depth->GetResidentMipCount(), RHI_Image_Layout::General);
             }
         }
-    }
-
-    void RHI_CommandList::clear_pipeline_state_render_targets(RHI_PipelineState& pipeline_state)
-    {
-        // handled in RenderPassBegin
     }
 
     static D3D12_CPU_DESCRIPTOR_HANDLE create_transient_mip_view(RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, bool uav, uint32_t array_layer);
@@ -3523,10 +3519,12 @@ namespace spartan
         // cpu profiler block, queue type lets the profiler keep gpu/compute lanes separate
         RHI_Queue_Type queue_type = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
         Profiler::TimeBlockStart(name, TimeBlockType::Cpu, this, queue_type);
-        if (cvar_debug_gpu_timing.GetValue() && gpu_timing)
+        const bool time_gpu = cvar_debug_gpu_timing.GetValue() && gpu_timing;
+        if (time_gpu)
         {
             Profiler::TimeBlockStart(name, TimeBlockType::Gpu, this, queue_type);
         }
+        m_timeblock_gpu_timing.push(time_gpu);
 
         // gpu marker (PIX), kept independent of breadcrumbs so it works in the absence of breadcrumb infra
         if (cvar_debug_gpu_marking.GetValue() && gpu_marker)
@@ -3574,9 +3572,13 @@ namespace spartan
             }
         }
 
-        if (cvar_debug_gpu_timing.GetValue())
+        if (!m_timeblock_gpu_timing.empty())
         {
-            Profiler::TimeBlockEnd(TimeBlockType::Gpu, this);
+            if (m_timeblock_gpu_timing.top())
+            {
+                Profiler::TimeBlockEnd(TimeBlockType::Gpu, this);
+            }
+            m_timeblock_gpu_timing.pop();
         }
         Profiler::TimeBlockEnd(TimeBlockType::Cpu, this);
     }

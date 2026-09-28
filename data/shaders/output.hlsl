@@ -384,9 +384,8 @@ float3 linear_rec709_to_hdr10(float3 color)
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     // get input data
-    float3 f3_value        = pass_get_f3_value();
-    uint tone_mapping      = (uint)f3_value.x;
-    bool force_sdr         = f3_value.z > 0.0f;
+    uint tone_mapping      = pass_uint(pass_output::tonemapping);
+    bool force_sdr         = pass_bool(pass_output::force_sdr);
     float4 color           = tex[thread_id.xy];
 
     // the scene buffer stays radiometric until the display path.

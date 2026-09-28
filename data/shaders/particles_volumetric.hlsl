@@ -489,7 +489,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // than the medium, and a few fat smooth ellipsoids is exactly what a sparse sample of a plume looks
     // like, accumulating against a reprojected history averages successive subsets into a dense field for
     // the price of a texture read, which is what the rotating stride in the splat is there to feed
-    bool reset_history = pass_get_f3_value().x > 0.5f;
+    bool reset_history = pass_bool(pass_particles_volumetric::reset_history);
     float4 result = current;
     if (!reset_history)
     {

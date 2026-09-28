@@ -66,7 +66,6 @@ vis_vertex main_vs(uint vertex_id : SV_VertexID, uint view_id : SV_ViewID)
 float4 main_ps(vis_vertex v) : SV_Target0
 {
     // f3_value.x: 0 = color by global meshlet index, 1 = color by post-cull draw id
-    uint mode = (uint)pass_get_f3_value().x;
-    uint id   = (mode == 0u) ? v.meshlet_index : v.draw_id;
+    uint id = pass_bool(pass_meshlet_visualize::color_by_draw_id) ? v.draw_id : v.meshlet_index;
     return float4(meshlet_color(id), 1.0f);
 }

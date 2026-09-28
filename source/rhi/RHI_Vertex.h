@@ -28,7 +28,7 @@ namespace spartan
             uint32_t sign     = (u.i >> 16) & 0x8000;
             int32_t  exponent = ((u.i >> 23) & 0xFF) - 127;
             uint32_t mantissa = u.i & 0x7FFFFF;
-            if (exponent <= -15)
+            if (exponent < -24)
             {
                 return static_cast<uint16_t>(sign);
             }
@@ -36,11 +36,11 @@ namespace spartan
             {
                 return static_cast<uint16_t>(sign | 0x7C00);
             }
-            if (exponent <= -14)
+            // -14 is the smallest normal half exponent, below it the value is m / 1024 * 2^-14 with m = 1.mantissa * 2^(exponent + 24)
+            if (exponent < -14)
             {
                 mantissa |= 0x800000;
-                int shift = -14 - exponent;
-                mantissa >>= shift;
+                mantissa >>= -exponent - 1;
                 return static_cast<uint16_t>(sign | mantissa);
             }
             exponent += 15;

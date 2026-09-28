@@ -4179,6 +4179,50 @@ namespace car
     }
 
 
+    // share of the patch load carried by each of the three tread zones
+    static void compute_zone_share(const wheel& w, bool left_side, float zone_share[3])
+    {
+        float zone_load[3] = { 0.0f, 0.0f, 0.0f };
+        int zone_rows[3] = { 0, 0, 0 };
+        int probe_rows = PxClamp(w.row_count, 1, max_tire_probe_rows);
+        // row zero sits at negative offset along the spin axis, which is the outboard shoulder
+        // on the left of the car and the inboard one on the right
+        float side_sign = left_side ? 1.0f : -1.0f;
+        for (int r = 0; r < probe_rows; r++)
+        {
+            float offset = ((static_cast<float>(r) + 0.5f) / static_cast<float>(probe_rows) - 0.5f) * side_sign;
+            int zone = PxClamp(static_cast<int>((0.5f - offset) * 3.0f), 0, 2);
+            zone_load[zone] += w.row_load[r];
+            zone_rows[zone]++;
+        }
+
+        float load_total = 0.0f;
+        int counted = 0;
+        for (int z = 0; z < 3; z++)
+        {
+            if (zone_rows[z] > 0)
+            {
+                zone_load[z] /= static_cast<float>(zone_rows[z]);
+                load_total += zone_load[z];
+                counted++;
+            }
+        }
+        // fewer rows than zones cannot resolve a shoulder, so the gaps take the mean
+        float mean_load = counted > 0 ? load_total / static_cast<float>(counted) : 0.0f;
+        for (int z = 0; z < 3; z++)
+        {
+            if (zone_rows[z] == 0)
+            {
+                zone_load[z] = mean_load;
+            }
+        }
+        float share_total = zone_load[0] + zone_load[1] + zone_load[2];
+        for (int z = 0; z < 3; z++)
+        {
+            zone_share[z] = share_total > 1e-6f ? zone_load[z] / share_total : 1.0f / 3.0f;
+        }
+    }
+
     void Simulation::apply_tire_forces(float dt)
     {
             // --- setup ---
@@ -4232,40 +4276,7 @@ namespace car
                 // net_torque still integrate so mid air throttle spins the wheels and brakes stop them
                 if (!w.grounded || w.tire_load <= 0.0f)
                 {
-                    if (log_pacejka)
-                    {
-                        SP_LOG_INFO("[%s] airborne: grounded=%d, tire_load=%.1f", wheel_name, w.grounded, w.tire_load);
-                    }
-                    w.slip_angle = w.slip_ratio = w.lateral_force = w.camber_force = w.longitudinal_force = 0.0f;
-                    w.friction_use = w.slip_power = 0.0f;
-                    w.stiction_long = w.stiction_lat = 0.0f;
-
-                    float drag_torque = -w.angular_velocity * spec.bearing_friction * wmoi;
-                    float spin_retain = powf(PxClamp(spec.airborne_wheel_decay, 0.0f, 1.0f), dt * 200.0f);
-                    if (dt > 1e-5f)
-                    {
-                        drag_torque += w.angular_velocity * (spin_retain - 1.0f) * wmoi / dt;
-                    }
-                    float free_torque = w.drive_torque + drag_torque;
-                    float brake_signed = PxClamp(-(w.angular_velocity * wmoi / dt + free_torque), -w.brake_torque, w.brake_torque);
-                    w.force_debug.brake_torque = brake_signed;
-                    w.net_torque = free_torque + brake_signed;
-                    float final_spin = w.angular_velocity + w.net_torque * dt / wmoi;
-                    float brake_work = fabsf(brake_signed * (w.angular_velocity + final_spin) * 0.5f) * dt;
-                    w.brake_temp = PxMin(w.brake_temp + 0.9f * brake_work / PxMax(spec.brake_thermal_mass * spec.brake_specific_heat, 1.0f), spec.brake_max_temp);
-                    if (wheel_actor)
-                    {
-                        // irs: only the brake caliper reacts on the upright, drive is internal to the chassis
-                        safe_add_torque(wheel_actor, wheel_axis * w.net_torque);
-                        if (multibody.corners[i].upright)
-                        {
-                            safe_add_torque(multibody.corners[i].upright, wheel_axis * (-brake_signed - drag_torque));
-                        }
-                    }
-
-                    const float shares[3] = { 1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f };
-                    integrate_tire_thermal(w.thermal, spec, shares, 0.0f, 0.0f, (body->getLinearVelocity() - wind_velocity).magnitude(), dt, environment_enabled ? ambient_temperature : NAN);
-                    w.rotation += w.angular_velocity * dt;
+                    integrate_airborne_wheel(i, wheel_actor, wheel_axis, wmoi, dt);
                     continue;
                 }
 
@@ -4536,48 +4547,8 @@ namespace car
 
                 // zone load comes from the tread rows the contact probes actually loaded, so where a tire
                 // cooks follows the measured patch rather than an estimate made from camber alone
-                float zone_load[3] = { 0.0f, 0.0f, 0.0f };
-                int zone_rows[3] = { 0, 0, 0 };
                 float zone_share[3];
-                {
-                    int probe_rows = PxClamp(w.row_count, 1, max_tire_probe_rows);
-                    // row zero sits at negative offset along the spin axis, which is the outboard shoulder
-                    // on the left of the car and the inboard one on the right
-                    float side_sign = (i == front_left || i == rear_left) ? 1.0f : -1.0f;
-                    for (int r = 0; r < probe_rows; r++)
-                    {
-                        float offset = ((static_cast<float>(r) + 0.5f) / static_cast<float>(probe_rows) - 0.5f) * side_sign;
-                        int zone = PxClamp(static_cast<int>((0.5f - offset) * 3.0f), 0, 2);
-                        zone_load[zone] += w.row_load[r];
-                        zone_rows[zone]++;
-                    }
-
-                    float load_total = 0.0f;
-                    int counted = 0;
-                    for (int z = 0; z < 3; z++)
-                    {
-                        if (zone_rows[z] > 0)
-                        {
-                            zone_load[z] /= static_cast<float>(zone_rows[z]);
-                            load_total += zone_load[z];
-                            counted++;
-                        }
-                    }
-                    // fewer rows than zones cannot resolve a shoulder, so the gaps take the mean
-                    float mean_load = counted > 0 ? load_total / static_cast<float>(counted) : 0.0f;
-                    for (int z = 0; z < 3; z++)
-                    {
-                        if (zone_rows[z] == 0)
-                        {
-                            zone_load[z] = mean_load;
-                        }
-                    }
-                    float share_total = zone_load[0] + zone_load[1] + zone_load[2];
-                    for (int z = 0; z < 3; z++)
-                    {
-                        zone_share[z] = share_total > 1e-6f ? zone_load[z] / share_total : 1.0f / 3.0f;
-                    }
-                }
+                compute_zone_share(w, i == front_left || i == rear_left, zone_share);
 
                 float slip_energy = sum_slip_power * substep_inverse * dt;
                 w.dissipated_energy_j += slip_energy;
@@ -4663,6 +4634,46 @@ namespace car
             {
                 SP_LOG_INFO("=== pacejka tick end ===\n");
             }
+    }
+
+    void Simulation::integrate_airborne_wheel(int i, PxRigidDynamic* wheel_actor, const PxVec3& wheel_axis, float wmoi, float dt)
+    {
+        wheel& w = wheels[i];
+        const char* wheel_name = wheel_names[i];
+        if (log_pacejka)
+        {
+            SP_LOG_INFO("[%s] airborne: grounded=%d, tire_load=%.1f", wheel_name, w.grounded, w.tire_load);
+        }
+        w.slip_angle = w.slip_ratio = w.lateral_force = w.camber_force = w.longitudinal_force = 0.0f;
+        w.friction_use = w.slip_power = 0.0f;
+        w.stiction_long = w.stiction_lat = 0.0f;
+
+        float drag_torque = -w.angular_velocity * spec.bearing_friction * wmoi;
+        float spin_retain = powf(PxClamp(spec.airborne_wheel_decay, 0.0f, 1.0f), dt * 200.0f);
+        if (dt > 1e-5f)
+        {
+            drag_torque += w.angular_velocity * (spin_retain - 1.0f) * wmoi / dt;
+        }
+        float free_torque = w.drive_torque + drag_torque;
+        float brake_signed = PxClamp(-(w.angular_velocity * wmoi / dt + free_torque), -w.brake_torque, w.brake_torque);
+        w.force_debug.brake_torque = brake_signed;
+        w.net_torque = free_torque + brake_signed;
+        float final_spin = w.angular_velocity + w.net_torque * dt / wmoi;
+        float brake_work = fabsf(brake_signed * (w.angular_velocity + final_spin) * 0.5f) * dt;
+        w.brake_temp = PxMin(w.brake_temp + 0.9f * brake_work / PxMax(spec.brake_thermal_mass * spec.brake_specific_heat, 1.0f), spec.brake_max_temp);
+        if (wheel_actor)
+        {
+            // irs: only the brake caliper reacts on the upright, drive is internal to the chassis
+            safe_add_torque(wheel_actor, wheel_axis * w.net_torque);
+            if (multibody.corners[i].upright)
+            {
+                safe_add_torque(multibody.corners[i].upright, wheel_axis * (-brake_signed - drag_torque));
+            }
+        }
+
+        const float shares[3] = { 1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f };
+        integrate_tire_thermal(w.thermal, spec, shares, 0.0f, 0.0f, (body->getLinearVelocity() - wind_velocity).magnitude(), dt, environment_enabled ? ambient_temperature : NAN);
+        w.rotation += w.angular_velocity * dt;
     }
 
 
