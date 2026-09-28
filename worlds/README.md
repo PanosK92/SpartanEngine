@@ -16,11 +16,13 @@ Each world has two homes:
 
 Do not put one world's content in shared folders. That means no world assets in
 `project/scripts/`, `project/music/`, `project/mcp/blockout/`, other worlds'
-resource folders or `tools/`. `tools/` is for engine and project tooling, not for
-generators of a single world's assets; those go in `<world>_resources/sources/`.
-Only content that several worlds share lives outside a resource folder:
-`project/materials/` (texture library), `project/models/`, `project/cars/` and
-shared scripts in `project/scripts/`, such as `footsteps.lua` and `sun.lua`.
+resource folders, new top-level `project/` folders or `tools/`. `tools/` is for
+engine and project tooling, not for generators of a single world's assets; those
+go in `<world>_resources/sources/`, and authored areas with their own pipeline get
+a subfolder, e.g. `plan_resources/home_garage/` and `plan_resources/exo_chora/`.
+Only content that several worlds or engine code share lives outside a resource
+folder; `binaries/project/README.md` lists those folders, how to clean up safely
+and how to package the project.
 
 MCP tools write to `project/mcp/blockout/` by default (materials, textures,
 screenshots). When something made there becomes part of a world, move it into

@@ -126,8 +126,33 @@ namespace spartan
 
             const Vector3 old_upper = (mid_pos - root_pos).Normalized();
             const Vector3 new_upper = (blended_mid - root_pos).Normalized();
-            const Quaternion root_rot = Quaternion::FromRotation(old_upper, new_upper) *
-                globals[root_index].GetRotation();
+            const Quaternion swing = Quaternion::FromRotation(old_upper, new_upper);
+
+            // the knee is a hinge, a bare swing leaves the thigh twisted off the new bend plane and the
+            // calf then bends sideways out of the joint. twist the thigh about itself so the clip's hinge
+            // axis lands on the solved one
+            Quaternion twist = Quaternion::Identity;
+            {
+                const Vector3 old_hinge = (mid_pos - root_pos).Cross(end_pos - mid_pos);
+                const Vector3 new_hinge = (blended_mid - root_pos).Cross(blended_end - blended_mid);
+                // a near straight clip knee has no reliable hinge, trust it only as it clearly bends
+                const float old_sin = old_hinge.Length() / (len_upper * len_lower);
+                const float trust = clamp((old_sin - 0.05f) / 0.15f, 0.0f, 1.0f);
+                if (trust > 0.0f && new_hinge.LengthSquared() > 1.0e-6f)
+                {
+                    Vector3 from = swing * old_hinge.Normalized();
+                    Vector3 to = new_hinge.Normalized();
+                    from = from - new_upper * from.Dot(new_upper);
+                    to = to - new_upper * to.Dot(new_upper);
+                    // a hinge flipped past 90 degrees is a knee bending backwards in the clip, leave it
+                    if (from.LengthSquared() > 1.0e-6f && to.LengthSquared() > 1.0e-6f && from.Normalized().Dot(to.Normalized()) > 0.0f)
+                    {
+                        twist = Quaternion::Lerp(Quaternion::Identity, Quaternion::FromRotation(from, to), trust);
+                    }
+                }
+            }
+            const Quaternion thigh_delta = twist * swing;
+            const Quaternion root_rot = thigh_delta * globals[root_index].GetRotation();
 
             const int16_t root_parent = skeleton.parent_indices[root_index];
             const Matrix root_parent_global = root_parent < 0
@@ -141,14 +166,16 @@ namespace spartan
             );
             local_matrices[root_index] = to_local(root_global_ik, root_parent_global);
 
-            const Vector3 old_lower = (end_pos - mid_pos).Normalized();
+            // the calf rides the thigh first, then bends about the hinge alone, so it never twists
+            // against the thigh
+            const Vector3 old_lower = thigh_delta * (end_pos - mid_pos).Normalized();
             const Vector3 new_lower = (blended_end - blended_mid).Normalized();
             if (new_lower.LengthSquared() < k_epsilon)
             {
                 return false;
             }
 
-            const Quaternion mid_rot_global = Quaternion::FromRotation(old_lower, new_lower) *
+            const Quaternion mid_rot_global = Quaternion::FromRotation(old_lower, new_lower) * thigh_delta *
                 globals[mid_index].GetRotation();
             const Matrix mid_global_ik = make_trs(
                 blended_mid,
@@ -163,31 +190,23 @@ namespace spartan
             const Skeleton& skeleton,
             vector<Matrix>& local_matrices,
             const uint32_t end_index,
+            const Quaternion& clip_rotation_model,
             const Vector3& ground_normal_model,
-            const float weight
+            const float tilt_weight
         )
         {
-            if (weight <= 0.0f ||
-                local_matrices.size() != skeleton.joint_count ||
-                end_index >= skeleton.joint_count ||
-                ground_normal_model.LengthSquared() < k_epsilon)
+            if (local_matrices.size() != skeleton.joint_count || end_index >= skeleton.joint_count)
             {
                 return false;
             }
 
-            const float w = clamp(weight, 0.0f, 1.0f);
+            const float w = clamp(tilt_weight, 0.0f, 1.0f);
 
-            Vector3 w_up = ground_normal_model.Normalized();
+            Vector3 w_up = ground_normal_model.LengthSquared() < k_epsilon ? Vector3::Up : ground_normal_model.Normalized();
             // keep sole facing above the surface
             if (w_up.Dot(Vector3::Up) < 0.0f)
             {
                 w_up = -w_up;
-            }
-
-            // flat ground, the clip pose is already right
-            if (w_up.Dot(Vector3::Up) > 0.99999f)
-            {
-                return true;
             }
 
             vector<Matrix> globals(skeleton.joint_count);
@@ -195,10 +214,12 @@ namespace spartan
 
             // the slope is the only thing the clip does not know about, so the ground tilt is the
             // whole correction, flattening the sole onto the ground would erase heel strike and toe off
-            const Quaternion end_rot = globals[end_index].GetRotation();
-            const Quaternion planted = Quaternion::FromRotation(Vector3::Up, w_up) * end_rot;
-
-            const Quaternion end_rot_blend = Quaternion::Lerp(end_rot, planted, w);
+            Quaternion end_rot_blend = clip_rotation_model;
+            if (w > 0.0f && w_up.Dot(Vector3::Up) < 0.99999f)
+            {
+                const Quaternion planted = Quaternion::FromRotation(Vector3::Up, w_up) * clip_rotation_model;
+                end_rot_blend = Quaternion::Lerp(clip_rotation_model, planted, w);
+            }
 
             const int16_t parent = skeleton.parent_indices[end_index];
             const Matrix parent_global = parent < 0

@@ -101,17 +101,25 @@ namespace spartan
             int32_t ball  = -1;
             // bind-pose knee bend in model space, pole when the animated leg is too straight to tell
             math::Vector3 knee_pole_bind = math::Vector3(0.0f, 0.0f, -1.0f);
+            // where the kneecap faces, in thigh space, so it follows the clip's hip rotation
+            math::Vector3 kneecap_thigh_local = math::Vector3(0.0f, 0.0f, -1.0f);
+            bool has_kneecap = false;
             // ankle height above the sole with the foot flat, the clip lifting past it is a swing
             float ankle_height = 0.11f;
             // the ik only adds the height difference between the clip floor and the real ground under
             // the foot, on flat ground that is zero and the clip plays untouched, so heel strike, toe
             // off and stride all keep their authored timing
             float smooth_lift = 0.0f;
+            // ground under the sole, smoothed in world space so the root climbing a step never drags a
+            // planted foot with it
+            float smooth_ground_y_world = 0.0f;
             // 0..1, how planted the clip has this foot, read off its height not off a ray
             float smooth_plant = 0.0f;
+            // world space, converted to model space per frame so turning never tilts the sole
             math::Vector3 smooth_normal = math::Vector3::Up;
             // clip foot position plus the smoothed lift, sampled before the pelvis moves
             math::Vector3 target_model = math::Vector3::Zero;
+            math::Vector3 normal_model = math::Vector3::Up;
             float ground_y_world = 0.0f;
             bool ground_hit = false;
             bool has_smooth = false;
@@ -201,6 +209,9 @@ namespace spartan
         float m_foot_ik_blend = 0.0f;
         float m_foot_ik_ground_offset = 0.0f;
         float m_foot_ik_pelvis_offset = 0.0f;
+        // last root position, the pelvis offset absorbs root height changes so the body stays continuous
+        math::Vector3 m_foot_ik_root_previous = math::Vector3::Zero;
+        bool m_foot_ik_root_previous_valid = false;
         float m_foot_ik_support_ground_y = 0.0f;
         bool m_foot_ik_has_support = false;
         FootIkLeg m_foot_ik_l;

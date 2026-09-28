@@ -31,15 +31,16 @@ namespace spartan
             float weight
         );
 
-        // tilt the foot by the ground slope only, model up onto the ground normal, so the heel and
-        // toe roll authored in the clip survive. flat ground is a no op
-        // toe locals are left alone, the toes ride the tilt as part of the same sole
+        // give the foot back its clip rotation, which the knee solve changed by rotating the calf, then
+        // tilt it by the ground slope only (model up onto the ground normal), so the heel and toe roll
+        // authored in the clip survive. toe locals are left alone, the toes ride the foot as one sole
         bool PlantFoot(
             const Skeleton& skeleton,
             std::vector<math::Matrix>& local_matrices,
             uint32_t end_index,
+            const math::Quaternion& clip_rotation_model,
             const math::Vector3& ground_normal_model,
-            float weight
+            float tilt_weight
         );
     }
 }

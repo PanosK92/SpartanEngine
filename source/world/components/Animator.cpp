@@ -604,6 +604,23 @@ namespace spartan
                     {
                         leg.knee_pole_bind = knee_off.Normalized();
                     }
+
+                    // bind legs are near straight so the knee offset is mostly noise, the kneecap faces
+                    // the toes, which the bind pose states clearly
+                    leg.has_kneecap = false;
+                    Vector3 kneecap = leg.knee_pole_bind;
+                    if (leg.ball >= 0)
+                    {
+                        Vector3 toe = bind_matrix(static_cast<uint32_t>(leg.ball)).GetTranslation() - foot_pos;
+                        toe = toe - axis * toe.Dot(axis);
+                        if (toe.LengthSquared() > 1.0e-6f)
+                        {
+                            kneecap = toe.Normalized();
+                        }
+                    }
+                    const Quaternion thigh_rotation = bind_matrix(static_cast<uint32_t>(leg.thigh)).GetRotation();
+                    leg.kneecap_thigh_local = (thigh_rotation.Inverse() * kneecap).Normalized();
+                    leg.has_kneecap = true;
                 }
             }
         };
@@ -658,37 +675,85 @@ namespace spartan
         constexpr float ray_down = 1.5f;
         constexpr float max_lift = 0.5f;
         constexpr float max_drop = 0.35f;
+        // past the ball joint to the tip of the shoe
+        constexpr float toe_reach = 0.07f;
+        // toe hit this far off the heel plane is a step edge, not a slope
+        constexpr float edge_tolerance = 0.03f;
 
-        float lift = 0.0f;
-        Vector3 normal_model = Vector3::Up;
-
-        PhysicsRaycastHit hit;
-        if (PhysicsWorld::RaycastStatic(
-            foot_world + Vector3::Up * ray_up,
-            -Vector3::Up,
-            ray_up + ray_down,
-            hit,
-            ignore_entity))
+        auto cast_down = [&](const Vector3& from_world, PhysicsRaycastHit& out) -> bool
         {
-            Vector3 ground_n = hit.normal;
-            if (ground_n.Dot(Vector3::Up) < 0.0f)
+            if (!PhysicsWorld::RaycastStatic(from_world + Vector3::Up * ray_up, -Vector3::Up, ray_up + ray_down, out, ignore_entity))
             {
-                ground_n = -ground_n;
+                return false;
             }
-
-            leg.ground_hit = true;
-            leg.ground_y_world = hit.position.y;
-
-            // the clip already puts the foot on its own floor, the ik adds only the difference to the
-            // real ground under it. zero on level ground, so nothing lags, slides or flattens there
-            const float ground_model_y = (world_to_model * hit.position).y;
-            lift = clamp(ground_model_y - clip_floor_y, -max_drop, max_lift);
-
-            Vector3 n = (world_to_model * ground_n) - (world_to_model * Vector3::Zero);
-            if (n.LengthSquared() > 1.0e-10f)
+            if (out.normal.Dot(Vector3::Up) < 0.0f)
             {
-                normal_model = n.Normalized();
+                out.normal = -out.normal;
             }
+            return true;
+        };
+
+        // the sole spans heel to toe, one ray under the ankle lets the toes sink into a step the heel
+        // is still in front of, so probe both ends
+        PhysicsRaycastHit heel_hit;
+        const bool heel_ok = cast_down(foot_world, heel_hit);
+
+        PhysicsRaycastHit toe_hit;
+        bool toe_ok = false;
+        if (leg.ball >= 0)
+        {
+            const Vector3 ball_world = model_to_world * globals[static_cast<uint32_t>(leg.ball)].GetTranslation();
+            Vector3 forward = ball_world - foot_world;
+            forward.y = 0.0f;
+            if (forward.LengthSquared() > 1.0e-6f)
+            {
+                toe_ok = cast_down(ball_world + forward.Normalized() * toe_reach, toe_hit);
+            }
+        }
+
+        float ground_y = 0.0f;
+        Vector3 ground_n = Vector3::Up;
+        if (heel_ok && toe_ok)
+        {
+            // on one plane (flat or slope) the heel carries the ankle and the tilt brings the toes
+            // along, across a step edge the sole rests on whichever end is higher and stays level
+            const Vector3 n = heel_hit.normal;
+            const float dx = toe_hit.position.x - heel_hit.position.x;
+            const float dz = toe_hit.position.z - heel_hit.position.z;
+            const float plane_y = n.y > 0.2f ? heel_hit.position.y - (n.x * dx + n.z * dz) / n.y : heel_hit.position.y;
+            if (fabsf(toe_hit.position.y - plane_y) <= edge_tolerance)
+            {
+                ground_y = heel_hit.position.y;
+                ground_n = heel_hit.normal;
+            }
+            else if (toe_hit.position.y > heel_hit.position.y)
+            {
+                ground_y = toe_hit.position.y;
+                ground_n = toe_hit.normal;
+            }
+            else
+            {
+                ground_y = heel_hit.position.y;
+                ground_n = heel_hit.normal;
+            }
+        }
+        else if (heel_ok || toe_ok)
+        {
+            const PhysicsRaycastHit& hit = heel_ok ? heel_hit : toe_hit;
+            ground_y = hit.position.y;
+            ground_n = hit.normal;
+        }
+
+        leg.ground_hit = heel_ok || toe_ok;
+        if (leg.ground_hit)
+        {
+            leg.ground_y_world = ground_y;
+        }
+        else
+        {
+            // nothing under the foot, ease back to the clip floor so the leg plays untouched
+            ground_y = (model_to_world * Vector3(0.0f, clip_floor_y, 0.0f)).y;
+            ground_n = Vector3::Up;
         }
 
         // no ground, nothing to adapt to, let the clip through
@@ -696,20 +761,34 @@ namespace spartan
 
         if (!leg.has_smooth)
         {
-            leg.smooth_lift = lift;
-            leg.smooth_normal = normal_model;
+            leg.smooth_ground_y_world = ground_y;
+            leg.smooth_normal = ground_n;
             leg.smooth_plant = 0.0f;
             leg.has_smooth = true;
         }
 
-        // only the vertical lift is smoothed, a scalar with no horizontal part, so the foot follows
-        // the clip exactly on the ground plane and the old world space target lag is gone
-        leg.smooth_lift += (lift - leg.smooth_lift) * blend;
-        leg.smooth_normal = Vector3::Lerp(leg.smooth_normal, normal_model, blend).Normalized();
+        // the ground is smoothed in world space, a planted foot keeps its ground while the root climbs,
+        // smoothing a root relative lift instead let the foot float off the step for a tenth of a second.
+        // rising ground is taken faster so a swinging toe clears the step nose
+        const float ground_rate = ground_y > leg.smooth_ground_y_world ? 24.0f : 12.0f;
+        leg.smooth_ground_y_world += (ground_y - leg.smooth_ground_y_world) * (1.0f - expf(-ground_rate * dt_clamped));
+        leg.smooth_normal = Vector3::Lerp(leg.smooth_normal, ground_n, blend).Normalized();
         leg.smooth_plant += (plant_target - leg.smooth_plant) * blend;
 
+        // the clip already puts the foot on its own floor, the ik adds only the difference to the real
+        // ground under it. zero on level ground, so nothing lags, slides or flattens there
+        const Vector3 ground_world = Vector3(foot_world.x, leg.smooth_ground_y_world, foot_world.z);
+        leg.smooth_lift = clamp((world_to_model * ground_world).y - clip_floor_y, -max_drop, max_lift);
+
+        Vector3 n = (world_to_model * leg.smooth_normal) - (world_to_model * Vector3::Zero);
+        leg.normal_model = n.LengthSquared() > 1.0e-10f ? n.Normalized() : Vector3::Up;
+
+        // a swinging foot keeps any lift that raises it, so it clears higher ground instead of passing
+        // through the riser, but is only pulled down onto lower ground as it plants
+        const float lift = leg.smooth_lift >= 0.0f ? leg.smooth_lift : leg.smooth_lift * leg.smooth_plant;
+
         // sampled before the pelvis moves, the foot must end up here no matter what the pelvis does
-        leg.target_model = foot_model + Vector3::Up * leg.smooth_lift;
+        leg.target_model = foot_model + Vector3::Up * lift;
     }
 
     bool Animator::SolveFootIkLeg(
@@ -719,7 +798,9 @@ namespace spartan
         FootIkLeg& leg
     )
     {
-        const float weight = leg.smooth_plant * m_foot_ik_weight * m_foot_ik_blend;
+        // the target already fades a swinging foot's downward lift, so the chain itself runs at full
+        // weight, only the slope tilt of the sole scales with how planted the foot is
+        const float weight = m_foot_ik_weight * m_foot_ik_blend;
         if (leg.thigh < 0 || leg.calf < 0 || leg.foot < 0 || weight <= 0.001f)
         {
             return false;
@@ -731,11 +812,13 @@ namespace spartan
         const Vector3 foot_model = globals[foot_i].GetTranslation();
         const Vector3 knee_model = globals[calf_i].GetTranslation();
         const Vector3 thigh_model = globals[thigh_i].GetTranslation();
+        // the pelvis edit only translates, so this is the clip's sole orientation
+        const Quaternion clip_foot_rotation = globals[foot_i].GetRotation();
 
         // level ground and a still pelvis, the clip already has the foot where it must be, solving
         // anyway would only re-derive the leg through the pole and nudge the knee
         const Vector3 correction = leg.target_model - foot_model;
-        const bool flat_normal = leg.smooth_normal.Dot(Vector3::Up) > 0.99999f;
+        const bool flat_normal = leg.normal_model.Dot(Vector3::Up) > 0.99999f;
         if (correction.LengthSquared() < 1.0e-6f && flat_normal)
         {
             return false;
@@ -752,10 +835,46 @@ namespace spartan
         }
         const Vector3 axis = hip_to_target.Normalized();
 
-        // bend the knee where the clip bends it, the bind side only decides for a straight leg
-        Vector3 prefer = knee_model - thigh_model;
-        prefer = prefer - axis * prefer.Dot(axis);
-        if (prefer.LengthSquared() < 4.0e-4f)
+        // anatomy: the knee is a hinge that tracks over the toes. the thigh's kneecap (it carries the
+        // clip's hip rotation) and the live toe direction agree on a real leg, and together they keep a
+        // raised knee from collapsing inward. a clearly bent clip knee already states its plane, so it
+        // takes over as it bends
+        Vector3 anatomical = Vector3::Zero;
+        if (leg.has_kneecap)
+        {
+            anatomical += globals[thigh_i].GetRotation() * leg.kneecap_thigh_local;
+        }
+        if (leg.ball >= 0)
+        {
+            Vector3 toe = globals[static_cast<uint32_t>(leg.ball)].GetTranslation() - foot_model;
+            toe = toe - axis * toe.Dot(axis);
+            if (toe.LengthSquared() > 1.0e-6f)
+            {
+                anatomical += toe.Normalized();
+            }
+        }
+        anatomical = anatomical - axis * anatomical.Dot(axis);
+
+        Vector3 clip_bend = knee_model - thigh_model;
+        clip_bend = clip_bend - axis * clip_bend.Dot(axis);
+        const float clip_bend_length = clip_bend.Length();
+
+        Vector3 prefer = Vector3::Zero;
+        if (anatomical.LengthSquared() > 1.0e-6f)
+        {
+            prefer = anatomical.Normalized();
+            // 3 cm of knee offset is noise, 8 cm is a knee the clip means to bend
+            const float clip_trust = clamp((clip_bend_length - 0.03f) / 0.05f, 0.0f, 1.0f);
+            if (clip_trust > 0.0f && clip_bend.Dot(prefer) > 0.0f)
+            {
+                prefer = Vector3::Lerp(prefer, clip_bend / clip_bend_length, clip_trust);
+            }
+        }
+        else if (clip_bend_length > 0.02f)
+        {
+            prefer = clip_bend / clip_bend_length;
+        }
+        else
         {
             prefer = leg.knee_pole_bind - axis * leg.knee_pole_bind.Dot(axis);
         }
@@ -787,8 +906,9 @@ namespace spartan
             skeleton,
             local_matrices,
             foot_i,
-            leg.smooth_normal,
-            weight
+            clip_foot_rotation,
+            leg.normal_model,
+            leg.smooth_plant * weight
         );
         return true;
     }
@@ -810,6 +930,7 @@ namespace spartan
         {
             m_foot_ik_blend = 0.0f;
             m_foot_ik_has_support = false;
+            m_foot_ik_root_previous_valid = false;
             // next enable re-seeds the smoothing from the live foot instead of a stale target
             m_foot_ik_l.has_smooth = false;
             m_foot_ik_r.has_smooth = false;
@@ -885,6 +1006,21 @@ namespace spartan
         const float ask_l = lift_r + (lift_l - lift_r) * m_foot_ik_l.smooth_plant;
         const float ask_r = lift_l + (lift_r - lift_l) * m_foot_ik_r.smooth_plant;
         const float pelvis_target = min(ask_l, ask_r) * m_foot_ik_weight * m_foot_ik_blend;
+
+        // the root climbs steps at its own rate, carry the offset across that move so the body keeps its
+        // world height and only eases toward the feet, a teleport is not carried
+        // while ik fades out for a jump the body must leave with the root, so only carry when enabled
+        const Vector3 root_position = root->GetPosition();
+        if (m_foot_ik_root_previous_valid && m_foot_ik_enabled)
+        {
+            const float root_rise = -(world_to_model * m_foot_ik_root_previous).y;
+            if (fabsf(root_rise) < 0.5f)
+            {
+                m_foot_ik_pelvis_offset = clamp(m_foot_ik_pelvis_offset - root_rise, -0.6f, 0.6f);
+            }
+        }
+        m_foot_ik_root_previous = root_position;
+        m_foot_ik_root_previous_valid = true;
 
         const float blend = 1.0f - expf(-5.0f * ik_dt_clamped);
         m_foot_ik_pelvis_offset += (pelvis_target - m_foot_ik_pelvis_offset) * blend;
@@ -1365,6 +1501,7 @@ namespace spartan
         m_current_clip.clear();
         m_foot_ik_blend   = 0.0f;
         m_foot_ik_pelvis_offset = 0.0f;
+        m_foot_ik_root_previous_valid = false;
         m_foot_ik_has_support = false;
         m_foot_ik_l.has_smooth = false;
         m_foot_ik_r.has_smooth = false;
