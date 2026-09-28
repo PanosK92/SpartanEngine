@@ -1586,19 +1586,15 @@ namespace spartan
             }
         }
 
+        // go through the cached setters, writing the state directly left the cache stale and dropped the next matching imgui clip rect
         if (width > 0 && height > 0)
         {
-            D3D12_VIEWPORT viewport = {};
-            viewport.Width    = static_cast<float>(width);
-            viewport.Height   = static_cast<float>(height);
-            viewport.MinDepth = 0.0f;
-            viewport.MaxDepth = 1.0f;
-            cmd_list->RSSetViewports(1, &viewport);
+            RHI_Viewport viewport;
+            viewport.width  = static_cast<float>(width);
+            viewport.height = static_cast<float>(height);
+            set_viewport(viewport);
 
-            D3D12_RECT scissor = {};
-            scissor.right  = static_cast<LONG>(width);
-            scissor.bottom = static_cast<LONG>(height);
-            cmd_list->RSSetScissorRects(1, &scissor);
+            set_scissor_rectangle(math::Rectangle(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)));
         }
 
         // variable rate shading, bind the per-image shading rate texture when the pass requests it, otherwise disable

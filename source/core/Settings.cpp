@@ -121,14 +121,122 @@ namespace spartan
             return result;
         }
 
-        bool is_render_cvar(string_view name)
-        {
-            return name.size() >= 2 && name[0] == 'r' && name[1] == '.';
-        }
-
         bool is_debug_cvar(string_view name)
         {
             return name.starts_with("debug.");
+        }
+
+        // diagnostic views are temporary, persisting them poisons the next launch
+        bool is_persisted_cvar(string_view name)
+        {
+            return name != "r.fog.debug";
+        }
+
+        // spartan.xml sections, in file order, a cvar lands in the first section whose name list contains it
+        struct SettingsSection
+        {
+            const char* title;
+            vector<string_view> names;
+        };
+
+        const vector<SettingsSection>& get_sections()
+        {
+            static const vector<SettingsSection> sections =
+            {
+                { "DEBUGGING - validation, profiling, markers and tooling",
+                  { } },
+                { "DISPLAY - output, resolution, upscaling and tonemapping",
+                  { "r.hdr", "r.gamma", "r.vsync", "r.tonemapping", "r.resolution_scale", "r.dynamic_resolution", "r.antialiasing_upsampling", "r.dlss_reactivity", "r.variable_rate_shading" } },
+                { "LIGHTING - ambient occlusion, ray tracing and global illumination",
+                  { "r.ssao", "r.ray_traced_shadows", "r.ray_traced_reflections", "r.rt_light_culling", "r.restir_pt", "r.restir_pt_direct", "r.restir_pt_emissive_pool", "r.restir_pt_scale", "r.restir_pt_reference" } },
+                { "LIGHT FLARES - coronas around distant lights",
+                  { "r.light_flares", "r.light_flares_near_distance", "r.light_flares_fade_length", "r.light_flares_max_distance", "r.light_flares_size_scale", "r.light_flares_intensity_scale", "r.light_flares_max_size_px", "r.light_flares_occlusion" } },
+                { "ATMOSPHERE - haze and mist",
+                  { "r.atmosphere.mist_density", "r.atmosphere.mist_height", "r.atmosphere.ground_mist", "r.atmosphere.mist_variation" } },
+                { "POST PROCESSING - camera and film effects",
+                  { "r.bloom", "r.bloom_scatter", "r.motion_blur", "r.depth_of_field", "r.film_grain", "r.vhs", "r.chromatic_aberration", "r.dithering", "r.sharpness" } },
+                { "GEOMETRY - mesh shaders, culling and level of detail",
+                  { "r.mesh_shaders", "r.hiz_occlusion", "r.hiz_depth_bias", "r.meshlet_cull_skinned", "r.foliage_impostors", "r.tree_wind_cache_entries" } },
+                { "GRASS",
+                  { "r.grass_specialized", "r.grass_lod_pixels", "r.grass_track_radius", "r.grass_track_recovery" } },
+                { "TEXTURES - streaming",
+                  { "r.texture_streaming", "r.texture_streaming_budget_mb", "r.texture_streaming_upload_mb" } },
+                { "EDITOR - viewport helpers and overlays",
+                  { "r.grid", "r.transform_handle", "r.transform_snap", "r.transform_snap_translate", "r.transform_snap_rotate", "r.transform_snap_scale", "r.selection_outline", "r.entity_icons", "r.performance_metrics", "r.screenshot_ui" } },
+                { "DEBUG VIEWS - visualisations for inspecting the renderer",
+                  { "r.wireframe", "r.aabb", "r.picking_ray", "r.physics", "r.ragdoll", "r.meshlet_visualize", "r.cluster_visualize", "r.cluster_visualize_cap" } },
+                { "AUDIO",
+                  { } },
+                { "OTHER - options without a section yet",
+                  { } },
+            };
+
+            return sections;
+        }
+
+        size_t get_section_index(string_view name)
+        {
+            const vector<SettingsSection>& sections = get_sections();
+            for (size_t i = 0; i < sections.size(); i++)
+            {
+                if (find(sections[i].names.begin(), sections[i].names.end(), name) != sections[i].names.end())
+                {
+                    return i;
+                }
+            }
+
+            if (is_debug_cvar(name))
+            {
+                return 0;
+            }
+            if (name.starts_with("audio."))
+            {
+                return sections.size() - 2;
+            }
+            return sections.size() - 1;
+        }
+
+        string cvar_value_to_string(const CVarVariant& value)
+        {
+            return visit([](const auto& v) -> string
+            {
+                using T = decay_t<decltype(v)>;
+                if constexpr (is_same_v<T, string>)
+                {
+                    return v;
+                }
+                else if constexpr (is_same_v<T, bool>)
+                {
+                    return v ? "true" : "false";
+                }
+                else if constexpr (is_same_v<T, float>)
+                {
+                    char buffer[32];
+                    snprintf(buffer, sizeof(buffer), "%g", v);
+                    return buffer;
+                }
+                else
+                {
+                    return to_string(v);
+                }
+            }, value);
+        }
+
+        void append_comment(pugi::xml_node& root, string text)
+        {
+            // xml comments cannot contain a double dash
+            for (size_t pos = text.find("--"); pos != string::npos; pos = text.find("--"))
+            {
+                text.replace(pos, 2, "-");
+            }
+            root.append_child(pugi::node_comment).set_value((" " + text + " ").c_str());
+        }
+
+        void append_section(pugi::xml_node& root, const char* title)
+        {
+            append_comment(root, "==================================================================");
+            append_comment(root, title);
+            append_comment(root, "==================================================================");
         }
 
         void load_debug_cvars(const pugi::xml_node& root)
@@ -161,8 +269,11 @@ namespace spartan
             pugi::xml_document doc;
 
             // write settings
+            append_comment(doc, "Spartan settings. The engine rewrites this file when it exits, so edit it while the engine is closed.");
+            append_comment(doc, "Each option has a comment above it with what it does and its default. Delete the file to reset everything.");
             pugi::xml_node root = doc.append_child("Settings");
             {
+                append_section(root, "WINDOW - window state and resolution");
                 root.append_child("FullScreen").text().set(Window::IsFullScreen());
                 root.append_child("IsMouseVisible").text().set(Input::GetMouseCursorVisible());
 
@@ -189,61 +300,52 @@ namespace spartan
                 root.append_child("ResolutionRenderWidth").text().set(render_w);
                 root.append_child("ResolutionRenderHeight").text().set(render_h);
                 root.append_child("FPSLimit").text().set(Timer::GetFpsLimit());
+                append_comment(root, "load shaders from the repository data/shaders folder instead of the copy next to the executable");
+                root.append_child("UseRootShaderDirectory").text().set(ResourceCache::GetUseRootShaderDirectory());
 
-                // debug options first, sorted and described, so they are discoverable in the file
-                vector<pair<string_view, const ConsoleVariable*>> cvars;
+                // every console variable, grouped by section and in section order
+                const vector<SettingsSection>& sections = get_sections();
+                vector<vector<pair<string_view, const ConsoleVariable*>>> grouped(sections.size());
                 for (const auto& [name, cvar] : ConsoleRegistry::Get().GetAll())
                 {
-                    cvars.emplace_back(name, &cvar);
+                    if (is_persisted_cvar(name))
+                    {
+                        grouped[get_section_index(name)].emplace_back(name, &cvar);
+                    }
                 }
-                sort(cvars.begin(), cvars.end(), [](const auto& a, const auto& b)
-                {
-                    const bool a_debug = is_debug_cvar(a.first);
-                    const bool b_debug = is_debug_cvar(b.first);
-                    return a_debug != b_debug ? a_debug : a.first < b.first;
-                });
 
-                for (const auto& [name, cvar_ptr] : cvars)
+                for (size_t i = 0; i < sections.size(); i++)
                 {
-                    const ConsoleVariable& cvar = *cvar_ptr;
-
-                    // Diagnostic transport views are temporary, never a startup setting.
-                    if (name == "r.fog.debug")
+                    vector<pair<string_view, const ConsoleVariable*>>& cvars = grouped[i];
+                    if (cvars.empty())
                     {
                         continue;
                     }
-                    if (is_render_cvar(name) || is_debug_cvar(name))
-                    {
-                        if (is_debug_cvar(name) && !cvar.m_hint.empty())
-                        {
-                            string hint = string(cvar.m_hint) + (cvar.m_on_change == startup_only ? ", read at startup" : "");
-                            root.append_child(pugi::node_comment).set_value((" " + hint + " ").c_str());
-                        }
 
-                        pugi::xml_text text = root.append_child(cvar_name_to_xml(string(name).c_str()).c_str()).text();
-                        if (name == "r.resolution_scale" && cvar_dynamic_resolution.GetValueAs<bool>())
-                        {
-                            text.set(1.0f);
-                        }
-                        else
-                        {
-                            // render cvars can hold any of the supported console variable types
-                            visit([&text](const auto& value)
-                            {
-                                if constexpr (is_same_v<decay_t<decltype(value)>, string>)
-                                {
-                                    text.set(value.c_str());
-                                }
-                                else
-                                {
-                                    text.set(value);
-                                }
-                            }, *cvar.m_value_ptr);
-                        }
+                    // listed sections keep their authored order, the rest are alphabetical
+                    const vector<string_view>& order = sections[i].names;
+                    sort(cvars.begin(), cvars.end(), [&order](const auto& a, const auto& b)
+                    {
+                        const auto a_it = find(order.begin(), order.end(), a.first);
+                        const auto b_it = find(order.begin(), order.end(), b.first);
+                        return a_it != b_it ? a_it < b_it : a.first < b.first;
+                    });
+
+                    append_section(root, sections[i].title);
+                    for (const auto& [name, cvar_ptr] : cvars)
+                    {
+                        const ConsoleVariable& cvar = *cvar_ptr;
+
+                        string comment = cvar.m_hint.empty() ? string(name) : string(cvar.m_hint);
+                        comment += " (default " + cvar_value_to_string(cvar.m_default_value);
+                        comment += cvar.m_on_change == startup_only ? ", read at startup)" : ")";
+                        append_comment(root, comment);
+
+                        const bool dynamic_scale = name == "r.resolution_scale" && cvar_dynamic_resolution.GetValueAs<bool>();
+                        const string value       = dynamic_scale ? "1" : cvar_value_to_string(*cvar.m_value_ptr);
+                        root.append_child(cvar_name_to_xml(string(name).c_str()).c_str()).text().set(value.c_str());
                     }
                 }
-
-                root.append_child("UseRootShaderDirectory").text().set(ResourceCache::GetUseRootShaderDirectory());
             }
 
             if (!doc.save_file(file_path.c_str()))
@@ -307,7 +409,7 @@ namespace spartan
                     root.child("r_grass_track_radius").text().as_float() == 8.0f &&
                     root.child("r_grass_track_recovery").text().as_float() == 1.5f;
 
-                // load render options from xml
+                // load console variables from xml
                 for (const auto& [name, cvar] : ConsoleRegistry::Get().GetAll())
                 {
                     if (legacy_grass_tracks &&
@@ -321,7 +423,8 @@ namespace spartan
                         cvar_fog_debug.SetValue(0.0f);
                         continue;
                     }
-                    if (is_render_cvar(name))
+                    // debug cvars were already read before initialization
+                    if (is_persisted_cvar(name) && !is_debug_cvar(name))
                     {
                         pugi::xml_node child = root.child(cvar_name_to_xml(string(name).c_str()).c_str());
                         if (child)
@@ -375,6 +478,9 @@ namespace spartan
         {
             load();
         }
+
+        // write right away so a missing or outdated file shows every option while the engine runs, not only after exit
+        save();
     }
     
     void Settings::Shutdown()
