@@ -20,6 +20,7 @@ Commercial use requires written permission and negotiated payment terms.
 // third party version queries
 SP_WARNINGS_OFF
 #include <assimp/version.h>
+#define FREEIMAGE_LIB
 #include <FreeImage/FreeImage.h>
 #include <freetype/freetype.h>
 #include <SDL3/SDL_version.h>

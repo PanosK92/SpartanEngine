@@ -1890,7 +1890,7 @@ namespace spartan
 
             if (texture->IsStencilFormat())
             {
-                image_subresource_range.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+                image_subresource_range.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
             }
 
             vkCmdClearDepthStencilImage(

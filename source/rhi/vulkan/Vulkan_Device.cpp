@@ -537,6 +537,7 @@ namespace spartan
 
         static const char* layer_name                           = "VK_LAYER_KHRONOS_validation";
         static const VkBool32 setting_bool_true                 = VK_TRUE;
+        static const VkBool32 setting_bool_false                = VK_FALSE;
         static const VkBool32 setting_enable_message_limit      = VK_TRUE;
         static const uint32_t setting_duplicate_message_limit   = 10;
         static const char* setting_debug_action[]               = { "VK_DBG_LAYER_ACTION_LOG_MSG" };
@@ -587,6 +588,8 @@ namespace spartan
             if (cvar_debug_gpu_assisted_validation.GetValue())
             {
                 settings_storage.push_back({ layer_name, "gpuav_enable", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_bool_true });
+                // the tlas instance check (sdk 1.4.341) rejects blas produced by a compacting copy and nulls those instances, which empties the scene for ray tracing
+                settings_storage.push_back({ layer_name, "gpuav_acceleration_structures_builds", VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_bool_false });
             }
         
             return settings_storage;

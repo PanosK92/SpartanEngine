@@ -95,6 +95,7 @@ namespace spartan
             bool skip_rt_trace           = false;
             bool cleared_restir          = false;
             bool restir_reservoirs_initialized = false;
+            bool depth_history_cleared = false;
             bool restir_accumulation_valid = false;
             uint32_t restir_reference_mode = 0;
             bool restir_history_invalid = true;

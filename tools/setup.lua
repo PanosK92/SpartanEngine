@@ -145,7 +145,36 @@ local function compute_sha256(p)
     return (result:gsub("%s+", ""))
 end
 
+local function files_identical(a, b)
+    local fa = io.open(a, "rb")
+    if not fa then return false end
+    local fb = io.open(b, "rb")
+    if not fb then fa:close() return false end
+
+    local identical = fa:seek("end") == fb:seek("end")
+    fa:seek("set")
+    fb:seek("set")
+    while identical do
+        local chunk_a = fa:read(1024 * 1024)
+        local chunk_b = fb:read(1024 * 1024)
+        if chunk_a ~= chunk_b then
+            identical = false
+        elseif not chunk_a then
+            break
+        end
+    end
+
+    fa:close()
+    fb:close()
+    return identical
+end
+
 local function copy_file(src, dst)
+    -- a running engine locks its dlls, so leave identical copies alone
+    if files_identical(src, dst) then
+        return
+    end
+
     os.mkdir(path.getdirectory(dst))
     local ok, err = os.copyfile(src, dst)
     if not ok then

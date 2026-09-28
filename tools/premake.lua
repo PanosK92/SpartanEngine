@@ -109,7 +109,7 @@ function solution_configuration()
 
         filter { "configurations:development", "system:windows" }
             buildoptions { "/Zo", "/Oy-" }
-            linkoptions { "/DEBUG:FULL", "/OPT:NOICF" }
+            linkoptions { "/DEBUG:FULL", "/OPT:NOICF", "/IGNORE:4099" }
 
         filter { "configurations:release" }
             flags { "MultiProcessorCompile" }
@@ -207,9 +207,6 @@ function spartan_project_configuration()
                 path.join(lzma_sdk.root, "spartan"),
             }
 
-        filter { "files:**/lzma_sdk/**", "system:windows" }
-            buildoptions { "/W0", "/WX-" }
-
         filter { "files:**/lzma_sdk/**", "system:linux" }
             buildoptions { "-w" }
 
@@ -272,8 +269,7 @@ function spartan_project_configuration()
             targetname(EXECUTABLE_NAME .. "_debug")
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
-            -- /DEBUG:FASTLINK speeds up debug links by emitting a partial pdb
-            linkoptions { "/IGNORE:4099", "/DEBUG:FASTLINK" }
+            linkoptions { "/IGNORE:4099" }
 
         link_windows_libraries("release or development", "")
         link_windows_libraries("debug", "_debug")

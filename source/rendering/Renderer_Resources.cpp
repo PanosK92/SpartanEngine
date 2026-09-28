@@ -737,6 +737,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_depth)    = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float,          flags, "gbuffer_depth");
             // restir's temporal gate tests disocclusion against the prior depth, the current frame's depth ghosts moving objects
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float, flags, "gbuffer_depth_previous");
+            m_pass_state.depth_history_cleared = false;
             // previous frame normals for the same gate, sampling the current normal buffer at
             // prev_uv reads a different surface whenever anything moved
             at(render_targets, Renderer_RenderTarget::gbuffer_normal_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_normal_previous");

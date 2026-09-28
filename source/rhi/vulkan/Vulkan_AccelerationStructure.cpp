@@ -11,6 +11,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Device.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
+#include "../RHI_Queue.h"
 #include "../RHI_SyncPrimitive.h"
 #include <mutex>
 //=======================================
@@ -27,6 +28,17 @@ namespace
     PFN_vkGetAccelerationStructureDeviceAddressKHR    as_get_device_address = nullptr;
     PFN_vkCmdWriteAccelerationStructuresPropertiesKHR as_write_properties   = nullptr;
     PFN_vkCmdCopyAccelerationStructureKHR             as_copy               = nullptr;
+
+    // stages that read a finished acceleration structure, fragment shaders only exist on the graphics queue
+    VkPipelineStageFlags2 as_reader_stages(spartan::RHI_CommandList* cmd_list)
+    {
+        VkPipelineStageFlags2 stages = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        if (cmd_list->GetQueue()->GetType() == spartan::RHI_Queue_Type::Graphics)
+        {
+            stages |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+        }
+        return stages;
+    }
 
     namespace compaction
     {
@@ -486,7 +498,7 @@ namespace spartan
             memory_barrier.sType            = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
             memory_barrier.srcStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
             memory_barrier.srcAccessMask    = VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
-            memory_barrier.dstStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+            memory_barrier.dstStageMask     = as_reader_stages(cmd_list);
             memory_barrier.dstAccessMask    = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_SHADER_READ_BIT;
 
             VkDependencyInfo dependency_info   = {};
@@ -811,7 +823,7 @@ namespace spartan
             memory_barrier.sType            = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
             memory_barrier.srcStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
             memory_barrier.srcAccessMask    = VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
-            memory_barrier.dstStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            memory_barrier.dstStageMask     = as_reader_stages(cmd_list) | VK_PIPELINE_STAGE_2_TRANSFER_BIT;
             memory_barrier.dstAccessMask    = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
 
             VkDependencyInfo dependency_info   = {};

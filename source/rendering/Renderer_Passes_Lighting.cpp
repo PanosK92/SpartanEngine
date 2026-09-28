@@ -919,7 +919,7 @@ namespace spartan
             m_pass_state.restir_accumulation_valid = false;
         }
 
-        // one-shot clear after (re)allocation, new textures are not guaranteed zeroed and depth_previous must start at far so disocclusion fails closed
+        // one-shot clear after (re)allocation, new textures are not guaranteed zeroed, depth_previous is cleared by the depth prepass
         if (!m_pass_state.restir_reservoirs_initialized)
         {
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
@@ -927,11 +927,6 @@ namespace spartan
                 RHI_CommandList::ClearTexture(reservoirs[i],         Color::standard_transparent);
                 RHI_CommandList::ClearTexture(reservoirs_prev[i],    Color::standard_transparent);
                 RHI_CommandList::ClearTexture(reservoirs_spatial[i], Color::standard_transparent);
-            }
-
-            if (RHI_Texture* depth_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous))
-            {
-                RHI_CommandList::ClearTexture(depth_prev, Color::standard_white, 1.0f);
             }
 
             // zero normals make the disocclusion gate fail closed until real history exists

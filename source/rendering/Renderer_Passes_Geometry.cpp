@@ -1054,6 +1054,16 @@ namespace spartan
 
         RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
 
+        // new depth history must start at far so disocclusion fails closed, depth clears are graphics queue only
+        if (!m_pass_state.depth_history_cleared)
+        {
+            if (RHI_Texture* depth_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous))
+            {
+                RHI_CommandList::ClearTexture(depth_prev, Color::standard_white, 1.0f);
+            }
+            m_pass_state.depth_history_cleared = true;
+        }
+
         bool is_wireframe                     = cvar_wireframe.GetValueAs<bool>();
         bool xr_multiview                     = Xr::IsSessionRunning() && Xr::GetStereoMode();
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid);

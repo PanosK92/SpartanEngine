@@ -189,8 +189,24 @@ namespace spartan
                 root.append_child("ResolutionRenderWidth").text().set(render_w);
                 root.append_child("ResolutionRenderHeight").text().set(render_h);
                 root.append_child("FPSLimit").text().set(Timer::GetFpsLimit());
+
+                // debug options first, sorted and described, so they are discoverable in the file
+                vector<pair<string_view, const ConsoleVariable*>> cvars;
                 for (const auto& [name, cvar] : ConsoleRegistry::Get().GetAll())
                 {
+                    cvars.emplace_back(name, &cvar);
+                }
+                sort(cvars.begin(), cvars.end(), [](const auto& a, const auto& b)
+                {
+                    const bool a_debug = is_debug_cvar(a.first);
+                    const bool b_debug = is_debug_cvar(b.first);
+                    return a_debug != b_debug ? a_debug : a.first < b.first;
+                });
+
+                for (const auto& [name, cvar_ptr] : cvars)
+                {
+                    const ConsoleVariable& cvar = *cvar_ptr;
+
                     // Diagnostic transport views are temporary, never a startup setting.
                     if (name == "r.fog.debug")
                     {
@@ -198,6 +214,12 @@ namespace spartan
                     }
                     if (is_render_cvar(name) || is_debug_cvar(name))
                     {
+                        if (is_debug_cvar(name) && !cvar.m_hint.empty())
+                        {
+                            string hint = string(cvar.m_hint) + (cvar.m_on_change == startup_only ? ", read at startup" : "");
+                            root.append_child(pugi::node_comment).set_value((" " + hint + " ").c_str());
+                        }
+
                         pugi::xml_text text = root.append_child(cvar_name_to_xml(string(name).c_str()).c_str()).text();
                         if (name == "r.resolution_scale" && cvar_dynamic_resolution.GetValueAs<bool>())
                         {

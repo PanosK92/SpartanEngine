@@ -987,7 +987,7 @@ namespace spartan
         default_sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
         default_sampler.AddressU = default_sampler.AddressV = default_sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
         default_sampler.MaxLOD = D3D12_FLOAT32_MAX;
-        default_sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+        default_sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
         auto sampler_handle = descriptors::heap_sampler_cpu->GetCPUDescriptorHandleForHeapStart();
         sampler_handle.ptr += static_cast<SIZE_T>(descriptors::sampler_heap_size - descriptors::sampler_count) * descriptors::sampler_descriptor_size;
         for (uint32_t i = 0; i < descriptors::sampler_count; i++)
@@ -1959,6 +1959,8 @@ namespace spartan
                 return;
             }
 
+            // seeding from disk while loads are disabled makes every store collide with an existing name
+            if (d3d12_pipeline_library::can_load())
             {
                 ifstream file(pipeline_library::cache_path, ios::binary | ios::ate);
                 if (file.is_open())
