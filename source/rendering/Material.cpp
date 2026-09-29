@@ -1431,6 +1431,47 @@ namespace spartan
         return m_textures[(static_cast<uint32_t>(texture_type) * slots_per_texture) + slot];
     }
 
+    static bool is_sampled_directly(Material* material, RHI_Texture* texture)
+    {
+        static constexpr MaterialTextureType sampled_types[] =
+        {
+            MaterialTextureType::Color, MaterialTextureType::Normal, MaterialTextureType::Emission, MaterialTextureType::Packed
+        };
+
+        for (MaterialTextureType type : sampled_types)
+        {
+            for (uint8_t slot = 0; slot < Material::slots_per_texture; slot++)
+            {
+                if (material->GetTexture(type, slot) == texture)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // a cpu only source can also be another slot's sampled map, e.g. an import that wired the colour map into metalness
+    static bool is_sampled_by_any_material(Material* self, RHI_Texture* texture)
+    {
+        if (is_sampled_directly(self, texture))
+        {
+            return true;
+        }
+
+        for (const shared_ptr<IResource>& resource : ResourceCache::GetByType(ResourceType::Material))
+        {
+            Material* material = static_cast<Material*>(resource.get());
+            if (material && material != self && is_sampled_directly(material, texture))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void Material::PrepareForGpu()
     {
         // keep alive if owned by shared_ptr so sync gpu work cannot free this mid-call
@@ -1486,7 +1527,7 @@ namespace spartan
 
                 if (cpu_only)
                 {
-                    if (texture->GetRhiResource())
+                    if (texture->GetRhiResource() && !is_sampled_by_any_material(this, texture))
                     {
                         texture->ReleaseGpuResources();
                     }

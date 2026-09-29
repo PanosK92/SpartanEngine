@@ -354,6 +354,13 @@ namespace pass_reflections_shade
     static const SHARED_UINT light_culling = 2; // bool
 }
 
+namespace pass_reflections_apply
+{
+    static const SHARED_UINT ray_traced_refraction = 0; // bool
+    static const SHARED_UINT mip_count             = 1; // float, skysphere mips
+    static const SHARED_UINT light_count           = 2; // uint
+}
+
 namespace pass_ray_traced_shadows
 {
     static const SHARED_UINT light_culling       = 0; // bool

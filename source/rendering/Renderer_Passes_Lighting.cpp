@@ -94,6 +94,26 @@ namespace spartan
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows));
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_frame);
+
+                // glass traces its refraction with the same hit shading the reflections use
+                bool ray_traced_refraction = false;
+                if (RHI_Device::IsSupportedRayTracing())
+                {
+                    RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, tex_skysphere);
+                    RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex6, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
+                    RHI_CommandList::SetBuffer("radiance_cache", GetBuffer(Renderer_Buffer::RadianceCache));
+                    RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
+                    if (tlas && tlas->GetRhiResource())
+                    {
+                        RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+                        RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+                        ray_traced_refraction = use_ray_traced && !m_pass_state.skip_rt_trace;
+                    }
+                    m_pcb_pass_cpu.set(pass_reflections_apply::mip_count, static_cast<float>(tex_skysphere->GetMipCount()));
+                }
+                m_pcb_pass_cpu.set(pass_reflections_apply::ray_traced_refraction, ray_traced_refraction);
+                m_pcb_pass_cpu.set(pass_reflections_apply::light_count, m_count_active_lights);
                 RHI_CommandList::Dispatch(tex_frame);
             }
             RHI_CommandList::EndMarker();
@@ -211,14 +231,22 @@ namespace spartan
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, tex_skysphere);
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_emissive));
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_reflections);
+            RHI_CommandList::SetTexture("tex_fog_extinction", GetRenderTarget(Renderer_RenderTarget::fog_extinction));
+            RHI_CommandList::SetTexture("tex_fog_air_source", GetRenderTarget(m_pass_state.fog_source));
+            RHI_CommandList::SetTexture("tex_fog_water_source", GetRenderTarget(m_pass_state.fog_water_source));
+            RHI_CommandList::SetTexture("tex_fog_scattering", GetRenderTarget(Renderer_RenderTarget::fog_integrated));
+            RHI_CommandList::SetTexture("tex_fog_transmittance", GetRenderTarget(Renderer_RenderTarget::fog_transmittance));
+            RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex6, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
+            RHI_CommandList::SetBuffer("radiance_cache", GetBuffer(Renderer_Buffer::RadianceCache));
 
-            // bind tlas for inline ray traced shadows at the hit, every light type uses this
-            // path so reflections darken correctly inside enclosed or shadowed geometry
+            // bind tlas for inline shadow, bounce and second reflection rays at the hit, the bounce
+            // and second reflection rays reconstruct what they hit so they need the geometry records too
             if (RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure())
             {
                 if (tlas->GetRhiResource())
                 {
                     RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+                    RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
                 }
             }
             
@@ -1304,7 +1332,7 @@ namespace spartan
 
     void Renderer::Pass_LightFlares(uint32_t eye_layer /*= rhi_all_mips*/)
     {
-        if (!cvar_light_flares.GetValueAs<bool>() || m_count_active_lights <= 1)
+        if (m_count_active_lights <= 1)
         {
             return;
         }
@@ -1329,12 +1357,12 @@ namespace spartan
             RHI_CommandList::SetBlendState(GetBlendState(Renderer_BlendState::Additive));
             RHI_CommandList::SetColorTarget(tex_out);
 
-            const float near_distance   = clamp(cvar_light_flares_near_distance.GetValue(), 0.0f, 500.0f);
-            const float fade_length     = clamp(cvar_light_flares_fade_length.GetValue(), 0.1f, 500.0f);
-            const float size_scale      = clamp(cvar_light_flares_size_scale.GetValue(), 0.01f, 5.0f);
-            const float intensity_scale = clamp(cvar_light_flares_intensity_scale.GetValue(), 0.01f, 5.0f);
-            const float max_size_px     = clamp(cvar_light_flares_max_size_px.GetValue(), 1.0f, 16.0f);
-            const bool occlusion        = cvar_light_flares_occlusion.GetValueAs<bool>();
+            const float near_distance   = 25.0f; // meters where flares are fully gone
+            const float fade_length     = 20.0f; // meters over which flares fade in
+            const float size_scale      = 1.0f;
+            const float intensity_scale = 1.0f;
+            const float max_size_px     = 6.0f;
+            const bool occlusion        = true;
 
             const float disc_size_px  = min(max_size_px * 2.0f + 2.0f, 128.0f);
 

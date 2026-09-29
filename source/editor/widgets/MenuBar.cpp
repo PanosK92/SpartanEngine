@@ -629,8 +629,8 @@ namespace
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, tool_padding());
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
             push_button_colors(active);
-            ImGui::PushStyleColor(ImGuiCol_Text, active ? active_tint() : idle_tint());
-            ImGui::PushFont(Editor::font_mono_medium, ImGui::GetFontSize() * 0.92f);
+            ImGui::PushStyleColor(ImGuiCol_Text, active ? active_tint() : title_text_color());
+            ImGui::PushFont(Editor::font_bold, ImGui::GetFontSize() * 1.2f);
 
             if (ImGui::Button(label, ImVec2(tool_button_width(), tool_button_height())))
             {
@@ -654,8 +654,8 @@ namespace
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, tool_padding());
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
             push_button_colors(false);
-            ImGui::PushStyleColor(ImGuiCol_Text, idle_tint());
-            ImGui::PushFont(Editor::font_mono_medium, ImGui::GetFontSize() * 0.72f);
+            ImGui::PushStyleColor(ImGuiCol_Text, title_text_color());
+            ImGui::PushFont(Editor::font_bold, ImGui::GetFontSize() * 0.9f);
 
             if (ImGui::Button(is_world ? "WLD" : "LOC", ImVec2(tool_button_width(), tool_button_height())))
             {
@@ -1225,7 +1225,6 @@ void MenuBar::Tick()
             // layout values
             float dpi              = spartan::Window::GetDpiScale();
             float icon_size        = 16.0f * dpi;
-            float padding_x        = 6.0f * dpi;
             float frame_padding_y  = ImGui::GetStyle().FramePadding.y;
             float text_height      = ImGui::GetTextLineHeight();
             float menu_item_height = text_height + frame_padding_y * 2.0f;
@@ -1280,36 +1279,42 @@ void MenuBar::Tick()
                 const string& world_name = spartan::World::GetName();
                 if (!world_name.empty())
                 {
-                    float chip_start_x      = left_content_end_x + padding_x * 4.0f;
+                    float separator_gap     = 14.0f * dpi;
+                    float separator_x       = left_content_end_x + separator_gap;
+                    float chip_start_x      = separator_x + separator_gap;
                     float transport_width   = buttons_toolbar::get_transport_width();
                     float transport_left_x  = min((ImGui::GetWindowWidth() - transport_width) * 0.5f, buttons_toolbar::get_right_toolbar_start(ImGui::GetWindowWidth()) - transport_width - 12.0f * dpi);
                     float chip_width_max    = min(240.0f * dpi, transport_left_x - chip_start_x - 12.0f * dpi);
 
                     if (chip_width_max > 48.0f * dpi)
                     {
-                        float chip_padding_x = 9.0f * dpi;
-                        float chip_height    = text_height + 7.0f * dpi;
+                        float chip_padding_x = 10.0f * dpi;
+                        float chip_height    = text_height + 8.0f * dpi;
                         float chip_width     = min(ImGui::CalcTextSize(world_name.c_str()).x + chip_padding_x * 2.0f, chip_width_max);
                         float chip_y         = (menubar_height - chip_height) * 0.5f;
 
-                        draw_title_separator(left_content_end_x + 12.0f * dpi, menubar_height);
-                        ImGui::SameLine(0, 24.0f * dpi);
+                        draw_title_separator(separator_x, menubar_height);
+                        ImGui::SameLine();
+                        ImGui::SetCursorPosX(chip_start_x);
                         ImGui::SetCursorPosY(chip_y);
                         ImGui::Dummy(ImVec2(chip_width, chip_height));
 
-                        ImVec2 min_pos      = ImGui::GetItemRectMin();
-                        ImVec2 max_pos      = ImGui::GetItemRectMax();
+                        ImVec2 min_pos      = ImVec2(IM_ROUND(ImGui::GetItemRectMin().x), IM_ROUND(ImGui::GetItemRectMin().y));
+                        ImVec2 max_pos      = ImVec2(IM_ROUND(ImGui::GetItemRectMax().x), IM_ROUND(ImGui::GetItemRectMax().y));
                         ImDrawList* draw    = ImGui::GetWindowDrawList();
                         float text_y        = min_pos.y + (chip_height - text_height) * 0.5f;
+                        float rounding      = chip_height * 0.5f;
                         const bool loading  = spartan::ProgressTracker::IsLoading();
                         const ImVec4 signal = loading ? ImGui::Style::color_warning : ImGui::Style::color_accent_1;
+                        const float pulse   = loading ? 0.5f + 0.5f * sinf(static_cast<float>(ImGui::GetTime()) * 5.0f) : 1.0f;
 
-                        ImGui::EditorUi::status_dot(draw, ImVec2(min_pos.x + 3.0f * dpi, IM_ROUND((min_pos.y + max_pos.y) * 0.5f)), 2.5f * dpi, signal, loading);
-                        draw->PushClipRect(ImVec2(min_pos.x + chip_padding_x, min_pos.y), ImVec2(max_pos.x, max_pos.y), true);
-                        draw->AddText(ImVec2(min_pos.x + chip_padding_x + 3.0f * dpi, text_y), ImGui::EditorUi::color(title_text_color()), world_name.c_str());
+                        // the world name sits in an accent pill, it turns amber and breathes while loading
+                        draw->AddRectFilled(min_pos, max_pos, ImGui::EditorUi::color(ImGui::EditorUi::alpha(signal, 0.10f + 0.06f * pulse)), rounding);
+                        draw->AddRect(min_pos, max_pos, ImGui::EditorUi::color(ImGui::EditorUi::alpha(signal, 0.35f + 0.35f * pulse)), rounding, max(1.0f, IM_ROUND(dpi)));
+                        draw->PushClipRect(ImVec2(min_pos.x + chip_padding_x, min_pos.y), ImVec2(max_pos.x - chip_padding_x, max_pos.y), true);
+                        draw->AddText(ImVec2(min_pos.x + chip_padding_x, text_y), ImGui::EditorUi::color(ImGui::Style::lerp(ImGui::Style::color_text, signal, 0.35f)), world_name.c_str());
                         draw->PopClipRect();
 
-                        ImGuiSp::tooltip(world_name.c_str());
                         left_content_end_x = max_pos.x - ImGui::GetWindowPos().x;
                     }
                 }

@@ -33,6 +33,7 @@ struct OceanShore
     float  sheet;        // 1 inside the swash sheet
     float  wet;          // sand still wet from the last run-up
     float  height;       // local wave height, crest to trough
+    float  steepness;    // 1 as the wave nears its breaking height, thin enough for light to cross the lip
     float2 direction;    // shoreward
     float2 lace_offset;  // carries the lace with the water
 };
@@ -102,7 +103,8 @@ float ocean_shore_time(float offset)
     return buffer_frame.ocean_shore_wave.z + offset;
 }
 
-OceanShore ocean_shore_evaluate(float2 grid_xz, float time)
+// spacing is the distance between surface samples (mesh cell or pixel footprint), waves it cannot resolve flatten instead of aliasing
+OceanShore ocean_shore_evaluate(float2 grid_xz, float time, float spacing = 0.0f)
 {
     OceanShore o  = (OceanShore)0;
     o.floor_y     = -100000.0f;
@@ -137,9 +139,12 @@ OceanShore ocean_shore_evaluate(float2 grid_xz, float time)
     float wet_d   = max(depth, 0.0f);
 
     // exposed coasts take the swell, the lee side sees a fraction of it
+    // the swell only turns shore parallel and builds once it feels the bed, deep water belongs to the fft
     float exposure = lerp(0.55f, 1.0f, saturate(dot(dir, swell) * 0.6f + 0.5f));
     float fade     = 1.0f - smoothstep(reach * 0.5f, reach, distance);
-    float offshore = wave.x * exposure * fade;
+    float l_deep   = c_deep * period;
+    float shoaling = 1.0f - smoothstep(0.03f * l_deep, 0.1f * l_deep, wet_d);
+    float offshore = wave.x * exposure * fade * shoaling;
 
     // the deep swell direction survives partly, so crests arrive along the coast at different times and peel
     float psi    = -ocean_shore_obliquity * dot(grid_xz, swell) / (c_deep * period) + ocean_shore_noise(grid_xz / 240.0f, 7) * 0.6f;
@@ -174,12 +179,14 @@ OceanShore ocean_shore_evaluate(float2 grid_xz, float time)
     float face_span = half_front * c_local * period;
     float push      = min(height * 0.6f * smoothstep(0.6f, 1.1f, ratio), 0.35f * face_span);
     float crest3    = crest * crest * crest;
+    float resolve   = 1.0f - smoothstep(c_local * period / 16.0f, c_local * period / 6.0f, spacing);
 
-    o.displacement = float3(dir.x * push * crest3, height * crest - h_loc * mean_loc, dir.y * push * crest3);
+    o.displacement = float3(dir.x * push * crest3, height * crest - h_loc * mean_loc, dir.y * push * crest3) * resolve;
     o.breaking     = breaking;
     o.crest        = crest;
     o.face         = u < 0.0f ? smoothstep(-half_front, 0.0f, u) : 0.0f;
     o.height       = height;
+    o.steepness    = smoothstep(0.35f, 0.9f, ratio);
     o.direction    = dir;
 
     // run-up, the bore reaches the waterline as its crest arrives and climbs the slope as a thin sheet
@@ -225,9 +232,9 @@ OceanShore ocean_shore_evaluate(float2 grid_xz, float time)
 }
 
 // the shore surface only, fft excluded, for normals from finite differences in the fft grid
-float3 ocean_shore_surface(float2 grid_xz, float time)
+float3 ocean_shore_surface(float2 grid_xz, float time, float spacing = 0.0f)
 {
-    OceanShore o = ocean_shore_evaluate(grid_xz, time);
+    OceanShore o = ocean_shore_evaluate(grid_xz, time, spacing);
     float y      = max(buffer_frame.ocean_sea_level + o.displacement.y, o.floor_y);
     return float3(grid_xz.x + o.displacement.x, y, grid_xz.y + o.displacement.z);
 }

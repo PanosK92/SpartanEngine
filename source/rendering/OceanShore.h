@@ -25,6 +25,7 @@ namespace spartan
     {
         void tick(const Water* water);
         void reset();
+        void shutdown(); // releases the gpu texture, call before the device is destroyed
 
         RHI_Texture* get_texture();
         math::Vector4 get_mapping(); // xy = world xz of the texture origin, zw = 1 / world size

@@ -5,11 +5,14 @@ https://github.com/PanosK92/SpartanEngine/blob/master/license.md
 Commercial use requires written permission and negotiated payment terms.
 */
 
-//= INCLUDES =========
+//= INCLUDES ==================
 #include "common.hlsl"
 #include "fog_volume.hlsl"
 #include "brdf.hlsl"
-//====================
+#ifdef RAY_TRACING_ENABLED
+#include "common_ray_surface.hlsl"
+#endif
+//=============================
 
 // refraction and transparency constants
 static const float ior_water                  = 1.333f; // water IOR
@@ -20,14 +23,9 @@ static const uint  glass_frost_taps           = 8;      // frosted transmission 
 static const float glass_parallax_scale       = 0.18f;  // thin-shell uv shift per meter of optical path
 static const float glass_absorption_scale     = 50.0f;  // maps authored absorption*thickness into beer lambert exponent
 
-// ray traced reflections now jitter the ray across the ggx lobe by surface roughness and a
-// spatiotemporal denoiser reconstructs a roughness proportional blur, so rough surfaces show a
-// correct soft reflection instead of a wrong sharp mirror, the fade band is pushed to the very
-// top of the roughness range as a gentle safety tail, beyond the ray spread alpha cap the lobe
-// stops widening so the last stretch fades out rather than reading as an under blurred mirror,
-// smooth surfaces (glass, polished metal, car paint) keep the full sharp reflection
-static const float reflection_roughness_fade_start = 0.85f; // full reflection at or below this
-static const float reflection_roughness_fade_end   = 1.0f;  // no reflection at or above this
+// ray traced reflections jitter the ray across the ggx lobe by surface roughness and a
+// spatiotemporal denoiser reconstructs a roughness proportional blur, near the top of the range
+// get_rt_reflection_weight hands the lobe back to ibl, which light_image_based adds as the complement
 
 // karis 2014 analytic split sum, same as reflections_shade, f90 is baked in as 1 so the bias
 // term carries grazing fresnel, the gpu lut was built with compute_f90(0)=0 which wiped that term
@@ -121,6 +119,76 @@ float2 compute_refraction_uv(float3 surface_pos_ws, float3 refracted_dir_ws, flo
     return uv;
 }
 
+#ifdef RAY_TRACING_ENABLED
+struct GlassRefraction
+{
+    float2 uv;          // where the lit opaque frame shows the hit
+    bool   on_screen;   // the camera sees the hit, read it from the frame at uv
+    float3 radiance;    // shaded at the hit when it is hidden or off screen
+    float3 throughput;  // further panes crossed on the way
+    float  distance;    // from the glass to the hit
+};
+
+// ray traced refraction, a thin pane is a parallel slab so the ray leaves it along the view direction,
+// a thick body keeps the bent direction, further panes are crossed with their fresnel and absorption,
+// the hit is read from the lit opaque frame when the camera sees it and shaded at the hit otherwise
+GlassRefraction trace_glass_refraction(Surface surface, float3 view_dir, float3 refracted_dir, uint2 pixel)
+{
+    GlassRefraction result = (GlassRefraction)0;
+    result.throughput      = 1.0f;
+    float3 direction       = surface.thickness < 0.05f ? view_dir : refracted_dir;
+    float3 origin          = surface.position + direction * max(surface.thickness, 0.01f);
+    float  mip_count       = pass_float(pass_reflections_apply::mip_count);
+    float  pixel_angle     = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / max(buffer_frame.resolution_render.x, 1.0f);
+    float2 cone            = float2(surface.camera_to_pixel_length * pixel_angle, pixel_angle + surface.roughness_alpha);
+    [loop]
+    for (uint crossing = 0; crossing < 3; crossing++)
+    {
+        RayDesc ray;
+        ray.Origin    = origin;
+        ray.Direction = direction;
+        ray.TMin      = 0.001f;
+        ray.TMax      = 1000.0f;
+        RaySurface hit = ray_surface_trace(ray, cone);
+        if (!hit.hit)
+        {
+            result.radiance = tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(direction), 0.0f).rgb;
+            result.distance = fog_far;
+            return result;
+        }
+        result.distance += hit.hit_distance;
+        cone             = ray_cone_propagate(cone, hit.hit_distance);
+
+        MaterialParameters mat = material_parameters[hit.material_index];
+        if (mat.color.a < 1.0f)
+        {
+            float cosine       = max(abs(dot(hit.normal, direction)), 0.15f);
+            float path         = max(mat.thickness, 0.001f) / cosine;
+            result.throughput *= (1.0f - F_Schlick(0.04f, 1.0f, cosine)) * pow(max(hit.albedo, 0.02f), max(mat.absorption, 0.0f) * path * glass_absorption_scale);
+            origin             = hit.position + direction * max(mat.thickness, 0.01f);
+            continue;
+        }
+
+        float3 hit_view = world_to_view(hit.position);
+        float2 hit_uv   = view_to_uv(hit_view);
+        if (hit_view.z > 0.0f && is_valid_uv(hit_uv))
+        {
+            float depth_scene = linearize_depth(tex4.SampleLevel(samplers[sampler_point_clamp], hit_uv, 0.0f).r);
+            if (abs(depth_scene - hit_view.z) < hit_view.z * 0.02f + 0.05f)
+            {
+                result.uv        = hit_uv;
+                result.on_screen = true;
+                return result;
+            }
+        }
+        result.radiance = ray_surface_shade_secondary(hit, -direction, tex5, mip_count, float2(pixel), pass_uint(pass_reflections_apply::light_count));
+        return result;
+    }
+    result.radiance = tex5.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(direction), 0.0f).rgb;
+    return result;
+}
+#endif
+
 // Search a projected world-space neighbourhood for geometry at the waterline.
 // Full 3D locality rejects distant silhouettes and deeply submerged walls.
 float ocean_contact_foam(float2 render_uv, float3 water_position, float water_depth, float footprint, float wave_activity)
@@ -190,9 +258,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     if (!is_water_pixel && !is_glass_pixel)
     {
-        float coat = saturate(mat.clearcoat) * (1.0f - sample_material.b);
-        float reflection_roughness = lerp(sample_material.r, mat.clearcoat_roughness, coat);
-        if (reflection_roughness >= reflection_roughness_fade_end)
+        float coat;
+        float reflection_roughness = get_rt_reflection_roughness(uv, coat);
+        float roughness_fade = get_rt_reflection_weight(reflection_roughness);
+        if (roughness_fade <= 0.0f)
         {
             return;
         }
@@ -209,13 +278,24 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 camera_to_pixel     = normalize(position - get_camera_position());
         float3 normal              = sample_normal.xyz;
         float  n_dot_v             = saturate(dot(normal, -camera_to_pixel));
-        float2 brdf                = reflection_env_brdf(reflection_roughness, n_dot_v);
         float3 albedo              = sample_albedo.rgb;
         float  metallic            = sample_material.g;
         float3 F0                  = lerp(0.04f, albedo, metallic);
-        float3 F0_brdf             = lerp(F0, float3(0.04f, 0.04f, 0.04f), coat);
-        float  roughness_fade      = 1.0f - smoothstep(reflection_roughness_fade_start, reflection_roughness_fade_end, reflection_roughness);
-        float3 specular_reflection = reflection * roughness_fade * (F0_brdf * brdf.x + brdf.y);
+
+        // one traced ray lights both lobes, the lobe it was not aimed at sees the same surroundings,
+        // ibl only keeps the rough share both of them hand back
+        float2 base_brdf           = reflection_env_brdf(sample_material.r, n_dot_v);
+        float3 base                = (F0 * base_brdf.x + base_brdf.y) * compute_multiscatter_energy_split_sum(F0, base_brdf);
+        float  clearcoat           = saturate(mat.clearcoat * (1.0f - sample_material.b));
+        float3 layers              = base;
+        if (clearcoat > 0.0f)
+        {
+            float2 coat_brdf = reflection_env_brdf(saturate(mat.clearcoat_roughness), n_dot_v);
+            float  coat_f    = (0.04f * coat_brdf.x + coat_brdf.y) * clearcoat;
+            float3 coat_tint = lerp(float3(1.0f, 1.0f, 1.0f), mat.coat_tint.rgb, saturate(mat.coat_tint.a));
+            layers           = base * (1.0f - coat_f) + coat_f * coat_tint;
+        }
+        float3 specular_reflection = reflection * roughness_fade * layers;
         tex_uav[thread_id.xy]     += float4(specular_reflection, 0.0f);
         return;
     }
@@ -290,7 +370,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 // the object, so distort with the zero mean wave slope instead, the image wobbles around its
                 // true position and always stays one object, the offset still grows with the water column so
                 // it vanishes at the waterline and deeper content shimmers more
-                float2 offset = surface.normal.xz * 0.05f * saturate(thickness * 0.5f);
+                // snell shifts the bed by about a quarter of column * slope in metres, projected by view depth so ripples never scramble it
+                float2 offset = surface.normal.xz * 0.25f * min(thickness, 4.0f) / max(depth_transparent * 1.2f, 1.0f);
 
                 // the wobble can still land on geometry in front of the water, e.g. the part of a pillar
                 // above the surface, halve it until the sample is submerged, the offset is small so the
@@ -349,6 +430,29 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                     refracted_uv = uv_parallax;
                 }
 
+                // the traced ray replaces the screen march, what it hits off screen or behind other geometry is shaded at the hit
+                bool   traced_hidden     = false;
+                float3 traced_radiance   = 0.0f;
+                float3 traced_throughput = 1.0f;
+                float  traced_distance   = 0.0f;
+#ifdef RAY_TRACING_ENABLED
+                if (pass_bool(pass_reflections_apply::ray_traced_refraction))
+                {
+                    GlassRefraction traced = trace_glass_refraction(surface, view_dir_normalized, refracted_dir, thread_id.xy);
+                    traced_throughput      = traced.throughput;
+                    if (traced.on_screen)
+                    {
+                        refracted_uv = traced.uv;
+                    }
+                    else
+                    {
+                        traced_hidden   = true;
+                        traced_radiance = traced.radiance;
+                        traced_distance = traced.distance;
+                    }
+                }
+#endif
+
                 float2 delta = refracted_uv - uv;
 
                 // dispersion, the ior rises toward blue so each channel bends by a slightly different amount
@@ -377,12 +481,21 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                     refraction = sum / glass_frost_taps;
                 }
 
-                refraction = lerp(background, refraction, screen_fade(refracted_uv));
-                float background_depth = tex4.SampleLevel(samplers[sampler_point_clamp], refracted_uv, 0.0f).r;
-                float2 screen_uv = render_uv_to_screen_uv(refracted_uv);
-                float background_distance = length(get_position(background_depth, screen_uv) - get_camera_position());
-                refraction = fog_transmit_segment(refraction, screen_uv, surface.camera_to_pixel_length,
-                    background_depth == 0.0f ? fog_far : background_distance);
+                if (traced_hidden)
+                {
+                    refraction = fog_transmit_segment(traced_radiance, render_uv_to_screen_uv(uv), surface.camera_to_pixel_length,
+                        min(surface.camera_to_pixel_length + traced_distance, fog_far));
+                }
+                else
+                {
+                    refraction = lerp(background, refraction, screen_fade(refracted_uv));
+                    float background_depth = tex4.SampleLevel(samplers[sampler_point_clamp], refracted_uv, 0.0f).r;
+                    float2 screen_uv = render_uv_to_screen_uv(refracted_uv);
+                    float background_distance = length(get_position(background_depth, screen_uv) - get_camera_position());
+                    refraction = fog_transmit_segment(refraction, screen_uv, surface.camera_to_pixel_length,
+                        background_depth == 0.0f ? fog_far : background_distance);
+                }
+                refraction *= traced_throughput;
             }
         }
     }
@@ -390,11 +503,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // compute specular reflection using fresnel and brdf split sum
     float3 reflection = tex[thread_id.xy].rgb;
 
-    // the tracer blends toward the clearcoat lobe on every surface, weigh with the same roughness
-    // and coat f0 or the split sum integrates a lobe that was never sampled
-    float  coat               = saturate(surface.clearcoat);
+    // weigh with the roughness and f0 of the lobe the tracer carried or the split sum integrates a
+    // lobe that was never sampled
+    float  coat                 = get_rt_reflection_coat(surface.clearcoat, surface.metallic);
     float  reflection_roughness = lerp(surface.roughness, surface.clearcoat_roughness, coat);
-    float2 brdf               = reflection_env_brdf(reflection_roughness, n_dot_v);
+    float2 brdf                 = reflection_env_brdf(reflection_roughness, n_dot_v);
 
     // transparent uses ior f0, opaque with clearcoat uses coat f0 0.04 because that is the lobe we traced
     float  f0_dielectric = pow((ior_air - ior_material) / (ior_air + ior_material), 2.0f);
@@ -402,11 +515,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 F0_opaque     = lerp(surface.F0, float3(0.04f, 0.04f, 0.04f), coat);
     float3 F0_brdf       = (surface.is_water() || surface.is_transparent()) ? F0_dielectric : F0_opaque;
 
-    // fade out the mirror sharp reflection on rough surfaces, see band comment at top of file
-    float roughness_fade = 1.0f - smoothstep(reflection_roughness_fade_start, reflection_roughness_fade_end, reflection_roughness);
-    reflection          *= roughness_fade;
+    // fade out the traced lobe on rough surfaces, ibl carries the complement
+    reflection *= get_rt_reflection_weight(reflection_roughness);
 
-    float3 specular_reflection = reflection * (F0_brdf * brdf.x + brdf.y);
+    float3 specular_reflection = reflection * (F0_brdf * brdf.x + brdf.y) * compute_multiscatter_energy_split_sum(F0_brdf, brdf);
 
     if (surface.is_transparent() && !surface.is_water())
     {
@@ -437,7 +549,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 ? saturate(tex3.SampleLevel(samplers[sampler_bilinear_clamp], surface.uv, 0.0f).r) : 1.0f;
             float forward    = pow(saturate(dot(view_dir_normalized, to_sun) * 0.5f + 0.5f), 3.0f);
             float glow       = pow(shore.crest, 0.7f) * lerp(0.5f, 1.0f, shore.face);
-            float thin       = (0.25f + 0.75f * glow) * (1.0f - 0.4f * shore.breaking);
+            float thin       = (0.25f + 0.75f * glow) * (1.0f - 0.4f * shore.breaking) * shore.steepness;
             float body       = smoothstep(0.05f, 0.5f, shore.height);
             float3 light_in  = get_sun_radiance() * visibility * saturate(to_sun.y + 0.2f) + get_sky_fill_radiance() * 0.5f;
             float3 scatter   = light_in * float3(0.06f, 0.36f, 0.24f) * (0.8f + 1.5f * forward) * thin * body / PI;

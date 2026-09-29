@@ -171,6 +171,8 @@ namespace spartan
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Shader, m_rhi_resource);
             m_rhi_resource          = staged->m_rhi_resource;
             staged->m_rhi_resource  = nullptr;
+            // d3d12 psos read the bytecode length from here, a stale size makes every reloaded pso invalid
+            m_object_size           = staged->m_object_size;
             m_descriptors           = move(staged->m_descriptors);
             m_input_layout          = move(staged->m_input_layout);
             m_preprocessed_source   = move(staged->m_preprocessed_source);

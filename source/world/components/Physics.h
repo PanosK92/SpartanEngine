@@ -120,6 +120,7 @@ namespace spartan
         // forces
         void SetLinearVelocity(const math::Vector3& velocity) const;
         math::Vector3 GetLinearVelocity() const;
+        math::Vector3 GetAngularVelocity() const;
         void SetAngularVelocity(const math::Vector3& velocity) const;
         void ApplyForce(const math::Vector3& force, PhysicsForce mode) const;
 
@@ -177,6 +178,10 @@ namespace spartan
         bool IsEnabled() const  { return m_enabled; }
         void SetEnabled(bool enabled) { m_enabled = enabled; }
 
+        // static collision streams in and out around the camera, a race track turns it off so ai cars far from the player keep the road under them
+        bool GetDistanceStreaming() const { return m_distance_streaming; }
+        void SetDistanceStreaming(bool enabled);
+
         // misc
         void Move(const math::Vector3& offset);
         void Crouch(const bool crouch);
@@ -191,6 +196,7 @@ namespace spartan
         bool IsVehicleSimulationActive() const { return m_vehicle_simulation_active; }
         void UpdateTrafficWheels(float speed, float curvature, float delta_time);
         void SetVehicleBrakeReverseEnabled(bool enabled) { m_vehicle_brake_reverse_enabled = enabled; }
+        bool GetVehicleBrakeReverseEnabled() const { return m_vehicle_brake_reverse_enabled; }
         void SetVehicleFullSteeringLock(bool enabled) { m_vehicle_full_steering_lock = enabled; }
         void SetVehicleRoadSurface(const math::Vector3& position, const math::Vector3& tangent)
         {
@@ -234,6 +240,9 @@ namespace spartan
         float GetWheelSlipMagnitude(WheelIndex wheel) const;         // hypot of slip ratio and slip angle
         float GetWheelWidth(WheelIndex wheel) const;                 // physical tire width for this axle
         float GetWheelTireLoad(WheelIndex wheel) const;
+        float GetWheelFrictionUse(WheelIndex wheel) const;           // force over the peak the patch can make, 1 is at the limit
+        float GetWheelPeakLateralForce(WheelIndex wheel) const;      // N, the most cornering force available right now
+        float GetWheelPeakLongitudinalForce(WheelIndex wheel) const; // N, the most drive or brake force available right now
         float GetWheelLateralForce(WheelIndex wheel) const;
         float GetWheelLongitudinalForce(WheelIndex wheel) const;
         float GetWheelAngularVelocity(WheelIndex wheel) const;  // rad/s
@@ -376,6 +385,7 @@ namespace spartan
         bool m_is_static               = true;
         bool m_is_kinematic            = false;
         bool m_enabled                 = true;
+        bool m_distance_streaming      = true;
         math::Vector3 m_position_lock  = math::Vector3::Zero;
         math::Vector3 m_rotation_lock  = math::Vector3::Zero;
         math::Vector3 m_center_of_mass = math::Vector3::Zero;

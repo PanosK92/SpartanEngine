@@ -343,7 +343,7 @@ namespace spartan
                 if (!car)
                     continue;
 
-                if (car->IsOccupied())
+                if (car->IsViewed())
                 {
                     occupied = car;
                     break;

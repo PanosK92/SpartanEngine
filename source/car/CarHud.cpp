@@ -15,6 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "CarSimulation.h"
 #include "CarPresets.h"
 #include "../world/components/Physics.h"
+#include "../world/Entity.h"
 #include "imgui/source/imgui.h"
 #include "widgets/Viewport.h"
 #include <string_view>
@@ -863,5 +864,108 @@ namespace spartan::car_hud
             car_instance->SetVisualizationPreset(view);
         if (options.collision != car_instance->GetSkeletonShowCollision())
             car_instance->SetSkeletonShowCollision(options.collision);
+    }
+
+    Car* draw_car_picker(Car* viewed)
+    {
+        std::vector<Car*> cars;
+        for (Car* car : Car::GetAll())
+        {
+            Entity* root = car ? car->GetRootEntity() : nullptr;
+            if (car && car->IsDrivable() && root && root->IsActive())
+            {
+                cars.push_back(car);
+            }
+        }
+        if (cars.empty())
+        {
+            return nullptr;
+        }
+
+        // same region and design space as the telemetry hud, the list sits above its right column
+        const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
+        ImVec2 region_pos  = main_viewport->Pos;
+        ImVec2 region_size = main_viewport->Size;
+        const math::Vector2& vp_pos  = Viewport::GetScreenPosition();
+        const math::Vector2& vp_size = Viewport::GetScreenSize();
+        if (Engine::IsFlagSet(EngineMode::EditorVisible) && vp_size.x > 100.0f && vp_size.y > 100.0f)
+        {
+            region_pos  = ImVec2(vp_pos.x, vp_pos.y);
+            region_size = ImVec2(vp_size.x, vp_size.y);
+        }
+        if (region_size.x < 400 || region_size.y < 300)
+        {
+            return nullptr;
+        }
+
+        const float scale         = std::clamp(std::min(region_size.y * 0.9f / 1080.0f, region_size.x / 2000.0f), 0.4f, 1.6f);
+        const float width         = region_size.x / scale;
+        const float margin        = 24;
+        const float panel_w       = telemetry::powertrain_w;
+        const float title_h       = 26;
+        const float row_h         = 24;
+        const float visible_rows  = static_cast<float>(std::min<size_t>(cars.size(), 4));
+        const float panel_h       = title_h + row_h * visible_rows + 8;
+        const float panel_x       = width - margin - panel_w;
+        const float panel_y       = 8;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(83 / 255.0f, 216 / 255.0f, 229 / 255.0f, 0.22f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(83 / 255.0f, 216 / 255.0f, 229 / 255.0f, 0.32f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(83 / 255.0f, 216 / 255.0f, 229 / 255.0f, 0.45f));
+        const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
+
+        Car* chosen = nullptr;
+        ImGui::SetNextWindowPos(ImVec2(region_pos.x + panel_x * scale, region_pos.y + panel_y * scale), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(panel_w * scale, panel_h * scale), ImGuiCond_Always);
+        if (ImGui::Begin("##car_picker", nullptr, flags))
+        {
+            const telemetry::painter panel{ImGui::GetWindowDrawList(), ImGui::GetWindowPos(), scale, IM_COL32(14, 22, 31, 200)};
+            panel.rect(0, 0, panel_w, panel_h, panel.fill, 10);
+            panel.text(12, 7, 13, telemetry::cyan, "CARS");
+            panel.right(panel_w - 12, 7, 12, telemetry::muted, "CLICK TO DRIVE OR WATCH");
+
+            ImGui::PushFont(nullptr, 14 * scale);
+            ImGui::SetCursorScreenPos(panel.point(6, title_h));
+            if (ImGui::BeginChild("##car_picker_rows", ImVec2((panel_w - 12) * scale, row_h * visible_rows * scale), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground))
+            {
+                for (Car* car : cars)
+                {
+                    const bool is_viewed = car == viewed;
+                    // someone else holds the pedals of an externally controlled car, the player can only watch it
+                    const char* role = car->IsOccupied() ? "DRIVING" : (car->IsSpectated() ? "WATCHING" : (car->IsExternallyControlled() ? "WATCH" : "DRIVE"));
+                    const std::string name = car->GetDisplayName();
+
+                    ImGui::PushID(car);
+                    const ImVec2 row_min = ImGui::GetCursorScreenPos();
+                    if (ImGui::Selectable("##car", is_viewed, ImGuiSelectableFlags_None, ImVec2(0, row_h * scale)) && !is_viewed)
+                    {
+                        chosen = car;
+                    }
+                    const float row_w = ImGui::GetItemRectSize().x;
+                    ImDrawList* dl    = ImGui::GetWindowDrawList();
+                    const float font  = 14 * scale;
+                    const float text_y = row_min.y + (row_h * scale - font) * 0.5f;
+                    dl->AddText(nullptr, font, ImVec2(row_min.x + 6 * scale, text_y), is_viewed ? IM_COL32(245, 250, 250, 255) : IM_COL32(200, 210, 220, 255), name.c_str());
+                    const ImU32 role_color = is_viewed ? telemetry::green : (car->IsExternallyControlled() ? telemetry::amber : telemetry::cyan);
+                    const float role_w = ImGui::CalcTextSize(role).x * (12.0f / 14.0f);
+                    dl->AddText(nullptr, 12 * scale, ImVec2(row_min.x + row_w - role_w - 8 * scale, text_y + 1 * scale), role_color, role);
+                    ImGui::PopID();
+                }
+            }
+            ImGui::EndChild();
+            ImGui::PopFont();
+        }
+        ImGui::End();
+        ImGui::PopStyleColor(5);
+        ImGui::PopStyleVar(3);
+
+        return chosen;
     }
 }

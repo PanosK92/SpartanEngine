@@ -49,7 +49,7 @@ namespace spartan
     void Volume::Tick()
     {
         // only draw in editor mode (not playing)
-        if (Engine::IsFlagSet(EngineMode::Playing))
+        if (Engine::IsFlagSet(EngineMode::Playing) || !cvar_volumes.GetValueAs<bool>())
         {
             return;
         }

@@ -476,7 +476,7 @@ namespace spartan
     {
         // The world loader has joined its worker before calling this. Prepare only the
         // nearby collision that would otherwise consume the first editor frames.
-        if (!m_needs_creation || (m_is_static && m_body_type == BodyType::Mesh && outside_collision_prepare_range(GetEntity()))) return;
+        if (!m_needs_creation || (m_is_static && m_body_type == BodyType::Mesh && m_distance_streaming && outside_collision_prepare_range(GetEntity()))) return;
         m_needs_creation = false;
         Create();
     }
@@ -506,7 +506,7 @@ namespace spartan
             // Match static collision streaming before cooking, not only after
             // allocating actors for the entire island. Prepare at the outer
             // radius so collision is ready before the 40 m activation boundary.
-            if (m_is_static && m_body_type == BodyType::Mesh && outside_collision_prepare_range(GetEntity(), true))
+            if (m_is_static && m_body_type == BodyType::Mesh && m_distance_streaming && outside_collision_prepare_range(GetEntity(), true))
             {
                 CountWorldWork(WorldWork::physics_creation_far_skips);
                 return;
@@ -600,10 +600,37 @@ namespace spartan
         if (
             m_body_type != BodyType::Controller &&
             m_body_type != BodyType::Cloth &&
-            m_is_static
+            m_is_static &&
+            m_distance_streaming
         )
         {
             TickDistanceActivation();
+        }
+    }
+
+    void Physics::SetDistanceStreaming(bool enabled)
+    {
+        if (m_distance_streaming == enabled)
+        {
+            return;
+        }
+        m_distance_streaming = enabled;
+        m_activation_valid   = false;
+
+        if (!enabled)
+        {
+            // bring back every actor the camera streamed out, and create collision that was deferred for being far away
+            for (size_t i = 0; i < m_actors.size() && i < m_actors_active.size(); i++)
+            {
+                if (!m_actors_active[i] && m_actors[i])
+                {
+                    PhysicsWorld::AddActor(static_cast<PxRigidActor*>(m_actors[i]));
+                    m_actors_active[i] = true;
+                    m_actors_active_count++;
+                }
+            }
+            GetEntity()->WakePhysicsPreTick();
+            GetEntity()->RefreshPreTickGate();
         }
     }
 
@@ -1757,6 +1784,22 @@ namespace spartan
         return Vector3::Zero;
     }
 
+    Vector3 Physics::GetAngularVelocity() const
+    {
+        if (m_body_type == BodyType::Controller || m_actors.empty() || !m_actors[0])
+        {
+            return Vector3::Zero;
+        }
+
+        if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(m_actors[0])->is<PxRigidDynamic>())
+        {
+            PxVec3 velocity = dynamic->getAngularVelocity();
+            return Vector3(velocity.x, velocity.y, velocity.z);
+        }
+
+        return Vector3::Zero;
+    }
+
     void Physics::SetAngularVelocity(const Vector3& velocity) const
     {
         if (m_body_type == BodyType::Controller)
@@ -1894,7 +1937,7 @@ namespace spartan
         // world commit. Let PreTick prepare their collision near the camera,
         // instead of blocking the loading frame on every distant road.
         if (m_is_static && m_body_type == BodyType::Mesh &&
-            (ProgressTracker::IsLoading() || outside_collision_prepare_range(GetEntity())))
+            (ProgressTracker::IsLoading() || (m_distance_streaming && outside_collision_prepare_range(GetEntity()))))
         {
             Remove();
             m_needs_creation = true;
@@ -2941,6 +2984,33 @@ namespace spartan
             return 0.0f;
         }
         return m_vehicle_simulation->get_config().wheel_width_for(i);
+    }
+
+    float Physics::GetWheelFrictionUse(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+        {
+            return 0.0f;
+        }
+        return m_vehicle_simulation->get_wheel_friction_use(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelPeakLateralForce(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+        {
+            return 0.0f;
+        }
+        return m_vehicle_simulation->get_wheel_peak_lateral_force(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelPeakLongitudinalForce(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+        {
+            return 0.0f;
+        }
+        return m_vehicle_simulation->get_wheel_peak_longitudinal_force(static_cast<int>(wheel));
     }
 
     float Physics::GetWheelLateralForce(WheelIndex wheel) const
@@ -4925,7 +4995,7 @@ namespace spartan
         m_actors_active.assign(instance_count, false);
         m_actors_active_count = 0;
         Camera* camera = World::GetCamera();
-        const bool stream_static = IsStatic() && render && camera;
+        const bool stream_static = IsStatic() && render && camera && m_distance_streaming;
         const Vector3 camera_position = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
         const Matrix& world = GetEntity()->GetMatrix();
         for (uint32_t i = 0; i < instance_count; i++)

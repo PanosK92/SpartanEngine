@@ -95,8 +95,11 @@ FogMedium fog_sample_medium(float3 position, float y0, float y1, float footprint
         float water_y = sea_level;
         // FFT work is only needed in the wave band. Deep samples still receive
         // the moving entry point when their sunlight is evaluated.
-        if (abs(position.y - sea_level) < 32.0f)
-            water_y = get_ocean_height(position.xz);
+        // A cell spanning many ripples is covered to their mean level; a point
+        // sample flips it between air and water, turning the sea into blocks.
+        float wave_detail = 1.0f - smoothstep(0.25f, 2.0f, footprint);
+        if (abs(position.y - sea_level) < 32.0f && wave_detail > 0.0f)
+            water_y = lerp(sea_level, get_ocean_height(position.xz), wave_detail);
         medium.water = abs(y1 - y0) > 1e-5f
             ? saturate((water_y - min(y0, y1)) / abs(y1 - y0))
             : (position.y < water_y ? 1.0f : 0.0f);

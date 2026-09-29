@@ -41,6 +41,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rendering/Renderer.h"
 #include "components/Physics.h"
 #include "components/Traffic.h"
+#include "components/RaceDriver.h"
 #include "components/Pedestrians.h"
 #include "components/Navigation.h"
 #include "components/Script.h"
@@ -451,6 +452,7 @@ namespace spartan
                 return false;
             }
             return entity->GetComponent<Traffic>()
+                || entity->GetComponent<RaceDriver>()
                 || entity->GetComponent<Pedestrians>()
                 || entity->GetComponent<Navigation>()
                 || entity->GetComponent<CarReset>()

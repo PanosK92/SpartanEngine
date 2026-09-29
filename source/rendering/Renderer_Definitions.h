@@ -676,6 +676,7 @@ namespace spartan
         OceanHeightsReadback3,
         EmissiveTriangles,         // restir nee pool, rebuilt each frame from render components with non-zero emission
         RestirPairing,             // restir spatial reuse tables, built once when the reservoirs initialize
+        RadianceCache,             // world space hash grid of incoming radiance, read and written by the ray traced reflection passes
         // gpu-driven particles
         ParticleBufferA,
         ParticleCounter,

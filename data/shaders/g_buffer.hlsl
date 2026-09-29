@@ -567,12 +567,16 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // fft ocean shading, normal from the displaced surface so lighting follows the swell
     if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
     {
-        float foam = 0.0f;
-        sample_ocean_surface(vertex.ocean_world_xz, position_world, distance, normal, foam);
+        float foam     = 0.0f;
+        float resolved = 1.0f;
+        float ocean_footprint = max(length(dpdx_world), length(dpdy_world));
+        sample_ocean_surface(vertex.ocean_world_xz, position_world, distance, ocean_footprint, normal, foam, resolved);
 
-        // distance hides the sub-texel slope variance, lift roughness with distance so far water reads as a glitter sheet, not a sharp mirror
-        float distance_fade = saturate(distance / 600.0f);
-        roughness           = lerp(roughness, 0.35f, distance_fade * distance_fade);
+        // slopes the faded cascades no longer draw become microfacet width so far water reads as a glitter sheet, not a mirror
+        // cox munk mean square slope for the wind, ggx alpha ~ sqrt(mss) and alpha = roughness^2
+        float mss           = 0.003f + 0.00512f * length(buffer_frame.wind.xz);
+        float sea_roughness = sqrt(sqrt(mss));
+        roughness           = lerp(roughness, max(roughness, sea_roughness), 1.0f - resolved);
 
         // foam reads as whitewater in the transparency pass, keep its roughness moderate here so its reflection stays bright enough to light the foam, a full rough surface collapses the reflection to black
         roughness  = lerp(roughness, 0.5f, foam);
@@ -678,19 +682,20 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     bool is_ground          = terrain_shaded || is_road || is_paint;
     float3 geometric_normal = normalize(vertex.normal);
     float footprint         = max(length(dpdx_world), length(dpdy_world));
-    // what the sky can reach, authored puddles stand everywhere but rain only lands in the open
-    float rain_exposed      = rain_weather_wetness() > 0.0f ? rain_exposure(position_world, geometric_normal) : 0.0f;
-    float ground_porosity   = terrain_shaded ? 0.6f : (is_paint ? 0.15f : 0.5f);
+    float ground_porosity   = ground_water_porosity(terrain_shaded, is_paint);
+    float rain_exposed      = 0.0f;
     float puddle_water      = 0.0f;
-    if (pass_is_opaque() && is_ground)
+    if (pass_is_opaque())
     {
         // asphalt crevices carry low ambient occlusion, that is where the water sits
         // wheel paths are worn into shallow ruts, so the first water on a road collects in them
-        float relief     = terrain_shaded ? puddle_relief : (1.0f - occlusion) * 0.08f + (is_road ? road_wheel_paths(vertex.uv_misc.xy, position_world.xz) * 0.05f : 0.0f);
-        // soil soaks up most of what falls on it and road camber sheds much of it, so rain pools in ruts and dips
-        float puddliness = max(rain_authored_puddles(), rain_weather_puddles() * rain_exposed * (terrain_shaded ? 0.55f : 0.7f));
-        puddle_water     = puddle_apply(puddliness, position_world, geometric_normal, ground_porosity, relief, footprint,
-            albedo.rgb, normal, roughness, metalness, occlusion);
+        float relief = terrain_shaded ? puddle_relief : (1.0f - occlusion) * 0.08f + (is_road ? road_wheel_paths(vertex.uv_misc.xy, position_world.xz) * 0.05f : 0.0f);
+        puddle_water = ground_water_apply(terrain_shaded, is_road, is_paint, position_world, geometric_normal, relief, footprint,
+            rain_exposed, albedo.rgb, normal, roughness, metalness, occlusion);
+    }
+    else
+    {
+        rain_exposed = rain_weather_wetness() > 0.0f ? rain_exposure(position_world, geometric_normal) : 0.0f;
     }
 
     // rain, the soak, beads and rivulets on everything the sky reaches

@@ -2083,7 +2083,7 @@ namespace car
             multibody.rack_joint->setLinearLimit(PxD6Axis::eX, PxJointLinearLimitPair(multibody.physics->getTolerancesScale(), -rack_stop, rack_stop));
             // force drive must out-stiff tire sat through the tie rods, soft accel drive let the rack steer itself into a brake weave
             const float rack_mass = PxMax(spec.steering_rack_mass, 0.5f);
-            const float rack_hold_stiffness = 500000.0f;
+            const float rack_hold_stiffness = 20000000.0f;
             // The rack also turns both upright/wheel assemblies through the tie rods.
             // Damping only its own mass leaves that reflected inertia underdamped:
             // landing forces can ring the rack and steer the car with zero input.
@@ -2653,6 +2653,7 @@ namespace car
                 const suspension_geometry& geometry = is_front(i) ? spec.front_geometry : spec.rear_geometry;
                 if (!create_suspension_corner(i, geometry))
                 {
+                    SP_LOG_WARNING("suspension corner %d could not be built", i);
                     destroy_multibody();
                     return false;
                 }
@@ -2669,16 +2670,19 @@ namespace car
             }
             if (!create_steering_rack())
             {
+                SP_LOG_WARNING("steering rack could not be built");
                 destroy_multibody();
                 return false;
             }
             if (!create_anti_roll_bars())
             {
+                SP_LOG_WARNING("anti roll bars could not be built");
                 destroy_multibody();
                 return false;
             }
             if (!create_driveline())
             {
+                SP_LOG_WARNING("driveline could not be built");
                 destroy_multibody();
                 return false;
             }
@@ -4145,6 +4149,8 @@ namespace car
                     w.tire_saturation = 0.0f;
                     w.friction_use = 0.0f;
                     w.slip_power = 0.0f;
+                    w.peak_force_lat = 0.0f;
+                    w.peak_force_long = 0.0f;
                     w.stiction_long = 0.0f;
                     w.stiction_lat = 0.0f;
                 }
@@ -4332,6 +4338,8 @@ namespace car
                 float lat_grip_scale  = w.condition_grip * camber_factor;
                 float peak_force_long = shared_grip * long_grip_scale * fabsf(spec.long_D);
                 float peak_force_lat  = shared_grip * lat_grip_scale * fabsf(spec.lat_D);
+                w.peak_force_lat      = peak_force_lat;
+                w.peak_force_long     = peak_force_long;
                 float pressure_ratio = w.pressure_bar / PxMax(spec.tire_pressure_optimal, 0.1f);
 
                 if (log_pacejka)
@@ -4646,6 +4654,7 @@ namespace car
         }
         w.slip_angle = w.slip_ratio = w.lateral_force = w.camber_force = w.longitudinal_force = 0.0f;
         w.friction_use = w.slip_power = 0.0f;
+        w.peak_force_lat = w.peak_force_long = 0.0f;
         w.stiction_long = w.stiction_lat = 0.0f;
 
         float drag_torque = -w.angular_velocity * spec.bearing_friction * wmoi;
@@ -6007,6 +6016,18 @@ namespace car
 
     float Simulation::get_wheel_tire_load(int i)
     { return is_valid_wheel(i) ? wheels[i].tire_load : 0.0f; }
+
+
+    float Simulation::get_wheel_friction_use(int i)
+    { return is_valid_wheel(i) ? wheels[i].friction_use : 0.0f; }
+
+
+    float Simulation::get_wheel_peak_lateral_force(int i)
+    { return is_valid_wheel(i) ? wheels[i].peak_force_lat : 0.0f; }
+
+
+    float Simulation::get_wheel_peak_longitudinal_force(int i)
+    { return is_valid_wheel(i) ? wheels[i].peak_force_long : 0.0f; }
 
 
     float Simulation::get_wheel_lateral_force(int i)

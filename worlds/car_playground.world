@@ -11,7 +11,7 @@
  <Entities>
   <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="-4 1 -168" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <Entity name="component_camera" id="1001000000000000002" active="true" position="-2 1.2 0" rotation="0.0658897 0.289097 -0.0199498 0.954821" scale="1 1 1">
+   <Entity name="component_camera" id="1001000000000000002" active="true" position="-2 1.2 0" rotation="0.0657469 0.288966 -0.0198965 0.954872" scale="1 1 1">
     <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="400" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="17" />
    </Entity>
   </Entity>
@@ -23,7 +23,7 @@
     <physics mass="1" friction="1" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="asphalt" material_path="project/car_playground_resources/asphalt.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
-   <Entity name="grass_field" id="7388558140773552390" active="true" position="0 -0.53 0" rotation="0 0 0 1" scale="1400 1 1400">
+   <Entity name="grass_field" id="7388558140773552390" active="true" position="0 -0.53 0" rotation="0 0 0 1" scale="14000 1 14000">
     <physics mass="1" friction="0.699999988" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
     <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="grass" material_path="project/car_playground_resources/grass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
@@ -636,6 +636,38 @@
       <render mesh_name="pine_a" mesh_path="./project/car_playground_resources/pine_a.mesh" sub_mesh_index="4" material_name="pine_foliage" material_path="./project/car_playground_resources/pine_foliage.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
     </Entity>
+   </Entity>
+   <Entity name="race_track" id="15336523452101120655" active="true" position="-300 0.02 350" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="asphalt" material_path="project/car_playground_resources/asphalt.xml" material_default="false" flags="5" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <spline closed_loop="true" resolution="20" road_width="12" curve_alpha="0.5" mesh_enabled="true" has_road_mesh="true" profile="0" height="3" thickness="0.300000012" tube_sides="12" road_width_end="8" uv_tiling_u="1" uv_tiling_v="1" sidewalk_enabled="false" sidewalk_width="2" curb_height="0.150000006" conform_to_terrain="false" terrain_offset="0.25" grade_limit_enabled="false" max_grade_degrees="8" max_cut="20" grade_smoothing="1" smoothing_length="160" embankment_enabled="false" embankment_slope_degrees="50" embankment_max_height="8" carve_terrain="false" carve_bed_drop="0.150000006" carve_fill_slope_degrees="33" carve_cut_slope_degrees="45" carve_max_shoulder="60" instance_spacing="5" align_instances="true" instance_mesh_path="" instance_template_id="0" instance_lateral_offset="0" instance_mirror="false" instance_face_inward="false" instance_random_offset="0" instance_random_scale_min="1" instance_random_scale_max="1" instance_random_yaw="0" source_spline_id="0" attach_mode="0" attach_lateral_offset="0" attach_vertical_offset="0" attach_inherit_closed_loop="true" attach_sample_count="0" />
+    <race_driver track_entity_id="0" car_file="project/cars/ferrari_laferrari.car" skill="1" grip_g="1" brake_g="0.899999976" max_speed="95" edge_margin="1.70000005" start_distance="0" start_delay="2" learning="true" />
+    <Entity name="spline_point_0" id="15336735368802053461" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_1" id="15336728523627598846" active="true" position="250 0 0" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_2" id="15336825692267164757" active="true" position="500 0 0" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_3" id="15336831688081237419" active="true" position="600 0 20" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_4" id="15336804904307792294" active="true" position="650 0 90" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_5" id="15336805433132353417" active="true" position="640 0 180" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_6" id="15336827266557109022" active="true" position="580 0 230" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_7" id="15336811465902702206" active="true" position="550 0 300" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_8" id="15336798444151082537" active="true" position="590 0 370" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_9" id="15336798895808536388" active="true" position="680 0 410" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_10" id="15336814432595583161" active="true" position="740 0 490" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_11" id="15336813315490028343" active="true" position="720 0 580" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_12" id="15336855374871666171" active="true" position="640 0 610" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_13" id="15336855901784478755" active="true" position="560 0 570" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_14" id="15336857374976827519" active="true" position="480 0 510" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_15" id="15336851468567194760" active="true" position="360 0 500" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_16" id="15336856950470884924" active="true" position="240 0 550" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_17" id="15336866593373664440" active="true" position="120 0 610" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_18" id="15336859542502944291" active="true" position="0 0 600" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_19" id="15336838011645015413" active="true" position="-80 0 530" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_20" id="15336861113551357476" active="true" position="-60 0 430" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_21" id="15336861942319637817" active="true" position="20 0 370" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_22" id="15337137360163956254" active="true" position="40 0 290" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_23" id="15337136386308327660" active="true" position="-40 0 210" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_24" id="15337145868323559234" active="true" position="-100 0 120" rotation="0 0 0 1" scale="1 1 1" />
+    <Entity name="spline_point_25" id="15337132524102075312" active="true" position="-70 0 30" rotation="0 0 0 1" scale="1 1 1" />
    </Entity>
   </Entity>
   <Entity name="player_car_prefab" id="5601201501308041116" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">

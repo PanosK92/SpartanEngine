@@ -80,6 +80,8 @@ const mutating_tools = new Set([
   "execute_lua",
   "vehicle_enter",
   "vehicle_exit",
+  "vehicle_spectate",
+  "vehicle_ai",
   "vehicle_set_input",
   "vehicle_shift",
   "vehicle_reset",

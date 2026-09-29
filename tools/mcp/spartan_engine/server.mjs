@@ -649,6 +649,11 @@ const component_type = z.enum([
   "spawn_point",
   "car_reset",
   "text_3d",
+  "pedestrians",
+  "animator",
+  "ragdoll",
+  "navigation",
+  "race_driver",
 ]);
 const component_value = z.union([z.string(), z.number(), z.boolean(), numeric_array]);
 const light_type = z.enum(["directional", "point", "spot", "area"]);
@@ -5841,7 +5846,7 @@ register_tool(
   "renderer_debug_set",
   "Set a friendly renderer debug overlay or visualization option.",
   {
-    option: z.enum(["aabb", "picking_ray", "grid", "transform_handle", "selection_outline", "entity_icons", "performance_metrics", "physics", "wireframe", "meshlet_visualize", "cluster_visualize"]),
+    option: z.enum(["aabb", "volumes", "picking_ray", "grid", "transform_handle", "selection_outline", "entity_icons", "performance_metrics", "physics", "wireframe", "meshlet_visualize", "cluster_visualize"]),
     value: z.union([z.boolean(), z.number(), z.string()]),
   },
   "renderer_debug_set",
@@ -5928,6 +5933,37 @@ register_tool(
     id: z.string().optional(),
   },
   "vehicle_exit",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "vehicle_spectate",
+  "Watch a car someone else drives (race_driver ai, traffic) in play mode: camera, driver hud, telemetry (telemetry, default true) and engine sound follow it, the player gets no control. Leaves the driven car first. stop: true hands the camera back to the player. vehicle_set_view changes the spectated camera.",
+  {
+    id: z.string().optional(),
+    telemetry: z.boolean().optional(),
+    stop: z.boolean().optional(),
+  },
+  "vehicle_spectate",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "vehicle_ai",
+  "Hand any car to the racing ai in play mode, the player's car included (no id picks the occupied car): it takes over from where the car is, or from the racing line if the car is off the road or backwards, and laps a closed spline road learning the car's limits. track is a spline road id or name, default the running race_driver track. skill 0 to 1, max_speed m/s, launch_delay seconds on the handbrake first, learning, verbose (1 Hz log). stop: true hands the controls back. Car status gains ai_driver {lap, lap_time, best_lap_time, resets, distance, line_error}.",
+  {
+    id: z.string().optional(),
+    track: z.string().optional(),
+    skill: z.number().min(0).max(1).optional(),
+    max_speed: z.number().positive().optional(),
+    launch_delay: z.number().min(0).optional(),
+    learning: z.boolean().optional(),
+    verbose: z.boolean().optional(),
+    stop: z.boolean().optional(),
+  },
+  "vehicle_ai",
   { annotations: edit_tool },
 );
 

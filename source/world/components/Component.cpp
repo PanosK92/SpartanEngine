@@ -24,6 +24,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "Traffic.h"
 #include "Pedestrians.h"
 #include "Navigation.h"
+#include "RaceDriver.h"
 #include "SpawnPoint.h"
 #include "CarReset.h"
 #include "Text3D.h"

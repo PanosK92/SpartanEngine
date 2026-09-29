@@ -124,6 +124,14 @@ float3 compute_multiscatter_energy(float3 f0, float n_dot_v, float roughness)
     return 1.0 + f0 * energy_loss / (1.0 - energy_loss + FLT_MIN);
 }
 
+// fdez-aguera 2019 from the split sum terms, a + b is the single scatter albedo of a white lobe,
+// the energy it loses to microfacet shadowing comes back tinted by f0, rough metals stop going dark
+float3 compute_multiscatter_energy_split_sum(float3 f0, float2 env_brdf)
+{
+    float single_scatter = max(env_brdf.x + env_brdf.y, 0.05f);
+    return 1.0 + f0 * (1.0 / single_scatter - 1.0);
+}
+
 /*------------------------------------------------------------------------------
     SPECULAR - ISOTROPIC
 ------------------------------------------------------------------------------*/

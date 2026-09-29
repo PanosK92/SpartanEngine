@@ -146,6 +146,7 @@ namespace spartan
 
     // debug visualization
     TConsoleVar<float> cvar_aabb                           ("r.aabb",                           0.0f,                                                    "draw axis-aligned bounding boxes");
+    TConsoleVar<float> cvar_volumes                        ("r.volumes",                        1.0f,                                                    "draw volume components (audio and reverb regions)");
     TConsoleVar<float> cvar_picking_ray                    ("r.picking_ray",                    0.0f,                                                    "draw picking ray");
     TConsoleVar<float> cvar_grid                           ("r.grid",                           0.0f,                                                    "draw editor grid");
     TConsoleVar<float> cvar_transform_handle               ("r.transform_handle",               1.0f,                                                    "draw transform handles");
@@ -163,14 +164,6 @@ namespace spartan
     // post-processing
     TConsoleVar<float> cvar_bloom                          ("r.bloom",                          1.0f,                                                    "lens scattering strength, 1 redistributes about 4 percent of light, 0 disables");
     TConsoleVar<float> cvar_bloom_scatter                  ("r.bloom_scatter",                  0.7f,                                                    "bloom halo spread, 0.05 to 0.95, higher is wider");
-    TConsoleVar<float> cvar_light_flares                   ("r.light_flares",                   1.0f,                                                    "distant light corona flares");
-    TConsoleVar<float> cvar_light_flares_near_distance     ("r.light_flares_near_distance",     25.0f,                                                   "camera distance in meters where flares are fully gone");
-    TConsoleVar<float> cvar_light_flares_fade_length       ("r.light_flares_fade_length",       20.0f,                                                   "meters over which flares fade from full to gone as they approach");
-    TConsoleVar<float> cvar_light_flares_max_distance      ("r.light_flares_max_distance",      2000.0f,                                                 "max distance in meters for flare-only lights past lighting draw distance");
-    TConsoleVar<float> cvar_light_flares_size_scale        ("r.light_flares_size_scale",        1.0f,                                                    "global light flare size multiplier");
-    TConsoleVar<float> cvar_light_flares_intensity_scale   ("r.light_flares_intensity_scale",   1.0f,                                                    "global light flare brightness multiplier");
-    TConsoleVar<float> cvar_light_flares_max_size_px       ("r.light_flares_max_size_px",       6.0f,                                                    "maximum light flare radius in pixels");
-    TConsoleVar<float> cvar_light_flares_occlusion         ("r.light_flares_occlusion",         1.0f,                                                    "depth occlusion for light flares");
     TConsoleVar<float> cvar_mist_density ("r.atmosphere.mist_density", 1.0f, "additional haze and mist density; 0 is clear air, baseline atmospheric scattering always remains");
     TConsoleVar<float> cvar_fog_debug ("r.fog.debug", 0.0f, "volume inspection: 0 composed, 1 scattering, 2 transmittance, 3 surface lighting");
     TConsoleVar<float> cvar_mist_height ("r.atmosphere.mist_height", 300.0f, "altitude scale of additional haze in metres; does not change baseline atmospheric air");

@@ -112,7 +112,8 @@ namespace spartan
         // false when the request cannot be served and the caller has to recreate the texture instead
         // defer_to_frame permits a supported backend to queue the copy on the current graphics list.
         bool UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data, bool defer_to_frame = false);
-        void ReleaseGpuResources() { RHI_DestroyResource(); }
+        // back to idle so a later sampler can prepare it again
+        void ReleaseGpuResources() { RHI_DestroyResource(); m_resource_state = ResourceState::Max; }
         void InvalidateGpuState() { ClearLayouts(); }
         RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layouts[mip]; }
         const std::array<RHI_Image_Layout, rhi_max_mip_count>& GetLayouts() const { return m_layouts; }

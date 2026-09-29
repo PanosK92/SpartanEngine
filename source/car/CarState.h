@@ -197,6 +197,9 @@ namespace car
         // force over available grip for either tire model, and the friction work rate at the patch
         float        friction_use         = 0.0f;
         float        slip_power           = 0.0f; // W
+        // the most force the patch could make right now, load, surface, heat, wear and water included
+        float        peak_force_lat       = 0.0f; // N
+        float        peak_force_long      = 0.0f; // N
         tire_probe_row contacts[max_tire_probe_rows];
         float        pressure_bar         = 2.2f;
         float        damage               = 0.0f;

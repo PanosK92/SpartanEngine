@@ -426,6 +426,9 @@ namespace car
         float get_wheel_slip_angle(int i);
         float get_wheel_slip_ratio(int i);
         float get_wheel_tire_load(int i);
+        float get_wheel_friction_use(int i);
+        float get_wheel_peak_lateral_force(int i);
+        float get_wheel_peak_longitudinal_force(int i);
         float get_wheel_lateral_force(int i);
         float get_wheel_longitudinal_force(int i);
         float get_wheel_angular_velocity(int i);

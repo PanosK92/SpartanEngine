@@ -612,11 +612,15 @@ struct vertex_processing
             float depth     = get_ocean_water_depth(world_xz);
             float3 disp     = 0.0f;
             uint cascades   = buffer_frame.ocean_cascade_count;
+
+            // clipmap rings double their cell every 32 to 64 cells from the camera, waves shorter than a few cells alias and swim
+            float2 to_camera = world_xz - (time_offset < 0.0f ? buffer_frame.camera_position_previous.xz : buffer_frame.camera_position.xz);
+            float cell       = max(0.5f, max(abs(to_camera.x), abs(to_camera.y)) / 48.0f);
             [loop] for (uint c = 0; c < cascades; ++c)
             {
                 float L     = buffer_frame.ocean_cascade_length[c];
                 float2 uv   = world_xz / L;
-                float scale = ocean_cascade_depth_scale(depth, L);
+                float scale = ocean_cascade_depth_scale(depth, L) * (1.0f - smoothstep(L / 32.0f, L / 12.0f, cell));
                 float3 displacement;
                 if (time_offset < 0.0f)
                 {
@@ -645,7 +649,7 @@ struct vertex_processing
             float floor_y = -100000.0f;
             if (above < 0.5f)
             {
-                OceanShore shore = ocean_shore_evaluate(world_xz, ocean_shore_time(time_offset < 0.0f ? -buffer_frame.delta_time : 0.0f));
+                OceanShore shore = ocean_shore_evaluate(world_xz, ocean_shore_time(time_offset < 0.0f ? -buffer_frame.delta_time : 0.0f), cell);
                 disp   += shore.displacement;
                 floor_y = shore.floor_y;
             }

@@ -334,7 +334,10 @@ float3 get_ocean_sun_transmission(float3 position, float3 to_sun, float footprin
                 resolved_focus += get_ocean_caustic(entry + offset, travel) * 0.125f;
             }
         }
-        focus = lerp(1.0f, resolved_focus, saturate(buffer_frame.ocean_caustics_intensity) * wave_detail);
+        // the ribbons are centimetres wide, eight taps cannot average them over a decimetre cell and every cell lands on a random
+        // brightness that flickers with the waves, cells wider than the pattern take its mean of one
+        float caustic_detail = footprint <= 0.0f ? 1.0f : 1.0f - smoothstep(0.04f, 0.25f, footprint);
+        focus = lerp(1.0f, resolved_focus, saturate(buffer_frame.ocean_caustics_intensity) * wave_detail * caustic_detail);
     }
     return lerp(1.0f.xxx, exp(-get_ocean_extinction() * travel) * focus, saturate(depth / 0.08f));
 }
@@ -422,19 +425,26 @@ float get_ocean_foam(float2 grid_xz, float3 water_position, float view_distance,
     return saturate(max(shaped, ocean_shore_foam_shape(shore, water_position.xz, footprint)));
 }
 
-// analytic fft slopes with distance fade, all cascades keep their ripple
-void sample_ocean_surface(float2 grid_xz, float3 water_position, float view_distance, out float3 normal, out float foam)
+// analytic fft slopes, each cascade fades once the pixel footprint (its long axis, which grows at grazing angles) exceeds its shortest waves
+// resolved is the share of the slope variance still carried by the normal, the rest belongs in roughness
+void sample_ocean_surface(float2 grid_xz, float3 water_position, float view_distance, float pixel_footprint, out float3 normal, out float foam, out float resolved)
 {
     uint cascades = buffer_frame.ocean_cascade_count;
     float2 slope  = 0.0f;
     float depth   = get_ocean_water_depth(grid_xz);
     foam          = 0.0f;
+    resolved      = 0.0f;
+    float weight_sum = 0.0f;
 
     [loop] for (uint c = 0; c < cascades; ++c)
     {
         float L    = buffer_frame.ocean_cascade_length[c];
         float2 uv  = grid_xz / L;
-        float fade = 1.0f - smoothstep(L * 2.0f, L * 8.0f, view_distance);
+        // coarser cascades are band limited to a tenth of their patch, the finest one runs to its nyquist texel and has no mips
+        bool finest = c + 1 == cascades;
+        float fade  = finest
+            ? 1.0f - smoothstep(L / 256.0f, L / 32.0f, pixel_footprint)
+            : 1.0f - smoothstep(L / 64.0f, L / 16.0f, pixel_footprint);
 
         float4 slope_foam = tex_ocean_normal.SampleLevel(
             samplers[sampler_bilinear_wrap],
@@ -443,7 +453,13 @@ void sample_ocean_surface(float2 grid_xz, float3 water_position, float view_dist
         );
         slope  += slope_foam.xy * fade * ocean_cascade_depth_scale(depth, L);
         foam    = max(foam, slope_foam.z);
+
+        // slope variance grows with wave number, so the short cascades carry most of it
+        float weight = 1.0f / L;
+        resolved    += fade * weight;
+        weight_sum  += weight;
     }
+    resolved = weight_sum > 0.0f ? resolved / weight_sum : 1.0f;
 
     float str       = buffer_frame.ocean_normal_strength;
     slope          *= str;
@@ -451,13 +467,13 @@ void sample_ocean_surface(float2 grid_xz, float3 water_position, float view_dist
 
     // the surf is analytic, differentiate its displaced surface in the fft grid like the vertices do
     float time       = ocean_shore_time(0.0f);
-    OceanShore shore = ocean_shore_evaluate(grid_xz, time);
+    OceanShore shore = ocean_shore_evaluate(grid_xz, time, pixel_footprint);
     if (shore.height > 0.0f || shore.floor_y > -1000.0f)
     {
-        float eps  = clamp(footprint, 0.1f, 2.0f);
-        float3 p0  = ocean_shore_surface(grid_xz, time);
-        float3 px  = ocean_shore_surface(grid_xz + float2(eps, 0.0f), time);
-        float3 pz  = ocean_shore_surface(grid_xz + float2(0.0f, eps), time);
+        float eps  = clamp(pixel_footprint, 0.1f, 2.0f);
+        float3 p0  = ocean_shore_surface(grid_xz, time, pixel_footprint);
+        float3 px  = ocean_shore_surface(grid_xz + float2(eps, 0.0f), time, pixel_footprint);
+        float3 pz  = ocean_shore_surface(grid_xz + float2(0.0f, eps), time, pixel_footprint);
         float3 n   = cross(pz - p0, px - p0);
         slope     += -n.xz / max(n.y, 1e-4f);
     }
@@ -949,6 +965,34 @@ float ggx_alpha_from_roughness(float roughness)
 {
     float gloss = 1.0f - roughness;
     return sqrt(2.0f / (1.0f + pow(2.0f, 18.0f * gloss)));
+}
+
+// share of the reflection lobe owned by ray traced reflections, ibl owns the rest, the tracer skips
+// pixels where this is 0, the band sits just past the ray spread cap (alpha 0.6, roughness ~0.88)
+// where a traced lobe stops widening and would read as an under blurred mirror
+static const float rt_reflection_fade_start = 0.8f;
+static const float rt_reflection_fade_end   = 0.9f;
+float get_rt_reflection_weight(float reflection_roughness)
+{
+    return 1.0f - smoothstep(rt_reflection_fade_start, rt_reflection_fade_end, reflection_roughness);
+}
+
+// ray traced reflections carry one lobe per pixel, over a dielectric the 4% coat outshines the base
+// so the coat is traced, a metal's tinted base outshines the coat so the base is traced and the coat
+// stays on ibl, returns how much of the traced lobe is the coat, trace, denoise, apply and ibl must agree
+float get_rt_reflection_coat(float clearcoat, float metallic)
+{
+    return saturate(clearcoat) * (1.0f - smoothstep(0.4f, 0.6f, metallic));
+}
+
+// roughness of the traced lobe at a g-buffer pixel, a decal (material.b) strips the coat it covers
+float get_rt_reflection_roughness(float2 uv, out float coat)
+{
+    float4 sample_material  = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
+    uint   material_index   = unpack_material_index(tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).a);
+    MaterialParameters mat  = material_parameters[material_index];
+    coat                    = get_rt_reflection_coat(mat.clearcoat * (1.0f - sample_material.b), sample_material.g);
+    return lerp(sample_material.r, mat.clearcoat_roughness, coat);
 }
 
 // ggx visible normal distribution sampler, heitz 2018, ve is the view direction expressed in

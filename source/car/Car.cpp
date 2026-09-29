@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ===============================
 #include "pch.h"
 #include "Car.h"
+#include "AiDriver.h"
 #include "../profiling/Profiler.h"
 #include "../physics/PhysicsWorld.h"
 #include "CarHud.h"
@@ -39,6 +40,8 @@ Commercial use requires written permission and negotiated payment terms.
 namespace spartan
 {
     std::vector<Car*> Car::s_cars;
+    Car* Car::s_spectated          = nullptr;
+    bool Car::s_car_picker_on_foot = false;
 
     // shared entities use external linkage and resolve lazily during world load
     Entity* default_camera = nullptr;
@@ -491,6 +494,7 @@ namespace spartan
             delete car;
         }
         s_cars.clear();
+        s_spectated = nullptr;
 
         default_camera = nullptr;
 
@@ -763,12 +767,31 @@ namespace spartan
         }
     }
 
+    Car::~Car() = default;
+
+    void Car::SetAiDriver(std::unique_ptr<AiDriver> driver)
+    {
+        if (m_ai_driver)
+        {
+            m_ai_driver->Release();
+        }
+        m_ai_driver = std::move(driver);
+        if (m_ai_driver)
+        {
+            m_ai_driver->Possess(this);
+        }
+    }
+
     void Car::Destroy()
     {
+        // the car goes with the driver, nothing to hand back
+        m_ai_driver.reset();
         if (m_is_occupied)
         {
             Exit();
         }
+        // the camera can hang off this car's body, hand it back before the hierarchy goes
+        StopSpectating();
 
         {
             std::lock_guard<std::mutex> lock(car_list_mutex);
@@ -829,6 +852,11 @@ namespace spartan
         if (m_is_occupied || !m_is_drivable || m_externally_controlled)
         {
             return;
+        }
+
+        if (s_spectated)
+        {
+            s_spectated->StopSpectating();
         }
 
         for (Car* car : GetAll())
@@ -963,22 +991,7 @@ namespace spartan
             }
         }
 
-        // Release both shared synth streams before another car can take ownership.
-        if (Entity* sound_engine = m_vehicle_entity ? m_vehicle_entity->GetChildByName("sound_engine") : nullptr)
-        {
-            if (AudioSource* audio = sound_engine->GetComponent<AudioSource>())
-            {
-                audio->StopSynthesis();
-            }
-        }
-        if (Entity* sound_tire = m_vehicle_entity ? m_vehicle_entity->GetChildByName("sound_tire_squeal") : nullptr)
-        {
-            if (AudioSource* audio = sound_tire->GetComponent<AudioSource>())
-            {
-                audio->StopSynthesis();
-            }
-        }
-        m_tire_squeal_volume = 0.0f;
+        StopSounds();
 
         // play door sound
         if (
@@ -1224,11 +1237,143 @@ namespace spartan
         }
     }
 
+    void Car::StopSounds()
+    {
+        // release both shared synth streams before another car can take ownership
+        if (Entity* sound_engine = m_vehicle_entity ? m_vehicle_entity->GetChildByName("sound_engine") : nullptr)
+        {
+            if (AudioSource* audio = sound_engine->GetComponent<AudioSource>())
+            {
+                audio->StopSynthesis();
+            }
+        }
+        if (Entity* sound_tire = m_vehicle_entity ? m_vehicle_entity->GetChildByName("sound_tire_squeal") : nullptr)
+        {
+            if (AudioSource* audio = sound_tire->GetComponent<AudioSource>())
+            {
+                audio->StopSynthesis();
+            }
+        }
+        m_tire_squeal_volume      = 0.0f;
+        m_engine_sound_configured = false;
+        m_engine_sound_cranking   = false;
+    }
+
+    Car* Car::GetViewed()
+    {
+        if (s_spectated)
+        {
+            return s_spectated;
+        }
+        for (Car* car : GetAll())
+        {
+            if (car && car->IsOccupied())
+            {
+                return car;
+            }
+        }
+        return nullptr;
+    }
+
+    std::string Car::GetDisplayName() const
+    {
+        std::string label;
+        if (Entity* root = GetRootEntity())
+        {
+            // drivable cars hang a generic "vehicle" entity under the named owner
+            label = root->GetObjectName();
+            if (label == "vehicle" && root->GetParent())
+            {
+                label = root->GetParent()->GetObjectName();
+            }
+        }
+        const std::string model = m_definition ? m_definition->name : std::string("car");
+        return label.empty() ? model : model + "  /  " + label;
+    }
+
+    void Car::Spectate()
+    {
+        if (IsSpectated() || m_is_occupied || !m_is_drivable || !m_vehicle_entity || !Engine::IsFlagSet(EngineMode::Playing))
+        {
+            return;
+        }
+
+        // one view at a time: leave the driven car where it is, or stop watching the previous one
+        for (Car* car : GetAll())
+        {
+            if (car && car->IsOccupied())
+            {
+                car->Exit();
+            }
+        }
+        if (s_spectated)
+        {
+            s_spectated->StopSpectating();
+        }
+
+        s_spectated    = this;
+        m_chase_camera = {};
+        StopSounds();
+
+        // the player stays where they stood, the controller must not walk the camera away
+        if (default_camera)
+        {
+            if (Physics* controller = default_camera->GetComponent<Physics>())
+            {
+                controller->SetEnabled(false);
+            }
+        }
+
+        ConfigureCameraForView();
+    }
+
+    void Car::StopSpectating()
+    {
+        if (!IsSpectated())
+        {
+            return;
+        }
+        Entity* camera = FindCameraEntity();
+        s_spectated    = nullptr;
+        m_chase_camera = {};
+        StopSounds();
+
+        if (m_orbit_mouse_active)
+        {
+            Input::SetMousePosition(m_orbit_mouse_last_position);
+            if (!Window::IsFullScreen())
+            {
+                Input::SetMouseCursorVisible(true);
+            }
+            m_orbit_mouse_active = false;
+        }
+
+        // back into the player's head
+        Physics* controller = default_camera ? default_camera->GetComponent<Physics>() : nullptr;
+        if (camera && default_camera)
+        {
+            if (Camera* component = camera->GetComponent<Camera>())
+            {
+                component->ResetFpsMotion();
+            }
+            camera->SetParent(default_camera);
+            camera->SetRotationLocal(math::Quaternion::Identity);
+            if (controller)
+            {
+                camera->SetPositionLocal(controller->GetControllerTopLocal());
+            }
+        }
+        if (controller)
+        {
+            controller->SetEnabled(true);
+        }
+    }
+
     bool Car::IsCameraControlled(Entity* camera)
     {
         for (Car* car : s_cars)
         {
-            if (car && car->IsOccupied() && car->FindCameraEntity() == camera)
+            if (car && car->IsViewed() && car->FindCameraEntity() == camera)
             {
                 return true;
             }
@@ -1239,13 +1384,20 @@ namespace spartan
     void Car::CycleView()
     {
         m_current_view = static_cast<CarView>((static_cast<int>(m_current_view) + 1) % 3);
-        ConfigureCameraForView();
+        if (IsViewed())
+        {
+            ConfigureCameraForView();
+        }
     }
 
     void Car::SetView(CarView view)
     {
         m_current_view = view;
-        ConfigureCameraForView();
+        // a car nobody looks at only remembers the view, taking the camera would steal it from the viewed car
+        if (IsViewed())
+        {
+            ConfigureCameraForView();
+        }
     }
 
     Entity* Car::FindCameraEntity() const
@@ -1264,6 +1416,14 @@ namespace spartan
         if (!camera && default_camera)
         {
             camera = default_camera->GetChildByName(name);
+        }
+        // switching the view between cars can leave the camera mounted on the previous car
+        if (!camera && IsViewed())
+        {
+            if (Camera* active = World::GetCamera())
+            {
+                camera = active->GetEntity();
+            }
         }
 
         return camera;
@@ -2116,9 +2276,17 @@ namespace spartan
         // auto-enter car when play mode starts if camera_follows is enabled
         {
             bool is_playing = Engine::IsFlagSet(EngineMode::Playing);
+            if (!is_playing && m_ai_driver)
+            {
+                SetAiDriver(nullptr);
+            }
             if (!is_playing && m_is_occupied)
             {
                 Exit(false);
+            }
+            if (!is_playing)
+            {
+                StopSpectating();
             }
 
             const bool play_started = is_playing && !m_was_playing;
@@ -2152,6 +2320,10 @@ namespace spartan
             m_surface_effects->Tick(m_vehicle_entity, static_cast<float>(Timer::GetDeltaTimeSec()),
                 Engine::IsFlagSet(EngineMode::Playing));
         }
+        if (m_ai_driver && Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused))
+        {
+            m_ai_driver->Tick(std::clamp(static_cast<float>(Timer::GetDeltaTimeSec()), 0.0f, 0.1f));
+        }
         TickInput();
         TickSounds();
         TickChaseCamera();
@@ -2160,7 +2332,7 @@ namespace spartan
         TickSummon();
         TickVisualization();
 
-        if (m_is_occupied && !m_cinematic)
+        if (IsViewed() && !m_cinematic)
         {
             Physics* hud_physics = m_vehicle_entity ? m_vehicle_entity->GetComponent<Physics>() : nullptr;
             car_hud::draw_driver_hud(hud_physics, !m_show_telemetry);
@@ -2169,9 +2341,31 @@ namespace spartan
                 car_hud::draw_telemetry_hud(this, hud_physics);
             }
         }
+        TickCarPicker();
+
+        if (IsSpectated() && !m_cinematic)
+        {
+            Renderer::DrawString(
+                "SPECTATING   key / mouse  >  gamepad\n"
+                "Cars\tF3\tTouchpad\n"
+                "View\tV\tTri\n"
+                "ReCam\tC\tR3\n"
+                "Look\tRClk\tRStick",
+                math::Vector2(0.006f, 0.03f));
+        }
+
+        if (m_is_occupied && !m_cinematic && m_ai_driver)
+        {
+            Renderer::DrawString(
+                "AI DRIVING   key / mouse  >  gamepad\n"
+                "View\tV\tTri\n"
+                "ReCam\tC\tR3\n"
+                "Look\tRClk\tRStick",
+                math::Vector2(0.006f, 0.03f));
+        }
 
         // osd controls cheat sheet, top left as tidy rows, each row reads action then keyboard or mouse then gamepad
-        if (m_is_occupied && !m_cinematic)
+        if (m_is_occupied && !m_cinematic && !m_ai_driver)
         {
             Renderer::DrawString(
                 "CONTROLS   key / mouse  >  gamepad\n"
@@ -2181,7 +2375,7 @@ namespace spartan
                 "Hbrk\tSpace\tCircle\n"
                 "Shift\tPgUp/Dn\tR1/L1\n"
                 "Auto/Man\t-\tDpadLeft\n"
-                "Telemetry\tF3\tTouchpad\n"
+                "Telem/Cars\tF3\tTouchpad\n"
                 "Feedback\t-\tCreate\n"
                 "Light\tL\tDpadUp\n"
                 "View\tV\tTri\n"
@@ -2196,10 +2390,12 @@ namespace spartan
 
     void Car::TickInput()
     {
-        if (!m_vehicle_entity || !m_is_occupied)
+        if (!m_vehicle_entity || !IsViewed())
         {
             return;
         }
+        // a spectator gets the camera and the hud, never the pedals, gears or reset
+        const bool driving = m_is_occupied && !m_externally_controlled;
 
         Physics* physics = m_vehicle_entity->GetComponent<Physics>();
         if (!physics || !Engine::IsFlagSet(EngineMode::Playing))
@@ -2215,7 +2411,7 @@ namespace spartan
         float brake     = physics->GetVehicleBrake();
         float steering  = physics->GetVehicleSteering();
         float handbrake = physics->GetVehicleHandbrake();
-        if (!m_externally_controlled)
+        if (driving)
         {
             throttle = 0.0f;
             if (is_gamepad_connected)
@@ -2320,7 +2516,7 @@ namespace spartan
         }
 
         // reset to spawn
-        if (!m_externally_controlled && (Input::GetKeyDown(KeyCode::R) || Input::GetKeyDown(KeyCode::Button_South)))
+        if (driving && (Input::GetKeyDown(KeyCode::R) || Input::GetKeyDown(KeyCode::Button_South)))
         {
             ResetToSpawn();
         }
@@ -2335,18 +2531,18 @@ namespace spartan
         {
             m_controller_feedback_enabled = !m_controller_feedback_enabled;
         }
-        if (!m_externally_controlled && Input::GetKeyDown(KeyCode::DPad_Left))
+        if (driving && Input::GetKeyDown(KeyCode::DPad_Left))
         {
             if (auto* simulation = physics->GetVehicleSimulation())
                 simulation->set_manual_transmission(!simulation->get_manual_transmission());
         }
 
         // manual gear shifting (gran turismo style: L1/pgdn down, R1/pgup up)
-        if (!m_externally_controlled && (Input::GetKeyDown(KeyCode::Left_Shoulder) || Input::GetKeyDown(KeyCode::Paddle2) || Input::GetKeyDown(KeyCode::Page_Down)))
+        if (driving && (Input::GetKeyDown(KeyCode::Left_Shoulder) || Input::GetKeyDown(KeyCode::Paddle2) || Input::GetKeyDown(KeyCode::Page_Down)))
         {
             physics->ShiftDown();
         }
-        if (!m_externally_controlled && (Input::GetKeyDown(KeyCode::Right_Shoulder) || Input::GetKeyDown(KeyCode::Paddle1) || Input::GetKeyDown(KeyCode::Page_Up)))
+        if (driving && (Input::GetKeyDown(KeyCode::Right_Shoulder) || Input::GetKeyDown(KeyCode::Paddle1) || Input::GetKeyDown(KeyCode::Page_Up)))
         {
             physics->ShiftUp();
         }
@@ -2358,7 +2554,7 @@ namespace spartan
     {
         auto* simulation = physics->GetVehicleSimulation();
         if (!simulation || !Input::IsGamepadConnected() || Input::IsBlockedByUi() ||
-            m_externally_controlled || !m_controller_feedback_enabled)
+            m_externally_controlled || !m_is_occupied || !m_controller_feedback_enabled)
         {
             Input::GamepadStopFeedback();
             m_haptic_initialized = false;
@@ -2450,7 +2646,7 @@ namespace spartan
         Physics* physics            = m_vehicle_entity->GetComponent<Physics>();
 
         // engine sound
-        if (m_is_occupied && physics && audio_engine)
+        if (IsViewed() && physics && audio_engine)
         {
             float engine_rpm  = physics->GetEngineRPM();
             float throttle    = physics->GetVehicleThrottle();
@@ -2596,13 +2792,13 @@ namespace spartan
             }
             m_engine_sound_cranking = cranking;
         }
-        else if (!m_is_occupied && audio_engine && audio_engine->IsPlaying())
+        else if (!IsViewed() && audio_engine && audio_engine->IsPlaying())
         {
             audio_engine->StopSynthesis();
         }
 
         // tire squeal
-        if (audio_tire && physics && m_is_occupied)
+        if (audio_tire && physics && IsViewed())
         {
             float speed_kmh = physics->GetLinearVelocity().Length() * 3.6f;
 
@@ -2698,7 +2894,7 @@ namespace spartan
 
     void Car::TickChaseCamera()
     {
-        if (!m_is_occupied || m_current_view != CarView::Chase || !m_vehicle_entity || !default_camera)
+        if (!IsViewed() || m_current_view != CarView::Chase || !m_vehicle_entity || !default_camera)
         {
             return;
         }
@@ -2776,7 +2972,7 @@ namespace spartan
 
     void Car::TickViewSwitch()
     {
-        if (!m_is_occupied)
+        if (!IsViewed())
         {
             return;
         }
@@ -2810,5 +3006,65 @@ namespace spartan
         }
 
         SummonToPlayer();
+    }
+
+    void Car::TickCarPicker()
+    {
+        if (!Engine::IsFlagSet(EngineMode::Playing) || !m_is_drivable || m_cinematic)
+        {
+            return;
+        }
+
+        // one car draws the list per frame: the viewed car while its telemetry is up, on foot the first drivable car
+        Car* viewed = GetViewed();
+        if (viewed)
+        {
+            s_car_picker_on_foot = false;
+            if (viewed != this || !m_show_telemetry)
+            {
+                return;
+            }
+        }
+        else
+        {
+            Car* owner = nullptr;
+            for (Car* car : GetAll())
+            {
+                if (car && car->m_is_drivable && car->GetRootEntity())
+                {
+                    owner = car;
+                    break;
+                }
+            }
+            if (owner != this)
+            {
+                return;
+            }
+            if (Input::GetKeyDown(KeyCode::F3) || Input::GetKeyDown(KeyCode::Touchpad))
+            {
+                s_car_picker_on_foot = !s_car_picker_on_foot;
+            }
+            if (!s_car_picker_on_foot)
+            {
+                return;
+            }
+        }
+
+        Car* chosen = car_hud::draw_car_picker(viewed);
+        if (!chosen || chosen == viewed)
+        {
+            return;
+        }
+
+        // the list stays open on the new car so switching again is one more click
+        chosen->SetShowTelemetry(true);
+        if (chosen->IsExternallyControlled())
+        {
+            chosen->Spectate();
+        }
+        else
+        {
+            chosen->Enter();
+        }
     }
 }

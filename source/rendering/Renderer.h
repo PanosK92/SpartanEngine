@@ -54,6 +54,7 @@ namespace spartan
 
     // console variables
     extern TConsoleVar<float> cvar_aabb;
+    extern TConsoleVar<float> cvar_volumes;
     extern TConsoleVar<float> cvar_picking_ray;
     extern TConsoleVar<float> cvar_grid;
     extern TConsoleVar<float> cvar_transform_handle;
@@ -70,14 +71,6 @@ namespace spartan
     extern TConsoleVar<float> cvar_wireframe;
     extern TConsoleVar<float> cvar_bloom;
     extern TConsoleVar<float> cvar_bloom_scatter;
-    extern TConsoleVar<float> cvar_light_flares;
-    extern TConsoleVar<float> cvar_light_flares_near_distance;
-    extern TConsoleVar<float> cvar_light_flares_fade_length;
-    extern TConsoleVar<float> cvar_light_flares_max_distance;
-    extern TConsoleVar<float> cvar_light_flares_size_scale;
-    extern TConsoleVar<float> cvar_light_flares_intensity_scale;
-    extern TConsoleVar<float> cvar_light_flares_max_size_px;
-    extern TConsoleVar<float> cvar_light_flares_occlusion;
     extern TConsoleVar<float> cvar_mist_density;
     extern TConsoleVar<float> cvar_fog_debug;
     extern TConsoleVar<float> cvar_mist_height;

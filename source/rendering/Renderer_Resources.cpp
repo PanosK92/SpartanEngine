@@ -242,6 +242,17 @@ namespace spartan
             restir_pairing_element_count, nullptr, true, "restir_pairing"
         );
 
+        // 2^19 cells of 4 uints, see common_radiance_cache.hlsl, zeroed once so every cell starts empty
+        {
+            const uint32_t radiance_cache_elements = (1u << 19) * 4u;
+            at(buffers, Renderer_Buffer::RadianceCache) = make_shared<RHI_Buffer>(
+                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
+                radiance_cache_elements, nullptr, false, "radiance_cache"
+            );
+            vector<uint32_t> zeros(radiance_cache_elements, 0u);
+            at(buffers, Renderer_Buffer::RadianceCache)->UploadSubRegion(zeros.data(), 0, zeros.size() * sizeof(uint32_t));
+        }
+
         // volumetric light index list, compact list of light slot indices with the volumetric flag set
         // built each frame on the cpu in UpdateLights, scanned per pixel by the volumetric fog loop
         at(buffers, Renderer_Buffer::VolumetricLightIndices) = make_shared<RHI_Buffer>(
@@ -494,7 +505,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "gbuffer_reflections_position");
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_normal)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_reflections_normal");
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_albedo)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_reflections_albedo");
-            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_emissive) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R11G11B10_Float, flags, "gbuffer_reflections_emissive");
+            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_emissive) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_reflections_emissive");
         }
         else if (!need_rt_reflections && at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position))
         {
@@ -1292,7 +1303,8 @@ namespace spartan
                 e.id == Renderer_Shader::particle_render_p ||
                 e.id == Renderer_Shader::particle_volume_composite_c ||
                 e.id == Renderer_Shader::fog_sky_visibility_c ||
-                e.id == Renderer_Shader::fog_inject_c;
+                e.id == Renderer_Shader::fog_inject_c ||
+                e.id == Renderer_Shader::reflections_apply_c;
             const char* define_ext = (rt && needs_ray_tracing_define) ? "RAY_TRACING_ENABLED" : nullptr;
             compile_shader(e.id, e.stage, sd + e.file, e.async, e.vtype, e.define, define_ext, e.define2);
         }

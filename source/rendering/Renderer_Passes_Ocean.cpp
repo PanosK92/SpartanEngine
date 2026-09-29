@@ -525,6 +525,12 @@ namespace spartan
             key_sea_level = numeric_limits<float>::max();
         }
 
+        void shutdown()
+        {
+            reset();
+            texture_retired.reset();
+        }
+
         RHI_Texture* get_texture()
         {
             return texture && texture->GetResourceState() == ResourceState::PreparedForGpu ? texture.get() : nullptr;
@@ -606,7 +612,9 @@ namespace spartan
 
             const float exposure = lerp(0.55f, 1.0f, clamp((dir_x * sx + dir_z * sz) * 0.6f + 0.5f, 0.0f, 1.0f));
             const float fade     = 1.0f - smoothstep(reach * 0.5f, reach, distance);
-            const float offshore = swell_height * exposure * fade;
+            const float l_deep   = c_deep * period;
+            const float shoaling = 1.0f - smoothstep(0.03f * l_deep, 0.1f * l_deep, wet_d);
+            const float offshore = swell_height * exposure * fade * shoaling;
 
             const float psi    = -obliquity * (grid_x * sx + grid_z * sz) / (c_deep * period) + noise(grid_x / 240.0f, grid_z / 240.0f, 7) * 0.6f;
             const float cycles = (travel_time(distance, slope, c_deep) + time) / period + psi;
@@ -1027,6 +1035,19 @@ namespace spartan
         Vector3 shore_displacement;
         float shore_floor = 0.0f;
 
+        // mirrors ocean_cascade_depth_scale in common.hlsl, long waves ease off in the shallows
+        Terrain* terrain = Terrain::FindActive();
+        auto depth_scale = [&](const uint32_t cascade, const float sample_x, const float sample_z)
+        {
+            float bed = 0.0f;
+            if (!terrain || !terrain->SampleHeight(sample_x, sample_z, bed))
+            {
+                return 1.0f;
+            }
+            const float deep = max(lengths[cascade] * 0.12f, 8.0f);
+            return lerp(0.4f, 1.0f, ocean_shore::smoothstep(0.25f, deep, max(sea_level - bed, 0.0f)));
+        };
+
         Vector2 grid_position(x, z);
         for (uint32_t iteration = 0; iteration < 3; iteration++)
         {
@@ -1037,7 +1058,7 @@ namespace spartan
                     cascade,
                     grid_position.x,
                     grid_position.y
-                );
+                ) * depth_scale(cascade, grid_position.x, grid_position.y);
                 horizontal_displacement.x += displacement.x;
                 horizontal_displacement.y += displacement.z;
             }
@@ -1056,7 +1077,7 @@ namespace spartan
                 cascade,
                 grid_position.x,
                 grid_position.y
-            ).y;
+            ).y * depth_scale(cascade, grid_position.x, grid_position.y);
         }
         ocean_shore::evaluate(grid_position.x, grid_position.y, sea_level, shore_displacement, shore_floor);
         height = max(height + shore_displacement.y, shore_floor);

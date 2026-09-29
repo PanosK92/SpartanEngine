@@ -9,29 +9,13 @@ Commercial use requires written permission and negotiated payment terms.
 #define DEBUG_RAY_TRACING 0 // 1 = green hit, red miss, blue no geometry
 #endif
 
-//= INCLUDES =========
+//= INCLUDES ==================
 #include "common.hlsl"
-#include "common_road.hlsl"
-#include "common_decals.hlsl"
-#include "common_ray_hit.hlsl"
-//====================
+#include "common_ray_surface.hlsl"
+//=============================
 
 // upper bound on the ggx alpha for the reflection ray spread, caps divergence on rough surfaces
 static const float k_reflection_alpha_max = 0.6f;
-
-struct ReflectionSurface
-{
-    float3 position;
-    float  hit_distance;
-    float3 normal;
-    float  material_index;
-    float3 albedo;
-    float  roughness;
-    float3 emission;
-};
-
-// Read payload fields at the call site so DXC's payload-access analysis sees them.
-ReflectionSurface reconstruct_reflection_surface(float ray_t, uint instance_index, uint primitive_index, uint barycentrics_packed, RayDesc ray);
 
 [shader("raygeneration")]
 void ray_gen()
@@ -59,16 +43,14 @@ void ray_gen()
     float3 normal_ws = get_normal(uv);
     float3 V         = normalize(get_camera_position() - pos_ws);
 
-    // source roughness drives the ray spread, the vndf sampler is mirror sharp at roughness 0
-    float4 normal_sample = tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
-    uint material_index  = unpack_material_index(normal_sample.a);
-    MaterialParameters mat = material_parameters[material_index];
-    float4 decal_material = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
-    float roughness = decal_material.r;
-    roughness       = lerp(roughness, mat.clearcoat_roughness, saturate(mat.clearcoat) * (1.0f - decal_material.b));
+    // the lobe the tracer carries, its roughness drives the ray spread, the vndf sampler is mirror sharp at roughness 0
+    float4 normal_sample   = tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
+    MaterialParameters mat = material_parameters[unpack_material_index(normal_sample.a)];
+    float coat;
+    float roughness = get_rt_reflection_roughness(uv, coat);
 
     // skip near-diffuse lobes, apply fades them out and ibl covers the rest
-    if (roughness >= 0.9f)
+    if (get_rt_reflection_weight(roughness) <= 0.0f)
     {
 #if DEBUG_RAY_TRACING == 1
         tex_uav[launch_id] = float4(0, 0, 1, 1);
@@ -103,6 +85,16 @@ void ray_gen()
         R = reflect(-V, normal_ws);
     }
 
+    // the sea mostly reflects sky, and misses already sample it prefiltered by roughness, a jittered lobe only adds sparkle noise
+    // the sea surface is not in the tlas either, a wave slope reflecting below the horizon would pass through it and return the seabed
+    // on real water that ray meets the next wave and mirrors the sky above it, so fold it back over the horizon
+    bool is_water = (mat.flags & (1u << 13)) != 0;
+    if (is_water && buffer_frame.ocean_enabled > 0.5f)
+    {
+        R   = reflect(-V, normal_ws);
+        R.y = max(abs(R.y), 0.01f);
+    }
+
     // ray origin offset scaled with camera distance, pushed along the reflection at grazing angles
     float camera_distance = length(get_camera_position() - pos_ws);
     float base_offset     = 0.001f + camera_distance * 0.0001f;
@@ -116,6 +108,11 @@ void ray_gen()
     ray.TMin      = 0.0001f;
     ray.TMax      = 1000.0f;
 
+    // the pixel's cone leaves the surface as wide as the pixel, and spreads by the pixel angle plus
+    // the lobe width, textures at the hit are prefiltered to what the denoised lobe resolves anyway
+    float pixel_angle = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / max(buffer_frame.resolution_render.x, 1.0f);
+    float2 cone       = float2(camera_distance * pixel_angle, pixel_angle + alpha);
+
     HitPayload hit_record;
 
     // ensure geometry_infos is in pipeline layout
@@ -127,185 +124,24 @@ void ray_gen()
 #if DEBUG_RAY_TRACING == 1
     tex_uav[launch_id] = hit_record.hit_distance >= 0.0f ? float4(0, 1, 0, 1) : float4(1, 0, 0, 1);
 #else
-    ReflectionSurface payload = reconstruct_reflection_surface(
-        hit_record.hit_distance, hit_record.instance_index, hit_record.primitive_index, hit_record.barycentrics_packed, ray);
-    tex_uav[launch_id]  = float4(payload.position, payload.hit_distance);
-    tex_uav2[launch_id] = float4(payload.normal, pack_material_index((uint)payload.material_index));
-    tex_uav3[launch_id] = float4(payload.albedo, payload.roughness);
-    tex_uav4[launch_id] = float4(payload.emission, 0.0f);
+    float hit_distance = hit_record.hit_distance;
+    uint instance      = hit_record.instance_index;
+    uint primitive     = hit_record.primitive_index;
+    uint barycentrics  = hit_record.barycentrics_packed;
+    if (hit_distance < 0.0f)
+    {
+        // zero distance marks a miss, the direction goes in position for sky sampling
+        tex_uav[launch_id]  = float4(ray.Direction, 0.0f);
+        tex_uav2[launch_id] = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        tex_uav3[launch_id] = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        tex_uav4[launch_id] = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        return;
+    }
+
+    RaySurface surface  = ray_surface_reconstruct(hit_distance, instance, primitive, unpack_hit_barycentrics(barycentrics), ray, cone);
+    tex_uav[launch_id]  = float4(surface.position, surface.hit_distance);
+    tex_uav2[launch_id] = float4(surface.normal, pack_material_index(surface.material_index));
+    tex_uav3[launch_id] = float4(surface.albedo, surface.roughness);
+    tex_uav4[launch_id] = float4(surface.emission, surface.metallic);
 #endif
-}
-
-ReflectionSurface reconstruct_reflection_surface(float ray_t, uint instance_index, uint primitive_index, uint barycentrics_packed, RayDesc ray)
-{
-    ReflectionSurface payload = (ReflectionSurface)0;
-    if (ray_t < 0.0f)
-    {
-        // Preserve the output convention: zero distance and direction for sky sampling.
-        payload.position = ray.Direction;
-        return payload;
-    }
-    GeometryInfo geo = geometry_infos[instance_index];
-
-    uint material_index = geo.material_index;
-    MaterialParameters mat = material_parameters[material_index];
-
-    // fetch triangle indices from the global index buffer
-    uint index_base      = geo.index_offset + primitive_index * 3;
-    uint i0 = geometry_indices[index_base + 0];
-    uint i1 = geometry_indices[index_base + 1];
-    uint i2 = geometry_indices[index_base + 2];
-
-    // fetch vertex data from the global vertex buffer
-    PulledVertex v0 = geometry_vertices[geo.vertex_offset + i0];
-    PulledVertex v1 = geometry_vertices[geo.vertex_offset + i1];
-    PulledVertex v2 = geometry_vertices[geo.vertex_offset + i2];
-
-    float3 v0_normal  = unpack_vertex_oct(v0.normal);
-    float3 v1_normal  = unpack_vertex_oct(v1.normal);
-    float3 v2_normal  = unpack_vertex_oct(v2.normal);
-    float3 v0_tangent = unpack_vertex_oct(v0.tangent);
-    float3 v1_tangent = unpack_vertex_oct(v1.tangent);
-    float3 v2_tangent = unpack_vertex_oct(v2.tangent);
-    float2 v0_uv      = unpack_vertex_uv(v0.uv);
-    float2 v1_uv      = unpack_vertex_uv(v1.uv);
-    float2 v2_uv      = unpack_vertex_uv(v2.uv);
-
-    // barycentric interpolation
-    float3 bary = unpack_hit_barycentrics(barycentrics_packed);
-
-    float2 texcoord       = v0_uv * bary.x + v1_uv * bary.y + v2_uv * bary.z;
-    float3 normal_object  = normalize(v0_normal * bary.x + v1_normal * bary.y + v2_normal * bary.z);
-    float3 tangent_object = normalize(v0_tangent * bary.x + v1_tangent * bary.y + v2_tangent * bary.z);
-
-    // world space transform
-    float3x3 obj_to_world = float3x3(geo.object_to_world_0.xyz, geo.object_to_world_1.xyz, geo.object_to_world_2.xyz);
-    float3x3 world_to_obj = float3x3(geo.world_to_object_0.xyz, geo.world_to_object_1.xyz, geo.world_to_object_2.xyz);
-    float3 normal_world   = normalize(mul(normal_object, transpose(world_to_obj)));
-    float3 tangent_world  = normalize(mul(tangent_object, obj_to_world));
-    if (dot(normal_world, ray.Direction) > 0.0f)
-        normal_world = -normal_world;
-
-    // world space uv, full uv state is per renderable from geometry_infos[InstanceIndex()]
-    float3 hit_pos = ray.Origin + ray.Direction * ray_t;
-    if (mat.is_terrain())
-    {
-        // terrain maps planar world xz with tiling as repeats per meter, matches the raster path
-        texcoord = hit_pos.xz * geo.uv_tiling + geo.uv_offset;
-    }
-    else if (geo.uv_world_space > 0.0f)
-    {
-        float2 uv_world = compute_world_space_uv(hit_pos, normal_world);
-        uv_world        = uv_world * geo.uv_tiling + geo.uv_offset;
-
-        // branchless inversion
-        float2 invert_mask = step(0.5f, geo.uv_invert);
-        texcoord           = lerp(uv_world, 1.0f - frac(uv_world) + floor(uv_world), invert_mask);
-    }
-    else
-    {
-        texcoord = texcoord * geo.uv_tiling + geo.uv_offset;
-    }
-
-    if (geo.uv_rotation != 0.0f)
-        texcoord = rotate_uv_90(texcoord, geo.uv_rotation);
-
-    float hit_distance      = ray_t;
-    float n_dot_v_hit       = saturate(dot(normal_world, -ray.Direction));
-    float grazing_mip_boost = lerp(2.5f, 0.0f, n_dot_v_hit);
-    float distance_mip      = log2(max(hit_distance, 1.0f));
-    float mip_level         = clamp(distance_mip + grazing_mip_boost, 0.0f, 7.0f);
-
-    // terrain, evaluated with the same layer weights the raster pass uses so a reflection of a
-    // cliff shows rock rather than the grass that slot zero used to hand back
-    bool terrain_shaded = mat.is_terrain() && mat.terrain_layer_count > 0;
-    TerrainSurface terrain = (TerrainSurface)0;
-    if (terrain_shaded)
-    {
-        terrain = terrain_shade_lod(mat, hit_pos, normal_world, texcoord, mip_level);
-    }
-
-    // normal mapping, mild mip bias to avoid specular sparkle on detailed normal maps
-    if (!terrain_shaded && mat.has_texture_normal())
-    {
-        uint  normal_texture_index = get_material_texture_index(material_index, material_texture_index_normal);
-        float normal_mip           = clamp(distance_mip + lerp(1.5f, 0.0f, n_dot_v_hit), 0.0f, 5.0f);
-        float3 normal_sample       = material_textures[normal_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, normal_mip).xyz;
-        // Match the G-buffer's BC5 decode. The texture's missing blue channel is zero,
-        // not a negative tangent-space Z; using it flips the normal behind the wall
-        // and makes the reflection's sky-visibility ray originate outside the room.
-        normal_sample = normalize(normal_sample * 2.0f - 1.0f);
-        normal_sample.z = sqrt(max(0.0f, 1.0f - dot(normal_sample.xy, normal_sample.xy)));
-        normal_sample.xy *= saturate(max(0.01f, mat.normal));
-
-        tangent_world = normalize(tangent_world - normal_world * dot(tangent_world, normal_world));
-        float3 bitangent_world = normalize(cross(normal_world, tangent_world));
-        float3x3 tbn           = float3x3(tangent_world, bitangent_world, normal_world);
-        normal_world           = normalize(mul(normal_sample, tbn));
-    }
-
-    // albedo, mip biased by hit distance and grazing angle to avoid texture moire
-    float3 albedo = mat.color.rgb;
-    if (terrain_shaded)
-    {
-        albedo = terrain.albedo;
-    }
-    else if (mat.has_texture_albedo())
-    {
-        uint  albedo_texture_index = get_material_texture_index(material_index, material_texture_index_albedo);
-        float4 sampled_albedo = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
-        if (mat.is_albedo_srgb())
-        {
-            sampled_albedo.rgb = srgb_to_linear(sampled_albedo.rgb);
-        }
-        if (sampled_albedo.a > 0.01f)
-        {
-            albedo = sampled_albedo.rgb * mat.color.rgb;
-        }
-    }
-
-    float roughness = mat.roughness;
-    if (terrain_shaded)
-    {
-        roughness = terrain.roughness;
-    }
-    else if (mat.has_texture_roughness())
-    {
-        float4 packed = material_textures[get_material_texture_index(material_index, material_texture_index_packed)].SampleLevel(
-            GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
-        roughness *= packed.g;
-    }
-    roughness = max(roughness, 0.04f);
-
-    // Evaluate the same emitter at the ray hit as at a primary raster hit.
-    if (mat.emissive_from_albedo())
-    {
-        payload.emission = albedo * mat.emissive_strength * photometric_to_radiometric(lighting_emissive_nits_from_albedo);
-    }
-    else if (mat.has_texture_emissive())
-    {
-        float3 emission = material_textures[get_material_texture_index(material_index, material_texture_index_emission)].SampleLevel(
-            GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
-        if (mat.is_emissive_srgb())
-        {
-            emission = srgb_to_linear(emission);
-        }
-        payload.emission = emission * photometric_to_radiometric(lighting_emissive_nits_texture);
-    }
-
-    road_weathering(mat.flags,hit_pos,texcoord,.6,albedo,roughness,exp2(mip_level)*road_asphalt_repeat/4096.0);
-    float decal_metalness = mat.metalness, decal_occlusion = 1.0f;
-    float3 decal_tangent = normalize(tangent_world);
-    float3 decal_bitangent = normalize(cross(normal_world, decal_tangent));
-    float footprint = max(ray_t * 0.001f, 0.001f);
-    apply_decals(uint2(geo.decal_offset, geo.decal_count), hit_pos, normal_world,
-        decal_tangent * footprint, decal_bitangent * footprint, albedo, normal_world,
-        roughness, decal_metalness, decal_occlusion, payload.emission);
-    payload.position       = hit_pos;
-    payload.hit_distance   = ray_t;
-    payload.normal         = normal_world;
-    payload.material_index = float(material_index);
-    payload.albedo         = albedo;
-    payload.roughness      = roughness;
-    return payload;
 }

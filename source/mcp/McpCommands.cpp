@@ -41,8 +41,11 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/GameReady.h"
 #include "../world/WorldHelpers.h"
 #include "../io/pugixml.hpp"
+#include "../car/AiDriver.h"
 #include "../car/Car.h"
 #include "../car/CarSimulation.h"
+#include "../car/RacingLine.h"
+#include "../world/components/RaceDriver.h"
 #include "../car/CarState.h"
 #include "../resource/ResourceCache.h"
 #include "../resource/import/ImageImporter.h"
@@ -1548,6 +1551,10 @@ namespace spartan
             {
                 return "r.aabb";
             }
+            if (name == "volumes")
+            {
+                return "r.volumes";
+            }
             if (name == "picking_ray")
             {
                 return "r.picking_ray";
@@ -1598,7 +1605,7 @@ namespace spartan
 
         std::string renderer_debug_options_json()
         {
-            return "[\"aabb\",\"picking_ray\",\"grid\",\"transform_handle\",\"selection_outline\",\"entity_icons\",\"performance_metrics\",\"physics\",\"ragdoll\",\"wireframe\",\"meshlet_visualize\",\"cluster_visualize\"]";
+            return "[\"aabb\",\"volumes\",\"picking_ray\",\"grid\",\"transform_handle\",\"selection_outline\",\"entity_icons\",\"performance_metrics\",\"physics\",\"ragdoll\",\"wireframe\",\"meshlet_visualize\",\"cluster_visualize\"]";
         }
 
         Material* get_material_from_request(const McpRequest& request, std::string& error)
@@ -7114,7 +7121,7 @@ namespace spartan
             bool first = true;
             const std::vector<std::string> options =
             {
-                "aabb", "picking_ray", "grid", "transform_handle", "selection_outline", "entity_icons", "performance_metrics", "physics", "ragdoll", "wireframe", "meshlet_visualize", "cluster_visualize"
+                "aabb", "volumes", "picking_ray", "grid", "transform_handle", "selection_outline", "entity_icons", "performance_metrics", "physics", "ragdoll", "wireframe", "meshlet_visualize", "cluster_visualize"
             };
 
             for (const std::string& option : options)
@@ -7374,7 +7381,7 @@ namespace spartan
             {
                 json += ",\"entity\":" + entity_to_json_compact(root);
             }
-            json += ",\"occupied\":" + json_bool(car->IsOccupied());
+            json += ",\"occupied\":" + json_bool(car->IsOccupied()); json += ",\"spectated\":" + json_bool(car->IsSpectated());
             uint32_t decal_count = 0;
             uint32_t scratch_count = 0;
             std::string scratches = "[";
@@ -7427,8 +7434,144 @@ namespace spartan
                 json += ",\"tire_pressure_psi\":" + std::to_string(physics->GetTirePressure() * tire_psi_per_bar);
                 json += ",\"tire_pressure_optimal_bar\":" + std::to_string(physics->GetTirePressureOptimal());
             }
+            if (const AiDriver* driver = car->GetAiDriver())
+            {
+                const AiDriverStats& stats = driver->GetStats();
+                json += ",\"ai_driver\":{\"track_id\":" + json_string(std::to_string(driver->GetLine()->GetTrackEntityId()));
+                json += ",\"skill\":" + std::to_string(driver->GetSettings().skill);
+                json += ",\"lap\":" + std::to_string(stats.lap) + ",\"resets\":" + std::to_string(stats.resets);
+                json += ",\"lap_time\":" + std::to_string(stats.lap_time) + ",\"last_lap_time\":" + std::to_string(stats.last_lap_time);
+                json += ",\"best_lap_time\":" + std::to_string(stats.best_lap_time) + ",\"ideal_lap\":" + std::to_string(stats.ideal_lap);
+                json += ",\"distance\":" + std::to_string(stats.distance) + ",\"travelled\":" + std::to_string(stats.travelled) + ",\"line_error\":" + std::to_string(stats.line_error);
+                json += ",\"target_kmh\":" + std::to_string(stats.target_kmh) + "}";
+            }
+            else
+            {
+                json += ",\"ai_driver\":null";
+            }
             json += "}";
             return json;
+        }
+
+        // the racing line of a spline road, shared with a race on that road or with earlier drivers so every car races the same line
+        std::shared_ptr<RacingLine> find_racing_line(const std::optional<std::string>& track, std::string& error)
+        {
+            static std::unordered_map<uint64_t, std::weak_ptr<RacingLine>> built_lines;
+
+            Entity* track_entity = nullptr;
+            if (track)
+            {
+                uint64_t id = 0;
+                if (parse_uint64(*track, id))
+                {
+                    track_entity = World::GetEntityById(id);
+                }
+                else
+                {
+                    track_entity = find_entity_by_name_unique(*track, true, error);
+                    if (!track_entity)
+                    {
+                        track_entity = find_entity_by_name_unique(*track, false, error);
+                    }
+                }
+                if (!track_entity)
+                {
+                    error = "track not found";
+                    return nullptr;
+                }
+            }
+
+            for (Entity* entity : World::GetEntities())
+            {
+                RaceDriver* race = entity ? entity->GetComponent<RaceDriver>() : nullptr;
+                if (race && race->GetRacingLine() && (!track_entity || race->GetRacingLine()->GetTrackEntityId() == track_entity->GetObjectId()))
+                {
+                    return race->GetRacingLine();
+                }
+            }
+            if (!track_entity)
+            {
+                error = "no race is running, pass track with a spline road id or name";
+                return nullptr;
+            }
+            if (std::shared_ptr<RacingLine> line = built_lines[track_entity->GetObjectId()].lock())
+            {
+                return line;
+            }
+            std::shared_ptr<RacingLine> line = RacingLine::Build(track_entity);
+            if (!line)
+            {
+                error = "track is not a spline road with at least three control points";
+                return nullptr;
+            }
+            built_lines[track_entity->GetObjectId()] = line;
+            return line;
+        }
+
+        std::string command_vehicle_ai(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!Engine::IsFlagSet(EngineMode::Playing))
+            {
+                return json_error("vehicle ai requires play mode");
+            }
+
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (car == nullptr)
+            {
+                return json_error(error);
+            }
+
+            bool stop = false;
+            if (const std::optional<std::string> value = get_argument(request, "stop"))
+            {
+                if (!parse_bool(*value, stop))
+                {
+                    return json_error("invalid stop");
+                }
+            }
+            if (stop)
+            {
+                car->SetAiDriver(nullptr);
+                return car_status_json(car);
+            }
+
+            std::shared_ptr<RacingLine> line = find_racing_line(get_argument(request, "track"), error);
+            if (!line)
+            {
+                return json_error(error);
+            }
+
+            AiDriverSettings settings;
+            const std::pair<const char*, float*> floats[] = { { "skill", &settings.skill }, { "max_speed", &settings.max_speed }, { "launch_delay", &settings.launch_delay } };
+            for (const auto& [name, target] : floats)
+            {
+                if (const std::optional<std::string> value = get_argument(request, name))
+                {
+                    if (!parse_float(*value, *target))
+                    {
+                        return json_error(std::string("invalid ") + name);
+                    }
+                }
+            }
+            const std::pair<const char*, bool*> flags[] = { { "learning", &settings.learning }, { "verbose", &settings.verbose } };
+            for (const auto& [name, target] : flags)
+            {
+                if (const std::optional<std::string> value = get_argument(request, name))
+                {
+                    if (!parse_bool(*value, *target))
+                    {
+                        return json_error(std::string("invalid ") + name);
+                    }
+                }
+            }
+
+            car->SetAiDriver(std::make_unique<AiDriver>(line, settings));
+            return car_status_json(car);
         }
 
         std::string command_vehicle_set_tire_pressure(const McpRequest& request)
@@ -7503,7 +7646,7 @@ namespace spartan
                     json += ",\"parent_id\":" + json_string(std::to_string(parent->GetObjectId()));
                     json += ",\"parent_name\":" + json_string(parent->GetObjectName());
                 }
-                json += ",\"occupied\":" + json_bool(car->IsOccupied());
+                json += ",\"occupied\":" + json_bool(car->IsOccupied()); json += ",\"spectated\":" + json_bool(car->IsSpectated());
                 json += ",\"mcp_controlled\":" + json_bool(car->IsExternallyControlled());
                 json += ",\"view\":" + json_string(car_view_to_name(car->GetCurrentView()));
                 json += ",\"position\":" + json_vector3(root->GetPosition());
@@ -7664,6 +7807,63 @@ namespace spartan
                 car->Exit();
             }
             car->SetExternallyControlled(false);
+            return car_status_json(car);
+        }
+
+        std::string command_vehicle_spectate(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!Engine::IsFlagSet(EngineMode::Playing))
+            {
+                return json_error("vehicle spectate requires play mode");
+            }
+
+            // stop: true hands the camera back to the player on foot
+            bool stop = false;
+            if (const std::optional<std::string> value = get_argument(request, "stop"))
+            {
+                if (!parse_bool(*value, stop))
+                {
+                    return json_error("invalid stop");
+                }
+            }
+            if (stop)
+            {
+                if (Car* viewed = Car::GetViewed(); viewed && viewed->IsSpectated())
+                {
+                    viewed->StopSpectating();
+                }
+                return "{\"ok\":true,\"spectating\":false}";
+            }
+
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (car == nullptr)
+            {
+                return json_error(error);
+            }
+            if (car->IsOccupied())
+            {
+                return json_error("the player drives this car, spectate another one");
+            }
+
+            bool telemetry = true;
+            if (const std::optional<std::string> value = get_argument(request, "telemetry"))
+            {
+                if (!parse_bool(*value, telemetry))
+                {
+                    return json_error("invalid telemetry");
+                }
+            }
+            car->Spectate();
+            if (!car->IsSpectated())
+            {
+                return json_error("failed to spectate car");
+            }
+            car->SetShowTelemetry(telemetry);
             return car_status_json(car);
         }
 
@@ -11876,6 +12076,8 @@ namespace spartan
             { "vehicle_dyno",                  command_vehicle_dyno },
             { "vehicle_enter",                 command_vehicle_enter },
             { "vehicle_exit",                  command_vehicle_exit },
+            { "vehicle_spectate",              command_vehicle_spectate },
+            { "vehicle_ai",                    command_vehicle_ai },
             { "vehicle_set_input",             command_vehicle_set_input },
             { "vehicle_set_tire_pressure",     command_vehicle_set_tire_pressure },
             { "vehicle_shift",                 command_vehicle_shift },

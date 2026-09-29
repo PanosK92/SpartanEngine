@@ -6,6 +6,7 @@
 #define COMMON_PUDDLES_H
 
 #include "common_road.hlsl"
+#include "common_rain.hlsl"
 
 // standing water, lagarde 2013 (water drop 2b), the ground is treated as a height field and a
 // single water level rises through it with puddliness, so pools appear in the lowest spots first,
@@ -109,6 +110,40 @@ float puddle_apply(
     }
     normal = normalize(lerp(normal, water_normal, water));
     return water;
+}
+
+float ground_water_porosity(bool is_terrain, bool is_paint)
+{
+    return is_terrain ? 0.6f : (is_paint ? 0.15f : 0.5f);
+}
+
+// standing water on ground surfaces, shared by the g-buffer and ray hits so a reflection shows the
+// same pools the camera sees, interiors and props stay dry, rain_exposed is what the sky can reach,
+// authored puddles stand everywhere but rain only lands in the open
+float ground_water_apply(
+    bool       is_terrain,
+    bool       is_road,
+    bool       is_paint,
+    float3     position_world,
+    float3     geometric_normal,
+    float      relief_bias,
+    float      footprint,
+    out float  rain_exposed,
+    inout float3 albedo,
+    inout float3 normal,
+    inout float  roughness,
+    inout float  metalness,
+    inout float  occlusion
+)
+{
+    rain_exposed = rain_weather_wetness() > 0.0f ? rain_exposure(position_world, geometric_normal) : 0.0f;
+    if (!(is_terrain || is_road || is_paint))
+        return 0.0f;
+
+    // soil soaks up most of what falls on it and road camber sheds much of it, so rain pools in ruts and dips
+    float puddliness = max(rain_authored_puddles(), rain_weather_puddles() * rain_exposed * (is_terrain ? 0.55f : 0.7f));
+    return puddle_apply(puddliness, position_world, geometric_normal, ground_water_porosity(is_terrain, is_paint), relief_bias, footprint,
+        albedo, normal, roughness, metalness, occlusion);
 }
 
 #endif

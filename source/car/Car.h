@@ -34,6 +34,7 @@ namespace spartan
     class Entity;
     class Physics;
     class CarSurfaceEffects;
+    class AiDriver;
 
     // view modes for car camera
     enum class CarView
@@ -100,6 +101,16 @@ namespace spartan
         void Exit(bool position_player = true);
         bool IsOccupied() const { return m_is_occupied; }
         bool IsDrivable() const { return m_is_drivable; }
+
+        // spectating: camera, hud and sounds follow a car someone else drives, the player has no control over it
+        void Spectate();
+        void StopSpectating();
+        bool IsSpectated() const { return s_spectated == this; }
+        // the car the camera, hud and sounds belong to, driven or spectated
+        bool IsViewed() const { return m_is_occupied || IsSpectated(); }
+        static Car* GetViewed();
+        // model name plus the entity it lives on, so identical models can be told apart
+        std::string GetDisplayName() const;
         // true when the player controller is close enough to get in
         bool IsPlayerInRange() const;
 
@@ -115,6 +126,11 @@ namespace spartan
         // when true, external control owns vehicle input and interaction
         void SetExternallyControlled(bool controlled) { m_externally_controlled = controlled; }
         bool IsExternallyControlled() const { return m_externally_controlled; }
+
+        // an ai driver takes the wheel of this car, the player's included, nullptr hands the controls back
+        // the car owns and ticks the driver during play, stopping play releases it
+        void SetAiDriver(std::unique_ptr<AiDriver> driver);
+        AiDriver* GetAiDriver() const { return m_ai_driver.get(); }
 
         // a timeline drives the car for a shot, the driver overlays and controls cheat sheet stay hidden
         void SetCinematic(bool cinematic) { m_cinematic = cinematic; }
@@ -156,7 +172,7 @@ namespace spartan
     private:
         std::shared_ptr<CarSurfaceEffects> m_surface_effects;
         Car() = default;
-        ~Car() = default;
+        ~Car();
 
         // helper to compute bounding box from all render components in hierarchy
         math::BoundingBox GetCarAABB() const;
@@ -182,6 +198,8 @@ namespace spartan
         void TickViewSwitch();
         void TickSummon();
         void TickVisualization();
+        void TickCarPicker();
+        void StopSounds();
         void ApplySkeletonBodyVisibility();
         // restore=false when the cached entities are about to be destroyed
         void ClearBodyRenderStates(bool restore);
@@ -205,6 +223,7 @@ namespace spartan
         bool              m_camera_follows  = false;    // auto-enter car when play mode starts
         bool              m_was_playing     = false;    // tracks play mode state for auto-enter
         bool              m_externally_controlled  = false;    // external control owns vehicle input and interaction
+        std::unique_ptr<AiDriver> m_ai_driver;
         bool              m_cinematic       = false;
         CarView           m_current_view    = CarView::Chase;
         CarVisualizationPreset m_visualization_preset = CarVisualizationPreset::Full;
@@ -246,5 +265,7 @@ namespace spartan
 
         // static registry of all cars
         static std::vector<Car*> s_cars;
+        static Car* s_spectated;
+        static bool s_car_picker_on_foot; // f3 on foot shows the car list alone
     };
 }

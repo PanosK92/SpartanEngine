@@ -1635,11 +1635,11 @@ namespace spartan
             if (!candidate->IsDrivable() || !root || !root->IsActive())
                 continue;
             float distance = Vector3::DistanceSquared(root->GetPosition(), m_cb_frame_cpu.camera_position);
-            if (candidate->IsOccupied() || distance < detail_distance)
+            if (candidate->IsViewed() || distance < detail_distance)
             {
                 detail_car = candidate;
                 detail_distance = distance;
-                if (candidate->IsOccupied()) break;
+                if (candidate->IsViewed()) break;
             }
         }
         if (detail_car)
@@ -2011,11 +2011,11 @@ namespace spartan
             if (!candidate->IsDrivable() || !root || !root->IsActive())
                 continue;
             const float distance = Vector3::DistanceSquared(root->GetPosition(), m_cb_frame_cpu.camera_position);
-            if (candidate->IsOccupied() || distance < nearest)
+            if (candidate->IsViewed() || distance < nearest)
             {
                 vehicle = candidate;
                 nearest = distance;
-                if (candidate->IsOccupied())
+                if (candidate->IsViewed())
                     break;
             }
         }

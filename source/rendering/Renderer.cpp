@@ -788,6 +788,7 @@ namespace spartan
             DestroyResources();
             GeometryBuffer::Shutdown();
             ies::shutdown();
+            ocean_shore::shutdown();
             RHI_Device::DestroySwapChain();
             m_icons_vertex_buffer = nullptr;
             m_tlas                = nullptr;
@@ -3548,7 +3549,7 @@ namespace spartan
         // remaining lights
         Camera* camera = World::GetCamera();
         const Vector3 camera_pos = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
-        const float flare_max_distance = cvar_light_flares.GetValueAs<bool>() ? max(cvar_light_flares_max_distance.GetValue(), 0.0f) : 0.0f;
+        const float flare_max_distance = 2000.0f; // flare-only lights stay visible this far past the lighting draw distance
         const float flare_max_distance_sq = flare_max_distance * flare_max_distance;
 
         for (Entity* entity : light_entities())
