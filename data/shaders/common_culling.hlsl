@@ -251,8 +251,9 @@ uint sphere_lod_index(float3 center_world, float radius_world, uint lod_count)
     return min(lod, lod_count - 1u);
 }
 
-// foliage with a baked impostor swaps to it below this screen fraction, about 30 px tall at 1080p
-static const float impostor_screen_fraction = 0.03f;
+// foliage with a baked impostor swaps to it below this screen fraction, about 120 px tall at 1080p,
+// trees bake 128 px frames for it (mesh_impostor_resolution_large), 64 px frames read as pale flat cards this close
+static const float impostor_screen_fraction = 0.12f;
 
 // the impostor is always the last lod, the mesh chain never selects it
 uint sphere_lod_index_impostor(float3 center_world, float radius_world, uint lod_count)

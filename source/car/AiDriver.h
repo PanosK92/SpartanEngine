@@ -61,6 +61,7 @@ namespace spartan
         const std::shared_ptr<RacingLine>& GetLine() const { return m_line; }
         const AiDriverSettings& GetSettings() const { return m_settings; }
         const AiDriverStats& GetStats() const       { return m_stats; }
+        bool IsHolding() const                      { return m_hold_time > 0.0f; } // still on the grid, waiting out the launch delay
 
     private:
         friend class Car;

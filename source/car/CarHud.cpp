@@ -905,7 +905,10 @@ namespace spartan::car_hud
         const float title_h       = 26;
         const float row_h         = 24;
         const float visible_rows  = static_cast<float>(std::min<size_t>(cars.size(), 4));
-        const float panel_h       = title_h + row_h * visible_rows + 8;
+        const bool show_lights    = viewed && viewed->HasLights();
+        const float lights_h      = 34;
+        const float lights_y      = title_h + row_h * visible_rows + 6;
+        const float panel_h       = title_h + row_h * visible_rows + 8 + (show_lights ? lights_h : 0);
         const float panel_x       = width - margin - panel_w;
         const float panel_y       = 8;
 
@@ -960,6 +963,58 @@ namespace spartan::car_hud
                 }
             }
             ImGui::EndChild();
+
+            // exterior lamps of the viewed car, driven or watched
+            if (show_lights)
+            {
+                panel.line(12, lights_y, panel_w - 12, lights_y, IM_COL32(53, 73, 90, 180));
+                panel.text(12, lights_y + 10, 12, telemetry::muted, "LIGHTS");
+
+                struct LightButton
+                {
+                    const char* label;
+                    bool active;
+                };
+                const CarHeadlights headlights = viewed->GetHeadlights();
+                const LightButton buttons[] =
+                {
+                    { "OFF",  headlights == CarHeadlights::Off },
+                    { "LOW",  headlights == CarHeadlights::Low },
+                    { "HIGH", headlights == CarHeadlights::High },
+                    { "REAR", viewed->GetRearLamps() }
+                };
+                const float button_x = 70;
+                const float button_w = (panel_w - button_x - 12 - 3 * 6) / 4;
+                const float button_h = 22;
+                for (int i = 0; i < 4; ++i)
+                {
+                    const float x = button_x + i * (button_w + 6);
+                    const float y = lights_y + 6;
+                    ImGui::PushID(i);
+                    ImGui::SetCursorScreenPos(panel.point(x, y));
+                    if (ImGui::Selectable("##light", buttons[i].active, ImGuiSelectableFlags_None, ImVec2(button_w * scale, button_h * scale)))
+                    {
+                        if (i < 3)
+                        {
+                            viewed->SetHeadlights(static_cast<CarHeadlights>(i));
+                        }
+                        else
+                        {
+                            viewed->SetRearLamps(!viewed->GetRearLamps());
+                        }
+                    }
+                    ImDrawList* dl         = ImGui::GetWindowDrawList();
+                    const ImVec2 min       = panel.point(x, y);
+                    const ImVec2 max       = panel.point(x + button_w, y + button_h);
+                    const ImU32 edge       = buttons[i].active ? (i == 3 ? telemetry::amber : telemetry::green) : IM_COL32(53, 73, 90, 200);
+                    dl->AddRect(min, max, edge, 4 * scale);
+                    const float font       = 12 * scale;
+                    const ImVec2 text_size = ImGui::GetFont()->CalcTextSizeA(font, FLT_MAX, 0, buttons[i].label);
+                    const ImVec2 text_pos  = ImVec2((min.x + max.x - text_size.x) * 0.5f, (min.y + max.y - text_size.y) * 0.5f);
+                    dl->AddText(nullptr, font, text_pos, buttons[i].active ? IM_COL32(245, 250, 250, 255) : IM_COL32(170, 185, 195, 255), buttons[i].label);
+                    ImGui::PopID();
+                }
+            }
             ImGui::PopFont();
         }
         ImGui::End();

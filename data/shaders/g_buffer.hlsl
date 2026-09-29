@@ -559,6 +559,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         height_map    = surface.has_texture_height() ? packed.a : height_map;
     }
 
+    // the card only keeps the outermost leaves, the crown depth that shades a mesh tree's interior is gone,
+    // without it the ambient term lights the whole card and distant forest turns pale teal
+    if (is_impostor && surface.is_foliage())
+    {
+        occlusion *= 0.4f;
+    }
+
     float road_footprint = max(length(dpdx_world), length(dpdy_world));
     float road_macro     = road_macro_height(material.flags, height_map);
     float road_paint     = road_weathering(material.flags, position_world, vertex.uv_misc.xy, height_map, albedo.rgb, roughness, road_footprint);
@@ -735,7 +742,6 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 #endif
         rain_detail = rain_apply(rain_surface, albedo.rgb, normal, roughness, metalness, pass_is_transparent()) > 0.0f;
     }
-
     // geometric specular antialiasing, yamada 2018, the screen space normal variance is folded
     // into the ggx width so sub pixel detail rolls off into roughness instead of shimmering
     // water has analytic normals rather than a normal texture so it is admitted explicitly

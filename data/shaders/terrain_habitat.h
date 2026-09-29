@@ -51,9 +51,9 @@ HABITAT_INLINE float habitat_woodland(float x, float z, float above_sea, float s
     float patch = habitat_noise(x / 430.0f, z / 430.0f, 71431u) * 0.78f
                 + habitat_noise(x / 95.0f, z / 95.0f, 11939u) * 0.22f;
     patch += (0.5f - insolation) * 0.16f + (deposition - 0.5f) * 0.12f;
-    return habitat_smooth((patch - 0.38f) / 0.27f)
+    return habitat_smooth((patch - 0.22f) / 0.22f)
          * habitat_smooth((above_sea - 3.0f) / 12.0f)
-         * (1.0f - habitat_smooth((slope_degrees - 28.0f) / 22.0f));
+         * (1.0f - habitat_smooth((slope_degrees - 34.0f) / 22.0f));
 }
 HABITAT_INLINE float habitat_grove(float x, float z, float above_sea, float slope_degrees, float woodland)
 {

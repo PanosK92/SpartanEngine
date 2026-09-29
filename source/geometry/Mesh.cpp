@@ -761,7 +761,7 @@ namespace spartan
         }
     }
 
-    void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const bool generate_lods, const uint32_t sub_mesh_index_in, const bool preserve_lod0, const bool foliage_cards)
+    void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const bool generate_lods, const uint32_t sub_mesh_index_in, const bool preserve_lod0, const bool foliage_cards, const bool impostor)
     {
         // caller must have reserved this slot via ReserveSubMeshes or the auto-allocating overload above
         SP_ASSERT(sub_mesh_index_in < m_sub_meshes.size());
@@ -867,7 +867,7 @@ namespace spartan
                 prev_indices  = move(lod_indices);
             }
 
-            if (foliage_cards && m_skeleton == nullptr)
+            if ((foliage_cards || impostor) && m_skeleton == nullptr)
             {
                 AddImpostor(vertices, indices, current_sub_mesh_index);
             }
@@ -901,25 +901,26 @@ namespace spartan
         }
         impostor->uv_min   = uv_lo;
         impostor->uv_scale = Vector2(max(uv_hi.x - uv_lo.x, 1e-6f), max(uv_hi.y - uv_lo.y, 1e-6f));
+        impostor->resolution = impostor->radius >= mesh_impostor_large_radius ? mesh_impostor_resolution_large : mesh_impostor_resolution;
 
         generated_cache::Hash hash;
         hash.Add(uint32_t(1)); // impostor bake version
         hash.Add(mesh_impostor_frames);
-        hash.Add(mesh_impostor_resolution);
+        hash.Add(impostor->resolution);
         hash.Add(mesh_impostor_layers);
         hash.Add(vertices);
         hash.Add(indices);
         const auto path  = generated_cache::Path(World::GetResourceDirectory(), "impostors", hash.value);
         const bool cache = !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
         const size_t expected_words = static_cast<size_t>(mesh_impostor_frames) * mesh_impostor_frames *
-            mesh_impostor_resolution * mesh_impostor_resolution * mesh_impostor_layers * 2;
+            impostor->resolution * impostor->resolution * mesh_impostor_layers * 2;
         if (!cache || !generated_cache::Load(path, hash.value, impostor->texels) || impostor->texels.size() != expected_words)
         {
             geometry_processing::bake_impostor(
                 vertices,
                 indices,
                 mesh_impostor_frames,
-                mesh_impostor_resolution,
+                impostor->resolution,
                 mesh_impostor_layers,
                 impostor->center,
                 impostor->radius,

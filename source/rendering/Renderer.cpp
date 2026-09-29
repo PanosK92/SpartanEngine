@@ -4148,9 +4148,10 @@ namespace spartan
                 if (impostor && lod == mesh_lod_count)
                 {
                     // the card turns to face the camera, so winding and meshlet cones mean nothing for it
-                    draw_data.flags                |= (1u << 14) | 8u;
+                    // its silhouette is cut per texel, so an opaque trunk card still takes the alpha tested path
+                    draw_data.flags                |= (1u << 14) | 8u | 16u;
                     draw_data.impostor_texel_offset = impostor->texel_offset;
-                    draw_data.impostor_layout       = mesh_impostor_frames | (mesh_impostor_resolution << 8) | (mesh_impostor_layers << 24);
+                    draw_data.impostor_layout       = mesh_impostor_frames | (impostor->resolution << 8) | (mesh_impostor_layers << 24);
                     draw_data.impostor_center       = impostor->center;
                     draw_data.impostor_radius       = impostor->radius;
                     draw_data.impostor_uv_min       = impostor->uv_min;

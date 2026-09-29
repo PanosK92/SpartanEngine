@@ -2189,7 +2189,15 @@ namespace spartan
             const string material_name = ctx.scene->mMaterials[assimp_mesh->mMaterialIndex]->GetName().C_Str();
             foliage_cards = material_name.find("_foliage") != string::npos;
         }
-        ctx.mesh->AddGeometry(vertices, indices, !ctx.mesh->GetSkeleton(), sub_mesh_index, true, foliage_cards);
+
+        // the trunk and branches of a plant switch to their own card together with the crown, left as meshes
+        // they stay on their coarsest lod out to the scatter distance and cost more than the whole forest canopy
+        bool plant = foliage_cards;
+        for (uint32_t i = 0; i < ctx.scene->mNumMaterials && !plant; ++i)
+        {
+            plant = string(ctx.scene->mMaterials[i]->GetName().C_Str()).find("_foliage") != string::npos;
+        }
+        ctx.mesh->AddGeometry(vertices, indices, !ctx.mesh->GetSkeleton(), sub_mesh_index, true, foliage_cards, plant);
     }
 
     void ModelImporter::ParseSkeleton(ImportContext& ctx)

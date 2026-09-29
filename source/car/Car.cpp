@@ -818,6 +818,22 @@ namespace spartan
         delete this;
     }
 
+    void Car::SetHeadlights(CarHeadlights mode)
+    {
+        m_headlights = mode;
+        m_rear_lamps = mode != CarHeadlights::Off;
+    }
+
+    void Car::CycleHeadlights()
+    {
+        SetHeadlights(static_cast<CarHeadlights>((static_cast<uint8_t>(m_headlights) + 1) % 3));
+    }
+
+    bool Car::HasLights() const
+    {
+        return m_vehicle_entity && (m_vehicle_entity->GetChildByName("headlight_left") || m_vehicle_entity->GetChildByName("headlight_right"));
+    }
+
     bool Car::IsPlayerInRange() const
     {
         Entity* car_reference = m_vehicle_entity ? m_vehicle_entity : m_body_entity;
@@ -2348,6 +2364,7 @@ namespace spartan
             Renderer::DrawString(
                 "SPECTATING   key / mouse  >  gamepad\n"
                 "Cars\tF3\tTouchpad\n"
+                "Light\tL\tDpadUp\n"
                 "View\tV\tTri\n"
                 "ReCam\tC\tR3\n"
                 "Look\tRClk\tRStick",
@@ -2358,6 +2375,7 @@ namespace spartan
         {
             Renderer::DrawString(
                 "AI DRIVING   key / mouse  >  gamepad\n"
+                "Light\tL\tDpadUp\n"
                 "View\tV\tTri\n"
                 "ReCam\tC\tR3\n"
                 "Look\tRClk\tRStick",
@@ -2525,6 +2543,12 @@ namespace spartan
         if (Input::GetKeyDown(KeyCode::F3) || Input::GetKeyDown(KeyCode::Touchpad))
         {
             m_show_telemetry = !m_show_telemetry;
+        }
+
+        // cycle the headlights off, low beam, high beam, a spectator can switch them too
+        if (Input::GetKeyDown(KeyCode::L) || Input::GetKeyDown(KeyCode::DPad_Up))
+        {
+            CycleHeadlights();
         }
 
         if (Input::GetKeyDown(KeyCode::Back))

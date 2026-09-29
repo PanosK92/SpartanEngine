@@ -50,6 +50,14 @@ namespace spartan
         Skeleton
     };
 
+    // headlight beam, the values match the mode numbers car_lights.lua reads
+    enum class CarHeadlights : uint8_t
+    {
+        Off,
+        Low,
+        High
+    };
+
     // self-contained drivable car class
     // handles entity hierarchy creation, physics setup, input, camera, sounds, and telemetry
     class Car
@@ -165,6 +173,16 @@ namespace spartan
         void SetCameraWindShake(bool enabled) { m_camera_wind_shake = enabled; }
         bool GetCameraWindShake() const { return m_camera_wind_shake; }
 
+        // exterior lamps, applied to the headlight and brake light children by the car's light script
+        // switching the headlights on or off takes the rear position lamps with them, the rear lamps can then be set on their own
+        void SetHeadlights(CarHeadlights mode);
+        CarHeadlights GetHeadlights() const { return m_headlights; }
+        void CycleHeadlights();
+        void SetRearLamps(bool on) { m_rear_lamps = on; }
+        bool GetRearLamps() const { return m_rear_lamps; }
+        // true when the car carries headlight entities to switch
+        bool HasLights() const;
+
         // camera orbit (right stick control)
         void AddCameraOrbitYaw(float delta);
         void AddCameraOrbitPitch(float delta);
@@ -234,6 +252,8 @@ namespace spartan
         bool              m_spawn_error_logged = false;
         car_camera::ChaseState m_chase_camera;
         bool m_camera_wind_shake = true;
+        CarHeadlights m_headlights = CarHeadlights::Off;
+        bool m_rear_lamps          = false;
 
         struct BodyRenderState
         {

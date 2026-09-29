@@ -1709,7 +1709,7 @@ namespace spartan
     uint64_t Terrain::GetScatterCacheKey(uint32_t tile_index, const TerrainScatterLayer& layer, const BoundingBox* bounds) const
     {
         generated_cache::Hash hash;
-        hash.Add(uint32_t(1)); // placement and habitat algorithms
+        hash.Add(uint32_t(2)); // placement and habitat algorithms
         hash.Add(tile_index); hash.Add(m_tile_count); hash.Add(m_dense_width); hash.Add(m_dense_height);
         hash.Add(m_density); hash.Add(m_scale); hash.Add(GetSeaLevelLocal());
         hash.Add(GetEntity()->GetMatrix()); hash.Add(m_world_mapping);

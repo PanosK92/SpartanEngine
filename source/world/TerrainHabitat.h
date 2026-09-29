@@ -44,7 +44,7 @@ namespace spartan::terrain_habitat
         if (habitat == 0) return 1.0f;
         const float broad = noise(x/430.0f,z/430.0f,71431u);
         const float edge = noise(x/95.0f,z/95.0f,11939u);
-        const float forest = smooth((broad*.78f+edge*.22f-.40f)/.25f);
+        const float forest = smooth((broad*.78f+edge*.22f-.24f)/.22f);
         if (habitat == 1) return forest; // woodland: groves with real open gaps
         if (habitat == 2) // olive groves occupy gentler open country (height/slope gates live in the layer)
             return (1.0f-forest)*smooth((noise(x/230.0f,z/230.0f,937u)-.32f)/.30f);

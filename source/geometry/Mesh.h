@@ -83,12 +83,17 @@ namespace spartan
     static constexpr uint32_t mesh_impostor_frames     = 8;
     static constexpr uint32_t mesh_impostor_resolution = 64;
     static constexpr uint32_t mesh_impostor_layers     = 2;
+    // every crown swaps at the same screen size, but trees carry the skyline, so they get the sharper frames,
+    // an atlas is frames^2 * resolution^2 * layers * 8 bytes, 4 MB at 64 px and 16 MB at 128 px
+    static constexpr uint32_t mesh_impostor_resolution_large = 128;
+    static constexpr float mesh_impostor_large_radius        = 3.0f;
 
     struct MeshImpostor
     {
         MeshLod lod;                      // the card, it lives in the regular geometry streams
         std::vector<uint32_t> texels;     // two words per layer
         uint32_t texel_offset = 0;        // into the global impostor texel buffer
+        uint32_t resolution   = mesh_impostor_resolution;
         math::Vector3 center  = math::Vector3::Zero;
         float radius          = 0.0f;
         math::Vector2 uv_min   = math::Vector2::Zero;
@@ -133,7 +138,7 @@ namespace spartan
         void AddLod(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const uint32_t sub_mesh_index);
         void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, uint32_t* sub_mesh_index = nullptr);
         // writes into a pre-reserved slot, the auto-allocating overload races on size() when ParseMesh runs in parallel
-        void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, const uint32_t sub_mesh_index_in, const bool preserve_lod0 = false, const bool foliage_cards = false);
+        void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, const uint32_t sub_mesh_index_in, const bool preserve_lod0 = false, const bool foliage_cards = false, const bool impostor = false);
         bool UpdateGeometry(
             std::vector<RHI_Vertex_PosTexNorTan>& vertices,
             std::vector<uint32_t>& indices

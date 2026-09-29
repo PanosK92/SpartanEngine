@@ -79,15 +79,17 @@ void main_ps(gbuffer_vertex vertex)
     pass_load_draw_data_from_vertex(vertex.material_index);
 
     MaterialParameters material = GetMaterial();
-    if (!material.is_alpha_tested())
+    const bool is_impostor      = vertex.uv_misc.z < -0.5f;
+    if (!material.is_alpha_tested() && !is_impostor)
         return;
 
     const float2 screen_uv      = vertex.position.xy / get_render_resolution_active();
     const float3 position_world = get_position_for_view(vertex.position.z, screen_uv, vertex.view_id);
     const float alpha_threshold = get_alpha_threshold(position_world);
 
-    // impostor cards carry -(draw index + 1) in z so the texel lookup can reach their draw record
-    if (vertex.uv_misc.z < -0.5f)
+    // impostor cards carry -(draw index + 1) in z so the texel lookup can reach their draw record,
+    // opaque sub-meshes (bark) still need the cutout, their card is empty outside the baked silhouette
+    if (is_impostor)
     {
         _draw = indirect_draw_data[(uint)round(-vertex.uv_misc.z) - 1u];
         float2 impostor_uv;

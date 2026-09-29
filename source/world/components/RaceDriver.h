@@ -46,12 +46,14 @@ namespace spartan
 
         void BeginPreload();
         bool SpawnCar();
+        Car* SpawnCarFromPrefab(const math::Vector3& position);
         void DestroyCar();
         void Watch(float delta_time);
 
         // settings
         uint64_t m_track_entity_id = 0; // spline road to race on, 0 uses this entity
         std::string m_car_file     = "project/cars/ferrari_laferrari.car";
+        std::string m_car_prefab;           // optional .prefab holding a car prefab, the race car is built from it (lights, body and wheel fit, effects) instead of the bare car file
         float m_skill              = 1.0f;  // 0 to 1, how much of the measured grip and braking the driver dares to use
         float m_max_speed          = 95.0f; // m/s
         float m_edge_margin        = 1.7f;  // meters the racing line keeps between the car's center and the road edge
@@ -75,6 +77,8 @@ namespace spartan
         std::shared_ptr<RacingLine> m_line;
         std::shared_ptr<PreloadState> m_preload;
         std::string m_car_path;
+        std::string m_car_prefab_path;  // resolved m_car_prefab, empty when unset or unreadable
         Car* m_car = nullptr;
+        uint64_t m_car_holder_id = 0;   // entity a prefab car is spawned under, removed with the car
     };
 }

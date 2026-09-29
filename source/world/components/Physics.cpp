@@ -1538,6 +1538,9 @@ namespace spartan
 
             "GetVehicleThrottle",           &Physics::GetVehicleThrottle,
             "GetVehicleBrake",              &Physics::GetVehicleBrake,
+            "GetVehicleHeadlights",         [](Physics& self) { return self.GetCar() ? static_cast<int>(self.GetCar()->GetHeadlights()) : 0; },
+            "SetVehicleHeadlights",         [](Physics& self, int mode) { if (self.GetCar()) self.GetCar()->SetHeadlights(static_cast<CarHeadlights>(std::clamp(mode, 0, 2))); },
+            "GetVehicleRearLamps",          [](Physics& self) { return self.GetCar() ? self.GetCar()->GetRearLamps() : false; },
             "GetVehicleSteering",           &Physics::GetVehicleSteering,
             "GetVehicleHandbrake",          &Physics::GetVehicleHandbrake,
             "IsWheelGrounded",              &Physics::IsWheelGrounded,

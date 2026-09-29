@@ -47,12 +47,107 @@ namespace spartan
             const vector<Car*> cars = Car::GetAll();
             return find(cars.begin(), cars.end(), car) != cars.end();
         }
+
+        // paths in world files are relative to the world file directory, otherwise to the working directory
+        string resolve_world_path(const string& path)
+        {
+            if (!World::GetFilePath().empty())
+            {
+                const string relative_path = FileSystem::GetDirectoryFromFilePath(World::GetFilePath()) + path;
+                if (FileSystem::Exists(relative_path))
+                {
+                    return relative_path;
+                }
+            }
+            return path;
+        }
+
+        // the first entity of a .prefab file that is a car prefab
+        pugi::xml_node find_car_prefab_entity(const pugi::xml_document& document)
+        {
+            for (pugi::xml_node entity = document.child("Prefab").child("Entity"); entity; entity = entity.next_sibling("Entity"))
+            {
+                if (string(entity.child("prefab").attribute("type").as_string()) == "car")
+                {
+                    return entity;
+                }
+            }
+            return pugi::xml_node();
+        }
+
+        void set_attribute(pugi::xml_node node, const char* name, const char* value)
+        {
+            pugi::xml_attribute attribute = node.attribute(name);
+            if (!attribute)
+            {
+                attribute = node.append_attribute(name);
+            }
+            attribute.set_value(value);
+        }
+
+        void set_attribute(pugi::xml_node node, const char* name, float value)
+        {
+            set_attribute(node, name, to_string(value).c_str());
+        }
+
+        // every entity gets a new id, the template's ids belong to the car it was saved from
+        void assign_fresh_ids(pugi::xml_node node, mt19937_64& random)
+        {
+            if (string(node.name()) == "Entity")
+            {
+                set_attribute(node, "id", to_string(random() | 1).c_str());
+            }
+            for (pugi::xml_node child = node.first_child(); child; child = child.next_sibling())
+            {
+                assign_fresh_ids(child, random);
+            }
+        }
+
+        // turns a copy of a player car template into a race car: no player tags, camera, hud, reset point or player paint
+        void prepare_race_car_entity(pugi::xml_node entity, const Vector3& position, const Color& paint)
+        {
+            set_attribute(entity, "name", "race_driver_car");
+            entity.remove_attribute("tags");
+            const string position_text = to_string(position.x) + " " + to_string(position.y) + " " + to_string(position.z);
+            set_attribute(entity, "position", position_text.c_str());
+            set_attribute(entity, "rotation", "0 0 0 1");
+
+            pugi::xml_node prefab = entity.child("prefab");
+            set_attribute(prefab, "drivable", "true");
+            set_attribute(prefab, "telemetry", "false");
+            set_attribute(prefab, "camera_follows", "false");
+            set_attribute(prefab, "paint_preset", "gloss_solid");
+            set_attribute(prefab, "paint_color_r", paint.r);
+            set_attribute(prefab, "paint_color_g", paint.g);
+            set_attribute(prefab, "paint_color_b", paint.b);
+            set_attribute(prefab, "paint_color_a", paint.a);
+
+            vector<pugi::xml_node> removed;
+            for (pugi::xml_node child = entity.first_child(); child; child = child.next_sibling())
+            {
+                const string name = child.name();
+                if (name == "car_reset" || (name == "Entity" && child.child("spawn_point")))
+                {
+                    removed.push_back(child);
+                }
+            }
+            for (pugi::xml_node child : removed)
+            {
+                entity.remove_child(child);
+            }
+
+            mt19937_64 random(random_device{}());
+            assign_fresh_ids(entity, random);
+        }
+
+        const Color race_car_paint = Color(0.92f, 0.62f, 0.02f, 1.0f);
     }
 
     RaceDriver::RaceDriver(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_track_entity_id, uint64_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_car_file, string);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_car_prefab, string);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_skill, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_speed, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_edge_margin, float);
@@ -145,6 +240,7 @@ namespace spartan
         {
             SP_LOG_WARNING("race_driver: the race car is gone, spawning a new one");
             m_car = nullptr;
+            DestroyCar();
         }
 
         if (!m_car && m_preload && m_preload->completed.load(memory_order_acquire))
@@ -194,6 +290,12 @@ namespace spartan
         const Vector3 where  = vehicle ? vehicle->GetPosition() : Vector3::Zero;
         const bool finite    = isfinite(where.x) && isfinite(where.y) && isfinite(where.z);
         const float progress = m_stats.travelled;
+        if (m_car->GetAiDriver()->IsHolding() && finite)
+        {
+            // a car waiting for its launch is parked on purpose, the window opens once it drives
+            m_watch_time = 0.0f;
+            return;
+        }
         if (m_watch_time == 0.0f)
         {
             m_watch_progress = progress;
@@ -226,15 +328,26 @@ namespace spartan
 
     void RaceDriver::BeginPreload()
     {
-        m_car_path = m_car_file;
-        if (!World::GetFilePath().empty())
+        // a car template decides the car file, so the race car is the same car as the template
+        string car_file   = m_car_file;
+        m_car_prefab_path.clear();
+        if (!m_car_prefab.empty())
         {
-            const string relative_path = FileSystem::GetDirectoryFromFilePath(World::GetFilePath()) + m_car_file;
-            if (FileSystem::Exists(relative_path))
+            const string prefab_path = resolve_world_path(m_car_prefab);
+            pugi::xml_document document;
+            pugi::xml_node entity    = document.load_file(prefab_path.c_str()) ? find_car_prefab_entity(document) : pugi::xml_node();
+            const string prefab_car  = entity ? entity.child("prefab").attribute("file").as_string() : "";
+            if (!prefab_car.empty())
             {
-                m_car_path = relative_path;
+                m_car_prefab_path = prefab_path;
+                car_file          = prefab_car;
+            }
+            else
+            {
+                SP_LOG_ERROR("race_driver: %s has no car prefab, spawning the bare car file %s", m_car_prefab.c_str(), m_car_file.c_str());
             }
         }
+        m_car_path = resolve_world_path(car_file);
 
         // load the car meshes on a worker so the launch does not hitch the first play frame
         m_preload = make_shared<PreloadState>();
@@ -265,16 +378,28 @@ namespace spartan
         const size_t grid              = m_line->IndexAt(m_start_distance, fraction);
         const RacingLine::Point& point = m_line->GetPoint(grid);
 
-        Car::Config config;
-        config.position            = point.position + Vector3(0.0f, 1.0f, 0.0f);
-        config.car_file            = m_car_path;
-        config.drivable            = true;
-        config.vehicle_sim_mode    = VehicleSimMode::Full;
-        config.customize_materials = true;
-        config.paint_preset        = MaterialPaintPreset::GlossSolid;
-        config.paint_color         = Color(0.92f, 0.62f, 0.02f, 1.0f);
-
-        Car* car = Car::Create(config);
+        const Vector3 spawn_position = point.position + Vector3(0.0f, 1.0f, 0.0f);
+        Car* car                     = nullptr;
+        if (!m_car_prefab_path.empty())
+        {
+            car = SpawnCarFromPrefab(spawn_position);
+        }
+        else
+        {
+            Car::Config config;
+            config.position            = spawn_position;
+            config.car_file            = m_car_path;
+            config.drivable            = true;
+            config.vehicle_sim_mode    = VehicleSimMode::Full;
+            config.customize_materials = true;
+            config.paint_preset        = MaterialPaintPreset::GlossSolid;
+            config.paint_color         = race_car_paint;
+            car                        = Car::Create(config);
+            if (car && car->GetRootEntity())
+            {
+                car->GetRootEntity()->SetObjectName("race_driver_car");
+            }
+        }
         if (!car)
         {
             return false;
@@ -283,9 +408,9 @@ namespace spartan
         if (!vehicle || !vehicle->GetComponent<Physics>())
         {
             car->Destroy();
+            DestroyCar();
             return false;
         }
-        vehicle->SetObjectName("race_driver_car");
         vehicle->SetTransient(true);
         car->PlaceAt(point.position, Quaternion::FromLookRotation(m_line->DirectionAt(grid), Vector3::Up));
 
@@ -298,6 +423,41 @@ namespace spartan
         return true;
     }
 
+    Car* RaceDriver::SpawnCarFromPrefab(const Vector3& position)
+    {
+        pugi::xml_document document;
+        if (!document.load_file(m_car_prefab_path.c_str()))
+        {
+            SP_LOG_ERROR("race_driver: failed to read %s", m_car_prefab_path.c_str());
+            return nullptr;
+        }
+        pugi::xml_node entity = find_car_prefab_entity(document);
+        if (!entity)
+        {
+            return nullptr;
+        }
+        prepare_race_car_entity(entity, position, race_car_paint);
+
+        // the holder plays the role of the player's car root, the car prefab and its overrides build under it
+        Entity* holder = World::CreateEntity();
+        holder->Load(entity);
+        holder->SetTransient(true);
+        m_car_holder_id = holder->GetObjectId();
+
+        for (Car* car : Car::GetAll())
+        {
+            Entity* root = car ? car->GetRootEntity() : nullptr;
+            if (root && root->GetParent() == holder)
+            {
+                return car;
+            }
+        }
+
+        SP_LOG_ERROR("race_driver: %s did not create a car", m_car_prefab_path.c_str());
+        DestroyCar();
+        return nullptr;
+    }
+
     void RaceDriver::DestroyCar()
     {
         if (car_alive(m_car))
@@ -305,12 +465,22 @@ namespace spartan
             m_car->Destroy();
         }
         m_car = nullptr;
+
+        if (m_car_holder_id != 0)
+        {
+            if (Entity* holder = World::GetEntityById(m_car_holder_id))
+            {
+                World::RemoveEntity(holder);
+            }
+            m_car_holder_id = 0;
+        }
     }
 
     void RaceDriver::Save(pugi::xml_node& node)
     {
         node.append_attribute("track_entity_id") = m_track_entity_id;
         node.append_attribute("car_file")        = m_car_file.c_str();
+        node.append_attribute("car_prefab")      = m_car_prefab.c_str();
         node.append_attribute("skill")           = m_skill;
         node.append_attribute("max_speed")       = m_max_speed;
         node.append_attribute("edge_margin")     = m_edge_margin;
@@ -324,6 +494,7 @@ namespace spartan
     {
         m_track_entity_id = node.attribute("track_entity_id").as_ullong(m_track_entity_id);
         m_car_file        = node.attribute("car_file").as_string(m_car_file.c_str());
+        m_car_prefab      = node.attribute("car_prefab").as_string(m_car_prefab.c_str());
         m_skill           = clamp(node.attribute("skill").as_float(m_skill), 0.0f, 1.0f);
         m_max_speed       = clamp(node.attribute("max_speed").as_float(m_max_speed), 5.0f, 150.0f);
         m_edge_margin     = max(node.attribute("edge_margin").as_float(m_edge_margin), 0.0f);

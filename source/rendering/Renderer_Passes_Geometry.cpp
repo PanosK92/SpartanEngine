@@ -1110,6 +1110,7 @@ namespace spartan
                 // the clear runs unconditionally so the transparent ocean still tests against a fresh depth buffer when no opaque geometry is visible
                 pso.shaders[RHI_Shader_Type::Pixel]  = nullptr;
                 pso.clear_depth                      = 0.0f;
+                RHI_CommandList::BeginPass("depth_prepass_opaque");
                 RHI_CommandList::SetPipelineState(pso);
 
                 if (m_indirect_draw_count > 0)
@@ -1134,6 +1135,8 @@ namespace spartan
                     }
 
                     // alpha-tested half, alpha-test pixel shader discards cutout texels, depth already cleared so load it
+                    RHI_CommandList::EndPass();
+                    RHI_CommandList::BeginPass("depth_prepass_alpha");
                     if (mesh_path)
                     {
                         pso.shaders[RHI_Shader_Type::MeshShader] = GetShader(Renderer_Shader::meshlet_mesh_depth_alpha_m);
@@ -1165,6 +1168,7 @@ namespace spartan
                         RHI_CommandList::DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
                     }
                 }
+                RHI_CommandList::EndPass();
             }
 
             // cpu-driven tessellated path (only tessellated still uses cpu draws, indirect path covers everything else)
