@@ -20,6 +20,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <ctime>
 #include <strings.h>
 #include <sys/stat.h>
+#include <unistd.h>
 //==================
 
 #ifndef _TRUNCATE
@@ -134,6 +135,27 @@ inline errno_t _dupenv_s(char** buffer, size_t* size, const char* name)
 inline errno_t _putenv_s(const char* name, const char* value)
 {
     return (value && value[0]) ? setenv(name, value, 1) : unsetenv(name);
+}
+
+// unlike realpath, msvc does not require the path to exist, so join it with the working directory
+inline char* _fullpath(char* absolute, const char* relative, size_t size)
+{
+    if (!absolute || !relative || size == 0)
+    {
+        return nullptr;
+    }
+
+    if (relative[0] == '/')
+    {
+        return snprintf(absolute, size, "%s", relative) < static_cast<int>(size) ? absolute : nullptr;
+    }
+
+    char directory[4096];
+    if (!getcwd(directory, sizeof(directory)))
+    {
+        return nullptr;
+    }
+    return snprintf(absolute, size, "%s/%s", directory, relative) < static_cast<int>(size) ? absolute : nullptr;
 }
 
 inline int _stricmp(const char* a, const char* b)

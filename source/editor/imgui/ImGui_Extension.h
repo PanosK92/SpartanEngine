@@ -496,7 +496,7 @@ namespace ImGuiSp
         if (ImGui::IsItemHovered())
         {
             ImGui::BeginTooltip();
-            ImGui::Text(text);
+            ImGui::TextUnformatted(text);
             ImGui::EndTooltip();
         }
     }
@@ -849,7 +849,7 @@ namespace ImGuiSp
         ButtonPress button_press = ButtonPress::Undefined;
         if (ImGui::Begin(title, nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
         {
-            ImGui::Text(text);
+            ImGui::TextUnformatted(text);
 
             if (ImGuiSp::button_centered_on_line("Yes", 0.4f))
             {
