@@ -255,7 +255,7 @@ namespace spartan
         m_timing    = min(m_distance, m_line->GetLength() - m_distance) < 10.0f;
         if (m_settings.verbose && !m_trace)
         {
-            m_trace = fopen("ai_driver_trace.csv", "w");
+            fopen_s(&m_trace, "ai_driver_trace.csv", "w");
             if (m_trace)
             {
                 fprintf(m_trace, "time,lap,distance,speed,target,plan,line_error,curvature,feedforward,steer,throttle,brake,front_use,rear_use,lateral_use,body_slip,lateral_accel,long_accel,oversteer,wide,gear\n");
