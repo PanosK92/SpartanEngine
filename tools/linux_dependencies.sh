@@ -7,6 +7,7 @@
 # builds the linux third party libraries, matching the headers vendored in third_party/*/version.txt
 # output: third_party/libraries/linux (static libraries, plus libdxcompiler.so and libdxil.so)
 # a library is skipped when its .done_<name> marker exists, delete the marker to rebuild it
+# ci restores older caches too, so a version bump must also rename the marker (e.g. step sdl_2 build_sdl)
 
 set -euo pipefail
 

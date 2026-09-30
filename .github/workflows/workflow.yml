@@ -114,7 +114,9 @@ jobs:
         with:
           path: third_party/libraries/linux
           key: libraries-linux-${{ hashFiles('tools/linux_dependencies.sh') }}-${{ github.run_id }}
-          restore-keys: libraries-linux-${{ hashFiles('tools/linux_dependencies.sh') }}-
+          restore-keys: |
+            libraries-linux-${{ hashFiles('tools/linux_dependencies.sh') }}-
+            libraries-linux-
 
       - name: Build libraries
         run: |
