@@ -13,9 +13,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 export const agent_memory_path = path.join(__dirname, "AGENT_MEMORY.md");
 export const agent_memory_archive_path = path.join(__dirname, "AGENT_MEMORY_ARCHIVE.md");
-export const agent_memory_max_chars = 32000;
+export const agent_memory_max_chars = 24000;
 export const agent_memory_note_max_chars = 1200;
-const archive_section = "Lessons";
+// core guidance every session needs, never auto archived
+const pinned_sections = new Set(["Engine Facts", "Good Agent Strategies", "Gotchas", "Advice To Maintainers"]);
 const agent_memory_lock_path = `${agent_memory_path}.lock`;
 const agent_memory_lock_owner_path = path.join(
   agent_memory_lock_path,
@@ -340,37 +341,87 @@ async function archive_bullets(bullets)
   await fs.writeFile(agent_memory_archive_path, `${archive.trimEnd()}\n${bullets.join("\n")}\n`, "utf8");
 }
 
-// moves the oldest lessons to the archive until the memory fits, so appends never get rejected for size
-async function fit_agent_memory(memory)
+function parse_sections(memory)
+{
+  const first = memory.indexOf("\n## ");
+  const header = (first === -1 ? memory : memory.slice(0, first)).trimEnd();
+  const sections = [];
+  if (first !== -1)
+  {
+    for (const chunk of memory.slice(first + 1).split(/\n(?=## )/))
+    {
+      const newline = chunk.indexOf("\n");
+      const heading = (newline === -1 ? chunk : chunk.slice(0, newline)).replace(/^##\s*/, "").trim();
+      const body = newline === -1 ? "" : chunk.slice(newline + 1);
+      sections.push({ heading, bullets: split_bullets(`\n${body}`) });
+    }
+  }
+  return { header, sections };
+}
+
+function build_memory({ header, sections })
+{
+  const parts = [header];
+  for (const section of sections)
+  {
+    if (section.bullets.length === 0 && !pinned_sections.has(section.heading))
+    {
+      continue;
+    }
+    parts.push(`## ${section.heading}\n${section.bullets.join("\n")}`);
+  }
+  return parts.join("\n\n");
+}
+
+// moves notes to the archive until the memory fits so appends never get rejected for size:
+// dated notes oldest first, then undated notes of topic sections, pinned sections stay
+async function fit_agent_memory(memory, keep_bullet)
 {
   if (memory.length <= agent_memory_max_chars)
   {
     return { memory, archived: [] };
   }
 
-  const section = find_section(memory, `## ${archive_section}`);
-  if (!section)
+  const parsed = parse_sections(memory);
+  const candidates = [];
+  let order = 0;
+  for (const section of parsed.sections)
   {
-    return { memory, archived: [] };
+    if (pinned_sections.has(section.heading))
+    {
+      continue;
+    }
+    for (const bullet of section.bullets)
+    {
+      if (bullet === keep_bullet)
+      {
+        continue;
+      }
+      const date = /^- (\d{4}-\d{2}-\d{2})/.exec(bullet)?.[1] ?? "9999-99-99";
+      candidates.push({ section, bullet, date, order: order++ });
+    }
   }
+  candidates.sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order);
 
-  const bullets = split_bullets(memory.slice(section.body_start, section.end));
   const archived = [];
-  let excess = memory.length - agent_memory_max_chars;
-  while (excess > 0 && bullets.length > 1)
+  let current = memory;
+  for (const candidate of candidates)
   {
-    const bullet = bullets.shift();
-    archived.push(bullet);
-    excess -= bullet.length + 1;
+    if (current.length <= agent_memory_max_chars)
+    {
+      break;
+    }
+    candidate.section.bullets.splice(candidate.section.bullets.indexOf(candidate.bullet), 1);
+    archived.push(`- [${candidate.section.heading}] ${candidate.bullet.slice(2)}`);
+    current = build_memory(parsed);
   }
-  if (archived.length === 0)
+  if (current.length > agent_memory_max_chars)
   {
-    return { memory, archived };
+    throw new Error(`memory is ${current.length} chars even after archiving every topic note, the limit is ${agent_memory_max_chars}; shorten the pinned sections (${[...pinned_sections].join(", ")}) with agent_memory_replace`);
   }
 
   await archive_bullets(archived);
-  const rebuilt = `${memory.slice(0, section.body_start)}\n${bullets.join("\n")}\n${memory.slice(section.end)}`;
-  return { memory: rebuilt, archived };
+  return { memory: current, archived };
 }
 
 export async function append_agent_memory(section, note)
@@ -395,7 +446,7 @@ export async function append_agent_memory(section, note)
       : `- ${note_text}`;
     if (memory.includes(bullet))
     {
-      return memory;
+      return { section: section_name, duplicate: true, chars: memory.trimEnd().length, limit: agent_memory_max_chars, archived: [] };
     }
 
     let updated;
@@ -411,8 +462,15 @@ export async function append_agent_memory(section, note)
       updated = `${before}\n${bullet}\n${after.trimEnd()}\n`;
     }
 
-    const fitted = await fit_agent_memory(updated.trimEnd());
-    return write_agent_memory_unlocked(fitted.memory);
+    const fitted = await fit_agent_memory(updated.trimEnd(), bullet);
+    const written = await write_agent_memory_unlocked(fitted.memory);
+    return {
+      section: section_name,
+      duplicate: false,
+      chars: to_lf(written).trimEnd().length,
+      limit: agent_memory_max_chars,
+      archived: fitted.archived.map((note) => note.slice(0, 120)),
+    };
   });
 }
 

@@ -70,6 +70,11 @@ export const output_schemas = {
   agent_memory: with_error_fields({
     path: z.string().optional(),
     memory: z.string().optional(),
+    section: z.string().optional(),
+    duplicate: z.boolean().optional(),
+    chars: z.number().optional(),
+    limit: z.number().optional(),
+    archived: z.array(z.string()).optional(),
   }),
   debug_log: with_error_fields({
     path: z.string().optional(),

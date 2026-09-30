@@ -1,11 +1,10 @@
+#!/usr/bin/env node
 /*
 Copyright(c) 2015-2026 Panos Karabelas
 Licensed under the Spartan Engine License. See license.md in the repository root.
 https://github.com/PanosK92/SpartanEngine/blob/master/license.md
 Commercial use requires written permission and negotiated payment terms.
 */
-
-#!/usr/bin/env node
 
 import net from "node:net";
 import path from "node:path";
@@ -128,8 +127,8 @@ function short_text(value, max_length = 180) {
   return text.length <= max_length ? text : `${text.slice(0, max_length - 3)}...`;
 }
 
-function capability_gap_note(prompt, detail) {
-  return `Capability gap: ${short_text(detail)} Prompt: "${short_text(prompt)}"`;
+function capability_gap_note(detail) {
+  return `Capability gap: ${short_text(detail)}`;
 }
 
 function sanitize_tool_args(args) {
@@ -301,11 +300,11 @@ class AssistantRun {
   }
 
   async report_capability_gap(detail) {
-    const note = capability_gap_note(this.prompt, detail);
+    const note = capability_gap_note(detail);
     try {
-      await append_agent_memory("Advice To Maintainers", note);
+      await append_agent_memory("Capability Gaps", note);
       this.receipt("capability gap logged", {
-        section: "Advice To Maintainers",
+        section: "Capability Gaps",
         note,
       });
     } catch (error) {

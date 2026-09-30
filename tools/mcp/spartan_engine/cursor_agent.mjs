@@ -3259,10 +3259,10 @@ async function dispatch_assistant_command(
   }
   if (command === "agent_memory_append")
   {
-    // a note without a section is still worth keeping, corrections is where lessons go
+    // a note without a section is still worth keeping, lessons is where undated notes go
     const section = String(
-      args.section ?? args.heading ?? "Corrections",
-    ).replace(/^#+\s*/, "").trim() || "Corrections";
+      args.section ?? args.heading ?? "Lessons",
+    ).replace(/^#+\s*/, "").trim() || "Lessons";
     const note =
       args.note ??
       args.text ??
@@ -3279,8 +3279,7 @@ async function dispatch_assistant_command(
     }
     return {
       ok: true,
-      section,
-      memory: await append_agent_memory(section, note),
+      ...(await append_agent_memory(section, note)),
     };
   }
   if (command === "agent_memory_replace")

@@ -1631,7 +1631,7 @@ register_local_tool("agent_memory_read", {
 
 register_local_tool("agent_memory_append", {
   title: "Agent Memory Append",
-  description: `Append one durable lesson (under ${agent_memory_note_max_chars} chars) to a named section in the shared Spartan agent memory file. Dated lessons belong in the Lessons section; when the file is full the oldest lessons move to AGENT_MEMORY_ARCHIVE.md automatically.`,
+  description: `Append one durable lesson (under ${agent_memory_note_max_chars} chars) to a named section in the shared Spartan agent memory file. Prefer an existing topic section (Rendering, Worlds, Racing AI, ...) and start the note with its date (YYYY-MM-DD). When the file is full, dated notes move to AGENT_MEMORY_ARCHIVE.md oldest first, then undated topic notes; Engine Facts, Good Agent Strategies, Gotchas and Advice To Maintainers stay. Returns a receipt (chars, limit, archived), not the whole file.`,
   inputSchema: {
     section: z.string(),
     note: z.string(),
@@ -1643,7 +1643,7 @@ register_local_tool("agent_memory_append", {
     return tool_result({
       ok: true,
       path: agent_memory_path,
-      memory: await append_agent_memory(section, note),
+      ...(await append_agent_memory(section, note)),
     });
   } catch (error) {
     return tool_result(structured_error(error.message, {
