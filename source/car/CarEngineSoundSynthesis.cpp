@@ -7,7 +7,6 @@ Commercial use requires written permission and negotiated payment terms.
 
 #include "pch.h"
 #include "CarEngineSoundSynthesis.h"
-
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -26,10 +25,10 @@ namespace engine_sound
         constexpr float two_pi = 6.28318530717959f;
 
         // burnt gas, close enough to air for the intake too, si units throughout the cylinder model
-        constexpr float gas_gamma           = 1.33f;
-        constexpr float gas_constant        = 287.0f;
-        constexpr float ambient_pressure    = 101325.0f;
-        constexpr float pascal_per_bar      = 1.0e5f;
+        constexpr float gas_gamma        = 1.33f;
+        constexpr float gas_constant     = 287.0f;
+        constexpr float ambient_pressure = 101325.0f;
+        constexpr float pascal_per_bar   = 1.0e5f;
 
         // the exhaust cools on its way out; pipes are laid out for their coldest gas and shorten as it heats up
         constexpr float primary_cold_temperature   = 600.0f;
@@ -46,8 +45,8 @@ namespace engine_sound
         // difference between the two banks' collector runs, as a fraction of their length
         constexpr float bank_run_mismatch = 0.04f;
         // share of a jet's power that turbulence turns into sound, measured on round jets
-        constexpr float lighthill_constant  = 5.0e-5f;
-        constexpr float jet_noise_peak_hz   = 4000.0f;
+        constexpr float lighthill_constant = 5.0e-5f;
+        constexpr float jet_noise_peak_hz  = 4000.0f;
 
         // valve events in crank degrees after firing tdc, the exhaust valve opening is the event clock
         constexpr float exhaust_valve_open_deg = 135.0f;

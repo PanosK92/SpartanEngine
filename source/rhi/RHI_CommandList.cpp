@@ -240,6 +240,17 @@ namespace spartan
                 InsertBarrier(barrier);
             }
 
+            // the general to general barrier above is dropped when flushed, so a write after a read or anything
+            // after a write on this queue needs its own sync, back to back copies of one image race without it
+            if (has_previous && !cross_queue && (resource_tracker::writes(previous.access) || resource_tracker::writes(access)))
+            {
+                RHI_Barrier sync = RHI_Barrier::image_sync(texture, previous.access, access, mip, 1);
+                sync.from(previous.scope).to(scope);
+                sync.usage_src = previous.usage;
+                sync.usage_dst = usage_dst;
+                InsertBarrier(sync);
+            }
+
             const bool scope_change = has_previous && previous.scope != scope && previous.scope != RHI_Barrier_Scope::None && scope != RHI_Barrier_Scope::None;
             const bool hazard = has_previous && previous.unsynced &&
                 (resource_tracker::writes(previous.access) || resource_tracker::writes(access));

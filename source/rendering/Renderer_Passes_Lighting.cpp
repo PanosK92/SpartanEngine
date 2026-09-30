@@ -1044,7 +1044,9 @@ namespace spartan
 
     void Renderer::Pass_ReSTIR_Denoising()
     {
-        if (Window::IsMinimized())
+        // a secondary view composes without gi, and feeding its camera to nrd would make the
+        // denoiser see the primary jump away and back, which discards the primary's gi history
+        if (Window::IsMinimized() || IsSecondaryViewActive())
         {
             return;
         }
@@ -1529,7 +1531,13 @@ namespace spartan
         }
         RHI_CommandList::EndPass();
 
-        if (!IsSecondaryViewActive() && eye == 0)
+        // a secondary view only wrote the slot the primary overwrites next, resetting here would
+        // throw away the primary's accumulated fog and the whole viewport would pulse per preview
+        if (IsSecondaryViewActive())
+        {
+            return;
+        }
+        if (eye == 0)
         {
             m_pass_state.fog_history.Advance();
         }

@@ -707,7 +707,10 @@ namespace spartan
 
     void RHI_Texture::LoadFromFile(const string& file_path)
     {
-        auto progress = ProgressTracker::Begin(ProgressType::Texture, FileSystem::GetFileNameFromFilePath(file_path), "Reading texture");
+        // a read outside a world load (thumbnails, previews, a material edit) must not put the whole engine
+        // into loading, the renderer drops ray tracing and occlusion culling for as long as anything loads
+        const ProgressMode progress_mode = ProgressTracker::IsLoading(ProgressType::World) ? ProgressMode::Loading : ProgressMode::Background;
+        auto progress = ProgressTracker::Begin(ProgressType::Texture, FileSystem::GetFileNameFromFilePath(file_path), "Reading texture", progress_mode);
         ClearData();
 
         {

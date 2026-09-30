@@ -3817,6 +3817,11 @@ namespace spartan
         camera_override = entity;
     }
 
+    Entity* World::GetActiveCameraOverride()
+    {
+        return camera_override;
+    }
+
     Light* World::GetDirectionalLight()
     {
         return light ? light->GetComponent<Light>() : nullptr;

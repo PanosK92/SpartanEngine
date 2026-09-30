@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "GeneralWindows.h"
 #include "WorldPreviews.h"
+#include "AssetThumbnails.h"
 #include "windows/WorldSelector.h"
 #include "windows/Contributors.h"
 #include "imgui/source/imgui.h"
@@ -1088,6 +1089,7 @@ void GeneralWindows::Initialize(Editor* editor_in)
 void GeneralWindows::Tick()
 {
     WorldPreviews::Tick();
+    AssetThumbnails::Tick(editor);
 
     // show the world selector after the welcome window has been dismissed
     static bool welcome_was_visible = welcome::visible;

@@ -100,6 +100,9 @@ namespace spartan
 
         mutex screenshot_mutex;
         screenshot_request screenshot;
+        // captures of the secondary view queue here, apart from the main view, so an asset preview being
+        // written never refuses a viewport screenshot and a viewport screenshot never strands a preview
+        screenshot_request secondary_capture;
         shared_ptr<RHI_Texture> screenshot_ui_target;
         uint32_t screenshot_index = 0;
         atomic<uint32_t> screenshot_saves_in_flight = 0;
@@ -130,6 +133,14 @@ namespace spartan
         bool secondary_view_exposure_valid = false;
         bool secondary_view_ready = false;
         uint32_t secondary_view_recovery_frames = 0;
+
+        // the temporal frame index of the primary camera, nrd treats any gap in it as a camera cut
+        // and throws its history away, so a frame lent to a secondary view must not advance it
+        uint32_t primary_view_frame = 0;
+
+        // loading is read once per frame, worker threads flip it at any moment, and a frame that enabled
+        // tracing before the flip and then skipped the tlas update after it traced against stale structures
+        bool frame_is_loading = false;
 
         bool is_secondary_view_entity(Entity* entity)
         {
@@ -943,11 +954,9 @@ namespace spartan
                 )
             )
             {
-                if (Camera* primary_camera = World::GetCamera())
-                {
-                    primary_camera_entity =
-                        primary_camera->GetEntity();
-                }
+                // the override itself is put back, not the camera it resolved to, pinning the resolved
+                // camera as an override would outrank the world camera once gameplay switches it
+                primary_camera_entity = World::GetActiveCameraOverride();
                 RHI_CommandList::Copy(
                     GetRenderTarget(
                         Renderer_RenderTarget::frame_output
@@ -1047,15 +1056,14 @@ namespace spartan
                 secondary_view_ready = false;
                 lock_guard<mutex> lock(screenshot_mutex);
                 if (
-                    screenshot.pending &&
-                    screenshot.secondary_view &&
-                    screenshot.secondary_generation <=
+                    secondary_capture.pending &&
+                    secondary_capture.secondary_generation <=
                         secondary_view_active_generation
                 )
                 {
                     // the generation it waited for came and went without rendering, dropping it here
-                    // matters because a pending request blocks every later screenshot
-                    screenshot = {};
+                    // matters because a pending request blocks every later capture
+                    secondary_capture = {};
                 }
             }
 
@@ -1145,14 +1153,13 @@ namespace spartan
                     // any render at or after the requested generation satisfies the capture, an exact
                     // match would strand the request whenever the preview panel refreshed in between
                     if (
-                        screenshot.pending &&
-                        screenshot.secondary_view &&
-                        screenshot.secondary_generation <=
+                        secondary_capture.pending &&
+                        secondary_capture.secondary_generation <=
                             secondary_view_active_generation
                     )
                     {
-                        screenshot.pending = false;
-                        screenshot.ready = true;
+                        secondary_capture.pending = false;
+                        secondary_capture.ready = true;
                     }
                 }
                 secondary_view_recovery_frames = 0;
@@ -1284,6 +1291,7 @@ namespace spartan
         static uint32_t post_load_frames = 0;
         static bool was_loading          = true;
         const bool is_loading            = ProgressTracker::IsLoading();
+        frame_is_loading                 = is_loading;
 
         if (is_loading)
         {
@@ -1452,10 +1460,16 @@ namespace spartan
             return;
         }
 
-        if (update_materials || bindless_textures_dirty)
+        // a round trip through a secondary view only rebuilds the primary layout, the materials themselves
+        // are unchanged, so it must not cost the primary its gi history, a real change seen during a
+        // secondary frame is held until the primary renders again
+        static bool restir_invalidation_pending = false;
+        restir_invalidation_pending |= GetFrameNumber() == 0 || world_changed || bindless_changed || bindless_textures_dirty;
+        if (restir_invalidation_pending && !is_secondary)
         {
             m_pass_state.restir_accumulation_valid = false;
             m_pass_state.restir_history_invalid = true;
+            restir_invalidation_pending = false;
         }
 
         if (update_materials)
@@ -1739,9 +1753,7 @@ namespace spartan
     bool Renderer::IsSecondaryScreenshotPending()
     {
         lock_guard<mutex> lock(screenshot_mutex);
-        return
-            screenshot.secondary_view &&
-            (screenshot.pending || screenshot.ready);
+        return secondary_capture.pending || secondary_capture.ready;
     }
 
     void Renderer::InvalidateSecondaryView()
@@ -1753,9 +1765,10 @@ namespace spartan
         secondary_view_request_generation++;
 
         lock_guard<mutex> lock(screenshot_mutex);
-        if (screenshot.secondary_view)
+        // one already read back is being saved from its own staging copy, only a pending one is dropped
+        if (secondary_capture.pending)
         {
-            screenshot = {};
+            secondary_capture = {};
         }
     }
 
@@ -2100,7 +2113,11 @@ namespace spartan
         m_cb_frame_cpu.taa_jitter_current    = m_jitter_offset;
         m_cb_frame_cpu.time                  = Timer::GetTimeSec();
         m_cb_frame_cpu.delta_time            = static_cast<float>(Timer::GetDeltaTimeSec());
-        m_cb_frame_cpu.frame                 = static_cast<uint32_t>(m_frame_num);
+        if (!secondary_render_root_active)
+        {
+            primary_view_frame++;
+        }
+        m_cb_frame_cpu.frame                 = primary_view_frame;
         m_cb_frame_cpu.resolution_scale      = GetResolutionScale();
         m_cb_frame_cpu.restir_pt_scale       = cvar_restir_pt_scale.GetValue();
         // 0 = sdr, 1 = hdr10 pq, 2 = hdr scrgb (d3d12 windowed)
@@ -2309,14 +2326,14 @@ namespace spartan
 
         // Initial preparation needs a TLAS before enabling tracing. Once one exists,
         // spawning geometry must not switch lighting modes for the entire scene.
-        bool pending_blas = ProgressTracker::IsLoading();
-        if (ray_tracing_allowed && RHI_Device::IsSupportedRayTracing() && !ProgressTracker::IsLoading())
+        bool pending_blas = frame_is_loading;
+        if (ray_tracing_allowed && RHI_Device::IsSupportedRayTracing() && !frame_is_loading)
         {
             prepare_ray_tracing_renders();
             pending_blas = ray_tracing_pending_blas;
         }
 
-        const bool ray_tracing_ready = ray_tracing_allowed && !ProgressTracker::IsLoading() &&
+        const bool ray_tracing_ready = ray_tracing_allowed && !frame_is_loading &&
             (!pending_blas || tlas_available);
         m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>() && ray_tracing_ready, 1 << 0);
         m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                                        1 << 1);
@@ -2324,9 +2341,10 @@ namespace spartan
         m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>() && ray_tracing_ready,              1 << 3);
 
         // the reservoirs hold a different integrand with and without direct light, so switching
-        // ownership must drop history instead of letting stale samples resolve into the new one
+        // ownership must drop history instead of letting stale samples resolve into the new one, a secondary
+        // view traces nothing and gets the primary's bits back afterwards, so it changes no ownership
         const bool restir_direct = cvar_restir_pt.GetValueAs<bool>() && cvar_restir_pt_direct.GetValueAs<bool>() && ray_tracing_ready;
-        if (restir_direct != ((m_cb_frame_cpu.options & (1u << 4)) != 0))
+        if (!secondary_render_root_active && restir_direct != ((m_cb_frame_cpu.options & (1u << 4)) != 0))
         {
             m_pass_state.restir_history_invalid    = true;
             m_pass_state.restir_accumulation_valid = false;
@@ -2556,6 +2574,14 @@ namespace spartan
         static uint64_t   pool_signature = 0;
         static RHI_Buffer* pool_buffer   = nullptr;
         static uint32_t   pool_count     = 0;
+
+        // a secondary view does not path trace, and signing its subtree here would read as a scene change
+        // to the primary on both the way in and the way out, clearing the primary's reservoirs each time
+        if (secondary_render_root_active)
+        {
+            m_cb_frame_cpu.restir_pt_emissive_tri_count = 0.0f;
+            return;
+        }
 
         if (!cvar_restir_pt.GetValueAs<bool>())
         {
@@ -3728,7 +3754,8 @@ namespace spartan
         // a light that changes restarts the progressive accumulation but keeps the reservoirs, the
         // temporal confidence cap ages stale radiance out within a few frames, only a change in the
         // light set clears them, otherwise a moving sun or headlight leaves restir with no temporal reuse
-        if (cvar_restir_pt.GetValueAs<bool>())
+        // a secondary view uploads its own studio lights, those are not a change to the primary's set
+        if (cvar_restir_pt.GetValueAs<bool>() && !secondary_render_root_active)
         {
             struct light_transport
             {
@@ -4561,7 +4588,7 @@ namespace spartan
             return;
         }
 
-        if (ProgressTracker::IsLoading())
+        if (frame_is_loading)
         {
             return;
         }
@@ -5127,26 +5154,19 @@ namespace spartan
             return false;
         }
 
-        // a request that has been read back is mid save and its staging buffer is still in use, so it has to
-        // be left alone. one that is only pending has not been touched by the gpu yet and the newer request
-        // is the one the caller wants, superseding it is what stops a single stranded capture from refusing
-        // every screenshot taken afterwards
-        if (screenshot.ready)
+        // a request that has been rendered is waiting for its readback this frame, so it has to be left
+        // alone. one that is only pending has not been touched by the gpu yet and the newer request is the
+        // one the caller wants, superseding it is what stops a single stranded capture from refusing every
+        // capture taken afterwards
+        if (secondary_capture.ready)
         {
             SP_LOG_WARNING(
                 "Secondary screenshot is still being written, try again"
             );
             return false;
         }
-        if (screenshot.pending && !screenshot.secondary_view)
-        {
-            SP_LOG_WARNING(
-                "A main view screenshot is pending, try again"
-            );
-            return false;
-        }
 
-        screenshot =
+        secondary_capture =
             make_screenshot_request(file_path, true);
         return true;
     }
@@ -5188,7 +5208,6 @@ namespace spartan
             if (
                 !screenshot.pending ||
                 screenshot.ready ||
-                screenshot.secondary_view ||
                 screenshot.ui ||
                 secondary_render_root_active ||
                 !tex_pre_tonemap
@@ -5253,7 +5272,6 @@ namespace spartan
             if (
                 !screenshot.pending ||
                 screenshot.ready ||
-                screenshot.secondary_view ||
                 screenshot.ui ||
                 secondary_render_root_active
             )
@@ -5294,50 +5312,62 @@ namespace spartan
 
     void Renderer::FinalizeScreenshotReadback()
     {
-        screenshot_request request;
+        array<screenshot_request, 2> requests;
+        uint32_t request_count = 0;
         {
             lock_guard<mutex> lock(screenshot_mutex);
-            if (!screenshot.ready)
+            if (screenshot.ready)
             {
-                return;
+                requests[request_count++] = screenshot;
+                screenshot = {};
             }
-
-            request    = screenshot;
-            screenshot = {};
+            if (secondary_capture.ready)
+            {
+                requests[request_count++] = secondary_capture;
+                secondary_capture = {};
+            }
         }
-
-        // present submitted the capture work, wait so the readback sees finished pixels
-        RHI_Device::QueueWaitAll(true);
-
-        RHI_Texture* tex_sdr =
-            request.ui
-                ? screenshot_ui_target.get()
-                : request.secondary_view
-                    ? secondary_view_output.get()
-                    : GetRenderTarget(
-                        Renderer_RenderTarget::screenshot_sdr
-                    );
-        if (!tex_sdr)
+        if (request_count == 0)
         {
             return;
         }
 
-        shared_ptr<RHI_Buffer> sdr_staging = copy_texture_to_staging(tex_sdr);
-        shared_ptr<RHI_Buffer> exr_staging;
-        if (request.save_exr && !request.secondary_view && !request.ui && !Xr::IsSessionRunning())
-        {
-            exr_staging = copy_texture_to_staging(GetRenderTarget(Renderer_RenderTarget::frame_output));
-        }
+        // present submitted the capture work, wait once so every readback sees finished pixels
+        RHI_Device::QueueWaitAll(true);
 
-        save_screenshot_async(
-            request,
-            sdr_staging,
-            exr_staging,
-            tex_sdr->GetWidth(),
-            tex_sdr->GetHeight(),
-            tex_sdr->GetChannelCount(),
-            tex_sdr->GetBitsPerChannel()
-        );
+        for (uint32_t i = 0; i < request_count; i++)
+        {
+            const screenshot_request& request = requests[i];
+            RHI_Texture* tex_sdr =
+                request.ui
+                    ? screenshot_ui_target.get()
+                    : request.secondary_view
+                        ? secondary_view_output.get()
+                        : GetRenderTarget(
+                            Renderer_RenderTarget::screenshot_sdr
+                        );
+            if (!tex_sdr)
+            {
+                continue;
+            }
+
+            shared_ptr<RHI_Buffer> sdr_staging = copy_texture_to_staging(tex_sdr);
+            shared_ptr<RHI_Buffer> exr_staging;
+            if (request.save_exr && !request.secondary_view && !request.ui && !Xr::IsSessionRunning())
+            {
+                exr_staging = copy_texture_to_staging(GetRenderTarget(Renderer_RenderTarget::frame_output));
+            }
+
+            save_screenshot_async(
+                request,
+                sdr_staging,
+                exr_staging,
+                tex_sdr->GetWidth(),
+                tex_sdr->GetHeight(),
+                tex_sdr->GetChannelCount(),
+                tex_sdr->GetBitsPerChannel()
+            );
+        }
     }
 
     uint32_t Renderer::GetClusterOverflowCount()

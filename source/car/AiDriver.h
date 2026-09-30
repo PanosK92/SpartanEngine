@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 #pragma once
 
 #include <cstdint>
+#include <cstdio>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -172,6 +173,9 @@ namespace spartan
         float m_line_error    = 0.0f;
         float m_center_offset = 0.0f;
         float m_yaw_rate      = 0.0f;
+        float m_drift_accel   = 0.0f; // m/s^2 sideways off the racing line
+        float m_previous_lateral_speed = 0.0f;
+        float m_previous_delta         = 0.0f;
 
         // controls
         float m_steering      = 0.0f;
@@ -199,6 +203,8 @@ namespace spartan
         float m_wrong_way_time  = 0.0f;
         float m_rebuild_time    = 0.0f;
         float m_log_time        = 0.0f;
+        float m_trace_time      = 0.0f;
+        FILE* m_trace           = nullptr; // verbose drivers write ai_driver_trace.csv in the working directory
         float m_plan_key        = 0.0f; // car model the plan was last built with
         float m_lap_error_max   = 0.0f;
         bool m_excursion        = false;

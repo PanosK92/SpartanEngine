@@ -84,11 +84,16 @@ namespace spartan
             RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous));
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_ssao);
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, tex_history_write);
-            // history resets on the first frame or after rt recreate
-            m_pcb_pass_cpu.set(pass_ssao::reset_history, !m_pass_state.ssao_history.valid);
+            // history resets on the first frame or after rt recreate, a secondary view has none of its own,
+            // it only writes the slot the primary overwrites next, so the primary's history survives it
+            const bool secondary_view = IsSecondaryViewActive();
+            m_pcb_pass_cpu.set(pass_ssao::reset_history, !m_pass_state.ssao_history.valid || secondary_view);
             RHI_CommandList::Dispatch(tex_ssao, GetResolutionScale());
 
-            m_pass_state.ssao_history.Advance();
+            if (!secondary_view)
+            {
+                m_pass_state.ssao_history.Advance();
+            }
         }
         RHI_CommandList::EndPass();
     }

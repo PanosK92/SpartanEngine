@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "EditorLayout.h"
 #include "GeneralWindows.h"
 #include "WorldPreviews.h"
+#include "AssetThumbnails.h"
 #include "widgets/MenuBar.h"
 #include "core/Engine.h"
 #include "core/Timer.h"
@@ -40,6 +41,7 @@ Editor::Editor(const vector<string>& args)
 Editor::~Editor()
 {
     editor_mcp::Unregister();
+    AssetThumbnails::Shutdown();
     WorldPreviews::Shutdown();
     editor_imgui::shutdown();
     spartan::Engine::Shutdown();

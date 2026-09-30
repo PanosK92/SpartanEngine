@@ -15,6 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../imgui/ImGui_EditorUi.h"
 #include "../imgui/ImGui_Style.h"
 #include "../widgets/Viewport.h"
+#include "../AssetThumbnails.h"
 #include <rendering/Material.h>
 #include "world/Entity.h"
 #include "world/Prefab.h"
@@ -1404,10 +1405,29 @@ void FileDialog::RenderGridView()
 
         const kind_info& info = kind_of(item.GetKind());
 
-        // icon
-        const float icon_area     = icon_size - grid_item_padding;
+        // icon, a rendered thumbnail replaces the glyph once it exists, only cards on screen ask for one
+        const float icon_area = icon_size - grid_item_padding;
+        spartan::RHI_Texture* thumbnail =
+            !item.IsDirectory() && ImGui::IsRectVisible(card_min, card_max)
+                ? AssetThumbnails::Get(item.GetPath())
+                : nullptr;
         const spartan::Icon& icon = item.GetIcon();
-        if (
+        if (thumbnail)
+        {
+            const float side  = icon_area;
+            const float img_x = card_min.x + (card_width - side) * 0.5f;
+            const float img_y = card_min.y + grid_item_padding;
+            draw_list->AddImageRounded(
+                reinterpret_cast<ImTextureID>(thumbnail),
+                ImVec2(img_x, img_y),
+                ImVec2(img_x + side, img_y + side),
+                ImVec2(0.0f, 0.0f),
+                ImVec2(1.0f, 1.0f),
+                IM_COL32_WHITE,
+                card_rounding - 2.0f
+            );
+        }
+        else if (
             icon.texture &&
             icon.texture->GetResourceState() == ResourceState::PreparedForGpu &&
             icon.texture->GetRhiResource()
@@ -1638,7 +1658,27 @@ void FileDialog::RenderListView()
             // icon, glyphs tinted by kind like the grid so both views teach the same colours
             ImGui::SameLine(0, 0);
             const spartan::Icon& icon = item.GetIcon();
-            if (
+            spartan::RHI_Texture* thumbnail =
+                !item.IsDirectory() && ImGui::IsRectVisible(ImVec2(icon_size, row_height))
+                    ? AssetThumbnails::Get(item.GetPath())
+                    : nullptr;
+            if (thumbnail)
+            {
+                ImGui::SetCursorPosY(row_y + (row_height - icon_size) * 0.5f);
+                const ImVec2 position = ImGui::GetCursorScreenPos();
+                ImGui::GetWindowDrawList()->AddImageRounded(
+                    reinterpret_cast<ImTextureID>(thumbnail),
+                    position,
+                    ImVec2(position.x + icon_size, position.y + icon_size),
+                    ImVec2(0.0f, 0.0f),
+                    ImVec2(1.0f, 1.0f),
+                    IM_COL32_WHITE,
+                    2.0f
+                );
+                ImGui::Dummy(ImVec2(icon_size, icon_size));
+                ImGui::SameLine(0, 8);
+            }
+            else if (
                 icon.texture &&
                 icon.texture->GetResourceState() == ResourceState::PreparedForGpu &&
                 icon.texture->GetRhiResource()
@@ -1921,7 +1961,12 @@ void FileDialog::ItemDrag(FileDialogItem* item)
         // drag preview
         ImGui::BeginTooltip();
         const spartan::Icon& drag_icon = item->GetIcon();
-        if (
+        if (spartan::RHI_Texture* thumbnail = AssetThumbnails::Get(item->GetPath()))
+        {
+            ImGuiSp::image(thumbnail, ImVec2(48, 48));
+            ImGui::SameLine();
+        }
+        else if (
             drag_icon.texture &&
             drag_icon.texture->GetResourceState() == ResourceState::PreparedForGpu &&
             drag_icon.texture->GetRhiResource()
@@ -1988,6 +2033,14 @@ void FileDialog::ItemContextMenu(FileDialogItem* item)
                         }
                     }
                 }
+            }
+        }
+
+        if (AssetThumbnails::IsSupported(item->GetPath()))
+        {
+            if (ImGui::MenuItem("Regenerate thumbnail"))
+            {
+                AssetThumbnails::Regenerate(item->GetPath());
             }
         }
 
