@@ -328,7 +328,7 @@ namespace spartan
                 {
                     const PxContactPair& pair = pairs[i];
                     // found + persists: a fast car can stay overlapping after a weak first touch
-                    const PxU32 touch_events =
+                    const PxPairFlags touch_events =
                         PxPairFlag::eNOTIFY_TOUCH_FOUND | PxPairFlag::eNOTIFY_TOUCH_PERSISTS | PxPairFlag::eNOTIFY_TOUCH_CCD;
                     if (!(pair.events & touch_events))
                     {

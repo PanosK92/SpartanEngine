@@ -218,7 +218,7 @@ namespace spartan
             while ((entry = readdir(dir)) != NULL) {
                 // Check if the directory is a PID (starts with a digit)
                 if (entry->d_type == DT_DIR && isdigit(entry->d_name[0])) {
-                    char comm_path[256];
+                    char comm_path[288];
                     snprintf(comm_path, sizeof(comm_path), "/proc/%s/comm", entry->d_name);
         
                     FILE* comm_file = fopen(comm_path, "r");
