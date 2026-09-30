@@ -2745,7 +2745,15 @@ namespace spartan
 
         bool is_16bit = buffer->GetStride() == sizeof(uint16_t);
 
-        vkCmdBindIndexBuffer2(
+        // vulkan 1.4 entry point, older loaders (e.g. ubuntu 24.04) don't export it, so resolve it through the device
+        static PFN_vkCmdBindIndexBuffer2 pfn_bind_index_buffer2 = nullptr;
+        if (!pfn_bind_index_buffer2)
+        {
+            pfn_bind_index_buffer2 = reinterpret_cast<PFN_vkCmdBindIndexBuffer2>(vkGetDeviceProcAddr(RHI_Context::device, "vkCmdBindIndexBuffer2"));
+            SP_ASSERT(pfn_bind_index_buffer2 != nullptr);
+        }
+
+        pfn_bind_index_buffer2(
             static_cast<VkCommandBuffer>(m_rhi_resource),          // commandBuffer
             static_cast<VkBuffer>(buffer->GetRhiResource()),       // buffer
             0,                                                     // offset
@@ -2785,7 +2793,15 @@ namespace spartan
         push_info.size       = size;
         push_info.pValues    = data;
 
-        vkCmdPushConstants2(static_cast<VkCommandBuffer>(m_rhi_resource), &push_info);
+        // vulkan 1.4 entry point, see set_buffer_index()
+        static PFN_vkCmdPushConstants2 pfn_push_constants2 = nullptr;
+        if (!pfn_push_constants2)
+        {
+            pfn_push_constants2 = reinterpret_cast<PFN_vkCmdPushConstants2>(vkGetDeviceProcAddr(RHI_Context::device, "vkCmdPushConstants2"));
+            SP_ASSERT(pfn_push_constants2 != nullptr);
+        }
+
+        pfn_push_constants2(static_cast<VkCommandBuffer>(m_rhi_resource), &push_info);
     }
 
     void RHI_CommandList::set_constant_buffer(const uint32_t slot, RHI_Buffer* constant_buffer)

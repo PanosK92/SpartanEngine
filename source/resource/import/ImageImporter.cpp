@@ -138,6 +138,34 @@ namespace spartan
             return channel_count;
         }
 
+        // same as freeimage's internal SwapRedBlue32(), which the linux shared library does not export
+        bool swap_red_blue(FIBITMAP* bitmap)
+        {
+            if (FreeImage_GetImageType(bitmap) != FIT_BITMAP)
+            {
+                return false;
+            }
+
+            const uint32_t bytes_per_pixel = FreeImage_GetBPP(bitmap) / 8;
+            if (bytes_per_pixel != 3 && bytes_per_pixel != 4)
+            {
+                return false;
+            }
+
+            const uint32_t width  = FreeImage_GetWidth(bitmap);
+            const uint32_t height = FreeImage_GetHeight(bitmap);
+            for (uint32_t y = 0; y < height; y++)
+            {
+                BYTE* line = FreeImage_GetScanLine(bitmap, y);
+                for (uint32_t x = 0; x < width; x++)
+                {
+                    std::swap(line[x * bytes_per_pixel + 0], line[x * bytes_per_pixel + 2]);
+                }
+            }
+
+            return true;
+        }
+
         RHI_Format get_rhi_format(const uint32_t bits_per_channel, const uint32_t channel_count)
         {
             SP_ASSERT(bits_per_channel != 0);
@@ -282,7 +310,7 @@ namespace spartan
             {
                 if (FreeImage_GetRedMask(bitmap) == 0xff0000 && get_channel_count(bitmap) >= 2)
                 {
-                    if (!SwapRedBlue32(bitmap))
+                    if (!swap_red_blue(bitmap))
                     {
                         SP_LOG_ERROR("Failed to swap red with blue channel");
                     }

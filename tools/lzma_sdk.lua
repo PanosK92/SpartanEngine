@@ -14,7 +14,9 @@ local function lzma_sources()
 
     local common = {
         "CRC", "CrcReg", "IntToString", "LzFindPrepare", "NewHandler",
-        "MyString", "StringConvert", "StringToInt", "MyVector", "Wildcard"
+        "MyString", "StringConvert", "StringToInt", "MyVector", "Wildcard",
+        -- win32 api emulation and utf-8 conversion, MyWindows.cpp compiles to nothing on windows
+        "MyWindows", "UTFConvert"
     }
     for _, f in ipairs(common) do
         add("CPP/Common/" .. f .. ".cpp")
