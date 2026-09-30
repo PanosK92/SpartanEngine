@@ -134,7 +134,7 @@ build_dxc()
 {
     local dir="$work/dxc"
     mkdir -p "$dir"
-    curl -fsSL "$dxc_url" | tar -xz -C "$dir"
+    curl -fsSL "$dxc_url" | tar -xz --strip-components=1 -C "$dir"
     cp "$dir/lib/libdxcompiler.so" "$dir/lib/libdxil.so" "$out"
 }
 
