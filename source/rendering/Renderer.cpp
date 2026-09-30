@@ -2268,6 +2268,17 @@ namespace spartan
         {
             m_cb_frame_cpu.terrain_maps_enabled = 1.0f;
         }
+
+        // the carpet is only drawn on the terrain surface, so it needs the heightfield mapping as well
+        const PassState::GrassFar& grass_far = m_pass_state.grass_far;
+        const bool grass_far_ready =
+            m_cb_frame_cpu.terrain_height_enabled > 0.5f &&
+            grass_far.prop_mask &&
+            grass_far.prop_mask->GetResourceState() == ResourceState::PreparedForGpu;
+        m_cb_frame_cpu.grass_far_tint  = grass_far_ready ? grass_far.tint : Vector4::Zero;
+        m_cb_frame_cpu.grass_far_fade  = grass_far.fade;
+        m_cb_frame_cpu.grass_far_gate  = grass_far.gate;
+        m_cb_frame_cpu.grass_far_patch = grass_far.patch;
     }
 
     void Renderer::UpdateFrameCb_ClusterLighting()
@@ -5481,6 +5492,12 @@ namespace spartan
 
             RHI_Texture* shore = ocean_shore::get_texture();
             RHI_CommandList::SetTexture("tex_ocean_shore", shore ? shore : fallback);
+
+            RHI_Texture* prop_mask = m_pass_state.grass_far.prop_mask;
+            const bool prop_mask_ready =
+                prop_mask &&
+                prop_mask->GetResourceState() == ResourceState::PreparedForGpu;
+            RHI_CommandList::SetTexture("tex_terrain_prop_mask", prop_mask_ready ? prop_mask : fallback);
         }
 
         Renderer_RenderTarget ocean_displacement_current = m_pass_state.ocean_history.SelectWrite(

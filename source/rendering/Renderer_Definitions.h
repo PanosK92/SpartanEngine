@@ -232,6 +232,9 @@ namespace spartan
         // world y heightfield, sampled by the ocean for depth and swash
         terrain_height = 17,
 
+        // biome prop mask, sampled by the terrain surface for the far grass carpet
+        terrain_prop_mask = 21,
+
         // restir reservoir srv bindings (for temporal/spatial read)
         // kept contiguous so a single loop can bind all five slots starting from reservoir_prev0
         reservoir_prev0    = 22,

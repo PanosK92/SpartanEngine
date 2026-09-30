@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_decals.hlsl"
 #include "common_puddles.hlsl"
 #include "common_rain.hlsl"
+#include "grass_patch.hlsl"
 //=================================
 
 struct gbuffer
@@ -149,6 +150,144 @@ float3 compute_grass_color(float height_percent, float variation)
     leaf_tint = lerp(leaf_tint, grass_straw, smoothstep(0.82f, 1.0f, variation) * 0.7f);
     float3 root_tint = grass_base * lerp(0.85f, 1.15f, variation);
     return lerp(root_tint, leaf_tint, t);
+}
+
+// tuft impostor cards, the outer grass ring draws one per cell instead of blades. the tufts are cut
+// out analytically so there is no atlas to bake, and a tuft thinner than a pixel dithers its coverage
+// instead of dropping out, which keeps the field at the same density however far the card is
+static const uint  grass_card_tufts      = 32;
+static const float grass_card_tuft_width = 0.035f; // in card widths, a card spans one and a half cells
+static const float grass_card_root_hidden = 0.3f;  // blade height the visible part of a card starts at
+
+bool grass_card_cutout(float2 uv, float card_variation, float footprint, float dither, out float height_percent, out float width_percent, out float variation)
+{
+    height_percent = uv.y;
+    width_percent  = 0.5f;
+    variation      = card_variation;
+
+    uint seed = (uint)(card_variation * 65535.0f) * 0x9e3779b9u + 0x68bc21u;
+    [loop]
+    for (uint i = 0; i < grass_card_tufts; i++)
+    {
+        uint  h        = hash_mix(seed + i * 0x85ebca6bu);
+        float tuft_top = lerp(0.45f, 1.0f, hash_unit(hash_mix(h ^ 0x27d4eb2du)));
+        float v        = uv.y / tuft_top;
+        if (v >= 1.0f)
+        {
+            continue;
+        }
+
+        float center = lerp(0.08f, 0.92f, hash_unit(h));
+        float lean   = (hash_unit(hash_mix(h ^ 0x165667b1u)) - 0.5f) * 0.25f;
+        float width  = grass_card_tuft_width * lerp(0.6f, 1.4f, hash_unit(hash_mix(h ^ 0xd3a2646cu)));
+
+        // a tuft tapers to a point, widening it to a pixel keeps it from sparkling and the dither
+        // pays back the area the widening added, so coverage stays what the tuft actually hides
+        float half_width     = width * 0.5f * pow(1.0f - v, 0.7f);
+        float half_resolved  = max(half_width, footprint * 0.5f);
+        float offset         = uv.x - (center + lean * v * v);
+        float tuft_dither    = frac(dither + hash_unit(hash_mix(h ^ 0x9e3779b9u)));
+        if (abs(offset) < half_resolved && tuft_dither < half_width / half_resolved)
+        {
+            // the lower part of a tuft sits in the thatch of its neighbours, the dark root never shows from afar
+            height_percent = lerp(grass_card_root_hidden, 1.0f, v);
+            width_percent  = saturate(0.5f + offset / (2.0f * half_resolved));
+            variation      = lerp(card_variation, hash_unit(hash_mix(h ^ 0x3c6ef372u)), 0.5f);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// grass seen from past its last ring, the terrain under a meadow takes on the colour of the carpet the
+// blades and cards would have drawn, gated by the same biome, ground, slope and patch rules the
+// populate pass uses so a meadow keeps its outline to the horizon for the cost of a few taps
+static const float grass_far_undercoat  = 0.45f; // share of the carpet laid under the rings, the ground between tufts is thatch, not soil
+static const float grass_far_top_cover  = 0.6f;  // fraction of the ground a full meadow hides seen from straight above
+static const float grass_far_brightness = 1.0f;  // opaque ground has no transmission, this stands in for the light blades let through
+
+float grass_far_cover(float3 position_world, float3 normal_world, float3 view_direction, float distance, float footprint)
+{
+    if (buffer_frame.grass_far_tint.w <= 0.0f)
+    {
+        return 0.0f;
+    }
+
+    float4 fade = buffer_frame.grass_far_fade;
+    float4 gate = buffer_frame.grass_far_gate;
+    float ring  = lerp(grass_far_undercoat * smoothstep(fade.x, fade.y, distance), 1.0f, smoothstep(fade.y, fade.z, distance));
+    if (ring <= 0.0f)
+    {
+        return 0.0f;
+    }
+
+    float slope_fit = saturate((acos(saturate(gate.y)) - acos(saturate(normal_world.y))) / grass_slope_fade);
+    if (slope_fit <= 0.0f)
+    {
+        return 0.0f;
+    }
+
+    float2 normalized = (position_world.xz - buffer_frame.terrain_height_mapping.xy) * buffer_frame.terrain_height_mapping.zw;
+    if (any(normalized < 0.0f) || any(normalized > 1.0f))
+    {
+        return 0.0f;
+    }
+
+    uint mask_w;
+    uint mask_h;
+    tex_terrain_prop_mask.GetDimensions(mask_w, mask_h);
+    float2 mask_size = float2(mask_w, mask_h);
+    float2 mask_uv   = (normalized * (mask_size - 1.0f) + 0.5f) / mask_size;
+
+    uint ground_mask = (uint)gate.z;
+    if (ground_mask != 0u)
+    {
+        float index_a = tex_terrain_prop_mask.SampleLevel(GET_SAMPLER(sampler_point_clamp), mask_uv, 0).a;
+        uint dominant = min((uint)(index_a * 255.0f + 0.5f), grass_ground_layer_max - 1u);
+        if ((ground_mask & (1u << dominant)) == 0u)
+        {
+            return 0.0f;
+        }
+    }
+
+    float biome = 1.0f;
+    if (gate.x >= 0.0f)
+    {
+        float4 mask   = tex_terrain_prop_mask.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), mask_uv, 0);
+        uint channel  = (uint)gate.w;
+        float grass_w = channel == 0u ? mask.r : (channel == 1u ? mask.g : mask.b);
+        biome         = saturate((grass_w - gate.x) / grass_biome_gain);
+    }
+
+    // once a pocket spans only a few pixels its outline can only alias, so it settles into the share of
+    // ground the patches take on average
+    float patch_size     = abs(fade.w);
+    float patch_coverage = saturate(buffer_frame.grass_far_patch.x);
+    float patch          = grass_patch_weight(position_world.xz, patch_size, patch_coverage, buffer_frame.grass_far_patch.y, fade.w < 0.0f);
+    float patch_mean     = patch_size > 0.0f ? patch_coverage : 1.0f;
+    patch                = lerp(patch, patch_mean, saturate(footprint * 6.0f / max(patch_size, 0.01f)));
+
+    // a meadow hides more of the ground the flatter it is seen, beer lambert through the blade layer
+    float density = biome * slope_fit * patch;
+    float n_dot_v = saturate(abs(dot(normal_world, view_direction)));
+    float opacity = 1.0f - pow(saturate(1.0f - grass_far_top_cover * density), 1.0f / max(n_dot_v, 0.15f));
+    return opacity * ring;
+}
+
+float3 grass_far_color(float3 position_world)
+{
+    // the blades draw their colour from a uniform variation, far enough out they average over it
+    float3 leaf = (
+        compute_grass_color(0.7f, 0.125f) +
+        compute_grass_color(0.7f, 0.375f) +
+        compute_grass_color(0.7f, 0.625f) +
+        compute_grass_color(0.7f, 0.875f)
+    ) * 0.25f;
+
+    // neighbouring tufts share colour over a few metres, a slow drift keeps the carpet from reading as paint
+    float drift = grass_value_noise(position_world.xz * (1.0f / 23.0f), 0x3c1u) * 0.5f + 0.5f;
+    return leaf * buffer_frame.grass_far_tint.rgb * lerp(0.85f, 1.15f, drift) * grass_far_brightness;
 }
 
 // compute flower color with cluster-based hue
@@ -307,6 +446,26 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float3 dpdx_world = ddx(position_world);
     float3 dpdy_world = ddy(position_world);
 
+#ifdef GRASS_SPECIALIZED
+    // the outer ring draws tuft impostor cards, the tufts are cut out before anything is shaded and then
+    // hand the blade shading below the same height, width and variation a real blade would carry
+    float card_footprint = max(abs(ddx(vertex.uv_misc.x)), abs(ddy(vertex.uv_misc.x)));
+    if (pass_float(pass_grass_draw::card_width) > 0.0f)
+    {
+        float tuft_height;
+        float tuft_width;
+        float tuft_variation;
+        float dither = noise_interleaved_gradient(vertex.position.xy);
+        if (!grass_card_cutout(vertex.uv_misc.xy, vertex.uv_misc.w, card_footprint, dither, tuft_height, tuft_width, tuft_variation))
+        {
+            discard;
+        }
+        vertex.uv_misc.z     = tuft_height;
+        vertex.uv_misc.w     = tuft_variation;
+        vertex.width_percent = tuft_width;
+    }
+#endif
+
     // impostor texels name the source uv and carry the crown normal, the prepass already cut the silhouette with the same pick
     float impostor_mip = 0.0f;
     if (is_impostor)
@@ -409,6 +568,17 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         metalness       = terrain.metalness;
         occlusion       = terrain.occlusion;
         terrain_shaded  = true;
+
+        // past the blades the meadow is still there, it just has to be drawn as the carpet colour
+        float grass_cover = grass_far_cover(position_world, vertex.normal, -camera_to_pixel / max(distance, 1e-4f), distance, max(length(dpdx), length(dpdy)));
+        if (grass_cover > 0.0f)
+        {
+            albedo.rgb = lerp(albedo.rgb, grass_far_color(position_world), grass_cover);
+            normal     = normalize(lerp(normal, vertex.normal, grass_cover * 0.7f));
+            roughness  = lerp(roughness, 0.85f, grass_cover);
+            metalness *= 1.0f - grass_cover;
+            occlusion *= lerp(1.0f, 0.85f, grass_cover);
+        }
 
         // gullies and drainage lines fill first and ridges stay dry, the layer height lets water settle
         // between the stones, soil drains so it holds a little less than sealed asphalt

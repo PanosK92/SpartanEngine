@@ -20,6 +20,9 @@ Texture2D tex_perlin : register(t14);
 Texture2D<float4> tex_terrain_map_a : register(t15);
 Texture2D<float4> tex_terrain_map_b : register(t16);
 Texture2D<float>  tex_terrain_height : register(t17);
+// biome prop mask, rgb = grass, tree and rock suitability, a = dominant surface layer index
+// the terrain reads it to carry the grass carpet past the last blade ring
+Texture2D<float4> tex_terrain_prop_mask : register(t21);
 
 // restir reservoir textures (shared across path tracing, temporal, and spatial passes)
 // kept contiguous so a single loop can bind all five slots starting from tex_reservoir_prev0

@@ -1126,6 +1126,41 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         vertex.uv_misc.z    = -1.0f;
     }
 
+#ifdef GRASS_INSTANCED
+    static const float grass_card_normal_facing = 0.6f;
+
+    // tuft impostor card, the quad turns about the root to face the camera and carries a whole tuft that
+    // the pixel shader cuts out of it, wind and tire pressure belong to the real blades nearer in
+    float card_width = pass_float(pass_grass_draw::card_width);
+    if (card_width > 0.0f)
+    {
+        float3 root     = transform[3].xyz;
+        float3 card_up  = normalize(transform[1].xyz);
+
+        // populate thinned the cards past this distance by the square of the same factor
+        float card_thin = pass_float(pass_grass_draw::card_thin);
+        if (card_thin > 0.0f)
+        {
+            card_width *= max(1.0f, length(root.xz - buffer_frame.camera_position.xz) / card_thin);
+        }
+        float  height   = material.local_height * length(transform[1].xyz);
+        float3 right    = cross(card_up, buffer_frame.camera_position - root);
+        right          *= rsqrt(max(dot(right, right), 1e-8f));
+        float3 right_previous = cross(card_up, buffer_frame.camera_position_previous - root);
+        right_previous       *= rsqrt(max(dot(right_previous, right_previous), 1e-8f));
+
+        position             = root + right * ((input_uv.x - 0.5f) * card_width) + card_up * (input_uv.y * height);
+        position_previous    = root + right_previous * ((input_uv.x - 0.5f) * card_width) + card_up * (input_uv.y * height);
+        // a camera facing normal is backlit whenever the sun is ahead, the blades it stands for face every way
+        // and seen from afar light like the canopy they form, so the normal leans most of the way to up
+        vertex.normal        = normalize(card_up + cross(right, card_up) * grass_card_normal_facing);
+        vertex.tangent       = right;
+        vertex.uv_misc.xy    = input_uv;
+        vertex.uv_misc.z     = input_uv.y;
+        vertex.width_percent = 0.5f;
+    }
+#endif
+
     // wind, water and impostor edits are small offsets, carry them over without touching the precise part
     position_relative          += position - position_unmodified;
     position_relative_previous += position_previous - position_unmodified_previous;

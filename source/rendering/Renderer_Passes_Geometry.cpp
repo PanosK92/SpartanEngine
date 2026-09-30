@@ -46,6 +46,12 @@ namespace spartan
             "use grass-only shading, compact vertex exports and mesh bounds; disable for comparison");
         TConsoleVar<float> cvar_grass_lod_pixels("r.grass_lod_pixels", 1.0f,
             "estimated blade simplification error in output pixels; zero keeps authored mesh detail");
+        TConsoleVar<float> cvar_grass_impostor_distance("r.grass_impostor_distance", 8000.0f,
+            "reach in metres of the outer grass ring, which draws tuft impostor cards instead of blades; 0 keeps blades there");
+        TConsoleVar<float> cvar_grass_impostor_thin("r.grass_impostor_thin", 300.0f,
+            "distance in metres past which impostor cards thin out with the square of distance and widen to keep the same coverage; 0 keeps every card");
+        TConsoleVar<float> cvar_grass_impostor_start("r.grass_impostor_start", 90.0f,
+            "distance in metres where tuft impostor cards take over from blades, the blade ring before them shrinks to meet it at the same density");
         // 12.5 cm cells retain tire detail across a much larger history field (32 MiB total).
         constexpr uint32_t grass_interaction_resolution = 1024;
         constexpr float grass_interaction_size = 128.0f;
@@ -176,6 +182,71 @@ namespace spartan
                    slot.heightmap->GetResourceState() == ResourceState::PreparedForGpu;
         }
 
+        // the outer ring of a grass slot draws tuft impostor cards instead of blades, one card per cell
+        // carries a whole tuft, so the ring can reach much further for a fraction of the instances
+        constexpr uint32_t gpu_scatter_card_lod = renderer_max_gpu_scatter_lods - 1;
+        // card width in cells, neighbours overlap so the tufts of adjacent cards interleave
+        constexpr float gpu_scatter_card_cells = 1.5f;
+
+        bool gpu_scatter_cards(const Renderer::PassState::GpuScatterSlot& slot)
+        {
+            return cvar_grass_impostor_distance.GetValue() > 0.0f &&
+                   cvar_grass_specialized.GetValue()              &&
+                   !Xr::IsSessionRunning()                        &&
+                   gpu_scatter_ready(slot)                        &&
+                   slot.material                                  &&
+                   slot.params.uv_patch == 0.0f                   &&
+                   slot.mesh->GetObjectName() == "grass_blade"    &&
+                   slot.mesh->GetLodCount(0) == 3                 &&
+                   slot.material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f &&
+                   slot.material->GetProperty(MaterialProperty::IsTerrain) == 0.0f    &&
+                   slot.material->GetProperty(MaterialProperty::IsWater) == 0.0f      &&
+                   slot.material->GetProperty(MaterialProperty::IsFlower) == 0.0f     &&
+                   slot.material->GetProperty(MaterialProperty::IsSkidMark) == 0.0f;
+        }
+
+        bool gpu_scatter_card_ring(const Renderer::PassState::GpuScatterSlot& slot, const uint32_t lod)
+        {
+            return lod == gpu_scatter_card_lod && slot.params.ring_radii_m[lod] > 0.0f && gpu_scatter_cards(slot);
+        }
+
+        // past this distance a card stands in for the ones thinned out around it, so its width grows with
+        // distance, has to match the scale populate and the vertex shader derive from the same number
+        float gpu_scatter_card_thin()
+        {
+            return max(cvar_grass_impostor_thin.GetValue(), 0.0f);
+        }
+
+        float gpu_scatter_card_scale(const float distance)
+        {
+            const float thin = gpu_scatter_card_thin();
+            return thin > 0.0f ? max(1.0f, distance / thin) : 1.0f;
+        }
+
+        // blades past a few tens of metres are thinner than a pixel, so the blade ring in front of the cards
+        // is pulled in to where the cards start and the card ring reaches out as far as it is asked to
+        float gpu_scatter_ring_radius(const Renderer::PassState::GpuScatterSlot& slot, const uint32_t lod)
+        {
+            const float radius = slot.params.ring_radii_m[lod];
+            if (radius <= 0.0f || !gpu_scatter_card_ring(slot, gpu_scatter_card_lod))
+            {
+                return radius;
+            }
+
+            if (lod == gpu_scatter_card_lod)
+            {
+                return max(radius, cvar_grass_impostor_distance.GetValue());
+            }
+
+            if (lod == gpu_scatter_card_lod - 1)
+            {
+                const float inner = lod > 0 ? slot.params.ring_radii_m[lod - 1] : 0.0f;
+                return clamp(cvar_grass_impostor_start.GetValue(), min(inner + 10.0f, radius), radius);
+            }
+
+            return radius;
+        }
+
         // has to match GRASS_FILL_MARGIN in grass_populate.hlsl
         const float gpu_scatter_fill_margin = 0.85f;
 
@@ -232,6 +303,23 @@ namespace spartan
                                  clamp(density, 0.01f, 1.0f);
 
             return max(1u, static_cast<uint32_t>(floorf(scaled)));
+        }
+
+        // density is the cap spread over the ring, so a blade ring pulled in by the cards gives up the
+        // share of its cap the lost ground held and stays exactly as thick as authored
+        uint32_t gpu_scatter_slot_cap(const Renderer::PassState::GpuScatterSlot& state, const uint32_t slot, const uint32_t lod)
+        {
+            const uint32_t cap    = gpu_scatter_lod_cap(slot, lod, state.params.density);
+            const float authored  = state.params.ring_radii_m[lod];
+            const float radius    = gpu_scatter_ring_radius(state, lod);
+            if (lod == 0 || authored <= 0.0f || radius >= authored)
+            {
+                return cap;
+            }
+
+            const float inner        = min(state.params.ring_radii_m[lod - 1], authored);
+            const float area_ratio   = (radius * radius - inner * inner) / max(authored * authored - inner * inner, 1.0f);
+            return max(1u, static_cast<uint32_t>(static_cast<float>(cap) * clamp(area_ratio, 0.0f, 1.0f)));
         }
 
         // compose_instance_transform unpacks the instance scale logarithmically over 0.01 to 100, so a
@@ -1591,6 +1679,40 @@ namespace spartan
         // fills the per-slot per-lod sections of grass_instances around the camera, then bakes
         // instance_count into the indirect args, slot 0 is grass and the higher slots are micro detail
 
+        // the far grass carpet follows slot 0, it ends where the last ring ends and grows under the
+        // same gates, the terrain reads it through the frame buffer
+        m_pass_state.grass_far = {};
+        {
+            const PassState::GpuScatterSlot& grass = m_pass_state.gpu_scatter[0];
+            if (gpu_scatter_ready(grass) && grass.prop_mask && grass.material &&
+                grass.material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f)
+            {
+                uint32_t last_lod = 0;
+                for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
+                {
+                    if (grass.params.cell_size_m[lod] > 0.0f && grass.params.ring_radii_m[lod] > 0.0f)
+                    {
+                        last_lod = lod;
+                    }
+                }
+
+                // mirrors the outer fade in grass_populate.hlsl
+                const float ring_end         = gpu_scatter_ring_radius(grass, last_lod);
+                const float inner_radius     = last_lod > 0 ? min(gpu_scatter_ring_radius(grass, last_lod - 1), ring_end) : 0.0f;
+                const float outer_transition = max(grass.params.cell_size_m[last_lod] * 10.0f, ring_end * 0.42f);
+                const float outer_start      = max(inner_radius, ring_end - outer_transition);
+                const float patch_size       = max(grass.params.patch_size_m, 0.0f);
+                const float biome_min        = grass.params.biome_min_weight < 0.0f ? -1.0f : grass.params.biome_min_weight;
+
+                auto& far       = m_pass_state.grass_far;
+                far.prop_mask   = grass.prop_mask;
+                far.tint        = Vector4(grass.material->GetProperty(MaterialProperty::ColorR), grass.material->GetProperty(MaterialProperty::ColorG), grass.material->GetProperty(MaterialProperty::ColorB), 1.0f);
+                far.fade        = Vector4(grass.params.ring_radii_m[0], outer_start, ring_end, grass.params.patch_invert ? -patch_size : patch_size);
+                far.gate        = Vector4(biome_min, cosf(grass.params.max_slope_deg * (math::pi / 180.0f)), static_cast<float>(grass.params.ground_mask), static_cast<float>(min(grass.params.mask_channel, 3u)));
+                far.patch       = Vector4(grass.params.patch_coverage, grass.params.patch_edge, 0.0f, 0.0f);
+            }
+        }
+
         bool any_ready = false;
         for (const PassState::GpuScatterSlot& slot : m_pass_state.gpu_scatter)
         {
@@ -1629,6 +1751,12 @@ namespace spartan
                     clamp(cvar_grass_lod_pixels.GetValue(), 0.0f, 2.0f), 0.0f, 0.0f);
                 if (detail_parameters[slot].y == 0.0f)
                     detail_parameters[slot].x = 0.0f;
+            }
+            // z names the impostor ring plus one, zero when the slot draws blades everywhere
+            if (gpu_scatter_card_ring(state, gpu_scatter_card_lod))
+            {
+                detail_parameters[slot].z = static_cast<float>(gpu_scatter_card_lod + 1);
+                detail_parameters[slot].w = gpu_scatter_card_thin();
             }
         }
         Car* detail_car = nullptr;
@@ -1688,7 +1816,7 @@ namespace spartan
                 for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
                 {
                     const float cell_size   = state.params.cell_size_m[lod];
-                    const float ring_radius = state.params.ring_radii_m[lod];
+                    const float ring_radius = gpu_scatter_ring_radius(state, lod);
                     if (cell_size <= 0.0f || ring_radius <= 0.0f)
                     {
                         continue;
@@ -1702,7 +1830,10 @@ namespace spartan
                         continue;
                     }
 
-                    const float margin = cull_radius / max(sin_half_min, 0.05f) + 2.0f * cell_size;
+                    const bool card_ring   = gpu_scatter_card_ring(state, lod);
+                    const float card_scale = card_ring ? gpu_scatter_card_scale(ring_radius) : 1.0f;
+                    const float card_reach = card_ring ? cell_size * gpu_scatter_card_cells * 0.5f * card_scale : 0.0f;
+                    const float margin     = (cull_radius * card_scale + card_reach) / max(sin_half_min, 0.05f) + 2.0f * cell_size;
                     const float reach  = (static_cast<float>(cells_per_axis / 2u) + 1.0f) * cell_size;
                     const float y_min  = max(state.params.height_min, eye.y - 4000.0f) - cull_radius;
                     const float y_max  = min(state.params.height_max, eye.y + 4000.0f) + cull_height + cull_radius;
@@ -1859,7 +1990,8 @@ namespace spartan
                 for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
                 {
                     const float cell_size   = state.params.cell_size_m[lod];
-                    const float ring_radius = state.params.ring_radii_m[lod];
+                    const float ring_radius = gpu_scatter_ring_radius(state, lod);
+                    const bool card_ring    = gpu_scatter_card_ring(state, lod);
                     if (cell_size <= 0.0f || ring_radius <= 0.0f)
                     {
                         continue;
@@ -1868,13 +2000,13 @@ namespace spartan
                     const float inner_radius = lod == 0 ?
                         0.0f :
                         std::min(
-                            state.params.ring_radii_m[lod - 1],
+                            gpu_scatter_ring_radius(state, lod - 1),
                             ring_radius
                         );
                     // grass_instances is partitioned by slot and lod, the base is the cumulative prefix
                     // sum of every cap before it so each ring writes into its own contiguous range
                     const uint32_t lod_base   = renderer_gpu_scatter_base(slot, lod);
-                    const uint32_t lod_cap    = gpu_scatter_lod_cap(slot, lod, state.params.density);
+                    const uint32_t lod_cap    = gpu_scatter_slot_cap(state, slot, lod);
 
                     // heightmap is r32 local y, material_index bitcast is the entity y plus the layer's
                     // seating offset
@@ -1916,6 +2048,12 @@ namespace spartan
                         const auto& bounds = lods[lod < lods.size() ? lod : 0u].aabb;
                         m_pcb_pass_cpu.set(pass_grass_populate::root_radius, bounds.GetCenter().Length() + bounds.GetExtents().Length() + 0.001f);
                     }
+                    // a card spans more than a cell, the cull sphere has to hold all of it
+                    if (card_ring)
+                    {
+                        const auto& bounds = state.mesh->GetSubMesh(0).lods[0].aabb;
+                        m_pcb_pass_cpu.set(pass_grass_populate::root_radius, cell_size * gpu_scatter_card_cells * 0.5f + bounds.GetSize().y);
+                    }
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
                     // one cell per thread, dispatch z carries the instance index inside the cell, the
@@ -1945,7 +2083,7 @@ namespace spartan
                     const float per_cell = static_cast<float>(lod_cap) * gpu_scatter_fill_margin *
                                            total_boost /
                                            std::max(cells_in_ring, 1.0f);
-                    const uint32_t blades_per_cell = std::max(
+                    const uint32_t blades_per_cell = card_ring ? 1u : std::max(
                         1u,
                         static_cast<uint32_t>(std::ceil(per_cell))
                     );
@@ -1980,7 +2118,7 @@ namespace spartan
                     m_pcb_pass_cpu.draw_index     = renderer_gpu_scatter_arg_index(slot, 0);
                     for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
                     {
-                        m_pcb_pass_cpu.set(pass_grass_indirect_args::lod_caps + lod, gpu_scatter_lod_cap(slot, lod, state.params.density));
+                        m_pcb_pass_cpu.set(pass_grass_indirect_args::lod_caps + lod, gpu_scatter_slot_cap(state, slot, lod));
                     }
                     m_pcb_pass_cpu.set(pass_grass_indirect_args::lod_count, renderer_max_gpu_scatter_lods);
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
@@ -2374,6 +2512,9 @@ namespace spartan
                 m_pcb_pass_cpu.set(pass_grass_draw::uv_patch, state.params.uv_patch);
                 m_pcb_pass_cpu.set(pass_grass_draw::reverse_count, 0u);
                 m_pcb_pass_cpu.set(pass_grass_draw::lod_base, lod_base);
+                const bool card_ring = grass_specialized && gpu_scatter_card_ring(state, lod);
+                m_pcb_pass_cpu.set(pass_grass_draw::card_width, card_ring ? state.params.cell_size_m[lod] * gpu_scatter_card_cells : 0.0f);
+                m_pcb_pass_cpu.set(pass_grass_draw::card_thin, card_ring ? gpu_scatter_card_thin() : 0.0f);
                 for (uint32_t frame = 0; frame < 2; ++frame)
                 {
                     const Vector2 origin = tracks.origins[frame == 0 ? tracks.current : 1 - tracks.current];

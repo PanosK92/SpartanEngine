@@ -133,6 +133,20 @@ namespace spartan
                 vector<uint32_t> indices;
                 geometry_generation::generate_foliage_grass_blade(&vertices, &indices, segments[lod]);
 
+                // the outer ring draws this lod as a tuft impostor card, which needs four corners, so the
+                // tip splits into a narrow flat top that still reads as a blade when cards are off
+                if (lod == 2 && vertices.size() == 3)
+                {
+                    RHI_Vertex_PosTexNorTan top_right = vertices[2];
+                    const float half_top              = (vertices[1].pos[0] - vertices[0].pos[0]) * 0.15f;
+                    vertices[2].pos[0]                = -half_top;
+                    vertices[2].set_uv(Vector2(0.0f, 1.0f));
+                    top_right.pos[0]                  = half_top;
+                    top_right.set_uv(Vector2(1.0f, 1.0f));
+                    vertices.push_back(top_right);
+                    indices = { 0, 1, 2, 2, 1, 3 };
+                }
+
                 if (lod == 0)
                 {
                     mesh->AddGeometry(vertices, indices, false, &sub_mesh_index);

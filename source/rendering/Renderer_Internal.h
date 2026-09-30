@@ -152,6 +152,18 @@ namespace spartan
             };
             std::array<GpuScatterSlot, renderer_max_gpu_scatter_slots> gpu_scatter{};
 
+            // the grass slot as the terrain sees it past the last ring, written by the populate pass,
+            // which is the one place that knows how far the rings actually reach, see FrameBufferData
+            struct GrassFar
+            {
+                RHI_Texture*  prop_mask = nullptr;
+                math::Vector4 tint      = math::Vector4::Zero;
+                math::Vector4 fade      = math::Vector4::Zero;
+                math::Vector4 gate      = math::Vector4::Zero;
+                math::Vector4 patch     = math::Vector4::Zero;
+            };
+            GrassFar grass_far;
+
             // World-space tire history survives scatter repopulation and camera movement.
             struct GrassInteraction
             {

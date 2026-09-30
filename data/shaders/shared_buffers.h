@@ -211,6 +211,13 @@ struct FrameBufferData
     SHARED_MATRIX view_projection_relative_right;
     SHARED_MATRIX view_projection_previous_relative_right;
 
+    // grass seen from further than its blades reach, the terrain takes on the carpet colour wherever
+    // the grass slot would have grown, see grass_far_cover in g_buffer.hlsl
+    SHARED_FLOAT4 grass_far_tint;  // xyz = grass material colour, w = 1 when active
+    SHARED_FLOAT4 grass_far_fade;  // x = undercoat start, y = last ring fade start, z = last ring end, w = signed patch size
+    SHARED_FLOAT4 grass_far_gate;  // x = biome min (negative ignores), y = max slope cos, z = ground mask bits, w = mask channel
+    SHARED_FLOAT4 grass_far_patch; // x = patch coverage, y = patch edge, zw = unused
+
 #ifdef __cplusplus
     void set_bit(const bool set, const uint32_t bit)
     {
@@ -282,6 +289,8 @@ namespace pass_grass_draw
     static const SHARED_UINT tracks          = 3;  // float4, origin xz, 1 / size, valid
     static const SHARED_UINT tracks_previous = 7;  // float4, same layout
     static const SHARED_UINT body            = 11; // float4, active, center xz, contact radius
+    static const SHARED_UINT card_width      = 15; // float, metres, 0 draws blades, otherwise every instance is a tuft impostor card
+    static const SHARED_UINT card_thin       = 16; // float, metres, cards past it widen with distance, 0 keeps them at card_width
 }
 
 namespace pass_grass_populate
