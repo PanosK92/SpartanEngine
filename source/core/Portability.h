@@ -15,17 +15,20 @@ Commercial use requires written permission and negotiated payment terms.
 #include <cstdarg>
 #include <cstddef>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <strings.h>
+#include <sys/stat.h>
 //==================
 
 #ifndef _TRUNCATE
 #define _TRUNCATE (static_cast<size_t>(-1))
 #endif
 
+// spelled exactly like dxc's WinAdapter.h so including both is not a redefinition
 #ifndef _countof
-#define _countof(array) (sizeof(array) / sizeof((array)[0]))
+#define _countof(a) (sizeof(a) / sizeof(*(a)))
 #endif
 
 using errno_t = int;
@@ -108,6 +111,29 @@ inline errno_t localtime_s(tm* result, const time_t* time)
 inline errno_t gmtime_s(tm* result, const time_t* time)
 {
     return gmtime_r(time, result) ? 0 : EINVAL;
+}
+
+inline char* strtok_s(char* text, const char* delimiters, char** context)
+{
+    return strtok_r(text, delimiters, context);
+}
+
+// the caller frees the copy, like msvc
+inline errno_t _dupenv_s(char** buffer, size_t* size, const char* name)
+{
+    const char* value = getenv(name);
+    *buffer = value ? strdup(value) : nullptr;
+    if (size)
+    {
+        *size = value ? strlen(value) + 1 : 0;
+    }
+    return 0;
+}
+
+// msvc removes the variable when the value is empty
+inline errno_t _putenv_s(const char* name, const char* value)
+{
+    return (value && value[0]) ? setenv(name, value, 1) : unsetenv(name);
 }
 
 inline int _stricmp(const char* a, const char* b)

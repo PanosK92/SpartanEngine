@@ -9,11 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "RenderDoc.h"
 #include "../rhi/RHI_Implementation.h"
-#if defined(_WIN32) // windows
 #include "renderdoc/app/renderdoc_app.h"
-#else
-#include "renderdoc_app.h"
-#endif
 //======================================
 
 //= NAMESPACES =====

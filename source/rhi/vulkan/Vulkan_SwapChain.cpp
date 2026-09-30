@@ -18,6 +18,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../profiling/Profiler.h"
 #ifdef _WIN32
 #include <tlhelp32.h>
+#else
+#include <dirent.h>
 #endif
 SP_WARNINGS_OFF
 #include <SDL3/SDL_vulkan.h>
@@ -224,7 +226,7 @@ namespace spartan
                         char comm[256];
                         if (fgets(comm, sizeof(comm), comm_file)) {
                             comm[strcspn(comm, "\n")] = 0; // Remove newline
-                            if (strcmp(comm, processName) == 0) { // Case-sensitive comparison
+                            if (strcmp(comm, process_name) == 0) { // Case-sensitive comparison
                                 fclose(comm_file);
                                 closedir(dir);
                                 return true; // Process found

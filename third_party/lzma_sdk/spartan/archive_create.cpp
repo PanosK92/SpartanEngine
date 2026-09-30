@@ -257,14 +257,13 @@ namespace
         dir_prefix.Add_PathSepar();
         NFind::CEnumerator enumerator;
         enumerator.SetDirPrefix(dir_prefix);
-        NFind::CFileInfo child;
-        while (enumerator.Next(child))
+        auto add_child = [&](const FString& name, bool is_dir)
         {
-            const FString child_full = dir_prefix + child.Name;
+            const FString child_full = dir_prefix + name;
             UString child_arc = archive_path;
             child_arc.Add_PathSepar();
-            child_arc += fs2us(child.Name);
-            if (child.IsDir())
+            child_arc += fs2us(name);
+            if (is_dir)
             {
                 add_path_recursive(child_full, child_arc, dir_items);
             }
@@ -272,7 +271,22 @@ namespace
             {
                 add_file_item(child_full, child_arc, dir_items);
             }
+        };
+
+#ifdef _WIN32
+        NFind::CFileInfo child;
+        while (enumerator.Next(child))
+        {
+            add_child(child.Name, child.IsDir());
         }
+#else
+        NFind::CDirEntry child;
+        bool found = false;
+        while (enumerator.Next(child, found) && found)
+        {
+            add_child(child.Name, enumerator.DirEntry_IsDir(child, true));
+        }
+#endif
     }
 }
 

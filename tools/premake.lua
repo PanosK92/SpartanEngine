@@ -271,7 +271,9 @@ function spartan_project_configuration()
                 "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/openxr",
                 "../third_party/lua", "../third_party/lua/lua",
                 "../third_party/spirv_cross", "../third_party/vulkan", "../third_party/vulkan_memory_allocator",
-                "../third_party/lzma_sdk/spartan"
+                "../third_party/lzma_sdk/spartan",
+                -- physx headers include each other relative to this root, msvc finds them via the includer chain, gcc does not
+                "../third_party/physx/physx"
             }
             libdirs { LIBRARY_DIR .. "/linux" }
             linkgroups "On"
