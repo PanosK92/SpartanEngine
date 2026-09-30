@@ -150,6 +150,7 @@ A full vehicle dynamics model running inside the PhysX fixed-timestep loop. Not 
 
 | System               | Details                                                                                           |
 | -------------------- | ------------------------------------------------------------------------------------------------- |
+| **Platforms**        | Windows (DirectX 12 and Vulkan) and Linux (Vulkan), with prebuilt binaries in every **[release](https://github.com/PanosK92/SpartanEngine/releases)** |
 | **Physics**          | PhysX with rigid bodies, character kinematics and vehicle dynamics                                |
 | **Animation**        | Skeletal animation with keyframed clips, crossfade blending, four-bone skinning and two-bone IK with ground-aware foot planting |
 | **Particles**        | GPU-driven compute emission and simulation, depth-buffer collision and soft blending              |
@@ -170,7 +171,7 @@ A full vehicle dynamics model running inside the PhysX fixed-timestep loop. Not 
 
 ## Getting Started
 
-**Build.** Project generation is one click; the **[Building Guide](https://github.com/PanosK92/SpartanEngine/wiki/Building)** has the details. Worlds live in `worlds/` as XML. Their assets (models, materials, audio, scripts) live in `binaries/project/`, which is excluded from Git and downloaded during setup.
+**Build.** Project generation is one click; the **[Building Guide](https://github.com/PanosK92/SpartanEngine/wiki/Building)** has the details. On Linux, run `tools/linux_dependencies.sh` once, then `./generate_project_files.sh gmake vulkan` and `make config=release_x64`. Worlds live in `worlds/` as XML. Their assets (models, materials, audio, scripts) live in `binaries/project/`, which is excluded from Git and downloaded during setup.
 
 **Learn.** Start with **[Engine.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/source/core/Engine.cpp)**, the engine entry point and the clearest view of the startup path. For gameplay code, the **[Lua Scripting Guide](https://github.com/PanosK92/SpartanEngine/wiki/Scripting)** covers the API, lifecycle callbacks and examples.
 
