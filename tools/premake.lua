@@ -197,6 +197,11 @@ function spartan_project_configuration()
             flags { "NoPCH" }
         filter {}
 
+        -- the resource script holds the windows icon and version info
+        filter { "system:not windows" }
+            removefiles { SOURCE_DIR .. "/**.rc" }
+        filter {}
+
         if ARG_API_GRAPHICS == "d3d12" then
             removefiles { SOURCE_DIR .. "/rhi/vulkan/**" }
         elseif ARG_API_GRAPHICS == "vulkan" then

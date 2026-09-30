@@ -142,7 +142,7 @@ jobs:
       - name: Build
         run: |
           set -o pipefail
-          make config=release_x64 -j$(nproc) 2>&1 | tee build.log
+          make -k config=release_x64 -j$(nproc) 2>&1 | tee build.log
 
       # job logs need a signed in user, annotations are public, so surface the errors there
       - name: Report errors
@@ -150,7 +150,7 @@ jobs:
         run: |
           cat dependencies.log build.log 2>/dev/null | sed "s|$GITHUB_WORKSPACE/||g" | cut -c1-300 > report.log || true
           {
-            grep -E -B2 -A4 "error:|Error [0-9]+|undefined reference|CMake Error|No such file" report.log | head -150 || true
+            grep -E "error:|Error [0-9]+|undefined reference|CMake Error|No such file|not found" report.log | cut -c1-220 | awk '!seen[$0]++' | head -150 || true
             echo "---- log tail"
             tail -20 report.log
           } > summary.log
