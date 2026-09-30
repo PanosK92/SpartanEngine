@@ -89,7 +89,10 @@ function solution_configuration()
         language "C++"
         -- development first so visual studio selects it by default
         configurations { "development", "debug", "release" }
-        fatalwarnings { "All" }
+
+        -- gcc warns about far more than msvc, so only msvc treats warnings as errors
+        filter { "system:windows" }
+            fatalwarnings { "All" }
 
         filter { "configurations:debug" }
             defines { "DEBUG" }
@@ -133,7 +136,17 @@ function solution_configuration()
             platforms { "x64" }
             system "linux"
             architecture "x86_64"
-            buildoptions { "-mavx2" }
+            buildoptions { "-mavx2", "-mfma", "-mf16c" }
+
+        -- physx headers refuse to compile unless NDEBUG or _DEBUG is defined
+        filter { "system:linux", "configurations:debug" }
+            defines { "_DEBUG" }
+
+        filter { "system:linux", "configurations:release or development" }
+            defines { "NDEBUG" }
+
+        filter { "system:linux", "configurations:release" }
+            linktimeoptimization "Off"
 end
 
 function spartan_project_configuration()
@@ -244,16 +257,26 @@ function spartan_project_configuration()
                 defines { "SP_D3D12_AGILITY_SDK_VERSION=" .. AGILITY_SDK_VERSION }
             end
 
+        -- vendored headers, libraries built by tools/linux_dependencies.sh, freeimage and the vulkan loader come from the system
         filter { "system:linux" }
             includedirs {
                 SOURCE_DIR, SOURCE_DIR .. "/core", SOURCE_DIR .. "/editor",
-                "/usr/include/SDL3", "/usr/include/assimp", "/usr/include/physx",
-                "/usr/include/freetype2", "/usr/include/renderdoc",
+                "../third_party/sdl", "../third_party/assimp", "../third_party/physx", "../third_party/free_image",
+                "../third_party/free_type", "../third_party/renderdoc",
+                "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/openxr",
+                "../third_party/lua", "../third_party/lua/lua",
+                "../third_party/spirv_cross", "../third_party/vulkan", "../third_party/vulkan_memory_allocator",
                 "../third_party/lzma_sdk/spartan"
             }
-            links { "dxcompiler" }
-            links(LIBS_COMMON)
+            libdirs { LIBRARY_DIR .. "/linux" }
+            linkgroups "On"
+            links { "SDL3", "assimp", "zlibstatic", "freetype", "freeimage", "meshoptimizer", "openxr_loader", "lua" }
             links(LIBS_PHYSX)
+            links(LIBS_SPIRV)
+            links { "spirv-cross-msl", "spirv-cross-reflect", "spirv-cross-util" }
+            links { "dxcompiler", "vulkan", "pthread", "dl", "m" }
+            -- libdxcompiler.so and libdxil.so ship next to the executable
+            linkoptions { "-Wl,-rpath,'$$ORIGIN'" }
 
         filter { "configurations:release or development" }
             targetdir(TARGET_DIR)
@@ -269,6 +292,8 @@ function spartan_project_configuration()
             targetname(EXECUTABLE_NAME .. "_debug")
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
+
+        filter { "configurations:debug", "system:windows" }
             linkoptions { "/IGNORE:4099" }
 
         link_windows_libraries("release or development", "")

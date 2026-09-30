@@ -11,8 +11,10 @@ Commercial use requires written permission and negotiated payment terms.
 #include <string>
 #include <vector>
 #include "../core/Definitions.h"
-// dxcapi.h assumes the com base types (IUnknown, HRESULT, REFCLSID) are already declared
+// dxcapi.h assumes the com base types (IUnknown, HRESULT, REFCLSID) are already declared, elsewhere WinAdapter.h provides them
+#ifdef _WIN32
 #include <unknwn.h>
+#endif
 SP_WARNINGS_OFF
 #include <dxc/dxcapi.h>
 SP_WARNINGS_ON

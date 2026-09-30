@@ -17,6 +17,9 @@ local SEVEN_ZIP_URL    = "https://www.7-zip.org/a/7zr.exe"
 local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/byrj4cytjj9krvm49pto6/libraries.7z?rlkey=w7axjqiqdooded5tpovg80nn2&dl=1"
 local LIBRARY_HASH     = "3477dc97dfef688c4e4348032e3c658ba6fbd6352f0fa39a38702167423c6e68"
 
+local LINUX_LIBRARIES_DIR     = path.join(LIBRARIES_DIR, "linux")
+local LINUX_RUNTIME_LIBRARIES = { "libdxcompiler.so", "libdxil.so" }
+
 local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "dxcompiler.dll"),
     path.join(LIBRARIES_DIR, "libxess.dll"),
@@ -527,7 +530,30 @@ local function ensure_steamworks()
     end
 end
 
+-- libraries.7z only holds windows binaries, linux builds them with tools/linux_dependencies.sh
+local function run_linux()
+    print("\n[1/2] copying data files into binaries...")
+    copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
+
+    print("\n[2/2] copying runtime libraries into binaries...")
+    for _, so in ipairs(LINUX_RUNTIME_LIBRARIES) do
+        local source = path.join(LINUX_LIBRARIES_DIR, so)
+        if file_exists(source) then
+            copy_file(source, path.join(BINARIES_DIR, so))
+        else
+            print("  missing " .. so .. ", run tools/linux_dependencies.sh first")
+        end
+    end
+
+    print("\nsetup complete")
+end
+
 function setup.run()
+    if not is_windows() then
+        run_linux()
+        return
+    end
+
     print("\n[1/7] copying data files into binaries...")
     copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
 

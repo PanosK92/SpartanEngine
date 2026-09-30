@@ -31,6 +31,7 @@ Commercial use requires written permission and negotiated payment terms.
 //===========================
 
 // common
+#include "Portability.h"
 #include "Definitions.h"
 #include "Engine.h"
 #include "Event.h"

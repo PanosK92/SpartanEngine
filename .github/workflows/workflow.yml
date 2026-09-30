@@ -38,18 +38,11 @@ jobs:
           echo "tag=$y.$m.$d.$h.$n" >> $GITHUB_OUTPUT
 
   build:
+    name: windows ${{ matrix.api }} release
     needs: stamp
     strategy:
       matrix:
-        include:
-          - api: vulkan
-            configuration: development
-          - api: vulkan
-            configuration: release
-          - api: vulkan
-            configuration: debug
-          - api: d3d12
-            configuration: release
+        api: [d3d12, vulkan]
 
     # windows-2025 ships visual studio 2026, matching the vs2026 projects premake generates
     runs-on: windows-2025
@@ -75,10 +68,9 @@ jobs:
 
       - name: Build
         shell: cmd
-        run: msbuild /p:Platform=x64 /p:Configuration=${{ matrix.configuration }} /m Spartan.slnx
+        run: msbuild /p:Platform=x64 /p:Configuration=release /m Spartan.slnx
 
       - name: Create artifact
-        if: matrix.configuration == 'release'
         shell: cmd
         run: |
           set ZIP=spartan_${{ matrix.api }}_release.zip
@@ -90,16 +82,96 @@ jobs:
           )
 
       - name: Upload artifact
-        if: matrix.configuration == 'release'
         uses: actions/upload-artifact@v4
         with:
           name: spartan_${{ matrix.api }}_release
           path: spartan_${{ matrix.api }}_release.zip
 
+  build_linux:
+    name: linux vulkan release
+    needs: stamp
+    runs-on: ubuntu-24.04
+    env:
+      SPARTAN_BUILD_STAMP: ${{ needs.stamp.outputs.stamp }}
+      CC: gcc-14
+      CXX: g++-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            g++-14 cmake ninja-build pkg-config curl python3 \
+            libvulkan-dev libfreeimage-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
+            libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libdrm-dev libgbm-dev \
+            libasound2-dev libpulse-dev libpipewire-0.3-dev libudev-dev libdbus-1-dev
+
+      # the script skips finished libraries and marks new ones in .changed, so partial progress is saved even when a later library fails
+      - name: Restore libraries
+        uses: actions/cache/restore@v4
+        with:
+          path: third_party/libraries/linux
+          key: libraries-linux-${{ hashFiles('tools/linux_dependencies.sh') }}-${{ github.run_id }}
+          restore-keys: libraries-linux-${{ hashFiles('tools/linux_dependencies.sh') }}-
+
+      - name: Build libraries
+        run: |
+          set -o pipefail
+          rm -f third_party/libraries/linux/.changed
+          bash tools/linux_dependencies.sh 2>&1 | tee dependencies.log
+
+      - name: Save libraries
+        if: always() && hashFiles('third_party/libraries/linux/.changed') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: third_party/libraries/linux
+          key: libraries-linux-${{ hashFiles('tools/linux_dependencies.sh') }}-${{ github.run_id }}
+
+      - name: Install premake
+        run: |
+          curl -fsSL https://github.com/premake/premake-core/releases/download/v5.0.0-beta7/premake-5.0.0-beta7-linux.tar.gz | tar -xz -C tools
+          chmod +x tools/premake5
+
+      - name: Generate project files
+        run: bash generate_project_files.sh gmake vulkan
+
+      - name: Build
+        run: |
+          set -o pipefail
+          make config=release_x64 -j$(nproc) 2>&1 | tee build.log
+
+      # job logs need a signed in user, annotations are public, so surface the errors there
+      - name: Report errors
+        if: failure()
+        run: |
+          cat dependencies.log build.log 2>/dev/null | sed "s|$GITHUB_WORKSPACE/||g" | cut -c1-300 > report.log || true
+          {
+            grep -E -B2 -A4 "error:|Error [0-9]+|undefined reference|CMake Error|No such file" report.log | head -150 || true
+            echo "---- log tail"
+            tail -20 report.log
+          } > summary.log
+          # annotations are cut at roughly 4 KB each
+          split -b 3500 -d summary.log chunk_
+          for chunk in $(ls chunk_* | head -9); do
+            echo "::error title=linux build $chunk::$(sed -e ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$chunk")"
+          done
+
+      - name: Create artifact
+        run: tar -czf spartan_vulkan_linux_release.tar.gz -C binaries spartan_vulkan libdxcompiler.so libdxil.so data
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spartan_vulkan_linux_release
+          path: spartan_vulkan_linux_release.tar.gz
+
   release:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    # windows gates the release, the linux build is attached when it succeeds
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/master' && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
-    needs: [stamp, build]
+    needs: [stamp, build, build_linux]
     permissions:
       contents: write
     env:
@@ -117,6 +189,9 @@ jobs:
         run: |
           mv spartan_vulkan_release.zip spartan_vulkan_release_$TAG.zip
           mv spartan_d3d12_release.zip spartan_d3d12_release_$TAG.zip
+          if [ -f spartan_vulkan_linux_release.tar.gz ]; then
+            mv spartan_vulkan_linux_release.tar.gz spartan_vulkan_linux_release_$TAG.tar.gz
+          fi
 
       - name: Generate release notes
         id: generate_release_notes
@@ -197,12 +272,13 @@ jobs:
               : '_No new commits since the last release._';
 
             const notes = [
-              'Windows editor builds. Unzip and run `spartan_vulkan.exe` or `spartan_d3d12.exe`.',
+              'Editor builds. On Windows unzip and run `spartan_vulkan.exe` or `spartan_d3d12.exe`, on Linux extract and run `./spartan_vulkan` (needs `libfreeimage3` and a Vulkan driver).',
               '',
-              '| Backend | Artifact |',
-              '| --- | --- |',
-              '| Vulkan | `spartan_vulkan_release_*.zip` |',
-              '| Direct3D 12 | `spartan_d3d12_release_*.zip` |',
+              '| Platform | Backend | Artifact |',
+              '| --- | --- | --- |',
+              '| Windows | Vulkan | `spartan_vulkan_release_*.zip` |',
+              '| Windows | Direct3D 12 | `spartan_d3d12_release_*.zip` |',
+              '| Linux | Vulkan | `spartan_vulkan_linux_release_*.tar.gz` |',
               '',
               '## Changelog',
               '',
@@ -223,3 +299,4 @@ jobs:
           files: |
             spartan_vulkan_release_${{ env.TAG }}.zip
             spartan_d3d12_release_${{ env.TAG }}.zip
+            spartan_vulkan_linux_release_${{ env.TAG }}.tar.gz
