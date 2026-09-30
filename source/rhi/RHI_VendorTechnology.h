@@ -37,6 +37,8 @@ namespace spartan
         static void ResetHistory();
 
         // xess
+        // smallest resolution scale the upscaler accepts for this render and output size, 0 when it is not known yet
+        static float XeSS_GetResolutionScaleMin(const math::Vector2& resolution_render, const math::Vector2& resolution_output);
         static void XeSS_GenerateJitterSample(float* x, float* y);
         static void XeSS_Dispatch(
             RHI_Texture* tex_color,
@@ -51,6 +53,7 @@ namespace spartan
         static constexpr const char* dlss_engine_version = "1.0";
 
         // dlss
+        static float DLSS_GetResolutionScaleMin(const math::Vector2& resolution_render, const math::Vector2& resolution_output);
         static void DLSS_GenerateJitterSample(float* x, float* y);
         static void DLSS_Dispatch(
             RHI_Texture* tex_color,

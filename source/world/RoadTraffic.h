@@ -273,9 +273,15 @@ namespace spartan::road_traffic
 
         void AppendExit(Path& path, size_t incoming, size_t outgoing) const
         {
+            AppendJunction(path, incoming, outgoing);
+            for (const Vector3& p : edges[outgoing].lane.points) path.Add(p);
+        }
+
+        // only the curve from the end of the incoming lane to the start of the outgoing one
+        void AppendJunction(Path& path, size_t incoming, size_t outgoing) const
+        {
             if (edges[incoming].sidewalk)
             {
-                for (const Vector3& p : edges[outgoing].lane.points) path.Add(p);
                 return;
             }
             const Pose a = edges[incoming].lane.Sample(edges[incoming].lane.Length());
@@ -305,7 +311,6 @@ namespace spartan::road_traffic
                     ? edges[incoming].width * 0.65f : (b.position - a.position).Length() * 0.5f;
                 curve(a, b, handle);
             }
-            for (const Vector3& p : edges[outgoing].lane.points) path.Add(p);
         }
     };
 }

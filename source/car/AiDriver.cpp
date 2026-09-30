@@ -28,6 +28,13 @@ namespace spartan
         constexpr float line_damping       = 1.0f;
         constexpr float line_integral_gain = 0.4f;
 
+        // traffic
+        constexpr float traffic_range   = 250.0f; // meters, cars further away are ignored
+        constexpr float car_length      = 4.6f;   // center to center when two cars touch nose to tail
+        constexpr float corridor        = 2.3f;   // lateral center to center distance two cars pass each other at
+        constexpr float pass_spacing    = 3.4f;   // how far beside a car the driver passes it
+        constexpr float edge_clearance  = 1.3f;   // meters between the car's center and the edge of the road when passing
+
         Vector3 planar(Vector3 value)
         {
             value.y = 0.0f;
@@ -224,7 +231,7 @@ namespace spartan
         Entity* vehicle = car->GetRootEntity();
         const RacingLine::Projection projection = m_line->Project(vehicle->GetPosition(), 0, true);
         const RacingLine::Point& point          = m_line->GetPoint(projection.index);
-        const bool on_road                      = fabsf(projection.center_offset) < point.half_width + 2.0f;
+        const bool on_road                      = projection.center_offset > -point.room_left - 2.0f && projection.center_offset < point.room_right + 2.0f;
         const bool facing                       = planar_direction(vehicle->GetForward()).Dot(m_line->DirectionAt(projection.index)) > 0.3f;
         PlaceOnLine(projection.index);
         if (on_road && facing)
@@ -301,7 +308,13 @@ namespace spartan
             speed             = min(speed, sqrtf(m_model.roll_limit * margin * plan.grip_scale / kappa));
             plan.speed        = min(m_settings.max_speed, speed);
         }
-        for (size_t pass = 0; pass < count * 2; pass++)
+        // a route ends standing still, a closed loop needs a second lap of passes to carry braking zones across the line
+        const bool closed = m_line->IsClosed();
+        if (!closed)
+        {
+            m_plan[count - 1].speed = 0.0f;
+        }
+        for (size_t pass = 0; pass < (closed ? count * 2 : count); pass++)
         {
             const size_t i                 = count - 1 - (pass % count);
             const RacingLine::Point& point = m_line->GetPoint(i);
@@ -317,7 +330,7 @@ namespace spartan
         m_stats.braking_g   = m_model.BrakingLimit(30.0f) * margin / gravity;
 
         m_stats.ideal_lap = 0.0f;
-        for (size_t i = 0; i < count; i++)
+        for (size_t i = 0; i + (closed ? 0 : 1) < count; i++)
         {
             const float speed  = (m_plan[i].speed + m_plan[m_line->Wrap(static_cast<int64_t>(i) + 1)].speed) * 0.5f;
             m_stats.ideal_lap += m_line->GetPoint(i).step / max(speed, 1.0f);
@@ -341,6 +354,174 @@ namespace spartan
         m_decel          = 0.0f;
         m_saturated_time = 0.0f;
         m_brake_limit    = 1.0f;
+        m_pass_target    = 0.0f;
+        m_pass_offset    = 0.0f;
+        m_pass_rate      = 0.0f;
+        m_blocked_time   = 0.0f;
+        m_blocker        = Blocker();
+    }
+
+    void AiDriver::WatchTraffic(float delta_time, float speed, float plan_speed)
+    {
+        const Vector3 position = m_car->GetRootEntity()->GetPosition();
+        const float length     = m_line->GetLength();
+
+        // lateral is right of the racing line, speed is along the line
+        struct Nearby
+        {
+            float along   = 0.0f;
+            float lateral = 0.0f;
+            float speed   = 0.0f;
+            size_t index  = 0;
+        };
+        vector<Nearby> nearby;
+        unordered_map<const Car*, TrafficCar> seen;
+        for (Car* other : Car::GetAll())
+        {
+            Entity* root = other && other != m_car ? other->GetRootEntity() : nullptr;
+            if (!root || !root->IsActive())
+            {
+                continue;
+            }
+            const Vector3 at = root->GetPosition();
+            if (Vector3::DistanceSquared(at, position) > traffic_range * traffic_range)
+            {
+                continue;
+            }
+            TrafficCar track = { at, Vector3::Zero };
+            const auto known = m_traffic.find(other);
+            if (known != m_traffic.end())
+            {
+                // a respawn or a streaming jump is not a speed
+                const Vector3 measured = (at - known->second.position) / delta_time;
+                track.velocity         = measured.Length() < 90.0f ? known->second.velocity + (measured - known->second.velocity) * min(1.0f, delta_time / 0.4f) : known->second.velocity;
+            }
+            seen[other] = track;
+
+            // the projection only searches a window ahead, a second one further on reaches oncoming cars in time
+            RacingLine::Projection projection = m_line->Project(at, m_index, false);
+            if (projection.distance - m_distance > 100.0f)
+            {
+                projection = m_line->Project(at, m_line->Wrap(static_cast<int64_t>(m_index) + 55), false);
+            }
+            float along = projection.distance - m_distance;
+            if (m_line->IsClosed() && fabsf(along) > length * 0.5f)
+            {
+                along -= copysignf(length, along);
+            }
+            const RacingLine::Point& point = m_line->GetPoint(projection.index);
+            const bool on_line = projection.center_offset > -point.room_left - 1.5f && projection.center_offset < point.room_right + 1.5f && fabsf(at.y - point.position.y) < 4.0f;
+            if (on_line && along > -15.0f && along < 230.0f)
+            {
+                nearby.push_back({ along, projection.line_error, track.velocity.Dot(m_line->DirectionAt(projection.index)), projection.index });
+            }
+        }
+        m_traffic = move(seen);
+
+        // an offset fits where the car keeps its clearance from both road edges, here and beside the car it passes
+        auto fits = [&](float offset, size_t index)
+        {
+            for (size_t i : { m_index, index })
+            {
+                const RacingLine::Point& point = m_line->GetPoint(i);
+                const float center             = point.offset + offset;
+                if (center < -point.room_left + edge_clearance || center > point.room_right - edge_clearance)
+                {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        // the car in the way: in the path the driver is heading for, or still in the one it is leaving
+        const Nearby* blocker = nullptr;
+        for (const Nearby& car : nearby)
+        {
+            const bool ahead = car.along > 0.0f;
+            const bool path  = fabsf(car.lateral - m_pass_target) < corridor || (fabsf(car.lateral - m_pass_offset) < corridor && car.along < 12.0f);
+            if (ahead && path && (!blocker || car.along < blocker->along))
+            {
+                blocker = &car;
+            }
+        }
+
+        // pass on the left first like a driver on a right hand road, the right if only that side is open
+        // the side lane must be free of cars going the same way beside the one being passed, and of oncoming cars for as long as the pass takes
+        if (blocker && m_pass_target == 0.0f && blocker->along < 60.0f && blocker->speed < plan_speed - 3.0f && speed > 3.0f)
+        {
+            const float closing   = max(speed - max(blocker->speed, 0.0f), 4.0f);
+            const float pass_time = min((blocker->along + car_length * 2.0f + 10.0f) / closing, 12.0f);
+            for (float side : { -1.0f, 1.0f })
+            {
+                const float offset = blocker->lateral + side * pass_spacing;
+                bool clear         = fits(offset, blocker->index);
+                for (const Nearby& car : nearby)
+                {
+                    if (!clear)
+                    {
+                        break;
+                    }
+                    if (&car == blocker || fabsf(car.lateral - offset) > corridor + 0.5f)
+                    {
+                        continue;
+                    }
+                    if (car.speed > -1.0f)
+                    {
+                        clear = car.along < -10.0f || car.along > blocker->along + 25.0f;
+                    }
+                    else
+                    {
+                        clear = car.along < 0.0f || car.along > blocker->along + 30.0f + (speed - car.speed) * pass_time;
+                    }
+                }
+                if (clear)
+                {
+                    m_pass_target = offset;
+                    SP_LOG_INFO("ai_driver %s: passing a car %.0f m ahead doing %.0f km/h, %.1f m to the %s", m_name.c_str(), blocker->along, blocker->speed * 3.6f, fabsf(offset), offset < 0.0f ? "left" : "right");
+                    blocker = nullptr;
+                    break;
+                }
+            }
+        }
+        else if (m_pass_target != 0.0f)
+        {
+            // back to the line once nothing on it would start a pass again, a car length behind to past where passes start
+            // or at once when an oncoming car shows up
+            bool line_clear = true;
+            bool danger     = false;
+            for (const Nearby& car : nearby)
+            {
+                const bool close = car.along > -car_length - 3.0f && car.along < car_length + 5.0f;
+                const bool slow  = car.along > 0.0f && car.along < 70.0f && car.speed < plan_speed - 1.0f;
+                if (fabsf(car.lateral) < corridor + 0.3f && (close || slow))
+                {
+                    line_clear = false;
+                }
+                if (fabsf(car.lateral - m_pass_target) < corridor && car.speed < -1.0f && car.along > 0.0f && car.along < (speed - car.speed) * 2.5f + 20.0f)
+                {
+                    danger = true;
+                }
+            }
+            if (line_clear || danger || !fits(m_pass_target, m_index))
+            {
+                SP_LOG_INFO("ai_driver %s: %s", m_name.c_str(), danger ? "oncoming car, pulling back in" : "passed, back on the line");
+                m_pass_target = 0.0f;
+            }
+        }
+
+        const float rate = clamp(speed * 0.12f, 1.5f, 3.5f);
+        const float step = clamp(m_pass_target - m_pass_offset, -rate * delta_time, rate * delta_time);
+        m_pass_offset   += step;
+        m_pass_rate      = step / delta_time;
+
+        m_blocker = Blocker();
+        if (blocker)
+        {
+            m_blocker = { true, max(blocker->along - car_length, 0.0f), blocker->speed };
+        }
+        m_blocked_time       = m_blocker.found && speed < 1.0f ? m_blocked_time + delta_time : 0.0f;
+        m_stats.passing      = m_pass_target != 0.0f || fabsf(m_pass_offset) > 0.2f;
+        m_stats.following    = m_blocker.found && m_blocker.gap < 60.0f;
     }
 
     void AiDriver::Tick(float delta_time)
@@ -370,7 +551,7 @@ namespace spartan
             projection = m_line->Project(position, m_index, true);
         }
         float moved = projection.distance - m_distance;
-        if (fabsf(moved) > m_line->GetLength() * 0.5f)
+        if (m_line->IsClosed() && fabsf(moved) > m_line->GetLength() * 0.5f)
         {
             moved -= copysignf(m_line->GetLength(), moved);
         }
@@ -383,7 +564,7 @@ namespace spartan
         const RacingLine::Point& here  = m_line->GetPoint(m_index);
         Plan& plan_here                = m_plan[m_index];
 
-        const bool on_road = fabsf(m_center_offset) < here.half_width - 1.0f;
+        const bool on_road = m_center_offset > -here.room_left + 1.0f && m_center_offset < here.room_right - 1.0f;
         m_model.Measure(physics, delta_time, speed, on_road);
 
         // yaw rate from the body, frame to frame heading jitters whenever a frame sees two physics steps or none
@@ -410,7 +591,30 @@ namespace spartan
             }
             return;
         }
+
+        // the end of a route: stop there and keep the car parked
+        const float to_finish = m_line->GetLength() - m_distance;
+        if (!m_line->IsClosed() && !m_stats.finished && (to_finish < 1.0f || (to_finish < 8.0f && fabsf(speed) < 0.5f)))
+        {
+            m_stats.finished      = true;
+            m_stats.last_lap_time = m_stats.lap_time;
+            SP_LOG_INFO("ai_driver %s: route finished, %.0f m in %.1f s, %u resets", m_name.c_str(), m_stats.travelled, m_stats.lap_time, m_stats.resets);
+        }
+        if (m_stats.finished)
+        {
+            m_car->SetThrottle(0.0f);
+            m_car->SetBrake(1.0f);
+            m_car->SetSteering(0.0f);
+            m_car->SetHandbrake(1.0f);
+            m_stats.speed_kmh  = speed * 3.6f;
+            m_stats.target_kmh = 0.0f;
+            return;
+        }
         m_stats.lap_time += delta_time;
+
+        WatchTraffic(delta_time, speed, SpeedAt(m_distance + max(speed, 0.0f) * 0.4f));
+        // the line is followed at the passing offset, the error the controller sees is from there
+        const float tracking_error = m_line_error - m_pass_offset;
 
         // steering: the line's curvature a moment ahead is the feedforward, a critically damped lateral acceleration pulls the car back onto the line
         // commanding acceleration instead of an angle keeps the gain right at every speed, where pure pursuit weaves once the car is quick
@@ -419,7 +623,7 @@ namespace spartan
         const float feedforward   = m_line->CurvatureAt(m_distance + preview);
         // measured against the line's own direction, where the line crosses the road the road's normal would read its sweep as drift
         const float lateral_speed = planar(velocity).Dot(here.line_right);
-        m_line_integral           = clamp(m_line_integral + m_line_error * delta_time, -4.0f, 4.0f);
+        m_line_integral           = clamp(m_line_integral + tracking_error * delta_time, -4.0f, 4.0f);
         // a fast car's yaw answers later, a softer loop at speed keeps the correction from feeding a weave
         const float frequency     = clamp(line_frequency - (speed - 20.0f) * 0.012f, 0.9f, line_frequency);
         // the integral's lag and the car's own yaw lag add up at speed, so it shrinks with the loop and the damping grows
@@ -427,7 +631,7 @@ namespace spartan
         const float damping       = line_damping + clamp((speed - 30.0f) * 0.02f, 0.0f, 0.5f);
         // far off the line the car closes in at a capped lateral speed, rushing back builds a sideways speed the tires then cannot stop
         const float approach      = max(1.5f, speed * 0.06f);
-        const float desired_drift = -clamp(frequency / (2.0f * damping) * m_line_error, -approach, approach);
+        const float desired_drift = m_pass_rate - clamp(frequency / (2.0f * damping) * tracking_error, -approach, approach);
         const float correction    = 2.0f * damping * frequency * (lateral_speed - desired_drift) + line_integral_gain * slowdown * slowdown * slowdown * m_line_integral;
         // never ask for more turn than the tires can give, past that the only thing extra steering buys is a spin
         const float max_curvature = m_model.CorneringLimit(speed) * 1.3f / max(speed * speed, 25.0f);
@@ -457,15 +661,29 @@ namespace spartan
 
         // pedals: every speed the plan asks for within stopping distance sets the deceleration needed now
         // braking from that forecast instead of from the speed error means the car is never late into a corner
-        const float target_speed = SpeedAt(m_distance + max(speed, 0.0f) * 0.4f);
+        float target_speed       = SpeedAt(m_distance + max(speed, 0.0f) * 0.4f);
         const float capacity     = m_model.BrakingLimit(speed);
         float needed             = 0.0f;
+        // a slower car ahead: stop within the gap to it if it stopped dead, and settle at a gap that grows with speed
+        float follow_speed       = numeric_limits<float>::max();
+        if (m_blocker.found)
+        {
+            const float other    = max(m_blocker.speed, 0.0f);
+            const float headway  = max(m_blocker.gap - 3.0f - max(speed, 0.0f) * 0.6f, 0.0f);
+            follow_speed         = sqrtf(other * other + capacity * 0.5f * 2.0f * headway);
+            target_speed         = min(target_speed, follow_speed);
+            if (speed > other)
+            {
+                needed = (speed * speed - other * other) / (2.0f * max(m_blocker.gap - 2.0f, 0.5f));
+            }
+        }
         {
             const float reaction = max(speed, 0.0f) * 0.2f;
             const float horizon  = min(speed * speed / max(capacity, 1.0f) + reaction + 20.0f, 600.0f);
             float ahead          = here.distance + here.step - m_distance;
             size_t k             = 1;
-            while (ahead < horizon && k <= count)
+            const size_t reach = m_line->IsClosed() ? count : count - 1 - m_index;
+            while (ahead < horizon && k <= reach)
             {
                 const size_t i = m_line->Wrap(static_cast<int64_t>(m_index + k));
                 if (m_plan[i].speed < speed)
@@ -483,10 +701,16 @@ namespace spartan
         float throttle            = needed > braking_point * 0.75f ? 0.0f : clamp(0.3f + 0.35f * error, 0.0f, 1.0f);
         float brake               = needed > braking_point * 0.85f ? clamp(needed / max(capacity, 1.0f) * 1.15f, 0.0f, 1.0f) : 0.0f;
         brake                     = max(brake, clamp((speed - SpeedAt(m_distance) - 2.0f) * 0.2f, 0.0f, 1.0f));
+        brake                     = max(brake, clamp((speed - follow_speed - 1.5f) * 0.15f, 0.0f, 0.6f));
+        if (follow_speed < 1.0f)
+        {
+            throttle = 0.0f;
+            brake    = max(brake, 0.3f);
+        }
 
         // running wide: the front tires are saturated, lifting gives them back the grip the throttle was using
-        const bool drifting_out = fabsf(here.curvature) > 0.004f && fabsf(m_line_error) > 1.0f && m_line_error * lateral_speed > 0.0f;
-        const float wide        = drifting_out ? clamp((fabsf(m_line_error) - 1.0f) * 0.3f + fabsf(lateral_speed) * 0.25f, 0.0f, 1.0f) : 0.0f;
+        const bool drifting_out = fabsf(here.curvature) > 0.004f && fabsf(tracking_error) > 1.0f && tracking_error * lateral_speed > 0.0f;
+        const float wide        = drifting_out ? clamp((fabsf(tracking_error) - 1.0f) * 0.3f + fabsf(lateral_speed) * 0.25f, 0.0f, 1.0f) : 0.0f;
         throttle               *= 1.0f - wide;
 
         // the tires share one grip budget, power and brakes get what cornering leaves over, read from the tires rather than the plan
@@ -499,7 +723,7 @@ namespace spartan
         // running wide with grip to spare: scrub speed, the corner only closes if the car slows
         if (drifting_out && lateral_use < 0.9f)
         {
-            brake = max(brake, clamp((fabsf(m_line_error) - 1.0f) * 0.15f, 0.0f, 0.6f) * max(remaining, 0.4f));
+            brake = max(brake, clamp((fabsf(tracking_error) - 1.0f) * 0.15f, 0.0f, 0.6f) * max(remaining, 0.4f));
         }
         // fronts at the limit while braking into a turn: ease the pedal so they can steer
         if (m_model.front_use > 0.97f && lateral_use > 0.3f)
@@ -587,7 +811,7 @@ namespace spartan
         m_car->SetHandbrake(0.0f);
 
         // the chassis: how much of the tires' total grip it reaches before the busier axle saturates, measured in any steady corner
-        const bool steady = brake < 0.05f && m_throttle < 0.5f && fabsf(steer - m_steering) < 0.05f && fabsf(m_line_error) < 1.0f;
+        const bool steady = brake < 0.05f && m_throttle < 0.5f && fabsf(steer - m_steering) < 0.05f && fabsf(tracking_error) < 1.0f;
         if (on_road && steady && speed > 12.0f && !oversteer && fabsf(here.curvature) > 0.003f && m_model.lateral_use > 0.5f && m_model.lateral_use < 0.95f)
         {
             const float total      = m_model.grip_lateral * (1.0f + m_model.aero * speed * speed);
@@ -628,20 +852,20 @@ namespace spartan
         }
 
         // near misses teach as much as crashes: running wide, a slide, saturated fronts pushing off line, a wheel on the grass
-        m_lap_error_max     = max(m_lap_error_max, fabsf(m_line_error));
-        const bool off_road = fabsf(m_center_offset) > here.half_width + 0.3f;
+        m_lap_error_max     = max(m_lap_error_max, fabsf(tracking_error));
+        const bool off_road = m_center_offset < -here.room_left - 0.3f || m_center_offset > here.room_right + 0.3f;
         m_saturated_time    = m_model.front_use > 0.97f && drifting_out ? m_saturated_time + delta_time : 0.0f;
-        if (fabsf(m_line_error) > 2.0f || (oversteer && rear_limit >= 1.0f) || m_saturated_time > 0.3f || off_road)
+        if (fabsf(tracking_error) > 2.0f || (oversteer && rear_limit >= 1.0f) || m_saturated_time > 0.3f || off_road)
         {
             plan_here.trouble = true;
         }
-        if (!m_excursion && fabsf(m_line_error) > 4.0f)
+        if (!m_excursion && fabsf(tracking_error) > 4.0f)
         {
             m_excursion = true;
             SP_LOG_WARNING("ai_driver %s: off line at %.0f m, error %.1f m, speed %.0f km/h, target %.0f km/h, brake %.2f, throttle %.2f, steer %.2f, use f %.2f r %.2f, slip %.3f, oversteer %d",
-                m_name.c_str(), m_distance, m_line_error, speed * 3.6f, SpeedAt(m_distance) * 3.6f, brake, m_throttle, m_steering, m_model.front_use, m_model.rear_use, body_slip, oversteer ? 1 : 0);
+                m_name.c_str(), m_distance, tracking_error, speed * 3.6f, SpeedAt(m_distance) * 3.6f, brake, m_throttle, m_steering, m_model.front_use, m_model.rear_use, body_slip, oversteer ? 1 : 0);
         }
-        else if (m_excursion && fabsf(m_line_error) < 1.5f)
+        else if (m_excursion && fabsf(tracking_error) < 1.5f)
         {
             m_excursion = false;
         }
@@ -655,16 +879,18 @@ namespace spartan
         m_stats.body_slip  = body_slip;
 
         // lap: the line index wraps from the end back to the start, the time guard ignores jitter around the line
-        if (previous_index > count * 3 / 4 && m_index < count / 4 && m_stats.lap_time > 10.0f)
+        if (m_line->IsClosed() && previous_index > count * 3 / 4 && m_index < count / 4 && m_stats.lap_time > 10.0f)
         {
             CompleteLap();
         }
 
         // recovery: put the car back on the line when it is stuck, upside down, far off the road or facing backwards
-        m_stuck_time     = speed < 1.0f ? m_stuck_time + delta_time : 0.0f;
-        m_upside_time    = vehicle->GetUp().y < 0.3f ? m_upside_time + delta_time : 0.0f;
-        m_wrong_way_time = flat_forward.Dot(m_line->DirectionAt(m_index)) < -0.2f ? m_wrong_way_time + delta_time : 0.0f;
-        const bool lost  = fabsf(m_center_offset) > here.half_width + 15.0f;
+        // waiting in a queue is not being stuck, unless the queue never moves
+        const bool queued = m_blocker.found && m_blocker.gap < 12.0f && m_blocked_time < 45.0f;
+        m_stuck_time      = speed < 1.0f && !queued ? m_stuck_time + delta_time : 0.0f;
+        m_upside_time     = vehicle->GetUp().y < 0.3f ? m_upside_time + delta_time : 0.0f;
+        m_wrong_way_time  = flat_forward.Dot(m_line->DirectionAt(m_index)) < -0.2f ? m_wrong_way_time + delta_time : 0.0f;
+        const bool lost   = m_center_offset < -here.room_left - 15.0f || m_center_offset > here.room_right + 15.0f;
         if (m_stuck_time > 3.0f || m_upside_time > 2.0f || m_wrong_way_time > 2.5f || lost)
         {
             SP_LOG_WARNING("ai_driver %s: recovering at %.0f m (stuck %.1f s, upside %.1f s, wrong way %.1f s, offset %.1f m)", m_name.c_str(), m_distance, m_stuck_time, m_upside_time, m_wrong_way_time, m_center_offset);

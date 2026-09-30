@@ -67,6 +67,7 @@ namespace spartan
         void PlayClip();
         void StopClip();
         float GetProgress() const;
+        float GetDuration() const; // seconds, 0 without a clip
 
         bool GetMute() const { return m_mute; }
         void SetMute(bool mute);

@@ -33,6 +33,18 @@ using namespace std;
 using namespace spartan::math;
 //============================
 
+namespace
+{
+    // a head shadows the far ear, it never silences it: at most about 8 db down, with the total power kept
+    void pan_gains(float pan, float& left, float& right)
+    {
+        const float far_ear = 1.0f - 0.6f * min(fabs(pan), 1.0f);
+        const float scale   = sqrt(1.0f / (1.0f + far_ear * far_ear));
+        left  = scale * (pan > 0.0f ? far_ear : 1.0f);
+        right = scale * (pan < 0.0f ? far_ear : 1.0f);
+    }
+}
+
 #define CHECK_SDL_ERROR(call)           \
 if (!(call)) {                          \
     SP_LOG_ERROR("%s", SDL_GetError()); \
@@ -371,11 +383,14 @@ namespace spartan
                 Vector3 camera_position                 = camera->GetEntity()->GetPosition();
                 Vector3 sound_position                  = GetEntity()->GetPosition();
 
-                // panning
+                // panning, a source as big as a car surrounds a listener sitting in it or standing beside it,
+                // so it only takes a direction a few meters out
                 {
-                    Vector3 camera_to_sound = (sound_position - camera_position).Normalized();
+                    Vector3 camera_to_sound = sound_position - camera_position;
+                    const float distance    = camera_to_sound.Length();
+                    const float directional = clamp((distance - 0.5f) / 2.5f, 0.0f, 1.0f);
                     Vector3 camera_right    = camera->GetEntity()->GetRight();
-                    m_pan                   = Vector3::Dot(camera_to_sound, camera_right);
+                    m_pan                   = distance > 1e-4f ? Vector3::Dot(camera_to_sound / distance, camera_right) * directional : 0.0f;
                 }
 
                 // attenuation
@@ -569,8 +584,11 @@ namespace spartan
     void AudioSource::PublishSynthesisMix()
     {
         const float gain = m_volume * m_attenuation * (m_mute ? 0.0f : 1.0f);
-        m_synthesis_target_l.store(gain * sqrt(0.5f * (1.0f - m_pan)), memory_order_relaxed);
-        m_synthesis_target_r.store(gain * sqrt(0.5f * (1.0f + m_pan)), memory_order_relaxed);
+        float left_factor  = 0.0f;
+        float right_factor = 0.0f;
+        pan_gains(m_pan, left_factor, right_factor);
+        m_synthesis_target_l.store(gain * left_factor, memory_order_relaxed);
+        m_synthesis_target_r.store(gain * right_factor, memory_order_relaxed);
         m_synthesis_room_size.store(m_reverb_room_size, memory_order_relaxed);
         m_synthesis_decay.store(m_reverb_decay, memory_order_relaxed);
         m_synthesis_wet.store(m_reverb_wet, memory_order_relaxed);
@@ -948,6 +966,16 @@ namespace spartan
         return static_cast<float>(m_position) / static_cast<float>(m_clip->length);
     }
 
+    float AudioSource::GetDuration() const
+    {
+        if (!m_clip || !m_clip->spec || m_clip->length == 0 || m_clip->spec->freq <= 0 || m_clip->spec->channels <= 0)
+        {
+            return 0.0f;
+        }
+
+        return static_cast<float>(m_clip->length) / static_cast<float>(m_clip->spec->channels * sizeof(float) * m_clip->spec->freq);
+    }
+
     void AudioSource::SetMute(bool mute)
     {
         if (m_mute == mute)
@@ -1031,9 +1059,9 @@ namespace spartan
         m_stereo_chunk.resize(num_samples * 2); // reuses capacity, no allocation if size fits
         float gain           = m_volume * m_attenuation * (m_mute ? 0.0f : 1.0f);
 
-        // constant power panning
-        float left_factor    = sqrt(0.5f * (1.0f - m_pan));
-        float right_factor   = sqrt(0.5f * (1.0f + m_pan));
+        float left_factor    = 0.0f;
+        float right_factor   = 0.0f;
+        pan_gains(m_pan, left_factor, right_factor);
         float left_gain      = gain * left_factor;
         float right_gain     = gain * right_factor;
         const float ambient_slew = m_ambient

@@ -30,6 +30,91 @@ namespace
     unique_ptr<FileDialog> file_dialog_view;
     unique_ptr<FileDialog> file_dialog_load;
 
+    // mcp requests arrive on the bridge thread, the widget applies them and publishes its state on the main thread
+    mutex mcp_mutex;
+    optional<AssetBrowserRequest> mcp_request;
+    string mcp_pending_select;
+    int mcp_pending_select_frames = 0;
+    AssetBrowserState mcp_state;
+
+    void apply_mcp_request()
+    {
+        optional<AssetBrowserRequest> request;
+        {
+            lock_guard<mutex> lock(mcp_mutex);
+            request.swap(mcp_request);
+        }
+
+        if (request)
+        {
+            if (request->path)
+            {
+                string path = *request->path;
+                if (!FileSystem::IsDirectory(path))
+                {
+                    path = ResourceCache::GetProjectDirectory() + path;
+                }
+                if (FileSystem::IsDirectory(path))
+                {
+                    file_dialog_view->SetCurrentPath(path);
+                    file_dialog_view->SetKindFilter(-1);
+                }
+            }
+            if (request->view)
+            {
+                file_dialog_view->SetViewMode(_stricmp(request->view->c_str(), "list") == 0 ? View_List : View_Grid);
+            }
+            if (request->size)
+            {
+                file_dialog_view->SetItemSize(*request->size);
+            }
+            if (request->search)
+            {
+                file_dialog_view->SetSearch(*request->search);
+            }
+            if (request->kind)
+            {
+                int kind = -1;
+                for (int i = 0; i < Kind_Count; i++)
+                {
+                    if (_stricmp(request->kind->c_str(), FileDialog::GetKindName(i)) == 0 || _stricmp(request->kind->c_str(), FileDialog::GetKindPlural(i)) == 0)
+                    {
+                        kind = i;
+                    }
+                }
+                file_dialog_view->SetKindFilter(kind);
+            }
+            if (request->select)
+            {
+                mcp_pending_select        = *request->select;
+                mcp_pending_select_frames = 120;
+            }
+        }
+
+        // a new folder loads its items at the end of the frame, so the selection is retried until the item exists
+        if (!mcp_pending_select.empty())
+        {
+            if (file_dialog_view->SelectItem(mcp_pending_select) || --mcp_pending_select_frames <= 0)
+            {
+                mcp_pending_select.clear();
+            }
+        }
+    }
+
+    void publish_mcp_state()
+    {
+        AssetBrowserState state;
+        state.path     = file_dialog_view->GetCurrentPath();
+        state.view     = file_dialog_view->GetViewMode() == View_List ? "list" : "grid";
+        state.size     = file_dialog_view->GetItemSize();
+        state.kind     = file_dialog_view->GetKindFilter() >= 0 ? FileDialog::GetKindName(file_dialog_view->GetKindFilter()) : "all";
+        state.selected = file_dialog_view->GetSelectedLabel();
+        state.visible  = file_dialog_view->GetVisibleLabels();
+
+        lock_guard<mutex> lock(mcp_mutex);
+        mcp_state = move(state);
+    }
+
     static void mesh_import_dialog_checkbox(const MeshFlags option, const char* label, const char* tooltip = nullptr)
     {
         bool enabled = mesh_import_dialog_flags & static_cast<uint32_t>(option);
@@ -129,7 +214,9 @@ AssetBrowser::AssetBrowser(Editor* editor) : Widget(editor)
 void AssetBrowser::OnTickVisible()
 {
     // view
+    apply_mcp_request();
     file_dialog_view->Show(&show_file_dialog_view, m_editor);
+    publish_mcp_state();
 
     // show load file dialog, true if a selection is made
     if (file_dialog_load->Show(&show_file_dialog_load, m_editor, nullptr, &mesh_import_file_path))
@@ -149,6 +236,18 @@ void AssetBrowser::ShowMeshImportDialog(const string& file_path)
         mesh_import_dialog_flags      = Mesh::GetDefaultFlags();
         mesh_import_file_path         = file_path;
     }
+}
+
+void AssetBrowser::Request(const AssetBrowserRequest& request)
+{
+    lock_guard<mutex> lock(mcp_mutex);
+    mcp_request = request;
+}
+
+AssetBrowserState AssetBrowser::GetState()
+{
+    lock_guard<mutex> lock(mcp_mutex);
+    return mcp_state;
 }
 
 void AssetBrowser::OnPathClicked(const string& path) const

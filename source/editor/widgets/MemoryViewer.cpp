@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "MemoryViewer.h"
 #include "../imgui/ImGui_EditorUi.h"
 #include "../imgui/ImGui_Extension.h"
+#include "../imgui/ImGui_Properties.h"
 #include "memory/GpuMemory.h"
 #include "memory/Allocator.h"
 #include "rhi/RHI_Device.h"
@@ -25,23 +26,7 @@ using namespace spartan::math;
 
 namespace
 {
-    constexpr ImU32 color_hole   = IM_COL32(110, 42, 48, 255);
-    constexpr ImU32 color_unused = IM_COL32(22, 26, 34, 255);
-    constexpr ImU32 color_grid   = IM_COL32(8, 10, 14, 255);
-
-    bool toggle_button(const char* label, const bool active)
-    {
-        if (active)
-        {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-        }
-        const bool clicked = ImGui::Button(label);
-        if (active)
-        {
-            ImGui::PopStyleColor();
-        }
-        return clicked;
-    }
+    constexpr ImU32 color_hole = IM_COL32(150, 62, 70, 255);
 
     ImU32 kind_color(GpuMemoryKind kind)
     {
@@ -229,25 +214,42 @@ namespace
         return nullptr;
     }
 
-    void draw_legend_swatch(ImU32 color, const char* label, uint64_t bytes)
+    // what each kind is for, in words, the short engine names (as, sbt) mean nothing at a glance
+    const char* kind_label(GpuMemoryKind kind)
     {
-        const float dpi = Window::GetDpiScale();
-        ImVec2 pos = ImGui::GetCursorScreenPos();
-        const float size = 12.0f * dpi;
-        ImGui::GetWindowDrawList()->AddRectFilled(
-            pos,
-            ImVec2(pos.x + size, pos.y + size),
-            color,
-            2.0f * dpi
-        );
-        ImGui::Dummy(ImVec2(size, size));
-        ImGui::SameLine();
-        char bytes_text[32];
-        format_bytes(bytes_text, sizeof(bytes_text), bytes);
-        ImGui::Text("%s  %s", label, bytes_text);
+        switch (kind)
+        {
+            case GpuMemoryKind::Texture:               return "Textures";
+            case GpuMemoryKind::Vertex:                return "Vertices";
+            case GpuMemoryKind::Index:                 return "Indices";
+            case GpuMemoryKind::Instance:              return "Instances";
+            case GpuMemoryKind::Storage:               return "Storage";
+            case GpuMemoryKind::Constant:              return "Constants";
+            case GpuMemoryKind::Upload:                return "Upload";
+            case GpuMemoryKind::Readback:              return "Readback";
+            case GpuMemoryKind::ShaderBindingTable:    return "Shader tables";
+            case GpuMemoryKind::AccelerationStructure: return "Ray tracing BVH";
+            default:                                   return "Other";
+        }
     }
 
-    void draw_block_map(
+    ImVec4 to_vec4(const ImU32 color)
+    {
+        return ImGui::ColorConvertU32ToFloat4(color);
+    }
+
+    ImVec4 hole_tint()
+    {
+        return to_vec4(color_hole);
+    }
+
+    ImVec4 unused_tint()
+    {
+        return ImGui::Style::lerp(ImGui::Style::color_canvas_deep, ImGui::Style::color_text, 0.10f);
+    }
+
+    // returns how many bytes one square stands for, 0 when there is nothing to draw
+    uint64_t draw_block_map(
         const vector<map_range>& ranges,
         uint64_t total_bytes,
         void*& selected_resource
@@ -255,16 +257,16 @@ namespace
     {
         if (total_bytes == 0)
         {
-            ImGui::TextDisabled("no gpu allocations");
-            return;
+            editor_ui::empty_state("No GPU allocations", "Allocations appear here as soon as the renderer creates its first buffer or texture.");
+            return 0;
         }
 
         const float dpi        = Window::GetDpiScale();
-        const float cell       = 10.0f * dpi;
-        const float gap        = 1.0f * dpi;
+        const float cell       = 11.0f * dpi;
+        const float gap        = 2.0f * dpi;
         const float avail_x    = ImGui::GetContentRegionAvail().x;
         const int columns      = max(8, static_cast<int>(avail_x / (cell + gap)));
-        const int max_rows     = 28;
+        const int max_rows     = 16;
         const int max_cells    = columns * max_rows;
         const uint64_t cell_bytes = (std::max)(
             static_cast<uint64_t>(1),
@@ -281,13 +283,6 @@ namespace
         const bool map_clicked = ImGui::IsItemClicked();
         ImDrawList* draw_list  = ImGui::GetWindowDrawList();
 
-        draw_list->AddRectFilled(
-            origin,
-            ImVec2(origin.x + map_w, origin.y + map_h),
-            color_grid,
-            4.0f * dpi
-        );
-
         int hover_cell = -1;
         if (map_hovered)
         {
@@ -299,6 +294,14 @@ namespace
                 hover_cell = row * columns + col;
             }
         }
+
+        // hovering one square lights every square of that allocation, so its real extent is visible, not just one cell
+        const map_range* hovered_range = nullptr;
+        if (hover_cell >= 0 && hover_cell < cell_count)
+        {
+            hovered_range = range_at(ranges, static_cast<uint64_t>(hover_cell) * cell_bytes);
+        }
+        const GpuMemoryBlock* hovered_block = hovered_range ? hovered_range->block : nullptr;
 
         for (int i = 0; i < cell_count; i++)
         {
@@ -313,78 +316,69 @@ namespace
             const uint64_t offset = static_cast<uint64_t>(i) * cell_bytes;
             const map_range* range = range_at(ranges, offset);
 
-            ImU32 color = color_unused;
+            ImVec4 tint   = unused_tint();
             bool selected = false;
+            bool lit      = false;
             if (range)
             {
                 if (range->block)
                 {
-                    color = kind_color(range->block->kind);
-                    selected = range->block->resource == selected_resource;
+                    tint     = to_vec4(kind_color(range->block->kind));
+                    selected = selected_resource && range->block->resource == selected_resource;
+                    lit      = hovered_block && range->block == hovered_block;
                 }
                 else if (range->is_hole)
                 {
-                    color = color_hole;
+                    tint = hole_tint();
                 }
             }
 
-            if (i == hover_cell)
+            const bool anything_lit = hovered_block || selected_resource;
+            float opacity           = 0.85f;
+            if (lit || selected)
             {
-                color = IM_COL32(
-                    min(255, (int)((color >> 0) & 255) + 40),
-                    min(255, (int)((color >> 8) & 255) + 40),
-                    min(255, (int)((color >> 16) & 255) + 40),
-                    255
-                );
+                tint    = ImGui::Style::lerp(tint, ImVec4(1, 1, 1, 1), 0.25f);
+                opacity = 1.0f;
+            }
+            else if (anything_lit && range && range->block)
+            {
+                opacity = 0.45f;
             }
 
-            draw_list->AddRectFilled(p0, p1, color, 1.5f * dpi);
+            draw_list->AddRectFilled(p0, p1, ImGui::EditorUi::color(ImGui::EditorUi::alpha(tint, opacity)), 2.0f * dpi);
             if (selected)
             {
-                draw_list->AddRect(p0, p1, IM_COL32(255, 255, 255, 255), 1.5f * dpi, 1.5f * dpi);
+                draw_list->AddRect(p0, p1, ImGui::EditorUi::color(ImGui::Style::color_text), 2.0f * dpi, 1.5f * dpi);
             }
         }
 
-        if (hover_cell >= 0 && hover_cell < cell_count)
+        if (hovered_range)
         {
-            const uint64_t offset = static_cast<uint64_t>(hover_cell) * cell_bytes;
-            const map_range* range = range_at(ranges, offset);
-            if (range)
+            if (map_clicked)
             {
-                if (map_clicked)
-                {
-                    selected_resource = range->block ? range->block->resource : nullptr;
-                }
-
-                ImGui::BeginTooltip();
-                if (range->block)
-                {
-                    char size_text[32];
-                    format_bytes(size_text, sizeof(size_text), range->block->size);
-                    ImGui::TextUnformatted(range->block->name[0] ? range->block->name : "(unnamed)");
-                    ImGui::Text("%s  %s", GpuMemory::GetKindName(range->block->kind), size_text);
-                }
-                else if (range->is_hole)
-                {
-                    char size_text[32];
-                    format_bytes(size_text, sizeof(size_text), range->size);
-                    ImGui::Text("hole  %s", size_text);
-                    ImGui::TextDisabled("free range inside a heap");
-                }
-                else
-                {
-                    char size_text[32];
-                    format_bytes(size_text, sizeof(size_text), range->size);
-                    ImGui::Text("unused  %s", size_text);
-                    ImGui::TextDisabled("vram not yet given to a heap");
-                }
-                ImGui::EndTooltip();
+                selected_resource = hovered_range->block ? hovered_range->block->resource : nullptr;
             }
+
+            ImGui::BeginTooltip();
+            if (hovered_range->block)
+            {
+                char size_text[32];
+                format_bytes(size_text, sizeof(size_text), hovered_range->block->size);
+                ImGui::TextUnformatted(hovered_range->block->name[0] ? hovered_range->block->name : "(unnamed)");
+                ImGui::TextColored(to_vec4(kind_color(hovered_range->block->kind)), "%s, %s", kind_label(hovered_range->block->kind), size_text);
+                ImGui::TextColored(ImGui::Style::color_text_faint, "Click to select it in the table");
+            }
+            else
+            {
+                char size_text[32];
+                format_bytes(size_text, sizeof(size_text), hovered_range->size);
+                ImGui::Text("Free, %s", size_text);
+                ImGui::TextColored(ImGui::Style::color_text_muted, "A gap inside a heap, reusable by allocations that fit");
+            }
+            ImGui::EndTooltip();
         }
 
-        char cell_text[64];
-        format_bytes(cell_text, sizeof(cell_text), cell_bytes);
-        ImGui::TextDisabled("each square is %s", cell_text);
+        return cell_bytes;
     }
 
     string csv_escape(const char* value)
@@ -808,31 +802,37 @@ MemoryViewer::MemoryViewer(Editor* editor) : Widget(editor)
 
 void MemoryViewer::OnTickVisible()
 {
-    if (toggle_button("GPU", m_show_gpu))
+    using namespace editor_ui;
+    const float gap = ImGui::EditorUi::scaled(4.0f);
+
+    // two memories, two pills, the one on screen is lit
+    if (toolbar::pill("Video memory", m_show_gpu, ImGui::Style::color_accent_1, "Every GPU allocation the engine made, mapped by heap"))
     {
         m_show_gpu = true;
     }
-    ImGui::SameLine();
-    if (toggle_button("CPU", !m_show_gpu))
+    ImGui::SameLine(0, gap);
+    if (toolbar::pill("System memory", !m_show_gpu, ImGui::Style::color_accent_1, "What the engine and the process use of system RAM"))
     {
         m_show_gpu = false;
     }
-    ImGui::SameLine();
-    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-    ImGui::SameLine();
-    if (toggle_button("Freeze", m_frozen))
+
+    // freezing only means something for the video map, the system numbers are totals that are always live
+    if (m_show_gpu)
     {
-        if (!m_frozen)
+        toolbar::divider();
+        if (toolbar::pill(m_frozen ? "Frozen" : "Live", !m_frozen, m_frozen ? ImGui::Style::color_warning : ImGui::Style::color_ok, m_frozen ? "The map is a snapshot, click to go live again" : "The map follows every allocation, click to freeze it and inspect", true, !m_frozen))
         {
-            GpuMemory::GetBlocks(m_frozen_blocks);
+            if (!m_frozen)
+            {
+                GpuMemory::GetBlocks(m_frozen_blocks);
+            }
+            m_frozen = !m_frozen;
         }
-        m_frozen = !m_frozen;
     }
-    ImGuiSp::tooltip(m_frozen ? "resume live capture" : "freeze the current map");
-    ImGui::SameLine();
-    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-    ImGui::SameLine();
-    if (ImGui::Button("Export CSV"))
+
+    const float export_w = toolbar::ghost_button_width("Export CSV") + (m_export_path.empty() ? 0.0f : toolbar::ghost_button_width("Copy path"));
+    toolbar::align_right(export_w);
+    if (toolbar::ghost_button("Export CSV", m_show_gpu ? "Write every GPU allocation, grouped by kind, name, format and path, to memory_gpu.csv" : "Write the system memory totals per tag to memory_cpu.csv"))
     {
         const string path = FileSystem::GetExecutableDirectory() +
             (m_show_gpu ? "/memory_gpu.csv" : "/memory_cpu.csv");
@@ -874,22 +874,16 @@ void MemoryViewer::OnTickVisible()
             SP_LOG_ERROR("failed to write memory csv to %s", path.c_str());
         }
     }
-    ImGuiSp::tooltip(
-        m_show_gpu ?
-            "write every gpu allocation to memory_gpu.csv" :
-            "write cpu tag totals to memory_cpu.csv"
-    );
     if (!m_export_path.empty())
     {
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Copy path"))
+        ImGui::SameLine(0, 0);
+        if (toolbar::ghost_button("Copy path", m_export_path.c_str()))
         {
             ImGui::SetClipboardText(m_export_path.c_str());
         }
-        ImGuiSp::tooltip(m_export_path.c_str());
     }
 
-    ImGui::Separator();
+    ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(2.0f)));
 
     if (m_show_gpu)
     {
@@ -918,109 +912,94 @@ void MemoryViewer::OnTickVisible()
             ? (1.0f - static_cast<float>(largest_free) / static_cast<float>(total_free))
             : 0.0f;
 
-        char used_text[32];
-        char total_text[32];
-        char holes_text[32];
-        char unused_text[32];
-        char largest_text[32];
-        format_bytes(used_text, sizeof(used_text), used);
-        format_bytes(total_text, sizeof(total_text), vram_total);
-        format_bytes(holes_text, sizeof(holes_text), holes);
-        format_bytes(unused_text, sizeof(unused_text), unused);
-        format_bytes(largest_text, sizeof(largest_text), largest_free);
+        // the headline: how full the card is and whether what is free can still be used
+        const float dpi = Window::GetDpiScale();
+        char tracked_label[48];
+        snprintf(tracked_label, sizeof(tracked_label), "Tracked of %s", format::bytes(static_cast<double>(vram_total)).c_str());
+        stat_strip("##gpu_stats", {
+            { format::bytes(static_cast<double>(used)), tracked_label, ImGui::Style::color_accent_1 },
+            { vram_used_driver > 0 ? format::bytes(static_cast<double>(vram_used_driver)) : string("n/a"), "Driver reports" },
+            { format::grouped(static_cast<double>(blocks.size())), "Allocations" },
+            { format::bytes(static_cast<double>(largest_free)), "Largest free" },
+            { to_string(static_cast<int>(fragmentation * 100.0f + 0.5f)) + "%", "Fragmented", fragmentation > 0.3f ? ImGui::Style::color_warning : ImGui::Style::color_text }
+        });
+        ImGui::SetItemTooltip("Driver reports is what the driver says the process holds, it includes allocations the engine does not track. Fragmented is the share of free memory that is not in the largest free range.");
 
-        ImGui::Text("tracked %s / %s", used_text, total_text);
-        ImGui::SameLine();
-        ImGui::TextDisabled("(%u allocs)", static_cast<unsigned>(blocks.size()));
-        const auto streaming = RHI_TextureStreaming::GetStatistics();
-        ImGui::Text("streamed textures: %.1f / %.1f MiB resident, %.1f MiB full, %u textures",
-            streaming.resident_bytes / 1048576.0, streaming.budget_bytes / 1048576.0,
-            streaming.full_bytes / 1048576.0, streaming.texture_count);
-        if (ImGui::IsItemHovered())
-        {
-            ImGui::SetTooltip("Texture payload only; excludes allocation overhead, staging and retiring images.\nPending replacement: %.1f MiB. Small mip tails remain resident even if the budget is too small.",
-                streaming.pending_bytes / 1048576.0);
-        }
-        ImGui::Text("holes %s", holes_text);
-        ImGui::SameLine();
-        ImGui::Text("unused %s", unused_text);
-        ImGui::SameLine();
-        ImGui::Text("largest free %s", largest_text);
-        ImGui::SameLine();
-        ImGui::Text("fragmentation %.0f%%", fragmentation * 100.0f);
-        if (vram_used_driver > 0)
-        {
-            char driver_text[32];
-            format_bytes(driver_text, sizeof(driver_text), vram_used_driver);
-            ImGui::SameLine();
-            ImGui::TextDisabled("driver %s", driver_text);
-        }
-
-        ImGui::Dummy(ImVec2(0.0f, 4.0f * Window::GetDpiScale()));
-
-        const uint64_t map_bytes = max(vram_total, used + holes + unused);
-        draw_block_map(ranges, map_bytes, m_selected_resource);
-
-        ImGui::Separator();
-        ImGui::TextDisabled("legend");
-
+        // the whole card in one bar: what each kind holds, the gaps inside heaps, and what no heap has claimed yet
         array<uint64_t, static_cast<size_t>(GpuMemoryKind::Count)> by_kind = {};
         for (const GpuMemoryBlock& block : blocks)
         {
             by_kind[static_cast<size_t>(block.kind)] += block.size;
         }
-
-        int legend_on_line = 0;
+        vector<Segment> segments;
         for (uint8_t i = 0; i < static_cast<uint8_t>(GpuMemoryKind::Count); i++)
         {
-            if (by_kind[i] == 0)
-            {
-                continue;
-            }
-            if (legend_on_line > 0)
-            {
-                ImGui::SameLine();
-            }
-            draw_legend_swatch(
-                kind_color(static_cast<GpuMemoryKind>(i)),
-                GpuMemory::GetKindName(static_cast<GpuMemoryKind>(i)),
-                by_kind[i]
-            );
-            legend_on_line++;
-            if (legend_on_line >= 4)
-            {
-                legend_on_line = 0;
-            }
+            const GpuMemoryKind kind = static_cast<GpuMemoryKind>(i);
+            segments.push_back({ kind_label(kind), static_cast<double>(by_kind[i]), to_vec4(kind_color(kind)), format::bytes(static_cast<double>(by_kind[i])) });
         }
-        if (holes > 0)
+        segments.push_back({ "Free in heaps", static_cast<double>(holes), hole_tint(), format::bytes(static_cast<double>(holes)) });
+        segments.push_back({ "Unclaimed", static_cast<double>(unused), unused_tint(), format::bytes(static_cast<double>(unused)) });
+
+        ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(4.0f)));
+        const int hovered_segment = stacked_bar("##vram_composition", segments, static_cast<double>(max(vram_total, used + holes + unused)), ImGui::EditorUi::scaled(14.0f));
+        ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(2.0f)));
+        legend(segments, hovered_segment);
+
+        // streaming gets its own meter, it is the one budget here the user can actually change
+        const auto streaming = RHI_TextureStreaming::GetStatistics();
+        if (streaming.budget_bytes > 0)
         {
-            if (legend_on_line > 0)
-            {
-                ImGui::SameLine();
-            }
-            draw_legend_swatch(color_hole, "Hole", holes);
-        }
-        if (unused > 0)
-        {
-            ImGui::SameLine();
-            draw_legend_swatch(color_unused, "Unused", unused);
+            char streaming_text[96];
+            snprintf(streaming_text, sizeof(streaming_text), "%s of %s, %u textures", format::bytes(static_cast<double>(streaming.resident_bytes)).c_str(), format::bytes(static_cast<double>(streaming.budget_bytes)).c_str(), streaming.texture_count);
+            const string streaming_tooltip = "Texture payload that is resident against the streaming budget, allocation overhead and staging excluded. At full resolution these textures would need " + format::bytes(static_cast<double>(streaming.full_bytes)) + ", " + format::bytes(static_cast<double>(streaming.pending_bytes)) + " is waiting to be swapped in.";
+            property_meter("Texture streaming", static_cast<float>(static_cast<double>(streaming.resident_bytes) / static_cast<double>(streaming.budget_bytes)), streaming_text, streaming_tooltip.c_str());
         }
 
-        ImGui::Separator();
+        // the map spends its squares on the heaps only, unclaimed memory is already in the bar above
+        // and drawing it here left the allocations squeezed into the top few rows
+        ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(4.0f)));
+        const float right = ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x;
+        ImGui::EditorUi::section_rule("Heaps");
+        const uint64_t map_bytes = used + holes;
+        const ImVec2 caption_pos = ImGui::GetItemRectMin();
+        void* selected_before     = m_selected_resource;
+        const uint64_t cell_bytes = draw_block_map(ranges, map_bytes, m_selected_resource);
+        m_scroll_to_selected     |= m_selected_resource && m_selected_resource != selected_before;
+        if (cell_bytes > 0)
+        {
+            // the scale sits on the section rule, right aligned, where it explains the map without costing a line
+            char scale[64];
+            snprintf(scale, sizeof(scale), "one square is %s", format::bytes(static_cast<double>(cell_bytes)).c_str());
+            const ImVec2 size = ImGui::CalcTextSize(scale);
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(ImVec2(right - size.x - ImGui::EditorUi::scaled(8.0f), caption_pos.y), ImVec2(right, caption_pos.y + size.y), ImGui::EditorUi::color(ImGui::GetStyleColorVec4(ImGuiCol_WindowBg)));
+            draw_list->AddText(ImVec2(right - size.x, caption_pos.y), ImGui::EditorUi::color(ImGui::Style::color_text_faint), scale);
+        }
+
+        ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(6.0f)));
+        uint64_t largest_block = 0;
+        for (const GpuMemoryBlock& block : blocks)
+        {
+            largest_block = max(largest_block, block.size);
+        }
+
+        ImGui::EditorUi::push_table_style();
         if (ImGui::BeginTable(
             "gpu_allocs",
             4,
-            ImGuiTableFlags_Borders |
+            ImGuiTableFlags_BordersInnerV |
+            ImGuiTableFlags_BordersOuterH |
             ImGuiTableFlags_RowBg |
             ImGuiTableFlags_ScrollY |
-            ImGuiTableFlags_SizingStretchProp,
+            ImGuiTableFlags_Resizable,
             ImVec2(0.0f, ImGui::GetContentRegionAvail().y)
         ))
         {
-            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 90.0f * Window::GetDpiScale());
-            ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, 80.0f * Window::GetDpiScale());
-            ImGui::TableSetupColumn("Info", ImGuiTableColumnFlags_WidthFixed, 160.0f * Window::GetDpiScale());
+            ImGui::TableSetupColumn("Allocation", ImGuiTableColumnFlags_WidthStretch, 1.2f);
+            ImGui::TableSetupColumn("Kind", ImGuiTableColumnFlags_WidthFixed, 130.0f * dpi);
+            ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, 120.0f * dpi);
+            ImGui::TableSetupColumn("Details", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+            ImGui::TableSetupScrollFreeze(0, 1);
             ImGui::TableHeadersRow();
 
             vector<const GpuMemoryBlock*> sorted;
@@ -1034,61 +1013,91 @@ void MemoryViewer::OnTickVisible()
                 return a->size > b->size;
             });
 
+            // a square clicked on the map brings its row into view
+            int scroll_to = -1;
+            if (m_scroll_to_selected && m_selected_resource)
+            {
+                for (int i = 0; i < static_cast<int>(sorted.size()); i++)
+                {
+                    if (sorted[i]->resource == m_selected_resource)
+                    {
+                        scroll_to = i;
+                        break;
+                    }
+                }
+            }
+            m_scroll_to_selected = false;
+
             ImGuiListClipper clipper;
             clipper.Begin(static_cast<int>(sorted.size()));
+            if (scroll_to >= 0)
+            {
+                clipper.IncludeItemByIndex(scroll_to);
+            }
             while (clipper.Step())
             {
                 for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
                 {
                     const GpuMemoryBlock* block = sorted[i];
+                    const ImVec4 tint           = to_vec4(kind_color(block->kind));
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
                     ImGui::PushID(i);
-                    const bool selected =
-                        block->resource == m_selected_resource;
-                    if (ImGui::Selectable(
-                        block->name[0] ? block->name : "(unnamed)",
-                        selected,
-                        ImGuiSelectableFlags_SpanAllColumns
-                    ))
+                    const bool selected = m_selected_resource && block->resource == m_selected_resource;
+                    if (ImGui::Selectable(block->name[0] ? block->name : "(unnamed)", selected, ImGuiSelectableFlags_SpanAllColumns))
                     {
-                        m_selected_resource = block->resource;
+                        m_selected_resource = selected ? nullptr : block->resource;
                     }
-                    if (ImGui::IsItemHovered() && block->path[0])
+                    if (i == scroll_to)
+                    {
+                        ImGui::SetScrollHereY(0.5f);
+                    }
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && block->path[0])
                     {
                         ImGui::SetTooltip("%s", block->path);
                     }
                     ImGui::PopID();
+
                     ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(
-                        GpuMemory::GetKindName(block->kind)
-                    );
+                    {
+                        const ImVec2 pos   = ImGui::GetCursorScreenPos();
+                        const float radius = ImGui::EditorUi::scaled(3.0f);
+                        ImGui::GetWindowDrawList()->AddCircleFilled(ImVec2(pos.x + radius + 1.0f, pos.y + ImGui::GetTextLineHeight() * 0.5f), radius, ImGui::EditorUi::color(tint));
+                        ImGui::SetCursorScreenPos(ImVec2(pos.x + radius * 2.0f + ImGui::EditorUi::scaled(6.0f), pos.y));
+                        ImGui::TextColored(ImGui::Style::color_text_muted, "%s", kind_label(block->kind));
+                    }
+
                     ImGui::TableNextColumn();
-                    char size_text[32];
-                    format_bytes(
-                        size_text,
-                        sizeof(size_text),
-                        block->size
-                    );
-                    ImGui::TextUnformatted(size_text);
+                    cell_bar(format::bytes(static_cast<double>(block->size)).c_str(), largest_block > 0 ? static_cast<float>(static_cast<double>(block->size) / static_cast<double>(largest_block)) : 0.0f, tint);
+
                     ImGui::TableNextColumn();
                     if (block->width > 0)
                     {
-                        ImGui::Text(
-                            "%ux%u %s",
-                            block->width,
-                            block->height,
-                            block->format[0] ? block->format : ""
-                        );
+                        char details[128];
+                        if (block->depth > 1)
+                        {
+                            snprintf(details, sizeof(details), "%u \xC3\x97 %u \xC3\x97 %u  %s", block->width, block->height, block->depth, block->format);
+                        }
+                        else
+                        {
+                            snprintf(details, sizeof(details), "%u \xC3\x97 %u  %s", block->width, block->height, block->format);
+                        }
+                        ImGui::TextColored(ImGui::Style::color_text_muted, "%s", details);
+                        if (block->mip_count > 1)
+                        {
+                            ImGui::SameLine();
+                            ImGui::TextColored(ImGui::Style::color_text_faint, "%u mips", block->mip_count);
+                        }
                     }
                     else if (block->path[0])
                     {
-                        ImGui::TextUnformatted(block->path);
+                        ImGui::TextColored(ImGui::Style::color_text_muted, "%s", block->path);
                     }
                 }
             }
             ImGui::EndTable();
         }
+        ImGui::EditorUi::pop_table_style();
     }
     else
     {
@@ -1096,139 +1105,87 @@ void MemoryViewer::OnTickVisible()
         const float process_mb   = Allocator::GetMemoryProcessUsedMb();
         const float available_mb = Allocator::GetMemoryAvailableMb();
         const float total_mb     = Allocator::GetMemoryTotalMb();
+        const double mb          = 1024.0 * 1024.0;
 
-        ImGui::Text("engine %.0f MB", allocated_mb);
-        ImGui::SameLine();
-        ImGui::Text("process %.0f MB", process_mb);
-        ImGui::SameLine();
-        ImGui::Text("system %.0f / %.0f MB", total_mb - available_mb, total_mb);
-        ImGui::TextDisabled("cpu heap layout is owned by the crt, squares show composition not holes");
+        stat_strip("##cpu_stats", {
+            { format::bytes(allocated_mb * mb), "Engine", ImGui::Style::color_accent_1 },
+            { format::bytes(process_mb * mb), "Process" },
+            { format::bytes((total_mb - available_mb) * mb), "System in use" },
+            { format::bytes(total_mb * mb), "Installed" }
+        });
+        ImGui::SetItemTooltip("Engine is what the engine allocator tracks per tag, process is everything this process holds, including drivers and libraries.");
 
-        ImGui::Dummy(ImVec2(0.0f, 4.0f * Window::GetDpiScale()));
-
-        struct ram_slice
-        {
-            const char* name;
-            ImU32 color;
-            float mb;
-        };
-
-        vector<ram_slice> slices;
+        // the heap layout belongs to the c runtime, so there are no holes to show, only what the memory is for,
+        // a bar says that faster than a field of squares
+        vector<Segment> segments;
         for (uint8_t i = 0; i < static_cast<uint8_t>(MemoryTag::Count); i++)
         {
             const MemoryTag tag = static_cast<MemoryTag>(i);
-            const float mb = Allocator::GetMemoryAllocatedByTagMb(tag);
-            if (mb <= 0.05f)
+            const float tag_mb  = Allocator::GetMemoryAllocatedByTagMb(tag);
+            if (tag_mb > 0.05f)
             {
-                continue;
-            }
-            slices.push_back({ Allocator::GetTagName(tag), tag_color(tag), mb });
-        }
-
-        const float other_mb = max(0.0f, process_mb - allocated_mb);
-        if (other_mb > 0.05f)
-        {
-            slices.push_back({ "Process", IM_COL32(90, 96, 110, 255), other_mb });
-        }
-        if (available_mb > 0.05f)
-        {
-            slices.push_back({ "Free", color_unused, available_mb });
-        }
-
-        float slice_total = 0.0f;
-        for (const ram_slice& slice : slices)
-        {
-            slice_total += slice.mb;
-        }
-
-        const float dpi     = Window::GetDpiScale();
-        const float cell    = 10.0f * dpi;
-        const float gap     = 1.0f * dpi;
-        const float avail_x = ImGui::GetContentRegionAvail().x;
-        const int columns   = max(8, static_cast<int>(avail_x / (cell + gap)));
-        const int max_rows  = 20;
-        const int max_cells = columns * max_rows;
-        const float mb_per_cell = max(1.0f, slice_total / static_cast<float>(max_cells));
-        const int cell_count = max(1, static_cast<int>((slice_total + mb_per_cell - 0.001f) / mb_per_cell));
-        const int rows = max(1, (cell_count + columns - 1) / columns);
-        const float map_w = columns * (cell + gap) - gap;
-        const float map_h = rows * (cell + gap) - gap;
-
-        ImVec2 origin = ImGui::GetCursorScreenPos();
-        ImGui::InvisibleButton("##ram_map", ImVec2(map_w, map_h));
-        const bool ram_hovered = ImGui::IsItemHovered();
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRectFilled(origin, ImVec2(origin.x + map_w, origin.y + map_h), color_grid, 4.0f * dpi);
-
-        vector<int> cell_owner(cell_count, -1);
-        int cursor = 0;
-        for (int slice_index = 0; slice_index < static_cast<int>(slices.size()); slice_index++)
-        {
-            int count = max(1, static_cast<int>(round(slices[slice_index].mb / mb_per_cell)));
-            count = min(count, cell_count - cursor);
-            for (int i = 0; i < count && cursor < cell_count; i++)
-            {
-                cell_owner[cursor++] = slice_index;
+                segments.push_back({ Allocator::GetTagName(tag), tag_mb * mb, to_vec4(tag_color(tag)), format::bytes(tag_mb * mb) });
             }
         }
+        const size_t tag_segments = segments.size();
+        const float other_mb      = max(0.0f, process_mb - allocated_mb);
+        segments.push_back({ "Rest of the process", other_mb * mb, ImGui::Style::lerp(ImGui::Style::color_text_faint, ImGui::Style::color_canvas_deep, 0.35f), format::bytes(other_mb * mb) });
+        segments.push_back({ "Free", available_mb * mb, unused_tint(), format::bytes(available_mb * mb) });
 
-        int hover_cell = -1;
-        if (ram_hovered)
+        double total = 0.0;
+        for (const Segment& segment : segments)
         {
-            ImVec2 mouse = ImGui::GetMousePos();
-            int col = static_cast<int>((mouse.x - origin.x) / (cell + gap));
-            int row = static_cast<int>((mouse.y - origin.y) / (cell + gap));
-            if (col >= 0 && col < columns && row >= 0 && row < rows)
-            {
-                hover_cell = row * columns + col;
-            }
+            total += segment.value;
         }
 
-        for (int i = 0; i < cell_count; i++)
-        {
-            const int col = i % columns;
-            const int row = i / columns;
-            ImVec2 p0(origin.x + col * (cell + gap), origin.y + row * (cell + gap));
-            ImVec2 p1(p0.x + cell, p0.y + cell);
-            ImU32 color = color_unused;
-            if (cell_owner[i] >= 0)
-            {
-                color = slices[cell_owner[i]].color;
-            }
-            if (i == hover_cell)
-            {
-                color = IM_COL32(
-                    min(255, (int)((color >> 0) & 255) + 40),
-                    min(255, (int)((color >> 8) & 255) + 40),
-                    min(255, (int)((color >> 16) & 255) + 40),
-                    255
-                );
-            }
-            draw_list->AddRectFilled(p0, p1, color, 1.5f * dpi);
-        }
+        ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(4.0f)));
+        const int hovered_segment = stacked_bar("##ram_composition", segments, total, ImGui::EditorUi::scaled(14.0f));
+        ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(2.0f)));
+        legend(segments, hovered_segment);
 
-        if (hover_cell >= 0 && hover_cell < cell_count && cell_owner[hover_cell] >= 0)
+        // the engine's own tags, largest first, each against the largest so the ranking is visible
+        ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(6.0f)));
+        ImGui::EditorUi::section_rule("Engine allocations by tag");
+        vector<Segment> tags(segments.begin(), segments.begin() + tag_segments);
+        sort(tags.begin(), tags.end(), [](const Segment& a, const Segment& b)
         {
-            const ram_slice& slice = slices[cell_owner[hover_cell]];
-            ImGui::BeginTooltip();
-            ImGui::Text("%s  %.1f MB", slice.name, slice.mb);
-            ImGui::EndTooltip();
-        }
+            return a.value > b.value;
+        });
+        const double largest_tag = tags.empty() ? 0.0 : tags.front().value;
+        const float dpi          = Window::GetDpiScale();
 
-        ImGui::Separator();
-        int legend_on_line = 0;
-        for (const ram_slice& slice : slices)
+        if (tags.empty())
         {
-            if (legend_on_line > 0)
+            layout::caption("The engine allocator has not tagged anything yet.");
+        }
+        else
+        {
+            ImGui::EditorUi::push_table_style();
+            if (ImGui::BeginTable("##cpu_tags", 3, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg))
             {
-                ImGui::SameLine();
+                ImGui::TableSetupColumn("Tag", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, 220.0f * dpi);
+                ImGui::TableSetupColumn("Share of engine", ImGuiTableColumnFlags_WidthFixed, 130.0f * dpi);
+                ImGui::TableHeadersRow();
+                for (const Segment& tag : tags)
+                {
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    const ImVec2 pos   = ImGui::GetCursorScreenPos();
+                    const float radius = ImGui::EditorUi::scaled(3.0f);
+                    ImGui::GetWindowDrawList()->AddCircleFilled(ImVec2(pos.x + radius + 1.0f, pos.y + ImGui::GetTextLineHeight() * 0.5f), radius, ImGui::EditorUi::color(tag.tint));
+                    ImGui::SetCursorScreenPos(ImVec2(pos.x + radius * 2.0f + ImGui::EditorUi::scaled(6.0f), pos.y));
+                    ImGui::TextUnformatted(tag.label.c_str());
+                    ImGui::TableNextColumn();
+                    cell_bar(tag.detail.c_str(), static_cast<float>(tag.value / largest_tag), tag.tint);
+                    ImGui::TableNextColumn();
+                    char share[32];
+                    snprintf(share, sizeof(share), "%.1f%%", allocated_mb > 0.0f ? tag.value / (allocated_mb * mb) * 100.0 : 0.0);
+                    text_right(share, ImGui::Style::color_text_muted);
+                }
+                ImGui::EndTable();
             }
-            draw_legend_swatch(slice.color, slice.name, static_cast<uint64_t>(slice.mb * 1024.0f * 1024.0f));
-            legend_on_line++;
-            if (legend_on_line >= 4)
-            {
-                legend_on_line = 0;
-            }
+            ImGui::EditorUi::pop_table_style();
         }
     }
 }

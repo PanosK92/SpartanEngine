@@ -690,13 +690,10 @@ namespace spartan
             // this runs after packing so the raw data has already been read for channel packing
             if (texture_color && !texture_color->IsCompressedFormat())
             {
+                // the importer flagged transparent pixels and the texture's own gpu prep checks them again, scanning the pixels here
+                // would race with another material that shares this texture and is already compressing it on another thread
                 texture_color->SetFlag(RHI_Texture_Compress);
-                const bool has_alpha = texture_color->HasAlphaPixels();
-                texture_color->SetCompressionFormat(has_alpha ? RHI_Format::BC3_Unorm : RHI_Format::BC7_Unorm);
-                if (has_alpha)
-                {
-                    texture_color->SetFlag(RHI_Texture_Transparent, true);
-                }
+                texture_color->SetCompressionFormat(texture_color->IsSemiTransparent() ? RHI_Format::BC3_Unorm : RHI_Format::BC7_Unorm);
             }
 
             if (texture_normal && !texture_normal->IsCompressedFormat())

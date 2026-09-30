@@ -44,6 +44,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../car/AiDriver.h"
 #include "../car/Car.h"
 #include "../car/CarSimulation.h"
+#include "../car/CarEngineSoundSynthesis.h"
 #include "../car/RacingLine.h"
 #include "../world/components/RaceDriver.h"
 #include "../car/CarState.h"
@@ -761,9 +762,7 @@ namespace spartan
         {
             static const std::set<std::string> blocked_cvars =
             {
-                "r.resolution_scale",
-                "r.hdr",
-                "r.antialiasing_upsampling"
+                "r.hdr"
             };
 
             return blocked_cvars.contains(name);
@@ -4994,12 +4993,56 @@ namespace spartan
                 changed = true;
             }
 
+            // "key=value,key=value" on a code prefab (e.g. a car's paint_color_r or camera_follows), the prefab is rebuilt with them on the next world load
+            bool prefab_changed = false;
+            if (const std::optional<std::string> prefab_attributes = get_argument(request, "prefab_attributes"))
+            {
+                if (entity->GetPrefabType().empty())
+                {
+                    return json_error("entity is not a code prefab");
+                }
+                auto trim = [](const std::string& value)
+                {
+                    const size_t first = value.find_first_not_of(" \t");
+                    const size_t last  = value.find_last_not_of(" \t");
+                    return first == std::string::npos ? std::string() : value.substr(first, last - first + 1);
+                };
+                std::unordered_map<std::string, std::string> attributes = entity->GetPrefabAttributes();
+                std::stringstream stream(*prefab_attributes);
+                std::string pair;
+                while (std::getline(stream, pair, ','))
+                {
+                    const size_t equals = pair.find('=');
+                    const std::string key = equals == std::string::npos ? "" : trim(pair.substr(0, equals));
+                    if (key.empty() || key == "type" || key == "file")
+                    {
+                        return json_error("prefab_attributes expects key=value pairs separated by commas, type and file cannot change");
+                    }
+                    attributes[key] = trim(pair.substr(equals + 1));
+                }
+                entity->SetPrefabData(entity->GetPrefabType(), attributes);
+                changed        = true;
+                prefab_changed = true;
+            }
+
             if (!changed)
             {
                 return json_error("no entity values provided");
             }
 
-            return "{\"ok\":true,\"entity\":" + entity_to_json_compact(entity) + "}";
+            std::string json = "{\"ok\":true,\"entity\":" + entity_to_json_compact(entity);
+            if (prefab_changed)
+            {
+                json += ",\"prefab_attributes\":{";
+                bool first = true;
+                for (const auto& [key, value] : std::map<std::string, std::string>(entity->GetPrefabAttributes().begin(), entity->GetPrefabAttributes().end()))
+                {
+                    json += (first ? "" : ",") + json_string(key) + ":" + json_string(value);
+                    first = false;
+                }
+                json += "},\"note\":\"prefab attributes apply when the world is saved and loaded again\"";
+            }
+            return json + "}";
         }
 
         std::string command_entity_delete(const McpRequest& request)
@@ -8054,6 +8097,84 @@ namespace spartan
             }
 
             return car_status_json(car);
+        }
+
+        // records what the procedural engine sound actually plays, with its control track, for tools/engine_sound/analyze.py
+        std::string command_engine_sound_capture(const McpRequest& request)
+        {
+            engine_sound::synthesizer& synth = engine_sound::get_synthesizer();
+            if (!synth.is_initialized())
+            {
+                return json_error("engine sound is not running, enter or spectate a car first");
+            }
+
+            const std::string action = get_argument(request, "action").value_or("status");
+            std::string saved_path;
+            if (action == "start")
+            {
+                float seconds = 10.0f;
+                if (const auto value = get_argument(request, "seconds"))
+                {
+                    if (!parse_float(*value, seconds))
+                    {
+                        return json_error("invalid seconds");
+                    }
+                }
+                if (!synth.begin_dump(seconds))
+                {
+                    return json_error("a capture is running or waiting to be saved, or seconds is outside 0-120");
+                }
+            }
+            else if (action == "save")
+            {
+                if (!synth.dump_ready())
+                {
+                    return json_error("no finished capture to save");
+                }
+                std::filesystem::path path = get_argument(request, "path").value_or("engine_sound_capture.wav");
+                path = std::filesystem::absolute(path);
+                if (path.has_parent_path())
+                {
+                    std::error_code ignored;
+                    std::filesystem::create_directories(path.parent_path(), ignored);
+                }
+                if (!synth.save_dump(path.string().c_str()))
+                {
+                    return json_error("failed to write " + path.string());
+                }
+                const engine_sound::engine_config& cfg = synth.get_config();
+                std::filesystem::path meta_path = path;
+                meta_path.replace_extension(".json");
+                std::ofstream meta(meta_path);
+                meta << "{\"car\":" << json_string(get_argument(request, "label").value_or("in-game capture"))
+                     << ",\"scenario\":\"capture\",\"sample_rate\":" << synth.get_output_sample_rate()
+                     << ",\"cylinders\":" << cfg.cylinder_count << ",\"banks\":" << cfg.bank_count
+                     << ",\"idle_rpm\":" << cfg.idle_rpm << ",\"redline_rpm\":" << cfg.redline_rpm
+                     << ",\"muffler_level\":" << cfg.muffler_level << ",\"turbo\":" << (cfg.turbo_enabled ? "true" : "false") << "}\n";
+                saved_path = path.string();
+            }
+            else if (action != "status")
+            {
+                return json_error("action must be status, start or save");
+            }
+
+            const engine_sound::debug_data debug = synth.get_debug();
+            const float sample_rate = static_cast<float>(std::max(synth.get_output_sample_rate(), 1));
+            std::string json = "{\"ok\":true";
+            json += ",\"capturing\":" + json_bool(debug.dump_progress < debug.dump_total && !synth.dump_ready());
+            json += ",\"ready\":" + json_bool(synth.dump_ready());
+            json += ",\"sample_rate\":" + std::to_string(synth.get_output_sample_rate());
+            json += ",\"progress_seconds\":" + std::to_string(debug.dump_progress / sample_rate);
+            json += ",\"total_seconds\":" + std::to_string(debug.dump_total / sample_rate);
+            json += ",\"rpm\":" + std::to_string(debug.rpm);
+            json += ",\"load\":" + std::to_string(debug.load);
+            json += ",\"output_level\":" + std::to_string(debug.output_level);
+            if (!saved_path.empty())
+            {
+                json += ",\"path\":" + json_string(saved_path);
+            }
+            json += "}";
+            return json;
         }
 
         std::string command_vehicle_export_hull(const McpRequest& request)
@@ -12085,6 +12206,7 @@ namespace spartan
             { "vehicle_set_view",              command_vehicle_set_view },
             { "vehicle_telemetry",             command_vehicle_telemetry },
             { "vehicle_export_hull",           command_vehicle_export_hull },
+            { "engine_sound_capture",          command_engine_sound_capture },
             { "prefab_types",                  [](const McpRequest&) { return command_prefab_types(); } },
             { "entity_make_game_ready",        command_entity_make_game_ready },
             { "prefab_save",                   command_prefab_save },

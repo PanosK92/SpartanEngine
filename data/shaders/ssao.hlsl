@@ -294,9 +294,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float  accum    = 1.0f;
 
     float3 world_pos   = get_position(origin_uv);
-    float2 velocity_uv = get_velocity_uv(pos) * float2(0.5f, -0.5f);
-    float2 uv_prev     = origin_uv - velocity_uv;
-    float  motion_px   = length(velocity_uv * resolution_out);
+    // velocity is a screen uv delta, origin_uv and the history live in the scaled render subrect
+    float2 uv_scale      = get_render_uv_scale();
+    float2 resolution_px = get_render_resolution_active();
+    float2 velocity_uv   = get_velocity_uv(pos) * float2(0.5f, -0.5f);
+    float2 uv_prev       = origin_uv - velocity_uv * uv_scale;
+    float  motion_px     = length(velocity_uv * resolution_px);
 
     // plus of radius 2, same wake reject without a 5x5 velocity fetch
     static const int2 wake_taps[8] =
@@ -309,12 +312,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     for (int t = 0; t < 8; t++)
     {
         int2 p = int2(pos) + wake_taps[t];
-        if (any(p < 0) || any(p >= int2(resolution_out)))
+        if (any(p < 0) || any(p >= int2(resolution_px)))
         {
             continue;
         }
         float2 v = get_velocity_uv(uint2(p)) * float2(0.5f, -0.5f);
-        neighbor_motion_px = max(neighbor_motion_px, length(v * resolution_out));
+        neighbor_motion_px = max(neighbor_motion_px, length(v * resolution_px));
     }
     bool in_wake = neighbor_motion_px > g_wake_motion_px
         && (neighbor_motion_px - motion_px) > g_wake_delta_px;
@@ -324,7 +327,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         && !in_wake
         && motion_px < g_motion_reject_px
         && all(uv_prev > inset)
-        && all(uv_prev < 1.0f - inset);
+        && all(uv_prev < uv_scale - inset);
 
     if (history_valid)
     {
@@ -333,7 +336,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float4 prev_clip = mul(float4(world_pos, 1.0f), get_view_projection_previous());
         float  prev_w    = max(prev_clip.w, 1e-9f);
         float3 prev_ndc  = prev_clip.xyz / prev_w;
-        float2 expected_uv = prev_ndc.xy * float2(0.5f, -0.5f) + 0.5f;
+        float2 expected_uv = screen_uv_to_render_uv(prev_ndc.xy * float2(0.5f, -0.5f) + 0.5f);
         float  reproj_dist = length((uv_prev - expected_uv) * resolution_out);
 
         float prev_depth_raw    = tex2.SampleLevel(samplers[sampler_point_clamp], uv_prev, 0).r;

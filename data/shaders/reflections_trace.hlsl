@@ -110,7 +110,7 @@ void ray_gen()
 
     // the pixel's cone leaves the surface as wide as the pixel, and spreads by the pixel angle plus
     // the lobe width, textures at the hit are prefiltered to what the denoised lobe resolves anyway
-    float pixel_angle = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / max(buffer_frame.resolution_render.x, 1.0f);
+    float pixel_angle = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / get_render_resolution_active().x;
     float2 cone       = float2(camera_distance * pixel_angle, pixel_angle + alpha);
 
     HitPayload hit_record;

@@ -26,9 +26,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= resolution_out))
         return;
 
-    const float2 pos = (thread_id.xy + 0.5f) / resolution_out;
-    FxaaTex fxaa_tex = { samplers[sampler_bilinear_clamp], tex };
-    float2 texl_size = 1.0f / resolution_out;
+    // tex is the render resolution frame and tex_uav the output, fxaa runs on render texels inside the
+    // scaled subrect and the output pixel picks its spot in it, so this pass is also the linear upscale
+    float2 resolution_in;
+    tex.GetDimensions(resolution_in.x, resolution_in.y);
+    const float2 texl_size = 1.0f / resolution_in;
+    const float2 uv_scale  = get_render_uv_scale();
+    const float2 pos       = min((thread_id.xy + 0.5f) / resolution_out * uv_scale, uv_scale - texl_size * 0.5f);
+    FxaaTex fxaa_tex       = { samplers[sampler_bilinear_clamp], tex };
 
     float3 color = FxaaPixelShader
     (
@@ -40,5 +45,5 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         0, 0, 0, 0
     ).rgb;
 
-    tex_uav[thread_id.xy] = float4(color, tex[thread_id.xy].a);
+    tex_uav[thread_id.xy] = float4(color, tex.SampleLevel(samplers[sampler_point_clamp], pos, 0).a);
 }

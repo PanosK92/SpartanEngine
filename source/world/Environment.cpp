@@ -107,6 +107,18 @@ namespace spartan
         auto next = settings; next.utc_days = event_time.ut; SetSettings(next);
         return true;
     }
+    float Environment::GetSunAltitude(double utc_days)
+    {
+        std::lock_guard lock(environment_mutex);
+        auto time     = Astronomy_TimeFromDays(utc_days);
+        auto observer = Astronomy_MakeObserver(settings.latitude, settings.longitude, settings.elevation);
+        auto sun      = Astronomy_Equator(BODY_SUN, &time, observer, EQUATOR_OF_DATE, ABERRATION);
+        if (sun.status != ASTRO_SUCCESS)
+        {
+            return 0.0f;
+        }
+        return float(Astronomy_Horizon(&time, observer, sun.ra, sun.dec, REFRACTION_NORMAL).altitude);
+    }
     EnvironmentState Environment::Evaluate(bool real_time, float clouds, float wind_speed)
     {
         std::lock_guard lock(environment_mutex);

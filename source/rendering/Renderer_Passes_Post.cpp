@@ -554,8 +554,6 @@ namespace spartan
             else if (method == Renderer_AntiAliasing_Upsampling::AA_Fxaa_Upscale_Linear)
             {
                 Pass_Compute("fxaa", Renderer_Shader::fxaa_c, tex_in, tex_out);
-                Pass_Compute("fxaa", Renderer_Shader::fxaa_c, tex_out, tex_in);
-                RHI_CommandList::Blit(tex_in, tex_out, false, resolution_scale);
             }
             else
             {
@@ -1183,7 +1181,7 @@ namespace spartan
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_grid, GetBuffer(Renderer_Buffer::ClusterLightGrid));
                 RHI_CommandList::SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
-                RHI_CommandList::Dispatch(tex_render);
+                RHI_CommandList::Dispatch(tex_render, GetResolutionScale());
             }
             RHI_CommandList::EndPass();
 

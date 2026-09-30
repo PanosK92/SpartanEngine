@@ -37,5 +37,7 @@ namespace spartan
         static void Tick(double seconds);
         static bool SetSolarEvent(SolarEvent event);
         static EnvironmentState Evaluate(bool real_time, float clouds, float wind_speed);
+        // sun altitude in degrees above the horizon at the given utc days, for the current location
+        static float GetSunAltitude(double utc_days);
     };
 }

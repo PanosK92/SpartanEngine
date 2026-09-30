@@ -140,6 +140,7 @@ namespace engine_sound
         void reset();
 
         bool is_initialized() const;
+        int get_output_sample_rate() const;
         const engine_config& get_config() const;
         debug_data get_debug() const;
         bool begin_dump(float seconds);

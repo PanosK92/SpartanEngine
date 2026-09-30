@@ -3572,6 +3572,19 @@ namespace car
                 return;
             }
 
+            // a dual clutch or planetary automatic hands torque from one clutch to the other between forward
+            // gears, the oncoming input shaft already turns with the wheels and the driveshaft stays wound
+            power_shift = !spec.manual_transmission && current_gear >= 2 && gear >= 2;
+            if (power_shift)
+            {
+                const float ig         = PxMax(spec.driveline_inertia, 0.001f);
+                const float old_speed  = gearbox_input_angular_velocity;
+                gearbox_input_angular_velocity *= spec.gear_ratios[gear] / spec.gear_ratios[current_gear];
+                gearbox_loss_j += fabsf(0.5f * ig * (old_speed * old_speed - gearbox_input_angular_velocity * gearbox_input_angular_velocity));
+                current_gear = gear;
+                return;
+            }
+
             // The disconnected gearbox rotor keeps its angular momentum.
             // Synchronization is resolved by the shaft/clutch model on engagement.
             gearbox_loss_j += 0.5f * spec.driveshaft_stiffness * driveshaft_twist * driveshaft_twist;
@@ -3868,7 +3881,7 @@ namespace car
             net_sum += combustion + idle_torque - losses;
             engine_speed = PxMax(0.0f, engine_speed + h * (combustion + idle_torque + starter - losses) / ie);
             combustion_sum += combustion + idle_torque;
-            bool connected = fabsf(ratio) > 0.001f && !is_shifting;
+            bool connected = fabsf(ratio) > 0.001f && (!is_shifting || power_shift);
             // Launch/anti-stall clutch controller modulates capacity, not RPM.
             float launch = PxClamp((engine_speed - spec.engine_stall_rpm * PxTwoPi / 60) / PxMax(idle * 0.6f, 1.0f), 0.0f, 1.0f);
             float capacity = connected ? spec.clutch_max_torque * clutch * launch : 0;
@@ -4072,7 +4085,7 @@ namespace car
                 downshift_blip_timer = PxMax(downshift_blip_timer - dt, 0.0f);
             }
 
-            if (is_shifting)
+            if (is_shifting && !power_shift)
             {
                 clutch = 0.0f;
             }
@@ -5091,6 +5104,7 @@ namespace car
             current_gear = (spec.gear_count > 2) ? 2 : 1;
             shift_timer = 0.0f;
             is_shifting = false;
+            power_shift = false;
             clutch = 0.0f;
             shift_cooldown = 0.0f;
             last_shift_direction = 0;

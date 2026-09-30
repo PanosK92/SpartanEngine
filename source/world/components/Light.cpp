@@ -621,6 +621,31 @@ namespace spartan
         }
     }
 
+    float Light::GetRangeSensible() const
+    {
+        return get_sensible_range(m_light_type, m_intensity_photometric, m_angle_rad);
+    }
+
+    float Light::GetIlluminanceAt(const float distance) const
+    {
+        const float flux        = max(m_intensity_photometric, 0.0f);
+        const float distance_sq = max(distance * distance, 0.0001f);
+        if (m_light_type == LightType::Point)
+        {
+            return flux / (4.0f * pi * distance_sq);
+        }
+        else if (m_light_type == LightType::Spot)
+        {
+            return flux / lighting::lighting_spot_solid_angle(m_angle_rad) / distance_sq;
+        }
+        else if (m_light_type == LightType::Area)
+        {
+            return flux / (pi * distance_sq);
+        }
+
+        return m_intensity_photometric;
+    }
+
     LightIntensityUnit Light::GetIntensityUnit() const
     {
         return m_light_type == LightType::Directional ? LightIntensityUnit::Lux : LightIntensityUnit::Lumens;

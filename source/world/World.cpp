@@ -42,6 +42,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "components/Physics.h"
 #include "components/Traffic.h"
 #include "components/RaceDriver.h"
+#include "components/RouteDriver.h"
 #include "components/Pedestrians.h"
 #include "components/Navigation.h"
 #include "components/Script.h"
@@ -453,6 +454,7 @@ namespace spartan
             }
             return entity->GetComponent<Traffic>()
                 || entity->GetComponent<RaceDriver>()
+                || entity->GetComponent<RouteDriver>()
                 || entity->GetComponent<Pedestrians>()
                 || entity->GetComponent<Navigation>()
                 || entity->GetComponent<CarReset>()
@@ -1488,6 +1490,7 @@ namespace spartan
         {
             vector<Traffic*> traffics;
             vector<Pedestrians*> pedestrians;
+            vector<RaceDriver*> race_drivers;
             {
                 lock_guard<mutex> lock(entity_access_mutex);
                 for (Entity* entity : entities)
@@ -1501,6 +1504,10 @@ namespace spartan
                         if (Pedestrians* peds = entity->GetComponent<Pedestrians>())
                         {
                             pedestrians.push_back(peds);
+                        }
+                        if (RaceDriver* race_driver = entity->GetComponent<RaceDriver>())
+                        {
+                            race_drivers.push_back(race_driver);
                         }
                     }
                 }
@@ -1516,6 +1523,10 @@ namespace spartan
                         {
                             pedestrians.push_back(peds);
                         }
+                        if (RaceDriver* race_driver = entity->GetComponent<RaceDriver>())
+                        {
+                            race_drivers.push_back(race_driver);
+                        }
                     }
                 }
             }
@@ -1527,6 +1538,11 @@ namespace spartan
             for (Pedestrians* peds : pedestrians)
             {
                 peds->Stop();
+            }
+            // same for the race car, ~RaceDriver runs under the mutex and cannot remove the car it spawned
+            for (RaceDriver* race_driver : race_drivers)
+            {
+                race_driver->Stop();
             }
         }
 

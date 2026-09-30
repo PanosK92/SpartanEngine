@@ -396,7 +396,7 @@ float shape_ocean_foam(float coverage, float2 grid_xz, float footprint)
 
 float ocean_foam_footprint(float view_distance)
 {
-    return 2.0f * view_distance / max(abs(buffer_frame.projection[1][1]) * buffer_frame.resolution_render.y, 1.0f);
+    return 2.0f * view_distance / max(abs(buffer_frame.projection[1][1]) * floor(buffer_frame.resolution_render.y * buffer_frame.resolution_scale), 1.0f);
 }
 
 // Residual whitewater survives in troughs; only production depends on compression.
@@ -655,6 +655,18 @@ float2 get_render_uv_scale()
 float2 render_uv_to_screen_uv(float2 uv)
 {
     return uv / get_render_uv_scale();
+}
+
+float2 screen_uv_to_render_uv(float2 uv)
+{
+    return uv * get_render_uv_scale();
+}
+
+// render targets keep their full size, resolution scale only fills the top left get_render_uv_scale() of them
+bool is_valid_render_uv(float2 uv)
+{
+    float2 uv_max = get_render_uv_scale();
+    return uv.x >= 0.0f && uv.y >= 0.0f && uv.x <= uv_max.x && uv.y <= uv_max.y;
 }
 
 // rotate uv in 90 degree increments: 0 = 0, 1 = 90, 2 = 180, 3 = 270

@@ -61,6 +61,10 @@ namespace spartan
             const Cb_Frame* cb_frame,
             uint32_t width,
             uint32_t height,
+            uint32_t rect_width,
+            uint32_t rect_height,
+            uint32_t rect_width_prev,
+            uint32_t rect_height_prev,
             bool reset_history,
             Nrd_Preset preset
         )
@@ -92,19 +96,21 @@ namespace spartan
                 return (std::max)(-0.5f, (std::min)(value, 0.5f));
             };
 
-            settings.cameraJitter[0]     = clamp_nrd_jitter(-cb_frame->taa_jitter_current.x * 0.5f * width);
-            settings.cameraJitter[1]     = clamp_nrd_jitter(cb_frame->taa_jitter_current.y * 0.5f * height);
-            settings.cameraJitterPrev[0] = clamp_nrd_jitter(-cb_frame->taa_jitter_previous.x * 0.5f * width);
-            settings.cameraJitterPrev[1] = clamp_nrd_jitter(cb_frame->taa_jitter_previous.y * 0.5f * height);
+            settings.cameraJitter[0]     = clamp_nrd_jitter(-cb_frame->taa_jitter_current.x * 0.5f * rect_width);
+            settings.cameraJitter[1]     = clamp_nrd_jitter(cb_frame->taa_jitter_current.y * 0.5f * rect_height);
+            settings.cameraJitterPrev[0] = clamp_nrd_jitter(-cb_frame->taa_jitter_previous.x * 0.5f * rect_width_prev);
+            settings.cameraJitterPrev[1] = clamp_nrd_jitter(cb_frame->taa_jitter_previous.y * 0.5f * rect_height_prev);
 
+            // the textures stay full size and resolution scale renders into their top left corner, nrd reconstructs
+            // positions and reprojects over the rect, so it has to be the scaled area the image actually covers
             settings.resourceSize[0]     = static_cast<uint16_t>(width);
             settings.resourceSize[1]     = static_cast<uint16_t>(height);
             settings.resourceSizePrev[0] = static_cast<uint16_t>(width);
             settings.resourceSizePrev[1] = static_cast<uint16_t>(height);
-            settings.rectSize[0]         = static_cast<uint16_t>(width);
-            settings.rectSize[1]         = static_cast<uint16_t>(height);
-            settings.rectSizePrev[0]     = static_cast<uint16_t>(width);
-            settings.rectSizePrev[1]     = static_cast<uint16_t>(height);
+            settings.rectSize[0]         = static_cast<uint16_t>(rect_width);
+            settings.rectSize[1]         = static_cast<uint16_t>(rect_height);
+            settings.rectSizePrev[0]     = static_cast<uint16_t>(rect_width_prev);
+            settings.rectSizePrev[1]     = static_cast<uint16_t>(rect_height_prev);
 
             settings.timeDeltaBetweenFrames     = cb_frame->delta_time * 1000.0f;
             settings.denoisingRange             = (std::max)(cb_frame->camera_far * 0.99f, 1.0f);
@@ -223,6 +229,19 @@ namespace spartan
             *x =  2.0f * pixel_x / static_cast<float>((std::max)(1u, resolution_render_width));
             *y = -2.0f * pixel_y / static_cast<float>((std::max)(1u, resolution_render_height));
         }
+
+        // smallest scale whose truncated render size (Renderer::GetScaledDimension) still reaches min_width x min_height
+        float get_resolution_scale_min(uint32_t min_width, uint32_t min_height, uint32_t render_width, uint32_t render_height)
+        {
+            if (render_width == 0 || render_height == 0)
+            {
+                return 0.0f;
+            }
+
+            const float scale_x = (static_cast<float>(min_width) + 0.5f) / static_cast<float>(render_width);
+            const float scale_y = (static_cast<float>(min_height) + 0.5f) / static_cast<float>(render_height);
+            return (std::max)(scale_x, scale_y);
+        }
     }
 
     namespace intel
@@ -254,8 +273,8 @@ namespace spartan
                 { XESS_QUALITY_SETTING_AA,                 1.0f  }
             };
 
-            quality              = XESS_QUALITY_SETTING_BALANCED;
-            float min_difference = numeric_limits<float>::max();
+            xess_quality_settings_t closest = XESS_QUALITY_SETTING_BALANCED;
+            float min_difference            = numeric_limits<float>::max();
 
             for (const auto& setting : quality_settings)
             {
@@ -263,11 +282,64 @@ namespace spartan
                 if (difference < min_difference)
                 {
                     min_difference = difference;
-                    quality        = setting.quality;
+                    closest        = setting.quality;
                 }
             }
 
-            return quality;
+            return closest;
+        }
+
+        // input range xess accepts for a render and output size, the scaled render size has to stay inside it
+        struct input_range_t
+        {
+            uint32_t render_width  = 0;
+            uint32_t render_height = 0;
+            uint32_t output_width  = 0;
+            uint32_t output_height = 0;
+            bool queried           = false;
+            bool valid             = false;
+            uint32_t min_width     = 0;
+            uint32_t min_height    = 0;
+        };
+        input_range_t input_range;
+
+        const input_range_t& query_input_range(uint32_t render_width, uint32_t render_height, uint32_t output_width, uint32_t output_height)
+        {
+            if (input_range.queried &&
+                input_range.render_width == render_width && input_range.render_height == render_height &&
+                input_range.output_width == output_width && input_range.output_height == output_height)
+            {
+                return input_range;
+            }
+
+            input_range = {};
+            if (!context || render_width == 0 || render_height == 0 || output_width == 0 || output_height == 0)
+            {
+                return input_range;
+            }
+
+            input_range.queried       = true;
+            input_range.render_width  = render_width;
+            input_range.render_height = render_height;
+            input_range.output_width  = output_width;
+            input_range.output_height = output_height;
+
+            const float scale_factor = static_cast<float>(render_width * render_height) / static_cast<float>(output_width * output_height);
+            const xess_2d_t output   = { output_width, output_height };
+            xess_2d_t optimal        = {};
+            xess_2d_t minimum        = {};
+            xess_2d_t maximum        = {};
+            if (xessGetOptimalInputResolution(context, &output, get_quality(scale_factor), &optimal, &minimum, &maximum) != XESS_RESULT_SUCCESS)
+            {
+                SP_LOG_WARNING("XeSS input resolution query failed for output %ux%u", output_width, output_height);
+                return input_range;
+            }
+
+            input_range.valid      = true;
+            input_range.min_width  = minimum.x;
+            input_range.min_height = minimum.y;
+            SP_LOG_INFO("XeSS output %ux%u: input range [%u,%u]x[%u,%u]", output_width, output_height, minimum.x, maximum.x, minimum.y, maximum.y);
+            return input_range;
         }
 
         void context_destroy()
@@ -305,7 +377,8 @@ namespace spartan
             intel::params_init                      = {};
             intel::params_init.outputResolution.x   = common::resolution_output_width;
             intel::params_init.outputResolution.y   = common::resolution_output_height;
-            intel::params_init.qualitySetting       = intel::get_quality(scale_factor);
+            intel::quality                          = intel::get_quality(scale_factor);
+            intel::params_init.qualitySetting       = intel::quality;
             // xess computes its own exposure, feeding it the tonemapper's value would lag its training assumptions
             intel::params_init.initFlags            = XESS_INIT_FLAG_USE_NDC_VELOCITY | XESS_INIT_FLAG_INVERTED_DEPTH | XESS_INIT_FLAG_ENABLE_AUTOEXPOSURE | XESS_INIT_FLAG_RESPONSIVE_PIXEL_MASK;
             intel::params_init.creationNodeMask     = 0;
@@ -368,39 +441,6 @@ namespace spartan
         wstring data_path;
         const wchar_t* dll_dir                = nullptr;
         NVSDK_NGX_PerfQuality_Value quality   = NVSDK_NGX_PerfQuality_Value_Balanced;
-
-        NVSDK_NGX_PerfQuality_Value get_quality(const float scale_factor)
-        {
-            struct QualitySetting
-            {
-                NVSDK_NGX_PerfQuality_Value quality;
-                float scale_factor;
-            };
-
-            const QualitySetting quality_settings[] =
-            {
-                { NVSDK_NGX_PerfQuality_Value_UltraPerformance, 0.11f },
-                { NVSDK_NGX_PerfQuality_Value_MaxPerf,          0.25f },
-                { NVSDK_NGX_PerfQuality_Value_Balanced,         0.34f },
-                { NVSDK_NGX_PerfQuality_Value_MaxQuality,       0.44f },
-                { NVSDK_NGX_PerfQuality_Value_UltraQuality,     0.59f },
-                { NVSDK_NGX_PerfQuality_Value_DLAA,             1.0f  }
-            };
-
-            quality              = NVSDK_NGX_PerfQuality_Value_Balanced;
-            float min_difference = numeric_limits<float>::max();
-            for (const auto& setting : quality_settings)
-            {
-                float difference = abs(scale_factor - setting.scale_factor);
-                if (difference < min_difference)
-                {
-                    min_difference = difference;
-                    quality        = setting.quality;
-                }
-            }
-
-            return quality;
-        }
 
         void feature_destroy()
         {
@@ -493,6 +533,134 @@ namespace spartan
             NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, preset_ultra);
         }
 
+        // ngx reports the render subrect range each quality mode accepts, the feature is created with the full render
+        // size and every frame's subrect (render * resolution scale) has to stay inside the range of its mode
+        struct mode_range_t
+        {
+            NVSDK_NGX_PerfQuality_Value quality = NVSDK_NGX_PerfQuality_Value_Balanced;
+            bool valid                          = false;
+            unsigned int optimal_width          = 0;
+            unsigned int min_width              = 0;
+            unsigned int min_height             = 0;
+            unsigned int max_width              = 0;
+            unsigned int max_height             = 0;
+        };
+
+        const NVSDK_NGX_PerfQuality_Value modes[] =
+        {
+            NVSDK_NGX_PerfQuality_Value_UltraPerformance,
+            NVSDK_NGX_PerfQuality_Value_MaxPerf,
+            NVSDK_NGX_PerfQuality_Value_Balanced,
+            NVSDK_NGX_PerfQuality_Value_MaxQuality,
+            NVSDK_NGX_PerfQuality_Value_UltraQuality,
+            NVSDK_NGX_PerfQuality_Value_DLAA
+        };
+        constexpr uint32_t mode_count = static_cast<uint32_t>(size(modes));
+        mode_range_t mode_ranges[mode_count];
+        uint32_t mode_ranges_output_width  = 0;
+        uint32_t mode_ranges_output_height = 0;
+        mode_range_t feature_mode;
+
+        void query_mode_ranges(uint32_t output_width, uint32_t output_height)
+        {
+            if (sdk_ready && parameters && mode_ranges_output_width == output_width && mode_ranges_output_height == output_height)
+            {
+                return;
+            }
+
+            for (mode_range_t& range : mode_ranges)
+            {
+                range = {};
+            }
+            mode_ranges_output_width  = 0;
+            mode_ranges_output_height = 0;
+            if (!sdk_ready || !parameters || output_width == 0 || output_height == 0)
+            {
+                return;
+            }
+            mode_ranges_output_width  = output_width;
+            mode_ranges_output_height = output_height;
+
+            set_dlss4_presets();
+            for (uint32_t i = 0; i < mode_count; i++)
+            {
+                mode_range_t& range         = mode_ranges[i];
+                range.quality               = modes[i];
+                unsigned int optimal_height = 0;
+                float sharpness             = 0.0f;
+                NVSDK_NGX_Result result = NGX_DLSS_GET_OPTIMAL_SETTINGS(
+                    parameters,
+                    output_width,
+                    output_height,
+                    modes[i],
+                    &range.optimal_width, &optimal_height,
+                    &range.max_width, &range.max_height,
+                    &range.min_width, &range.min_height,
+                    &sharpness
+                );
+                range.valid = NVSDK_NGX_SUCCEED(result) && range.optimal_width != 0 && range.max_width != 0;
+                if (range.valid)
+                {
+                    SP_LOG_INFO(
+                        "DLSS quality %d for output %ux%u: optimal %u, render subrect range [%u,%u]x[%u,%u]",
+                        static_cast<int>(modes[i]),
+                        output_width,
+                        output_height,
+                        range.optimal_width,
+                        range.min_width,
+                        range.max_width,
+                        range.min_height,
+                        range.max_height
+                    );
+                }
+            }
+        }
+
+        bool mode_accepts(const mode_range_t& range, uint32_t width, uint32_t height)
+        {
+            return range.valid && width >= range.min_width && height >= range.min_height && width <= range.max_width && height <= range.max_height;
+        }
+
+        // the mode whose optimal size is closest to the subrect, among the modes that take both the full render size
+        // the feature is created with and the subrect
+        const mode_range_t* select_mode(uint32_t render_width, uint32_t render_height, uint32_t subrect_width, uint32_t subrect_height)
+        {
+            const mode_range_t* selected = nullptr;
+            uint32_t selected_distance   = numeric_limits<uint32_t>::max();
+            for (const mode_range_t& range : mode_ranges)
+            {
+                if (!mode_accepts(range, render_width, render_height) || !mode_accepts(range, subrect_width, subrect_height))
+                {
+                    continue;
+                }
+
+                const uint32_t distance = range.optimal_width > subrect_width ? range.optimal_width - subrect_width : subrect_width - range.optimal_width;
+                if (distance < selected_distance)
+                {
+                    selected          = &range;
+                    selected_distance = distance;
+                }
+            }
+
+            return selected;
+        }
+
+        float get_resolution_scale_min(uint32_t render_width, uint32_t render_height, uint32_t output_width, uint32_t output_height)
+        {
+            query_mode_ranges(output_width, output_height);
+
+            float scale_min = numeric_limits<float>::max();
+            for (const mode_range_t& range : mode_ranges)
+            {
+                if (mode_accepts(range, render_width, render_height))
+                {
+                    scale_min = (std::min)(scale_min, common::get_resolution_scale_min(range.min_width, range.min_height, render_width, render_height));
+                }
+            }
+
+            return scale_min == numeric_limits<float>::max() ? 0.0f : scale_min;
+        }
+
         void feature_create(ID3D12GraphicsCommandList* cmd_list)
         {
             if (!sdk_ready || handle || create_failed || !cmd_list || common::resolution_render_max_width == 0)
@@ -500,67 +668,20 @@ namespace spartan
                 return;
             }
 
-            uint32_t render_area = common::resolution_render_max_width * common::resolution_render_max_height;
-            uint32_t output_area = common::resolution_output_width * common::resolution_output_height;
-            float scale_factor   = static_cast<float>(render_area) / static_cast<float>((std::max)(1u, output_area));
-            quality              = get_quality(scale_factor);
-
-            set_dlss4_presets();
-
-            unsigned int opt_w = 0;
-            unsigned int opt_h = 0;
-            unsigned int max_w = 0;
-            unsigned int max_h = 0;
-            unsigned int min_w = 0;
-            unsigned int min_h = 0;
-            float sharpness    = 0.0f;
-            NVSDK_NGX_Result result = NGX_DLSS_GET_OPTIMAL_SETTINGS(
-                parameters,
-                common::resolution_output_width,
-                common::resolution_output_height,
-                quality,
-                &opt_w, &opt_h, &max_w, &max_h, &min_w, &min_h, &sharpness
-            );
-            if (NVSDK_NGX_FAILED(result))
-            {
-                SP_LOG_WARNING("DLSS optimal settings failed: 0x%x", static_cast<unsigned int>(result));
-                create_failed = true;
-                return;
-            }
-
-            uint32_t in_w = common::resolution_render_max_width;
-            uint32_t in_h = common::resolution_render_max_height;
-            if (in_w < min_w || in_h < min_h)
-            {
-                quality = NVSDK_NGX_PerfQuality_Value_UltraPerformance;
-                result  = NGX_DLSS_GET_OPTIMAL_SETTINGS(
-                    parameters,
-                    common::resolution_output_width,
-                    common::resolution_output_height,
-                    quality,
-                    &opt_w, &opt_h, &max_w, &max_h, &min_w, &min_h, &sharpness
-                );
-                if (NVSDK_NGX_FAILED(result))
-                {
-                    SP_LOG_WARNING("DLSS optimal settings failed: 0x%x", static_cast<unsigned int>(result));
-                    create_failed = true;
-                    return;
-                }
-            }
-
-            if ((min_w != 0 && in_w < min_w) || (min_h != 0 && in_h < min_h) ||
-                (max_w != 0 && in_w > max_w) || (max_h != 0 && in_h > max_h))
+            const uint32_t in_w = common::resolution_render_max_width;
+            const uint32_t in_h = common::resolution_render_max_height;
+            query_mode_ranges(common::resolution_output_width, common::resolution_output_height);
+            const mode_range_t* mode = select_mode(in_w, in_h, common::resolution_render_width, common::resolution_render_height);
+            if (!mode)
             {
                 if (!logged_size_reject)
                 {
                     SP_LOG_WARNING(
-                        "DLSS render %ux%u is outside [%u,%u]x[%u,%u] for output %ux%u",
+                        "DLSS has no quality mode for render %ux%u with subrect %ux%u and output %ux%u",
                         in_w,
                         in_h,
-                        min_w,
-                        max_w,
-                        min_h,
-                        max_h,
+                        common::resolution_render_width,
+                        common::resolution_render_height,
                         common::resolution_output_width,
                         common::resolution_output_height
                     );
@@ -568,6 +689,19 @@ namespace spartan
                 }
                 return;
             }
+            feature_mode = *mode;
+            quality      = mode->quality;
+
+            SP_LOG_INFO(
+                "DLSS feature %ux%u -> %ux%u, quality %d, subrect %ux%u",
+                in_w,
+                in_h,
+                common::resolution_output_width,
+                common::resolution_output_height,
+                static_cast<int>(quality),
+                common::resolution_render_width,
+                common::resolution_render_height
+            );
 
             NVSDK_NGX_DLSS_Create_Params create = {};
             create.Feature.InWidth            = in_w;
@@ -581,7 +715,7 @@ namespace spartan
                                                 NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
             create.InEnableOutputSubrects     = false;
 
-            result = NGX_D3D12_CREATE_DLSS_EXT(cmd_list, 1, 1, &handle, parameters, &create);
+            NVSDK_NGX_Result result = NGX_D3D12_CREATE_DLSS_EXT(cmd_list, 1, 1, &handle, parameters, &create);
             if (NVSDK_NGX_FAILED(result))
             {
                 SP_LOG_WARNING("DLSS feature creation failed: 0x%x", static_cast<unsigned int>(result));
@@ -606,6 +740,8 @@ namespace spartan
             bool reset_history           = false;
             uint32_t last_frame_index    = UINT32_MAX;
             uint32_t last_settings_frame = UINT32_MAX;
+            uint32_t rect_width_prev     = 0;
+            uint32_t rect_height_prev    = 0;
             RHI_Queue_Type queue_type    = RHI_Queue_Type::Max;
             ID3D12CommandQueue* queue    = nullptr;
         };
@@ -637,6 +773,8 @@ namespace spartan
             pool.height              = 0;
             pool.last_frame_index    = UINT32_MAX;
             pool.last_settings_frame = UINT32_MAX;
+            pool.rect_width_prev     = 0;
+            pool.rect_height_prev    = 0;
         }
 
         void context_destroy()
@@ -782,6 +920,13 @@ namespace spartan
             nvidia::request_history_reset();
             nvidia::context_destroy();
         }
+        else if (dlss::handle && !dlss::mode_accepts(dlss::feature_mode, common::resolution_render_width, common::resolution_render_height))
+        {
+            // the resolution scale left the subrect range of the mode the feature was created with, recreate it in one that fits
+            RHI_Device::QueueWaitAll();
+            dlss::feature_destroy();
+            common::reset_history = true;
+        }
     #endif
     }
 
@@ -790,6 +935,32 @@ namespace spartan
     #ifdef _WIN32
         common::reset_history = true;
         nvidia::request_history_reset();
+    #endif
+    }
+
+    float RHI_VendorTechnology::XeSS_GetResolutionScaleMin(const Vector2& resolution_render, const Vector2& resolution_output)
+    {
+    #ifdef _WIN32
+        const uint32_t render_width  = static_cast<uint32_t>(resolution_render.x);
+        const uint32_t render_height = static_cast<uint32_t>(resolution_render.y);
+        const intel::input_range_t& range = intel::query_input_range(render_width, render_height, static_cast<uint32_t>(resolution_output.x), static_cast<uint32_t>(resolution_output.y));
+        return range.valid ? common::get_resolution_scale_min(range.min_width, range.min_height, render_width, render_height) : 0.0f;
+    #else
+        return 0.0f;
+    #endif
+    }
+
+    float RHI_VendorTechnology::DLSS_GetResolutionScaleMin(const Vector2& resolution_render, const Vector2& resolution_output)
+    {
+    #ifdef _WIN32
+        return dlss::get_resolution_scale_min(
+            static_cast<uint32_t>(resolution_render.x),
+            static_cast<uint32_t>(resolution_render.y),
+            static_cast<uint32_t>(resolution_output.x),
+            static_cast<uint32_t>(resolution_output.y)
+        );
+    #else
+        return 0.0f;
     #endif
     }
 
@@ -860,6 +1031,17 @@ namespace spartan
         RHI_CommandList* cmd_list = RHI_Device::Cmd();
     #ifdef _WIN32
         if (!intel::context)
+        {
+            return;
+        }
+
+        const intel::input_range_t& range = intel::query_input_range(
+            common::resolution_render_max_width,
+            common::resolution_render_max_height,
+            common::resolution_output_width,
+            common::resolution_output_height
+        );
+        if (range.valid && (common::resolution_render_width < range.min_width || common::resolution_render_height < range.min_height))
         {
             return;
         }
@@ -1128,12 +1310,20 @@ namespace spartan
         // setcommonsettings once per pool per frame, nrd integration asserts frameindex advances by 1
         if (!already_set || reset_history)
         {
+            const uint32_t rect_width  = RHI_Device::ScaleDimension(width, common::resolution_scale);
+            const uint32_t rect_height = RHI_Device::ScaleDimension(height, common::resolution_scale);
+            const bool has_prev        = pool.rect_width_prev != 0 && pool.rect_height_prev != 0 && !reset_history;
+
             nrd::CommonSettings common_settings = {};
             nrd_common::fill_common_settings(
                 common_settings,
                 common::cb_frame,
                 width,
                 height,
+                rect_width,
+                rect_height,
+                has_prev ? pool.rect_width_prev : rect_width,
+                has_prev ? pool.rect_height_prev : rect_height,
                 reset_history,
                 preset
             );
@@ -1142,6 +1332,8 @@ namespace spartan
                 SP_LOG_WARNING("NRD SetCommonSettings failed");
                 return false;
             }
+            pool.rect_width_prev  = rect_width;
+            pool.rect_height_prev = rect_height;
         }
 
         nrd::Identifier denoiser_id = nrd_common::id_gi;

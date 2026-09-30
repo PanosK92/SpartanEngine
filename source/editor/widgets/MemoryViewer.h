@@ -24,6 +24,7 @@ private:
     bool m_show_gpu = true;
     bool m_frozen   = false;
     std::vector<spartan::GpuMemoryBlock> m_frozen_blocks;
-    void* m_selected_resource = nullptr;
+    void* m_selected_resource   = nullptr;
+    bool m_scroll_to_selected   = false;
     std::string m_export_path;
 };

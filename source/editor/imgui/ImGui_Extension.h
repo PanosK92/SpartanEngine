@@ -346,9 +346,9 @@ namespace ImGuiSp
     }
 
     // image slot - returns true if the user clicked on the slot (for browse functionality)
-    static bool image_slot(spartan::RHI_Texture* texture_in, const std::function<void(spartan::RHI_Texture*)>& setter)
+    static bool image_slot(spartan::RHI_Texture* texture_in, const std::function<void(spartan::RHI_Texture*)>& setter, const float size = 80.0f)
     {
-        const ImVec2 slot_size  = ImVec2(80 * spartan::Window::GetDpiScale());
+        const ImVec2 slot_size  = ImVec2(size * spartan::Window::GetDpiScale());
         const float button_size = 15.0f * spartan::Window::GetDpiScale();
         bool clicked_for_browse = false;
 

@@ -60,7 +60,9 @@ namespace spartan
     std::optional<T> CircularStack<T>::Pop() {
         if (items_count == 0) return std::nullopt;
 
-        T item = buffer_start[top_item_index];
+        // moved out, a copy left in the slot would keep whatever the item owns alive until the slot is reused
+        T item = std::move(buffer_start[top_item_index]);
+        buffer_start[top_item_index] = T{};
 
         if (top_item_index == 0) {
             top_item_index = buffer_capacity - 1;
@@ -76,6 +78,10 @@ namespace spartan
 
     template <typename T>
     void CircularStack<T>::Clear() {
+        // the slots are released, not just forgotten, undo commands hold gpu resources that must be gone before the device is
+        for (uint64_t i = 0; i < this->buffer_capacity; i++) {
+            this->buffer_start[i] = T{};
+        }
         this->items_count = 0;
         this->top_item_index = this->buffer_capacity - 1;
     }

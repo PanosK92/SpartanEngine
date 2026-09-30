@@ -9,6 +9,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "TextureViewer.h"
 #include "../imgui/ImGui_Extension.h"
+#include "../imgui/ImGui_EditorUi.h"
+#include "../imgui/ImGui_Properties.h"
 #include "rendering/Material.h"
 #include "rendering/Renderer.h"
 #include "resource/ResourceCache.h"
@@ -208,18 +210,30 @@ namespace
         return t->GetRhiResource() ? t->GetObjectSize() : 0;
     }
 
-    bool toggle_button(const char* label, bool active, const ImVec2& size = ImVec2(0, 0))
+    // RHI_Format_R16G16B16A16_Float reads as R16G16B16A16_Float, the prefix is the same on every texture
+    const char* format_name(const spartan::RHI_Format format)
     {
-        if (active)
+        const char* name   = rhi_format_to_string(format);
+        const char* prefix = "RHI_Format_";
+        return strncmp(name, prefix, strlen(prefix)) == 0 ? name + strlen(prefix) : name;
+    }
+
+    // one tint per material slot, the type pills and the row captions share it
+    ImVec4 material_type_tint(const spartan::MaterialTextureType t)
+    {
+        switch (t)
         {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+            case spartan::MaterialTextureType::Color:     return ImVec4(1.00f, 0.52f, 0.42f, 1.0f);
+            case spartan::MaterialTextureType::Roughness: return ImVec4(0.75f, 0.75f, 0.80f, 1.0f);
+            case spartan::MaterialTextureType::Metalness: return ImVec4(0.55f, 0.75f, 0.95f, 1.0f);
+            case spartan::MaterialTextureType::Normal:    return ImVec4(0.58f, 0.58f, 1.00f, 1.0f);
+            case spartan::MaterialTextureType::Occlusion: return ImVec4(0.60f, 0.60f, 0.60f, 1.0f);
+            case spartan::MaterialTextureType::Emission:  return ImVec4(1.00f, 0.78f, 0.30f, 1.0f);
+            case spartan::MaterialTextureType::Height:    return ImVec4(0.55f, 0.85f, 0.35f, 1.0f);
+            case spartan::MaterialTextureType::AlphaMask: return ImVec4(0.90f, 0.90f, 0.90f, 1.0f);
+            case spartan::MaterialTextureType::Packed:    return ImVec4(0.66f, 0.52f, 1.00f, 1.0f);
+            default:                                      return ImGui::Style::color_accent_1;
         }
-        bool clicked = ImGui::Button(label, size);
-        if (active)
-        {
-            ImGui::PopStyleColor();
-        }
-        return clicked;
     }
 
     void select_texture(const texture_entry& entry)
@@ -235,9 +249,14 @@ namespace
         s.request_fit        = true;
     }
 
+    float splitter_thickness()
+    {
+        return ImGui::EditorUi::scaled(10.0f);
+    }
+
     void draw_h_splitter(const char* id, float* size_left, float min_left, float max_left, float total_height, float sign)
     {
-        const float thickness = 4.0f;
+        const float thickness = splitter_thickness();
         ImVec2 cursor = ImGui::GetCursorScreenPos();
         ImGui::InvisibleButton(id, ImVec2(thickness, total_height));
         bool active  = ImGui::IsItemActive();
@@ -251,16 +270,19 @@ namespace
             *size_left += sign * ImGui::GetIO().MouseDelta.x;
             *size_left = std::clamp(*size_left, min_left, max_left);
         }
-        ImU32 col = active  ? ImGui::GetColorU32(ImGuiCol_SeparatorActive) :
-                    hovered ? ImGui::GetColorU32(ImGuiCol_SeparatorHovered) :
-                              ImGui::GetColorU32(ImGuiCol_Separator);
-        ImGui::GetWindowDrawList()->AddRectFilled(cursor, ImVec2(cursor.x + thickness, cursor.y + total_height), col);
+
+        // a hairline until it is grabbed, the gap between panels is enough to show where it is
+        if (hovered || active)
+        {
+            const float x = IM_ROUND(cursor.x + thickness * 0.5f);
+            ImGui::GetWindowDrawList()->AddLine(ImVec2(x, cursor.y), ImVec2(x, cursor.y + total_height), ImGui::EditorUi::color(active ? ImGui::Style::color_accent_1 : ImGui::Style::color_border), 2.0f);
+        }
     }
 
     void draw_checkerboard(ImDrawList* dl, ImVec2 mn, ImVec2 mx, float tile)
     {
-        const ImU32 c0 = IM_COL32(60, 60, 60, 255);
-        const ImU32 c1 = IM_COL32(85, 85, 85, 255);
+        const ImU32 c0 = IM_COL32(36, 37, 41, 255);
+        const ImU32 c1 = IM_COL32(50, 51, 56, 255);
         dl->AddRectFilled(mn, mx, c0);
         for (float y = mn.y; y < mx.y; y += tile)
         {
@@ -279,141 +301,152 @@ namespace
         }
     }
 
+    uint32_t count_render_targets()
+    {
+        uint32_t count = 0;
+        for (const std::shared_ptr<spartan::RHI_Texture>& tex : spartan::Renderer::GetRenderTargets())
+        {
+            count += tex ? 1 : 0;
+        }
+        return count;
+    }
+
+    uint32_t count_material_textures()
+    {
+        uint32_t count = 0;
+        for (spartan::RHI_Texture* tex : spartan::Renderer::GetBindlessMaterialTextures())
+        {
+            count += tex ? 1 : 0;
+        }
+        return count;
+    }
+
     void draw_toolbar()
     {
-        // source tabs
-        if (ImGui::BeginTabBar("##source_tabs", ImGuiTabBarFlags_None))
+        namespace toolbar = editor_ui::toolbar;
+        const float gap   = ImGui::EditorUi::scaled(6.0f);
+
+        // the two sources are exclusive pills with their counts, the same control every tool window uses for a mode
+        char label[64];
+        snprintf(label, sizeof(label), "Render targets %u###source_rt", count_render_targets());
+        if (toolbar::pill(label, s.source == viewer_state::source_kind::render_targets, ImGui::Style::color_accent_1, "Textures produced by renderer passes") && s.source != viewer_state::source_kind::render_targets)
         {
-            if (ImGui::BeginTabItem("Render targets"))
-            {
-                if (s.source != viewer_state::source_kind::render_targets)
-                {
-                    s.source = viewer_state::source_kind::render_targets;
-                    refresh_entries();
-                }
-                ImGuiSp::tooltip("Textures produced by renderer passes");
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("Materials"))
-            {
-                if (s.source != viewer_state::source_kind::bindless_materials)
-                {
-                    s.source = viewer_state::source_kind::bindless_materials;
-                    refresh_entries();
-                }
-                ImGuiSp::tooltip("Textures currently available to materials");
-                ImGui::EndTabItem();
-            }
-            ImGui::EndTabBar();
+            s.source = viewer_state::source_kind::render_targets;
+            refresh_entries();
+        }
+        ImGui::SameLine(0, gap);
+        snprintf(label, sizeof(label), "Materials %u###source_materials", count_material_textures());
+        if (toolbar::pill(label, s.source == viewer_state::source_kind::bindless_materials, ImGui::Style::color_accent_1, "Textures currently bound for materials") && s.source != viewer_state::source_kind::bindless_materials)
+        {
+            s.source = viewer_state::source_kind::bindless_materials;
+            refresh_entries();
         }
 
-        // search
-        ImGui::SetNextItemWidth(260.0f);
-        ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F, ImGuiInputFlags_Tooltip);
-        if (ImGui::InputTextWithHint("##texture_search", "Search textures", s.search_filter.InputBuf, IM_ARRAYSIZE(s.search_filter.InputBuf), ImGuiInputTextFlags_EscapeClearsAll))
-        {
-            s.search_filter.Build();
-        }
-        ImGui::SameLine();
-        if (toggle_button("List", !s.view_grid))
+        toolbar::divider();
+        if (toolbar::pill("List", !s.view_grid, ImGui::Style::color_accent_1, "Rows with size and format"))
         {
             s.view_grid = false;
         }
-        ImGui::SameLine();
-        if (toggle_button("Grid", s.view_grid))
+        ImGui::SameLine(0, gap);
+        if (toolbar::pill("Grid", s.view_grid, ImGui::Style::color_accent_1, "Thumbnails only, more at once"))
         {
             s.view_grid = true;
         }
 
-        // zoom cluster, right aligned
+        // zoom cluster, right aligned, secondary actions so they stay quiet until hovered
         char zoom_text[16];
         snprintf(zoom_text, sizeof(zoom_text), "%.0f%%", s.zoom * 100.0f);
-        const float spacing  = ImGui::GetStyle().ItemSpacing.x;
-        const float pad      = ImGui::GetStyle().FramePadding.x * 2.0f;
-        float cluster_w = 0.0f;
-        cluster_w += ImGui::CalcTextSize("Fit").x   + pad + spacing;
-        cluster_w += ImGui::CalcTextSize("1:1").x   + pad + spacing;
-        cluster_w += ImGui::CalcTextSize("-").x     + pad + spacing;
-        cluster_w += ImGui::CalcTextSize(zoom_text).x       + spacing;
-        cluster_w += ImGui::CalcTextSize("+").x     + pad + spacing;
-        cluster_w += ImGui::CalcTextSize("Reset").x + pad;
-        ImGui::SameLine();
-        float avail = ImGui::GetContentRegionAvail().x;
-        if (avail > cluster_w)
-        {
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + avail - cluster_w);
-        }
-        if (ImGui::Button("Fit"))
+        const float zoom_w    = ImGui::CalcTextSize("6400%").x;
+        const float cluster_w = toolbar::ghost_button_width("Fit") + toolbar::ghost_button_width("1:1") + toolbar::ghost_button_width("-") * 2.0f + zoom_w + toolbar::ghost_button_width("Reset") + gap * 5.0f;
+
+        toolbar::divider();
+        char count[32];
+        snprintf(count, sizeof(count), "%zu of %zu", entries_filtered.size(), entries.size());
+        const float search_w = std::max(ImGui::EditorUi::scaled(120.0f), ImGui::GetContentRegionAvail().x - cluster_w - ImGui::EditorUi::scaled(16.0f));
+        toolbar::search("##texture_search", "Search textures", s.search_filter, std::min(search_w, ImGui::EditorUi::scaled(420.0f)), count, entries_filtered.empty() && !entries.empty());
+
+        toolbar::align_right(cluster_w);
+        if (toolbar::ghost_button("Fit", "Fit to the preview (F)"))
         {
             s.request_fit = true;
         }
-        ImGuiSp::tooltip("Fit to window (F)");
-        ImGui::SameLine();
-        if (ImGui::Button("1:1"))
+        ImGui::SameLine(0, gap);
+        if (toolbar::ghost_button("1:1", "One texel to one pixel (1)"))
         {
             s.request_one_to_one = true;
         }
-        ImGuiSp::tooltip("One texel to one pixel (1)");
-        ImGui::SameLine();
-        if (ImGui::Button("-"))
+        ImGui::SameLine(0, gap);
+        if (toolbar::ghost_button("-", "Zoom out (-)"))
         {
             s.request_zoom_mul = 0.9f;
         }
-        ImGui::SameLine();
+        ImGui::SameLine(0, gap);
+        const float zoom_x = ImGui::GetCursorPosX();
+        ImGui::AlignTextToFramePadding();
+        ImGui::SetCursorPosX(zoom_x + (zoom_w - ImGui::CalcTextSize(zoom_text).x) * 0.5f);
         ImGui::TextUnformatted(zoom_text);
-        ImGui::SameLine();
-        if (ImGui::Button("+"))
+        ImGui::SameLine(0, 0);
+        ImGui::SetCursorPosX(zoom_x + zoom_w + gap);
+        if (toolbar::ghost_button("+", "Zoom in (+)"))
         {
             s.request_zoom_mul = 1.1f;
         }
-        ImGui::SameLine();
-        if (ImGui::Button("Reset"))
+        ImGui::SameLine(0, gap);
+        if (toolbar::ghost_button("Reset", "Reset pan and zoom (R)"))
         {
             s.request_reset = true;
         }
-        ImGuiSp::tooltip("Reset pan and zoom (R)");
     }
 
+    // material slots as wrapping pills with counts, clicking one isolates it and clicking it again shows every slot
     void draw_type_filter()
     {
         if (s.source != viewer_state::source_kind::bindless_materials)
         {
             return;
         }
+
         const uint32_t types = static_cast<uint32_t>(spartan::MaterialTextureType::Max);
-        uint32_t enabled_count = 0;
+        uint32_t counts[32]  = {};
+        for (const texture_entry& e : entries)
+        {
+            counts[static_cast<uint32_t>(bindless_type_from_index(e.bindless_index))]++;
+        }
+
+        const uint32_t all_mask = (1u << types) - 1u;
+        const bool all_types    = (s.type_filter_mask & all_mask) == all_mask;
+        const float gap         = ImGui::EditorUi::scaled(4.0f);
+        const float left        = ImGui::GetCursorScreenPos().x;
+        const float right       = left + ImGui::GetContentRegionAvail().x;
+        bool first              = true;
         for (uint32_t i = 0; i < types; i++)
         {
-            enabled_count += (s.type_filter_mask & (1u << i)) != 0 ? 1u : 0u;
-        }
-
-        string summary = enabled_count == types ? "All texture types" : enabled_count == 0 ? "No texture types" : to_string(enabled_count) + " texture types";
-        ImGui::SetNextItemWidth(-FLT_MIN);
-        if (ImGui::BeginCombo("##texture_type_filter", summary.c_str()))
-        {
-            if (ImGui::Button("Select all"))
+            if (counts[i] == 0)
             {
-                s.type_filter_mask = 0xffffffffu;
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Clear"))
-            {
-                s.type_filter_mask = 0u;
+                continue;
             }
 
-            ImGui::Separator();
-            for (uint32_t i = 0; i < types; i++)
+            const spartan::MaterialTextureType type = static_cast<spartan::MaterialTextureType>(i);
+            char label[48];
+            snprintf(label, sizeof(label), "%s %u###type_%u", material_texture_type_label(type), counts[i], i);
+            if (!first)
             {
-                const uint32_t bit = 1u << i;
-                bool active = (s.type_filter_mask & bit) != 0;
-                if (ImGui::Checkbox(material_texture_type_label(static_cast<spartan::MaterialTextureType>(i)), &active))
+                ImGui::SameLine(0, gap);
+                if (ImGui::GetCursorScreenPos().x + editor_ui::toolbar::pill_width(label, true) > right)
                 {
-                    s.type_filter_mask = active ? s.type_filter_mask | bit : s.type_filter_mask & ~bit;
+                    ImGui::NewLine();
                 }
             }
+            first = false;
 
-            ImGui::EndCombo();
+            const uint32_t bit = 1u << i;
+            const bool active  = !all_types && (s.type_filter_mask & bit) != 0;
+            if (editor_ui::toolbar::pill(label, active, material_type_tint(type), active ? "Click again to show every slot" : "Show only this material slot", true))
+            {
+                s.type_filter_mask = active ? 0xffffffffu : bit;
+            }
         }
+        ImGui::Dummy(ImVec2(0.0f, ImGui::EditorUi::scaled(2.0f)));
     }
 
     void draw_entry_row(int idx)
@@ -424,8 +457,8 @@ namespace
             return;
         }
 
-        const float row_height = 44.0f;
-        const float thumb_size = row_height - 4.0f;
+        const float row_height = ImGui::EditorUi::scaled(44.0f);
+        const float thumb_size = row_height - ImGui::EditorUi::scaled(8.0f);
         const bool  selected   = (s.selected_object_id == e.tex->GetObjectId());
 
         ImGui::PushID(idx);
@@ -438,26 +471,39 @@ namespace
         }
 
         // overlays are pure draws so we never disturb the cursor
-        ImDrawList* dl    = ImGui::GetWindowDrawList();
-        const ImU32 col_t = ImGui::GetColorU32(ImGuiCol_Text);
-        const ImU32 col_d = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+        ImDrawList* dl       = ImGui::GetWindowDrawList();
+        const float rounding = ImGui::EditorUi::scaled(4.0f);
+        ImVec2 thumb_min     = ImVec2(row_min.x + ImGui::EditorUi::scaled(4.0f), row_min.y + (row_height - thumb_size) * 0.5f);
+        ImVec2 thumb_max     = ImVec2(thumb_min.x + thumb_size, thumb_min.y + thumb_size);
+        draw_checkerboard(dl, thumb_min, thumb_max, ImGui::EditorUi::scaled(6.0f));
+        dl->AddImageRounded(reinterpret_cast<ImTextureID>(e.tex), thumb_min, thumb_max, ImVec2(0, 0), ImVec2(1, 1), IM_COL32_WHITE, rounding);
+        dl->AddRect(thumb_min, thumb_max, ImGui::EditorUi::color(ImGui::Style::color_border), rounding);
 
-        ImVec2 thumb_min = ImVec2(row_min.x + 4.0f, row_min.y + 2.0f);
-        ImVec2 thumb_max = ImVec2(thumb_min.x + thumb_size, thumb_min.y + thumb_size);
-        draw_checkerboard(dl, thumb_min, thumb_max, 5.0f);
-        dl->AddImage(reinterpret_cast<ImTextureID>(e.tex), thumb_min, thumb_max);
-        dl->AddRect(thumb_min, thumb_max, IM_COL32(20, 20, 20, 255));
+        // name first, then the facts that tell two similar names apart, the material slot leads in its tint
+        const float text_x   = thumb_max.x + ImGui::EditorUi::scaled(10.0f);
+        const float line_h   = ImGui::GetTextLineHeight();
+        const float top      = row_min.y + (row_height - line_h * 2.0f - ImGui::EditorUi::scaled(2.0f)) * 0.5f;
+        const float right    = row_min.x + ImGui::GetContentRegionAvail().x;
+        dl->PushClipRect(ImVec2(text_x, row_min.y), ImVec2(right, row_min.y + row_height), true);
+        dl->AddText(ImVec2(text_x, top), ImGui::EditorUi::color(ImGui::Style::color_text), e.tex->GetObjectName().c_str());
 
-        const float text_x = row_min.x + thumb_size + 12.0f;
-        dl->AddText(ImVec2(text_x, row_min.y + 4.0f), col_t, e.display_name.c_str());
-
+        float caption_x = text_x;
+        const float caption_y = top + line_h + ImGui::EditorUi::scaled(2.0f);
+        if (s.source == viewer_state::source_kind::bindless_materials)
+        {
+            const spartan::MaterialTextureType type = bindless_type_from_index(e.bindless_index);
+            const char* type_label = material_texture_type_label(type);
+            dl->AddText(ImVec2(caption_x, caption_y), ImGui::EditorUi::color(material_type_tint(type)), type_label);
+            caption_x += ImGui::CalcTextSize(type_label).x + ImGui::EditorUi::scaled(8.0f);
+        }
         char info[96];
-        snprintf(info, sizeof(info), "%ux%u  %s", e.tex->GetWidth(), e.tex->GetHeight(), rhi_format_to_string(e.tex->GetFormat()));
-        dl->AddText(ImVec2(text_x, row_min.y + 4.0f + ImGui::GetTextLineHeight() + 2.0f), col_d, info);
+        snprintf(info, sizeof(info), "%u \xC3\x97 %u   %s", e.tex->GetWidth(), e.tex->GetHeight(), format_name(e.tex->GetFormat()));
+        dl->AddText(ImVec2(caption_x, caption_y), ImGui::EditorUi::color(ImGui::Style::color_text_muted), info);
+        dl->PopClipRect();
 
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
         {
-            ImGui::SetTooltip("%s\n%ux%u  %s", e.display_name.c_str(), e.tex->GetWidth(), e.tex->GetHeight(), rhi_format_to_string(e.tex->GetFormat()));
+            ImGui::SetTooltip("%s\n%u \xC3\x97 %u   %s", e.display_name.c_str(), e.tex->GetWidth(), e.tex->GetHeight(), format_name(e.tex->GetFormat()));
         }
 
         ImGui::PopID();
@@ -471,7 +517,7 @@ namespace
             return;
         }
         const bool selected = (s.selected_object_id == e.tex->GetObjectId());
-        const float total_h = card_size + ImGui::GetTextLineHeight() + 6.0f;
+        const float total_h = card_size + ImGui::GetTextLineHeight() + ImGui::EditorUi::scaled(6.0f);
 
         ImGui::PushID(idx);
         ImVec2 card_min = ImGui::GetCursorScreenPos();
@@ -481,21 +527,22 @@ namespace
         }
 
         // overlays via draw list so we leave the layout cursor exactly where Selectable put it
-        ImDrawList* dl   = ImGui::GetWindowDrawList();
-        ImVec2 thumb_min = ImVec2(card_min.x + 2.0f, card_min.y + 2.0f);
-        ImVec2 thumb_max = ImVec2(card_min.x + card_size - 2.0f, card_min.y + card_size - 2.0f);
-        draw_checkerboard(dl, thumb_min, thumb_max, 8.0f);
-        dl->AddImage(reinterpret_cast<ImTextureID>(e.tex), thumb_min, thumb_max);
-        dl->AddRect(thumb_min, thumb_max, IM_COL32(20, 20, 20, 255));
+        ImDrawList* dl       = ImGui::GetWindowDrawList();
+        const float rounding = ImGui::EditorUi::scaled(5.0f);
+        const float inset    = ImGui::EditorUi::scaled(3.0f);
+        ImVec2 thumb_min     = ImVec2(card_min.x + inset, card_min.y + inset);
+        ImVec2 thumb_max     = ImVec2(card_min.x + card_size - inset, card_min.y + card_size - inset);
+        draw_checkerboard(dl, thumb_min, thumb_max, ImGui::EditorUi::scaled(8.0f));
+        dl->AddImageRounded(reinterpret_cast<ImTextureID>(e.tex), thumb_min, thumb_max, ImVec2(0, 0), ImVec2(1, 1), IM_COL32_WHITE, rounding);
+        dl->AddRect(thumb_min, thumb_max, ImGui::EditorUi::color(selected ? ImGui::Style::color_accent_1 : ImGui::Style::color_border), rounding, selected ? 2.0f : 1.0f);
 
         // single line label, clipped to the card width
-        const ImU32 col_t = ImGui::GetColorU32(ImGuiCol_Text);
-        ImVec4 clip(card_min.x, card_min.y + card_size, card_min.x + card_size, card_min.y + total_h);
-        dl->AddText(nullptr, 0.0f, ImVec2(card_min.x + 2.0f, card_min.y + card_size), col_t, e.display_name.c_str(), nullptr, 0.0f, &clip);
+        ImVec4 clip(card_min.x, card_min.y + card_size, card_min.x + card_size - inset, card_min.y + total_h);
+        dl->AddText(nullptr, 0.0f, ImVec2(card_min.x + inset, card_min.y + card_size), ImGui::EditorUi::color(selected ? ImGui::Style::color_text : ImGui::Style::color_text_muted), e.tex->GetObjectName().c_str(), nullptr, 0.0f, &clip);
 
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
         {
-            ImGui::SetTooltip("%s\n%ux%u  %s", e.display_name.c_str(), e.tex->GetWidth(), e.tex->GetHeight(), rhi_format_to_string(e.tex->GetFormat()));
+            ImGui::SetTooltip("%s\n%u \xC3\x97 %u   %s", e.display_name.c_str(), e.tex->GetWidth(), e.tex->GetHeight(), format_name(e.tex->GetFormat()));
         }
 
         ImGui::PopID();
@@ -503,30 +550,28 @@ namespace
 
     void draw_browser_panel(float width, float height)
     {
-        ImGui::BeginChild("##browser_panel", ImVec2(width, height), true);
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, ImGui::EditorUi::scaled(6.0f));
+        ImGui::BeginChild("##browser_panel", ImVec2(width, height), ImGuiChildFlags_Borders);
+        ImGui::PopStyleVar();
 
         draw_type_filter();
-        if (s.source == viewer_state::source_kind::bindless_materials)
-        {
-            ImGui::Separator();
-        }
-        ImGui::Text("%zu of %zu", entries_filtered.size(), entries.size());
 
         ImGui::BeginChild("##entries_scroll", ImVec2(0, 0), false);
 
         if (entries_filtered.empty())
         {
-            const char* message = entries.empty() ? "No textures available" : "No textures match the current filters";
-            const ImVec2 message_size = ImGui::CalcTextSize(message);
-            const ImVec2 available = ImGui::GetContentRegionAvail();
-            ImGui::SetCursorPos(ImVec2(max(ImGui::GetCursorPosX(), (ImGui::GetWindowWidth() - message_size.x) * 0.5f), ImGui::GetCursorPosY() + max(24.0f, available.y * 0.38f)));
-            ImGui::TextDisabled("%s", message);
+            const bool filtered = !entries.empty();
+            if (editor_ui::empty_state(filtered ? "No textures match" : "No textures yet", filtered ? "Nothing passes the search and slot filters together." : (s.source == viewer_state::source_kind::render_targets ? "Render targets appear once the renderer has created them." : "Material textures appear once a material binds them."), filtered ? "Clear filters" : nullptr))
+            {
+                s.search_filter.Clear();
+                s.type_filter_mask = 0xffffffffu;
+            }
         }
         else if (s.view_grid)
         {
-            const float card     = 96.0f;
+            const float card     = ImGui::EditorUi::scaled(96.0f);
             const float padding  = ImGui::GetStyle().ItemSpacing.x;
-            const float row_h    = card + ImGui::GetTextLineHeight() + 6.0f + padding;
+            const float row_h    = card + ImGui::GetTextLineHeight() + ImGui::EditorUi::scaled(6.0f) + padding;
             int columns          = std::max(1, static_cast<int>((ImGui::GetContentRegionAvail().x + padding) / (card + padding)));
             int total            = static_cast<int>(entries_filtered.size());
             int rows             = (total + columns - 1) / columns;
@@ -557,7 +602,7 @@ namespace
         else
         {
             ImGuiListClipper clipper;
-            clipper.Begin(static_cast<int>(entries_filtered.size()), 44.0f);
+            clipper.Begin(static_cast<int>(entries_filtered.size()), ImGui::EditorUi::scaled(44.0f) + ImGui::GetStyle().ItemSpacing.y);
             while (clipper.Step())
             {
                 for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
@@ -719,26 +764,24 @@ namespace
                 s.request_zoom_mul = 0.0f;
             }
 
-            // hud
-            char hud[256];
-            int written = 0;
-            written += snprintf(hud + written, sizeof(hud) - written, "zoom %.0f%%", s.zoom * 100.0f);
+            // hud, one pill in the corner with what the image is showing, only the levels that exist
+            char hud[128];
+            int written = snprintf(hud, sizeof(hud), "%.0f%%", s.zoom * 100.0f);
             if (tex->GetResidentMipCount() > 1)
             {
-                written += snprintf(hud + written, sizeof(hud) - written, "\nmip %d / %u", s.mip_level, tex->GetResidentMipCount() - 1);
+                written += snprintf(hud + written, sizeof(hud) - written, "   mip %d of %u", s.mip_level, tex->GetResidentMipCount() - 1);
             }
             if (tex->GetArrayLength() > 1)
             {
-                written += snprintf(hud + written, sizeof(hud) - written, "\nslice %d / %u", s.array_level, tex->GetArrayLength() - 1);
+                written += snprintf(hud + written, sizeof(hud) - written, "   slice %d of %u", s.array_level, tex->GetArrayLength() - 1);
             }
-            ImVec2 hud_size = ImGui::CalcTextSize(hud);
-            ImVec2 hud_pos  = ImVec2(child_pos.x + 8.0f, child_pos.y + 8.0f);
-            dl->AddRectFilled(
-                ImVec2(hud_pos.x - 4.0f, hud_pos.y - 2.0f),
-                ImVec2(hud_pos.x + hud_size.x + 4.0f, hud_pos.y + hud_size.y + 2.0f),
-                IM_COL32(0, 0, 0, 160), 4.0f
-            );
-            dl->AddText(hud_pos, IM_COL32(255, 255, 255, 240), hud);
+            const ImVec2 hud_size = ImGui::CalcTextSize(hud);
+            const ImVec2 hud_pad  = ImGui::EditorUi::scaled(ImVec2(10.0f, 4.0f));
+            const ImVec2 hud_min  = ImVec2(child_pos.x + ImGui::EditorUi::scaled(10.0f), child_max.y - ImGui::EditorUi::scaled(10.0f) - hud_size.y - hud_pad.y * 2.0f);
+            const ImVec2 hud_max  = ImVec2(hud_min.x + hud_size.x + hud_pad.x * 2.0f, hud_min.y + hud_size.y + hud_pad.y * 2.0f);
+            dl->AddRectFilled(hud_min, hud_max, ImGui::EditorUi::color(ImGui::EditorUi::alpha(ImGui::Style::color_canvas_deep, 0.85f)), (hud_max.y - hud_min.y) * 0.5f);
+            dl->AddRect(hud_min, hud_max, ImGui::EditorUi::color(ImGui::Style::color_border), (hud_max.y - hud_min.y) * 0.5f);
+            dl->AddText(ImVec2(hud_min.x + hud_pad.x, hud_min.y + hud_pad.y), ImGui::EditorUi::color(ImGui::Style::color_text), hud);
         }
         else
         {
@@ -748,25 +791,20 @@ namespace
                 child_pos.x + (child_size.x - text_size.x) * 0.5f,
                 child_pos.y + (child_size.y - text_size.y) * 0.5f
             );
-            dl->AddText(text_pos, IM_COL32(180, 180, 180, 255), msg);
+            dl->AddText(text_pos, ImGui::EditorUi::color(ImGui::Style::color_text_muted), msg);
         }
 
-        dl->AddRect(child_pos, child_max, IM_COL32(0, 0, 0, 255), 0.0f, 2.0f, 0);
+        dl->AddRect(child_pos, child_max, ImGui::EditorUi::color(ImGui::Style::color_border), ImGui::EditorUi::scaled(6.0f), 1.0f);
         ImGui::EndChild();
     }
 
     float inspector_natural_width()
     {
-        // measure the widest content the inspector ever renders so the right panel can grow to fit it
+        // the value column has to hold the longest format name, the label column is a fixed share of the panel
         const ImGuiStyle& style = ImGui::GetStyle();
-        float widest_value = 0.0f;
-        widest_value = std::max(widest_value, ImGui::CalcTextSize("R10G10B10A2_Unorm").x);
-        widest_value = std::max(widest_value, ImGui::CalcTextSize("99999 x 99999").x);
-        float widest_label = ImGui::CalcTextSize("Channels").x;
-        float info_table   = widest_label + widest_value + style.ItemSpacing.x * 2.0f + style.CellPadding.x * 4.0f;
-        float visu         = ImGui::CalcTextSize("Pack -1..1 to 0..1").x + ImGui::GetFrameHeight() + style.ItemInnerSpacing.x;
-        float content      = std::max({ info_table, visu, ImGui::CalcTextSize("Slice").x + 200.0f });
-        return content + style.WindowPadding.x * 2.0f + style.ScrollbarSize + 4.0f;
+        const float widest_value = ImGui::CalcTextSize("R16G16B16A16_Float").x + ImGui::EditorUi::scaled(12.0f);
+        const float content      = widest_value / (1.0f - editor_ui::design::label_width);
+        return std::max(ImGui::EditorUi::scaled(320.0f), content + style.WindowPadding.x * 2.0f + style.ScrollbarSize);
     }
 
     void draw_debug_writer()
@@ -790,10 +828,7 @@ namespace
             cluster_mode > 0 ? (4u + cluster_mode) :
             0u;
 
-        ImGui::TextDisabled("Writer");
-        ImGuiSp::tooltip("Picks which pass writes this texture, only one is active at a time");
-        ImGui::SetNextItemWidth(-FLT_MIN);
-        if (ImGuiSp::combo_box("##debug_writer", debug_texture_modes, &combined_mode))
+        if (editor_ui::property_combo("Writer", debug_texture_modes, &combined_mode, "Picks which pass writes this texture, only one is active at a time"))
         {
             uint32_t new_meshlet = (combined_mode >= 1u && combined_mode <= 4u) ? combined_mode      : 0u;
             uint32_t new_cluster = (combined_mode >= 5u && combined_mode <= 6u) ? combined_mode - 4u : 0u;
@@ -802,141 +837,194 @@ namespace
         }
 
         // cluster overflow telemetry, surfaces the gpu side overflow counter so bad worlds are visible
-        uint32_t overflow = spartan::Renderer::GetClusterOverflowCount();
-        ImGui::TextDisabled("Cluster overflow: %u", overflow);
+        const uint32_t overflow = spartan::Renderer::GetClusterOverflowCount();
+        char text[32];
+        snprintf(text, sizeof(text), "%u", overflow);
+        editor_ui::property_text("Cluster overflow", text, "Lights that did not fit in their cluster this frame, anything above zero is dropped lighting");
+        if (overflow > 0)
+        {
+            editor_ui::layout::note("Some clusters overflowed, lights are being dropped", ImGui::Style::color_warning);
+        }
+    }
+
+    // r g b a as four equal toggles in their channel colors, lit while the channel is shown
+    void draw_channel_toggles()
+    {
+        bool* values[4]      = { &s.channel_r, &s.channel_g, &s.channel_b, &s.channel_a };
+        const char* names[4] = { "R", "G", "B", "A" };
+        const ImVec4 tints[4] =
+        {
+            ImVec4(1.00f, 0.38f, 0.38f, 1.0f),
+            ImVec4(0.40f, 0.86f, 0.46f, 1.0f),
+            ImVec4(0.36f, 0.60f, 1.00f, 1.0f),
+            ImVec4(0.86f, 0.86f, 0.86f, 1.0f)
+        };
+        const float gap       = ImGui::EditorUi::scaled(4.0f);
+        const float width     = (ImGui::GetContentRegionAvail().x - gap * 3.0f) / 4.0f;
+        const float height    = ImGui::GetFrameHeight();
+        const float rounding  = ImGui::GetStyle().FrameRounding;
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+        for (int i = 0; i < 4; i++)
+        {
+            if (i > 0)
+            {
+                ImGui::SameLine(0.0f, gap);
+            }
+
+            ImGui::PushID(i);
+            if (ImGui::InvisibleButton("##channel", ImVec2(width, height)))
+            {
+                *values[i] = !*values[i];
+            }
+            const bool hovered = ImGui::IsItemHovered();
+            ImGui::PopID();
+
+            const ImVec2 min  = ImGui::GetItemRectMin();
+            const ImVec2 max  = ImGui::GetItemRectMax();
+            const bool on     = *values[i];
+            const ImVec4 fill = on ? ImGui::EditorUi::alpha(tints[i], 0.28f) : (hovered ? ImGui::Style::color_surface_hover : ImGui::Style::color_canvas_deep);
+            draw_list->AddRectFilled(min, max, ImGui::EditorUi::color(fill), rounding);
+            draw_list->AddRect(min, max, ImGui::EditorUi::color(on ? ImGui::EditorUi::alpha(tints[i], 0.85f) : ImGui::Style::color_border), rounding, 1.0f);
+
+            const ImVec2 size = ImGui::CalcTextSize(names[i]);
+            const ImVec4 text = on ? ImGui::Style::lerp(tints[i], ImVec4(1, 1, 1, 1), 0.45f) : ImGui::Style::color_text_faint;
+            draw_list->AddText(ImVec2(IM_ROUND((min.x + max.x - size.x) * 0.5f), IM_ROUND((min.y + max.y - size.y) * 0.5f)), ImGui::EditorUi::color(text), names[i]);
+            editor_ui::toolbar::tooltip(on ? "Shown, click to hide this channel" : "Hidden, click to show this channel");
+        }
+    }
+
+    // a mip or slice picker, disabled with the reason when the texture only has one
+    void draw_level_slider(const char* label, int* value, const int max_value, const char* single_reason)
+    {
+        editor_ui::layout::begin_property(label, max_value <= 0 ? single_reason : nullptr);
+        char format[32];
+        snprintf(format, sizeof(format), "%%d of %d", std::max(0, max_value));
+        ImGui::BeginDisabled(max_value <= 0);
+        ImGui::SliderInt((std::string("##") + label).c_str(), value, 0, std::max(0, max_value), format, ImGuiSliderFlags_AlwaysClamp);
+        ImGui::EditorUi::decorate_field();
+        ImGui::EndDisabled();
     }
 
     void draw_inspector_panel(float width, float height)
     {
-        ImGui::BeginChild("##inspector_panel", ImVec2(width, height), true);
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, ImGui::EditorUi::scaled(6.0f));
+        ImGui::BeginChild("##inspector_panel", ImVec2(width, height), ImGuiChildFlags_Borders);
+        ImGui::PopStyleVar();
 
         if (!s.texture_current)
         {
-            ImGui::TextDisabled("Select a texture to inspect");
+            editor_ui::empty_state("Nothing selected", "Pick a texture on the left to read its format and change how it is displayed.");
             ImGui::EndChild();
             return;
         }
 
         spartan::RHI_Texture* tex = s.texture_current;
 
-        if (ImGui::CollapsingHeader("Info", ImGuiTreeNodeFlags_DefaultOpen))
+        // the name, then what the gpu may do with it, as chips so the eye catches a render target at once
+        if (Editor::font_bold)
         {
-            if (ImGui::BeginTable("##info_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg))
-            {
-                auto row = [](const char* k, const char* v)
-                {
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0); ImGui::TextDisabled("%s", k);
-                    ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(v);
-                };
-                auto rowf = [](const char* k, const char* fmt, ...)
-                {
-                    va_list args;
-                    va_start(args, fmt);
-                    char buf[160];
-                    vsnprintf(buf, sizeof(buf), fmt, args);
-                    va_end(args);
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0); ImGui::TextDisabled("%s", k);
-                    ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(buf);
-                };
-
-                row("Name",     tex->GetObjectName().c_str());
-                rowf("Size",    "%u x %u", tex->GetWidth(), tex->GetHeight());
-                rowf("Channels","%u", tex->GetChannelCount());
-                row("Format",   rhi_format_to_string(tex->GetFormat()));
-                rowf("Mips",    "%u resident / %u source", tex->GetResidentMipCount(), tex->GetMipCount());
-                rowf("Resident", "%u x %u (source mip %u)", tex->GetResidentWidth(), tex->GetResidentHeight(), tex->GetResidentMip());
-                rowf("Slices",  "%u", tex->GetArrayLength());
-                row("Type",     texture_type_label(tex->GetType()));
-                rowf("Memory",  "%.2f MB", static_cast<double>(texture_byte_estimate(tex)) / (1024.0 * 1024.0));
-                ImGui::EndTable();
-            }
-
-            // usage badges
-            ImGui::Spacing();
-            ImGui::TextDisabled("usage:");
-            auto badge = [](const char* label, bool on, ImU32 color_on)
-            {
-                if (!on)
-                {
-                    return;
-                }
-                ImGui::SameLine();
-                ImGui::PushStyleColor(ImGuiCol_Button, color_on);
-                ImGui::SmallButton(label);
-                ImGui::PopStyleColor();
-            };
-            badge("SRV", tex->IsSrv(), IM_COL32(60, 110, 60, 255));
-            badge("UAV", tex->IsUav(), IM_COL32(110, 90, 60, 255));
-            badge("RTV", tex->IsRtv(), IM_COL32(60, 90, 130, 255));
-            badge("DSV", tex->IsDsv(), IM_COL32(130, 60, 90, 255));
-            badge("VRS", tex->IsVrs(), IM_COL32(90, 60, 130, 255));
+            ImGui::PushFont(Editor::font_bold, 0.0f);
+        }
+        ImGui::PushTextWrapPos(0.0f);
+        ImGui::TextUnformatted(tex->GetObjectName().c_str());
+        ImGui::PopTextWrapPos();
+        if (Editor::font_bold)
+        {
+            ImGui::PopFont();
         }
 
-        if (ImGui::CollapsingHeader("View", ImGuiTreeNodeFlags_DefaultOpen))
+        struct usage
         {
-            const int max_mip = static_cast<int>(tex->GetResidentMipCount()) - 1;
-            ImGui::BeginDisabled(max_mip <= 0);
-            ImGui::SliderInt("Mip", &s.mip_level, 0, std::max(0, max_mip));
-            ImGui::EndDisabled();
-            if (max_mip <= 0)
+            const char* label;
+            bool on;
+            ImVec4 tint;
+            const char* meaning;
+        };
+        const usage usages[] =
+        {
+            { "Sampled",       tex->IsSrv(), ImVec4(0.40f, 0.86f, 0.60f, 1.0f), "Shaders can sample it (SRV)" },
+            { "Storage",       tex->IsUav(), ImVec4(1.00f, 0.72f, 0.36f, 1.0f), "Compute shaders can write it (UAV)" },
+            { "Render target", tex->IsRtv(), ImVec4(0.36f, 0.66f, 1.00f, 1.0f), "Passes render into it (RTV)" },
+            { "Depth",         tex->IsDsv(), ImVec4(1.00f, 0.42f, 0.66f, 1.0f), "Used as a depth stencil (DSV)" },
+            { "Shading rate",  tex->IsVrs(), ImVec4(0.66f, 0.52f, 1.00f, 1.0f), "Drives variable rate shading (VRS)" }
+        };
+        bool first_chip = true;
+        for (const usage& u : usages)
+        {
+            if (!u.on)
             {
-                ImGuiSp::tooltip("Single mip");
+                continue;
             }
+            if (!first_chip)
+            {
+                ImGui::SameLine(0, ImGui::EditorUi::scaled(4.0f));
+            }
+            first_chip = false;
+            editor_ui::chip(u.label, u.tint);
+            editor_ui::toolbar::tooltip(u.meaning);
+        }
+        ImGui::Dummy(ImVec2(0.0f, ImGui::EditorUi::scaled(2.0f)));
 
-            const int max_slice = static_cast<int>(tex->GetArrayLength()) - 1;
-            ImGui::BeginDisabled(max_slice <= 0);
-            ImGui::SliderInt("Slice", &s.array_level, 0, std::max(0, max_slice));
-            ImGui::EndDisabled();
-            if (max_slice <= 0)
+        char size_text[48];
+        snprintf(size_text, sizeof(size_text), "%u \xC3\x97 %u", tex->GetWidth(), tex->GetHeight());
+        if (editor_ui::layout::fold("Info", true, size_text))
+        {
+            char text[96];
+            editor_ui::property_text("Size", size_text);
+            editor_ui::property_text("Format", format_name(tex->GetFormat()));
+            snprintf(text, sizeof(text), "%s, %u channel%s", texture_type_label(tex->GetType()), tex->GetChannelCount(), tex->GetChannelCount() == 1 ? "" : "s");
+            editor_ui::property_text("Type", text);
+            snprintf(text, sizeof(text), "%u of %u resident", tex->GetResidentMipCount(), tex->GetMipCount());
+            editor_ui::property_text("Mips", text, "Streaming keeps only the mips the camera needs in memory");
+            if (tex->GetResidentMip() > 0)
             {
-                ImGuiSp::tooltip("Single slice");
+                snprintf(text, sizeof(text), "%u \xC3\x97 %u from mip %u", tex->GetResidentWidth(), tex->GetResidentHeight(), tex->GetResidentMip());
+                editor_ui::property_text("Resident", text, "The largest mip currently in memory");
             }
+            if (tex->GetArrayLength() > 1)
+            {
+                snprintf(text, sizeof(text), "%u", tex->GetArrayLength());
+                editor_ui::property_text("Slices", text);
+            }
+            const uint64_t bytes = texture_byte_estimate(tex);
+            editor_ui::property_text("Memory", bytes > 0 ? editor_ui::format::bytes(static_cast<double>(bytes)) : std::string("not resident"));
         }
 
-        if (ImGui::CollapsingHeader("Channels", ImGuiTreeNodeFlags_DefaultOpen))
+        const int max_mip   = static_cast<int>(tex->GetResidentMipCount()) - 1;
+        const int max_slice = static_cast<int>(tex->GetArrayLength()) - 1;
+        if (max_mip > 0 || max_slice > 0)
         {
-            const float w = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 3.0f) / 4.0f;
-            if (toggle_button("R", s.channel_r, ImVec2(w, 0)))
+            char summary[48];
+            snprintf(summary, sizeof(summary), "mip %d, slice %d", s.mip_level, s.array_level);
+            if (editor_ui::layout::fold("Level", true, summary))
             {
-                s.channel_r = !s.channel_r;
-            }
-            ImGui::SameLine();
-            if (toggle_button("G", s.channel_g, ImVec2(w, 0)))
-            {
-                s.channel_g = !s.channel_g;
-            }
-            ImGui::SameLine();
-            if (toggle_button("B", s.channel_b, ImVec2(w, 0)))
-            {
-                s.channel_b = !s.channel_b;
-            }
-            ImGui::SameLine();
-            if (toggle_button("A", s.channel_a, ImVec2(w, 0)))
-            {
-                s.channel_a = !s.channel_a;
+                draw_level_slider("Mip", &s.mip_level, max_mip, "This texture has a single mip");
+                draw_level_slider("Slice", &s.array_level, max_slice, "This texture has a single slice");
             }
         }
 
-        if (ImGui::CollapsingHeader("Visualisation", ImGuiTreeNodeFlags_DefaultOpen))
+        const uint32_t shown = (s.channel_r ? 1 : 0) + (s.channel_g ? 1 : 0) + (s.channel_b ? 1 : 0) + (s.channel_a ? 1 : 0);
+        char channel_summary[24];
+        snprintf(channel_summary, sizeof(channel_summary), "%s", shown == 4 ? "all shown" : (shown == 0 ? "none shown" : "filtered"));
+        if (editor_ui::layout::fold("Channels", true, channel_summary))
         {
-            ImGui::Checkbox("Gamma correct",      &s.gamma_correct);
-            ImGuiSp::tooltip("Apply sRGB gamma curve when displaying the texture");
-            ImGui::Checkbox("Pack -1..1 to 0..1", &s.pack);
-            ImGuiSp::tooltip("Remap signed values to unsigned, useful for normal or velocity textures");
-            ImGui::Checkbox("Boost",              &s.boost);
-            ImGuiSp::tooltip("Multiply the visible value to inspect dim hdr content");
-            ImGui::Checkbox("Abs",                &s.abs_value);
-            ImGuiSp::tooltip("Take the absolute value before display");
-            ImGui::Checkbox("Point sampling",     &s.point_sampling);
-            ImGuiSp::tooltip("Use nearest neighbour sampling, useful when zoomed in");
+            draw_channel_toggles();
+        }
+
+        if (editor_ui::layout::fold("Display"))
+        {
+            editor_ui::property_toggle("Gamma correct",  &s.gamma_correct,  "Apply the sRGB curve when displaying, turn off for data textures such as normals or masks");
+            editor_ui::property_toggle("Remap signed",   &s.pack,           "Map -1..1 to 0..1, useful for normal or velocity textures");
+            editor_ui::property_toggle("Boost",          &s.boost,          "Multiply the visible value to inspect dim hdr content");
+            editor_ui::property_toggle("Absolute value", &s.abs_value,      "Take the absolute value before display, negative values become visible");
+            editor_ui::property_toggle("Point sampling", &s.point_sampling, "Nearest neighbour sampling, shows individual texels when zoomed in");
         }
 
         // debug writer control lives here since it drives what this specific render target shows
         if (tex == spartan::Renderer::GetRenderTarget(spartan::Renderer_RenderTarget::debug_output))
         {
-            if (ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_DefaultOpen))
+            if (editor_ui::layout::fold("Debug output"))
             {
                 draw_debug_writer();
             }
@@ -947,35 +1035,33 @@ namespace
 
     void draw_status_bar()
     {
-        ImGui::Separator();
+        ImGui::Dummy(ImVec2(0.0f, ImGui::EditorUi::scaled(2.0f)));
         spartan::RHI_Texture* tex = s.texture_current;
         if (!tex)
         {
-            ImGui::TextDisabled("no texture");
+            ImGui::TextColored(ImGui::Style::color_text_faint, "No texture selected");
             return;
         }
 
+        // where the cursor is on the left, what is being shown on the right
         if (s.hovered_uv.x >= 0.0f)
         {
-            int px = static_cast<int>(s.hovered_uv.x * tex->GetWidth());
-            int py = static_cast<int>(s.hovered_uv.y * tex->GetHeight());
-            ImGui::Text("pixel %4d, %4d", px, py);
-            ImGui::SameLine(); ImGui::TextDisabled("|"); ImGui::SameLine();
-            ImGui::Text("uv %.3f, %.3f", s.hovered_uv.x, s.hovered_uv.y);
+            const int px = static_cast<int>(s.hovered_uv.x * tex->GetWidth());
+            const int py = static_cast<int>(s.hovered_uv.y * tex->GetHeight());
+            ImGui::TextColored(ImGui::Style::color_text, "Pixel %d, %d", px, py);
+            ImGui::SameLine(0, ImGui::EditorUi::scaled(16.0f));
+            ImGui::TextColored(ImGui::Style::color_text_muted, "UV %.3f, %.3f", s.hovered_uv.x, s.hovered_uv.y);
         }
         else
         {
-            ImGui::TextDisabled("hover preview for pixel info");
+            ImGui::TextColored(ImGui::Style::color_text_faint, "Hover the preview to read a position, wheel zooms, middle drag pans");
         }
 
-        ImGui::SameLine(); ImGui::TextDisabled("|"); ImGui::SameLine();
-        ImGui::Text("%s", rhi_format_to_string(tex->GetFormat()));
-        ImGui::SameLine(); ImGui::TextDisabled("|"); ImGui::SameLine();
-        ImGui::Text("mip %d / %u", s.mip_level, std::max<uint32_t>(1u, tex->GetResidentMipCount()) - 1);
-        ImGui::SameLine(); ImGui::TextDisabled("|"); ImGui::SameLine();
-        ImGui::Text("slice %d / %u", s.array_level, std::max<uint32_t>(1u, tex->GetArrayLength()) - 1);
-        ImGui::SameLine(); ImGui::TextDisabled("|"); ImGui::SameLine();
-        ImGui::Text("~%.1f MB", static_cast<double>(texture_byte_estimate(tex)) / (1024.0 * 1024.0));
+        char right[160];
+        const uint64_t bytes = texture_byte_estimate(tex);
+        snprintf(right, sizeof(right), "%s     mip %d of %u     slice %d of %u     %s", format_name(tex->GetFormat()), s.mip_level, std::max<uint32_t>(1u, tex->GetResidentMipCount()) - 1, s.array_level, std::max<uint32_t>(1u, tex->GetArrayLength()) - 1, bytes > 0 ? editor_ui::format::bytes(static_cast<double>(bytes)).c_str() : "not resident");
+        editor_ui::toolbar::align_right(ImGui::CalcTextSize(right).x);
+        ImGui::TextColored(ImGui::Style::color_text_muted, "%s", right);
     }
 }
 
@@ -1034,29 +1120,31 @@ void TextureViewer::OnTickVisible()
     draw_toolbar();
 
     // body sits above the status bar, panels separated by manual splitters
-    const float status_h            = ImGui::GetTextLineHeightWithSpacing() + 8.0f;
+    ImGui::Dummy(ImVec2(0.0f, ImGui::EditorUi::scaled(2.0f)));
+    const float status_h            = ImGui::GetTextLineHeightWithSpacing() + ImGui::EditorUi::scaled(8.0f);
     const float body_h              = std::max(80.0f, ImGui::GetContentRegionAvail().y - status_h);
     const float total_w             = ImGui::GetContentRegionAvail().x;
-    const float min_left            = 200.0f;
-    const float min_center          = 220.0f;
+    const float min_left            = ImGui::EditorUi::scaled(240.0f);
+    const float min_center          = ImGui::EditorUi::scaled(220.0f);
     const float inspector_fit       = inspector_natural_width();
     const float min_right           = inspector_fit;
+    const float gutters             = splitter_thickness() * 2.0f;
 
     // right panel always at least as wide as its content, otherwise the format and channel a button get clipped
     s.right_panel_width = std::max(s.right_panel_width, min_right);
-    s.left_panel_width  = std::clamp(s.left_panel_width,  min_left,  std::max(min_left,  total_w - min_center - s.right_panel_width - 16.0f));
-    s.right_panel_width = std::clamp(s.right_panel_width, min_right, std::max(min_right, total_w - min_center - s.left_panel_width  - 16.0f));
+    s.left_panel_width  = std::clamp(s.left_panel_width,  min_left,  std::max(min_left,  total_w - min_center - s.right_panel_width - gutters));
+    s.right_panel_width = std::clamp(s.right_panel_width, min_right, std::max(min_right, total_w - min_center - s.left_panel_width  - gutters));
 
-    float center_w = std::max(min_center, total_w - s.left_panel_width - s.right_panel_width - 8.0f);
+    float center_w = std::max(min_center, total_w - s.left_panel_width - s.right_panel_width - gutters);
 
     draw_browser_panel(s.left_panel_width, body_h);
-    ImGui::SameLine();
-    draw_h_splitter("##splitter_left",  &s.left_panel_width,  min_left,  std::max(min_left,  total_w - min_center - s.right_panel_width - 16.0f), body_h, +1.0f);
-    ImGui::SameLine();
+    ImGui::SameLine(0.0f, 0.0f);
+    draw_h_splitter("##splitter_left",  &s.left_panel_width,  min_left,  std::max(min_left,  total_w - min_center - s.right_panel_width - gutters), body_h, +1.0f);
+    ImGui::SameLine(0.0f, 0.0f);
     draw_preview_panel(center_w, body_h);
-    ImGui::SameLine();
-    draw_h_splitter("##splitter_right", &s.right_panel_width, min_right, std::max(min_right, total_w - min_center - s.left_panel_width  - 16.0f), body_h, -1.0f);
-    ImGui::SameLine();
+    ImGui::SameLine(0.0f, 0.0f);
+    draw_h_splitter("##splitter_right", &s.right_panel_width, min_right, std::max(min_right, total_w - min_center - s.left_panel_width  - gutters), body_h, -1.0f);
+    ImGui::SameLine(0.0f, 0.0f);
     draw_inspector_panel(s.right_panel_width, body_h);
 
     draw_status_bar();

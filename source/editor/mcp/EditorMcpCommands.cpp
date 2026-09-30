@@ -8,6 +8,11 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ====================
 #include "pch.h"
 #include "EditorMcpCommands.h"
+#include "../Editor.h"
+#include "../GeneralWindows.h"
+#include "../widgets/Properties.h"
+#include "../widgets/AssetBrowser.h"
+#include "../widgets/Console.h"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -57,6 +62,162 @@ namespace editor_mcp
     {
         register_asset_viewer(editor);
         register_sequencer(editor);
+
+        // lists every editor window, or shows/hides (and optionally undocks, resizes with width + height, or moves with x + y, in pixels relative to the editor window) the one whose title matches, case insensitive
+        add(
+            "editor_window",
+            [editor](const McpRequest& request) -> string
+            {
+                const string* title          = find_any(request, { "title", "name", "window" });
+                const optional<bool> visible = as_bool(find(request, "visible"));
+                const string wanted          = title ? to_lower(*title) : "";
+
+                Widget* match = nullptr;
+                string windows;
+                editor->ForEachWidget([&](Widget* widget)
+                {
+                    if (!wanted.empty() && to_lower(widget->GetTitle()) == wanted)
+                    {
+                        match = widget;
+                    }
+                    windows += windows.empty() ? "" : ",";
+                    windows += "{\"title\":" + quote(widget->GetTitle()) + ",\"visible\":" + boolean(widget->GetVisible()) + "}";
+                });
+
+                // the world launcher is not a widget, it is placed by itself so only visibility applies
+                windows += string(",{\"title\":\"Worlds\",\"visible\":") + boolean(GeneralWindows::GetVisibilityWorlds()) + "}";
+
+                if (wanted.empty())
+                {
+                    return "{\"ok\":true,\"windows\":[" + windows + "]}";
+                }
+
+                if (wanted == "worlds" || wanted == "world launcher")
+                {
+                    GeneralWindows::SetVisibilityWorlds(visible.value_or(true));
+                    return string("{\"ok\":true,\"title\":\"Worlds\",\"visible\":") + boolean(GeneralWindows::GetVisibilityWorlds()) + "}";
+                }
+
+                if (!match)
+                {
+                    return "{\"ok\":false,\"error\":" + quote("no editor window titled '" + *title + "'") + ",\"windows\":[" + windows + "]}";
+                }
+
+                match->SetVisible(visible.value_or(true));
+                if (as_bool(find(request, "undock")).value_or(false))
+                {
+                    match->RequestUndock();
+                }
+                const optional<float> width  = as_float(find(request, "width"));
+                const optional<float> height = as_float(find(request, "height"));
+                if (width && height && *width > 0.0f && *height > 0.0f)
+                {
+                    match->RequestSize(math::Vector2(*width, *height));
+                }
+                const optional<float> x = as_float(find(request, "x"));
+                const optional<float> y = as_float(find(request, "y"));
+                if (x && y)
+                {
+                    match->RequestPosition(math::Vector2(*x, *y));
+                }
+                return "{\"ok\":true,\"title\":" + quote(match->GetTitle()) + ",\"visible\":" + boolean(match->GetVisible()) + "}";
+            }
+        );
+
+        // opens or closes a component in the properties inspector by its header name ("Light", "Physics"), or every one with "all"
+        // a single component also gets its groups opened and is scrolled to the top of the inspector
+        add(
+            "inspector_expand",
+            [](const McpRequest& request) -> string
+            {
+                const string* component = find_any(request, { "component", "name", "title" });
+                const bool open         = as_bool(find(request, "open")).value_or(true);
+                const string target     = component ? *component : "all";
+                Properties::RequestExpand(target, open);
+                return "{\"ok\":true,\"component\":" + quote(target) + ",\"open\":" + boolean(open) + "}";
+            }
+        );
+
+        // drives the assets panel: path (absolute or relative to the project folder), view (grid or list), size (50 to 200),
+        // search, kind (folder, model, texture, material, prefab, world, script, audio, font, archive, file or all) and select (an item label)
+        // changes apply on the next frame, the reply carries the state of the last drawn frame, call it again without arguments to read the result
+        add(
+            "asset_browser",
+            [](const McpRequest& request) -> string
+            {
+                AssetBrowserRequest browser_request;
+                if (const string* value = find_any(request, { "path", "folder", "directory" }))
+                {
+                    browser_request.path = *value;
+                }
+                if (const string* value = find(request, "view"))
+                {
+                    browser_request.view = *value;
+                }
+                if (const string* value = find(request, "search"))
+                {
+                    browser_request.search = *value;
+                }
+                if (const string* value = find_any(request, { "kind", "type", "filter" }))
+                {
+                    browser_request.kind = *value;
+                }
+                if (const string* value = find(request, "select"))
+                {
+                    browser_request.select = *value;
+                }
+                browser_request.size = as_float(find(request, "size"));
+                AssetBrowser::Request(browser_request);
+
+                const AssetBrowserState state = AssetBrowser::GetState();
+                string visible;
+                const size_t shown = min<size_t>(state.visible.size(), 64);
+                for (size_t i = 0; i < shown; i++)
+                {
+                    visible += (i > 0 ? "," : "") + quote(state.visible[i]);
+                }
+                char size[32];
+                snprintf(size, sizeof(size), "%.0f", state.size);
+                return "{\"ok\":true,\"path\":" + quote(state.path) + ",\"view\":" + quote(state.view) + ",\"size\":" + size +
+                       ",\"kind\":" + quote(state.kind) + ",\"selected\":" + quote(state.selected) +
+                       ",\"visible_count\":" + to_string(state.visible.size()) + ",\"visible\":[" + visible + "]}";
+            }
+        );
+
+        // drives the console panel: search (filter text), info / warnings / errors (show or hide that severity),
+        // execute (runs a line exactly as if typed into the console input) and clear (true empties it)
+        // changes apply on the next frame, the reply carries the state of the last drawn frame, call it again without arguments to read the result
+        add(
+            "console_view",
+            [](const McpRequest& request) -> string
+            {
+                ConsoleRequest console_request;
+                if (const string* value = find_any(request, { "search", "filter" }))
+                {
+                    console_request.search = *value;
+                }
+                if (const string* value = find_any(request, { "execute", "command", "run" }))
+                {
+                    console_request.execute = *value;
+                }
+                console_request.show[0] = as_bool(find(request, "info"));
+                console_request.show[1] = as_bool(find(request, "warnings"));
+                console_request.show[2] = as_bool(find(request, "errors"));
+                console_request.clear   = as_bool(find(request, "clear")).value_or(false);
+                Console::Request(console_request);
+
+                const ConsoleState state = Console::GetState();
+                string tail;
+                for (size_t i = 0; i < state.tail.size(); i++)
+                {
+                    tail += (i > 0 ? "," : "") + quote(state.tail[i]);
+                }
+                return "{\"ok\":true,\"total\":" + to_string(state.total) + ",\"visible\":" + to_string(state.visible) +
+                       ",\"info\":" + to_string(state.counts[0]) + ",\"warnings\":" + to_string(state.counts[1]) + ",\"errors\":" + to_string(state.counts[2]) +
+                       ",\"shown\":{\"info\":" + boolean(state.shown[0]) + ",\"warnings\":" + boolean(state.shown[1]) + ",\"errors\":" + boolean(state.shown[2]) + "}" +
+                       ",\"search\":" + quote(state.search) + ",\"tail\":[" + tail + "]}";
+            }
+        );
     }
 
     void Unregister()

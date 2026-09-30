@@ -21,6 +21,7 @@ public:
 
     void OnTickVisible() override;
     void SetSelectedEntity(spartan::Entity* entity);
+    static void ActionEntityCreateLightDirectional();
 
 private:
     // tree
@@ -46,7 +47,6 @@ private:
     static void ActionEntityCreateCone();
     static void ActionEntityCreateCamera();
     static void ActionEntityCreateTerrain();
-    static void ActionEntityCreateLightDirectional();
     static void ActionEntityCreateLightPoint();
     static void ActionEntityCreateLightSpot();
     static void ActionEntityCreateLightArea();

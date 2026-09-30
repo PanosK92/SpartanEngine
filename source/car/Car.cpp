@@ -2750,8 +2750,10 @@ namespace spartan
                 0.0f,
                 1.5f
             );
+            // the synth wants the air charge, which follows the throttle plate; traction control and shifts cut
+            // torque by retarding the spark, the cylinders still fill and the exhaust gets louder, not quieter
             float load = std::clamp(
-                std::max(throttle * 0.15f, torque_normalized),
+                std::max(throttle, torque_normalized),
                 0.0f,
                 1.0f
             );

@@ -42,7 +42,7 @@ float3 sample_restir_gi_bilateral(
 
     float3 result      = 0.0f;
     float weight_total = 0.0f;
-    int2 pixel_max     = int2(width, height) - 1;
+    int2 pixel_max     = max(int2(size * get_render_uv_scale()) - 1, int2(0, 0));
 
     // best surface match irrespective of the bilinear footprint, the fallback below needs a tap
     // that sits on this surface rather than the nearest one in screen space

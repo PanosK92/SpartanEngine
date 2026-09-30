@@ -1234,10 +1234,13 @@ namespace spartan
                     // todo: why do we need to flip sign?
                     p = Vector4(-light->GetEntity()->GetForward(), 0.0f) * view_projection;
 
+                    // the depth only covers the scaled subrect, the light has to project into that viewport, texel size stays the full texture's
+                    const int32_t active_width       = static_cast<int32_t>(GetScaledDimension(tex_sss->GetWidth(), GetResolutionScale()));
+                    const int32_t active_height      = static_cast<int32_t>(GetScaledDimension(tex_sss->GetHeight(), GetResolutionScale()));
                     float in_light_projection[]      = { p.x, p.y, p.z, p.w };
-                    int32_t in_viewport_size[]       = { static_cast<int32_t>(tex_sss->GetWidth()), static_cast<int32_t>(tex_sss->GetHeight()) };
+                    int32_t in_viewport_size[]       = { active_width, active_height };
                     int32_t in_min_render_bounds[]   = { 0, 0 };
-                    int32_t in_max_render_bounds[]   = { static_cast<int32_t>(tex_sss->GetWidth()), static_cast<int32_t>(tex_sss->GetHeight()) };
+                    int32_t in_max_render_bounds[]   = { active_width, active_height };
                     Bend::DispatchList dispatch_list = Bend::BuildDispatchList(in_light_projection, in_viewport_size, in_min_render_bounds, in_max_render_bounds, false);
 
                     m_pcb_pass_cpu.set(pass_bend_sss::light_coordinate, Vector4(dispatch_list.LightCoordinate_Shader[0], dispatch_list.LightCoordinate_Shader[1], dispatch_list.LightCoordinate_Shader[2], dispatch_list.LightCoordinate_Shader[3]));
@@ -1356,6 +1359,7 @@ namespace spartan
             RHI_CommandList::SetShaders(shader_v, shader_p);
             RHI_CommandList::SetBlendState(GetBlendState(Renderer_BlendState::Additive));
             RHI_CommandList::SetColorTarget(tex_out);
+            RHI_CommandList::SetResolutionScale(true);
 
             const float near_distance   = 25.0f; // meters where flares are fully gone
             const float fade_length     = 20.0f; // meters over which flares fade in

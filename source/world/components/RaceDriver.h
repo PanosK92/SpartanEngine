@@ -28,6 +28,7 @@ namespace spartan
 
         void Start() override;
         void Stop() override;
+        void Remove() override;
         void Tick() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;

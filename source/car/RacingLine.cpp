@@ -101,7 +101,7 @@ namespace spartan
         const float spacing = total / static_cast<float>(count);
 
         shared_ptr<RacingLine> line = make_shared<RacingLine>();
-        line->m_track_entity_id     = spline_entity->GetObjectId();
+        line->m_road_entity_ids.push_back(spline_entity->GetObjectId());
         line->m_points.resize(count);
 
         const float width_start = spline->GetRoadWidth();
@@ -122,16 +122,74 @@ namespace spartan
             Point& point     = line->m_points[i];
             point.center     = Vector3::Lerp(dense[segment], dense[next], fraction);
             point.half_width = (width_start + (width_end - width_start) * clamp(t, 0.0f, 1.0f)) * 0.5f;
-        }
-        for (size_t i = 0; i < count; i++)
-        {
-            const Vector3 tangent  = planar_direction(line->m_points[line->Wrap(static_cast<int64_t>(i) + 1)].center - line->m_points[line->Wrap(static_cast<int64_t>(i) - 1)].center);
-            line->m_points[i].right = Vector3::Up.Cross(tangent);
+            point.room_left  = point.half_width;
+            point.room_right = point.half_width;
         }
 
-        line->BuildLine(edge_margin);
+        line->Finish(edge_margin);
         SP_LOG_INFO("racing_line: '%s' %.0f m, %zu points", spline_entity->GetObjectName().c_str(), line->m_length, count);
         return line;
+    }
+
+    shared_ptr<RacingLine> RacingLine::BuildOpen(const vector<Sample>& samples, const vector<uint64_t>& roads, float edge_margin)
+    {
+        if (samples.size() < 2)
+        {
+            SP_LOG_ERROR("racing_line: a route needs at least two points");
+            return nullptr;
+        }
+
+        float total = 0.0f;
+        vector<float> distances(samples.size(), 0.0f);
+        for (size_t i = 1; i < samples.size(); i++)
+        {
+            total        += Vector3::Distance(samples[i - 1].center, samples[i].center);
+            distances[i]  = total;
+        }
+        const size_t count = static_cast<size_t>(total / point_spacing) + 1;
+        if (count < 8)
+        {
+            SP_LOG_ERROR("racing_line: the route is too short (%.0f m)", total);
+            return nullptr;
+        }
+        const float spacing = total / static_cast<float>(count - 1);
+
+        shared_ptr<RacingLine> line = make_shared<RacingLine>();
+        line->m_closed              = false;
+        line->m_road_entity_ids     = roads;
+        line->m_points.resize(count);
+        size_t segment = 0;
+        for (size_t i = 0; i < count; i++)
+        {
+            const float distance = spacing * static_cast<float>(i);
+            while (segment + 2 < samples.size() && distances[segment + 1] < distance)
+            {
+                segment++;
+            }
+            const float span     = max(distances[segment + 1] - distances[segment], 1e-4f);
+            const float fraction = clamp((distance - distances[segment]) / span, 0.0f, 1.0f);
+            const Sample& a      = samples[segment];
+            const Sample& b      = samples[segment + 1];
+            Point& point         = line->m_points[i];
+            point.center         = Vector3::Lerp(a.center, b.center, fraction);
+            point.half_width     = a.half_width + (b.half_width - a.half_width) * fraction;
+            point.room_left      = max(a.room_left + (b.room_left - a.room_left) * fraction, point.half_width);
+            point.room_right     = max(a.room_right + (b.room_right - a.room_right) * fraction, point.half_width);
+        }
+
+        line->Finish(edge_margin);
+        SP_LOG_INFO("racing_line: route %.0f m, %zu points, %zu roads", line->m_length, count, roads.size());
+        return line;
+    }
+
+    void RacingLine::Finish(float edge_margin)
+    {
+        for (size_t i = 0; i < m_points.size(); i++)
+        {
+            const Vector3 tangent = planar_direction(m_points[Wrap(static_cast<int64_t>(i) + 1)].center - m_points[Wrap(static_cast<int64_t>(i) - 1)].center);
+            m_points[i].right     = Vector3::Up.Cross(tangent);
+        }
+        BuildLine(edge_margin);
     }
 
     void RacingLine::BuildLine(float edge_margin)
@@ -154,7 +212,10 @@ namespace spartan
             }
             for (uint32_t iteration = 0; iteration < 100; iteration++)
             {
-                for (size_t i = 0; i < count; i++)
+                // an open line keeps its start and finish where they were asked for
+                const size_t first = m_closed ? 0 : 1;
+                const size_t last  = m_closed ? count : count - 1;
+                for (size_t i = first; i < last; i++)
                 {
                     Point& point         = m_points[i];
                     const Vector3& back  = m_points[Wrap(static_cast<int64_t>(i) - reach)].position;
@@ -207,15 +268,26 @@ namespace spartan
     size_t RacingLine::Wrap(int64_t index) const
     {
         const int64_t count = static_cast<int64_t>(m_points.size());
+        if (!m_closed)
+        {
+            return static_cast<size_t>(clamp(index, int64_t(0), count - 1));
+        }
         return static_cast<size_t>(((index % count) + count) % count);
     }
 
     size_t RacingLine::IndexAt(float distance, float& fraction) const
     {
-        distance = fmodf(distance, m_length);
-        if (distance < 0.0f)
+        if (m_closed)
         {
-            distance += m_length;
+            distance = fmodf(distance, m_length);
+            if (distance < 0.0f)
+            {
+                distance += m_length;
+            }
+        }
+        else
+        {
+            distance = clamp(distance, 0.0f, m_length);
         }
         const auto it  = upper_bound(m_points.begin(), m_points.end(), distance, [](float value, const Point& point) { return value < point.distance; });
         const size_t i = it == m_points.begin() ? 0 : static_cast<size_t>(it - m_points.begin()) - 1;
@@ -239,14 +311,25 @@ namespace spartan
 
     Vector3 RacingLine::DirectionAt(size_t index) const
     {
-        return planar_direction(m_points[Wrap(static_cast<int64_t>(index) + 2)].position - m_points[index].position);
+        // the finish of an open line has nothing ahead, it keeps the direction it arrived with
+        const int64_t ahead = static_cast<int64_t>(index) + 2;
+        if (!m_closed && ahead >= static_cast<int64_t>(m_points.size()))
+        {
+            return planar_direction(m_points[index].position - m_points[Wrap(static_cast<int64_t>(index) - 2)].position);
+        }
+        return planar_direction(m_points[Wrap(ahead)].position - m_points[index].position);
     }
 
     RacingLine::Projection RacingLine::Project(const Vector3& position, size_t hint, bool full_search) const
     {
         const int64_t count = static_cast<int64_t>(m_points.size());
-        const int64_t from  = full_search ? 0 : static_cast<int64_t>(hint) - 8;
-        const int64_t to    = full_search ? count : static_cast<int64_t>(hint) + 60;
+        int64_t from        = full_search ? 0 : static_cast<int64_t>(hint) - 8;
+        int64_t to          = full_search ? count : static_cast<int64_t>(hint) + 60;
+        if (!m_closed)
+        {
+            from = max(from, int64_t(0));
+            to   = min(to, count - 1);
+        }
         const Vector3 p     = planar(position);
 
         float best_distance = numeric_limits<float>::max();
@@ -279,19 +362,25 @@ namespace spartan
     void RacingLine::KeepCollisionLoaded() const
     {
         // the road mesh rebuilds its physics component on edits, so this is asked again every frame
-        Entity* entity = World::GetEntityById(m_track_entity_id);
-        if (Physics* physics = entity ? entity->GetComponent<Physics>() : nullptr; physics && physics->GetDistanceStreaming())
+        for (uint64_t id : m_road_entity_ids)
         {
-            physics->SetDistanceStreaming(false);
+            Entity* entity = World::GetEntityById(id);
+            if (Physics* physics = entity ? entity->GetComponent<Physics>() : nullptr; physics && physics->GetDistanceStreaming())
+            {
+                physics->SetDistanceStreaming(false);
+            }
         }
     }
 
     void RacingLine::RestoreCollisionStreaming() const
     {
-        Entity* entity = World::GetEntityById(m_track_entity_id);
-        if (Physics* physics = entity ? entity->GetComponent<Physics>() : nullptr; physics && !physics->GetDistanceStreaming())
+        for (uint64_t id : m_road_entity_ids)
         {
-            physics->SetDistanceStreaming(true);
+            Entity* entity = World::GetEntityById(id);
+            if (Physics* physics = entity ? entity->GetComponent<Physics>() : nullptr; physics && !physics->GetDistanceStreaming())
+            {
+                physics->SetDistanceStreaming(true);
+            }
         }
     }
 }

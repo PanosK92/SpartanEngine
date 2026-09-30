@@ -654,6 +654,7 @@ const component_type = z.enum([
   "ragdoll",
   "navigation",
   "race_driver",
+  "route_driver",
 ]);
 const component_value = z.union([z.string(), z.number(), z.boolean(), numeric_array]);
 const light_type = z.enum(["directional", "point", "spot", "area"]);
@@ -4705,7 +4706,7 @@ register_local_tool(
 register_tool(
   server,
   "entity_update",
-  "Rename, activate, deactivate, reparent, or retag an entity in edit mode. Use parent_id root to detach. tags_mode defaults to replace; use merge to preserve semantic identity.",
+  "Rename, activate, deactivate, reparent, or retag an entity in edit mode. Use parent_id root to detach. tags_mode defaults to replace; use merge to preserve semantic identity. prefab_attributes \"key=value,key=value\" edits a code prefab's stored attributes (a car's paint_color_r/g/b, paint_preset, camera_follows, telemetry, drivable); they apply after world_save and the next world load.",
   {
     id: z.string(),
     name: z.string().optional(),
@@ -4717,6 +4718,7 @@ register_tool(
       "replace",
       "merge",
     ]).optional(),
+    prefab_attributes: z.string().optional(),
   },
   "entity_update",
   { annotations: edit_tool, outputSchema: output_schemas.entity },
@@ -5910,6 +5912,20 @@ register_tool(
     sweep: z.boolean().optional(),
   },
   "vehicle_dyno",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "engine_sound_capture",
+  "Record the procedural engine sound exactly as it plays, with a 10 ms control track (rpm, throttle, load, boost, fuel cut, overrun, gear). start (seconds, max 120) while a car is occupied or spectated, poll status, then save (path, .wav; writes .csv and .json beside it, relative paths resolve from the engine's working directory). Analyze with: python tools/engine_sound/analyze.py analyze <dir>. Pair with vehicle_dyno for sweeps.",
+  {
+    action: z.enum(["status", "start", "save"]).optional(),
+    seconds: z.number().min(0.1).max(120).optional(),
+    path: z.string().optional(),
+    label: z.string().optional(),
+  },
+  "engine_sound_capture",
   { annotations: edit_tool },
 );
 

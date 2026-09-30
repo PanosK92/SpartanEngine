@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "ResourceViewer.h"
 #include "resource/ResourceCache.h"
 #include "../imgui/ImGui_EditorUi.h"
+#include "../imgui/ImGui_Properties.h"
 //=================================
 
 //= NAMESPACES ===============
@@ -20,49 +21,76 @@ using namespace spartan::math;
 
 namespace
 {
-    int resource_search_count = 0;
+    constexpr uint32_t type_count = static_cast<uint32_t>(ResourceType::Max);
 
-    void print_memory(uint64_t memory)
+    ImGuiTextFilter search_filter;
+    uint32_t type_mask = 0xffffffffu;
+
+    // the same tints the assets panel gives each kind, so a texture is blue and a material coral in both places
+    ImVec4 type_tint(const ResourceType type)
     {
-        if (memory == 0)
+        switch (type)
         {
-            ImGui::Text("0 Mb");
-        }
-        else if (memory < 1024)
-        {
-            ImGui::Text("%.4f Mb", static_cast<float>(memory) / 1000.0f / 1000.0f);
-        }
-        else
-        {
-            ImGui::Text("%.1f Mb", static_cast<float>(memory) / 1000.0f / 1000.0f);
+            case ResourceType::Texture:   return ImVec4(0.25f, 0.70f, 1.00f, 1.0f);
+            case ResourceType::Material:  return ImVec4(1.00f, 0.52f, 0.42f, 1.0f);
+            case ResourceType::Mesh:      return ImVec4(0.66f, 0.52f, 1.00f, 1.0f);
+            case ResourceType::Audio:     return ImVec4(1.00f, 0.42f, 0.66f, 1.0f);
+            case ResourceType::Font:      return ImVec4(0.82f, 0.55f, 1.00f, 1.0f);
+            case ResourceType::Cubemap:   return ImVec4(0.30f, 0.88f, 0.90f, 1.0f);
+            case ResourceType::Animation: return ImVec4(0.40f, 0.88f, 0.60f, 1.0f);
+            case ResourceType::Shader:    return ImVec4(0.80f, 0.90f, 0.40f, 1.0f);
+            default:                      return ImVec4(0.60f, 0.62f, 0.66f, 1.0f);
         }
     }
 
-    bool contains_search_ignore_case(const char* cstr_haystack, const char* cstr_needle)
+    const char* type_name(const ResourceType type)
     {
-        string_view str_h = cstr_haystack;
-        string_view str_n = cstr_needle;
-
-        const auto it = ranges::search(str_h, str_n,
-                                 [](unsigned char a, unsigned char b)
-                                 {
-                                     return std::tolower(a) == std::tolower(b);
-                                 }).begin();
-
-        return it != str_h.end();
+        switch (type)
+        {
+            case ResourceType::Texture:   return "Textures";
+            case ResourceType::Material:  return "Materials";
+            case ResourceType::Mesh:      return "Meshes";
+            case ResourceType::Audio:     return "Audio";
+            case ResourceType::Font:      return "Fonts";
+            case ResourceType::Cubemap:   return "Cubemaps";
+            case ResourceType::Animation: return "Animations";
+            case ResourceType::Shader:    return "Shaders";
+            default:                      return "Other";
+        }
     }
 
-    bool is_resource_searched(IResource* resource, const char* cstr_needle)
+    // "./project/car_playground_resources/albedo.texture" reads as "car_playground_resources/albedo.texture",
+    // every path starts in the project folder so the prefix carries no information
+    string readable_path(const string& path)
     {
-        if (const SpartanObject* object = dynamic_cast<SpartanObject*>(resource))
+        string result = path;
+        replace(result.begin(), result.end(), '\\', '/');
+        for (const char* prefix : { "./project/", "project/", "./" })
         {
-            return contains_search_ignore_case(resource->GetResourceTypeCstr(), cstr_needle)
-                    || contains_search_ignore_case(to_string(object->GetObjectId()).c_str(), cstr_needle)
-                    || contains_search_ignore_case(object->GetObjectName().c_str(), cstr_needle)
-                    || contains_search_ignore_case(resource->GetResourceFilePath().c_str(), cstr_needle);
+            if (result.rfind(prefix, 0) == 0)
+            {
+                result = result.substr(strlen(prefix));
+                break;
+            }
         }
+        return result;
+    }
 
-        return false;
+    bool contains_ignore_case(const string& haystack, const char* needle)
+    {
+        const auto it = ranges::search(haystack, string_view(needle), [](unsigned char a, unsigned char b)
+        {
+            return tolower(a) == tolower(b);
+        }).begin();
+        return it != haystack.end();
+    }
+
+    bool matches_search(IResource* resource, const char* needle)
+    {
+        return contains_ignore_case(resource->GetResourceTypeCstr(), needle)
+            || contains_ignore_case(to_string(resource->GetObjectId()), needle)
+            || contains_ignore_case(resource->GetObjectName(), needle)
+            || contains_ignore_case(resource->GetResourceFilePath(), needle);
     }
 }
 
@@ -72,170 +100,218 @@ ResourceViewer::ResourceViewer(Editor* editor) : Widget(editor)
     m_visible       = false;
     m_toolbar_order = 2;
     m_toolbar_icon  = static_cast<int>(IconType::ResourceCache);
+    m_size_initial  = Vector2(1100, 700);
 }
 
 void ResourceViewer::OnTickVisible()
 {
     auto resources = ResourceCache::GetResourcesSnapshot();
-    const float memory_usage = ResourceCache::GetMemoryUsage() / 1000.0f / 1000.0f;
 
-    ImGui::TextDisabled("Resources");
-    ImGui::SameLine();
-    ImGui::Text(
-        "%d",
-        static_cast<uint32_t>(resources.size())
-    );
-    ImGui::SameLine(
-        0.0f,
-        ImGui::EditorUi::scaled(16.0f)
-    );
-    ImGui::TextDisabled("Memory");
-    ImGui::SameLine();
-    ImGui::Text("%.0f MB", memory_usage);
-    ImGui::Separator();
-    static char search_buffer[128] = "";
-    ImGui::InputTextWithHint("##resource_viewer_search", "Search by type, ID, name or path in case insensitive format", search_buffer, IM_ARRAYSIZE(search_buffer));
-    if (search_buffer[0] != '\0')
+    // per type totals feed the composition bar and the chips, one pass over the cache
+    uint32_t counts[type_count + 1] = {};
+    uint64_t bytes[type_count + 1]  = {};
+    uint64_t total_bytes            = 0;
+    uint64_t largest                = 0;
+    for (const shared_ptr<IResource>& resource : resources)
     {
-        ImGui::SameLine();
-        ImGui::Text("%d result%s", resource_search_count, resource_search_count > 1 ? "s" : "");
-        resource_search_count = 0;
+        const uint32_t index = min(static_cast<uint32_t>(resource->GetResourceType()), type_count);
+        counts[index]++;
+        bytes[index] += resource->GetObjectSize();
+        total_bytes  += resource->GetObjectSize();
+        largest       = max(largest, resource->GetObjectSize());
     }
-    ImGui::Separator();
+
+    // what is loaded and what it weighs, split by kind so the heavy kind is obvious before reading any row
+    vector<editor_ui::Segment> segments;
+    vector<ResourceType> segment_types;
+    for (uint32_t i = 0; i < type_count; i++)
+    {
+        if (counts[i] == 0)
+        {
+            continue;
+        }
+        const ResourceType type = static_cast<ResourceType>(i);
+        segments.push_back({ type_name(type), static_cast<double>(bytes[i]), type_tint(type), editor_ui::format::bytes(static_cast<double>(bytes[i])) });
+        segment_types.push_back(type);
+    }
+
+    editor_ui::stat_strip("##resource_stats", {
+        { to_string(resources.size()), "Resources" },
+        { editor_ui::format::bytes(static_cast<double>(total_bytes)), "In memory" },
+        { to_string(segments.size()), "Kinds" },
+        { editor_ui::format::bytes(static_cast<double>(largest)), "Largest" }
+    });
+    ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(2.0f)));
+    const int hovered_segment = editor_ui::stacked_bar("##resource_composition", segments, static_cast<double>(total_bytes), ImGui::EditorUi::scaled(8.0f));
+    ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(2.0f)));
+
+    // kind chips double as the legend, a click filters the table to that kind, a second click shows every kind again
+    const float gap = ImGui::EditorUi::scaled(4.0f);
+    bool first_chip = true;
+    const bool all_types = type_mask == 0xffffffffu;
+    for (size_t s = 0; s < segment_types.size(); s++)
+    {
+        const ResourceType type = segment_types[s];
+        const uint32_t bit      = 1u << static_cast<uint32_t>(type);
+        char label[64];
+        snprintf(label, sizeof(label), "%s %u###type_%u", type_name(type), counts[static_cast<uint32_t>(type)], static_cast<uint32_t>(type));
+        if (!first_chip)
+        {
+            ImGui::SameLine(0, gap);
+        }
+        first_chip = false;
+        const bool active = !all_types && (type_mask & bit) != 0;
+        const bool lit    = active || hovered_segment == static_cast<int>(s);
+        if (editor_ui::toolbar::pill(label, lit, type_tint(type), all_types ? "Show only this kind" : (active ? "Click again to show every kind" : "Show only this kind"), true))
+        {
+            type_mask = active ? 0xffffffffu : bit;
+        }
+    }
+
+    // the search takes what is left of the row, a table this long is navigated by typing
+    const float search_x = first_chip ? 0.0f : ImGui::EditorUi::scaled(10.0f);
+    if (!first_chip)
+    {
+        ImGui::SameLine(0, search_x);
+    }
+
+    vector<IResource*> rows;
+    rows.reserve(resources.size());
+    for (const shared_ptr<IResource>& resource : resources)
+    {
+        const uint32_t bit = 1u << min(static_cast<uint32_t>(resource->GetResourceType()), 31u);
+        if ((type_mask & bit) == 0)
+        {
+            continue;
+        }
+        if (search_filter.IsActive() && !matches_search(resource.get(), search_filter.InputBuf))
+        {
+            continue;
+        }
+        rows.push_back(resource.get());
+    }
+
+    char count[48];
+    snprintf(count, sizeof(count), "%zu of %zu", rows.size(), resources.size());
+    editor_ui::toolbar::search("##resource_viewer_search", "Search by name, path, kind or id", search_filter, max(ImGui::EditorUi::scaled(160.0f), ImGui::GetContentRegionAvail().x), count, rows.empty());
+    ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(2.0f)));
+
+    if (rows.empty())
+    {
+        const bool filtered = search_filter.IsActive() || type_mask != 0xffffffffu;
+        if (editor_ui::empty_state(resources.empty() ? "Nothing is loaded" : "No resources match", resources.empty() ? "Textures, meshes and materials appear here as a world loads them." : "Try another search, or show every kind again.", filtered ? "Clear filters" : nullptr))
+        {
+            search_filter.Clear();
+            type_mask = 0xffffffffu;
+        }
+        return;
+    }
 
     static ImGuiTableFlags flags =
-        ImGuiTableFlags_Borders           | // Draw all borders.
-        ImGuiTableFlags_RowBg             | // Set each RowBg color with ImGuiCol_TableRowBg or ImGuiCol_TableRowBgAlt (equivalent of calling TableSetBgColor with ImGuiTableBgFlags_RowBg0 on each row manually)
-        ImGuiTableFlags_Resizable         | // Allow resizing columns.
-        ImGuiTableFlags_Reorderable       | // Allow reordering columns.
-        ImGuiTableFlags_Sortable          | // Allow sorting rows.
-        ImGuiTableFlags_ContextMenuInBody | // Right-click on columns body/contents will display table context menu. By default it is available in TableHeadersRow().
-        ImGuiTableFlags_ScrollX           | // Enable horizontal scrolling. Require 'outer_size' parameter of BeginTable() to specify the container size. Changes default sizing policy. Because this create a child window, ScrollY is currently generally recommended when using ScrollX.
-        ImGuiTableFlags_ScrollY;            // Enable vertical scrolling. Require 'outer_size' parameter of BeginTable() to specify the container size.
+        ImGuiTableFlags_BordersInnerV     |
+        ImGuiTableFlags_BordersOuterH     |
+        ImGuiTableFlags_RowBg             |
+        ImGuiTableFlags_Resizable         |
+        ImGuiTableFlags_Reorderable       |
+        ImGuiTableFlags_Hideable          |
+        ImGuiTableFlags_Sortable          |
+        ImGuiTableFlags_ContextMenuInBody |
+        ImGuiTableFlags_ScrollY;
 
-    static ImVec2 size = ImVec2(-1.0f);
-    bool has_results = false;
     ImGui::EditorUi::push_table_style();
-    if (ImGui::BeginTable(
-        "##Widget_ResourceCache",
-        5,
-        flags,
-        size
-    ))
+    if (ImGui::BeginTable("##resource_table", 5, flags, ImVec2(-1.0f, -1.0f)))
     {
-        // Headers
-        ImGui::TableSetupColumn("Type");
-        ImGui::TableSetupColumn("ID");
-        ImGui::TableSetupColumn("Name");
-        ImGui::TableSetupColumn("Path");
-        ImGui::TableSetupColumn("Size");
+        // name and size are what people scan for, the id is only needed when chasing a bug, so it starts hidden
+        const float dpi = Window::GetDpiScale();
+        ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+        ImGui::TableSetupColumn("Kind", ImGuiTableColumnFlags_WidthFixed, 110.0f * dpi);
+        ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_PreferSortDescending, 120.0f * dpi);
+        ImGui::TableSetupColumn("Path", ImGuiTableColumnFlags_WidthStretch, 1.6f);
+        ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultHide, 170.0f * dpi);
+        ImGui::TableSetupScrollFreeze(0, 1);
         ImGui::TableHeadersRow();
 
-        // --- Sorting logic on column header click ---
-        static int sorted_column                 = 1; // default sorting method by ID
-        static ImGuiSortDirection sort_direction = ImGuiSortDirection_Ascending;
-
-        if (ImGuiTableSortSpecs* table_sort_specs = ImGui::TableGetSortSpecs())
+        int sorted_column              = 2;
+        ImGuiSortDirection direction   = ImGuiSortDirection_Descending;
+        if (ImGuiTableSortSpecs* specs = ImGui::TableGetSortSpecs())
         {
-            if (table_sort_specs->SpecsDirty)
+            if (specs->SpecsCount > 0)
             {
-                const ImGuiTableColumnSortSpecs* spec = &table_sort_specs->Specs[0];
-                sorted_column = spec->ColumnIndex;
-                sort_direction = spec->SortDirection;
-                table_sort_specs->SpecsDirty = false;
+                sorted_column = specs->Specs[0].ColumnIndex;
+                direction     = specs->Specs[0].SortDirection;
             }
         }
 
-        ranges::sort(resources, [](const shared_ptr<IResource>& a, const shared_ptr<IResource>& b)
+        const bool ascending = direction == ImGuiSortDirection_Ascending;
+        stable_sort(rows.begin(), rows.end(), [&](IResource* a, IResource* b)
         {
-            const SpartanObject* object_A = dynamic_cast<SpartanObject*>(a.get());
-            const SpartanObject* object_B = dynamic_cast<SpartanObject*>(b.get());
-            if (!object_A || !object_B)
-            {
-                return false;
-            }
-
+            IResource* left  = ascending ? a : b;
+            IResource* right = ascending ? b : a;
             switch (sorted_column)
             {
-                case 0: return sort_direction == ImGuiSortDirection_Ascending
-                                ? a->GetResourceType() < b->GetResourceType()
-                                : a->GetResourceType() > b->GetResourceType();
-                case 1: return sort_direction == ImGuiSortDirection_Ascending
-                                ? object_A->GetObjectId() < object_B->GetObjectId()
-                                : object_A->GetObjectId() > object_B->GetObjectId();
-                case 2: return sort_direction == ImGuiSortDirection_Ascending
-                                ? a->GetObjectName() < b->GetObjectName()
-                                : a->GetObjectName() > b->GetObjectName();
-                case 3: return sort_direction == ImGuiSortDirection_Ascending
-                                ? a->GetResourceFilePath() < b->GetResourceFilePath()
-                                : a->GetResourceFilePath() > b->GetResourceFilePath();
-                case 4: return sort_direction == ImGuiSortDirection_Ascending
-                                ? object_A->GetObjectSize() < object_B->GetObjectSize()
-                                : object_A->GetObjectSize() > object_B->GetObjectSize();
-                default: return true;
+                case 0:  return left->GetObjectName() < right->GetObjectName();
+                case 1:  return left->GetResourceType() < right->GetResourceType();
+                case 2:  return left->GetObjectSize() < right->GetObjectSize();
+                case 3:  return left->GetResourceFilePath() < right->GetResourceFilePath();
+                default: return left->GetObjectId() < right->GetObjectId();
             }
         });
 
-        // --- Draw Row Data ---
-        for (const shared_ptr<IResource>& resource : resources)
+        ImGuiListClipper clipper;
+        clipper.Begin(static_cast<int>(rows.size()));
+        while (clipper.Step())
         {
-            if (const SpartanObject* object = dynamic_cast<SpartanObject*>(resource.get()))
+            for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
             {
-                if (search_buffer[0] != '\0')
-                {
-                    if (!is_resource_searched(resource.get(), search_buffer))
-                    {
-                        continue;
-                    }
-
-                    resource_search_count++;
-                }
-
-                has_results = true;
-
-                // Switch row
+                IResource* resource     = rows[i];
+                const ResourceType type = resource->GetResourceType();
+                const string path       = readable_path(resource->GetResourceFilePath());
+                ImGui::PushID(resource);
                 ImGui::TableNextRow();
 
-                // Type
                 ImGui::TableSetColumnIndex(0);
-                ImGui::Text(resource->GetResourceTypeCstr());
+                ImGui::Selectable(resource->GetObjectName().c_str(), false, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap);
+                if (ImGui::BeginPopupContextItem("##resource_menu"))
+                {
+                    if (ImGui::MenuItem("Copy name"))
+                    {
+                        ImGui::SetClipboardText(resource->GetObjectName().c_str());
+                    }
+                    if (ImGui::MenuItem("Copy path", nullptr, false, !resource->GetResourceFilePath().empty()))
+                    {
+                        ImGui::SetClipboardText(resource->GetResourceFilePath().c_str());
+                    }
+                    if (ImGui::MenuItem("Copy id"))
+                    {
+                        ImGui::SetClipboardText(to_string(resource->GetObjectId()).c_str());
+                    }
+                    ImGui::EndPopup();
+                }
 
-                // ID
                 ImGui::TableSetColumnIndex(1);
-                ImGui::Text(to_string(object->GetObjectId()).c_str());
+                {
+                    const ImVec2 pos   = ImGui::GetCursorScreenPos();
+                    const float radius = ImGui::EditorUi::scaled(3.0f);
+                    ImGui::GetWindowDrawList()->AddCircleFilled(ImVec2(pos.x + radius + 1.0f, pos.y + ImGui::GetTextLineHeight() * 0.5f), radius, ImGui::EditorUi::color(type_tint(type)));
+                    ImGui::SetCursorScreenPos(ImVec2(pos.x + radius * 2.0f + ImGui::EditorUi::scaled(6.0f), pos.y));
+                    ImGui::TextColored(ImGui::Style::color_text_muted, "%s", resource->GetResourceTypeCstr());
+                }
 
-                // Name
                 ImGui::TableSetColumnIndex(2);
-                ImGui::Text(resource->GetObjectName().c_str());
+                const uint64_t size = resource->GetObjectSize();
+                editor_ui::cell_bar(size > 0 ? editor_ui::format::bytes(static_cast<double>(size)).c_str() : "-", largest > 0 ? static_cast<float>(static_cast<double>(size) / static_cast<double>(largest)) : 0.0f, type_tint(type));
 
-                // Path
                 ImGui::TableSetColumnIndex(3);
-                ImGui::Text(resource->GetResourceFilePath().c_str());
+                ImGui::TextColored(ImGui::Style::color_text_muted, "%s", path.empty() ? "generated at runtime" : path.c_str());
+                if (!path.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+                {
+                    ImGui::SetTooltip("%s", resource->GetResourceFilePath().c_str());
+                }
 
-                // Memory
                 ImGui::TableSetColumnIndex(4);
-                print_memory(object->GetObjectSize());
+                ImGui::TextColored(ImGui::Style::color_text_faint, "%llu", static_cast<unsigned long long>(resource->GetObjectId()));
+                ImGui::PopID();
             }
-        }
-
-        if (!has_results)
-        {
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            const char* message = search_buffer[0] == '\0'
-                ? "No resources are loaded"
-                : "No resources match this search";
-            ImGui::PushStyleColor(
-                ImGuiCol_Text,
-                ImGui::Style::color_text_muted
-            );
-            ImGui::Selectable(
-                message,
-                false,
-                ImGuiSelectableFlags_SpanAllColumns |
-                ImGuiSelectableFlags_Disabled
-            );
-            ImGui::PopStyleColor();
         }
 
         ImGui::EndTable();

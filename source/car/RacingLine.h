@@ -15,7 +15,7 @@ namespace spartan
 {
     class Entity;
 
-    // the fastest path around a closed spline road, sampled every couple of meters
+    // the fastest path around a closed spline road, or along an open route from a start to a finish, sampled every couple of meters
     // pure geometry, one line is shared by every ai driver racing that road
     class RacingLine
     {
@@ -27,6 +27,8 @@ namespace spartan
             math::Vector3 position;       // racing line
             math::Vector3 line_right;     // horizontal, to the right of the racing line, which crosses the road at an angle
             float half_width = 0.0f;
+            float room_left  = 0.0f;      // from the centerline to the edge of the drivable road on the left, where cars can pass
+            float room_right = 0.0f;
             float offset     = 0.0f;      // racing line distance right of the centerline
             float distance   = 0.0f;      // arc length along the racing line from the start
             float step       = 0.0f;      // racing line length to the next point
@@ -45,7 +47,21 @@ namespace spartan
         // edge_margin is the room kept between a car's center and the road edge, nullptr when the entity has no usable spline road
         static std::shared_ptr<RacingLine> Build(Entity* spline_entity, float edge_margin = 1.7f);
 
-        uint64_t GetTrackEntityId() const { return m_track_entity_id; }
+        // a point of an open line, the line keeps within half_width of the center and uses the rooms only to get by other cars
+        struct Sample
+        {
+            math::Vector3 center;
+            float half_width = 0.0f;
+            float room_left  = 0.0f;
+            float room_right = 0.0f;
+        };
+
+        // an open line that starts at the first sample and ends at the last
+        // roads are the entities whose collision the line needs, the first one is reported as the track
+        static std::shared_ptr<RacingLine> BuildOpen(const std::vector<Sample>& samples, const std::vector<uint64_t>& roads, float edge_margin);
+
+        uint64_t GetTrackEntityId() const { return m_road_entity_ids.empty() ? 0 : m_road_entity_ids.front(); }
+        bool IsClosed() const             { return m_closed; }
         float GetLength() const           { return m_length; }
         size_t GetCount() const           { return m_points.size(); }
         const Point& GetPoint(size_t index) const { return m_points[index]; }
@@ -64,10 +80,13 @@ namespace spartan
         void RestoreCollisionStreaming() const;
 
     private:
+        // points hold their center and half width, evenly spaced
+        void Finish(float edge_margin);
         void BuildLine(float edge_margin);
 
         std::vector<Point> m_points;
-        uint64_t m_track_entity_id = 0;
-        float m_length             = 0.0f;
+        std::vector<uint64_t> m_road_entity_ids;
+        float m_length = 0.0f;
+        bool m_closed  = true;
     };
 }

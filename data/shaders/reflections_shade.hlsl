@@ -379,7 +379,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         ray.Direction = reflect_dir;
         ray.TMin      = 0.001f;
         ray.TMax      = 1000.0f;
-        float  pixel_angle = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / max(buffer_frame.resolution_render.x, 1.0f);
+        float  pixel_angle = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / get_render_resolution_active().x;
         float2 cone        = float2((length(source_pos - get_camera_position()) + view_dist) * pixel_angle, pixel_angle + source_alpha + ggx_alpha_from_roughness(roughness));
         RaySurface second  = ray_surface_trace(ray, cone);
         bounce_light       = second.hit

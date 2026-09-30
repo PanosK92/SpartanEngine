@@ -176,13 +176,20 @@ namespace spartan
 
     RaceDriver::~RaceDriver()
     {
-        // entities are deleted under the world entity lock, so skip Stop's track lookup
+        // entities are deleted under the world entity lock, any World call here throws a deadlock error and
+        // terminates the process, so the car is removed by Stop/Remove beforehand and only dropped here
         if (m_preload)
         {
             m_preload->cancelled.store(true, memory_order_release);
             m_preload.reset();
         }
-        DestroyCar();
+        m_car           = nullptr;
+        m_car_holder_id = 0;
+    }
+
+    void RaceDriver::Remove()
+    {
+        Stop();
     }
 
     AiDriverSettings RaceDriver::GetDriverSettings() const

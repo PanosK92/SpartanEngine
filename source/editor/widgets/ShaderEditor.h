@@ -51,6 +51,7 @@ private:
     bool m_first_run              = true;
     bool m_source_dirty           = false;
     bool m_open_unsaved_dialog    = false;
+    bool m_failed_only            = false;
     float m_shader_list_width     = 290.0f;
     ImGuiTextFilter m_shader_filter;
     TextEditor m_text_editor;

@@ -9,9 +9,9 @@
   <Variable name="r.grid" value="0.000000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="-4 1 -168" rotation="0 0 0 1" scale="1 1 1">
+  <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="-2.86463 1.14169 -162.372" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <Entity name="component_camera" id="1001000000000000002" active="true" position="-2 1.2 0" rotation="0.0657469 0.288966 -0.0198965 0.954872" scale="1 1 1">
+   <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.77 0" rotation="0.0639696 0.417414 -0.0294728 0.905983" scale="1 1 1">
     <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="400" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="17" />
    </Entity>
   </Entity>

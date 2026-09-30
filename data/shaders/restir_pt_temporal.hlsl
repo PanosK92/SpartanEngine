@@ -19,7 +19,8 @@ float2 reproject_to_previous_frame(float2 current_uv)
     // The reservoir and G-buffer histories live on jittered pixel grids, while
     // velocity deliberately excludes jitter. Put history UVs on the prior grid.
     float2 jitter_delta = (buffer_frame.taa_jitter_previous - buffer_frame.taa_jitter_current) * float2(0.5f, -0.5f);
-    return current_uv - velocity_uv + jitter_delta;
+    // both deltas are screen uv, current_uv is a render uv in the scaled subrect
+    return current_uv + (jitter_delta - velocity_uv) * get_render_uv_scale();
 }
 
 // validates temporal reprojection, delegated to the shared evaluate_disocclusion helper
@@ -112,13 +113,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // reservoir is offered as the temporal neighbour, the shift moves the path onto this primary
     // with a proper jacobian so nothing is copy pasted, only the plane gate below is relaxed to
     // the spatial neighbour tolerance since the source primary is a different surface point
-    bool prev_on_screen = all(prev_uv > 0.0f) && all(prev_uv < 1.0f);
+    float2 uv_scale     = get_render_uv_scale();
+    bool prev_on_screen = all(prev_uv > 0.0f) && all(prev_uv < uv_scale);
     if (!have_history && prev_on_screen)
     {
-        float2 occluder_motion = tex6.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).xy * float2(0.5f, -0.5f);
+        float2 occluder_motion = tex6.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).xy * float2(0.5f, -0.5f) * uv_scale;
         float2 dual_uv         = prev_uv - occluder_motion;
         // a still occluder reproduces prev_uv, which already failed
-        if (dot(occluder_motion, occluder_motion) > 0.0f && all(dual_uv > 0.0f) && all(dual_uv < 1.0f))
+        if (dot(occluder_motion, occluder_motion) > 0.0f && all(dual_uv > 0.0f) && all(dual_uv < uv_scale))
         {
             history_uv   = dual_uv;
             have_history = true;
@@ -138,9 +140,10 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     if (have_history)
     {
-        float2 prev_pixel_f = history_uv * resolution;
-        bool in_bounds = prev_pixel_f.x >= 0.5f && prev_pixel_f.x < resolution.x - 0.5f &&
-                         prev_pixel_f.y >= 0.5f && prev_pixel_f.y < resolution.y - 0.5f;
+        float2 prev_pixel_f      = history_uv * resolution;
+        float2 resolution_active = get_render_resolution_active();
+        bool in_bounds = prev_pixel_f.x >= 0.5f && prev_pixel_f.x < resolution_active.x - 0.5f &&
+                         prev_pixel_f.y >= 0.5f && prev_pixel_f.y < resolution_active.y - 0.5f;
         if (in_bounds)
         {
             int2 prev_pixel = int2(prev_pixel_f);

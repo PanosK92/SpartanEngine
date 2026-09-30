@@ -57,6 +57,8 @@ private:
     void DrawHistory();
     void DrawTimeline(const Capture& capture, float height);
     void DrawDetails(const Capture& capture, float height);
+    void DrawToolbar();
+    void DrawFooter(const Capture& capture);
     void SelectCapture(int index);
 
     std::deque<Capture> m_history;

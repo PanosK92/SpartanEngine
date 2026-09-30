@@ -45,6 +45,10 @@ public:
     static void InspectMaterial(const std::shared_ptr<spartan::Material> material);
     static void ClearMaterialInspection();
 
+    // opens (or closes) a component by header name, or every component with "all", on the next frame
+    // a single component also has its groups opened and is scrolled into view
+    static void RequestExpand(const std::string& component, const bool open);
+
 private:
     void ShowEntity(spartan::Entity* entity) const;
     void ShowScript(spartan::Script* script) const;

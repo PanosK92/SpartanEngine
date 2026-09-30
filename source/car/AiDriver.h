@@ -10,7 +10,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
+#include "../math/Vector3.h"
 
 namespace spartan
 {
@@ -45,12 +47,17 @@ namespace spartan
         float front_use     = 0.0f; // share of the peak force the front axle is using
         float rear_use      = 0.0f;
         float body_slip     = 0.0f; // radians between where the car points and where it goes
+        bool finished       = false; // an open line was driven to its end, the car is parked there
+        bool following      = false; // held back by a slower car in its path
+        bool passing        = false; // off the line to get by a slower car
     };
 
     // racing driver that takes any car around a racing line with the same pedals and steering a player has
     // nothing about the car is assumed: the tires report the grip they could make, the driver fits it against speed (downforce) and measures
     // how much of it the chassis can use before one axle gives up, so any car, surface or tire state gets its own limits
     // hand one to a car with Car::SetAiDriver, the car owns and ticks it, and gets its controls back when it is replaced or cleared
+    // on an open line (a route) it drives from where it is to the end, stops there and holds the car
+    // other cars on the line are followed at a safe gap and passed where the road beside them is clear, oncoming traffic included
     class AiDriver
     {
     public:
@@ -62,6 +69,7 @@ namespace spartan
         const AiDriverSettings& GetSettings() const { return m_settings; }
         const AiDriverStats& GetStats() const       { return m_stats; }
         bool IsHolding() const                      { return m_hold_time > 0.0f; } // still on the grid, waiting out the launch delay
+        bool IsFinished() const                     { return m_stats.finished; }
 
     private:
         friend class Car;
@@ -122,9 +130,25 @@ namespace spartan
             float steering_speed_reduction = 0.0f;
         };
 
+        // another car as the driver sees it, velocity from how it moved since traffic far from the camera is moved without physics
+        struct TrafficCar
+        {
+            math::Vector3 position;
+            math::Vector3 velocity;
+        };
+
+        // the closest car in the path the driver is taking
+        struct Blocker
+        {
+            bool found  = false;
+            float gap   = 0.0f; // bumper to bumper, meters
+            float speed = 0.0f; // along the line, m/s, negative when it comes the other way
+        };
+
         void Possess(Car* car);
         void Release();
         void Tick(float delta_time);
+        void WatchTraffic(float delta_time, float speed, float plan_speed);
 
         Physics* GetPhysics() const;
         float Margin() const;
@@ -156,6 +180,14 @@ namespace spartan
         float m_brake_limit   = 1.0f; // most pedal the tires take before a wheel locks, found by feel like threshold braking
         float m_hold_time     = 0.0f;
         bool m_timing         = false; // the lap in progress started at the line
+
+        // traffic
+        std::unordered_map<const Car*, TrafficCar> m_traffic;
+        Blocker m_blocker;
+        float m_pass_target  = 0.0f; // meters right of the racing line the car wants to drive at, 0 is on the line
+        float m_pass_offset  = 0.0f; // where it drives now, eased toward the target
+        float m_pass_rate    = 0.0f; // m/s the offset moves at
+        float m_blocked_time = 0.0f; // standing behind a car, a queue is not being stuck until it lasts
 
         // learning and recovery timers
         float m_previous_speed  = 0.0f;

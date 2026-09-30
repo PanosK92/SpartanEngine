@@ -622,12 +622,13 @@ bool evaluate_disocclusion(
 {
     confidence = 0.0f;
 
-    if (prev_uv.x < 0.0f || prev_uv.x > 1.0f || prev_uv.y < 0.0f || prev_uv.y > 1.0f)
+    // uvs are render uvs, only the scaled top left of the history holds last frame
+    if (!is_valid_render_uv(prev_uv))
         return false;
 
     float4 prev_clip        = mul(float4(current_position, 1.0f), get_view_projection_previous());
     float3 prev_ndc         = prev_clip.xyz / max(prev_clip.w, 1e-9f);
-    float2 expected_prev_uv = prev_ndc.xy * float2(0.5f, -0.5f) + 0.5f;
+    float2 expected_prev_uv = screen_uv_to_render_uv(prev_ndc.xy * float2(0.5f, -0.5f) + 0.5f);
     float2 reproj_diff      = abs(prev_uv - expected_prev_uv) * resolution;
     float  reproj_dist      = length(reproj_diff);
 
@@ -761,8 +762,9 @@ bool is_neighbor_gbuffer_compatible(
     float center_linear_depth,
     float2 resolution)
 {
-    if (neighbor_pixel.x < 0 || neighbor_pixel.x >= (int)resolution.x ||
-        neighbor_pixel.y < 0 || neighbor_pixel.y >= (int)resolution.y)
+    float2 resolution_active = get_render_resolution_active();
+    if (neighbor_pixel.x < 0 || neighbor_pixel.x >= (int)resolution_active.x ||
+        neighbor_pixel.y < 0 || neighbor_pixel.y >= (int)resolution_active.y)
         return false;
 
     float2 neighbor_uv   = (neighbor_pixel + 0.5f) / resolution;

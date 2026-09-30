@@ -13,6 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <functional>
 #include <deque>
 #include <mutex>
+#include <optional>
 #include "logging/ILogger.h"
 #include "../imgui/ImGui_Style.h"
 //===============================
@@ -27,6 +28,13 @@ struct LogPackage
     std::string text;
     unsigned int error_level = 0;
     uint32_t repeat_count    = 1;
+
+    // where the parts of "[hh:mm:ss]: source: message" sit in text, so each can be drawn in its own weight
+    uint16_t time_end      = 0;
+    uint16_t source_begin  = 0;
+    uint16_t source_end    = 0;
+    uint16_t message_begin = 0;
+    bool is_command        = false;
 };
 
 // Implementation of spartan::ILogger so the engine can log into the editor
@@ -52,6 +60,25 @@ private:
     log_func m_log_func;
 };
 
+// lets the mcp drive the console, requests are applied on the next frame of the widget
+struct ConsoleRequest
+{
+    std::optional<std::string> search;
+    std::optional<std::string> execute;
+    std::optional<bool> show[3];
+    bool clear = false;
+};
+
+struct ConsoleState
+{
+    uint32_t total      = 0;
+    uint32_t visible    = 0;
+    uint32_t counts[3]  = {};
+    bool shown[3]       = { true, true, true };
+    std::string search;
+    std::vector<std::string> tail;
+};
+
 class Console : public Widget
 {
 public:
@@ -65,10 +92,21 @@ public:
     void AddLogPackage(const LogPackage& package);
     void Clear();
 
+    static void Request(const ConsoleRequest& request);
+    static ConsoleState GetState();
+
 private:
 
+    void ShowToolbar();
+    void ShowLog(float height);
+    void ShowInput();
+    void ShowEmptyState();
+    void ApplyMcpRequest();
+    void PublishMcpState();
 
     void ExecuteCommand(const char* command);
+    void WriteResult(const std::string& text, bool is_warning);
+    std::string ClosestVariable(const std::string& name) const;
     int InputCallback(ImGuiInputTextCallbackData* data);
 
     void UpdateAutocomplete();
@@ -80,6 +118,7 @@ private:
     std::deque<LogPackage>             m_logs;
     std::vector<std::string>           m_command_history;
     std::vector<std::string_view>      m_filtered_cvars;
+    std::string                        m_autocomplete_query;
     std::recursive_mutex               m_mutex;
     ImGuiTextFilter                    m_log_filter;
 
@@ -111,6 +150,7 @@ private:
 
     uint32_t                           m_log_max_count      = 1000;
     uint32_t                           m_log_type_count[3]  = { 0, 0, 0 };
+    uint32_t                           m_unseen_count       = 0;
     int                                m_history_position   = -1;
     int                                m_autocomplete_selection = 0;
 
@@ -118,6 +158,6 @@ private:
     bool                               m_autocomplete_navigating = false;
     bool                               m_scroll_to_bottom        = false;
     bool                               m_user_scrolled_up        = false;
+    bool                               m_reclaim_focus           = false;
     bool                               m_log_type_visibility[3] = { true, true, true };
 };
-

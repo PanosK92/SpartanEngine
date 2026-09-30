@@ -55,8 +55,8 @@ float hiz_min_depth_over_box(Texture2D hiz_tex, float2 min_uv, float2 max_uv, fl
     hiz_tex.GetDimensions(width, height);
     float2 size = float2(width, height);
     float2 uv_scale = get_render_uv_scale();
-    min_uv = saturate(min_uv * uv_scale - 1.0f / size);
-    max_uv = saturate(max_uv * uv_scale + 1.0f / size);
+    min_uv = clamp(min_uv * uv_scale - 1.0f / size, 0.0f, uv_scale);
+    max_uv = clamp(max_uv * uv_scale + 1.0f / size, 0.0f, uv_scale);
     float2 size_px = (max_uv - min_uv) * size;
     uint mip = (uint)clamp(ceil(log2(max(max(size_px.x, size_px.y), 1.0f))), 0.0f, max_mip_level);
 

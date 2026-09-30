@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "widgets/ProgressDialog.h"
 #include "widgets/Viewport.h"
 #include "widgets/WorldViewer.h"
+#include "widgets/WorldEnvironment.h"
 #include "widgets/Properties.h"
 #include "widgets/Console.h"
 #include "widgets/AssetBrowser.h"
@@ -34,6 +35,7 @@ void Editor::RegisterWidgets()
     AddWidget<ProgressDialog>();
     AddWidget<Viewport>();
     AddWidget<WorldViewer>();
+    AddWidget<WorldEnvironment>();
     AddWidget<Properties>();
     AddWidget<Console>();
     AddWidget<AssetBrowser>();

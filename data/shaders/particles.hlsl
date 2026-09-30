@@ -286,7 +286,7 @@ void apply_depth_collision(inout Particle p, inout float3 new_pos, EmitterParams
         return;
     }
 
-    int2 pixel = int2(uv_new * buffer_frame.resolution_render);
+    int2 pixel = int2(uv_new * get_render_resolution_active());
     float scene_depth_raw = tex_depth.Load(int3(pixel, 0)).r;
     if (scene_depth_raw <= 0.0)
     {

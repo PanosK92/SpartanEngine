@@ -638,7 +638,8 @@ float3 evaluate_volume_lighting(float3 sample_pos, float3 ray_direction, uint2 p
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
     uint2 pixel = dispatch_thread_id.xy;
-    if (pixel.x >= (uint)buffer_frame.resolution_render.x || pixel.y >= (uint)buffer_frame.resolution_render.y)
+    float2 resolution_active = get_render_resolution_active();
+    if (pixel.x >= (uint)resolution_active.x || pixel.y >= (uint)resolution_active.y)
     {
         return;
     }

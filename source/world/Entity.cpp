@@ -29,6 +29,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "components/Pedestrians.h"
 #include "components/Navigation.h"
 #include "components/RaceDriver.h"
+#include "components/RouteDriver.h"
 #include "components/SpawnPoint.h"
 #include "components/CarReset.h"
 #include "components/Text3D.h"
@@ -104,6 +105,28 @@ namespace spartan
                 stringstream ss(attr.as_string());
                 ss >> scale.x >> scale.y >> scale.z;
                 entity->SetScaleLocal(scale);
+            }
+        }
+
+        // a saved entity loaded a second time must not take the ids of the original, prefab overrides carry entities too
+        void assign_fresh_ids(pugi::xml_node node)
+        {
+            static atomic<uint64_t> counter = 0;
+            node.attribute("id").set_value(SpartanObject().GetObjectId() ^ (++counter * 0x9E3779B97F4A7C15ull));
+            for (pugi::xml_node child = node.first_child(); child; child = child.next_sibling())
+            {
+                const string name = child.name();
+                if (name == "Entity")
+                {
+                    assign_fresh_ids(child);
+                }
+                else if (name == "prefab_override")
+                {
+                    for (pugi::xml_node added = child.child("Entity"); added; added = added.next_sibling("Entity"))
+                    {
+                        assign_fresh_ids(added);
+                    }
+                }
             }
         }
 
@@ -187,6 +210,19 @@ namespace spartan
 
     Entity* Entity::Clone()
     {
+        // a prefab instance is rebuilt from its prefab, copying the built parts would leave them without what drives them (a car's Car)
+        if (HasPrefabData())
+        {
+            pugi::xml_document document;
+            pugi::xml_node node = document.append_child("Entity");
+            Save(node);
+            assign_fresh_ids(node);
+            Entity* clone = World::CreateEntity();
+            clone->Load(node);
+            clone->SetTransient(IsTransient());
+            return clone;
+        }
+
         Entity* clone = clone_shallow(this);
         for (Entity* child : GetChildren()) child->Clone()->SetParent(clone);
         return clone;

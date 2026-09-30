@@ -41,7 +41,25 @@ enum FileDialog_SortColumn
 {
     Sort_Name,
     Sort_Type,
+    Sort_Size,
     Sort_Modified
+};
+
+// what an entry is to the user, drives its tint, tag, status hint and the type chips
+enum FileDialog_Kind
+{
+    Kind_Folder,
+    Kind_Model,
+    Kind_Texture,
+    Kind_Material,
+    Kind_Prefab,
+    Kind_World,
+    Kind_Script,
+    Kind_Audio,
+    Kind_Font,
+    Kind_Archive,
+    Kind_Other,
+    Kind_Count
 };
 
 enum FileDialog_ViewMode
@@ -75,6 +93,11 @@ public:
     uint32_t GetId() const { return m_id; }
     const spartan::Icon& GetIcon() const { return m_icon; }
     auto IsDirectory() const { return m_is_directory; }
+    FileDialog_Kind GetKind() const { return m_kind; }
+    const std::string& GetExtension() const { return m_extension; }
+    uint64_t GetSizeBytes() const { return m_size_bytes; }
+    uint32_t GetChildCount() const { return m_child_count; }
+    const std::filesystem::file_time_type& GetModified() const { return m_modified; }
     auto GetTimeSinceLastClickMs() const { return static_cast<float>(m_time_since_last_click.count()); }
     void Clicked()
     {
@@ -92,14 +115,23 @@ private:
         m_id          = id++;
         m_is_directory = spartan::FileSystem::IsDirectory(path);
         m_label       = spartan::FileSystem::GetFileNameFromFilePath(path);
+        InitDetails();
     }
+
+    // size, age and child count are read once here, the list view used to hit the disk for every row every frame
+    void InitDetails();
 
     spartan::Icon m_icon;
     uint32_t m_id;
     std::string m_path;
     std::string m_path_relative;
     std::string m_label;
+    std::string m_extension;
     bool m_is_directory;
+    FileDialog_Kind m_kind   = Kind_Other;
+    uint64_t m_size_bytes    = 0;
+    uint32_t m_child_count   = 0;
+    std::filesystem::file_time_type m_modified{};
     std::chrono::duration<double, std::milli> m_time_since_last_click;
     std::chrono::time_point<std::chrono::high_resolution_clock> m_last_click_time;
 };
@@ -129,20 +161,39 @@ public:
     void SetCallbackOnItemDoubleClicked(const std::function<void(const std::string&)>& callback) { m_callback_on_item_double_clicked = callback; }
     void SetToolbarAction(const std::string& label, const std::function<void()>& callback) { m_toolbar_action_label = label; m_toolbar_action = callback; }
 
+    // view state, also driven by the mcp so the browser can be reviewed without mouse input
+    FileDialog_ViewMode GetViewMode() const { return m_view_mode; }
+    void SetViewMode(const FileDialog_ViewMode mode) { m_view_mode = mode; }
+    float GetItemSize() const { return m_item_size.x; }
+    void SetItemSize(float size);
+    void SetSearch(const std::string& text);
+    int GetKindFilter() const { return m_kind_filter; }
+    void SetKindFilter(const int kind) { m_kind_filter = kind; }
+    bool SelectItem(const std::string& label);
+    std::vector<std::string> GetVisibleLabels();
+    std::string GetSelectedLabel();
+    static const char* GetKindName(int kind);
+    static const char* GetKindPlural(int kind);
+
 private:
     void ShowTop(bool* is_visible, Editor* editor);
     void ShowMiddle();
     void ShowBottom(bool* is_visible);
-    
+    void ShowBreadcrumbs(float right_edge);
+    void ShowKindChips(float width);
+    void ShowEmptyState();
+
     // view rendering
     void RenderGridView();
     void RenderListView();
-    void RenderItem(FileDialogItem* item, const ImVec2& size, bool is_list_view);
 
     // item functionality handling
+    bool IsItemVisible(const FileDialogItem& item) const;
+    void ItemReleased(FileDialogItem* item);
     void ItemDrag(FileDialogItem* item);
     void ItemClick(FileDialogItem* item) const;
     void ItemContextMenu(FileDialogItem* item);
+    void NavigateTo(const std::string& path);
 
     // misc
     void DialogUpdateFromDirectory(const std::string& path);
@@ -162,7 +213,10 @@ private:
     std::string m_input_box;
     std::string m_file_path_pending_overwrite;
     std::string m_hovered_item_path;
+    uint32_t m_hovered_item_id = UINT32_MAX;
     uint32_t m_displayed_item_count;
+    uint32_t m_kind_counts[Kind_Count] = {};
+    int m_kind_filter                  = -1;
 
     // internal
     mutable uint64_t m_context_menu_id;

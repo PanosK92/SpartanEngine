@@ -798,6 +798,7 @@ namespace spartan
             secondary_view_exposure_primary.reset();
             secondary_view_exposure_primary_previous.reset();
             secondary_view_exposure_valid = false;
+            screenshot_ui_target.reset();
             secondary_camera_request = nullptr;
             secondary_render_root_request = nullptr;
             secondary_render_root_active = nullptr;
@@ -1920,7 +1921,20 @@ namespace spartan
 
     float Renderer::GetResolutionScale()
     {
-        return sanitize_resolution_scale(cvar_resolution_scale.GetValue());
+        // dlss and xess reject a render subrect below their minimum input and leave the output untouched,
+        // so the effective scale stops there, the cvar keeps what the user asked for
+        float scale_min = 0.0f;
+        const Renderer_AntiAliasing_Upsampling upsampling_mode = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
+        if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss)
+        {
+            scale_min = RHI_VendorTechnology::DLSS_GetResolutionScaleMin(m_resolution_render, m_resolution_output);
+        }
+        else if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
+        {
+            scale_min = RHI_VendorTechnology::XeSS_GetResolutionScaleMin(m_resolution_render, m_resolution_output);
+        }
+
+        return sanitize_resolution_scale(max(cvar_resolution_scale.GetValue(), scale_min));
     }
 
     uint32_t Renderer::GetScaledDimension(uint32_t dimension, float scale /*= -1.0f*/)

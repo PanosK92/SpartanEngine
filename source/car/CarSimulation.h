@@ -69,6 +69,7 @@ namespace car
         int             current_gear            = 1;
         float           shift_timer             = 0.0f;
         bool            is_shifting             = false;
+        bool            power_shift             = false;
         float           clutch                  = 1.0f;
         float           shift_cooldown          = 0.0f;
         int             last_shift_direction    = 0;

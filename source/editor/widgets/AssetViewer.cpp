@@ -12,6 +12,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "AssetViewerCommon.h"
 #include "../imgui/ImGui_Extension.h"
 #include "../imgui/ImGui_Style.h"
+#include "../imgui/ImGui_EditorUi.h"
+#include "../imgui/ImGui_Properties.h"
 #include "../imgui/source/imgui_stdlib.h"
 #include "file_system/FileSystem.h"
 #include "geometry/GeometryProcessing.h"
@@ -391,32 +393,6 @@ namespace
             return IconType::Texture;
         }
         return IconType::Entity;
-    }
-
-    bool toolbar_toggle(
-        const char* label,
-        const bool active,
-        const ImVec2& size = ImVec2(0.0f, 0.0f)
-    )
-    {
-        if (active)
-        {
-            const ImVec4 accent = ImGui::Style::color_accent_1;
-            ImGui::PushStyleColor(
-                ImGuiCol_Button,
-                ImVec4(accent.x, accent.y, accent.z, 0.28f)
-            );
-            ImGui::PushStyleColor(
-                ImGuiCol_ButtonHovered,
-                ImVec4(accent.x, accent.y, accent.z, 0.42f)
-            );
-        }
-        const bool clicked = ImGui::Button(label, size);
-        if (active)
-        {
-            ImGui::PopStyleColor(2);
-        }
-        return clicked;
     }
 
     void horizontal_splitter(
@@ -5100,15 +5076,16 @@ void AssetViewer::DrawDetails(float height)
         );
         if (!asset.path.empty())
         {
-            detail_row(
-                "Quality",
-                to_string(asset.quality_score) +
-                    (
-                        asset.quality_verified
-                            ? " verified"
-                            : " unverified"
-                    )
-            );
+            char quality[64];
+            if (asset.quality_score > 0.0f)
+            {
+                snprintf(quality, sizeof(quality), "%.2g, %s", asset.quality_score, asset.quality_verified ? "verified" : "not verified");
+            }
+            else
+            {
+                snprintf(quality, sizeof(quality), "Not scored, %s", asset.quality_verified ? "verified" : "not verified");
+            }
+            detail_row("Quality", quality);
         }
 
         section_title("SOURCE");
@@ -5434,13 +5411,10 @@ void AssetViewer::DrawPreview(float width, float height)
 
     if (!m_texture)
     {
-        if (ImGui::SmallButton("Display"))
+        if (editor_ui::toolbar::ghost_button("Display", "Shading and backdrop settings"))
         {
             ImGui::OpenPopup("##asset_preview_display");
         }
-        ImGuiSp::tooltip(
-            "Shading and backdrop settings"
-        );
         if (ImGui::BeginPopup("##asset_preview_display"))
         {
             const char* modes =
@@ -5481,37 +5455,32 @@ void AssetViewer::DrawPreview(float width, float height)
             ImGui::EndPopup();
         }
 
-        ImGui::SameLine(0.0f, 4.0f * scale);
-        if (
-            toolbar_toggle(
-                "Turntable",
-                m_preview_auto_rotate
-            )
-        )
+        editor_ui::toolbar::divider();
+        if (editor_ui::toolbar::pill("Turntable", m_preview_auto_rotate, ImGui::Style::color_accent_1, "Spin the asset slowly"))
         {
             m_preview_auto_rotate = !m_preview_auto_rotate;
         }
     }
     else
     {
+        ImGui::AlignTextToFramePadding();
         ImGui::TextDisabled("Texture preview");
     }
 
-    ImGui::SameLine(0.0f, 4.0f * scale);
-    if (toolbar_toggle("Stats", m_preview_show_stats))
+    ImGui::SameLine(0.0f, 6.0f * scale);
+    if (editor_ui::toolbar::pill("Stats", m_preview_show_stats, ImGui::Style::color_accent_1, "Triangle and vertex counts over the preview"))
     {
         m_preview_show_stats = !m_preview_show_stats;
     }
-    ImGui::SameLine(0.0f, 8.0f * scale);
-    if (ImGui::SmallButton("Frame"))
+    editor_ui::toolbar::divider();
+    if (editor_ui::toolbar::ghost_button("Frame", "Frame the asset"))
     {
         m_preview_zoom = 1.0f;
         m_texture_pan = math::Vector2::Zero;
         m_preview_dirty = true;
     }
-    ImGuiSp::tooltip("Frame asset");
-    ImGui::SameLine(0.0f, 3.0f * scale);
-    if (ImGui::SmallButton("Reset"))
+    ImGui::SameLine(0.0f, 4.0f * scale);
+    if (editor_ui::toolbar::ghost_button("Reset", "Reset the camera"))
     {
         m_preview_yaw = 0.65f;
         m_preview_pitch = 0.35f;
@@ -5519,7 +5488,6 @@ void AssetViewer::DrawPreview(float width, float height)
         m_texture_pan = math::Vector2::Zero;
         m_preview_dirty = true;
     }
-    ImGuiSp::tooltip("Reset camera");
 
     const ImVec2 available =
         ImGui::GetContentRegionAvail();

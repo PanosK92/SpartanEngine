@@ -41,21 +41,7 @@ namespace
     // 12483 reads as nothing, 12,483 reads as a number
     string format_count(const uint32_t value)
     {
-        string digits = to_string(value);
-        string result;
-        result.reserve(digits.size() + digits.size() / 3);
-
-        const size_t leading = digits.size() % 3;
-        for (size_t i = 0; i < digits.size(); i++)
-        {
-            if (i > 0 && (i - leading) % 3 == 0)
-            {
-                result += ',';
-            }
-            result += digits[i];
-        }
-
-        return result;
+        return editor_ui::format::grouped(static_cast<double>(value));
     }
 
     bool is_ready(RHI_Texture* texture)
@@ -438,28 +424,28 @@ void TerrainEditor::DrawActionBar(Terrain* terrain)
 
     const bool placing = m_scatter_running->load();
 
-    ImGui::AlignTextToFramePadding();
-    ImGui::PushStyleColor(
-        ImGuiCol_Text,
-        (m_shape_dirty || m_scatter_dirty || placing) ? design::warning() : ImGui::Style::color_text_muted
-    );
+    // the same dot the other tool windows use, amber while the viewport is behind the authored state
+    const char* status = "Viewport matches what is authored";
     if (m_shape_dirty)
     {
-        ImGui::TextUnformatted("shape edits pending, generate");
+        status = "Shape edits pending, generate to apply them";
     }
     else if (placing)
     {
-        ImGui::TextUnformatted("placing props");
+        status = "Placing props";
     }
     else if (m_scatter_dirty)
     {
-        ImGui::TextUnformatted("rule edits land in a moment");
+        status = "Rule edits land in a moment";
     }
-    else
-    {
-        ImGui::TextUnformatted("viewport matches what is authored");
-    }
-    ImGui::PopStyleColor();
+    const bool behind       = m_shape_dirty || m_scatter_dirty || placing;
+    const ImVec4 tint       = behind ? design::warning() : design::ok();
+    const float dot_radius  = ImGui::EditorUi::scaled(3.5f);
+    const ImVec2 status_pos = ImGui::GetCursorScreenPos();
+    ImGui::EditorUi::status_dot(ImGui::GetWindowDrawList(), ImVec2(status_pos.x + dot_radius, status_pos.y + ImGui::GetFrameHeight() * 0.5f), dot_radius, tint, placing);
+    ImGui::SetCursorScreenPos(ImVec2(status_pos.x + dot_radius * 2.0f + ImGui::EditorUi::scaled(8.0f), status_pos.y));
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextColored(behind ? ImGui::Style::lerp(ImGui::Style::color_text_muted, tint, 0.6f) : ImGui::Style::color_text_muted, "%s", status);
 
     ImGui::SameLine(row_width - opacity_width);
     DrawOpacity(opacity_width);
@@ -470,14 +456,9 @@ void TerrainEditor::DrawActionBar(Terrain* terrain)
 void TerrainEditor::DrawOpacity(const float width)
 {
     // authoring a terrain means watching the terrain, not the panel in front of it
-    int percent = static_cast<int>(m_opacity * 100.0f + 0.5f);
-
-    ImGui::SetNextItemWidth(width);
-    if (ImGui::SliderInt("##opacity", &percent, 25, 100, "opacity %d%%", ImGuiSliderFlags_AlwaysClamp))
-    {
-        m_opacity = static_cast<float>(percent) / 100.0f;
-    }
-    ImGuiSp::tooltip("fade the whole window so the ground stays readable behind it, right click to go back to full");
+    char text[32];
+    snprintf(text, sizeof(text), "Opacity %d%%", static_cast<int>(m_opacity * 100.0f + 0.5f));
+    toolbar::slider("##opacity", &m_opacity, 0.25f, 1.0f, text, width, "Fade the whole window so the ground stays readable behind it, right click to go back to full");
 
     if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
     {
@@ -487,10 +468,10 @@ void TerrainEditor::DrawOpacity(const float width)
 
 void TerrainEditor::DrawNoTerrain()
 {
-    card_begin("No Terrain", "this world has no terrain component yet, start from a flat grid and sculpt, or add the component and assign a height map");
+    card_begin("No terrain", "This world has no terrain component yet. Start from a flat grid and sculpt it, or add the component to an entity and assign a height map.");
     {
         property_uint(
-            "Flat Resolution",
+            "Flat resolution",
             &m_flat_resolution,
             1.0f,
             2,
@@ -498,7 +479,7 @@ void TerrainEditor::DrawNoTerrain()
             "samples per axis of the starting grid, scale turns that into meters"
         );
 
-        if (primary_button("Create Flat Terrain", ImVec2(-1.0f, 0.0f)))
+        if (primary_button("Create flat terrain", ImVec2(-1.0f, 0.0f)))
         {
             Entity* entity = World::CreateEntity();
             entity->SetObjectName("Terrain");

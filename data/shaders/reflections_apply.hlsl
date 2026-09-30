@@ -23,6 +23,9 @@ static const uint  glass_frost_taps           = 8;      // frosted transmission 
 static const float glass_parallax_scale       = 0.18f;  // thin-shell uv shift per meter of optical path
 static const float glass_absorption_scale     = 50.0f;  // maps authored absorption*thickness into beer lambert exponent
 
+// tex4 is the opaque depth at output resolution, stretched from the scaled render subrect over the whole
+// texture, so it takes screen uvs while tex2 (the opaque frame) and the g-buffer take render uvs
+
 // ray traced reflections jitter the ray across the ggx lobe by surface roughness and a
 // spatiotemporal denoiser reconstructs a roughness proportional blur, near the top of the range
 // get_rt_reflection_weight hands the lobe back to ibl, which light_image_based adds as the complement
@@ -86,7 +89,7 @@ float3 compute_refracted_dir(float3 incident_dir, float3 normal, float ior_outer
     return normalize(ior_ratio * incident_dir + (ior_ratio * cos_theta_i - cos_theta_t) * normal);
 }
 
-// screen space raymarch along the refracted direction, returns the hit uv or the straight through uv, handles curved glass correctly
+// screen space raymarch along the refracted direction, returns the hit render uv or the straight through uv, handles curved glass correctly
 float2 compute_refraction_uv(float3 surface_pos_ws, float3 refracted_dir_ws, float depth_transparent, float2 uv)
 {
     // convert to view space
@@ -104,6 +107,7 @@ float2 compute_refraction_uv(float3 surface_pos_ws, float3 refracted_dir_ws, flo
 
         if (!is_valid_uv(ray_uv))
             break;
+        ray_uv = screen_uv_to_render_uv(ray_uv);
 
         // check if the ray passed through the glass and hit geometry behind it
         float depth_z     = get_linear_depth(ray_uv);
@@ -139,7 +143,7 @@ GlassRefraction trace_glass_refraction(Surface surface, float3 view_dir, float3 
     float3 direction       = surface.thickness < 0.05f ? view_dir : refracted_dir;
     float3 origin          = surface.position + direction * max(surface.thickness, 0.01f);
     float  mip_count       = pass_float(pass_reflections_apply::mip_count);
-    float  pixel_angle     = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / max(buffer_frame.resolution_render.x, 1.0f);
+    float  pixel_angle     = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / get_render_resolution_active().x;
     float2 cone            = float2(surface.camera_to_pixel_length * pixel_angle, pixel_angle + surface.roughness_alpha);
     [loop]
     for (uint crossing = 0; crossing < 3; crossing++)
@@ -176,7 +180,7 @@ GlassRefraction trace_glass_refraction(Surface surface, float3 view_dir, float3 
             float depth_scene = linearize_depth(tex4.SampleLevel(samplers[sampler_point_clamp], hit_uv, 0.0f).r);
             if (abs(depth_scene - hit_view.z) < hit_view.z * 0.02f + 0.05f)
             {
-                result.uv        = hit_uv;
+                result.uv        = screen_uv_to_render_uv(hit_uv);
                 result.on_screen = true;
                 return result;
             }
@@ -198,9 +202,7 @@ float ocean_contact_foam(float2 render_uv, float3 water_position, float water_de
         float2(-0.707, -0.707), float2(0.707, -0.707), float2(-0.707, 0.707), float2(0.707, 0.707)
     };
     float2 screen_uv = render_uv_to_screen_uv(render_uv);
-    uint width, height;
-    tex4.GetDimensions(width, height);
-    float2 texel = 1.0f / float2(width, height);
+    float2 texel = 1.0f / get_render_resolution_active();
     float3 adjacent = get_position(water_depth, screen_uv + float2(texel.x, 0.0f));
     float pixel_world = max(length(adjacent - water_position), 0.0001f);
     float radius_pixels = clamp(contact_foam_radius * 0.5f / pixel_world, 1.0f, 32.0f);
@@ -353,7 +355,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             if (surface.is_water())
             {
                 // point sample, bilinear blends silhouette depths into values that land anywhere
-                float depth_background = linearize_depth(tex4.SampleLevel(samplers[sampler_point_clamp], uv, 0.0f).r);
+                float depth_background = linearize_depth(tex4.SampleLevel(samplers[sampler_point_clamp], render_uv_to_screen_uv(uv), 0.0f).r);
                 // At the beach, a foreground depth sample must not turn a
                 // centimetre of water into a ten-metre absorbing column.
                 float bed_valid;
@@ -371,7 +373,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 // true position and always stays one object, the offset still grows with the water column so
                 // it vanishes at the waterline and deeper content shimmers more
                 // snell shifts the bed by about a quarter of column * slope in metres, projected by view depth so ripples never scramble it
-                float2 offset = surface.normal.xz * 0.25f * min(thickness, 4.0f) / max(depth_transparent * 1.2f, 1.0f);
+                float2 offset = surface.normal.xz * 0.25f * min(thickness, 4.0f) / max(depth_transparent * 1.2f, 1.0f) * get_render_uv_scale();
 
                 // the wobble can still land on geometry in front of the water, e.g. the part of a pillar
                 // above the surface, halve it until the sample is submerged, the offset is small so the
@@ -383,8 +385,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 for (int i = 0; i < 4; i++)
                 {
                     float2 uv_try   = uv + offset * scale;
-                    float depth_try = linearize_depth(tex4.SampleLevel(samplers[sampler_point_clamp], uv_try, 0.0f).r);
-                    if (depth_try > depth_transparent && all(uv_try == saturate(uv_try)))
+                    float depth_try = linearize_depth(tex4.SampleLevel(samplers[sampler_point_clamp], render_uv_to_screen_uv(uv_try), 0.0f).r);
+                    if (depth_try > depth_transparent && is_valid_render_uv(uv_try))
                     {
                         refracted_uv = uv_try;
                         depth_shown  = depth_try;
@@ -400,8 +402,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 refraction.b = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv + delta * (1.0f - chromatic_aberration), 0.0f).b;
 
                 // The same voxel field owns the submerged column seen from either side.
-                float background_depth = tex4.SampleLevel(samplers[sampler_point_clamp], refracted_uv, 0.0f).r;
                 float2 screen_uv = render_uv_to_screen_uv(refracted_uv);
+                float background_depth = tex4.SampleLevel(samplers[sampler_point_clamp], screen_uv, 0.0f).r;
                 float3 background_position = get_position(background_depth, screen_uv);
                 float background_distance = length(background_position - get_camera_position());
                 // Match this UV's radial ray at the transparent surface's view depth.
@@ -417,9 +419,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
                 // thin-shell parallax, bend the background by the authored thickness even when the raymarch fails
                 float3 view_tangent = view_dir_normalized - surface.normal * dot(view_dir_normalized, surface.normal);
-                float2 parallax     = view_tangent.xz * (optical_path * glass_parallax_scale);
+                float2 parallax     = view_tangent.xz * (optical_path * glass_parallax_scale) * get_render_uv_scale();
                 float2 uv_parallax  = uv + parallax;
-                if (!is_valid_uv(uv_parallax))
+                if (!is_valid_render_uv(uv_parallax))
                 {
                     uv_parallax = uv;
                 }
@@ -461,7 +463,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 refraction.b = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv + delta * (1.0f + glass_dispersion), 0.0f).b;
 
                 // frosted blur from roughness and authored thickness, screen depth is only an upper bound so thin windshields stay sharp
-                float depth_background = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], refracted_uv, 0.0f).r);
+                float depth_background = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], render_uv_to_screen_uv(refracted_uv), 0.0f).r);
                 float screen_thickness = clamp(depth_background - depth_transparent, 0.0f, 4.0f);
                 float blur_metric      = min(max(shell_thickness * 40.0f, screen_thickness * 0.25f), screen_thickness + shell_thickness * 20.0f);
                 float blur_radius      = min(surface.roughness_alpha * blur_metric / max(depth_transparent, 0.5f), 0.03f);
@@ -475,7 +477,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                     {
                         float  angle  = (t + 0.5f) * 2.399963f + rotation;
                         float  radius = blur_radius * sqrt((t + 0.5f) / glass_frost_taps);
-                        float2 tap_uv = refracted_uv + float2(cos(angle), sin(angle)) * radius;
+                        float2 tap_uv = refracted_uv + float2(cos(angle), sin(angle)) * radius * get_render_uv_scale();
                         sum          += tex2.SampleLevel(samplers[sampler_bilinear_clamp], tap_uv, 0.0f).rgb;
                     }
                     refraction = sum / glass_frost_taps;
@@ -488,9 +490,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 }
                 else
                 {
-                    refraction = lerp(background, refraction, screen_fade(refracted_uv));
-                    float background_depth = tex4.SampleLevel(samplers[sampler_point_clamp], refracted_uv, 0.0f).r;
+                    refraction = lerp(background, refraction, screen_fade(render_uv_to_screen_uv(refracted_uv)));
                     float2 screen_uv = render_uv_to_screen_uv(refracted_uv);
+                    float background_depth = tex4.SampleLevel(samplers[sampler_point_clamp], screen_uv, 0.0f).r;
                     float background_distance = length(get_position(background_depth, screen_uv) - get_camera_position());
                     refraction = fog_transmit_segment(refraction, screen_uv, surface.camera_to_pixel_length,
                         background_depth == 0.0f ? fog_far : background_distance);

@@ -45,7 +45,11 @@ void Widget::Tick()
         ? Vector2(Display::GetWidth() * 0.5f, Display::GetHeight() * 0.5f)
         : m_size_initial;
     ImGui::SetNextWindowSize(m_size_initial, ImGuiCond_FirstUseEver);
-
+    if (m_size_requested.x > 0.0f && m_size_requested.y > 0.0f)
+    {
+        ImGui::SetNextWindowSize(m_size_requested, ImGuiCond_Always);
+        m_size_requested = Vector2::Zero;
+    }
     if (m_size_min != k_widget_default_property || m_size_max != FLT_MAX)
     {
         ImGui::SetNextWindowSizeConstraints(m_size_min, m_size_max);
@@ -64,6 +68,18 @@ void Widget::Tick()
     }
 
     OnPreBegin();
+    if (m_position_request_pending)
+    {
+        // relative to the main viewport so the window stays inside the editor instead of spawning its own os window
+        const ImVec2 origin = ImGui::GetMainViewport()->Pos;
+        ImGui::SetNextWindowPos(ImVec2(origin.x + m_position_requested.x, origin.y + m_position_requested.y), ImGuiCond_Always);
+        m_position_request_pending = false;
+    }
+    if (m_undock_requested)
+    {
+        ImGui::SetNextWindowDockID(0, ImGuiCond_Always);
+        m_undock_requested = false;
+    }
 
     draw_contents = ImGui::Begin(m_title, &m_visible, m_flags);
     ImGuiWindow* current_window = ImGui::GetCurrentWindow();

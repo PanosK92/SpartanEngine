@@ -1143,9 +1143,10 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         bool distance_valid = current_distance <= 0.0 || (history_distance > 0.0 && abs(history_distance - expected_distance) <= max(500.0, expected_distance * 0.2));
 
         float2 current_depth_uv = saturate(cloud_depth_uv(uv, buffer_frame.taa_jitter_current));
-        float current_depth_raw = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_depth_uv, 0).r;
+        // cloud uvs are screen uvs, the scene depths only fill the scaled render subrect
+        float current_depth_raw = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), screen_uv_to_render_uv(current_depth_uv), 0).r;
         float2 previous_depth_uv = saturate(cloud_depth_uv(previous_uv, buffer_frame.taa_jitter_previous));
-        float previous_depth_raw = tex5.SampleLevel(GET_SAMPLER(sampler_point_clamp), previous_depth_uv, 0).r;
+        float previous_depth_raw = tex5.SampleLevel(GET_SAMPLER(sampler_point_clamp), screen_uv_to_render_uv(previous_depth_uv), 0).r;
         bool depth_valid;
         if (current_depth_raw <= 1e-6)
         {
@@ -1157,7 +1158,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
             float4 scene_previous_clip = mul(float4(scene_world, 1.0), previous_vp);
             float2 scene_previous_uv = ndc_to_uv(scene_previous_clip.xy / max(scene_previous_clip.w, 1e-6));
             previous_depth_uv = saturate(cloud_depth_uv(scene_previous_uv, buffer_frame.taa_jitter_previous));
-            previous_depth_raw = tex5.SampleLevel(GET_SAMPLER(sampler_point_clamp), previous_depth_uv, 0).r;
+            previous_depth_raw = tex5.SampleLevel(GET_SAMPLER(sampler_point_clamp), screen_uv_to_render_uv(previous_depth_uv), 0).r;
             float expected_previous_depth = linearize_depth(scene_previous_clip.z / max(scene_previous_clip.w, 1e-6));
             float sampled_previous_depth  = linearize_depth(previous_depth_raw);
             depth_valid = scene_previous_clip.w > 0.0 && all(scene_previous_uv > 0.0) && all(scene_previous_uv < 1.0) && abs(sampled_previous_depth - expected_previous_depth) <= max(2.0, expected_previous_depth * 0.02);

@@ -53,6 +53,10 @@ public:
     const char* GetTitle()             const { return m_title; }
     bool& GetVisible()                       { return m_visible; }
     void SetVisible(const bool is_visible)   { m_visible = is_visible; }
+    // applied on the next tick, docked windows ignore them
+    void RequestSize(const spartan::math::Vector2& size)         { m_size_requested = size; }
+    void RequestPosition(const spartan::math::Vector2& position) { m_position_requested = position; m_position_request_pending = true; }
+    void RequestUndock()                                         { m_undock_requested = true; }
 
     bool ShowInViewMenu()              const { return m_show_in_view_menu; }
     WidgetDock GetDock()               const { return m_dock; }
@@ -72,6 +76,10 @@ protected:
     spartan::math::Vector2 m_size_initial = k_widget_default_property;
     spartan::math::Vector2 m_size_min     = k_widget_default_property;
     spartan::math::Vector2 m_size_max     = FLT_MAX;
+    spartan::math::Vector2 m_size_requested;
+    spartan::math::Vector2 m_position_requested;
+    bool m_position_request_pending       = false;
+    bool m_undock_requested               = false;
     spartan::math::Vector2 m_padding      = k_widget_default_property;
     const char* m_title                   = "Title";
     ImGuiWindow* m_window                 = nullptr;

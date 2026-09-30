@@ -134,6 +134,10 @@ namespace spartan
         // range
         void SetRange(float range);
         auto GetRange() const { return m_range; }
+        // the range at which the light has faded to a quarter lux, the range follows it until it is edited
+        float GetRangeSensible() const;
+        // on axis illuminance in lux at a distance in meters, what a surface facing the light receives
+        float GetIlluminanceAt(const float distance) const;
 
         // angle
         void SetAngle(float angle_rad);

@@ -67,6 +67,7 @@ namespace spartan
         void SetAlignment(Text3DAlignment alignment);
 
         bool HasMesh() const { return m_mesh != nullptr; }
+        bool IsDirty() const { return m_dirty; }
         bool GenerateMesh();
         void PrepareWorld() { if (m_dirty) GenerateMesh(); }
         void ClearMesh();

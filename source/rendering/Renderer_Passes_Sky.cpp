@@ -230,7 +230,7 @@ namespace spartan
         RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, eye_layer);
         RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_composite);
         RHI_CommandList::SetTexture(Renderer_BindingsUav::tex2, GetRenderTarget(Renderer_RenderTarget::cloud_velocity), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::Dispatch(tex_composite);
+        RHI_CommandList::Dispatch(tex_composite, GetResolutionScale());
         RHI_CommandList::Blit(tex_composite, tex_scene, false);
     }
 
