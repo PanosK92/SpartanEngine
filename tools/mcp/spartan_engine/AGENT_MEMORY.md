@@ -71,6 +71,7 @@ Shared memory for agents working on Spartan Engine. Keep it short, factual and c
 - D3D12 build beside Vulkan: copy tools/premake.lua to a scratch folder at repo depth 1 (dofile ../tools/..., OBJ_DIR ../binaries/obj_d3d12, location '.', drop setup.run), run '..\tools\premake5.exe --file=premake.lua vs2026 d3d12', MSBuild development x64. A texture that differs per backend is usually missing (D3D12 null srv is black, Vulkan shows the grey checkerboard).
 - New cvars must be added to a section in get_sections (Settings.cpp). Rerun generate_project_files.bat after adding .cpp files.
 - Crash dumps land in %LOCALAPPDATA%\CrashDumps; copy cdb to %TEMP% and run `cdb -z dump -y binaries -c ".ecxr; kn 40; q"`.
+- 2026-09-30 a #!/usr/bin/env node shebang must be line 1, above the license header, or node refuses the file (assistant.mjs was broken this way). Run node --check on every tools/mcp/spartan_engine/*.mjs after edits.
 
 ## Performance and memory
 - plan.world (RTX 5070 Ti, 1920x968): geometry passes ~13 of ~22 ms in forest views; proven lever impostor_screen_fraction in common_culling.hlsl. Non-wins: mesh LOD thresholds, VRS, dropping local-light shadow rays.
