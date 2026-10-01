@@ -141,7 +141,7 @@ namespace spartan
         ComponentType GetType()          const { return m_type; }
         void SetType(ComponentType type)       { m_type = type; }
 
-        const auto& GetAttributes() const { return m_attributes; }
+        const std::vector<Attribute>& GetAttributes() const { return m_attributes; }
         void SetAttributes(const std::vector<Attribute>& attributes);
 
         Entity* GetEntity() const { return m_entity_ptr; }
