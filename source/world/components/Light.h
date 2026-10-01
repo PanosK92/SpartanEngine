@@ -69,6 +69,25 @@ namespace spartan
         RealTimeCycle      = 1U << 4  // derives the time of day from the real world time
     };
 
+    struct LightSettings
+    {
+        uint32_t flags = 0;
+        LightType type = LightType::Point;
+        Color color = Color::standard_white;
+        float temperature = 0.0f;
+        LightIntensity intensity = LightIntensity::custom;
+        float intensity_photometric = 2600.0f;
+        LightPreset preset = LightPreset::custom;
+        float range = 32.0f;
+        float angle = math::deg_to_rad * 30.0f;
+        float area_width = 1.0f;
+        float area_height = 1.0f;
+        float draw_distance = 512.0f;
+        float shadow_distance = 64.0f;
+        float volumetric_distance = 32.0f;
+        std::string ies_profile;
+    };
+
     class Light : public Component
     {
     public:
@@ -76,6 +95,9 @@ namespace spartan
         ~Light();
 
         //= COMPONENT ================================
+        void CopyFrom(const Component& source) override;
+        LightSettings GetSettings() const;
+        void ApplySettings(const LightSettings& settings);
         void Tick() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
@@ -87,6 +109,7 @@ namespace spartan
         // flags
         uint32_t GetFlags() const                    { return m_flags; }
         bool GetFlag(const LightFlags flag)          { return flag == LightFlags::Volumetric || (m_flags & flag); }
+        void SetFlags(uint32_t flags);
         void SetFlag(const LightFlags flag, const bool enable = true);
 
         // type
@@ -120,13 +143,13 @@ namespace spartan
         // time of day, 0.0 = midnight, 0.5 = noon, 1.0 = next midnight, positions the sun for directional lights
         void SetTimeOfDay(const float time_of_day, const float yaw_degrees = 0.0f);
 
-        // cloud coverage, 0 = clear sky, 1 = overcast, drives the cumulus weather map for directional lights
+        // Legacy scripting/editor aliases for world environment settings.
         void SetCloudCoverage(const float coverage);
-        float GetCloudCoverage() const { return m_cloud_coverage; }
+        float GetCloudCoverage() const;
 
-        // rain, 0 = dry, 1 = downpour, directional lights only, the weather wets the world and fills puddles from it
+        // rain, 0 = dry, 1 = downpour; stored by Environment, independent of light lifetime.
         void SetRain(const float rain);
-        float GetRain() const { return m_rain; }
+        float GetRain() const;
 
         // what the sky actually renders, rain needs a sky full of cloud to fall from
         float GetCloudCoverageEffective() const;
@@ -203,6 +226,7 @@ namespace spartan
         math::BoundingBox GetBoundingBox() const { return m_bounding_box; }
 
     private:
+        void ValidateSettings();
         void UpdateMatrices();
         void UpdateViewMatrix();
         void UpdateProjectionMatrix();
@@ -218,8 +242,6 @@ namespace spartan
         LightPreset m_preset             = LightPreset::custom;
         float m_range                    = 32.0f;
         float m_angle_rad                = math::deg_to_rad * 30.0f;
-        float m_cloud_coverage           = 0.8f;
-        float m_rain                     = 0.0f;
         float m_area_width               = 1.0f;  // area light width in meters
         float m_area_height              = 1.0f;  // area light height in meters
         std::string m_ies_file_path;

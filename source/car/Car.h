@@ -15,6 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../math/BoundingBox.h"
 #include "../rendering/Material.h"
 #include "../world/components/Physics.h"
+#include "CarPhysicsTypes.h"
 #include "CarEngineSoundSynthesis.h"
 #include "CarChaseCamera.h"
 //======================================

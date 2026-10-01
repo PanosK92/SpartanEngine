@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ======================
 #include "pch.h"
 #include "IResource.h"
+#include "ResourceCache.h"
 #include "../rhi/RHI_Texture.h"
 #include "../font/Font.h"
 #include "../geometry/Mesh.h"
@@ -38,3 +39,18 @@ INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture, ResourceType::Texture)
 INSTANTIATE_TO_RESOURCE_TYPE(Material,    ResourceType::Material)
 INSTANTIATE_TO_RESOURCE_TYPE(Font,        ResourceType::Font)
 INSTANTIATE_TO_RESOURCE_TYPE(Mesh,        ResourceType::Mesh)
+
+void IResource::SetResourceFilePath(const std::string& path)
+{
+    ResourceCache::SetResourcePath(*this, path);
+}
+
+void IResource::SetResourceName(const std::string& name)
+{
+    ResourceCache::SetResourceName(*this, name);
+}
+
+void IResource::SetObjectName(const std::string& name)
+{
+    ResourceCache::SetResourceLabel(*this, name);
+}

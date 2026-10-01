@@ -219,3 +219,25 @@ other games, engines, libraries, tools, or applications. Contact
 Third-party components retain their own licenses. Copies and versions previously
 released under MIT retain their existing permissions. See [license.md](license.md)
 for the complete terms.
+
+## Editor and runtime builds
+
+Project generation creates `Spartan` (editor and MCP tooling), `SpartanRuntime` (game and HUD), and `SpartanEngine` (runtime without car or game implementations). All use the selected graphics backend. With dependencies already installed, regenerate without downloading them:
+
+```powershell
+tools/premake5.exe --file=tools/premake.lua --skip-setup vs2026 vulkan
+```
+
+Build `SpartanRuntime` and launch `binaries/spartan_vulkan_runtime_development.exe --world <absolute-world-path>`. Use `d3d12` during generation for the corresponding D3D12 targets. Resource paths remain relative to the executable, as in the editor. The runtime requires an existing world and starts play after preparation; it includes no editor widgets or MCP server. The editor's existing `-game` option remains available for hiding its panels.
+
+`source/game/GameWorld.cpp` installs application behavior into the world lifecycle. Camera controls, island rules, vehicle render submissions and vehicle commands live in that layer. Rendering accepts surface and selection data, and vehicle physics implementation/state lives under `source/car`. The `Physics` component keeps its existing world and Lua interfaces. Worker model imports publish their entity hierarchy through `World::EntityBatch::Commit()` after construction succeeds.
+
+`SpartanEngine` builds without `SP_GAME` and launches with the same `--world` argument, using `spartan_<backend>_engine_development.exe`. Use worlds containing engine components; vehicle prefabs, traffic, race drivers, route drivers, car resets and skid marks belong to the game targets. The solution build compiles this target too, keeping the dependency boundary checked in CI.
+
+World saves record native asset ownership in `OwnedResources`. Automatic cleanup only removes unreferenced files recorded there; unlisted files, shared libraries, sculpt data and generated caches retain their separate lifetimes. Legacy worlds acquire ownership of referenced assets when saved and do not prune unrelated legacy files.
+
+Component attributes exposed for editing use the component's setters. Raw copy-only or derived fields remain inspectable through MCP but are read-only; use the named authoring properties for edits.
+
+Physics scene stepping and contact observation use game-independent callbacks; the game installs vehicle contact handling. Vehicle state is opaque to engine consumers, while the existing `Physics` authoring and Lua API remains compatible.
+
+Play startup captures all authored transforms before any component starts, with both phases spread across frames. Stopping play drains completed worker batches before restoration and removal. World unload cancels staged work and clears renderer scene references and temporal history while preserving device lookup tables.

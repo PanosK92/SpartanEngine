@@ -10,6 +10,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "SmokeTest.h"
 #include "../core/Engine.h"
 #include "../core/Timer.h"
+#include "../core/Window.h"
+#include "../world/Environment.h"
+#include "../io/pugixml.hpp"
 #include "../logging/Log.h"
 #include "../rendering/Renderer.h"
 #include "../rendering/Material.h"
@@ -46,7 +49,16 @@ namespace spartan
 
     namespace
     {
-        std::chrono::steady_clock::time_point start_time;
+        Entity* test_camera = nullptr;
+        Entity* test_light = nullptr;
+        Entity* test_cube = nullptr;
+        uint64_t previous_camera_id = 0, setup_frame = 0;
+        bool render_test_ready = false;
+        int play_test_stage = 0;
+        uint64_t parent_id = 0, child_id = 0, deleted_id = 0, spawned_id = 0;
+        double play_test_start = 0.0;
+        std::string failures;
+
     }
 
     void SmokeTest::Initialize()
@@ -74,11 +86,91 @@ namespace spartan
             return;
         }
 
-        Material* standard_material = Renderer::GetStandardMaterial().get();
-        if (standard_material && standard_material->GetResourceState() >= ResourceState::PreparedForGpu)
+        if (play_test_stage && Timer::GetTimeMs() - play_test_start > 60000.0)
         {
             m_delayed_tests_pending = false;
+            RunTest("World.PlayRestore", [](std::string& error) { error = "Play restoration timed out"; return false; });
             RunDelayedTests();
+            return;
+        }
+        if (World::IsLoadingFromFile() || World::IsPlayBooting()) return;
+        if (play_test_stage == 1)
+        {
+            Entity* parent = World::CreateEntity(); parent_id = parent->GetObjectId();
+            Entity* child = World::CreateEntity(); child_id = child->GetObjectId();
+            child->SetParent(parent);
+            child->SetPositionLocal(math::Vector3(1, 2, 3));
+            child->AddComponent<Light>()->SetIntensity(1180.0f);
+            Entity* deleted = World::CreateEntity(); deleted_id = deleted->GetObjectId();
+            deleted->SetObjectName("play_restore_deleted");
+            Engine::SetFlag(EngineMode::Playing, true);
+            play_test_stage = 2;
+            return;
+        }
+        if (play_test_stage == 2)
+        {
+            if (Entity* child = World::GetEntityById(child_id))
+            {
+                child->SetParent(nullptr);
+                child->SetPositionLocal(math::Vector3(9, 8, 7));
+                child->SetActive(false);
+                child->GetComponent<Light>()->SetIntensity(25.0f);
+            }
+            World::RemoveEntity(World::GetEntityById(deleted_id));
+            spawned_id = World::CreateEntity()->GetObjectId();
+            play_test_stage = 3;
+            return;
+        }
+        if (play_test_stage == 3)
+        {
+            // Allow the previous frame's deletion to be committed before stopping.
+            Engine::SetFlag(EngineMode::Playing, false);
+            play_test_stage = 4;
+            return;
+        }
+        if (play_test_stage == 4)
+        {
+            RunTest("World.PlayRestore", Test_PlayRestore);
+            for (uint64_t id : {child_id, parent_id, deleted_id, spawned_id})
+                if (Entity* entity = World::GetEntityById(id)) World::RemoveEntity(entity);
+            play_test_stage = 0;
+            m_delayed_tests_pending = false;
+            RunDelayedTests();
+            return;
+        }
+
+        Material* standard_material = Renderer::GetStandardMaterial().get();
+        if (!test_camera && standard_material && standard_material->GetResourceState() >= ResourceState::PreparedForGpu)
+        {
+            if (Entity* previous = World::GetActiveCameraOverride()) previous_camera_id = previous->GetObjectId();
+            test_camera = CreateTestCamera("SmokeTest_Camera", math::Vector3(0.0f, 10.0f, -5.0f));
+            test_light = CreateTestLight("SmokeTest_Light", math::Vector3(0.0f, 10.0f, 0.0f), 0.0f);
+            test_cube = CreateTestCube("SmokeTest_Cube", math::Vector3(0.0f, 10.0f, 0.0f));
+            auto material = std::make_shared<Material>();
+            material->SetObjectName("smoke_test_green");
+            material->SetColor(Color(0.0f, 1.0f, 0.0f, 1.0f));
+            // Full strength is 100,000 nits; keep this fixture below tonemapper saturation.
+            material->SetProperty(MaterialProperty::EmissiveFromAlbedo, 0.002f);
+            test_cube->GetComponent<Render>()->SetMaterial(material);
+            World::SetActiveCamera(test_camera);
+            setup_frame = Renderer::GetFrameNumber();
+            return;
+        }
+        if (test_cube && test_cube->GetComponent<Render>()->GetMaterial()->GetResourceState() < ResourceState::PreparedForGpu)
+            setup_frame = Renderer::GetFrameNumber();
+        // The editor can render its first UI frame while scene shaders are still queued.
+        for (const auto& shader : Renderer::GetShaders())
+            if (shader && !shader->IsCompiled()) setup_frame = Renderer::GetFrameNumber();
+        render_test_ready = test_camera && Renderer::GetFrameNumber() >= setup_frame + 8;
+        if (render_test_ready || Timer::GetTimeMs() - m_start_time_ms > 60000.0)
+        {
+            RunTest("Render.BasicCube", Test_Render_BasicCube);
+            World::SetActiveCamera(World::GetEntityById(previous_camera_id));
+            for (Entity* entity : {test_cube, test_light, test_camera}) if (entity) World::RemoveEntity(entity);
+            test_cube = test_light = test_camera = nullptr;
+            Engine::SetFlag(EngineMode::Playing, false);
+            play_test_stage = 1;
+            play_test_start = Timer::GetTimeMs();
         }
     }
 
@@ -96,6 +188,7 @@ namespace spartan
         else
         {
             m_all_tests_passed = false;
+            failures += std::string(name) + ": " + m_error + "\n";
             SP_LOG_ERROR("  ✗ FAILED: %s - %s", name, m_error.c_str());
         }
     }
@@ -110,7 +203,23 @@ namespace spartan
         m_passed_count = 0;
         m_error.clear();
         m_all_tests_passed = true;
+        failures.clear();
 
+        RunTest("Render.PixelValidation", [](std::string& error)
+        {
+            uint16_t pixel[4] = {0, 0, 0, 0x3c00}; // opaque black must fail
+            bool valid = !ValidateCenterPixel(pixel, 1, 1, 16, 4);
+            pixel[0] = pixel[1] = pixel[2] = 0x3c00; // white must fail
+            valid &= !ValidateCenterPixel(pixel, 1, 1, 16, 4);
+            pixel[0] = pixel[2] = 0; // green must pass
+            valid &= ValidateCenterPixel(pixel, 1, 1, 16, 4);
+            pixel[1] = 0x7e00; // NaN must fail
+            valid &= !ValidateCenterPixel(pixel, 1, 1, 16, 4);
+            if (!valid) error = "Pixel validation accepted invalid output or rejected green";
+            return valid;
+        });
+        RunTest("World.EnvironmentWeather", Test_EnvironmentWeather);
+        RunTest("World.ComponentCopy", Test_ComponentCopy);
         RunTest("RHI.BackendInitialization",  Test_RHI_BackendInitialization);
         RunTest("RHI.MemoryAllocation",          Test_RHI_MemoryAllocation);
         RunTest("Shader.CompilationPipeline",   Test_Shader_CompilationPipeline);
@@ -124,8 +233,6 @@ namespace spartan
 
     void SmokeTest::RunDelayedTests()
     {
-        RunTest("Render.BasicCube", Test_Render_BasicCube);
-
         double elapsed_ms = Timer::GetTimeMs() - m_start_time_ms;
         std::ofstream file("ci_test.txt");
         if (file.is_open())
@@ -140,13 +247,73 @@ namespace spartan
             else
             {
                 file << "1" << std::endl;
-                file << m_error;
+                file << failures;
                 SP_LOG_ERROR("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 SP_LOG_ERROR("Smoke Tests: %d/%d FAILED in %.2f ms", m_passed_count, m_test_count, elapsed_ms);
                 SP_LOG_ERROR("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             }
             file.close();
         }
+        if (Engine::HasArgument("--ci-exit")) Window::Close();
+    }
+
+    bool SmokeTest::Test_EnvironmentWeather(std::string& out_error)
+    {
+        const auto before = Environment::GetSettings();
+        pugi::xml_document legacy;
+        legacy.load_string("<World><Entities><Entity><light light_type='0' rain='0.6' cloud_coverage='0.3'/></Entity></Entities></World>");
+        auto world = legacy.child("World");
+        Environment::Load(world);
+        bool valid = std::abs(Environment::GetRain() - 0.6f) < 0.001f;
+        auto environment = world.append_child("Environment");
+        environment.append_attribute("rain") = 0.2f;
+        environment.append_attribute("cloud_coverage") = 0.1f;
+        Environment::Load(world);
+        valid &= std::abs(Environment::GetRain() - 0.2f) < 0.001f;
+        pugi::xml_document saved;
+        auto saved_world = saved.append_child("World");
+        auto saved_environment = saved_world.append_child("Environment");
+        Environment::Save(saved_environment);
+        Environment::SetRain(0.0f);
+        Environment::Load(saved_world);
+        valid &= std::abs(Environment::GetRain() - 0.2f) < 0.001f;
+        Environment::SetSettings(before);
+        if (!valid) out_error = "Environment migration, explicit override or roundtrip failed";
+        return valid;
+    }
+
+    bool SmokeTest::Test_ComponentCopy(std::string& out_error)
+    {
+        Entity* source = World::CreateEntity();
+        Camera* camera = source->AddComponent<Camera>();
+        auto settings = camera->GetSettings();
+        settings.fov_horizontal_rad = 0.9f;
+        settings.near_plane = 0.5f;
+        settings.exposure_mode = CameraExposureMode::manual;
+        settings.mouse_sensitivity = 0.7f;
+        camera->ApplySettings(settings);
+        Entity* clone = source->Clone();
+        const auto copy = clone->GetComponent<Camera>()->GetSettings();
+        bool valid = std::abs(copy.fov_horizontal_rad - settings.fov_horizontal_rad) < 0.001f &&
+            copy.near_plane == settings.near_plane && copy.exposure_mode == settings.exposure_mode &&
+            copy.mouse_sensitivity == settings.mouse_sensitivity;
+        World::RemoveEntity(source);
+        World::RemoveEntity(clone);
+        if (!valid) out_error = "Camera clone lost authored settings";
+        return valid;
+    }
+
+    bool SmokeTest::Test_PlayRestore(std::string& out_error)
+    {
+        Entity* child = World::GetEntityById(child_id);
+        Entity* parent = World::GetEntityById(parent_id);
+        Entity* deleted = World::GetEntityById(deleted_id);
+        Light* light = child ? child->GetComponent<Light>() : nullptr;
+        const bool valid = child && parent && deleted && light && child->GetParent() == parent && child->IsActive() &&
+            child->GetPositionLocal() == math::Vector3(1, 2, 3) && light->GetIntensityPhotometric() == 1180.0f &&
+            !World::GetEntityById(spawned_id) && !Engine::IsFlagSet(EngineMode::Playing);
+        if (!valid) out_error = "Play stop failed to restore authored entities, hierarchy, active state or component settings";
+        return valid;
     }
 
     bool SmokeTest::Test_RHI_BackendInitialization(std::string& out_error)
@@ -391,7 +558,8 @@ namespace spartan
     {
         Entity* entity = World::CreateEntity();
         entity->SetObjectName(name);
-        entity->AddComponent<Camera>();
+        Camera* camera = entity->AddComponent<Camera>();
+        camera->SetExposureMode(CameraExposureMode::manual);
         entity->SetPositionLocal(position);
         return entity;
     }
@@ -426,14 +594,10 @@ namespace spartan
             return nullptr;
         }
 
-        uint32_t width = texture->GetWidth();
-        uint32_t height = texture->GetHeight();
-        uint32_t bits_per_channel = texture->GetBitsPerChannel();
-        uint32_t channel_count = texture->GetChannelCount();
-        size_t data_size = static_cast<size_t>(width) * height * (bits_per_channel / 8) * channel_count;
+        const uint64_t data_size = texture->GetObjectSize(); // includes every mip copied by the RHI
 
         std::unique_ptr<RHI_Buffer> staging = std::make_unique<RHI_Buffer>(
-            RHI_Buffer_Type::Constant,
+            RHI_Buffer_Type::Readback,
             data_size,
             1,
             nullptr,
@@ -471,88 +635,35 @@ namespace spartan
 
     bool SmokeTest::ValidateCenterPixel(void* data, uint32_t width, uint32_t height, uint32_t bits_per_channel, uint32_t channel_count)
     {
-        if (!data)
+        // frame_output is RGBA16F. Validate finite RGB, never alpha or raw float bytes.
+        if (!data || !width || !height || bits_per_channel != 16 || channel_count != 4) return false;
+        const auto half_to_float = [](uint16_t value)
         {
-            return false;
-        }
-
-        size_t center_pixel_index = (height / 2) * width + (width / 2);
-        size_t pixel_size = (bits_per_channel / 8) * channel_count;
-        uint8_t* pixel_start = static_cast<uint8_t*>(data) + (center_pixel_index * pixel_size);
-
-        for (size_t i = 0; i < pixel_size; ++i)
-        {
-            if (pixel_start[i] != 0)
-            {
-                return true;
-            }
-        }
-
-        return false;
+            const int exponent = (value >> 10) & 31, mantissa = value & 1023;
+            if (exponent == 31) return std::numeric_limits<float>::quiet_NaN();
+            const float magnitude = exponent == 0 ? std::ldexp(static_cast<float>(mantissa), -24)
+                : std::ldexp(static_cast<float>(mantissa + 1024), exponent - 25);
+            return (value & 0x8000) ? -magnitude : magnitude;
+        };
+        const uint16_t* pixel = static_cast<const uint16_t*>(data) + (static_cast<size_t>(height / 2) * width + width / 2) * 4;
+        const float r = half_to_float(pixel[0]), g = half_to_float(pixel[1]), b = half_to_float(pixel[2]);
+        SP_LOG_INFO("Render fixture center RGB: %.5f, %.5f, %.5f", r, g, b);
+        return std::isfinite(r) && std::isfinite(g) && std::isfinite(b) && g > std::max(r, b) * 1.5f + 0.01f;
     }
 
     bool SmokeTest::Test_Render_BasicCube(std::string& out_error)
     {
-        ConsoleRegistry::Get().SetValueFromString("r.ray_traced_reflections", "0");
-
-        Entity* entity_camera = CreateTestCamera("SmokeTest_Camera", math::Vector3(0.0f, 0.0f, -5.0f));
-        Entity* entity_light = CreateTestLight("SmokeTest_Light", math::Vector3(0.0f, 10.0f, 0.0f), 120000.0f);
-        Entity* entity_cube = CreateTestCube("SmokeTest_Cube", math::Vector3(0.0f, 0.0f, 0.0f));
-
-        RHI_Texture* frame_output = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output);
-        if (!frame_output)
+        if (!render_test_ready)
         {
-            out_error = "Failed to get frame output render target";
-            World::RemoveEntity(entity_cube);
-            World::RemoveEntity(entity_light);
-            World::RemoveEntity(entity_camera);
+            out_error = "Timed out waiting for the render fixture";
             return false;
         }
-
-        std::unique_ptr<RHI_Buffer> staging = CreateStagingBuffer(frame_output, out_error);
-        if (!staging)
-        {
-            World::RemoveEntity(entity_cube);
-            World::RemoveEntity(entity_light);
-            World::RemoveEntity(entity_camera);
-            return false;
-        }
-
-        if (!CopyTextureToBuffer(frame_output, staging.get(), out_error))
-        {
-            World::RemoveEntity(entity_cube);
-            World::RemoveEntity(entity_light);
-            World::RemoveEntity(entity_camera);
-            return false;
-        }
-
-        void* mapped_data = staging->GetMappedData();
-        if (!mapped_data)
-        {
-            out_error = "Staging buffer not mappable";
-            World::RemoveEntity(entity_cube);
-            World::RemoveEntity(entity_light);
-            World::RemoveEntity(entity_camera);
-            return false;
-        }
-
-        uint32_t width = frame_output->GetWidth();
-        uint32_t height = frame_output->GetHeight();
-        uint32_t bits_per_channel = frame_output->GetBitsPerChannel();
-        uint32_t channel_count = frame_output->GetChannelCount();
-
-        ImageImporter::Save("smoke_test_render.exr", width, height, channel_count, bits_per_channel, mapped_data);
-
-        if (!ValidateCenterPixel(mapped_data, width, height, bits_per_channel, channel_count))
-        {
-            out_error = "Center pixel is black (render failed or empty scene). Screenshot saved to smoke_test_render.exr";
-        }
-
-        staging = nullptr;
-        World::RemoveEntity(entity_cube);
-        World::RemoveEntity(entity_light);
-        World::RemoveEntity(entity_camera);
-
-        return true;
+        RHI_Texture* output = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output);
+        auto staging = CreateStagingBuffer(output, out_error);
+        if (!staging || !CopyTextureToBuffer(output, staging.get(), out_error)) return false;
+        const bool valid = ValidateCenterPixel(staging->GetMappedData(), output->GetWidth(), output->GetHeight(),
+            output->GetBitsPerChannel(), output->GetChannelCount());
+        if (!valid) out_error = "Expected finite green RGB from the emissive cube after rendering";
+        return valid;
     }
 }

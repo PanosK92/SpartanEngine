@@ -35,6 +35,7 @@ namespace spartan
     class Ragdoll : public Component
     {
     public:
+        bool StartsEarly() const override { return true; }
         enum class State : uint8_t
         {
             Alive,

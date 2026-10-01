@@ -7,6 +7,8 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES =============================
 #include "pch.h"
+#include "editor/Selection.h"
+#include "game/CameraController.h"
 #include "../EditorHistory.h"
 #include "Viewport.h"
 #include "AssetBrowser.h"
@@ -55,7 +57,7 @@ namespace
             return nullptr;
         }
 
-        return camera->FindEntityUnderCursor();
+        return spartan::Selection::FindEntityUnderCursor(*camera);
     }
 
     void clear_preview_state()
@@ -365,17 +367,17 @@ void Viewport::OnTickVisible()
     // double-click to focus on entity
     if (camera && ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking() && !TerrainEditor::IsSculptActive())
     {
-        camera->Pick();
-        m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(camera->GetSelectedEntity());
-        if (camera->GetSelectedEntity())
+        spartan::Selection::Pick(*camera);
+        m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(spartan::Selection::GetSelectedEntity());
+        if (spartan::Selection::GetSelectedEntity())
         {
-            camera->FocusOnSelectedEntity();
+            spartan::CameraController::Get(*camera).Focus(spartan::Selection::GetSelectedEntity(), spartan::Selection::GetSelectedInstance());
         }
     }
     // mouse picking (with multi-select via Ctrl handled in Pick())
     else if (camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking() && !TerrainEditor::IsSculptActive())
     {
-        camera->Pick();
+        spartan::Selection::Pick(*camera);
 
         // when ctrl is held, Pick() already handled multi-selection via ToggleSelection(),
         // so we only update the properties panel without overwriting the camera's selection
@@ -385,14 +387,14 @@ void Viewport::OnTickVisible()
         }
         else
         {
-            m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(camera->GetSelectedEntity());
+            m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(spartan::Selection::GetSelectedEntity());
         }
     }
 
     // Ctrl+D to duplicate selected entities
     if (camera && ImGui::IsWindowFocused() && Input::GetKey(KeyCode::Ctrl_Left) && Input::GetKeyDown(KeyCode::D) && !ImGuiSp::editor_shortcuts_blocked())
     {
-        const std::vector<Entity*>& selected_entities = camera->GetSelectedEntities();
+        const std::vector<Entity*>& selected_entities = spartan::Selection::GetSelectedEntities();
         if (!selected_entities.empty())
         {
             // clone all selected entities
@@ -417,10 +419,10 @@ void Viewport::OnTickVisible()
             // select the cloned entities instead
             if (!cloned_entities.empty())
             {
-                camera->ClearSelection();
+                spartan::Selection::ClearSelection();
                 for (Entity* cloned : cloned_entities)
                 {
-                    camera->AddToSelection(cloned);
+                    spartan::Selection::AddToSelection(cloned);
                 }
                 m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(cloned_entities[0]);
             }

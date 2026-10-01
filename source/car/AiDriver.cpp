@@ -6,6 +6,9 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
+#ifdef SP_GAME
+#include "CarPhysics.h"
+#endif
 #include "AiDriver.h"
 #include "Car.h"
 #include "CarPresets.h"
@@ -56,7 +59,7 @@ namespace spartan
 
     void AiDriver::CarModel::Seed(Physics* physics)
     {
-        car::Simulation* simulation = physics ? physics->GetVehicleSimulation() : nullptr;
+        car::Simulation* simulation = physics ? CarPhysics::Get(*physics).GetVehicleSimulation() : nullptr;
         if (!simulation)
         {
             return;
@@ -88,9 +91,9 @@ namespace spartan
         for (uint32_t w = 0; w < wheel_count; w++)
         {
             const WheelIndex wheel = static_cast<WheelIndex>(w);
-            const float peak       = physics->GetWheelPeakLateralForce(wheel);
-            const float used       = physics->GetWheelFrictionUse(wheel) * peak;
-            const float lateral    = fabsf(physics->GetWheelLateralForce(wheel));
+            const float peak       = CarPhysics::Get(*physics).GetWheelPeakLateralForce(wheel);
+            const float used       = CarPhysics::Get(*physics).GetWheelFrictionUse(wheel) * peak;
+            const float lateral    = fabsf(CarPhysics::Get(*physics).GetWheelLateralForce(wheel));
             if (wheel == WheelIndex::FrontLeft || wheel == WheelIndex::FrontRight)
             {
                 front_used    += used;
@@ -103,12 +106,12 @@ namespace spartan
                 rear_peak    += peak;
                 rear_lateral += lateral;
             }
-            if (physics->GetWheelTireLoad(wheel) > 50.0f)
+            if (CarPhysics::Get(*physics).GetWheelTireLoad(wheel) > 50.0f)
             {
                 grounded++;
-                load              += physics->GetWheelTireLoad(wheel);
+                load              += CarPhysics::Get(*physics).GetWheelTireLoad(wheel);
                 peak_lateral      += peak;
-                peak_longitudinal += physics->GetWheelPeakLongitudinalForce(wheel);
+                peak_longitudinal += CarPhysics::Get(*physics).GetWheelPeakLongitudinalForce(wheel);
             }
         }
         const float smoothing = min(1.0f, delta_time / 0.12f);
@@ -208,15 +211,15 @@ namespace spartan
         car->SetExternallyControlled(true);
         if (physics)
         {
-            m_handback.manual_transmission = physics->GetManualTransmission();
-            m_handback.brake_reverse       = physics->GetVehicleBrakeReverseEnabled();
-            m_handback.abs                 = physics->GetAbsEnabled();
-            m_handback.tc                  = physics->GetTcEnabled();
-            physics->SetManualTransmission(false);
-            physics->SetVehicleBrakeReverseEnabled(false);
-            physics->SetAbsEnabled(true);
-            physics->SetTcEnabled(true);
-            if (car::Simulation* simulation = physics->GetVehicleSimulation())
+            m_handback.manual_transmission = CarPhysics::Get(*physics).GetManualTransmission();
+            m_handback.brake_reverse       = CarPhysics::Get(*physics).GetVehicleBrakeReverseEnabled();
+            m_handback.abs                 = CarPhysics::Get(*physics).GetAbsEnabled();
+            m_handback.tc                  = CarPhysics::Get(*physics).GetTcEnabled();
+            CarPhysics::Get(*physics).SetManualTransmission(false);
+            CarPhysics::Get(*physics).SetVehicleBrakeReverseEnabled(false);
+            CarPhysics::Get(*physics).SetAbsEnabled(true);
+            CarPhysics::Get(*physics).SetTcEnabled(true);
+            if (car::Simulation* simulation = CarPhysics::Get(*physics).GetVehicleSimulation())
             {
                 car::car_preset& spec                = simulation->get_spec();
                 m_handback.steering_speed_reduction  = spec.assists.steering_speed_reduction;
@@ -277,11 +280,11 @@ namespace spartan
         m_car->SetHandbrake(0.0f);
         if (Physics* physics = GetPhysics())
         {
-            physics->SetManualTransmission(m_handback.manual_transmission);
-            physics->SetVehicleBrakeReverseEnabled(m_handback.brake_reverse);
-            physics->SetAbsEnabled(m_handback.abs);
-            physics->SetTcEnabled(m_handback.tc);
-            if (car::Simulation* simulation = physics->GetVehicleSimulation())
+            CarPhysics::Get(*physics).SetManualTransmission(m_handback.manual_transmission);
+            CarPhysics::Get(*physics).SetVehicleBrakeReverseEnabled(m_handback.brake_reverse);
+            CarPhysics::Get(*physics).SetAbsEnabled(m_handback.abs);
+            CarPhysics::Get(*physics).SetTcEnabled(m_handback.tc);
+            if (car::Simulation* simulation = CarPhysics::Get(*physics).GetVehicleSimulation())
             {
                 car::car_preset& spec                = simulation->get_spec();
                 spec.assists.steering_speed_reduction = m_handback.steering_speed_reduction;
@@ -666,7 +669,7 @@ namespace spartan
         float steering_rate    = 20.0f;
         float applied_steering = m_steering;
         float deadzone         = 0.0f;
-        if (car::Simulation* simulation = physics->GetVehicleSimulation())
+        if (car::Simulation* simulation = CarPhysics::Get(*physics).GetVehicleSimulation())
         {
             steering_rate    = max(simulation->get_spec().steering_rate, 0.1f);
             deadzone         = clamp(simulation->get_spec().steering_deadzone, 0.0f, 0.5f);
@@ -818,7 +821,7 @@ namespace spartan
         float spin = 0.0f;
         for (uint32_t w = 0; w < wheel_count; w++)
         {
-            spin = max(spin, physics->GetWheelSlipRatio(static_cast<WheelIndex>(w)));
+            spin = max(spin, CarPhysics::Get(*physics).GetWheelSlipRatio(static_cast<WheelIndex>(w)));
         }
         float excess = max(spin - m_model.peak_slip * 1.1f, 0.0f) / m_model.peak_slip;
         if (oversteer)
@@ -851,10 +854,10 @@ namespace spartan
         for (uint32_t w = 0; w < wheel_count; w++)
         {
             const WheelIndex wheel = static_cast<WheelIndex>(w);
-            if (physics->IsWheelGrounded(wheel))
+            if (CarPhysics::Get(*physics).IsWheelGrounded(wheel))
             {
-                const float load  = physics->GetWheelTireLoad(wheel);
-                slip_load        += min(physics->GetWheelSlipRatio(wheel), 0.0f) * load;
+                const float load  = CarPhysics::Get(*physics).GetWheelTireLoad(wheel);
+                slip_load        += min(CarPhysics::Get(*physics).GetWheelSlipRatio(wheel), 0.0f) * load;
                 load_sum         += load;
             }
         }
@@ -990,7 +993,7 @@ namespace spartan
             m_trace_time = 0.0f;
             fprintf(m_trace, "%.3f,%u,%.1f,%.2f,%.2f,%.2f,%.3f,%.5f,%.5f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.4f,%.2f,%.2f,%d,%.2f,%d\n",
                 m_stats.lap_time, m_stats.lap, m_distance, speed, target_speed, plan_here.speed, tracking_error, here.curvature, feedforward, m_steering, m_throttle, brake,
-                m_model.front_use, m_model.rear_use, m_model.lateral_use, body_slip, lateral_accel, -m_decel, oversteer ? 1 : 0, wide, physics->GetCurrentGear());
+                m_model.front_use, m_model.rear_use, m_model.lateral_use, body_slip, lateral_accel, -m_decel, oversteer ? 1 : 0, wide, CarPhysics::Get(*physics).GetCurrentGear());
         }
 
         m_log_time += delta_time;
@@ -999,7 +1002,7 @@ namespace spartan
             m_log_time = 0.0f;
             SP_LOG_INFO("ai_driver %s: lap %u %.1f s, %.0f m, speed %.0f km/h, target %.0f km/h, line error %.2f m, throttle %.2f, brake %.2f (limit %.2f), steer %.2f, use f %.2f r %.2f lat %.2f, slip %.3f, understeer %.3f, balance %.2f, gear %d",
                 m_name.c_str(), m_stats.lap + 1, m_stats.lap_time, m_distance, m_stats.speed_kmh, m_stats.target_kmh, m_line_error, m_throttle, brake, m_brake_limit, m_steering,
-                m_model.front_use, m_model.rear_use, m_model.lateral_use, body_slip, m_model.understeer, m_model.balance, physics->GetCurrentGear());
+                m_model.front_use, m_model.rear_use, m_model.lateral_use, body_slip, m_model.understeer, m_model.balance, CarPhysics::Get(*physics).GetCurrentGear());
         }
     }
 

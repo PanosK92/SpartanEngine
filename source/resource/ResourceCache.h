@@ -185,7 +185,8 @@ namespace spartan
                 resource->SetFlags(flags);
             }
             resource->SetResourceFilePath(file_path);
-            resource->LoadFromFile(file_path);
+            if (!resource->LoadFromFile(file_path))
+                return nullptr;
             return Cache<T>(resource); // cache and return
         }
 
@@ -213,19 +214,21 @@ namespace spartan
         static const char* GetDataDirectory();
 
         // misc
-        // mutable view, caller must hold GetMutex for the whole use
-        static std::vector<std::shared_ptr<IResource>>& GetResources();
-        // owning copy under the cache mutex, safe for unlocked iteration
         static std::vector<std::shared_ptr<IResource>> GetResourcesSnapshot();
-        static void InvalidatePathIndex();
-        static std::recursive_mutex& GetMutex();
-        static std::mutex& GetInFlightMutex(const std::string& path);
+        static void EnsureTextureData(RHI_Texture& texture);
+        // Reserve a material name while concurrent model imports are still loading it.
+        static bool ReserveMaterialName(const std::string& name, const std::string& path);
         static bool IsShuttingDown();
         static bool GetUseRootShaderDirectory();
         static void SetUseRootShaderDirectory(const bool use_root_shader_directory);
         static const Icon& GetIcon(IconType type);
 
     private:
+        friend class IResource;
+        static void SetResourcePath(IResource& resource, const std::string& path);
+        static void SetResourceName(IResource& resource, const std::string& name);
+        static void SetResourceLabel(IResource& resource, const std::string& name);
+        static std::mutex& GetInFlightMutex(const std::string& path);
         static std::shared_ptr<IResource> GetByPathInternal(
             const std::string& path
         );

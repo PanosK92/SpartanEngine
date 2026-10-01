@@ -271,14 +271,13 @@ namespace spartan
         };
     }
 
-    void Mesh::LoadFromFile(const string& file_path)
+    bool Mesh::LoadFromFile(const string& file_path)
     {
         const Stopwatch timer;
-        SetResourceFilePath(file_path);
 
         if (FileSystem::IsSupportedModelFile(file_path)) // foreign
         {
-            ModelImporter::Load(this, file_path);
+            if (!ModelImporter::Load(this, file_path)) return false;
         }
         else if (FileSystem::IsEngineMeshFile(file_path)) // native
         {
@@ -286,138 +285,167 @@ namespace spartan
             if (!infile)
             {
                 SP_LOG_ERROR("Failed to open file: %s", file_path.c_str());
-                return;
+                return false;
             }
 
-            Clear();
-
-            uint32_t version;
-            infile.read(reinterpret_cast<char*>(&version), sizeof(uint32_t));
-            if (version != 5 && version != 6)
+            // Read into temporary CPU storage. A failed reload leaves live geometry intact.
+            vector<SubMesh> sub_meshes;
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            vector<uint32_t> indices, meshlet_vertices, meshlet_micro_indices;
+            vector<Sb_MeshletBounds> meshlets;
+            uint32_t flags = 0;
+            MeshType mesh_type = MeshType::Max;
+            infile.exceptions(ios::failbit | ios::badbit);
+            try
             {
-                SP_LOG_ERROR("Unsupported mesh cache version for file: %s (got %u, supported 5-6)", file_path.c_str(), version);
-                return;
-            }
 
-            const bool upgrade_from_v5 = (version == 5);
-
-            uint32_t type;
-            infile.read(reinterpret_cast<char*>(&type), sizeof(uint32_t));
-            m_type = static_cast<MeshType>(type);
-
-            // legacy field for backward compatibility (skip)
-            uint32_t legacy_field;
-            infile.read(reinterpret_cast<char*>(&legacy_field), sizeof(uint32_t));
-
-            infile.read(reinterpret_cast<char*>(&m_flags), sizeof(uint32_t));
-
-            uint32_t submesh_count;
-            infile.read(reinterpret_cast<char*>(&submesh_count), sizeof(uint32_t));
-            m_sub_meshes.resize(submesh_count);
-
-            for (uint32_t sub_idx = 0; sub_idx < submesh_count; sub_idx++)
-            {
-                SubMesh& sub = m_sub_meshes[sub_idx];
-                uint32_t lod_count;
-                infile.read(reinterpret_cast<char*>(&lod_count), sizeof(uint32_t));
-                sub.lods.resize(lod_count);
-
-                for (auto& lod : sub.lods)
+                uint32_t version;
+                infile.read(reinterpret_cast<char*>(&version), sizeof(uint32_t));
+                if (version != 5 && version != 6)
                 {
-                    infile.read(reinterpret_cast<char*>(&lod.vertex_offset), sizeof(uint32_t));
-                    infile.read(reinterpret_cast<char*>(&lod.vertex_count), sizeof(uint32_t));
-                    infile.read(reinterpret_cast<char*>(&lod.index_offset), sizeof(uint32_t));
-                    infile.read(reinterpret_cast<char*>(&lod.index_count), sizeof(uint32_t));
-                    infile.read(reinterpret_cast<char*>(&lod.meshlet_offset), sizeof(uint32_t));
-                    infile.read(reinterpret_cast<char*>(&lod.meshlet_count), sizeof(uint32_t));
-
-                    float min_x, min_y, min_z, max_x, max_y, max_z;
-                    infile.read(reinterpret_cast<char*>(&min_x), sizeof(float));
-                    infile.read(reinterpret_cast<char*>(&min_y), sizeof(float));
-                    infile.read(reinterpret_cast<char*>(&min_z), sizeof(float));
-                    infile.read(reinterpret_cast<char*>(&max_x), sizeof(float));
-                    infile.read(reinterpret_cast<char*>(&max_y), sizeof(float));
-                    infile.read(reinterpret_cast<char*>(&max_z), sizeof(float));
-
-                    lod.aabb = BoundingBox(Vector3(min_x, min_y, min_z), Vector3(max_x, max_y, max_z));
-                }
-            }
-
-            uint32_t vertex_count;
-            infile.read(reinterpret_cast<char*>(&vertex_count), sizeof(uint32_t));
-            m_vertices.resize(vertex_count);
-            infile.read(reinterpret_cast<char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
-
-            uint32_t index_count;
-            infile.read(reinterpret_cast<char*>(&index_count), sizeof(uint32_t));
-            m_indices.resize(index_count);
-            infile.read(reinterpret_cast<char*>(m_indices.data()), index_count * sizeof(uint32_t));
-
-            uint32_t meshlet_count;
-            infile.read(reinterpret_cast<char*>(&meshlet_count), sizeof(uint32_t));
-            m_meshlets.resize(meshlet_count);
-
-            if (upgrade_from_v5)
-            {
-                vector<MeshletBounds_v5> legacy_meshlets(meshlet_count);
-                infile.read(reinterpret_cast<char*>(legacy_meshlets.data()), meshlet_count * sizeof(MeshletBounds_v5));
-                for (uint32_t i = 0; i < meshlet_count; ++i)
-                {
-                    m_meshlets[i]                      = {};
-                    m_meshlets[i].center_xy            = legacy_meshlets[i].center_xy;
-                    m_meshlets[i].center_z_radius      = legacy_meshlets[i].center_z_radius;
-                    m_meshlets[i].cone_axis_cutoff     = legacy_meshlets[i].cone_axis_cutoff;
-                    m_meshlets[i].first_index_tri_count = legacy_meshlets[i].first_index_tri_count;
+                    SP_LOG_ERROR("Unsupported mesh cache version for file: %s (got %u, supported 5-6)", file_path.c_str(), version);
+                    return false;
                 }
 
-                convert_meshlets_v5_to_v6(
-                    m_indices,
-                    m_sub_meshes,
-                    m_meshlets,
-                    m_meshlet_vertices,
-                    m_meshlet_micro_indices
-                );
+                const bool upgrade_from_v5 = (version == 5);
+
+                uint32_t type;
+                infile.read(reinterpret_cast<char*>(&type), sizeof(uint32_t));
+                mesh_type = static_cast<MeshType>(type);
+
+                // legacy field for backward compatibility (skip)
+                uint32_t legacy_field;
+                infile.read(reinterpret_cast<char*>(&legacy_field), sizeof(uint32_t));
+
+                infile.read(reinterpret_cast<char*>(&flags), sizeof(uint32_t));
+
+                uint32_t submesh_count;
+                infile.read(reinterpret_cast<char*>(&submesh_count), sizeof(uint32_t));
+                sub_meshes.resize(submesh_count);
+
+                for (uint32_t sub_idx = 0; sub_idx < submesh_count; sub_idx++)
+                {
+                    SubMesh& sub = sub_meshes[sub_idx];
+                    uint32_t lod_count;
+                    infile.read(reinterpret_cast<char*>(&lod_count), sizeof(uint32_t));
+                    sub.lods.resize(lod_count);
+
+                    for (auto& lod : sub.lods)
+                    {
+                        infile.read(reinterpret_cast<char*>(&lod.vertex_offset), sizeof(uint32_t));
+                        infile.read(reinterpret_cast<char*>(&lod.vertex_count), sizeof(uint32_t));
+                        infile.read(reinterpret_cast<char*>(&lod.index_offset), sizeof(uint32_t));
+                        infile.read(reinterpret_cast<char*>(&lod.index_count), sizeof(uint32_t));
+                        infile.read(reinterpret_cast<char*>(&lod.meshlet_offset), sizeof(uint32_t));
+                        infile.read(reinterpret_cast<char*>(&lod.meshlet_count), sizeof(uint32_t));
+
+                        float min_x, min_y, min_z, max_x, max_y, max_z;
+                        infile.read(reinterpret_cast<char*>(&min_x), sizeof(float));
+                        infile.read(reinterpret_cast<char*>(&min_y), sizeof(float));
+                        infile.read(reinterpret_cast<char*>(&min_z), sizeof(float));
+                        infile.read(reinterpret_cast<char*>(&max_x), sizeof(float));
+                        infile.read(reinterpret_cast<char*>(&max_y), sizeof(float));
+                        infile.read(reinterpret_cast<char*>(&max_z), sizeof(float));
+
+                        lod.aabb = BoundingBox(Vector3(min_x, min_y, min_z), Vector3(max_x, max_y, max_z));
+                    }
+                }
+
+                uint32_t vertex_count;
+                infile.read(reinterpret_cast<char*>(&vertex_count), sizeof(uint32_t));
+                vertices.resize(vertex_count);
+                infile.read(reinterpret_cast<char*>(vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
+
+                uint32_t index_count;
+                infile.read(reinterpret_cast<char*>(&index_count), sizeof(uint32_t));
+                indices.resize(index_count);
+                infile.read(reinterpret_cast<char*>(indices.data()), index_count * sizeof(uint32_t));
+
+                uint32_t meshlet_count;
+                infile.read(reinterpret_cast<char*>(&meshlet_count), sizeof(uint32_t));
+                meshlets.resize(meshlet_count);
+
+                if (upgrade_from_v5)
+                {
+                    vector<MeshletBounds_v5> legacy_meshlets(meshlet_count);
+                    infile.read(reinterpret_cast<char*>(legacy_meshlets.data()), meshlet_count * sizeof(MeshletBounds_v5));
+                    for (uint32_t i = 0; i < meshlet_count; ++i)
+                    {
+                        meshlets[i]                      = {};
+                        meshlets[i].center_xy            = legacy_meshlets[i].center_xy;
+                        meshlets[i].center_z_radius      = legacy_meshlets[i].center_z_radius;
+                        meshlets[i].cone_axis_cutoff     = legacy_meshlets[i].cone_axis_cutoff;
+                        meshlets[i].first_index_tri_count = legacy_meshlets[i].first_index_tri_count;
+                    }
+
+                    convert_meshlets_v5_to_v6(
+                        indices,
+                        sub_meshes,
+                        meshlets,
+                        meshlet_vertices,
+                        meshlet_micro_indices
+                    );
+                }
+                else
+                {
+                    infile.read(reinterpret_cast<char*>(meshlets.data()), meshlet_count * sizeof(Sb_MeshletBounds));
+
+                    uint32_t meshlet_vertex_count;
+                    infile.read(reinterpret_cast<char*>(&meshlet_vertex_count), sizeof(uint32_t));
+                    meshlet_vertices.resize(meshlet_vertex_count);
+                    infile.read(reinterpret_cast<char*>(meshlet_vertices.data()), meshlet_vertex_count * sizeof(uint32_t));
+
+                    uint32_t meshlet_micro_count;
+                    infile.read(reinterpret_cast<char*>(&meshlet_micro_count), sizeof(uint32_t));
+                    meshlet_micro_indices.resize(meshlet_micro_count);
+                    infile.read(reinterpret_cast<char*>(meshlet_micro_indices.data()), meshlet_micro_count * sizeof(uint32_t));
+                }
+
+                InvalidateAllBlas();
+                Clear();
+                m_sub_meshes = std::move(sub_meshes);
+                m_vertices = std::move(vertices);
+                m_indices = std::move(indices);
+                m_meshlets = std::move(meshlets);
+                m_meshlet_vertices = std::move(meshlet_vertices);
+                m_meshlet_micro_indices = std::move(meshlet_micro_indices);
+                m_flags = flags;
+                m_type = mesh_type;
+                infile.close();
+
+                // one line per mesh, a line per sub mesh was a thousand lines on a large world
+                SP_LOG_INFO("Mesh '%s': loaded %u sub-meshes, %u vertices, %u indices", m_object_name.c_str(), submesh_count, vertex_count, index_count);
+
+                SetResourceFilePath(file_path);
+                CreateGpuBuffers();
+
+                // rewrite the cache once so the next load skips conversion
+                if (upgrade_from_v5)
+                {
+                    SP_LOG_INFO("Upgraded mesh cache \"%s\" from v5 to v6", FileSystem::GetFileNameFromFilePath(file_path).c_str());
+                    SaveToFile(file_path);
+                }
             }
-            else
+            catch (const exception& error)
             {
-                infile.read(reinterpret_cast<char*>(m_meshlets.data()), meshlet_count * sizeof(Sb_MeshletBounds));
-
-                uint32_t meshlet_vertex_count;
-                infile.read(reinterpret_cast<char*>(&meshlet_vertex_count), sizeof(uint32_t));
-                m_meshlet_vertices.resize(meshlet_vertex_count);
-                infile.read(reinterpret_cast<char*>(m_meshlet_vertices.data()), meshlet_vertex_count * sizeof(uint32_t));
-
-                uint32_t meshlet_micro_count;
-                infile.read(reinterpret_cast<char*>(&meshlet_micro_count), sizeof(uint32_t));
-                m_meshlet_micro_indices.resize(meshlet_micro_count);
-                infile.read(reinterpret_cast<char*>(m_meshlet_micro_indices.data()), meshlet_micro_count * sizeof(uint32_t));
-            }
-
-            infile.close();
-
-            // one line per mesh, a line per sub mesh was a thousand lines on a large world
-            SP_LOG_INFO("Mesh '%s': loaded %u sub-meshes, %u vertices, %u indices", m_object_name.c_str(), submesh_count, vertex_count, index_count);
-
-            CreateGpuBuffers();
-
-            // rewrite the cache once so the next load skips conversion
-            if (upgrade_from_v5)
-            {
-                SP_LOG_INFO("Upgraded mesh cache \"%s\" from v5 to v6", FileSystem::GetFileNameFromFilePath(file_path).c_str());
-                SaveToFile(file_path);
+                SP_LOG_ERROR("Failed to read mesh %s: %s", file_path.c_str(), error.what());
+                return false;
             }
         }
         else
         {
             SP_LOG_ERROR("Failed to load mesh %s: format not supported", file_path.c_str());
-            return;
+            return false;
         }
+
+        SetResourceFilePath(file_path);
 
         // compute memory usage
         m_object_size  = m_vertices.size() * sizeof(RHI_Vertex_PosTexNorTan);
         m_object_size += m_indices.size() * sizeof(uint32_t);
 
         SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
+        return true;
     }
 
     namespace

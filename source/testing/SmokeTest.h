@@ -49,6 +49,9 @@ namespace spartan
         static bool Test_RHI_ResourceTransitions(std::string& out_error);
         static bool Test_Threading_ResourceCreation(std::string& out_error);
         static bool Test_Render_BasicCube(std::string& out_error);
+        static bool Test_EnvironmentWeather(std::string& out_error);
+        static bool Test_ComponentCopy(std::string& out_error);
+        static bool Test_PlayRestore(std::string& out_error);
 
     private:
         static Entity* CreateTestCamera(const char* name, const math::Vector3& position);

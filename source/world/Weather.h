@@ -16,7 +16,7 @@ namespace spartan
 {
     class Entity;
 
-    // rain, driven by the directional light's rain value
+    // rain, driven by the world environment
     // it soaks exposed surfaces, fills the puddles, falls around the camera and is heard,
     // a height grid of the topmost static surface around the camera tells the renderer what is under cover
     class Weather
@@ -26,8 +26,9 @@ namespace spartan
         static constexpr float occlusion_cell_size     = 0.5f;
 
         static void Tick(float delta_time);
+        static void Reset();
 
-        // 0 dry to 1 downpour, as authored on the directional light
+        // 0 dry to 1 downpour, as authored in the environment
         static float GetRain();
         // how soaked exposed surfaces are, lags the rain in both directions
         static float GetWetness();
@@ -42,12 +43,8 @@ namespace spartan
         // porous ground (soil, grass, gravel) drinks the film and holds less standing water
         static float GetWaterDepth(const math::Vector3& position, bool porous);
 
-        // the occupied car, null when nobody drives or nothing is wet, the renderer flags its draws, CarRain simulates its water
-        static Entity* GetDropsVehicle();
-        // how soaked that car is, it keeps its water under a roof and dries over minutes
-        static float GetDropsWetness();
-        // the car's x, y and z axes in world space, the frame its water is simulated in
-        static math::Vector3 GetDropsAxis(uint32_t plane);
+        // Fraction of rain reaching a world position, sampled from the shelter grid.
+        static float GetExposure(const math::Vector3& position);
 
         // occlusion_resolution squared heights of the topmost static surface, addressed toroidally by world cell
         static const float* GetOcclusionHeights();

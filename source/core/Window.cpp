@@ -458,7 +458,9 @@ namespace spartan
 
         if (was_fullscreen)
         {
+#ifndef SP_RUNTIME
             Engine::SetFlag(EngineMode::EditorVisible, true);
+#endif
             SP_FIRE_EVENT(EventType::WindowFullScreenToggled);
         }
     }

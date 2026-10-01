@@ -137,6 +137,7 @@ namespace spartan
     class Terrain : public Component
     {
     public:
+        static void SetEditTargets(const std::vector<uint64_t>& entities);
         Terrain(Entity* entity);
         ~Terrain();
 

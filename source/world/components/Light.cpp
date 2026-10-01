@@ -110,22 +110,19 @@ namespace spartan
 
     Light::Light(Entity* entity) : Component(entity)
     {
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags, uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_range, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_intensity_photometric, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_angle_rad, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_color_rgb, Color);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_temperature_kelvin, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_draw_distance, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_distance_shadows, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_distance_volumetric, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box, math::BoundingBox);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_far_cascade_min, math::Vector3);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_far_cascade_max, math::Vector3);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_active_previous_frame, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_index, uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_area_width, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_area_height, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_flags, SetFlags, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_range, SetRange, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_intensity_photometric, SetIntensity, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_angle_rad, SetAngle, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_color_rgb, SetColor, Color);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_temperature_kelvin, SetTemperature, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_draw_distance, SetDrawDistance, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_distance_shadows, SetShadowDistance, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_distance_volumetric, SetVolumetricDistance, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_area_width, SetAreaWidth, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_area_height, SetAreaHeight, float);
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetRain, SetRain, float);
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetCloudCoverage, SetCloudCoverage, float);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
         m_matrix_view.fill(Matrix::Identity);
@@ -163,7 +160,7 @@ namespace spartan
             }
 
             // it follows the camera, so it also need to updated if it moves
-            if (Camera* camera = World::GetCamera())
+            if (Camera* camera = Renderer::GetViewCamera())
             {
                 update_matrices = camera->GetEntity()->GetTimeSinceLastTransform() < 0.1f ? true : update_matrices;
             }
@@ -182,6 +179,56 @@ namespace spartan
         }
     }
 
+    LightSettings Light::GetSettings() const
+    {
+        LightSettings settings;
+        settings.flags = m_flags;
+        settings.type = m_light_type;
+        settings.color = m_color_rgb;
+        settings.temperature = m_temperature_kelvin;
+        settings.intensity = m_intensity;
+        settings.intensity_photometric = m_intensity_photometric;
+        settings.preset = m_preset;
+        settings.range = m_range;
+        settings.angle = m_angle_rad;
+        settings.area_width = m_area_width;
+        settings.area_height = m_area_height;
+        settings.draw_distance = m_draw_distance;
+        settings.shadow_distance = m_distance_shadows;
+        settings.volumetric_distance = m_distance_volumetric;
+        settings.ies_profile = m_ies_file_path;
+        return settings;
+    }
+
+    void Light::ApplySettings(const LightSettings& settings)
+    {
+        m_flags = settings.flags;
+        m_light_type = settings.type;
+        m_color_rgb = settings.color;
+        m_temperature_kelvin = settings.temperature;
+        m_intensity = settings.intensity;
+        m_intensity_photometric = settings.intensity_photometric;
+        m_preset = settings.preset;
+        m_range = settings.range;
+        m_angle_rad = settings.angle;
+        m_area_width = settings.area_width;
+        m_area_height = settings.area_height;
+        m_draw_distance = settings.draw_distance;
+        m_distance_shadows = settings.shadow_distance;
+        m_distance_volumetric = settings.volumetric_distance;
+        if (settings.ies_profile != m_ies_file_path) SetIesProfile(settings.ies_profile);
+        // Acquiring an IES profile selects its default cone. Preserve the authored cone.
+        m_angle_rad = lighting::lighting_spot_half_angle(settings.angle);
+        m_screen_space_shadows_slice_index = 0;
+        UpdateMatrices();
+    }
+
+    void Light::CopyFrom(const Component& source)
+    {
+        SP_ASSERT(source.GetType() == ComponentType::Light);
+        ApplySettings(static_cast<const Light&>(source).GetSettings());
+    }
+
     void Light::Save(pugi::xml_node& node)
     {
         node.append_attribute("flags")         = m_flags;
@@ -194,15 +241,12 @@ namespace spartan
         node.append_attribute("intensity_photometric") = m_intensity_photometric;
         node.append_attribute("range")         = m_range;
         node.append_attribute("angle")         = m_angle_rad;
-        node.append_attribute("index")         = m_index;
         node.append_attribute("preset")        = static_cast<int>(m_preset);
         node.append_attribute("area_width")    = m_area_width;
         node.append_attribute("area_height")   = m_area_height;
         node.append_attribute("draw_distance")       = m_draw_distance;
         node.append_attribute("distance_shadows")    = m_distance_shadows;
         node.append_attribute("distance_volumetric") = m_distance_volumetric;
-        node.append_attribute("cloud_coverage")      = m_cloud_coverage;
-        node.append_attribute("rain")                = m_rain;
         if (!m_ies_file_path.empty())
         {
             node.append_attribute("ies_profile") = m_ies_file_path.c_str();
@@ -211,46 +255,37 @@ namespace spartan
 
     void Light::Load(pugi::xml_node& node)
     {
-        m_flags                = node.attribute("flags").as_uint(m_flags);
-        int light_type         = node.attribute("light_type").as_int(static_cast<int>(m_light_type));
+        LightSettings settings = GetSettings();
+        settings.flags                = node.attribute("flags").as_uint(settings.flags);
+        int light_type         = node.attribute("light_type").as_int(static_cast<int>(settings.type));
         if (light_type < static_cast<int>(LightType::Directional) || light_type >= static_cast<int>(LightType::Max))
         {
             light_type = static_cast<int>(LightType::Point);
         }
-        m_light_type           = static_cast<LightType>(light_type);
-        SetColor(get_sensible_color(m_light_type));
-        m_color_rgb.r          = node.attribute("color_r").as_float(m_color_rgb.r);
-        m_color_rgb.g          = node.attribute("color_g").as_float(m_color_rgb.g);
-        m_color_rgb.b          = node.attribute("color_b").as_float(m_color_rgb.b);
-        m_temperature_kelvin   = node.attribute("temperature").as_float(m_temperature_kelvin);
-        m_intensity = static_cast<LightIntensity>(node.attribute("intensity").as_int(static_cast<int>(m_intensity)));
+        settings.type           = static_cast<LightType>(light_type);
+        settings.color = get_sensible_color(settings.type);
+        settings.color.r          = node.attribute("color_r").as_float(settings.color.r);
+        settings.color.g          = node.attribute("color_g").as_float(settings.color.g);
+        settings.color.b          = node.attribute("color_b").as_float(settings.color.b);
+        settings.temperature   = node.attribute("temperature").as_float(settings.temperature);
+        settings.intensity = static_cast<LightIntensity>(node.attribute("intensity").as_int(static_cast<int>(settings.intensity)));
 
         pugi::xml_attribute intensity_attribute = node.attribute("intensity_photometric");
         if (!intensity_attribute)
         {
             intensity_attribute = node.attribute("intensity_lum");
         }
-        m_intensity_photometric = intensity_attribute.as_float(m_intensity_photometric);
-        m_angle_rad            = lighting::lighting_spot_half_angle(node.attribute("angle").as_float(m_angle_rad));
-        m_range                = node.attribute("range").as_float(get_sensible_range(m_light_type, m_intensity_photometric, m_angle_rad));
-        m_index                = node.attribute("index").as_uint(m_index);
-        m_preset               = static_cast<LightPreset>(node.attribute("preset").as_int(static_cast<int>(m_preset)));
-        m_area_width           = node.attribute("area_width").as_float(m_area_width);
-        m_area_height          = node.attribute("area_height").as_float(m_area_height);
-        m_draw_distance        = node.attribute("draw_distance").as_float(m_draw_distance);
-        m_distance_shadows     = node.attribute("distance_shadows").as_float(m_distance_shadows);
-        m_distance_volumetric  = node.attribute("distance_volumetric").as_float(m_distance_volumetric);
-        m_cloud_coverage       = node.attribute("cloud_coverage").as_float(m_cloud_coverage);
-        m_rain                 = clamp(node.attribute("rain").as_float(0.0f), 0.0f, 1.0f);
-        m_screen_space_shadows_slice_index = 0;
-        SetIesProfile(node.attribute("ies_profile").as_string(""));
-
-        if (m_light_type != LightType::Directional || !(m_flags & LightFlags::Shadows))
-        {
-            m_flags &= ~static_cast<uint32_t>(LightFlags::ShadowsScreenSpace);
-        }
-
-        UpdateMatrices(); // regenerate view/projection after loading
+        settings.intensity_photometric = intensity_attribute.as_float(settings.intensity_photometric);
+        settings.angle            = lighting::lighting_spot_half_angle(node.attribute("angle").as_float(settings.angle));
+        settings.range                = node.attribute("range").as_float(get_sensible_range(settings.type, settings.intensity_photometric, settings.angle));
+        settings.preset               = static_cast<LightPreset>(node.attribute("preset").as_int(static_cast<int>(settings.preset)));
+        settings.area_width           = node.attribute("area_width").as_float(settings.area_width);
+        settings.area_height          = node.attribute("area_height").as_float(settings.area_height);
+        settings.draw_distance        = node.attribute("draw_distance").as_float(settings.draw_distance);
+        settings.shadow_distance     = node.attribute("distance_shadows").as_float(settings.shadow_distance);
+        settings.volumetric_distance  = node.attribute("distance_volumetric").as_float(settings.volumetric_distance);
+        settings.ies_profile = node.attribute("ies_profile").as_string("");
+        ApplySettings(settings);
     }
 
     void Light::RegisterForScripting(sol::state_view State)
@@ -376,43 +411,11 @@ namespace spartan
 
     void Light::SetFlag(const LightFlags flag, const bool enable)
     {
-        // Legacy scripts can still call this API, but cannot disable the medium's
-        // response to a light. New authoring controls expose density instead.
-        if (flag == LightFlags::Volumetric)
-        {
-            return;
-        }
-        if (flag == LightFlags::ShadowsScreenSpace && enable && m_light_type != LightType::Directional)
-        {
-            return;
-        }
-
-        bool enabled      = false;
-        bool disabled     = false;
-        bool flag_present = m_flags & flag;
-
-        if (enable && !flag_present)
-        {
-            m_flags |= static_cast<uint32_t>(flag);
-            enabled  = true;
-        }
-        else if (!enable && flag_present)
-        {
-            m_flags  &= ~static_cast<uint32_t>(flag);
-            disabled  = true;
-        }
-
-        if (enabled || disabled)
-        {
-            if (disabled)
-            {
-                // if the shadows have been disabled, disable properties which rely on them
-                if (flag & LightFlags::Shadows)
-                {
-                    m_flags &= ~static_cast<uint32_t>(LightFlags::ShadowsScreenSpace);
-                }
-            }
-        }
+        // Atmospheric scattering is automatic; retain this legacy API as a no-op.
+        if (flag == LightFlags::Volumetric) return;
+        if (enable) m_flags |= static_cast<uint32_t>(flag);
+        else m_flags &= ~static_cast<uint32_t>(flag);
+        ValidateSettings();
     }
 
     void Light::SetLightType(LightType type)
@@ -523,7 +526,7 @@ namespace spartan
         const int sample_count         = 32;
 
         float altitude = 1.0f;
-        if (Camera* camera = World::GetCamera())
+        if (Camera* camera = Renderer::GetViewCamera())
         {
             altitude = max(camera->GetEntity()->GetPosition().y, 1.0f);
         }
@@ -690,21 +693,11 @@ namespace spartan
         }
     }
 
-    void Light::SetCloudCoverage(const float coverage)
-    {
-        m_cloud_coverage = clamp(coverage, 0.0f, 1.0f);
-    }
-
-    void Light::SetRain(const float rain)
-    {
-        if (isfinite(rain))
-            m_rain = clamp(rain, 0.0f, 1.0f);
-    }
-
-    float Light::GetCloudCoverageEffective() const
-    {
-        return m_rain > 0.0f ? max(m_cloud_coverage, 0.72f + 0.26f * m_rain) : m_cloud_coverage;
-    }
+    void Light::SetCloudCoverage(float value) { Environment::SetCloudCoverage(value); }
+    float Light::GetCloudCoverage() const { return Environment::GetCloudCoverage(); }
+    void Light::SetRain(float value) { Environment::SetRain(value); }
+    float Light::GetRain() const { return Environment::GetRain(); }
+    float Light::GetCloudCoverageEffective() const { return Environment::GetCloudCoverageEffective(); }
 
     float Light::GetIntensityRadiometric() const
     {
@@ -747,6 +740,14 @@ namespace spartan
         }
 
         return radiant_flux / (4.0f * pi);
+    }
+
+    void Light::SetFlags(uint32_t flags)
+    {
+        if (!(flags & LightFlags::Shadows)) flags &= ~static_cast<uint32_t>(LightFlags::ShadowsScreenSpace);
+        for (LightFlags flag : { LightFlags::Shadows, LightFlags::ShadowsScreenSpace,
+             LightFlags::Volumetric, LightFlags::DayNightCycle, LightFlags::RealTimeCycle })
+            SetFlag(flag, (flags & static_cast<uint32_t>(flag)) != 0);
     }
 
     void Light::SetRange(float range)
@@ -915,8 +916,20 @@ namespace spartan
         return 1; // spot and area lights use a single slice
     }
 
+    void Light::ValidateSettings()
+    {
+        if (m_light_type < LightType::Directional || m_light_type > LightType::Max) m_light_type = LightType::Point;
+        m_range = isfinite(m_range) ? max(m_range, 0.0f) : 32.0f;
+        m_angle_rad = lighting::lighting_spot_half_angle(isfinite(m_angle_rad) ? m_angle_rad : math::deg_to_rad * 30.0f);
+        m_area_width = isfinite(m_area_width) ? clamp(m_area_width, 0.01f, 100.0f) : 1.0f;
+        m_area_height = isfinite(m_area_height) ? clamp(m_area_height, 0.01f, 100.0f) : 1.0f;
+        if (m_light_type != LightType::Directional || !(m_flags & LightFlags::Shadows))
+            m_flags &= ~static_cast<uint32_t>(LightFlags::ShadowsScreenSpace);
+    }
+
     void Light::UpdateMatrices()
     {
+        ValidateSettings();
         UpdateViewMatrix();
         UpdateProjectionMatrix();
         UpdateBoundingBox();
@@ -928,7 +941,7 @@ namespace spartan
 
         if (m_light_type == LightType::Directional)
         {
-            Camera* camera = World::GetCamera();
+            Camera* camera = Renderer::GetViewCamera();
             if (!camera)
             {
                 return;
@@ -1125,7 +1138,7 @@ namespace spartan
                 return true;
             }
 
-            Camera* camera = World::GetCamera();
+            Camera* camera = Renderer::GetViewCamera();
             if (!camera)
             {
                 return false;

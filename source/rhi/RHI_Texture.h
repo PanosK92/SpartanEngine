@@ -78,7 +78,7 @@ namespace spartan
         // iresource
         void SaveToFile(const std::string& file_path) override;
         std::function<void()> CreateSaveTask(const std::string& file_path) override;
-        void LoadFromFile(const std::string& file_path) override;
+        bool LoadFromFile(const std::string& file_path) override;
         bool CanSaveToFile() const;
 
         uint32_t GetWidth() const           { return m_width; }
@@ -219,6 +219,7 @@ namespace spartan
         friend class RHI_VendorTechnology;
 
         void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0);
+        bool ReadFromFile(const std::string& file_path);
         void ComputeMemoryUsage();
     };
 }

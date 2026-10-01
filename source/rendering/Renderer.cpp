@@ -45,7 +45,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Terrain.h"
 #include "../world/components/Spline.h"
 #include "../world/Weather.h"
-#include "../world/CarRain.h"
+#include "SurfaceWater.h"
 #include "../core/ProgressTracker.h"
 #include "../math/Rectangle.h"
 #include "../resource/import/ImageImporter.h"
@@ -80,9 +80,6 @@ namespace spartan
     namespace
     {
         const uint8_t  swap_chain_buffer_count    = 2;
-        float          near_plane                 = 0.0f;
-        float          far_plane                  = 1.0f;
-        bool           dirty_orthographic_projection = true;
 
         struct screenshot_request
         {
@@ -126,17 +123,14 @@ namespace spartan
         uint64_t secondary_view_active_generation = 0;
         uint64_t secondary_view_ready_generation = 0;
         shared_ptr<RHI_Texture> secondary_view_output;
-        shared_ptr<RHI_Texture> secondary_view_primary_backup;
-        shared_ptr<RHI_Texture> secondary_view_exposure;
-        shared_ptr<RHI_Texture> secondary_view_exposure_primary;
-        shared_ptr<RHI_Texture> secondary_view_exposure_primary_previous;
-        bool secondary_view_exposure_valid = false;
+        Renderer::ViewState primary_view;
+        Renderer::ViewState preview_view;
+        Renderer::ViewState* active_view = &primary_view;
         bool secondary_view_ready = false;
         uint32_t secondary_view_recovery_frames = 0;
 
         // the temporal frame index of the primary camera, nrd treats any gap in it as a camera cut
         // and throws its history away, so a frame lent to a secondary view must not advance it
-        uint32_t primary_view_frame = 0;
 
         // loading is read once per frame, worker threads flip it at any moment, and a frame that enabled
         // tracing before the flip and then skipped the tlas update after it traced against stale structures
@@ -171,7 +165,7 @@ namespace spartan
         // the occupied car's parts, their rain droplets answer its g forces
         bool is_drops_vehicle(const Entity* entity)
         {
-            Entity* vehicle = Weather::GetDropsVehicle();
+            Entity* vehicle = World::GetEntityById(Renderer::GetSurfaceWater().entity_id);
             return vehicle && entity && (entity == vehicle || entity->IsDescendantOf(vehicle));
         }
 
@@ -229,7 +223,7 @@ namespace spartan
             ray_tracing_build_work.clear();
             ray_tracing_instanced_renders.clear();
             ray_tracing_pending_blas = false;
-            Camera* camera = World::GetCamera();
+            Camera* camera = Renderer::GetViewCamera();
             const Vector3 camera_position = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
             const auto& entries = render_scene_data();
             struct Candidates { vector<Render*> renders; vector<Render*> builds; vector<Render*> instanced; bool missing = false; };
@@ -286,143 +280,31 @@ namespace spartan
             ray_tracing_membership_dirty |= ray_tracing_renders != previous_renders;
         }
 
-        bool ensure_secondary_view_targets(
-            const uint32_t width,
-            const uint32_t height
-        )
+        bool ensure_secondary_view_targets(uint32_t width, uint32_t height)
         {
-            RHI_Texture* source =
-                Renderer::GetRenderTarget(
-                    Renderer_RenderTarget::frame_output
-                );
-            RHI_Texture* exposure =
-                Renderer::GetRenderTarget(
-                    Renderer_RenderTarget::auto_exposure
-                );
-            RHI_Texture* exposure_previous =
-                Renderer::GetRenderTarget(
-                    Renderer_RenderTarget::auto_exposure_previous
-                );
-            if (!source || !exposure || !exposure_previous)
+            RHI_Texture* source = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output);
+            RHI_Texture* exposure = Renderer::GetRenderTarget(Renderer_RenderTarget::auto_exposure);
+            if (!source || !exposure) return false;
+            auto ensure = [](shared_ptr<RHI_Texture>& texture, uint32_t w, uint32_t h,
+                             uint32_t mips, RHI_Format format, uint32_t flags, const char* name)
             {
-                return false;
-            }
-            const bool recreate =
-                !secondary_view_output ||
-                secondary_view_output->GetWidth() != width ||
-                secondary_view_output->GetHeight() != height ||
-                secondary_view_output->GetFormat() != source->GetFormat();
-            const bool recreate_backup =
-                !secondary_view_primary_backup ||
-                secondary_view_primary_backup->GetWidth() !=
-                    source->GetWidth() ||
-                secondary_view_primary_backup->GetHeight() !=
-                    source->GetHeight() ||
-                secondary_view_primary_backup->GetFormat() !=
-                    source->GetFormat();
-            const bool recreate_exposure =
-                !secondary_view_exposure ||
-                secondary_view_exposure->GetFormat() !=
-                    exposure_previous->GetFormat() ||
-                !secondary_view_exposure_primary ||
-                secondary_view_exposure_primary->GetFormat() !=
-                    exposure->GetFormat() ||
-                !secondary_view_exposure_primary_previous ||
-                secondary_view_exposure_primary_previous->GetFormat() !=
-                    exposure_previous->GetFormat();
-            if (
-                !recreate &&
-                !recreate_backup &&
-                !recreate_exposure
-            )
-            {
+                if (texture && texture->GetWidth() == w && texture->GetHeight() == h && texture->GetFormat() == format)
+                    return false;
+                texture = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, w, h, 1, mips, format, flags, name);
                 return true;
-            }
-
-            const uint32_t output_flags =
-                RHI_Texture_Srv |
-                RHI_Texture_Uav |
-                RHI_Texture_ClearBlit;
-            if (recreate)
-            {
-                secondary_view_output =
-                    make_shared<RHI_Texture>(
-                        RHI_Texture_Type::Type2D,
-                        width,
-                        height,
-                        1,
-                        1,
-                        source->GetFormat(),
-                        output_flags,
-                        "secondary_view_output"
-                    );
-            }
-            if (recreate_backup)
-            {
-                const uint32_t backup_flags =
-                    RHI_Texture_Srv |
-                    RHI_Texture_Rtv |
-                    RHI_Texture_ClearBlit;
-                secondary_view_primary_backup =
-                    make_shared<RHI_Texture>(
-                    RHI_Texture_Type::Type2D,
-                    source->GetWidth(),
-                    source->GetHeight(),
-                    1,
-                    1,
-                    source->GetFormat(),
-                    backup_flags,
-                    "secondary_view_primary_backup"
-                );
-            }
-            if (recreate_exposure)
-            {
-                const uint32_t exposure_flags =
-                    RHI_Texture_Srv |
-                    RHI_Texture_Uav |
-                    RHI_Texture_ClearBlit;
-                secondary_view_exposure =
-                    make_shared<RHI_Texture>(
-                        RHI_Texture_Type::Type2D,
-                        1,
-                        1,
-                        1,
-                        1,
-                        exposure_previous->GetFormat(),
-                        exposure_flags,
-                        "secondary_view_exposure"
-                    );
-                secondary_view_exposure_primary =
-                    make_shared<RHI_Texture>(
-                        RHI_Texture_Type::Type2D,
-                        1,
-                        1,
-                        1,
-                        1,
-                        exposure->GetFormat(),
-                        exposure_flags,
-                        "secondary_view_exposure_primary"
-                    );
-                secondary_view_exposure_primary_previous =
-                    make_shared<RHI_Texture>(
-                        RHI_Texture_Type::Type2D,
-                        1,
-                        1,
-                        1,
-                        1,
-                        exposure_previous->GetFormat(),
-                        exposure_flags,
-                        "secondary_view_exposure_primary_previous"
-                    );
-                secondary_view_exposure_valid = false;
-            }
-            secondary_view_ready = false;
-            return
-                secondary_view_output->GetRhiResource() &&
-                secondary_view_primary_backup->GetRhiResource() &&
-                secondary_view_exposure->GetRhiResource() &&
-                secondary_view_exposure_primary->GetRhiResource() &&
-                secondary_view_exposure_primary_previous->GetRhiResource();
+            };
+            const uint32_t flags = RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
+            bool changed = ensure(secondary_view_output, width, height, 1, source->GetFormat(), flags, "secondary_view_output");
+            // The shared passes use the main resolution; only the final preview is downscaled.
+            changed |= ensure(preview_view.output, source->GetWidth(), source->GetHeight(), source->GetMipCount(),
+                              source->GetFormat(), flags | RHI_Texture_PerMipViews | RHI_Texture_ConcurrentSharing, "preview_frame_output");
+            const uint32_t exposure_flags = RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_ClearBlit;
+            bool exposure_changed = ensure(preview_view.exposure_current, 1, 1, 1, exposure->GetFormat(), exposure_flags, "preview_exposure");
+            exposure_changed |= ensure(preview_view.exposure_previous, 1, 1, 1, exposure->GetFormat(), exposure_flags, "preview_exposure_previous");
+            if (exposure_changed) preview_view.exposure = {};
+            if (changed || exposure_changed) secondary_view_ready = false;
+            return secondary_view_output->GetRhiResource() && preview_view.output->GetRhiResource() &&
+                   preview_view.exposure_current->GetRhiResource() && preview_view.exposure_previous->GetRhiResource();
         }
 
         float sanitize_resolution_scale(float scale)
@@ -783,6 +665,15 @@ namespace spartan
         }
 
         SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldUnloading, [](const sp_variant&) {
+            m_pass_state.ResetWorld();
+            primary_view.exposure.Reset();
+            preview_view.exposure.Reset();
+            SetSurfaceInteraction({});
+            SetSurfaceWater({});
+            camera_cut_pending = true;
+            m_taau_reset_history = true;
+        });
         SP_FIRE_EVENT(EventType::RendererOnInitialized);
     }
 
@@ -804,11 +695,9 @@ namespace spartan
             m_icons_vertex_buffer = nullptr;
             m_tlas                = nullptr;
             secondary_view_output.reset();
-            secondary_view_primary_backup.reset();
-            secondary_view_exposure.reset();
-            secondary_view_exposure_primary.reset();
-            secondary_view_exposure_primary_previous.reset();
-            secondary_view_exposure_valid = false;
+            preview_view = {};
+            primary_view = {};
+            active_view = &primary_view;
             screenshot_ui_target.reset();
             secondary_camera_request = nullptr;
             secondary_render_root_request = nullptr;
@@ -846,7 +735,7 @@ namespace spartan
         sanitize_vendor_upscaler_resolution();
         tick_dynamic_resolution_scale();
         // Jitter generation and vendor dispatch must use this frame's active render size.
-        RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), GetResolutionScale());
+        RHI_VendorTechnology::Tick(&Renderer::view().frame, GetResolutionRender(), GetResolutionOutput(), GetResolutionScale());
         if (cvar_debug_breadcrumbs.GetValue())
         {
             Breadcrumbs::StartFrame();
@@ -890,13 +779,9 @@ namespace spartan
         // reads stale transforms from the rotating frame slots and draws can
         // disappear, exposing old swapchain contents.
         m_draw_data_gpu_synced = !render_world;
-        Entity* primary_camera_entity = nullptr;
         Entity* secondary_camera_entity = nullptr;
         Entity* secondary_render_root_entity = nullptr;
         bool render_secondary_view = false;
-        Cb_Frame cb_frame_primary = {};
-        float secondary_wireframe_previous =
-            cvar_wireframe.GetValue();
 
         if (render_world)
         {
@@ -954,56 +839,8 @@ namespace spartan
                 )
             )
             {
-                // the override itself is put back, not the camera it resolved to, pinning the resolved
-                // camera as an override would outrank the world camera once gameplay switches it
-                primary_camera_entity = World::GetActiveCameraOverride();
-                RHI_CommandList::Copy(
-                    GetRenderTarget(
-                        Renderer_RenderTarget::frame_output
-                    ),
-                    secondary_view_primary_backup.get(),
-                    false
-                );
-                RHI_Texture* exposure =
-                    GetRenderTarget(
-                        Renderer_RenderTarget::auto_exposure
-                    );
-                RHI_Texture* exposure_previous =
-                    GetRenderTarget(
-                        Renderer_RenderTarget::auto_exposure_previous
-                    );
-                RHI_CommandList::Copy(
-                    exposure,
-                    secondary_view_exposure_primary.get(),
-                    false
-                );
-                RHI_CommandList::Copy(
-                    exposure_previous,
-                    secondary_view_exposure_primary_previous.get(),
-                    false
-                );
-                if (!secondary_view_exposure_valid)
-                {
-                    RHI_CommandList::Copy(
-                        exposure_previous,
-                        secondary_view_exposure.get(),
-                        false
-                    );
-                    secondary_view_exposure_valid = true;
-                }
-                RHI_CommandList::Copy(
-                    secondary_view_exposure.get(),
-                    exposure_previous,
-                    false
-                );
-
-                // this frame belongs to the preview camera, the primary never renders it,
-                // so its history is put back once the preview is done, otherwise the next
-                // primary frame measures velocity against the preview camera
-                cb_frame_primary = m_cb_frame_cpu;
-                World::SetActiveCamera(
-                    secondary_camera_entity
-                );
+                preview_view.camera = secondary_camera_entity->GetComponent<Camera>();
+                active_view = &preview_view;
                 Camera* secondary_camera =
                     secondary_camera_entity
                         ->GetComponent<Camera>();
@@ -1039,16 +876,10 @@ namespace spartan
                     {
                         render->UpdateAabb();
                         render->SetVisible(true);
-                        render->UpdateLodIndices();
+                        render->UpdateLodIndices(secondary_camera);
                     }
                 }
                 m_is_hiz_suppressed = true;
-                cvar_wireframe.SetValue(
-                    secondary_view_mode_active ==
-                    Renderer_SecondaryViewMode::Wireframe
-                        ? 1.0f
-                        : 0.0f
-                );
                 render_secondary_view = true;
             }
             else if (secondary_request_consumed)
@@ -1107,40 +938,7 @@ namespace spartan
                     secondary_view_output.get(),
                     false
                 );
-                RHI_CommandList::Copy(
-                    secondary_view_primary_backup.get(),
-                    GetRenderTarget(
-                        Renderer_RenderTarget::frame_output
-                    ),
-                    false
-                );
-                RHI_Texture* exposure =
-                    GetRenderTarget(
-                        Renderer_RenderTarget::auto_exposure
-                    );
-                RHI_Texture* exposure_previous =
-                    GetRenderTarget(
-                        Renderer_RenderTarget::auto_exposure_previous
-                    );
-                RHI_CommandList::Copy(
-                    exposure_previous,
-                    secondary_view_exposure.get(),
-                    false
-                );
-                RHI_CommandList::Copy(
-                    secondary_view_exposure_primary.get(),
-                    exposure,
-                    false
-                );
-                RHI_CommandList::Copy(
-                    secondary_view_exposure_primary_previous.get(),
-                    exposure_previous,
-                    false
-                );
-                World::SetActiveCamera(
-                    primary_camera_entity
-                );
-                m_cb_frame_cpu = cb_frame_primary;
+                active_view = &primary_view;
                 secondary_render_root_entity->SetActive(false);
                 secondary_render_root_active = nullptr;
                 secondary_view_ready = true;
@@ -1163,9 +961,7 @@ namespace spartan
                     }
                 }
                 secondary_view_recovery_frames = 0;
-                cvar_wireframe.SetValue(
-                    secondary_wireframe_previous
-                );
+
             }
         }
 
@@ -1327,7 +1123,7 @@ namespace spartan
         // Spread demand collection over eight frames; mip residency does not need
         // a full island traversal every frame. Publish the maximum over the whole
         // sweep so shared materials do not oscillate between their near/far users.
-        Camera* streaming_camera = World::GetCamera();
+        Camera* streaming_camera = Renderer::GetViewCamera();
         constexpr uint64_t demand_frames = 8;
         struct MaterialDemand
         {
@@ -1448,11 +1244,11 @@ namespace spartan
         const bool is_secondary = secondary_render_root_active != nullptr;
         const bool view_changed = is_secondary != uploaded_for_secondary;
 
-        // consume the world side flag unconditionally, it clears its own change tracking on read
+        // Consume renderer-owned scene input changes before deciding whether to upload.
         const bool world_changed =
-            World::HaveMaterialsChangedThisFrame();
+            HaveMaterialsChangedThisFrame();
         // terrain rules and the grass material are packed into the material buffer without touching
-        // a Material, so the world side revision cannot see them
+        // a Material, so the material revision cannot see them
         const bool bindless_changed = m_pass_state.bindless_materials_dirty;
         const bool update_materials = GetFrameNumber() == 0 || view_changed || world_changed || bindless_changed;
         if (!update_materials && !bindless_textures_dirty)
@@ -1467,8 +1263,8 @@ namespace spartan
         restir_invalidation_pending |= GetFrameNumber() == 0 || world_changed || bindless_changed || bindless_textures_dirty;
         if (restir_invalidation_pending && !is_secondary)
         {
-            m_pass_state.restir_accumulation_valid = false;
-            m_pass_state.restir_history_invalid = true;
+            m_pass_state.restir.accumulation_valid = false;
+            m_pass_state.restir.history_invalid = true;
             restir_invalidation_pending = false;
         }
 
@@ -1502,7 +1298,7 @@ namespace spartan
         SP_PROFILE_CPU();
         // run during loading so newly published entities pick up materials and lights as they arrive
         const bool initialize     = GetFrameNumber() == 0;
-        const bool lights_changed = initialize || World::HaveLightsChanged();
+        const bool lights_changed = initialize || HaveLightsChanged();
 
         if (lights_changed)
         {
@@ -1569,7 +1365,7 @@ namespace spartan
             else
                 RHI_CommandList::UpdateBuffer(buffer, offset, size, Weather::GetOcclusionHeights());
         }
-        if (CarRain::IsActive())
+        if (Renderer::GetSurfaceWater().active)
         {
             auto upload = [](RHI_Buffer* buffer, uint32_t offset, uint32_t size, const void* data)
             {
@@ -1581,13 +1377,13 @@ namespace spartan
                     RHI_CommandList::UpdateBuffer(buffer, offset, size, data);
             };
 
-            const vector<CarRainDropGpu>& drops = CarRain::GetDrops();
-            const uint32_t drop_count           = min(static_cast<uint32_t>(drops.size()), CarRain::drops_max);
-            upload(GetBuffer(Renderer_Buffer::CarRainDrops), m_frame_resource_index * CarRain::drops_max * sizeof(CarRainDropGpu), drop_count * sizeof(CarRainDropGpu), drops.data());
+            const auto& drops = Renderer::GetSurfaceWater().drops;
+            const uint32_t drop_count           = min(static_cast<uint32_t>(drops.size()), SurfaceWater::drops_max);
+            upload(GetBuffer(Renderer_Buffer::CarRainDrops), m_frame_resource_index * SurfaceWater::drops_max * sizeof(SurfaceWaterDrop), drop_count * sizeof(SurfaceWaterDrop), drops.data());
 
-            const vector<CarRainTexelGpu>& texels = CarRain::GetTexels();
-            const uint32_t texel_count            = min(static_cast<uint32_t>(texels.size()), CarRain::texels_max);
-            upload(GetBuffer(Renderer_Buffer::CarRainTexels), m_frame_resource_index * CarRain::texels_max * sizeof(CarRainTexelGpu), texel_count * sizeof(CarRainTexelGpu), texels.data());
+            const auto& texels = Renderer::GetSurfaceWater().texels;
+            const uint32_t texel_count            = min(static_cast<uint32_t>(texels.size()), SurfaceWater::texels_max);
+            upload(GetBuffer(Renderer_Buffer::CarRainTexels), m_frame_resource_index * SurfaceWater::texels_max * sizeof(SurfaceWaterTexel), texel_count * sizeof(SurfaceWaterTexel), texels.data());
         }
         // mark synced even when empty so later imgui/editor WriteDrawData can stage mid-frame on d3d12
         m_draw_data_gpu_synced = true;
@@ -1695,7 +1491,8 @@ namespace spartan
         {
             m_viewport.width              = width;
             m_viewport.height             = height;
-            dirty_orthographic_projection = true;
+            primary_view.dirty_orthographic_projection = true;
+            preview_view.dirty_orthographic_projection = true;
         }
     }
 
@@ -1747,7 +1544,7 @@ namespace spartan
     bool Renderer::IsRayTracedShadowsActive()
     {
         // same bit the shaders branch on, so cpu and gpu agree on which path owns the frame
-        return (m_cb_frame_cpu.options & (1u << 2)) != 0;
+        return (Renderer::view().frame.options & (1u << 2)) != 0;
     }
 
     bool Renderer::IsSecondaryScreenshotPending()
@@ -1761,7 +1558,7 @@ namespace spartan
         secondary_camera_request = nullptr;
         secondary_render_root_request = nullptr;
         secondary_view_ready = false;
-        secondary_view_exposure_valid = false;
+        preview_view.exposure = {};
         secondary_view_request_generation++;
 
         lock_guard<mutex> lock(screenshot_mutex);
@@ -1876,7 +1673,7 @@ namespace spartan
 
         if (recreate_resources)
         {
-            if (m_cb_frame_cpu.frame > 1)
+            if (Renderer::view().frame.frame > 1)
             {
                 bool flush = true;
                 RHI_Device::QueueWaitAll(flush);
@@ -1899,9 +1696,9 @@ namespace spartan
             m_pass_state.brdf_lut_produced       = false;
             m_pass_state.atmosphere_lut_produced = false;
             m_pass_state.cloud_noise_produced    = false;
-            m_pass_state.sky_first_frame         = true;
+            m_pass_state.sky.first_frame         = true;
             m_pass_state.cloud_history.Reset();
-            m_pass_state.cloud_environment_dirty = true;
+            m_pass_state.cloud_environment.environment_dirty = true;
             m_pass_state.ssao_history.Reset();
             m_pass_state.fog_history.Reset();
             m_pass_state.particle_volume_history.Reset();
@@ -1958,18 +1755,14 @@ namespace spartan
 
     void Renderer::RecreateRenderTargets()
     {
-        if (m_cb_frame_cpu.frame > 1)
+        if (Renderer::view().frame.frame > 1)
         {
             bool flush = true;
             RHI_Device::QueueWaitAll(flush);
         }
 
         CreateRenderTargets(true, true, true);
-        m_pass_state.cloud_history.Reset();
-        m_pass_state.cloud_environment_dirty = true;
-        m_pass_state.ssao_history.Reset();
-        m_pass_state.fog_history.Reset();
-        m_pass_state.particle_volume_history.Reset();
+        m_pass_state.ResetResolutionHistory();
         CreateSamplers();
     }
 
@@ -1980,29 +1773,29 @@ namespace spartan
 
     void Renderer::UpdateFrameCb_CameraAndProjectionHistory()
     {
-        if (Camera* camera = World::GetCamera())
+        if (Camera* camera = Renderer::GetViewCamera())
         {
-            if (near_plane != camera->GetNearPlane() || far_plane != camera->GetFarPlane())
+            if (view().near_plane != camera->GetNearPlane() || view().far_plane != camera->GetFarPlane())
             {
-                near_plane                    = camera->GetNearPlane();
-                far_plane                     = camera->GetFarPlane();
-                dirty_orthographic_projection = true;
+                view().near_plane                    = camera->GetNearPlane();
+                view().far_plane                     = camera->GetFarPlane();
+                view().dirty_orthographic_projection = true;
             }
 
-            m_cb_frame_cpu.view_previous       = m_cb_frame_cpu.view;
-            m_cb_frame_cpu.view                = camera->GetViewMatrix();
-            m_cb_frame_cpu.view_inverted       = Matrix::Invert(m_cb_frame_cpu.view);
-            m_cb_frame_cpu.projection_previous = m_cb_frame_cpu.projection;
-            m_cb_frame_cpu.projection          = camera->GetProjectionMatrix();
-            m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
+            Renderer::view().frame.view_previous       = Renderer::view().frame.view;
+            Renderer::view().frame.view                = camera->GetViewMatrix();
+            Renderer::view().frame.view_inverted       = Matrix::Invert(Renderer::view().frame.view);
+            Renderer::view().frame.projection_previous = Renderer::view().frame.projection;
+            Renderer::view().frame.projection          = camera->GetProjectionMatrix();
+            Renderer::view().frame.projection_inverted = Matrix::Invert(Renderer::view().frame.projection);
         }
 
-        if (dirty_orthographic_projection)
+        if (view().dirty_orthographic_projection)
         {
             // ortho near is 0 to avoid NaN in the [3,2] element
-            Matrix projection_ortho                     = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, far_plane);
-            m_cb_frame_cpu.view_projection_orthographic = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * projection_ortho;
-            dirty_orthographic_projection               = false;
+            Matrix projection_ortho                     = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, view().far_plane);
+            Renderer::view().frame.view_projection_orthographic = Matrix::CreateLookAtLH(Vector3(0, 0, -view().near_plane), Vector3::Forward, Vector3::Up) * projection_ortho;
+            view().dirty_orthographic_projection               = false;
         }
     }
 
@@ -2014,7 +1807,7 @@ namespace spartan
         // so shaders do not unjitter velocities and uvs with an offset that was never applied
         if (Xr::IsSessionRunning() && Xr::GetStereoMode())
         {
-            m_jitter_offset = Vector2::Zero;
+            Renderer::view().jitter_offset = Vector2::Zero;
             return;
         }
 
@@ -2022,7 +1815,7 @@ namespace spartan
         // nothing resolves away would just shift the preview off centre
         if (secondary_render_root_active)
         {
-            m_jitter_offset = Vector2::Zero;
+            Renderer::view().jitter_offset = Vector2::Zero;
             return;
         }
 
@@ -2053,84 +1846,80 @@ namespace spartan
             const float scale    = GetResolutionScale();
             const float render_w = static_cast<float>(GetScaledDimension(static_cast<uint32_t>(m_resolution_render.x), scale));
             const float render_h = static_cast<float>(GetScaledDimension(static_cast<uint32_t>(m_resolution_render.y), scale));
-            m_jitter_offset.x = 2.0f * jx / render_w;
-            m_jitter_offset.y = -2.0f * jy / render_h;
+            Renderer::view().jitter_offset.x = 2.0f * jx / render_w;
+            Renderer::view().jitter_offset.y = -2.0f * jy / render_h;
 
-            m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_jitter_offset.x, m_jitter_offset.y, 0.0f));
+            Renderer::view().frame.projection *= Matrix::CreateTranslation(Vector3(Renderer::view().jitter_offset.x, Renderer::view().jitter_offset.y, 0.0f));
         }
         else if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
         {
-            RHI_VendorTechnology::XeSS_GenerateJitterSample(&m_jitter_offset.x, &m_jitter_offset.y);
-            m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_jitter_offset.x, m_jitter_offset.y, 0.0f));
+            RHI_VendorTechnology::XeSS_GenerateJitterSample(&Renderer::view().jitter_offset.x, &Renderer::view().jitter_offset.y);
+            Renderer::view().frame.projection *= Matrix::CreateTranslation(Vector3(Renderer::view().jitter_offset.x, Renderer::view().jitter_offset.y, 0.0f));
         }
         else if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss)
         {
-            RHI_VendorTechnology::DLSS_GenerateJitterSample(&m_jitter_offset.x, &m_jitter_offset.y);
-            m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_jitter_offset.x, m_jitter_offset.y, 0.0f));
+            RHI_VendorTechnology::DLSS_GenerateJitterSample(&Renderer::view().jitter_offset.x, &Renderer::view().jitter_offset.y);
+            Renderer::view().frame.projection *= Matrix::CreateTranslation(Vector3(Renderer::view().jitter_offset.x, Renderer::view().jitter_offset.y, 0.0f));
         }
         else
         {
-            m_jitter_offset = Vector2::Zero;
+            Renderer::view().jitter_offset = Vector2::Zero;
         }
     }
 
     void Renderer::UpdateFrameCb_ViewProjectionAndCameraFields()
     {
-        m_cb_frame_cpu.view_projection_previous = m_cb_frame_cpu.view_projection;
-        m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
-        m_cb_frame_cpu.view_projection_inverted = Matrix::Invert(m_cb_frame_cpu.view_projection);
+        Renderer::view().frame.view_projection_previous = Renderer::view().frame.view_projection;
+        Renderer::view().frame.view_projection          = Renderer::view().frame.view * Renderer::view().frame.projection;
+        Renderer::view().frame.view_projection_inverted = Matrix::Invert(Renderer::view().frame.view_projection);
 
         // the camera view translates by -camera_position, so relative to it only the rotation is left
-        Matrix view_rotation = m_cb_frame_cpu.view;
+        Matrix view_rotation = Renderer::view().frame.view;
         view_rotation.m30    = 0.0f;
         view_rotation.m31    = 0.0f;
         view_rotation.m32    = 0.0f;
-        m_cb_frame_cpu.view_projection_previous_relative = m_cb_frame_cpu.view_projection_relative;
-        m_cb_frame_cpu.view_projection_relative          = view_rotation * m_cb_frame_cpu.projection;
+        Renderer::view().frame.view_projection_previous_relative = Renderer::view().frame.view_projection_relative;
+        Renderer::view().frame.view_projection_relative          = view_rotation * Renderer::view().frame.projection;
 
-        if (Camera* camera = World::GetCamera())
+        if (Camera* camera = Renderer::GetViewCamera())
         {
-            m_cb_frame_cpu.view_projection_previous_unjittered = m_cb_frame_cpu.view_projection_unjittered;
-            m_cb_frame_cpu.view_projection_unjittered          = m_cb_frame_cpu.view * camera->GetProjectionMatrix();
-            m_cb_frame_cpu.camera_near                         = camera->GetNearPlane();
-            m_cb_frame_cpu.camera_far                          = camera->GetFarPlane();
-            m_cb_frame_cpu.camera_position_previous            = m_cb_frame_cpu.camera_position;
-            m_cb_frame_cpu.camera_position                     = camera->GetEntity()->GetPosition();
-            m_cb_frame_cpu.camera_forward                      = camera->GetEntity()->GetForward();
-            m_cb_frame_cpu.camera_right                        = camera->GetEntity()->GetRight();
-            m_cb_frame_cpu.camera_fov                          = camera->GetFovHorizontalRad();
-            m_cb_frame_cpu.camera_aperture                     = camera->GetAperture();
-            m_cb_frame_cpu.camera_last_movement_time           = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
-                ? static_cast<float>(Timer::GetTimeSec()) : m_cb_frame_cpu.camera_last_movement_time;
+            Renderer::view().frame.view_projection_previous_unjittered = Renderer::view().frame.view_projection_unjittered;
+            Renderer::view().frame.view_projection_unjittered          = Renderer::view().frame.view * camera->GetProjectionMatrix();
+            Renderer::view().frame.camera_near                         = camera->GetNearPlane();
+            Renderer::view().frame.camera_far                          = camera->GetFarPlane();
+            Renderer::view().frame.camera_position_previous            = Renderer::view().frame.camera_position;
+            Renderer::view().frame.camera_position                     = camera->GetEntity()->GetPosition();
+            Renderer::view().frame.camera_forward                      = camera->GetEntity()->GetForward();
+            Renderer::view().frame.camera_right                        = camera->GetEntity()->GetRight();
+            Renderer::view().frame.camera_fov                          = camera->GetFovHorizontalRad();
+            Renderer::view().frame.camera_aperture                     = camera->GetAperture();
+            Renderer::view().frame.camera_last_movement_time           = (Renderer::view().frame.camera_position - Renderer::view().frame.camera_position_previous).LengthSquared() != 0.0f
+                ? static_cast<float>(Timer::GetTimeSec()) : Renderer::view().frame.camera_last_movement_time;
         }
     }
 
     void Renderer::UpdateFrameCb_ScalarFields()
     {
-        m_cb_frame_cpu.resolution_output     = m_resolution_output;
-        m_cb_frame_cpu.resolution_render     = m_resolution_render;
-        m_cb_frame_cpu.taa_jitter_previous   = m_cb_frame_cpu.taa_jitter_current;
-        m_cb_frame_cpu.taa_jitter_current    = m_jitter_offset;
-        m_cb_frame_cpu.time                  = Timer::GetTimeSec();
-        m_cb_frame_cpu.delta_time            = static_cast<float>(Timer::GetDeltaTimeSec());
-        if (!secondary_render_root_active)
-        {
-            primary_view_frame++;
-        }
-        m_cb_frame_cpu.frame                 = primary_view_frame;
-        m_cb_frame_cpu.resolution_scale      = GetResolutionScale();
-        m_cb_frame_cpu.restir_pt_scale       = cvar_restir_pt_scale.GetValue();
+        Renderer::view().frame.resolution_output     = m_resolution_output;
+        Renderer::view().frame.resolution_render     = m_resolution_render;
+        Renderer::view().frame.taa_jitter_previous   = Renderer::view().frame.taa_jitter_current;
+        Renderer::view().frame.taa_jitter_current    = Renderer::view().jitter_offset;
+        Renderer::view().frame.time                  = Timer::GetTimeSec();
+        Renderer::view().frame.delta_time            = static_cast<float>(Timer::GetDeltaTimeSec());
+        Renderer::view().frame.frame                 = ++view().temporal_frame;
+        Renderer::view().frame.resolution_scale      = GetResolutionScale();
+        Renderer::view().frame.restir_pt_scale       = cvar_restir_pt_scale.GetValue();
         // 0 = sdr, 1 = hdr10 pq, 2 = hdr scrgb (d3d12 windowed)
-        m_cb_frame_cpu.hdr_enabled = 0.0f;
+        Renderer::view().frame.hdr_enabled = 0.0f;
         if (RHI_SwapChain* swapchain = RHI_Device::GetSwapChain())
         {
             if (swapchain->IsHdr())
             {
-                m_cb_frame_cpu.hdr_enabled = (swapchain->GetFormat() == RHI_Format::R16G16B16A16_Float) ? 2.0f : 1.0f;
+                Renderer::view().frame.hdr_enabled = (swapchain->GetFormat() == RHI_Format::R16G16B16A16_Float) ? 2.0f : 1.0f;
             }
         }
-        m_cb_frame_cpu.hdr_max_nits       = Display::GetLuminanceMax();
-        m_cb_frame_cpu.hdr_sdr_white_nits = Display::GetSdrWhiteNits();
+        Renderer::view().frame.hdr_max_nits       = Display::GetLuminanceMax();
+        Renderer::view().frame.hdr_sdr_white_nits = Display::GetSdrWhiteNits();
 
         // the whole hdr encode hangs off these three, log them once per change so a washed out image can be told
         // apart from a wrong nits level without a gpu capture
@@ -2138,13 +1927,13 @@ namespace spartan
             static float logged_mode       = -1.0f;
             static float logged_max_nits   = -1.0f;
             static float logged_white_nits = -1.0f;
-            if (m_cb_frame_cpu.hdr_enabled        != logged_mode      ||
-                m_cb_frame_cpu.hdr_max_nits       != logged_max_nits  ||
-                m_cb_frame_cpu.hdr_sdr_white_nits != logged_white_nits)
+            if (Renderer::view().frame.hdr_enabled        != logged_mode      ||
+                Renderer::view().frame.hdr_max_nits       != logged_max_nits  ||
+                Renderer::view().frame.hdr_sdr_white_nits != logged_white_nits)
             {
-                logged_mode       = m_cb_frame_cpu.hdr_enabled;
-                logged_max_nits   = m_cb_frame_cpu.hdr_max_nits;
-                logged_white_nits = m_cb_frame_cpu.hdr_sdr_white_nits;
+                logged_mode       = Renderer::view().frame.hdr_enabled;
+                logged_max_nits   = Renderer::view().frame.hdr_max_nits;
+                logged_white_nits = Renderer::view().frame.hdr_sdr_white_nits;
                 SP_LOG_INFO(
                     "hdr encode: mode %.0f (0 sdr, 1 pq, 2 scrgb), max %.0f nits, sdr white %.0f nits, tonemapper %.0f",
                     logged_mode,
@@ -2155,91 +1944,91 @@ namespace spartan
             }
         }
 
-        m_cb_frame_cpu.gamma              = cvar_gamma.GetValue();
-        Camera* camera                    = World::GetCamera();
-        m_cb_frame_cpu.camera_exposure    =
+        Renderer::view().frame.gamma              = cvar_gamma.GetValue();
+        Camera* camera                    = Renderer::GetViewCamera();
+        Renderer::view().frame.camera_exposure    =
             camera ?
             camera->GetExposure() :
             1.0f;
         bool camera_uses_auto_exposure =
             camera &&
             camera->GetExposureMode() == CameraExposureMode::automatic;
-        m_cb_frame_cpu.camera_exposure_mode =
+        Renderer::view().frame.camera_exposure_mode =
             camera_uses_auto_exposure ?
             1.0f :
             0.0f;
-        m_cb_frame_cpu.restir_pt_light_count = static_cast<float>(m_count_active_lights);
-        m_cb_frame_cpu.wind                  = World::GetWind();
-        m_cb_frame_cpu.puddliness            = Weather::GetPuddliness();
-        m_cb_frame_cpu.weather               = Vector4(Weather::GetRain(), Weather::GetWetness(), World::GetPuddliness(), Weather::GetRainPuddliness());
+        Renderer::view().frame.restir_pt_light_count = static_cast<float>(m_count_active_lights);
+        Renderer::view().frame.wind                  = World::GetWind();
+        Renderer::view().frame.puddliness            = Weather::GetPuddliness();
+        Renderer::view().frame.weather               = Vector4(Weather::GetRain(), Weather::GetWetness(), World::GetPuddliness(), Weather::GetRainPuddliness());
         {
             const Vector2 occlusion_min = Weather::GetOcclusionMin();
             const uint32_t slice        = m_frame_resource_index * Weather::occlusion_resolution * Weather::occlusion_resolution;
-            m_cb_frame_cpu.rain_occlusion = Vector4(occlusion_min.x, occlusion_min.y, Weather::occlusion_cell_size, static_cast<float>(slice));
+            Renderer::view().frame.rain_occlusion = Vector4(occlusion_min.x, occlusion_min.y, Weather::occlusion_cell_size, static_cast<float>(slice));
 
-            m_cb_frame_cpu.rain_vehicle = Vector4(Weather::GetDropsWetness(), 0.0f, 0.0f, 0.0f);
+            Renderer::view().frame.rain_vehicle = Vector4(GetSurfaceWater().wetness, 0.0f, 0.0f, 0.0f);
             for (uint32_t plane = 0; plane < 3; plane++)
             {
-                m_cb_frame_cpu.rain_vehicle_axis[plane] = Vector4(Weather::GetDropsAxis(plane), 0.0f);
+                Renderer::view().frame.rain_vehicle_axis[plane] = Vector4(GetSurfaceWater().axes[plane], 0.0f);
             }
 
-            Entity* car           = Weather::GetDropsVehicle();
-            const bool car_water  = car && CarRain::IsActive();
-            m_cb_frame_cpu.rain_car_origin = Vector4(car ? car->GetPosition() : Vector3::Zero, CarRain::GetClock());
-            m_cb_frame_cpu.rain_car_box    = Vector4(CarRain::GetBoxMin(), CarRain::GetTexelSize());
-            m_cb_frame_cpu.rain_car_atlas  = Vector4(
-                static_cast<float>(CarRain::GetAtlasWidth()),
-                static_cast<float>(CarRain::GetAtlasHeight()),
-                static_cast<float>(m_frame_resource_index * CarRain::drops_max),
+            Entity* car           = World::GetEntityById(Renderer::GetSurfaceWater().entity_id);
+            const bool car_water  = car && Renderer::GetSurfaceWater().active;
+            Renderer::view().frame.rain_car_origin = Vector4(car ? car->GetPosition() : Vector3::Zero, Renderer::GetSurfaceWater().clock);
+            Renderer::view().frame.rain_car_box    = Vector4(Renderer::GetSurfaceWater().box_min, Renderer::GetSurfaceWater().texel_size);
+            Renderer::view().frame.rain_car_atlas  = Vector4(
+                static_cast<float>(Renderer::GetSurfaceWater().width),
+                static_cast<float>(Renderer::GetSurfaceWater().height),
+                static_cast<float>(m_frame_resource_index * SurfaceWater::drops_max),
                 car_water ? 1.0f : 0.0f
             );
-            m_cb_frame_cpu.rain_car_micro = Vector4(CarRain::GetMicroLife(), CarRain::GetResidueMass(), 0.0f, 0.0f);
+            Renderer::view().frame.rain_car_micro = Vector4(Renderer::GetSurfaceWater().micro_life, Renderer::GetSurfaceWater().residue_mass, 0.0f, 0.0f);
             for (uint32_t face = 0; face < 6; face++)
             {
-                m_cb_frame_cpu.rain_car_faces[face] = CarRain::GetFaceRect(face);
+                Renderer::view().frame.rain_car_faces[face] = Renderer::GetSurfaceWater().faces[face];
             }
         }
-        m_cb_frame_cpu.cloud_coverage        = World::GetDirectionalLight() ? World::GetDirectionalLight()->GetCloudCoverageEffective() : 0.0f;
-        m_cb_frame_cpu.cloud_seed_offset     = World::GetCloudSeedOffset();
+        Renderer::view().frame.cloud_coverage        = Environment::GetCloudCoverageEffective();
+        Renderer::view().frame.cloud_seed_offset     = World::GetCloudSeedOffset();
         {
             // match the directional light's day cycle source so stars lock to the same clock as the sun
             const bool use_real_world_time = World::GetDirectionalLight() && World::GetDirectionalLight()->GetFlag(LightFlags::RealTimeCycle);
-            m_cb_frame_cpu.time_of_day = World::GetTimeOfDay(use_real_world_time);
+            Renderer::view().frame.time_of_day = World::GetTimeOfDay(use_real_world_time);
             const auto& environment = World::GetEnvironment();
-            m_cb_frame_cpu.celestial_moon = Vector4(environment.moon, environment.moon_fraction);
-            m_cb_frame_cpu.celestial_sun = Vector4(environment.sun, environment.moon_radius);
-            m_cb_frame_cpu.equatorial_x = Vector4(environment.equatorial_x, environment.sun_radius);
-            m_cb_frame_cpu.equatorial_y = Vector4(environment.equatorial_y, 0);
-            m_cb_frame_cpu.equatorial_z = Vector4(environment.equatorial_z, 0);
+            Renderer::view().frame.celestial_moon = Vector4(environment.moon, environment.moon_fraction);
+            Renderer::view().frame.celestial_sun = Vector4(environment.sun, environment.moon_radius);
+            Renderer::view().frame.equatorial_x = Vector4(environment.equatorial_x, environment.sun_radius);
+            Renderer::view().frame.equatorial_y = Vector4(environment.equatorial_y, 0);
+            Renderer::view().frame.equatorial_z = Vector4(environment.equatorial_z, 0);
         }
 
         // fft ocean, geometry samples these to displace and shade the water surface
         if (const Water* water = m_pass_state.ocean)
         {
             const float* lengths                    = water->GetCascadeLengths();
-            m_cb_frame_cpu.ocean_cascade_length     = Vector4(lengths[0], lengths[1], lengths[2], lengths[3]);
-            m_cb_frame_cpu.ocean_sea_level          = water->GetSeaLevel();
-            m_cb_frame_cpu.ocean_choppiness         = water->GetChoppiness();
-            m_cb_frame_cpu.ocean_displacement_scale = water->GetDisplacementScale();
-            m_cb_frame_cpu.ocean_normal_strength    = water->GetNormalStrength();
-            m_cb_frame_cpu.ocean_cascade_count      = water->GetCascadeCount();
-            m_cb_frame_cpu.ocean_enabled            = 1.0f;
-            m_cb_frame_cpu.ocean_turbidity          = water->GetTurbidity();
-            m_cb_frame_cpu.ocean_caustics_intensity = water->GetCausticsIntensity();
-            m_cb_frame_cpu.ocean_shore_mapping      = ocean_shore::get_mapping();
-            m_cb_frame_cpu.ocean_shore_wave         = ocean_shore::get_wave();
-            m_cb_frame_cpu.ocean_shore_swell        = ocean_shore::get_swell();
+            Renderer::view().frame.ocean_cascade_length     = Vector4(lengths[0], lengths[1], lengths[2], lengths[3]);
+            Renderer::view().frame.ocean_sea_level          = water->GetSeaLevel();
+            Renderer::view().frame.ocean_choppiness         = water->GetChoppiness();
+            Renderer::view().frame.ocean_displacement_scale = water->GetDisplacementScale();
+            Renderer::view().frame.ocean_normal_strength    = water->GetNormalStrength();
+            Renderer::view().frame.ocean_cascade_count      = water->GetCascadeCount();
+            Renderer::view().frame.ocean_enabled            = 1.0f;
+            Renderer::view().frame.ocean_turbidity          = water->GetTurbidity();
+            Renderer::view().frame.ocean_caustics_intensity = water->GetCausticsIntensity();
+            Renderer::view().frame.ocean_shore_mapping      = ocean_shore::get_mapping();
+            Renderer::view().frame.ocean_shore_wave         = ocean_shore::get_wave();
+            Renderer::view().frame.ocean_shore_swell        = ocean_shore::get_swell();
         }
         else
         {
-            m_cb_frame_cpu.ocean_enabled    = 0.0f;
-            m_cb_frame_cpu.ocean_shore_wave = Vector4::Zero;
+            Renderer::view().frame.ocean_enabled    = 0.0f;
+            Renderer::view().frame.ocean_shore_wave = Vector4::Zero;
         }
 
-        m_cb_frame_cpu.terrain_height_mapping = Vector4::Zero;
-        m_cb_frame_cpu.terrain_height_y       = 0.0f;
-        m_cb_frame_cpu.terrain_height_enabled = 0.0f;
-        m_cb_frame_cpu.terrain_maps_enabled   = 0.0f;
+        Renderer::view().frame.terrain_height_mapping = Vector4::Zero;
+        Renderer::view().frame.terrain_height_y       = 0.0f;
+        Renderer::view().frame.terrain_height_enabled = 0.0f;
+        Renderer::view().frame.terrain_maps_enabled   = 0.0f;
         if (m_pass_state.terrain_enabled && m_pass_state.terrain.height_map)
         {
             RHI_Texture* height = m_pass_state.terrain.height_map;
@@ -2259,22 +2048,22 @@ namespace spartan
                     }
                 }
 
-                m_cb_frame_cpu.terrain_height_mapping = mapping;
-                m_cb_frame_cpu.terrain_height_y       = y;
-                m_cb_frame_cpu.terrain_height_enabled = 1.0f;
+                Renderer::view().frame.terrain_height_mapping = mapping;
+                Renderer::view().frame.terrain_height_y       = y;
+                Renderer::view().frame.terrain_height_enabled = 1.0f;
             }
         }
 
         // ground blending, the bindless slot is handed out by TickUploadMaterials which runs before
         // this, so the index is the one this frame's draws will sample
-        m_cb_frame_cpu.terrain_blend_height   = 0.0f;
-        m_cb_frame_cpu.terrain_blend_material = 0;
-        m_cb_frame_cpu.terrain_blend_tiling   = 0.0f;
-        if (m_cb_frame_cpu.terrain_height_enabled > 0.5f && m_pass_state.terrain.surface)
+        Renderer::view().frame.terrain_blend_height   = 0.0f;
+        Renderer::view().frame.terrain_blend_material = 0;
+        Renderer::view().frame.terrain_blend_tiling   = 0.0f;
+        if (Renderer::view().frame.terrain_height_enabled > 0.5f && m_pass_state.terrain.surface)
         {
-            m_cb_frame_cpu.terrain_blend_height   = m_pass_state.terrain.blend_height;
-            m_cb_frame_cpu.terrain_blend_material = m_pass_state.terrain.surface->GetIndex();
-            m_cb_frame_cpu.terrain_blend_tiling   = m_pass_state.terrain.surface->GetProperty(MaterialProperty::TextureTilingX);
+            Renderer::view().frame.terrain_blend_height   = m_pass_state.terrain.blend_height;
+            Renderer::view().frame.terrain_blend_material = m_pass_state.terrain.surface->GetIndex();
+            Renderer::view().frame.terrain_blend_tiling   = m_pass_state.terrain.surface->GetProperty(MaterialProperty::TextureTilingX);
         }
 
         if (m_pass_state.terrain_enabled &&
@@ -2283,38 +2072,38 @@ namespace spartan
             m_pass_state.terrain.map_a->GetResourceState() == ResourceState::PreparedForGpu &&
             m_pass_state.terrain.map_b->GetResourceState() == ResourceState::PreparedForGpu)
         {
-            m_cb_frame_cpu.terrain_maps_enabled = 1.0f;
+            Renderer::view().frame.terrain_maps_enabled = 1.0f;
         }
 
         // the carpet is only drawn on the terrain surface, so it needs the heightfield mapping as well
         const PassState::GrassFar& grass_far = m_pass_state.grass_far;
         const bool grass_far_ready =
-            m_cb_frame_cpu.terrain_height_enabled > 0.5f &&
+            Renderer::view().frame.terrain_height_enabled > 0.5f &&
             grass_far.prop_mask &&
             grass_far.prop_mask->GetResourceState() == ResourceState::PreparedForGpu;
-        m_cb_frame_cpu.grass_far_tint  = grass_far_ready ? grass_far.tint : Vector4::Zero;
-        m_cb_frame_cpu.grass_far_fade  = grass_far.fade;
-        m_cb_frame_cpu.grass_far_gate  = grass_far.gate;
-        m_cb_frame_cpu.grass_far_patch = grass_far.patch;
+        Renderer::view().frame.grass_far_tint  = grass_far_ready ? grass_far.tint : Vector4::Zero;
+        Renderer::view().frame.grass_far_fade  = grass_far.fade;
+        Renderer::view().frame.grass_far_gate  = grass_far.gate;
+        Renderer::view().frame.grass_far_patch = grass_far.patch;
     }
 
     void Renderer::UpdateFrameCb_ClusterLighting()
     {
         // log(z) slicing with the camera near/far, near clamped to avoid log(0), z scale collapses when near equals far
-        const float cluster_near = std::max(near_plane, 1e-3f);
-        const float cluster_far  = std::max(far_plane, cluster_near + 1e-3f);
+        const float cluster_near = std::max(view().near_plane, 1e-3f);
+        const float cluster_far  = std::max(view().far_plane, cluster_near + 1e-3f);
         const float log_range    = std::log(cluster_far / cluster_near);
         const float z_scale      = log_range > 1e-6f ? static_cast<float>(CLUSTER_COUNT_Z) / log_range : 0.0f;
         const float z_bias       = -std::log(cluster_near) * z_scale;
 
-        m_cb_frame_cpu.cluster_count_x        = CLUSTER_COUNT_X;
-        m_cb_frame_cpu.cluster_count_y        = CLUSTER_COUNT_Y;
-        m_cb_frame_cpu.cluster_count_z        = CLUSTER_COUNT_Z;
-        m_cb_frame_cpu.cluster_light_count    = m_count_active_lights;
-        m_cb_frame_cpu.cluster_z_scale        = z_scale;
-        m_cb_frame_cpu.cluster_z_bias         = z_bias;
-        m_cb_frame_cpu.volumetric_light_count = m_volumetric_light_count;
-        m_cb_frame_cpu.cluster_padding1       = 0.0f;
+        Renderer::view().frame.cluster_count_x        = CLUSTER_COUNT_X;
+        Renderer::view().frame.cluster_count_y        = CLUSTER_COUNT_Y;
+        Renderer::view().frame.cluster_count_z        = CLUSTER_COUNT_Z;
+        Renderer::view().frame.cluster_light_count    = m_count_active_lights;
+        Renderer::view().frame.cluster_z_scale        = z_scale;
+        Renderer::view().frame.cluster_z_bias         = z_bias;
+        Renderer::view().frame.volumetric_light_count = m_volumetric_light_count;
+        Renderer::view().frame.cluster_padding1       = 0.0f;
     }
 
     void Renderer::UpdateFrameCb_FeatureBits()
@@ -2335,51 +2124,51 @@ namespace spartan
 
         const bool ray_tracing_ready = ray_tracing_allowed && !frame_is_loading &&
             (!pending_blas || tlas_available);
-        m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>() && ray_tracing_ready, 1 << 0);
-        m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                                        1 << 1);
-        m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available && ray_tracing_ready, 1 << 2);
-        m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>() && ray_tracing_ready,              1 << 3);
+        Renderer::view().frame.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>() && ray_tracing_ready, 1 << 0);
+        Renderer::view().frame.set_bit(cvar_ssao.GetValueAs<bool>(),                                        1 << 1);
+        Renderer::view().frame.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available && ray_tracing_ready, 1 << 2);
+        Renderer::view().frame.set_bit(cvar_restir_pt.GetValueAs<bool>() && ray_tracing_ready,              1 << 3);
 
         // the reservoirs hold a different integrand with and without direct light, so switching
         // ownership must drop history instead of letting stale samples resolve into the new one, a secondary
         // view traces nothing and gets the primary's bits back afterwards, so it changes no ownership
         const bool restir_direct = cvar_restir_pt.GetValueAs<bool>() && cvar_restir_pt_direct.GetValueAs<bool>() && ray_tracing_ready;
-        if (!secondary_render_root_active && restir_direct != ((m_cb_frame_cpu.options & (1u << 4)) != 0))
+        if (!secondary_render_root_active && restir_direct != ((Renderer::view().frame.options & (1u << 4)) != 0))
         {
-            m_pass_state.restir_history_invalid    = true;
-            m_pass_state.restir_accumulation_valid = false;
+            m_pass_state.restir.history_invalid    = true;
+            m_pass_state.restir.accumulation_valid = false;
         }
-        m_cb_frame_cpu.set_bit(restir_direct, 1 << 4);
+        Renderer::view().frame.set_bit(restir_direct, 1 << 4);
     }
 
     void Renderer::UpdateFrameCb_StereoXr()
     {
-        const uint32_t multiview_previous = m_cb_frame_cpu.is_multiview;
+        const uint32_t multiview_previous = Renderer::view().frame.is_multiview;
         if (Xr::IsSessionRunning() && Xr::GetStereoMode())
         {
-            m_cb_frame_cpu.view                     = Xr::GetViewMatrix(0);
-            m_cb_frame_cpu.view_inverted            = Matrix::Invert(m_cb_frame_cpu.view);
-            m_cb_frame_cpu.projection               = Xr::GetProjectionMatrix(0);
-            m_cb_frame_cpu.projection_inverted      = Matrix::Invert(m_cb_frame_cpu.projection);
-            m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
-            m_cb_frame_cpu.view_projection_inverted = Matrix::Invert(m_cb_frame_cpu.view_projection);
-            m_cb_frame_cpu.camera_position          = m_cb_frame_cpu.view_inverted.GetTranslation();
+            Renderer::view().frame.view                     = Xr::GetViewMatrix(0);
+            Renderer::view().frame.view_inverted            = Matrix::Invert(Renderer::view().frame.view);
+            Renderer::view().frame.projection               = Xr::GetProjectionMatrix(0);
+            Renderer::view().frame.projection_inverted      = Matrix::Invert(Renderer::view().frame.projection);
+            Renderer::view().frame.view_projection          = Renderer::view().frame.view * Renderer::view().frame.projection;
+            Renderer::view().frame.view_projection_inverted = Matrix::Invert(Renderer::view().frame.view_projection);
+            Renderer::view().frame.camera_position          = Renderer::view().frame.view_inverted.GetTranslation();
 
             // vr does not jitter the projection, jittered equals unjittered, replace mono fields so consumers see eye consistent data
-            m_cb_frame_cpu.view_projection_previous_unjittered = m_view_projection_previous_unjittered_left;
-            m_cb_frame_cpu.view_projection_unjittered          = m_cb_frame_cpu.view_projection;
+            Renderer::view().frame.view_projection_previous_unjittered = Renderer::view().view_projection_previous_unjittered_left;
+            Renderer::view().frame.view_projection_unjittered          = Renderer::view().frame.view_projection;
 
-            m_cb_frame_cpu.view_right                                = Xr::GetViewMatrix(1);
-            m_cb_frame_cpu.view_inverted_right                       = Matrix::Invert(m_cb_frame_cpu.view_right);
-            m_cb_frame_cpu.projection_right                          = Xr::GetProjectionMatrix(1);
-            m_cb_frame_cpu.projection_inverted_right                 = Matrix::Invert(m_cb_frame_cpu.projection_right);
-            m_cb_frame_cpu.view_projection_right                     = m_cb_frame_cpu.view_right * m_cb_frame_cpu.projection_right;
-            m_cb_frame_cpu.view_projection_inverted_right            = Matrix::Invert(m_cb_frame_cpu.view_projection_right);
-            m_cb_frame_cpu.view_projection_previous_right            = m_view_projection_previous_right;
-            m_cb_frame_cpu.view_projection_unjittered_right          = m_cb_frame_cpu.view_projection_right;
-            m_cb_frame_cpu.view_projection_previous_unjittered_right = m_view_projection_previous_right;
-            m_cb_frame_cpu.camera_position_right                     = m_cb_frame_cpu.view_inverted_right.GetTranslation();
-            m_cb_frame_cpu.is_multiview                              = 1;
+            Renderer::view().frame.view_right                                = Xr::GetViewMatrix(1);
+            Renderer::view().frame.view_inverted_right                       = Matrix::Invert(Renderer::view().frame.view_right);
+            Renderer::view().frame.projection_right                          = Xr::GetProjectionMatrix(1);
+            Renderer::view().frame.projection_inverted_right                 = Matrix::Invert(Renderer::view().frame.projection_right);
+            Renderer::view().frame.view_projection_right                     = Renderer::view().frame.view_right * Renderer::view().frame.projection_right;
+            Renderer::view().frame.view_projection_inverted_right            = Matrix::Invert(Renderer::view().frame.view_projection_right);
+            Renderer::view().frame.view_projection_previous_right            = Renderer::view().view_projection_previous_right;
+            Renderer::view().frame.view_projection_unjittered_right          = Renderer::view().frame.view_projection_right;
+            Renderer::view().frame.view_projection_previous_unjittered_right = Renderer::view().view_projection_previous_right;
+            Renderer::view().frame.camera_position_right                     = Renderer::view().frame.view_inverted_right.GetTranslation();
+            Renderer::view().frame.is_multiview                              = 1;
 
             // record per-eye view projection so next frame's right-eye history exists, mono path tracks left eye via shared view_projection
             // eye views are not built around camera_position, fold it in with doubles so the km scale terms cancel exactly
@@ -2392,26 +2181,26 @@ namespace spartan
                 result.m33 = static_cast<float>(static_cast<double>(origin.x) * m.m03 + static_cast<double>(origin.y) * m.m13 + static_cast<double>(origin.z) * m.m23 + m.m33);
                 return result;
             };
-            m_cb_frame_cpu.view_projection_relative                = relative_to(m_cb_frame_cpu.view_projection, m_cb_frame_cpu.camera_position);
-            m_cb_frame_cpu.view_projection_previous_relative       = relative_to(m_cb_frame_cpu.view_projection_previous_unjittered, m_cb_frame_cpu.camera_position_previous);
-            m_cb_frame_cpu.view_projection_relative_right          = relative_to(m_cb_frame_cpu.view_projection_right, m_cb_frame_cpu.camera_position);
-            m_cb_frame_cpu.view_projection_previous_relative_right = relative_to(m_cb_frame_cpu.view_projection_previous_right, m_cb_frame_cpu.camera_position_previous);
+            Renderer::view().frame.view_projection_relative                = relative_to(Renderer::view().frame.view_projection, Renderer::view().frame.camera_position);
+            Renderer::view().frame.view_projection_previous_relative       = relative_to(Renderer::view().frame.view_projection_previous_unjittered, Renderer::view().frame.camera_position_previous);
+            Renderer::view().frame.view_projection_relative_right          = relative_to(Renderer::view().frame.view_projection_right, Renderer::view().frame.camera_position);
+            Renderer::view().frame.view_projection_previous_relative_right = relative_to(Renderer::view().frame.view_projection_previous_right, Renderer::view().frame.camera_position_previous);
 
-            m_view_projection_previous_right           = m_cb_frame_cpu.view_projection_right;
-            m_view_projection_previous_unjittered_left = m_cb_frame_cpu.view_projection;
+            Renderer::view().view_projection_previous_right           = Renderer::view().frame.view_projection_right;
+            Renderer::view().view_projection_previous_unjittered_left = Renderer::view().frame.view_projection;
         }
         else
         {
-            m_cb_frame_cpu.is_multiview                              = 0;
-            m_cb_frame_cpu.view_projection_previous_right            = Matrix::Identity;
-            m_cb_frame_cpu.view_projection_unjittered_right          = Matrix::Identity;
-            m_cb_frame_cpu.view_projection_previous_unjittered_right = Matrix::Identity;
-            m_view_projection_previous_right                         = Matrix::Identity;
-            m_view_projection_previous_unjittered_left               = Matrix::Identity;
+            Renderer::view().frame.is_multiview                              = 0;
+            Renderer::view().frame.view_projection_previous_right            = Matrix::Identity;
+            Renderer::view().frame.view_projection_unjittered_right          = Matrix::Identity;
+            Renderer::view().frame.view_projection_previous_unjittered_right = Matrix::Identity;
+            Renderer::view().view_projection_previous_right                         = Matrix::Identity;
+            Renderer::view().view_projection_previous_unjittered_left               = Matrix::Identity;
         }
 
         // entering or leaving stereo invalidates taau history, projection setup changes
-        if (multiview_previous != m_cb_frame_cpu.is_multiview)
+        if (multiview_previous != Renderer::view().frame.is_multiview)
         {
             m_taau_reset_history = true;
         }
@@ -2422,10 +2211,10 @@ namespace spartan
         // wheel hubs for radial motion blur, computed here because entity previous matrices
         // are snapshotted (overwritten) right after the opaque g-buffer pass
         uint32_t count = 0;
-        const Matrix& view_projection = m_cb_frame_cpu.view_projection_unjittered;
+        const Matrix& view_projection = Renderer::view().frame.view_projection_unjittered;
         const Vector2 resolution      = m_resolution_output;
-        const Vector3 camera_forward  = m_cb_frame_cpu.camera_forward;
-        const Vector3 camera_right    = m_cb_frame_cpu.camera_right;
+        const Vector3 camera_forward  = Renderer::view().frame.camera_forward;
+        const Vector3 camera_right    = Renderer::view().frame.camera_right;
 
         auto project_to_uv = [&view_projection](const Vector3& position_world, Vector2& uv)
         {
@@ -2516,11 +2305,11 @@ namespace spartan
             const float cross = d0.x * d1.y - d0.y * d1.x;
             const float sign  = cross >= 0.0f ? 1.0f : -1.0f;
 
-            m_cb_frame_cpu.radial_blur_hubs[count] = Vector4(uv_center.x, uv_center.y, angle * sign, radius_pixels);
+            Renderer::view().frame.radial_blur_hubs[count] = Vector4(uv_center.x, uv_center.y, angle * sign, radius_pixels);
             count++;
         }
 
-        m_cb_frame_cpu.radial_blur_hub_count = static_cast<float>(count);
+        Renderer::view().frame.radial_blur_hub_count = static_cast<float>(count);
     }
 
     void Renderer::UpdateFrameConstantBuffer()
@@ -2542,27 +2331,25 @@ namespace spartan
         if (camera_cut)
         {
             m_taau_reset_history = true;
-            m_pass_state.ssao_history.Reset();
-            m_pass_state.fog_history.Reset();
-            m_pass_state.restir_history_invalid = true;
+            m_pass_state.ResetCameraHistory();
         }
         if (secondary_render_root_active || camera_cut)
         {
-            m_cb_frame_cpu.view_previous                       = m_cb_frame_cpu.view;
-            m_cb_frame_cpu.projection_previous                 = m_cb_frame_cpu.projection;
-            m_cb_frame_cpu.view_projection_previous            = m_cb_frame_cpu.view_projection;
-            m_cb_frame_cpu.view_projection_previous_unjittered = m_cb_frame_cpu.view_projection_unjittered;
-            m_cb_frame_cpu.camera_position_previous            = m_cb_frame_cpu.camera_position;
-            m_cb_frame_cpu.taa_jitter_previous                 = m_cb_frame_cpu.taa_jitter_current;
-            m_cb_frame_cpu.view_projection_previous_relative       = m_cb_frame_cpu.view_projection_relative;
-            m_cb_frame_cpu.view_projection_previous_relative_right = m_cb_frame_cpu.view_projection_relative_right;
+            Renderer::view().frame.view_previous                       = Renderer::view().frame.view;
+            Renderer::view().frame.projection_previous                 = Renderer::view().frame.projection;
+            Renderer::view().frame.view_projection_previous            = Renderer::view().frame.view_projection;
+            Renderer::view().frame.view_projection_previous_unjittered = Renderer::view().frame.view_projection_unjittered;
+            Renderer::view().frame.camera_position_previous            = Renderer::view().frame.camera_position;
+            Renderer::view().frame.taa_jitter_previous                 = Renderer::view().frame.taa_jitter_current;
+            Renderer::view().frame.view_projection_previous_relative       = Renderer::view().frame.view_projection_relative;
+            Renderer::view().frame.view_projection_previous_relative_right = Renderer::view().frame.view_projection_relative_right;
         }
 
         // emissive triangle nee pool, must precede the cb upload because it writes the count
-        // into m_cb_frame_cpu, the buffer upload itself piggybacks on the same cmd_list
+        // into Renderer::view().frame, the buffer upload itself piggybacks on the same cmd_list
         BuildEmissiveTriangleNeePool();
 
-        GetBuffer(Renderer_Buffer::ConstantFrame)->Update(&m_cb_frame_cpu);
+        GetBuffer(Renderer_Buffer::ConstantFrame)->Update(&Renderer::view().frame);
     }
 
     void Renderer::BuildEmissiveTriangleNeePool()
@@ -2579,14 +2366,14 @@ namespace spartan
         // to the primary on both the way in and the way out, clearing the primary's reservoirs each time
         if (secondary_render_root_active)
         {
-            m_cb_frame_cpu.restir_pt_emissive_tri_count = 0.0f;
+            Renderer::view().frame.restir_pt_emissive_tri_count = 0.0f;
             return;
         }
 
         if (!cvar_restir_pt.GetValueAs<bool>())
         {
-            m_cb_frame_cpu.restir_pt_emissive_tri_count = 0.0f;
-            m_pass_state.restir_history_invalid = true;
+            Renderer::view().frame.restir_pt_emissive_tri_count = 0.0f;
+            m_pass_state.restir.history_invalid = true;
             pool_signature = 0;
             return;
         }
@@ -2666,22 +2453,22 @@ namespace spartan
 
         // a change in the set of renderables clears the reservoirs, motion only restarts the progressive
         // accumulation, a moving car would otherwise leave restir without temporal reuse every frame
-        if (scene_signature != m_pass_state.restir_scene_signature)
+        if (scene_signature != m_pass_state.restir.scene_signature)
         {
-            m_pass_state.restir_accumulation_valid = false;
-            m_pass_state.restir_history_invalid = true;
+            m_pass_state.restir.accumulation_valid = false;
+            m_pass_state.restir.history_invalid = true;
         }
-        if (motion_signature != m_pass_state.restir_motion_signature)
+        if (motion_signature != m_pass_state.restir.motion_signature)
         {
-            m_pass_state.restir_accumulation_valid = false;
+            m_pass_state.restir.accumulation_valid = false;
         }
-        m_pass_state.restir_scene_signature  = scene_signature;
-        m_pass_state.restir_motion_signature = motion_signature;
+        m_pass_state.restir.scene_signature  = scene_signature;
+        m_pass_state.restir.motion_signature = motion_signature;
 
         RHI_Buffer* emissive_triangles_buffer = GetBuffer(Renderer_Buffer::EmissiveTriangles);
         if (emitter_signature == pool_signature && emissive_triangles_buffer == pool_buffer)
         {
-            m_cb_frame_cpu.restir_pt_emissive_tri_count = static_cast<float>(pool_count);
+            Renderer::view().frame.restir_pt_emissive_tri_count = static_cast<float>(pool_count);
             return;
         }
 
@@ -2838,7 +2625,7 @@ namespace spartan
         }
         pool_signature = emitter_signature;
         pool_buffer    = emissive_triangles_buffer;
-        m_cb_frame_cpu.restir_pt_emissive_tri_count = static_cast<float>(pool_count);
+        Renderer::view().frame.restir_pt_emissive_tri_count = static_cast<float>(pool_count);
     }
 
     void Renderer::EnableGpuScatter(
@@ -3598,7 +3385,7 @@ namespace spartan
         }
     
         // remaining lights
-        Camera* camera = World::GetCamera();
+        Camera* camera = Renderer::GetViewCamera();
         const Vector3 camera_pos = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
         const float flare_max_distance = 2000.0f; // flare-only lights stay visible this far past the lighting draw distance
         const float flare_max_distance_sq = flare_max_distance * flare_max_distance;
@@ -3788,8 +3575,8 @@ namespace spartan
             const uint32_t count = max(m_count_active_lights, 1u);
             if (previous_lights.size() != count)
             {
-                m_pass_state.restir_accumulation_valid = false;
-                m_pass_state.restir_history_invalid    = true;
+                m_pass_state.restir.accumulation_valid = false;
+                m_pass_state.restir.history_invalid    = true;
             }
             else
             {
@@ -3798,7 +3585,7 @@ namespace spartan
                     const light_transport current = transport_of(m_bindless_lights[i]);
                     if (memcmp(&current, &previous_lights[i], sizeof(light_transport)) != 0)
                     {
-                        m_pass_state.restir_accumulation_valid = false;
+                        m_pass_state.restir.accumulation_valid = false;
                         break;
                     }
                 }
@@ -4270,7 +4057,7 @@ namespace spartan
         // recently moved meshes are excluded, otherwise a rotating prop writes hi-z that meshlet-culls itself next frame
         static unordered_set<Render*> previous_occluders;
 
-        Camera* camera = World::GetCamera();
+        Camera* camera = Renderer::GetViewCamera();
         if (!camera)
         {
             return;
@@ -4726,7 +4513,7 @@ namespace spartan
 
             // instanced renders are culled around the camera, a stale set is as good as a moved entity
             {
-                const Vector3 camera_position = m_cb_frame_cpu.camera_position;
+                const Vector3 camera_position = Renderer::view().frame.camera_position;
                 SP_PROFILE_CPU_START("rt_instanced_cache");
                 // Both lists follow the same stable render order. Identity checks
                 // invalidate shifted slots after membership changes or entity reuse.
@@ -5258,8 +5045,8 @@ namespace spartan
         if (screenshot.pending)
         {
             // Snapshot the encoding of this frame before another view changes constants.
-            screenshot.exr_color_space = m_cb_frame_cpu.hdr_enabled > 1.5f ? ImageColorSpace::LinearRec709 :
-                (m_cb_frame_cpu.hdr_enabled > 0.0f ? ImageColorSpace::Hdr10 : ImageColorSpace::Srgb);
+            screenshot.exr_color_space = Renderer::view().frame.hdr_enabled > 1.5f ? ImageColorSpace::LinearRec709 :
+                (Renderer::view().frame.hdr_enabled > 0.0f ? ImageColorSpace::Hdr10 : ImageColorSpace::Srgb);
             screenshot.pending = false;
             screenshot.ready   = true;
         }
@@ -5393,59 +5180,59 @@ namespace spartan
         const bool has_directional_light = directional_light != nullptr;
         const Quaternion light_rotation  = has_directional_light && directional_light->GetEntity() ? directional_light->GetEntity()->GetRotation() : Quaternion::Identity;
         const float light_intensity      = has_directional_light ? directional_light->GetIntensityPhotometric() : 0.0f;
-        const float cloud_coverage       = has_directional_light ? directional_light->GetCloudCoverageEffective() : 0.0f;
+        const float cloud_coverage       = Environment::GetCloudCoverageEffective();
         const Vector3 wind               = World::GetWind();
         const Vector2 cloud_seed_offset  = World::GetCloudSeedOffset();
-        const double expected_time       = m_pass_state.cloud_time + static_cast<double>(m_cb_frame_cpu.delta_time);
-        const bool time_discontinuous    = !m_pass_state.sky_first_frame && abs(m_cb_frame_cpu.time - expected_time) > 0.25;
-        const bool camera_teleported     = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() > 250000.0f;
+        const double expected_time       = m_pass_state.cloud_environment.time + static_cast<double>(Renderer::view().frame.delta_time);
+        const bool time_discontinuous    = !m_pass_state.sky.first_frame && abs(Renderer::view().frame.time - expected_time) > 0.25;
+        const bool camera_teleported     = (Renderer::view().frame.camera_position - Renderer::view().frame.camera_position_previous).LengthSquared() > 250000.0f;
         // Normal daylight/weather animation is handled by the rolling panorama
         // and scheduled LUT updates. Exact rotation comparisons (and absolute
         // lux deltas) restarted all eight full-resolution warmup frames forever.
         // Only a discontinuity needs to discard the temporal history.
-        const bool light_changed         = directional_light != m_pass_state.cloud_light ||
-                                           abs(Quaternion::Dot(light_rotation, m_pass_state.cloud_light_rotation)) < 0.99999f ||
-                                           abs(light_intensity - m_pass_state.cloud_light_intensity) > max(1.0f, abs(m_pass_state.cloud_light_intensity) * 0.05f) ||
-                                           abs(cloud_coverage - m_pass_state.cloud_coverage) > 0.1f;
-        const bool wind_changed          = (wind - m_pass_state.cloud_wind).LengthSquared() > 4.0f;
-        const bool seed_changed          = cloud_seed_offset != m_pass_state.cloud_seed_offset;
+        const bool light_changed         = directional_light != m_pass_state.cloud_environment.light ||
+                                           abs(Quaternion::Dot(light_rotation, m_pass_state.cloud_environment.light_rotation)) < 0.99999f ||
+                                           abs(light_intensity - m_pass_state.cloud_environment.light_intensity) > max(1.0f, abs(m_pass_state.cloud_environment.light_intensity) * 0.05f) ||
+                                           abs(cloud_coverage - m_pass_state.cloud_environment.coverage) > 0.1f;
+        const bool wind_changed          = (wind - m_pass_state.cloud_environment.wind).LengthSquared() > 4.0f;
+        const bool seed_changed          = cloud_seed_offset != m_pass_state.cloud_environment.seed_offset;
         const auto environment = World::GetEnvironment();
-        const bool celestial_changed = (environment.moon - m_pass_state.sky_moon).LengthSquared() > 0.0001f ||
-            (environment.equatorial_x - m_pass_state.sky_equatorial_x).LengthSquared() > 0.0001f;
-        const bool cloud_state_changed   = celestial_changed || m_pass_state.sky_first_frame || light_changed || wind_changed || seed_changed || time_discontinuous || camera_teleported;
-        m_pass_state.sky_state_changed_this_frame =
+        const bool celestial_changed = (environment.moon - m_pass_state.cloud_environment.sky_moon).LengthSquared() > 0.0001f ||
+            (environment.equatorial_x - m_pass_state.cloud_environment.sky_equatorial_x).LengthSquared() > 0.0001f;
+        const bool cloud_state_changed   = celestial_changed || m_pass_state.sky.first_frame || light_changed || wind_changed || seed_changed || time_discontinuous || camera_teleported;
+        m_pass_state.sky.state_changed_this_frame =
             cloud_state_changed;
         if (cloud_state_changed)
         {
-            m_pass_state.sky_frames_remaining     = temporal_convergence_frames;
+            m_pass_state.sky.frames_remaining     = temporal_convergence_frames;
             m_pass_state.cloud_history.valid      = false;
-            m_pass_state.cloud_environment_dirty = true;
+            m_pass_state.cloud_environment.environment_dirty = true;
         }
-        m_pass_state.sky_moon = environment.moon;
-        m_pass_state.sky_equatorial_x = environment.equatorial_x;
-        m_pass_state.cloud_light           = directional_light;
-        m_pass_state.cloud_light_rotation  = light_rotation;
-        m_pass_state.cloud_light_intensity = light_intensity;
-        m_pass_state.cloud_coverage        = cloud_coverage;
-        m_pass_state.cloud_wind            = wind;
-        m_pass_state.cloud_seed_offset     = cloud_seed_offset;
-        m_pass_state.cloud_time            = m_cb_frame_cpu.time;
+        m_pass_state.cloud_environment.sky_moon = environment.moon;
+        m_pass_state.cloud_environment.sky_equatorial_x = environment.equatorial_x;
+        m_pass_state.cloud_environment.light           = directional_light;
+        m_pass_state.cloud_environment.light_rotation  = light_rotation;
+        m_pass_state.cloud_environment.light_intensity = light_intensity;
+        m_pass_state.cloud_environment.coverage        = cloud_coverage;
+        m_pass_state.cloud_environment.wind            = wind;
+        m_pass_state.cloud_environment.seed_offset     = cloud_seed_offset;
+        m_pass_state.cloud_environment.time            = Renderer::view().frame.time;
 
         // capture this frame's warmup status before we decrement, so Pass_Skysphere can pick
         // between the full-burst and the partial-dispatch mode on the same frame
-        m_pass_state.sky_warmup_this_frame = m_pass_state.sky_frames_remaining > 0;
+        m_pass_state.sky.warmup_this_frame = m_pass_state.sky.frames_remaining > 0;
 
         // progressive average, the n-th warmup frame weighs 1/n so the first one fully replaces the panorama
-        const uint32_t warmup_frame_index = temporal_convergence_frames - m_pass_state.sky_frames_remaining;
-        m_pass_state.sky_warmup_blend     = 1.0f / static_cast<float>(warmup_frame_index + 1);
+        const uint32_t warmup_frame_index = temporal_convergence_frames - m_pass_state.sky.frames_remaining;
+        m_pass_state.sky.warmup_blend     = 1.0f / static_cast<float>(warmup_frame_index + 1);
 
-        if (m_pass_state.sky_frames_remaining > 0)
+        if (m_pass_state.sky.frames_remaining > 0)
         {
-            m_pass_state.sky_frames_remaining--;
+            m_pass_state.sky.frames_remaining--;
         }
 
-        m_pass_state.sky_first_frame           = false;
-        m_pass_state.sky_had_directional_light = has_directional_light;
+        m_pass_state.sky.first_frame           = false;
+        m_pass_state.sky.had_directional_light = has_directional_light;
 
         // a world without a directional light still has a sun in light slot 0, the default one
         // UpdateLights writes, so the panorama keeps refreshing instead of stalling on black
@@ -5825,7 +5612,7 @@ namespace spartan
         Pass_CarRain();
         Pass_Ocean();
 
-        if (Camera* camera = World::GetCamera())
+        if (Camera* camera = Renderer::GetViewCamera())
         {
             // Fog injection reads the current ocean, sky and TLAS, but not the
             // g-buffer. Run it while graphics builds depth and shades geometry.
@@ -5899,16 +5686,15 @@ namespace spartan
                 GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
             const bool auto_exposure_enabled =
                 camera->GetExposureMode() == CameraExposureMode::automatic;
-            m_pass_state.exposure_history_reset =
-                !secondary_render_root_active &&
+            Renderer::view().exposure.history_reset =
                 auto_exposure_enabled &&
                 (
-                    camera != m_pass_state.exposure_camera ||
+                    camera != Renderer::view().exposure.camera ||
                     tex_exposure_previous !=
-                    m_pass_state.exposure_history_texture ||
-                    !m_pass_state.exposure_was_automatic
+                    Renderer::view().exposure.history_texture ||
+                    !Renderer::view().exposure.was_automatic
                 );
-            if (m_pass_state.exposure_history_reset)
+            if (Renderer::view().exposure.history_reset)
             {
                 RHI_CommandList::ClearTexture(
                     tex_exposure_previous,
@@ -5962,6 +5748,27 @@ namespace spartan
         if (!secondary_render_root_active)
         {
             Pass_ReSTIR_SwapGBufferHistory();
+        }
+    }
+}
+
+namespace spartan::Renderer
+{
+    ViewState& view() { return *active_view; }
+    Camera* GetViewCamera() { return active_view == &preview_view ? preview_view.camera : World::GetCamera(); }
+    bool IsViewWireframe()
+    {
+        return active_view == &preview_view ? secondary_view_mode_active == Renderer_SecondaryViewMode::Wireframe : cvar_wireframe.GetValueAs<bool>();
+    }
+    RHI_Texture* GetViewRenderTarget(Renderer_RenderTarget type)
+    {
+        if (active_view != &preview_view) return nullptr;
+        switch (type)
+        {
+            case Renderer_RenderTarget::frame_output: return preview_view.output.get();
+            case Renderer_RenderTarget::auto_exposure: return preview_view.exposure_current.get();
+            case Renderer_RenderTarget::auto_exposure_previous: return preview_view.exposure_previous.get();
+            default: return nullptr;
         }
     }
 }

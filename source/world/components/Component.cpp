@@ -19,18 +19,20 @@ Commercial use requires written permission and negotiated payment terms.
 #include "Volume.h"
 #include "ParticleSystem.h"
 #include "SplineFollower.h"
-#include "SkidMarks.h"
 #include "Water.h"
-#include "Traffic.h"
-#include "Pedestrians.h"
 #include "Navigation.h"
-#include "RaceDriver.h"
-#include "RouteDriver.h"
 #include "SpawnPoint.h"
-#include "CarReset.h"
 #include "Text3D.h"
 #include "Animator.h"
 #include "Ragdoll.h"
+#ifdef SP_GAME
+#include "../../game/components/Pedestrians.h"
+#include "../../game/components/SkidMarks.h"
+#include "../../game/components/Traffic.h"
+#include "../../game/components/RaceDriver.h"
+#include "../../game/components/RouteDriver.h"
+#include "../../game/components/CarReset.h"
+#endif
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 SP_WARNINGS_ON
@@ -50,8 +52,13 @@ namespace spartan
 
     void Component::SetAttributes(const std::vector<Attribute>& attributes)
     {
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_attributes.size()); ++i)
-            m_attributes[i].setter(attributes[i].getter());
+        SP_ASSERT(m_attributes.size() == attributes.size());
+        for (const Attribute& destination : m_attributes)
+        {
+            const auto source = std::find_if(attributes.begin(), attributes.end(), [&](const Attribute& value) { return value.name == destination.name; });
+            SP_ASSERT(source != attributes.end() && source->type == destination.type);
+            destination.setter(source->getter());
+        }
         if (m_entity_ptr) m_entity_ptr->RefreshPreTickGate();
     }
 

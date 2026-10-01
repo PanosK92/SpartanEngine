@@ -806,14 +806,14 @@ namespace spartan
 
     Terrain::Terrain(Entity* entity) : Component(entity)
     {
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_min_y, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_y, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_min_y, SetMinY, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_max_y, SetMaxY, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_level_sea, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_level_snow, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_smoothing, uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_density, uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_scale, uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_create_border, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_density, SetDensity, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_scale, SetScale, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_create_border, SetCreateBorder, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_width, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_height, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_area_km2, float);

@@ -17,6 +17,20 @@ using namespace spartan;
 
 namespace
 {
+    void invoke_lifecycle(sol::table& script, const char* callback, Entity* entity, const std::string& path)
+    {
+        if (!script.valid()) return;
+        sol::protected_function function = script[callback];
+        if (!function.valid()) return; // optional lifecycle callback
+        sol::protected_function_result result = function(script, entity);
+        if (!result.valid())
+        {
+            sol::error error = result;
+            SP_LOG_ERROR("Lua %s failed (%s, entity %llu): %s", callback, path.c_str(),
+                static_cast<unsigned long long>(entity->GetObjectId()), error.what());
+        }
+    }
+
     bool is_simulation_active()
     {
         return Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused);
@@ -79,7 +93,7 @@ Script::Script(Entity* Entity)
         [this](const std::any& value)
         {
             LoadScriptFile(std::any_cast<std::string>(value));
-        });
+        }, true);
 }
 
 sol::reference Script::AsLua(sol::state_view state)
@@ -89,22 +103,24 @@ sol::reference Script::AsLua(sol::state_view state)
 
 void Script::LoadScriptFile(std::string_view path)
 {
-    if (!FileSystem::Exists(std::string(path.data(), path.length())))
+    if (!FileSystem::Exists(std::string(path)))
     {
+        SP_LOG_ERROR("Script file does not exist: %s", std::string(path).c_str());
         return;
     }
 
     sol::protected_function_result Result = World::GetLuaState().safe_script_file(std::string(path.data(), path.size()));
     if (!Result.valid())
     {
-        SP_LOG_ERROR("Failed to load script at path %s", path.data())
+        sol::error error = Result;
+        SP_LOG_ERROR("Failed to load script %s: %s", std::string(path).c_str(), error.what());
         return;
     }
 
     sol::object ReturnValue = Result;
     if (!ReturnValue.is<sol::table>())
     {
-        SP_LOG_ERROR("Failed to load script at path %s", path.data())
+        SP_LOG_ERROR("Script must return a table: %s", std::string(path).c_str());
         return;
     }
 
@@ -116,90 +132,35 @@ void Script::LoadScriptFile(std::string_view path)
 
 void Script::Initialize()
 {
-    if (script.valid())
-    {
-        sol::protected_function TickFunction = script["Initialize"];
-        if (TickFunction.valid())
-        {
-            (void)TickFunction(script, GetEntity());
-        }
-    }
+    invoke_lifecycle(script, "Initialize", GetEntity(), file_path);
 }
 
 void Script::Start()
 {
-    if (script.valid())
-    {
-        sol::protected_function TickFunction = script["Start"];
-        if (TickFunction.valid())
-        {
-            (void)TickFunction(script, GetEntity());
-        }
-    }
+    invoke_lifecycle(script, "Start", GetEntity(), file_path);
 }
 
 void Script::Stop()
 {
-    if (script.valid())
-    {
-        sol::protected_function TickFunction = script["Stop"];
-        if (TickFunction.valid())
-        {
-            (void)TickFunction(script, GetEntity());
-        }
-    }
+    invoke_lifecycle(script, "Stop", GetEntity(), file_path);
 }
 
 void Script::Remove()
 {
-    if (script.valid())
-    {
-        sol::protected_function TickFunction = script["Remove"];
-        if (TickFunction.valid())
-        {
-            (void)TickFunction(script, GetEntity());
-        }
-    }
+    invoke_lifecycle(script, "Remove", GetEntity(), file_path);
 }
 
 void Script::PreTick()
 {
-    if (!is_simulation_active())
-    {
-        return;
-    }
-
-    if (script.valid())
-    {
-        sol::protected_function TickFunction = script["PreTick"];
-        if (TickFunction.valid())
-        {
-            (void)TickFunction(script, GetEntity());
-        }
-    }
+    if (!is_simulation_active()) return;
+    invoke_lifecycle(script, "PreTick", GetEntity(), file_path);
 }
 
 void Script::Tick()
 {
     SP_PROFILE_CPU();
-    if (!is_simulation_active())
-    {
-        return;
-    }
-
-    if (script.valid())
-    {
-        sol::protected_function TickFunction = script["Tick"];
-        if (TickFunction.valid())
-        {
-            sol::protected_function_result Result = TickFunction(script, GetEntity());
-            if (!Result.valid())
-            {
-                sol::error Error = Result;
-                SP_LOG_ERROR("[LUA SCRIPT ERROR] - %s", Error.what())
-            }
-        }
-    }
+    if (!is_simulation_active()) return;
+    invoke_lifecycle(script, "Tick", GetEntity(), file_path);
 }
 
 void Script::Save(pugi::xml_node& node)

@@ -43,21 +43,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     float4 reflection = tex[thread_id.xy];
 
-    // rough skipped pixels are marked with negative hit distance, pack empty radiance without material work
-    if (reflection.a < 0.0f)
-    {
-        float2 velocity_ndc = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).xy;
-        float2 mv = velocity_ndc * float2(-0.5f, 0.5f);
-        float3 normal_ws = get_normal(uv);
-        float roughness = max(tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r, 0.04f);
-
-        tex_uav[thread_id.xy]  = float4(mv, 0.0f, 0.0f);
-        tex_uav2[thread_id.xy] = NRD_FrontEnd_PackNormalAndRoughness(normal_ws, roughness, 0.0f);
-        tex_uav3[thread_id.xy] = float4(view_z, 0.0f, 0.0f, 0.0f);
-        tex_uav4[thread_id.xy] = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        return;
-    }
-
     float3 normal_ws = get_normal(uv);
     // guide with the roughness of the lobe the tracer carried, base roughness alone
     // over blurs car paint and kills the sharp tube reflections the coat lobe traced

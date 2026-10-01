@@ -8,6 +8,11 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ============================
 #include "pch.h"
 #include "TerrainSystem.h"
+#include "World.h"
+#include "Entity.h"
+#include "components/Terrain.h"
+#include "components/Spline.h"
+#include "../core/ProgressTracker.h"
 #include "TerrainPlacement.h"
 #include "../rhi/RHI_Texture.h"
 #include "../core/ThreadPool.h"
@@ -3661,5 +3666,38 @@ namespace spartan
         m_cell_z   = cell_z;
         m_tiles    = move(tiles);
         return true;
+    }
+}
+
+namespace spartan
+{
+    bool TerrainSystem::PrepareWorld(const std::vector<Entity*>& entities, const ProgressTask& progress)
+    {
+        progress.SetDetail("Terrain surface, vegetation and roads");
+        World::ProcessPendingAdditions();
+        bool terrain_busy = false;
+        bool surface_busy = false;
+        // Run only preparation components. Scripts, gameplay and ordinary editor ticks
+        // must not observe a world whose roads, collision and vegetation are incomplete.
+        const vector<Entity*> preparation_entities = entities;
+        for (Entity* entity : preparation_entities)
+        {
+            if (Terrain* terrain = entity->GetComponent<Terrain>(); terrain && entity->GetActive())
+            {
+                if (!terrain->IsCpuGenerationPending()) terrain->Tick();
+                surface_busy |= terrain->IsCpuGenerationPending() || terrain->IsMeshCommitPending();
+                terrain_busy |= terrain->IsGenerating();
+            }
+        }
+        World::ProcessPendingAdditions();
+        if (!surface_busy)
+        {
+            // Authored/non-terrain and attached splines also have deferred first-tick work.
+            for (Entity* entity : preparation_entities)
+                if (Spline* spline = entity->GetComponent<Spline>(); spline && entity->GetActive()) spline->Tick();
+            Spline::ProcessPendingRoadMeshes();
+            Spline::RebuildRoadJunctions();
+        }
+        return !terrain_busy && !Spline::HasPendingRoadWork();
     }
 }

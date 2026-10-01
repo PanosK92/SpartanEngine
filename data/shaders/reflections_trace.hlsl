@@ -14,9 +14,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_ray_surface.hlsl"
 //=============================
 
-// upper bound on the ggx alpha for the reflection ray spread, caps divergence on rough surfaces
-static const float k_reflection_alpha_max = 0.6f;
-
 [shader("raygeneration")]
 void ray_gen()
 {
@@ -49,20 +46,9 @@ void ray_gen()
     float coat;
     float roughness = get_rt_reflection_roughness(uv, coat);
 
-    // skip near-diffuse lobes, apply fades them out and ibl covers the rest
-    if (get_rt_reflection_weight(roughness) <= 0.0f)
-    {
-#if DEBUG_RAY_TRACING == 1
-        tex_uav[launch_id] = float4(0, 0, 1, 1);
-#else
-        tex_uav[launch_id]  = float4(0.0f, 0.0f, 0.0f, -1.0f);
-        tex_uav2[launch_id] = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        tex_uav3[launch_id] = float4(0.0f, 0.0f, 0.0f, 0.0f);
-#endif
-        return;
-    }
-
-    float alpha     = min(ggx_alpha_from_roughness(roughness), k_reflection_alpha_max);
+    // Rough lobes still need scene visibility. Sample their full width instead of
+    // capping the spread and handing them back to an unoccluded sky probe.
+    float alpha = ggx_alpha_from_roughness(roughness);
 
     // per pixel per frame low discrepancy sample, r2 frame rotation for the denoiser to accumulate
     float  frame_index = (float)buffer_frame.frame;

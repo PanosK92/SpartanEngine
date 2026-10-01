@@ -6,6 +6,7 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #pragma once
+#include "ui/ImGui.h"
 
 //= INCLUDES ==============
 #include <memory>
@@ -47,10 +48,10 @@ public:
         }
     }
 
-    inline static ImFont* font_normal      = nullptr;
-    inline static ImFont* font_bold        = nullptr;
-    inline static ImFont* font_mono        = nullptr;
-    inline static ImFont* font_mono_medium = nullptr;
+    inline static ImFont*& font_normal = spartan::gui::font_normal;
+    inline static ImFont*& font_bold = spartan::gui::font_bold;
+    inline static ImFont*& font_mono = spartan::gui::font_mono;
+    inline static ImFont*& font_mono_medium = spartan::gui::font_mono_medium;
 
 private:
     template<typename T>

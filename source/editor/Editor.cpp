@@ -7,6 +7,10 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ====================
 #include "pch.h"
+#include "Selection.h"
+#include "game/GameWorld.h"
+#include "game/CarMcp.h"
+#include "game/CameraController.h"
 #include "Editor.h"
 #include "EditorImGui.h"
 #include "EditorLayout.h"
@@ -14,12 +18,15 @@ Commercial use requires written permission and negotiated payment terms.
 #include "WorldPreviews.h"
 #include "AssetThumbnails.h"
 #include "widgets/MenuBar.h"
+#include "widgets/TextureViewer.h"
 #include "core/Engine.h"
 #include "core/Timer.h"
 #include "core/Window.h"
 #include "input/Input.h"
 #include "profiling/Profiler.h"
 #include "mcp/EditorMcpCommands.h"
+#include "mcp/McpCommandsDiagnostics.h"
+#include "mcp/McpCommandsComponents.h"
 #include "world/World.h"
 #include "rendering/Renderer.h"
 //===============================
@@ -31,7 +38,21 @@ using namespace std;
 Editor::Editor(const vector<string>& args)
 {
     spartan::Engine::Initialize(args);
+    spartan::game::Initialize();
+    spartan::game::RegisterCarMcpCommands();
+    spartan::mcp_diagnostics::Register();
+    spartan::mcp_components::Register();
     editor_imgui::initialize();
+    spartan::Selection::Initialize();
+    SP_SUBSCRIBE_TO_EVENT(spartan::EventType::InputTicked, [](spartan::sp_variant)
+    {
+        if (spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible) && spartan::Input::GetKeyDown(spartan::KeyCode::F))
+            if (auto* camera = spartan::World::GetCamera())
+                spartan::CameraController::Get(*camera).Focus(spartan::Selection::GetSelectedEntity(), spartan::Selection::GetSelectedInstance());
+    });
+    spartan::gui::texture_preview = [] { return spartan::gui::TexturePreview{
+        TextureViewer::GetVisualisedTextureId(), TextureViewer::GetVisualisationFlags(),
+        TextureViewer::GetMipLevel(), TextureViewer::GetArrayLevel()}; };
     RegisterWidgets();
     MenuBar::Initialize(this);
     editor_mcp::Register(this);
@@ -43,6 +64,7 @@ Editor::~Editor()
     editor_mcp::Unregister();
     AssetThumbnails::Shutdown();
     WorldPreviews::Shutdown();
+    spartan::gui::texture_preview = nullptr;
     editor_imgui::shutdown();
     spartan::Engine::Shutdown();
 }

@@ -42,7 +42,7 @@ namespace spartan
         char m_project_directory[256] = {};
         vector<shared_ptr<IResource>> m_resources;
         unordered_map<string, shared_ptr<IResource>> m_resources_by_path;
-        atomic<bool> m_resource_path_index_dirty = false;
+        unordered_map<string, string> material_name_claims;
         recursive_mutex m_mutex;
         atomic<bool> shutting_down = false;
         // default on, running stale shaders out of binaries while editing the source tree is silent
@@ -72,31 +72,10 @@ namespace spartan
             return key;
         }
 
-        void rebuild_resource_path_index()
+        string resource_key(const IResource& resource)
         {
-            if (!m_resource_path_index_dirty.load(memory_order_acquire))
-            {
-                return;
-            }
-
-            m_resources_by_path.clear();
-            m_resources_by_path.reserve(m_resources.size());
-            for (const shared_ptr<IResource>& resource : m_resources)
-            {
-                if (resource)
-                {
-                    m_resources_by_path.emplace(
-                        resource_path_key(
-                            resource->GetResourceFilePath()
-                        ),
-                        resource
-                    );
-                }
-            }
-            m_resource_path_index_dirty.store(
-                false,
-                memory_order_release
-            );
+            const string& path = resource.GetResourceFilePath();
+            return resource_path_key(path.empty() ? string("runtime:") + resource.GetResourceTypeCstr() + ":" + resource.GetObjectName() : path);
         }
         unordered_map<string, unique_ptr<mutex>> m_in_flight_mutexes;
         mutex m_in_flight_map_mutex;
@@ -205,10 +184,7 @@ namespace spartan
             uint32_t resource_count = static_cast<uint32_t>(m_resources.size());
             m_resources.clear();
             m_resources_by_path.clear();
-            m_resource_path_index_dirty.store(
-                false,
-                memory_order_release
-            );
+            material_name_claims.clear();
             if (resource_count != 0)
             {
                 SP_LOG_INFO("%d resources have been cleared", resource_count);
@@ -337,24 +313,10 @@ namespace spartan
         return "data";
     }
 
-    vector<shared_ptr<IResource>>& ResourceCache::GetResources()
-    {
-        m_resource_path_index_dirty.store(
-            true,
-            memory_order_release
-        );
-        return m_resources;
-    }
-
     vector<shared_ptr<IResource>> ResourceCache::GetResourcesSnapshot()
     {
         lock_guard<recursive_mutex> guard(m_mutex);
         return m_resources;
-    }
-
-    void ResourceCache::InvalidatePathIndex()
-    {
-        m_resource_path_index_dirty.store(true, memory_order_release);
     }
 
     bool ResourceCache::IsShuttingDown()
@@ -367,7 +329,6 @@ namespace spartan
     )
     {
         lock_guard<recursive_mutex> guard(m_mutex);
-        rebuild_resource_path_index();
 
         const auto it = m_resources_by_path.find(
             resource_path_key(path)
@@ -383,14 +344,8 @@ namespace spartan
     )
     {
         lock_guard<recursive_mutex> guard(m_mutex);
-        rebuild_resource_path_index();
 
-        string path = resource->GetResourceFilePath();
-        if (path.empty())
-        {
-            path = string("runtime:") + resource->GetResourceTypeCstr() + ":" + resource->GetObjectName();
-        }
-        path = resource_path_key(path);
+        const string path = resource_key(*resource);
         const auto it = m_resources_by_path.find(path);
         if (it != m_resources_by_path.end())
         {
@@ -410,6 +365,9 @@ namespace spartan
             return;
         }
 
+        const auto indexed = m_resources_by_path.find(resource_key(*resource));
+        if (indexed != m_resources_by_path.end() && indexed->second.get() == resource)
+            m_resources_by_path.erase(indexed);
         m_resources.erase(
             remove_if(
                 m_resources.begin(),
@@ -421,15 +379,86 @@ namespace spartan
             ),
             m_resources.end()
         );
-        m_resource_path_index_dirty.store(
-            true,
-            memory_order_release
-        );
     }
 
-    recursive_mutex& ResourceCache::GetMutex()
+    void ResourceCache::SetResourcePath(IResource& resource, const string& path)
     {
-        return m_mutex;
+        lock_guard<recursive_mutex> lock(m_mutex);
+        const string relative = FileSystem::GetRelativePath(path);
+        if (relative == resource.m_resource_file_path)
+        {
+            SetResourceLabel(resource, FileSystem::GetFileNameWithoutExtensionFromFilePath(relative));
+            return;
+        }
+        const auto old = m_resources_by_path.find(resource_key(resource));
+        shared_ptr<IResource> cached = old != m_resources_by_path.end() && old->second.get() == &resource ? old->second : nullptr;
+        const string key = resource_path_key(relative.empty() ? string("runtime:") + resource.GetResourceTypeCstr() + ":" : relative);
+        const auto existing = m_resources_by_path.find(key);
+        if (cached && existing != m_resources_by_path.end() && existing->second != cached)
+        {
+            SP_LOG_ERROR("Resource path already cached: %s", relative.c_str());
+            return;
+        }
+        if (cached) m_resources_by_path.erase(old);
+        resource.m_resource_file_path = relative;
+        resource.SpartanObject::SetObjectName(FileSystem::GetFileNameWithoutExtensionFromFilePath(relative));
+        if (cached) m_resources_by_path.emplace(resource_key(resource), cached);
+    }
+
+    void ResourceCache::SetResourceName(IResource& resource, const string& name)
+    {
+        lock_guard<recursive_mutex> lock(m_mutex);
+        const string file_name = FileSystem::GetFileNameFromFilePath(name);
+        string object_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_name);
+        if (object_name.empty()) object_name = file_name;
+        const string directory = resource.GetResourceDirectory();
+        if (!directory.empty())
+        {
+            string extension = FileSystem::GetExtensionFromFilePath(file_name);
+            if (extension.empty()) extension = FileSystem::GetExtensionFromFilePath(resource.GetResourceFilePath());
+            SetResourcePath(resource, directory + object_name + extension);
+            return;
+        }
+        SetResourceLabel(resource, object_name);
+    }
+
+    void ResourceCache::SetResourceLabel(IResource& resource, const string& name)
+    {
+        lock_guard<recursive_mutex> lock(m_mutex);
+        if (resource.GetObjectName() == name) return;
+        // A file-backed resource's identity is its path; a label edit must not rename the file.
+        if (!resource.GetResourceFilePath().empty())
+        {
+            resource.SpartanObject::SetObjectName(name);
+            return;
+        }
+        const auto old = m_resources_by_path.find(resource_key(resource));
+        shared_ptr<IResource> cached = old != m_resources_by_path.end() && old->second.get() == &resource ? old->second : nullptr;
+        const string key = resource_path_key(string("runtime:") + resource.GetResourceTypeCstr() + ":" + name);
+        const auto existing = m_resources_by_path.find(key);
+        if (cached && existing != m_resources_by_path.end() && existing->second != cached)
+        {
+            SP_LOG_ERROR("Resource name already cached: %s", name.c_str());
+            return;
+        }
+        if (cached) m_resources_by_path.erase(old);
+        resource.SpartanObject::SetObjectName(name);
+        if (cached) m_resources_by_path.emplace(key, cached);
+    }
+
+    bool ResourceCache::ReserveMaterialName(const string& name, const string& path)
+    {
+        lock_guard<recursive_mutex> lock(m_mutex);
+        const string key = resource_path_key(FileSystem::GetRelativePath(path));
+        if (auto existing = GetByName<Material>(name); existing && resource_key(*existing) != key) return false;
+        const auto [it, inserted] = material_name_claims.emplace(name, key);
+        return inserted || it->second == key;
+    }
+    void ResourceCache::EnsureTextureData(RHI_Texture& texture)
+    {
+        const string path = texture.GetResourceFilePath();
+        lock_guard<mutex> guard(GetInFlightMutex(path));
+        if (!texture.HasData()) texture.LoadFromFile(path);
     }
 
     mutex& ResourceCache::GetInFlightMutex(const string& path)
@@ -782,4 +811,5 @@ namespace spartan
     {
         return atlas_texture.get();
     }
+
 }

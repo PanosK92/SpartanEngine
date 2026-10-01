@@ -22,15 +22,18 @@ namespace spartan
 
     }
 
-    void Animation::LoadFromFile(const string& file_path)
+    bool Animation::LoadFromFile(const string& file_path)
     {
-        if (!AnimationClipReader::ReadFromFile(file_path, m_clip))
+        AnimationClip clip;
+        if (!AnimationClipReader::ReadFromFile(file_path, clip))
         {
             SP_LOG_ERROR("Failed to load animation clip from %s", file_path.c_str());
-            return;
+            return false;
         }
 
+        m_clip = std::move(clip);
         SetResourceFilePath(file_path);
+        return true;
     }
 
     void Animation::SaveToFile(const string& file_path)

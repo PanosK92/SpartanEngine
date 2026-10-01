@@ -24,7 +24,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rhi/RHI_Device.h"
 #include "../xr/Xr.h"
 #include "../commands/console/ConsoleCommands.h"
+#ifndef SP_RUNTIME
 #include "../mcp/McpServer.h"
+#endif
 #include "../steam/Steam.h"
 #include "../resource/IconAtlas.h"
 #include "Settings.h"
@@ -48,7 +50,11 @@ namespace spartan
     {
         arguments = args;
 
+#ifdef SP_RUNTIME
+        SetFlag(EngineMode::EditorVisible, false);
+#else
         SetFlag(EngineMode::EditorVisible, !HasArgument("-game"));
+#endif
         SetFlag(EngineMode::Playing,       true);
 
         // initialize
@@ -81,7 +87,9 @@ namespace spartan
             World::Initialize();
             Settings::Initialize();
             SmokeTest::Initialize();
+#ifndef SP_RUNTIME
             McpServer::Initialize(args);
+#endif
             if (!HasArgument("--no-steam"))
             {
                 Steam::Initialize(); // must stay on the main thread, steam callbacks run here too
@@ -124,16 +132,18 @@ namespace spartan
     void Engine::Shutdown()
     {
         Steam::Shutdown();
+#ifndef SP_RUNTIME
         McpServer::Shutdown();
+#endif
         Profiler::Shutdown();
 
-        // the thread pool can hold state from other systems
-        // so shut it down first (it waits) to avoid crashes due to race conditions
-        ThreadPool::Shutdown();
+        // Join existing work, then keep workers available while entity Stop callbacks finish.
+        ThreadPool::Flush();
 
         // world must tear down first, DestroyAccelerationStructures and entity
         // destructors still need live meshes and materials from the resource cache
         World::Shutdown();
+        ThreadPool::Shutdown();
         ResourceCache::UnloadDefaultResources();
 
         PhysicsWorld::Shutdown();
@@ -151,7 +161,9 @@ namespace spartan
     {
         // pre-tick
         Input::PreTick();
+#ifndef SP_RUNTIME
         McpServer::Tick();
+#endif
         Steam::Tick();
 
         // ctrl+0 toggles openxr for whatever runtime/headset is active (steamvr, psvr2 via stvr, etc)
@@ -178,6 +190,7 @@ namespace spartan
         // tick
         Window::Tick();
         Input::Tick();
+        SP_FIRE_EVENT(EventType::InputTicked);
         PhysicsWorld::Tick();
         World::Tick();
         SP_FIRE_EVENT(EventType::WorldTicked);

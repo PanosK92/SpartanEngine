@@ -119,7 +119,7 @@ namespace spartan
         // iresource
         void SaveToFile(const std::string& file_path) override;
         std::function<void()> CreateSaveTask(const std::string& file_path) override;
-        void LoadFromFile(const std::string& file_path) override;
+        bool LoadFromFile(const std::string& file_path) override;
         // CPU-only, validated generated geometry. GPU resources are created after scene publication.
         bool LoadPrepared(const std::string& path, uint64_t key);
         bool LoadPrepared(std::span<const uint8_t> bytes);

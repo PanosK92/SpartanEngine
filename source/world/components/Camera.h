@@ -64,9 +64,31 @@ namespace spartan
         Flashlight            = 1U << 5, // flashlight on/off
     };
 
+    struct CameraSettings
+    {
+        uint32_t flags = 0;
+        CameraPreset preset = CameraPreset::custom;
+        CameraExposureMode exposure_mode = CameraExposureMode::automatic;
+        float auto_exposure_adaptation_speed = 1.0f;
+        float auto_exposure_compensation = 0.0f;
+        float aperture = 5.6f;
+        float shutter_speed = 1.0f / 125.0f;
+        float iso = 200.0f;
+        float fov_horizontal_rad = 90.0f * math::deg_to_rad;
+        float aspect_ratio_override = 0.0f;
+        float near_plane = 0.1f;
+        float far_plane = 100'000.0f;
+        ProjectionType projection_type = Projection_Perspective;
+        float mouse_sensitivity = 0.2f;
+        float mouse_smoothing = 0.5f;
+    };
+
     class Camera : public Component
     {
     public:
+        CameraSettings GetSettings() const;
+        void ApplySettings(const CameraSettings& settings);
+        void CopyFrom(const Component& source) override;
         Camera(Entity* entity);
         ~Camera() = default;
 
@@ -80,9 +102,6 @@ namespace spartan
         static void RegisterForScripting(sol::state_view state);
         sol::reference AsLua(sol::state_view state) override;
 
-        // discard fps motion when gameplay replaces the camera pose
-        void ResetFpsMotion();
-
         // re-derives the matrices after the entity was moved outside the entity tick, e.g. by a timeline after physics
         void RefreshMatrices();
 
@@ -91,19 +110,7 @@ namespace spartan
         const math::Matrix& GetProjectionMatrix() const     { return m_projection; }
         const math::Matrix& GetViewProjectionMatrix() const { return m_view_projection; }
 
-        // ray casting
-        const math::Ray& ComputePickingRay();
-
-        // picks the nearest entity under the mouse cursor
-        void Pick();
-
-        // resolves the entity under the mouse cursor using triangle precision,
-        // mirrors what pick() uses internally but has no side effects on selection state
-        // (useful for hover previews like drag-drop material onto a mesh in the viewport)
-        Entity* FindEntityUnderCursor();
-
-        // picks the editor overlay icon (light, audio source) under the mouse cursor, null when none
-        Entity* FindIconUnderCursor() const;
+        math::Ray ComputeRay(const math::Vector2& screen_position) const;
 
         // converts a world point to a screen point
         void WorldToScreenCoordinates(const math::Vector3& position_world, math::Vector2& position_screen) const;
@@ -229,43 +236,12 @@ namespace spartan
         bool GetFlag(const CameraFlags flag) { return m_flags & flag; }
         void SetFlag(const CameraFlags flag, const bool enable = true);
 
-        // misc
-        bool IsWalking()                                { return m_is_walking; }
-        
-        // selection, shared by every camera
-        //
-        // the selection belongs to the editor, not to a camera. World::GetCamera swaps which camera
-        // component is active whenever a secondary view renders or the sequencer previews through
-        // another camera, so per instance lists make that swap read as the selection being lost
-        //
-        // still reachable as camera->GetSelectedEntity(), calling a static member through an instance
-        // is legal, so every existing call site keeps working
-        static void SetSelectedEntity(spartan::Entity* entity);
-        static spartan::Entity* GetSelectedEntity();
-
-        // selection - multiple entities
-        static void AddToSelection(spartan::Entity* entity);
-        static void RemoveFromSelection(spartan::Entity* entity);
-        static void ToggleSelection(spartan::Entity* entity);
-        static void ClearSelection();
-        static bool IsSelected(spartan::Entity* entity);
-        static const std::vector<spartan::Entity*>& GetSelectedEntities() { return m_selected_entities; }
-        static uint32_t GetSelectedEntityCount() { return static_cast<uint32_t>(m_selected_entities.size()); }
-
-        // a scattered tree or rock is one instance of a renderable that carries thousands of them,
-        // the selection is the entity that owns them all, this is the one that was clicked
-        // -1 when the selection is not an instance
-        static int GetSelectedInstance() { return m_selected_instance; }
-
         math::Matrix UpdateViewMatrix() const;
         math::Matrix ComputeProjection(const float near_plane, const float far_plane);
-        void FocusOnSelectedEntity();
+        float GetMouseSensitivity() const { return m_mouse_sensitivity; }
 
     private:
         void ComputeMatrices();
-        void ProcessInput();
-        void Input_FpsControl();
-        void Input_LerpToEntity();
 
         uint32_t m_flags                             = 0;
         CameraPreset m_preset                        = CameraPreset::custom;
@@ -287,48 +263,9 @@ namespace spartan
         math::Matrix m_view_projection               = math::Matrix::Identity;
         math::Matrix m_view_projection_non_reverse_z = math::Matrix::Identity;
         math::Matrix m_matrix_previous               = math::Matrix::Identity;
-        math::Vector2 m_mouse_last_position          = math::Vector2::Zero;
-        math::Vector3 m_movement_speed               = math::Vector3::Zero;
-        float m_movement_scroll_accumulator          = 0.0f;
-        float m_mouse_sensitivity                    = 0.2f;
-        float m_mouse_smoothing                      = 0.5f;
-        bool m_lerp_to_target_p                      = false;
-        bool m_lerp_to_target_r                      = false;
-        bool m_is_walking                            = false;
-        float m_jump_velocity                        = 0.0f;
-        float m_lerp_to_target_alpha                 = 0.0f;
-        float m_lerp_to_target_distance              = 0.0f;
-        float m_jump_time                            = 0.0f;
-        math::Vector3 m_lerp_to_target_position      = math::Vector3::Zero;
-        math::Quaternion m_lerp_to_target_rotation   = math::Quaternion::Identity;
-        math::Vector3 m_lerp_from_position           = math::Vector3::Zero;
-        math::Quaternion m_lerp_from_rotation        = math::Quaternion::Identity;
-        bool m_was_playing                           = false;
-        Entity* m_flashlight                         = nullptr;
-
-        // physical body animation state
-        float m_gait_phase                           = 0.0f;
-        float m_gait_speed                           = 0.0f;
-        float m_breath_phase                         = 0.0f;
-        float m_fall_speed                           = 0.0f;
-        float m_strafe_speed                         = 0.0f;
-        bool m_was_grounded                          = true;
-        math::Vector3 m_anim_spring_offset           = math::Vector3::Zero;
-        math::Vector3 m_anim_spring_velocity         = math::Vector3::Zero;
-        math::Vector3 m_anim_offset_previous         = math::Vector3::Zero;
-        math::Quaternion m_anim_rotation_previous    = math::Quaternion::Identity;
+        float m_mouse_sensitivity = 0.2f;
+        float m_mouse_smoothing = 0.5f;
         RHI_Viewport m_last_known_viewport;
         math::Frustum m_frustum;
-        static std::vector<spartan::Entity*> m_selected_entities;
-        static int m_selected_instance;
-        
-        // pre-allocated buffers for picking (to avoid heap allocations)
-        std::vector<math::RayHitResult> m_pick_hits;
-        std::vector<uint32_t> m_pick_indices;
-        std::vector<RHI_Vertex_PosTexNorTan> m_pick_vertices;
-
-        // what the last cursor resolve landed on, an instance index and the renderable that owns it
-        int m_pick_instance                 = -1;
-        uint64_t m_pick_instance_owner_id   = 0;
     };
 }

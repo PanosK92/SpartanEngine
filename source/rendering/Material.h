@@ -175,7 +175,7 @@ namespace spartan
         static const uint32_t slots_per_texture = 4;
 
         // iresource
-        void LoadFromFile(const std::string& file_path) override;
+        bool LoadFromFile(const std::string& file_path) override;
         void SaveToFile(const std::string& file_path) override;
         std::function<void()> CreateSaveTask(const std::string& file_path) override;
 

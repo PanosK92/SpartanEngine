@@ -13,15 +13,35 @@ Commercial use requires written permission and negotiated payment terms.
 #include <vector>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <sol/forward.hpp>
+
+namespace pugi { class xml_node; }
 
 namespace spartan
 {
     class Entity;
+    class ProgressTask;
     class Camera;
     class Light;
     struct RenderSceneData;
     struct WorldWorkCounters;
+    struct PlayState;
+
+    // Installed by the application. The scene owns entities; the application owns game policy.
+    struct WorldCallbacks
+    {
+        void (*before_load)() = nullptr;
+        bool (*prepare)(const std::vector<Entity*>&, const ProgressTask&) = nullptr;
+        void (*before_entities_destroyed)() = nullptr;
+        void (*after_entities_destroyed)() = nullptr;
+        void (*stop_play)() = nullptr;
+        void (*before_tick)(float) = nullptr;
+        void (*after_tick)(float) = nullptr;
+        void (*controls)() = nullptr;
+        void (*save)(pugi::xml_node&) = nullptr;
+        void (*load)(pugi::xml_node&) = nullptr;
+    };
 
     // metadata structure for reading world info without fully loading
     struct WorldMetadata
@@ -35,6 +55,23 @@ namespace spartan
     class World
     {
     public:
+        // Worker construction is private until the outer batch completes.
+        class EntityBatch
+        {
+        public:
+            EntityBatch();
+            ~EntityBatch();
+            void Commit();
+            EntityBatch(const EntityBatch&) = delete;
+            EntityBatch& operator=(const EntityBatch&) = delete;
+        private:
+            friend class World;
+            EntityBatch* previous;
+            std::vector<Entity*> entities;
+        };
+
+        static void SetCallbacks(const WorldCallbacks& callbacks);
+
         // system
         static void Initialize();
         static void Shutdown();
@@ -106,8 +143,6 @@ namespace spartan
         static Light* GetDirectionalLight();
         static uint32_t GetLightCount();
         static uint32_t GetAudioSourceCount();
-        static bool HaveMaterialsChangedThisFrame();
-        static bool HaveLightsChanged();
 
         // world time: 0.0 = midnight, 0.5 = noon, 1.0 = next midnight
         static float GetTimeOfDay(bool use_real_world_time = false);
@@ -130,14 +165,15 @@ namespace spartan
         // world metadata
         static const std::string& GetDescription();
         static void SetDescription(const std::string& description);
-        // island road finish, roadside details and wildlife, opted into per world
-        static bool GetIslandFeatures();
-        static void SetIslandFeatures(bool enabled);
 
         // read metadata from a world file without fully loading it
         static bool ReadMetadata(const std::string& world_file_path, WorldMetadata& metadata);
 
     private:
+        friend class PlaySession;
+        static void ClearScene();
+        static void RestorePlayState(const std::shared_ptr<PlayState>& state);
+        static void InitializeScripting();
         // Async saves serialize on the caller and dispatch only the XML write.
         static bool SaveToFileInternal(std::string file_path, bool asynchronous);
         static void ProcessPendingRemovals();

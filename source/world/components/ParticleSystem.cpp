@@ -28,44 +28,44 @@ namespace spartan
     ParticleSystem::ParticleSystem(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_preset, ApplyPreset, ParticlePreset);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_particles, uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_emission_rate, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_lifetime, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_start_speed, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_start_size, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_end_size, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_start_color, Color);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_end_color, Color);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_gravity_modifier, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_emission_radius, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_emission_direction, Vector3);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_emission_cone_angle, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_directional_blend, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_max_particles, SetMaxParticles, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_emission_rate, SetEmissionRate, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_lifetime, SetLifetime, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_start_speed, SetStartSpeed, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_start_size, SetStartSize, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_end_size, SetEndSize, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_start_color, SetStartColor, Color);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_end_color, SetEndColor, Color);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_gravity_modifier, SetGravityModifier, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_emission_radius, SetEmissionRadius, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_emission_direction, SetEmissionDirection, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_emission_cone_angle, SetEmissionConeAngle, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_directional_blend, SetDirectionalBlend, float);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_blend_mode, SetBlendMode, ParticleBlendMode);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_lighting_mode, SetLightingMode, ParticleLightingMode);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_render_mode, SetRenderMode, ParticleRenderMode);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_emissive_strength, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_soft_depth_scale, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_volume_density, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_volume_anisotropy, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_volume_shadowing, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_drag, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_turbulence_strength, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_wind_influence, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_velocity_inheritance, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_velocity_stretch, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_vortex_strength, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_vortex_radius, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_thermal_strength, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_thermal_decay, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rollup_strength, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_wake_strength, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_churn_strength, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_collision_clearance, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_spawn_burst, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flipbook_rows, uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flipbook_columns, uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flipbook_fps, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_emissive_strength, SetEmissiveStrength, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_soft_depth_scale, SetSoftDepthScale, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_volume_density, SetVolumeDensity, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_volume_anisotropy, SetVolumeAnisotropy, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_volume_shadowing, SetVolumeShadowing, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_drag, SetDrag, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_turbulence_strength, SetTurbulenceStrength, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_wind_influence, SetWindInfluence, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_velocity_inheritance, SetVelocityInheritance, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_velocity_stretch, SetVelocityStretch, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_vortex_strength, SetVortexStrength, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_vortex_radius, SetVortexRadius, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_thermal_strength, SetThermalStrength, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_thermal_decay, SetThermalDecay, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_rollup_strength, SetRollupStrength, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_wake_strength, SetWakeStrength, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_churn_strength, SetChurnStrength, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_collision_clearance, SetCollisionClearance, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_spawn_burst, SetSpawnBurst, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_flipbook_rows, SetFlipbookRows, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_flipbook_columns, SetFlipbookColumns, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_flipbook_fps, SetFlipbookFps, float);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_effect_path, SetEffectPath, std::string);
 
         ApplyPreset(ParticlePreset::Fire);
@@ -893,6 +893,15 @@ namespace spartan
 
         // the cache owns the texture, we keep a raw pointer
         m_texture = ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv).get();
+    }
+
+    void ParticleSystem::CopyFrom(const Component& source)
+    {
+        SP_ASSERT(source.GetType() == ComponentType::ParticleSystem);
+        pugi::xml_document document;
+        auto node = document.append_child("particle_system");
+        static_cast<const ParticleSystem&>(source).SaveProperties(node);
+        LoadProperties(node);
     }
 
     void ParticleSystem::Save(pugi::xml_node& node)

@@ -7,6 +7,10 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ===============================
 #include "pch.h"
+#ifdef SP_GAME
+#include "CarPhysics.h"
+#endif
+#include "../game/CameraController.h"
 #include "Car.h"
 #include "AiDriver.h"
 #include "../profiling/Profiler.h"
@@ -30,7 +34,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Light.h"
 #include "../world/components/Physics.h"
 #include "../world/components/Render.h"
-#include "../world/components/CarReset.h"
+#include "../game/components/CarReset.h"
 #include "../world/components/SpawnPoint.h"
 #include "../world/Prefab.h"
 #include "../io/pugixml.hpp"
@@ -69,7 +73,7 @@ namespace spartan
             constexpr float ferrari_body_offset_y = -(1.116f * 0.5f + 0.3f) + 0.1f;
             return definition.body_is_placeholder
                 ? ferrari_body_offset_y
-                : physics->GetVehicleSimulation()->get_chassis_visual_offset_y();
+                : CarPhysics::Get(*physics).GetVehicleSimulation()->get_chassis_visual_offset_y();
         }
 
         enum class CarMaterialSlot
@@ -370,10 +374,10 @@ namespace spartan
             Physics* physics = car->m_vehicle_entity->AddComponent<Physics>();
             physics->SetStatic(false);
             physics->SetMass(definition->performance.mass > 0.0f ? definition->performance.mass : 1500.0f);
-            physics->SetVehiclePreset(definition->performance);
-            physics->SetVehicleSimMode(config.vehicle_sim_mode);
-            physics->SetBodyType(BodyType::Vehicle);
-            physics->SetCar(car);  // car ticks automatically through entity system
+            CarPhysics::Get(*physics).SetVehiclePreset(definition->performance);
+            CarPhysics::Get(*physics).SetVehicleSimMode(config.vehicle_sim_mode);
+            physics->SetBodyType(BodyType::Custom);
+            CarPhysics::Get(*physics).SetCar(car);  // car ticks automatically through entity system
 
             // create car body (without its baked in wheels)
             std::vector<Entity*> excluded_wheel_entities;
@@ -385,7 +389,7 @@ namespace spartan
                 car->m_body_entity->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Right, math::pi * 0.5f));
                 car->m_body_entity->SetScaleLocal(1.1f);
 
-                physics->SetChassisEntity(car->m_body_entity, excluded_wheel_entities);
+                CarPhysics::Get(*physics).SetChassisEntity(car->m_body_entity, excluded_wheel_entities);
             }
 
             car->CreateAudioSources(car->m_vehicle_entity);
@@ -485,7 +489,7 @@ namespace spartan
             {
                 if (Physics* physics = car->m_vehicle_entity->GetComponent<Physics>())
                 {
-                    physics->SetCar(nullptr);
+                    CarPhysics::Get(*physics).SetCar(nullptr);
                 }
             }
             car->m_vehicle_entity = nullptr;
@@ -516,7 +520,7 @@ namespace spartan
         }
         if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
         {
-            physics->SetVehicleSimMode(mode);
+            CarPhysics::Get(*physics).SetVehicleSimMode(mode);
         }
     }
 
@@ -528,7 +532,7 @@ namespace spartan
         }
         if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
         {
-            return physics->GetVehicleSimMode();
+            return CarPhysics::Get(*physics).GetVehicleSimMode();
         }
         return VehicleSimMode::Full;
     }
@@ -610,7 +614,7 @@ namespace spartan
             for (int i = 0; i < 4; i++)
             {
                 hide_entity(
-                    physics->GetWheelEntity(static_cast<WheelIndex>(i))
+                    CarPhysics::Get(*physics).GetWheelEntity(static_cast<WheelIndex>(i))
                 );
             }
         }
@@ -686,8 +690,8 @@ namespace spartan
         bool has_ground_contact = false;
         for (int i = 0; i < ::car::wheel_count; i++)
         {
-            const math::Vector3 contact_point = physics->GetWheelContactPoint(static_cast<WheelIndex>(i));
-            if (physics->IsWheelGrounded(static_cast<WheelIndex>(i)) && std::isfinite(contact_point.y))
+            const math::Vector3 contact_point = CarPhysics::Get(*physics).GetWheelContactPoint(static_cast<WheelIndex>(i));
+            if (CarPhysics::Get(*physics).IsWheelGrounded(static_cast<WheelIndex>(i)) && std::isfinite(contact_point.y))
             {
                 ground_height = has_ground_contact ? std::max(ground_height, contact_point.y) : contact_point.y;
                 has_ground_contact = true;
@@ -714,7 +718,7 @@ namespace spartan
         m_body_entity   = nullptr;
         m_window_entity = nullptr;
         m_definition    = definition;
-        physics->SetVehiclePreset(definition->performance);
+        CarPhysics::Get(*physics).SetVehiclePreset(definition->performance);
 
         std::vector<Entity*> excluded_wheel_entities;
         m_body_entity = CreateBody(&excluded_wheel_entities);
@@ -726,7 +730,7 @@ namespace spartan
             m_body_entity->SetPositionLocal(math::Vector3(0.0f, get_body_visual_offset_y(*definition, physics), 0.07f));
             m_body_entity->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Right, math::pi * 0.5f));
             m_body_entity->SetScaleLocal(1.1f);
-            physics->SetChassisEntity(m_body_entity, excluded_wheel_entities);
+            CarPhysics::Get(*physics).SetChassisEntity(m_body_entity, excluded_wheel_entities);
         }
 
         if (m_dyno)
@@ -736,28 +740,28 @@ namespace spartan
             for (int i = 0; i < 4; ++i)
             {
                 const auto index = static_cast<WheelIndex>(i);
-                if (auto* wheel = physics->GetWheelEntity(index))
+                if (auto* wheel = CarPhysics::Get(*physics).GetWheelEntity(index))
                 {
                     wheel->SetActive(false);
                     World::RemoveEntity(wheel);
                 }
-                physics->SetWheelEntity(index, nullptr);
+                CarPhysics::Get(*physics).SetWheelEntity(index, nullptr);
             }
             CreateWheels(m_vehicle_entity, physics, excluded_wheel_entities);
             for (int i = 0; i < 4; ++i)
-                if (auto* wheel = physics->GetWheelEntity(static_cast<WheelIndex>(i))) mark_entity_tree_transient(wheel);
-            physics->SyncWheelOffsetsFromEntities();
+                if (auto* wheel = CarPhysics::Get(*physics).GetWheelEntity(static_cast<WheelIndex>(i))) mark_entity_tree_transient(wheel);
+            CarPhysics::Get(*physics).SyncWheelOffsetsFromEntities();
         }
 
         for (int i = 0; !m_dyno && i < 4; i++)
         {
             const WheelIndex wheel_index = static_cast<WheelIndex>(i);
-            if (Entity* wheel_entity = physics->GetWheelEntity(wheel_index))
+            if (Entity* wheel_entity = CarPhysics::Get(*physics).GetWheelEntity(wheel_index))
             {
                 const bool is_front = i == 0 || i == 1;
                 const float radius = is_front ? definition->performance.front_wheel_radius : definition->performance.rear_wheel_radius;
                 const float width  = is_front ? definition->performance.front_wheel_width : definition->performance.rear_wheel_width;
-                physics->ScaleWheelEntityToDimensions(wheel_entity, radius, width);
+                CarPhysics::Get(*physics).ScaleWheelEntityToDimensions(wheel_entity, radius, width);
             }
         }
 
@@ -806,7 +810,7 @@ namespace spartan
         {
             if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
             {
-                physics->SetCar(nullptr);
+                CarPhysics::Get(*physics).SetCar(nullptr);
             }
             World::RemoveEntity(m_vehicle_entity);
         }
@@ -939,10 +943,10 @@ namespace spartan
         {
             if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
             {
-                physics->SetVehicleThrottle(0.0f);
-                physics->SetVehicleBrake(0.0f);
-                physics->SetVehicleSteering(0.0f);
-                physics->SetVehicleHandbrake(1.0f);
+                CarPhysics::Get(*physics).SetVehicleThrottle(0.0f);
+                CarPhysics::Get(*physics).SetVehicleBrake(0.0f);
+                CarPhysics::Get(*physics).SetVehicleSteering(0.0f);
+                CarPhysics::Get(*physics).SetVehicleHandbrake(1.0f);
             }
         }
 
@@ -952,7 +956,7 @@ namespace spartan
         {
             if (Camera* component = camera->GetComponent<Camera>())
             {
-                component->ResetFpsMotion();
+                CameraController::Get(*component).ResetFpsMotion();
             }
             camera->SetParent(default_camera);
             camera->SetRotationLocal(math::Quaternion::Identity);
@@ -1053,7 +1057,7 @@ namespace spartan
         }
         if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
         {
-            physics->SetVehicleThrottle(value);
+            CarPhysics::Get(*physics).SetVehicleThrottle(value);
         }
     }
 
@@ -1065,7 +1069,7 @@ namespace spartan
         }
         if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
         {
-            physics->SetVehicleBrake(value);
+            CarPhysics::Get(*physics).SetVehicleBrake(value);
         }
     }
 
@@ -1077,7 +1081,7 @@ namespace spartan
         }
         if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
         {
-            physics->SetVehicleSteering(value);
+            CarPhysics::Get(*physics).SetVehicleSteering(value);
         }
     }
 
@@ -1089,7 +1093,7 @@ namespace spartan
         }
         if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
         {
-            physics->SetVehicleHandbrake(value);
+            CarPhysics::Get(*physics).SetVehicleHandbrake(value);
         }
     }
 
@@ -1132,7 +1136,7 @@ namespace spartan
     bool Car::GetSteeringGeometry(float& wheelbase, float& max_steer_angle, float& linearity) const
     {
         Physics* physics = m_vehicle_entity ? m_vehicle_entity->GetComponent<Physics>() : nullptr;
-        const ::car::Simulation* simulation = physics ? physics->GetVehicleSimulation() : nullptr;
+        const ::car::Simulation* simulation = physics ? CarPhysics::Get(*physics).GetVehicleSimulation() : nullptr;
         if (!simulation)
         {
             return false;
@@ -1370,7 +1374,7 @@ namespace spartan
         {
             if (Camera* component = camera->GetComponent<Camera>())
             {
-                component->ResetFpsMotion();
+                CameraController::Get(*component).ResetFpsMotion();
             }
             camera->SetParent(default_camera);
             camera->SetRotationLocal(math::Quaternion::Identity);
@@ -1455,7 +1459,7 @@ namespace spartan
 
         if (Camera* component = camera->GetComponent<Camera>())
         {
-            component->ResetFpsMotion();
+            CameraController::Get(*component).ResetFpsMotion();
         }
 
         if (m_current_view == CarView::Chase)
@@ -1494,7 +1498,7 @@ namespace spartan
         math::Vector3 wheel_local = math::Vector3(-0.8f, -0.3f, 1.3f);
         if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
         {
-            if (Entity* wheel = physics->GetWheelEntity(WheelIndex::FrontLeft))
+            if (Entity* wheel = CarPhysics::Get(*physics).GetWheelEntity(WheelIndex::FrontLeft))
             {
                 wheel_local = wheel->GetPositionLocal();
             }
@@ -1912,7 +1916,7 @@ namespace spartan
         Entity* wheel_rl = wheel_base->Clone();
         Entity* wheel_rr = wheel_base->Clone();
 
-        const float suspension_height   = physics->GetSuspensionHeight();
+        const float suspension_height   = CarPhysics::Get(*physics).GetSuspensionHeight();
         const float preset_wheelbase    = preset.wheelbase   > 0.0f ? preset.wheelbase   : 2.6f;
         const float preset_track_front  = preset.track_front > 0.0f ? preset.track_front : 1.6f;
         const float preset_track_rear   = preset.track_rear  > 0.0f ? preset.track_rear  : 1.6f;
@@ -1996,10 +2000,10 @@ namespace spartan
         }
         // The contact solver and visible tread must use the same unloaded radius.
         // Donor wheels locate the arches; their radius does not override the tire preset.
-        physics->ScaleWheelEntityToDimensions(wheel_fl, front_wheel_radius, front_wheel_width);
-        physics->ScaleWheelEntityToDimensions(wheel_fr, front_wheel_radius, front_wheel_width);
-        physics->ScaleWheelEntityToDimensions(wheel_rl, rear_wheel_radius, rear_wheel_width);
-        physics->ScaleWheelEntityToDimensions(wheel_rr, rear_wheel_radius, rear_wheel_width);
+        CarPhysics::Get(*physics).ScaleWheelEntityToDimensions(wheel_fl, front_wheel_radius, front_wheel_width);
+        CarPhysics::Get(*physics).ScaleWheelEntityToDimensions(wheel_fr, front_wheel_radius, front_wheel_width);
+        CarPhysics::Get(*physics).ScaleWheelEntityToDimensions(wheel_rl, rear_wheel_radius, rear_wheel_width);
+        CarPhysics::Get(*physics).ScaleWheelEntityToDimensions(wheel_rr, rear_wheel_radius, rear_wheel_width);
 
         // front left
         wheel_fl->SetObjectName("wheel_front_left");
@@ -2027,10 +2031,10 @@ namespace spartan
         wheel_rr->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Up, math::pi));
         tag_wheel(wheel_rr, false, false);
 
-        physics->SetWheelEntity(WheelIndex::FrontLeft,  wheel_fl);
-        physics->SetWheelEntity(WheelIndex::FrontRight, wheel_fr);
-        physics->SetWheelEntity(WheelIndex::RearLeft,   wheel_rl);
-        physics->SetWheelEntity(WheelIndex::RearRight,  wheel_rr);
+        CarPhysics::Get(*physics).SetWheelEntity(WheelIndex::FrontLeft,  wheel_fl);
+        CarPhysics::Get(*physics).SetWheelEntity(WheelIndex::FrontRight, wheel_fr);
+        CarPhysics::Get(*physics).SetWheelEntity(WheelIndex::RearLeft,   wheel_rl);
+        CarPhysics::Get(*physics).SetWheelEntity(WheelIndex::RearRight,  wheel_rr);
     }
 
     void Car::CreatePropWheels(Entity* root, const std::vector<Entity*>& baked_wheel_entities)
@@ -2230,9 +2234,9 @@ namespace spartan
         if (m_dyno)
         {
             Physics* physics = m_vehicle_entity ? m_vehicle_entity->GetComponent<Physics>() : nullptr;
-            if (physics && physics->GetVehicleSimulation())
+            if (physics && CarPhysics::Get(*physics).GetVehicleSimulation())
             {
-                auto* simulation = physics->GetVehicleSimulation();
+                auto* simulation = CarPhysics::Get(*physics).GetVehicleSimulation();
                 simulation->mount_dyno(Engine::IsFlagSet(EngineMode::Playing));
                 car_hud::draw_dyno_window(this, physics);
                 if (Engine::IsFlagSet(EngineMode::Playing)) TickSounds();
@@ -2425,10 +2429,10 @@ namespace spartan
         float dt = static_cast<float>(Timer::GetDeltaTimeSec());
 
         // an external controller owns the pedals when flagged, so keyboard zeros do not overwrite it
-        float throttle  = physics->GetVehicleThrottle();
-        float brake     = physics->GetVehicleBrake();
-        float steering  = physics->GetVehicleSteering();
-        float handbrake = physics->GetVehicleHandbrake();
+        float throttle  = CarPhysics::Get(*physics).GetVehicleThrottle();
+        float brake     = CarPhysics::Get(*physics).GetVehicleBrake();
+        float steering  = CarPhysics::Get(*physics).GetVehicleSteering();
+        float handbrake = CarPhysics::Get(*physics).GetVehicleHandbrake();
         if (driving)
         {
             throttle = 0.0f;
@@ -2467,10 +2471,10 @@ namespace spartan
 
             handbrake = (Input::GetKey(KeyCode::Space) || Input::GetKey(KeyCode::Button_East)) ? 1.0f : 0.0f;
 
-            physics->SetVehicleThrottle(throttle);
-            physics->SetVehicleBrake(brake);
-            physics->SetVehicleSteering(steering);
-            physics->SetVehicleHandbrake(handbrake);
+            CarPhysics::Get(*physics).SetVehicleThrottle(throttle);
+            CarPhysics::Get(*physics).SetVehicleBrake(brake);
+            CarPhysics::Get(*physics).SetVehicleSteering(steering);
+            CarPhysics::Get(*physics).SetVehicleHandbrake(handbrake);
         }
 
         // camera orbit (mouse right_click drag and or gamepad right thumb stick)
@@ -2557,18 +2561,18 @@ namespace spartan
         }
         if (driving && Input::GetKeyDown(KeyCode::DPad_Left))
         {
-            if (auto* simulation = physics->GetVehicleSimulation())
+            if (auto* simulation = CarPhysics::Get(*physics).GetVehicleSimulation())
                 simulation->set_manual_transmission(!simulation->get_manual_transmission());
         }
 
         // manual gear shifting (gran turismo style: L1/pgdn down, R1/pgup up)
         if (driving && (Input::GetKeyDown(KeyCode::Left_Shoulder) || Input::GetKeyDown(KeyCode::Paddle2) || Input::GetKeyDown(KeyCode::Page_Down)))
         {
-            physics->ShiftDown();
+            CarPhysics::Get(*physics).ShiftDown();
         }
         if (driving && (Input::GetKeyDown(KeyCode::Right_Shoulder) || Input::GetKeyDown(KeyCode::Paddle1) || Input::GetKeyDown(KeyCode::Page_Up)))
         {
-            physics->ShiftUp();
+            CarPhysics::Get(*physics).ShiftUp();
         }
 
         TickControllerFeedback(physics, dt);
@@ -2576,7 +2580,7 @@ namespace spartan
 
     void Car::TickControllerFeedback(Physics* physics, float dt)
     {
-        auto* simulation = physics->GetVehicleSimulation();
+        auto* simulation = CarPhysics::Get(*physics).GetVehicleSimulation();
         if (!simulation || !Input::IsGamepadConnected() || Input::IsBlockedByUi() ||
             m_externally_controlled || !m_is_occupied || !m_controller_feedback_enabled)
         {
@@ -2608,11 +2612,11 @@ namespace spartan
             if (contact)
             {
                 grounded = true;
-                const float load = std::clamp(physics->GetWheelTireLoad(static_cast<WheelIndex>(i)) / 1500.0f, 0.0f, 1.0f);
+                const float load = std::clamp(CarPhysics::Get(*physics).GetWheelTireLoad(static_cast<WheelIndex>(i)) / 1500.0f, 0.0f, 1.0f);
                 const float tread_speed = fabsf(simulation->get_wheel_angular_velocity(i)) * simulation->get_wheel_effective_radius(i);
                 const float tire_motion = std::clamp((std::max(speed, tread_speed) - 0.5f) / 3.0f, 0.0f, 1.0f);
-                slip = std::max(slip, std::clamp((fabsf(physics->GetWheelSlipRatio(static_cast<WheelIndex>(i))) - 0.12f) * 1.5f, 0.0f, 1.0f) * load * tire_motion);
-                drift = std::max(drift, std::clamp((fabsf(physics->GetWheelSlipAngle(static_cast<WheelIndex>(i))) - 0.09f) * 2.0f, 0.0f, 1.0f) * load * motion);
+                slip = std::max(slip, std::clamp((fabsf(CarPhysics::Get(*physics).GetWheelSlipRatio(static_cast<WheelIndex>(i))) - 0.12f) * 1.5f, 0.0f, 1.0f) * load * tire_motion);
+                drift = std::max(drift, std::clamp((fabsf(CarPhysics::Get(*physics).GetWheelSlipAngle(static_cast<WheelIndex>(i))) - 0.09f) * 2.0f, 0.0f, 1.0f) * load * motion);
                 if (m_haptic_initialized)
                     bump = std::max(bump, std::clamp(fabsf(compression - m_haptic_compression[i]) / dt * 0.25f, 0.0f, 0.65f) * load);
                 const auto surface = simulation->get_wheel_surface(i);
@@ -2633,10 +2637,10 @@ namespace spartan
         m_haptic_shift *= expf(-dt / 0.065f);
         m_haptic_phase = fmodf(m_haptic_phase + dt, 10.0f);
 
-        const float throttle = physics->GetVehicleThrottle();
-        const float brake = physics->GetVehicleBrake();
-        const float rpm = std::clamp((physics->GetEngineRPM() - physics->GetIdleRPM()) /
-            std::max(physics->GetRedlineRPM() - physics->GetIdleRPM(), 1.0f), 0.0f, 1.0f);
+        const float throttle = CarPhysics::Get(*physics).GetVehicleThrottle();
+        const float brake = CarPhysics::Get(*physics).GetVehicleBrake();
+        const float rpm = std::clamp((CarPhysics::Get(*physics).GetEngineRPM() - CarPhysics::Get(*physics).GetIdleRPM()) /
+            std::max(CarPhysics::Get(*physics).GetRedlineRPM() - CarPhysics::Get(*physics).GetIdleRPM(), 1.0f), 0.0f, 1.0f);
         const float load = std::clamp(fabsf(simulation->get_engine_output_torque()) /
             std::max(simulation->get_spec().engine_peak_torque, 1.0f), 0.0f, 1.0f);
         const bool abs = grounded && brake > 0.01f && simulation->is_abs_active_any();
@@ -2672,13 +2676,13 @@ namespace spartan
         // engine sound
         if (IsViewed() && physics && audio_engine)
         {
-            float engine_rpm  = physics->GetEngineRPM();
-            float throttle    = physics->GetVehicleThrottle();
-            float boost       = physics->GetBoostPressure();
-            float idle_rpm    = physics->GetIdleRPM();
-            float redline_rpm = physics->GetRedlineRPM();
+            float engine_rpm  = CarPhysics::Get(*physics).GetEngineRPM();
+            float throttle    = CarPhysics::Get(*physics).GetVehicleThrottle();
+            float boost       = CarPhysics::Get(*physics).GetBoostPressure();
+            float idle_rpm    = CarPhysics::Get(*physics).GetIdleRPM();
+            float redline_rpm = CarPhysics::Get(*physics).GetRedlineRPM();
             float rpm_normalized = std::clamp((engine_rpm - idle_rpm) / (redline_rpm - idle_rpm), 0.0f, 1.0f);
-            car::Simulation* simulation = physics->GetVehicleSimulation();
+            car::Simulation* simulation = CarPhysics::Get(*physics).GetVehicleSimulation();
 
             // the synth reads the effective spec so upgrades are heard, reconfigure only when it changes
             {
@@ -2831,19 +2835,19 @@ namespace spartan
             float contact_speed = 0.0f;
             float power_squared = 0.0f;
             float weighted_pan = 0.0f;
-            car::Simulation* simulation = physics->GetVehicleSimulation();
+            car::Simulation* simulation = CarPhysics::Get(*physics).GetVehicleSimulation();
             Camera* camera = World::GetCamera();
 
             for (int i = 0; i < 4 && simulation; i++)
             {
                 WheelIndex wheel = static_cast<WheelIndex>(i);
-                if (!physics->IsWheelGrounded(wheel))
+                if (!CarPhysics::Get(*physics).IsWheelGrounded(wheel))
                 {
                     continue;
                 }
 
                 const car::wheel& state = simulation->get_wheel_state(i);
-                float tread_speed = fabsf(physics->GetWheelAngularVelocity(wheel)) * simulation->get_wheel_effective_radius(i);
+                float tread_speed = fabsf(CarPhysics::Get(*physics).GetWheelAngularVelocity(wheel)) * simulation->get_wheel_effective_radius(i);
                 contact_speed = std::max(contact_speed, std::max(speed_kmh / 3.6f, tread_speed));
 
                 // rubber only sings on a hard paved surface, loose ground scrubs instead
@@ -2868,7 +2872,7 @@ namespace spartan
 
                 if (camera)
                 {
-                    math::Vector3 to_wheel = (physics->GetWheelContactPoint(wheel) - camera->GetEntity()->GetPosition()).Normalized();
+                    math::Vector3 to_wheel = (CarPhysics::Get(*physics).GetWheelContactPoint(wheel) - camera->GetEntity()->GetPosition()).Normalized();
                     weighted_pan += power * power * math::Vector3::Dot(to_wheel, camera->GetEntity()->GetRight());
                 }
             }

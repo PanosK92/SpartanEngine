@@ -31,7 +31,7 @@ using namespace std;
 using namespace spartan::math;
 //============================
 
-#include "IslandRoadSurface.h"
+#include "SplineRoadSurface.h"
 #include "../../geometry/GeneratedCache.h"
 
 namespace spartan
@@ -521,54 +521,54 @@ namespace spartan
 
     Spline::Spline(Entity* entity) : Component(entity)
     {
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_closed_loop, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_resolution, uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_road_width, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_closed_loop, SetClosedLoop, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_resolution, SetResolution, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_road_width, SetRoadWidth, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_needs_road_regeneration, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh_enabled, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_profile, SplineProfile);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_height, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_thickness, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_tube_sides, uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_road_width_end, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_uv_tiling_u, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_uv_tiling_v, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sidewalk_enabled, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sidewalk_width, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sidewalk_ranges, vector<Vector2>);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_curb_height, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_conform_to_terrain, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_terrain_offset, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_grade_limit_enabled, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_grade_degrees, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_cut, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_grade_smoothing, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_smoothing_length, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_embankment_enabled, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_embankment_slope_degrees, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_embankment_max_height, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_carve_terrain, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_carve_bed_drop, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_carve_fill_slope_degrees, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_carve_cut_slope_degrees, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_carve_max_shoulder, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_mesh_enabled, SetMeshEnabled, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_profile, SetProfile, SplineProfile);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_height, SetHeight, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_thickness, SetThickness, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_tube_sides, SetTubeSides, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_road_width_end, SetRoadWidthEnd, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_uv_tiling_u, SetUvTilingU, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_uv_tiling_v, SetUvTilingV, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_sidewalk_enabled, SetSidewalkEnabled, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_sidewalk_width, SetSidewalkWidth, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_sidewalk_ranges, SetSidewalkRanges, vector<Vector2>);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_curb_height, SetCurbHeight, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_conform_to_terrain, SetConformToTerrain, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_terrain_offset, SetTerrainOffset, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_grade_limit_enabled, SetGradeLimitEnabled, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_max_grade_degrees, SetMaxGradeDegrees, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_max_cut, SetMaxCut, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_grade_smoothing, SetGradeSmoothing, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_smoothing_length, SetSmoothingLength, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_embankment_enabled, SetEmbankmentEnabled, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_embankment_slope_degrees, SetEmbankmentSlopeDegrees, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_embankment_max_height, SetEmbankmentMaxHeight, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_carve_terrain, SetCarveTerrain, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_carve_bed_drop, SetCarveBedDrop, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_carve_fill_slope_degrees, SetCarveFillSlopeDegrees, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_carve_cut_slope_degrees, SetCarveCutSlopeDegrees, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_carve_max_shoulder, SetCarveMaxShoulder, float);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_source_spline_entity_id, SetSourceSplineEntityId, uint64_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_attach_mode, SplineAttachMode);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_attach_lateral_offset, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_attach_vertical_offset, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_attach_inherit_closed_loop, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_attach_sample_count, uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_spacing, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_align_instances_to_spline, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_mesh_path, std::string);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_template_id, uint64_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_lateral_offset, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_mirror, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_face_inward, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_random_offset, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_random_scale_min, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_random_scale_max, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_random_yaw, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_attach_mode, SetAttachMode, SplineAttachMode);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_attach_lateral_offset, SetAttachLateralOffset, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_attach_vertical_offset, SetAttachVerticalOffset, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_attach_inherit_closed_loop, SetAttachInheritClosedLoop, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_attach_sample_count, SetAttachSampleCount, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_instance_spacing, SetInstanceSpacing, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_align_instances_to_spline, SetAlignInstancesToSpline, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_instance_mesh_path, SetInstanceMeshPath, std::string);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_instance_template_id, SetInstanceTemplateId, uint64_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_instance_lateral_offset, SetInstanceLateralOffset, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_instance_mirror, SetInstanceMirror, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_instance_face_inward, SetInstanceFaceInward, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_instance_random_offset, SetInstanceRandomOffset, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_instance_random_scale_min, SetInstanceRandomScaleMin, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_instance_random_scale_max, SetInstanceRandomScaleMax, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_instance_random_yaw, SetInstanceRandomYaw, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_saved_material_name, std::string);
 
         // regenerate the mesh on scene boot so meshes appear without requiring play mode
@@ -1680,7 +1680,7 @@ namespace spartan
             network_hash.Add(spline->UsesEmbankment());
             network_hash.Add(spline->CarvesTerrain());
             network_hash.Add(spline->m_grade_limit_enabled);
-            network_hash.Add(island_road_surface::Enabled(spline->m_entity_ptr));
+            network_hash.Add(road_surface::Enabled(spline->m_entity_ptr));
             network_hash.Add(spline->m_sidewalk_ranges);
             for (float value : {spline->m_road_width, spline->m_road_width_end, spline->m_smoothing_length,
                 spline->m_max_grade_degrees, spline->m_grade_smoothing, spline->m_max_cut,
@@ -2097,7 +2097,7 @@ namespace spartan
                         const float minimum = applied_terrain_offset(spline->m_terrain_offset);
                         depth = clamp(left ? frame.fill_left : frame.fill_right, minimum, max(minimum, spline->m_embankment_max_height));
                         run = depth / tanf(clamp(spline->m_embankment_slope_degrees, 5.0f, 89.0f) * deg_to_rad);
-                        if (island_road_surface::Enabled(spline->m_entity_ptr))
+                        if (road_surface::Enabled(spline->m_entity_ptr))
                             run += .85f + .08f * sinf(frame.distance * .047f) + .035f * sinf(frame.distance * .119f);
                     }
                     const Matrix matrix = spline->m_entity_ptr->GetMatrix();
@@ -3565,7 +3565,7 @@ namespace spartan
         }
 
         const bool embankment = UsesEmbankment();
-        const bool island_finish = m_profile==SplineProfile::Road && island_road_surface::Enabled(m_entity_ptr);
+        const bool layered_finish = m_profile==SplineProfile::Road && road_surface::Enabled(m_entity_ptr);
 
 
         RoadGeometry geometry;
@@ -3589,11 +3589,11 @@ namespace spartan
         generated_cache::Hash cache_hash;
         cache_hash.Add(uint32_t(2)); // road extrusion, junction skirts and paint generator version
         cache_hash.Add(sizeof(RHI_Vertex_PosTexNorTan));
-        cache_hash.Add(island_road_surface::asphalt_repeat);
+        cache_hash.Add(road_surface::asphalt_repeat);
         cache_hash.Add(frames);
         cache_hash.Add(profile_points);
         cache_hash.Add(close_profile);
-        cache_hash.Add(island_finish);
+        cache_hash.Add(layered_finish);
         cache_hash.Add(embankment);
         cache_hash.Add(m_profile);
         for (float value : {m_road_width, m_road_width_end, m_uv_tiling_u, m_uv_tiling_v,
@@ -3671,10 +3671,10 @@ namespace spartan
 
         float total_length = frames.back().distance;
 
-        if (island_finish)
+        if (layered_finish)
         {
-            island_road_surface::SetLayer(m_entity_ptr,"spline_road_paint",paint_mesh,1);
-            island_road_surface::SetLayer(m_entity_ptr,"spline_road_shoulder",shoulder_mesh,2);
+            road_surface::SetLayer(m_entity_ptr,"spline_road_paint",paint_mesh,1);
+            road_surface::SetLayer(m_entity_ptr,"spline_road_shoulder",shoulder_mesh,2);
         }
         else
         {
@@ -3716,7 +3716,7 @@ namespace spartan
             render->SetDefaultMaterial();
         }
 
-        if (island_finish) render->SetMaterial(island_road_surface::MaterialFor(0));
+        if (layered_finish) render->SetMaterial(road_surface::MaterialFor(0));
 
         // Asphalt and junctions sit on top of terrain; do not coat them in ground material.
         render->SetFlag(RenderFlags::ExcludeFromTerrainBlend, m_profile == SplineProfile::Road);
@@ -3747,7 +3747,7 @@ namespace spartan
     {
         const bool width_varies      = m_road_width_end != m_road_width;
         const bool embankment        = UsesEmbankment();
-        const bool island_finish     = m_profile == SplineProfile::Road && island_road_surface::Enabled(m_entity_ptr);
+        const bool layered_finish     = m_profile == SplineProfile::Road && road_surface::Enabled(m_entity_ptr);
         const uint32_t total_samples = static_cast<uint32_t>(frames.size()) - 1;
         const uint32_t profile_count = static_cast<uint32_t>(profile_points.size()) + (embankment ? 2u : 0u);
 
@@ -3772,7 +3772,7 @@ namespace spartan
             }
             uint32_t cur_profile_count = static_cast<uint32_t>(cur_profile.size());
 
-            if (island_finish && embankment)
+            if (layered_finish && embankment)
             {
                 // A low, irregular gravel verge, not an asphalt-coated cliff.
                 const float verge=.85f+.08f*sinf(frame.distance*.047f)+.035f*sinf(frame.distance*.119f);
@@ -3819,7 +3819,7 @@ namespace spartan
                 const bool sidewalk = m_profile == SplineProfile::Road && m_sidewalk_enabled &&
                     j >= first && j < first + 5 && j != first + 2;
                 if (sidewalk && GetSidewalkWidthAt(frames[i - 1].t) == 0.0f && GetSidewalkWidthAt(frame.t) == 0.0f) continue;
-                const bool shoulder=island_finish && embankment && (j==0 || next==cur_profile_count-1);
+                const bool shoulder=layered_finish && embankment && (j==0 || next==cur_profile_count-1);
                 auto& target_vertices = sidewalk ? geometry.sidewalk_vertices : shoulder ? geometry.shoulder_vertices : geometry.vertices;
                 auto& target_indices = sidewalk ? geometry.sidewalk_indices : shoulder ? geometry.shoulder_indices : geometry.indices;
                 const uint32_t base = static_cast<uint32_t>(target_vertices.size());
@@ -3849,18 +3849,18 @@ namespace spartan
                         const float tex_u = (close_profile && side == 1 && next == 0) ? 1.0f : section_u[k];
                         const float paving_v = f.distance * 0.5f;
                         const float paving_origin = floorf(frames[i - 1].distance * 0.5f);
-                        const float repeat=shoulder ? 2.0f : island_road_surface::asphalt_repeat;
+                        const float repeat=shoulder ? 2.0f : road_surface::asphalt_repeat;
                         const Vector2 finish_uv(section[k].x/repeat,
                             f.distance/repeat-floorf(frames[i-1].distance/repeat));
                         target_vertices.emplace_back(f.position + f.right * section[k].x + f.up * section[k].y,
                             sidewalk ? Vector2((section[k].x + section[k].y) * 0.5f, paving_v - paving_origin) :
-                            island_finish ? finish_uv : Vector2(tex_u * m_uv_tiling_u, (row == 0 ? v0 : v1) - origin), n, t);
+                            layered_finish ? finish_uv : Vector2(tex_u * m_uv_tiling_u, (row == 0 ? v0 : v1) - origin), n, t);
                     }
                 }
                 target_indices.insert(target_indices.end(), {base, base + 1, base + 2, base + 1, base + 3, base + 2});
             }
-            if (island_finish)
-                island_road_surface::Markings(frames[i-1],frame,
+            if (layered_finish)
+                road_surface::Markings(frames[i-1],frame,
                     m_road_width+(m_road_width_end-m_road_width)*frames[i-1].t,current_width,geometry.paint_vertices,geometry.paint_indices);
             previous_profile = move(cur_profile);
             previous_u = move(u);
@@ -3869,7 +3869,7 @@ namespace spartan
 
     void Spline::AppendJunctionGeometry(RoadGeometry& geometry) const
     {
-        const bool island_finish = m_profile == SplineProfile::Road && island_road_surface::Enabled(m_entity_ptr);
+        const bool layered_finish = m_profile == SplineProfile::Road && road_surface::Enabled(m_entity_ptr);
 
         // Continue the approach paving and skirts around the exposed junction perimeter.
         auto append_border = [](const vector<Vector3>& quads, vector<RHI_Vertex_PosTexNorTan>& output, vector<uint32_t>& triangles)
@@ -3894,17 +3894,17 @@ namespace spartan
         for (const JunctionPatch& patch : m_junction_patches)
         {
             append_border(patch.sidewalk_quads, geometry.sidewalk_vertices, geometry.sidewalk_indices);
-            append_border(patch.skirt_quads, island_finish ? geometry.shoulder_vertices : geometry.vertices, island_finish ? geometry.shoulder_indices : geometry.indices);
+            append_border(patch.skirt_quads, layered_finish ? geometry.shoulder_vertices : geometry.vertices, layered_finish ? geometry.shoulder_indices : geometry.indices);
         }
 
         // A junction is part of one participating road's render AND collision mesh.
         for (const JunctionPatch& patch : m_junction_patches)
         {
-            if (island_finish)
+            if (layered_finish)
             {
                 // Same unpainted aggregate as the deck: no atlas mirroring or
                 // stripes leaking into the junction. Rebase before half packing.
-                const float r=island_road_surface::asphalt_repeat;
+                const float r=road_surface::asphalt_repeat;
                 const Vector2 origin(floorf(patch.center.x/r),floorf(patch.center.z/r));
                 for (size_t i=0;i<patch.boundary.size();++i)
                 {

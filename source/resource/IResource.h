@@ -45,37 +45,10 @@ namespace spartan
         IResource(ResourceType type);
         virtual ~IResource() = default;
 
-        void SetResourceFilePath(const std::string& path)
-        {
-            m_resource_file_path = FileSystem::GetRelativePath(path);
-            m_object_name        = FileSystem::GetFileNameWithoutExtensionFromFilePath(m_resource_file_path);
-        }
+        void SetResourceFilePath(const std::string& path);
+        void SetResourceName(const std::string& name);
+        void SetObjectName(const std::string& name);
 
-        void SetResourceName(const std::string& name)
-        {
-            const std::string file_name = FileSystem::GetFileNameFromFilePath(name);
-            std::string object_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_name);
-            if (object_name.empty())
-            {
-                object_name = file_name;
-            }
-            m_object_name = object_name;
-
-            // runtime resources keep a name only, do not invent a file under the texture library
-            const std::string directory = FileSystem::GetDirectoryFromFilePath(m_resource_file_path);
-            if (directory.empty())
-            {
-                return;
-            }
-
-            std::string extension = FileSystem::GetExtensionFromFilePath(file_name);
-            if (extension.empty())
-            {
-                extension = FileSystem::GetExtensionFromFilePath(m_resource_file_path);
-            }
-            m_resource_file_path = directory + object_name + extension;
-        }
-        
         ResourceType GetResourceType()           const { return m_resource_type; }
         const char* GetResourceTypeCstr()        const
         {
@@ -118,7 +91,8 @@ namespace spartan
         // Capture on the owner thread; the returned task owns everything it writes.
         virtual std::function<void()> CreateSaveTask(const std::string& file_path) { return {}; }
         virtual void SaveToFile(const std::string& file_path)   { }
-        virtual void LoadFromFile(const std::string& file_path) { }
+        // True means CPU input was loaded; GPU preparation may still be pending.
+        virtual bool LoadFromFile(const std::string& file_path) { return false; }
 
         // type
         template <typename T>
@@ -132,6 +106,7 @@ namespace spartan
         uint32_t m_flags                            = 0;
 
     private:
+        friend class ResourceCache;
         std::string m_resource_file_path;
         bool m_persistent = true;
     };

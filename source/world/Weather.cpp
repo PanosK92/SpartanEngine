@@ -8,17 +8,13 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ============================
 #include "pch.h"
 #include "Weather.h"
-#include "CarRain.h"
 #include "World.h"
 #include "Entity.h"
 #include "RainSoundSynthesis.h"
-#include "components/Light.h"
+#include "Environment.h"
 #include "components/Camera.h"
 #include "components/AudioSource.h"
 #include "components/ParticleSystem.h"
-#include "components/Physics.h"
-#include "../car/Car.h"
-#include "../car/CarSimulation.h"
 #include "../physics/PhysicsWorld.h"
 #include "../profiling/Profiler.h"
 #include "../core/Engine.h"
@@ -72,7 +68,7 @@ namespace spartan
         float wetness       = 0.0f;
         float puddles       = 0.0f;
         float shelter       = 0.0f;
-        Light* last_light   = nullptr;
+        bool initialized = false;
         Vector3 camera_last = Vector3::Zero;
         Vector3 camera_velocity = Vector3::Zero;
         bool camera_has_last = false;
@@ -80,14 +76,8 @@ namespace spartan
         uint64_t sound_entity_id = 0;
         once_flag sound_once;
 
-        // the occupied car, its water is simulated drop by drop in CarRain
         constexpr float acceleration_smoothing = 0.03f; // seconds, keeps suspension chatter out while a crash still lands in full
-        Entity* drop_vehicle       = nullptr;
-        Entity* drop_wetness_owner = nullptr;
-        float drop_wetness         = 0.0f;
-        Quaternion drop_rotation   = Quaternion::Identity;
-        Vector3 drop_velocity_last = Vector3::Zero; // world, m/s
-        Vector3 drop_acceleration  = Vector3::Zero; // world, m/s^2
+
 
         int32_t wrap(int32_t value)
         {
@@ -320,98 +310,6 @@ namespace spartan
             entity->SetPosition(camera_position + lead + Vector3(0.0f, drops_height, 0.0f));
         }
 
-        void tick_vehicle_drops(float delta_time)
-        {
-            // the water on the car lives on the car's clock, it holds still while the game is paused
-            if (Engine::IsFlagSet(EngineMode::Paused))
-            {
-                delta_time = 0.0f;
-            }
-
-            drop_vehicle = nullptr;
-            if (wetness <= 0.0f && drop_wetness <= 0.0f)
-            {
-                CarRain::Tick(nullptr, CarRain::Conditions(), delta_time);
-                return;
-            }
-
-            // the water stays on the car the player last drove, stepping out does not dry it
-            Car* occupied = nullptr;
-            Car* previous = nullptr;
-            for (Car* car : Car::GetAll())
-            {
-                if (!car)
-                    continue;
-
-                if (car->IsViewed())
-                {
-                    occupied = car;
-                    break;
-                }
-
-                if (drop_wetness_owner && car->GetRootEntity() == drop_wetness_owner)
-                {
-                    previous = car;
-                }
-            }
-            if (!occupied)
-            {
-                occupied = previous;
-            }
-            Entity* root                = occupied ? occupied->GetRootEntity() : nullptr;
-            Physics* physics            = root ? root->GetComponent<Physics>() : nullptr;
-            car::Simulation* simulation = physics ? physics->GetVehicleSimulation() : nullptr;
-            if (!simulation)
-            {
-                CarRain::Tick(nullptr, CarRain::Conditions(), delta_time);
-                return;
-            }
-
-            // the car carries its water, it stays wet driving under a roof and dries over minutes, faster in the airflow
-            const Quaternion to_car       = root->GetRotation().Inverse();
-            const Vector3 velocity_world  = physics->GetLinearVelocity();
-            const Vector3 velocity        = to_car * velocity_world;
-            const float airspeed          = velocity.Length();
-            const float exposure          = grid_exposure(root->GetPosition() + Vector3(0.0f, 1.5f, 0.0f));
-            const float soak              = rain * exposure;
-            if (root != drop_wetness_owner)
-            {
-                drop_wetness_owner = root;
-                drop_wetness       = wetness * exposure;
-                drop_velocity_last = velocity_world;
-                drop_acceleration  = Vector3::Zero;
-            }
-
-            // measured from the body's own velocity, so braking, cornering, bumps and crashes all reach the water
-            if (delta_time > 0.0f)
-            {
-                const Vector3 acceleration = (velocity_world - drop_velocity_last) / delta_time;
-                drop_acceleration          = Vector3::Lerp(drop_acceleration, acceleration, min(1.0f, delta_time / acceleration_smoothing));
-                drop_velocity_last         = velocity_world;
-            }
-
-            if (soak > 0.0f)
-            {
-                drop_wetness = min(1.0f, drop_wetness + delta_time * (0.02f + 0.13f * rain) * soak);
-            }
-            else
-            {
-                drop_wetness = max(0.0f, drop_wetness - delta_time * (1.0f + airspeed / 15.0f) / 150.0f);
-            }
-
-            drop_vehicle  = root;
-            drop_rotation = root->GetRotation();
-
-            CarRain::Conditions conditions;
-            conditions.velocity     = velocity;
-            conditions.acceleration = to_car * drop_acceleration;
-            conditions.gravity      = to_car * Vector3(0.0f, -9.81f, 0.0f);
-            conditions.wind         = to_car * World::GetWind();
-            conditions.rain         = rain;
-            conditions.exposure     = exposure;
-            CarRain::Tick(root, conditions, delta_time);
-        }
-
         void tick_audio()
         {
             AudioSource* audio = rain_audio(rain > 0.0f || wetness > 0.0f);
@@ -450,25 +348,32 @@ namespace spartan
         }
     }
 
+    void Weather::Reset()
+    {
+        initialized = false;
+        rain = wetness = puddles = shelter = 0.0f;
+        rain_entity_id = sound_entity_id = 0;
+        camera_has_last = false;
+        camera_velocity = Vector3::Zero;
+        grid.initialized = false;
+        pending.clear();
+    }
+
     void Weather::Tick(float delta_time)
     {
         SP_PROFILE_CPU();
 
         delta_time = clamp(delta_time, 0.0f, 0.1f);
-        Light* light = World::GetDirectionalLight();
-        rain         = light ? light->GetRain() : 0.0f;
+        rain = Environment::GetRain();
 
         // a freshly loaded world starts in the state its weather would have settled into
-        if (light != last_light)
+        if (!initialized)
         {
-            last_light      = light;
+            initialized = true;
             wetness         = rain > 0.0f ? 1.0f : 0.0f;
             puddles         = rain * 0.75f;
             camera_has_last = false;
             grid.initialized = false;
-            drop_wetness_owner = nullptr;
-            drop_wetness       = 0.0f;
-            CarRain::Clear();
         }
 
         // soaking takes seconds in a downpour, drying takes minutes
@@ -492,7 +397,6 @@ namespace spartan
             puddles = max(puddles_target, puddles - delta_time / 240.0f);
         }
 
-        tick_vehicle_drops(delta_time);
 
         Camera* camera = World::GetCamera();
         if (!camera)
@@ -573,19 +477,9 @@ namespace spartan
         return film + standing;
     }
 
-    Entity* Weather::GetDropsVehicle()
+    float Weather::GetExposure(const Vector3& position)
     {
-        return drop_vehicle;
-    }
-
-    float Weather::GetDropsWetness()
-    {
-        return drop_vehicle ? drop_wetness : 0.0f;
-    }
-
-    Vector3 Weather::GetDropsAxis(uint32_t plane)
-    {
-        return drop_rotation * (plane == 0 ? Vector3::Right : (plane == 1 ? Vector3::Up : Vector3::Forward));
+        return grid_exposure(position);
     }
 
     const float* Weather::GetOcclusionHeights()

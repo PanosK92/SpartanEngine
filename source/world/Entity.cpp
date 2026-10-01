@@ -23,18 +23,20 @@ Commercial use requires written permission and negotiated payment terms.
 #include "components/Terrain.h"
 #include "components/Volume.h"
 #include "components/ParticleSystem.h"
-#include "components/SkidMarks.h"
 #include "components/Water.h"
-#include "components/Traffic.h"
-#include "components/Pedestrians.h"
 #include "components/Navigation.h"
-#include "components/RaceDriver.h"
-#include "components/RouteDriver.h"
 #include "components/SpawnPoint.h"
-#include "components/CarReset.h"
 #include "components/Text3D.h"
 #include "components/Animator.h"
 #include "components/Ragdoll.h"
+#ifdef SP_GAME
+#include "../game/components/Pedestrians.h"
+#include "../game/components/SkidMarks.h"
+#include "../game/components/Traffic.h"
+#include "../game/components/RaceDriver.h"
+#include "../game/components/RouteDriver.h"
+#include "../game/components/CarReset.h"
+#endif
 SP_WARNINGS_OFF
 #include "../io/pugixml.hpp"
 SP_WARNINGS_ON
@@ -156,7 +158,7 @@ namespace spartan
                     Component* component_clone = clone->AddComponent(component_original->GetType());
 
                     // component's properties
-                    component_clone->SetAttributes(component_original->GetAttributes());
+                    component_clone->CopyFrom(*component_original);
                 }
             }
 
@@ -201,10 +203,6 @@ namespace spartan
     Entity::~Entity()
     {
         for (auto& component : m_components) component.reset();
-
-        // the selection holds raw pointers, drop this one wherever it sits in the list, not just when
-        // it happens to be the primary pick
-        Camera::RemoveFromSelection(this);
         delete m_transform_cache.load(memory_order_relaxed);
     }
 
@@ -437,7 +435,7 @@ namespace spartan
             {
                 const BodyType type = physics->GetBodyType();
                 if (!physics->IsStatic() || physics->IsKinematic() ||
-                    type == BodyType::Controller || type == BodyType::Vehicle || type == BodyType::Cloth)
+                    type == BodyType::Controller || type == BodyType::Custom || type == BodyType::Cloth)
                     return true;
             }
         }

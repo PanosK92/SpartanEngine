@@ -584,3 +584,20 @@ namespace spartan::mcp_common
 
     //==============================================================================
 }
+
+namespace spartan::mcp_common
+{
+        bool parse_int32(const std::string& value, int32_t& result)
+        {
+            char* end = nullptr;
+            const long parsed = std::strtol(value.c_str(), &end, 10);
+            if (end == value.c_str() || *end != '\0' || parsed < std::numeric_limits<int32_t>::min() || parsed > std::numeric_limits<int32_t>::max())
+            {
+                return false;
+            }
+
+            result = static_cast<int32_t>(parsed);
+            return true;
+        }
+
+}

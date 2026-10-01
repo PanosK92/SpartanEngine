@@ -1,6 +1,8 @@
 // Earth environment shared by world lighting and vehicle boundary conditions.
 #pragma once
 #include "../math/Vector3.h"
+#include "../math/Vector2.h"
+namespace pugi { class xml_node; }
 
 namespace spartan
 {
@@ -12,6 +14,9 @@ namespace spartan
         float north_degrees = 0; // world +Z is north, +X east at zero
         float annual_temperature = 18, seasonal_amplitude = 9, daily_amplitude = 4;
         float sea_level_pressure = 101325; // Pa
+        float rain = 0.0f, cloud_coverage = 0.8f;
+        math::Vector3 wind = math::Vector3(6.928203f, 0.0f, -4.0f);
+        float puddliness = 0.0f;
     };
 
     struct EnvironmentState
@@ -28,6 +33,20 @@ namespace spartan
     {
     public:
         static EnvironmentSettings GetSettings();
+        static void Save(pugi::xml_node& node);
+        static void Load(pugi::xml_node& world_node);
+        static float GetRain();
+        static void SetRain(float value);
+        static float GetCloudCoverage();
+        static void SetCloudCoverage(float value);
+        static float GetCloudCoverageEffective();
+        static const math::Vector3& GetWind();
+        static void SetWind(const math::Vector3& wind);
+        static math::Vector3 SampleWind(const math::Vector3& position, float time);
+        static float GetPuddliness();
+        static void SetPuddliness(float value);
+        static const math::Vector2& GetCloudSeedOffset();
+        static void ResetSpatialWeather();
         static void SetSettings(EnvironmentSettings settings);
         static bool SetDate(int year, int month, int day, int hour, int minute, double second);
         static void GetDate(int& year, int& month, int& day, int& hour, int& minute, double& second, bool real_time = false);

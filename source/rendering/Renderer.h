@@ -6,6 +6,8 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #pragma once
+#include "SurfaceInteraction.h"
+#include "SurfaceWater.h"
 
 //= INCLUDES ===================================
 #include "Renderer_Definitions.h"
@@ -128,6 +130,14 @@ namespace spartan
 
     namespace Renderer
     {
+        void SetSurfaceWater(const SurfaceWater& water);
+        const SurfaceWater& GetSurfaceWater();
+        void SetSurfaceInteraction(const SurfaceInteraction& interaction);
+        const SurfaceInteraction& GetSurfaceInteraction();
+        void SetEditorSelection(const std::vector<uint64_t>& entities, int instance);
+        std::vector<Entity*> GetEditorSelection();
+        int GetEditorSelectedInstance();
+
         // one ring_radii_m and cell_size_m entry per lod ring, the renderer assumes three rings ordered near to far
         struct GpuScatterParams
         {
@@ -221,6 +231,9 @@ namespace spartan
         void SetStandardResources(RHI_CommandList* cmd_list = nullptr);
         // Called after world entities and resources have been released.
         void ResetWorldGeometry();
+        void ResetSceneChanges();
+        bool HaveMaterialsChangedThisFrame();
+        bool HaveLightsChanged();
         uint64_t GetFrameNumber();
         RHI_Api_Type GetRhiApiType();
         bool Screenshot();
@@ -324,6 +337,7 @@ namespace spartan
         RHI_RasterizerState* GetRasterizerState(const Renderer_RasterizerState type);
         RHI_DepthStencilState* GetDepthStencilState(const Renderer_DepthStencilState type);
         RHI_BlendState* GetBlendState(const Renderer_BlendState type);
+        Camera* GetViewCamera();
         RHI_Texture* GetRenderTarget(const Renderer_RenderTarget type);
         RHI_Shader* GetShader(const Renderer_Shader type);
         RHI_Buffer* GetBuffer(const Renderer_Buffer type);

@@ -7,6 +7,9 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ===============================
 #include "pch.h"
+#ifdef SP_GAME
+#include "CarPhysics.h"
+#endif
 #include "CarHud.h"
 #include "../core/Engine.h"
 #include "CarTelemetry.h"
@@ -127,19 +130,19 @@ namespace spartan::car_hud
 
         const math::Vector3 velocity = physics->GetLinearVelocity();
         const float speed_kmh        = velocity.Length() * 3.6f;
-        const float engine_rpm       = physics->GetEngineRPM();
+        const float engine_rpm       = CarPhysics::Get(*physics).GetEngineRPM();
         const float redline_rpm      = std::max(
-            physics->GetRedlineRPM(),
+            CarPhysics::Get(*physics).GetRedlineRPM(),
             1.0f
         );
-        const bool turbo_enabled     = physics->GetTurboEnabled();
-        const float boost_bar        = physics->GetBoostPressure();
-        const bool is_shifting       = physics->IsShifting();
-        const char* gear_str         = physics->GetCurrentGearString();
-        const float throttle         = physics->GetVehicleThrottle();
-        const float brake            = physics->GetVehicleBrake();
-        const float steer            = physics->GetVehicleSteering();
-        const float handbrake        = physics->GetVehicleHandbrake();
+        const bool turbo_enabled     = CarPhysics::Get(*physics).GetTurboEnabled();
+        const float boost_bar        = CarPhysics::Get(*physics).GetBoostPressure();
+        const bool is_shifting       = CarPhysics::Get(*physics).IsShifting();
+        const char* gear_str         = CarPhysics::Get(*physics).GetCurrentGearString();
+        const float throttle         = CarPhysics::Get(*physics).GetVehicleThrottle();
+        const float brake            = CarPhysics::Get(*physics).GetVehicleBrake();
+        const float steer            = CarPhysics::Get(*physics).GetVehicleSteering();
+        const float handbrake        = CarPhysics::Get(*physics).GetVehicleHandbrake();
 
         const math::Vector2& vp_pos  = Viewport::GetScreenPosition();
         const math::Vector2& vp_size = Viewport::GetScreenSize();
@@ -265,17 +268,17 @@ namespace spartan::car_hud
             static pill_anim turbo_anim;
             static pill_anim lock_anim;
 
-            const bool abs_on     = physics->GetAbsEnabled();
-            const bool abs_active = physics->IsAbsActiveAny();
+            const bool abs_on     = CarPhysics::Get(*physics).GetAbsEnabled();
+            const bool abs_active = CarPhysics::Get(*physics).IsAbsActiveAny();
             const bool abs_grab   =
                 abs_active &&
-                physics->GetAbsPhase() >= 0.5f;
-            const bool tcs_on     = physics->GetTcEnabled();
-            const bool tcs_active = physics->IsTcActive();
-            const bool drs_on     = physics->GetDrsEnabled();
-            const bool drs_active = physics->GetDrsActive();
+                CarPhysics::Get(*physics).GetAbsPhase() >= 0.5f;
+            const bool tcs_on     = CarPhysics::Get(*physics).GetTcEnabled();
+            const bool tcs_active = CarPhysics::Get(*physics).IsTcActive();
+            const bool drs_on     = CarPhysics::Get(*physics).GetDrsEnabled();
+            const bool drs_active = CarPhysics::Get(*physics).GetDrsActive();
             const bool hbrk_active = handbrake > 0.1f;
-            const bool lock_active = physics->IsBurnoutActive();
+            const bool lock_active = CarPhysics::Get(*physics).IsBurnoutActive();
             const bool turbo_active =
                 turbo_enabled &&
                 boost_bar > 0.5f;
@@ -599,25 +602,25 @@ namespace spartan::car_hud
 
     void draw_telemetry_hud(Car* car_instance, Physics* physics)
     {
-        if (!car_instance || !physics || !physics->GetVehicleSimulation())
+        if (!car_instance || !physics || !CarPhysics::Get(*physics).GetVehicleSimulation())
             return;
 
-        car::Simulation* simulation = physics->GetVehicleSimulation();
+        car::Simulation* simulation = CarPhysics::Get(*physics).GetVehicleSimulation();
         const auto& spec = simulation->get_spec();
         telemetry::snapshot s;
         s.vehicle_id = physics->GetObjectId();
         s.name = spec.name;
-        s.gear = physics->GetCurrentGearString();
-        s.differential = physics->GetDiffTypeName();
+        s.gear = CarPhysics::Get(*physics).GetCurrentGearString();
+        s.differential = CarPhysics::Get(*physics).GetDiffTypeName();
         s.speed = physics->GetLinearVelocity().Length() * 3.6f;
-        s.rpm = physics->GetEngineRPM();
-        s.redline = physics->GetRedlineRPM();
-        s.boost = physics->GetBoostPressure();
-        s.boost_max = physics->GetBoostMaxPressure();
-        s.throttle = physics->GetVehicleThrottle();
-        s.brake = physics->GetVehicleBrake();
-        s.steering = physics->GetVehicleSteering();
-        s.handbrake = physics->GetVehicleHandbrake();
+        s.rpm = CarPhysics::Get(*physics).GetEngineRPM();
+        s.redline = CarPhysics::Get(*physics).GetRedlineRPM();
+        s.boost = CarPhysics::Get(*physics).GetBoostPressure();
+        s.boost_max = CarPhysics::Get(*physics).GetBoostMaxPressure();
+        s.throttle = CarPhysics::Get(*physics).GetVehicleThrottle();
+        s.brake = CarPhysics::Get(*physics).GetVehicleBrake();
+        s.steering = CarPhysics::Get(*physics).GetVehicleSteering();
+        s.handbrake = CarPhysics::Get(*physics).GetVehicleHandbrake();
         s.lateral_g = simulation->get_lateral_accel() / 9.81f;
         s.longitudinal_g = simulation->get_longitudinal_accel() / 9.81f;
         s.torque = simulation->get_engine_output_torque();
@@ -638,19 +641,19 @@ namespace spartan::car_hud
         s.ride_height = aero.ride_height;
         s.optimal_temp = spec.tire_optimal_temp;
         s.temp_range = spec.tire_temp_range;
-        s.tc_reduction = physics->GetTcReduction();
+        s.tc_reduction = CarPhysics::Get(*physics).GetTcReduction();
         s.distance = simulation->get_distance_m();
-        s.abs_enabled = physics->GetAbsEnabled();
+        s.abs_enabled = CarPhysics::Get(*physics).GetAbsEnabled();
         s.stability_enabled = spec.yaw_control_enabled;
         s.stability_active = simulation->get_assist_state().stability_active;
         s.steering_enabled = spec.assists.steering_speed_reduction > 0;
-        s.automatic = !physics->GetManualTransmission();
-        s.tc_enabled = physics->GetTcEnabled();
-        s.tc_active = physics->IsTcActive();
-        s.drs_enabled = physics->GetDrsEnabled();
-        s.drs_active = physics->GetDrsActive();
-        s.turbo = physics->GetTurboEnabled();
-        s.shifting = physics->IsShifting();
+        s.automatic = !CarPhysics::Get(*physics).GetManualTransmission();
+        s.tc_enabled = CarPhysics::Get(*physics).GetTcEnabled();
+        s.tc_active = CarPhysics::Get(*physics).IsTcActive();
+        s.drs_enabled = CarPhysics::Get(*physics).GetDrsEnabled();
+        s.drs_active = CarPhysics::Get(*physics).GetDrsActive();
+        s.turbo = CarPhysics::Get(*physics).GetTurboEnabled();
+        s.shifting = CarPhysics::Get(*physics).IsShifting();
         s.limiter = simulation->get_rev_limiter_active();
         s.engine_running = simulation->get_engine_running();
         s.full_simulation = car_instance->GetVehicleSimMode() == VehicleSimMode::Full;
@@ -660,21 +663,21 @@ namespace spartan::car_hud
             auto& w = s.wheels[i];
             const auto& physical = simulation->get_wheel_state(i);
             const WheelIndex index = indices[i];
-            w.grounded = physics->IsWheelGrounded(index);
-            w.abs = physics->IsAbsActive(index);
+            w.grounded = CarPhysics::Get(*physics).IsWheelGrounded(index);
+            w.abs = CarPhysics::Get(*physics).IsAbsActive(index);
             for (int zone = 0; zone < 3; ++zone)
-                w.surface[zone] = physics->GetWheelSurfaceTemp(index, zone);
-            w.core = physics->GetWheelCoreTemp(index);
+                w.surface[zone] = CarPhysics::Get(*physics).GetWheelSurfaceTemp(index, zone);
+            w.core = CarPhysics::Get(*physics).GetWheelCoreTemp(index);
             w.pressure = physical.pressure_bar;
-            w.wear = physics->GetWheelWear(index);
+            w.wear = CarPhysics::Get(*physics).GetWheelWear(index);
             w.damage = physical.damage;
-            w.load = physics->GetWheelTireLoad(index);
+            w.load = CarPhysics::Get(*physics).GetWheelTireLoad(index);
             w.saturation = physical.tire_saturation;
-            w.compression = physics->GetWheelCompression(index);
-            w.slip_ratio = physics->GetWheelSlipRatio(index);
-            w.slip_angle = physics->GetWheelSlipAngle(index) * 180.0f / pi;
-            w.brake_temp = physics->GetWheelBrakeTemp(index);
-            w.brake_efficiency = physics->GetWheelBrakeEfficiency(index);
+            w.compression = CarPhysics::Get(*physics).GetWheelCompression(index);
+            w.slip_ratio = CarPhysics::Get(*physics).GetWheelSlipRatio(index);
+            w.slip_angle = CarPhysics::Get(*physics).GetWheelSlipAngle(index) * 180.0f / pi;
+            w.brake_temp = CarPhysics::Get(*physics).GetWheelBrakeTemp(index);
+            w.brake_efficiency = CarPhysics::Get(*physics).GetWheelBrakeEfficiency(index);
             w.road = simulation->get_surface_name(physical.contact_surface);
             w.surface_grip = physical.surface_grip;
             w.surface_rolling = physical.surface_rolling;
@@ -801,11 +804,11 @@ namespace spartan::car_hud
                 storage->SetFloat(steering_key, spec.assists.steering_speed_reduction);
             switch (telemetry::draw_strip(painter, s, setup_open))
             {
-                case telemetry::control::abs: physics->SetAbsEnabled(!s.abs_enabled); break;
-                case telemetry::control::traction: physics->SetTcEnabled(!s.tc_enabled); break;
-                case telemetry::control::drs: physics->SetDrsEnabled(!s.drs_enabled); break;
-                case telemetry::control::turbo: physics->SetTurboEnabled(!s.turbo); break;
-                case telemetry::control::automatic: physics->SetManualTransmission(s.automatic); break;
+                case telemetry::control::abs: CarPhysics::Get(*physics).SetAbsEnabled(!s.abs_enabled); break;
+                case telemetry::control::traction: CarPhysics::Get(*physics).SetTcEnabled(!s.tc_enabled); break;
+                case telemetry::control::drs: CarPhysics::Get(*physics).SetDrsEnabled(!s.drs_enabled); break;
+                case telemetry::control::turbo: CarPhysics::Get(*physics).SetTurboEnabled(!s.turbo); break;
+                case telemetry::control::automatic: CarPhysics::Get(*physics).SetManualTransmission(s.automatic); break;
                 case telemetry::control::stability: simulation->get_spec().yaw_control_enabled = !s.stability_enabled; break;
                 case telemetry::control::steering:
                     simulation->get_spec().assists.steering_speed_reduction = s.steering_enabled ? 0.0f :

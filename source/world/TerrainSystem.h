@@ -20,6 +20,8 @@ Commercial use requires written permission and negotiated payment terms.
 namespace spartan
 {
     class RHI_Texture;
+    class Entity;
+    class ProgressTask;
 
     enum class TerrainBrushMode
     {
@@ -197,6 +199,7 @@ namespace spartan
     class TerrainSystem
     {
     public:
+        static bool PrepareWorld(const std::vector<Entity*>& entities, const ProgressTask& progress);
         static TerrainGridMapping ComputeGridMapping(
             uint32_t dense_width,
             uint32_t dense_height,

@@ -705,7 +705,36 @@ namespace spartan
         };
     }
 
-    void RHI_Texture::LoadFromFile(const string& file_path)
+    bool RHI_Texture::LoadFromFile(const string& file_path)
+    {
+        RHI_Texture loaded;
+        loaded.SetFlags(GetFlags());
+        if (!loaded.ReadFromFile(file_path)) return false;
+
+        // Replace only after the entire CPU payload has been decoded successfully.
+        RHI_DestroyResource();
+        m_width = std::move(loaded.m_width);
+        m_height = std::move(loaded.m_height);
+        m_depth = std::move(loaded.m_depth);
+        m_mip_count = std::move(loaded.m_mip_count);
+        m_bits_per_channel = std::move(loaded.m_bits_per_channel);
+        m_channel_count = std::move(loaded.m_channel_count);
+        m_format = std::move(loaded.m_format);
+        m_type = std::move(loaded.m_type);
+        m_viewport = std::move(loaded.m_viewport);
+        m_flags = std::move(loaded.m_flags);
+        m_object_name = std::move(loaded.m_object_name);
+        m_slices = std::move(loaded.m_slices);
+        m_resident_mip = 0;
+        ClearLayouts();
+        SetResourceFilePath(file_path);
+        ComputeMemoryUsage();
+        m_resource_state = ResourceState::Max;
+        if (!(m_flags & RHI_Texture_DeferUpload)) PrepareForGpu();
+        return true;
+    }
+
+    bool RHI_Texture::ReadFromFile(const string& file_path)
     {
         // a read outside a world load (thumbnails, previews, a material edit) must not put the whole engine
         // into loading, the renderer drops ray tracing and occlusion culling for as long as anything loads
@@ -738,7 +767,7 @@ namespace spartan
             {
                 SP_LOG_ERROR("Failed to open native texture %s", file_path.c_str());
                 Breadcrumbs::EndMarker(); // texture_load
-                return;
+                return false;
             }
 
             binary_format::header hdr{};
@@ -746,7 +775,7 @@ namespace spartan
             {
                 SP_LOG_ERROR("Failed to read header for %s", file_path.c_str());
                 Breadcrumbs::EndMarker(); // texture_load
-                return;
+                return false;
             }
 
             // initialise texture fields
@@ -778,7 +807,7 @@ namespace spartan
                     {
                         SP_LOG_ERROR("Failed to read size for slice %u mip %u in %s", array_index, mip_index, file_path.c_str());
                         Breadcrumbs::EndMarker(); // texture_load
-                        return;
+                        return false;
                     }
 
                     RHI_Texture_Mip& mip = slice.mips[mip_index];
@@ -787,7 +816,7 @@ namespace spartan
                     {
                         SP_LOG_ERROR("Failed to read data for slice %u mip %u in %s", array_index, mip_index, file_path.c_str());
                         Breadcrumbs::EndMarker(); // texture_load
-                        return;
+                        return false;
                     }
                 }
             }
@@ -797,6 +826,8 @@ namespace spartan
         else
         {
             SP_LOG_ERROR("Failed to load texture %s: format not supported", file_path.c_str());
+            Breadcrumbs::EndMarker();
+            return false;
         }
 
         SetResourceFilePath(file_path); // set resource file path so it can be used by the resource cache.
@@ -805,15 +836,7 @@ namespace spartan
 
         Breadcrumbs::EndMarker(); // texture_load
 
-        // automatically prepare the texture for gpu use,
-        // skipped when RHI_Texture_DeferUpload is set, which is used by source material textures that still need to be modified by Material::pack_textures
-        // (alpha mask merging into color.a is the canonical case, an early upload would freeze the pre-merge bytes on the gpu)
-        if (!(m_flags & RHI_Texture_DeferUpload))
-        {
-            progress.SetStep("Preparing texture for GPU");
-            PrepareForGpu();
-        }
-
+        return HasData() && m_width != 0 && m_height != 0;
     }
 
     RHI_Texture_Mip* RHI_Texture::GetMip(const uint32_t array_index, const uint32_t mip_index)

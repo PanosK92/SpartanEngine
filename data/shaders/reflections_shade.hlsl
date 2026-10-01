@@ -128,17 +128,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float4 gbuffer_position = tex[thread_id.xy];
     float  hit_distance     = gbuffer_position.w;
 
-    // skip pixels the tracer marked as ibl owned (get_rt_reflection_weight 0) before any texture/material work
-    if (hit_distance < 0.0f)
-    {
-        tex_uav[thread_id.xy] = float4(0, 0, 0, 0);
-        return;
-    }
-
     float2 uv_source = (thread_id.xy + 0.5f) / resolution_out;
     float  source_coat;
     float  source_roughness = get_rt_reflection_roughness(uv_source, source_coat);
-    float  source_alpha     = min(ggx_alpha_from_roughness(source_roughness), 0.6f);
+    float  source_alpha     = ggx_alpha_from_roughness(source_roughness);
     float  rough_reflection = smoothstep(0.03f, 0.45f, source_alpha);
     float3 source_pos       = get_position(uv_source);
     float  mip_count        = pass_float(pass_reflections_shade::mip_count);

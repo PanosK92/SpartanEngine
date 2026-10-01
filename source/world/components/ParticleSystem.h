@@ -71,6 +71,7 @@ namespace spartan
 
         //= COMPONENT ================================
         void Tick() override;
+        void CopyFrom(const Component& source) override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
         //============================================

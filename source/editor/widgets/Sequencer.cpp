@@ -7,6 +7,9 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ===========================
 #include "pch.h"
+#ifdef SP_GAME
+#include "../../car/CarPhysics.h"
+#endif
 #include "Sequencer.h"
 #include <algorithm>
 #include <thread>
@@ -1338,10 +1341,10 @@ void Sequencer::EvaluateDrives(float delta_time)
                 for (uint32_t w = 0; w < static_cast<uint32_t>(WheelIndex::Count); w++)
                 {
                     const WheelIndex wheel = static_cast<WheelIndex>(w);
-                    spin = max(spin, physics->GetWheelSlipRatio(wheel));
+                    spin = max(spin, CarPhysics::Get(*physics).GetWheelSlipRatio(wheel));
                     if (wheel == WheelIndex::RearLeft || wheel == WheelIndex::RearRight)
                     {
-                        slide = max(slide, fabsf(physics->GetWheelSlipAngle(wheel)));
+                        slide = max(slide, fabsf(CarPhysics::Get(*physics).GetWheelSlipAngle(wheel)));
                     }
                 }
                 const float excess = max(spin - 0.12f, 0.0f) * 4.0f + max(slide - 0.1f, 0.0f) * 5.0f;

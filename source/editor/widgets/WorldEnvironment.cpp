@@ -332,6 +332,8 @@ void WorldEnvironment::OnTickVisible()
 
     Light* sun = World::GetDirectionalLight();
     unique_ptr<editor_history::EntityScope> history;
+    unique_ptr<editor_history::EnvironmentScope> environment_history;
+    if (!sun) environment_history = make_unique<editor_history::EnvironmentScope>();
     if (sun)
     {
         // the sun's entity snapshot carries the environment settings too, so every edit here is one undo step
@@ -345,9 +347,9 @@ void WorldEnvironment::OnTickVisible()
 
     if (!sun)
     {
-        // clouds, rain and the clock are carried by the sun, without one only the place and climate mean anything
+        // Environment settings remain editable without a directional light.
         ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(8.0f)));
-        ImGui::EditorUi::panel_header("This world has no sun", "The time of day, clouds and rain are carried by a directional light. Place, wind and climate below still apply.", Editor::font_bold);
+        ImGui::EditorUi::panel_header("This world has no sun", "Add a directional light for sunlight. Weather, wind and climate settings apply independently.", Editor::font_bold);
         ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(4.0f)));
         ImGui::EditorUi::push_primary_button();
         if (ImGui::Button("Add a sun"))
@@ -383,8 +385,8 @@ void WorldEnvironment::OnTickVisible()
 
     // weather, the thing changed most often after the time, so it comes first and starts open
     {
-        float cloud_coverage = sun ? sun->GetCloudCoverage() : 0.0f;
-        float rain           = sun ? sun->GetRain() : 0.0f;
+        float cloud_coverage = Environment::GetCloudCoverage();
+        float rain           = Environment::GetRain();
         float puddliness     = World::GetPuddliness();
         const float wind     = sqrtf(World::GetWind().x * World::GetWind().x + World::GetWind().z * World::GetWind().z);
         if (rain > 0.01f)
@@ -397,16 +399,14 @@ void WorldEnvironment::OnTickVisible()
         }
         if (layout::fold("Weather", true, summary))
         {
-            ImGui::BeginDisabled(!sun);
-            if (property_percent("Clouds", &cloud_coverage, "0 is a clear sky, 100 is overcast") && sun)
+            if (property_percent("Clouds", &cloud_coverage, "0 is a clear sky, 100 is overcast"))
             {
-                sun->SetCloudCoverage(cloud_coverage);
+                Environment::SetCloudCoverage(cloud_coverage);
             }
-            if (property_percent("Rain", &rain, "clouds close in, surfaces soak and puddles fill over a minute of steady rain") && sun)
+            if (property_percent("Rain", &rain, "clouds close in, surfaces soak and puddles fill over a minute of steady rain"))
             {
-                sun->SetRain(rain);
+                Environment::SetRain(rain);
             }
-            ImGui::EndDisabled();
             if (property_percent("Puddles", &puddliness, "standing water on terrain and roads, pools grow out of the low spots first"))
             {
                 World::SetPuddliness(puddliness);

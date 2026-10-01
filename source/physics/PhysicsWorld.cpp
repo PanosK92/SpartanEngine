@@ -15,7 +15,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/Entity.h"
 #include "../world/components/Camera.h"
 #include "../world/components/Physics.h"
-#include "../car/CarSimulation.h"
 #include "../world/components/Ragdoll.h"
 #include "../world/World.h"
 SP_WARNINGS_OFF
@@ -60,15 +59,16 @@ namespace spartan
 
     namespace
     {
-        struct VehicleStepCallback
+        struct StepCallback
         {
             const void* owner;
             std::function<void(float)> callback;
         };
 
-        vector<VehicleStepCallback> vehicle_step_callbacks;
-        unordered_map<const void*, uint64_t> vehicle_callback_generations;
-        uint64_t vehicle_callback_revision = 0;
+        PhysicsWorld::ContactObserver contact_observer = nullptr;
+        vector<StepCallback> step_callbacks;
+        unordered_map<const void*, uint64_t> callback_generations;
+        uint64_t callback_revision = 0;
     }
 
     namespace picking
@@ -88,7 +88,7 @@ namespace spartan
             }
 
             // get picking ray
-            Ray picking_ray = camera->ComputePickingRay();
+            Ray picking_ray = camera->ComputeRay(Input::GetMousePositionRelativeToEditorViewport());
             const Vector3 local_start = PhysicsWorld::ToPhysicsPosition(picking_ray.GetStart());
             PxVec3 origin(local_start.x, local_start.y, local_start.z);
             PxVec3 direction(picking_ray.GetDirection().x, picking_ray.GetDirection().y, picking_ray.GetDirection().z);
@@ -206,7 +206,7 @@ namespace spartan
                 return;
             }
 
-            Ray picking_ray = camera->ComputePickingRay();
+            Ray picking_ray = camera->ComputeRay(Input::GetMousePositionRelativeToEditorViewport());
             const Vector3 local_start = PhysicsWorld::ToPhysicsPosition(picking_ray.GetStart());
             PxVec3 origin(local_start.x, local_start.y, local_start.z);
             PxVec3 direction(picking_ray.GetDirection().x, picking_ray.GetDirection().y, picking_ray.GetDirection().z);
@@ -256,10 +256,10 @@ namespace spartan
         static vector<PhysicsContact> pending_contacts;
 
         void queue_contact(Entity* entity_a, Entity* entity_b, const Vector3& position, const Vector3& normal, const Vector3& impulse,
-            const Vector3& relative_velocity = Vector3::Zero, uint32_t vehicle_chassis_mask = 0,
+            const Vector3& relative_velocity = Vector3::Zero, uint32_t tracked_actor_mask = 0,
             const Vector3& local_a = Vector3::Zero, const Vector3& local_b = Vector3::Zero)
         {
-            if ((!entity_a || !entity_b) && !vehicle_chassis_mask)
+            if ((!entity_a || !entity_b) && !tracked_actor_mask)
             {
                 return;
             }
@@ -271,9 +271,9 @@ namespace spartan
             contact.normal = normal;
             contact.impulse = impulse;
             contact.relative_velocity = relative_velocity;
-            contact.vehicle_chassis_mask = vehicle_chassis_mask;
-            contact.chassis_local_position[0] = local_a;
-            contact.chassis_local_position[1] = local_b;
+            contact.tracked_actor_mask = tracked_actor_mask;
+            contact.actor_local_position[0] = local_a;
+            contact.actor_local_position[1] = local_b;
 
             lock_guard<mutex> lock(contact_mutex);
             pending_contacts.push_back(contact);
@@ -300,29 +300,8 @@ namespace spartan
                 Entity* entity_b = pair_header.actors[1]
                     ? static_cast<Entity*>(pair_header.actors[1]->userData)
                     : nullptr;
-                // Record the complete contact impulse for each vehicle even if
-                // the other actor has no entity (terrain/bench/static geometry).
-                for (PxU32 i = 0; i < pair_count; ++i)
-                {
-                    PxVec3 vehicle_impulse(0);
-                    vector<PxContactPairPoint> contacts(pairs[i].contactCount);
-                    PxU32 count = contacts.empty() ? 0 : pairs[i].extractContacts(contacts.data(), static_cast<PxU32>(contacts.size()));
-                    for (PxU32 j = 0; j < count; ++j) vehicle_impulse += contacts[j].impulse;
-                    auto record = [&](Entity* entity, Entity* other, const PxVec3& impulse) {
-                        if (entity) if (auto* component = entity->GetComponent<Physics>())
-                            if (auto* simulation = component->GetVehicleSimulation())
-                                simulation->record_contact_impulse(impulse, other ? other->GetObjectId() : 0, count, unsigned(pairs[i].flags));
-                    };
-                    record(entity_a, entity_b, vehicle_impulse);
-                    record(entity_b, entity_a, -vehicle_impulse);
-                }
-                uint32_t chassis_mask = 0;
-                Entity* entities[] = {entity_a, entity_b};
-                for (uint32_t actor = 0; actor < 2; ++actor)
-                    if (entities[actor]) if (auto* component = entities[actor]->GetComponent<Physics>())
-                        if (auto* simulation = component->GetVehicleSimulation())
-                            if (simulation->get_body() == pair_header.actors[actor]) chassis_mask |= 1u << actor;
-                if ((!entity_a || !entity_b) && !chassis_mask) return;
+                const uint32_t tracked_mask = contact_observer ? contact_observer(pair_header, pairs, pair_count) : 0;
+                if ((!entity_a || !entity_b) && !tracked_mask) return;
 
                 for (PxU32 i = 0; i < pair_count; ++i)
                 {
@@ -357,7 +336,7 @@ namespace spartan
 
                     Vector3 relative_velocity = Vector3::Zero;
                     Vector3 local_position[2] = {};
-                    if (chassis_mask && point_count > 0 && pair_header.extraDataStreamSize)
+                    if (tracked_mask && point_count > 0 && pair_header.extraDataStreamSize)
                     {
                         const PxContactPairVelocity* velocity = nullptr;
                         const PxContactPairPose* pose = nullptr;
@@ -382,7 +361,7 @@ namespace spartan
                             relative_velocity = Vector3(relative.x, relative.y, relative.z);
                         }
                     }
-                    queue_contact(entity_a, entity_b, position, normal, impulse, relative_velocity, chassis_mask, local_position[0], local_position[1]);
+                    queue_contact(entity_a, entity_b, position, normal, impulse, relative_velocity, tracked_mask, local_position[0], local_position[1]);
                 }
             }
 
@@ -413,66 +392,28 @@ namespace spartan
 
         static ContactReportCallback contact_callback;
 
-        // word two tags characters, vehicles and pedestrians while word three groups one vehicle
-        // character vehicle pairs and same vehicle pairs never collide
+        PhysicsWorld::CollisionFilter collision_filter = nullptr;
+
         PxFilterFlags collision_filter_shader(
             PxFilterObjectAttributes attributes0, PxFilterData filter_data0,
             PxFilterObjectAttributes attributes1, PxFilterData filter_data1,
             PxPairFlags& pair_flags, const void* constant_block, PxU32 constant_block_size)
         {
-            bool is_character_vs_vehicle =
-                (filter_data0.word2 == physics_collision_character && filter_data1.word2 == physics_collision_vehicle) ||
-                (filter_data0.word2 == physics_collision_vehicle && filter_data1.word2 == physics_collision_character);
-            bool is_same_vehicle =
-                filter_data0.word2 == physics_collision_vehicle &&
-                filter_data1.word2 == physics_collision_vehicle &&
-                filter_data0.word3 != 0 &&
-                filter_data0.word3 == filter_data1.word3;
-            bool is_pedestrian_vs_pedestrian =
-                filter_data0.word2 == physics_collision_pedestrian &&
-                filter_data1.word2 == physics_collision_pedestrian;
-
-            // vehicle vs ragdoll stays on, physx pushes the body; soft depenetration on spawn
-            if (is_character_vs_vehicle || is_same_vehicle || is_pedestrian_vs_pedestrian)
-            {
-                return PxFilterFlag::eSUPPRESS;
-            }
-
-            PxFilterFlags filter_flags = PxDefaultSimulationFilterShader(
-                attributes0,
-                filter_data0,
-                attributes1,
-                filter_data1,
-                pair_flags,
-                constant_block,
-                constant_block_size
-            );
-
-            const bool involves_pedestrian =
-                filter_data0.word2 == physics_collision_pedestrian ||
-                filter_data1.word2 == physics_collision_pedestrian;
-            const bool involves_ragdoll =
-                filter_data0.word2 == physics_collision_ragdoll ||
-                filter_data1.word2 == physics_collision_ragdoll;
-
-            const bool involves_vehicle = filter_data0.word2 == physics_collision_vehicle || filter_data1.word2 == physics_collision_vehicle;
-            if ((involves_pedestrian || involves_ragdoll || involves_vehicle) &&
-                !PxFilterObjectIsTrigger(attributes0) &&
-                !PxFilterObjectIsTrigger(attributes1))
-            {
-                pair_flags |= PxPairFlag::eNOTIFY_TOUCH_FOUND;
-                pair_flags |= PxPairFlag::eNOTIFY_TOUCH_PERSISTS;
-                pair_flags |= PxPairFlag::eNOTIFY_CONTACT_POINTS;
-                if (involves_vehicle)
-                    pair_flags |= PxPairFlag::ePRE_SOLVER_VELOCITY | PxPairFlag::eCONTACT_EVENT_POSE | PxPairFlag::eNOTIFY_TOUCH_CCD;
-                pair_flags |= PxPairFlag::eDETECT_CCD_CONTACT;
-            }
-
+            const PhysicsCollisionResponse response = collision_filter
+                ? collision_filter(filter_data0.word2, filter_data0.word3, filter_data1.word2, filter_data1.word3)
+                : PhysicsCollisionResponse{false, filter_data0.word2 != 0 || filter_data1.word2 != 0, false};
+            if (response.suppress) return PxFilterFlag::eSUPPRESS;
+            const PxFilterFlags flags = PxDefaultSimulationFilterShader(
+                attributes0, filter_data0, attributes1, filter_data1, pair_flags, constant_block, constant_block_size);
             if (!PxFilterObjectIsTrigger(attributes0) && !PxFilterObjectIsTrigger(attributes1))
             {
                 pair_flags |= PxPairFlag::eDETECT_CCD_CONTACT;
+                if (response.report_contacts)
+                    pair_flags |= PxPairFlag::eNOTIFY_TOUCH_FOUND | PxPairFlag::eNOTIFY_TOUCH_PERSISTS | PxPairFlag::eNOTIFY_CONTACT_POINTS;
+                if (response.report_velocity)
+                    pair_flags |= PxPairFlag::ePRE_SOLVER_VELOCITY | PxPairFlag::eCONTACT_EVENT_POSE | PxPairFlag::eNOTIFY_TOUCH_CCD;
             }
-            return filter_flags;
+            return flags;
         }
     }
 
@@ -541,9 +482,10 @@ namespace spartan
 
         // release controller manager (owned by physics component system)
         Physics::Shutdown();
-        vehicle_step_callbacks.clear();
-        vehicle_callback_generations.clear();
-        ++vehicle_callback_revision;
+        contact_observer = nullptr;
+        step_callbacks.clear();
+        callback_generations.clear();
+        ++callback_revision;
 
         {
             lock_guard<mutex> lock(contact_mutex);
@@ -611,23 +553,23 @@ namespace spartan
 
                     // snapshot entries so callback registration can change during an update
                     if (Camera* camera = World::GetCamera()) RebaseOrigin(camera->GetEntity()->GetPosition());
-                    static vector<pair<VehicleStepCallback, uint64_t>> callbacks;
+                    static vector<pair<StepCallback, uint64_t>> callbacks;
                     static uint64_t snapshot_revision = numeric_limits<uint64_t>::max();
-                    if (snapshot_revision != vehicle_callback_revision)
+                    if (snapshot_revision != callback_revision)
                     {
                         callbacks.clear();
-                        callbacks.reserve(vehicle_step_callbacks.size());
-                        for (const VehicleStepCallback& entry : vehicle_step_callbacks)
-                            callbacks.emplace_back(entry, vehicle_callback_generations.at(entry.owner));
-                        snapshot_revision = vehicle_callback_revision;
+                        callbacks.reserve(step_callbacks.size());
+                        for (const StepCallback& entry : step_callbacks)
+                            callbacks.emplace_back(entry, callback_generations.at(entry.owner));
+                        snapshot_revision = callback_revision;
                     }
-                    SP_PROFILE_CPU_START("physics_vehicles");
+                    SP_PROFILE_CPU_START("physics_step_callbacks");
                     for (const auto& [entry, generation] : callbacks)
                     {
                         // A callback may remove or replace another callback. Only invoke
                         // the registration captured by this step's immutable snapshot.
-                        const auto current = vehicle_callback_generations.find(entry.owner);
-                        if (current != vehicle_callback_generations.end() && current->second == generation)
+                        const auto current = callback_generations.find(entry.owner);
+                        if (current != callback_generations.end() && current->second == generation)
                             entry.callback(fixed_time_step);
                     }
 
@@ -794,7 +736,19 @@ namespace spartan
         return 1.0f / settings::hz;
     }
 
-    void PhysicsWorld::RegisterVehicleStepCallback(const void* owner, const function<void(float)>& callback)
+    void PhysicsWorld::SetCollisionFilter(CollisionFilter filter)
+    {
+        lock_guard<recursive_mutex> lock(physx_mutex);
+        collision_filter = filter;
+    }
+
+    void PhysicsWorld::SetContactObserver(ContactObserver observer)
+    {
+        lock_guard<recursive_mutex> lock(physx_mutex);
+        contact_observer = observer;
+    }
+
+    void PhysicsWorld::RegisterStepCallback(const void* owner, const function<void(float)>& callback)
     {
         lock_guard<recursive_mutex> lock(physx_mutex);
         if (!owner || !callback)
@@ -802,8 +756,8 @@ namespace spartan
             return;
         }
 
-        vehicle_callback_generations[owner] = ++vehicle_callback_revision;
-        for (VehicleStepCallback& entry : vehicle_step_callbacks)
+        callback_generations[owner] = ++callback_revision;
+        for (StepCallback& entry : step_callbacks)
         {
             if (entry.owner == owner)
             {
@@ -812,15 +766,15 @@ namespace spartan
             }
         }
 
-        vehicle_step_callbacks.push_back({ owner, callback });
+        step_callbacks.push_back({ owner, callback });
     }
 
-    void PhysicsWorld::UnregisterVehicleStepCallback(const void* owner)
+    void PhysicsWorld::UnregisterStepCallback(const void* owner)
     {
         lock_guard<recursive_mutex> lock(physx_mutex);
-        vehicle_callback_generations.erase(owner);
-        ++vehicle_callback_revision;
-        vehicle_step_callbacks.erase(remove_if(vehicle_step_callbacks.begin(), vehicle_step_callbacks.end(), [owner](const VehicleStepCallback& entry) { return entry.owner == owner; }), vehicle_step_callbacks.end());
+        callback_generations.erase(owner);
+        ++callback_revision;
+        step_callbacks.erase(remove_if(step_callbacks.begin(), step_callbacks.end(), [owner](const StepCallback& entry) { return entry.owner == owner; }), step_callbacks.end());
     }
 
     bool PhysicsWorld::RaycastStatic(const Vector3& origin, const Vector3& direction, float max_distance, Vector3& hit_position)

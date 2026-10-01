@@ -86,3 +86,5 @@ namespace spartan
         //=================================================================================
     }
 }
+
+namespace spartan::mcp_common { bool parse_int32(const std::string& value, int32_t& result); }

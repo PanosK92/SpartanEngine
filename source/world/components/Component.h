@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ========================
 #include <any>
+#include "../../logging/Log.h"
 #include "../../core/PooledObject.h"
 #include <vector>
 #include <functional>
@@ -22,40 +23,37 @@ namespace pugi
     class xml_node;
 }
 
+#ifdef SP_GAME
+#include "../../game/GameComponents.h"
+#else
+#define SP_GAME_COMPONENT_LIST
+#endif
+
 namespace spartan
 {
     class Entity;
     class FileStream;
 
-#define SP_COMPONENT_ARRAY Script, AudioSource, Render, Camera, Light, Terrain, Volume, Physics, Spline, SplineFollower, ParticleSystem, SkidMarks, Water, Traffic, Pedestrians, SpawnPoint, CarReset, Text3D, Animator, Ragdoll, Navigation, RaceDriver, RouteDriver
+#define SP_ENGINE_COMPONENT_LIST \
+    X(AudioSource, audio_source) \
+    X(Camera, camera) \
+    X(Light, light) \
+    X(Physics, physics) \
+    X(Render, render) \
+    X(Spline, spline) \
+    X(SplineFollower, spline_follower) \
+    X(Terrain, terrain) \
+    X(Volume, volume) \
+    X(Script, script) \
+    X(ParticleSystem, particle_system) \
+    X(Water, water) \
+    X(SpawnPoint, spawn_point) \
+    X(Text3D, text_3d) \
+    X(Animator, animator) \
+    X(Ragdoll, ragdoll) \
+    X(Navigation, navigation)
 
-    // X-Macro: single source of truth for all components
-    // Format: X(ClassName, string_name)
-    // To add a new component, just add a line here
-    #define SP_COMPONENT_LIST                    \
-        X(AudioSource,      audio_source)        \
-        X(Camera,           camera)              \
-        X(Light,            light)               \
-        X(Physics,          physics)             \
-        X(Render,           render)              \
-        X(Spline,           spline)              \
-        X(SplineFollower,   spline_follower)     \
-        X(Terrain,          terrain)             \
-        X(Volume,           volume)              \
-        X(Script,           script)              \
-        X(ParticleSystem,   particle_system)     \
-        X(SkidMarks,        skid_marks)          \
-        X(Water,            water)               \
-        X(Traffic,          traffic)             \
-        X(Pedestrians,      pedestrians)        \
-        X(SpawnPoint,       spawn_point)         \
-        X(CarReset,         car_reset)           \
-        X(Text3D,           text_3d)             \
-        X(Animator,         animator)            \
-        X(Ragdoll,          ragdoll)              \
-        X(Navigation,       navigation)          \
-        X(RaceDriver,       race_driver)         \
-        X(RouteDriver,      route_driver)
+#define SP_COMPONENT_LIST SP_ENGINE_COMPONENT_LIST SP_GAME_COMPONENT_LIST
 
     enum class ComponentType : uint32_t
     {
@@ -69,6 +67,7 @@ namespace spartan
     {
         std::string name;
         std::string type;
+        bool writable = false; // external edits must use a setter that maintains invariants
         std::function<std::any()> getter;
         std::function<void(std::any)> setter;
     };
@@ -85,6 +84,10 @@ namespace spartan
         // called when the component gets added
         virtual void Initialize() {}
 
+        virtual void PrepareGeometry() {}
+        virtual bool PrepareWorld() { return true; }
+        virtual bool StartsEarly() const { return false; }
+
         // called every time the simulation starts
         virtual void Start() {}
 
@@ -99,6 +102,9 @@ namespace spartan
 
         // called every frame
         virtual void Tick() {}
+
+        // Copy authored state; components with derived state can share their load/apply path.
+        virtual void CopyFrom(const Component& source) { SetAttributes(source.GetAttributes()); }
 
         // called when the entity is being saved
         virtual void Save(pugi::xml_node& node) {}
@@ -128,7 +134,7 @@ namespace spartan
             SP_COMPONENT_LIST
             #undef X
 
-            assert(false && "StringToType: Unknown component name");
+            SP_LOG_ERROR("Unsupported component in this application: %s", name.c_str());
             return ComponentType::Max;
         }
 
@@ -144,22 +150,23 @@ namespace spartan
         #define SP_REGISTER_ATTRIBUTE_GET_SET(getter, setter, type) RegisterAttribute(  \
         #getter, #type,                                                                 \
         [this]()                        { return getter(); },                           \
-        [this](const std::any& valueIn) { setter(std::any_cast<type>(valueIn)); });     \
+        [this](const std::any& valueIn) { setter(std::any_cast<type>(valueIn)); }, true);     \
 
         #define SP_REGISTER_ATTRIBUTE_VALUE_SET(value, setter, type) RegisterAttribute( \
         #value, #type,                                                                  \
         [this]()                        { return value; },                              \
-        [this](const std::any& valueIn) { setter(std::any_cast<type>(valueIn)); });     \
+        [this](const std::any& valueIn) { setter(std::any_cast<type>(valueIn)); }, true);     \
 
         #define SP_REGISTER_ATTRIBUTE_VALUE_VALUE(value, type) RegisterAttribute(       \
         #value, #type,                                                                  \
         [this]()                        { return value; },                              \
-        [this](const std::any& valueIn) { value = std::any_cast<type>(valueIn); });     \
+        [this](const std::any& valueIn) { value = std::any_cast<type>(valueIn); }, false);     \
 
         // registers an attribute
-        void RegisterAttribute(const char* name, const char* type, std::function<std::any()>&& getter, std::function<void(std::any)>&& setter)
+        void RegisterAttribute(const char* name, const char* type, std::function<std::any()>&& getter, std::function<void(std::any)>&& setter, bool writable = false)
         {
             Attribute attribute;
+            attribute.writable = writable;
             attribute.name   = name;
             attribute.type   = type;
             attribute.getter = std::move(getter);

@@ -192,12 +192,7 @@ namespace spartan
                 return;
             }
 
-            // two materials sharing the source can repack at the same time
-            lock_guard<mutex> guard(ResourceCache::GetInFlightMutex(path));
-            if (!texture->HasData())
-            {
-                texture->LoadFromFile(path);
-            }
+            ResourceCache::EnsureTextureData(*texture);
         }
 
         void pack_occlusion_roughness_metalness_height(
@@ -1002,23 +997,24 @@ namespace spartan
         return clone;
     }
 
-    void Material::LoadFromFile(const string& file_path)
+    bool Material::LoadFromFile(const string& file_path)
     {
         pugi::xml_document doc;
         pugi::xml_parse_result result = doc.load_file(file_path.c_str());
         if (!result)
         {
             SP_LOG_ERROR("Failed to load XML file %s, pugi: %s", file_path.c_str(), result.description());
-            return;
+            return false;
         }
 
-        SetResourceFilePath(file_path);
         pugi::xml_node node_material = doc.child("Material");
         if (!node_material)
         {
             SP_LOG_ERROR("Material file missing root node: %s", file_path.c_str());
-            return;
+            return false;
         }
+
+        SetResourceFilePath(file_path);
 
         // load properties
         for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Max); ++i)
@@ -1173,6 +1169,7 @@ namespace spartan
         // set after the sources, SetTexture clears it for every packed source it assigns
         m_packed_from_disk = packed_reused;
         m_object_size      = sizeof(*this);
+        return true;
     }
 
     Material::ScopedEdit::ScopedEdit(Material& material) : m_material(material)

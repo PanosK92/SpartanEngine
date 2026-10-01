@@ -17,6 +17,8 @@ Commercial use requires written permission and negotiated payment terms.
 namespace physx
 {
     class PxRigidActor;
+    struct PxContactPairHeader;
+    struct PxContactPair;
 }
 
 namespace spartan
@@ -28,6 +30,14 @@ namespace spartan
     constexpr uint32_t physics_collision_vehicle    = 2;
     constexpr uint32_t physics_collision_pedestrian = 3;
     constexpr uint32_t physics_collision_ragdoll    = 4;
+
+    // Application policy; filter tags/groups are opaque to the physics backend.
+    struct PhysicsCollisionResponse
+    {
+        bool suppress = false;
+        bool report_contacts = false;
+        bool report_velocity = false;
+    };
 
     struct PhysicsRaycastHit
     {
@@ -45,8 +55,8 @@ namespace spartan
         math::Vector3 normal = math::Vector3::Up;
         math::Vector3 impulse = math::Vector3::Zero;
         math::Vector3 relative_velocity = math::Vector3::Zero; // actor A minus B at the contact, before solving
-        uint32_t vehicle_chassis_mask = 0; // bit 0: A, bit 1: B; excludes wheel/suspension actors
-        math::Vector3 chassis_local_position[2] = {}; // contact-time actor space, before later substeps move the car
+        uint32_t tracked_actor_mask = 0; // bit 0: A, bit 1: B; selected by the contact observer
+        math::Vector3 actor_local_position[2] = {}; // contact-time actor space, before later substeps move the car
     };
 
     class PhysicsWorld
@@ -69,9 +79,18 @@ namespace spartan
         static float GetInterpolationAlpha();
         static float GetFixedTimeStep();
 
-        // vehicle force model hooks, invoked once per fixed simulation step before scene simulation
-        static void RegisterVehicleStepCallback(const void* owner, const std::function<void(float)>& callback);
-        static void UnregisterVehicleStepCallback(const void* owner);
+        // Invoked on the physics worker during contact reporting. Install before simulation;
+        // return bits 0/1 to retain actor A/B contacts even when the other actor has no entity.
+        using ContactObserver = uint32_t (*)(const physx::PxContactPairHeader&, const physx::PxContactPair*, uint32_t);
+        static void SetContactObserver(ContactObserver observer);
+        using CollisionFilter = PhysicsCollisionResponse (*)(uint32_t tag_a, uint32_t group_a, uint32_t tag_b, uint32_t group_b);
+        // Install before creating actors; unchanged for the lifetime of a simulation.
+        static void SetCollisionFilter(CollisionFilter filter);
+
+
+        // force model hooks, invoked once per fixed simulation step before scene simulation
+        static void RegisterStepCallback(const void* owner, const std::function<void(float)>& callback);
+        static void UnregisterStepCallback(const void* owner);
 
         // contacts from the last physics ticks, valid until the next physics tick
         static const std::vector<PhysicsContact>& GetFrameContacts();

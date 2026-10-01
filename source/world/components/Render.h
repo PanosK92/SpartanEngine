@@ -23,6 +23,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 namespace spartan
 {
+    class Camera;
     class Material;
 
     enum RenderFlags : uint32_t
@@ -86,6 +87,7 @@ namespace spartan
         ~Render();
 
         // icomponent
+        void CopyFrom(const Component& source) override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
         void Tick() override;
@@ -287,7 +289,7 @@ namespace spartan
 
         void UpdateAabb();
         void UpdateFrustumAndDistanceCulling();
-        void UpdateLodIndices();
+        void UpdateLodIndices(Camera* view_camera = nullptr);
 
     private:
         friend class Entity;

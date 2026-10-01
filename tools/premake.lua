@@ -24,8 +24,10 @@ newaction {
     execute     = function() setup.run() end
 }
 
+newoption { trigger = "skip-setup", description = "Generate projects using already staged dependencies" }
+
 local generation_actions = { vs2026 = true, vs2022 = true, gmake2 = true, gmake = true, codelite = true, xcode4 = true }
-if generation_actions[_ACTION] then
+if generation_actions[_ACTION] and not _OPTIONS["skip-setup"] then
     setup.run()
 end
 
@@ -149,10 +151,11 @@ function solution_configuration()
             linktimeoptimization "Off"
 end
 
-function spartan_project_configuration()
-    project(SOLUTION_NAME)
+function spartan_project_configuration(runtime, minimal)
+    local executable = EXECUTABLE_NAME .. (minimal and "_engine" or (runtime and "_runtime" or ""))
+    project(minimal and "SpartanEngine" or (runtime and "SpartanRuntime" or SOLUTION_NAME))
         location "../"
-        objdir(OBJ_DIR)
+        objdir(OBJ_DIR .. (minimal and "/engine" or (runtime and "/runtime" or "/editor")) .. "/" .. ARG_API_GRAPHICS)
         cppdialect(CPP_VERSION)
         kind "WindowedApp"
         staticruntime "On"
@@ -168,6 +171,19 @@ function spartan_project_configuration()
             SOURCE_DIR .. "/**.hpp", SOURCE_DIR .. "/**.inl",
             SOURCE_DIR .. "/**.rc"
         }
+        -- The engine target deliberately cannot link game implementations.
+        if minimal then
+            removefiles { SOURCE_DIR .. "/car/**", SOURCE_DIR .. "/game/**" }
+        else
+            defines { "SP_GAME" }
+        end
+        if runtime then
+            defines { "SP_RUNTIME" }
+            removefiles { SOURCE_DIR .. "/editor/**", SOURCE_DIR .. "/mcp/**", SOURCE_DIR .. "/game/**Mcp.cpp" }
+            files { SOURCE_DIR .. "/editor/imgui/source/**.cpp", SOURCE_DIR .. "/editor/imgui/implementation/**.cpp" }
+        else
+            removefiles { SOURCE_DIR .. "/runtime/**" }
+        end
         files(lzma_sdk.sources())
         -- Recast bakes tiles, Detour queries them, DetourCrowd handles pedestrian avoidance.
         includedirs {
@@ -249,7 +265,7 @@ function spartan_project_configuration()
                 "/NODEFAULTLIB:MSVCRT.lib",  -- block dynamic crt (using static runtime)
                 "/NODEFAULTLIB:MSVCPRT.lib"
             }
-            links { "Ws2_32", "oleaut32", "ole32" }
+            links { "Ws2_32", "oleaut32", "ole32", "d3d12", "dxgi" }
             buildoptions { "/bigobj" }
 
             if ARG_API_GRAPHICS == "vulkan" then
@@ -290,13 +306,13 @@ function spartan_project_configuration()
             debugdir(TARGET_DIR)
 
         filter { "configurations:release" }
-            targetname(EXECUTABLE_NAME)
+            targetname(executable)
 
         filter { "configurations:development" }
-            targetname(EXECUTABLE_NAME .. "_development")
+            targetname(executable .. "_development")
 
         filter { "configurations:debug" }
-            targetname(EXECUTABLE_NAME .. "_debug")
+            targetname(executable .. "_debug")
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
 
@@ -312,5 +328,7 @@ end
 if generation_actions[_ACTION] then
     configure_graphics_api()
     solution_configuration()
-    spartan_project_configuration()
+    spartan_project_configuration(false)
+    spartan_project_configuration(true)
+    spartan_project_configuration(true, true)
 end

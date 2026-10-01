@@ -50,7 +50,7 @@ namespace spartan
 
         // iresource
         void SaveToFile(const std::string& file_path) override;
-        void LoadFromFile(const std::string& file_path) override;
+        bool LoadFromFile(const std::string& file_path) override;
 
         // text, the screen percentage variant places the first baseline at the position and uses the font color
         void AddText(const char* text, const math::Vector2& position_screen_percentage);

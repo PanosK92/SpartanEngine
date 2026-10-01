@@ -11,13 +11,14 @@ Commercial use requires written permission and negotiated payment terms.
 #include "commands/CommandStack.h"
 #include <unordered_set>
 #include "World.h"
+#include "TerrainSystem.h"
+#include "PlaySession.h"
+#include "WorldPreparation.h"
+#include "WorldResources.h"
 #include "Entity.h"
 #include "Prefab.h"
 #include "WorldHelpers.h"
-#include "IslandWildlife.h"
-#include "IslandRoadDetails.h"
 #include "Weather.h"
-#include "../car/Car.h"
 #include "../geometry/GeneratedCache.h"
 #include "../rendering/GeometryBuffer.h"
 #include "../profiling/Profiler.h"
@@ -40,13 +41,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rendering/Material.h"
 #include "../rendering/Renderer.h"
 #include "components/Physics.h"
-#include "components/Traffic.h"
-#include "components/RaceDriver.h"
-#include "components/RouteDriver.h"
-#include "components/Pedestrians.h"
 #include "components/Navigation.h"
 #include "components/Script.h"
-#include "components/CarReset.h"
 #include "../physics/PhysicsWorld.h"
 #include "../input/Input.h"
 #include "../core/Timer.h"
@@ -274,7 +270,6 @@ namespace spartan
             }
         }
         uint64_t work_counter_tick = 0;
-        sol::state lua_state;
         unordered_map<uint64_t, Entity*> entities_by_id; // published entities, guarded by entity_access_mutex
         // Cached views borrow entities owned by the world. Keep invalidation and
         // removal together so no view can retain a destroyed entity.
@@ -305,7 +300,7 @@ namespace spartan
         string file_path;
         string world_name; // cached to avoid per-frame allocation
         string world_description;
-        bool island_features = false;
+        WorldCallbacks callbacks;
         mutex resource_cleanup_mutex;
         vector<string> last_resource_cleanup;
         vector<string> last_resource_cleanup_failures;
@@ -316,37 +311,27 @@ namespace spartan
         vector<string> world_console_variables; // cvar names overridden by this world (preserved across save/load)
         mutex entity_access_mutex;
         // entities created by workers but not yet drained into the live entities vector, the main thread drains this every tick
-        // workers may still be configuring components for these, the renderer tolerates partial state via skip checks
+        // worker model imports enter this queue only when their EntityBatch is complete
         vector<Entity*> entities_pending;
-        // deferred script initialization, lua is single threaded so script init is collected during the parallel
-        // entity load and executed on the main thread after entities are published
-        atomic<bool> defer_script_init = false;
-        mutex script_init_mutex;
-        vector<pair<int, function<void()>>> script_inits_pending;
-        // keeps the world xml alive until main thread finishes deferred script init
-        shared_ptr<pugi::xml_document> deferred_load_document;
-        // load worker finished entity build, main thread must publish and run scripts before clearing loading
-        atomic<bool> load_ready_for_main_commit = false;
+        thread_local World::EntityBatch* entity_batch = nullptr;
         set<uint64_t> pending_remove;
         uint32_t audio_source_count = 0;
-        atomic<bool> resolve        = false;
-        bool was_in_editor_mode     = false;
-        // tracks observed loading transition so the WorldLoaded event fires exactly once per load
-        bool was_loading            = false;
-        // rejects re-entrant loads, a second load would run Shutdown on the main thread while the first load's workers are still building the world
-        enum class WorldIoState : uint8_t
+        atomic<bool> resolve = false;
+        enum class WorldIoState : uint8_t { Idle, Saving, Loading, Preparing };
+        struct WorldIoOperation
         {
-            Idle,
-            Saving,
-            Loading,
-            Preparing
+            atomic<WorldIoState> state = WorldIoState::Idle;
+            atomic<bool> defer_scripts = false;
+            atomic<bool> ready_for_commit = false;
+            mutex script_mutex;
+            vector<pair<int, function<void()>>> scripts;
+            shared_ptr<pugi::xml_document> document;
+            bool notify_loaded = false;
+            bool restore_edit_mode = false;
+            string pending_path;
+            WorldPreparation preparation;
         };
-        atomic<WorldIoState> world_io_state = WorldIoState::Idle;
-        string pending_load_path;
-        Stopwatch preparation_timer;
-        size_t preparation_cursor = 0;
-        enum class PreparationStage { Terrain, Roads, Components };
-        PreparationStage preparation_stage = PreparationStage::Terrain;
+        WorldIoOperation io;
         BoundingBox bounding_box    = BoundingBox::Unit;
         Entity* camera              = nullptr;
         Entity* camera_override     = nullptr; // set by the sequencer or gameplay, takes precedence over the default camera
@@ -356,7 +341,7 @@ namespace spartan
         {
             ~SaveStateReset()
             {
-                world_io_state.store(
+                io.state.store(
                     WorldIoState::Idle,
                     memory_order_release
                 );
@@ -422,110 +407,7 @@ namespace spartan
             erase(entities_pending, entity);
         }
 
-        // Play owns its restore snapshot and staged Start queue together.
-        struct PlaySession
-        {
-            struct Pose { Vector3 position; Quaternion rotation; Vector3 scale; };
-            enum class Phase : uint8_t { Idle, Starting, Ready };
-            unordered_map<uint64_t, Pose> snapshot;
-            EnvironmentSettings environment;
-            set<uint64_t> spawned_ids;
-            Phase phase = Phase::Idle;
-            vector<Entity*> start_queue;
-            size_t start_cursor = 0;
-            static constexpr double start_budget_ms = 4.0;
-
-            // Invalidate deleted entities without shifting the staged-start cursor.
-            void CancelStarts(const set<uint64_t>& ids)
-            {
-                for (size_t i = start_cursor; i < start_queue.size(); ++i)
-                {
-                    Entity*& entity = start_queue[i];
-                    if (entity && ids.count(entity->GetObjectId()) != 0) entity = nullptr;
-                }
-            }
-        } play;
-
-        bool entity_has_play_priority(Entity* entity)
-        {
-            if (!entity)
-            {
-                return false;
-            }
-            return entity->GetComponent<Traffic>()
-                || entity->GetComponent<RaceDriver>()
-                || entity->GetComponent<RouteDriver>()
-                || entity->GetComponent<Pedestrians>()
-                || entity->GetComponent<Navigation>()
-                || entity->GetComponent<CarReset>()
-                || entity->GetComponent<Physics>()
-                || entity->GetComponent<AudioSource>()
-                || entity->GetComponent<Script>()
-                || entity->GetComponent<Ragdoll>();
-        }
-
-        // material change tracking - things that change the nature of the material for rendering
-        unordered_map<uint64_t, size_t> material_state_hashes;
-
-        // light change tracking - things that change the nature of the light for rendering
-        unordered_map<uint64_t, size_t> light_state_hashes;
-
-        size_t compute_material_hash(Material* material)
-        {
-            // revision covers property/texture pointer edits, resource states catch async prep
-            size_t hash = 17;
-            hash = (hash * 31) ^ static_cast<size_t>(material->GetRevision());
-            hash = (hash * 31) ^ static_cast<size_t>(material->GetResourceState());
-
-            for (const auto* texture : material->GetTextures())
-            {
-                hash = (hash * 31) ^ reinterpret_cast<size_t>(texture);
-                if (texture)
-                {
-                    hash = (hash * 31) ^ static_cast<size_t>(texture->GetResourceState());
-                }
-            }
-            return hash;
-        }
-
-        size_t compute_light_hash(Light* light, Entity* entity)
-        {
-            size_t hash = 17;
-
-            hash = (hash * 31) ^ std::hash<float>{}(light->GetColor().r);
-            hash = (hash * 31) ^ std::hash<float>{}(light->GetColor().g);
-            hash = (hash * 31) ^ std::hash<float>{}(light->GetColor().b);
-            hash = (hash * 31) ^ std::hash<float>{}(light->GetColor().a);
-            hash = (hash * 31) ^ std::hash<float>{}(light->GetIntensityRadiometric());
-            hash = (hash * 31) ^ std::hash<float>{}(light->GetRange());
-            hash = (hash * 31) ^ std::hash<float>{}(light->GetAngle());
-            hash = (hash * 31) ^ std::hash<float>{}(light->GetAreaWidth());
-            hash = (hash * 31) ^ std::hash<float>{}(light->GetAreaHeight());
-            hash = (hash * 31) ^ static_cast<size_t>(light->GetLightType());
-            hash = (hash * 31) ^ static_cast<size_t>(light->GetFlags());
-            hash = (hash * 31) ^ static_cast<size_t>(entity->GetActive());
-
-            const Vector3& pos = entity->GetPosition();
-            hash = (hash * 31) ^ std::hash<float>{}(pos.x);
-            hash = (hash * 31) ^ std::hash<float>{}(pos.y);
-            hash = (hash * 31) ^ std::hash<float>{}(pos.z);
-            const Vector3& fwd = entity->GetForward();
-            hash = (hash * 31) ^ std::hash<float>{}(fwd.x);
-            hash = (hash * 31) ^ std::hash<float>{}(fwd.y);
-            hash = (hash * 31) ^ std::hash<float>{}(fwd.z);
-
-            for (uint32_t i = 0; i < light->GetSliceCount(); i++)
-            {
-                const Matrix& view_projection = light->GetViewProjectionMatrix(i);
-                const float* elements         = view_projection.Data();
-                for (uint32_t j = 0; j < 16; j++)
-                {
-                    hash = (hash * 31) ^ std::hash<float>{}(elements[j]);
-                }
-            }
-
-            return hash;
-        }
+        PlaySession play;
 
         void compute_bounding_box()
         {
@@ -652,721 +534,13 @@ namespace spartan
         }
 
 
-        void InitializeCoreLua()
-        {
-            lua_state.collect_gc();
 
-            lua_state.open_libraries(
-                sol::lib::base,
-                sol::lib::package,
-                sol::lib::coroutine,
-                sol::lib::string,
-                sol::lib::math,
-                sol::lib::table,
-                sol::lib::io);
-
-            sol::state_view state_view(lua_state);
-
-            lua_state.set_function("print", [&](sol::this_state s, const sol::variadic_args& args)
-            {
-                sol::state_view lua(s);
-                sol::protected_function tostring_function =
-                    lua["tostring"];
-
-                std::string line;
-                line.reserve(256);
-                for (size_t i = 0; i < args.size(); ++i)
-                {
-                    sol::protected_function_result stringified =
-                        tostring_function(args[i]);
-                    if (stringified.valid())
-                    {
-                        if (sol::optional<const char*> text = stringified)
-                        {
-                            line += *text;
-                        }
-                        else
-                        {
-                            line += "[tostring error]";
-                        }
-                    }
-                    else
-                    {
-                        sol::error error = stringified;
-                        line += "[error: ";
-                        line += error.what();
-                        line += "]";
-                    }
-
-                    if (i < args.size() - 1)
-                    {
-                        line += "\t";
-                    }
-                }
-
-                SP_LOG_INFO("[Lua] %s", line.c_str());
-            });
-
-            sol::table Timer = lua_state.create_named_table("Timer");
-            Timer["SetFPSLimit"]                    = &Timer::SetFpsLimit;
-            Timer["GetFPSLimit"]                    = &Timer::GetFpsLimit;
-            Timer["GetTimeMs"]                      = &Timer::GetTimeMs;
-            Timer["GetTimeSec"]                     = &Timer::GetTimeSec;
-            Timer["GetDeltaTimeMs"]                 = &Timer::GetDeltaTimeMs;
-            Timer["GetDeltaTimeSec"]                = &Timer::GetDeltaTimeSec;
-            Timer["GetDeltaTimeSmoothedMs"]         = &Timer::GetDeltaTimeSmoothedMs;
-            Timer["GetDeltaTimeSmoothedSec"]        = &Timer::GetDeltaTimeSmoothedSec;
-
-            Entity          ::RegisterForScripting(state_view);
-            Mesh            ::RegisterForScripting(state_view);
-            AudioSource     ::RegisterForScripting(state_view);
-            Render      ::RegisterForScripting(state_view);
-            Physics         ::RegisterForScripting(state_view);
-            Light           ::RegisterForScripting(state_view);
-            ParticleSystem  ::RegisterForScripting(state_view);
-            Spline          ::RegisterForScripting(state_view);
-            Text3D          ::RegisterForScripting(state_view);
-            Animator        ::RegisterForScripting(state_view);
-            Ragdoll         ::RegisterForScripting(state_view);
-            Camera          ::RegisterForScripting(state_view);
-            WorldHelpers    ::RegisterForScripting(state_view);
-
-            lua_state.new_enum("ComponentType",
-                "AudioSource",              ComponentType::AudioSource,
-                "Camera",                   ComponentType::Camera,
-                "Light",                    ComponentType::Light,
-                "Physics",                  ComponentType::Physics,
-                "Render",               ComponentType::Render,
-                "Terrain",                  ComponentType::Terrain,
-                "Volume",                   ComponentType::Volume,
-                "Script",                   ComponentType::Script,
-                "ParticleSystem",           ComponentType::ParticleSystem,
-                "Spline",                   ComponentType::Spline,
-                "Text3D",                   ComponentType::Text3D,
-                "Animator",                 ComponentType::Animator,
-                "Ragdoll",                  ComponentType::Ragdoll
-            );
-
-            lua_state.new_enum("Intersection",
-                "Outside", Intersection::Outside,
-                "Inside",       Intersection::Inside,
-                "Intersects",   Intersection::Intersects
-                );
-
-            lua_state.new_enum("KeyCode",
-                "F1", KeyCode::F1, "F2", KeyCode::F2, "F3", KeyCode::F3, "F4", KeyCode::F4, "F5", KeyCode::F5,
-                "F6", KeyCode::F6, "F7", KeyCode::F7, "F8", KeyCode::F8, "F9", KeyCode::F9, "F10", KeyCode::F10,
-                "F11", KeyCode::F11, "F12", KeyCode::F12,
-                "Alpha0", KeyCode::Alpha0, "Alpha1", KeyCode::Alpha1, "Alpha2", KeyCode::Alpha2, "Alpha3", KeyCode::Alpha3,
-                "Alpha4", KeyCode::Alpha4, "Alpha5", KeyCode::Alpha5, "Alpha6", KeyCode::Alpha6, "Alpha7", KeyCode::Alpha7,
-                "Alpha8", KeyCode::Alpha8, "Alpha9", KeyCode::Alpha9,
-                "Q", KeyCode::Q, "W", KeyCode::W, "E", KeyCode::E, "R", KeyCode::R, "T", KeyCode::T, "Y", KeyCode::Y,
-                "U", KeyCode::U, "I", KeyCode::I, "O", KeyCode::O, "P", KeyCode::P, "A", KeyCode::A, "S", KeyCode::S,
-                "D", KeyCode::D, "F", KeyCode::F, "G", KeyCode::G, "H", KeyCode::H, "J", KeyCode::J, "K", KeyCode::K,
-                "L", KeyCode::L, "Z", KeyCode::Z, "X", KeyCode::X, "C", KeyCode::C, "V", KeyCode::V, "B", KeyCode::B,
-                "N", KeyCode::N, "M", KeyCode::M,
-                "Esc", KeyCode::Esc, "Tab", KeyCode::Tab,
-                "Shift_Left", KeyCode::Shift_Left, "Shift_Right", KeyCode::Shift_Right,
-                "Ctrl_Left", KeyCode::Ctrl_Left, "Ctrl_Right", KeyCode::Ctrl_Right,
-                "Alt_Left", KeyCode::Alt_Left, "Alt_Right", KeyCode::Alt_Right,
-                "Space", KeyCode::Space, "CapsLock", KeyCode::CapsLock, "Backspace", KeyCode::Backspace,
-                "Enter", KeyCode::Enter, "Delete", KeyCode::Delete,
-                "Arrow_Left", KeyCode::Arrow_Left, "Arrow_Right", KeyCode::Arrow_Right,
-                "Arrow_Up", KeyCode::Arrow_Up, "Arrow_Down", KeyCode::Arrow_Down,
-                "Page_Up", KeyCode::Page_Up, "Page_Down", KeyCode::Page_Down,
-                "Home", KeyCode::Home, "End", KeyCode::End, "Insert", KeyCode::Insert,
-                "Click_Left", KeyCode::Click_Left, "Click_Middle", KeyCode::Click_Middle, "Click_Right", KeyCode::Click_Right,
-                "DPad_Up", KeyCode::DPad_Up, "DPad_Down", KeyCode::DPad_Down, "DPad_Left", KeyCode::DPad_Left, "DPad_Right", KeyCode::DPad_Right,
-                "Button_South", KeyCode::Button_South, "Button_East", KeyCode::Button_East,
-                "Button_West", KeyCode::Button_West, "Button_North", KeyCode::Button_North,
-                "Back", KeyCode::Back, "Guide", KeyCode::Guide, "Start", KeyCode::Start,
-                "Left_Stick", KeyCode::Left_Stick, "Right_Stick", KeyCode::Right_Stick,
-                "Left_Shoulder", KeyCode::Left_Shoulder, "Right_Shoulder", KeyCode::Right_Shoulder
-                );
-
-            sol::table InputTable = lua_state.create_named_table("Input");
-            InputTable["GetKey"]         = &Input::GetKey;
-            InputTable["GetKeyDown"]     = &Input::GetKeyDown;
-            InputTable["GetKeyUp"]       = &Input::GetKeyUp;
-            InputTable["GetMouseDelta"]  = &Input::GetMouseDelta;
-
-            sol::table ConsoleTable = lua_state.create_named_table("Console");
-            ConsoleTable["Set"] = [](const std::string& name, const std::string& value) -> bool
-            {
-                return ConsoleRegistry::Get().SetValueFromString(name, value);
-            };
-            ConsoleTable["Get"] = [](const std::string& name) -> sol::object
-            {
-                optional<string> value = ConsoleRegistry::Get().GetValueAsString(name);
-                if (!value)
-                {
-                    return sol::nil;
-                }
-                return sol::make_object(lua_state, *value);
-            };
-
-            lua_state.new_usertype<BoundingBox>("BoundingBox",
-                sol::call_constructor,      sol::constructors<BoundingBox(), BoundingBox(Vector3, Vector3)>(),
-
-                "Intersects",               sol::overload(
-                    [](const BoundingBox& Self, const Vector3& Point) { return Self.Intersects(Point); },
-                    [](const BoundingBox& Self, const BoundingBox& Other) { return Self.Intersects(Other); }),
-
-                "Contains",                 &BoundingBox::Contains,
-                "Merge",                    &BoundingBox::Merge,
-                "GetClosestPoint",          &BoundingBox::GetClosestPoint,
-                "GetCenter",                &BoundingBox::GetCenter,
-                "GetSize",                  &BoundingBox::GetSize,
-                "GetExtents",               &BoundingBox::GetExtents,
-                "GetVolume",                &BoundingBox::GetVolume,
-
-                "GetMin",                   &BoundingBox::GetMin,
-                "GetMax",                   &BoundingBox::GetMax
-
-                );
-
-            sol::table WorldTable = lua_state.create_named_table("World");
-            WorldTable["GetName"]                   = &World::GetName;
-            WorldTable["GetFilePath"]               = &World::GetFilePath;
-            WorldTable["GetBoundingBox"]            = &World::GetBoundingBox;
-            WorldTable["GetEntities"]               = []() -> sol::table
-            {
-                sol::state_view lua = World::GetLuaState();
-                sol::table result = lua.create_table();
-                const std::vector<Entity*>& entities = World::GetEntities();
-                for (size_t i = 0; i < entities.size(); i++)
-                {
-                    result[i + 1] = entities[i];
-                }
-                return result;
-            };
-            WorldTable["GetEntitiesLights"]         = []() -> sol::table
-            {
-                sol::state_view lua = World::GetLuaState();
-                sol::table result = lua.create_table();
-                const std::vector<Entity*>& entities = World::GetEntitiesLights();
-                for (size_t i = 0; i < entities.size(); i++)
-                {
-                    result[i + 1] = entities[i];
-                }
-                return result;
-            };
-            WorldTable["CreateEntity"]              = &World::CreateEntity;
-            WorldTable["RemoveEntity"]              = &World::RemoveEntity;
-            WorldTable["GetLightCount"]             = &World::GetLightCount;
-            WorldTable["GetAudioSourceCount"]       = &World::GetAudioSourceCount;
-            WorldTable["GetTimeOfDay"]              = &World::GetTimeOfDay;
-            WorldTable["SetTimeOfDay"]              = &World::SetTimeOfDay;
-            WorldTable["GetWind"]                   = &World::GetWind;
-            WorldTable["SetWind"]                   = &World::SetWind;
-            WorldTable["GetPuddliness"]             = &World::GetPuddliness;
-            WorldTable["SetPuddliness"]             = &World::SetPuddliness;
-            WorldTable["SetDateUtc"] = &Environment::SetDate;
-            WorldTable["GetAirTemperature"] = []() { return World::GetEnvironment().air_temperature; };
-            WorldTable["GetRoadTemperature"] = []() { return World::GetEnvironment().road_temperature; };
-            WorldTable["GetDirectionalLight"]       = &World::GetDirectionalLight;
-            WorldTable["GetCameraEntity"]           = []() -> Entity*
-            {
-                Camera* camera = World::GetCamera();
-                return camera ? camera->GetEntity() : nullptr;
-            };
-            WorldTable["GetEntityByName"] = [](const std::string& name) -> Entity*
-            {
-                for (Entity* entity : World::GetEntities())
-                {
-                    if (entity && entity->GetObjectName() == name)
-                    {
-                        return entity;
-                    }
-                }
-
-                return nullptr;
-            };
-            // ids exceed lua number precision, so they pass as strings
-            WorldTable["GetEntityById"] = [](const std::string& id) -> Entity*
-            {
-                return World::GetEntityById(std::strtoull(id.c_str(), nullptr, 10));
-            };
-            WorldTable["Raycast"] = [](const Vector3& origin, const Vector3& direction, float max_distance) -> sol::object
-            {
-                Vector3 hit_position;
-                Entity* hit_entity = nullptr;
-                if (PhysicsWorld::RaycastStatic(origin, direction, max_distance, hit_position, hit_entity) && hit_entity)
-                {
-                    sol::state_view lua(lua_state);
-                    sol::table result = lua.create_table();
-                    result["entity"]   = hit_entity;
-                    result["position"] = hit_position;
-                    return result;
-                }
-                return sol::nil;
-            };
-
-            lua_state.new_usertype<Vector2>("Vector2",
-                sol::call_constructor,
-                sol::constructors<Vector2(), Vector2(const Vector2&), Vector2(int, int), Vector2(float, float)>(),
-
-                "x", &Vector2::x,
-                "y", &Vector2::y,
-
-                // Addition
-                sol::meta_function::addition, sol::overload(
-                    [](const Vector2& LHS, const Vector2& RHS) { return LHS + RHS; },
-                    [](const Vector2& LHS, float RHS) { return LHS + RHS; }
-                ),
-
-                // Subtraction
-                sol::meta_function::subtraction, sol::overload(
-                    [](const Vector2& LHS, const Vector2& RHS) { return LHS - RHS; },
-                    [](const Vector2& LHS, float RHS) { return LHS - RHS; }
-                ),
-
-                // Multiplication
-                sol::meta_function::multiplication, sol::overload(
-                    [](const Vector2& LHS, const Vector2& RHS) { return LHS * RHS; },
-                    [](const Vector2& LHS, float RHS) { return LHS * RHS; }
-                ),
-
-                // Division
-                sol::meta_function::division, sol::overload(
-                    [](const Vector2& LHS, const Vector2& RHS) { return LHS / RHS; },
-                    [](const Vector2& LHS, float RHS) { return LHS / RHS; }
-                ),
-
-                // Unary minus
-                sol::meta_function::unary_minus, [](const Vector2& V) { return -V; },
-
-                // Equality
-                sol::meta_function::equal_to, [](const Vector2& LHS, const Vector2& RHS) { return LHS == RHS; },
-
-                // To string
-                sol::meta_function::to_string, [](const Vector2& V)
-                {
-                    return "Vector2(" + std::to_string(V.x) + ", " + std::to_string(V.y) + ")";
-                },
-
-                // Length
-                sol::meta_function::length, [](const Vector2& V) { return 2; },
-
-                // Index access
-                sol::meta_function::index, [](const Vector2& V, int index) -> float {
-                    if (index == 1)
-                    {
-                        return V.x;
-                    }
-                    if (index == 2)
-                    {
-                        return V.y;
-                    }
-                    throw std::out_of_range("Vector2 index out of range (1-2)");
-                },
-
-                sol::meta_function::new_index, [](Vector2& V, int index, float value) {
-                    if (index == 1)
-                    {
-                        V.x = value;
-                    }
-                    else if (index == 2)
-                    {
-                        V.y = value;
-                    }
-                    else
-                    {
-                        throw std::out_of_range("Vector2 index out of range (1-2)");
-                    }
-                },
-
-                // Utility methods
-                "Length", [](const Vector2& V) { return V.Length(); },
-                "LengthSquared", [](const Vector2& V) { return V.LengthSquared(); },
-                "Normalize", [](Vector2& V) { return V.Normalize(); },
-                "Normalized", [](const Vector2& V) { return V.Normalized(); },
-                "Distance", [](const Vector2& V, const Vector2& Other) { return Vector2::Distance(V, Other); },
-                "DistanceSquared", [](const Vector2& V, const Vector2& Other) { return Vector2::DistanceSquared(V, Other); }
-            );
-
-
-
-            lua_state.new_usertype<Vector3>("Vector3",
-                sol::call_constructor,
-                sol::constructors<Vector3(), Vector3(const Vector3&), Vector3(float, float, float)>(),
-
-                "x", &Vector3::x,
-                "y", &Vector3::y,
-                "z", &Vector3::z,
-
-                // Addition
-                sol::meta_function::addition, sol::overload(
-                    [](const Vector3& LHS, const Vector3& RHS) { return LHS + RHS; },
-                    [](const Vector3& LHS, float RHS) { return LHS + RHS; }
-                ),
-
-                // Subtraction
-                sol::meta_function::subtraction, sol::overload(
-                    [](const Vector3& LHS, const Vector3& RHS) { return LHS - RHS; },
-                    [](const Vector3& LHS, float RHS) { return LHS - RHS; }
-                ),
-
-                // Multiplication
-                sol::meta_function::multiplication, sol::overload(
-                    [](const Vector3& LHS, const Vector3& RHS) { return LHS * RHS; },
-                    [](const Vector3& LHS, float RHS) { return LHS * RHS; }
-                ),
-
-                // Division
-                sol::meta_function::division, sol::overload(
-                    [](const Vector3& LHS, const Vector3& RHS) { return LHS / RHS; },
-                    [](const Vector3& LHS, float RHS) { return LHS / RHS; }
-                ),
-
-                // Unary minus
-                sol::meta_function::unary_minus, [](const Vector3& V) { return -V; },
-
-                // Equality
-                sol::meta_function::equal_to, [](const Vector3& LHS, const Vector3& RHS) { return LHS == RHS; },
-
-                // To string
-                sol::meta_function::to_string, [](const Vector3& V)
-                {
-                    return "Vector3(" + std::to_string(V.x) + ", " + std::to_string(V.y) + ", " + std::to_string(V.z) + ")";
-                },
-
-                // Length
-                sol::meta_function::length, [](const Vector3& V) { return 3; },
-
-                // Index access
-                sol::meta_function::index, [](const Vector3& V, int index) -> float
-                {
-                    if (index == 1)
-                    {
-                        return V.x;
-                    }
-                    if (index == 2)
-                    {
-                        return V.y;
-                    }
-                    if (index == 3)
-                    {
-                        return V.z;
-                    }
-                    throw std::out_of_range("Vector3 index out of range (1-3)");
-                },
-
-                sol::meta_function::new_index, [](Vector3& V, int index, float value)
-                {
-                    if (index == 1)
-                    {
-                        V.x = value;
-                    }
-                    else if (index == 2)
-                    {
-                        V.y = value;
-                    }
-                    else if (index == 3)
-                    {
-                        V.z = value;
-                    }
-                    else
-                    {
-                        throw std::out_of_range("Vector3 index out of range (1-3)");
-                    }
-                },
-
-                // Utility methods
-                "Length", [](const Vector3& V) { return V.Length(); },
-                "LengthSquared", [](const Vector3& V) { return V.LengthSquared(); },
-                "Normalize", [](Vector3& V) { return V.Normalize(); },
-                "Normalized", [](const Vector3& V) { return V.Normalized(); },
-                "Distance", [](const Vector3& V, const Vector3& Other) { return Vector3::Distance(V, Other); },
-                "DistanceSquared", [](const Vector3& V, const Vector3& Other) { return Vector3::DistanceSquared(V, Other); }
-            );
-
-
-            lua_state.new_usertype<Vector4>("Vector4",
-                sol::call_constructor,
-                sol::constructors<Vector4(), Vector4(const Vector4&), Vector4(float, float, float, float)>(),
-
-                "x", &Vector4::x,
-                "y", &Vector4::y,
-                "z", &Vector4::z,
-                "w", &Vector4::w,
-
-                // Addition
-                sol::meta_function::addition, sol::overload(
-                    [](const Vector4& LHS, const Vector4& RHS) { return LHS + RHS; },
-                    [](const Vector4& LHS, float RHS) { return LHS + RHS; }
-                ),
-
-                // Subtraction
-                sol::meta_function::subtraction, sol::overload(
-                    [](const Vector4& LHS, const Vector4& RHS) { return LHS - RHS; },
-                    [](const Vector4& LHS, float RHS) { return LHS - RHS; }
-                ),
-
-                // Multiplication
-                sol::meta_function::multiplication, sol::overload(
-                    [](const Vector4& LHS, const Vector4& RHS) { return LHS * RHS; },
-                    [](const Vector4& LHS, float RHS) { return LHS * RHS; }
-                ),
-
-                // Division
-                sol::meta_function::division, sol::overload(
-                    [](const Vector4& LHS, const Vector4& RHS) { return LHS / RHS; },
-                    [](const Vector4& LHS, float RHS) { return LHS / RHS; }
-                ),
-
-                // Unary minus
-                sol::meta_function::unary_minus, [](const Vector4& V) { return -V; },
-
-                // Equality
-                sol::meta_function::equal_to, [](const Vector4& LHS, const Vector4& RHS) { return LHS == RHS; },
-
-                // To string
-                sol::meta_function::to_string, [](const Vector4& V)
-                {
-                    return "Vector4(" + std::to_string(V.x) + ", " + std::to_string(V.y) + ", " + std::to_string(V.z) + ", " + std::to_string(V.w) + ")";
-                },
-
-                // Length
-                sol::meta_function::length, [](const Vector4& V) { return 4; },
-
-                // Index access
-                sol::meta_function::index, [](const Vector4& V, int index) -> float {
-                    if (index == 1)
-                    {
-                        return V.x;
-                    }
-                    if (index == 2)
-                    {
-                        return V.y;
-                    }
-                    if (index == 3)
-                    {
-                        return V.z;
-                    }
-                    if (index == 4)
-                    {
-                        return V.w;
-                    }
-                    throw std::out_of_range("Vector4 index out of range (1-4)");
-                },
-
-                sol::meta_function::new_index, [](Vector4& V, int index, float value) {
-                    if (index == 1)
-                    {
-                        V.x = value;
-                    }
-                    else if (index == 2)
-                    {
-                        V.y = value;
-                    }
-                    else if (index == 3)
-                    {
-                        V.z = value;
-                    }
-                    else if (index == 4)
-                    {
-                        V.w = value;
-                    }
-                    else
-                    {
-                        throw std::out_of_range("Vector4 index out of range (1-4)");
-                    }
-                },
-
-                // Utility methods
-                "Length", [](const Vector4& V) { return V.Length(); },
-                "LengthSquared", [](const Vector4& V) { return V.LengthSquared(); },
-                "Normalize", [](Vector4& V) { return V.Normalize(); },
-                "Normalized", [](const Vector4& V) { return V.Normalized(); },
-                "Distance", [](const Vector4& V, const Vector4& Other) { return Vector4::Distance(V, Other); },
-                "DistanceSquared", [](const Vector4& V, const Vector4& Other) { return Vector4::DistanceSquared(V, Other); }
-            );
-
-            lua_state.new_usertype<Quaternion>("Quaternion",
-                sol::call_constructor,
-                sol::constructors<Quaternion()>(),
-
-                "x", &Quaternion::x,
-                "y", &Quaternion::y,
-                "z", &Quaternion::z,
-                "w", &Quaternion::w,
-
-                "FromEulerAngles", [](float pitch, float yaw, float roll) { return Quaternion::FromEulerAngles(pitch, yaw, roll); },
-                "FromLookRotation", [](const Vector3& direction, const Vector3& up)
-                {
-                    return Quaternion::FromLookRotation(direction, up);
-                },
-                "Lerp", [](const Quaternion& a, const Quaternion& b, float t)
-                {
-                    return Quaternion::Lerp(a, b, t);
-                },
-                "Identity",        sol::var(Quaternion::Identity)
-            );
-
-
-        }
-
-    }
-
-    namespace world_weather
-    {
-        float puddliness = 0.0f;
-    }
-
-    namespace world_clouds
-    {
-        // the cloud noise tiles every 60 km horizontally, so any offset inside that span picks a different cloudscape
-        constexpr float seed_span = 60000.0f;
-        Vector2 seed_offset       = Vector2::Zero;
-
-        void reroll_seed()
-        {
-            seed_offset = Vector2(
-                random<float>(0.0f, seed_span),
-                random<float>(0.0f, seed_span)
-            );
-        }
-    }
-
-    namespace world_wind
-    {
-        Vector3 wind = Vector3::Zero;
-
-        constexpr int frequency_curl_base = 4;
-        constexpr int frequency_gust      = 2;
-        constexpr int frequency_micro     = 32;
-        constexpr int curl_octaves        = 4;
-        constexpr float curl_drift        = 0.03f;
-        constexpr float gust_speed        = 0.07f;
-        constexpr float micro_speed       = 0.12f;
-        constexpr float life_rate         = 0.55f;
-        constexpr float world_period      = 80.0f;
-
-        uint32_t hash(uint32_t value)
-        {
-            value ^= value >> 16;
-            value *= 0x7feb352du;
-            value ^= value >> 15;
-            value *= 0x846ca68bu;
-            value ^= value >> 16;
-            return value;
-        }
-
-        Vector2 hash(int x, int y)
-        {
-            uint32_t hash_0 = hash(static_cast<uint32_t>(x) * 374761393u + static_cast<uint32_t>(y) * 668265263u);
-            uint32_t hash_1 = hash(hash_0 ^ 0x9e3779b9u);
-            constexpr float scale = 2.0f / 4294967295.0f;
-            return Vector2(static_cast<float>(hash_0) * scale - 1.0f, static_cast<float>(hash_1) * scale - 1.0f);
-        }
-
-        int wrap(int value, int period)
-        {
-            return ((value % period) + period) % period;
-        }
-
-        float interpolate(float a, float b, float t)
-        {
-            return a + (b - a) * t;
-        }
-
-        float gradient_noise(const Vector2& position, int period)
-        {
-            int cell_x = static_cast<int>(floorf(position.x));
-            int cell_y = static_cast<int>(floorf(position.y));
-            float x = position.x - static_cast<float>(cell_x);
-            float y = position.y - static_cast<float>(cell_y);
-            float smooth_x = x * x * x * (x * (x * 6.0f - 15.0f) + 10.0f);
-            float smooth_y = y * y * y * (y * (y * 6.0f - 15.0f) + 10.0f);
-
-            Vector2 gradient_a = hash(wrap(cell_x, period), wrap(cell_y, period));
-            Vector2 gradient_b = hash(wrap(cell_x + 1, period), wrap(cell_y, period));
-            Vector2 gradient_c = hash(wrap(cell_x, period), wrap(cell_y + 1, period));
-            Vector2 gradient_d = hash(wrap(cell_x + 1, period), wrap(cell_y + 1, period));
-
-            float a = gradient_a.x * x + gradient_a.y * y;
-            float b = gradient_b.x * (x - 1.0f) + gradient_b.y * y;
-            float c = gradient_c.x * x + gradient_c.y * (y - 1.0f);
-            float d = gradient_d.x * (x - 1.0f) + gradient_d.y * (y - 1.0f);
-            return interpolate(interpolate(a, b, smooth_x), interpolate(c, d, smooth_x), smooth_y);
-        }
-
-        float fbm_evolving(const Vector2& uv, float time, float phase)
-        {
-            static const Vector2 directions[curl_octaves] =
-            {
-                Vector2(0.80f, 0.60f),
-                Vector2(-0.60f, 0.80f),
-                Vector2(-0.80f, -0.60f),
-                Vector2(0.60f, -0.80f)
-            };
-
-            float noise           = 0.0f;
-            float amplitude       = 1.0f;
-            float amplitude_total = 0.0f;
-            int frequency         = frequency_curl_base;
-
-            for (int i = 0; i < curl_octaves; i++)
-            {
-                Vector2 drift = directions[i] * (time * curl_drift * static_cast<float>(frequency));
-                float life = 0.6f + 0.4f * sinf(time * life_rate + static_cast<float>(i) * 1.7f + phase);
-                noise += amplitude * life * gradient_noise(uv * static_cast<float>(frequency) + drift, frequency);
-                amplitude_total += amplitude;
-                amplitude *= 0.55f;
-                frequency *= 2;
-            }
-
-            return noise / amplitude_total;
-        }
-
-        Vector3 sample(const Vector3& position, float time)
-        {
-            float wind_magnitude = sqrtf(wind.x * wind.x + wind.z * wind.z);
-            if (wind_magnitude <= 0.0001f)
-            {
-                return Vector3(0.0f, wind.y, 0.0f);
-            }
-
-            Vector2 wind_direction(wind.x / wind_magnitude, wind.z / wind_magnitude);
-            Vector2 uv(position.x / world_period, position.z / world_period);
-            Vector2 warp_drift_a = Vector2(0.06f, -0.09f) * time;
-            Vector2 warp_drift_b = Vector2(-0.07f, 0.05f) * time;
-            Vector2 warp(
-                gradient_noise(uv * 2.0f + warp_drift_a, 2),
-                gradient_noise(uv * 2.0f + warp_drift_b + Vector2(5.1f, 3.7f), 2)
-            );
-            warp *= 0.18f;
-
-            float flow_x = fbm_evolving(uv + warp, time, 0.0f);
-            float flow_y = fbm_evolving(uv - Vector2(warp.y, warp.x), time * 1.07f, 2.71f);
-            Vector2 direction = wind_direction + Vector2(clamp(flow_x * 1.6f, -1.0f, 1.0f), clamp(flow_y * 1.6f, -1.0f, 1.0f)) * 0.55f;
-            direction.Normalize();
-
-            Vector2 gust_advection = wind_direction * (-time * gust_speed * static_cast<float>(frequency_gust));
-            float gust_low = gradient_noise(uv * static_cast<float>(frequency_gust) + gust_advection, frequency_gust) * 0.5f + 0.5f;
-            float gust_high = gradient_noise(uv * static_cast<float>(frequency_gust * 2) + gust_advection * 2.0f, frequency_gust * 2) * 0.5f + 0.5f;
-            float gust = clamp(interpolate(gust_low, gust_high, 0.35f), 0.0f, 1.0f);
-            float gust_t = clamp((gust - 0.42f) / (0.78f - 0.42f), 0.0f, 1.0f);
-            gust = gust_t * gust_t * (3.0f - 2.0f * gust_t);
-
-            Vector2 micro_advection = Vector2(0.31f, -0.27f) * (time * micro_speed * static_cast<float>(frequency_micro));
-            float micro = gradient_noise(uv * static_cast<float>(frequency_micro) + micro_advection, frequency_micro) * 0.5f + 0.5f;
-            float strength = (0.2f + 0.8f * gust) * wind_magnitude;
-            return Vector3(direction.x * strength, wind.y * (0.2f + 0.8f * gust) + (micro - 0.5f) * wind_magnitude * 0.2f, direction.y * strength);
-        }
-
-        void initialize()
-        {
-            float rotation_y      = 120.0f * math::deg_to_rad;
-            const float intensity = 8.0f;
-            wind = Vector3(sin(rotation_y), 0.0f, cos(rotation_y)) * intensity;
-        }
     }
 
     void World::ProcessPendingRemovals()
     {
-        lock_guard<mutex> lock(entity_access_mutex);
+        vector<Entity*> removed;
+        unique_lock<mutex> lock(entity_access_mutex);
 
         if (pending_remove.empty())
         {
@@ -1434,13 +608,8 @@ namespace spartan
                 // strip cache lists before delete, pretick still runs this frame before resolve
                 untrack_entity(*it);
 
-                // clean up change tracking
-                if (Material* mat = (*it)->GetComponent<Render>() ? (*it)->GetComponent<Render>()->GetMaterial() : nullptr)
-                {
-                    material_state_hashes.erase(mat->GetObjectId());
-                }
-                light_state_hashes.erase(id);
-                delete *it;
+                Renderer::ResetSceneChanges();
+                removed.push_back(*it);
                 it = entities.erase(it);
             }
             else
@@ -1454,6 +623,12 @@ namespace spartan
         // the tracked lists still point at the entities that were just freed, RemoveEntity
         // only flagged a resolve for the frame that queued the removal, not for this one
         resolve = true;
+        lock.unlock();
+        for (Entity* entity : removed)
+        {
+            SP_FIRE_EVENT_DATA(EventType::EntityRemoving, static_cast<void*>(entity));
+            delete entity;
+        }
     }
 
     void World::ProcessPendingAdditions()
@@ -1465,7 +640,7 @@ namespace spartan
             return;
         }
 
-        // drain whatever workers have created so far, the renderer will skip entities whose components are still being set up
+        // publish completed batches; workers must finish component setup before enqueueing
         for (Entity* entity : entities_pending)
             if (entity) entities_by_id[entity->GetObjectId()] = entity;
         entities.insert(entities.end(), entities_pending.begin(), entities_pending.end());
@@ -1475,160 +650,164 @@ namespace spartan
 
     void World::Initialize()
     {
-        InitializeCoreLua();
-        world_wind::initialize();
-        world_clouds::reroll_seed();
+        InitializeScripting();
+        Environment::ResetSpatialWeather();
     }
 
-    void World::Shutdown()
+    void World::ClearScene()
     {
         CommandStack::Clear();
         Engine::SetFlag(EngineMode::Playing, false); // stop simulation
 
-        // stop background world jobs before tearing down resources they may still touch
-        // collect first, never wait for preload while holding entity_access_mutex
+        // Complete worker construction before visiting components. Stop producers while all
+        // entities are still alive, without holding the entity list lock.
+        ThreadPool::Flush();
+        vector<Entity*> stopping_entities;
         {
-            vector<Traffic*> traffics;
-            vector<Pedestrians*> pedestrians;
-            vector<RaceDriver*> race_drivers;
-            {
-                lock_guard<mutex> lock(entity_access_mutex);
-                for (Entity* entity : entities)
-                {
-                    if (entity)
-                    {
-                        if (Traffic* traffic = entity->GetComponent<Traffic>())
-                        {
-                            traffics.push_back(traffic);
-                        }
-                        if (Pedestrians* peds = entity->GetComponent<Pedestrians>())
-                        {
-                            pedestrians.push_back(peds);
-                        }
-                        if (RaceDriver* race_driver = entity->GetComponent<RaceDriver>())
-                        {
-                            race_drivers.push_back(race_driver);
-                        }
-                    }
-                }
-                for (Entity* entity : entities_pending)
-                {
-                    if (entity)
-                    {
-                        if (Traffic* traffic = entity->GetComponent<Traffic>())
-                        {
-                            traffics.push_back(traffic);
-                        }
-                        if (Pedestrians* peds = entity->GetComponent<Pedestrians>())
-                        {
-                            pedestrians.push_back(peds);
-                        }
-                        if (RaceDriver* race_driver = entity->GetComponent<RaceDriver>())
-                        {
-                            race_drivers.push_back(race_driver);
-                        }
-                    }
-                }
-            }
-            for (Traffic* traffic : traffics)
-            {
-                traffic->Stop();
-            }
-            // stop before entity delete, ~Pedestrians must not RemoveEntity under the mutex
-            for (Pedestrians* peds : pedestrians)
-            {
-                peds->Stop();
-            }
-            // same for the race car, ~RaceDriver runs under the mutex and cannot remove the car it spawned
-            for (RaceDriver* race_driver : race_drivers)
-            {
-                race_driver->Stop();
-            }
+            lock_guard lock(entity_access_mutex);
+            stopping_entities = entities;
+            stopping_entities.insert(stopping_entities.end(), entities_pending.begin(), entities_pending.end());
         }
+        for (Entity* entity : stopping_entities) entity->Stop();
+        ThreadPool::Flush();
+        play.Reset();
+        io.preparation.Reset();
 
-        defer_script_init.store(false, memory_order_release);
+        io.defer_scripts.store(false, memory_order_release);
         {
-            lock_guard lock(script_init_mutex);
-            script_inits_pending.clear();
+            lock_guard lock(io.script_mutex);
+            io.scripts.clear();
         }
-        deferred_load_document.reset();
-        load_ready_for_main_commit.store(false, memory_order_release);
+        io.document.reset();
+        io.ready_for_commit.store(false, memory_order_release);
+        io.restore_edit_mode = false;
 
-        // drop queued work and wait for in-flight material/resource/load tasks
-        ThreadPool::Flush(true);
         world_progress.Finish();
-
-        // a load worker may have signaled commit as it finished, drop that after the wait
-        {
-            lock_guard lock(script_init_mutex);
-            script_inits_pending.clear();
-        }
-        deferred_load_document.reset();
-        load_ready_for_main_commit.store(false, memory_order_release);
-        defer_script_init.store(false, memory_order_release);
 
         Renderer::DisableGpuScatter();               // drop renderer references to builder owned scatter meshes/materials
         Renderer::DestroyAccelerationStructures();   // destroy tlas/blas before clearing resources
 
         // cars hold entity pointers, drop them before entity delete
-        Car::ShutdownAll();
+        if (callbacks.before_entities_destroyed) callbacks.before_entities_destroyed();
 
-        // entities before resources, component destructors still need live meshes/materials
+        // Detach ownership under the lock; destructors may call back into World.
+        vector<Entity*> to_delete;
+        vector<Entity*> pending_to_delete;
         {
             lock_guard<mutex> lock(entity_access_mutex);
             camera          = nullptr;
             camera_override = nullptr;
             light           = nullptr;
-            Camera::ClearSelection(); // the selection outlives cameras now, don't let it hold freed entities
 
             // drop the live lists first, destructors that walk GetEntities must not see freed pointers
-            vector<Entity*> to_delete;
             to_delete.swap(entities);
             entities_by_id.clear();
-            vector<Entity*> pending_to_delete;
             pending_to_delete.swap(entities_pending);
             views.Clear();
             pending_remove.clear();
 
-            for (Entity* entity : to_delete)
-            {
-                delete entity;
-            }
-            for (Entity* entity : pending_to_delete)
-            {
-                delete entity;
-            }
+        }
+        for (Entity* entity : to_delete)
+        {
+            SP_FIRE_EVENT_DATA(EventType::EntityRemoving, static_cast<void*>(entity));
+            delete entity;
+        }
+        for (Entity* entity : pending_to_delete)
+        {
+            SP_FIRE_EVENT_DATA(EventType::EntityRemoving, static_cast<void*>(entity));
+            delete entity;
         }
 
-        island_wildlife::Clear(false);
-        island_road_details::Clear();
-        WorldHelpers::Clear();                        // release long lived builder meshes and materials
+        if (callbacks.after_entities_destroyed) callbacks.after_entities_destroyed();
+        WorldHelpers::Clear();
         SP_FIRE_EVENT(EventType::WorldUnloading);    // editor drops thumbnail pointers before the cache frees them
+        Weather::Reset();
+        Renderer::ResetSceneChanges();
+        resolve = true;
+    }
+
+    void World::Shutdown()
+    {
+        ClearScene();
         ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
-        play.spawned_ids.clear();
-        play.snapshot.clear();
-        play.phase = PlaySession::Phase::Idle;
-        play.start_queue.clear();
-        play.start_cursor = 0;
-        was_in_editor_mode = true;
         camera = nullptr;
         light  = nullptr;
         file_path.clear();
         world_name.clear();
         world_description.clear();
-        island_features = false;
         Environment::SetSettings(EnvironmentSettings{});
+        Weather::Reset();
 
         // every load passes through here, so the next world gets a fresh cloudscape
-        world_clouds::reroll_seed();
+        Environment::ResetSpatialWeather();
 
         // clear change tracking
 
-        material_state_hashes.clear();
-        light_state_hashes.clear();
+        Renderer::ResetSceneChanges();
 
         // mark for resolve
         resolve = true;
+    }
+
+    void World::RestorePlayState(const shared_ptr<PlayState>& state)
+    {
+        SP_ASSERT(state && state->document);
+        // Imported meshes cache scene hierarchies used as cloning templates. Keep
+        // those hidden templates alive with the resource cache, not with play state.
+        ThreadPool::Flush();
+        ProcessPendingAdditions();
+        unordered_set<Entity*> live(entities.begin(), entities.end());
+        unordered_set<Entity*> templates;
+        vector<pair<shared_ptr<Mesh>, uint64_t>> model_roots;
+        for (const auto& resource : ResourceCache::GetByType(ResourceType::Mesh))
+        {
+            auto mesh = static_pointer_cast<Mesh>(resource);
+            Entity* root = mesh->GetRootEntity();
+            if (!root || !live.contains(root)) { mesh->SetRootEntity(nullptr); continue; }
+            model_roots.emplace_back(mesh, root->GetObjectId());
+            if (root->IsTransient() && !root->GetParent())
+            {
+                vector<Entity*> hierarchy;
+                root->GetDescendants(&hierarchy);
+                templates.insert(root);
+                templates.insert(hierarchy.begin(), hierarchy.end());
+            }
+            else
+            {
+                mesh->SetRootEntity(nullptr); // rebind authored roots after loading
+            }
+        }
+        vector<Entity*> retained;
+        {
+            lock_guard lock(entity_access_mutex);
+            erase_if(entities, [&](Entity* entity)
+            {
+                if (!templates.contains(entity)) return false;
+                retained.push_back(entity);
+                entities_by_id.erase(entity->GetObjectId());
+                return true;
+            });
+        }
+        ClearScene();
+        {
+            lock_guard lock(entity_access_mutex);
+            entities_pending.insert(entities_pending.end(), retained.begin(), retained.end());
+        }
+        auto world = state->document->child("World");
+        if (callbacks.before_load) callbacks.before_load();
+        if (callbacks.load) callbacks.load(world);
+        Environment::SetSettings(state->environment);
+        world_progress = ProgressTracker::Begin(ProgressType::World, "Restoring edit scene", "Loading authored entities");
+        io.restore_edit_mode = true;
+        io.document = state->document;
+        io.defer_scripts.store(true, memory_order_release);
+        io.state.store(WorldIoState::Loading, memory_order_release);
+        // Reuse the same load and deferred-script paths as file IO and undo.
+        for (auto node : world.child("Entities").children("Entity"))
+            CreateEntity()->Load(node, true, &state->sculpt);
+        for (const auto& [mesh, id] : model_roots) mesh->SetRootEntity(GetEntityById(id));
+        io.ready_for_commit.store(true, memory_order_release);
+        // Restoration completes in Tick through normal preparation. It must remain in edit mode.
     }
 
     const WorldWorkCounters& World::GetWorkCounters() { return work_counters; }
@@ -1650,22 +829,22 @@ namespace spartan
             }
         }
         // only world file loads park the tick, model importer progress from warm preloads must not freeze play
-        if (world_io_state.load(memory_order_acquire) == WorldIoState::Loading)
+        if (io.state.load(memory_order_acquire) == WorldIoState::Loading)
         {
             SP_PROFILE_CPU();
-            was_loading = true;
+            io.notify_loaded = true;
 
             // only the main thread may publish into entities, the load worker stages into entities_pending
-            if (load_ready_for_main_commit.exchange(false, memory_order_acq_rel))
+            if (io.ready_for_commit.exchange(false, memory_order_acq_rel))
             {
                 ProcessPendingAdditions();
 
-                defer_script_init.store(false, memory_order_release);
+                io.defer_scripts.store(false, memory_order_release);
                 {
                     vector<pair<int, function<void()>>> inits;
                     {
-                        lock_guard lock(script_init_mutex);
-                        inits.swap(script_inits_pending);
+                        lock_guard lock(io.script_mutex);
+                        inits.swap(io.scripts);
                     }
 
                     // run lower order first so lights are configured before heavy world builders populate the scene
@@ -1682,18 +861,16 @@ namespace spartan
 
                 // builder scripts may have spawned more entities
                 ProcessPendingAdditions();
-                deferred_load_document.reset();
+                io.document.reset();
 
                 world_progress.SetStep("Preparing terrain, roads and population");
-                preparation_timer.Start();
-                preparation_cursor = 0;
-                preparation_stage = PreparationStage::Terrain;
+                io.preparation.Begin();
                 for (Entity* entity : entities)
                     if (entity->GetActive() && entity->GetComponent<Camera>()) camera = pick_default_camera(camera, entity);
-                world_io_state.store(WorldIoState::Preparing, memory_order_release);
+                io.state.store(WorldIoState::Preparing, memory_order_release);
 
                 // fall through so resolve rebuilds views.render before Renderer::Tick
-                // returning here left that list empty while HaveMaterialsChangedThisFrame still
+                // returning here left that list empty while the renderer still
                 // recorded hashes, so bindless materials never uploaded until a later entity spawn
             }
             else
@@ -1706,68 +883,12 @@ namespace spartan
 
         if (IsPreparing())
         {
-            if (preparation_stage == PreparationStage::Terrain)
-            {
-                world_progress.SetDetail("Terrain surface, vegetation and roads");
-                ProcessPendingAdditions();
-                bool terrain_busy = false;
-                bool surface_busy = false;
-                // Run only preparation components. Scripts, gameplay and ordinary editor ticks
-                // must not observe a world whose roads, collision and vegetation are incomplete.
-                const vector<Entity*> preparation_entities = entities;
-                for (Entity* entity : preparation_entities)
-                {
-                    if (Terrain* terrain = entity->GetComponent<Terrain>(); terrain && entity->GetActive())
-                    {
-                        if (!terrain->IsCpuGenerationPending()) terrain->Tick();
-                        surface_busy |= terrain->IsCpuGenerationPending() || terrain->IsMeshCommitPending();
-                        terrain_busy |= terrain->IsGenerating();
-                    }
-                }
-                ProcessPendingAdditions();
-                if (!surface_busy)
-                {
-                    // Authored/non-terrain and attached splines also have deferred first-tick work.
-                    for (Entity* entity : preparation_entities)
-                        if (Spline* spline = entity->GetComponent<Spline>(); spline && entity->GetActive()) spline->Tick();
-                    Spline::ProcessPendingRoadMeshes();
-                    Spline::RebuildRoadJunctions();
-                }
-                if (terrain_busy || Spline::HasPendingRoadWork()) return;
-                preparation_stage = PreparationStage::Roads;
-            }
-            if (preparation_stage == PreparationStage::Roads)
-            {
-                world_progress.SetDetail("Roadside details and guardrails");
-                if (!island_road_details::PrepareWorld()) return;
-                preparation_stage = PreparationStage::Components;
-                ProcessPendingRemovals();
-            }
-            // Complete model preloads and bake navigation before editor entry. Live agents
-            // still spawn in play mode; a failed asset must not wedge the loading screen.
-            const Stopwatch slice;
-            while (preparation_cursor < entities.size())
-            {
-                Entity* entity = entities[preparation_cursor];
-                world_progress.SetDetail("Preparing scene: " + entity->GetObjectName());
-                if (entity->GetActive())
-                {
-                    if (Text3D* text = entity->GetComponent<Text3D>()) text->PrepareWorld();
-                    if (Render* render = entity->GetComponent<Render>()) render->Tick();
-                    if (Physics* physics = entity->GetComponent<Physics>()) physics->PrepareWorld();
-                    if (Traffic* traffic = entity->GetComponent<Traffic>(); traffic && !traffic->PrepareWorld()) return;
-                    if (Pedestrians* walkers = entity->GetComponent<Pedestrians>(); walkers && !walkers->PrepareWorld()) return;
-                }
-                ++preparation_cursor;
-                if (slice.GetElapsedTimeMs() >= 20.0f) return;
-            }
-            ProcessPendingAdditions();
-            if (preparation_cursor < entities.size()) return;
+            if (!io.preparation.Tick(entities, world_progress, callbacks.prepare ? callbacks.prepare : TerrainSystem::PrepareWorld, [] { ProcessPendingRemovals(); })) return;
             world_progress.SetStep("Uploading world geometry");
             generated_cache::SaveChecksumIndex(GetResourceDirectory());
             GeometryBuffer::SaveWorldLoadCapacity(GetResourceDirectory());
             GeometryBuffer::BuildIfDirty();
-            SP_LOG_INFO("World preparation complete: %.2f ms", preparation_timer.GetElapsedTimeMs());
+            SP_LOG_INFO("World preparation complete: %.2f ms", io.preparation.ElapsedMs());
             release_uploaded_cpu_geometry();
             log_cpu_memory("world ready");
             log_gpu_geometry("world ready");
@@ -1780,7 +901,7 @@ namespace spartan
                 if (result.removed) SP_LOG_INFO("Bake cache reclaimed %.1f MB (%llu files)", result.bytes_removed / 1000000.0, static_cast<unsigned long long>(result.removed));
             });
             world_progress.Finish();
-            world_io_state.store(WorldIoState::Idle, memory_order_release);
+            io.state.store(WorldIoState::Idle, memory_order_release);
         }
         else if (work_counter_tick % 1800 == 0)
         {
@@ -1795,136 +916,40 @@ namespace spartan
 
         // notify listeners on the first tick after loading completes
         // any final pending entities are drained so subscribers see a fully populated scene
-        if (was_loading)
+        if (io.notify_loaded)
         {
-            was_loading = false;
+            io.notify_loaded = false;
             ProcessPendingAdditions();
             // force a resolve so the final entity state, deferred script setup like the sun, is rebuilt into the
             // renderer caches, a static world such as empty would otherwise stay on the last unlit loading frame
             resolve = true;
             // drop hashes recorded against an empty views.render during the commit frame gap
-            material_state_hashes.clear();
-            light_state_hashes.clear();
+            Renderer::ResetSceneChanges();
             SP_FIRE_EVENT(EventType::WorldLoaded);
+            if (io.restore_edit_mode)
+            {
+                Engine::SetFlag(EngineMode::Playing, false);
+                io.restore_edit_mode = false;
+            }
         }
 
-        // detect game toggling
-        const bool started = Engine::IsFlagSet(EngineMode::Playing) && was_in_editor_mode;
-        const bool stopped = !Engine::IsFlagSet(EngineMode::Playing) && !was_in_editor_mode;
-        was_in_editor_mode = !Engine::IsFlagSet(EngineMode::Playing);
-
-        // start, transform snapshot and Entity::Start are both time budgeted across frames
-        if (started)
+        // PlaySession owns the transition state; there is no second editor/play flag to drift.
+        if (Engine::IsFlagSet(EngineMode::Playing) && !play.IsActive())
         {
-            play.snapshot.clear();
-            play.snapshot.reserve(entities.size());
-            play.environment = Environment::GetSettings();
-            play.spawned_ids.clear();
-
-            play.start_queue.clear();
-            play.start_queue.reserve(entities.size());
-            for (Entity* entity : entities)
-            {
-                play.start_queue.push_back(entity);
-            }
-            // traffic pedestrians cars scripts first so their async work starts immediately
-            stable_partition(
-                play.start_queue.begin(),
-                play.start_queue.end(),
-                [](Entity* entity) { return entity_has_play_priority(entity); });
-            play.start_cursor = 0;
-            play.phase = PlaySession::Phase::Starting;
+            ProcessPendingAdditions();
+            play.Begin(entities, callbacks);
         }
-
-        // stop
-        if (stopped)
+        else if (!Engine::IsFlagSet(EngineMode::Playing) && play.IsActive())
         {
-            island_wildlife::Clear(true);
-            play.phase = PlaySession::Phase::Idle;
-            play.start_queue.clear();
-            play.start_cursor = 0;
-
-            // copy the list, Stop can queue removals and must not walk a mutating vector
-            const vector<Entity*> entities_to_stop = entities;
-            for (Entity* entity : entities_to_stop)
-            {
-                if (entity)
-                {
-                    entity->Stop();
-                }
-            }
-
-            // restore all entity transforms from snapshot
-            for (Entity* entity : entities)
-            {
-                auto it = play.snapshot.find(entity->GetObjectId());
-                if (it != play.snapshot.end())
-                {
-                    const PlaySession::Pose& snapshot = it->second;
-                    entity->SetPositionLocal(snapshot.position);
-                    entity->SetRotationLocal(snapshot.rotation);
-                    entity->SetScaleLocal(snapshot.scale);
-                }
-            }
-            play.snapshot.clear();
-            Environment::SetSettings(play.environment);
-
-            // snapshot restores bone entities to mid-play values after Animator::Stop
-            // re-bind so skinned meshes leave play in a standing rest pose
-            for (Entity* entity : entities)
-            {
-                if (!entity)
-                {
-                    continue;
-                }
-
-                if (Animator* animator = entity->GetComponent<Animator>())
-                {
-                    animator->ApplyBindPose();
-                }
-            }
-
-            // restore skeleton body visibility before play spawned meshes are destroyed
-            for (Car* car : Car::GetAll())
-            {
-                if (car)
-                {
-                    car->PrepareForPlayStop();
-                }
-            }
-
-            // remove anything spawned during play so it never leaks into the world or gets saved by accident
-            // the removal is deferred and handled by ProcessPendingRemovals right below
-            vector<Entity*> spawned;
-            for (Entity* entity : entities)
-            {
-                if (play.spawned_ids.count(entity->GetObjectId()) == 0)
-                {
-                    continue;
-                }
-
-                // transient entities like skid mark trails are owned and managed by their component, removing them here would dangle that pointer
-                if (entity->IsTransient())
-                {
-                    continue;
-                }
-
-                // prefab entities are built at load and must survive a stop
-                if (entity->HasPrefabData() || entity->IsPrefabOwned())
-                {
-                    continue;
-                }
-
-                spawned.push_back(entity);
-            }
-            for (Entity* entity : spawned)
-            {
-                RemoveEntity(entity);
-            }
-            play.spawned_ids.clear();
+            // Finish and publish play-time worker batches before restoring/removing entities.
+            ThreadPool::Flush();
+            ProcessPendingAdditions();
+            play.Stop(callbacks);
+            ProcessPendingAdditions();
+            if (IsLoadingFromFile()) return;
         }
 
-        if (Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused))
+        if (Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused) && !play.IsStarting())
         {
             if (Light* light = GetDirectionalLight(); light && light->GetFlag(LightFlags::DayNightCycle))
                 Environment::Tick(Timer::GetDeltaTimeSec());
@@ -1932,48 +957,14 @@ namespace spartan
 
         ProcessPendingRemovals();
 
-        // drain a slice of snapshot + Entity::Start each frame until the scene is ready
-        if (play.phase == PlaySession::Phase::Starting)
-        {
-            const Stopwatch start_timer;
-            while (play.start_cursor < play.start_queue.size())
-            {
-                Entity* entity = play.start_queue[play.start_cursor++];
-                if (entity)
-                {
-                    if (!entity->IsTransient())
-                    {
-                        PlaySession::Pose snapshot;
-                        snapshot.position = entity->GetPositionLocal();
-                        snapshot.rotation = entity->GetRotationLocal();
-                        snapshot.scale    = entity->GetScaleLocal();
-                        play.snapshot[entity->GetObjectId()] = snapshot;
-                    }
-                    entity->Start();
-                }
-
-                if (start_timer.GetElapsedTimeMs() >= PlaySession::start_budget_ms)
-                {
-                    break;
-                }
-            }
-
-            if (play.start_cursor >= play.start_queue.size())
-            {
-                play.start_queue.clear();
-                play.start_cursor = 0;
-                play.phase = PlaySession::Phase::Ready;
-                SP_LOG_INFO(
-                    "play boot complete, %zu entities started",
-                    entities.size());
-            }
-        }
+        // drain capture first, then staged starts, until the scene is ready
+        play.Tick();
 
         // during boot keep rendering, but skip sim ticks and the per entity change scan
-        if (play.phase != PlaySession::Phase::Starting)
+        if (!play.IsStarting())
         {
             if (Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused))
-                island_wildlife::Tick(static_cast<float>(Timer::GetDeltaTimeSec()));
+                if (callbacks.before_tick) callbacks.before_tick(static_cast<float>(Timer::GetDeltaTimeSec()));
 
             SP_PROFILE_CPU_START("world_pretick");
             Camera* pretick_camera = GetCamera();
@@ -2069,6 +1060,7 @@ namespace spartan
                 }
             }
             SP_PROFILE_CPU_END();
+            if (callbacks.controls) callbacks.controls();
             SP_PROFILE_CPU_START("world_logic_tick");
             for (Entity* entity : views.logic)
             {
@@ -2084,7 +1076,7 @@ namespace spartan
             Spline::RebuildRoadJunctions();
             SP_PROFILE_CPU_START("world_road_details");
             if (!ProgressTracker::IsLoading())
-                island_road_details::Tick(static_cast<float>(Timer::GetDeltaTimeSec()));
+                if (callbacks.after_tick) callbacks.after_tick(static_cast<float>(Timer::GetDeltaTimeSec()));
             SP_PROFILE_CPU_END();
 
             // ragdoll hit capsules after scripts/pedestrians moved the bodies
@@ -2191,38 +1183,7 @@ namespace spartan
                         const uint32_t component_count = entity->GetComponentCount();
                         if (component_count > 0 && !(component_count == 1 && has_render))
                         {
-                            static const ComponentType icon_types[] =
-                            {
-                                ComponentType::Light,
-                                ComponentType::Camera,
-                                ComponentType::AudioSource,
-                                ComponentType::ParticleSystem,
-                                ComponentType::Volume,
-                                ComponentType::SpawnPoint,
-                                ComponentType::Terrain,
-                                ComponentType::Water,
-                                ComponentType::Physics,
-                                ComponentType::Spline,
-                                ComponentType::SplineFollower,
-                                ComponentType::Traffic,
-                                ComponentType::Pedestrians,
-                                ComponentType::Navigation,
-                                ComponentType::Animator,
-                                ComponentType::Ragdoll,
-                                ComponentType::SkidMarks,
-                                ComponentType::CarReset,
-                                ComponentType::Text3D,
-                                ComponentType::Script,
-                            };
-
-                            for (ComponentType type : icon_types)
-                            {
-                                if (entity->GetComponentByType(type))
-                                {
-                                    views.icons.push_back(entity);
-                                    break;
-                                }
-                            }
+                            views.icons.push_back(entity);
                         }
                     }
                 }
@@ -2336,7 +1297,7 @@ namespace spartan
     {
         WorldIoState expected = WorldIoState::Idle;
         if (
-            !world_io_state.compare_exchange_strong(
+            !io.state.compare_exchange_strong(
                 expected,
                 WorldIoState::Saving
             )
@@ -2362,7 +1323,7 @@ namespace spartan
     {
         WorldIoState expected = WorldIoState::Idle;
         if (
-            !world_io_state.compare_exchange_strong(
+            !io.state.compare_exchange_strong(
                 expected,
                 WorldIoState::Saving
             )
@@ -2385,14 +1346,14 @@ namespace spartan
             SP_LOG_ERROR("Failed to save world '%s': %s", file_path.c_str(), error.what());
         }
 
-        world_io_state.store(WorldIoState::Idle, memory_order_release);
+        io.state.store(WorldIoState::Idle, memory_order_release);
         return false;
     }
 
     bool World::IsSaving()
     {
         return
-            world_io_state.load(memory_order_acquire) ==
+            io.state.load(memory_order_acquire) ==
             WorldIoState::Saving;
     }
 
@@ -2416,6 +1377,7 @@ namespace spartan
         const auto save_started = filesystem::file_time_type::clock::now();
         vector<function<void()>> writes;
         function<void()> cleanup;
+        set<string> owned_files = world_resources::ReadOwnedFiles(file_path);
 
         // Resolve identities and capture live data on the owner thread. Disk work
         // below only consumes owned snapshots and can safely outlive this frame.
@@ -2468,17 +1430,6 @@ namespace spartan
                     return true;
                 }
                 return false;
-            };
-
-            // caches and the sculpt layer are written by the engine, not by an entity, so nothing in
-            // the world points at them and the prune below would wipe them on every save
-            auto is_engine_cache = [](const string& path) -> bool
-            {
-                const string name = FileSystem::GetFileNameFromFilePath(path);
-                return
-                    name.find("terrain_cache")      == 0 ||
-                    name.find("terrain_mesh_cache") == 0 ||
-                    name.find("terrain_sculpt")     == 0;
             };
 
             vector<shared_ptr<IResource>> resources = ResourceCache::GetResourcesSnapshot();
@@ -2601,7 +1552,11 @@ namespace spartan
                     // Deferred textures can have no CPU data to save, but their files
                     // are still referenced by materials and must survive pruning.
                     if (referenced_resources.count(resource.get()) != 0)
+                    {
                         used_file_names.insert(key);
+                        const string name = FileSystem::GetFileNameFromFilePath(resource->GetResourceFilePath());
+                        if (resource->IsPersistent() && world_resources::IsOwnedFileName(name)) owned_files.insert(name);
+                    }
                 }
             }
             for (shared_ptr<IResource>& resource : resources)
@@ -2673,9 +1628,9 @@ namespace spartan
                 const bool path_changed  = resource->GetResourceFilePath() != FileSystem::GetRelativePath(target_path);
                 resource->SetResourceFilePath(target_path);
                 pending_saves.push_back({ resource.get(), target_path, path_changed });
+                owned_files.insert(FileSystem::GetFileNameFromFilePath(target_path));
             }
 
-            ResourceCache::InvalidatePathIndex();
 
             // Materials must persist the texture paths assigned above, even when their own path stayed the same.
             for (const PendingResourceSave& pending : pending_saves)
@@ -2689,7 +1644,7 @@ namespace spartan
                     writes.push_back(move(write));
             }
 
-            cleanup = [save_started, directory, used_file_names = move(used_file_names), to_file_key, is_mcp_owned, is_engine_cache]() mutable
+            cleanup = [save_started, directory, used_file_names = move(used_file_names), to_file_key, is_mcp_owned, owned_files]() mutable
             {
                 // prefabs on disk reference meshes and materials that no live entity owns,
                 // without protecting them a save turns every saved prefab into dangling references
@@ -2776,16 +1731,16 @@ namespace spartan
                     }
                 }
 
-                // prune files that no longer belong to this save, loading picks up every file in this directory
-                // so stale duplicates from older saves would otherwise come back and shadow the right resources
+                // Only prune explicitly owned resource files. Unlisted assets, sculpt data and caches are untouched.
                 vector<string> removed, failures;
-                for (const string& existing_file : FileSystem::GetFilesInDirectory(directory))
+                for (const string& name : owned_files)
                 {
+                    const string existing_file = (filesystem::path(directory) / name).string();
                     // Files created or edited after the snapshot belong to a later edit.
                     error_code time_error;
                     const auto modified = filesystem::last_write_time(existing_file, time_error);
                     if (time_error || modified >= save_started) continue;
-                    if (is_mcp_owned(existing_file) || is_engine_cache(existing_file))
+                    if (is_mcp_owned(existing_file))
                     {
                         continue;
                     }
@@ -2841,28 +1796,12 @@ namespace spartan
         auto document = make_shared<pugi::xml_document>();
         auto& doc = *document;
         pugi::xml_node world_node = doc.append_child("World");
+        world_resources::WriteOwnedFiles(world_node, owned_files);
         world_node.append_attribute("name")        = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path).c_str();
         world_node.append_attribute("description") = world_description.c_str();
-        if (island_features)
-        {
-            world_node.append_attribute("island_features") = true;
-        }
+        if (callbacks.save) callbacks.save(world_node);
         auto environment_node = world_node.append_child("Environment");
-        const auto& environment = Environment::GetSettings();
-        environment_node.append_attribute("utc_days") = environment.utc_days;
-        environment_node.append_attribute("latitude") = environment.latitude;
-        environment_node.append_attribute("longitude") = environment.longitude;
-        environment_node.append_attribute("elevation") = environment.elevation;
-        environment_node.append_attribute("time_scale") = environment.time_scale;
-        environment_node.append_attribute("north_degrees") = environment.north_degrees;
-        environment_node.append_attribute("annual_temperature") = environment.annual_temperature;
-        environment_node.append_attribute("seasonal_amplitude") = environment.seasonal_amplitude;
-        environment_node.append_attribute("daily_amplitude") = environment.daily_amplitude;
-        environment_node.append_attribute("sea_level_pressure") = environment.sea_level_pressure;
-        environment_node.append_attribute("wind_x") = GetWind().x;
-        environment_node.append_attribute("wind_y") = GetWind().y;
-        environment_node.append_attribute("wind_z") = GetWind().z;
-        environment_node.append_attribute("puddliness") = GetPuddliness();
+        Environment::Save(environment_node);
 
         // console variables (only those explicitly overridden by this world are persisted)
         if (!world_console_variables.empty())
@@ -2953,35 +1892,35 @@ namespace spartan
         }
 
         // imgui still holds texture ids from this frame, shutdown must wait until the next tick
-        pending_load_path = file_path_;
+        io.pending_path = file_path_;
         return true;
     }
 
     bool World::IsLoadingFromFile()
     {
-        const auto state = world_io_state.load(memory_order_acquire);
+        const auto state = io.state.load(memory_order_acquire);
         return state == WorldIoState::Loading || state == WorldIoState::Preparing;
     }
 
     bool World::IsPreparing()
     {
-        return world_io_state.load(memory_order_acquire) == WorldIoState::Preparing;
+        return io.state.load(memory_order_acquire) == WorldIoState::Preparing;
     }
 
     void World::ProcessPendingLoad()
     {
-        if (pending_load_path.empty())
+        if (io.pending_path.empty())
         {
             return;
         }
 
-        const string file_path_ = pending_load_path;
-        pending_load_path.clear();
+        const string file_path_ = io.pending_path;
+        io.pending_path.clear();
 
         // reject re-entrant loads, the second Shutdown below would tear down the world while the first load's workers are still building it
         WorldIoState expected = WorldIoState::Idle;
         if (
-            !world_io_state.compare_exchange_strong(
+            !io.state.compare_exchange_strong(
                 expected,
                 WorldIoState::Loading
             )
@@ -2991,7 +1930,7 @@ namespace spartan
         }
 
         // ensure prefabs are registered before loading
-        Car::RegisterPrefabs();
+        if (callbacks.before_load) callbacks.before_load();
 
         // Include teardown/job waits in the same visible task and elapsed time.
         // Shutdown finishes the previous world's handle, so retain this one locally.
@@ -3016,7 +1955,7 @@ namespace spartan
             auto finish = []()
             {
                 world_progress.Finish();
-                world_io_state.store(
+                io.state.store(
                     WorldIoState::Idle,
                     memory_order_release
                 );
@@ -3039,14 +1978,14 @@ namespace spartan
                     finish();
                     return;
                 }
-                deferred_load_document = doc;
+                io.document = doc;
 
                 // get world node
                 pugi::xml_node world_node = doc->child("World");
                 if (!world_node)
                 {
                     SP_LOG_ERROR("No 'World' node found.");
-                    deferred_load_document.reset();
+                    io.document.reset();
                     finish();
                     return;
                 }
@@ -3089,6 +2028,8 @@ namespace spartan
                         };
                         function<void(pugi::xml_node)> collect_dependencies = [&](pugi::xml_node node)
                         {
+                            // Ownership includes retired files awaiting cleanup; it is not a live reference.
+                            if (strcmp(node.name(), "OwnedResources") == 0) return;
                             for (pugi::xml_attribute attribute : node.attributes())
                             {
                                 const string value = attribute.as_string();
@@ -3263,30 +2204,8 @@ namespace spartan
 
                 // read metadata
                 world_description = world_node.attribute("description").as_string();
-                island_features   = world_node.attribute("island_features").as_bool(false);
-                EnvironmentSettings environment;
-                auto environment_node = world_node.child("Environment");
-                environment.utc_days = environment_node.attribute("utc_days").as_double(environment.utc_days);
-                environment.latitude = environment_node.attribute("latitude").as_double(environment.latitude);
-                environment.longitude = environment_node.attribute("longitude").as_double(environment.longitude);
-                environment.elevation = environment_node.attribute("elevation").as_double(environment.elevation);
-                environment.time_scale = environment_node.attribute("time_scale").as_double(environment.time_scale);
-                environment.north_degrees = environment_node.attribute("north_degrees").as_float(environment.north_degrees);
-                environment.annual_temperature = environment_node.attribute("annual_temperature").as_float(environment.annual_temperature);
-                environment.seasonal_amplitude = environment_node.attribute("seasonal_amplitude").as_float(environment.seasonal_amplitude);
-                environment.daily_amplitude = environment_node.attribute("daily_amplitude").as_float(environment.daily_amplitude);
-                environment.sea_level_pressure = environment_node.attribute("sea_level_pressure").as_float(environment.sea_level_pressure);
-                Environment::SetSettings(environment);
-                // Older worlds have no saved wind. Restore the default instead of
-                // flattening their FFT ocean or inheriting the previous world's wind.
-                world_wind::initialize();
-                const Vector3 default_wind = GetWind();
-                SetWind(Vector3(
-                    environment_node.attribute("wind_x").as_float(default_wind.x),
-                    environment_node.attribute("wind_y").as_float(default_wind.y),
-                    environment_node.attribute("wind_z").as_float(default_wind.z)
-                ));
-                SetPuddliness(environment_node.attribute("puddliness").as_float(0.0f));
+                if (callbacks.load) callbacks.load(world_node);
+                Environment::Load(world_node);
 
                 // console variables: apply any cvars defined by the world
                 // format:
@@ -3337,7 +2256,7 @@ namespace spartan
                     if (!entities_node)
                     {
                         SP_LOG_ERROR("No 'Entities' node found.");
-                        deferred_load_document.reset();
+                        io.document.reset();
                         finish();
                         return;
                     }
@@ -3375,10 +2294,10 @@ namespace spartan
 
                     // defer script lua execution, lua is single threaded and cannot run across the worker threads below
                     {
-                        lock_guard lock(script_init_mutex);
-                        script_inits_pending.clear();
+                        lock_guard lock(io.script_mutex);
+                        io.scripts.clear();
                     }
-                    defer_script_init.store(true, memory_order_release);
+                    io.defer_scripts.store(true, memory_order_release);
 
                     // create and load every entity without hierarchy, children are wired after
                     // keep this sequential on the load worker, component Initialize/Load is not safe
@@ -3422,20 +2341,39 @@ namespace spartan
                 SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
 
                 // hand off publish + deferred script init to World::Tick, loading stays up until that finishes
-                load_ready_for_main_commit.store(true, memory_order_release);
+                io.ready_for_commit.store(true, memory_order_release);
             }
             catch (const exception& error)
             {
                 SP_LOG_ERROR("World load failed: %s", error.what());
-                deferred_load_document.reset();
+                io.document.reset();
                 finish();
             }
         });
     }
 
-    sol::state_view World::GetLuaState()
+
+    World::EntityBatch::EntityBatch() : previous(entity_batch) { entity_batch = this; }
+    World::EntityBatch::~EntityBatch()
     {
-        return sol::state_view(lua_state);
+        entity_batch = previous;
+        // Deletion happens outside entity_access_mutex, just like normal removal.
+        for (Entity* entity : entities) delete entity;
+    }
+
+    void World::EntityBatch::Commit()
+    {
+        if (previous)
+        {
+            previous->entities.insert(previous->entities.end(), entities.begin(), entities.end());
+        }
+        else
+        {
+            lock_guard lock(entity_access_mutex);
+            entities_pending.insert(entities_pending.end(), entities.begin(), entities.end());
+            resolve = true;
+        }
+        entities.clear();
     }
 
     Entity* World::CreateEntity()
@@ -3443,28 +2381,24 @@ namespace spartan
         lock_guard lock(entity_access_mutex);
 
         Entity* entity = new Entity();
-        // entity becomes visible to the renderer on the next World::Tick which auto-drains this list, partial component state is tolerated via skip checks
-        entities_pending.push_back(entity);
+        // worker builders use EntityBatch; main-thread creation is published at the next drain
+        if (entity_batch) entity_batch->entities.push_back(entity);
+        else entities_pending.push_back(entity);
         resolve = true;
 
-        // entities spawned during play are tracked so they can be removed when play stops
-        if (Engine::IsFlagSet(EngineMode::Playing))
-        {
-            play.spawned_ids.insert(entity->GetObjectId());
-        }
 
         return entity;
     }
 
     bool World::IsDeferringScriptInit()
     {
-        return defer_script_init.load(memory_order_acquire);
+        return io.defer_scripts.load(memory_order_acquire);
     }
 
     void World::AddDeferredScriptInit(int order, function<void()>&& init)
     {
-        lock_guard lock(script_init_mutex);
-        script_inits_pending.emplace_back(order, std::move(init));
+        lock_guard lock(io.script_mutex);
+        io.scripts.emplace_back(order, std::move(init));
     }
 
     bool World::EntityExists(Entity* entity)
@@ -3529,11 +2463,11 @@ namespace spartan
 
     void World::RemoveEntityImmediate(Entity* entity_to_remove)
     {
-        // main thread only, escaped Entity* holders are not notified
+        // Main thread only; EntityRemoving lets owners release external references.
         SP_ASSERT_MSG(entity_to_remove != nullptr, "Entity is null");
         SP_ASSERT_MSG(!ProgressTracker::IsLoading(), "Immediate delete is unsafe during world loading");
 
-        lock_guard<mutex> lock(entity_access_mutex);
+        unique_lock<mutex> lock(entity_access_mutex);
 
         // get the entity and all of its descendants
         vector<Entity*> entities_to_remove;
@@ -3578,23 +2512,24 @@ namespace spartan
             auto it = find(entities.begin(), entities.end(), entity);
             if (it != entities.end())
             {
-                // clean up change tracking
-                if (Material* mat = entity->GetComponent<Render>() ? entity->GetComponent<Render>()->GetMaterial() : nullptr)
-                {
-                    material_state_hashes.erase(mat->GetObjectId());
-                }
-                light_state_hashes.erase(id);
+                Renderer::ResetSceneChanges();
                 entities.erase(it);
             }
 
+            std::erase(entities_pending, entity);
             untrack_entity(entity);
 
             pending_remove.erase(id);
 
-            delete entity;
         }
 
         resolve = true;
+        lock.unlock();
+        for (Entity* entity : entities_to_remove)
+        {
+            SP_FIRE_EVENT_DATA(EventType::EntityRemoving, static_cast<void*>(entity));
+            delete entity;
+        }
     }
 
     void World::GetRootEntities(vector<Entity*>& entities_out)
@@ -3705,6 +2640,10 @@ namespace spartan
 
     Entity* World::GetEntityById(const uint64_t id)
     {
+        // A builder may resolve its own unpublished hierarchy, other threads cannot.
+        for (EntityBatch* batch = entity_batch; batch; batch = batch->previous)
+            for (Entity* entity : batch->entities)
+                if (entity->GetObjectId() == id) return entity;
         lock_guard<mutex> lock(entity_access_mutex);
 
         const auto found = entities_by_id.find(id);
@@ -3775,7 +2714,7 @@ namespace spartan
 
     bool World::IsPlayBooting()
     {
-        return play.phase == PlaySession::Phase::Starting;
+        return play.IsStarting() || (Engine::IsFlagSet(EngineMode::Playing) && !play.IsActive());
     }
 
     const string& World::GetName()
@@ -3837,100 +2776,6 @@ namespace spartan
         return audio_source_count;
     }
 
-    bool World::HaveMaterialsChangedThisFrame()
-    {
-        lock_guard<mutex> lock(entity_access_mutex);
-
-        static uint32_t last_global_revision = 0;
-        static uint64_t resource_poll_frame = 0;
-        const uint32_t global_revision = Material::GetGlobalRevision();
-        const bool props_changed = global_revision != last_global_revision;
-        last_global_revision = global_revision;
-
-        // property/texture pointer edits are covered by the global revision, async resource
-        // states still need a periodic poll so bindless updates when gpu prep finishes
-        resource_poll_frame++;
-        const bool poll_resources = (resource_poll_frame % 8) == 0;
-        const bool hashes_empty = material_state_hashes.empty() && !views.render.empty();
-        if (!props_changed && !poll_resources && !hashes_empty)
-        {
-            return false;
-        }
-
-        bool changed = false;
-        unordered_set<uint64_t> seen;
-        seen.reserve(views.render.size());
-
-        for (Entity* entity : views.render)
-        {
-            if (!entity)
-            {
-                continue;
-            }
-
-            Render* render = entity->GetComponent<Render>();
-            if (!render)
-            {
-                continue;
-            }
-
-            Material* material = render->GetMaterial();
-            if (!material)
-            {
-                continue;
-            }
-
-            const uint64_t id = material->GetObjectId();
-            if (!seen.insert(id).second)
-            {
-                continue;
-            }
-
-            size_t current_hash = compute_material_hash(material);
-            auto it = material_state_hashes.find(id);
-            if (it == material_state_hashes.end())
-            {
-                material_state_hashes[id] = current_hash;
-                changed = true;
-            }
-            else if (it->second != current_hash)
-            {
-                it->second = current_hash;
-                changed = true;
-            }
-        }
-
-        return changed;
-    }
-
-    bool World::HaveLightsChanged()
-    {
-        lock_guard<mutex> lock(entity_access_mutex);
-
-        bool changed = false;
-        for (Entity* entity : views.lights)
-        {
-            if (Light* light = entity->GetComponent<Light>())
-            {
-                const uint64_t id   = entity->GetObjectId();
-                size_t current_hash = compute_light_hash(light, entity);
-                auto it = light_state_hashes.find(id);
-                if (it == light_state_hashes.end())
-                {
-                    light_state_hashes[id] = current_hash;
-                    changed = true;
-                }
-                else if (it->second != current_hash)
-                {
-                    it->second = current_hash;
-                    changed = true;
-                }
-            }
-        }
-
-        return changed;
-    }
-
     float World::GetTimeOfDay(bool use_real_world_time)
     {
         return Environment::GetTimeOfDay(use_real_world_time);
@@ -3953,39 +2798,31 @@ namespace spartan
     {
         Light* light = GetDirectionalLight();
         return Environment::Evaluate(light && light->GetFlag(LightFlags::DayNightCycle) && light->GetFlag(LightFlags::RealTimeCycle),
-            light ? light->GetCloudCoverageEffective() : 0.0f, GetWind().Length());
+            Environment::GetCloudCoverageEffective(), GetWind().Length());
     }
 
     const Vector3& World::GetWind()
     {
-        return world_wind::wind;
+        return Environment::GetWind();
     }
 
     Vector3 World::SampleWind(const Vector3& position, float time)
     {
-        return world_wind::sample(position, time);
+        return Environment::SampleWind(position, time);
     }
 
-    void World::SetWind(const Vector3& wind)
-    {
-        if (std::isfinite(wind.x) && std::isfinite(wind.y) && std::isfinite(wind.z))
-            world_wind::wind = Vector3(std::clamp(wind.x, -100.0f, 100.0f), std::clamp(wind.y, -100.0f, 100.0f), std::clamp(wind.z, -100.0f, 100.0f));
-    }
+    void World::SetWind(const Vector3& wind) { Environment::SetWind(wind); }
 
     float World::GetPuddliness()
     {
-        return world_weather::puddliness;
+        return Environment::GetPuddliness();
     }
 
-    void World::SetPuddliness(float puddliness)
-    {
-        if (std::isfinite(puddliness))
-            world_weather::puddliness = std::clamp(puddliness, 0.0f, 1.0f);
-    }
+    void World::SetPuddliness(float value) { Environment::SetPuddliness(value); }
 
     const Vector2& World::GetCloudSeedOffset()
     {
-        return world_clouds::seed_offset;
+        return Environment::GetCloudSeedOffset();
     }
 
     const string& World::GetDescription()
@@ -3998,14 +2835,9 @@ namespace spartan
         world_description = description;
     }
 
-    bool World::GetIslandFeatures()
+    void World::SetCallbacks(const WorldCallbacks& value)
     {
-        return island_features;
-    }
-
-    void World::SetIslandFeatures(const bool enabled)
-    {
-        island_features = enabled;
+        callbacks = value;
     }
 
     bool World::ReadMetadata(const string& world_file_path, WorldMetadata& metadata)

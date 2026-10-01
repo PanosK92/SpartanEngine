@@ -244,16 +244,16 @@ namespace spartan
     AudioSource::AudioSource(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_GET_SET(GetAudioClipName, SetAudioClip, std::string);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_3d, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mute, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_loop, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_play_on_start, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_volume, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_pitch, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_reverb_enabled, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_reverb_room_size, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_reverb_decay, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_reverb_wet, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_is_3d, SetIs3d, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_mute, SetMute, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_loop, SetLoop, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_play_on_start, SetPlayOnStart, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_volume, SetVolume, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_pitch, SetPitch, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_reverb_enabled, SetReverbEnabled, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_reverb_room_size, SetReverbRoomSize, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_reverb_decay, SetReverbDecay, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_reverb_wet, SetReverbWet, float);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetAmbient, SetAmbient, bool);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetAmbientProfile, SetAmbientProfile, uint32_t);
 

@@ -952,25 +952,9 @@ namespace spartan
 
             const string extension = EXTENSION_MATERIAL;
 
-            // the cache is keyed by path, so the name check and the claim have to happen as one step or
-            // two meshes importing at once both decide they are unique
-            lock_guard<recursive_mutex> lock(ResourceCache::GetMutex());
-
             auto taken_by_another = [&model_directory, &extension](const string& candidate)
             {
-                shared_ptr<Material> existing = ResourceCache::GetByName<Material>(candidate);
-                if (!existing)
-                {
-                    return false;
-                }
-
-                // the same material arriving again through a second mesh of the same model is not a clash
-                const string claimed = normalize_for_lookup(existing->GetResourceFilePath());
-                const string wanted  = normalize_for_lookup(
-                    FileSystem::GetRelativePath(model_directory + candidate + extension)
-                );
-
-                return claimed != wanted;
+                return !ResourceCache::ReserveMaterialName(candidate, model_directory + candidate + extension);
             };
 
             // an importer names an unauthored material after itself, every model in the project ends up
@@ -991,7 +975,7 @@ namespace spartan
             }
 
             string candidate = generic ? (folder + "_" + to_string(material_index)) : (folder + "_" + name);
-            for (uint32_t suffix = 2; suffix < 64 && taken_by_another(candidate); suffix++)
+            for (uint32_t suffix = 2; taken_by_another(candidate); suffix++)
             {
                 candidate = (generic ? (folder + "_" + to_string(material_index)) : (folder + "_" + name)) + "_" + to_string(suffix);
             }
@@ -1868,14 +1852,15 @@ namespace spartan
         }
     }
 
-    void ModelImporter::Load(Mesh* mesh_in, const string& file_path)
+    bool ModelImporter::Load(Mesh* mesh_in, const string& file_path)
     {
+        World::EntityBatch entity_batch;
         SP_ASSERT_MSG(mesh_in != nullptr, "Invalid parameter");
 
         if (!FileSystem::IsFile(file_path))
         {
             SP_LOG_ERROR("Provided file path doesn't point to an existing file");
-            return;
+            return false;
         }
 
         // initialize import context
@@ -1888,7 +1873,6 @@ namespace spartan
         );
         ctx.model_directory = FileSystem::GetDirectoryFromFilePath(file_path);
         ctx.mesh            = mesh_in;
-        ctx.mesh->SetObjectName(ctx.model_name);
 
         // set up the importer
         Importer importer;
@@ -1959,6 +1943,7 @@ namespace spartan
         }
         if (ctx.scene && ctx.scene->mRootNode)
         {
+            ctx.mesh->SetObjectName(ctx.model_name);
             // extract skeleton before parsing nodes so bone indices are available during mesh parsing
             ParseSkeleton(ctx);
 
@@ -2046,6 +2031,9 @@ namespace spartan
         }
 
         // Importer and progress are released by their scope guards, including on exceptions.
+        const bool success = ctx.scene && ctx.scene->mRootNode;
+        if (success) entity_batch.Commit();
+        return success;
     }
 
     void ModelImporter::ParseNode(ImportContext& ctx, const aiNode* node, Entity* parent_entity)

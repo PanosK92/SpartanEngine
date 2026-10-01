@@ -14,7 +14,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../geometry/Mesh.h"
 #include "../geometry/GeometryGeneration.h"
 #include "../world/components/Light.h"
-#include "../world/CarRain.h"
+#include "SurfaceWater.h"
 #include "../resource/ResourceCache.h"
 #include "../display/Display.h"
 #include "../rhi/RHI_Texture.h"
@@ -109,11 +109,11 @@ namespace spartan
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(float)),
             RAIN_OCCLUSION_RESOLUTION * RAIN_OCCLUSION_RESOLUTION * renderer_draw_data_buffer_count, nullptr, true, "rain_occlusion");
         at(buffers, Renderer_Buffer::CarRainDrops) = make_shared<RHI_Buffer>(
-            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(CarRainDropGpu)),
-            CarRain::drops_max * renderer_draw_data_buffer_count, nullptr, true, "car_rain_drops");
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(SurfaceWaterDrop)),
+            SurfaceWater::drops_max * renderer_draw_data_buffer_count, nullptr, true, "car_rain_drops");
         at(buffers, Renderer_Buffer::CarRainTexels) = make_shared<RHI_Buffer>(
-            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(CarRainTexelGpu)),
-            CarRain::texels_max * renderer_draw_data_buffer_count, nullptr, true, "car_rain_texels");
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(SurfaceWaterTexel)),
+            SurfaceWater::texels_max * renderer_draw_data_buffer_count, nullptr, true, "car_rain_texels");
         at(buffers, Renderer_Buffer::DrawData) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)),
             renderer_max_draw_calls * renderer_draw_data_buffer_count, nullptr, true,
@@ -531,7 +531,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::restir_duplication)              = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised)                 = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised_previous)        = nullptr;
-            m_pass_state.restir_accumulation_valid = false;
+            m_pass_state.restir.accumulation_valid = false;
             at(render_targets, Renderer_RenderTarget::nrd_in_mv)                       = nullptr;
             at(render_targets, Renderer_RenderTarget::nrd_in_normal_roughness)         = nullptr;
             at(render_targets, Renderer_RenderTarget::nrd_in_viewz)                    = nullptr;
@@ -563,7 +563,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::restir_duplication)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R8_Unorm,           restir_flags, "restir_duplication");
             at(render_targets, Renderer_RenderTarget::restir_denoised)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_denoised");
             at(render_targets, Renderer_RenderTarget::restir_denoised_previous)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_denoised_previous");
-            m_pass_state.restir_accumulation_valid = false;
+            m_pass_state.restir.accumulation_valid = false;
             at(render_targets, Renderer_RenderTarget::nrd_in_mv)                       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "nrd_in_mv");
             at(render_targets, Renderer_RenderTarget::nrd_in_normal_roughness)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R10G10B10A2_Unorm, restir_flags, "nrd_in_normal_roughness");
             at(render_targets, Renderer_RenderTarget::nrd_in_viewz)                    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32_Float,         restir_flags, "nrd_in_viewz");
@@ -577,18 +577,18 @@ namespace spartan
         {
             release_restir_resources();
             allocate_restir_resources();
-            m_pass_state.restir_reservoirs_initialized = false;
+            m_pass_state.restir.reservoirs_initialized = false;
         }
         else if (need_restir && !at(render_targets, Renderer_RenderTarget::restir_reservoir0))
         {
             allocate_restir_resources();
-            m_pass_state.restir_reservoirs_initialized = false;
+            m_pass_state.restir.reservoirs_initialized = false;
         }
         else if (!need_restir && at(render_targets, Renderer_RenderTarget::restir_reservoir0))
         {
             release_restir_resources();
             last_restir_scale = -1.0f;
-            m_pass_state.restir_reservoirs_initialized = false;
+            m_pass_state.restir.reservoirs_initialized = false;
         }
     }
 
@@ -657,7 +657,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::restir_duplication)              = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised)                 = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised_previous)        = nullptr;
-            m_pass_state.restir_accumulation_valid = false;
+            m_pass_state.restir.accumulation_valid = false;
             at(render_targets, Renderer_RenderTarget::nrd_in_mv)                       = nullptr;
             at(render_targets, Renderer_RenderTarget::nrd_in_normal_roughness)         = nullptr;
             at(render_targets, Renderer_RenderTarget::nrd_in_viewz)                    = nullptr;
@@ -1671,6 +1671,7 @@ namespace spartan
 
     RHI_Texture* Renderer::GetRenderTarget(const Renderer_RenderTarget type)
     {
+        if (RHI_Texture* target = GetViewRenderTarget(type)) return target;
         return render_targets[static_cast<uint8_t>(type)].get();
     }
 

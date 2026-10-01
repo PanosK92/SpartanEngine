@@ -61,6 +61,9 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace { vector<uint64_t> edit_targets; }
+    void Terrain::SetEditTargets(const vector<uint64_t>& entities) { edit_targets = entities; }
+
     using namespace terrain_common;
 
     namespace
@@ -3072,10 +3075,8 @@ namespace spartan
         FollowPlatformOwners();
 
         vector<Entity*> selected;
-        if (Camera* camera = World::GetCamera())
-        {
-            selected = camera->GetSelectedEntities();
-        }
+        for (uint64_t id : edit_targets)
+            if (Entity* entity = World::GetEntityById(id)) selected.push_back(entity);
 
         vector<Entity*> candidates;
         candidates.reserve(selected.size());

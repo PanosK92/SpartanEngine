@@ -6,6 +6,9 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #include "pch.h"
+#ifdef SP_GAME
+#include "CarPhysics.h"
+#endif
 #include "CarSurfaceEffects.h"
 #include "CarSimulation.h"
 #include "../world/World.h"
@@ -229,7 +232,7 @@ namespace spartan
                 bool wheel_mesh = false;
                 for (Entity* e = entity; e && e != vehicle; e = e->GetParent())
                     for (int i = 0; i < 4; ++i)
-                        wheel_mesh |= e == physics->GetWheelEntity(static_cast<WheelIndex>(i));
+                        wheel_mesh |= e == CarPhysics::Get(*physics).GetWheelEntity(static_cast<WheelIndex>(i));
                 if (wheel_mesh) continue;
                 Receiver receiver;
                 receiver.entity_id = entity->GetObjectId();
@@ -309,8 +312,8 @@ namespace spartan
             if (scratch_cooldown > 0.0f) return;
             for (const auto& contact : PhysicsWorld::GetFrameContacts())
             {
-                const bool is_a = contact.entity_a == vehicle && (contact.vehicle_chassis_mask & 1u);
-                const bool is_b = contact.entity_b == vehicle && (contact.vehicle_chassis_mask & 2u);
+                const bool is_a = contact.entity_a == vehicle && (contact.tracked_actor_mask & 1u);
+                const bool is_b = contact.entity_b == vehicle && (contact.tracked_actor_mask & 2u);
                 if (!is_a && !is_b) continue;
                 const Vector3 outward = is_a ? -contact.normal : contact.normal;
                 const Vector3 velocity = is_a ? contact.relative_velocity : -contact.relative_velocity;
@@ -320,7 +323,7 @@ namespace spartan
                 // Resting support, wheel contacts and very gentle nudges do not damage paint.
                 // CCD's first touch can have no reported impulse. Closing speed still identifies a hit.
                 if (impact < 1.2f && (speed < 1.5f || contact.impulse.LengthSquared() < 4.0f)) continue;
-                const Vector3 contact_position = vehicle->GetMatrix() * contact.chassis_local_position[is_a ? 0 : 1];
+                const Vector3 contact_position = vehicle->GetMatrix() * contact.actor_local_position[is_a ? 0 : 1];
                 Render* target = nullptr;
                 Vector3 point, normal;
                 float closest = 0.45f * 0.45f;
@@ -418,12 +421,12 @@ namespace spartan
         SP_PROFILE_CPU();
         auto& s = *m_state;
         auto* physics = vehicle->GetComponent<Physics>();
-        auto* sim = physics ? physics->GetVehicleSimulation() : nullptr;
+        auto* sim = physics ? CarPhysics::Get(*physics).GetVehicleSimulation() : nullptr;
         if (!sim) return;
         for (uint64_t id : s.emitters)
             if (Entity* e = World::GetEntityById(id))
                 if (auto* p = e->GetComponent<ParticleSystem>()) p->SetEmissionRate(0.0f);
-        if (!playing || !physics->IsVehicleSimulationActive())
+        if (!playing || !CarPhysics::Get(*physics).IsVehicleSimulationActive())
         {
             if (!playing)
                 for (const auto& receiver : s.receivers)
@@ -505,8 +508,8 @@ namespace spartan
             const auto& wheel = sim->get_wheel_state(i);
             if (!wheel.grounded || wheel.tire_load < 50.0f) { s.remainder[i] = 0; continue; }
             const auto wi = static_cast<WheelIndex>(i);
-            const Vector3 point = physics->GetWheelContactPoint(wi);
-            const Vector3 normal = physics->GetWheelContactNormal(wi).Normalized();
+            const Vector3 point = CarPhysics::Get(*physics).GetWheelContactPoint(wi);
+            const Vector3 normal = CarPhysics::Get(*physics).GetWheelContactNormal(wi).Normalized();
             Surface surface = sample_surface(wheel, point);
             if (surface.loose <= 0.0f) { s.remainder[i] = 0; continue; }
             Vector3 axle = vehicle->GetRight();
@@ -514,7 +517,7 @@ namespace spartan
             { const auto axis = body->getGlobalPose().q.rotate(physx::PxVec3(1,0,0)); axle = Vector3(axis.x,axis.y,axis.z); }
             const Vector3 forward = axle.Cross(normal).Normalized();
             const Vector3 hub_velocity(wheel.hub_linear_velocity.x, wheel.hub_linear_velocity.y, wheel.hub_linear_velocity.z);
-            const float tread = wheel.angular_velocity * std::max(wheel.effective_radius, physics->GetWheelRadius());
+            const float tread = wheel.angular_velocity * std::max(wheel.effective_radius, CarPhysics::Get(*physics).GetWheelRadius());
             const float longitudinal = hub_velocity.Dot(forward);
             const float lateral = hub_velocity.Dot(axle);
             const float slip_speed = fabsf(tread - longitudinal) + fabsf(lateral);
@@ -527,8 +530,8 @@ namespace spartan
             Vector3 launch = -forward * sign * std::min(6.0f, motion * 0.16f + slip_speed * 0.10f)
                            - axle * std::clamp(lateral * 0.18f, -2.0f, 2.0f)
                            + normal * std::min(2.2f, 0.7f + motion * 0.035f + slip_speed * 0.04f);
-            const float radius = std::max(wheel.effective_radius, physics->GetWheelRadius());
-            const float width = physics->GetWheelWidth(wi);
+            const float radius = std::max(wheel.effective_radius, CarPhysics::Get(*physics).GetWheelRadius());
+            const float width = CarPhysics::Get(*physics).GetWheelWidth(wi);
             // Dirt stays on the tread into its trailing arc before centrifugal release.
             // Across-width release lets shoulder spray reach exterior sills instead of only wheel wells.
             const Vector3 origin = point + normal * (radius * 0.42f) - forward * sign * (radius * 0.82f);

@@ -25,7 +25,7 @@ namespace spartan
         double finite(double value, double fallback, double low, double high)
         { return std::isfinite(value) ? std::clamp(value, low, high) : fallback; }
     }
-    EnvironmentSettings Environment::GetSettings() { std::lock_guard lock(environment_mutex); return settings; }
+    EnvironmentSettings Environment::GetSettings() { std::lock_guard lock(environment_mutex); auto value = settings; value.wind = GetWind(); value.puddliness = GetPuddliness(); return value; }
     void Environment::SetSettings(EnvironmentSettings value)
     {
         std::lock_guard lock(environment_mutex);
@@ -39,8 +39,21 @@ namespace spartan
         value.seasonal_amplitude = float(finite(value.seasonal_amplitude, 9, 0, 40));
         value.daily_amplitude = float(finite(value.daily_amplitude, 4, 0, 20));
         value.sea_level_pressure = float(finite(value.sea_level_pressure, 101325, 87000, 108500));
+        value.rain = float(finite(value.rain, settings.rain, 0, 1));
+        value.cloud_coverage = float(finite(value.cloud_coverage, settings.cloud_coverage, 0, 1));
+        SetWind(value.wind);
+        SetPuddliness(value.puddliness);
         settings = value;
         ++revision;
+    }
+    float Environment::GetRain() { std::lock_guard lock(environment_mutex); return settings.rain; }
+    void Environment::SetRain(float value) { std::lock_guard lock(environment_mutex); auto next = GetSettings(); next.rain = value; SetSettings(next); }
+    float Environment::GetCloudCoverage() { std::lock_guard lock(environment_mutex); return settings.cloud_coverage; }
+    void Environment::SetCloudCoverage(float value) { std::lock_guard lock(environment_mutex); auto next = GetSettings(); next.cloud_coverage = value; SetSettings(next); }
+    float Environment::GetCloudCoverageEffective()
+    {
+        std::lock_guard lock(environment_mutex);
+        return settings.rain > 0.0f ? std::max(settings.cloud_coverage, 0.72f + 0.26f * settings.rain) : settings.cloud_coverage;
     }
     double Environment::GetDays(bool real_time)
     {
@@ -55,7 +68,7 @@ namespace spartan
         auto time = Astronomy_MakeTime(year, month, day, hour, minute, second);
         auto date = Astronomy_UtcFromTime(time);
         if (date.year != year || date.month != month || date.day != day) return false;
-        auto next = settings; next.utc_days = time.ut; SetSettings(next); return true;
+        auto next = GetSettings(); next.utc_days = time.ut; SetSettings(next); return true;
     }
     void Environment::GetDate(int& year, int& month, int& day, int& hour, int& minute, double& second, bool real_time)
     {
@@ -73,7 +86,7 @@ namespace spartan
     {
         std::lock_guard lock(environment_mutex);
         if (!std::isfinite(fraction)) return;
-        auto next = settings;
+        auto next = GetSettings();
         next.utc_days = floor(next.utc_days + 0.5) - 0.5 + std::clamp(double(fraction), 0.0, 0.999999);
         SetSettings(next);
     }
@@ -81,7 +94,7 @@ namespace spartan
     {
         std::lock_guard lock(environment_mutex);
         if (!std::isfinite(seconds) || seconds <= 0 || settings.time_scale == 0) return;
-        auto next = settings; next.utc_days += seconds * settings.time_scale / 86400.0; SetSettings(next);
+        auto next = GetSettings(); next.utc_days += seconds * settings.time_scale / 86400.0; SetSettings(next);
     }
     bool Environment::SetSolarEvent(SolarEvent event)
     {
@@ -104,7 +117,7 @@ namespace spartan
             if (result.status != ASTRO_SUCCESS) return false;
             event_time = result.time;
         }
-        auto next = settings; next.utc_days = event_time.ut; SetSettings(next);
+        auto next = GetSettings(); next.utc_days = event_time.ut; SetSettings(next);
         return true;
     }
     float Environment::GetSunAltitude(double utc_days)

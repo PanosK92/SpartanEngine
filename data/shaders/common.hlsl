@@ -979,19 +979,9 @@ float ggx_alpha_from_roughness(float roughness)
     return sqrt(2.0f / (1.0f + pow(2.0f, 18.0f * gloss)));
 }
 
-// share of the reflection lobe owned by ray traced reflections, ibl owns the rest, the tracer skips
-// pixels where this is 0, the band sits just past the ray spread cap (alpha 0.6, roughness ~0.88)
-// where a traced lobe stops widening and would read as an under blurred mirror
-static const float rt_reflection_fade_start = 0.8f;
-static const float rt_reflection_fade_end   = 0.9f;
-float get_rt_reflection_weight(float reflection_roughness)
-{
-    return 1.0f - smoothstep(rt_reflection_fade_start, rt_reflection_fade_end, reflection_roughness);
-}
-
 // ray traced reflections carry one lobe per pixel, over a dielectric the 4% coat outshines the base
-// so the coat is traced, a metal's tinted base outshines the coat so the base is traced and the coat
-// stays on ibl, returns how much of the traced lobe is the coat, trace, denoise, apply and ibl must agree
+// so the coat is traced, a metal's tinted base outshines the coat so the base is traced instead,
+// returns how much of the traced lobe is the coat, trace, denoise and apply must agree
 float get_rt_reflection_coat(float clearcoat, float metallic)
 {
     return saturate(clearcoat) * (1.0f - smoothstep(0.4f, 0.6f, metallic));

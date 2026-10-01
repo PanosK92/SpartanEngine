@@ -27,7 +27,7 @@
    <audio_source path="project/music/soundtrack/leberch_meditative_ambient.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
   </Entity>
   <Entity name="dreamcore_generator" id="2001000000000000008" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="project/scripts/dreamcore.lua" seed="17" />
+   <script file_path="../worlds/dreamcore.lua" seed="17" />
   </Entity>
  </Entities>
 </World>

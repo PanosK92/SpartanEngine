@@ -177,7 +177,7 @@ namespace spartan
             }
             if (moving || entity->IsDynamic() || !physics || !physics->IsStatic() || !physics->IsEnabled() || physics->IsKinematic() ||
                 physics->GetBodyType() == BodyType::Heightfield || physics->GetBodyType() == BodyType::Controller ||
-                physics->GetBodyType() == BodyType::Vehicle || physics->GetBodyType() == BodyType::Cloth) continue;
+                physics->GetBodyType() == BodyType::Custom || physics->GetBodyType() == BodyType::Cloth) continue;
             m_impl->sources.push_back({entity->GetObjectId(), render->GetBoundingBox()});
         }
         if (!m_impl->mesh.IsReady()) SP_LOG_ERROR("Navigation: could not initialize Detour");

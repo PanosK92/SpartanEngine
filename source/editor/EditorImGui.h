@@ -6,11 +6,5 @@ Commercial use requires written permission and negotiated payment terms.
 */
 
 #pragma once
-
-namespace editor_imgui
-{
-    void initialize();
-    void shutdown();
-    void begin_frame();
-    void render();
-}
+#include "ui/ImGui.h"
+namespace editor_imgui = spartan::gui;

@@ -15,6 +15,7 @@ namespace spartan
     class Navigation : public Component
     {
     public:
+        bool StartsEarly() const override { return true; }
         Navigation(Entity* entity);
         ~Navigation() override;
         void Start() override;

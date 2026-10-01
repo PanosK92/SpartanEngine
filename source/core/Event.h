@@ -59,7 +59,9 @@ namespace spartan
         WindowFullScreenToggled,       // The window has been toggled to full screen
         // Display
         HdrToggled,                    // HDR output has been toggled on or off
+        InputTicked,                   // input is current, world control has not run
         // World
+        EntityRemoving,                // data: Entity*, valid for the synchronous notification
         WorldUnloading,                // world is about to drop the resource cache
         WorldLoaded,                   // a world finished loading and entities are ready
         WorldTicked,                   // entities and physics have ticked for this frame, rendering has not started

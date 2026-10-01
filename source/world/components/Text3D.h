@@ -69,7 +69,7 @@ namespace spartan
         bool HasMesh() const { return m_mesh != nullptr; }
         bool IsDirty() const { return m_dirty; }
         bool GenerateMesh();
-        void PrepareWorld() { if (m_dirty) GenerateMesh(); }
+        void PrepareGeometry() override { if (m_dirty) GenerateMesh(); }
         void ClearMesh();
 
     private:

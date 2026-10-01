@@ -133,7 +133,7 @@ namespace spartan
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex, tex_in);
                 RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_out);
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_dof_focus);
-                m_pcb_pass_cpu.set(pass_depth_of_field::aperture, World::GetCamera()->GetAperture());
+                m_pcb_pass_cpu.set(pass_depth_of_field::aperture, Renderer::GetViewCamera()->GetAperture());
                 RHI_CommandList::Dispatch(tex_out);
             }
             RHI_CommandList::EndPass();
@@ -168,7 +168,7 @@ namespace spartan
                     eye_layer
                 );
                 // mode 2 enables the radial mask debug view
-                m_pcb_pass_cpu.set(pass_motion_blur::shutter_speed, World::GetCamera()->GetShutterSpeed());
+                m_pcb_pass_cpu.set(pass_motion_blur::shutter_speed, Renderer::GetViewCamera()->GetShutterSpeed());
                 m_pcb_pass_cpu.set(pass_motion_blur::mode, cvar_motion_blur.GetValue());
                 RHI_CommandList::Dispatch(tex_out);
             }
@@ -176,7 +176,7 @@ namespace spartan
             swap(tex_in, tex_out);
         }
 
-        Camera* camera = World::GetCamera();
+        Camera* camera = Renderer::GetViewCamera();
         const bool auto_exposure_enabled =
             camera &&
             camera->GetExposureMode() == CameraExposureMode::automatic;
@@ -202,16 +202,11 @@ namespace spartan
             }
             Pass_Downscale(tex_exposure, Renderer_DownsampleFilter::Average);
             Pass_AutoExposure(tex_exposure);
-            m_pass_state.exposure_history_reset = false;
+            Renderer::view().exposure.history_reset = false;
         }
-        // a secondary view must not claim the exposure history, the primary camera would then
-        // look like it changed and auto exposure would reset on every preview frame
-        if (!IsSecondaryViewActive())
-        {
-            m_pass_state.exposure_camera          = camera;
-            m_pass_state.exposure_history_texture = tex_exposure_previous;
-            m_pass_state.exposure_was_automatic   = auto_exposure_enabled;
-        }
+        Renderer::view().exposure.camera          = camera;
+        Renderer::view().exposure.history_texture = tex_exposure_previous;
+        Renderer::view().exposure.was_automatic   = auto_exposure_enabled;
 
         if (cvar_bloom.GetValueAs<bool>())
         {
@@ -268,7 +263,7 @@ namespace spartan
         {
             run_effect("film_grain", Renderer_Shader::film_grain_c, [&]()
             {
-                m_pcb_pass_cpu.set(pass_film_grain::iso, World::GetCamera()->GetIso());
+                m_pcb_pass_cpu.set(pass_film_grain::iso, Renderer::GetViewCamera()->GetIso());
             });
         }
 
@@ -276,7 +271,7 @@ namespace spartan
         {
             run_effect("chromatic_aberration", Renderer_Shader::chromatic_aberration_c, [&]()
             {
-                m_pcb_pass_cpu.set(pass_chromatic_aberration::aperture, World::GetCamera()->GetAperture());
+                m_pcb_pass_cpu.set(pass_chromatic_aberration::aperture, Renderer::GetViewCamera()->GetAperture());
             });
         }
 
@@ -580,7 +575,7 @@ namespace spartan
         {
             RHI_CommandList::SetShader(GetShader(Renderer_Shader::auto_exposure_c));
 
-            Camera* camera = World::GetCamera();
+            Camera* camera = Renderer::GetViewCamera();
             m_pcb_pass_cpu.set(pass_auto_exposure::adaptation_speed, camera->GetAutoExposureAdaptationSpeed());
             m_pcb_pass_cpu.set(pass_auto_exposure::exposure_compensation, camera->GetAutoExposureCompensation());
 
@@ -625,7 +620,7 @@ namespace spartan
 
     void Renderer::Pass_BlitRestirFallback(RHI_Texture* tex_raw, RHI_Texture* tex_denoised)
     {
-        m_pass_state.restir_accumulation_valid = false;
+        m_pass_state.restir.accumulation_valid = false;
         Pass_Blit(tex_raw, tex_denoised);
     }
 
@@ -848,13 +843,13 @@ namespace spartan
 
         // a spawn hitch can hand us a multi hundred millisecond frame, every other simulation in the
         // engine clamps to 0.1 and the particle sim has to match or it integrates one huge step
-        const float delta_time = std::clamp(m_cb_frame_cpu.delta_time, 0.0f, 0.1f);
+        const float delta_time = std::clamp(Renderer::view().frame.delta_time, 0.0f, 0.1f);
 
         // one params entry per emitter, the ring size and frame data are shared so every entry carries the same copy
         vector<Sb_EmitterParams> emitter_params(emitter_count);
         vector<float> emitter_distance(emitter_count, 0.0f);
         math::Vector3 camera_position = math::Vector3::Zero;
-        if (Camera* camera = World::GetCamera())
+        if (Camera* camera = Renderer::GetViewCamera())
         {
             camera_position = camera->GetEntity()->GetPosition();
         }
@@ -883,7 +878,7 @@ namespace spartan
             params.range_start          = range_starts[i];
             params.range_count          = range_counts[i];
             params.emit_count           = emit_counts[i];
-            params.frame                = m_cb_frame_cpu.frame;
+            params.frame                = Renderer::view().frame.frame;
             params.emitter_count        = emitter_count;
             params.blend_mode           = static_cast<uint32_t>(emitter->GetBlendMode());
             params.lighting_mode        = static_cast<uint32_t>(emitter->GetLightingMode());

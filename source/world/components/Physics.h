@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ======================
 #include "Component.h"
+
 #include <cstdint>
 #include <vector>
 #include <memory>
@@ -20,12 +21,6 @@ Commercial use requires written permission and negotiated payment terms.
 namespace sol
 {
     class state_view;
-}
-
-namespace car
-{
-    struct car_preset;
-    class Simulation;
 }
 
 namespace spartan
@@ -50,32 +45,42 @@ namespace spartan
         Mesh,
         MeshConvex, // compound shape built from convex hulls of entity hierarchy meshes
         Controller,
-        Vehicle,
+        Custom,     // value 7 preserves existing external-body world files
         Cloth,      // deformable surface simulated via verlet integration
         Heightfield,// terrain grid, exact and far cheaper than a cooked mesh of the same surface
         Max
     };
 
-    // wheel indices for vehicles
-    enum class WheelIndex
+    struct PhysicsSettings
     {
-        FrontLeft  = 0,
-        FrontRight = 1,
-        RearLeft   = 2,
-        RearRight  = 3,
-        Count      = 4
+        void Validate();
+        float mass = 1.0f, friction = 0.4f, friction_rolling = 0.4f, restitution = 0.2f;
+        bool is_static = true, is_kinematic = false;
+        bool use_convex_hull = false, distance_streaming = true;
+        math::Vector3 position_lock, rotation_lock, center_of_mass;
+        BodyType body_type = BodyType::Max;
+        float cloth_stiffness = 0.9f, cloth_damping = 0.01f;
+        uint32_t cloth_iterations = 8;
+        bool cloth_wind_enabled = true;
+        math::Vector3 cloth_pin_direction = math::Vector3::Up;
     };
 
-    // full = multibody tires, cheap = arcade chassis plus visual wheels
-    enum class VehicleSimMode
+    // An optional force-model body. The implementation owns its actors; Physics borrows
+    // the primary actor for ordinary queries, forces and editor interaction.
+    struct PhysicsBody
     {
-        Full,
-        Cheap
+        virtual ~PhysicsBody() = default;
+        virtual void* Create() = 0;
+        virtual void Remove() = 0;
+        virtual void Tick(bool playing) = 0;
+        virtual void ShiftOrigin(const math::Vector3& shift) = 0;
+        virtual bool SetTransform(const math::Vector3& position, const math::Quaternion& rotation, bool reset_simulation) = 0;
     };
 
     class Physics : public Component
     {
     public:
+        bool StartsEarly() const override { return true; }
         Physics(Entity* entity);
         ~Physics();
 
@@ -84,9 +89,12 @@ namespace spartan
         void Remove() override;
         // discard the current actors and build them again from the component's current state
         void Rebuild() { Create(); }
-        void PrepareWorld();
+        bool PrepareWorld() override;
         void PreTick() override;
         void Tick() override;
+        void CopyFrom(const Component& source) override;
+        PhysicsSettings GetSettings() const;
+        void ApplySettings(const PhysicsSettings& settings);
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
 
@@ -154,7 +162,7 @@ namespace spartan
         bool NeedsRunningPreTick() const
         {
             return !m_is_static || m_needs_creation || m_instances_dirty ||
-                m_body_type == BodyType::Controller || m_body_type == BodyType::Vehicle || m_body_type == BodyType::Cloth;
+                m_body_type == BodyType::Controller || m_body_type == BodyType::Custom || m_body_type == BodyType::Cloth;
         }
 
         // ground
@@ -185,147 +193,12 @@ namespace spartan
         // misc
         void Move(const math::Vector3& offset);
         void Crouch(const bool crouch);
-        void SetBodyTransform(const math::Vector3& position, const math::Quaternion& rotation, bool rebuild_vehicle = true); // teleport physics body
+        void SetBodyTransform(const math::Vector3& position, const math::Quaternion& rotation, bool reset_simulation = true); // teleport physics body
 
-        // vehicle controls (only works when body type is Vehicle)
-        void SetVehicleThrottle(float value);   // 0 to 1
-        void SetVehicleBrake(float value);      // 0 to 1
-        void SetVehicleSteering(float value);   // -1 (left) to 1 (right)
-        void SetVehicleHandbrake(float value);  // 0 to 1 (locks rear wheels for drifting)
-        void SetVehicleSimulationActive(bool active);
-        bool IsVehicleSimulationActive() const { return m_vehicle_simulation_active; }
-        void UpdateTrafficWheels(float speed, float curvature, float delta_time);
-        void SetVehicleBrakeReverseEnabled(bool enabled) { m_vehicle_brake_reverse_enabled = enabled; }
-        bool GetVehicleBrakeReverseEnabled() const { return m_vehicle_brake_reverse_enabled; }
-        void SetVehicleFullSteeringLock(bool enabled) { m_vehicle_full_steering_lock = enabled; }
-        void SetVehicleRoadSurface(const math::Vector3& position, const math::Vector3& tangent)
-        {
-            m_vehicle_road_surface = true;
-            m_vehicle_road_position = position;
-            m_vehicle_road_tangent = tangent;
-            const math::Vector3 across(tangent.z, 0.0f, -tangent.x);
-            m_vehicle_road_normal = math::Vector3::Cross(tangent, across).Normalized();
-        }
-        void SetVehicleSimMode(VehicleSimMode mode);
-        VehicleSimMode GetVehicleSimMode() const { return m_vehicle_sim_mode; }
-
-        // vehicle wheel entities (visual meshes that rotate with physics)
-        void SetWheelEntity(WheelIndex wheel, Entity* entity);
-        Entity* GetWheelEntity(WheelIndex wheel) const;
-
-        // chassis visual entity and optional convex exclusions
-        void SetChassisEntity(Entity* entity, const std::vector<Entity*>& entities_to_exclude = {});
-        Entity* GetChassisEntity() const { return m_chassis_entity; }
-
-        // vehicle methods target the single active car simulation
-        void SetWheelRadius(float radius);
-        float GetWheelRadius() const { return m_wheel_radius; }
-        float GetSuspensionHeight() const; // distance from body center to wheel center
-        void ComputeWheelRadiusFromEntity(Entity* wheel_entity); // auto-compute from mesh AABB
-        // wheel visual scale derives from unscaled local mesh bounds
-        void ScaleWheelEntityToDimensions(Entity* wheel_entity, float target_radius, float target_width);
-
-        // read only vehicle telemetry
-        float GetVehicleThrottle() const;
-        float GetVehicleBrake() const;
-        float GetVehicleSteering() const;
-        float GetVehicleHandbrake() const;
-        bool IsWheelGrounded(WheelIndex wheel) const;
-        float GetWheelCompression(WheelIndex wheel) const;
-        float GetWheelSuspensionForce(WheelIndex wheel) const;
-        float GetWheelSlipAngle(WheelIndex wheel) const;
-        float GetWheelSlipRatio(WheelIndex wheel) const;
-        math::Vector3 GetWheelContactPoint(WheelIndex wheel) const;  // world-space ground contact
-        math::Vector3 GetWheelContactNormal(WheelIndex wheel) const; // world-space ground normal
-        float GetWheelSlipMagnitude(WheelIndex wheel) const;         // hypot of slip ratio and slip angle
-        float GetWheelWidth(WheelIndex wheel) const;                 // physical tire width for this axle
-        float GetWheelTireLoad(WheelIndex wheel) const;
-        float GetWheelFrictionUse(WheelIndex wheel) const;           // force over the peak the patch can make, 1 is at the limit
-        float GetWheelPeakLateralForce(WheelIndex wheel) const;      // N, the most cornering force available right now
-        float GetWheelPeakLongitudinalForce(WheelIndex wheel) const; // N, the most drive or brake force available right now
-        float GetWheelLateralForce(WheelIndex wheel) const;
-        float GetWheelLongitudinalForce(WheelIndex wheel) const;
-        float GetWheelAngularVelocity(WheelIndex wheel) const;  // rad/s
-        float GetWheelRPM(WheelIndex wheel) const;              // revolutions per minute
-        float GetWheelTemperature(WheelIndex wheel) const;
-        float GetWheelTempGripFactor(WheelIndex wheel) const;
-        float GetWheelBrakeTemp(WheelIndex wheel) const;
-        float GetWheelBrakeEfficiency(WheelIndex wheel) const;
-        float GetWheelSurfaceTemp(WheelIndex wheel, int zone) const;
-        float GetWheelCoreTemp(WheelIndex wheel) const;
-        float GetTirePressure() const;
-        float GetTirePressureOptimal() const;
-
-        // driver assists
-        void SetAbsEnabled(bool enabled);
-        bool GetAbsEnabled() const;
-        bool IsAbsActive(WheelIndex wheel) const;               // is abs intervening on this wheel
-        bool IsAbsActiveAny() const;                            // is abs intervening on any wheel
-        float GetAbsPhase() const;                              // 0..1 modulation cycle, grab when >= 0.5
-
-        void SetTcEnabled(bool enabled);
-        bool GetTcEnabled() const;
-        bool IsTcActive() const;                                // is traction control intervening
-        float GetTcReduction() const;                           // current power reduction (0-1)
-        bool IsBurnoutActive() const;                           // line lock held, fronts braked and tc stood down
-
-        // turbo
-        void SetTurboEnabled(bool enabled);
-        bool GetTurboEnabled() const;
-        float GetBoostPressure() const;                         // current boost pressure (bar)
-        float GetBoostMaxPressure() const;                      // max boost pressure (bar)
-
-        // drs (drag reduction system)
-        void SetDrsEnabled(bool enabled);
-        bool GetDrsEnabled() const;
-        void SetDrsActive(bool active);
-        bool GetDrsActive() const;
-
-        // differential type (0 = open, 1 = locked, 2 = lsd)
-        void SetDiffType(int type);
-        int  GetDiffType() const;
-        const char* GetDiffTypeName() const;
-
-        // tire wear
-        float GetWheelWear(WheelIndex wheel) const;            // 0-1, 0 = new, 1 = destroyed
-        float GetWheelWearGripFactor(WheelIndex wheel) const;  // grip multiplier from wear
-        void  ResetTireWear();
-
-        // transmission mode
-        void SetManualTransmission(bool enabled);
-        bool GetManualTransmission() const;
-        void ShiftUp();
-        void ShiftDown();
-        void ShiftToNeutral();
-
-        // engine and gearbox
-        int GetCurrentGear() const;                             // gear index (0=R, 1=N, 2-8=1st-7th)
-        const char* GetCurrentGearString() const;               // gear display string ("R", "N", "1"-"7")
-        float GetEngineRPM() const;                             // current engine rpm
-        float GetEngineTorque() const;                          // current engine (ice) torque output (Nm)
-        float GetMotorTorque() const;                           // current electric motor torque (Nm)
-        float GetIdleRPM() const;                               // engine idle rpm
-        float GetRedlineRPM() const;                            // engine redline rpm
-        bool IsShifting() const;                                // is gearbox currently shifting
-
-        math::Vector3 TransformVehiclePointToRender(const math::Vector3& point) const;
-        math::Quaternion TransformVehicleRotationToRender(const math::Quaternion& rotation) const;
-
-        // sync physics wheel positions from wheel entity positions
-        void SyncWheelOffsetsFromEntities();
-
-        // car owner - set this to have the car tick automatically through the entity system
-        void SetCar(class Car* car) { m_car = car; }
-        class Car* GetCar() const   { return m_car; }
-        car::Simulation* GetVehicleSimulation() const { return m_vehicle_simulation.get(); }
-        uint32_t GetVehicleCollisionGroup() const;
-        void SetVehiclePreset(const car::car_preset& preset);
-        void SetVehicleSimulationFrequency(float frequency);
-
-        // center of mass (for tuning handling characteristics)
-        void SetCenterOfMassOffset(const math::Vector3& offset);
-        void SetCenterOfMassOffset(float x, float y, float z);
-        math::Vector3 GetCenterOfMassOffset() const;
+        using BodyFactory = std::unique_ptr<PhysicsBody> (*)(Physics&);
+        static void SetBodyFactory(BodyFactory factory);
+        PhysicsBody* GetCustomBody() const { return m_custom_body.get(); }
+        PhysicsBody& EnsureCustomBody() const;
 
         // mesh convex compound shape - set the source entity whose hierarchy will be walked
         // to build convex hull shapes from each mesh in the hierarchy
@@ -334,25 +207,24 @@ namespace spartan
 
         // cloth simulation parameters (only applies when body type is Cloth)
         float GetClothStiffness() const            { return m_cloth_stiffness; }
-        void  SetClothStiffness(float stiffness)   { m_cloth_stiffness = std::clamp(stiffness, 0.0f, 1.0f); }
+        void SetClothStiffness(float stiffness);
         float GetClothDamping() const              { return m_cloth_damping; }
-        void  SetClothDamping(float damping)       { m_cloth_damping = std::clamp(damping, 0.0f, 1.0f); }
+        void SetClothDamping(float damping);
         uint32_t GetClothIterations() const        { return m_cloth_iterations; }
-        void     SetClothIterations(uint32_t count) { m_cloth_iterations = std::clamp(count, 1u, 32u); }
+        void SetClothIterations(uint32_t count);
         bool GetClothWindEnabled() const             { return m_cloth_wind_enabled; }
         void SetClothWindEnabled(bool enabled)       { m_cloth_wind_enabled = enabled; }
         const math::Vector3& GetClothPinDirection() const { return m_cloth_pin_direction; }
         void SetClothPinDirection(const math::Vector3& direction);
 
     private:
+        mutable std::unique_ptr<PhysicsBody> m_custom_body;
+        bool m_has_custom_actor = false;
+
         // tick helpers (broken out for readability)
         void TickController(bool is_playing, float delta_time);
         void LiftControllerAboveTerrain();
         void CreateHeightfield();
-        void TickVehicle(bool is_playing);
-        void TickVehicleSubstep(float dt); // vehicle force model, runs once per fixed physics step in lockstep with integration
-        void TickVehicleCheapSubstep(float dt);
-        car::Simulation* EnsureVehicleSimulation();
         void TickCloth(bool is_playing, float delta_time);
         void TickDynamicBodies(bool is_playing);
         void TickDistanceActivation();
@@ -360,23 +232,13 @@ namespace spartan
         void ApplyBuoyancy();
         float ComputeVolume();
 
-        void UpdateWheelTransforms();
-        struct TireDeformationBatch;
-        void UpdateTireDeformation(int wheel_index, bool grounded, TireDeformationBatch* batch = nullptr);
-        struct TireVisualState;
-        std::unique_ptr<TireVisualState> m_tire_visuals[4];
-        void UpdateCheapWheelTransforms();
-        void CaptureCheapWheelRestPoses();
         void Create();
         bool CreateController();
-        bool CreateVehicle();
         bool CreateConvexCompound();
         bool CreateShapes();
         void CreateBodies();
         void RebuildInstanceActors();
         void CreateCloth();
-        // fits at most six convex hulls to the chassis surface, cached across instances
-        void BuildChassisConvexShapes(Entity* chassis_entity, const std::vector<Entity*>& entities_to_exclude);
 
         float m_mass                   = 1.0f;
         float m_friction               = 0.4f;
@@ -413,34 +275,6 @@ namespace spartan
         float m_activation_slack = 0.0f;
         bool m_activation_valid = false;
 
-        // vehicle wheel entities and state
-        Entity* m_wheel_entities[static_cast<int>(WheelIndex::Count)] = { nullptr, nullptr, nullptr, nullptr };
-        Entity* m_wheel_calipers[static_cast<int>(WheelIndex::Count)] = {}; // optional axle-centered brake_caliper child
-        float m_wheel_radius   = 0.35f; // wheel radius for spin calculation (default)
-        math::Vector3 m_wheel_mesh_center_offsets[static_cast<int>(WheelIndex::Count)] = {};
-        bool m_wheel_offsets_synced = false;  // flag to ensure wheel offsets are synced from entities once
-        const void* m_wheel_ground_actors[static_cast<int>(WheelIndex::Count)] = {};
-        uint8_t m_wheel_ground_surfaces[static_cast<int>(WheelIndex::Count)] = {};
-        bool m_vehicle_simulation_active = true;
-        bool m_vehicle_brake_reverse_enabled = true;
-        bool m_vehicle_full_steering_lock = false;
-        bool m_vehicle_road_surface = false;
-        math::Vector3 m_vehicle_road_position = math::Vector3::Zero;
-        math::Vector3 m_vehicle_road_tangent = math::Vector3::Forward;
-        math::Vector3 m_vehicle_road_normal = math::Vector3::Up;
-        VehicleSimMode m_vehicle_sim_mode = VehicleSimMode::Full;
-        math::Vector3 m_cheap_wheel_local_pos[static_cast<int>(WheelIndex::Count)] = {};
-        math::Quaternion m_cheap_wheel_local_rot[static_cast<int>(WheelIndex::Count)];
-        bool m_cheap_wheel_rest_captured[static_cast<int>(WheelIndex::Count)] = {};
-        float m_cheap_wheel_roll = 0.0f;
-        float m_cheap_steer_angle = 0.0f;
-
-        // vehicle chassis entity and suspension state
-        Entity* m_chassis_entity          = nullptr;
-        std::vector<Entity*> m_chassis_entities_to_exclude;
-        math::Vector3 m_chassis_base_pos  = math::Vector3::Zero; // base local position of chassis
-        float m_chassis_suspension_offset = 0.0f;                // current suspension offset (smoothed)
-
         // mesh convex source entity - the entity hierarchy to walk for building compound convex shapes
         Entity* m_mesh_convex_source = nullptr;
 
@@ -462,17 +296,6 @@ namespace spartan
         math::Vector3 m_current_position  = math::Vector3::Zero; // position at current physics step
         math::Quaternion m_current_rotation;                     // rotation at current physics step
         bool m_interpolation_initialized  = false;               // flag to track first-frame initialization
-
-        math::Vector3 m_vehicle_physics_position = math::Vector3::Zero;
-        math::Quaternion m_vehicle_physics_rotation;
-        math::Vector3 m_vehicle_render_position = math::Vector3::Zero;
-        math::Quaternion m_vehicle_render_rotation;
-
-        // car owner (ticked automatically through entity system)
-        class Car* m_car = nullptr;
-        std::unique_ptr<car::Simulation> m_vehicle_simulation;
-        float m_vehicle_simulation_interval = 0.0f;
-        float m_vehicle_simulation_accumulator = 0.0f;
 
         // cloth simulation state
         struct ClothParticle

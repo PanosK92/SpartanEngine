@@ -82,6 +82,66 @@ namespace spartan
             uint64_t completion_value = 0;
         };
 
+        struct RestirState
+        {
+            bool cleared_restir          = false;
+            bool reservoirs_initialized = false;
+            bool accumulation_valid = false;
+            uint32_t reference_mode = 0;
+            bool history_invalid = true;
+            uint64_t scene_signature = 0;
+            uint64_t motion_signature = 0;
+
+            void Reset() { *this = RestirState(); }
+        };
+
+        struct SkyState
+        {
+            bool     first_frame           = true;
+            bool     had_directional_light = false;
+            uint32_t frames_remaining      = 0;
+            bool     warmup_this_frame     = false;
+            bool     state_changed_this_frame = true;
+            float    warmup_blend          = 1.0f;
+
+            void Reset() { *this = SkyState(); }
+        };
+
+        struct CloudEnvironmentState
+        {
+            bool     environment_dirty   = true;
+            uint32_t environment_strip   = 0;
+            bool     environment_baking  = false;
+            Light*   light               = nullptr;
+            math::Quaternion light_rotation = math::Quaternion::Identity;
+            math::Vector3 sky_moon = math::Vector3::Zero;
+            math::Vector3 sky_equatorial_x = math::Vector3::Zero;
+            math::Vector3 wind            = math::Vector3::Zero;
+            math::Vector2 seed_offset     = math::Vector2::Zero;
+            float    light_intensity      = -1.0f;
+            float    coverage             = -1.0f;
+            double   time                 = 0.0;
+
+            void Reset() { *this = CloudEnvironmentState(); }
+        };
+
+        struct ExposureState
+        {
+            Camera*      camera          = nullptr;
+            RHI_Texture* history_texture = nullptr;
+            bool         history_reset   = false;
+            bool         was_automatic   = false;
+
+            void Reset() { *this = ExposureState(); }
+        };
+
+        struct SurfaceWaterState
+        {
+            uint64_t entity_id = 0;
+            uint32_t version = 0;
+            bool uploaded = false;
+        };
+
         struct PassState
         {
             bool brdf_lut_produced       = false;
@@ -93,21 +153,10 @@ namespace spartan
             bool cleared_rt_reflections  = false;
             bool cleared_rt_shadows      = false;
             bool skip_rt_trace           = false;
-            bool cleared_restir          = false;
-            bool restir_reservoirs_initialized = false;
             bool depth_history_cleared = false;
-            bool restir_accumulation_valid = false;
-            uint32_t restir_reference_mode = 0;
-            bool restir_history_invalid = true;
-            uint64_t restir_scene_signature = 0;
-            uint64_t restir_motion_signature = 0;
+            RestirState restir;
 
-            bool     sky_first_frame           = true;
-            bool     sky_had_directional_light = false;
-            uint32_t sky_frames_remaining      = 0;
-            bool     sky_warmup_this_frame     = false;
-            bool     sky_state_changed_this_frame = true;
-            float    sky_warmup_blend          = 1.0f;
+            SkyState sky;
 
             TemporalPingPong cloud_history;
             TemporalPingPong ssao_history;
@@ -115,23 +164,9 @@ namespace spartan
             Renderer_RenderTarget fog_source = Renderer_RenderTarget::fog_scatter;
             Renderer_RenderTarget fog_water_source = Renderer_RenderTarget::fog_water_source;
             TemporalPingPong particle_volume_history;
-            bool     cloud_environment_dirty   = true;
-            uint32_t cloud_environment_strip   = 0;
-            bool     cloud_environment_baking  = false;
-            Light*   cloud_light               = nullptr;
-            math::Quaternion cloud_light_rotation = math::Quaternion::Identity;
-            math::Vector3 sky_moon = math::Vector3::Zero;
-            math::Vector3 sky_equatorial_x = math::Vector3::Zero;
-            math::Vector3 cloud_wind            = math::Vector3::Zero;
-            math::Vector2 cloud_seed_offset     = math::Vector2::Zero;
-            float    cloud_light_intensity      = -1.0f;
-            float    cloud_coverage             = -1.0f;
-            double   cloud_time                 = 0.0;
+            CloudEnvironmentState cloud_environment;
 
-            Camera*      exposure_camera          = nullptr;
-            RHI_Texture* exposure_history_texture = nullptr;
-            bool         exposure_history_reset   = false;
-            bool         exposure_was_automatic   = false;
+            SurfaceWaterState surface_water;
 
             RHI_Texture* vrs_last_cleared_texture = nullptr;
 
@@ -171,13 +206,7 @@ namespace spartan
                 std::shared_ptr<RHI_Buffer> contacts;
                 std::shared_ptr<RHI_Buffer> bodies;
                 // Current/previous rendered chassis pose and fitted convex planes.
-                struct Body
-                {
-                    math::Vector4 center, right, up, forward;
-                    std::array<math::Vector4, 6> hulls{};
-                    std::array<math::Vector4, 6 * 48> planes{};
-                };
-                std::array<Body, 2> body_data{};
+                std::array<SurfaceBody, 2> body_data{};
                 math::Vector2 origins[2] = {};
                 uint32_t current = 0;
                 bool valid = false;
@@ -196,6 +225,35 @@ namespace spartan
             TemporalPingPong ocean_history;
             math::Vector3 ocean_wind                         = math::Vector3::Zero;
 
+            void ResetCameraHistory()
+            {
+                ssao_history.Reset();
+                fog_history.Reset();
+                restir.history_invalid = true;
+            }
+
+            void ResetResolutionHistory()
+            {
+                cloud_history.Reset();
+                cloud_environment.environment_dirty = true;
+                ssao_history.Reset();
+                fog_history.Reset();
+                particle_volume_history.Reset();
+            }
+
+            void ResetWorld()
+            {
+                const bool brdf_ready = brdf_lut_produced;
+                const uint64_t brdf_hash = brdf_lut_shader_hash;
+                const bool atmosphere_ready = atmosphere_lut_produced;
+                const bool cloud_noise_ready = cloud_noise_produced;
+                *this = PassState();
+                brdf_lut_produced = brdf_ready;
+                brdf_lut_shader_hash = brdf_hash;
+                atmosphere_lut_produced = atmosphere_ready;
+                cloud_noise_produced = cloud_noise_ready;
+            }
+
             void Reset()
             {
                 *this = PassState();
@@ -207,6 +265,25 @@ namespace spartan
             RHI_SyncPrimitive* pending_compute_timeline       = nullptr;
             uint64_t           pending_compute_timeline_value = 0;
         };
+
+        // Device resources are shared; camera history and exposure belong to a view.
+        struct ViewState
+        {
+            Cb_Frame frame = {};
+            math::Matrix view_projection_previous_unjittered_left;
+            math::Vector2 jitter_offset;
+            math::Matrix view_projection_previous_right;
+            Camera* camera = nullptr;
+            ExposureState exposure;
+            std::shared_ptr<RHI_Texture> output, exposure_current, exposure_previous;
+            uint32_t temporal_frame = 0;
+            float near_plane = 0.0f, far_plane = 1.0f;
+            bool dirty_orthographic_projection = true;
+        };
+        ViewState& view();
+        Camera* GetViewCamera();
+        bool IsViewWireframe();
+        RHI_Texture* GetViewRenderTarget(Renderer_RenderTarget type);
 
         struct State
         {
@@ -238,10 +315,8 @@ namespace spartan
             std::array<Sb_Aabb, renderer_max_aabbs> m_bindless_aabbs;
             bool m_bindless_samplers_dirty = true;
             PassState m_pass_state;
-            Cb_Frame m_cb_frame_cpu;
             Pcb_Pass m_pcb_pass_cpu;
-            math::Matrix m_view_projection_previous_right;
-            math::Matrix m_view_projection_previous_unjittered_left;
+
             std::vector<RHI_Vertex_PosCol> m_lines_vertices;
             std::vector<RHI_Vertex_PosCol> m_debug_triangles_vertices;
             std::vector<PersistentLine> m_persistent_lines;
@@ -263,7 +338,7 @@ namespace spartan
             RHI_Viewport                  m_viewport;
             bool m_present_in_renderer = true;
             uint64_t                      m_frame_num;
-            math::Vector2                 m_jitter_offset;
+
             ~State();
         };
         State& state();
@@ -290,10 +365,8 @@ namespace spartan
         inline auto& m_bindless_aabbs = state().m_bindless_aabbs;
         inline auto& m_bindless_samplers_dirty = state().m_bindless_samplers_dirty;
         inline auto& m_pass_state = state().m_pass_state;
-        inline auto& m_cb_frame_cpu = state().m_cb_frame_cpu;
         inline auto& m_pcb_pass_cpu = state().m_pcb_pass_cpu;
-        inline auto& m_view_projection_previous_right = state().m_view_projection_previous_right;
-        inline auto& m_view_projection_previous_unjittered_left = state().m_view_projection_previous_unjittered_left;
+
         inline auto& m_lines_vertices = state().m_lines_vertices;
         inline auto& m_debug_triangles_vertices = state().m_debug_triangles_vertices;
         inline auto& m_persistent_lines = state().m_persistent_lines;
@@ -315,7 +388,7 @@ namespace spartan
         inline auto& m_viewport = state().m_viewport;
         inline auto& m_present_in_renderer = state().m_present_in_renderer;
         inline auto& m_frame_num = state().m_frame_num;
-        inline auto& m_jitter_offset = state().m_jitter_offset;
+
     }
 
     template<typename F>

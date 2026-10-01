@@ -22,7 +22,7 @@ namespace spartan
         ~Animation() = default;
 
         void SaveToFile(const std::string& file_path) override;
-        void LoadFromFile(const std::string& file_path) override;
+        bool LoadFromFile(const std::string& file_path) override;
 
         AnimationClip& GetClip()             { return m_clip; }
         const AnimationClip& GetClip() const { return m_clip; }

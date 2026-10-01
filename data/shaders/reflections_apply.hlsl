@@ -27,8 +27,7 @@ static const float glass_absorption_scale     = 50.0f;  // maps authored absorpt
 // texture, so it takes screen uvs while tex2 (the opaque frame) and the g-buffer take render uvs
 
 // ray traced reflections jitter the ray across the ggx lobe by surface roughness and a
-// spatiotemporal denoiser reconstructs a roughness proportional blur, near the top of the range
-// get_rt_reflection_weight hands the lobe back to ibl, which light_image_based adds as the complement
+// spatiotemporal denoiser reconstructs a roughness proportional blur across the full range
 
 // karis 2014 analytic split sum, same as reflections_shade, f90 is baked in as 1 so the bias
 // term carries grazing fresnel, the gpu lut was built with compute_f90(0)=0 which wiped that term
@@ -260,14 +259,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     if (!is_water_pixel && !is_glass_pixel)
     {
-        float coat;
-        float reflection_roughness = get_rt_reflection_roughness(uv, coat);
-        float roughness_fade = get_rt_reflection_weight(reflection_roughness);
-        if (roughness_fade <= 0.0f)
-        {
-            return;
-        }
-
         float3 reflection = tex[thread_id.xy].rgb;
         if (dot(reflection, reflection) < 1e-8f)
         {
@@ -284,8 +275,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float  metallic            = sample_material.g;
         float3 F0                  = lerp(0.04f, albedo, metallic);
 
-        // one traced ray lights both lobes, the lobe it was not aimed at sees the same surroundings,
-        // ibl only keeps the rough share both of them hand back
+        // one traced ray lights both lobes, the lobe it was not aimed at sees the same surroundings
         float2 base_brdf           = reflection_env_brdf(sample_material.r, n_dot_v);
         float3 base                = (F0 * base_brdf.x + base_brdf.y) * compute_multiscatter_energy_split_sum(F0, base_brdf);
         float  clearcoat           = saturate(mat.clearcoat * (1.0f - sample_material.b));
@@ -297,7 +287,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             float3 coat_tint = lerp(float3(1.0f, 1.0f, 1.0f), mat.coat_tint.rgb, saturate(mat.coat_tint.a));
             layers           = base * (1.0f - coat_f) + coat_f * coat_tint;
         }
-        float3 specular_reflection = reflection * roughness_fade * layers;
+        float3 specular_reflection = reflection * layers;
         tex_uav[thread_id.xy]     += float4(specular_reflection, 0.0f);
         return;
     }
@@ -516,9 +506,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 F0_dielectric = float3(f0_dielectric, f0_dielectric, f0_dielectric);
     float3 F0_opaque     = lerp(surface.F0, float3(0.04f, 0.04f, 0.04f), coat);
     float3 F0_brdf       = (surface.is_water() || surface.is_transparent()) ? F0_dielectric : F0_opaque;
-
-    // fade out the traced lobe on rough surfaces, ibl carries the complement
-    reflection *= get_rt_reflection_weight(reflection_roughness);
 
     float3 specular_reflection = reflection * (F0_brdf * brdf.x + brdf.y) * compute_multiscatter_energy_split_sum(F0_brdf, brdf);
 

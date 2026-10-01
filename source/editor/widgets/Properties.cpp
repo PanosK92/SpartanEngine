@@ -7,6 +7,8 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ===============================
 #include "pch.h"
+#include "editor/Selection.h"
+#include "game/CameraController.h"
 #include "Properties.h"
 #include "commands/CommandStack.h"
 #include "../EditorHistory.h"
@@ -26,7 +28,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "world/components/AudioSource.h"
 #include "world/components/Spline.h"
 #include "world/components/SplineFollower.h"
-#include "world/components/Pedestrians.h"
+#include "../../game/components/Pedestrians.h"
 #include "world/components/Navigation.h"
 #include "world/components/Terrain.h"
 #include "world/WorldHelpers.h"
@@ -41,7 +43,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "world/components/ParticleSystem.h"
 #include "world/components/Water.h"
 #include "world/components/SpawnPoint.h"
-#include "world/components/CarReset.h"
+#include "../../game/components/CarReset.h"
 #include "world/components/Text3D.h"
 #include "world/Prefab.h"
 #include "TerrainEditor.h"
@@ -81,7 +83,7 @@ namespace
                 dialog = make_unique<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_All);
             }
 
-            Entity* target = World::GetCamera() ? World::GetCamera()->GetSelectedEntity() : nullptr;
+            Entity* target = World::GetCamera() ? spartan::Selection::GetSelectedEntity() : nullptr;
             const uint64_t id = target ? target->GetObjectId() : 0;
             const uint64_t epoch = CommandStack::Epoch();
             auto material = inspected_material.lock();
@@ -183,7 +185,7 @@ namespace
     {
         if (Camera* camera = World::GetCamera())
         {
-            return camera->GetSelectedEntity();
+            return spartan::Selection::GetSelectedEntity();
         }
         return nullptr;
     }
@@ -192,7 +194,7 @@ namespace
     {
         if (Camera* camera = World::GetCamera())
         {
-            return camera->GetSelectedEntityCount();
+            return spartan::Selection::GetSelectedEntityCount();
         }
         return 0;
     }
@@ -202,7 +204,7 @@ namespace
         static std::vector<Entity*> empty;
         if (Camera* camera = World::GetCamera())
         {
-            return camera->GetSelectedEntities();
+            return spartan::Selection::GetSelectedEntities();
         }
         return empty;
     }
@@ -1175,7 +1177,7 @@ void Properties::InspectMaterial(const shared_ptr<Material> material)
     // clear entity selection so the material is shown instead
     if (Camera* camera = World::GetCamera())
     {
-        camera->ClearSelection();
+        spartan::Selection::ClearSelection();
     }
 
     inspected_material = material;

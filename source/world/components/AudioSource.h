@@ -33,6 +33,7 @@ namespace spartan
     class AudioSource : public Component
     {
     public:
+        bool StartsEarly() const override { return true; }
         AudioSource(Entity* entity);
         ~AudioSource();
 

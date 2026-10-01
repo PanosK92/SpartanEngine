@@ -26,9 +26,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rendering/Material.h"
 #include "../rendering/GeometryBuffer.h"
 #include "../xr/Xr.h"
-#include "../car/Car.h"
-#include "../car/CarSimulation.h"
-#include "../physics/PhysicsWorld.h"
 #include "../core/Engine.h"
 #include "../core/Timer.h"
 //=============================================
@@ -752,7 +749,7 @@ namespace spartan
                         // A tile may contain thousands of trees outside this
                         // light slice. Cull instances before submitting vertices,
                         // retaining their original indices, alpha and mesh LOD.
-                        const Vector3 camera = m_cb_frame_cpu.camera_position;
+                        const Vector3 camera = Renderer::view().frame.camera_position;
                         const float max_distance = render->GetMaxShadowDistance();
                         const bool wind = material->GetProperty(MaterialProperty::WindAnimation) > 0.0f;
                         const uint32_t end = draw_call.instance_index + draw_call.instance_count;
@@ -1152,7 +1149,7 @@ namespace spartan
             m_pass_state.depth_history_cleared = true;
         }
 
-        bool is_wireframe                     = cvar_wireframe.GetValueAs<bool>();
+        bool is_wireframe                     = IsViewWireframe();
         bool xr_multiview                     = Xr::IsSessionRunning() && Xr::GetStereoMode();
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid);
         rasterizer_state                      = is_wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : rasterizer_state;
@@ -1350,7 +1347,7 @@ namespace spartan
         }
         pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_indirect_p);
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
-        pso.rasterizer_state                 = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
+        pso.rasterizer_state                 = IsViewWireframe() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
         pso.primitive_topology               =
             GetSecondaryViewMode() ==
             Renderer_SecondaryViewMode::Vertices
@@ -1465,7 +1462,7 @@ namespace spartan
         pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::gbuffer_v);
         pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_p);
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
-        pso.rasterizer_state                 = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
+        pso.rasterizer_state                 = IsViewWireframe() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
         pso.primitive_topology               = GetSecondaryViewMode() == Renderer_SecondaryViewMode::Vertices ? RHI_PrimitiveTopology::PointList : RHI_PrimitiveTopology::TriangleList;
         // both halves of this pass own their depth
         //
@@ -1543,7 +1540,7 @@ namespace spartan
             m_pcb_pass_cpu.material_index = material->GetIndex();
             RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
-            RHI_CommandList::SetCullMode(cvar_wireframe.GetValueAs<bool>() ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+            RHI_CommandList::SetCullMode(IsViewWireframe() ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
             RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
             RHI_CommandList::SetBufferVertex(render->GetVertexBuffer(), instance_buffer);
             RHI_CommandList::SetBufferIndex(render->GetIndexBuffer());
@@ -1724,7 +1721,7 @@ namespace spartan
         }
 
         // camera position used as the anchor for the ring grid, the populate shader snaps it to the cell grid
-        Camera* camera = World::GetCamera();
+        Camera* camera = Renderer::GetViewCamera();
         if (!camera || !camera->GetEntity())
         {
             return;
@@ -1759,36 +1756,19 @@ namespace spartan
                 detail_parameters[slot].w = gpu_scatter_card_thin();
             }
         }
-        Car* detail_car = nullptr;
-        float detail_distance = numeric_limits<float>::max();
-        for (Car* candidate : Car::GetAll())
-        {
-            Entity* root = candidate->GetRootEntity();
-            if (!candidate->IsDrivable() || !root || !root->IsActive())
-                continue;
-            float distance = Vector3::DistanceSquared(root->GetPosition(), m_cb_frame_cpu.camera_position);
-            if (candidate->IsViewed() || distance < detail_distance)
-            {
-                detail_car = candidate;
-                detail_distance = distance;
-                if (candidate->IsViewed()) break;
-            }
-        }
-        if (detail_car)
-        {
-            const Vector3 position = detail_car->GetRootEntity()->GetPosition();
-            detail_parameters[renderer_max_gpu_scatter_slots] = Vector4(position.x, position.y, position.z, 32.0f);
-        }
+        const auto& detail = GetSurfaceInteraction();
+        if (detail.id)
+            detail_parameters[renderer_max_gpu_scatter_slots] = Vector4(detail.center, 32.0f);
 
         // only the cells the view pyramid can reach get threads, the shader adds the window origin to
         // its thread id so every (cell, blade) keeps the hash and the placement it had on the full grid
         std::array<std::array<uint32_t, 4>, renderer_max_gpu_scatter_args> cell_windows{};
         {
-            const Vector3 eye              = m_cb_frame_cpu.camera_position;
-            const bool perspective         = fabsf(m_cb_frame_cpu.projection.m33) < 0.5f;
+            const Vector3 eye              = Renderer::view().frame.camera_position;
+            const bool perspective         = fabsf(Renderer::view().frame.projection.m33) < 0.5f;
             const bool use_windows         = perspective && !Xr::IsSessionRunning();
-            const float tan_half_h         = 1.0f / max(fabsf(m_cb_frame_cpu.projection.m00), 1e-4f);
-            const float tan_half_v         = 1.0f / max(fabsf(m_cb_frame_cpu.projection.m11), 1e-4f);
+            const float tan_half_h         = 1.0f / max(fabsf(Renderer::view().frame.projection.m00), 1e-4f);
+            const float tan_half_v         = 1.0f / max(fabsf(Renderer::view().frame.projection.m11), 1e-4f);
             const float tan_half_min       = min(tan_half_h, tan_half_v);
             const float sin_half_min       = tan_half_min / sqrtf(1.0f + tan_half_min * tan_half_min);
             for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
@@ -1840,7 +1820,7 @@ namespace spartan
                     Vector2 bounds_min;
                     Vector2 bounds_max;
                     const bool visible = y_min <= y_max && gpu_scatter_frustum_xz_bounds(
-                        m_cb_frame_cpu.view_projection_inverted,
+                        Renderer::view().frame.view_projection_inverted,
                         eye,
                         Vector3(eye.x - reach - margin, y_min, eye.z - reach - margin),
                         Vector3(eye.x + reach + margin, y_max, eye.z + reach + margin),
@@ -2144,28 +2124,9 @@ namespace spartan
             return;
         }
 
-        // The occupied car owns the local field. On foot, use the nearest drivable car.
-        Car* vehicle = nullptr;
-        float nearest = numeric_limits<float>::max();
-        for (Car* candidate : Car::GetAll())
-        {
-            Entity* root = candidate->GetRootEntity();
-            if (!candidate->IsDrivable() || !root || !root->IsActive())
-                continue;
-            const float distance = Vector3::DistanceSquared(root->GetPosition(), m_cb_frame_cpu.camera_position);
-            if (candidate->IsViewed() || distance < nearest)
-            {
-                vehicle = candidate;
-                nearest = distance;
-                if (candidate->IsViewed())
-                    break;
-            }
-        }
-        Entity* root = vehicle ? vehicle->GetRootEntity() : nullptr;
-        Physics* physics = root ? root->GetComponent<Physics>() : nullptr;
-        auto* simulation = physics ? physics->GetVehicleSimulation() : nullptr;
+        const auto& interaction = GetSurfaceInteraction();
         RHI_Shader* shader = GetShader(Renderer_Shader::grass_interaction_c);
-        if (!simulation || !shader || !shader->IsCompiled())
+        if (!interaction.id || !shader || !shader->IsCompiled())
         {
             history.valid = false;
             history.wheel_valid.fill(false);
@@ -2183,95 +2144,21 @@ namespace spartan
                 sizeof(GrassWheelContact), 4, nullptr, false, "grass_wheel_contacts");
         }
 
-        const Vector3 center = root->GetPosition();
+        const Vector3 center = interaction.center;
         const float cell = grass_interaction_size / grass_interaction_resolution;
         const Vector2 origin(floorf(center.x / cell) * cell - grass_interaction_size * 0.5f,
                              floorf(center.z / cell) * cell - grass_interaction_size * 0.5f);
-        if (history.vehicle_id != root->GetObjectId())
+        if (history.vehicle_id != interaction.id)
         {
             history.valid = false;
             history.wheel_valid.fill(false);
-            history.vehicle_id = root->GetObjectId();
+            history.vehicle_id = interaction.id;
         }
 
         history.body_data[1] = history.body_data[0];
         if (!paused || !history.valid)
         {
-            history.body_data[0] = {};
-            // Keep the fitted hulls separate: their combined box includes empty
-            // space around bumpers, sills and mirrors and would clear a rectangle.
-            lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
-            if (physx::PxRigidDynamic* chassis = simulation->get_body())
-            {
-                physx::PxBounds3 bounds = physx::PxBounds3::empty();
-                auto& data = history.body_data[0];
-                uint32_t hull_count = 0;
-                for (uint32_t i = 0; i < chassis->getNbShapes(); ++i)
-                {
-                    physx::PxShape* shape = nullptr;
-                    chassis->getShapes(&shape, 1, i);
-                    if (!shape || !(shape->getFlags() & physx::PxShapeFlag::eSIMULATION_SHAPE))
-                        continue;
-                    if (hull_count >= data.hulls.size())
-                        break;
-                    const auto& geometry = shape->getGeometry();
-                    const auto pose = shape->getLocalPose();
-                    physx::PxBounds3 shape_bounds;
-                    if (!physx::PxGeometryQuery::computeGeomBounds(shape_bounds, geometry, pose))
-                        continue;
-                    bounds.include(shape_bounds);
-                    const uint32_t first = hull_count * 48;
-                    uint32_t count = 0;
-                    if (geometry.getType() == physx::PxGeometryType::eCONVEXMESH)
-                    {
-                        const auto& convex = static_cast<const physx::PxConvexMeshGeometry&>(geometry);
-                        const auto* mesh = convex.convexMesh;
-                        if (mesh && mesh->getNbPolygons() <= 48)
-                        {
-                            const auto normal_matrix = convex.scale.toMat33().getInverse().getTranspose();
-                            for (uint32_t face = 0; face < mesh->getNbPolygons(); ++face)
-                            {
-                                physx::PxHullPolygon polygon;
-                                if (!mesh->getPolygonData(face, polygon))
-                                    continue;
-                                const auto n = pose.q.rotate(normal_matrix * physx::PxVec3(polygon.mPlane[0], polygon.mPlane[1], polygon.mPlane[2])).getNormalized();
-                                const auto vertex = mesh->getVertices()[mesh->getIndexBuffer()[polygon.mIndexBase]];
-                                const auto point = pose.transform(convex.scale.transform(vertex));
-                                data.planes[first + count++] = Vector4(n.x, n.y, n.z, -n.dot(point));
-                            }
-                        }
-                    }
-                    if (count == 0)
-                    {
-                        // Box primitives and unusually complex imported hulls.
-                        for (uint32_t axis = 0; axis < 3; ++axis)
-                        {
-                            Vector4 positive(axis == 0 ? 1.0f : 0.0f, axis == 1 ? 1.0f : 0.0f, axis == 2 ? 1.0f : 0.0f, -shape_bounds.maximum[axis]);
-                            Vector4 negative(-positive.x, -positive.y, -positive.z, shape_bounds.minimum[axis]);
-                            data.planes[first + count++] = positive;
-                            data.planes[first + count++] = negative;
-                        }
-                    }
-                    data.hulls[hull_count++] = Vector4(static_cast<float>(first), static_cast<float>(count), 0, 0);
-                }
-                if (!bounds.isEmpty() && bounds.isFinite())
-                {
-                    // TickVehicle extrapolates the visual chassis between fixed
-                    // steps. Follow that rendered pose so contact cannot lag the
-                    // visible panels at speed. Entity positions are already world-space.
-                    const Quaternion rotation = root->GetRotation();
-                    const physx::PxVec3 e = bounds.minimum.abs().maximum(bounds.maximum.abs());
-                    const auto axis = [&](const physx::PxVec3& v, float extent)
-                    {
-                        const Vector3 a = rotation * Vector3(v.x, v.y, v.z);
-                        return Vector4(a.x, a.y, a.z, extent);
-                    };
-                    data.center = Vector4(center, static_cast<float>(hull_count));
-                    data.right = axis(physx::PxVec3(1, 0, 0), e.x);
-                    data.up = axis(physx::PxVec3(0, 1, 0), e.y);
-                    data.forward = axis(physx::PxVec3(0, 0, 1), e.z);
-                }
-            }
+            history.body_data[0] = interaction.body;
         }
         if (!history.valid)
             history.body_data[1] = history.body_data[0];
@@ -2282,43 +2169,12 @@ namespace spartan
         uint32_t count = 0;
         for (uint32_t i = 0; i < 4; ++i)
         {
-            const auto& wheel = simulation->get_wheel_state(i);
-            auto* body = simulation->get_multibody_state().corners[i].wheel_body;
-            if (paused || !wheel.grounded || !body || !isfinite(wheel.tire_load) || wheel.tire_load <= 80.0f ||
-                !wheel.contact_point.isFinite() || !wheel.contact_normal.isFinite())
-            {
-                history.wheel_valid[i] = false;
-                continue;
-            }
-            // Moving receivers are not part of the world-space terrain field.
-            if (const auto* ground = wheel.contact_actor ? wheel.contact_actor->is<physx::PxRigidDynamic>() : nullptr)
-            {
-                if (ground->getLinearVelocity().magnitudeSquared() > 0.01f || ground->getAngularVelocity().magnitudeSquared() > 0.01f)
-                {
-                    history.wheel_valid[i] = false;
-                    continue;
-                }
-            }
-            const auto pose = body->getGlobalPose();
-            const auto normal_px = wheel.contact_normal.getNormalized();
-            const auto hub = pose.p - normal_px * (pose.p - wheel.contact_point).dot(normal_px);
-            const Vector3 position = PhysicsWorld::ToWorldPosition(Vector3(hub.x, hub.y, hub.z));
-            const Vector3 normal(normal_px.x, normal_px.y, normal_px.z);
-            const auto axle = pose.q.rotate(physx::PxVec3(1, 0, 0));
-            Vector3 forward = Vector3::Cross(Vector3(axle.x, axle.y, axle.z), normal);
-            if (!position.IsFinite() || forward.LengthSquared() < 0.001f || normal.y < 0.2f)
-            {
-                history.wheel_valid[i] = false;
-                continue;
-            }
-            forward.Normalize();
-            if (Vector3::Dot(forward, root->GetForward()) < 0.0f)
-                forward = -forward;
-            const auto velocity_px = body->getLinearVelocity();
-            Vector3 velocity(velocity_px.x, velocity_px.y, velocity_px.z);
-            velocity -= normal * Vector3::Dot(velocity, normal);
-            // Follow travel during a slide and reverse; a resting wheel uses its steered heading.
-            Vector3 direction = velocity.LengthSquared() > 0.04f ? velocity.Normalized() : forward;
+            const auto& sample = interaction.contacts[i];
+            if (paused || !sample.valid) { history.wheel_valid[i] = false; continue; }
+            const Vector3 position = sample.position;
+            const Vector3 normal = sample.normal;
+            const Vector3 velocity = sample.velocity;
+            const Vector3 direction = sample.direction;
             Vector3 start = history.wheel_positions[i];
             const float distance = Vector3::Distance(start, position);
             if (!history.valid || !history.wheel_valid[i] || frame_dt > 0.25f ||
@@ -2326,13 +2182,13 @@ namespace spartan
                 abs(Vector3::Dot(position - start, normal)) > 0.5f)
                 start = position;
 
-            const float width = physics->GetWheelWidth(static_cast<WheelIndex>(i));
+            const float width = sample.width;
             if (!isfinite(width) || width <= 0.0f)
                 continue;
             auto& contact = contacts[count++];
             contact.start_width = Vector4(start.x, start.y, start.z, width * 0.5f);
             contact.end_length = Vector4(position.x, position.y, position.z, 0.22f);
-            contact.direction_pressure = Vector4(direction.x, direction.z, clamp(wheel.tire_load / 1500.0f, 0.0f, 1.0f), 0.0f);
+            contact.direction_pressure = Vector4(direction.x, direction.z, sample.pressure, 0.0f);
             contact.normal = Vector4(normal.x, normal.y, normal.z, 0.0f);
             history.wheel_positions[i] = position;
             history.wheel_valid[i] = true;
@@ -2405,7 +2261,7 @@ namespace spartan
         pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::grass_gbuffer_v);
         pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_p);
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
-        pso.rasterizer_state                 = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
+        pso.rasterizer_state                 = IsViewWireframe() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
         pso.is_multiview                     = xr_multiview;
         pso.resolution_scale                 = true;
         // grass is the only geometry rasterized a single time, it owns its depth here so it writes and tests against the opaque geometry

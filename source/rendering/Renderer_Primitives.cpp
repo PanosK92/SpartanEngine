@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ==========================
 #include "pch.h"
+#include "../input/Input.h"
 #include "Renderer_Internal.h"
 #include "../world/components/Camera.h"
 #include "../world/components/Light.h"
@@ -21,6 +22,33 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace
+    {
+        SurfaceInteraction surface_interaction;
+        SurfaceWater surface_water;
+        vector<uint64_t> editor_selection;
+        int editor_selected_instance = -1;
+    }
+    void Renderer::SetSurfaceWater(const SurfaceWater& input) { surface_water = input; }
+    const SurfaceWater& Renderer::GetSurfaceWater() { return surface_water; }
+
+    void Renderer::SetSurfaceInteraction(const SurfaceInteraction& input) { surface_interaction = input; }
+    const SurfaceInteraction& Renderer::GetSurfaceInteraction() { return surface_interaction; }
+
+    void Renderer::SetEditorSelection(const vector<uint64_t>& entities, int instance)
+    {
+        editor_selection = entities;
+        editor_selected_instance = instance;
+    }
+    vector<Entity*> Renderer::GetEditorSelection()
+    {
+        vector<Entity*> selected;
+        for (uint64_t id : editor_selection)
+            if (Entity* entity = World::GetEntityById(id)) selected.push_back(entity);
+        return selected;
+    }
+    int Renderer::GetEditorSelectedInstance() { return editor_selected_instance; }
+
     void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Color& color_from, const Color& color_to, float duration_sec /*= 0.0f*/)
     {
         if (duration_sec <= 0.0f)
@@ -210,15 +238,15 @@ namespace spartan
 
         if (cvar_picking_ray.GetValueAs<bool>())
         {
-            Ray ray = World::GetCamera()->ComputePickingRay();
-            DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * World::GetCamera()->GetFarPlane(), Color(0, 1, 0, 1));
+            Ray ray = Renderer::GetViewCamera()->ComputeRay(Input::GetMousePositionRelativeToEditorViewport());
+            DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * Renderer::GetViewCamera()->GetFarPlane(), Color(0, 1, 0, 1));
         }
         
         if (cvar_entity_icons.GetValueAs<bool>())
         {
-            if (Camera* camera = World::GetCamera())
+            if (Camera* camera = Renderer::GetViewCamera())
             {
-                for (Entity* entity : camera->GetSelectedEntities())
+                for (Entity* entity : GetEditorSelection())
                 {
                     if (!entity)
                     {
@@ -352,7 +380,7 @@ namespace spartan
 
                 if (Render* render = entity->GetComponent<Render>())
                 {
-                    if (Camera* camera = World::GetCamera())
+                    if (Camera* camera = Renderer::GetViewCamera())
                     {
                         const Vector3 camera_position   = camera->GetEntity()->GetPosition();
                         const BoundingBox& bounding_box = render->GetBoundingBox();

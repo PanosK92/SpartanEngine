@@ -10,7 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "Renderer_Internal.h"
 #include "../world/World.h"
 #include "../world/components/Light.h"
-#include "../world/CarRain.h"
+#include "SurfaceWater.h"
 #include "../rhi/RHI_CommandList.h"
 #include "../rhi/RHI_Shader.h"
 //=============================================
@@ -34,15 +34,15 @@ namespace spartan
         RHI_CommandList::BeginPass("skysphere");
         {
             const bool sky_state_changed =
-                m_pass_state.sky_state_changed_this_frame;
+                m_pass_state.sky.state_changed_this_frame;
             const bool refresh_sky_view_lut =
                 sky_state_changed ||
-                m_pass_state.sky_warmup_this_frame ||
-                (m_cb_frame_cpu.frame & 7u) == 0u;
+                m_pass_state.sky.warmup_this_frame ||
+                (Renderer::view().frame.frame & 7u) == 0u;
             const bool refresh_cloud_shadow =
                 sky_state_changed ||
-                m_pass_state.sky_warmup_this_frame ||
-                (m_cb_frame_cpu.frame & 3u) == 0u;
+                m_pass_state.sky.warmup_this_frame ||
+                (Renderer::view().frame.frame & 3u) == 0u;
 
             // Slot 0 contains the authored sun, the empty editor's default light, or a
             // zero-intensity sentinel when no lights are visible in a loaded world.
@@ -87,9 +87,9 @@ namespace spartan
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex6, tex_grid  ? tex_grid  : GetStandardTexture(Renderer_StandardTexture::Black));
 
                 // 0.0 in steady state selects the partial dispatch mode in the shader
-                m_pcb_pass_cpu.set(pass_skysphere::warmup_blend, m_pass_state.sky_warmup_this_frame ? m_pass_state.sky_warmup_blend : 0.0f);
+                m_pcb_pass_cpu.set(pass_skysphere::warmup_blend, m_pass_state.sky.warmup_this_frame ? m_pass_state.sky.warmup_blend : 0.0f);
 
-                if (m_pass_state.sky_warmup_this_frame)
+                if (m_pass_state.sky.warmup_this_frame)
                 {
                     RHI_CommandList::Dispatch(tex_skysphere);
                 }
@@ -107,14 +107,14 @@ namespace spartan
 
             // averaging downsampler every fourth frame, the ggx prefilter below is warmup only since clouds mostly drive diffuse ibl
             {
-                const bool do_downscale = m_pass_state.sky_warmup_this_frame ||
-                                          ((m_cb_frame_cpu.frame & 3u) == 0u);
+                const bool do_downscale = m_pass_state.sky.warmup_this_frame ||
+                                          ((Renderer::view().frame.frame & 3u) == 0u);
                 if (do_downscale)
                 {
                     Pass_Downscale(tex_skysphere, Renderer_DownsampleFilter::Average);
                 }
 
-                if (m_pass_state.sky_warmup_this_frame)
+                if (m_pass_state.sky.warmup_this_frame)
                 {
                     RHI_CommandList::SetShader(
                         GetShader(Renderer_Shader::light_integration_environment_filter_c),
@@ -244,30 +244,30 @@ namespace spartan
 
         if (!World::GetDirectionalLight())
         {
-            if (m_pass_state.cloud_environment_dirty)
+            if (m_pass_state.cloud_environment.environment_dirty)
             {
                 RHI_CommandList::ClearTexture(tex_environment, Color::standard_black);
-                m_pass_state.cloud_environment_dirty  = false;
-                m_pass_state.cloud_environment_baking = false;
-                m_pass_state.cloud_environment_strip  = 0;
+                m_pass_state.cloud_environment.environment_dirty  = false;
+                m_pass_state.cloud_environment.environment_baking = false;
+                m_pass_state.cloud_environment.environment_strip  = 0;
             }
             return;
         }
 
-        const bool cadence_frame = (m_cb_frame_cpu.frame & 31u) == 0u;
-        if (m_pass_state.cloud_environment_dirty)
+        const bool cadence_frame = (Renderer::view().frame.frame & 31u) == 0u;
+        if (m_pass_state.cloud_environment.environment_dirty)
         {
-            m_pass_state.cloud_environment_baking = true;
-            m_pass_state.cloud_environment_strip  = 0;
-            m_pass_state.cloud_environment_dirty  = false;
+            m_pass_state.cloud_environment.environment_baking = true;
+            m_pass_state.cloud_environment.environment_strip  = 0;
+            m_pass_state.cloud_environment.environment_dirty  = false;
         }
-        else if (cadence_frame && !m_pass_state.cloud_environment_baking)
+        else if (cadence_frame && !m_pass_state.cloud_environment.environment_baking)
         {
-            m_pass_state.cloud_environment_baking = true;
-            m_pass_state.cloud_environment_strip  = 0;
+            m_pass_state.cloud_environment.environment_baking = true;
+            m_pass_state.cloud_environment.environment_strip  = 0;
         }
 
-        if (!m_pass_state.cloud_environment_baking)
+        if (!m_pass_state.cloud_environment.environment_baking)
         {
             return;
         }
@@ -282,14 +282,14 @@ namespace spartan
         const uint32_t height = tex_environment->GetHeight();
         const uint32_t strips = 4;
         const uint32_t strip_h = (height + strips - 1) / strips;
-        const uint32_t strip   = m_pass_state.cloud_environment_strip;
+        const uint32_t strip   = m_pass_state.cloud_environment.environment_strip;
         const uint32_t y0      = strip * strip_h;
         const uint32_t y1      = min(height, y0 + strip_h);
         const uint32_t rows    = y1 > y0 ? (y1 - y0) : 0;
         if (rows == 0)
         {
-            m_pass_state.cloud_environment_baking = false;
-            m_pass_state.cloud_environment_strip  = 0;
+            m_pass_state.cloud_environment.environment_baking = false;
+            m_pass_state.cloud_environment.environment_strip  = 0;
             return;
         }
 
@@ -304,8 +304,8 @@ namespace spartan
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_environment, 0, 1);
             RHI_CommandList::Dispatch((width + 7) / 8, (rows + 7) / 8);
 
-            m_pass_state.cloud_environment_strip++;
-            if (m_pass_state.cloud_environment_strip >= strips)
+            m_pass_state.cloud_environment.environment_strip++;
+            if (m_pass_state.cloud_environment.environment_strip >= strips)
             {
                 Pass_Downscale(tex_environment, Renderer_DownsampleFilter::Average);
 
@@ -326,8 +326,8 @@ namespace spartan
                     RHI_CommandList::Dispatch((max(1u, base_w >> mip_level) + 7) / 8, (max(1u, base_h >> mip_level) + 7) / 8);
                 }
 
-                m_pass_state.cloud_environment_baking = false;
-                m_pass_state.cloud_environment_strip  = 0;
+                m_pass_state.cloud_environment.environment_baking = false;
+                m_pass_state.cloud_environment.environment_strip  = 0;
             }
         }
         RHI_CommandList::EndPass();
@@ -480,15 +480,17 @@ namespace spartan
 
     void Renderer::Pass_CarRain()
     {
-        static uint32_t version_uploaded = 0;
-        if (!CarRain::IsActive())
+        SurfaceWaterState& state = m_pass_state.surface_water;
+        if (!Renderer::GetSurfaceWater().active)
             return;
 
         // a new bake or a reset, the textures are rebuilt from the cpu copies, which already hold this frame's changes
-        if (CarRain::GetVersion() != version_uploaded)
+        if (!state.uploaded || Renderer::GetSurfaceWater().version != state.version || Renderer::GetSurfaceWater().entity_id != state.entity_id)
         {
-            version_uploaded = CarRain::GetVersion();
-            CreateCarRainTargets(CarRain::GetAtlasWidth(), CarRain::GetAtlasHeight(), CarRain::GetSurface().data(), CarRain::GetMicro().data());
+            state.version = Renderer::GetSurfaceWater().version;
+            state.entity_id = Renderer::GetSurfaceWater().entity_id;
+            state.uploaded = true;
+            CreateCarRainTargets(Renderer::GetSurfaceWater().width, Renderer::GetSurfaceWater().height, Renderer::GetSurfaceWater().surface.data(), Renderer::GetSurfaceWater().micro.data());
         }
 
         RHI_Texture* tex_micro     = GetRenderTarget(Renderer_RenderTarget::car_rain_micro);
@@ -499,10 +501,10 @@ namespace spartan
         if (!tex_micro || !tex_ids || !shader_clear || !shader_clear->IsCompiled() || !shader_splat || !shader_splat->IsCompiled() || !shader_texels || !shader_texels->IsCompiled())
             return;
 
-        const uint32_t width       = CarRain::GetAtlasWidth();
-        const uint32_t height      = CarRain::GetAtlasHeight();
-        const uint32_t drop_count  = min(static_cast<uint32_t>(CarRain::GetDrops().size()), CarRain::drops_max);
-        const uint32_t texel_count = min(static_cast<uint32_t>(CarRain::GetTexels().size()), CarRain::texels_max);
+        const uint32_t width       = Renderer::GetSurfaceWater().width;
+        const uint32_t height      = Renderer::GetSurfaceWater().height;
+        const uint32_t drop_count  = min(static_cast<uint32_t>(Renderer::GetSurfaceWater().drops.size()), SurfaceWater::drops_max);
+        const uint32_t texel_count = min(static_cast<uint32_t>(Renderer::GetSurfaceWater().texels.size()), SurfaceWater::texels_max);
 
         RHI_CommandList::BeginPass("car_rain");
         {
@@ -519,11 +521,11 @@ namespace spartan
                 RHI_CommandList::SetShader(shader_splat);
                 RHI_CommandList::SetTexture("tex_car_rain_ids_uav", tex_ids);
                 RHI_CommandList::SetBuffer("car_rain_drops", GetBuffer(Renderer_Buffer::CarRainDrops));
-                m_pcb_pass_cpu.set(pass_car_rain::offset, m_frame_resource_index * CarRain::drops_max);
+                m_pcb_pass_cpu.set(pass_car_rain::offset, m_frame_resource_index * SurfaceWater::drops_max);
                 m_pcb_pass_cpu.set(pass_car_rain::count, drop_count);
                 m_pcb_pass_cpu.set(pass_car_rain::atlas_width, width);
                 m_pcb_pass_cpu.set(pass_car_rain::atlas_height, height);
-                m_pcb_pass_cpu.set(pass_car_rain::texel_size, CarRain::GetTexelSize());
+                m_pcb_pass_cpu.set(pass_car_rain::texel_size, Renderer::GetSurfaceWater().texel_size);
                 RHI_CommandList::PushConstants(m_pcb_pass_cpu);
                 RHI_CommandList::Dispatch((drop_count + 63) / 64, 1);
             }
@@ -534,7 +536,7 @@ namespace spartan
                 RHI_CommandList::SetShader(shader_texels);
                 RHI_CommandList::SetTexture("tex_car_rain_micro_uav", tex_micro);
                 RHI_CommandList::SetBuffer("car_rain_texels", GetBuffer(Renderer_Buffer::CarRainTexels));
-                m_pcb_pass_cpu.set(pass_car_rain::offset, m_frame_resource_index * CarRain::texels_max);
+                m_pcb_pass_cpu.set(pass_car_rain::offset, m_frame_resource_index * SurfaceWater::texels_max);
                 m_pcb_pass_cpu.set(pass_car_rain::count, texel_count);
                 m_pcb_pass_cpu.set(pass_car_rain::atlas_width, width);
                 m_pcb_pass_cpu.set(pass_car_rain::atlas_height, height);

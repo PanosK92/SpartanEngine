@@ -127,6 +127,27 @@ namespace spartan
         m_scene->mesh = nullptr;
     }
 
+    void Render::CopyFrom(const Component& source)
+    {
+        SP_ASSERT(source.GetType() == ComponentType::Render);
+        const Render& other = static_cast<const Render&>(source);
+        // Copy authored inputs; visibility, LOD, bounds, history and GPU ranges belong to this entity.
+        m_owned_mesh = other.m_owned_mesh;
+        if (other.m_scene->mesh) SetMesh(other.m_scene->mesh, other.m_scene->sub_mesh_index);
+        else ClearMesh();
+        m_scene->material = other.m_scene->material;
+        m_material_default = other.m_material_default;
+        m_material_override = other.m_material_override;
+        m_scene->flags = other.m_scene->flags;
+        SetMaxRenderDistance(other.GetMaxRenderDistance());
+        SetMaxShadowDistance(other.GetMaxShadowDistance());
+        SetInstances(other.m_scene->instances);
+        ClearDecals();
+        m_previous_lights = 0;
+        m_transform_previous = GetEntity()->GetMatrix();
+        Tick();
+    }
+
     void Render::Save(pugi::xml_node& node)
     {
         // mesh, skip procedural meshes as they are not in the resource cache, their owning component regenerates them after load
@@ -619,11 +640,10 @@ namespace spartan
 
     void Render::SetMaterial(const string& file_path)
     {
-        auto material = make_shared<Material>();
-
-        material->LoadFromFile(file_path);
-
-        SetMaterial(material);
+        if (auto material = ResourceCache::Load<Material>(file_path))
+        {
+            SetMaterial(material);
+        }
     }
 
     void Render::SetDefaultMaterial()
@@ -1074,7 +1094,7 @@ namespace spartan
         }
     }
 
-    void Render::UpdateLodIndices()
+    void Render::UpdateLodIndices(Camera* view_camera)
     {
         CountWorldWork(WorldWork::lod_updates);
         // screen coverage handles distance, object size and fov uniformly with no per-type special cases
@@ -1086,7 +1106,7 @@ namespace spartan
             return;
         }
 
-        Camera* camera = World::GetCamera();
+        Camera* camera = view_camera ? view_camera : World::GetCamera();
         if (!camera)
         {
             m_scene->lod_index = lod_count - 1;

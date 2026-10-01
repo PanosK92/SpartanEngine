@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../source/imgui.h"
 #include "../source/imgui_internal.h"
 #include "imgui_impl_sdl3.h"
-#include "../../widgets/TextureViewer.h"
+#include "ui/TexturePreview.h"
 #include "resource/ResourceCache.h"
 #include "core/Event.h"
 #include "rendering/Renderer_Buffers.h"
@@ -552,11 +552,11 @@ namespace ImGui::RHI
                                     if (texture->GetResourceState() == ResourceState::PreparedForGpu)
                                     {
                                         // update texture viewer parameters
-                                        is_texture_visualised = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
+                                        is_texture_visualised = spartan::gui::GetTexturePreview().id == texture->GetObjectId();
                                         if (is_texture_visualised)
                                         {
-                                            mip_level   = static_cast<float>(TextureViewer::GetMipLevel());
-                                            array_level = static_cast<float>(TextureViewer::GetArrayLevel());
+                                            mip_level   = static_cast<float>(spartan::gui::GetTexturePreview().mip);
+                                            array_level = static_cast<float>(spartan::gui::GetTexturePreview().layer);
                                         }
 
                                         texture_bound = texture;
@@ -579,15 +579,15 @@ namespace ImGui::RHI
                             uint32_t flags = 0;
                             if (is_texture_visualised)
                             {
-                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_R)    ? (1u << 0) : 0;
-                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_G)    ? (1u << 1) : 0;
-                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_B)    ? (1u << 2) : 0;
-                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_A)    ? (1u << 3) : 0;
-                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_GammaCorrect) ? (1u << 4) : 0;
-                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Pack)         ? (1u << 5) : 0;
-                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Boost)        ? (1u << 6) : 0;
-                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Abs)          ? (1u << 7) : 0;
-                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Sample_Point) ? (1u << 8) : 0;
+                                flags |= (spartan::gui::GetTexturePreview().flags & Visualise_Channel_R)    ? (1u << 0) : 0;
+                                flags |= (spartan::gui::GetTexturePreview().flags & Visualise_Channel_G)    ? (1u << 1) : 0;
+                                flags |= (spartan::gui::GetTexturePreview().flags & Visualise_Channel_B)    ? (1u << 2) : 0;
+                                flags |= (spartan::gui::GetTexturePreview().flags & Visualise_Channel_A)    ? (1u << 3) : 0;
+                                flags |= (spartan::gui::GetTexturePreview().flags & Visualise_GammaCorrect) ? (1u << 4) : 0;
+                                flags |= (spartan::gui::GetTexturePreview().flags & Visualise_Pack)         ? (1u << 5) : 0;
+                                flags |= (spartan::gui::GetTexturePreview().flags & Visualise_Boost)        ? (1u << 6) : 0;
+                                flags |= (spartan::gui::GetTexturePreview().flags & Visualise_Abs)          ? (1u << 7) : 0;
+                                flags |= (spartan::gui::GetTexturePreview().flags & Visualise_Sample_Point) ? (1u << 8) : 0;
                             }
                             flags |= is_texture_visualised ? (1u << 9) : 0;
                             flags |= is_frame_texture      ? (1u << 10) : 0;

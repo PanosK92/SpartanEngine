@@ -20,6 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
+#include "editor/Selection.h"
+#include "game/CameraController.h"
 
 //= INCLUDES ==============================
 #include "../TransformGizmo.h"
@@ -287,7 +289,7 @@ namespace ImGui::TransformGizmo
             return false;
         }
 
-        const spartan::math::Ray& pick = camera->ComputePickingRay();
+        const spartan::math::Ray& pick = spartan::Selection::ComputePickingRay(*camera);
         const spartan::math::Vector3 origin = pick.GetStart();
         spartan::math::Vector3 dir = pick.GetDirection() - origin;
         if (fabsf(dir.y) < 1e-6f)
@@ -439,7 +441,7 @@ namespace ImGui::TransformGizmo
                 if (!spartan::World::EntityExists(entity)) { finish_drag(); return; }
             }
         }
-        const std::vector<spartan::Entity*>& selected_entities = first_use ? camera->GetSelectedEntities() : entities_being_transformed;
+        const std::vector<spartan::Entity*>& selected_entities = first_use ? spartan::Selection::GetSelectedEntities() : entities_being_transformed;
         if (selected_entities.empty())
         {
             return;

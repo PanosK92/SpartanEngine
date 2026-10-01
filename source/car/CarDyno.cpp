@@ -5,6 +5,9 @@ https://github.com/PanosK92/SpartanEngine/blob/master/license.md
 Commercial use requires written permission and negotiated payment terms.
 */
 #include "pch.h"
+#ifdef SP_GAME
+#include "CarPhysics.h"
+#endif
 #include "CarDyno.h"
 #include "Car.h"
 #include "CarSimulation.h"
@@ -103,7 +106,7 @@ namespace spartan::car_hud
 
     void draw_dyno_window(Car* vehicle, Physics* physics)
     {
-        auto* sim = physics->GetVehicleSimulation();
+        auto* sim = CarPhysics::Get(*physics).GetVehicleSimulation();
         auto& d = sim->dyno;
         ImGui::SetNextWindowSize(ImVec2(670, 840), ImGuiCond_FirstUseEver);
         if (!ImGui::Begin("Dyno | Drivetrain laboratory")) { ImGui::End(); return; }

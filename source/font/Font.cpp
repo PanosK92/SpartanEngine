@@ -67,7 +67,7 @@ namespace spartan
 
     }
 
-    void Font::LoadFromFile(const string& file_path)
+    bool Font::LoadFromFile(const string& file_path)
     {
         const Stopwatch timer;
 
@@ -75,7 +75,7 @@ namespace spartan
         if (!FontImporter::LoadFromFile(this, file_path))
         {
             SP_LOG_ERROR("Failed to load font \"%s\"", file_path.c_str());
-            return;
+            return false;
         }
 
         // find max character height (todo, actually get spacing from FreeType)
@@ -93,6 +93,7 @@ namespace spartan
         }
 
         SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
+        return true;
     }
 
     void Font::add_quad(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, const uint32_t color)

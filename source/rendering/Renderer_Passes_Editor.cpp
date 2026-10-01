@@ -75,13 +75,21 @@ namespace spartan
                 { ComponentType::Physics,        Renderer_StandardTexture::Gizmo_physics         },
                 { ComponentType::Spline,         Renderer_StandardTexture::Gizmo_spline          },
                 { ComponentType::SplineFollower, Renderer_StandardTexture::Gizmo_spline_follower },
+#ifdef SP_GAME
                 { ComponentType::Traffic,        Renderer_StandardTexture::Gizmo_traffic         },
+#endif
+#ifdef SP_GAME
                 { ComponentType::Pedestrians,    Renderer_StandardTexture::Gizmo_pedestrians     },
+#endif
                 { ComponentType::Navigation,     Renderer_StandardTexture::Gizmo_spline          },
                 { ComponentType::Animator,       Renderer_StandardTexture::Gizmo_animator        },
                 { ComponentType::Ragdoll,        Renderer_StandardTexture::Gizmo_ragdoll         },
+#ifdef SP_GAME
                 { ComponentType::SkidMarks,      Renderer_StandardTexture::Gizmo_skid_marks      },
+#endif
+#ifdef SP_GAME
                 { ComponentType::CarReset,       Renderer_StandardTexture::Gizmo_car_reset       },
+#endif
                 { ComponentType::Text3D,         Renderer_StandardTexture::Gizmo_text_3d         },
                 { ComponentType::Script,         Renderer_StandardTexture::Gizmo_script          },
             };
@@ -114,8 +122,8 @@ namespace spartan
 
             if (!Engine::IsFlagSet(EngineMode::Playing) && cvar_entity_icons.GetValueAs<bool>())
             {
-                const Vector3 pos_camera = World::GetCamera() ? World::GetCamera()->GetEntity()->GetPosition() : Vector3::Zero;
-                const Vector3 cam_forward = World::GetCamera() ? World::GetCamera()->GetEntity()->GetForward() : Vector3::Forward;
+                const Vector3 pos_camera = Renderer::GetViewCamera() ? Renderer::GetViewCamera()->GetEntity()->GetPosition() : Vector3::Zero;
+                const Vector3 cam_forward = Renderer::GetViewCamera() ? Renderer::GetViewCamera()->GetEntity()->GetForward() : Vector3::Forward;
 
                 for (Entity* entity : World::GetEntitiesWithIcon())
                 {
@@ -279,7 +287,7 @@ namespace spartan
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
 
                 const float grid_spacing       = 1.0f;
-                const Vector3& camera_position = World::GetCamera()->GetEntity()->GetPosition();
+                const Vector3& camera_position = Renderer::GetViewCamera()->GetEntity()->GetPosition();
                 const Vector3 translation      = Vector3(
                     floor(camera_position.x / grid_spacing) * grid_spacing,
                     0.0f,
@@ -398,9 +406,9 @@ namespace spartan
         RHI_Shader* shader_p = GetShader(Renderer_Shader::outline_p);
         RHI_Shader* shader_c = GetShader(Renderer_Shader::outline_c);
 
-        if (Camera* camera = World::GetCamera())
+        if (Camera* camera = Renderer::GetViewCamera())
         {
-            const std::vector<Entity*>& selected_entities = camera->GetSelectedEntities();
+            const std::vector<Entity*>& selected_entities = GetEditorSelection();
             if (!selected_entities.empty())
             {
                 RHI_CommandList::BeginPass("outline");
@@ -460,7 +468,7 @@ namespace spartan
                                 // clicking a scattered tree selects the renderable that carries every
                                 // tree on that tile, outlining all of them says nothing about which
                                 // one was clicked, so a picked instance outlines on its own
-                                const int picked = Camera::GetSelectedInstance();
+                                const int picked = GetEditorSelectedInstance();
                                 // every part of one prop, bark and leaves, shares the tile transform
                                 // list, so the same index outlines the whole tree and nothing else
                                 const bool one_instance = render->HasInstancing() &&

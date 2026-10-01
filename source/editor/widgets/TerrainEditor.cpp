@@ -7,6 +7,8 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ==============================
 #include "pch.h"
+#include "editor/Selection.h"
+#include "game/CameraController.h"
 #include "TerrainEditor.h"
 #include "../EditorHistory.h"
 #include "Viewport.h"
@@ -1667,7 +1669,7 @@ Terrain* TerrainEditor::ResolveTerrain() const
 {
     if (Camera* camera = World::GetCamera())
     {
-        if (Entity* selected = camera->GetSelectedEntity())
+        if (Entity* selected = spartan::Selection::GetSelectedEntity())
         {
             if (Terrain* terrain = selected->GetComponent<Terrain>())
             {
@@ -1709,7 +1711,7 @@ int TerrainEditor::ResolveSelectedTileIndex() const
         return -1;
     }
 
-    Entity* selected = camera->GetSelectedEntity();
+    Entity* selected = spartan::Selection::GetSelectedEntity();
     if (!selected)
     {
         return -1;
@@ -1812,7 +1814,7 @@ void TerrainEditor::TickSculpting()
         return;
     }
 
-    const Ray& pick_ray = camera->ComputePickingRay();
+    const Ray& pick_ray = spartan::Selection::ComputePickingRay(*camera);
     Vector3 hit;
     if (!terrain->Raycast(pick_ray, hit))
     {

@@ -27,7 +27,7 @@ namespace spartan
     class ModelImporter
     {
     public:
-        static void Load(Mesh* mesh, const std::string& file_path);
+        static bool Load(Mesh* mesh, const std::string& file_path);
 
     private:
         static void ParseNode(ImportContext& ctx, const aiNode* node, Entity* parent_entity = nullptr);

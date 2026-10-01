@@ -250,28 +250,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // restir paths start on the viewed side of a leaf, the reverse side sky stays analytic
     diffuse_ibl += diffuse_ibl_transmit;
 
-    // ray traced reflections replace specular ibl by their weight, rough lobes the tracer skips stay
-    // on ibl, reflections_apply lights both the base and the coat lobe with the one traced ray, the
-    // sky probe knows nothing of a roof so neither lobe may read it where the ray owns the pixel
+    // Traced reflections own specular at every roughness. The sky probe has no
+    // scene visibility, so blending it back in makes sheltered rough surfaces glow.
     if (is_ray_traced_reflections_enabled())
     {
-        bool  layered              = !surface.is_water() && !surface.is_transparent();
-        float coat_traced          = get_rt_reflection_coat(surface.clearcoat, surface.metallic);
-        float reflection_roughness = lerp(surface.roughness, surface.clearcoat_roughness, coat_traced);
-        float traced               = get_rt_reflection_weight(reflection_roughness);
-        specular_ibl              *= 1.0f - traced;
-
-        // the untraced share of the coat, f0 0.04 at the coat roughness, attenuated like the base
-        float coat_left = layered ? saturate(surface.clearcoat) * (1.0f - traced) : 0.0f;
-        if (coat_left > 0.0f)
-        {
-            float  coat_roughness = saturate(surface.clearcoat_roughness);
-            float2 coat_brdf      = tex2.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, coat_roughness), 0.0f).xy;
-            float3 coat_direction = get_dominant_specular_direction(surface.normal, view_dir, coat_roughness);
-            float3 coat_sky       = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(coat_direction), coat_roughness * coat_roughness * (mip_count_environment - 1.0f)).rgb;
-            float3 coat_tint      = lerp(float3(1.0f, 1.0f, 1.0f), surface.coat_tint, saturate(surface.coat_tint_strength));
-            specular_ibl         += coat_sky * (0.04f * coat_brdf.x + coat_brdf.y) * coat_tint * coat_left * specular_occlusion;
-        }
+        specular_ibl = 0.0f;
     }
 
     // transparents take full ibl, fresnel inside the split sum already governs the reflection split

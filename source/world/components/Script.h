@@ -17,6 +17,7 @@ namespace spartan
     class Script : public Component
     {
     public:
+        bool StartsEarly() const override { return true; }
 
         Script(Entity* Entity);
 

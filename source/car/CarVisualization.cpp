@@ -7,6 +7,9 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ===============================
 #include "pch.h"
+#ifdef SP_GAME
+#include "CarPhysics.h"
+#endif
 #include "Car.h"
 #include "../profiling/Profiler.h"
 #include "../physics/PhysicsWorld.h"
@@ -29,7 +32,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Light.h"
 #include "../world/components/Physics.h"
 #include "../world/components/Render.h"
-#include "../world/components/CarReset.h"
+#include "../game/components/CarReset.h"
 #include "../world/components/SpawnPoint.h"
 #include "../world/Prefab.h"
 #include "../io/pugixml.hpp"
@@ -500,7 +503,7 @@ namespace spartan
             return;
         }
 
-        ::car::Simulation* simulation = physics->GetVehicleSimulation();
+        ::car::Simulation* simulation = CarPhysics::Get(*physics).GetVehicleSimulation();
         if (!simulation)
         {
             return;
@@ -513,10 +516,10 @@ namespace spartan
 
         Entity* wheel_entities[4] =
         {
-            physics->GetWheelEntity(WheelIndex::FrontLeft),
-            physics->GetWheelEntity(WheelIndex::FrontRight),
-            physics->GetWheelEntity(WheelIndex::RearLeft),
-            physics->GetWheelEntity(WheelIndex::RearRight)
+            CarPhysics::Get(*physics).GetWheelEntity(WheelIndex::FrontLeft),
+            CarPhysics::Get(*physics).GetWheelEntity(WheelIndex::FrontRight),
+            CarPhysics::Get(*physics).GetWheelEntity(WheelIndex::RearLeft),
+            CarPhysics::Get(*physics).GetWheelEntity(WheelIndex::RearRight)
         };
 
         for (Entity* wheel_entity : wheel_entities)
@@ -528,14 +531,14 @@ namespace spartan
         }
 
         auto from_px = [](const physx::PxVec3& value) { return math::Vector3(value.x, value.y, value.z); };
-        auto to_render = [&](const physx::PxVec3& value) { return physics->TransformVehiclePointToRender(PhysicsWorld::ToWorldPosition(from_px(value))); };
+        auto to_render = [&](const physx::PxVec3& value) { return CarPhysics::Get(*physics).TransformVehiclePointToRender(PhysicsWorld::ToWorldPosition(from_px(value))); };
         if (m_skeleton_show_collision)
         {
             draw_skeleton_actor_shapes(body, skeleton_color_collision, to_render);
         }
 
         // cheap mode only draws chassis hull plus four wheels
-        if (physics->GetVehicleSimMode() == VehicleSimMode::Cheap)
+        if (CarPhysics::Get(*physics).GetVehicleSimMode() == VehicleSimMode::Cheap)
         {
             const ::car::config& config = simulation->get_config();
             for (int i = 0; i < 4; i++)
