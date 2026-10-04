@@ -389,6 +389,11 @@ namespace pass_restir_nrd_unpack
     static const SHARED_UINT reset_accumulation = 0; // bool
 }
 
+namespace pass_restir_temporal
+{
+    static const SHARED_UINT history_m_cap = 0; // float, 0 keeps the default confidence cap
+}
+
 namespace pass_bend_sss
 {
     static const SHARED_UINT light_coordinate       = 0;  // float4

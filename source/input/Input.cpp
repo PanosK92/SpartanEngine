@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ========
 #include "pch.h"
 #include "Input.h"
+#include <chrono>
 SP_WARNINGS_OFF
 #include <SDL3/SDL.h>
 SP_WARNINGS_ON
@@ -27,12 +28,45 @@ namespace spartan
     {
         // GetKeyDown and GetKeyUp compare against this
         array<bool, Input::key_count> keys_previous_frame;
+
+        // injected holds, release is in seconds on the injection clock
+        array<bool, Input::key_count>   injected_active;
+        array<bool, Input::key_count>   injected_ticked;
+        array<double, Input::key_count> injected_release;
+
+        // KeyCode order, the index is the key's slot in m_keys
+        const array<const char*, Input::key_count> key_names =
+        {
+            "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "F13", "F14", "F15",
+            "Alpha0", "Alpha1", "Alpha2", "Alpha3", "Alpha4", "Alpha5", "Alpha6", "Alpha7", "Alpha8", "Alpha9",
+            "Keypad0", "Keypad1", "Keypad2", "Keypad3", "Keypad4", "Keypad5", "Keypad6", "Keypad7", "Keypad8", "Keypad9",
+            "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P",
+            "A", "S", "D", "F", "G", "H", "J", "K", "L",
+            "Z", "X", "C", "V", "B", "N", "M",
+            "Esc", "Tab", "Shift_Left", "Shift_Right", "Ctrl_Left", "Ctrl_Right", "Alt_Left", "Alt_Right",
+            "Space", "CapsLock", "Backspace", "Enter", "Delete",
+            "Arrow_Left", "Arrow_Right", "Arrow_Up", "Arrow_Down", "Page_Up", "Page_Down", "Home", "End", "Insert",
+            "Click_Left", "Click_Middle", "Click_Right",
+            "DPad_Up", "DPad_Down", "DPad_Left", "DPad_Right",
+            "Button_South", "Button_East", "Button_West", "Button_North",
+            "Back", "Guide", "Start", "Left_Stick", "Right_Stick", "Left_Shoulder", "Right_Shoulder",
+            "Misc1", "Paddle1", "Paddle2", "Paddle3", "Paddle4", "Touchpad"
+        };
+
+        string lower(string value)
+        {
+            transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
+            return value;
+        }
     }
 
     void Input::Initialize()
     {
         m_keys.fill(false);
         keys_previous_frame.fill(false);
+        injected_active.fill(false);
+        injected_ticked.fill(false);
+        injected_release.fill(0.0);
 
         // get events from the main window's event processing loop
         SP_SUBSCRIBE_TO_EVENT(EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(OnEvent));
@@ -46,6 +80,104 @@ namespace spartan
         PollKeyboard();
         PollGamepad();
         PollSteeringWheel();
+
+        const double now = GetInjectionTime();
+        for (uint32_t i = 0; i < key_count; i++)
+        {
+            if (!injected_active[i])
+            {
+                continue;
+            }
+
+            if (injected_ticked[i] && now >= injected_release[i])
+            {
+                injected_active[i] = false;
+                continue;
+            }
+
+            m_keys[i]          = true;
+            injected_ticked[i] = true;
+        }
+    }
+
+    double Input::GetInjectionTime()
+    {
+        return chrono::duration<double>(chrono::steady_clock::now().time_since_epoch()).count();
+    }
+
+    void Input::InjectKey(const KeyCode key, const float seconds)
+    {
+        const uint32_t index  = static_cast<uint32_t>(key);
+        const double release  = GetInjectionTime() + max(static_cast<double>(seconds), 0.0);
+        injected_release[index] = injected_active[index] ? max(injected_release[index], release) : release;
+        injected_active[index]  = true;
+        injected_ticked[index]  = false;
+    }
+
+    void Input::ClearInjected()
+    {
+        injected_active.fill(false);
+        injected_ticked.fill(false);
+        ClearInjectedMouse();
+    }
+
+    bool Input::GetInjectedKey(const KeyCode key, float& seconds_left)
+    {
+        const uint32_t index = static_cast<uint32_t>(key);
+        seconds_left         = 0.0f;
+        if (!injected_active[index])
+        {
+            return false;
+        }
+
+        seconds_left = static_cast<float>(max(injected_release[index] - GetInjectionTime(), 0.0));
+        return true;
+    }
+
+    bool Input::IsInjectingMouseButton()
+    {
+        return injected_active[key_index_mouse] || injected_active[key_index_mouse + 1] || injected_active[key_index_mouse + 2];
+    }
+
+    const char* Input::GetKeyName(const KeyCode key)
+    {
+        return key_names[static_cast<uint32_t>(key)];
+    }
+
+    bool Input::GetKeyFromName(const string& name, KeyCode& key)
+    {
+        string query = lower(name);
+
+        // short names people actually type
+        static const array<pair<const char*, const char*>, 14> aliases =
+        {{
+            { "shift", "shift_left" }, { "ctrl", "ctrl_left" }, { "control", "ctrl_left" }, { "alt", "alt_left" },
+            { "escape", "esc" }, { "return", "enter" }, { "up", "arrow_up" }, { "down", "arrow_down" },
+            { "left", "arrow_left" }, { "right", "arrow_right" }, { "mouse_left", "click_left" },
+            { "mouse_middle", "click_middle" }, { "mouse_right", "click_right" }, { "rmb", "click_right" }
+        }};
+        for (const auto& [alias, target] : aliases)
+        {
+            if (query == alias)
+            {
+                query = target;
+                break;
+            }
+        }
+        if (query.size() == 1 && query[0] >= '0' && query[0] <= '9')
+        {
+            query = "alpha" + query;
+        }
+
+        for (uint32_t i = 0; i < key_count; i++)
+        {
+            if (lower(key_names[i]) == query)
+            {
+                key = static_cast<KeyCode>(i);
+                return true;
+            }
+        }
+        return false;
     }
 
     void Input::OnEvent(sp_variant data)

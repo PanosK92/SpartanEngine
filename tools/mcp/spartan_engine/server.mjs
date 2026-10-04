@@ -15,6 +15,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { EngineClient } from "./engine_client.mjs";
 import { run_vehicle_validation } from "./vehicle_validation.mjs";
+import { find_engine_executable, find_free_port, read_log_lines, spawn_engine, wait_for_bridge, wait_for_exit } from "./headless.mjs";
 import { append_debug_log, debug_log_path, read_debug_log } from "./debug_log.mjs";
 import { get_project_root, get_shared_codebase } from "./shared_codebase.mjs";
 import { component_schema_markdown, construction_grammar_guide, edit_rules, engine_overview, parametric_modeling_guide, scene_planning_guide, search_capability_catalog } from "./knowledge.mjs";
@@ -1483,7 +1484,9 @@ register_local_tool("spartan_status", {
     http_endpoint: http_enabled ? `http://127.0.0.1:${http_port}/mcp` : null,
     project_root,
     engine_host,
-    engine_port,
+    engine_port: engine.port,
+    default_engine_port: engine_port,
+    headless: headless_summary(),
     read_only_mode,
     engine: engine_status,
     codebase: codebase.status(),
@@ -1689,6 +1692,227 @@ register_local_tool("engine_command", {
   traceLocal: false,
 }, async ({ command, args }) => {
   return tool_result(await send_engine_command(command, args ?? {}));
+});
+
+// a headless engine owned by this server, while it runs every engine tool talks to it instead of --port
+const binaries_directory = path.join(project_root, "binaries");
+let headless = null;
+
+function set_engine_target(port)
+{
+  engine.close();
+  engine.port = port;
+  active_resource_directory = null;
+  resource_directory_generation++;
+}
+
+function headless_summary()
+{
+  if (!headless)
+  {
+    return { running: false, target_port: engine.port, default_port: engine_port };
+  }
+  return {
+    running: headless.child.exitCode === null,
+    pid: headless.child.pid,
+    port: headless.port,
+    executable: headless.executable,
+    started_at: headless.started_at,
+    exit_code: headless.child.exitCode,
+    target_port: engine.port,
+    default_port: engine_port,
+    log: path.join(binaries_directory, "log_headless.txt"),
+  };
+}
+
+async function wait_for_world(world_path, timeout_ms)
+{
+  const wanted = world_path.replaceAll("\\", "/").toLowerCase();
+  const deadline = Date.now() + timeout_ms;
+  while (Date.now() < deadline)
+  {
+    const status = await send_engine_command("engine_status");
+    if (status.ok && !status.loading)
+    {
+      const world = await send_engine_command("world_summary");
+      if (world.ok && String(world.file_path ?? "").replaceAll("\\", "/").toLowerCase() === wanted)
+      {
+        return world;
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  return { ok: false, error: `world ${world_path} did not finish loading within ${Math.round(timeout_ms / 1000)} s` };
+}
+
+async function stop_headless(timeout_ms = 20000)
+{
+  if (!headless)
+  {
+    return { ok: true, stopped: false, note: "no headless instance was started by this server" };
+  }
+
+  const { child, port } = headless;
+  let graceful = false;
+  if (child.exitCode === null)
+  {
+    const quit = await send_engine_command("engine_quit");
+    graceful = quit.ok && await wait_for_exit(child, timeout_ms);
+    if (!graceful && child.exitCode === null)
+    {
+      child.kill();
+      await wait_for_exit(child, 5000);
+    }
+  }
+  headless = null;
+  set_engine_target(engine_port);
+  return { ok: true, stopped: true, port, graceful, exit_code: child.exitCode, target_port: engine.port };
+}
+
+process.on("exit", () =>
+{
+  if (headless && headless.child.exitCode === null)
+  {
+    headless.child.kill();
+  }
+});
+
+register_local_tool("headless_start", {
+  title: "Headless Start",
+  description: "Start a private headless Spartan instance (hidden window, no editor ui, no steam, no gamepads, real mouse and keyboard ignored, user settings and log.txt untouched) on a free port and point every engine tool of this MCP server at it until headless_stop. Use it to run something quickly without the user's editor: load a world, set cvars, screenshot_take, input_inject, profiler_snapshot. world is an optional absolute .world path loaded before returning. The newest spartan executable in binaries/ is used unless executable is given. Only one per server; its log is binaries/log_headless.txt.",
+  inputSchema: {
+    world: z.string().min(1).optional(),
+    port: z.number().int().min(1024).max(65535).optional(),
+    executable: z.string().min(1).optional(),
+    timeout_s: z.number().min(5).max(600).optional(),
+  },
+  outputSchema: output_schemas.generic,
+  annotations: edit_tool,
+}, async ({ world, port, executable, timeout_s }) => {
+  if (headless && headless.child.exitCode === null)
+  {
+    return tool_result({ ok: false, error: "a headless instance is already running, call headless_stop first", headless: headless_summary() });
+  }
+  if (world && !path.isAbsolute(world))
+  {
+    return tool_result(structured_error("world must be an absolute path", { code: "invalid_arguments" }));
+  }
+
+  const timeout_ms = (timeout_s ?? 180) * 1000;
+  let resolved_executable;
+  let resolved_port;
+  try
+  {
+    resolved_executable = await find_engine_executable(binaries_directory, executable);
+    resolved_port = port ?? await find_free_port(engine_host, 47900);
+  }
+  catch (error)
+  {
+    return tool_result(structured_error(error.message, { code: "headless_start_failed" }));
+  }
+
+  const args = ["--headless", "--mcp-control", `--mcp-port=${resolved_port}`, "--no-steam"];
+  const child = spawn_engine(resolved_executable, binaries_directory, args);
+  headless = { child, port: resolved_port, executable: resolved_executable, started_at: new Date().toISOString() };
+  const status = await wait_for_bridge(engine_host, resolved_port, child, timeout_ms);
+  if (!status.ok)
+  {
+    if (child.exitCode === null)
+    {
+      child.kill();
+    }
+    headless = null;
+    return tool_result({ ...status, log_tail: await read_log_lines(binaries_directory, /error|fail/i, 20) });
+  }
+
+  set_engine_target(resolved_port);
+  let world_result = null;
+  if (world)
+  {
+    const load = await send_engine_command("world_load", { path: world });
+    world_result = load.ok ? await wait_for_world(world, timeout_ms) : load;
+  }
+
+  return tool_result({
+    ok: !world_result || Boolean(world_result.ok),
+    headless: headless_summary(),
+    engine: status,
+    world: world_result,
+  });
+});
+
+register_local_tool("headless_stop", {
+  title: "Headless Stop",
+  description: "Close the headless instance started by headless_start (graceful engine_quit, killed after 20 s) and point the engine tools back at the default --port instance.",
+  inputSchema: {},
+  outputSchema: output_schemas.generic,
+  annotations: edit_tool,
+}, async () => {
+  return tool_result(await stop_headless());
+});
+
+register_local_tool("headless_status", {
+  title: "Headless Status",
+  description: "Report whether this server started a headless instance, its pid and port, and which port the engine tools currently target.",
+  inputSchema: {},
+  outputSchema: output_schemas.generic,
+  annotations: read_only,
+}, async () => {
+  return tool_result({ ok: true, ...headless_summary() });
+});
+
+register_local_tool("headless_smoke_test", {
+  title: "Headless Smoke Test",
+  description: "Run the engine smoke test (-ci_test) in a separate headless instance that exits when done: RHI, shaders, pipeline states, threading, a rendered emissive cube read back from the gpu, play mode restore. Returns passed, the failures from binaries/ci_test.txt and the result lines from log_headless.txt. Does not touch the instance the tools target. Needs a gpu, so it is for local and self-hosted runs.",
+  inputSchema: {
+    executable: z.string().min(1).optional(),
+    timeout_s: z.number().min(10).max(900).optional(),
+  },
+  outputSchema: output_schemas.generic,
+  annotations: edit_tool,
+}, async ({ executable, timeout_s }) => {
+  let resolved_executable;
+  try
+  {
+    resolved_executable = await find_engine_executable(binaries_directory, executable);
+  }
+  catch (error)
+  {
+    return tool_result(structured_error(error.message, { code: "smoke_test_failed" }));
+  }
+
+  const result_path = path.join(binaries_directory, "ci_test.txt");
+  await fs.rm(result_path, { force: true });
+  const started = Date.now();
+  const child = spawn_engine(resolved_executable, binaries_directory, ["--headless", "-ci_test", "--ci-exit", "--no-steam"]);
+  const exited = await wait_for_exit(child, (timeout_s ?? 300) * 1000);
+  if (!exited)
+  {
+    child.kill();
+    await wait_for_exit(child, 5000);
+  }
+
+  let report = null;
+  try
+  {
+    report = await fs.readFile(result_path, "utf8");
+  }
+  catch
+  {
+  }
+
+  const lines = report ? report.split(/\r?\n/).filter((line) => line.length > 0) : [];
+  const passed = lines[0] === "0";
+  return tool_result({
+    ok: passed,
+    passed,
+    error: passed ? undefined : (child.spawn_error ?? (!exited ? "smoke test timed out" : !report ? `engine exited with code ${child.exitCode} without writing ci_test.txt` : "smoke test failures")),
+    failures: lines.slice(1),
+    exit_code: child.exitCode,
+    duration_s: Math.round((Date.now() - started) / 100) / 10,
+    executable: resolved_executable,
+    log: await read_log_lines(binaries_directory, /PASSED|FAILED|Running:|Smoke Tests|center RGB/),
+  });
 });
 
 register_local_tool("debug_log_read", {
@@ -2265,6 +2489,21 @@ register_tool(
   },
   "camera_set_view",
   { annotations: edit_tool, outputSchema: output_schemas.camera_snapshot },
+);
+
+register_tool(
+  server,
+  "input_inject",
+  "Drive the engine with a virtual keyboard and mouse, without touching the OS cursor or other windows. keys are held for duration seconds (KeyCode names, case-insensitive: W, A, S, D, E, Q, Space, Shift_Left, Ctrl_Left, Arrow_Up, F, Click_Left, Click_Right; aliases shift, ctrl, alt, mouse_right, rmb). mouse_delta [x, y] pixels is spread evenly over duration (positive x turns right, positive y looks down; multiply by degrees_per_pixel in the result for degrees). wheel adds scroll notches once. release true clears every injected key and motion first, call it alone to stop. The editor fly camera only moves and looks while Click_Right is held, so send e.g. keys ['Click_Right', 'W'] in edit mode; in play mode the first person controller reads W/A/S/D directly. Calls return immediately with the held keys and remaining motion, poll with an empty call and use screenshot_take to see the result.",
+  {
+    keys: z.array(z.string()).max(16).optional(),
+    duration: z.number().min(0).max(60).optional(),
+    mouse_delta: vector2.optional(),
+    wheel: vector2.optional(),
+    release: z.boolean().optional(),
+  },
+  "input_inject",
+  { annotations: edit_tool },
 );
 
 register_tool(server, "sequencer_get", "Read the sequencer state: duration, loop, playback time, preview flag, the sorted camera shots (with rig fields when animated), the spline_events track, the drive_events track (each with its speed keys and a live autopilot readout: staged, active, distance, speed_kmh, target_kmh, lateral_error, throttle, brake, steering) and the render status (active, frames_written, frames_total, directory, last_error).", {}, "sequencer_get", {

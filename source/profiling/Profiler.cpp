@@ -15,6 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../core/ThreadPool.h"
 #include "../core/Timer.h"
 #include "../core/Window.h"
+#include "../core/Engine.h"
 #include "../font/Font.h"
 #include "../rendering/Renderer.h"
 #include "../rhi/RHI_Viewport.h"
@@ -1437,7 +1438,8 @@ namespace spartan
             poll = true;
         }
 
-        if (cvar_performance_metrics.GetValueAs<bool>())
+        // nobody watches a headless frame, the overlay would only cover agent screenshots, profiler_snapshot has the numbers
+        if (cvar_performance_metrics.GetValueAs<bool>() && !Engine::IsHeadless())
         {
             DrawPerformanceMetrics();
         }

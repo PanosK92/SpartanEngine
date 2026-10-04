@@ -1259,13 +1259,28 @@ namespace spartan
         // a round trip through a secondary view only rebuilds the primary layout, the materials themselves
         // are unchanged, so it must not cost the primary its gi history, a real change seen during a
         // secondary frame is held until the primary renders again
+        // a texture residency swap is the same image at another mip count and leaves gi alone, texture
+        // streaming swaps every few frames while the camera moves and clearing on it kept restir at one sample
+        // a material edit or a render switching material (a flickering fixture) fades the history out
+        // instead of clearing it, the reservoirs re-trace visibility and re-shade on reuse so only the
+        // cached emission of what changed goes stale
         static bool restir_invalidation_pending = false;
-        restir_invalidation_pending |= GetFrameNumber() == 0 || world_changed || bindless_changed || bindless_textures_dirty;
-        if (restir_invalidation_pending && !is_secondary)
+        static bool restir_fade_pending         = false;
+        restir_invalidation_pending |= GetFrameNumber() == 0 || bindless_changed;
+        restir_fade_pending         |= world_changed;
+        if ((restir_invalidation_pending || restir_fade_pending) && !is_secondary)
         {
             m_pass_state.restir.accumulation_valid = false;
-            m_pass_state.restir.history_invalid = true;
+            if (restir_invalidation_pending)
+            {
+                m_pass_state.restir.history_invalid = true;
+            }
+            else
+            {
+                m_pass_state.restir.history_fade_frames = restir_history_fade_frames;
+            }
             restir_invalidation_pending = false;
+            restir_fade_pending         = false;
         }
 
         if (update_materials)
@@ -2451,12 +2466,15 @@ namespace spartan
         }
         mix(emitter_signature, pool_representable ? 1u : 0u);
 
-        // a change in the set of renderables clears the reservoirs, motion only restarts the progressive
+        // a change in the set of renderables fades the reservoirs out, motion only restarts the progressive
         // accumulation, a moving car would otherwise leave restir without temporal reuse every frame
+        // worlds that stream geometry around the camera change the set on most frames while walking, so
+        // clearing here left restir with no temporal reuse, reuse re-traces visibility and new surfaces
+        // have no history of their own, so only radiance cached from removed geometry goes stale
         if (scene_signature != m_pass_state.restir.scene_signature)
         {
-            m_pass_state.restir.accumulation_valid = false;
-            m_pass_state.restir.history_invalid = true;
+            m_pass_state.restir.accumulation_valid  = false;
+            m_pass_state.restir.history_fade_frames = restir_history_fade_frames;
         }
         if (motion_signature != m_pass_state.restir.motion_signature)
         {
@@ -2470,6 +2488,13 @@ namespace spartan
         {
             Renderer::view().frame.restir_pt_emissive_tri_count = static_cast<float>(pool_count);
             return;
+        }
+
+        // an emitter that switched or moved leaves its old emission cached in the reservoirs
+        if (emitter_signature != pool_signature)
+        {
+            m_pass_state.restir.accumulation_valid  = false;
+            m_pass_state.restir.history_fade_frames = restir_history_fade_frames;
         }
 
         // statics avoid heap thrash on rebuilds, the capacity ratchets up to the largest pool seen so far
@@ -3539,8 +3564,10 @@ namespace spartan
         // only the fields that shape emitted radiance are compared, the shadow matrices and atlas
         // placement follow the camera, comparing them wiped all restir history on every camera move
         // a light that changes restarts the progressive accumulation but keeps the reservoirs, the
-        // temporal confidence cap ages stale radiance out within a few frames, only a change in the
-        // light set clears them, otherwise a moving sun or headlight leaves restir with no temporal reuse
+        // temporal confidence cap ages stale radiance out within a few frames, a change in the light set
+        // (a light culled, switched off or added) fades them out faster, point and spot samples find their
+        // light again by position when its index moved, see restir_resolve_dirac_light, clearing instead
+        // restarted every pixel from one sample whenever a light left the frustum
         // a secondary view uploads its own studio lights, those are not a change to the primary's set
         if (cvar_restir_pt.GetValueAs<bool>() && !secondary_render_root_active)
         {
@@ -3575,8 +3602,8 @@ namespace spartan
             const uint32_t count = max(m_count_active_lights, 1u);
             if (previous_lights.size() != count)
             {
-                m_pass_state.restir.accumulation_valid = false;
-                m_pass_state.restir.history_invalid    = true;
+                m_pass_state.restir.accumulation_valid  = false;
+                m_pass_state.restir.history_fade_frames = restir_history_fade_frames;
             }
             else
             {

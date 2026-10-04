@@ -336,7 +336,7 @@ namespace spartan
             return false;
         }
 
-        if (!Engine::HasArgument("-headless"))
+        if (!Engine::IsHeadless())
         {
             RHI_SwapChain* swap_chain = RHI_Device::GetSwapChain();
             if (!swap_chain)

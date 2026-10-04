@@ -26,5 +26,9 @@ namespace spartan
         static void SetFlag(const EngineMode flag, const bool enabled);
         static void ToggleFlag(const EngineMode flag);
         static bool HasArgument(const std::string& argument);
+
+        // --headless (or -headless, or --mcp-control --mcp-hidden): hidden window, no editor ui, no steam,
+        // os mouse and gamepads ignored so only mcp injected input drives it, user settings are never written
+        static bool IsHeadless();
     };
 }

@@ -98,6 +98,12 @@ void spartan::gui::shutdown()
         return;
     }
 
+    // the hidden editor never lays out its panels, saving would clobber the user's layout
+    if (spartan::Engine::IsHeadless())
+    {
+        ImGui::GetIO().IniFilename = nullptr;
+    }
+
     ImGui::RHI::shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();

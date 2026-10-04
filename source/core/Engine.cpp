@@ -90,7 +90,7 @@ namespace spartan
 #ifndef SP_RUNTIME
             McpServer::Initialize(args);
 #endif
-            if (!HasArgument("--no-steam"))
+            if (!HasArgument("--no-steam") && !IsHeadless())
             {
                 Steam::Initialize(); // must stay on the main thread, steam callbacks run here too
             }
@@ -228,5 +228,10 @@ namespace spartan
         }
 
         return false;
+    }
+
+    bool Engine::IsHeadless()
+    {
+        return HasArgument("--headless") || HasArgument("-headless") || (HasArgument("--mcp-control") && HasArgument("--mcp-hidden"));
     }
 }

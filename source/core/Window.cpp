@@ -221,7 +221,8 @@ namespace spartan
                 }
             }
 
-            if (!SDL_WasInit(SDL_INIT_GAMEPAD))
+            // a headless instance must not pick up the desk's gamepads, stick drift would steer its camera
+            if (!SDL_WasInit(SDL_INIT_GAMEPAD) && !Engine::IsHeadless())
             {
                 SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5, "1");
                 SDL_SetHint(SDL_HINT_JOYSTICK_ENHANCED_REPORTS, "1");
@@ -251,9 +252,8 @@ namespace spartan
 
         sdl_initialize_subystems();
 
-        // MCP load/performance checks can run without taking desktop focus.
-        const bool mcp_hidden = Engine::HasArgument("--mcp-control") && Engine::HasArgument("--mcp-hidden");
-        m_show_splash_screen = !mcp_hidden;
+        const bool headless  = Engine::IsHeadless();
+        m_show_splash_screen = !headless;
         // show a splash screen
         if (m_show_splash_screen)
         {
@@ -263,7 +263,7 @@ namespace spartan
         // set window flags - borderless for custom title bar
         // rhi-specific flags (e.g. SDL_WINDOW_VULKAN) come from RHI_Context, set at compile time per-api
         uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_BORDERLESS | RHI_Context::sdl_window_flags;
-        flags |= mcp_hidden ? SDL_WINDOW_HIDDEN : SDL_WINDOW_MAXIMIZED;
+        flags |= headless ? SDL_WINDOW_HIDDEN : SDL_WINDOW_MAXIMIZED;
 
         // create window
         window  = SDL_CreateWindow(

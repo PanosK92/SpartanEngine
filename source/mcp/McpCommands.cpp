@@ -61,6 +61,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rendering/Material.h"
 #include "../rendering/Renderer.h"
 #include "../math/Vector2.h"
+#include "../input/Input.h"
+#include "../core/Window.h"
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -1055,6 +1057,7 @@ namespace spartan
             std::string json = "{\"ok\":true";
             json += ",\"version\":" + json_string(version::c_str());
             json += ",\"editor_visible\":" + json_bool(Engine::IsFlagSet(EngineMode::EditorVisible));
+            json += ",\"headless\":" + json_bool(Engine::IsHeadless());
             json += ",\"playing\":" + json_bool(Engine::IsFlagSet(EngineMode::Playing));
             json += ",\"paused\":" + json_bool(Engine::IsFlagSet(EngineMode::Paused));
             json += ",\"loading\":" + json_bool(ProgressTracker::IsLoading());
@@ -4250,6 +4253,138 @@ namespace spartan
             return json;
         }
 
+        // only headless instances can be closed remotely, a visible editor may hold a user's unsaved work
+        std::string command_engine_quit(const McpRequest& request)
+        {
+            (void)request;
+            if (!Engine::IsHeadless())
+            {
+                return json_error("engine_quit only closes headless instances, close a visible editor by hand");
+            }
+
+            Window::Close();
+            return "{\"ok\":true,\"closing\":true}";
+        }
+
+        std::string input_status_json()
+        {
+            std::string held;
+            for (uint32_t i = 0; i < Input::key_count; i++)
+            {
+                float seconds_left = 0.0f;
+                if (Input::GetInjectedKey(static_cast<KeyCode>(i), seconds_left))
+                {
+                    held += held.empty() ? "" : ",";
+                    held += "{\"key\":" + json_string(Input::GetKeyName(static_cast<KeyCode>(i))) + ",\"seconds_left\":" + json_number(seconds_left) + "}";
+                }
+            }
+
+            const math::Vector2 motion = Input::GetInjectedMouseMotionRemaining();
+            std::string json = "{\"ok\":true,\"held\":[" + held + "]";
+            json += ",\"mouse_delta_remaining\":[" + json_number(motion.x) + "," + json_number(motion.y) + "]";
+            json += ",\"blocked_by_ui\":" + json_bool(Input::IsBlockedByUi());
+            json += ",\"gamepad_connected\":" + json_bool(Input::IsGamepadConnected());
+            if (Camera* camera = World::GetCamera())
+            {
+                json += ",\"camera_controlled\":" + json_bool(camera->GetFlag(CameraFlags::IsControlled));
+                json += ",\"degrees_per_pixel\":" + json_number(camera->GetMouseSensitivity());
+            }
+            json += "}";
+            return json;
+        }
+
+        // virtual keyboard and mouse, see Input::InjectKey, nothing reaches the os so other windows are safe
+        std::string command_input_inject(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            bool release = false;
+            if (const std::optional<std::string> value = get_argument(request, "release"))
+            {
+                if (!parse_bool(*value, release))
+                {
+                    return json_error("invalid release");
+                }
+            }
+
+            float duration = 0.1f;
+            if (const std::optional<std::string> value = get_argument(request, "duration"))
+            {
+                if (!parse_float(*value, duration) || duration < 0.0f || duration > 60.0f)
+                {
+                    return json_error("duration must be 0 to 60 seconds");
+                }
+            }
+
+            // validate everything before injecting anything
+            std::vector<KeyCode> keys;
+            if (const std::optional<std::string> value = get_argument(request, "keys"))
+            {
+                std::stringstream stream(*value);
+                std::string part;
+                while (std::getline(stream, part, ','))
+                {
+                    part.erase(0, part.find_first_not_of(" \t"));
+                    part.erase(part.find_last_not_of(" \t") + 1);
+                    if (part.empty())
+                    {
+                        continue;
+                    }
+
+                    KeyCode key;
+                    if (!Input::GetKeyFromName(part, key))
+                    {
+                        return json_error("unknown key '" + part + "', use KeyCode names such as W, Shift_Left, Space, Arrow_Up, Click_Right");
+                    }
+                    keys.push_back(key);
+                }
+            }
+
+            std::optional<math::Vector2> mouse_delta;
+            if (const std::optional<std::string> value = get_argument(request, "mouse_delta"))
+            {
+                math::Vector2 parsed;
+                if (!parse_vector2(*value, parsed))
+                {
+                    return json_error("invalid mouse_delta, expected [x, y] pixels");
+                }
+                mouse_delta = parsed;
+            }
+
+            std::optional<math::Vector2> wheel;
+            if (const std::optional<std::string> value = get_argument(request, "wheel"))
+            {
+                math::Vector2 parsed;
+                if (!parse_vector2(*value, parsed))
+                {
+                    return json_error("invalid wheel, expected [x, y] notches");
+                }
+                wheel = parsed;
+            }
+
+            if (release)
+            {
+                Input::ClearInjected();
+            }
+            for (KeyCode key : keys)
+            {
+                Input::InjectKey(key, duration);
+            }
+            if (mouse_delta)
+            {
+                Input::InjectMouseMotion(*mouse_delta, duration);
+            }
+            if (wheel)
+            {
+                Input::InjectMouseWheel(*wheel);
+            }
+
+            return input_status_json();
+        }
+
         std::string command_camera_set_view(const McpRequest& request)
         {
             if (ProgressTracker::IsLoading())
@@ -7206,6 +7341,8 @@ namespace spartan
             { "context_snapshot",              [](const McpRequest&) { return command_context_snapshot(); } },
             { "camera_snapshot",               [](const McpRequest&) { return command_camera_snapshot(); } },
             { "camera_set_view",               command_camera_set_view },
+            { "input_inject",                  command_input_inject },
+            { "engine_quit",                   command_engine_quit },
             { "screenshot_take",               command_screenshot_take },
             { "entity_resolve",                command_entity_resolve },
             { "primitive_types",               [](const McpRequest&) { return command_primitive_types(); } },

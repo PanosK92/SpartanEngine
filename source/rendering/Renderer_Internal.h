@@ -89,6 +89,8 @@ namespace spartan
             bool accumulation_valid = false;
             uint32_t reference_mode = 0;
             bool history_invalid = true;
+            // frames left with a short temporal confidence cap, set by lighting changes that keep the reservoirs
+            uint32_t history_fade_frames = 0;
             uint64_t scene_signature = 0;
             uint64_t motion_signature = 0;
 

@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "Input.h"
 #include "../core/Window.h"
+#include "../core/Engine.h"
 SP_WARNINGS_OFF
 #include <SDL3/SDL.h>
 SP_WARNINGS_ON
@@ -28,6 +29,12 @@ namespace spartan
         Vector2 mouse_wheel_delta      = Vector2::Zero;
         Vector2 editor_viewport_offset = Vector2::Zero;
         bool mouse_is_in_viewport      = true;
+
+        // injected motion still to deliver, spread linearly until injected_motion_end
+        Vector2 injected_motion_remaining = Vector2::Zero;
+        double injected_motion_end        = 0.0;
+        double injected_motion_last       = 0.0;
+        Vector2 injected_wheel            = Vector2::Zero;
     }
 
     void Input::PreTick()
@@ -39,14 +46,34 @@ namespace spartan
     {
         // get state
         float x = 0.0f, y = 0.0f;
-        SDL_MouseButtonFlags keys_states = SDL_GetGlobalMouseState(&x, &y);
-        Vector2 position                 = Vector2(static_cast<float>(x), static_cast<float>(y));
+        SDL_MouseButtonFlags keys_states = 0;
+        Vector2 position                 = mouse_position;
+        if (!Engine::IsHeadless())
+        {
+            keys_states = SDL_GetGlobalMouseState(&x, &y);
+            position    = Vector2(static_cast<float>(x), static_cast<float>(y));
+        }
 
         // get delta
         mouse_delta = position - mouse_position;
 
         // get position
         mouse_position = position;
+
+        if (injected_motion_remaining != Vector2::Zero)
+        {
+            const double now       = GetInjectionTime();
+            const double time_left = injected_motion_end - injected_motion_last;
+            const double step      = now - injected_motion_last;
+            const float fraction   = (time_left <= 0.0 || step >= time_left) ? 1.0f : static_cast<float>(step / time_left);
+            const Vector2 portion  = injected_motion_remaining * fraction;
+            mouse_delta               += portion;
+            injected_motion_remaining  = fraction >= 1.0f ? Vector2::Zero : injected_motion_remaining - portion;
+            injected_motion_last       = now;
+        }
+
+        mouse_wheel_delta += injected_wheel;
+        injected_wheel     = Vector2::Zero;
 
         // get keys
         m_keys[key_index_mouse]     = (keys_states & SDL_BUTTON_MASK(SDL_BUTTON_LEFT))   != 0; // left button pressed
@@ -122,7 +149,35 @@ namespace spartan
             return false;
         }
 
-        return mouse_is_in_viewport;
+        return mouse_is_in_viewport || IsInjectingMouseButton();
+    }
+
+    void Input::InjectMouseMotion(const Vector2& delta, const float seconds)
+    {
+        const double now = GetInjectionTime();
+        if (injected_motion_remaining == Vector2::Zero)
+        {
+            injected_motion_last = now;
+            injected_motion_end  = now;
+        }
+        injected_motion_remaining += delta;
+        injected_motion_end        = max(injected_motion_end, now + max(static_cast<double>(seconds), 0.0));
+    }
+
+    void Input::InjectMouseWheel(const Vector2& delta)
+    {
+        injected_wheel += delta;
+    }
+
+    Vector2 Input::GetInjectedMouseMotionRemaining()
+    {
+        return injected_motion_remaining;
+    }
+
+    void Input::ClearInjectedMouse()
+    {
+        injected_motion_remaining = Vector2::Zero;
+        injected_wheel            = Vector2::Zero;
     }
 
     const Vector2& Input::GetMousePosition()

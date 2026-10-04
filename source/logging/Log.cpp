@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES =================
 #include "pch.h"
+#include "../core/Engine.h"
 #include <algorithm>
 #include <deque>
 #include <fstream>
@@ -24,7 +25,8 @@ namespace spartan
     {
         vector<LogCmd> logs;
         deque<LogCmd> history;
-        string log_file_name = "log.txt";
+        string log_file_name          = "log.txt";
+        string log_file_name_previous = "log_previous.txt";
         ILogger* logger      = nullptr;
         bool log_to_file     = true;
         mutex log_output_mutex;
@@ -40,7 +42,7 @@ namespace spartan
             {
                 is_first_log = false;
                 error_code ignored;
-                filesystem::rename(log_file_name, "log_previous.txt", ignored);
+                filesystem::rename(log_file_name, log_file_name_previous, ignored);
                 // Logging holds log_output_mutex here. FileSystem::Delete reports
                 // failures through Log, re-entering that mutex when another process
                 // has the file open. Rotation is best-effort and must never log.
@@ -71,6 +73,12 @@ namespace spartan
     void Log::Initialize()
     {
         // keep writing log.txt for the whole session, console is additive not a replacement
+        // headless instances run next to the user's editor in the same folder and must not truncate its log
+        if (Engine::IsHeadless())
+        {
+            log_file_name          = "log_headless.txt";
+            log_file_name_previous = "log_headless_previous.txt";
+        }
     }
 
     void Log::SetLogger(ILogger* logger_in)
@@ -113,7 +121,7 @@ namespace spartan
             }
 
             error_code ignored;
-            filesystem::rename(log_file_name, "log_previous.txt", ignored);
+            filesystem::rename(log_file_name, log_file_name_previous, ignored);
 
             ofstream file(log_file_name, ios::out | ios::trunc);
             if (file.is_open())

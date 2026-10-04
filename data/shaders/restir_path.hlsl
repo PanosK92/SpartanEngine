@@ -159,7 +159,7 @@ RestirPathSelection sample_path_tree_at_rc(PathSurface rc, float3 rc_view, inout
             float unused_pdf;
             float3 brdf = evaluate_brdf(next.albedo, next.roughness, next.metallic,
                 next.hit_normal, -direction, light.direction, unused_pdf, 1.0f);
-            if (light.light_index == uint(buffer_frame.restir_pt_light_count) + 1u)
+            if (light.light_index == RESTIR_ENDPOINT_SKY)
                 light.incident *= power_heuristic(sky_nee_pdf_at(light.direction, next.hit_normal), unused_pdf);
             restir_stream_path(result, 0.0f, throughput * brdf * light.incident,
                 first_direction, first_pdf, depth + 1u, rc, rc_view, selection_seed,

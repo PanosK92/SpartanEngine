@@ -736,6 +736,10 @@ namespace spartan
                 RHI_CommandList::SetTexture(Renderer_BindingsSrv::tex2, tex_duplication);
             }
 
+            const float history_m_cap = m_pass_state.restir.history_fade_frames > 0 ? restir_history_fade_m_cap : 0.0f;
+            m_pcb_pass_cpu.set(pass_restir_temporal::history_m_cap, history_m_cap);
+            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+
             RHI_CommandList::SetTexture(Renderer_BindingsUav::tex, tex_gi);
             RHI_CommandList::Dispatch(dispatch_x, dispatch_y, 1);
         }
@@ -1013,6 +1017,10 @@ namespace spartan
             return;
         }
         Pass_ReSTIR_Temporal(tlas, tex_gi, reservoirs, reservoirs_prev, dispatch_x, dispatch_y);
+        if (m_pass_state.restir.history_fade_frames > 0)
+        {
+            m_pass_state.restir.history_fade_frames--;
+        }
         if (reference_mode == 2u || reference_mode == 3u)
         {
             Pass_ReSTIR_SwapReservoirs();

@@ -235,7 +235,15 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (have_temporal)
     {
         float duplication = tex2.SampleLevel(GET_SAMPLER(sampler_point_clamp), history_uv, 0).r;
-        clamp_reservoir_M(temporal, get_restir_m_cap_decorrelated(duplication));
+        float m_cap       = get_restir_m_cap_decorrelated(duplication);
+
+        // a lighting change that kept the reservoirs, stale cached radiance halves every frame
+        float history_m_cap = pass_float(pass_restir_temporal::history_m_cap);
+        if (history_m_cap > 0.0f)
+        {
+            m_cap = min(m_cap, history_m_cap);
+        }
+        clamp_reservoir_M(temporal, m_cap);
     }
 
     // balance heuristic with confidence weights over the two techniques, lin 2022 5.2

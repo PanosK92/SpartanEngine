@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES =========================
 #include "pch.h"
 #include "Window.h"
+#include "Engine.h"
 #include "../rendering/Renderer.h"
 #include "../resource/ResourceCache.h"
 #include "../input/Input.h"
@@ -264,6 +265,12 @@ namespace spartan
 
         void save()
         {
+            // throwaway agent and ci instances must not rewrite the user's settings
+            if (Engine::IsHeadless())
+            {
+                return;
+            }
+
             pugi::xml_document doc;
 
             // write settings

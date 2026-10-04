@@ -69,6 +69,11 @@ namespace spartan
     const uint32_t restir_emissive_tri_initial_capacity         = 16384;
     // rgba32f textures per reservoir set, must match pack_reservoir in restir_reservoir.hlsl
     const uint32_t restir_reservoir_textures       = 6;
+    // a lighting change that keeps the reservoirs caps temporal confidence this low for this many
+    // frames, stale radiance from a light that switched halves every frame instead of living for
+    // the full default cap, clearing the reservoirs instead restarts every pixel from one sample
+    const uint32_t restir_history_fade_frames      = 4;
+    const float    restir_history_fade_m_cap       = 1.0f;
     // paired spatial reuse tables, lin 2026 3, sizes and order must match RESTIR_PAIRING_SIZES
     // in restir_reservoir.hlsl, near coprime so tiling periods never align within a screen
     const uint32_t restir_pairing_sizes[3]         = { 254, 230, 210 };

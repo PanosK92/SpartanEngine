@@ -318,6 +318,14 @@ static const uint PATH_FLAG_HAS_RC   = 1 << 1;  // reconnection vertex is valid 
 static const uint PATH_FLAG_RC_EMIT  = 1 << 2;  // rc surface emits, its stored radiance cannot be re-derived
 static const uint PATH_FLAG_NEE      = 1 << 3;  // candidate came from the light nee strategy
 
+// endpoint_light values that are not analytic light indices, fixed so a sample keeps its technique
+// when the light count changes under it, light indices stay below them (16 bit packed field)
+static const uint RESTIR_ENDPOINT_EMTRI = 65533u; // emissive triangle pool
+static const uint RESTIR_ENDPOINT_SKY   = 65534u; // environment nee
+static const uint RESTIR_ENDPOINT_BSDF  = 65535u; // bsdf sampled hit
+// endpoint_emtri_draw tag on a primary point or spot light sample, the field is unused by analytic lights
+static const uint RESTIR_ENDPOINT_DIRAC_TAG = 7u;
+
 // suffix of a path starting at the primary hit, lin 2022 5 split of the radiance leaving rc
 //   L_at_rc = L_nee + f_rc(in_at_rc, rc_outgoing_dir) * L_post
 // L_nee stores terminal emission only. Continuing paths store one selected suffix
@@ -522,6 +530,42 @@ bool is_sky_sample(PathSample s)     { return (s.flags & PATH_FLAG_SKY)     != 0
 bool has_reconnection(PathSample s)  { return (s.flags & PATH_FLAG_HAS_RC)  != 0; }
 bool is_rc_emissive(PathSample s)    { return (s.flags & PATH_FLAG_RC_EMIT) != 0; }
 bool is_nee_sample(PathSample s)     { return (s.flags & PATH_FLAG_NEE)     != 0; }
+bool is_dirac_light_sample(PathSample s)
+{
+    return is_nee_sample(s) && !is_sky_sample(s) && s.path_length == 2u && s.endpoint_light < RESTIR_ENDPOINT_EMTRI &&
+        s.endpoint_emtri_draw == RESTIR_ENDPOINT_DIRAC_TAG;
+}
+
+// a light index only holds while the light set is unchanged, culling or switching a light off
+// shifts every index after it, so the light is accepted at its index while it stays near the stored
+// position (a moving light) and is otherwise looked up by exact position, a light that is gone fails
+static const float RESTIR_DIRAC_LIGHT_TRACK_DISTANCE = 1.0f;
+bool restir_resolve_dirac_light(PathSample s, out uint light_index)
+{
+    const uint dirac_flags = (1u << 1) | (1u << 2);
+    uint light_count       = (uint)buffer_frame.restir_pt_light_count;
+    light_index            = s.endpoint_light;
+
+    if (light_index < light_count)
+    {
+        LightParameters light = light_parameters[light_index];
+        float3 offset         = light.position - s.rc_pos;
+        if ((light.flags & dirac_flags) != 0u && dot(offset, offset) < RESTIR_DIRAC_LIGHT_TRACK_DISTANCE * RESTIR_DIRAC_LIGHT_TRACK_DISTANCE)
+            return true;
+    }
+
+    for (uint i = 0; i < light_count; i++)
+    {
+        LightParameters light = light_parameters[i];
+        float3 offset         = light.position - s.rc_pos;
+        if ((light.flags & dirac_flags) != 0u && dot(offset, offset) < 1e-6f)
+        {
+            light_index = i;
+            return true;
+        }
+    }
+    return false;
+}
 
 bool is_reservoir_valid(Reservoir r)
 {
@@ -1157,9 +1201,9 @@ float restir_rc_endpoint_mis(uint path_length, uint endpoint_light, float3 norma
     if (path_length != 3u)
         return 1.0f;
     float env_pdf = max(dot(normal, direction), 0.0f) / PI;
-    if (endpoint_light == 65535u)
+    if (endpoint_light == RESTIR_ENDPOINT_BSDF)
         return power_heuristic(brdf_pdf, env_pdf);
-    if (endpoint_light == uint(buffer_frame.restir_pt_light_count) + 1u)
+    if (endpoint_light == RESTIR_ENDPOINT_SKY)
         return power_heuristic(env_pdf, brdf_pdf);
     return 1.0f;
 }
@@ -1232,11 +1276,17 @@ ShiftResult try_reconnection_shift(
 
     // primary nee on a point or spot light, the endpoint is the light itself so there is no rc
     // surface whose area density could change, falloff and cone are re-evaluated at dst
-    float3 dirac_radiance;
-    if (is_nee_sample(src) && src.path_length == 2u && src.endpoint_light < uint(buffer_frame.restir_pt_light_count) &&
-        restir_dirac_light_radiance(src.endpoint_light, dst_pos, dirac_radiance))
+    if (is_dirac_light_sample(src))
     {
-        float3 to_light = src.rc_pos - dst_pos;
+        uint light_index;
+        float3 dirac_radiance;
+        if (!restir_resolve_dirac_light(src, light_index) || !restir_dirac_light_radiance(light_index, dst_pos, dirac_radiance))
+            return result;
+
+        result.sample.endpoint_light = light_index;
+        result.sample.rc_pos         = light_parameters[light_index].position;
+
+        float3 to_light = result.sample.rc_pos - dst_pos;
         float  dist     = length(to_light);
         if (dist < 1e-3f || all(dirac_radiance <= 0.0f))
             return result;
@@ -1732,7 +1782,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
         float W, source_pdf;
         uint draw;
         if (emtri_ris_pick_path(shading_pos, shading_normal, seed, light_pos, light_normal, emission,
-            W, source_pdf, draw, forced_light == int(light_count) ? forced_emtri_draw : -1))
+            W, source_pdf, draw, forced_light == int(RESTIR_ENDPOINT_EMTRI) ? forced_emtri_draw : -1))
         {
             float3 to_light = light_pos - shading_pos;
             float distance = length(to_light);
@@ -1743,7 +1793,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
                 float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir,
                     direction, pdf, specular_blend);
                 restir_stream_light(result, direction, emission / source_pdf, brdf, selection_seed,
-                    W * source_pdf, light_count, draw, forced_light);
+                    W * source_pdf, RESTIR_ENDPOINT_EMTRI, draw, forced_light);
             }
         }
     }
@@ -1791,7 +1841,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
                     float3 brdf_probe = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_probe, specular_blend);
 
                     float mis_weight = power_heuristic(env_pdf, brdf_pdf_probe);
-                    restir_stream_light(result, env_dir, emission / env_pdf, brdf_probe * mis_weight, selection_seed, 1.0f, light_count + 1u, 0u, forced_light);
+                    restir_stream_light(result, env_dir, emission / env_pdf, brdf_probe * mis_weight, selection_seed, 1.0f, RESTIR_ENDPOINT_SKY, 0u, forced_light);
                 }
             }
             else
@@ -1802,7 +1852,7 @@ RestirLightSample sample_direct_lighting_at_vertex(
                 float3 brdf_env = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_env, specular_blend);
 
                 float mis_weight_env = power_heuristic(env_pdf, brdf_pdf_env);
-                restir_stream_light(result, env_dir, env_radiance / env_pdf, brdf_env * mis_weight_env, selection_seed, 1.0f, light_count + 1u, 0u, forced_light);
+                restir_stream_light(result, env_dir, env_radiance / env_pdf, brdf_env * mis_weight_env, selection_seed, 1.0f, RESTIR_ENDPOINT_SKY, 0u, forced_light);
             }
         }
     }

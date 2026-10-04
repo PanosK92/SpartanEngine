@@ -102,7 +102,7 @@ PathSample sample_emissive_tri_candidate(
     s.path_length     = 2;
     s.rc_length       = 2;
     s.flags           = 0;
-    s.endpoint_light  = (uint)buffer_frame.restir_pt_light_count;
+    s.endpoint_light  = RESTIR_ENDPOINT_EMTRI;
     ris_weight        = 0.0f;
 
     // ris over cdf draws, see emtri_ris_pick, the unshadowed geometry term picks the panel
@@ -288,11 +288,12 @@ PathSample sample_light_candidate(
             return s;
         }
 
-        s.rc_pos      = light.position;
-        s.rc_normal   = -dir;
-        s.rc_L_nee    = light.color.rgb * light.intensity * attenuation;
-        s.rc_L_post   = float3(0, 0, 0);
-        s.flags      |= PATH_FLAG_HAS_RC | PATH_FLAG_NEE;
+        s.rc_pos              = light.position;
+        s.rc_normal           = -dir;
+        s.rc_L_nee            = light.color.rgb * light.intensity * attenuation;
+        s.rc_L_post           = float3(0, 0, 0);
+        s.flags              |= PATH_FLAG_HAS_RC | PATH_FLAG_NEE;
+        s.endpoint_emtri_draw = RESTIR_ENDPOINT_DIRAC_TAG;
 
         // unit solid angle pdf keeps dirac candidates on the same scale as the area branch
         source_pdf = pick_pdf;

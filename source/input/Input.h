@@ -118,6 +118,21 @@ namespace spartan
         static void SetBlockedByUi(bool blocked);
         static bool IsBlockedByUi();
 
+        // virtual input for automation (mcp), merged into the polled state every tick so every consumer
+        // sees it like a real device, the os cursor, other applications and imgui never see it
+        // an injected key stays down for at least one tick, so a short tap still produces GetKeyDown
+        static void InjectKey(const KeyCode key, const float seconds);
+        // delta is in pixels (x right, y down) and is spread evenly over the seconds given
+        static void InjectMouseMotion(const math::Vector2& delta, const float seconds);
+        static void InjectMouseWheel(const math::Vector2& delta);
+        static void ClearInjected();
+        static bool GetInjectedKey(const KeyCode key, float& seconds_left);
+        static math::Vector2 GetInjectedMouseMotionRemaining();
+        // an injected mouse button counts as pressed over the viewport
+        static bool IsInjectingMouseButton();
+        static const char* GetKeyName(const KeyCode key);
+        static bool GetKeyFromName(const std::string& name, KeyCode& key);
+
         // mouse
         static void SetMouseCursorVisible(const bool visible);
         static bool GetMouseCursorVisible();
@@ -156,6 +171,8 @@ namespace spartan
 
     private:
         static void CheckDeviceState(void* event, Controller* controller);
+        static void ClearInjectedMouse();
+        static double GetInjectionTime();
 
         // the polling lives in InputKeyboard, InputMouse, InputGamepad and InputSteeringWheel, so this state is shared
         static std::array<bool, key_count> m_keys;
