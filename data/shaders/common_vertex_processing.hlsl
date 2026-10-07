@@ -129,6 +129,7 @@ struct gbuffer_vertex
     nointerpolation float4 uv_xform_ir  : TEXCOORD6; // xy = invert, z = rotation, w = unused
     nointerpolation uint draw_flags    : TEXCOORD8;
     nointerpolation uint2 decal_range  : TEXCOORD9;
+    nointerpolation uint motion_blur_id : TEXCOORD10;
     float2 ocean_world_xz               : TEXCOORD7; // undisplaced clipmap world xz, fft normal/foam are indexed in this domain
 };
 
@@ -178,6 +179,7 @@ gbuffer_vertex unpack_gbuffer_indirect(gbuffer_indirect_vertex packed)
     vertex.ocean_world_xz = packed.ocean_world_xz;
     vertex.uv_xform_ts = float4(_draw.uv_tiling, _draw.uv_offset);
     vertex.uv_xform_ir = float4(_draw.uv_invert, _draw.uv_rotation, _draw.uv_world_space);
+    vertex.motion_blur_id = _draw.motion_blur_id;
     vertex.draw_flags = _draw.flags;
     vertex.decal_range = uint2(_draw.decal_offset, _draw.decal_count);
     return vertex;
@@ -1004,6 +1006,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     float  uv_world_space = _draw.uv_world_space;
 
     // forward to the pixel shader, ir.w carries the world_space_uv flag
+    vertex.motion_blur_id = _draw.motion_blur_id;
     vertex.draw_flags = _draw.flags;
     vertex.decal_range = uint2(_draw.decal_offset, _draw.decal_count);
     vertex.uv_xform_ts = float4(uv_tiling, uv_offset);

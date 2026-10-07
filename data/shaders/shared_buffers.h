@@ -171,8 +171,10 @@ struct FrameBufferData
     SHARED_FLOAT4 ocean_shore_wave;    // x = offshore swell height (m), y = period (s), z = wrapped time (s), w = enabled
     SHARED_FLOAT4 ocean_shore_swell;   // xy = direction the swell travels, z = reach offshore (m), w = unused
 
-    // radial motion blur wheel hubs, xy = screen uv, z = signed per-frame rotation angle in radians, w = projected radius in output pixels
-    SHARED_FLOAT4 radial_blur_hubs[8];
+    // World-space rigid rotation records, shared by both eyes. IDs match velocity.z.
+    SHARED_FLOAT4 radial_blur_hubs[64];          // xyz = current pivot, w = unwrapped radians/frame
+    SHARED_FLOAT4 radial_blur_axes[64];          // xyz = world rotation axis, w = object mask ID
+    SHARED_FLOAT4 radial_blur_previous_hubs[64]; // xyz = previous pivot
     SHARED_FLOAT  radial_blur_hub_count;
     // UTC fraction of the calendar day; the star catalogue uses the ephemeris transform below.
     SHARED_FLOAT  time_of_day;
@@ -848,6 +850,7 @@ struct DrawData
     SHARED_MATRIX transform_previous;
     SHARED_UINT decal_offset SHARED_DEFAULT(0);
     SHARED_UINT decal_count SHARED_DEFAULT(0);
+    SHARED_UINT   motion_blur_id    SHARED_DEFAULT(0);
     SHARED_UINT   material_index    SHARED_DEFAULT(0);
     SHARED_UINT   is_transparent    SHARED_DEFAULT(0);
     SHARED_UINT   aabb_index        SHARED_DEFAULT(0);

@@ -510,6 +510,7 @@ namespace spartan
             body->setLinearVelocity(PxVec3(0.0f));
             body->setAngularVelocity(PxVec3(0.0f));
             VehicleState().cheap_steer_angle = 0.0f;
+            VehicleState().cheap_wheel_angular_speed = 0.0f;
             return;
         }
 
@@ -592,6 +593,7 @@ namespace spartan
         body->wakeUp();
 
         const float roll_speed = signed_speed / std::max(wheel_radius, 0.05f);
+        VehicleState().cheap_wheel_angular_speed = roll_speed;
         VehicleState().cheap_wheel_roll += roll_speed * dt;
     }
 
@@ -660,6 +662,7 @@ namespace spartan
             VehicleState().vehicle_simulation->set_mechanism_simulation_enabled(false);
             body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
             VehicleState().cheap_wheel_roll = 0.0f;
+            VehicleState().cheap_wheel_angular_speed = 0.0f;
             VehicleState().cheap_steer_angle = 0.0f;
             this->physics.SetBodyTransform(position, rotation, false);
             physics.SetLinearVelocity(linear_velocity);
@@ -1917,6 +1920,16 @@ namespace spartan
             wheel_position -= wheel_rotation * VehicleState().wheel_mesh_center_offsets[i];
             wheel_entity->SetPositionAndRotation(wheel_position, wheel_rotation);
 
+            const Vector3 angular = from_px_vec3(wheel_actor->getAngularVelocity());
+            const Vector3 angular_render = TransformVehicleRotationToRender(Quaternion::Identity) * angular;
+            vector<Entity*> spinning_parts = {wheel_entity};
+            wheel_entity->GetDescendants(&spinning_parts);
+            for (Entity* part : spinning_parts)
+            {
+                if (Render* render = part->GetComponent<Render>())
+                    render->SetMotionBlurAngularVelocity(angular_render, wheel_entity->GetMatrix().Inverted() * (wheel_position + wheel_rotation * VehicleState().wheel_mesh_center_offsets[i]), wheel_entity->GetObjectId());
+            }
+
             valid_wheels[i] = true;
 
             // The caliper shares the axle origin and scale, but follows the upright,
@@ -2284,6 +2297,7 @@ namespace spartan
         if (VehicleState().vehicle_simulation_active || physics.GetBodyType() != BodyType::Custom) return;
         const auto& preset = EnsureVehicleSimulation()->get_spec();
         const float radius = std::max((preset.front_wheel_radius + preset.rear_wheel_radius) * 0.5f, 0.2f);
+        VehicleState().cheap_wheel_angular_speed = speed / radius;
         VehicleState().cheap_wheel_roll = fmodf(VehicleState().cheap_wheel_roll + speed * delta_time / radius, math::pi * 2.0f);
         VehicleState().cheap_steer_angle = std::clamp(atanf(curvature * preset.wheelbase), -preset.max_steer_angle, preset.max_steer_angle);
         UpdateCheapWheelTransforms();
@@ -2340,6 +2354,14 @@ namespace spartan
                 continue;
             }
             wheel_entity->SetPositionAndRotation(wheel_position, wheel_rotation);
+            const Vector3 axis = (is_front ? steer_q : Quaternion::Identity) * car_right;
+            vector<Entity*> spinning_parts = {wheel_entity};
+            wheel_entity->GetDescendants(&spinning_parts);
+            for (Entity* part : spinning_parts)
+            {
+                if (Render* render = part->GetComponent<Render>())
+                    render->SetMotionBlurAngularVelocity(axis * VehicleState().cheap_wheel_angular_speed, wheel_entity->GetMatrix().Inverted() * (wheel_position + wheel_rotation * VehicleState().wheel_mesh_center_offsets[i]), wheel_entity->GetObjectId());
+            }
             if (Entity* caliper = VehicleState().wheel_calipers[i])
                 caliper->SetRotation((is_front ? steer_q : Quaternion::Identity) * base);
             UpdateTireDeformation(i, false);

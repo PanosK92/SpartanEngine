@@ -42,6 +42,7 @@ namespace spartan
         math::Quaternion cheap_wheel_local_rot[static_cast<int>(WheelIndex::Count)];
         bool cheap_wheel_rest_captured[static_cast<int>(WheelIndex::Count)] = {};
         float cheap_wheel_roll = 0.0f;
+        float cheap_wheel_angular_speed = 0.0f;
         float cheap_steer_angle = 0.0f;
 
         // vehicle chassis entity and suspension state

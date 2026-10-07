@@ -20,7 +20,7 @@ struct gbuffer
     float4 albedo   : SV_Target0;
     float4 normal   : SV_Target1;
     float4 material : SV_Target2;
-    float4 velocity : SV_Target3; // xy = ndc velocity, z = radial motion blur mask, w = previous linear depth
+    float4 velocity : SV_Target3; // xy = ndc velocity, z = signed object mask (positive radial), w = previous linear depth
     float3 emissive : SV_Target4; // scene-linear emitted radiance, independent of reflectance
 };
 
@@ -939,7 +939,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // the depth sign identifies cutout coverage without another mask texture.
     if (material.is_alpha_tested() || surface.is_foliage())
         previous_depth = -previous_depth;
-    g_buffer.velocity = float4(velocity, material.is_motion_blur_radial() ? 1.0f : 0.0f, previous_depth);
+    uint motion_id = vertex.motion_blur_id & 0x7fffffffu;
+    bool radial_mask = material.is_motion_blur_radial() || (vertex.motion_blur_id & 0x80000000u) != 0;
+    float motion_mask = motion_id != 0 ? pack_material_index(motion_id) : 0.0f;
+    g_buffer.velocity = float4(velocity, radial_mask ? motion_mask : -motion_mask, previous_depth);
     g_buffer.emissive = material.emissive_from_albedo()
         ? emission * albedo.rgb * photometric_to_radiometric(lighting_emissive_nits_from_albedo)
         : emission * photometric_to_radiometric(lighting_emissive_nits_texture);

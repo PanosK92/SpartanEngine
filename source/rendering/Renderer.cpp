@@ -2223,107 +2223,58 @@ namespace spartan
 
     void Renderer::UpdateFrameCb_RadialBlurHubs()
     {
-        // wheel hubs for radial motion blur, computed here because entity previous matrices
-        // are snapshotted (overwritten) right after the opaque g-buffer pass
         uint32_t count = 0;
-        const Matrix& view_projection = Renderer::view().frame.view_projection_unjittered;
-        const Vector2 resolution      = m_resolution_output;
-        const Vector3 camera_forward  = Renderer::view().frame.camera_forward;
-        const Vector3 camera_right    = Renderer::view().frame.camera_right;
-
-        auto project_to_uv = [&view_projection](const Vector3& position_world, Vector2& uv)
-        {
-            Vector4 clip = Vector4(position_world.x, position_world.y, position_world.z, 1.0f) * view_projection;
-            if (clip.w <= 0.0001f)
-            {
-                return false;
-            }
-            uv.x = (clip.x / clip.w) * 0.5f + 0.5f;
-            uv.y = (clip.y / clip.w) * -0.5f + 0.5f;
-            return true;
-        };
-
+        unordered_set<uint32_t> written_masks;
         for (Entity* entity : render_entities())
         {
-            if (count >= 8)
-            {
-                break;
-            }
-
             Render* render = entity->GetComponent<Render>();
-            if (!render)
-            {
+            if (!render || !render->IsVisible())
                 continue;
-            }
 
             Material* material = render->GetMaterial();
-            if (!material || material->GetProperty(MaterialProperty::MotionBlurRadial) == 0.0f)
-            {
+            if (!render->GetMotionBlurId() || count >= 64 || !material ||
+                (!render->GetMotionBlurGroup() && material->GetProperty(MaterialProperty::MotionBlurRadial) == 0.0f) ||
+                written_masks.contains(render->GetMotionBlurId()))
                 continue;
-            }
 
-            // per-frame rotation delta in world space, immune to the velocity aliasing that
-            // makes fast wheels produce useless screen-space motion vectors
-            Quaternion q_curr  = entity->GetMatrix().GetRotation();
-            Quaternion q_prev  = entity->GetMatrixPrevious().GetRotation();
-            Quaternion q_delta = q_curr * q_prev.Inverse();
-            float w            = min(fabs(q_delta.w), 1.0f);
-            float angle        = 2.0f * acosf(w);
-            Vector3 axis       = Vector3(q_delta.x, q_delta.y, q_delta.z) * (q_delta.w < 0.0f ? -1.0f : 1.0f);
-            if (angle < 0.005f || axis.LengthSquared() < 1e-12f)
-            {
+            Entity* motion_entity = render->GetMotionBlurGroup() ? World::GetEntityById(render->GetMotionBlurGroup()) : entity;
+            if (!motion_entity)
                 continue;
+            const Matrix& current = motion_entity->GetMatrix();
+            const Matrix& previous = motion_entity->GetMatrixPrevious();
+            if (!current.IsFinite() || !previous.IsFinite())
+                continue;
+
+            Vector3 axis;
+            float angle;
+            if (render->HasMotionBlurAngularVelocity())
+            {
+                axis = render->GetMotionBlurAngularVelocity();
+                if (!axis.IsFinite())
+                    continue;
+                angle = axis.Length() * Renderer::view().frame.delta_time;
             }
+            else
+            {
+                // Generic animated meshes have only pose history; physics wheels supply actual spin.
+                Quaternion delta = current.GetRotation() * previous.GetRotation().Inverse();
+                angle = 2.0f * acosf(min(fabs(delta.w), 1.0f));
+                axis = Vector3(delta.x, delta.y, delta.z) * (delta.w < 0.0f ? -1.0f : 1.0f);
+            }
+            if (!Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused) || angle < 0.0001f || axis.LengthSquared() < 1e-12f)
+                continue;
             axis.Normalize();
 
-            const math::BoundingBox& aabb = render->GetBoundingBox();
-            const Vector3 center          = aabb.GetCenter();
-            const Vector3 extents         = aabb.GetExtents();
-            const float radius_world      = max(extents.x, max(extents.y, extents.z));
-
-            Vector2 uv_center;
-            Vector2 uv_edge_x;
-            Vector2 uv_edge_y;
-            const Vector3 camera_up = Vector3::Cross(camera_forward, camera_right);
-            if (!project_to_uv(center, uv_center) || !project_to_uv(center + camera_right * radius_world, uv_edge_x) || !project_to_uv(center + camera_up * radius_world, uv_edge_y))
-            {
-                continue;
-            }
-            const float radius_pixels = max(((uv_edge_x - uv_center) * resolution).Length(), ((uv_edge_y - uv_center) * resolution).Length());
-            if (radius_pixels < 2.0f)
-            {
-                continue;
-            }
-
-            // resolve the on-screen rotation direction by projecting a rotated test point,
-            // this avoids baking in any handedness or projection convention assumptions
-            Vector3 perpendicular = Vector3::Cross(axis, camera_forward);
-            if (perpendicular.LengthSquared() < 1e-6f)
-            {
-                perpendicular = Vector3::Cross(axis, Vector3::Up);
-            }
-            if (perpendicular.LengthSquared() < 1e-6f)
-            {
-                perpendicular = Vector3::Cross(axis, Vector3::Right);
-            }
-            perpendicular.Normalize();
-
-            Vector2 uv_p0;
-            Vector2 uv_p1;
-            const Vector3 rotated = Quaternion::FromAxisAngle(axis, 0.05f) * perpendicular;
-            if (!project_to_uv(center + perpendicular * radius_world, uv_p0) || !project_to_uv(center + rotated * radius_world, uv_p1))
-            {
-                continue;
-            }
-            const Vector2 d0  = uv_p0 - uv_center;
-            const Vector2 d1  = uv_p1 - uv_center;
-            const float cross = d0.x * d1.y - d0.y * d1.x;
-            const float sign  = cross >= 0.0f ? 1.0f : -1.0f;
-
-            Renderer::view().frame.radial_blur_hubs[count] = Vector4(uv_center.x, uv_center.y, angle * sign, radius_pixels);
+            // Transform the same local pivot in both frames; world AABB centers drift during rotation.
+            const Vector3 local_center = render->HasMotionBlurAngularVelocity() ? render->GetMotionBlurPivotLocal() : render->GetBoundingBoxMesh().GetCenter();
+            const Vector3 center = current * local_center;
+            const Vector3 previous_center = camera_cut_pending || secondary_render_root_active ? center : previous * local_center;
+            Renderer::view().frame.radial_blur_hubs[count] = Vector4(center.x, center.y, center.z, angle);
+            Renderer::view().frame.radial_blur_axes[count] = Vector4(axis.x, axis.y, axis.z, static_cast<float>(render->GetMotionBlurId()));
+            Renderer::view().frame.radial_blur_previous_hubs[count] = Vector4(previous_center.x, previous_center.y, previous_center.z, 0.0f);
+            written_masks.insert(render->GetMotionBlurId());
             count++;
         }
-
         Renderer::view().frame.radial_blur_hub_count = static_cast<float>(count);
     }
 
@@ -2969,6 +2920,7 @@ namespace spartan
         Sb_DrawData& entry       = m_draw_data_cpu[index];
         entry.transform          = transform;
         entry.transform_previous = transform_previous;
+        entry.motion_blur_id     = render ? render->GetMotionBlurId() | (render->GetMotionBlurGroup() ? 0x80000000u : 0u) : 0;
         entry.material_index     = material_index;
         entry.is_transparent     = is_transparent;
         entry.aabb_index         = 0;
@@ -4006,6 +3958,7 @@ namespace spartan
                 Sb_DrawData& draw_data  = m_indirect_draw_data[draw_idx];
                 draw_data.transform     = entity->GetMatrix();
                 draw_data.transform_previous = transform_prev;
+                draw_data.motion_blur_id     = render->GetMotionBlurId() | (render->GetMotionBlurGroup() ? 0x80000000u : 0u);
                 draw_data.material_index     = material->GetIndex();
                 draw_data.is_transparent     = 0;
                 draw_data.aabb_index         = render_aabb_slot;
@@ -4160,6 +4113,23 @@ namespace spartan
 
     void Renderer::UpdateDrawCalls()
     {
+        // IDs must be assigned before either CPU or indirect draw records are written.
+        // Normal finite half-float patterns encode 30719 IDs exactly; overflow stays unclassified.
+        uint32_t motion_id = 0;
+        static unordered_map<uint64_t, uint32_t> motion_masks;
+        motion_masks.clear();
+        for (Entity* entity : render_entities())
+        {
+            if (Render* render = entity->GetComponent<Render>())
+            {
+                // All wheel parts, including the brake interior, get the exact same stencil value.
+                const uint64_t key = render->GetMotionBlurGroup() ? render->GetMotionBlurGroup() : entity->GetObjectId();
+                auto [entry, inserted] = motion_masks.try_emplace(key, 0);
+                if (inserted)
+                    entry->second = ++motion_id <= 30719 ? motion_id : 0;
+                render->SetMotionBlurId(entry->second);
+            }
+        }
         SP_PROFILE_CPU();
         UpdateDrawCalls_ResetCounts();
         UpdateDrawCalls_CollectAndSort();

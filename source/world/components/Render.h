@@ -283,6 +283,15 @@ namespace spartan
         bool ExcludesTerrainBlend() const;
         void SetFlag(const RenderFlags flag, const bool enable = true);
 
+        // Runtime motion metadata, not serialized. Physics can supply unwrapped world angular velocity.
+        void SetMotionBlurAngularVelocity(const math::Vector3& velocity, const math::Vector3& pivot_local, uint64_t group = 0) { m_motion_blur_angular_velocity = velocity; m_motion_blur_pivot_local = pivot_local; m_motion_blur_group = group; m_motion_blur_has_angular_velocity = true; }
+        const math::Vector3& GetMotionBlurPivotLocal() const { return m_motion_blur_pivot_local; }
+        bool HasMotionBlurAngularVelocity() const { return m_motion_blur_has_angular_velocity; }
+        const math::Vector3& GetMotionBlurAngularVelocity() const { return m_motion_blur_angular_velocity; }
+        uint64_t GetMotionBlurGroup() const { return m_motion_blur_group; }
+        void SetMotionBlurId(uint32_t id) { m_motion_blur_id = id; }
+        uint32_t GetMotionBlurId() const { return m_motion_blur_id; }
+
         // previous lights tracking
         uint64_t GetPreviousLights() const      { return m_previous_lights; }
         void SetPreviousLights(uint64_t lights) { m_previous_lights = lights; }
@@ -323,6 +332,12 @@ namespace spartan
         // blas refit
         bool m_needs_blas_refit  = false;
         bool m_allow_blas_update = false;
+
+        math::Vector3 m_motion_blur_angular_velocity = math::Vector3::Zero;
+        math::Vector3 m_motion_blur_pivot_local = math::Vector3::Zero;
+        bool m_motion_blur_has_angular_velocity = false;
+        uint32_t m_motion_blur_id = 0;
+        uint64_t m_motion_blur_group = 0; // wheel root entity, pivot is local to this root
 
         // misc
         uint64_t m_bounds_transform_revision = uint64_t(-1);
