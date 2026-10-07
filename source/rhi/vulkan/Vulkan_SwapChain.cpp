@@ -283,7 +283,7 @@ namespace spartan
     
         // create surface once
         {
-            SP_ASSERT_MSG(SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(m_sdl_window), RHI_Context::instance, nullptr, reinterpret_cast<VkSurfaceKHR*>(&m_rhi_surface)), "Failed to create window surface");
+            SP_ASSERT_MSG(SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(m_sdl_window), RHI_Context::instance, nullptr, reinterpret_cast<VkSurfaceKHR*>(&m_rhi_surface)), SDL_GetError());
 
             VkBool32 present_support = false;
             SP_ASSERT_VK(vkGetPhysicalDeviceSurfaceSupportKHR(

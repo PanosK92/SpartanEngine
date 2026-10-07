@@ -25,6 +25,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_AccelerationStructure.h"
 #include "../../memory/GpuMemory.h"
 SP_WARNINGS_OFF
+#include <SDL3/SDL_vulkan.h>
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 #ifdef _WIN32
@@ -261,8 +262,6 @@ namespace spartan
         // hardware capability viewer: https://vulkan.gpuinfo.org/
 
         vector<const char*> extensions_instance = {
-            "VK_KHR_surface",
-            "VK_KHR_win32_surface",
             "VK_EXT_swapchain_colorspace",
             // openxr requirements
             "VK_KHR_external_memory_capabilities",
@@ -284,9 +283,11 @@ namespace spartan
             // openxr requirements
             "VK_KHR_external_memory",
             "VK_KHR_external_semaphore",
+#ifdef _WIN32
             "VK_KHR_external_memory_win32",
             "VK_KHR_external_semaphore_win32",
             "VK_KHR_win32_keyed_mutex",
+#endif
             "VK_KHR_timeline_semaphore",
             "VK_KHR_dedicated_allocation",
             // ray tracing
@@ -350,6 +351,19 @@ namespace spartan
 
         vector<const char*> get_extensions_instance()
         {
+            // SDL selects the surface extensions for the active video driver (Win32, X11 or Wayland).
+            uint32_t surface_extension_count = 0;
+            const char* const* surface_extensions = SDL_Vulkan_GetInstanceExtensions(&surface_extension_count);
+            SP_ASSERT_MSG(surface_extensions != nullptr, SDL_GetError());
+            for (uint32_t i = 0; i < surface_extension_count; i++)
+            {
+                const char* name = surface_extensions[i];
+                if (none_of(extensions_instance.begin(), extensions_instance.end(), [name](const char* extension) { return strcmp(extension, name) == 0; }))
+                {
+                    extensions_instance.emplace_back(name);
+                }
+            }
+
             if (cvar_debug_validation_layer.GetValue() || cvar_debug_gpu_assisted_validation.GetValue())
             {
                 extensions_instance.emplace_back("VK_EXT_debug_report");
