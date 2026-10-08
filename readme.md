@@ -9,6 +9,10 @@
 </p>
 
 <p align="center">
+  Runs on <b>Windows</b> (DirectX 12 and Vulkan) and <b>Linux</b> (Vulkan).
+</p>
+
+<p align="center">
   <a href="https://github.com/PanosK92/SpartanEngine/actions"><img src="https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg" alt="Build Status"></a>
   <a href="https://discord.gg/TG5r2BS"><img src="https://img.shields.io/discord/677302405263785986?logo=discord&label=Discord&color=5865F2&logoColor=white" alt="Discord"></a>
   <a href="https://github.com/PanosK92/SpartanEngine/blob/master/license.md"><img src="https://img.shields.io/badge/license-Spartan_Engine-blue.svg" alt="License"></a>
