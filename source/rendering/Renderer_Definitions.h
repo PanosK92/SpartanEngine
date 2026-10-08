@@ -149,7 +149,6 @@ namespace spartan
 
     // render target dimensions, fixed allocations sized for current quality budgets
     const uint32_t renderer_resolution_shadow_atlas = 8192; // total shadow atlas, packed by row of square slices
-    const uint32_t renderer_resolution_blur_scratch = 4096; // upper bound, actual scratch matches output resolution
     const uint32_t renderer_resolution_skysphere_w  = 4096; // skysphere panorama width
     const uint32_t renderer_resolution_skysphere_h  = 2048; // skysphere panorama height
     const uint32_t renderer_resolution_cloud_environment_w = 512;

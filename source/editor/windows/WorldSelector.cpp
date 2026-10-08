@@ -43,6 +43,9 @@ namespace
     bool visible_world_list       = false;
     bool downloaded_and_extracted = false;
     bool update_check_started     = false;
+    bool download_in_progress     = false;
+    bool download_failed          = false;
+    atomic<int> download_result{0}; // worker publishes 1 on success, -1 on failure
 
     const float card_rounding      = 8.0f;
     const float panel_rounding     = 8.0f;
@@ -1050,7 +1053,12 @@ namespace
 
     void download_and_extract()
     {
+        if (download_in_progress)
+            return;
+
         visible_download_prompt = false;
+        download_in_progress = true;
+        download_failed = false;
 
         spartan::ThreadPool::AddTask([]()
         {
@@ -1071,12 +1079,8 @@ namespace
                 success = spartan::FileSystem::ExtractArchive(assets_destination, assets_extract_dir);
             }
 
-            if (success)
-            {
-                downloaded_and_extracted = true;
-                scan_for_world_files();
-                visible_world_list = true;
-            }
+            // UI state and the world list belong to the main thread
+            download_result.store(success ? 1 : -1);
         });
     }
 
@@ -1118,6 +1122,9 @@ namespace
 
     void update_assets()
     {
+        if (download_in_progress)
+            return;
+
         visible_update_prompt = false;
         if (spartan::FileSystem::Exists(assets_destination))
         {
@@ -1148,7 +1155,10 @@ namespace
             ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize))
         {
             draw_panel_background(ImGui::GetWindowPos(), ImVec2(ImGui::GetWindowPos().x + ImGui::GetWindowSize().x, ImGui::GetWindowPos().y + ImGui::GetWindowSize().y));
-            render_prompt_body("No default worlds are present.", "Download the curated project package to populate the launcher.", "Download", "Not now", download_and_extract, skip_download_prompt);
+            render_prompt_body(
+                download_failed ? "Project download or extraction failed." : "No default worlds are present.",
+                download_failed ? "See the log for details. Retry resumes any partial download." : "Download the curated project package to populate the launcher.",
+                download_failed ? "Retry" : "Download", "Not now", download_and_extract, skip_download_prompt);
         }
         ImGui::End();
         ImGui::PopStyleVar(2);
@@ -1792,6 +1802,22 @@ void WorldSelector::Initialize(Editor* editor_in)
 
 void WorldSelector::Tick()
 {
+    if (const int result = download_result.exchange(0); result != 0)
+    {
+        download_in_progress = false;
+        download_failed = result < 0;
+        if (download_failed)
+        {
+            visible_download_prompt = true;
+        }
+        else
+        {
+            downloaded_and_extracted = true;
+            scan_for_world_files();
+            visible_world_list = true;
+        }
+    }
+
     // a world loading from anywhere else (menu, mcp, command line) makes the launcher redundant
     static bool was_loading = false;
     const bool is_loading   = spartan::World::IsLoadingFromFile();

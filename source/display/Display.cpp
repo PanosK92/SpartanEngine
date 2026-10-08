@@ -141,11 +141,11 @@ namespace spartan
 
     uint32_t Display::GetId()
     {
-        uint32_t index = SDL_GetDisplayForWindow(static_cast<SDL_Window*>(Window::GetHandleSDL()));
+        SDL_Window* window = static_cast<SDL_Window*>(Window::GetHandleSDL());
+        const SDL_DisplayID id = window ? SDL_GetDisplayForWindow(window) : 0;
 
-        // during engine startup, the window doesn't exist yet, therefore it's not displayed by any monitor.
-        // in this case the index can be -1, so we'll instead set the index to 0 (whatever the primary display is)
-        return index != -1 ? index : 0;
+        // SDL3 display IDs are nonzero; zero means no display, not the primary display
+        return id != 0 ? id : SDL_GetPrimaryDisplay();
     }
 
     bool Display::GetHdr()

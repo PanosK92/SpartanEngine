@@ -995,20 +995,25 @@ namespace spartan
             m_pass_state.fog_history.Reset();
         }
 
-        const uint32_t blur_dim = min(
-            renderer_resolution_blur_scratch,
-            max(
-                max(width_output, height_output),
-                max(width_render, height_render)
-            )
-        );
+        // size for every blur input, including fixed-size textures when the viewport is small
+        // use separate dimensions so ultrawide/large outputs don't require a square allocation
+        uint32_t blur_width  = 1;
+        uint32_t blur_height = 1;
+        for (Renderer_RenderTarget target : { Renderer_RenderTarget::outline, Renderer_RenderTarget::cloud_shadow })
+        {
+            if (RHI_Texture* input = at(render_targets, target).get())
+            {
+                blur_width  = max(blur_width, input->GetWidth());
+                blur_height = max(blur_height, input->GetHeight());
+            }
+        }
         RHI_Texture* blur = at(render_targets, Renderer_RenderTarget::blur).get();
-        if (!blur || blur->GetWidth() != blur_dim || blur->GetHeight() != blur_dim)
+        if (!blur || blur->GetWidth() != blur_width || blur->GetHeight() != blur_height)
         {
             at(render_targets, Renderer_RenderTarget::blur) = make_shared<RHI_Texture>(
                 RHI_Texture_Type::Type2D,
-                blur_dim,
-                blur_dim,
+                blur_width,
+                blur_height,
                 1,
                 1,
                 RHI_Format::R16G16B16A16_Float,

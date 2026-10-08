@@ -43,7 +43,9 @@ float3 gaussian_blur(const uint2 pos, float2 resolution_in, float2 resolution_ou
         float weight  = compute_gaussian_weight(i, sigma2) * depth_awareness;
         // during the vertical pass, the input texture is secondary scratch texture which belongs to the blur pass
         // it's at least as big as the original input texture (to be blurred), so we have to adapt the sample uv
-        sample_uv  = lerp(sample_uv, (trunc(sample_uv * resolution_in) + 0.5f) / resolution_out, direction.y != 0.0f);
+        // clamp to the populated region, not the larger scratch texture's edge
+        float2 sample_pos = clamp(floor(sample_uv * resolution_in), 0.0f, resolution_in - 1.0f);
+        sample_uv  = lerp(sample_uv, (sample_pos + 0.5f) / resolution_out, direction.y != 0.0f);
         color     += tex.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0).rgb * weight;
         weights   += weight;
     }
@@ -69,6 +71,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         resolution_in  = resolution_out;
         resolution_out = temp;
     }
+    // dispatch dimensions are rounded up to whole thread groups
+    if (any(thread_id.xy >= resolution_in))
+        return;
+
     const float2 uv = (thread_id.xy + 0.5f) / resolution_in;
     
     float4 color          = tex_uav[thread_id.xy];

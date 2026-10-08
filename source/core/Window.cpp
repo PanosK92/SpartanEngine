@@ -250,6 +250,8 @@ namespace spartan
         }
         #endif
 
+        // keep the desktop compositor active for the editor and splash window on X11
+        SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0");
         sdl_initialize_subystems();
 
         const bool headless  = Engine::IsHeadless();

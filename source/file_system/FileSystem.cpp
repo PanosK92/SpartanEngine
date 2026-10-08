@@ -166,8 +166,8 @@ namespace spartan
             SDL_SetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, const_cast<char**>(c_args.data()));
             SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDIN_NUMBER, SDL_PROCESS_STDIO_NULL);
             SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_APP);
-            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER, SDL_PROCESS_STDIO_APP);
-            SDL_SetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_BACKGROUND_BOOLEAN, true);
+            SDL_SetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_TO_STDOUT_BOOLEAN, true);
+            // background processes discard the exit status; redirected stdio already keeps this windowless
 
             SDL_Process* process = SDL_CreateProcessWithProperties(props);
             SDL_DestroyProperties(props);
@@ -1121,6 +1121,11 @@ namespace spartan
         if (fs::exists(destination, ec))
         {
             existing_size = fs::file_size(destination, ec);
+            if (ec)
+            {
+                SP_LOG_ERROR("Failed to inspect download destination: %s", ec.message().c_str());
+                return false;
+            }
             if (existing_size > 0)
             {
                 SP_LOG_INFO("Resuming download from %zu bytes", existing_size);
@@ -1131,7 +1136,7 @@ namespace spartan
 
         // first, get file size with a head request
         string size_file = destination + ".size";
-        run_silent_process({"curl", "-sI", "-L", "-o", size_file, url});
+        run_silent_process({"curl", "-sI", "-L", "--connect-timeout", "15", "--max-time", "30", "-o", size_file, url});
 
         // parse content-length from headers
         size_t expected_size = 0;
@@ -1144,8 +1149,13 @@ namespace spartan
                 while (getline(header_file, line))
                 {
                     string lower_line = line;
-                    transform(lower_line.begin(), lower_line.end(), lower_line.begin(), ::tolower);
-                    if (lower_line.find("content-length:") != string::npos)
+                    transform(lower_line.begin(), lower_line.end(), lower_line.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
+                    // only use the final response's length, never a redirect body's size
+                    if (lower_line.rfind("http/", 0) == 0)
+                    {
+                        expected_size = 0;
+                    }
+                    if (lower_line.rfind("content-length:", 0) == 0)
                     {
                         size_t pos = line.find(':');
                         if (pos != string::npos)
@@ -1168,8 +1178,10 @@ namespace spartan
         // --retry-delay 3 : wait 3 seconds between retries
         // --retry-all-errors : retry on all errors, not just transient ones
         SDL_Process* process = create_silent_process({
-            "curl", "-L", "-s", "-f",
+            "curl", "-L", "-sS", "-f",
             "-C", "-",
+            "--connect-timeout", "15",
+            "--speed-limit", "1", "--speed-time", "60",
             "--retry", "10",
             "--retry-delay", "3",
             "--retry-all-errors",
@@ -1182,17 +1194,33 @@ namespace spartan
             return false;
         }
 
-        // get stdout stream to drain any output (prevents buffer blocking)
+        // stderr is merged into stdout so errors cannot fill an unread pipe
         SDL_IOStream* stdout_stream = SDL_GetProcessOutput(process);
-
-        // poll file size for progress while process runs
-        while (!SDL_WaitProcess(process, false, nullptr))
+        string diagnostics;
+        const auto drain_output = [&]()
         {
-            // drain any stdout data to prevent pipe buffer from filling
             if (stdout_stream)
             {
-                char drain_buffer[1024];
-                while (SDL_ReadIO(stdout_stream, drain_buffer, sizeof(drain_buffer)) > 0) {}
+                char buffer[1024];
+                size_t count;
+                while ((count = SDL_ReadIO(stdout_stream, buffer, sizeof(buffer))) > 0)
+                {
+                    diagnostics.append(buffer, count);
+                    if (diagnostics.size() > 4096)
+                        diagnostics.erase(0, diagnostics.size() - 4096);
+                }
+            }
+        };
+
+        // poll file size for progress while process runs
+        int exit_code = -1;
+        while (true)
+        {
+            drain_output();
+            if (SDL_WaitProcess(process, false, &exit_code))
+            {
+                drain_output();
+                break;
             }
 
             if (progress_callback && expected_size > 0 && fs::exists(destination, ec))
@@ -1208,9 +1236,9 @@ namespace spartan
         }
         SDL_DestroyProcess(process);
 
-        // verify download succeeded by checking file size matches expected (if known)
+        // curl validates transfer completion, including responses with no content-length
         size_t final_size = fs::exists(destination, ec) ? fs::file_size(destination, ec) : 0;
-        bool success = final_size > 0 && (expected_size == 0 || final_size >= expected_size);
+        bool success = exit_code == 0 && !ec && final_size > 0;
 
         if (success)
         {
@@ -1223,11 +1251,8 @@ namespace spartan
         }
         else
         {
-            if (fs::exists(destination, ec))
-            {
-                fs::remove(destination, ec);
-            }
-            SP_LOG_ERROR("Failed to download: %s", url.c_str());
+            // keep partial data so the next attempt can resume a multi-gigabyte archive
+            SP_LOG_ERROR("Failed to download: %s (curl exit code %d, %zu bytes retained). %s", url.c_str(), exit_code, final_size, diagnostics.c_str());
             return false;
         }
     }
