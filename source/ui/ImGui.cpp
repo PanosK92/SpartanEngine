@@ -79,6 +79,12 @@ void spartan::gui::initialize(bool editor)
     spartan::gui::font_mono_medium = spartan::FileSystem::Exists(mono_medium) ? io.Fonts->AddFontFromFileTTF(mono_medium.c_str(), scaled_font_size, &config) : spartan::gui::font_bold;
     ImGui::GetStyle().FontScaleMain = font_scale;
 
+    if (Engine::IsStartupSmokeTest())
+    {
+        io.IniFilename = nullptr;
+        return; // exercise editor context/fonts without creating platform or renderer backends
+    }
+
     SP_ASSERT_MSG(
         ImGui::RHI::InitializePlatformBackend(spartan::Window::GetHandleSDL()),
         "Failed to initialize ImGui's SDL backend"
@@ -104,8 +110,11 @@ void spartan::gui::shutdown()
         ImGui::GetIO().IniFilename = nullptr;
     }
 
-    ImGui::RHI::shutdown();
-    ImGui_ImplSDL3_Shutdown();
+    if (!Engine::IsStartupSmokeTest())
+    {
+        ImGui::RHI::shutdown();
+        ImGui_ImplSDL3_Shutdown();
+    }
     ImGui::DestroyContext();
 }
 

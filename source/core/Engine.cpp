@@ -61,6 +61,21 @@ namespace spartan
         Stopwatch timer_initialize;
         {
             Log::Initialize();
+            if (IsStartupSmokeTest())
+            {
+                SP_LOG_INFO("Startup smoke test: initializing CPU subsystems (no window, GPU, scene or network services)");
+                SetFlag(EngineMode::Playing, false);
+                FontImporter::Initialize();
+                ImageImporter::Initialize();
+                Timer::Initialize();
+                ThreadPool::Initialize();
+                ResourceCache::Initialize();
+                Profiler::Initialize();
+                ThreadPool::AddTask([] { PhysicsWorld::Initialize(); }).get();
+                World::Initialize();
+                SP_LOG_INFO("Startup smoke test: engine initialized");
+                return;
+            }
             Settings::LoadPreInitSettings();
             FontImporter::Initialize();
             ImageImporter::Initialize();
@@ -131,6 +146,19 @@ namespace spartan
 
     void Engine::Shutdown()
     {
+        if (IsStartupSmokeTest())
+        {
+            SP_LOG_INFO("Startup smoke test: shutting down");
+            ThreadPool::Flush();
+            World::Shutdown();
+            ThreadPool::Shutdown();
+            PhysicsWorld::Shutdown();
+            Profiler::Shutdown();
+            Event::Shutdown();
+            ImageImporter::Shutdown();
+            FontImporter::Shutdown();
+            return;
+        }
         Steam::Shutdown();
 #ifndef SP_RUNTIME
         McpServer::Shutdown();
@@ -159,6 +187,14 @@ namespace spartan
 
     void Engine::Tick()
     {
+        if (IsStartupSmokeTest())
+        {
+            PhysicsWorld::Tick();
+            World::Tick();
+            SP_FIRE_EVENT(EventType::WorldTicked);
+            Allocator::Tick();
+            return;
+        }
         // pre-tick
         Input::PreTick();
 #ifndef SP_RUNTIME
@@ -232,6 +268,11 @@ namespace spartan
 
     bool Engine::IsHeadless()
     {
-        return HasArgument("--headless") || HasArgument("-headless") || (HasArgument("--mcp-control") && HasArgument("--mcp-hidden"));
+        return IsStartupSmokeTest() || HasArgument("--headless") || HasArgument("-headless") || (HasArgument("--mcp-control") && HasArgument("--mcp-hidden"));
+    }
+
+    bool Engine::IsStartupSmokeTest()
+    {
+        return HasArgument("--ci-smoke-test");
     }
 }

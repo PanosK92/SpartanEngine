@@ -44,7 +44,8 @@ Style::Style(Editor* editor) : Widget(editor)
     {
         ImGui::Style::StyleSpartan();
         ImGui::Style::SetupImGuiColors();
-        SaveStyleColors("imgui_style_user.bin");
+        if (!Engine::IsStartupSmokeTest())
+            SaveStyleColors("imgui_style_user.bin");
     }
     else
     {

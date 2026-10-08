@@ -48,6 +48,7 @@ namespace spartan
 
         float get_monitor_fps()
         {
+            if (Engine::IsStartupSmokeTest()) return 60.0f;
             const float refresh_rate = Display::GetRefreshRate();
             return isfinite(refresh_rate) && refresh_rate > 0.0f ? clamp(refresh_rate, fps_min, fps_max) : 60.0f;
         }

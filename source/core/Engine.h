@@ -30,5 +30,8 @@ namespace spartan
         // --headless (or -headless, or --mcp-control --mcp-hidden): hidden window, no editor ui, no steam,
         // os mouse and gamepads ignored so only mcp injected input drives it, user settings are never written
         static bool IsHeadless();
+
+        // --ci-smoke-test: CPU-only editor startup, idle ticks and shutdown; no window or GPU.
+        static bool IsStartupSmokeTest();
     };
 }

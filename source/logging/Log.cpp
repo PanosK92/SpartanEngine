@@ -74,7 +74,7 @@ namespace spartan
     {
         // keep writing log.txt for the whole session, console is additive not a replacement
         // headless instances run next to the user's editor in the same folder and must not truncate its log
-        if (Engine::IsHeadless())
+        if (Engine::IsHeadless() && !Engine::IsStartupSmokeTest())
         {
             log_file_name          = "log_headless.txt";
             log_file_name_previous = "log_headless_previous.txt";

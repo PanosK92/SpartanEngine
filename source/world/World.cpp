@@ -685,7 +685,8 @@ namespace spartan
         world_progress.Finish();
 
         Renderer::DisableGpuScatter();               // drop renderer references to builder owned scatter meshes/materials
-        Renderer::DestroyAccelerationStructures();   // destroy tlas/blas before clearing resources
+        if (!Engine::IsStartupSmokeTest())
+            Renderer::DestroyAccelerationStructures(); // destroy tlas/blas before clearing resources
 
         // cars hold entity pointers, drop them before entity delete
         if (callbacks.before_entities_destroyed) callbacks.before_entities_destroyed();

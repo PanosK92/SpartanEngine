@@ -59,8 +59,21 @@ int main(int argc, char** argv)
 #ifdef SP_RUNTIME
     return spartan::RunRuntime(args);
 #else
-    Editor editor = Editor(args);
-    editor.Tick();
+    try
+    {
+        {
+            Editor editor(args);
+            editor.Tick();
+        }
+        // Only report success after the editor and engine have finished shutting down.
+        if (spartan::Engine::IsStartupSmokeTest())
+            SP_LOG_INFO("STARTUP_SMOKE_TEST_PASSED");
+    }
+    catch (const std::exception& error)
+    {
+        SP_LOG_ERROR("Editor startup/run failed: %s", error.what());
+        return 1;
+    }
 
     return 0;
 #endif

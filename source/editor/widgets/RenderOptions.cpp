@@ -872,7 +872,8 @@ RenderOptions::RenderOptions(Editor* editor) : Widget(editor)
     m_toolbar_order = 4;
     m_toolbar_icon  = static_cast<int>(spartan::IconType::Gear);
     m_alpha         = 1.0f;
-    m_size_initial  = Vector2(Display::GetWidth() * 0.25f, Display::GetHeight() * 0.6f);
+    if (!Engine::IsStartupSmokeTest())
+        m_size_initial = Vector2(Display::GetWidth() * 0.25f, Display::GetHeight() * 0.6f);
 }
 
 void RenderOptions::OnVisible()

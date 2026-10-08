@@ -56,14 +56,20 @@ Editor::Editor(const vector<string>& args)
     RegisterWidgets();
     MenuBar::Initialize(this);
     editor_mcp::Register(this);
-    GeneralWindows::Initialize(this);
+    if (!spartan::Engine::IsStartupSmokeTest())
+        GeneralWindows::Initialize(this); // welcome/update services may access the network
+    else
+        SP_LOG_INFO("Startup smoke test: editor initialized, entering idle loop");
 }
 
 Editor::~Editor()
 {
     editor_mcp::Unregister();
-    AssetThumbnails::Shutdown();
-    WorldPreviews::Shutdown();
+    if (!spartan::Engine::IsStartupSmokeTest())
+    {
+        AssetThumbnails::Shutdown();
+        WorldPreviews::Shutdown();
+    }
     spartan::gui::texture_preview = nullptr;
     editor_imgui::shutdown();
     spartan::Engine::Shutdown();
@@ -72,6 +78,16 @@ Editor::~Editor()
 void Editor::Tick()
 {
     spartan::Timer::Reset();
+    if (spartan::Engine::IsStartupSmokeTest())
+    {
+        for (uint32_t tick = 0; tick < 10; ++tick)
+        {
+            spartan::Engine::Tick();
+            spartan::Timer::PostTick();
+        }
+        SP_LOG_INFO("Startup smoke test: completed 10 editor idle ticks");
+        return;
+    }
     while (!spartan::Window::WantsToClose())
     {
         spartan::Profiler::FrameStart();
