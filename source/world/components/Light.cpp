@@ -697,7 +697,6 @@ namespace spartan
     float Light::GetCloudCoverage() const { return Environment::GetCloudCoverage(); }
     void Light::SetRain(float value) { Environment::SetRain(value); }
     float Light::GetRain() const { return Environment::GetRain(); }
-    float Light::GetCloudCoverageEffective() const { return Environment::GetCloudCoverageEffective(); }
 
     float Light::GetIntensityRadiometric() const
     {

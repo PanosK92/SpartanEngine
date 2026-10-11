@@ -679,7 +679,7 @@ namespace spartan
                     return VK_FALSE;
                 }
 
-                if (/*(msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
+                if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
                 {
                     SP_LOG_INFO("Vulkan: %s", p_callback_data->pMessage);
                 }
@@ -2170,11 +2170,7 @@ namespace spartan
                 m_min_uniform_buffer_offset_alignment      = properties_device.properties.limits.minUniformBufferOffsetAlignment;
                 m_min_storage_buffer_offset_alignment      = properties_device.properties.limits.minStorageBufferOffsetAlignment;
                 m_min_acceleration_buffer_offset_alignment = acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment;
-                m_max_texture_1d_dimension                 = properties_device.properties.limits.maxImageDimension1D;
                 m_max_texture_2d_dimension                 = properties_device.properties.limits.maxImageDimension2D;
-                m_max_texture_3d_dimension                 = properties_device.properties.limits.maxImageDimension3D;
-                m_max_texture_cube_dimension               = properties_device.properties.limits.maxImageDimensionCube;
-                m_max_texture_array_layers                 = properties_device.properties.limits.maxImageArrayLayers;
                 m_max_push_constant_size                   = properties_device.properties.limits.maxPushConstantsSize;
                 m_max_shading_rate_texel_size_x            = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.width;
                 m_max_shading_rate_texel_size_y            = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.height;

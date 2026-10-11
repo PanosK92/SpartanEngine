@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ======
 #include <string>
 #include "Helper.h"
+#include "Simd.h"
 //=================
 
 namespace spartan::math
@@ -49,90 +50,85 @@ namespace spartan::math
             this->y = x;
         }
 
+        explicit Vector2(const __m128 v)
+        {
+            simd::store2(&x, v);
+        }
+
         ~Vector2() = default;
+
+        // x, y in the low lanes, z and w are zero
+        [[nodiscard]] __m128 Simd() const { return simd::load2(&x); }
+
         Vector2 operator+(const Vector2& b) const
         {
-            return Vector2
-            (
-                this->x + b.x,
-                this->y + b.y
-            );
+            return Vector2(_mm_add_ps(Simd(), b.Simd()));
         }
 
         void operator+=(const Vector2& b)
         {
-            this->x += b.x;
-            this->y += b.y;
+            simd::store2(&x, _mm_add_ps(Simd(), b.Simd()));
         }
 
         Vector2 operator*(const Vector2& b) const
         {
-            return Vector2(x * b.x, y * b.y);
+            return Vector2(_mm_mul_ps(Simd(), b.Simd()));
         }
 
         void operator*=(const Vector2& b)
         {
-            x *= b.x;
-            y *= b.y;
+            simd::store2(&x, _mm_mul_ps(Simd(), b.Simd()));
         }
 
         Vector2 operator*(const float value) const
         {
-            return Vector2(x * value, y * value);
+            return Vector2(_mm_mul_ps(Simd(), _mm_set1_ps(value)));
         }
 
         void operator*=(const float value)
         {
-            x *= value;
-            y *= value;
+            simd::store2(&x, _mm_mul_ps(Simd(), _mm_set1_ps(value)));
         }
 
-        Vector2 operator-(const Vector2& b) const { return Vector2(x - b.x, y - b.y); }
-        Vector2 operator-(const float value) const { return Vector2(x - value, y - value); }
+        Vector2 operator-(const Vector2& b) const { return Vector2(_mm_sub_ps(Simd(), b.Simd())); }
+        Vector2 operator-(const float value) const { return Vector2(_mm_sub_ps(Simd(), _mm_set1_ps(value))); }
 
         void operator-=(const Vector2& rhs)
         {
-            x -= rhs.x;
-            y -= rhs.y;
+            simd::store2(&x, _mm_sub_ps(Simd(), rhs.Simd()));
         }
 
-        Vector2 operator/(const Vector2& rhs) const { return Vector2(x / rhs.x, y / rhs.y); }
-        Vector2 operator/(const float rhs) const { return Vector2(x / rhs, y / rhs); }
+        Vector2 operator/(const Vector2& rhs) const { return Vector2(_mm_div_ps(Simd(), simd::pad_one<0xC>(rhs.Simd()))); }
+        Vector2 operator/(const float rhs) const { return Vector2(_mm_div_ps(Simd(), _mm_set1_ps(rhs))); }
 
         void operator/=(const Vector2& rhs)
         {
-            x /= rhs.x;
-            y /= rhs.y;
+            simd::store2(&x, _mm_div_ps(Simd(), simd::pad_one<0xC>(rhs.Simd())));
         }
 
-         static Vector2 Min(const Vector2& a, const Vector2& b)
+        [[nodiscard]] float Length() const
         {
-            return Vector2(
-                a.x < b.x ? a.x : b.x,
-                a.y < b.y ? a.y : b.y
-            );
-        }
-        static Vector2 Max(const Vector2& a, const Vector2& b)
-        {
-            return Vector2(
-                a.x > b.x ? a.x : b.x,
-                a.y > b.y ? a.y : b.y
-            );
+            const __m128 v = Simd();
+            return _mm_cvtss_f32(_mm_sqrt_ss(_mm_set_ss(simd::dot2(v, v))));
         }
 
-        [[nodiscard]] float Length() const { return sqrt(x * x + y * y); }
-        [[nodiscard]] float LengthSquared() const { return x * x + y * y; }
+        [[nodiscard]] float LengthSquared() const
+        {
+            const __m128 v = Simd();
+            return simd::dot2(v, v);
+        }
 
         static inline float Distance(const Vector2& a, const Vector2& b) { return (b - a).Length(); }
         static inline float DistanceSquared(const Vector2& a, const Vector2& b) { return (b - a).LengthSquared(); }
 
         void Normalize()
         {
-            float length = Length();
-            if (length > 0.0001f) // Avoid division by zero
+            const __m128 v      = Simd();
+            const __m128 length = _mm_sqrt_ps(_mm_set1_ps(simd::dot2(v, v)));
+            // avoid division by zero
+            if (_mm_cvtss_f32(length) > 0.0001f)
             {
-                x /= length;
-                y /= length;
+                simd::store2(&x, _mm_div_ps(v, length));
             }
             else
             {
@@ -141,8 +137,7 @@ namespace spartan::math
             }
         }
 
-        bool IsFinite() const { return std::isfinite(x) && std::isfinite(y); }
-
+        bool IsFinite() const { return (simd::finite_mask(Simd()) & 0x3) == 0x3; }
 
         [[nodiscard]] Vector2 Normalized() const
         {
@@ -153,16 +148,16 @@ namespace spartan::math
 
         bool operator==(const Vector2& b) const
         {
-            return x == b.x && y == b.y;
+            return (simd::equal_mask(Simd(), b.Simd()) & 0x3) == 0x3;
         }
 
         bool operator!=(const Vector2& b) const
         {
-            return x != b.x || y != b.y;
+            return !(*this == b);
         }
 
         // return negation
-        Vector2 operator -() const { return Vector2(-x, -y); }
+        Vector2 operator -() const { return Vector2(simd::negate(Simd())); }
 
         [[nodiscard]] const float* Data() const { return &x; }
         std::string ToString() const;

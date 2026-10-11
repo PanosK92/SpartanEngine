@@ -151,9 +151,6 @@ namespace spartan
         void SetRain(const float rain);
         float GetRain() const;
 
-        // what the sky actually renders, rain needs a sky full of cloud to fall from
-        float GetCloudCoverageEffective() const;
-
         // range
         void SetRange(float range);
         auto GetRange() const { return m_range; }

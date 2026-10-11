@@ -39,13 +39,6 @@ namespace spartan::mcp_geometry_kernel
         z
     };
 
-    enum class boolean_operation
-    {
-        union_mesh,
-        intersection,
-        difference
-    };
-
     struct budgets
     {
         size_t max_vertices = 100000;
@@ -76,41 +69,11 @@ namespace spartan::mcp_geometry_kernel
         }
     };
 
-    struct capability
-    {
-        bool available = false;
-        status code = status::unsupported;
-        std::string message;
-    };
-
-    float component(const math::Vector3& value, axis selected_axis);
-
-    void set_component(math::Vector3& value, axis selected_axis, float component_value);
-
-    bool add_would_exceed(size_t current, size_t added, size_t maximum);
-
-    math::Vector3 safe_normalized(const math::Vector3& value, const math::Vector3& fallback);
-
-    math::Vector3 fallback_tangent(const math::Vector3& normal);
-
-    statistics calculate_statistics(
-        const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
-        const std::vector<uint32_t>& indices
-    );
-
     operation_result validate(
         const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         const std::vector<uint32_t>& indices,
         const budgets& limits = budgets()
     );
-
-    operation_result recalculate_normals_tangents(
-        std::vector<RHI_Vertex_PosTexNorTan>& vertices,
-        const std::vector<uint32_t>& indices,
-        const budgets& limits = budgets()
-    );
-
-    math::Vector3 transform_direction(const math::Vector3& value, const math::Matrix& matrix);
 
     operation_result transform(
         std::vector<RHI_Vertex_PosTexNorTan>& vertices,
@@ -177,14 +140,6 @@ namespace spartan::mcp_geometry_kernel
         const budgets& limits = budgets()
     );
 
-    void projection_axes(axis normal_axis, axis& u_axis, axis& v_axis);
-
-    void projection_signs(axis normal_axis, const math::Vector3& normal, float& u_sign, float& v_sign);
-
-    float normalized_component(const math::Vector3& position, axis selected_axis, const statistics& stats);
-
-    bool uv_is_representable(const math::Vector2& uv);
-
     operation_result project_uv_planar(
         std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         const std::vector<uint32_t>& indices,
@@ -226,6 +181,4 @@ namespace spartan::mcp_geometry_kernel
         const math::Vector2& offset = math::Vector2::Zero,
         const budgets& limits = budgets()
     );
-
-    capability boolean_capability(boolean_operation operation);
 }

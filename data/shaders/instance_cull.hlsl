@@ -10,13 +10,22 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common_culling.hlsl"
 //============================
 
-// phase a of the two-phase gpu cull, one thread per (renderable lod, instance) task
+StructuredBuffer<DrawLod>    draw_lods             : register(t86);
+RWStructuredBuffer<DrawData> indirect_draw_data_rw : register(u87);
+// one bit per task lane, the early cull writes whether it drew the instance and the late cull reads it back
+// a stored bit, not a replayed test, because the early cull rewrites the lod bounds the test would read
+RWStructuredBuffer<uint>     instance_visibility   : register(u89);
+
+groupshared uint gs_visibility[INSTANCE_CULL_BATCH_SIZE / 32u];
+
+// phase a of the gpu cull, one thread per (renderable lod, instance) task
 // rebuilds the per-instance world transform, runs distance + side-frustum + hi-z on the instance bounds and
 // compacts survivors into surviving_instances while bumping instance_dispatch_args.group_count_x, phase b then
 // does a DispatchIndirect over that count and expands each survivor's meshlets
 // this replaces the old single-phase path that emitted one cull task per (meshlet x instance), the task count
 // now scales with instance count instead of meshlets x instances so dense world-spanning entities stay cheap
-// the occluder hi-z arrives on the tex slot, frustum + hi-z helpers live in common_culling.hlsl
+// the early cull tests last frame's hi-z, the late cull this frame's early depth hi-z, both arrive on the tex slot
+// frustum + hi-z helpers live in common_culling.hlsl
 
 [numthreads(INSTANCE_CULL_BATCH_SIZE, 1, 1)]
 void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
@@ -27,13 +36,21 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
     // wave-uniform inputs, the planes are extracted once and the compiler scalarizes the load across the wave
     float max_mip_level = pass_float(pass_instance_cull::max_hiz_mip);
     uint  max_instances = pass_uint(pass_instance_cull::max_instances);
+    bool  late          = pass_bool(pass_instance_cull::late);
+    bool  history_hiz   = pass_bool(pass_instance_cull::history_hiz);
+    float depth_bias    = pass_float(pass_instance_cull::hiz_depth_bias);
     float4 plane_l, plane_r, plane_b, plane_t;
     get_frustum_side_planes(plane_l, plane_r, plane_b, plane_t);
 
-    bool     survives = false;
-    CullTask task     = (CullTask)0;
+    bool     survives     = false;
+    bool     drawn_early  = false;
+    CullTask task         = (CullTask)0;
+    uint     visible_word = task_index * (INSTANCE_CULL_BATCH_SIZE / 32u) + (thread_id.x >> 5u);
+    uint     visible_bit  = 1u << (thread_id.x & 31u);
 
     if (task_index >= task_count) return; // uniform across the whole workgroup
+    if (!late && thread_id.x < INSTANCE_CULL_BATCH_SIZE / 32u)
+        gs_visibility[thread_id.x] = 0u;
     task = cull_tasks[task_index];
     if (thread_id.x < task.instance_count)
     {
@@ -103,10 +120,51 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
             }
         }
 
+        // a non-instanced draw is a single thread, so it can rewrite its own draw to the lod its coverage wants
+        // the coverage comes from the lod 0 bounds in the table, the late cull runs this again and must pick the same lod
+        if (survives && (draw.flags & draw_flag_gpu_lod) != 0u)
+        {
+            uint lod_count     = (draw.flags >> 11u) & 7u;
+            DrawLod lod0       = draw_lods[draw.impostor_texel_offset];
+            float3 lod0_center = mul(float4(lod0.aabb_min + lod0.aabb_extent * 0.5f, 1.0f), world_xform).xyz;
+            float lod0_radius  = lod0.aabb_diag * 0.5f * max_world_scale(world_xform);
+            uint lod           = sphere_lod_index(lod0_center, lod0_radius, lod_count);
+            DrawLod pick       = draw_lods[draw.impostor_texel_offset + lod];
+
+            indirect_draw_data_rw[task.draw_index].lod_first_index        = pick.first_index;
+            indirect_draw_data_rw[task.draw_index].lod_vertex_offset      = pick.vertex_offset;
+            indirect_draw_data_rw[task.draw_index].lod_meshlet_offset     = pick.meshlet_offset;
+            indirect_draw_data_rw[task.draw_index].lod_meshlet_count      = pick.meshlet_count;
+            indirect_draw_data_rw[task.draw_index].lod_aabb_min           = pick.aabb_min;
+            indirect_draw_data_rw[task.draw_index].lod_aabb_diag          = pick.aabb_diag;
+            indirect_draw_data_rw[task.draw_index].lod_aabb_extent        = pick.aabb_extent;
+            indirect_draw_data_rw[task.draw_index].previous_vertex_offset = pick.previous_vertex_offset;
+            indirect_draw_data_rw[task.draw_index].flags                  = (draw.flags & ~(7u << 8u)) | (lod << 8u);
+        }
+
         if (survives)
         {
-            survives = skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, pass_float(pass_instance_cull::hiz_depth_bias));
+            if (late)
+            {
+                // the early cull keeps every meshlet of hi-z exempt and skinned instances, it left nothing behind for these
+                drawn_early = (instance_visibility[visible_word] & visible_bit) != 0u;
+                survives    = (skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, depth_bias)) && !(drawn_early && (skip_hiz || skinned));
+            }
+            else
+            {
+                survives = skip_hiz || !history_hiz || sphere_hiz_visible_history(tex, center_world, radius_world, max_mip_level, depth_bias);
+            }
         }
+    }
+
+    if (!late)
+    {
+        GroupMemoryBarrierWithGroupSync();
+        if (survives)
+            InterlockedOr(gs_visibility[thread_id.x >> 5u], visible_bit);
+        GroupMemoryBarrierWithGroupSync();
+        if (thread_id.x < INSTANCE_CULL_BATCH_SIZE / 32u)
+            instance_visibility[task_index * (INSTANCE_CULL_BATCH_SIZE / 32u) + thread_id.x] = gs_visibility[thread_id.x];
     }
 
     // wave-aggregated compaction, the first lane reserves a contiguous range so dense visibility doesn't hammer one address
@@ -135,6 +193,6 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
 
     SurvivingInstance si;
     si.draw_index     = task.draw_index;
-    si.instance_index = task.instance_index;
+    si.instance_index = task.instance_index | (drawn_early ? SURVIVING_INSTANCE_DRAWN_EARLY : 0u);
     surviving_instances[slot] = si;
 }

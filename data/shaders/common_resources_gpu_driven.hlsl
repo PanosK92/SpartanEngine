@@ -18,11 +18,14 @@ Commercial use requires written permission and negotiated payment terms.
 [[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_ocean_normal_uav       : register(u13);
 
 // gpu-driven indirect drawing buffers
-// indirect_draw_args is a single-slot buffer used as the args for the final non-indexed indirect draw
-//   slot 0 layout matches VkDrawIndirectCommand for the first 16 bytes: vertex_count, instance_count, first_vertex, first_instance
+// indirect_draw_args holds the non-indexed indirect draws, 0 opaque, 1 alpha, 2 and 3 the late ranges of both
+//   the layout matches VkDrawIndirectCommand for the first 16 bytes: vertex_count, instance_count, first_vertex, first_instance
 //   the cpu primes instance_count = 1 each frame, vertex_count is atomically bumped by triangle cull (in 3-vertex steps)
 #if defined(SP_SHADER_STAGE_COMPUTE)
 RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args : register(u31);
+RWStructuredBuffer<uint> cull_phase                     : register(u88);
+#else
+StructuredBuffer<uint> cull_phase                       : register(t88);
 #endif
 StructuredBuffer<DrawData> indirect_draw_data           : register(t32);
 #if defined(SP_SHADER_STAGE_COMPUTE)
@@ -33,7 +36,7 @@ StructuredBuffer<MeshletInstance> meshlet_instances     : register(t33);
 StructuredBuffer<uint> visible_triangles                : register(t34);
 #endif
 // triangle_dispatch_args drives triangle cull (vs) or mesh draws (mesh), group_count_x is the survivor count
-// mesh path uses two slots: [0] opaque, [1] alpha, written by the meshlet cull when split is enabled
+// mesh path uses [0] opaque and [1] alpha, written by the meshlet cull when split is enabled, [2] and [3] are the late ranges
 RWStructuredBuffer<IndirectDispatchArgs> triangle_dispatch_args : register(u35);
 
 RWStructuredBuffer<Particle>      particle_buffer_a : register(u36);

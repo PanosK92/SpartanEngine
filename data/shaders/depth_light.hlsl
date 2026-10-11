@@ -9,7 +9,25 @@ Commercial use requires written permission and negotiated payment terms.
 #include "common.hlsl"
 //====================
 
-#ifdef INDEXED_MULTI_DRAW
+#if defined(SHADOW_GPU_DRIVEN)
+// written by shadow_cull.hlsl, firstInstance of every indirect draw points at its range
+StructuredBuffer<uint2> shadow_visible : register(t85); // draw data index, global instance
+
+gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint visible_slot : SV_InstanceID
+#if defined(API_D3D12) && defined(SP_BASE_INSTANCE)
+    , uint start_instance : SV_StartInstanceLocation
+#endif
+)
+{
+    Vertex_PosUvNorTan input = to_full_vertex(cpu_input);
+#if defined(API_D3D12) && defined(SP_BASE_INSTANCE)
+    visible_slot += start_instance;
+#endif
+    uint2 visible            = shadow_visible[visible_slot];
+    _draw                    = draw_data[visible.x];
+    input.instance_transform = pull_instance_transform(visible.y, 0u);
+    uint instance_id         = visible.y;
+#elif defined(INDEXED_MULTI_DRAW)
 gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_or_draw_index : SV_InstanceID
 #if defined(API_D3D12) && defined(SP_BASE_INSTANCE)
     , uint start_instance : SV_StartInstanceLocation

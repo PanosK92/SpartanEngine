@@ -295,13 +295,6 @@ namespace spartan
         return i;
     }
 
-    Vector3 RacingLine::PositionAt(float distance) const
-    {
-        float fraction = 0.0f;
-        const size_t i = IndexAt(distance, fraction);
-        return Vector3::Lerp(m_points[i].position, m_points[Wrap(static_cast<int64_t>(i) + 1)].position, fraction);
-    }
-
     float RacingLine::CurvatureAt(float distance) const
     {
         float fraction = 0.0f;

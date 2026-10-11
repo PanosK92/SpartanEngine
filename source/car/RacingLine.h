@@ -68,7 +68,6 @@ namespace spartan
 
         size_t Wrap(int64_t index) const;
         size_t IndexAt(float distance, float& fraction) const;
-        math::Vector3 PositionAt(float distance) const;
         float CurvatureAt(float distance) const;
         math::Vector3 DirectionAt(size_t index) const;
 

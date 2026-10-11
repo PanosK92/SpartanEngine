@@ -293,7 +293,7 @@ namespace spartan
         // integer format textures (vrs, etc)
         tex_uint               = 30,
         // gpu-driven indirect drawing
-        indirect_draw_args     = 31, // single slot, vertex_count is bumped by triangle cull
+        indirect_draw_args     = 31, // opaque, alpha and their late ranges, vertex_count is bumped by triangle cull
         indirect_draw_data     = 32,
         meshlet_instances      = 33, // meshlet cull survivors, triangle cull dispatches one workgroup each
         visible_triangles      = 34, // packed (meshlet_instance, triangle_in_meshlet)
@@ -320,6 +320,8 @@ namespace spartan
         // two-phase culling: phase a survivor list + its indirect dispatch args
         surviving_instances    = 37,
         instance_dispatch_args = 55,
+        // where the early cull survivors end, the late cull appends after them
+        cull_phase             = 88,
         // clustered lighting, grid is uint2 (first_index, count), indices is a flat uint list
         cluster_light_grid     = 45,
         cluster_light_indices  = 46,
@@ -348,12 +350,17 @@ namespace spartan
         gbuffer_p,
         skid_marks_p,
         depth_prepass_v,
-        depth_prepass_multi_draw_v,
         depth_prepass_indirect_alpha_test_p,
         depth_light_v,
         depth_light_multi_draw_v,
         depth_light_alpha_color_p,
         depth_light_multi_draw_alpha_color_p,
+        depth_light_gpu_v,
+        shadow_cull_clear_c,
+        shadow_cull_c,
+        shadow_cull_args_c,
+        tessellated_cull_c,
+        cull_phase_c,
         fxaa_c,
         taau_c,
         dlss_reactivity_c,
@@ -467,6 +474,8 @@ namespace spartan
         meshlet_mesh_alpha_m,
         meshlet_mesh_depth_m,
         meshlet_mesh_depth_alpha_m,
+        meshlet_mesh_depth_late_m,
+        meshlet_mesh_depth_alpha_late_m,
         meshlet_visualize_v,
         meshlet_visualize_p,
         // gpu-driven particles
@@ -504,8 +513,8 @@ namespace spartan
         gbuffer_velocity_previous,
         gbuffer_depth,
         gbuffer_depth_previous,
-        gbuffer_depth_occluders,
-        gbuffer_depth_occluders_hiz,
+        gbuffer_depth_hiz,       // min depth pyramid of the complete opaque depth, last frame's until the late prepass rebuilds it
+        gbuffer_depth_hiz_early, // min depth pyramid of the early prepass depth, what the late cull tests against
         gbuffer_depth_opaque_output,
         lut_brdf_specular,
         lut_atmosphere_transmittance,
@@ -655,12 +664,12 @@ namespace spartan
         DummyInstance,
         AABBs,
         GeometryInfo,
-        IndirectDrawArgs,          // single-slot args buffer for the final non-indexed indirect draw
+        IndirectDrawArgs,          // non-indexed indirect draws, opaque, alpha and the late ranges of both
         CpuIndirectDrawArgs,       // frame-rotated cpu-built indexed indirect arguments
         IndirectDrawData,          // per render component lod draw data
         MeshletInstances,          // meshlet-cull survivor list, the triangle cull pass dispatches one workgroup per entry
         VisibleTriangles,          // triangle-cull survivor list, one packed (meshlet_instance, triangle_in_meshlet) per entry
-        TriangleDispatchArgs,      // vs: single-slot triangle cull dispatch, mesh: two-slot opaque/alpha mesh task counts
+        TriangleDispatchArgs,      // vs: triangle cull dispatch, mesh: opaque/alpha mesh task counts, then the late ranges of both
         CullTasks,                 // per (render, instance) cull tasks consumed by the instance cull compute shader (phase a)
         TreeWindCache,            // optional per-visible-instance root wind
         SurvivingInstances,        // phase a survivor list, phase b dispatches one workgroup per entry
@@ -695,6 +704,19 @@ namespace spartan
         GrassLodParameters,        // per-slot screen error and protected vehicle region
         GrassCount,                // one uint per slot per lod, bumped atomically by the populate shader
         GrassIndirectArgs,         // one DrawIndexedIndirect entry per slot per lod, written by the args build shader
+        // gpu-driven shadow maps, created and grown on demand by Pass_ShadowMaps
+        ShadowCasters,             // one ShadowCaster per shadow casting draw, uploaded per frame
+        ShadowTasks,               // (caster, first instance) per 64 instances, uploaded per frame
+        ShadowSlices,              // (light index, array index, is directional) per atlas slice, uploaded per frame
+        ShadowCounts,              // one counter per (slice, caster) plus the visible list allocator
+        ShadowArgs,                // one DrawIndexedIndirect entry per (slice, caster)
+        ShadowVisible,             // (draw data index, global instance) per surviving instance
+        DrawLods,                  // lod table of the non-instanced draws whose lod the instance cull picks
+        CullPhase,                 // where the early cull survivors end in the meshlet and triangle lists
+        InstanceVisibility,        // one bit per cull task lane, whether the early cull drew that instance
+        TessellatedDraws,          // tessellated draws culled on the gpu
+        TessellatedLods,           // (index count, first index, vertex offset) per tessellated draw lod
+        TessellatedArgs,           // two DrawIndexedIndirect entries per tessellated draw, early then late
         Max
     };
 
@@ -777,7 +799,6 @@ namespace spartan
         uint32_t lod_index       = 0;
         uint32_t draw_data_index = 0; // index into the bindless draw data buffer
         float distance_squared   = 0.0f;
-        bool is_occluder         = false;
         bool camera_visible      = false;
         bool is_transparent      = false;
         bool is_alpha_tested     = false;

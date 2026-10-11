@@ -13,7 +13,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include <thread>
 #include <codecvt>
 #include <locale>
-#include <regex>
 #include <cctype>
 #ifdef _WIN32
 #include <Windows.h>
@@ -234,71 +233,6 @@ namespace spartan
         return true;
     }
 
-    bool FileSystem::IsAlphanumeric(const string& var)
-    {
-        if (IsEmptyOrWhitespace(var))
-        {
-            return false;
-        }
-
-        for (char _char : var)
-        {
-            if (!isalnum(_char))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    string FileSystem::RemoveIllegalCharacters(const string& text)
-    {
-        string text_legal = text;
-
-        // Remove characters which are illegal for both names and paths
-        string illegal = ":?\"<>|";
-        for (auto it = text_legal.begin(); it < text_legal.end(); ++it)
-        {
-            if (illegal.find(*it) != string::npos)
-            {
-                *it = '_';
-            }
-        }
-
-        // If this is a valid path, return it (otherwise it's a name)
-        if (IsDirectory(text_legal))
-        {
-            return text_legal;
-        }
-
-        // Remove slashes which are illegal characters for names
-        illegal = "\\/";
-        for (auto it = text_legal.begin(); it < text_legal.end(); ++it)
-        {
-            if (illegal.find(*it) != string::npos)
-            {
-                *it = '_';
-            }
-        }
-
-        return text_legal;
-    }
-
-    string FileSystem::GetStringBeforeExpression(const string& str, const string& exp)
-    {
-        // ("The quick brown fox", "brown") -> "The quick "
-        const size_t position = str.find(exp);
-        return position != string::npos ? str.substr(0, position) : "";
-    }
-
-    string FileSystem::GetStringAfterExpression(const string& str, const string& exp)
-    {
-        // ("The quick brown fox", "brown") -> "fox"
-        const size_t position = str.find(exp);
-        return position != string::npos ? str.substr(position + exp.length()) : "";
-    }
-
     string FileSystem::ConvertToUppercase(const string& lower)
     {
         const locale loc;
@@ -309,11 +243,6 @@ namespace spartan
         }
 
         return upper;
-    }
-
-    string FileSystem::ReplaceExpression(const string& str, const string& from, const string& to)
-    {
-        return regex_replace(str, regex(from), to);
     }
 
     wstring FileSystem::StringToWstring(const string& str)
@@ -588,38 +517,6 @@ namespace spartan
         return file_paths;
     }
 
-    vector<string> FileSystem::SplitPath(const string& path)
-    {
-        vector<string> components;
-        stringstream ss(path);
-        string item;
-
-        // Split by both forward and backward slashes
-        while (getline(ss, item, '/'))
-        {
-            if (!item.empty())
-            {
-                stringstream item_ss(item);
-                string sub_item;
-                while (getline(item_ss, sub_item, '\\'))
-                {
-                    if (!sub_item.empty())
-                    {
-                        components.push_back(sub_item);
-                    }
-                }
-            }
-        }
-
-        // Handle root directory (e.g., "C:" on Windows)
-        if (path.size() > 1 && path[1] == ':')
-        {
-            components.insert(components.begin(), path.substr(0, 2));
-        }
-
-        return components;
-    }
-
     string FileSystem::GetLastWriteTime(const string& path)
     {
         try
@@ -774,107 +671,6 @@ namespace spartan
         return GetExtensionFromFilePath(path) == EXTENSION_WORLD;
     }
 
-    bool FileSystem::IsEngineFile(const string& path)
-    {
-        return
-                IsEnginePrefabFile(path)   ||
-                IsEngineMeshFile(path)     ||
-                IsEngineMaterialFile(path) ||
-                IsEngineMeshFile(path)     ||
-                IsEngineSceneFile(path)    ||
-                IsEngineAudioFile(path)    ||
-                IsEngineShaderFile(path)   ||
-                IsEngineTextureFile(path)  ||
-                IsEngineWorldFile(path);
-    }
-
-    const vector<string>& FileSystem::GetSupportedImageFormats()
-    {
-        return supported_formats_image;
-    }
-
-    vector<string> FileSystem::GetSupportedFilesInDirectory(const string& path)
-    {
-        const vector<string> files  = GetFilesInDirectory(path);
-        const vector<string> models = GetSupportedModelFilesFromPaths(files);
-
-        vector<string> supported = GetSupportedImageFilesFromPaths(files);
-        supported.insert(supported.end(), models.begin(), models.end());
-
-        return supported;
-    }
-
-    vector<string> FileSystem::GetSupportedImageFilesFromPaths(const vector<string>& paths)
-    {
-        vector<string> files;
-        for (const auto& path : paths)
-        {
-            if (!IsSupportedImageFile(path))
-            {
-                continue;
-            }
-
-            files.emplace_back(path);
-        }
-
-        return files;
-    }
-
-    vector<string> FileSystem::GetSupportedAudioFilesFromPaths(const vector<string>& paths)
-    {
-        vector<string> files;
-        for (const auto& path : paths)
-        {
-            if (!IsSupportedAudioFile(path))
-            {
-                continue;
-            }
-
-            files.emplace_back(path);
-        }
-
-        return files;
-    }
-
-    vector<string> FileSystem::GetSupportedModelFilesFromPaths(const vector<string>& paths)
-    {
-        vector<string> files;
-        for (const auto& path : paths)
-        {
-            if (!IsSupportedModelFile(path))
-            {
-                continue;
-            }
-
-            files.emplace_back(path);
-        }
-
-        return files;
-    }
-
-    vector<string> FileSystem::GetSupportedModelFilesInDirectory(const string& path)
-    {
-        return GetSupportedModelFilesFromPaths(GetFilesInDirectory(path));
-    }
-
-    vector<string> FileSystem::GetSupportedSceneFilesInDirectory(const string& path)
-    {
-        vector<string> scene_files;
-
-        auto files = GetFilesInDirectory(path);
-        for (const auto& file : files)
-        {
-            if (!IsEngineSceneFile(file))
-            {
-                continue;
-            }
-
-            scene_files.emplace_back(file);
-        }
-
-        return scene_files;
-    }
-
     string FileSystem::GetRelativePath(const string& path)
     {
         if (filesystem::path(path).is_relative())
@@ -964,47 +760,9 @@ namespace spartan
         return parent_path.generic_string();
     }
 
-    string FileSystem::GetRootDirectory(const string& path)
-    {
-        return filesystem::path(path).root_directory().generic_string();
-    }
-
     void FileSystem::OpenUrl(const string& url)
     {
         SDL_OpenURL(url.c_str());
-    }
-
-    void FileSystem::Command(const string& command, function<void()> callback, bool blocking)
-    {
-        auto execute_command = [command, callback]()
-        {
-            // detect which shell to use at runtime
-            const char* comspec = SDL_GetEnvironmentVariable(SDL_GetEnvironment(), "COMSPEC");
-            if (comspec)
-            {
-                // windows: COMSPEC points to cmd.exe
-                run_silent_process({comspec, "/c", command});
-            }
-            else
-            {
-                // unix: use sh
-                run_silent_process({"sh", "-c", command});
-            }
-
-            if (callback)
-            {
-                callback();
-            }
-        };
-
-        if (blocking)
-        {
-            execute_command();
-        }
-        else
-        {
-            thread(execute_command).detach();
-        }
     }
 
     bool FileSystem::Delete(const string& path)

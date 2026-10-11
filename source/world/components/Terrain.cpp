@@ -4370,17 +4370,6 @@ namespace spartan
         );
     }
 
-    void Terrain::CarveFlowChannels()
-    {
-        if (!ApplyFlowChannelCarve())
-        {
-            SP_LOG_INFO("no flow channels to carve");
-            return;
-        }
-
-        RebuildSurface(true);
-    }
-
     void Terrain::SpawnFlowRivers()
     {
         Entity* root = GetEntity();

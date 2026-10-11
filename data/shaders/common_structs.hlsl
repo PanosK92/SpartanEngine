@@ -33,6 +33,9 @@ struct Surface
     float3 pearl_color;
     float3 coat_tint;
     float  coat_tint_strength;
+    uint   flake_code;   // see gbuffer_pack_paint, 0 is the unresolved aggregate
+    float  flake_weight; // flake_strength left after decals
+    float3 flake_color;
     float  ior;
     float  absorption;
     float  thickness;
@@ -97,10 +100,12 @@ struct Surface
         // glass is always dielectric, force metallic 0 so f0 stays at the 0.04 dielectric value
         bool alpha_transparent = (alpha > 0.0f && alpha < 1.0f);
         metallic               = alpha_transparent ? 0.0f : metallic;
-        F0                     = lerp(0.04f, albedo, metallic);
+        // the lit passes demodulate albedo out of diffuse only, a metal's reflectance is its albedo
+        F0                     = lerp(0.04f, sample_albedo.rgb, metallic);
+        float decal_coverage   = gbuffer_decal_coverage(sample_material.b, material);
         anisotropic           = material.anisotropic;
         anisotropic_rotation  = material.anisotropic_rotation;
-        clearcoat             = material.clearcoat * (1.0f - sample_material.b);
+        clearcoat             = material.clearcoat * (1.0f - decal_coverage);
         clearcoat_roughness   = material.clearcoat_roughness;
         sheen                 = material.sheen;
         subsurface_scattering = material.subsurface_scattering;
@@ -110,6 +115,9 @@ struct Surface
         pearl_color           = material.pearl_color.rgb;
         coat_tint             = material.coat_tint.rgb;
         coat_tint_strength    = material.coat_tint.a;
+        flake_code            = gbuffer_flake_code(sample_material.b, material);
+        flake_weight          = saturate(material.flake_strength) * (1.0f - decal_coverage);
+        flake_color           = paint_flake_color(sample_albedo.rgb);
         ior                   = material.ior;
         absorption            = material.absorption;
         thickness             = material.thickness;

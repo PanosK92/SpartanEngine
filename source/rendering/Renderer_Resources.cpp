@@ -130,11 +130,11 @@ namespace spartan
         {
             FrameResource& fr = m_frame_resources[i];
 
-            // two-slot args buffer for the final non-indexed indirect draws, slot 0 opaque slot 1 alpha-tested
-            // vertex_count of each slot is bumped atomically by the triangle cull pass for its half of the survivor list
+            // args for the non-indexed indirect draws, slot 0 opaque slot 1 alpha-tested, slots 2 and 3 their late ranges
+            // vertex_count of slots 0 and 1 is bumped atomically by the triangle cull pass for its half of the survivor list
             fr.indirect_draw_args = make_shared<RHI_Buffer>(
                 RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
-                2, nullptr, true,
+                4, nullptr, true,
                 (string("indirect_draw_args_") + to_string(i)).c_str()
             );
 
@@ -165,10 +165,10 @@ namespace spartan
                 (string("visible_triangles_") + to_string(i)).c_str()
             );
 
-            // single-slot for vs triangle cull, two-slot for mesh path (0 opaque, 1 alpha)
+            // slot 0 for vs triangle cull, slots 0 and 1 for mesh path (opaque, alpha), slots 2 and 3 their late ranges
             fr.triangle_dispatch_args = make_shared<RHI_Buffer>(
                 RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDispatchArgs)),
-                2, nullptr, true,
+                4, nullptr, true,
                 (string("triangle_dispatch_args_") + to_string(i)).c_str()
             );
 
@@ -211,6 +211,12 @@ namespace spartan
         at(buffers, Renderer_Buffer::SurvivingInstances)   = fr.surviving_instances;
         at(buffers, Renderer_Buffer::TreeWindCache)        = fr.tree_wind_cache;
         at(buffers, Renderer_Buffer::InstanceDispatchArgs) = fr.instance_dispatch_args;
+
+        // where the early cull survivors end, only the gpu writes and reads it, between the two cull phases
+        at(buffers, Renderer_Buffer::CullPhase) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
+            CULL_PHASE_COUNT, nullptr, false, "cull_phase"
+        );
 
         // grid holds (first_index, count) per cluster, one grid serves both vr eyes since they diverge by well under a tile
         at(buffers, Renderer_Buffer::ClusterLightGrid) = make_shared<RHI_Buffer>(
@@ -608,6 +614,20 @@ namespace spartan
         SP_LOG_INFO("ReSTIR emissive sampler: %u triangles, capacity %u", count, capacity);
     }
 
+    RHI_Buffer* Renderer::EnsureBufferCapacity(const Renderer_Buffer type, const uint32_t stride, const uint32_t count, const char* name)
+    {
+        auto& buffer = at(buffers, type);
+        if (buffer && buffer->GetElementCount() >= count)
+            return buffer.get();
+
+        // the old allocation is released once its gpu users finish, grow geometrically to avoid reallocating every frame
+        uint32_t capacity = buffer ? buffer->GetElementCount() : 1024u;
+        while (capacity < count)
+            capacity *= 2;
+        buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, capacity, nullptr, false, name);
+        return buffer.get();
+    }
+
     void Renderer::CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic)
     {
         // release old render targets before allocating replacements
@@ -637,8 +657,8 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::cloud_resolved_distance_1)   = nullptr;
             at(render_targets, Renderer_RenderTarget::cloud_composite)             = nullptr;
             at(render_targets, Renderer_RenderTarget::cloud_velocity)              = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_depth_occluders)     = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_depth_occluders_hiz) = nullptr;
+            at(render_targets, Renderer_RenderTarget::gbuffer_depth_hiz)           = nullptr;
+            at(render_targets, Renderer_RenderTarget::gbuffer_depth_hiz_early)     = nullptr;
             at(render_targets, Renderer_RenderTarget::sss)                         = nullptr;
             at(render_targets, Renderer_RenderTarget::ssao)                        = nullptr;
             at(render_targets, Renderer_RenderTarget::ssao_history_0)              = nullptr;
@@ -756,12 +776,13 @@ namespace spartan
             // reprojected position to build a dual motion vector on disocclusion, lin 2026 6.4
             at(render_targets, Renderer_RenderTarget::gbuffer_velocity_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_velocity_previous");
 
-            // hi-z occluders, amd depth format restrictions force a separate texture for uav and a manual blit
-            at(render_targets, Renderer_RenderTarget::gbuffer_depth_occluders) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float, RHI_Texture_Rtv | RHI_Texture_Srv, "depth_occluders");
-
-            // full mip chain so the cull shader can pick a level where the aabb fits in ~1-2 texels
+            // hi-z pyramids, amd depth format restrictions force a separate r32 texture for uav and a manual blit
+            // full mip chain so the cull shader can pick a level where the bounds fit in ~1-2 texels
             uint32_t hiz_mip_count = static_cast<uint32_t>(floor(log2(static_cast<float>(max(width_render, height_render))))) + 1;
-            at(render_targets, Renderer_RenderTarget::gbuffer_depth_occluders_hiz) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, hiz_mip_count, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "depth_occluders_hiz");
+            const uint32_t hiz_flags = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews;
+            at(render_targets, Renderer_RenderTarget::gbuffer_depth_hiz)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, hiz_mip_count, RHI_Format::R32_Float, hiz_flags, "depth_hiz");
+            at(render_targets, Renderer_RenderTarget::gbuffer_depth_hiz_early) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, hiz_mip_count, RHI_Format::R32_Float, hiz_flags, "depth_hiz_early");
+            m_pass_state.hiz_history_valid = false;
         };
 
         auto create_clouds = [&]()
@@ -1124,11 +1145,15 @@ namespace spartan
 
             // depth
             { Renderer_Shader::depth_prepass_v,                       RHI_Shader_Type::Vertex,  "depth_prepass.hlsl",                         RHI_Vertex_Type::PosUvNorTan  },
-            { Renderer_Shader::depth_prepass_multi_draw_v,            RHI_Shader_Type::Vertex,  "depth_prepass.hlsl",                         RHI_Vertex_Type::PosUvNorTan, "INDEXED_MULTI_DRAW" },
             { Renderer_Shader::depth_light_v,                         RHI_Shader_Type::Vertex,  "depth_light.hlsl",                           RHI_Vertex_Type::PosUvNorTan  },
             { Renderer_Shader::depth_light_multi_draw_v,              RHI_Shader_Type::Vertex,  "depth_light.hlsl",                           RHI_Vertex_Type::PosUvNorTan, "INDEXED_MULTI_DRAW" },
             { Renderer_Shader::depth_light_alpha_color_p,             RHI_Shader_Type::Pixel,   "depth_light.hlsl"                                                           },
             { Renderer_Shader::depth_light_multi_draw_alpha_color_p,  RHI_Shader_Type::Pixel,   "depth_light.hlsl",                           RHI_Vertex_Type::Max,         "INDEXED_MULTI_DRAW" },
+            { Renderer_Shader::depth_light_gpu_v,                     RHI_Shader_Type::Vertex,  "depth_light.hlsl",                           RHI_Vertex_Type::PosUvNorTan, "SHADOW_GPU_DRIVEN" },
+            { Renderer_Shader::shadow_cull_clear_c,                   RHI_Shader_Type::Compute, "shadow_cull.hlsl",                           RHI_Vertex_Type::Max,         "SHADOW_CULL_CLEAR" },
+            { Renderer_Shader::shadow_cull_c,                         RHI_Shader_Type::Compute, "shadow_cull.hlsl"                                                                                 },
+            { Renderer_Shader::shadow_cull_args_c,                    RHI_Shader_Type::Compute, "shadow_cull.hlsl",                           RHI_Vertex_Type::Max,         "SHADOW_CULL_ARGS"  },
+            { Renderer_Shader::tessellated_cull_c,                    RHI_Shader_Type::Compute, "tessellated_cull.hlsl"                                                                                 },
 
             // g-buffer
             { Renderer_Shader::gbuffer_v,                             RHI_Shader_Type::Vertex,  "g_buffer.hlsl",                              RHI_Vertex_Type::PosUvNorTan  },
@@ -1209,6 +1234,7 @@ namespace spartan
             { Renderer_Shader::instance_cull_c,                       RHI_Shader_Type::Compute, "instance_cull.hlsl"                                                         },
             { Renderer_Shader::indirect_cull_c,                       RHI_Shader_Type::Compute, "indirect_cull.hlsl"                                                         },
             { Renderer_Shader::indirect_cull_triangle_c,              RHI_Shader_Type::Compute, "indirect_cull_triangle.hlsl"                                                },
+            { Renderer_Shader::cull_phase_c,                          RHI_Shader_Type::Compute, "cull_phase.hlsl"                                                            },
             { Renderer_Shader::gbuffer_indirect_v,                    RHI_Shader_Type::Vertex,  "g_buffer.hlsl",                              RHI_Vertex_Type::Max, "INDIRECT_DRAW"        },
             { Renderer_Shader::gbuffer_indirect_p,                    RHI_Shader_Type::Pixel,   "g_buffer.hlsl",                              RHI_Vertex_Type::Max, "INDIRECT_DRAW"        },
             { Renderer_Shader::depth_prepass_indirect_v,              RHI_Shader_Type::Vertex,  "depth_prepass.hlsl",                         RHI_Vertex_Type::Max, "INDIRECT_DRAW"        },
@@ -1218,6 +1244,8 @@ namespace spartan
             { Renderer_Shader::meshlet_mesh_alpha_m,                  RHI_Shader_Type::MeshShader,    "meshlet_mesh.hlsl",                          RHI_Vertex_Type::Max, "GBUFFER_ALPHA", true, false, nullptr, true },
             { Renderer_Shader::meshlet_mesh_depth_m,                  RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, nullptr, true, false, nullptr, true },
             { Renderer_Shader::meshlet_mesh_depth_alpha_m,            RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "DEPTH_ALPHA", true, false, nullptr, true },
+            { Renderer_Shader::meshlet_mesh_depth_late_m,             RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "DEPTH_LATE", true, false, nullptr, true },
+            { Renderer_Shader::meshlet_mesh_depth_alpha_late_m,       RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "DEPTH_ALPHA", true, false, "DEPTH_LATE", true },
             { Renderer_Shader::meshlet_visualize_v,                   RHI_Shader_Type::Vertex,  "meshlet_visualize.hlsl"                                                     },
             { Renderer_Shader::meshlet_visualize_p,                   RHI_Shader_Type::Pixel,   "meshlet_visualize.hlsl"                                                     },
 

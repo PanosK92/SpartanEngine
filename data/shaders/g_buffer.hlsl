@@ -54,6 +54,32 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index)
     return GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy);
 }
 
+uint paint_hash(int2 cell, uint seed)
+{
+    uint h = (uint)cell.x * 0x8da6b343u ^ (uint)cell.y * 0xd8163841u ^ seed * 0xcb1ab31fu;
+    h ^= h >> 16u;
+    h *= 0x7feb352du;
+    h ^= h >> 15u;
+    h *= 0x846ca68bu;
+    h ^= h >> 16u;
+    return h;
+}
+
+// gradient of smooth value noise
+float2 paint_peel_slope(float2 p)
+{
+    int2   i  = int2(floor(p));
+    float2 f  = p - float2(i);
+    float2 u  = f * f * (3.0f - 2.0f * f);
+    float2 du = 6.0f * f * (1.0f - f);
+    float  a  = (float)(paint_hash(i, 3u) & 0xffffu) / 65535.0f;
+    float  b  = (float)(paint_hash(i + int2(1, 0), 3u) & 0xffffu) / 65535.0f;
+    float  c  = (float)(paint_hash(i + int2(0, 1), 3u) & 0xffffu) / 65535.0f;
+    float  d  = (float)(paint_hash(i + int2(1, 1), 3u) & 0xffffu) / 65535.0f;
+    float  k  = a - b - c + d;
+    return du * float2((b - a) + k * u.y, (c - a) + k * u.x);
+}
+
 // parallax dies off with distance and at grazing angles, where the march is all cost and no visible relief
 float parallax_fade(float distance, float n_dot_v)
 {
@@ -784,21 +810,64 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         normal  = normalize(normal + float3(-slope.x, 0.0f, -slope.y));
     }
 
-    if (material.flake_strength > 0.0f)
+    // metallic paint, the platelet covering this pixel is picked here and shaded by the lighting passes,
+    // uv space keeps both the platelets and the orange peel on the body while the car moves, world
+    // positions this far from the origin are too coarse for sub millimetre detail
+    uint flake_code   = 0;
+    bool is_car_paint = (material.flags & (1u << 25)) != 0 || material_has_flakes(material);
+    if (is_car_paint && pass_is_opaque())
     {
-        float flake_scale = max(material.flake_scale, 1.0f);
-        float2 flake_uv   = vertex.uv_misc.xy * flake_scale;
-        float2 flake_cell = floor(flake_uv);
-        // Paint belongs to the vehicle, not the world. Filter unresolved flakes
-        // to their mean (integral of x^48 = 1/49) to avoid distant shimmer.
-        float footprint  = max(length(ddx(flake_uv)), length(ddy(flake_uv)));
-        float resolved   = 1.0f - smoothstep(0.5f, 1.5f, footprint);
-        float sparkle    = lerp(1.0f / 49.0f, pow(saturate(hash(flake_cell)), 48.0f), resolved)
-                         * saturate(material.flake_strength);
-        float3 flake_tint = lerp(albedo.rgb, float3(1.0f, 1.0f, 1.0f), 0.35f);
-        albedo.rgb       += sparkle * flake_tint * 0.35f;
-        roughness         = lerp(roughness, roughness * 0.65f, sparkle);
-        metalness         = saturate(metalness + sparkle * 0.12f);
+        float2 flake_uv  = vertex.uv_misc.xy * max(material.flake_scale, 1.0f);
+        float  footprint = max(length(ddx(flake_uv)), length(ddy(flake_uv)));
+
+        // every level doubles the cell so a pixel covers about one, a dithered pick between neighbouring
+        // levels lets taa blend them, past the last level only the aggregate lobe is left
+        float level_f = max(log2(max(footprint, 1e-6f)) + 0.5f, 0.0f);
+        float dither  = noise_interleaved_gradient(vertex.position.xy, true);
+        uint  level   = (uint)floor(level_f) + (frac(level_f) > dither ? 1u : 0u);
+        if (material_has_flakes(material) && level < paint_flake_levels)
+        {
+            int2 cell = int2(floor(flake_uv * exp2(-(float)level)));
+
+            // resolved platelets sit on jittered sites so their outlines are irregular, not a grid
+            if (level == 0u)
+            {
+                int2   base = int2(floor(flake_uv));
+                float2 f    = flake_uv - float2(base);
+                float  best = 1e9f;
+                [unroll]
+                for (int y = -1; y <= 1; y++)
+                {
+                    [unroll]
+                    for (int x = -1; x <= 1; x++)
+                    {
+                        int2   site   = base + int2(x, y);
+                        uint   h      = paint_hash(site, 7u);
+                        float2 offset = float2(x, y) + float2(h & 0xffffu, h >> 16u) / 65535.0f - f;
+                        float  d      = dot(offset, offset);
+                        if (d < best)
+                        {
+                            best = d;
+                            cell = site;
+                        }
+                    }
+                }
+            }
+
+            flake_code = 1u + level * paint_flake_ids_per_level + paint_hash(cell, level) % paint_flake_ids_per_level;
+        }
+
+        // orange peel, the sprayed coat levels into a faint waviness a few platelets wide that only
+        // shows in sharp reflections, it fades before it can alias
+        float2 peel_uv   = flake_uv / 7.0f;
+        float  peel_fade = 1.0f - smoothstep(0.15f, 0.6f, footprint / 7.0f);
+        if (peel_fade > 0.0f)
+        {
+            float2 slope = paint_peel_slope(peel_uv) + paint_peel_slope(peel_uv * 2.3f + 17.0f) * 0.45f;
+            slope       *= 0.0035f * saturate(material.clearcoat) * peel_fade;
+            float3x3 tangent_to_world = make_tangent_to_world_matrix(normalize(vertex.normal), vertex.tangent);
+            normal = normalize(normal - tangent_to_world[0] * slope.x - tangent_to_world[1] * slope.y);
+        }
     }
     
     // terrain blending, the ground creeps up over whatever sinks into it so a prop reads as bedded in
@@ -932,7 +1001,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     gbuffer g_buffer;
     g_buffer.albedo   = albedo;
     g_buffer.normal   = float4(normal, pack_material_index(pass_get_material_index()));
-    g_buffer.material = float4(roughness, metalness, decal_coverage, occlusion);
+    g_buffer.material = float4(roughness, metalness, material_has_flakes(material) ? gbuffer_pack_paint(flake_code, decal_coverage) : decal_coverage, occlusion);
     // previous surface depth lets temporal reconstruction validate object motion along the view axis.
     float previous_depth = vertex.position_previous.w > 0.0f ?
         min(linearize_depth(vertex.position_previous.z / vertex.position_previous.w), FLT_MAX_16U) : 0.0f;

@@ -219,23 +219,6 @@ namespace spartan
         rdc_api->TriggerCapture();
     }
 
-    void RenderDoc::StartCapture()
-    {
-        SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized");
-
-        capture_count_before = rdc_api->GetNumCaptures();
-        open_capture_when_ready = true;
-        rdc_api->StartFrameCapture(nullptr, nullptr);
-    }
-
-    void RenderDoc::EndCapture()
-    {
-        SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized");
-
-        rdc_api->EndFrameCapture(nullptr, nullptr);
-        Tick();
-    }
-
     void RenderDoc::LaunchRenderDocUi()
     {
         SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized");

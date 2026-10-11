@@ -23,18 +23,12 @@ namespace spartan::math
 
     Vector4::Vector4(const Vector3& value, float w)
     {
-        this->x = value.x;
-        this->y = value.y;
-        this->z = value.z;
-        this->w = w;
+        simd::store4(&x, _mm_insert_ps(value.Simd(), _mm_set_ss(w), 0x30));
     }
 
     Vector4::Vector4(const Vector3& value)
     {
-        this->x = value.x;
-        this->y = value.y;
-        this->z = value.z;
-        this->w = 0.0f;
+        simd::store4(&x, value.Simd());
     }
 
     string Vector4::ToString() const

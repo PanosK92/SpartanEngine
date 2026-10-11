@@ -329,8 +329,6 @@ namespace spartan
         // re-place the mesh props on the tiles a height edit touched, nothing else moves, the
         // brush marks this on every flush and the editor fires it once the stroke ends
         void FlushPendingProps();
-        bool HasPendingPhysics() const { return !m_physics_dirty.IsEmpty(); }
-        bool HasPendingProps() const   { return !m_props_dirty.IsEmpty(); }
         // level the heightfield inside a world space xz obb, ramped back to the original
         // ground over blend_margin so the pad does not end in a cliff
         bool FlattenRegion(
@@ -347,8 +345,6 @@ namespace spartan
         void MakeIslandShore();
         // raise the real coastline above the waves and cut a beach, no full regenerate
         void LockShoreline();
-        // drop near-sea flow channels just below the ocean so water shows through
-        void CarveFlowChannels();
         // trace the flow map into spline ribbons that use the ocean water material
         void SpawnFlowRivers();
 
@@ -373,9 +369,6 @@ namespace spartan
         // cache io
         void SaveToFile(const char* file_path);
         void LoadFromFile(const char* file_path);
-
-        // triangle data access for placement system
-        std::unordered_map<uint64_t, std::vector<TriangleData>>& GetTriangleData() { return m_triangle_data; }
 
     private:
         void Clear();
@@ -521,6 +514,22 @@ namespace spartan
         void RestorePlatform(const TerrainPlatform& pad);
         void PruneVanishedPlatforms();
         void FollowPlatformOwners();
+        // restore the retired pads to the seed, stamp the new ones and rebuild their refines
+        void ReplacePlatforms(const std::vector<TerrainPlatform>& retired, const std::vector<TerrainPlatform>& stamped, const char* reason);
+        struct MeasuredPad
+        {
+            TerrainPlatform pad;
+            std::vector<uint64_t> members; // every floor the pad covers, empty for a terraced building
+            std::vector<Entity*> grounded; // the slabs that stand on the ground rather than on a member
+            bool grown = false;            // false when the building is terraced and kept a pad per part
+        };
+        // the pad the floors of the candidates' building need
+        bool MeasurePad(const std::vector<Entity*>& candidates, MeasuredPad& out);
+        // drop single pads owned by members other than keep_id, true when any was restored
+        bool RetireClusterPads(const std::vector<uint64_t>& members, uint64_t keep_id);
+        // true when the ground under the slab is clearly below its bottom somewhere
+        bool SlabFloats(Entity* slab);
+        void RefitPlatformsToOwners();
         void RestorePropMaskFootprint(
             float center_x,
             float center_z,
@@ -674,6 +683,8 @@ namespace spartan
         mutable std::shared_ptr<const TerrainSculptLayer> m_sculpt_snapshot;
         // pads under buildings, replayed after generate from the seed heightfield
         std::vector<TerrainPlatform> m_platforms;
+        // set by the worker when the pads are replayed, the main thread refits them once loading ends
+        std::atomic<bool> m_platforms_refit_pending = false;
         bool m_live_pad_active           = false;
         TerrainPlatform m_live_pad;
         bool m_live_pad_dirty            = false;

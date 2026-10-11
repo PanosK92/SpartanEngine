@@ -1271,7 +1271,7 @@ namespace spartan
             }
         }
 
-        void initialize(void*& pool_timestamp, void*& pool_occlusion, void*& pool_pipeline_statistics)
+        void initialize(void*& pool_timestamp, void*& pool_occlusion)
         {
             // timestamps
             if (cvar_debug_gpu_timing.GetValue())
@@ -1303,11 +1303,10 @@ namespace spartan
             }
         }
 
-        void shutdown(void*& pool_timestamp, void*& pool_occlusion, void*& pool_pipeline_statistics)
+        void shutdown(void*& pool_timestamp, void*& pool_occlusion)
         {
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, pool_timestamp);
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, pool_occlusion);
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::QueryPool, pool_pipeline_statistics);
         }
     }
 
@@ -1355,7 +1354,7 @@ namespace spartan
 
         m_rendering_complete_semaphore_timeline = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::SemaphoreTimeline, (string(name) + "timeline").c_str());
 
-        queries::initialize(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion, m_rhi_query_pool_pipeline_statistics);
+        queries::initialize(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion);
     }
 
     RHI_CommandList::~RHI_CommandList()
@@ -1363,7 +1362,7 @@ namespace spartan
         ReadbackTimestampsForProfiler();
         if (m_timestamp_sample) m_timestamp_sample->ready = true;
         ReleasePendingWork();
-        queries::shutdown(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion, m_rhi_query_pool_pipeline_statistics);
+        queries::shutdown(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion);
     }
 
     void RHI_CommandList::Begin()
@@ -1409,7 +1408,6 @@ namespace spartan
 
                 // store per-command-list copy so other queues don't overwrite our results
                 m_timestamp_data = queries::timestamp::timestamps;
-                m_gpu_frame_reference_tick = m_timestamp_data[0];
             }
     
             // timestamp queries are reset before first use
@@ -2914,7 +2912,6 @@ namespace spartan
 
         if (!m_descriptor_layout_current)
         {
-            //SP_LOG_WARNING("Descriptor layout not set, try setting buffer \"%s\" within a render pass", buffer->GetObjectName().c_str());
             return;
         }
 
@@ -3091,42 +3088,6 @@ namespace spartan
 
         m_timestamp_index += query_count;
         return timestamp_index;
-    }
-
-    float RHI_CommandList::GetTimestampResult(const uint32_t index_timestamp)
-    {
-        SP_ASSERT_MSG(index_timestamp + 1 < m_timestamp_data.size(), "index out of range");
-
-        uint64_t start = m_timestamp_data[index_timestamp];
-        uint64_t end   = m_timestamp_data[index_timestamp + 1];
-
-        // guard against unsigned underflow (stale or not-yet-ready query data)
-        if (end <= start)
-        {
-            return 0.0f;
-        }
-
-        uint64_t duration = end - start;
-        float duration_ms = static_cast<float>(duration * RHI_Device::PropertyGetTimestampPeriod() * 1e-6f);
-
-        return clamp(duration_ms, 0.0f, 1000.0f);
-    }
-
-    float RHI_CommandList::GetTimestampStartMs(const uint32_t index_timestamp)
-    {
-        SP_ASSERT_MSG(index_timestamp < m_timestamp_data.size(), "index out of range");
-
-        uint64_t start_tick = m_timestamp_data[index_timestamp];
-        uint64_t ref_tick   = m_gpu_frame_reference_tick;
-
-        // offset from frame reference in ms
-        if (start_tick >= ref_tick)
-        {
-            float offset_ms = static_cast<float>((start_tick - ref_tick) * RHI_Device::PropertyGetTimestampPeriod() * 1e-6f);
-            return clamp(offset_ms, 0.0f, numeric_limits<float>::max());
-        }
-
-        return 0.0f;
     }
 
     void RHI_CommandList::ReadbackTimestampsForProfiler()

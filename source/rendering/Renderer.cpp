@@ -51,6 +51,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../resource/import/ImageImporter.h"
 #include "../commands/console/ConsoleCommands.h"
 #include "../profiling/Breadcrumbs.h"
+#include "../memory/FrameAllocator.h"
 #include "../xr/Xr.h"
 //==============================================
 
@@ -674,7 +675,6 @@ namespace spartan
             camera_cut_pending = true;
             m_taau_reset_history = true;
         });
-        SP_FIRE_EVENT(EventType::RendererOnInitialized);
     }
 
     void Renderer::Shutdown()
@@ -968,7 +968,9 @@ namespace spartan
         if (xr_should_render && can_render)
         {
             RHI_Texture* stereo_output = GetRenderTarget(Renderer_RenderTarget::frame_output_stereo);
-            BlitToXrSwapchain(stereo_output ? stereo_output : GetRenderTarget(Renderer_RenderTarget::frame_output));
+            RHI_CommandList::BeginMarker("blit_to_xr_swapchain");
+            RHI_CommandList::BlitToXrSwapchain(stereo_output ? stereo_output : GetRenderTarget(Renderer_RenderTarget::frame_output));
+            RHI_CommandList::EndMarker();
         }
 
         // submit gpu work before xrEndFrame so the compositor does not read a stale swapchain image
@@ -1436,22 +1438,20 @@ namespace spartan
             last_instance_buffer_id = current_instance->GetObjectId();
         }
 
-        // two slot indirect draw args, slot 0 opaque slot 1 alpha-tested, layout matches VkDrawIndirectCommand on the first 16 bytes
+        // indirect draw args, slot 0 opaque slot 1 alpha-tested, slots 2 and 3 their late ranges, layout matches VkDrawIndirectCommand on the first 16 bytes
         // index_count aliases vertex_count and is bumped 3 at a time by the triangle cull, instance_count fixed at 1
-        Sb_IndirectDrawArgs draw_args[2] = {};
-        draw_args[0].instance_count      = 1;
-        draw_args[1].instance_count      = 1;
-        RHI_Buffer* args_buffer          = GetBuffer(Renderer_Buffer::IndirectDrawArgs);
+        Sb_IndirectDrawArgs draw_args[4] = {};
+        for (Sb_IndirectDrawArgs& args : draw_args)
+        {
+            args.instance_count = 1;
+        }
+        RHI_Buffer* args_buffer = GetBuffer(Renderer_Buffer::IndirectDrawArgs);
         args_buffer->ResetOffset();
         args_buffer->Update(&draw_args[0], sizeof(draw_args));
 
-        // two-slot indirect dispatch args, slot 0 opaque (or full list for vs path), slot 1 alpha for mesh path
+        // indirect dispatch args, slot 0 opaque (or full list for vs path), slot 1 alpha for mesh path, slots 2 and 3 their late ranges
         // group_count_x is bumped by the meshlet cull, group_count_y/z fixed at 1
-        Sb_IndirectDispatchArgs dispatch_args[2] = {};
-        dispatch_args[0].group_count_y           = 1;
-        dispatch_args[0].group_count_z           = 1;
-        dispatch_args[1].group_count_y           = 1;
-        dispatch_args[1].group_count_z           = 1;
+        Sb_IndirectDispatchArgs dispatch_args[4] = {};
         RHI_Buffer* dispatch_args_buffer         = GetBuffer(Renderer_Buffer::TriangleDispatchArgs);
         dispatch_args_buffer->ResetOffset();
         dispatch_args_buffer->Update(&dispatch_args[0], sizeof(dispatch_args));
@@ -2850,13 +2850,6 @@ namespace spartan
         m_present_in_renderer = enabled;
     }
 
-    void Renderer::BlitToXrSwapchain(RHI_Texture* texture)
-    {
-        RHI_CommandList::BeginMarker("blit_to_xr_swapchain");
-        RHI_CommandList::BlitToXrSwapchain(texture);
-        RHI_CommandList::EndMarker();
-    }
-
     void Renderer::EndXrFrame()
     {
         if (!Xr::IsSessionRunning())
@@ -3093,6 +3086,7 @@ namespace spartan
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsRoadSurface)             ? (1U << 22) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsRoadPaint)               ? (1U << 23) : 0;
                 properties[count].flags |= is_pooled_emitter_material(material)                                ? (1U << 24) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::PaintPreset) > 0.0f        ? (1U << 25) : 0;
                 // keep in sync with Surface struct in common_structs.hlsl
             }
     
@@ -3606,7 +3600,6 @@ namespace spartan
             const BoundingBox& aabb            = render->GetBoundingBox();
             m_bindless_aabbs[i].min            = aabb.GetMin();
             m_bindless_aabbs[i].max            = aabb.GetMax();
-            m_bindless_aabbs[i].is_occluder    = draw_call.is_occluder;
         }
 
         // indirect draw aabbs, the slot is taken straight from m_indirect_draw_data[].aabb_index so the writes
@@ -3655,6 +3648,8 @@ namespace spartan
         m_indirect_render_count     = 0;
         m_cull_task_count           = 0;
         m_transparents_present      = false;
+        m_tessellated_draws.clear();
+        m_tessellated_gpu_culled    = false;
     }
 
     void Renderer::UpdateDrawCalls_CollectAndSort()
@@ -3663,6 +3658,12 @@ namespace spartan
         // the atlas needs off-screen casters, their shadows can enter the camera's fog volume,
         // with ray traced shadows the tlas owns them and only visible draws are collected
         const bool shadow_maps_required = World::GetLightCount() > 0 && !IsRayTracedShadowsActive();
+        // the gpu culls tessellated draws itself, so they are kept off screen too
+        const bool tessellation_gpu_driven = cvar_tessellation_gpu_driven.GetValueAs<bool>();
+        auto is_gpu_culled_tessellated = [tessellation_gpu_driven](const Material* material)
+        {
+            return tessellation_gpu_driven && !material->IsTransparent() && material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+        };
 
         struct Candidates { vector<Render*> renders; bool transparent = false; };
         static array<Candidates, 8> batches;
@@ -3683,7 +3684,7 @@ namespace spartan
                 Render* render = data.render;
                 batch.transparent |= data.material->IsTransparent();
                 if (!data.is_visible && !(shadow_maps_required && (data.flags & RenderFlags::CastsShadows)) &&
-                    (!data.has_decals || !data.instances.empty())) continue;
+                    (!data.has_decals || !data.instances.empty()) && !is_gpu_culled_tessellated(data.material)) continue;
                 batch.renders.push_back(render);
             }
         };
@@ -3719,8 +3720,8 @@ namespace spartan
                 }
 
                 if (
-                    !shadow_maps_required ||
-                    !render->HasFlag(RenderFlags::CastsShadows)
+                    (!shadow_maps_required || !render->HasFlag(RenderFlags::CastsShadows)) &&
+                    !is_gpu_culled_tessellated(material)
                 )
                 {
                     continue;
@@ -3756,7 +3757,6 @@ namespace spartan
             draw_call.is_alpha_tested    = material->IsAlphaTested();
             draw_call.distance_squared   = render->GetDistanceSquared();
             draw_call.lod_index          = render->GetLodIndex();
-            draw_call.is_occluder        = false;
             draw_call.camera_visible     = render->IsVisible();
             draw_call.instance_index     = 0;
             draw_call.instance_count     = render->GetInstanceCount();
@@ -3817,6 +3817,9 @@ namespace spartan
         m_indirect_draw_count       = 0;
         m_indirect_render_count = 0;
         m_cull_task_count           = 0;
+        m_draw_lods.clear();
+        m_draw_lods_uploaded = false;
+        const bool use_gpu_lod = cvar_gpu_lod.GetValueAs<bool>();
         const uint32_t aabb_frame_offset = m_frame_resource_index * renderer_max_aabbs;
         const uint32_t indirect_draw_capacity = GetBuffer(Renderer_Buffer::IndirectDrawData)->GetElementCount();
         const uint32_t cull_task_capacity = GetBuffer(Renderer_Buffer::CullTasks)->GetElementCount();
@@ -3866,20 +3869,43 @@ namespace spartan
             const bool impostors_enabled  = cvar_foliage_impostors.GetValueAs<bool>();
             const MeshImpostor* impostor  = (impostors_enabled && gpu_lod && mesh_lod_count < 7u) ? render->GetImpostor() : nullptr;
             const uint32_t gpu_lod_count  = mesh_lod_count + (impostor ? 1u : 0u);
-            const uint32_t lod_first      = gpu_lod ? 0u : dc.lod_index;
-            const uint32_t lod_last       = gpu_lod ? gpu_lod_count : (dc.lod_index + 1u);
+            // a single draw that the instance cull rewrites to the lod its coverage wants, the lod count must fit three flag bits
+            const bool gpu_lod_patch      = !is_instanced && !is_skinned && mesh_lod_count > 1u && mesh_lod_count <= 7u && use_gpu_lod;
+            auto lod_valid = [render](uint32_t lod)
+            {
+                return render->GetMeshletCount(lod) != 0 && render->GetIndexCount(lod) != 0;
+            };
+            uint32_t lod_first = gpu_lod ? 0u : dc.lod_index;
+            uint32_t lod_last  = gpu_lod ? gpu_lod_count : (dc.lod_index + 1u);
 
             uint32_t lods_emit      = 0;
             uint32_t meshlets_worst = 0;
             for (uint32_t lod = lod_first; lod < lod_last; lod++)
             {
-                const uint32_t meshlet_count = render->GetMeshletCount(lod);
-                if (meshlet_count == 0 || render->GetIndexCount(lod) == 0)
+                if (!lod_valid(lod))
                 {
                     continue;
                 }
                 lods_emit++;
-                meshlets_worst = max(meshlets_worst, meshlet_count);
+                meshlets_worst = max(meshlets_worst, render->GetMeshletCount(lod));
+            }
+            if (gpu_lod_patch)
+            {
+                // any lod can be picked, so budget for the densest one and start from a valid one
+                for (uint32_t lod = 0; lod < mesh_lod_count; lod++)
+                {
+                    if (!lod_valid(lod))
+                    {
+                        continue;
+                    }
+                    meshlets_worst = max(meshlets_worst, render->GetMeshletCount(lod));
+                    if (lods_emit == 0)
+                    {
+                        lod_first = lod;
+                        lod_last  = lod + 1u;
+                        lods_emit = 1;
+                    }
+                }
             }
             if (lods_emit == 0)
             {
@@ -3984,6 +4010,26 @@ namespace spartan
                 draw_data.meshlet_vertex_base = render->GetMesh()->GetGlobalMeshletVertexOffset();
                 draw_data.meshlet_micro_base = render->GetMesh()->GetGlobalMeshletMicroOffset();
                 draw_data.lod_meshlet_count  = lod_meshlet_count;
+                if (gpu_lod_patch)
+                {
+                    draw_data.flags                 = (draw_data.flags & ~(7u << 11u)) | ((mesh_lod_count & 7u) << 11u) | draw_flag_gpu_lod;
+                    draw_data.impostor_texel_offset = static_cast<uint32_t>(m_draw_lods.size());
+                    for (uint32_t table_lod = 0; table_lod < mesh_lod_count; table_lod++)
+                    {
+                        const uint32_t source          = lod_valid(table_lod) ? table_lod : lod;
+                        const BoundingBox& source_aabb = render->GetLodAabb(source);
+                        const Vector3 source_extent    = source_aabb.GetMax() - source_aabb.GetMin();
+                        Sb_DrawLod& entry              = m_draw_lods.emplace_back();
+                        entry.first_index              = render->GetIndexOffset(source);
+                        entry.vertex_offset            = render->GetVertexOffset(source);
+                        entry.meshlet_offset           = render->GetGlobalMeshletOffset() + render->GetMeshletOffset(source);
+                        entry.meshlet_count            = render->GetMeshletCount(source);
+                        entry.aabb_min                 = source_aabb.GetMin();
+                        entry.aabb_diag                = source_extent.Length();
+                        entry.aabb_extent              = source_extent;
+                        entry.previous_vertex_offset   = GeometryBuffer::GetPreviousVertexOffset(entry.vertex_offset);
+                    }
+                }
                 fill_uv_draw_fields_from_render(draw_data, render);
                 fill_decal_draw_fields(draw_data, render);
 
@@ -4030,94 +4076,12 @@ namespace spartan
         }
     }
 
-    void Renderer::UpdateDrawCalls_SelectOccluders()
-    {
-        SP_PROFILE_CPU();
-        // top n by screen area with temporal hysteresis, the prior occluder set gets a 1.5x area bonus
-        // recently moved meshes are excluded, otherwise a rotating prop writes hi-z that meshlet-culls itself next frame
-        static unordered_set<Render*> previous_occluders;
-
-        Camera* camera = Renderer::GetViewCamera();
-        if (!camera)
-        {
-            return;
-        }
-
-        const float move_window_sec = max(
-            static_cast<float>(Timer::GetDeltaTimeSec()) * 2.0f,
-            0.05f
-        );
-
-        auto compute_screen_space_area = [&](const BoundingBox& aabb_world) -> float
-        {
-            math::Rectangle rect_screen = camera->WorldToScreenCoordinates(aabb_world);
-            return clamp(rect_screen.width * rect_screen.height, 0.0f, numeric_limits<float>::max());
-        };
-
-        struct DrawCallArea { uint32_t index; float area; };
-        static vector<DrawCallArea> areas;
-        areas.clear();
-        areas.reserve(m_draw_calls_prepass_count);
-
-        for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
-        {
-            Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
-            Render* render               = draw_call.render;
-            Material* material           = render->GetMaterial();
-
-            if (!material || material->IsTransparent() || render->HasInstancing() || !draw_call.camera_visible)
-            {
-                continue;
-            }
-
-            Entity* entity = render->GetEntity();
-            if (entity && entity->GetTimeSinceLastTransform() <= move_window_sec)
-            {
-                continue;
-            }
-
-            float screen_area = compute_screen_space_area(render->GetBoundingBox());
-            if (previous_occluders.find(render) != previous_occluders.end())
-            {
-                screen_area *= 1.5f;
-            }
-
-            areas.push_back({ i, screen_area });
-        }
-
-        const uint32_t max_occluders = 64;
-        if (areas.size() > max_occluders)
-        {
-            partial_sort(
-                areas.begin(),
-                areas.begin() + max_occluders,
-                areas.end(),
-                [](const DrawCallArea& a, const DrawCallArea& b) { return a.area > b.area; }
-            );
-            areas.resize(max_occluders);
-        }
-        else
-        {
-            sort(areas.begin(), areas.end(), [](const DrawCallArea& a, const DrawCallArea& b) { return a.area > b.area; });
-        }
-
-        const uint32_t occluder_count = static_cast<uint32_t>(areas.size());
-
-        previous_occluders.clear();
-        for (uint32_t i = 0; i < occluder_count; i++)
-        {
-            m_draw_calls_prepass[areas[i].index].is_occluder = true;
-            previous_occluders.insert(m_draw_calls_prepass[areas[i].index].render);
-        }
-    }
-
     void Renderer::UpdateDrawCalls()
     {
         // IDs must be assigned before either CPU or indirect draw records are written.
         // Normal finite half-float patterns encode 30719 IDs exactly; overflow stays unclassified.
         uint32_t motion_id = 0;
-        static unordered_map<uint64_t, uint32_t> motion_masks;
-        motion_masks.clear();
+        pmr::unordered_map<uint64_t, uint32_t> motion_masks(FrameAllocator::GetResource());
         for (Entity* entity : render_entities())
         {
             if (Render* render = entity->GetComponent<Render>())
@@ -4135,7 +4099,6 @@ namespace spartan
         UpdateDrawCalls_CollectAndSort();
         UpdateDrawCalls_BuildPrepass();
         UpdateDrawCalls_BuildIndirectAndCullTasks();
-        UpdateDrawCalls_SelectOccluders();
     }
 
     // an instance transform that is not finite, or large enough to swamp the scene bounds, gives that
@@ -5441,8 +5404,12 @@ namespace spartan
 
     void Renderer::Pass_GraphicsPhase1_Geometry(bool scatter_prepared_async)
     {
-        if (!scatter_prepared_async) Pass_HiZ();
-        Pass_IndirectCull();
+        // the async path ran the early cull already, its grass populate reads the early hi-z
+        if (!scatter_prepared_async)
+        {
+            Pass_Cull_Early();
+        }
+        Pass_Cull_Late();
         // populate the gpu procedural grass ring before the geometry rasters that consume it
         // safe to run unconditionally, the pass early-outs when grass is disabled
         if (!scatter_prepared_async)
@@ -5450,8 +5417,6 @@ namespace spartan
             Pass_Grass_Populate();
             Pass_Grass_Interaction();
         }
-        Pass_Depth_Prepass();
-        Pass_IndirectCull_Refine();
         if (scatter_prepared_async)
         {
             // Depth does not consume procedural scatter. Submit it without the
@@ -5617,9 +5582,11 @@ namespace spartan
             const bool fog_prepared_async = IsRayTracedShadowsActive() &&
                 !Xr::IsSessionRunning() && !IsSecondaryViewActive();
             RHI_Work scatter_work;
+            // the shading rate reads last frame's output and both depth prepasses consume it
+            Pass_VariableRateShading();
             if (fog_prepared_async)
             {
-                Pass_HiZ();
+                Pass_Cull_Early();
                 const RHI_Work surface = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
                 RHI_CommandList* scatter_commands = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
                 scatter_commands->Begin();
@@ -5638,7 +5605,6 @@ namespace spartan
                 RHI_Device::Bind(RHI_Frame_List::Graphics);
             }
 
-            Pass_VariableRateShading();
             Pass_GraphicsPhase1_Geometry(fog_prepared_async);
 
             RHI_Work phase1 = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false,

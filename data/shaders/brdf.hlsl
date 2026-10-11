@@ -226,6 +226,51 @@ float3 BRDF_Specular_Clearcoat(inout Surface surface, AngularInfo angular_info)
 }
 
 /*------------------------------------------------------------------------------
+    SPECULAR - METALLIC FLAKES
+------------------------------------------------------------------------------*/
+
+// share of the light that crosses the clear coat both ways
+float coat_transmission(float clearcoat, float n_dot_v, float n_dot_l)
+{
+    return (1.0f - F_Schlick(0.04f, 1.0f, n_dot_v) * clearcoat) * (1.0f - F_Schlick(0.04f, 1.0f, n_dot_l) * clearcoat);
+}
+
+// aluminium platelets suspended in the base coat, each one a small tilted mirror, light and view
+// refract into the coat first which pulls them towards the normal, so the glints spread wider
+// around the coat highlight than the platelet tilt alone would, the way real metallic paint does
+float3 BRDF_Specular_Flakes(inout Surface surface, AngularInfo angular_info, Light light)
+{
+    float3 n = surface.normal;
+    if (dot(angular_info.v, n) <= 1e-4f || angular_info.n_dot_l <= 1e-4f)
+        return 0.0f;
+
+    const float eta = 1.0f / paint_coat_ior;
+    float3 l_coat   = -refract(-angular_info.l, n, eta);
+    float3 v_coat   = -refract(-angular_info.v, n, eta);
+    float3 h_coat   = normalize(l_coat + v_coat);
+
+    float3 flake_normal;
+    float  flake_alpha;
+    paint_flake_lobe(surface.flake_code, n, flake_normal, flake_alpha);
+
+    // an area light mirrored in a platelet is as wide as the light
+    if (light.is_area())
+    {
+        flake_alpha = light.compute_area_roughness_modification(flake_alpha, light.distance_to_pixel);
+    }
+
+    float  D  = D_GGX(saturate(dot(flake_normal, h_coat)), flake_alpha * flake_alpha);
+    float  V  = V_Kelemen(saturate(dot(l_coat, h_coat)));
+    float3 F  = F_Schlick(surface.flake_color, 1.0f, saturate(dot(v_coat, h_coat)));
+    float3 Fr = D * V * F * surface.flake_weight * coat_transmission(surface.clearcoat, angular_info.n_dot_v, angular_info.n_dot_l);
+
+    // the pigment is only seen between the platelets
+    surface.diffuse_energy *= 1.0f - surface.flake_weight * 0.6f;
+
+    return Fr;
+}
+
+/*------------------------------------------------------------------------------
     SPECULAR - SHEEN
 ------------------------------------------------------------------------------*/
 

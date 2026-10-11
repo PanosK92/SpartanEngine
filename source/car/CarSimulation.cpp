@@ -255,12 +255,6 @@ namespace car
     }
 
 
-    shape_2d& Simulation::shape_data_ref()
-    {
-            return shape_data;
-    }
-
-
     bool Simulation::is_in_reverse()
     { return current_gear == 0; }
 
@@ -378,10 +372,6 @@ namespace car
 
     bool Simulation::is_valid_wheel(int i)
     { return i >= 0 && i < wheel_count; }
-
-
-    const char* Simulation::get_wheel_name(int i)
-    { return is_valid_wheel(i) ? wheel_names[i] : "??"; }
 
 
     void Simulation::clear_abs_state()
@@ -795,81 +785,6 @@ namespace car
                 spec.aero_center_height, spec.aero_center_front_z, spec.aero_center_rear_z);
             SP_LOG_INFO("aero: front/rear area bias=%.0f%%/%.0f%%",
                 front_bias * 100.0f, (1.0f - front_bias) * 100.0f);
-
-            // visualization geometry is derived after aero inference
-            compute_shape_visualization(vertices, min_pt, max_pt);
-    }
-
-
-    std::vector<std::pair<float, float>> Simulation::graham_scan_hull_2d(std::vector<std::pair<float, float>> points)
-    {
-            if (points.size() < 3)
-            {
-                return points;
-            }
-
-            size_t pivot_idx = 0;
-            for (size_t i = 1; i < points.size(); i++)
-            {
-                if (points[i].second < points[pivot_idx].second ||
-                    (points[i].second == points[pivot_idx].second && points[i].first < points[pivot_idx].first))
-                {
-                    pivot_idx = i;
-                }
-            }
-            std::swap(points[0], points[pivot_idx]);
-            auto pivot = points[0];
-
-            auto cross = [](const std::pair<float,float>& o, const std::pair<float,float>& a, const std::pair<float,float>& b) -> float
-            {
-                return (a.first - o.first) * (b.second - o.second) - (a.second - o.second) * (b.first - o.first);
-            };
-
-            std::sort(points.begin() + 1, points.end(), [&](const auto& a, const auto& b)
-            {
-                float c = cross(pivot, a, b);
-                if (fabsf(c) < 1e-9f)
-                {
-                    float da = (a.first - pivot.first) * (a.first - pivot.first) + (a.second - pivot.second) * (a.second - pivot.second);
-                    float db = (b.first - pivot.first) * (b.first - pivot.first) + (b.second - pivot.second) * (b.second - pivot.second);
-                    return da < db;
-                }
-                return c > 0;
-            });
-
-            std::vector<std::pair<float, float>> hull;
-            for (const auto& pt : points)
-            {
-                while (hull.size() > 1 && cross(hull[hull.size()-2], hull[hull.size()-1], pt) <= 0)
-                    hull.pop_back();
-                hull.push_back(pt);
-            }
-            return hull;
-    }
-
-
-    void Simulation::compute_shape_visualization(const std::vector<PxVec3>& vertices, const PxVec3& min_pt, const PxVec3& max_pt)
-    {
-            shape_2d& sd = shape_data_ref();
-            sd.min_x = min_pt.x; sd.max_x = max_pt.x;
-            sd.min_y = min_pt.y; sd.max_y = max_pt.y;
-            sd.min_z = min_pt.z; sd.max_z = max_pt.z;
-
-            // side view: (z, y) silhouette
-            std::vector<std::pair<float, float>> side_points;
-            side_points.reserve(vertices.size());
-            for (const PxVec3& v : vertices)
-                side_points.push_back({v.z, v.y});
-            sd.side_profile = graham_scan_hull_2d(std::move(side_points));
-
-            // front view: (x, y) silhouette
-            std::vector<std::pair<float, float>> front_points;
-            front_points.reserve(vertices.size());
-            for (const PxVec3& v : vertices)
-                front_points.push_back({v.x, v.y});
-            sd.front_profile = graham_scan_hull_2d(std::move(front_points));
-
-            sd.valid = sd.side_profile.size() >= 3 && sd.front_profile.size() >= 3;
     }
 
 
@@ -3021,7 +2936,7 @@ namespace car
     }
 
 
-    float Simulation::get_surface_rolling_resistance(surface_type surface)
+    static float get_surface_rolling_resistance(surface_type surface)
     {
         // Relative to the preset's asphalt Crr; compact dirt deforms under the tread.
         static constexpr float scale[] = { 1.0f, 1.0f, 1.0f, 3.0f, 4.0f, 1.0f, 2.5f };
@@ -4718,43 +4633,6 @@ namespace car
     }
 
 
-    void Simulation::set_validation_speed(float speed)
-    {
-            event_flags |= 2;
-            PxTransform pose = body->getGlobalPose();
-            PxVec3 forward = pose.q.rotate(PxVec3(0.0f, 0.0f, 1.0f));
-            body->setLinearVelocity(forward * speed);
-            body->setAngularVelocity(PxVec3(0.0f));
-            for (int i = 0; i < multibody.actor_count; i++)
-            {
-                PxRigidDynamic* actor = multibody.actors[i];
-                if (!actor || actor->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC))
-                {
-                    continue;
-                }
-                actor->setLinearVelocity(forward * speed);
-                actor->setAngularVelocity(PxVec3(0.0f));
-            }
-            for (int i = 0; i < wheel_count; i++)
-            {
-                PxRigidDynamic* wheel_actor = multibody.corners[i].wheel_body;
-                if (wheel_actor)
-                {
-                    PxVec3 wheel_axis = wheel_actor->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
-                    float angular_velocity = speed / PxMax(cfg.wheel_radius_for(i), 0.05f);
-                    wheel_actor->setAngularVelocity(wheel_axis * angular_velocity);
-                    wheels[i].angular_velocity = angular_velocity;
-                }
-            }
-            while (current_gear >= 2 && current_gear + 1 < spec.gear_count &&
-                angular_velocity_to_rpm(fabsf(get_average_driven_angular_velocity(false) * spec.gear_ratios[current_gear] * spec.final_drive)) > spec.engine_redline_rpm * 0.9f) ++current_gear;
-            gearbox_input_angular_velocity = get_average_driven_angular_velocity(false) * spec.gear_ratios[current_gear] * spec.final_drive;
-            engine_rpm = PxMax(spec.engine_idle_rpm, angular_velocity_to_rpm(fabsf(gearbox_input_angular_velocity)));
-            driveshaft_twist = 0;
-            prev_velocity = forward * speed;
-    }
-
-
     void Simulation::refresh_geometry_cache()
     {
             cfg.wheelbase   = wheel_offsets[front_left].z - wheel_offsets[rear_left].z;
@@ -5378,96 +5256,6 @@ namespace car
             upgrades = active_upgrades{};
             reapply_upgrades();
     }
-
-
-    void Simulation::set_center_of_mass(float x, float y, float z)
-    {
-            spec.center_of_mass_x = x;
-            spec.center_of_mass_y = y;
-            spec.center_of_mass_z = z;
-            compute_constants();
-            update_mass_properties();
-    }
-
-
-    void Simulation::set_center_of_mass_x(float x)
-    { set_center_of_mass(x, spec.center_of_mass_y, spec.center_of_mass_z); }
-
-
-    void Simulation::set_center_of_mass_y(float y)
-    { set_center_of_mass(spec.center_of_mass_x, y, spec.center_of_mass_z); }
-
-
-    void Simulation::set_center_of_mass_z(float z)
-    { set_center_of_mass(spec.center_of_mass_x, spec.center_of_mass_y, z); }
-
-
-    float Simulation::get_center_of_mass_x()
-    { return spec.center_of_mass_x; }
-
-
-    float Simulation::get_center_of_mass_y()
-    { return spec.center_of_mass_y; }
-
-
-    float Simulation::get_center_of_mass_z()
-    { return spec.center_of_mass_z; }
-
-
-    float Simulation::get_frontal_area()
-    { return spec.frontal_area; }
-
-
-    float Simulation::get_side_area()
-    { return spec.side_area; }
-
-
-    float Simulation::get_drag_coeff()
-    { return spec.drag_coeff; }
-
-
-    float Simulation::get_lift_coeff_front()
-    { return spec.lift_coeff_front; }
-
-
-    float Simulation::get_lift_coeff_rear()
-    { return spec.lift_coeff_rear; }
-
-
-    void Simulation::set_frontal_area(float area)
-    { spec.frontal_area = area; }
-
-
-    void Simulation::set_side_area(float area)
-    { spec.side_area = area; }
-
-
-    void Simulation::set_drag_coeff(float cd)
-    { spec.drag_coeff = cd; }
-
-
-    void Simulation::set_lift_coeff_front(float cl)
-    { spec.lift_coeff_front = cl; }
-
-
-    void Simulation::set_lift_coeff_rear(float cl)
-    { spec.lift_coeff_rear = cl; }
-
-
-    void Simulation::set_ground_effect_enabled(bool enabled)
-    { spec.ground_effect_enabled = enabled; }
-
-
-    bool Simulation::get_ground_effect_enabled()
-    { return spec.ground_effect_enabled; }
-
-
-    void Simulation::set_ground_effect_multiplier(float mult)
-    { spec.ground_effect_multiplier = mult; }
-
-
-    float Simulation::get_ground_effect_multiplier()
-    { return spec.ground_effect_multiplier; }
 
 
     void Simulation::set_throttle(float v)
@@ -6094,18 +5882,6 @@ namespace car
     }
 
 
-    float Simulation::get_axle_roll_stiffness(bool front)
-    {
-            int left = front ? front_left : rear_left;
-            int right = front ? front_right : rear_right;
-            float track = front ? cfg.track_front : cfg.track_rear;
-            float anti_roll = front ? spec.front_arb_stiffness : spec.rear_arb_stiffness;
-            float left_wheel_rate = spring_stiffness[left] * wheels[left].motion_ratio * wheels[left].motion_ratio;
-            float right_wheel_rate = spring_stiffness[right] * wheels[right].motion_ratio * wheels[right].motion_ratio;
-            return ((left_wheel_rate + right_wheel_rate) * 0.5f + anti_roll) * track * track * 0.5f;
-    }
-
-
     float Simulation::get_wheel_temp_grip_factor(int i)
     {
             return is_valid_wheel(i) ? wheels[i].condition_grip : 1.0f;
@@ -6302,10 +6078,6 @@ namespace car
     { return lateral_accel; }
 
 
-    bool Simulation::get_vehicle_sleeping()
-    { return vehicle_sleeping; }
-
-
     float Simulation::get_gearbox_input_angular_velocity()
     { return gearbox_input_angular_velocity; }
 
@@ -6444,22 +6216,6 @@ namespace car
     }
 
 
-    float Simulation::get_front_camber()
-    { return spec.front_camber; }
-
-
-    float Simulation::get_rear_camber()
-    { return spec.rear_camber; }
-
-
-    float Simulation::get_front_toe()
-    { return spec.front_toe; }
-
-
-    float Simulation::get_rear_toe()
-    { return spec.rear_toe; }
-
-
     void Simulation::set_wheel_offset(int wheel, float x, float z)
     {
             if (wheel >= 0 && wheel < wheel_count)
@@ -6483,10 +6239,6 @@ namespace car
 
     const aero_debug_data& Simulation::get_aero_debug()
     { return aero_debug; }
-
-
-    const shape_2d& Simulation::get_shape_data()
-    { return shape_data_ref(); }
 
 
     void Simulation::get_debug_sweep(int wheel, PxVec3& origin, PxVec3& hit_point, bool& hit)

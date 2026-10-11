@@ -104,6 +104,8 @@ namespace spartan
     extern TConsoleVar<float> cvar_resolution_scale;
     extern TConsoleVar<float> cvar_dynamic_resolution;
     extern TConsoleVar<float> cvar_hiz_occlusion;
+    extern TConsoleVar<float> cvar_gpu_lod;
+    extern TConsoleVar<float> cvar_tessellation_gpu_driven;
     extern TConsoleVar<float> cvar_meshlet_cull_skinned;
     extern TConsoleVar<float> cvar_foliage_impostors;
     extern TConsoleVar<float> cvar_meshlet_visualize;
@@ -224,7 +226,6 @@ namespace spartan
 
         void SetPresentInRenderer(bool enabled);
         void SetFrameCompletion(RHI_SyncPrimitive* timeline, uint64_t value);
-        void BlitToXrSwapchain(RHI_Texture* texture);
         void EndXrFrame();
 
         // misc
@@ -391,12 +392,15 @@ namespace spartan
         void ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer);
         void Pass_VariableRateShading();
         void Pass_ShadowMaps();
-        void Pass_HiZ();
-        void Pass_HiZ_BuildFromDepth(RHI_Texture* tex_depth);
-        void Pass_IndirectCull();
-        void Pass_IndirectCull_Meshlets();
-        void Pass_IndirectCull_Refine();
-        void Pass_Depth_Prepass();
+        bool Pass_ShadowMaps_GpuDriven();
+        void Pass_HiZ_BuildFromDepth(RHI_Texture* tex_hiz);
+        void Pass_TessellatedCull(bool late);
+        void Pass_IndirectCull(bool late);
+        void Pass_IndirectCull_Meshlets(bool late);
+        void Pass_CullPhase(uint32_t mode);
+        void Pass_Cull_Early();
+        void Pass_Cull_Late();
+        void Pass_Depth_Prepass(bool late);
         void Pass_GBuffer(const bool is_transparent_pass, const bool submit_before_scatter = false);
         void Pass_SkidMarks();
         void Pass_GBuffer_Indirect();
@@ -511,11 +515,11 @@ namespace spartan
         void UpdateDrawCalls_CollectAndSort();
         void UpdateDrawCalls_BuildPrepass();
         void UpdateDrawCalls_BuildIndirectAndCullTasks();
-        void UpdateDrawCalls_SelectOccluders();
         void UpdateAccelerationStructures();
         // fills EmissiveTriangles from lod 0 of every emissive render, area weighted with a prefix sum so restir can sample in o(log n)
         void BuildEmissiveTriangleNeePool();
         void EnsureEmissiveTriangleCapacity(uint32_t count);
+        RHI_Buffer* EnsureBufferCapacity(const Renderer_Buffer type, const uint32_t stride, const uint32_t count, const char* name);
         void RotateFrameBuffers();
     }
 }

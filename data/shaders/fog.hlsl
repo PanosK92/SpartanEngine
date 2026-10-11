@@ -240,6 +240,9 @@ Surface fog_build_surface(float3 position, float3 ray_direction, uint2 pixel, fl
     surface.pearl_color            = 0.0f;
     surface.coat_tint              = 1.0f;
     surface.coat_tint_strength     = 0.0f;
+    surface.flake_code             = 0;
+    surface.flake_weight           = 0.0f;
+    surface.flake_color            = 0.0f;
     surface.ior                    = 1.5f;
     surface.absorption             = 0.0f;
     surface.thickness              = 0.0f;

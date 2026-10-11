@@ -35,32 +35,14 @@ namespace spartan::math
 
     void Plane::Normalize()
     {
-        Plane result;
-
-        result.normal = Vector3::Normalize(this->normal);
-        const float nominator = sqrtf(result.normal.x * result.normal.x + result.normal.y * result.normal.y + result.normal.z * result.normal.z);
-        const float denominator = sqrtf(this->normal.x * this->normal.x + this->normal.y * this->normal.y + this->normal.z * this->normal.z);
-        const float fentity = nominator / denominator;
-        result.d = this->d * fentity;
-
-        this->normal = result.normal;
-        this->d = result.d;
-    }
-
-    Plane Plane::Normalize(const Plane& plane)
-    {
-        Plane normalized = plane;
-        normalized.Normalize();
-        return normalized;
-    }
-
-    float Plane::Dot(const Vector3& v) const
-    {
-        return (this->normal.x * v.x) + (this->normal.y * v.y) + (this->normal.z * v.z) + this->d;
-    }
-
-    float Plane::Dot(const Plane& plane, const Vector3& v)
-    {
-        return plane.Dot(v);
+        // scale normal and distance together so the plane stays the same
+        const __m128 n              = normal.Simd();
+        const __m128 length_squared = simd::dot3_splat(n, n);
+        if (_mm_cvtss_f32(length_squared) > 0.0f)
+        {
+            const __m128 plane = _mm_div_ps(_mm_insert_ps(n, _mm_set_ss(d), 0x30), _mm_sqrt_ps(length_squared));
+            normal = Vector3(plane);
+            d      = _mm_cvtss_f32(simd::splat<3>(plane));
+        }
     }
 }

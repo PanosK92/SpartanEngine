@@ -95,7 +95,11 @@ Vertex_PosUvNorTan pull_visible_triangle_vertex(uint vertex_id, out MeshletInsta
 {
     uint local_triangle = vertex_id / 3u;
     uint corner         = vertex_id - local_triangle * 3u;
-    uint triangle_slot  = pass_uint(pass_visible_triangles::region_base) + local_triangle;
+    uint region_base    = pass_uint(pass_visible_triangles::region_base);
+    // the late draws cover only what the late cull appended after the early survivors of the same half
+    if (pass_bool(pass_visible_triangles::late))
+        region_base += cull_phase[region_base == 0u ? CULL_PHASE_TRIANGLE_BASE_OPAQUE : CULL_PHASE_TRIANGLE_BASE_ALPHA];
+    uint triangle_slot  = region_base + local_triangle;
 
     uint packed       = visible_triangles[triangle_slot];
     uint mi_idx       = VISIBLE_TRI_MI(packed);

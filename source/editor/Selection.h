@@ -14,10 +14,8 @@ namespace spartan
     {
     public:
         static void Initialize();
-        static void Publish();
         static const math::Ray& ComputePickingRay(Camera& camera);
         static Entity* FindEntityUnderCursor(Camera& camera);
-        static Entity* FindIconUnderCursor(Camera& camera);
         static void Pick(Camera& camera);
         static void SetSelectedEntity(Entity* entity);
         static Entity* GetSelectedEntity();
@@ -30,6 +28,7 @@ namespace spartan
         static uint32_t GetSelectedEntityCount() { return static_cast<uint32_t>(m_selected_entities.size()); }
         static int GetSelectedInstance() { return m_selected_instance; }
     private:
+        static void Publish();
         static std::vector<Entity*> m_selected_entities;
         static int m_selected_instance;
     };

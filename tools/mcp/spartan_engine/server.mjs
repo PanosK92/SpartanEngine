@@ -22,6 +22,7 @@ import { component_schema_markdown, construction_grammar_guide, edit_rules, engi
 import { is_zod_schema, json_schema_from_raw_shape, normalize_result, output_schemas, parse_raw_shape, structured_error } from "./schemas.mjs";
 import { agent_memory_archive_path, agent_memory_note_max_chars, agent_memory_path, append_agent_memory, ensure_agent_memory, read_agent_memory, search_agent_memory_archive, write_agent_memory } from "./agent_memory.mjs";
 import { calibrate_existing_light } from "./light_calibration.mjs";
+import { register_agent_toolkit } from "./agent_toolkit.mjs";
 import { audit_scene_quality } from "./scene_quality.mjs";
 import {
   audit_scene_layout,
@@ -2994,6 +2995,11 @@ register_local_tool("screenshot_take", {
   outputSchema: output_schemas.screenshot_take,
   annotations: edit_tool,
 }, async (args) => {
+  const minimized = await agent_toolkit.minimized_error();
+  if (minimized)
+  {
+    return tool_result(minimized);
+  }
   let requested_path = args.path?.replaceAll("\\", "/");
   if (
     requested_path &&
@@ -6345,6 +6351,34 @@ register_tool(
     },
   },
 );
+
+register_tool(
+  server,
+  "window_restore",
+  "Restore the engine window when it is minimized. A minimized window stops rendering, so screenshots, GPU timings and frame-based waits stall; engine_status reports minimized. The user may minimize an instance on purpose, so only restore one you are working in. Does nothing for headless instances.",
+  {},
+  "window_restore",
+  { annotations: edit_tool },
+);
+
+const agent_toolkit = register_agent_toolkit({
+  register_local_tool,
+  tool_registry,
+  send_engine_command,
+  tool_result,
+  structured_error,
+  normalize_result,
+  read_only,
+  edit_tool,
+  read_only_mode,
+  project_root,
+  binaries_directory,
+  engine,
+  engine_host,
+  find_engine_executable,
+  wait_for_bridge,
+  headless_running: () => Boolean(headless && headless.child.exitCode === null),
+});
 
 function register_text_resource(name, uri, title, description, read_text, mime_type = "text/markdown") {
   const resource = {

@@ -17,7 +17,6 @@ class ButtonColorPicker
 {
 public:
     ButtonColorPicker(const std::string& window_title);
-    ButtonColorPicker() = default;
 
     void Update();
 
@@ -26,11 +25,7 @@ public:
 
 private:
     bool m_is_visible          = false;
-    bool m_hdr                 = false;
-    bool m_alpha_half_preview  = false;
-    bool m_options_menu        = true;
     bool m_show_wheel          = false;
-    bool m_show_preview        = false;
     bool m_show_rgb            = true;
     bool m_show_hsv            = false;
     bool m_show_hex            = true;

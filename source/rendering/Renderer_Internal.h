@@ -156,6 +156,10 @@ namespace spartan
             bool cleared_rt_shadows      = false;
             bool skip_rt_trace           = false;
             bool depth_history_cleared = false;
+            // gbuffer_depth_hiz holds a complete depth pyramid from the previous frame the early cull can test against
+            bool hiz_history_valid = false;
+            // the late cull ran this frame, so the late tessellated args and the late survivor ranges are live
+            bool cull_late_active = false;
             RestirState restir;
 
             SkyState sky;
@@ -304,6 +308,10 @@ namespace spartan
             uint32_t m_indirect_render_count;
             std::vector<Sb_CullTask> m_cull_tasks;
             uint32_t m_cull_task_count;
+            std::vector<Sb_DrawLod> m_draw_lods;
+            bool m_draw_lods_uploaded = false;
+            std::vector<uint32_t> m_tessellated_draws; // indices into m_draw_calls, args slot is the position in this list
+            bool m_tessellated_gpu_culled = false;
             std::array<FrameResource, renderer_draw_data_buffer_count> m_frame_resources;
             uint32_t m_frame_resource_index;
             uint32_t m_cpu_indirect_draw_arg_count;
@@ -354,6 +362,10 @@ namespace spartan
         inline auto& m_indirect_render_count = state().m_indirect_render_count;
         inline auto& m_cull_tasks = state().m_cull_tasks;
         inline auto& m_cull_task_count = state().m_cull_task_count;
+        inline auto& m_draw_lods = state().m_draw_lods;
+        inline auto& m_draw_lods_uploaded = state().m_draw_lods_uploaded;
+        inline auto& m_tessellated_draws = state().m_tessellated_draws;
+        inline auto& m_tessellated_gpu_culled = state().m_tessellated_gpu_culled;
         inline auto& m_frame_resources = state().m_frame_resources;
         inline auto& m_frame_resource_index = state().m_frame_resource_index;
         inline auto& m_cpu_indirect_draw_arg_count = state().m_cpu_indirect_draw_arg_count;

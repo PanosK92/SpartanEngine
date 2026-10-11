@@ -18,7 +18,6 @@ Commercial use requires written permission and negotiated payment terms.
 #define PX_PHYSX_STATIC_LIB
 #include <physx/PxPhysicsAPI.h>
 #include <physx/extensions/PxGearJoint.h>
-#include <vector>
 #include <string>
 #include <algorithm>
 #include <cstring>
@@ -68,16 +67,6 @@ namespace car
         float  yaw_angle        = 0.0f;
         float  ground_effect_factor = 1.0f;
         bool   valid            = false;
-    };
-    // chassis silhouette data for visualization
-    struct shape_2d
-    {
-        std::vector<std::pair<float, float>> side_profile;   // (z, y) points for side view
-        std::vector<std::pair<float, float>> front_profile;  // (x, y) points for front view
-        float min_x = 0, max_x = 0;
-        float min_y = 0, max_y = 0;
-        float min_z = 0, max_z = 0;
-        bool valid = false;
     };
 
     enum wheel_id { front_left = 0, front_right = 1, rear_left = 2, rear_right = 3, wheel_count = 4 };

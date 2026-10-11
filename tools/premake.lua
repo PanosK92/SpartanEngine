@@ -212,6 +212,17 @@ function spartan_project_configuration(runtime, minimal)
         filter { "files:**/astronomy/**" }
             flags { "NoPCH" }
         filter {}
+        -- mimalloc backs Allocator, static.c is the whole library in one translation unit and does not override malloc
+        includedirs { "../third_party/mimalloc/include" }
+        files { "../third_party/mimalloc/src/static.c" }
+        filter { "files:**/mimalloc/**" }
+            flags { "NoPCH" }
+            warnings "Off"
+        filter { "files:**/mimalloc/**", "configurations:debug" }
+            defines { "MI_DEBUG=1" }
+        filter { "files:**/mimalloc/**", "configurations:release or development" }
+            defines { "MI_BUILD_RELEASE" }
+        filter {}
 
         -- the resource script holds the windows icon and version info
         filter { "system:not windows" }

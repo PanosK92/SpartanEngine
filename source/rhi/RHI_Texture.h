@@ -100,7 +100,6 @@ namespace spartan
         static bool IsCompressedFormat(const RHI_Format format);
         bool IsCompressedFormat()               { return IsCompressedFormat(m_format); }
 
-        RHI_Format GetCompressionFormat() const            { return m_compression_format; }
         void SetCompressionFormat(const RHI_Format format) { m_compression_format = format; }
 
         // misc

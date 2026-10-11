@@ -154,14 +154,10 @@ void ButtonColorPicker::Update()
         ImGui::Begin(m_window_title.c_str(), &m_is_visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
 
         // base flags for the picker
-        ImGuiColorEditFlags flags = ImGuiColorEditFlags_AlphaBar;
+        ImGuiColorEditFlags flags = ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoSidePreview;
 
         // picker style
         flags |= m_show_wheel ? ImGuiColorEditFlags_PickerHueWheel : ImGuiColorEditFlags_PickerHueBar;
-        if (!m_show_preview)
-        {
-            flags |= ImGuiColorEditFlags_NoSidePreview;
-        }
         
         // display options (ensure hsv is visible if checked)
         if (m_show_rgb)
@@ -175,18 +171,6 @@ void ButtonColorPicker::Update()
         if (m_show_hex)
         {
             flags |= ImGuiColorEditFlags_DisplayHex;
-        }
-        if (m_hdr)
-        {
-            flags |= ImGuiColorEditFlags_HDR;
-        }
-        if (m_alpha_half_preview)
-        {
-            flags |= ImGuiColorEditFlags_AlphaPreviewHalf;
-        }
-        if (!m_options_menu)
-        {
-            flags |= ImGuiColorEditFlags_NoOptions;
         }
 
         // use colorpicker4 to edit the color

@@ -12,6 +12,8 @@ Commercial use requires written permission and negotiated payment terms.
 
 namespace spartan::mcp_geometry_kernel
 {
+    namespace
+    {
     float component(const math::Vector3& value, axis selected_axis)
     {
         if (selected_axis == axis::x)
@@ -157,6 +159,7 @@ namespace spartan::mcp_geometry_kernel
 
         return stats;
     }
+    }
 
     operation_result validate(
         const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
@@ -243,6 +246,8 @@ namespace spartan::mcp_geometry_kernel
         return result;
     }
 
+    namespace
+    {
     operation_result recalculate_normals_tangents(
         std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         const std::vector<uint32_t>& indices,
@@ -354,6 +359,7 @@ namespace spartan::mcp_geometry_kernel
                 value.y * matrix.m12 +
                 value.z * matrix.m22
         );
+    }
     }
 
     operation_result transform(
@@ -1033,6 +1039,8 @@ namespace spartan::mcp_geometry_kernel
         return result;
     }
 
+    namespace
+    {
     void projection_axes(axis normal_axis, axis& u_axis, axis& v_axis)
     {
         if (normal_axis == axis::x)
@@ -1097,6 +1105,7 @@ namespace spartan::mcp_geometry_kernel
             uv.IsFinite() &&
             std::abs(uv.x) <= half_max &&
             std::abs(uv.y) <= half_max;
+    }
     }
 
     operation_result project_uv_planar(
@@ -1762,30 +1771,4 @@ namespace spartan::mcp_geometry_kernel
         }
         return result;
     }
-
-    capability boolean_capability(boolean_operation operation)
-    {
-        capability result;
-        result.available = false;
-        result.code = status::unsupported;
-
-        if (operation == boolean_operation::union_mesh)
-        {
-            result.message =
-                "robust boolean union is unavailable, use append_mesh for a non welded merge";
-        }
-        else if (operation == boolean_operation::intersection)
-        {
-            result.message =
-                "robust boolean intersection is unavailable";
-        }
-        else
-        {
-            result.message =
-                "robust boolean difference is unavailable";
-        }
-
-        return result;
-    }
-
 }

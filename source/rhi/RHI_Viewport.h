@@ -47,17 +47,6 @@ namespace spartan
             return !(*this == rhs);
         }
 
-        bool IsDefined() const
-        {
-            return
-                x         != 0.0f || 
-                y         != 0.0f || 
-                width     != 0.0f || 
-                height    != 0.0f || 
-                depth_min != 0.0f || 
-                depth_max != 0.0f;
-        }
-
         float GetAspectRatio() const { return width / height; }
 
         float x         = 0.0f;
@@ -66,7 +55,5 @@ namespace spartan
         float height    = 0.0f;
         float depth_min = 0.0f;
         float depth_max = 0.0f;
-
-        static const RHI_Viewport Undefined;
     };
 }

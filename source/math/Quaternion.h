@@ -33,47 +33,32 @@ namespace spartan::math
             this->z = z;
             this->w = w;
         }
+
+        explicit Quaternion(const __m128 v)
+        {
+            simd::store4(&x, v);
+        }
+
         ~Quaternion() = default;
+
+        [[nodiscard]] __m128 Simd() const { return simd::load4(&x); }
 
         // Creates a new Quaternion from the specified axis and angle.
         // The angle in radians.
         // The axis of rotation.
         static Quaternion FromAxisAngle(const Vector3& axis, float angle)
         {
-            const float half = angle * 0.5f;
-            const float sin  = sinf(half);
-            const float cos  = cosf(half);
+            __m128 sin, cos;
+            simd::sin_cos(_mm_set1_ps(angle * 0.5f), sin, cos);
 
-            return Quaternion(axis.x * sin, axis.y * sin, axis.z * sin, cos);
+            return Quaternion(_mm_blend_ps(_mm_mul_ps(axis.Simd(), sin), cos, 0x8));
         }
 
         void FromAxes(const Vector3& axis_x, const Vector3& axis_y, const Vector3& axis_z);
 
-        void ToAngleAxis(float& angle, Vector3& axis) const
-        {
-            // Normalize the quaternion to prevent inaccuracies
-            Quaternion q = this->Normalized();
-
-            // Calculate the angle
-            angle = 2.0f * std::acos(q.w) * 180.0f / 3.14159265358979323846f;
-
-            // Calculate the axis
-            float s = std::sqrt(1.0f - q.w * q.w);
-            if (s < 0.001f)
-            {
-                // If s is close to zero, the axis is not well-defined and
-                // we can choose any arbitrary axis
-                axis.x = q.x;
-                axis.y = q.y;
-                axis.z = q.z;
-            }
-            else
-            {
-                axis.x = q.x / s;
-                axis.y = q.y / s;
-                axis.z = q.z / s;
-            }
-        }
+        // rotation matrix (no scale) to quaternion, row i is (mi0, mi1, mi2)
+        // canonical form (w >= 0) to prevent sign flipping between equivalent quaternions
+        static Quaternion FromRotationRows(__m128 row0, __m128 row1, __m128 row2);
 
         // Creates a new Quaternion from the specified yaw, pitch and roll angles.
         // Yaw around the y axis in radians.
@@ -81,23 +66,21 @@ namespace spartan::math
         // Roll around the z axis in radians.
         static inline Quaternion FromYawPitchRoll(float yaw, float pitch, float roll)
         {
-            const float half_roll  = roll * 0.5f;
-            const float half_pitch = pitch * 0.5f;
-            const float half_yaw   = yaw * 0.5f;
+            // lanes are (roll, pitch, yaw)
+            __m128 s, c;
+            simd::sin_cos(_mm_mul_ps(_mm_setr_ps(roll, pitch, yaw, 0.0f), _mm_set1_ps(0.5f)), s, c);
 
-            const float sin_roll  = sin(half_roll);
-            const float cos_roll  = cos(half_roll);
-            const float sin_pitch = sin(half_pitch);
-            const float cos_pitch = cos(half_pitch);
-            const float sin_yaw   = sin(half_yaw);
-            const float cos_yaw   = cos(half_yaw);
+            // x = cy * sp * cr + sy * cp * sr
+            // y = sy * cp * cr - cy * sp * sr
+            // z = cy * cp * sr - sy * sp * cr
+            // w = cy * cp * cr + sy * sp * sr
+            const __m128 sr = simd::splat<0>(s), cr = simd::splat<0>(c);
+            const __m128 sp = simd::splat<1>(s), cp = simd::splat<1>(c);
+            const __m128 sy = simd::splat<2>(s), cy = simd::splat<2>(c);
+            const __m128 a  = _mm_mul_ps(_mm_mul_ps(_mm_blend_ps(cy, sy, 0x2), _mm_blend_ps(cp, sp, 0x1)), _mm_blend_ps(cr, sr, 0x4));
+            const __m128 b  = _mm_mul_ps(_mm_mul_ps(_mm_blend_ps(sy, cy, 0x2), _mm_blend_ps(sp, cp, 0x1)), _mm_blend_ps(sr, cr, 0x4));
 
-            return Quaternion(
-                cos_yaw * sin_pitch * cos_roll + sin_yaw * cos_pitch * sin_roll,
-                sin_yaw * cos_pitch * cos_roll - cos_yaw * sin_pitch * sin_roll,
-                cos_yaw * cos_pitch * sin_roll - sin_yaw * sin_pitch * cos_roll,
-                cos_yaw * cos_pitch * cos_roll + sin_yaw * sin_pitch * sin_roll
-            );
+            return Quaternion(_mm_fmadd_ps(b, _mm_setr_ps(1.0f, -1.0f, -1.0f, 1.0f), a));
         }
 
         static Quaternion FromRotation(const Vector3& start, const Vector3& end)
@@ -109,15 +92,10 @@ namespace spartan::math
             // 1 + dot cancels catastrophically near antiparallel, bail out well before float epsilon
             if (dot > -1.0f + 1.0e-6f)
             {
-                const Vector3 cross    = start_normalized.Cross(end_normalized);
-                const float scale      = sqrtf((1.0f + dot) * 2.0f);
-                const float scale_inv  = 1.0f / scale;
+                const __m128 cross = simd::cross3(start_normalized.Simd(), end_normalized.Simd());
+                const float scale  = sqrtf((1.0f + dot) * 2.0f);
 
-                return Quaternion(
-                    cross.x * scale_inv,
-                    cross.y * scale_inv,
-                    cross.z * scale_inv,
-                    0.5f * scale);
+                return Quaternion(_mm_insert_ps(_mm_mul_ps(cross, _mm_set1_ps(1.0f / scale)), _mm_set_ss(0.5f * scale), 0x30));
             }
             else
             {
@@ -155,69 +133,58 @@ namespace spartan::math
             return result;
         }
 
-        static Quaternion FromRotation(const Quaternion& start, const Quaternion& end) { return start.Inverse() * end; }
-
         static Quaternion Lerp(const Quaternion& a, const Quaternion& b, const float t)
         {
-            Quaternion quaternion;
+            const __m128 va = a.Simd();
+            const __m128 vb = b.Simd();
 
-            if (Dot(a, b) >= 0)
-            {
-                quaternion = a * (1 - t) + b * t;
-            }
-            else
-            {
-                quaternion = a * (1 - t) - b * t;
-            }
+            // take the short way around, q and -q are the same rotation
+            const float t_b = simd::dot4(va, vb) >= 0.0f ? t : -t;
 
-            return quaternion.Normalized();
+            return Quaternion(_mm_fmadd_ps(vb, _mm_set1_ps(t_b), _mm_mul_ps(va, _mm_set1_ps(1.0f - t)))).Normalized();
         }
 
         // hamilton product, the vector parts contribute a cross product and the scalar parts a dot
+        // r = aw * (bx,  by,  bz,  bw)
+        //   + ax * (bw, -bz,  by, -bx)
+        //   + ay * (bz,  bw, -bx, -by)
+        //   + az * (-by, bx,  bw, -bz)
         static Quaternion Multiply(const Quaternion& a, const Quaternion& b)
         {
-            const float cross_x = (a.y * b.z) - (a.z * b.y);
-            const float cross_y = (a.z * b.x) - (a.x * b.z);
-            const float cross_z = (a.x * b.y) - (a.y * b.x);
-            const float dot     = (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
+            const __m128 va = a.Simd();
+            const __m128 vb = b.Simd();
 
-            return Quaternion(
-                (a.x * b.w) + (b.x * a.w) + cross_x,
-                (a.y * b.w) + (b.y * a.w) + cross_y,
-                (a.z * b.w) + (b.z * a.w) + cross_z,
-                (a.w * b.w) - dot
-            );
+            const __m128 b_wzyx = _mm_xor_ps(_mm_permute_ps(vb, _MM_SHUFFLE(0, 1, 2, 3)), _mm_setr_ps(0.0f, -0.0f, 0.0f, -0.0f));
+            const __m128 b_zwxy = _mm_xor_ps(_mm_permute_ps(vb, _MM_SHUFFLE(1, 0, 3, 2)), _mm_setr_ps(0.0f, 0.0f, -0.0f, -0.0f));
+            const __m128 b_yxwz = _mm_xor_ps(_mm_permute_ps(vb, _MM_SHUFFLE(2, 3, 0, 1)), _mm_setr_ps(-0.0f, 0.0f, 0.0f, -0.0f));
+
+            // summed as a tree to keep the dependency chain short
+            const __m128 low  = _mm_fmadd_ps(simd::splat<0>(va), b_wzyx, _mm_mul_ps(simd::splat<3>(va), vb));
+            const __m128 high = _mm_fmadd_ps(simd::splat<2>(va), b_yxwz, _mm_mul_ps(simd::splat<1>(va), b_zwxy));
+
+            return Quaternion(_mm_add_ps(low, high));
         }
 
-        auto Conjugate() const      { return Quaternion(-x, -y, -z, w); }
-        float LengthSquared() const { return (x * x) + (y * y) + (z * z) + (w * w); }
+        auto Conjugate() const      { return Quaternion(_mm_xor_ps(Simd(), _mm_setr_ps(-0.0f, -0.0f, -0.0f, 0.0f))); }
+        float LengthSquared() const { const __m128 v = Simd(); return simd::dot4(v, v); }
 
         // Normalizes the quaternion
         void Normalize()
         {
-            const auto length_squared = LengthSquared();
-            if (!approximate_equals(length_squared, 1.0f) && length_squared > 0.0f)
+            const __m128 v              = Simd();
+            const __m128 length_squared = simd::dot4_splat(v, v);
+            const float length_squared_ = _mm_cvtss_f32(length_squared);
+            if (!approximate_equals(length_squared_, 1.0f) && length_squared_ > 0.0f)
             {
-                const auto length_inverted = 1.0f / sqrt(length_squared);
-                x *= length_inverted;
-                y *= length_inverted;
-                z *= length_inverted;
-                w *= length_inverted;
+                simd::store4(&x, _mm_div_ps(v, _mm_sqrt_ps(length_squared)));
             }
         }
 
         Quaternion Normalized() const
         {
-            const auto length_squared = LengthSquared();
-            if (!approximate_equals(length_squared, 1.0f) && length_squared > 0.0f)
-            {
-                const auto length_inverted = 1.0f / sqrt(length_squared);
-                return (*this) * length_inverted;
-            }
-            else
-            {
-                return *this;
-            }
+            Quaternion result = *this;
+            result.Normalize();
+            return result;
         }
 
         Quaternion Inverse() const 
@@ -229,7 +196,7 @@ namespace spartan::math
             }
             else if (length_squared >= std::numeric_limits<float>::min())
             {
-                return Conjugate() * (1.0f / length_squared);
+                return Quaternion(_mm_div_ps(Conjugate().Simd(), _mm_set1_ps(length_squared)));
             }
             else
             {
@@ -263,11 +230,21 @@ namespace spartan::math
                 );
             }
 
+            // (x * z + w * y, x * x + y * y, x * y + w * z, x * x + z * z), then 2 * p for the numerators and 1 - 2 * p for the denominators
+            const __m128 q = Simd();
+            const __m128 p = _mm_fmadd_ps(
+                simd::splat<0>(q), _mm_permute_ps(q, _MM_SHUFFLE(0, 1, 0, 2)),
+                _mm_mul_ps(_mm_permute_ps(q, _MM_SHUFFLE(2, 3, 1, 3)), _mm_permute_ps(q, _MM_SHUFFLE(2, 2, 1, 1))));
+            const __m128 terms = _mm_fmadd_ps(p, _mm_setr_ps(2.0f, -2.0f, 2.0f, -2.0f), _mm_setr_ps(0.0f, 1.0f, 0.0f, 1.0f));
+
+            alignas(16) float t[4];
+            _mm_store_ps(t, terms);
+
             return Vector3
             (
                 asinf(check) * rad_to_deg,
-                atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * rad_to_deg,
-                atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * rad_to_deg
+                atan2f(t[0], t[1]) * rad_to_deg,
+                atan2f(t[2], t[3]) * rad_to_deg
             );
         }
 
@@ -277,53 +254,47 @@ namespace spartan::math
 
         // Returns yaw in degrees
         float Yaw() const   { return ToEulerAngles().y; }
-        // Returns pitch in degrees
-        float Pitch() const { return ToEulerAngles().x; }
-        // Returns roll in degrees
-        float Roll() const  { return ToEulerAngles().z; }
 
         // Calculate dot product.
-        float Dot(const Quaternion& rhs)                            const { return w * rhs.w + x * rhs.x + y * rhs.y + z * rhs.z; }
-        static inline float Dot(const Quaternion& a, const Quaternion& b) { return a.w * b.w + a.x * b.x + a.y * b.y + a.z * b.z; }
-
-        // Normalized linear interpolation with another quaternion.
-        Quaternion lerp(const Quaternion& rhs, float t) { return ((*this) + ((rhs - (*this)) * t)).Normalized(); }
+        float Dot(const Quaternion& rhs)                            const { return simd::dot4(Simd(), rhs.Simd()); }
+        static inline float Dot(const Quaternion& a, const Quaternion& b) { return simd::dot4(a.Simd(), b.Simd()); }
 
         // Operators
         Quaternion& operator=(const Quaternion& rhs) = default;
-        Quaternion operator+(const Quaternion& rhs) const { return Quaternion(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w); }
-        Quaternion operator-(const Quaternion& rhs) const { return Quaternion(x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w); }
-        Quaternion operator-()                      const { return Quaternion(-x, -y, -z, -w); }
+        Quaternion operator+(const Quaternion& rhs) const { return Quaternion(_mm_add_ps(Simd(), rhs.Simd())); }
+        Quaternion operator-(const Quaternion& rhs) const { return Quaternion(_mm_sub_ps(Simd(), rhs.Simd())); }
+        Quaternion operator-()                      const { return Quaternion(simd::negate(Simd())); }
         Quaternion operator*(const Quaternion& rhs) const { return Multiply(*this, rhs); }
         void operator*=(const Quaternion& rhs)            { *this = Multiply(*this, rhs); }
+
+        // v' = v + 2 * (w * (q x v) + q x (q x v))
         Vector3 operator*(const Vector3& rhs) const
         {
-            const Vector3 vector_part(x, y, z);
-            const Vector3 cross1(vector_part.Cross(rhs));
-            const Vector3 cross2(vector_part.Cross(cross1));
+            const __m128 q      = _mm_blend_ps(Simd(), _mm_setzero_ps(), 0x8);
+            const __m128 v      = rhs.Simd();
+            const __m128 cross1 = simd::cross3(q, v);
+            const __m128 cross2 = simd::cross3(q, cross1);
+            const __m128 sum    = _mm_fmadd_ps(cross1, _mm_set1_ps(w), cross2);
 
-            return rhs + 2.0f * (cross1 * w + cross2);
+            return Vector3(_mm_fmadd_ps(sum, _mm_set1_ps(2.0f), v));
         }
-        Quaternion& operator*=(float rhs)
-        {            
-            x *= rhs;
-            y *= rhs;
-            z *= rhs;
-            w *= rhs;
 
+        Quaternion& operator*=(float rhs)
+        {
+            simd::store4(&x, _mm_mul_ps(Simd(), _mm_set1_ps(rhs)));
             return *this;
         }
-        Quaternion operator*(float rhs)             const { return Quaternion(x * rhs, y * rhs, z * rhs, w * rhs); }
+
+        Quaternion operator*(float rhs) const { return Quaternion(_mm_mul_ps(Simd(), _mm_set1_ps(rhs))); }
 
         // Equality
-        bool operator==(const Quaternion& rhs) const { return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w; }
+        bool operator==(const Quaternion& rhs) const { return simd::equal_mask(Simd(), rhs.Simd()) == 0xF; }
         bool operator!=(const Quaternion& rhs) const { return !(*this == rhs); }
-        bool Equals(const Quaternion& rhs)     const { return approximate_equals(x, rhs.x) && approximate_equals(y, rhs.y) && approximate_equals(z, rhs.z) && approximate_equals(w, rhs.w); }
 
         std::string ToString() const;
 
-        bool IsNaN()    const { return std::isnan(x) || std::isnan(y) || std::isnan(z) || std::isnan(w); }
-        bool IsFinite() const { return std::isfinite(x) && std::isfinite(y) && std::isfinite(z) && std::isfinite(w); }
+        bool IsNaN()    const { return simd::nan_mask(Simd()) != 0; }
+        bool IsFinite() const { return simd::finite_mask(Simd()) == 0xF; }
 
         float x, y, z, w;
         static const Quaternion Identity;

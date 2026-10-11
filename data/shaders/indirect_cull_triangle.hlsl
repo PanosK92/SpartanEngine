@@ -28,11 +28,12 @@ groupshared uint            gs_base_index_pos;
 [numthreads(MESHLET_MAX_TRIANGLES, 1, 1)]
 void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
 {
-    uint mi_idx       = gid.x;
-    uint triangle_idx = lid.x;
-
     uint max_meshlet_instances = pass_uint(pass_indirect_cull_triangle::max_meshlet_instances);
     uint region_cap            = pass_uint(pass_indirect_cull_triangle::region_cap);
+
+    // the late cull dispatches over the meshlets it appended after the early survivors
+    uint mi_idx       = gid.x + (pass_bool(pass_indirect_cull_triangle::late) ? cull_phase[CULL_PHASE_MESHLET_BASE_OPAQUE] : 0u);
+    uint triangle_idx = lid.x;
 
     // header load is wave-uniform across the workgroup, one thread reads, all threads consume after the barrier
     if (lid.x == 0)

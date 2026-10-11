@@ -2027,16 +2027,6 @@ namespace spartan
         RHI_Device::Cmd()->write_gpu_breadcrumb(buffer, slot, value);
     }
 
-    uint32_t RHI_CommandList::BeginTimestamp()
-    {
-        return RHI_Device::Cmd()->begin_timestamp();
-    }
-
-    uint32_t RHI_CommandList::EndTimestamp()
-    {
-        return RHI_Device::Cmd()->end_timestamp();
-    }
-
     void RHI_CommandList::BeginOcclusionQuery(const uint64_t entity_id)
     {
         RHI_CommandList* cmd_list = RHI_Device::Cmd();

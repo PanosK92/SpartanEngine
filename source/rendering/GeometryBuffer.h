@@ -89,9 +89,6 @@ namespace spartan
         static RHI_Buffer* GetInstanceBuffer();
         static RHI_Buffer* GetImpostorTexelBuffer();
 
-        // true when capacity was exceeded and the buffers moved, invalidates address dependent caches, cleared on read
-        static bool WasRebuilt();
-
         // heap held by the cpu side accumulators
         static uint64_t GetCpuBytes();
 

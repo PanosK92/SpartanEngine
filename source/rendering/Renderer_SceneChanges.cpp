@@ -13,6 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/Entity.h"
 #include "../world/components/Light.h"
 #include "../world/components/Render.h"
+#include "../memory/FrameAllocator.h"
 #include <unordered_set>
 #include <utility>
 using namespace std;
@@ -114,7 +115,7 @@ namespace spartan
         }
 
         bool changed = std::exchange(materials_invalidated, false);
-        unordered_set<uint64_t> seen;
+        pmr::unordered_set<uint64_t> seen(FrameAllocator::GetResource());
         seen.reserve(World::GetEntitiesWithRender().size());
 
         for (Entity* entity : World::GetEntitiesWithRender())
@@ -164,7 +165,7 @@ namespace spartan
     {
 
         bool changed = std::exchange(lights_invalidated, false);
-        unordered_set<uint64_t> seen;
+        pmr::unordered_set<uint64_t> seen(FrameAllocator::GetResource());
         for (Entity* entity : World::GetEntitiesLights())
         {
             if (Light* light = entity->GetComponent<Light>())

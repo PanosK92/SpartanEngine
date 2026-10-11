@@ -28,64 +28,64 @@ namespace spartan::math
         this->m_max = max;
     }
 
+    // the point goes first in min/max so a nan component is skipped, matching std::min/std::max
     BoundingBox::BoundingBox(const Vector3* points, const uint32_t point_count)
     {
-        m_min = Vector3::Infinity;
-        m_max = Vector3::InfinityNeg;
+        __m128 box_min = Vector3::Infinity.Simd();
+        __m128 box_max = Vector3::InfinityNeg.Simd();
 
         for (uint32_t i = 0; i < point_count; i++)
         {
-            m_max.x = std::max(m_max.x, points[i].x);
-            m_max.y = std::max(m_max.y, points[i].y);
-            m_max.z = std::max(m_max.z, points[i].z);
-
-            m_min.x = std::min(m_min.x, points[i].x);
-            m_min.y = std::min(m_min.y, points[i].y);
-            m_min.z = std::min(m_min.z, points[i].z);
+            const __m128 point = points[i].Simd();
+            box_min = _mm_min_ps(point, box_min);
+            box_max = _mm_max_ps(point, box_max);
         }
+
+        m_min = Vector3(box_min);
+        m_max = Vector3(box_max);
     }
 
     BoundingBox::BoundingBox(const RHI_Vertex_PosTexNorTan* vertices, const uint32_t vertex_count)
     {
-        m_min = Vector3::Infinity;
-        m_max = Vector3::InfinityNeg;
+        static_assert(offsetof(RHI_Vertex_PosTexNorTan, pos) + 4 * sizeof(float) <= sizeof(RHI_Vertex_PosTexNorTan), "a full 4-wide load of pos must stay inside the vertex");
+
+        __m128 box_min = Vector3::Infinity.Simd();
+        __m128 box_max = Vector3::InfinityNeg.Simd();
 
         for (uint32_t i = 0; i < vertex_count; i++)
         {
-            m_max.x = std::max(m_max.x, vertices[i].pos[0]);
-            m_max.y = std::max(m_max.y, vertices[i].pos[1]);
-            m_max.z = std::max(m_max.z, vertices[i].pos[2]);
-
-            m_min.x = std::min(m_min.x, vertices[i].pos[0]);
-            m_min.y = std::min(m_min.y, vertices[i].pos[1]);
-            m_min.z = std::min(m_min.z, vertices[i].pos[2]);
+            // w picks up the next attribute, it is never stored
+            const __m128 point = _mm_loadu_ps(vertices[i].pos);
+            box_min = _mm_min_ps(point, box_min);
+            box_max = _mm_max_ps(point, box_max);
         }
+
+        m_min = Vector3(box_min);
+        m_max = Vector3(box_max);
     }
 
     Intersection BoundingBox::Intersects(const Vector3& point) const
     {
-        if (point.x < m_min.x || point.x > m_max.x ||
-            point.y < m_min.y || point.y > m_max.y ||
-            point.z < m_min.z || point.z > m_max.z)
-        {
-            return Intersection::Outside;
-        }
-
-        return Intersection::Inside;
+        const __m128 p = point.Simd();
+        const int outside = _mm_movemask_ps(_mm_or_ps(_mm_cmplt_ps(p, m_min.Simd()), _mm_cmpgt_ps(p, m_max.Simd())));
+        return (outside & 0x7) ? Intersection::Outside : Intersection::Inside;
     }
 
     Intersection BoundingBox::Intersects(const BoundingBox& box) const
     {
-        if (box.m_max.x < m_min.x || box.m_min.x > m_max.x ||
-            box.m_max.y < m_min.y || box.m_min.y > m_max.y ||
-            box.m_max.z < m_min.z || box.m_min.z > m_max.z)
+        const __m128 self_min  = m_min.Simd();
+        const __m128 self_max  = m_max.Simd();
+        const __m128 other_min = box.m_min.Simd();
+        const __m128 other_max = box.m_max.Simd();
+
+        const int outside = _mm_movemask_ps(_mm_or_ps(_mm_cmplt_ps(other_max, self_min), _mm_cmpgt_ps(other_min, self_max)));
+        if (outside & 0x7)
         {
             return Intersection::Outside;
         }
-        else if (
-                box.m_min.x < m_min.x || box.m_max.x > m_max.x ||
-                box.m_min.y < m_min.y || box.m_max.y > m_max.y ||
-                box.m_min.z < m_min.z || box.m_max.z > m_max.z)
+
+        const int crossing = _mm_movemask_ps(_mm_or_ps(_mm_cmplt_ps(other_min, self_min), _mm_cmpgt_ps(other_max, self_max)));
+        if (crossing & 0x7)
         {
             return Intersection::Intersects;
         }
@@ -95,19 +95,14 @@ namespace spartan::math
 
     void BoundingBox::Merge(const BoundingBox& box)
     {
-        m_min.x = std::min(m_min.x, box.m_min.x);
-        m_min.y = std::min(m_min.y, box.m_min.y);
-        m_min.z = std::min(m_min.z, box.m_min.z);
-
-        m_max.x = std::max(m_max.x, box.m_max.x);
-        m_max.y = std::max(m_max.y, box.m_max.y);
-        m_max.z = std::max(m_max.z, box.m_max.z);
+        m_min = Vector3(_mm_min_ps(box.m_min.Simd(), m_min.Simd()));
+        m_max = Vector3(_mm_max_ps(box.m_max.Simd(), m_max.Simd()));
     }
 
     bool BoundingBox::Contains(const Vector3& point) const
     {
-        return (point.x >= m_min.x && point.x <= m_max.x) &&
-               (point.y >= m_min.y && point.y <= m_max.y) &&
-               (point.z >= m_min.z && point.z <= m_max.z);
+        const __m128 p = point.Simd();
+        const int inside = _mm_movemask_ps(_mm_and_ps(_mm_cmpge_ps(p, m_min.Simd()), _mm_cmple_ps(p, m_max.Simd())));
+        return (inside & 0x7) == 0x7;
     }
 }

@@ -94,7 +94,6 @@ namespace spartan
 
         // contacts from the last physics ticks, valid until the next physics tick
         static const std::vector<PhysicsContact>& GetFrameContacts();
-        static std::vector<PhysicsContact> ConsumeContacts();
 
         // cast a ray against static geometry and return the closest hit position
         static bool RaycastStatic(const math::Vector3& origin, const math::Vector3& direction, float max_distance, math::Vector3& hit_position);

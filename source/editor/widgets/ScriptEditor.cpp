@@ -15,12 +15,6 @@ Commercial use requires written permission and negotiated payment terms.
 
 using namespace spartan;
 
-namespace
-{
-    constexpr float source_pane_vertical_split_percentage = 0.7f;
-    constexpr float source_pane_bottom_margin             = 30.0f;
-}
-
 ScriptEditor::ScriptEditor(Editor* editor)
     :Widget(editor)
 {
@@ -77,8 +71,6 @@ void ScriptEditor::OnTickVisible()
                     script_file = directory.path().string();
                     std::string script_contents;
                     FileSystem::ReadFile(script_file, script_contents);
-                    std::memset(m_buffer, 0, buffer_size);
-                    strncpy_s(m_buffer, buffer_size, script_contents.c_str(), script_contents.size() < buffer_size ? script_contents.size() : buffer_size - 1);
 
                     TextEditor.SetText(script_contents);
                 }
@@ -96,6 +88,5 @@ void ScriptEditor::OnTickVisible()
         return;
     }
 
-    TextEditor.SetReadOnly(false);
     TextEditor.Render("Script Editor", ImGui::GetContentRegionAvail(), true);
 }

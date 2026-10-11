@@ -504,14 +504,6 @@ namespace spartan
         return pending_contacts;
     }
 
-    vector<PhysicsContact> PhysicsWorld::ConsumeContacts()
-    {
-        lock_guard<mutex> lock(contact_mutex);
-        vector<PhysicsContact> contacts;
-        contacts.swap(pending_contacts);
-        return contacts;
-    }
-
     void PhysicsWorld::Tick()
     {
         SP_PROFILE_CPU();

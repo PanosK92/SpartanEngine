@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES =================================
 #include <atomic>
 #include <bitset>
+#include <memory_resource>
 #include <unordered_map>
 #include "RHI_Definitions.h"
 #include "RHI_PipelineState.h"
@@ -143,15 +144,12 @@ namespace spartan
         void* GetRhiState() const    { return m_rhi_state; }
         uint32_t begin_timestamp();
         uint32_t end_timestamp();
-        float GetTimestampResult(const uint32_t index_timestamp);
-        float GetTimestampStartMs(const uint32_t index_timestamp);
         void ReadbackTimestampsForProfiler();
         std::shared_ptr<RHI_TimestampSample> GetTimestampSample()
         {
             if (!m_timestamp_sample) m_timestamp_sample = std::make_shared<RHI_TimestampSample>();
             return m_timestamp_sample;
         }
-        uint64_t GetTimestampRawTick(uint32_t index) const { return (index < m_max_timestamps) ? m_timestamp_data[index] : 0; }
         bool GetOcclusionQueryResult(const uint64_t entity_id);
 
     private:
@@ -363,8 +361,6 @@ namespace spartan
         static void BeginMarker(const char* name);
         static void EndMarker();
         static void WriteGpuBreadcrumb(RHI_Buffer* buffer, uint32_t slot, uint32_t value);
-        static uint32_t BeginTimestamp();
-        static uint32_t EndTimestamp();
         static void BeginOcclusionQuery(const uint64_t entity_id);
         static void EndOcclusionQuery();
         static void UpdateOcclusionQueries();
@@ -449,7 +445,6 @@ namespace spartan
         // per-command-list timestamp storage (avoids cross-queue data corruption)
         static constexpr uint32_t m_max_timestamps           = 256;
         std::array<uint64_t, m_max_timestamps> m_timestamp_data = {};
-        uint64_t m_gpu_frame_reference_tick                  = 0;
         RHI_Pipeline* m_pipeline                             = nullptr;
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
         std::unordered_map<uint64_t, std::unique_ptr<RHI_DescriptorSetLayout>> m_descriptor_layouts_local;
@@ -522,12 +517,15 @@ namespace spartan
         std::array<RHI_Tracked_Texture_Binding, rhi_max_render_target_count + 2> m_tracked_attachments;
         std::array<RHI_Tracked_Buffer_Binding, m_max_tracked_resource_slots> m_tracked_buffers;
         std::array<RHI_Tracked_Buffer_Binding, 5> m_tracked_buffers_read;
-        std::unordered_map<uint64_t, std::array<RHI_Tracked_Usage, rhi_max_mip_count>> m_tracked_texture_history;
-        std::unordered_map<uint64_t, RHI_Tracked_Usage> m_tracked_buffer_history;
-        std::unordered_map<RHI_Texture*, std::array<RHI_Tracked_Usage, rhi_max_mip_count>> m_current_texture_usage;
-        std::unordered_map<RHI_Buffer*, RHI_Tracked_Usage> m_current_buffer_usage;
-        std::unordered_map<RHI_Texture*, std::array<RHI_Image_Layout, rhi_max_mip_count>> m_tracked_texture_layouts;
-        std::unordered_map<void*, std::array<RHI_Image_Layout, rhi_max_mip_count>> m_tracked_image_layouts;
+        // the tracking maps are cleared on every draw/dispatch or recording, the pool keeps their freed nodes for reuse instead of returning them to the heap
+        // it is single threaded like the recording itself and must be declared before the maps that use it
+        std::pmr::unsynchronized_pool_resource m_tracking_pool;
+        std::pmr::unordered_map<uint64_t, std::array<RHI_Tracked_Usage, rhi_max_mip_count>> m_tracked_texture_history { &m_tracking_pool };
+        std::pmr::unordered_map<uint64_t, RHI_Tracked_Usage> m_tracked_buffer_history                                { &m_tracking_pool };
+        std::pmr::unordered_map<RHI_Texture*, std::array<RHI_Tracked_Usage, rhi_max_mip_count>> m_current_texture_usage { &m_tracking_pool };
+        std::pmr::unordered_map<RHI_Buffer*, RHI_Tracked_Usage> m_current_buffer_usage                              { &m_tracking_pool };
+        std::pmr::unordered_map<RHI_Texture*, std::array<RHI_Image_Layout, rhi_max_mip_count>> m_tracked_texture_layouts { &m_tracking_pool };
+        std::pmr::unordered_map<void*, std::array<RHI_Image_Layout, rhi_max_mip_count>> m_tracked_image_layouts      { &m_tracking_pool };
 
         // one sbt per pipeline (keyed by pipeline handle) so it's created once and reused
         std::unordered_map<void*, std::unique_ptr<RHI_Buffer>> m_shader_binding_tables;
@@ -537,7 +535,6 @@ namespace spartan
         void* m_rhi_state                          = nullptr;
         void* m_rhi_cmd_pool_resource              = nullptr;
         void* m_rhi_query_pool_timestamps          = nullptr;
-        void* m_rhi_query_pool_pipeline_statistics = nullptr;
         void* m_rhi_query_pool_occlusion           = nullptr;
         void* m_rhi_fence                          = nullptr;
         void* m_rhi_fence_event                    = nullptr;

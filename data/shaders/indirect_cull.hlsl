@@ -19,7 +19,9 @@ Commercial use requires written permission and negotiated payment terms.
 //
 // the old single-phase kernel emitted one task per (meshlet x instance) which exploded into millions of threads for consolidated forest entities
 // the instance prepass collapses that to one workgroup per visible instance, only the meshlets of survivors are ever projected here
-// frustum + hi-z helpers live in common_culling.hlsl, the occluder hi-z arrives on the tex slot
+// frustum + hi-z helpers live in common_culling.hlsl
+// early cull: tex is last frame's hi-z, late cull: tex is this frame's early depth hi-z and tex2 last frame's,
+// the late cull replays the early test so it appends exactly the meshlets the early cull did not draw
 
 // signed-byte cone unpack, dxc lowers this to a single byte_address load and four shifts
 int4 unpack_cone_axis_cutoff(uint packed)
@@ -42,6 +44,7 @@ groupshared float    gs_scale_max;
 groupshared bool     gs_cone_safe;
 groupshared bool     gs_skinned;
 groupshared bool     gs_skip_hiz;
+groupshared bool     gs_drawn_early;
 groupshared bool     gs_two_sided;
 groupshared bool     gs_is_alpha;
 groupshared bool     gs_wind;
@@ -60,6 +63,9 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
     bool  split_opaque_alpha    = pass_bool(pass_indirect_cull::split_opaque_alpha);
     uint  region_cap            = max_meshlet_instances / 2u;
     uint  wind_cache_limit      = min(pass_uint(pass_indirect_cull::wind_cache_limit), TREE_WIND_CACHE_CAPACITY);
+    bool  late                  = pass_bool(pass_indirect_cull::late);
+    bool  history_hiz           = pass_bool(pass_indirect_cull::history_hiz);
+    float depth_bias            = pass_float(pass_indirect_cull::hiz_depth_bias);
 
     // wave-uniform, the compiler scalarizes the plane extraction across the wave
     float4 plane_l, plane_r, plane_b, plane_t;
@@ -69,6 +75,8 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
     if (lid == 0)
     {
         SurvivingInstance si  = surviving_instances[surv_index];
+        gs_drawn_early        = (si.instance_index & SURVIVING_INSTANCE_DRAWN_EARLY) != 0u;
+        si.instance_index    &= ~SURVIVING_INSTANCE_DRAWN_EARLY;
         gs_draw_index         = si.draw_index;
         gs_instance_index     = si.instance_index;
         gs_draw               = indirect_draw_data[si.draw_index];
@@ -93,7 +101,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
         gs_wind               = (material_parameters[gs_draw.material_index].flags & (1u << 9)) != 0u;
         gs_meshlet_offset     = gs_draw.lod_meshlet_offset;
         gs_meshlet_count      = gs_draw.lod_meshlet_count;
-        // keyed by global instance, not survivor order, the refine cull reorders survivors after the depth prepass and
+        // keyed by global instance, not survivor order, the late cull reorders survivors after the early depth prepass and
         // both passes must agree on cached vs local evaluation or the equal depth test rejects the whole instance
         uint wind_slot        = gs_draw.instance_offset + si.instance_index;
         gs_wind_slot          = split_opaque_alpha && gs_wind && is_per_instance && wind_slot < wind_cache_limit ? wind_slot + 1u : 0u;
@@ -127,7 +135,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
             if (gs_skinned)
             {
                 // skinned bounds are invalid after deformation, the instance already passed phase a so keep every meshlet
-                is_visible = true;
+                is_visible = !gs_drawn_early;
             }
             else
             {
@@ -164,10 +172,16 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
                     }
                 }
 
-                // The pyramid is rebuilt this frame; draws marked to bypass it
-                // still keep their conservative visibility policy.
-                if (is_visible && !gs_skip_hiz)
-                    is_visible = sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, pass_float(pass_indirect_cull::hiz_depth_bias));
+                // draws marked to bypass the hi-z are drawn whole by the early cull
+                if (late)
+                {
+                    bool drawn_early = gs_drawn_early && (gs_skip_hiz || !history_hiz || sphere_hiz_visible_history(tex2, center_world, radius_world, max_mip_level, depth_bias));
+                    is_visible       = is_visible && !drawn_early && (gs_skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, depth_bias));
+                }
+                else if (is_visible && !gs_skip_hiz && history_hiz)
+                {
+                    is_visible = sphere_hiz_visible_history(tex, center_world, radius_world, max_mip_level, depth_bias);
+                }
             }
         }
 

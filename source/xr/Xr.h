@@ -68,9 +68,7 @@ namespace spartan
 
         // swapchain access for rendering
         static void* GetSwapchainImage();        // returns native image handle (array texture with 2 layers)
-        static void* GetSwapchainImageView();    // returns native image view handle for the array
         static uint32_t GetSwapchainImageIndex();
-        static uint32_t GetSwapchainLength();
         static bool AcquireSwapchainImage();
         static void ReleaseSwapchainImage();
 

@@ -852,20 +852,9 @@ namespace spartan
         return swapchain_images[swapchain_image_index].texture;
     }
 
-    void* Xr::GetSwapchainImageView()
-    {
-        // d3d12 has no standalone view object, the command list builds transient rtvs on the image when blitting
-        return nullptr;
-    }
-
     uint32_t Xr::GetSwapchainImageIndex()
     {
         return swapchain_image_index;
-    }
-
-    uint32_t Xr::GetSwapchainLength()
-    {
-        return swapchain_length;
     }
 
     bool Xr::IsMultiviewSupported()

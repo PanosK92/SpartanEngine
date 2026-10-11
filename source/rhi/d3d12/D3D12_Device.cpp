@@ -690,11 +690,7 @@ namespace spartan
     void RHI_Device::Initialize()
     {
         // detect device limits, the rt and vrs caps below are queried from the d3d12 device
-        m_max_texture_1d_dimension   = D3D12_REQ_TEXTURE1D_U_DIMENSION;
         m_max_texture_2d_dimension   = D3D12_REQ_TEXTURE2D_U_OR_V_DIMENSION;
-        m_max_texture_3d_dimension   = D3D12_REQ_TEXTURE3D_U_V_OR_W_DIMENSION;
-        m_max_texture_cube_dimension = D3D12_REQ_TEXTURECUBE_DIMENSION;
-        m_max_texture_array_layers   = D3D12_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
         m_max_push_constant_size     = 256;
 
         // alignment requirements, fixed by the d3d12 spec
@@ -850,7 +846,7 @@ namespace spartan
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&queues::copy))),
                 "Failed to create copy queue");
 
-            // sample the graphics queue's timestamp frequency, used by RHI_CommandList::GetTimestampResult
+            // sample the graphics queue's timestamp frequency
             // d3d12 returns ticks-per-second, vulkan-style m_timestamp_period is nanoseconds-per-tick
             UINT64 ticks_per_second = 0;
             if (SUCCEEDED(queues::graphics->GetTimestampFrequency(&ticks_per_second)) && ticks_per_second > 0)

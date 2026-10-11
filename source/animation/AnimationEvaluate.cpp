@@ -79,22 +79,6 @@ namespace spartan
             }
         }
 
-        bool has_any_curve(const AnimationClip& clip, const uint32_t bone_index)
-        {
-            const ClipSampleIndex& index = clip.sample_index;
-            if (!index.built || bone_index >= index.position_channel.size())
-            {
-                return false;
-            }
-
-            return index.position_channel[bone_index] >= 0 ||
-                   index.position_constant[bone_index] >= 0 ||
-                   index.rotation_channel[bone_index] >= 0 ||
-                   index.rotation_constant[bone_index] >= 0 ||
-                   index.scale_channel[bone_index] >= 0 ||
-                   index.scale_constant[bone_index] >= 0;
-        }
-
         bool is_finite_vector(const Vector3& v)
         {
             return isfinite(v.x) && isfinite(v.y) && isfinite(v.z);
@@ -175,12 +159,6 @@ namespace spartan
                 clip.scale_stream, joint_count, index.scale_channel, index.scale_constant);
 
             index.built = joint_count > 0;
-        }
-
-        bool HasCurve(const AnimationClip& clip, const uint32_t bone_index)
-        {
-            EnsureSampleIndex(clip);
-            return has_any_curve(clip, bone_index);
         }
 
         bool SampleLocals(
@@ -333,79 +311,6 @@ namespace spartan
                 if (!animated || !is_finite_vector(pos) || !is_finite_vector(scale))
                 {
                     continue;
-                }
-
-                out_local_matrices[i] = Matrix(pos, rot, scale);
-            }
-
-            return true;
-        }
-
-        bool SampleGlobals(
-            const AnimationClip& clip,
-            const Skeleton& skeleton,
-            float time_seconds,
-            vector<Matrix>& out_global_matrices
-        )
-        {
-            vector<Matrix> local_matrices;
-            if (!SampleLocals(clip, skeleton, time_seconds, local_matrices))
-            {
-                return false;
-            }
-
-            out_global_matrices.resize(local_matrices.size());
-            skeleton.ComputeGlobalPose(local_matrices, out_global_matrices);
-            return true;
-        }
-
-        bool BlendLocals(
-            const vector<Matrix>& locals_a,
-            const vector<Matrix>& locals_b,
-            float t,
-            vector<Matrix>& out_local_matrices
-        )
-        {
-            if (locals_a.size() != locals_b.size() || locals_a.empty())
-            {
-                return false;
-            }
-
-            t = clamp(t, 0.0f, 1.0f);
-            out_local_matrices.resize(locals_a.size());
-
-            for (size_t i = 0; i < locals_a.size(); ++i)
-            {
-                if (t <= 0.0f)
-                {
-                    out_local_matrices[i] = locals_a[i];
-                    continue;
-                }
-
-                if (t >= 1.0f)
-                {
-                    out_local_matrices[i] = locals_b[i];
-                    continue;
-                }
-
-                const Vector3 pos = Vector3::Lerp(
-                    locals_a[i].GetTranslation(),
-                    locals_b[i].GetTranslation(),
-                    t
-                );
-                const Quaternion rot = Quaternion::Lerp(
-                    locals_a[i].GetRotation(),
-                    locals_b[i].GetRotation(),
-                    t
-                );
-                Vector3 scale = Vector3::Lerp(
-                    locals_a[i].GetScale(),
-                    locals_b[i].GetScale(),
-                    t
-                );
-                if (fabsf(scale.x) < 1.0e-6f || fabsf(scale.y) < 1.0e-6f || fabsf(scale.z) < 1.0e-6f)
-                {
-                    scale = Vector3::One;
                 }
 
                 out_local_matrices[i] = Matrix(pos, rot, scale);

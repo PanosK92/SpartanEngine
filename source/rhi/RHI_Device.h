@@ -137,11 +137,6 @@ namespace spartan
         static uint64_t PropertyGetMinUniformBufferOffsetAlignment()      { return m_min_uniform_buffer_offset_alignment; }
         static uint64_t PropertyGetMinStorageBufferOffsetAlignment()      { return m_min_storage_buffer_offset_alignment; }
         static uint64_t PropertyGetMinAccelerationBufferOffsetAlignment() { return m_min_acceleration_buffer_offset_alignment; }
-        static uint32_t PropertyGetMaxTexture1dDimension()                { return m_max_texture_1d_dimension; }
-        static uint32_t PropertyGetMaxTexture2dDimension()                { return m_max_texture_2d_dimension; }
-        static uint32_t PropertyGetMaxTexture3dDimension()                { return m_max_texture_3d_dimension; }
-        static uint32_t PropertyGetMaxTextureCubeDimension()              { return m_max_texture_cube_dimension; }
-        static uint32_t PropertyGetMaxTextureArrayLayers()                { return m_max_texture_array_layers; }
         static uint32_t PropertyGetMaxPushConstantSize()                  { return m_max_push_constant_size; }
         static uint32_t PropertyGetMaxShadingRateTexelSizeX()             { return m_max_shading_rate_texel_size_x; }
         static uint32_t PropertyGetMaxShadingRateTexelSizeY()             { return m_max_shading_rate_texel_size_y; }
@@ -202,11 +197,7 @@ namespace spartan
         static uint64_t m_min_uniform_buffer_offset_alignment;
         static uint64_t m_min_storage_buffer_offset_alignment;
         static uint64_t m_min_acceleration_buffer_offset_alignment;
-        static uint32_t m_max_texture_1d_dimension;
         static uint32_t m_max_texture_2d_dimension;
-        static uint32_t m_max_texture_3d_dimension;
-        static uint32_t m_max_texture_cube_dimension;
-        static uint32_t m_max_texture_array_layers;
         static uint32_t m_max_push_constant_size;
         static uint32_t m_max_shading_rate_texel_size_x;
         static uint32_t m_max_shading_rate_texel_size_y;
@@ -227,7 +218,6 @@ namespace spartan
         static RHI_Buffer* m_dummy_vertex_buffer;
 
         // misc
-        static bool m_wide_lines;
         static bool m_device_lost;
         static uint32_t m_physical_device_index;
     };

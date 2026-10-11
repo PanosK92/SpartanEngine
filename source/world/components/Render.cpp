@@ -942,6 +942,7 @@ namespace spartan
     {
         GetEntity()->WakePhysicsPreTick();
         m_scene->bounding_box = world_box;
+        m_scene->cull_camera_position = Vector3::Infinity;
         m_bounding_box_override = true;
         m_bounding_box_dirty = false;
         UpdateFrustumAndDistanceCulling();
@@ -992,6 +993,8 @@ namespace spartan
         m_bounds_entity_active = active;
         if (m_bounding_box_dirty || m_transform_previous != transform)
         {
+            // the cached out of range verdict was taken against the old bounds, a still camera would keep it forever
+            m_scene->cull_camera_position = Vector3::Infinity;
             GetEntity()->WakePhysicsPreTick();
             CountWorldWork(WorldWork::bounds_rebuilt);
             CountWorldWork(WorldWork::bounds_instances_rebuilt, m_scene->instances.size());

@@ -24,6 +24,13 @@ static const bool want_alpha = true;
 static const bool want_alpha = false;
 #endif
 
+// the late variants draw only the meshlets the late cull appended after the early survivors
+#ifdef DEPTH_LATE
+static const bool want_late = true;
+#else
+static const bool want_late = false;
+#endif
+
 struct MeshPrimitive
 {
     bool cull_primitive : SV_CullPrimitive;
@@ -59,7 +66,9 @@ void main_ms(
     // Each material category dispatches only its compacted half of the list.
     uint meshlet_capacity, meshlet_stride;
     meshlet_instances.GetDimensions(meshlet_capacity, meshlet_stride);
-    const uint mi_idx = group_id.x + (want_alpha ? meshlet_capacity / 2u : 0u);
+    uint mi_idx = group_id.x + (want_alpha ? meshlet_capacity / 2u : 0u);
+    if (want_late)
+        mi_idx += cull_phase[want_alpha ? CULL_PHASE_MESHLET_BASE_ALPHA : CULL_PHASE_MESHLET_BASE_OPAQUE];
 
     if (tid == 0)
     {

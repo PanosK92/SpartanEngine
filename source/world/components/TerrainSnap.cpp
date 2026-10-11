@@ -26,7 +26,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "Water.h"
 #include "Spline.h"
 #include "../../geometry/GeneratedCache.h"
-#include "RoadEditRegions.h"
 #include "Light.h"
 #include "Camera.h"
 #include "../Entity.h"
@@ -374,9 +373,11 @@ namespace spartan
             float half_z        = 0.0f;
             float yaw           = 0.0f;
             float height        = 0.0f;
+            float thickness     = 0.0f;
             float margin        = 0.0f;
             uint32_t mesh_count = 0;
             vector<Entity*> floors;
+            vector<Entity*> grounded;
         };
 
         bool pads_match(const TerrainPlatform& a, const TerrainPlatform& b)
@@ -788,10 +789,44 @@ namespace spartan
             return !out.empty();
         }
 
+        // the building a part belongs to, it ends below a layer or location root
+        Entity* assembly_root(Entity* entity)
+        {
+            const size_t descendant_cap = 4096;
+            vector<Entity*> chain;
+            for (Entity* current = entity; current; current = current->GetParent())
+            {
+                if (current != entity && (current->HasTag("world_layer") || current->HasTag("location_root") ||
+                    is_terrain_tile_or_water(current) || has_spline_component(current)))
+                {
+                    break;
+                }
+
+                chain.push_back(current);
+            }
+
+            // an untagged world can nest everything under one group, stay below it
+            for (size_t i = chain.size(); i-- > 1;)
+            {
+                vector<Entity*> descendants;
+                chain[i]->GetDescendants(&descendants);
+                if (descendants.size() <= descendant_cap)
+                {
+                    return chain[i];
+                }
+            }
+
+            return entity;
+        }
+
+        // grow_over_assembly: the selection is usually one part of a building, the paving or a wall,
+        // a pad cut for that part alone leaves the slab next to it floating, so the cluster grows over
+        // every floor of the building that touches the selected one at about the same level
         bool find_snap_platform(
             const vector<Entity*>& entities,
             bool require_floor,
-            SnapPlatformDesc& out
+            SnapPlatformDesc& out,
+            bool grow_over_assembly = false
         )
         {
             vector<MeshFootprint> meshes;
@@ -809,6 +844,7 @@ namespace spartan
                 }
             }
 
+            vector<MeshFootprint> assembly_meshes;
             vector<MeshFootprint*> used;
             if (!floors.empty())
             {
@@ -843,15 +879,54 @@ namespace spartan
                     return false;
                 }
 
+                vector<MeshFootprint*> pool = band;
+                if (grow_over_assembly)
+                {
+                    vector<Entity*> roots;
+                    unordered_set<Entity*> unique_roots;
+                    for (Entity* entity : entities)
+                    {
+                        Entity* root = entity ? assembly_root(entity) : nullptr;
+                        if (root && unique_roots.insert(root).second)
+                        {
+                            roots.push_back(root);
+                        }
+                    }
+
+                    if (collect_mesh_footprints(roots, assembly_meshes))
+                    {
+                        Entity* seed_entity = seed->entity;
+                        pool.clear();
+                        seed = nullptr;
+                        for (MeshFootprint& mesh : assembly_meshes)
+                        {
+                            if (mesh.entity == seed_entity)
+                            {
+                                seed = &mesh;
+                                pool.push_back(&mesh);
+                            }
+                            else if (is_floor_like(mesh))
+                            {
+                                pool.push_back(&mesh);
+                            }
+                        }
+
+                        if (!seed)
+                        {
+                            return false;
+                        }
+                    }
+                }
+
                 used.push_back(seed);
                 const float gap = max(2.0f, min(seed->span * 0.08f, 40.0f));
                 bool added      = true;
                 while (added)
                 {
                     added = false;
-                    for (MeshFootprint* mesh : band)
+                    for (MeshFootprint* mesh : pool)
                     {
-                        if (find(used.begin(), used.end(), mesh) != used.end())
+                        if (fabsf(mesh->bottom - seed->bottom) > 2.0f || find(used.begin(), used.end(), mesh) != used.end())
                         {
                             continue;
                         }
@@ -874,8 +949,60 @@ namespace spartan
                     }
                 }
 
-                out.entity_id = seed->entity ? seed->entity->GetObjectId() : 0;
-                out.height    = seed->bottom;
+                // the largest slab owns the pad, so every part of the building names the same one
+                MeshFootprint* owner = seed;
+                for (MeshFootprint* mesh : used)
+                {
+                    if (mesh->area > owner->area)
+                    {
+                        owner = mesh;
+                    }
+                }
+                out.entity_id = owner->entity ? owner->entity->GetObjectId() : 0;
+
+                // the ground meets the highest slab that stands on it so no edge shows a gap, but never
+                // climbs past half of any slab, finish floors, walls and whatever rests on another
+                // member (planters, beds, furniture) do not touch the ground and do not count
+                const float slab_min = 0.2f;
+                const float slab_max = 1.5f;
+                auto rests_on_member = [&used](const MeshFootprint* mesh)
+                {
+                    for (const MeshFootprint* other : used)
+                    {
+                        if (other != mesh && aabb_xz_near(other->aabb, mesh->aabb, 0.0f) && mesh->bottom >= other->aabb.GetMax().y - 0.1f)
+                        {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                };
+
+                float height = -numeric_limits<float>::max();
+                float cap    = numeric_limits<float>::max();
+                float thin   = numeric_limits<float>::max();
+                out.grounded.clear();
+                for (MeshFootprint* mesh : used)
+                {
+                    if (mesh->height < slab_min || mesh->height > slab_max || rests_on_member(mesh))
+                    {
+                        continue;
+                    }
+
+                    out.grounded.push_back(mesh->entity);
+                    height = max(height, mesh->bottom);
+                    cap    = min(cap, mesh->bottom + mesh->height * 0.5f);
+                    thin   = min(thin, mesh->height);
+                }
+
+                if (height == -numeric_limits<float>::max())
+                {
+                    height = owner->bottom;
+                    thin   = owner->height;
+                }
+
+                out.height    = min(height, cap);
+                out.thickness = thin;
             }
             else
             {
@@ -2973,7 +3100,19 @@ namespace spartan
             return;
         }
 
+        vector<TerrainPlatform> retired;
+        vector<TerrainPlatform> stamped;
         for (const auto& [previous, moved] : moves)
+        {
+            retired.push_back(previous);
+            stamped.push_back(moved);
+        }
+        ReplacePlatforms(retired, stamped, "followed its owner");
+    }
+
+    void Terrain::ReplacePlatforms(const vector<TerrainPlatform>& retired, const vector<TerrainPlatform>& stamped, const char* reason)
+    {
+        for (const TerrainPlatform& previous : retired)
         {
             PaintPadFromSeed(previous.center_x, previous.center_z, previous.half_x, previous.half_z, previous.yaw, previous.height, previous.margin, true);
             DestroyPadRefine(previous.entity_id);
@@ -2987,37 +3126,267 @@ namespace spartan
             const float reach = max(a.margin, 0.0f) + max(b.margin, 0.0f);
             return a.min_x - reach <= b.max_x && b.min_x - reach <= a.max_x && a.min_z - reach <= b.max_z && b.min_z - reach <= a.max_z;
         };
+        vector<TerrainPlatform> neighbours;
         for (const TerrainPlatform& other : m_platforms)
         {
-            for (const auto& [previous, moved] : moves)
+            for (const TerrainPlatform& previous : retired)
             {
                 if (overlaps(other, previous))
                 {
                     PaintPadFromSeed(other.center_x, other.center_z, other.half_x, other.half_z, other.yaw, other.height, other.margin, false);
+                    neighbours.push_back(other);
                     break;
                 }
             }
         }
 
-        for (const auto& [previous, moved] : moves)
+        for (const TerrainPlatform& pad : stamped)
         {
-            PaintPadFromSeed(moved.center_x, moved.center_z, moved.half_x, moved.half_z, moved.yaw, moved.height, moved.margin, false);
-            RememberPlatform(moved);
-            RestampPropsForPad(moved, false);
-            SP_LOG_INFO("terrain pad of entity %llu followed its owner to %.1f, %.1f", static_cast<unsigned long long>(moved.entity_id), moved.center_x, moved.center_z);
+            PaintPadFromSeed(pad.center_x, pad.center_z, pad.half_x, pad.half_z, pad.yaw, pad.height, pad.margin, false);
+            RememberPlatform(pad);
+            RestampPropsForPad(pad, false);
+            SP_LOG_INFO("terrain pad of entity %llu %s, %.1f, %.1f at %.2f", static_cast<unsigned long long>(pad.entity_id), reason, pad.center_x, pad.center_z, pad.height);
         }
 
         FlushHeightEdits(true);
         const bool mask_recreated = UploadPropMask();
-        for (const auto& [previous, moved] : moves)
+
+        // the refines were destroyed with the old footprints, and a neighbour's refine still shows
+        // the ground the vacated pad had painted, both rebuild from the patched grid
+        for (const TerrainPlatform& pad : stamped)
         {
-            CookPadRefine(moved.entity_id);
+            SyncPadRefine(pad, true);
+        }
+        for (const TerrainPlatform& pad : neighbours)
+        {
+            SyncPadRefine(pad, true);
         }
 
         if (mask_recreated)
         {
             PushToRenderer();
             WorldHelpers::RefreshTerrainGpuScatter(this);
+        }
+    }
+
+    bool Terrain::MeasurePad(const vector<Entity*>& candidates, MeasuredPad& out)
+    {
+        SnapPlatformDesc desc;
+        if (!find_snap_platform(candidates, true, desc, true))
+        {
+            return false;
+        }
+
+        // a terraced building carries a pad per level or part, stepped on purpose, growing over it
+        // would flatten the steps into one, so it keeps a pad per selected part like before, a
+        // single pad cut for one part of a plain building is the leftover the growth replaces
+        unordered_map<uint64_t, uint32_t> pads_per_owner;
+        for (const TerrainPlatform& pad : m_platforms)
+        {
+            pads_per_owner[pad.entity_id]++;
+        }
+        uint32_t pad_owners = 0;
+        bool terraced       = false;
+        for (Entity* floor : desc.floors)
+        {
+            const auto count = pads_per_owner.find(floor->GetObjectId());
+            if (count != pads_per_owner.end())
+            {
+                pad_owners++;
+                terraced = terraced || count->second > 1;
+            }
+        }
+        terraced = terraced || pad_owners > 1;
+
+        if (terraced && !find_snap_platform(candidates, true, desc, false))
+        {
+            return false;
+        }
+
+        if (desc.half_x <= 0.05f || desc.half_z <= 0.05f)
+        {
+            return false;
+        }
+
+        const float span = max(desc.half_x, desc.half_z) * 2.0f;
+        if (span >= live_pad_span_cap(desc.half_x, desc.half_z))
+        {
+            return false;
+        }
+
+        float seed_max = 0.0f;
+        if (!SampleSeedMax(desc.center_x, desc.center_z, desc.half_x, desc.half_z, desc.yaw, seed_max))
+        {
+            return false;
+        }
+
+        // a building held high above the ground is being carried, not placed
+        const float engage = max(6.0f, min(span * 0.04f, 48.0f));
+        if ((desc.height - seed_max) >= engage)
+        {
+            return false;
+        }
+
+        // the ground tucks a few centimetres under the slab, a gap below its edge reads as floating
+        const float sink = min(0.04f, desc.thickness * 0.25f);
+
+        TerrainPlatform& wanted = out.pad;
+        wanted           = TerrainPlatform();
+        wanted.entity_id = desc.entity_id;
+        wanted.center_x  = desc.center_x;
+        wanted.center_z  = desc.center_z;
+        wanted.half_x    = desc.half_x;
+        wanted.half_z    = desc.half_z;
+        wanted.yaw       = desc.yaw;
+        wanted.height    = desc.height + sink;
+        wanted.margin    = desc.margin;
+        wanted.min_x     = desc.min_x;
+        wanted.min_z     = desc.min_z;
+        wanted.max_x     = desc.max_x;
+        wanted.max_z     = desc.max_z;
+
+        // a terraced building's other pads are its steps, not leftovers to retire
+        out.grown    = !terraced;
+        out.grounded = desc.grounded;
+        out.members.clear();
+        if (!terraced)
+        {
+            for (Entity* floor : desc.floors)
+            {
+                out.members.push_back(floor->GetObjectId());
+            }
+        }
+
+        return true;
+    }
+
+    bool Terrain::RetireClusterPads(const vector<uint64_t>& members, uint64_t keep_id)
+    {
+        unordered_map<uint64_t, uint32_t> pads_per_owner;
+        for (const TerrainPlatform& pad : m_platforms)
+        {
+            pads_per_owner[pad.entity_id]++;
+        }
+
+        // owners with several pads were authored that way on purpose, leave them alone
+        vector<TerrainPlatform> stale;
+        for (const TerrainPlatform& pad : m_platforms)
+        {
+            if (pad.entity_id != keep_id && pads_per_owner[pad.entity_id] == 1 &&
+                find(members.begin(), members.end(), pad.entity_id) != members.end())
+            {
+                stale.push_back(pad);
+            }
+        }
+
+        for (const TerrainPlatform& pad : stale)
+        {
+            PaintPadFromSeed(pad.center_x, pad.center_z, pad.half_x, pad.half_z, pad.yaw, pad.height, pad.margin, true);
+            DestroyPadRefine(pad.entity_id);
+            ForgetPlatform(pad.entity_id);
+            RestampPropsForPad(pad, true);
+            SP_LOG_INFO("retired the terrain pad of entity %llu, its building has one pad now", static_cast<unsigned long long>(pad.entity_id));
+        }
+
+        return !stale.empty();
+    }
+
+    bool Terrain::SlabFloats(Entity* slab)
+    {
+        Render* render = slab ? slab->GetComponent<Render>() : nullptr;
+        if (!render || !render->GetMesh())
+        {
+            return false;
+        }
+
+        // the oriented corners pulled a little inwards, a rotated slab's aabb corners are bare ground
+        const BoundingBox local = render->GetBoundingBoxMesh();
+        const Matrix world      = slab->GetMatrix();
+        const Vector3 center    = world * local.GetCenter();
+        array<Vector3, 8> corners;
+        local.GetCorners(&corners);
+
+        float bottom = numeric_limits<float>::max();
+        for (const Vector3& corner : corners)
+        {
+            bottom = min(bottom, (world * corner).y);
+        }
+
+        auto gap_at = [&](const Vector3& point)
+        {
+            float ground = 0.0f;
+            return SampleHeight(point.x, point.z, ground) ? bottom - ground : 0.0f;
+        };
+
+        const float tolerance = 0.15f;
+        if (gap_at(center) > tolerance)
+        {
+            return true;
+        }
+
+        for (const Vector3& corner : corners)
+        {
+            if (gap_at(center + (world * corner - center) * 0.9f) > tolerance)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    void Terrain::RefitPlatformsToOwners()
+    {
+        // a pad outlives the geometry it was cut for, a reinstalled building, or a pad an older cut made
+        // for one part of it, so each pad is measured against the building on it once per load, and
+        // only a pad that leaves a slab floating is replaced, a building sunk into its pad was placed so
+        unordered_map<uint64_t, uint32_t> pads_per_owner;
+        for (const TerrainPlatform& pad : m_platforms)
+        {
+            pads_per_owner[pad.entity_id]++;
+        }
+
+        vector<TerrainPlatform> retired;
+        vector<TerrainPlatform> stamped;
+        for (const TerrainPlatform& pad : m_platforms)
+        {
+            if (pad.entity_id == 0 || pads_per_owner[pad.entity_id] > 1)
+            {
+                continue;
+            }
+
+            Entity* owner = World::GetEntityById(pad.entity_id);
+            if (!owner || !owner->GetActive())
+            {
+                continue;
+            }
+
+            MeasuredPad measured;
+            if (!MeasurePad({ owner }, measured) || !measured.grown)
+            {
+                continue;
+            }
+
+            bool floating = false;
+            for (Entity* slab : measured.grounded)
+            {
+                if (SlabFloats(slab))
+                {
+                    floating = true;
+                    break;
+                }
+            }
+
+            if (floating)
+            {
+                retired.push_back(pad);
+                stamped.push_back(measured.pad);
+            }
+        }
+
+        if (!stamped.empty())
+        {
+            ReplacePlatforms(retired, stamped, "refit to its floating building");
         }
     }
 
@@ -3070,6 +3439,11 @@ namespace spartan
         if (m_positions_seed.size() != m_positions.size())
         {
             return;
+        }
+
+        if (!ProgressTracker::IsLoading(ProgressType::World) && m_platforms_refit_pending.exchange(false, memory_order_acq_rel))
+        {
+            RefitPlatformsToOwners();
         }
 
         FollowPlatformOwners();
@@ -3125,46 +3499,10 @@ namespace spartan
             return;
         }
 
-        SnapPlatformDesc desc;
-        const bool has_floor  = find_snap_platform(candidates, true, desc);
-        const float clearance = 0.08f;
-
-        TerrainPlatform wanted;
-        bool want_pad = false;
-        if (has_floor && desc.half_x > 0.05f && desc.half_z > 0.05f)
-        {
-            const float span = max(desc.half_x, desc.half_z) * 2.0f;
-            if (span < live_pad_span_cap(desc.half_x, desc.half_z))
-            {
-                float seed_max = 0.0f;
-                if (SampleSeedMax(
-                    desc.center_x,
-                    desc.center_z,
-                    desc.half_x,
-                    desc.half_z,
-                    desc.yaw,
-                    seed_max))
-                {
-                    const float engage = max(6.0f, min(span * 0.04f, 48.0f));
-                    if ((desc.height - seed_max) < engage)
-                    {
-                        want_pad           = true;
-                        wanted.entity_id   = desc.entity_id;
-                        wanted.center_x    = desc.center_x;
-                        wanted.center_z    = desc.center_z;
-                        wanted.half_x      = desc.half_x;
-                        wanted.half_z      = desc.half_z;
-                        wanted.yaw         = desc.yaw;
-                        wanted.height      = desc.height - clearance;
-                        wanted.margin      = desc.margin;
-                        wanted.min_x       = desc.min_x;
-                        wanted.min_z       = desc.min_z;
-                        wanted.max_x       = desc.max_x;
-                        wanted.max_z       = desc.max_z;
-                    }
-                }
-            }
-        }
+        MeasuredPad measured;
+        const bool want_pad           = MeasurePad(candidates, measured);
+        const TerrainPlatform& wanted = measured.pad;
+        const vector<uint64_t>& members = measured.members;
 
         auto remember_track = [this, track]()
         {
@@ -3262,10 +3600,12 @@ namespace spartan
 
         if (want_pad)
         {
+            // pads an older cut left on single parts of this building would fight the one cut for all of it
+            const bool retired = RetireClusterPads(members, wanted.entity_id);
             bool already_there = false;
             for (const TerrainPlatform& existing : m_platforms)
             {
-                if (pads_same_place(existing, wanted) && fabsf(existing.height - wanted.height) < 0.2f)
+                if (!retired && pads_same_place(existing, wanted) && fabsf(existing.height - wanted.height) < 0.2f)
                 {
                     already_there = true;
                     break;
@@ -3307,6 +3647,7 @@ namespace spartan
             return false;
         }
 
+        m_platforms_refit_pending.store(true, memory_order_release);
         for (const TerrainPlatform& platform : m_platforms)
         {
             float center_x = platform.center_x;

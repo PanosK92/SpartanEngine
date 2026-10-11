@@ -1091,56 +1091,6 @@ namespace spartan
         SP_LOG_INFO("SetWheelRadius: wheel radius set to %.3f", radius);
     }
 
-    void CarPhysics::ComputeWheelRadiusFromEntity(Entity* wheel_entity)
-    {
-        if (!wheel_entity)
-        {
-            SP_LOG_WARNING("ComputeWheelRadiusFromEntity: wheel_entity is null");
-            return;
-        }
-
-        // get the render component to access the bounding box
-        Render* render = wheel_entity->GetComponent<Render>();
-        if (!render)
-        {
-            SP_LOG_WARNING("ComputeWheelRadiusFromEntity: wheel entity has no Render component");
-            return;
-        }
-
-        // force bounding box update to reflect current entity transform (including scale)
-        // this is needed because the bounding box is lazily updated during Tick()
-        render->Tick();
-
-        // get the aabb - this is in world space (transformed by entity matrix including scale)
-        BoundingBox aabb = render->GetBoundingBox();
-        Vector3 extents = aabb.GetExtents(); // half-sizes, already scaled
-
-        // a default constructed bbox has m_min = inf and m_max = -inf which produces a non finite
-        // center and a negative infinity extent. refuse to feed that into SetWheelRadius
-        Vector3 aabb_center = aabb.GetCenter();
-        if (extents.IsNaN() || aabb_center.IsNaN() || !std::isfinite(extents.x) || !std::isfinite(extents.y) || !std::isfinite(extents.z))
-        {
-            SP_LOG_WARNING("ComputeWheelRadiusFromEntity: non finite bbox on '%s', keeping previous radius %.3f",
-                wheel_entity->GetObjectName().c_str(), VehicleState().wheel_radius);
-            return;
-        }
-
-        // the wheel radius is the largest extent (wheels are usually symmetric)
-        // for a wheel mesh, this gives us the actual visual radius
-        float radius = max(max(extents.x, extents.y), extents.z);
-        if (!std::isfinite(radius) || radius <= 0.0f)
-        {
-            SP_LOG_WARNING("ComputeWheelRadiusFromEntity: computed radius %.3f on '%s' is invalid, keeping previous radius %.3f",
-                radius, wheel_entity->GetObjectName().c_str(), VehicleState().wheel_radius);
-            return;
-        }
-
-        VehicleState().wheel_radius = radius;
-
-        SP_LOG_INFO("ComputeWheelRadiusFromEntity: computed radius=%.3f from entity '%s' (extents: %.3f, %.3f, %.3f)",
-            radius, wheel_entity->GetObjectName().c_str(), extents.x, extents.y, extents.z);
-    }
-
     float CarPhysics::GetSuspensionHeight() const
     {
         if (physics.GetBodyType() != BodyType::Custom)
@@ -1848,32 +1798,6 @@ namespace spartan
         {
             SP_LOG_ERROR("failed to rebuild car suspension after wheel synchronization");
         }
-    }
-
-    void CarPhysics::SetCenterOfMassOffset(const Vector3& offset)
-    {
-        SetCenterOfMassOffset(offset.x, offset.y, offset.z);
-    }
-
-    void CarPhysics::SetCenterOfMassOffset(float x, float y, float z)
-    {
-        if (physics.GetBodyType() != BodyType::Custom)
-        {
-            SP_LOG_WARNING("SetCenterOfMassOffset only works with Vehicle body type");
-            return;
-        }
-
-        VehicleState().vehicle_simulation->set_center_of_mass(x, y, z);
-    }
-
-    Vector3 CarPhysics::GetCenterOfMassOffset() const
-    {
-        if (physics.GetBodyType() != BodyType::Custom)
-        {
-            return Vector3::Zero;
-        }
-
-        return Vector3(VehicleState().vehicle_simulation->get_center_of_mass_x(), VehicleState().vehicle_simulation->get_center_of_mass_y(), VehicleState().vehicle_simulation->get_center_of_mass_z());
     }
 
     void CarPhysics::UpdateWheelTransforms()

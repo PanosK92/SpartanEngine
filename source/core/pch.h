@@ -49,7 +49,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../math/RayHitResult.h"
 #include "../math/Rectangle.h"
 #include "../math/BoundingBox.h"
-#include "../math/Sphere.h"
 #include "../math/Matrix.h"
 #include "../math/Frustum.h"
 #include "../math/Plane.h"

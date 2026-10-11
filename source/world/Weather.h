@@ -36,8 +36,6 @@ namespace spartan
         static float GetPuddliness();
         // only what the rain has filled, it stands in the open and not under a roof
         static float GetRainPuddliness();
-        // 0 under open sky to 1 under a roof, at the camera
-        static float GetShelter();
 
         // metres of water standing on the ground at a world point, the rain film plus the puddles the renderer draws there
         // porous ground (soil, grass, gravel) drinks the film and holds less standing water

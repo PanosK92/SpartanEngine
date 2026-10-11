@@ -11,7 +11,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "Quaternion.h"
 #include "Vector3.h"
 #include "Vector4.h"
-#include <immintrin.h>
+#include "Simd.h"
 //=====================
 
 namespace spartan::math
@@ -41,12 +41,17 @@ namespace spartan::math
 
         Matrix(const Vector3& translation, const Quaternion& rotation, const Vector3& scale)
         {
-            const Matrix rotation_matrix = CreateRotation(rotation);
+            __m128 r0, r1, r2;
+            RotationColumns(rotation, r0, r1, r2);
 
-            m00 = scale.x * rotation_matrix.m00;  m01 = scale.x * rotation_matrix.m01;  m02 = scale.x * rotation_matrix.m02;  m03 = 0.0f;
-            m10 = scale.y * rotation_matrix.m10;  m11 = scale.y * rotation_matrix.m11;  m12 = scale.y * rotation_matrix.m12;  m13 = 0.0f;
-            m20 = scale.z * rotation_matrix.m20;  m21 = scale.z * rotation_matrix.m21;  m22 = scale.z * rotation_matrix.m22;  m23 = 0.0f;
-            m30 = translation.x;            m31 = translation.y;            m32 = translation.z;            m33 = 1.0f;
+            const __m128 s = scale.Simd();
+            const __m128 t = translation.Simd();
+            SetColumns(
+                _mm_blend_ps(_mm_mul_ps(r0, s), simd::splat<0>(t), 0x8),
+                _mm_blend_ps(_mm_mul_ps(r1, s), simd::splat<1>(t), 0x8),
+                _mm_blend_ps(_mm_mul_ps(r2, s), simd::splat<2>(t), 0x8),
+                _mm_setr_ps(0.0f, 0.0f, 0.0f, 1.0f)
+            );
         }
 
         Matrix(const float m[16])
@@ -60,48 +65,43 @@ namespace spartan::math
 
         ~Matrix() = default;
 
+        // column i is (m0i, m1i, m2i, m3i), contiguous in memory
+        static Matrix FromColumns(const __m128 c0, const __m128 c1, const __m128 c2, const __m128 c3)
+        {
+            Matrix m;
+            m.SetColumns(c0, c1, c2, c3);
+            return m;
+        }
+
+        [[nodiscard]] __m128 Column(const uint32_t index) const { return simd::load4(&m00 + index * 4); }
+
+        void SetColumns(const __m128 c0, const __m128 c1, const __m128 c2, const __m128 c3)
+        {
+            float* data = &m00;
+            simd::store4(data + 0,  c0);
+            simd::store4(data + 4,  c1);
+            simd::store4(data + 8,  c2);
+            simd::store4(data + 12, c3);
+        }
+
         [[nodiscard]] Vector3 GetTranslation() const { return Vector3(m30, m31, m32); }
 
         static Matrix CreateTranslation(const Vector3& translation)
         {
-            return Matrix(
-                1, 0, 0, 0,
-                0, 1, 0, 0,
-                0, 0, 1, 0,
-                translation.x, translation.y, translation.z, 1.0f
+            const __m128 t = translation.Simd();
+            return FromColumns(
+                _mm_blend_ps(_mm_setr_ps(1.0f, 0.0f, 0.0f, 0.0f), simd::splat<0>(t), 0x8),
+                _mm_blend_ps(_mm_setr_ps(0.0f, 1.0f, 0.0f, 0.0f), simd::splat<1>(t), 0x8),
+                _mm_blend_ps(_mm_setr_ps(0.0f, 0.0f, 1.0f, 0.0f), simd::splat<2>(t), 0x8),
+                _mm_setr_ps(0.0f, 0.0f, 0.0f, 1.0f)
             );
         }
 
         static Matrix CreateRotation(const Quaternion& rotation)
         {
-            const float xx = rotation.x * rotation.x;
-            const float yy = rotation.y * rotation.y;
-            const float zz = rotation.z * rotation.z;
-            const float xy = rotation.x * rotation.y;
-            const float zw = rotation.z * rotation.w;
-            const float zx = rotation.z * rotation.x;
-            const float yw = rotation.y * rotation.w;
-            const float yz = rotation.y * rotation.z;
-            const float xw = rotation.x * rotation.w;
-
-            return Matrix(
-                1.0f - (2.0f * (yy + zz)),
-                2.0f * (xy + zw),
-                2.0f * (zx - yw),
-                0.0f,
-                2.0f * (xy - zw),
-                1.0f - (2.0f * (zz + xx)),
-                2.0f * (yz + xw),
-                0.0f,
-                2.0f * (zx + yw),
-                2.0f * (yz - xw),
-                1.0f - (2.0f * (yy + xx)),
-                0.0f,
-                0.0f,
-                0.0f,
-                0.0f,
-                1.0f
-            );
+            __m128 c0, c1, c2;
+            RotationColumns(rotation, c0, c1, c2);
+            return FromColumns(c0, c1, c2, _mm_setr_ps(0.0f, 0.0f, 0.0f, 1.0f));
         }
 
         [[nodiscard]] Quaternion GetRotation() const
@@ -111,149 +111,49 @@ namespace spartan::math
             {
                 return Quaternion::Identity;
             }
-        
-            Matrix normalized;
-        #if defined(__AVX2__)
-            // create scale reciprocal vector for faster division (per-row scaling)
-            __m128 scale_recip = _mm_set_ps(1.0f, 1.0f / scale.z, 1.0f / scale.y, 1.0f / scale.x);
-        
-            // load and normalize first three columns
-            __m128 col0 = _mm_loadu_ps(Data() + 0);
-            __m128 col1 = _mm_loadu_ps(Data() + 4);
-            __m128 col2 = _mm_loadu_ps(Data() + 8);
-        
-            // normalize by scale (each row element divided by its row's scale)
-            col0 = _mm_mul_ps(col0, scale_recip);
-            col1 = _mm_mul_ps(col1, scale_recip);
-            col2 = _mm_mul_ps(col2, scale_recip);
-        
-            // store in normalized matrix
-            _mm_storeu_ps(&normalized.m00, col0);
-            _mm_storeu_ps(&normalized.m01, col1);
-            _mm_storeu_ps(&normalized.m02, col2);
-        
-            // set translation components to zero (last row except m33)
-            normalized.m30 = 0.0f;
-            normalized.m31 = 0.0f;
-            normalized.m32 = 0.0f;
-        
-            // set last column
-            normalized.m03 = 0.0f;
-            normalized.m13 = 0.0f;
-            normalized.m23 = 0.0f;
-            normalized.m33 = 1.0f;
-        
-            return RotationMatrixToQuaternion(normalized);
-        #else
-            normalized.m00 = m00 / scale.x; normalized.m01 = m01 / scale.x; normalized.m02 = m02 / scale.x; normalized.m03 = 0.0f;
-            normalized.m10 = m10 / scale.y; normalized.m11 = m11 / scale.y; normalized.m12 = m12 / scale.y; normalized.m13 = 0.0f;
-            normalized.m20 = m20 / scale.z; normalized.m21 = m21 / scale.z; normalized.m22 = m22 / scale.z; normalized.m23 = 0.0f;
-            normalized.m30 = 0;             normalized.m31 = 0;             normalized.m32 = 0;             normalized.m33 = 1.0f;
-        
-            return RotationMatrixToQuaternion(normalized);
-        #endif
+
+            // divide each row by its scale, lane i of a column belongs to row i
+            const __m128 scale_inv = _mm_div_ps(_mm_set1_ps(1.0f), simd::pad_one<0x8>(scale.Simd()));
+            __m128 row0 = _mm_mul_ps(Column(0), scale_inv);
+            __m128 row1 = _mm_mul_ps(Column(1), scale_inv);
+            __m128 row2 = _mm_mul_ps(Column(2), scale_inv);
+            __m128 row3 = Column(3);
+            _MM_TRANSPOSE4_PS(row0, row1, row2, row3);
+
+            return Quaternion::FromRotationRows(row0, row1, row2);
         }
 
         static Quaternion RotationMatrixToQuaternion(const Matrix& rotation_matrix)
         {
-            Quaternion quaternion;
-            float sqrt_;
-            float half;
-            const float scale = rotation_matrix.m00 + rotation_matrix.m11 + rotation_matrix.m22;
+            __m128 row0 = rotation_matrix.Column(0);
+            __m128 row1 = rotation_matrix.Column(1);
+            __m128 row2 = rotation_matrix.Column(2);
+            __m128 row3 = rotation_matrix.Column(3);
+            _MM_TRANSPOSE4_PS(row0, row1, row2, row3);
 
-            if (scale > 0.0f)
-            {
-                sqrt_ = sqrt(scale + 1.0f);
-                quaternion.w = sqrt_ * 0.5f;
-                sqrt_ = 0.5f / sqrt_;
-
-                quaternion.x = (rotation_matrix.m12 - rotation_matrix.m21) * sqrt_;
-                quaternion.y = (rotation_matrix.m20 - rotation_matrix.m02) * sqrt_;
-                quaternion.z = (rotation_matrix.m01 - rotation_matrix.m10) * sqrt_;
-            }
-            else if ((rotation_matrix.m00 >= rotation_matrix.m11) && (rotation_matrix.m00 >= rotation_matrix.m22))
-            {
-                sqrt_ = sqrt(1.0f + rotation_matrix.m00 - rotation_matrix.m11 - rotation_matrix.m22);
-                half = 0.5f / sqrt_;
-
-                quaternion.x = 0.5f * sqrt_;
-                quaternion.y = (rotation_matrix.m01 + rotation_matrix.m10) * half;
-                quaternion.z = (rotation_matrix.m02 + rotation_matrix.m20) * half;
-                quaternion.w = (rotation_matrix.m12 - rotation_matrix.m21) * half;
-            }
-            else if (rotation_matrix.m11 > rotation_matrix.m22)
-            {
-                sqrt_ = sqrt(1.0f + rotation_matrix.m11 - rotation_matrix.m00 - rotation_matrix.m22);
-                half = 0.5f / sqrt_;
-
-                quaternion.x = (rotation_matrix.m10 + rotation_matrix.m01) * half;
-                quaternion.y = 0.5f * sqrt_;
-                quaternion.z = (rotation_matrix.m21 + rotation_matrix.m12) * half;
-                quaternion.w = (rotation_matrix.m20 - rotation_matrix.m02) * half;
-            }
-            else
-            {
-                sqrt_ = sqrt(1.0f + rotation_matrix.m22 - rotation_matrix.m00 - rotation_matrix.m11);
-                half  = 0.5f / sqrt_;
-
-                quaternion.x = (rotation_matrix.m20 + rotation_matrix.m02) * half;
-                quaternion.y = (rotation_matrix.m21 + rotation_matrix.m12) * half;
-                quaternion.z = 0.5f * sqrt_;
-                quaternion.w = (rotation_matrix.m01 - rotation_matrix.m10) * half;
-            }
-
-            // ensure canonical form (w >= 0) to prevent sign flipping between equivalent quaternions
-            if (quaternion.w < 0.0f)
-            {
-                quaternion.x = -quaternion.x;
-                quaternion.y = -quaternion.y;
-                quaternion.z = -quaternion.z;
-                quaternion.w = -quaternion.w;
-            }
-
-            return quaternion;
+            return Quaternion::FromRotationRows(row0, row1, row2);
         }
 
         [[nodiscard]] Vector3 GetScale() const
         {
-        #if defined(__AVX2__)
-            // Columns are contiguous. Sum their squares lane-wise to obtain
-            // all three row lengths without gathers or horizontal dot products.
-            const __m128 c0 = _mm_loadu_ps(Data());
-            const __m128 c1 = _mm_loadu_ps(Data() + 4);
-            const __m128 c2 = _mm_loadu_ps(Data() + 8);
-            const __m128 c3 = _mm_loadu_ps(Data() + 12);
-            const __m128 sums = _mm_add_ps(_mm_add_ps(_mm_mul_ps(c0, c0), _mm_mul_ps(c1, c1)), _mm_mul_ps(c2, c2));
+            // columns are contiguous, sum their squares lane-wise to get all three row lengths at once
+            const __m128 c0       = Column(0);
+            const __m128 c1       = Column(1);
+            const __m128 c2       = Column(2);
+            const __m128 c3       = Column(3);
+            const __m128 sums     = _mm_fmadd_ps(c2, c2, _mm_fmadd_ps(c1, c1, _mm_mul_ps(c0, c0)));
             const __m128 products = _mm_mul_ps(_mm_mul_ps(_mm_mul_ps(c0, c1), c2), c3);
-            const __m128 signs = _mm_and_ps(_mm_cmplt_ps(products, _mm_setzero_ps()), _mm_set1_ps(-0.0f));
-            const __m128 scales = _mm_xor_ps(_mm_sqrt_ps(sums), signs);
-            return Vector3(
-                _mm_cvtss_f32(scales),
-                _mm_cvtss_f32(_mm_shuffle_ps(scales, scales, _MM_SHUFFLE(1, 1, 1, 1))),
-                _mm_cvtss_f32(_mm_shuffle_ps(scales, scales, _MM_SHUFFLE(2, 2, 2, 2)))
-            );
-        #else
-            const int xs = (sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
-            const int ys = (sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;
-            const int zs = (sign(m20 * m21 * m22 * m23) < 0) ? -1 : 1;
-            return Vector3(
-                static_cast<float>(xs) * sqrt(m00 * m00 + m01 * m01 + m02 * m02),
-                static_cast<float>(ys) * sqrt(m10 * m10 + m11 * m11 + m12 * m12),
-                static_cast<float>(zs) * sqrt(m20 * m20 + m21 * m21 + m22 * m22)
-            );
-        #endif
+            const __m128 signs    = _mm_and_ps(_mm_cmplt_ps(products, _mm_setzero_ps()), simd::sign_mask());
+            return Vector3(_mm_xor_ps(_mm_sqrt_ps(sums), signs));
         }
 
         static Matrix CreateScale(float scale) { return CreateScale(scale, scale, scale); }
         static Matrix CreateScale(const Vector3& scale) { return CreateScale(scale.x, scale.y, scale.z); }
         static Matrix CreateScale(float scale_x, float scale_y, float scale_z)
         {
-            return Matrix(
-                scale_x, 0, 0, 0,
-                0, scale_y, 0, 0,
-                0, 0, scale_z, 0,
-                0, 0, 0, 1
-            );
+            const __m128 s    = _mm_setr_ps(scale_x, scale_y, scale_z, 1.0f);
+            const __m128 zero = _mm_setzero_ps();
+            return FromColumns(_mm_blend_ps(zero, s, 0x1), _mm_blend_ps(zero, s, 0x2), _mm_blend_ps(zero, s, 0x4), _mm_blend_ps(zero, s, 0x8));
         }
 
         static Matrix CreateLookAtLH(const Vector3& position, const Vector3& target, const Vector3& up)
@@ -265,153 +165,125 @@ namespace spartan::math
         // there (~0.5 mm at 5 km) and the recovered direction wobbles as the camera moves
         static Matrix CreateLookToLH(const Vector3& position, const Vector3& direction, const Vector3& up)
         {
-            const Vector3 axis_z = Vector3::Normalize(direction);
-            const Vector3 axis_x = Vector3::Normalize(Vector3::Cross(up, axis_z));
-            const Vector3 axis_y = Vector3::Cross(axis_z, axis_x);
+            const __m128 p      = position.Simd();
+            const __m128 axis_z = Vector3::Normalize(direction).Simd();
+            const __m128 axis_x = Vector3(simd::cross3(up.Simd(), axis_z)).Normalized().Simd();
+            const __m128 axis_y = simd::cross3(axis_z, axis_x);
 
-            return Matrix(
-                axis_x.x, axis_y.x, axis_z.x, 0,
-                axis_x.y, axis_y.y, axis_z.y, 0,
-                axis_x.z, axis_y.z, axis_z.z, 0,
-                -Vector3::Dot(axis_x, position), -Vector3::Dot(axis_y, position), -Vector3::Dot(axis_z, position), 1.0f
+            // each column is an axis with the negated eye-space translation in w
+            return FromColumns(
+                _mm_blend_ps(axis_x, simd::negate(simd::dot3_splat(axis_x, p)), 0x8),
+                _mm_blend_ps(axis_y, simd::negate(simd::dot3_splat(axis_y, p)), 0x8),
+                _mm_blend_ps(axis_z, simd::negate(simd::dot3_splat(axis_z, p)), 0x8),
+                _mm_setr_ps(0.0f, 0.0f, 0.0f, 1.0f)
             );
         }
 
         static Matrix CreateOrthographicLH(float width, float height, float z_near, float z_far)
         {
-            return Matrix(
-                2 / width, 0, 0, 0,
-                0, 2 / height, 0, 0,
-                0, 0, 1 / (z_far - z_near), 0,
-                0, 0, z_near / (z_near - z_far), 1
-            );
+            const __m128 d    = _mm_div_ps(_mm_setr_ps(2.0f, 2.0f, 1.0f, z_near), _mm_setr_ps(width, height, z_far - z_near, z_near - z_far));
+            const __m128 zero = _mm_setzero_ps();
+            return FromColumns(_mm_blend_ps(zero, d, 0x1), _mm_blend_ps(zero, d, 0x2), _mm_blend_ps(zero, d, 0xC), _mm_setr_ps(0.0f, 0.0f, 0.0f, 1.0f));
         }
 
         static Matrix CreateOrthoOffCenterLH(float left, float right, float bottom, float top, float z_near, float z_far)
         {
-            return Matrix(
-                2 / (right - left), 0, 0, 0,
-                0, 2 / (top - bottom), 0, 0,
-                0, 0, 1 / (z_far - z_near), 0,
-                (left + right) / (left - right), (top + bottom) / (bottom - top), z_near / (z_near - z_far), 1
+            // scales in the low half, translations in the high half, one division for all of them
+            const __m256 d = _mm256_div_ps(
+                _mm256_setr_ps(2.0f, 2.0f, 1.0f, z_near, left + right, top + bottom, 0.0f, 0.0f),
+                _mm256_setr_ps(right - left, top - bottom, z_far - z_near, z_near - z_far, left - right, bottom - top, 1.0f, 1.0f));
+            const __m128 scale       = _mm256_castps256_ps128(d);
+            const __m128 translation = _mm256_extractf128_ps(d, 1);
+            const __m128 zero        = _mm_setzero_ps();
+            return FromColumns(
+                _mm_blend_ps(_mm_blend_ps(zero, scale, 0x1), simd::splat<0>(translation), 0x8),
+                _mm_blend_ps(_mm_blend_ps(zero, scale, 0x2), simd::splat<1>(translation), 0x8),
+                _mm_blend_ps(zero, scale, 0xC),
+                _mm_setr_ps(0.0f, 0.0f, 0.0f, 1.0f)
             );
         }
 
         static Matrix CreatePerspectiveFieldOfViewLH(float fov_y_radians, float aspect_ratio, float near_plane, float far_plane)
         {
-            const float tan_half_fovy = tan(fov_y_radians / 2);
-            const float f             = 1.0f / tan_half_fovy;
-            const float range_inv     = 1.0f / (far_plane - near_plane);
-
-            return Matrix(
-                f / aspect_ratio, 0, 0, 0,
-                0, f, 0, 0,
-                0, 0, far_plane * range_inv, 1,
-                0, 0, -near_plane * far_plane * range_inv, 0
-            );
+            // (f / aspect, f, far / range, -near * far / range) with f = 1 / tan(fov / 2) = cos / sin
+            __m128 sin, cos;
+            simd::sin_cos(_mm_set1_ps(fov_y_radians * 0.5f), sin, cos);
+            const __m128 range = _mm_set1_ps(far_plane - near_plane);
+            const __m128 d     = _mm_div_ps(
+                _mm_blend_ps(cos, _mm_setr_ps(0.0f, 0.0f, far_plane, -near_plane * far_plane), 0xC),
+                _mm_blend_ps(_mm_mul_ps(sin, _mm_setr_ps(aspect_ratio, 1.0f, 1.0f, 1.0f)), range, 0xC));
+            const __m128 zero         = _mm_setzero_ps();
+            return FromColumns(_mm_blend_ps(zero, d, 0x1), _mm_blend_ps(zero, d, 0x2), _mm_blend_ps(zero, d, 0xC), _mm_setr_ps(0.0f, 0.0f, 1.0f, 0.0f));
         }
 
         [[nodiscard]] Matrix Transposed() const { return Transpose(*this); }
         void Transpose() { *this = Transpose(*this); }
         static Matrix Transpose(const Matrix& matrix)
         {
-        #if defined(__AVX2__)
-            // load all 4 columns
-            __m128 col0 = _mm_loadu_ps(&matrix.m00);
-            __m128 col1 = _mm_loadu_ps(&matrix.m01);
-            __m128 col2 = _mm_loadu_ps(&matrix.m02);
-            __m128 col3 = _mm_loadu_ps(&matrix.m03);
-            
-            // transpose using unpack operations
-            __m128 tmp0 = _mm_unpacklo_ps(col0, col1); // m00, m01, m10, m11
-            __m128 tmp1 = _mm_unpackhi_ps(col0, col1); // m20, m21, m30, m31
-            __m128 tmp2 = _mm_unpacklo_ps(col2, col3); // m02, m03, m12, m13
-            __m128 tmp3 = _mm_unpackhi_ps(col2, col3); // m22, m23, m32, m33
-            
-            // final shuffle to get transposed rows
-            __m128 row0 = _mm_movelh_ps(tmp0, tmp2); // m00, m01, m02, m03
-            __m128 row1 = _mm_movehl_ps(tmp2, tmp0); // m10, m11, m12, m13
-            __m128 row2 = _mm_movelh_ps(tmp1, tmp3); // m20, m21, m22, m23
-            __m128 row3 = _mm_movehl_ps(tmp3, tmp1); // m30, m31, m32, m33
-            
-            Matrix result;
-            _mm_storeu_ps(&result.m00, row0);
-            _mm_storeu_ps(&result.m01, row1);
-            _mm_storeu_ps(&result.m02, row2);
-            _mm_storeu_ps(&result.m03, row3);
-            return result;
-        #else
-            return Matrix(
-                matrix.m00, matrix.m10, matrix.m20, matrix.m30,
-                matrix.m01, matrix.m11, matrix.m21, matrix.m31,
-                matrix.m02, matrix.m12, matrix.m22, matrix.m32,
-                matrix.m03, matrix.m13, matrix.m23, matrix.m33
-            );
-        #endif
+            __m128 c0 = matrix.Column(0);
+            __m128 c1 = matrix.Column(1);
+            __m128 c2 = matrix.Column(2);
+            __m128 c3 = matrix.Column(3);
+            _MM_TRANSPOSE4_PS(c0, c1, c2, c3);
+            return FromColumns(c0, c1, c2, c3);
         }
 
+        // block-wise inverse on 2x2 sub-matrices, the layout does not matter since inverse(transpose(m)) == transpose(inverse(m))
         [[nodiscard]] Matrix Inverted() const { return Invert(*this); }
         static inline Matrix Invert(const Matrix& matrix)
         {
-            float v0 = matrix.m20 * matrix.m31 - matrix.m21 * matrix.m30;
-            float v1 = matrix.m20 * matrix.m32 - matrix.m22 * matrix.m30;
-            float v2 = matrix.m20 * matrix.m33 - matrix.m23 * matrix.m30;
-            float v3 = matrix.m21 * matrix.m32 - matrix.m22 * matrix.m31;
-            float v4 = matrix.m21 * matrix.m33 - matrix.m23 * matrix.m31;
-            float v5 = matrix.m22 * matrix.m33 - matrix.m23 * matrix.m32;
+            const __m128 r0 = matrix.Column(0);
+            const __m128 r1 = matrix.Column(1);
+            const __m128 r2 = matrix.Column(2);
+            const __m128 r3 = matrix.Column(3);
 
-            float i00 =  (v5 * matrix.m11 - v4 * matrix.m12 + v3 * matrix.m13);
-            float i10 = -(v5 * matrix.m10 - v2 * matrix.m12 + v1 * matrix.m13);
-            float i20 =  (v4 * matrix.m10 - v2 * matrix.m11 + v0 * matrix.m13);
-            float i30 = -(v3 * matrix.m10 - v1 * matrix.m11 + v0 * matrix.m12);
+            // sub-matrices: | a b |
+            //               | c d |
+            const __m128 a = _mm_movelh_ps(r0, r1);
+            const __m128 b = _mm_movehl_ps(r1, r0);
+            const __m128 c = _mm_movelh_ps(r2, r3);
+            const __m128 d = _mm_movehl_ps(r3, r2);
 
-            float det = i00 * matrix.m00 + i10 * matrix.m01 + i20 * matrix.m02 + i30 * matrix.m03;
-            if (std::isnan(det))
+            // (|a|, |b|, |c|, |d|)
+            const __m128 det_sub = _mm_fmsub_ps(
+                _mm_shuffle_ps(r0, r2, _MM_SHUFFLE(2, 0, 2, 0)), _mm_shuffle_ps(r1, r3, _MM_SHUFFLE(3, 1, 3, 1)),
+                _mm_mul_ps(_mm_shuffle_ps(r0, r2, _MM_SHUFFLE(3, 1, 3, 1)), _mm_shuffle_ps(r1, r3, _MM_SHUFFLE(2, 0, 2, 0))));
+            const __m128 det_a = simd::splat<0>(det_sub);
+            const __m128 det_b = simd::splat<1>(det_sub);
+            const __m128 det_c = simd::splat<2>(det_sub);
+            const __m128 det_d = simd::splat<3>(det_sub);
+
+            const __m128 d_c = simd::mat2_adj_mul(d, c);
+            const __m128 a_b = simd::mat2_adj_mul(a, b);
+
+            // adjugates of the inverse blocks
+            __m128 x_ = _mm_sub_ps(_mm_mul_ps(det_d, a), simd::mat2_mul(b, d_c));
+            __m128 w_ = _mm_sub_ps(_mm_mul_ps(det_a, d), simd::mat2_mul(c, a_b));
+            __m128 y_ = _mm_sub_ps(_mm_mul_ps(det_b, c), simd::mat2_mul_adj(d, a_b));
+            __m128 z_ = _mm_sub_ps(_mm_mul_ps(det_c, b), simd::mat2_mul_adj(a, d_c));
+
+            // |m| = |a| |d| + |b| |c| - trace((a# b) (d# c))
+            __m128 trace = _mm_mul_ps(a_b, _mm_permute_ps(d_c, _MM_SHUFFLE(3, 1, 2, 0)));
+            trace        = _mm_hadd_ps(trace, trace);
+            trace        = _mm_hadd_ps(trace, trace);
+            const __m128 det = _mm_sub_ps(_mm_fmadd_ps(det_b, det_c, _mm_mul_ps(det_a, det_d)), trace);
+            if (std::isnan(_mm_cvtss_f32(det)))
             {
                 return Matrix::Identity;
             }
 
-            const float inv_det = 1.0f / det;
+            const __m128 det_inv = _mm_div_ps(_mm_setr_ps(1.0f, -1.0f, -1.0f, 1.0f), det);
+            x_ = _mm_mul_ps(x_, det_inv);
+            y_ = _mm_mul_ps(y_, det_inv);
+            z_ = _mm_mul_ps(z_, det_inv);
+            w_ = _mm_mul_ps(w_, det_inv);
 
-            i00 *= inv_det;
-            i10 *= inv_det;
-            i20 *= inv_det;
-            i30 *= inv_det;
-
-            const float i01 = -(v5 * matrix.m01 - v4 * matrix.m02 + v3 * matrix.m03) * inv_det;
-            const float i11 =  (v5 * matrix.m00 - v2 * matrix.m02 + v1 * matrix.m03) * inv_det;
-            const float i21 = -(v4 * matrix.m00 - v2 * matrix.m01 + v0 * matrix.m03) * inv_det;
-            const float i31 =  (v3 * matrix.m00 - v1 * matrix.m01 + v0 * matrix.m02) * inv_det;
-
-            v0 = matrix.m10 * matrix.m31 - matrix.m11 * matrix.m30;
-            v1 = matrix.m10 * matrix.m32 - matrix.m12 * matrix.m30;
-            v2 = matrix.m10 * matrix.m33 - matrix.m13 * matrix.m30;
-            v3 = matrix.m11 * matrix.m32 - matrix.m12 * matrix.m31;
-            v4 = matrix.m11 * matrix.m33 - matrix.m13 * matrix.m31;
-            v5 = matrix.m12 * matrix.m33 - matrix.m13 * matrix.m32;
-
-            const float i02 =  (v5 * matrix.m01 - v4 * matrix.m02 + v3 * matrix.m03) * inv_det;
-            const float i12 = -(v5 * matrix.m00 - v2 * matrix.m02 + v1 * matrix.m03) * inv_det;
-            const float i22 =  (v4 * matrix.m00 - v2 * matrix.m01 + v0 * matrix.m03) * inv_det;
-            const float i32 = -(v3 * matrix.m00 - v1 * matrix.m01 + v0 * matrix.m02) * inv_det;
-
-            v0 = matrix.m21 * matrix.m10 - matrix.m20 * matrix.m11;
-            v1 = matrix.m22 * matrix.m10 - matrix.m20 * matrix.m12;
-            v2 = matrix.m23 * matrix.m10 - matrix.m20 * matrix.m13;
-            v3 = matrix.m22 * matrix.m11 - matrix.m21 * matrix.m12;
-            v4 = matrix.m23 * matrix.m11 - matrix.m21 * matrix.m13;
-            v5 = matrix.m23 * matrix.m12 - matrix.m22 * matrix.m13;
-
-            const float i03 = -(v5 * matrix.m01 - v4 * matrix.m02 + v3 * matrix.m03) * inv_det;
-            const float i13 =  (v5 * matrix.m00 - v2 * matrix.m02 + v1 * matrix.m03) * inv_det;
-            const float i23 = -(v4 * matrix.m00 - v2 * matrix.m01 + v0 * matrix.m03) * inv_det;
-            const float i33 =  (v3 * matrix.m00 - v1 * matrix.m01 + v0 * matrix.m02) * inv_det;
-
-            return Matrix(
-                i00, i01, i02, i03,
-                i10, i11, i12, i13,
-                i20, i21, i22, i23,
-                i30, i31, i32, i33);
+            return FromColumns(
+                _mm_shuffle_ps(x_, y_, _MM_SHUFFLE(1, 3, 1, 3)),
+                _mm_shuffle_ps(x_, y_, _MM_SHUFFLE(0, 2, 0, 2)),
+                _mm_shuffle_ps(z_, w_, _MM_SHUFFLE(1, 3, 1, 3)),
+                _mm_shuffle_ps(z_, w_, _MM_SHUFFLE(0, 2, 0, 2))
+            );
         }
 
         void Decompose(Vector3& scale, Quaternion& rotation, Vector3& translation) const
@@ -423,281 +295,98 @@ namespace spartan::math
 
         void SetIdentity()
         {
-            m00 = 1; m01 = 0; m02 = 0; m03 = 0;
-            m10 = 0; m11 = 1; m12 = 0; m13 = 0;
-            m20 = 0; m21 = 0; m22 = 1; m23 = 0;
-            m30 = 0; m31 = 0; m32 = 0; m33 = 1;
+            SetColumns(_mm_setr_ps(1.0f, 0.0f, 0.0f, 0.0f), _mm_setr_ps(0.0f, 1.0f, 0.0f, 0.0f), _mm_setr_ps(0.0f, 0.0f, 1.0f, 0.0f), _mm_setr_ps(0.0f, 0.0f, 0.0f, 1.0f));
         }
 
         Matrix operator*(const Matrix& rhs) const
         {
-        #if defined(__AVX2__)
-            Matrix result;
-            const float* left_data = Data();
-            const float* right_data = rhs.Data();
-        
-            // load left columns
-            __m128 left_col0 = _mm_loadu_ps(left_data + 0);
-            __m128 left_col1 = _mm_loadu_ps(left_data + 4);
-            __m128 left_col2 = _mm_loadu_ps(left_data + 8);
-            __m128 left_col3 = _mm_loadu_ps(left_data + 12);
-        
-            for (int j = 0; j < 4; ++j)
+            const __m128 l0 = Column(0);
+            const __m128 l1 = Column(1);
+            const __m128 l2 = Column(2);
+            const __m128 l3 = Column(3);
+
+            // each result column is the left columns weighted by one right column, summed as a tree to keep the dependency chain short
+            const auto combine = [&](const __m128 r)
             {
-                // broadcast elements of right column j
-                __m128 v0 = _mm_broadcast_ss(right_data + 4 * j + 0);
-                __m128 v1 = _mm_broadcast_ss(right_data + 4 * j + 1);
-                __m128 v2 = _mm_broadcast_ss(right_data + 4 * j + 2);
-                __m128 v3 = _mm_broadcast_ss(right_data + 4 * j + 3);
-        
-                // compute using fma
-                __m128 column = _mm_mul_ps(left_col0, v0);
-                column = _mm_fmadd_ps(left_col1, v1, column);
-                column = _mm_fmadd_ps(left_col2, v2, column);
-                column = _mm_fmadd_ps(left_col3, v3, column);
-        
-                _mm_storeu_ps(const_cast<float*>(result.Data()) + 4 * j, column);
-            }
-        
-            return result;
-        #else
-            return Matrix(
-                m00 * rhs.m00 + m01 * rhs.m10 + m02 * rhs.m20 + m03 * rhs.m30,
-                m00 * rhs.m01 + m01 * rhs.m11 + m02 * rhs.m21 + m03 * rhs.m31,
-                m00 * rhs.m02 + m01 * rhs.m12 + m02 * rhs.m22 + m03 * rhs.m32,
-                m00 * rhs.m03 + m01 * rhs.m13 + m02 * rhs.m23 + m03 * rhs.m33,
-                m10 * rhs.m00 + m11 * rhs.m10 + m12 * rhs.m20 + m13 * rhs.m30,
-                m10 * rhs.m01 + m11 * rhs.m11 + m12 * rhs.m21 + m13 * rhs.m31,
-                m10 * rhs.m02 + m11 * rhs.m12 + m12 * rhs.m22 + m13 * rhs.m32,
-                m10 * rhs.m03 + m11 * rhs.m13 + m12 * rhs.m23 + m13 * rhs.m33,
-                m20 * rhs.m00 + m21 * rhs.m10 + m22 * rhs.m20 + m23 * rhs.m30,
-                m20 * rhs.m01 + m21 * rhs.m11 + m22 * rhs.m21 + m23 * rhs.m31,
-                m20 * rhs.m02 + m21 * rhs.m12 + m22 * rhs.m22 + m23 * rhs.m32,
-                m20 * rhs.m03 + m21 * rhs.m13 + m22 * rhs.m23 + m23 * rhs.m33,
-                m30 * rhs.m00 + m31 * rhs.m10 + m32 * rhs.m20 + m33 * rhs.m30,
-                m30 * rhs.m01 + m31 * rhs.m11 + m32 * rhs.m21 + m33 * rhs.m31,
-                m30 * rhs.m02 + m31 * rhs.m12 + m32 * rhs.m22 + m33 * rhs.m32,
-                m30 * rhs.m03 + m31 * rhs.m13 + m32 * rhs.m23 + m33 * rhs.m33
-            );
-        #endif
+                const __m128 low  = _mm_fmadd_ps(l1, simd::splat<1>(r), _mm_mul_ps(l0, simd::splat<0>(r)));
+                const __m128 high = _mm_fmadd_ps(l3, simd::splat<3>(r), _mm_mul_ps(l2, simd::splat<2>(r)));
+                return _mm_add_ps(low, high);
+            };
+
+            return FromColumns(combine(rhs.Column(0)), combine(rhs.Column(1)), combine(rhs.Column(2)), combine(rhs.Column(3)));
         }
 
         void operator*=(const Matrix& rhs) { (*this) = (*this) * rhs; }
 
         Vector3 operator*(const Vector3& rhs) const
         {
-        #if defined(__AVX2__)
-            // load matrix columns
-            __m128 col0 = _mm_loadu_ps(&m00);
-            __m128 col1 = _mm_loadu_ps(&m01);
-            __m128 col2 = _mm_loadu_ps(&m02);
-            __m128 col3 = _mm_loadu_ps(&m03);
-            
-            // transpose columns to rows for correct row-vector multiplication
-            __m128 tmp0 = _mm_unpacklo_ps(col0, col1);
-            __m128 tmp1 = _mm_unpackhi_ps(col0, col1);
-            __m128 tmp2 = _mm_unpacklo_ps(col2, col3);
-            __m128 tmp3 = _mm_unpackhi_ps(col2, col3);
-            
-            __m128 row0 = _mm_movelh_ps(tmp0, tmp2);
-            __m128 row1 = _mm_movehl_ps(tmp2, tmp0);
-            __m128 row2 = _mm_movelh_ps(tmp1, tmp3);
-            __m128 row3 = _mm_movehl_ps(tmp3, tmp1);
-            
-            // broadcast vector components
-            __m128 vx = _mm_set1_ps(rhs.x);
-            __m128 vy = _mm_set1_ps(rhs.y);
-            __m128 vz = _mm_set1_ps(rhs.z);
-            
-            // multiply and accumulate: result = row0*x + row1*y + row2*z + row3*1
-            __m128 result = _mm_mul_ps(row0, vx);
-            result = _mm_fmadd_ps(row1, vy, result);
-            result = _mm_fmadd_ps(row2, vz, result);
-            result = _mm_add_ps(result, row3);
-            
-            // extract w for perspective divide
-            float w = _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(3, 3, 3, 3)));
-            
+            // rows for row-vector multiplication
+            __m128 row0 = Column(0);
+            __m128 row1 = Column(1);
+            __m128 row2 = Column(2);
+            __m128 row3 = Column(3);
+            _MM_TRANSPOSE4_PS(row0, row1, row2, row3);
+
+            // row0 * x + row1 * y + row2 * z + row3
+            __m128 result = _mm_fmadd_ps(row0, _mm_broadcast_ss(&rhs.x), row3);
+            result        = _mm_fmadd_ps(row1, _mm_broadcast_ss(&rhs.y), result);
+            result        = _mm_fmadd_ps(row2, _mm_broadcast_ss(&rhs.z), result);
+
             // perspective divide if needed
-            if (w != 1.0f)
+            const __m128 w = simd::splat<3>(result);
+            if (_mm_cvtss_f32(w) != 1.0f)
             {
-                __m128 inv_w = _mm_set1_ps(1.0f / w);
-                result = _mm_mul_ps(result, inv_w);
-            }
-            
-            return Vector3(_mm_cvtss_f32(result),
-                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1))),
-                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2))));
-        #else
-            float x = (rhs.x * m00) + (rhs.y * m10) + (rhs.z * m20) + m30;
-            float y = (rhs.x * m01) + (rhs.y * m11) + (rhs.z * m21) + m31;
-            float z = (rhs.x * m02) + (rhs.y * m12) + (rhs.z * m22) + m32;
-            float w = (rhs.x * m03) + (rhs.y * m13) + (rhs.z * m23) + m33;
-
-            // to ensure the perspective divide, divide each component by w
-            if (w != 1.0f)
-            {
-                x /= w;
-                y /= w;
-                z /= w;
+                result = _mm_div_ps(result, w);
             }
 
-            return Vector3(x, y, z);
-        #endif
+            return Vector3(result);
         }
 
         Vector4 operator*(const Vector4& rhs) const
         {
-        #if defined(__AVX2__)
-            // load matrix columns
-            __m128 col0 = _mm_loadu_ps(&m00);
-            __m128 col1 = _mm_loadu_ps(&m01);
-            __m128 col2 = _mm_loadu_ps(&m02);
-            __m128 col3 = _mm_loadu_ps(&m03);
-            
-            // transpose columns to rows for correct row-vector multiplication
-            __m128 tmp0 = _mm_unpacklo_ps(col0, col1);
-            __m128 tmp1 = _mm_unpackhi_ps(col0, col1);
-            __m128 tmp2 = _mm_unpacklo_ps(col2, col3);
-            __m128 tmp3 = _mm_unpackhi_ps(col2, col3);
-            
-            __m128 row0 = _mm_movelh_ps(tmp0, tmp2);
-            __m128 row1 = _mm_movehl_ps(tmp2, tmp0);
-            __m128 row2 = _mm_movelh_ps(tmp1, tmp3);
-            __m128 row3 = _mm_movehl_ps(tmp3, tmp1);
-            
-            // broadcast vector components
-            __m128 vx = _mm_set1_ps(rhs.x);
-            __m128 vy = _mm_set1_ps(rhs.y);
-            __m128 vz = _mm_set1_ps(rhs.z);
-            __m128 vw = _mm_set1_ps(rhs.w);
-            
-            // multiply and accumulate: result = row0*x + row1*y + row2*z + row3*w
-            __m128 result = _mm_mul_ps(row0, vx);
-            result = _mm_fmadd_ps(row1, vy, result);
-            result = _mm_fmadd_ps(row2, vz, result);
-            result = _mm_fmadd_ps(row3, vw, result);
-            
-            return Vector4(_mm_cvtss_f32(result),
-                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1))),
-                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2))),
-                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(3, 3, 3, 3))));
-        #else
-            return Vector4
-            (
-                (rhs.x * m00) + (rhs.y * m10) + (rhs.z * m20) + (rhs.w * m30),
-                (rhs.x * m01) + (rhs.y * m11) + (rhs.z * m21) + (rhs.w * m31),
-                (rhs.x * m02) + (rhs.y * m12) + (rhs.z * m22) + (rhs.w * m32),
-                (rhs.x * m03) + (rhs.y * m13) + (rhs.z * m23) + (rhs.w * m33)
-            );
-        #endif
+            // rows for row-vector multiplication
+            __m128 row0 = Column(0);
+            __m128 row1 = Column(1);
+            __m128 row2 = Column(2);
+            __m128 row3 = Column(3);
+            _MM_TRANSPOSE4_PS(row0, row1, row2, row3);
+
+            // row0 * x + row1 * y + row2 * z + row3 * w
+            __m128 result = _mm_mul_ps(row0, _mm_broadcast_ss(&rhs.x));
+            result        = _mm_fmadd_ps(row1, _mm_broadcast_ss(&rhs.y), result);
+            result        = _mm_fmadd_ps(row2, _mm_broadcast_ss(&rhs.z), result);
+            result        = _mm_fmadd_ps(row3, _mm_broadcast_ss(&rhs.w), result);
+
+            return Vector4(result);
         }
 
         bool operator==(const Matrix& rhs) const
         {
-        #if defined(__AVX2__)
-            // load and compare all 4 columns using 256-bit registers for efficiency
-            __m256 left01  = _mm256_loadu_ps(&m00);       // columns 0 and 1
-            __m256 left23  = _mm256_loadu_ps(&m02);       // columns 2 and 3
-            __m256 right01 = _mm256_loadu_ps(&rhs.m00);
-            __m256 right23 = _mm256_loadu_ps(&rhs.m02);
-            
-            // compare for equality
-            __m256 cmp01 = _mm256_cmp_ps(left01, right01, _CMP_EQ_OQ);
-            __m256 cmp23 = _mm256_cmp_ps(left23, right23, _CMP_EQ_OQ);
-            
-            // combine results and check all bits are set
-            __m256 cmp_all = _mm256_and_ps(cmp01, cmp23);
-            return _mm256_movemask_ps(cmp_all) == 0xFF;
-        #else
-            const float* data_left  = Data();
-            const float* data_right = rhs.Data();
-
-            for (unsigned i = 0; i < 16; ++i)
-            {
-                if (data_left[i] != data_right[i])
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        #endif
+            const __m256 cmp01 = _mm256_cmp_ps(_mm256_loadu_ps(&m00), _mm256_loadu_ps(&rhs.m00), _CMP_EQ_OQ);
+            const __m256 cmp23 = _mm256_cmp_ps(_mm256_loadu_ps(&m02), _mm256_loadu_ps(&rhs.m02), _CMP_EQ_OQ);
+            return _mm256_movemask_ps(_mm256_and_ps(cmp01, cmp23)) == 0xFF;
         }
 
         bool operator!=(const Matrix& rhs) const { return !(*this == rhs); }
-
-        bool Equals(const Matrix& rhs) const
-        {
-        #if defined(__AVX2__)
-            const float eps = std::numeric_limits<float>::epsilon();
-            __m256 epsilon = _mm256_set1_ps(eps);
-            
-            // load columns
-            __m256 left01  = _mm256_loadu_ps(&m00);
-            __m256 left23  = _mm256_loadu_ps(&m02);
-            __m256 right01 = _mm256_loadu_ps(&rhs.m00);
-            __m256 right23 = _mm256_loadu_ps(&rhs.m02);
-            
-            // compute absolute difference
-            __m256 diff01 = _mm256_sub_ps(left01, right01);
-            __m256 diff23 = _mm256_sub_ps(left23, right23);
-            
-            // absolute value (clear sign bit)
-            __m256 sign_mask = _mm256_set1_ps(-0.0f);
-            diff01 = _mm256_andnot_ps(sign_mask, diff01);
-            diff23 = _mm256_andnot_ps(sign_mask, diff23);
-            
-            // compare against epsilon
-            __m256 cmp01 = _mm256_cmp_ps(diff01, epsilon, _CMP_LE_OQ);
-            __m256 cmp23 = _mm256_cmp_ps(diff23, epsilon, _CMP_LE_OQ);
-            
-            // combine and check all pass
-            __m256 cmp_all = _mm256_and_ps(cmp01, cmp23);
-            return _mm256_movemask_ps(cmp_all) == 0xFF;
-        #else
-            const float* data_left  = Data();
-            const float* data_right = rhs.Data();
-
-            for (unsigned i = 0; i < 16; ++i)
-            {
-                if (!approximate_equals(data_left[i], data_right[i]))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        #endif
-        }
 
         [[nodiscard]] const float* Data() const { return &m00; }
         [[nodiscard]] std::string ToString() const;
 
         [[nodiscard]] bool IsNaN() const
         {
-            const float* d = Data();
-            for (int i = 0; i < 16; ++i)
-            {
-                if (std::isnan(d[i]))
-                {
-                    return true;
-                }
-            }
-            return false;
+            const __m256 c01 = _mm256_loadu_ps(&m00);
+            const __m256 c23 = _mm256_loadu_ps(&m02);
+            return _mm256_movemask_ps(_mm256_or_ps(_mm256_cmp_ps(c01, c01, _CMP_UNORD_Q), _mm256_cmp_ps(c23, c23, _CMP_UNORD_Q))) != 0;
         }
 
         [[nodiscard]] bool IsFinite() const
         {
-            const float* d = Data();
-            for (int i = 0; i < 16; ++i)
-            {
-                if (!std::isfinite(d[i]))
-                {
-                    return false;
-                }
-            }
-            return true;
+            // nan fails the ordered compare, so it counts as not finite
+            const __m256 sign = _mm256_set1_ps(-0.0f);
+            const __m256 inf  = _mm256_set1_ps(std::numeric_limits<float>::infinity());
+            const __m256 c01  = _mm256_cmp_ps(_mm256_andnot_ps(sign, _mm256_loadu_ps(&m00)), inf, _CMP_LT_OQ);
+            const __m256 c23  = _mm256_cmp_ps(_mm256_andnot_ps(sign, _mm256_loadu_ps(&m02)), inf, _CMP_LT_OQ);
+            return _mm256_movemask_ps(_mm256_and_ps(c01, c23)) == 0xFF;
         }
 
         float m00 = 0.0f, m10 = 0.0f, m20 = 0.0f, m30 = 0.0f;
@@ -706,6 +395,33 @@ namespace spartan::math
         float m03 = 0.0f, m13 = 0.0f, m23 = 0.0f, m33 = 0.0f;
 
         static const Matrix Identity;
+
+    private:
+        // the three rotation columns of a unit quaternion, w lanes are zero
+        static void RotationColumns(const Quaternion& rotation, __m128& c0, __m128& c1, __m128& c2)
+        {
+            const __m128 q  = rotation.Simd();
+            const __m128 q2 = _mm_add_ps(q, q);
+
+            // diagonal: (1 - 2(yy + zz), 1 - 2(xx + zz), 1 - 2(xx + yy), 0)
+            const __m128 squares  = _mm_mul_ps(q, q2);
+            const __m128 diagonal = _mm_blend_ps(
+                _mm_sub_ps(_mm_sub_ps(_mm_set1_ps(1.0f), _mm_permute_ps(squares, _MM_SHUFFLE(3, 0, 0, 1))), _mm_permute_ps(squares, _MM_SHUFFLE(3, 1, 2, 2))),
+                _mm_setzero_ps(), 0x8);
+
+            // (2xz, 2xy, 2yz) and (2wy, 2wz, 2wx)
+            const __m128 products = _mm_mul_ps(_mm_permute_ps(q, _MM_SHUFFLE(3, 1, 0, 0)), _mm_permute_ps(q2, _MM_SHUFFLE(3, 2, 1, 2)));
+            const __m128 w_terms  = _mm_mul_ps(simd::splat<3>(q2), _mm_permute_ps(q, _MM_SHUFFLE(3, 0, 2, 1)));
+            const __m128 sums     = _mm_add_ps(products, w_terms); // (2(xz + wy), 2(xy + wz), 2(yz + wx))
+            const __m128 diffs    = _mm_sub_ps(products, w_terms); // (2(xz - wy), 2(xy - wz), 2(yz - wx))
+
+            // c0 = (diagonal.x, diffs.y, sums.x, 0)
+            // c1 = (sums.y, diagonal.y, diffs.z, 0)
+            // c2 = (diffs.x, sums.z, diagonal.z, 0)
+            c0 = _mm_blend_ps(_mm_blend_ps(diagonal, diffs, 0x2), simd::splat<0>(sums), 0x4);
+            c1 = _mm_blend_ps(_mm_blend_ps(diagonal, simd::splat<1>(sums), 0x1), diffs, 0x4);
+            c2 = _mm_blend_ps(_mm_blend_ps(diagonal, diffs, 0x1), simd::splat<2>(sums), 0x2);
+        }
     };
 
     // reverse order operators

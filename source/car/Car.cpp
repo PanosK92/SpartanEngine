@@ -641,22 +641,6 @@ namespace spartan
         ApplySkeletonBodyVisibility();
     }
 
-    void Car::PrepareForPlayStop()
-    {
-        if (m_is_occupied) Input::GamepadStopFeedback();
-        m_haptic_initialized = false;
-        if (m_visualization_preset == CarVisualizationPreset::Skeleton)
-        {
-            SetVisualizationPreset(CarVisualizationPreset::Full);
-        }
-        else
-        {
-            ClearBodyRenderStates(false);
-        }
-
-        m_was_playing = false;
-    }
-
     void Car::SetSkeletonShowCollision(bool show)
     {
         m_skeleton_show_collision = show;

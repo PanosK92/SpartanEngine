@@ -85,6 +85,12 @@ Use these first:
 - `spartan_status` to check bridge, transport, read-only mode, and code index health.
 - `search_capabilities` and `get_capability_details` to discover tools/resources without guessing.
 - `context_snapshot` to read engine status, world summary, selection, and camera grounding in one call.
+- `engine_ensure {world, mode}` for one-call session setup: it launches the newest visible build from `binaries/` only when nothing answers on the target port, loads the world and waits for it, and sets the mode. It never reloads the loaded world and refuses to replace a different one (a second `world_load` per session blows up GPU memory) unless it launched the engine in the same call or `force_load` is set.
+- `engine_wait {until}` instead of polling: `ready`, `world`, `jobs_idle`, or `frames` (proves rendering is not stalled).
+- `tool_batch {steps}` to run many tools in one call. A string argument `$<label>.<path>` or `$<index>.<path>` is replaced by a value from an earlier step's result (`$car.entity.id`, `$0.matches.0.id`); unresolved references list the keys that exist. Screenshot images from every step are returned.
+- `viewpoint_save`, `viewpoint_list`, `viewpoint_delete`, and `viewpoint_capture` for named per-world cameras stored in `binaries/project/mcp/viewpoints.json`. Capture with `label: "before"`, edit, then capture with `label: "after", compare_to: "before"` to get per-viewpoint pixel metrics and a red-on-grey diff image.
+- `screenshot_compare {a, b, threshold}` to prove a change is visible, or that an optimization is pixel-identical. Raise `threshold` (~24) to ignore drifting clouds and temporal noise.
+- `window_restore` when `engine_status` reports `minimized`. A minimized window stops rendering; `screenshot_take` and `viewpoint_capture` now fail fast with `window_minimized` instead of waiting.
 - `async_task_start`, `async_task_get`, and `async_task_list` for long-running tools that should not block the main MCP call.
 - `undo_redo` for editor command-stack undo and redo.
 - `entity_render_materials` before deleting/rebuilding existing geometry when materials should be preserved.

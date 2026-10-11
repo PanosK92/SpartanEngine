@@ -278,7 +278,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // one traced ray lights both lobes, the lobe it was not aimed at sees the same surroundings
         float2 base_brdf           = reflection_env_brdf(sample_material.r, n_dot_v);
         float3 base                = (F0 * base_brdf.x + base_brdf.y) * compute_multiscatter_energy_split_sum(F0, base_brdf);
-        float  clearcoat           = saturate(mat.clearcoat * (1.0f - sample_material.b));
+        float  clearcoat           = saturate(mat.clearcoat * (1.0f - gbuffer_decal_coverage(sample_material.b, mat)));
         float3 layers              = base;
         if (clearcoat > 0.0f)
         {

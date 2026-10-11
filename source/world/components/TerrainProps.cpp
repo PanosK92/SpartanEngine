@@ -26,7 +26,6 @@ Commercial use requires written permission and negotiated payment terms.
 #include "Water.h"
 #include "Spline.h"
 #include "../../geometry/GeneratedCache.h"
-#include "RoadEditRegions.h"
 #include "Light.h"
 #include "Camera.h"
 #include "../Entity.h"

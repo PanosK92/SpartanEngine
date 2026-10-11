@@ -737,27 +737,27 @@ namespace spartan
         SetColorInternal(color, false);
 
         // Paint presets change the finish, not the UV layout of imported body maps.
-        // FlakeScale controls procedural flake density independently.
+        // FlakeScale is platelets per uv unit, the shaders derive the orange peel from it too.
+        // The clear coat carries the gloss, so the base roughness is the pigment under it and
+        // the body normal map stays off, the shaders put a procedural orange peel on the coat.
         switch (preset)
         {
             case MaterialPaintPreset::GlossSolid:
             {
-                SetPropertyInternal(MaterialProperty::Roughness,           0.24f, false);
-                SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
-                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.08f, false);
-                SetPropertyInternal(MaterialProperty::Normal,              0.03f, false);
+                SetPropertyInternal(MaterialProperty::Roughness,           0.35f,  false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,   false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.03f,  false);
+                SetPropertyInternal(MaterialProperty::Normal,              0.0f,   false);
                 break;
             }
             case MaterialPaintPreset::Metallic:
             {
-                SetPropertyInternal(MaterialProperty::Roughness,           0.26f, false);
-                SetPropertyInternal(MaterialProperty::Metalness,           0.02f, false);
-                SetPropertyInternal(MaterialProperty::Clearcoat,           0.9f,  false);
-                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.1f,  false);
-                SetPropertyInternal(MaterialProperty::Anisotropic,         0.1f,  false);
-                SetPropertyInternal(MaterialProperty::Normal,              0.04f, false);
-                SetPropertyInternal(MaterialProperty::FlakeStrength,       0.18f, false);
-                SetPropertyInternal(MaterialProperty::FlakeScale,          160.0f, false);
+                SetPropertyInternal(MaterialProperty::Roughness,           0.4f,   false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,   false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.035f, false);
+                SetPropertyInternal(MaterialProperty::Normal,              0.0f,   false);
+                SetPropertyInternal(MaterialProperty::FlakeStrength,       0.45f,  false);
+                SetPropertyInternal(MaterialProperty::FlakeScale,          12000.0f, false);
                 break;
             }
             case MaterialPaintPreset::Satin:
@@ -777,26 +777,28 @@ namespace spartan
             }
             case MaterialPaintPreset::Pearl:
             {
-                SetPropertyInternal(MaterialProperty::Roughness,           0.18f, false);
-                SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
-                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.07f, false);
-                SetPropertyInternal(MaterialProperty::Sheen,               0.25f, false);
-                SetPropertyInternal(MaterialProperty::Normal,              0.04f, false);
-                SetPropertyInternal(MaterialProperty::PearlStrength,       0.55f, false);
-                SetPropertyInternal(MaterialProperty::PearlColorR,         0.55f, false);
-                SetPropertyInternal(MaterialProperty::PearlColorG,         0.78f, false);
-                SetPropertyInternal(MaterialProperty::PearlColorB,         1.0f,  false);
-                SetPropertyInternal(MaterialProperty::FlakeStrength,       0.18f, false);
-                SetPropertyInternal(MaterialProperty::FlakeScale,          140.0f, false);
+                SetPropertyInternal(MaterialProperty::Roughness,           0.3f,   false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,   false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.035f, false);
+                SetPropertyInternal(MaterialProperty::Sheen,               0.25f,  false);
+                SetPropertyInternal(MaterialProperty::Normal,              0.0f,   false);
+                SetPropertyInternal(MaterialProperty::PearlStrength,       0.55f,  false);
+                SetPropertyInternal(MaterialProperty::PearlColorR,         0.55f,  false);
+                SetPropertyInternal(MaterialProperty::PearlColorG,         0.78f,  false);
+                SetPropertyInternal(MaterialProperty::PearlColorB,         1.0f,   false);
+                SetPropertyInternal(MaterialProperty::FlakeStrength,       0.3f,   false);
+                SetPropertyInternal(MaterialProperty::FlakeScale,          12000.0f, false);
                 break;
             }
             case MaterialPaintPreset::Candy:
             {
-                SetPropertyInternal(MaterialProperty::Roughness,             0.12f, false);
-                SetPropertyInternal(MaterialProperty::Clearcoat,             1.0f,  false);
-                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness,   0.035f, false);
-                SetPropertyInternal(MaterialProperty::SubsurfaceScattering,  0.18f, false);
-                SetPropertyInternal(MaterialProperty::Normal,                0.015f, false);
+                SetPropertyInternal(MaterialProperty::Roughness,             0.3f,   false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,             1.0f,   false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness,   0.025f, false);
+                SetPropertyInternal(MaterialProperty::SubsurfaceScattering,  0.18f,  false);
+                SetPropertyInternal(MaterialProperty::Normal,                0.0f,   false);
+                SetPropertyInternal(MaterialProperty::FlakeStrength,         0.5f,   false);
+                SetPropertyInternal(MaterialProperty::FlakeScale,            12000.0f, false);
                 SetPropertyInternal(MaterialProperty::CoatTintR,             1.0f, false);
                 SetPropertyInternal(MaterialProperty::CoatTintG,             0.12f, false);
                 SetPropertyInternal(MaterialProperty::CoatTintB,             0.04f, false);
@@ -805,12 +807,11 @@ namespace spartan
             }
             case MaterialPaintPreset::Chameleon:
             {
-                SetPropertyInternal(MaterialProperty::Roughness,           0.16f, false);
+                SetPropertyInternal(MaterialProperty::Roughness,           0.3f,  false);
                 SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
-                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.06f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.035f, false);
                 SetPropertyInternal(MaterialProperty::Sheen,               0.5f,  false);
-                SetPropertyInternal(MaterialProperty::Anisotropic,         0.15f, false);
-                SetPropertyInternal(MaterialProperty::Normal,              0.04f, false);
+                SetPropertyInternal(MaterialProperty::Normal,              0.0f,  false);
                 SetPropertyInternal(MaterialProperty::PearlStrength,       0.9f,  false);
                 SetPropertyInternal(MaterialProperty::PearlColorR,         0.25f, false);
                 SetPropertyInternal(MaterialProperty::PearlColorG,         0.9f,  false);
@@ -819,8 +820,8 @@ namespace spartan
                 SetPropertyInternal(MaterialProperty::CoatTintG,           0.2f,  false);
                 SetPropertyInternal(MaterialProperty::CoatTintB,           1.0f,  false);
                 SetPropertyInternal(MaterialProperty::CoatTintStrength,    0.25f, false);
-                SetPropertyInternal(MaterialProperty::FlakeStrength,       0.25f, false);
-                SetPropertyInternal(MaterialProperty::FlakeScale,          180.0f, false);
+                SetPropertyInternal(MaterialProperty::FlakeStrength,       0.35f, false);
+                SetPropertyInternal(MaterialProperty::FlakeScale,          12000.0f, false);
                 break;
             }
             case MaterialPaintPreset::Max:

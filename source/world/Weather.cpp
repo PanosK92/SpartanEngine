@@ -449,11 +449,6 @@ namespace spartan
         return puddles;
     }
 
-    float Weather::GetShelter()
-    {
-        return shelter;
-    }
-
     float Weather::GetWaterDepth(const Vector3& position, bool porous)
     {
         const bool weathered = rain > 0.0f || wetness > 0.0f || puddles > 0.0f;

@@ -1178,7 +1178,6 @@ namespace spartan
         {
             queries::CmdListQueries& q = queries::get(this);
             queries::readback_data(q.readback_timestamp, m_timestamp_data.data(), std::min<uint32_t>(m_timestamp_index, m_max_timestamps));
-            m_gpu_frame_reference_tick = m_timestamp_data[0];
         }
         // reset per-frame counters, queries::resolve at submit time uses the previous values to size the resolve
         {
@@ -3368,50 +3367,6 @@ namespace spartan
         queries::CmdListQueries& q = queries::get(this);
         q.timestamps_used = m_timestamp_index;
         return slot;
-    }
-
-    float RHI_CommandList::GetTimestampResult(const uint32_t timestamp_index)
-    {
-        if (timestamp_index + 1 >= m_max_timestamps)
-        {
-            return 0.0f;
-        }
-
-        uint64_t start = m_timestamp_data[timestamp_index];
-        uint64_t end   = m_timestamp_data[timestamp_index + 1];
-        if (end <= start)
-        {
-            return 0.0f;
-        }
-
-        // d3d12 m_timestamp_period is nanoseconds-per-tick (1e9 / GetTimestampFrequency())
-        uint64_t duration = end - start;
-        float duration_ms = static_cast<float>(duration * RHI_Device::PropertyGetTimestampPeriod() * 1e-6f);
-        if (duration_ms < 0.0f)
-        {
-            duration_ms = 0.0f;
-        }
-        if (duration_ms > 1000.0f)
-        {
-            duration_ms = 1000.0f;
-        }
-        return duration_ms;
-    }
-
-    float RHI_CommandList::GetTimestampStartMs(const uint32_t timestamp_index)
-    {
-        if (timestamp_index >= m_max_timestamps)
-        {
-            return 0.0f;
-        }
-        uint64_t start_tick = m_timestamp_data[timestamp_index];
-        uint64_t ref_tick   = m_gpu_frame_reference_tick;
-        if (start_tick < ref_tick)
-        {
-            return 0.0f;
-        }
-        float offset_ms = static_cast<float>((start_tick - ref_tick) * RHI_Device::PropertyGetTimestampPeriod() * 1e-6f);
-        return offset_ms < 0.0f ? 0.0f : offset_ms;
     }
 
     void RHI_CommandList::ReadbackTimestampsForProfiler()

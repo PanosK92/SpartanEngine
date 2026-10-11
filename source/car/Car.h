@@ -102,7 +102,6 @@ namespace spartan
         // entity access
         Entity* GetRootEntity() const  { return m_vehicle_entity ? m_vehicle_entity : m_body_entity; }
         Entity* GetBodyEntity() const  { return m_body_entity; }
-        Entity* GetWindowEntity() const { return m_window_entity; }
         const car::car_definition* GetDefinition() const { return m_definition; }
 
         // vehicle interaction
@@ -162,8 +161,6 @@ namespace spartan
         bool GetShowTelemetry() const { return m_show_telemetry; }
         void SetVisualizationPreset(CarVisualizationPreset preset);
         CarVisualizationPreset GetVisualizationPreset() const { return m_visualization_preset; }
-        // call before play stop destroys play spawned meshes, restores skeleton visibility
-        void PrepareForPlayStop();
         // skeleton view: toggle chassis collision hull debug draw, mesh stays hidden
         void SetSkeletonShowCollision(bool show);
         bool GetSkeletonShowCollision() const { return m_skeleton_show_collision; }

@@ -20,12 +20,7 @@ namespace spartan
     public:
         // strings
         static bool IsEmptyOrWhitespace(const std::string& var);
-        static bool IsAlphanumeric(const std::string& var);
-        static std::string RemoveIllegalCharacters(const std::string& text);
-        static std::string GetStringBeforeExpression(const std::string& str, const std::string& exp);
-        static std::string GetStringAfterExpression(const std::string& str, const std::string& exp);
         static std::string ConvertToUppercase(const std::string& lower);
-        static std::string ReplaceExpression(const std::string& str, const std::string& from, const std::string& to);
         static std::wstring StringToWstring(const std::string& str);
 
         // supported files
@@ -43,16 +38,6 @@ namespace spartan
         static bool IsEngineShaderFile(const std::string& path);
         static bool IsEngineTextureFile(const std::string& path);
         static bool IsEngineWorldFile(const std::string& path);
-        static bool IsEngineFile(const std::string& path);
-        static const std::vector<std::string>& GetSupportedImageFormats();
-
-        // supported files in directory
-        static std::vector<std::string> GetSupportedFilesInDirectory(const std::string& path);
-        static std::vector<std::string> GetSupportedImageFilesFromPaths(const std::vector<std::string>& paths);
-        static std::vector<std::string> GetSupportedAudioFilesFromPaths(const std::vector<std::string>& paths);
-        static std::vector<std::string> GetSupportedModelFilesFromPaths(const std::vector<std::string>& paths);
-        static std::vector<std::string> GetSupportedModelFilesInDirectory(const std::string& path);
-        static std::vector<std::string> GetSupportedSceneFilesInDirectory(const std::string& path);
 
         // directories & files
         static std::string GetFileNameFromFilePath(const std::string& path);
@@ -66,11 +51,9 @@ namespace spartan
         static std::string GetWorkingDirectory();
         // directory containing the running exe, independent of cwd
         static std::string GetExecutableDirectory();
-        static std::string GetRootDirectory(const std::string& path);
         static std::string GetParentDirectory(const std::string& path);
         static std::vector<std::string> GetDirectoriesInDirectory(const std::string& path);
         static std::vector<std::string> GetFilesInDirectory(const std::string& path);
-        static std::vector<std::string> SplitPath(const std::string& path);
         static std::string GetLastWriteTime(const std::string& path);
         static void Rename(const std::string& old_name, const std::string& new_name);
         static bool Exists(const std::string& path);
@@ -78,7 +61,6 @@ namespace spartan
         static bool IsDirectory(const std::string& path);
         static bool IsFile(const std::string& path);
         static void OpenUrl(const std::string& url);
-        static void Command(const std::string& command, std::function<void()> callback = nullptr, const bool blocking = false);
         static bool Delete(const std::string& path);
         static bool CreateDirectory_(const std::string& path);
         static bool CopyFileFromTo(const std::string& source, const std::string& destination);

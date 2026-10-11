@@ -48,7 +48,6 @@ namespace spartan
         type["SetWheelRadius"] = vehicle_method(&CarPhysics::SetWheelRadius);
         type["GetWheelRadius"] = vehicle_method(&CarPhysics::GetWheelRadius);
         type["GetSuspensionHeight"] = vehicle_method(&CarPhysics::GetSuspensionHeight);
-        type["ComputeWheelRadiusFromEntity"] = vehicle_method(&CarPhysics::ComputeWheelRadiusFromEntity);
         type["GetVehicleThrottle"] = vehicle_method(&CarPhysics::GetVehicleThrottle);
         type["GetVehicleBrake"] = vehicle_method(&CarPhysics::GetVehicleBrake);
         type["GetVehicleHeadlights"] = [](Physics& self) { return CarPhysics::Get(self).GetCar() ? static_cast<int>(CarPhysics::Get(self).GetCar()->GetHeadlights()) : 0; };

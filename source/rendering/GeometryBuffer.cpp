@@ -106,8 +106,7 @@ namespace spartan
         uint32_t meshlet_micro_reserve  = 0;
         uint32_t instance_reserve       = 0;
 
-        bool dirty       = false;
-        bool was_rebuilt = false;
+        bool dirty = false;
         mutex buffer_mutex;
 
         // hard-cap learned from previous oom failures, prevents retrying ever-larger allocations every frame
@@ -506,7 +505,6 @@ namespace spartan
         uint32_t meshlet_micro_count  = meshlet_micro_indices.size();
         uint32_t instance_count       = instances.size();
 
-        was_rebuilt             = false;
         bool needs_full_rebuild = !vertex_buffer || !index_buffer || !meshlet_bounds_buffer ||
                                   !meshlet_vertex_buffer || !meshlet_micro_index_buffer || !instance_buffer ||
                                   vertex_count > vertex_capacity ||
@@ -625,14 +623,9 @@ namespace spartan
                 // without this, instances would stay at the failed size and the next rebuild would re-attempt the same too-big alloc
                 instances.tail.clear();
 
-                dirty       = false;
-                was_rebuilt = false;
+                dirty = false;
                 return;
             }
-
-            // Report input-buffer replacement. Completed BLAS remain valid because
-            // arena growth preserves geometry contents and offsets.
-            was_rebuilt = new_vertex_buffer != nullptr || new_index_buffer != nullptr;
 
             if (new_vertex_buffer)
             {
@@ -718,13 +711,6 @@ namespace spartan
         }
 
         dirty = false;
-    }
-
-    bool GeometryBuffer::WasRebuilt()
-    {
-        bool result = was_rebuilt;
-        was_rebuilt = false;
-        return result;
     }
 
     uint64_t GeometryBuffer::GetCpuBytes()
@@ -833,7 +819,6 @@ namespace spartan
         instance_reserve               = 0;
         instance_capacity_failed_at    = 0;
         dirty                          = false;
-        was_rebuilt                    = false;
         oom_logged                     = false;
     }
 

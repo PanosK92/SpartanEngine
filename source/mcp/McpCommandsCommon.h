@@ -54,6 +54,7 @@ namespace spartan
         bool parse_vector2(const std::string& value, math::Vector2& result);
         bool parse_vector3(const std::string& value, math::Vector3& result);
         bool parse_uint32(const std::string& value, uint32_t& result);
+        bool parse_int32(const std::string& value, int32_t& result);
         std::string to_lower_copy(std::string value);
         //=================================================================================
 
@@ -86,5 +87,3 @@ namespace spartan
         //=================================================================================
     }
 }
-
-namespace spartan::mcp_common { bool parse_int32(const std::string& value, int32_t& result); }

@@ -7,66 +7,25 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= INCLUDES ===================================
 #include "pch.h"
-#include "editor/Selection.h"
-#include "game/CameraController.h"
-#include "../profiling/WorldWork.h"
-#include "../core/ThreadPool.h"
 #include "McpCommands.h"
 #include "McpCommandsCommon.h"
-#include "McpCommandsWorldBuild.h"
-#include "McpCommandsMesh.h"
-#include "McpGeometryKernel.h"
-#include "McpTextureKernel.h"
 #include "../commands/console/ConsoleCommands.h"
-#include "../commands/CommandStack.h"
-#include "../core/ProgressTracker.h"
 #include "../logging/Log.h"
-#include "../physics/PhysicsWorld.h"
 #include "../profiling/Profiler.h"
+#include "../memory/Allocator.h"
+#include "../memory/FrameAllocator.h"
 #include "../memory/GpuMemory.h"
 #include "../world/World.h"
-#include "../world/Weather.h"
-#include "../world/Entity.h"
-#include "../world/components/Camera.h"
-#include "../world/components/Component.h"
-#include "../world/components/AudioSource.h"
-#include "../world/components/Light.h"
-#include "../world/components/ParticleSystem.h"
-#include "../world/components/Physics.h"
-#include "../world/components/Render.h"
-#include "../world/components/Script.h"
-#include "../world/components/Spline.h"
-#include "../world/components/SplineFollower.h"
-#include "../world/components/Terrain.h"
-#include "../world/components/Text3D.h"
-#include "../world/Prefab.h"
-#include "../world/GameReady.h"
-#include "../world/WorldHelpers.h"
-#include "../io/pugixml.hpp"
-#include "../game/components/RaceDriver.h"
 #include "../resource/ResourceCache.h"
-#include "../resource/import/ImageImporter.h"
-#include "../animation/Animation.h"
-#include "../geometry/GeometryGeneration.h"
-#include "../geometry/Mesh.h"
-#include "../rhi/RHI_Texture.h"
 #include "../rhi/RHI_Buffer.h"
 #include "../rhi/RHI_Device.h"
 #include "../rhi/RHI_Shader.h"
-#include "../rendering/Material.h"
 #include "../rendering/Renderer.h"
-#include "../math/Vector2.h"
 #include <algorithm>
-#include <cctype>
-#include <cstdlib>
-#include <filesystem>
 #include <fstream>
-#include <iomanip>
 #include <initializer_list>
-#include <limits>
 #include <optional>
 #include <sstream>
-#include <typeinfo>
 #include <unordered_map>
 //==============================================
 
@@ -264,10 +223,20 @@ namespace spartan::mcp_diagnostics
             std::memcpy(&instance_count, instances->GetMappedData(), sizeof(uint32_t));
             std::memcpy(&opaque_count, meshlets->GetMappedData(), sizeof(uint32_t));
             std::memcpy(&alpha_count, static_cast<const uint8_t*>(meshlets->GetMappedData()) + meshlets->GetStride(), sizeof(uint32_t));
+            // slots 2 and 3 hold what the late (two-phase) cull added on top of the early survivors
+            uint32_t late_opaque_count = 0;
+            uint32_t late_alpha_count = 0;
+            if (meshlets->GetElementCount() >= 4)
+            {
+                std::memcpy(&late_opaque_count, static_cast<const uint8_t*>(meshlets->GetMappedData()) + meshlets->GetStride() * 2, sizeof(uint32_t));
+                std::memcpy(&late_alpha_count, static_cast<const uint8_t*>(meshlets->GetMappedData()) + meshlets->GetStride() * 3, sizeof(uint32_t));
+            }
             return "{\"ok\":true,\"sampled_after_gpu_wait\":true,\"frame\":" + std::to_string(Renderer::GetFrameNumber()) +
                 ",\"surviving_instances\":" + std::to_string(instance_count) +
                 ",\"opaque_meshlets\":" + std::to_string(opaque_count) +
                 ",\"alpha_meshlets\":" + std::to_string(alpha_count) +
+                ",\"late_opaque_meshlets\":" + std::to_string(late_opaque_count) +
+                ",\"late_alpha_meshlets\":" + std::to_string(late_alpha_count) +
                 ",\"instance_capacity\":" + std::to_string(survivors->GetElementCount()) +
                 ",\"meshlet_capacity_per_category\":" + std::to_string(meshlet_list->GetElementCount() / 2u) + "}";
         }
@@ -497,6 +466,15 @@ namespace spartan::mcp_diagnostics
             json += ",\"descriptor_set_count\":" + std::to_string(Profiler::m_rhi_descriptor_set_count);
             json += "}";
 
+            json += ",\"memory\":{";
+            json += "\"heap_allocated_mb\":" + std::to_string(Allocator::GetMemoryAllocatedMb());
+            json += ",\"heap_peak_mb\":" + std::to_string(Allocator::GetMemoryAllocatedPeakMb());
+            json += ",\"process_mb\":" + std::to_string(Allocator::GetMemoryProcessUsedMb());
+            json += ",\"live_allocations\":" + std::to_string(Allocator::GetAllocationCount());
+            json += ",\"allocations_last_frame\":" + std::to_string(Allocator::GetAllocationsLastFrame());
+            json += ",\"frame_allocator_bytes_last_frame\":" + std::to_string(FrameAllocator::GetBytesLastFrame());
+            json += "}";
+
             const size_t limit = (top > 0 && top < blocks.size()) ? top : blocks.size();
             json += ",\"time_block_count\":" + std::to_string(blocks.size());
             json += ",\"time_blocks\":[";
@@ -519,6 +497,60 @@ namespace spartan::mcp_diagnostics
             }
             json += "]";
             json += "}";
+            return json;
+        }
+
+        // action start records every allocation of min_size bytes or more (default 0), report lists the busiest call sites, stop ends recording
+        std::string command_memory_allocation_sites(const McpRequest& request)
+        {
+            const std::string action = to_lower_copy(get_argument(request, "action").value_or("report"));
+
+            uint64_t min_size = 0;
+            if (const std::optional<std::string> value = get_argument(request, "min_size"))
+            {
+                parse_uint64(*value, min_size);
+            }
+
+            uint64_t top = 20;
+            if (const std::optional<std::string> value = get_argument(request, "top"))
+            {
+                parse_uint64(*value, top);
+            }
+
+            if (action == "start")
+            {
+                Allocator::SetAllocationCensus(true, static_cast<size_t>(min_size));
+            }
+            else if (action == "stop")
+            {
+                Allocator::SetAllocationCensus(false, 0);
+            }
+            else if (action != "report")
+            {
+                return "{\"ok\":false,\"error\":\"action must be start, report or stop\"}";
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"recording\":" + json_bool(Allocator::IsAllocationCensusEnabled());
+            json += ",\"allocations_last_frame\":" + std::to_string(Allocator::GetAllocationsLastFrame());
+            json += ",\"sites\":[";
+            if (action == "report")
+            {
+                const std::vector<AllocationSite> sites = Allocator::GetBusiestAllocationSites(static_cast<uint32_t>(top));
+                for (size_t i = 0; i < sites.size(); i++)
+                {
+                    if (i != 0)
+                    {
+                        json += ",";
+                    }
+                    json += "{\"allocations\":" + std::to_string(sites[i].allocations_total);
+                    json += ",\"live_allocations\":" + std::to_string(sites[i].live_allocations);
+                    json += ",\"live_bytes\":" + std::to_string(sites[i].live_bytes);
+                    json += ",\"call_stack\":" + json_string(sites[i].call_stack);
+                    json += "}";
+                }
+            }
+            json += "]}";
             return json;
         }
 
@@ -878,6 +910,7 @@ namespace spartan::mcp_diagnostics
     void Register()
     {
         RegisterMcpCommand("profiler_snapshot", command_profiler_snapshot);
+        RegisterMcpCommand("memory_allocation_sites", command_memory_allocation_sites);
         RegisterMcpCommand("gpu_memory_snapshot", command_gpu_memory_snapshot);
         RegisterMcpCommand("profiler_record", command_profiler_record);
         RegisterMcpCommand("meshlet_snapshot", command_meshlet_snapshot);

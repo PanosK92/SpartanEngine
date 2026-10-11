@@ -52,7 +52,6 @@ namespace spartan
         void SetWheelRadius(float radius);
         float GetWheelRadius() const;
         float GetSuspensionHeight() const; // distance from body center to wheel center
-        void ComputeWheelRadiusFromEntity(Entity* wheel_entity); // auto-compute from mesh AABB
         // wheel visual scale derives from unscaled local mesh bounds
         void ScaleWheelEntityToDimensions(Entity* wheel_entity, float target_radius, float target_width);
 
@@ -152,11 +151,6 @@ namespace spartan
         uint32_t GetVehicleCollisionGroup() const;
         void SetVehiclePreset(const car::car_preset& preset);
         void SetVehicleSimulationFrequency(float frequency);
-
-        // center of mass (for tuning handling characteristics)
-        void SetCenterOfMassOffset(const math::Vector3& offset);
-        void SetCenterOfMassOffset(float x, float y, float z);
-        math::Vector3 GetCenterOfMassOffset() const;
 
     private:
         Physics& physics;

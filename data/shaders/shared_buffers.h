@@ -263,6 +263,7 @@ struct PassBufferData
 namespace pass_visible_triangles
 {
     static const SHARED_UINT region_base = 0; // uint, 0 for the opaque half, the half capacity for the alpha half
+    static const SHARED_UINT late        = 2; // bool, draw only what the late cull appended
 }
 
 namespace pass_meshlet_visualize
@@ -335,12 +336,16 @@ namespace pass_grass_interaction
     static const SHARED_UINT track_recovery  = 11; // float
 }
 
+// the early and late cull run the same kernels, history_hiz says whether the early cull tested against
+// last frame's hi-z, both get the same value because the late cull replays that test
 namespace pass_instance_cull
 {
     static const SHARED_UINT hiz_depth_bias = 0; // float
     static const SHARED_UINT task_count     = 1; // uint
     static const SHARED_UINT max_hiz_mip    = 2; // float
     static const SHARED_UINT max_instances  = 3; // uint
+    static const SHARED_UINT late           = 4; // bool
+    static const SHARED_UINT history_hiz    = 5; // bool
 }
 
 namespace pass_indirect_cull
@@ -350,12 +355,41 @@ namespace pass_indirect_cull
     static const SHARED_UINT max_meshlet_instances = 2; // uint
     static const SHARED_UINT split_opaque_alpha    = 3; // bool
     static const SHARED_UINT wind_cache_limit      = 4; // uint
+    static const SHARED_UINT late                  = 5; // bool
+    static const SHARED_UINT history_hiz           = 6; // bool
 }
 
 namespace pass_indirect_cull_triangle
 {
     static const SHARED_UINT max_meshlet_instances = 0; // uint
     static const SHARED_UINT region_cap            = 1; // uint, per half capacity, doubles as the alpha region base
+    static const SHARED_UINT late                  = 2; // bool, read the meshlets the late cull appended
+}
+
+// cull_phase.hlsl, records where the early survivors end and turns the late appended range into its own args
+namespace pass_cull_phase
+{
+    static const SHARED_UINT mode = 0; // uint, CULL_PHASE_MODE_*
+}
+
+// shadow_cull.hlsl, the count and write passes run the same kernel so both see identical visibility
+namespace pass_shadow_cull
+{
+    static const SHARED_UINT slice_count      = 0; // uint
+    static const SHARED_UINT caster_count     = 1; // uint
+    static const SHARED_UINT task_count       = 2; // uint
+    static const SHARED_UINT visible_capacity = 3; // uint
+    static const SHARED_UINT write            = 4; // bool, false counts survivors, true writes them
+}
+
+// tessellated_cull.hlsl, one thread per tessellated draw, the early cull writes args [0, n) and the late cull [n, 2n)
+namespace pass_tessellated_cull
+{
+    static const SHARED_UINT draw_count     = 0; // uint
+    static const SHARED_UINT max_hiz_mip    = 1; // float
+    static const SHARED_UINT hiz_depth_bias = 2; // float
+    static const SHARED_UINT history_hiz    = 3; // bool
+    static const SHARED_UINT late           = 4; // bool
 }
 
 namespace pass_reflections_shade
@@ -746,7 +780,7 @@ struct LightParameters
 struct Aabb
 {
     SHARED_FLOAT3 min;
-    SHARED_FLOAT  is_occluder;
+    SHARED_FLOAT  padding1;
     SHARED_FLOAT3 max;
     SHARED_FLOAT  padding2;
 };
@@ -907,10 +941,84 @@ struct CullTask
 
 // emitted by the instance cull pass (phase a) for every surviving (renderable lod, instance) tuple
 // the meshlet cull pass (phase b) dispatches one workgroup per entry and expands that instance's meshlets
+// in the late cull the top bit of instance_index says the early cull already drew this instance
+#define SURVIVING_INSTANCE_DRAWN_EARLY 0x80000000u
 struct SurvivingInstance
 {
     SHARED_UINT draw_index     SHARED_DEFAULT(0);
     SHARED_UINT instance_index SHARED_DEFAULT(0);
+};
+
+// occlusion culling runs twice a frame over the same survivor lists
+// early: test against last frame's hi-z, draw the depth prepass, build a hi-z from it
+// late: test against that hi-z, append what the early cull rejected, draw only the appended range
+// cull_phase holds where the early survivors end, triangle_dispatch_args slots 2 and 3 and indirect_draw_args
+// slots 2 and 3 hold the late ranges, slots 0 and 1 keep counting both so the g-buffer draws everything at once
+#define CULL_PHASE_MESHLET_BASE_OPAQUE  0u
+#define CULL_PHASE_MESHLET_BASE_ALPHA   1u
+#define CULL_PHASE_TRIANGLE_BASE_OPAQUE 2u
+#define CULL_PHASE_TRIANGLE_BASE_ALPHA  3u
+#define CULL_PHASE_COUNT                4u
+#define CULL_PHASE_MODE_SNAPSHOT        0u
+#define CULL_PHASE_MODE_LATE_MESHLETS   1u
+#define CULL_PHASE_MODE_LATE_TRIANGLES  2u
+
+// gpu-driven shadow maps, one record per shadow casting draw, culled per (atlas slice, instance) by shadow_cull.hlsl
+// the lod geometry is stored twice because directional cascades bias the lod one step coarser than local lights
+// bounds are the world aabb when shadow_caster_flag_world_bounds is set, otherwise the lod 0 local aabb of one instance
+#define shadow_caster_flag_world_bounds 1u
+#define shadow_caster_flag_wind         2u
+#define shadow_cull_group_size          64u
+struct ShadowCaster
+{
+    SHARED_UINT draw_data_index        SHARED_DEFAULT(0);
+    SHARED_UINT instance_offset        SHARED_DEFAULT(0); // global instance pool offset, 0 when not instanced
+    SHARED_UINT instance_count         SHARED_DEFAULT(1);
+    SHARED_UINT flags                  SHARED_DEFAULT(0);
+    SHARED_UINT index_count_directional SHARED_DEFAULT(0);
+    SHARED_UINT first_index_directional SHARED_DEFAULT(0);
+    SHARED_INT  vertex_offset_directional SHARED_DEFAULT(0);
+    SHARED_UINT index_count_local      SHARED_DEFAULT(0);
+    SHARED_UINT first_index_local      SHARED_DEFAULT(0);
+    SHARED_INT  vertex_offset_local    SHARED_DEFAULT(0);
+    SHARED_UINT padding0               SHARED_DEFAULT(0);
+    SHARED_UINT padding1               SHARED_DEFAULT(0);
+    SHARED_FLOAT3 bounds_min           SHARED_DEFAULT(spartan::math::Vector3::Zero);
+    SHARED_FLOAT  max_shadow_distance  SHARED_DEFAULT(0.0f); // 0 disables the per instance distance test
+    SHARED_FLOAT3 bounds_max           SHARED_DEFAULT(spartan::math::Vector3::Zero);
+    SHARED_FLOAT  padding2             SHARED_DEFAULT(0.0f);
+};
+
+// gpu lod for non-instanced indirect draws, the instance cull picks the lod and patches it into the draw
+// a draw with draw_flag_gpu_lod keeps its lod table offset in impostor_texel_offset, impostors only exist on instanced draws
+#define draw_flag_gpu_lod (1u << 16)
+struct DrawLod
+{
+    SHARED_UINT   first_index            SHARED_DEFAULT(0);
+    SHARED_UINT   vertex_offset          SHARED_DEFAULT(0);
+    SHARED_UINT   meshlet_offset         SHARED_DEFAULT(0);
+    SHARED_UINT   meshlet_count          SHARED_DEFAULT(0);
+    SHARED_FLOAT3 aabb_min               SHARED_DEFAULT(spartan::math::Vector3::Zero);
+    SHARED_FLOAT  aabb_diag              SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT3 aabb_extent            SHARED_DEFAULT(spartan::math::Vector3::Zero);
+    SHARED_UINT   previous_vertex_offset SHARED_DEFAULT(0);
+};
+
+// tessellated draw, culled and given its lod on the gpu, the lods are uint4(index_count, first_index, vertex_offset, 0)
+// lod_extents is the extent of one instance, the coverage of an instanced tile has to come from a single instance
+#define tessellated_flag_skip_hiz 1u
+struct TessellatedDraw
+{
+    SHARED_FLOAT3 bounds_min           SHARED_DEFAULT(spartan::math::Vector3::Zero);
+    SHARED_FLOAT  max_distance_squared SHARED_DEFAULT(0.0f); // 0 disables the distance test
+    SHARED_FLOAT3 bounds_max           SHARED_DEFAULT(spartan::math::Vector3::Zero);
+    SHARED_UINT   flags                SHARED_DEFAULT(0);
+    SHARED_UINT   lod_offset           SHARED_DEFAULT(0);
+    SHARED_UINT   lod_count            SHARED_DEFAULT(1);
+    SHARED_UINT   first_instance       SHARED_DEFAULT(0);
+    SHARED_UINT   instance_count       SHARED_DEFAULT(1);
+    SHARED_FLOAT3 lod_extents          SHARED_DEFAULT(spartan::math::Vector3::Zero);
+    SHARED_FLOAT  padding0             SHARED_DEFAULT(0.0f);
 };
 
 // Optional root-wind cache, indexed by global instance. Overflow falls back to the mesh evaluator, which is not
@@ -1130,6 +1238,12 @@ namespace spartan
     using Sb_MeshletBounds    = MeshletBounds;
     using Sb_CullTask          = CullTask;
     using Sb_SurvivingInstance = SurvivingInstance;
+    using Sb_ShadowCaster      = ShadowCaster;
+    static_assert(sizeof(Sb_ShadowCaster) == 80);
+    using Sb_DrawLod           = DrawLod;
+    static_assert(sizeof(Sb_DrawLod) == 48);
+    using Sb_TessellatedDraw   = TessellatedDraw;
+    static_assert(sizeof(Sb_TessellatedDraw) == 64);
     using Sb_MeshletInstance   = MeshletInstance;
     using Sb_CachedTreeWind    = CachedTreeWind;
     static_assert(sizeof(Sb_CachedTreeWind) == 64);

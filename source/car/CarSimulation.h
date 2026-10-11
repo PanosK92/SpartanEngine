@@ -122,14 +122,12 @@ namespace car
         SelfFilterCallback self_filter;
         multibody_state multibody;
         bool simulation_enabled = true;
-        shape_2d shape_data;
 
     public:
 
         surface_type (*surface_resolver)(const PxRigidActor*) = nullptr;
         // metres of water standing at a contact point, when set it overrides any authored wheel water_depth
         float (*water_resolver)(const PxVec3& point, surface_type surface) = nullptr;
-        static float get_surface_rolling_resistance(surface_type surface);
         Simulation() = default;
         ~Simulation();
         Simulation(const Simulation&) = delete;
@@ -198,8 +196,6 @@ namespace car
         void safe_add_torque(PxRigidDynamic* body, const PxVec3& torque, PxForceMode::Enum mode = PxForceMode::eFORCE);
         void safe_add_force_at_pos(PxRigidDynamic* body, const PxVec3& force, const PxVec3& pos, PxForceMode::Enum mode = PxForceMode::eFORCE);
 
-        // function local storage avoids duplicate definitions
-        shape_2d& shape_data_ref();
         bool is_in_reverse();
         // automatic mode drives reverse with the brake pedal, a manual gearbox keeps real brakes in r
         bool is_brake_reverse_throttle();
@@ -216,7 +212,6 @@ namespace car
         float lerp(float a, float b, float t);
         float exp_decay(float rate, float dt);
         bool is_valid_wheel(int i);
-        const char* get_wheel_name(int i);
         void clear_abs_state();
         float get_assisted_steering_target(float raw_input);
         void update_stability_controller();
@@ -237,9 +232,6 @@ namespace car
         float get_brake_efficiency(float temp);
         void compute_aero_from_shape(const std::vector<PxVec3>& vertices);
 
-        // convex hull supports side and front chassis silhouettes
-        std::vector<std::pair<float, float>> graham_scan_hull_2d(std::vector<std::pair<float, float>> points);
-        void compute_shape_visualization(const std::vector<PxVec3>& vertices, const PxVec3& min_pt, const PxVec3& max_pt);
         void apply_aero_and_resistance();
         PxU32 multibody_collision_group();
         actor_motion_state capture_actor_motion(PxRigidDynamic* actor);
@@ -346,10 +338,6 @@ namespace car
         // spin, brake heat and tread temperature of a wheel with nothing under it, no tire force
         void integrate_airborne_wheel(int i, PxRigidDynamic* wheel_actor, const PxVec3& wheel_axis, float wmoi, float dt);
         void apply_self_aligning_torque();
-
-        // used by car bench to seed scenario start speed
-        void set_validation_speed(float speed);
-
         // refresh after any direct wheel offset change
         void refresh_geometry_cache();
         void apply_positive_override(float& target, float value);
@@ -378,27 +366,6 @@ namespace car
         void clamp_upgrade_stage(int& stage, int max_stage);
         void reapply_upgrades();
         void reset_upgrades();
-        void set_center_of_mass(float x, float y, float z);
-        void set_center_of_mass_x(float x);
-        void set_center_of_mass_y(float y);
-        void set_center_of_mass_z(float z);
-        float get_center_of_mass_x();
-        float get_center_of_mass_y();
-        float get_center_of_mass_z();
-        float get_frontal_area();
-        float get_side_area();
-        float get_drag_coeff();
-        float get_lift_coeff_front();
-        float get_lift_coeff_rear();
-        void set_frontal_area(float area);
-        void set_side_area(float area);
-        void set_drag_coeff(float cd);
-        void set_lift_coeff_front(float cl);
-        void set_lift_coeff_rear(float cl);
-        void set_ground_effect_enabled(bool enabled);
-        bool get_ground_effect_enabled();
-        void set_ground_effect_multiplier(float mult);
-        float get_ground_effect_multiplier();
         void set_throttle(float v);
         void set_brake(float v);
         void set_steering(float v);
@@ -442,7 +409,6 @@ namespace car
         float get_wheel_temperature(int i);
         bool is_wheel_grounded(int i);
         float get_wheel_suspension_force(int i);
-        float get_axle_roll_stiffness(bool front);
         float get_wheel_temp_grip_factor(int i);
         float get_wheel_surface_temp(int i, int zone);
         float get_wheel_core_temp(int i);
@@ -478,7 +444,6 @@ namespace car
         float get_axle_drive_torque();
         float get_longitudinal_accel();
         float get_lateral_accel();
-        bool get_vehicle_sleeping();
         float get_gearbox_input_angular_velocity();
         float get_motor_power_kw();
         const hybrid_state& get_hybrid_state() const { return battery; }
@@ -516,14 +481,9 @@ namespace car
         void set_wheel_surface(int i, surface_type surface);
         surface_type get_wheel_surface(int i);
         const char* get_surface_name(surface_type surface);
-        float get_front_camber();
-        float get_rear_camber();
-        float get_front_toe();
-        float get_rear_toe();
         void set_wheel_offset(int wheel, float x, float z);
         PxVec3 get_wheel_offset(int wheel);
         const aero_debug_data& get_aero_debug();
-        const shape_2d& get_shape_data();
         void get_debug_sweep(int wheel, PxVec3& origin, PxVec3& hit_point, bool& hit);
 
         // the individual tread rows the solver was given, so the drawn patch is the real one

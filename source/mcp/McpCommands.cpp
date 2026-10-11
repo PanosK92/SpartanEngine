@@ -1061,12 +1061,34 @@ namespace spartan
             json += ",\"playing\":" + json_bool(Engine::IsFlagSet(EngineMode::Playing));
             json += ",\"paused\":" + json_bool(Engine::IsFlagSet(EngineMode::Paused));
             json += ",\"loading\":" + json_bool(ProgressTracker::IsLoading());
+            json += ",\"minimized\":" + json_bool(!Engine::IsHeadless() && Window::IsMinimized());
             json += ",\"fps\":" + std::to_string(Profiler::GetFps());
             json += ",\"frame_ms\":" + std::to_string(Profiler::GetFrameDurationMs());
             json += ",\"time_seconds\":" + std::to_string(Timer::GetTimeSec());
             json += ",\"frame_number\":" + std::to_string(Renderer::GetFrameNumber());
             json += ",\"jobs_running\":" + json_bool(ThreadPool::AreTasksRunning());
             json += ",\"working_threads\":" + std::to_string(ThreadPool::GetWorkingThreadCount());
+            json += "}";
+            return json;
+        }
+
+        // a minimized window stops rendering, so screenshots and frame waits stall until it is restored
+        std::string command_window_restore()
+        {
+            if (Engine::IsHeadless())
+            {
+                return json_error("headless instances have no visible window");
+            }
+
+            const bool was_minimized = Window::IsMinimized();
+            if (was_minimized)
+            {
+                Window::Restore();
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"was_minimized\":" + json_bool(was_minimized);
+            json += ",\"minimized\":" + json_bool(Window::IsMinimized());
             json += "}";
             return json;
         }
@@ -7311,6 +7333,7 @@ namespace spartan
         {
             { "ping",                          [](const McpRequest&) { return command_ping(); } },
             { "engine_status",                 [](const McpRequest&) { return command_engine_status(); } },
+            { "window_restore",                [](const McpRequest&) { return command_window_restore(); } },
             { "progress_snapshot",             [](const McpRequest&) { return GetMcpProgressSnapshot(); } },
             { "world_work_snapshot", [](const McpRequest&)
                 {

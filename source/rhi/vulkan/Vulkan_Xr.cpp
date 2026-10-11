@@ -938,23 +938,9 @@ namespace spartan
         return swapchain_images[swapchain_image_index].image;
     }
 
-    void* Xr::GetSwapchainImageView()
-    {
-        if (swapchain_image_views.empty() || swapchain_image_index >= swapchain_image_views.size())
-        {
-            return nullptr;
-        }
-        return swapchain_image_views[swapchain_image_index];
-    }
-
     uint32_t Xr::GetSwapchainImageIndex()
     {
         return swapchain_image_index;
-    }
-
-    uint32_t Xr::GetSwapchainLength()
-    {
-        return swapchain_length;
     }
 
     bool Xr::IsMultiviewSupported()

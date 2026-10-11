@@ -82,13 +82,11 @@ float hiz_min_depth_over_box(Texture2D hiz_tex, float2 min_uv, float2 max_uv, fl
 // this replaces the per-thread 8-corner cube projection in the meshlet path, the bound is also tighter than the cube
 // projection that surrounds the sphere, so it culls more aggressively and chooses a smaller hi-z footprint
 // shared by the hi-z and contribution tests so both agree on the projected footprint
-uint sphere_project_ndc(float3 center_world, float radius_world, out float2 min_ndc, out float2 max_ndc, out float closest_z)
+uint sphere_project_ndc_vp(matrix vp, float3 center_world, float radius_world, out float2 min_ndc, out float2 max_ndc, out float closest_z)
 {
     min_ndc   = 0.0f;
     max_ndc   = 0.0f;
     closest_z = 0.0f;
-
-    matrix vp = buffer_frame.view_projection;
 
     // partials of clip-space output w.r.t. world-space input, wave uniform so dxc keeps these in scalar registers
     float3 ax_x = float3(vp._m00, vp._m10, vp._m20);
@@ -136,23 +134,32 @@ uint sphere_project_ndc(float3 center_world, float radius_world, out float2 min_
     return SPHERE_PROJECT_VALID;
 }
 
-// fast analytical hi-z for a world-space sphere
-bool sphere_hiz_visible(Texture2D hiz_tex, float3 center_world, float radius_world, float max_mip_level, float bias_floor = 2e-7f)
+uint sphere_project_ndc(float3 center_world, float radius_world, out float2 min_ndc, out float2 max_ndc, out float closest_z)
+{
+    return sphere_project_ndc_vp(buffer_frame.view_projection, center_world, radius_world, min_ndc, max_ndc, closest_z);
+}
+
+// fast analytical hi-z for a world-space sphere, vp is the view projection the pyramid was rendered with
+// a history pyramid knows nothing about what was behind or beside its camera, so those cases count as visible
+bool sphere_hiz_visible_vp(Texture2D hiz_tex, matrix vp, float3 center_world, float radius_world, float max_mip_level, float bias_floor, bool is_history)
 {
     float2 min_ndc, max_ndc;
     float  closest_box_z;
-    uint   status = sphere_project_ndc(center_world, radius_world, min_ndc, max_ndc, closest_box_z);
+    uint   status = sphere_project_ndc_vp(vp, center_world, radius_world, min_ndc, max_ndc, closest_box_z);
 
-    // the side-frustum has already rejected the behind case so that branch is paranoia
+    // for the current view the side-frustum has already rejected the behind case
     if (status == SPHERE_PROJECT_BEHIND)
-        return false;
+        return is_history;
 
     // straddling the near plane skips occlusion conservatively
     if (status == SPHERE_PROJECT_STRADDLE)
         return true;
 
     if (max_ndc.x < -1.0f || min_ndc.x > 1.0f || max_ndc.y < -1.0f || min_ndc.y > 1.0f)
-        return false;
+        return is_history;
+
+    if (is_history && (min_ndc.x < -1.0f || max_ndc.x > 1.0f || min_ndc.y < -1.0f || max_ndc.y > 1.0f))
+        return true;
 
     float2 uv_a   = saturate(ndc_to_uv(min_ndc));
     float2 uv_b   = saturate(ndc_to_uv(max_ndc));
@@ -165,6 +172,18 @@ bool sphere_hiz_visible(Texture2D hiz_tex, float3 center_world, float radius_wor
     // relative/absolute precision margin and keep equal-depth surfaces.
     float depth_bias = max(bias_floor, abs(closest_box_z) * 1e-4f);
     return closest_box_z >= furthest_z - depth_bias;
+}
+
+// against a pyramid built this frame
+bool sphere_hiz_visible(Texture2D hiz_tex, float3 center_world, float radius_world, float max_mip_level, float bias_floor = 2e-7f)
+{
+    return sphere_hiz_visible_vp(hiz_tex, buffer_frame.view_projection, center_world, radius_world, max_mip_level, bias_floor, false);
+}
+
+// against last frame's complete depth, projected through last frame's view
+bool sphere_hiz_visible_history(Texture2D hiz_tex, float3 center_world, float radius_world, float max_mip_level, float bias_floor)
+{
+    return sphere_hiz_visible_vp(hiz_tex, buffer_frame.view_projection_previous, center_world, radius_world, max_mip_level, bias_floor, true);
 }
 
 // contribution thresholds in pixels

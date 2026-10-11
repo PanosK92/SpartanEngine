@@ -725,6 +725,7 @@ namespace spartan
         Weather::Reset();
         Renderer::ResetSceneChanges();
         resolve = true;
+        Allocator::Collect();
     }
 
     void World::Shutdown()
@@ -891,6 +892,7 @@ namespace spartan
             GeometryBuffer::BuildIfDirty();
             SP_LOG_INFO("World preparation complete: %.2f ms", io.preparation.ElapsedMs());
             release_uploaded_cpu_geometry();
+            Allocator::Collect();
             log_cpu_memory("world ready");
             log_gpu_geometry("world ready");
             memory_steady_log_pending = true;

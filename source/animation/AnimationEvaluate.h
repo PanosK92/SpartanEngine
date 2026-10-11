@@ -37,22 +37,6 @@ namespace spartan
             bool loop = true
         );
 
-        // sample clip into joint global matrices
-        bool SampleGlobals(
-            const AnimationClip& clip,
-            const Skeleton& skeleton,
-            float time_seconds,
-            std::vector<math::Matrix>& out_global_matrices
-        );
-
-        // blend local poses, t=0 keeps a, t=1 keeps b
-        bool BlendLocals(
-            const std::vector<math::Matrix>& locals_a,
-            const std::vector<math::Matrix>& locals_b,
-            float t,
-            std::vector<math::Matrix>& out_local_matrices
-        );
-
         // inertialization
         //
         // a transition records the difference between the pose already on screen and where the new
@@ -93,8 +77,6 @@ namespace spartan
             std::vector<JointOffset> m_offsets;
             bool m_active = false;
         };
-
-        bool HasCurve(const AnimationClip& clip, uint32_t bone_index);
 
         // skin with skin = global * inverse(bind_global), bind pose is identity
         bool SkinMesh(

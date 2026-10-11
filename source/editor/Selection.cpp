@@ -302,7 +302,9 @@ namespace spartan
         return best_entity;
     }
 
-    Entity* Selection::FindIconUnderCursor(Camera& camera)
+    namespace
+    {
+    Entity* FindIconUnderCursor(Camera& camera)
     {
         // overlay icons are only drawn in the editor, not while playing
         if (Engine::IsFlagSet(EngineMode::Playing) || !cvar_entity_icons.GetValueAs<bool>())
@@ -390,6 +392,7 @@ namespace spartan
         }
 
         return best;
+    }
     }
 
     void Selection::Pick(Camera& camera)

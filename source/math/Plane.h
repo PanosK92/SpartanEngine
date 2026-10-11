@@ -29,10 +29,6 @@ namespace spartan::math
         ~Plane() = default;
 
         void Normalize();
-        static Plane Normalize(const Plane& plane);
-
-        float Dot(const Vector3& v) const;
-        static float Dot(const Plane& p, const Vector3& v);
 
         Vector3 normal = Vector3::Zero;
         float d        = 0.0f; // distance from origin

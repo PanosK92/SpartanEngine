@@ -250,6 +250,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // restir paths start on the viewed side of a leaf, the reverse side sky stays analytic
     diffuse_ibl += diffuse_ibl_transmit;
 
+    // metallic flakes mirror the surroundings through a lobe far wider than the traced reflection, the
+    // sky irradiance stands in for it, half of what they reflect is trapped by the coat's total internal reflection
+    if (surface.flake_weight > 0.0f && !surface.is_transparent())
+    {
+        float flake_exit = 0.5f * coat_transmission(surface.clearcoat, n_dot_v, n_dot_v);
+        diffuse_ibl     *= 1.0f - surface.flake_weight * 0.6f;
+        diffuse_ibl     += diffuse_skysphere * INV_PI * surface.flake_color * surface.flake_weight * flake_exit;
+    }
+
     // Traced reflections own specular at every roughness. The sky probe has no
     // scene visibility, so blending it back in makes sheltered rough surfaces glow.
     if (is_ray_traced_reflections_enabled())

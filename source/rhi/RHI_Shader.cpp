@@ -192,7 +192,6 @@ namespace spartan
         // skip if already processed (prevents circular includes)
         if (processed_files.count(file_path_lower) > 0)
         {
-            //SP_LOG_WARNING("Circular or duplicate include detected: %s", file_path.c_str());
             return;
         }
         processed_files.insert(file_path_lower);

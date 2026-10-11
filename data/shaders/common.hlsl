@@ -987,13 +987,95 @@ float get_rt_reflection_coat(float clearcoat, float metallic)
     return saturate(clearcoat) * (1.0f - smoothstep(0.4f, 0.6f, metallic));
 }
 
+/*------------------------------------------------------------------------------
+    CAR PAINT FLAKES
+------------------------------------------------------------------------------*/
+// paint with flakes repurposes the g-buffer material blue channel (decal coverage elsewhere),
+// 0 is the unresolved flake aggregate, 1 to 220 a flake id at one of four footprint levels,
+// 224 to 255 a decal in 32 steps, a decal hides both the flakes and the coat under it
+static const uint  paint_flake_levels        = 4;
+static const uint  paint_flake_ids_per_level = 55;
+static const uint  paint_flake_decal_base    = 224;
+static const float paint_flake_platelet_alpha = 0.05f; // a single aluminium platelet is close to a mirror
+static const float paint_flake_tilt          = 0.26f;  // rms slope of the platelet orientations, ~15 degrees
+static const float paint_coat_ior            = 1.5f;
+
+bool material_has_flakes(MaterialParameters mat)
+{
+    return mat.flake_strength > 0.0f;
+}
+
+float gbuffer_pack_paint(uint flake_code, float decal_coverage)
+{
+    uint code = decal_coverage > 0.0f ? paint_flake_decal_base + (uint)round(saturate(decal_coverage) * 31.0f) : flake_code;
+    return (float)code / 255.0f;
+}
+
+float gbuffer_decal_coverage(float material_b, MaterialParameters mat)
+{
+    if (!material_has_flakes(mat))
+        return material_b;
+
+    uint code = (uint)round(material_b * 255.0f);
+    return code >= paint_flake_decal_base ? (float)(code - paint_flake_decal_base) / 31.0f : 0.0f;
+}
+
+uint gbuffer_flake_code(float material_b, MaterialParameters mat)
+{
+    uint code = (uint)round(material_b * 255.0f);
+    return (material_has_flakes(mat) && code < paint_flake_decal_base) ? code : 0u;
+}
+
+// the platelet population as one lobe, a footprint level k averages 4^k platelets, so the mean tilt
+// shrinks by 2^k while the scatter it no longer carries widens the lobe, the aggregate (code 0) is
+// the limit where the lobe holds the whole distribution around the coat normal
+void paint_flake_lobe(uint code, float3 n, out float3 flake_normal, out float flake_alpha)
+{
+    float platelet2 = paint_flake_platelet_alpha * paint_flake_platelet_alpha;
+    float tilt2     = paint_flake_tilt * paint_flake_tilt;
+    if (code == 0u)
+    {
+        flake_normal = n;
+        flake_alpha  = sqrt(platelet2 + tilt2);
+        return;
+    }
+
+    uint  level       = min((code - 1u) / paint_flake_ids_per_level, paint_flake_levels - 1u);
+    uint  id          = (code - 1u) % paint_flake_ids_per_level;
+    float aggregation = exp2(-(float)level);
+    flake_alpha       = sqrt(platelet2 + tilt2 * (1.0f - aggregation * aggregation));
+
+    // r2 low discrepancy over the ids covers the orientations evenly, the radius is gaussian in slope space
+    float2 xi    = frac(0.5f + (float)id * float2(0.7548776662f, 0.5698402910f));
+    float  slope = paint_flake_tilt * aggregation * sqrt(-2.0f * log(1.0f - xi.x * 0.97f));
+    float  s, c;
+    sincos(xi.y * PI2, s, c);
+
+    // duff et al. 2017 orthonormal basis
+    float  sign_z = n.z >= 0.0f ? 1.0f : -1.0f;
+    float  a      = -1.0f / (sign_z + n.z);
+    float  d      = n.x * n.y * a;
+    float3 t      = float3(1.0f + sign_z * n.x * n.x * a, sign_z * d, -sign_z * n.x);
+    float3 b      = float3(d, sign_z + n.y * n.y * a, -n.y);
+    flake_normal  = normalize(n + (t * c + b * s) * slope);
+}
+
+// pigment hue at full brightness, light reaching a platelet crosses the pigment twice so the hue
+// is squared, the platelets nearest the coat keep a little of the bare aluminium
+float3 paint_flake_color(float3 pigment)
+{
+    float peak = max(max(pigment.r, pigment.g), pigment.b);
+    float3 hue = peak > 1e-4f ? pigment / peak : float3(1.0f, 1.0f, 1.0f);
+    return lerp(hue * hue, float3(1.0f, 1.0f, 1.0f), 0.05f) * 0.9f;
+}
+
 // roughness of the traced lobe at a g-buffer pixel, a decal (material.b) strips the coat it covers
 float get_rt_reflection_roughness(float2 uv, out float coat)
 {
     float4 sample_material  = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
     uint   material_index   = unpack_material_index(tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).a);
     MaterialParameters mat  = material_parameters[material_index];
-    coat                    = get_rt_reflection_coat(mat.clearcoat * (1.0f - sample_material.b), sample_material.g);
+    coat                    = get_rt_reflection_coat(mat.clearcoat * (1.0f - gbuffer_decal_coverage(sample_material.b, mat)), sample_material.g);
     return lerp(sample_material.r, mat.clearcoat_roughness, coat);
 }
 

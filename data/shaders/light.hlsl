@@ -285,7 +285,14 @@ void evaluate_light(
 
             if (surface.clearcoat > 0.0f)
             {
+                // the base is lit through the coat, what the coat reflects never reaches it
+                L_specular_lobes *= 1.0f - F_Schlick(0.04f, 1.0f, angular_info.v_dot_h) * surface.clearcoat;
                 L_specular_lobes += BRDF_Specular_Clearcoat(surface, angular_info);
+            }
+
+            if (surface.flake_weight > 0.0f)
+            {
+                L_specular_lobes += BRDF_Specular_Flakes(surface, angular_info, light);
             }
 
             if (surface.sheen > 0.0f)

@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ======
 #include <string>
 #include "Helper.h"
+#include "Simd.h"
 //=================
 
 namespace spartan::math
@@ -47,11 +48,18 @@ namespace spartan::math
         Vector4(const Vector3& value, float w);
         Vector4(const Vector3& value);
 
+        explicit Vector4(const __m128 v)
+        {
+            simd::store4(&x, v);
+        }
+
         ~Vector4() = default;
+
+        [[nodiscard]] __m128 Simd() const { return simd::load4(&x); }
 
         bool operator ==(const Vector4& rhs) const
         {
-            return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w;
+            return simd::equal_mask(Simd(), rhs.Simd()) == 0xF;
         }
 
         bool operator !=(const Vector4& rhs) const
@@ -61,103 +69,88 @@ namespace spartan::math
 
         Vector4 operator*(const float value) const
         {
-            return Vector4(
-                x * value,
-                y * value,
-                z * value,
-                w * value
-            );
+            return Vector4(_mm_mul_ps(Simd(), _mm_set1_ps(value)));
         }
 
         Vector4 operator*(const Vector4& Other) const
         {
-            return Vector4(x * Other.x, y * Other.y, z * Other.z, w * Other.w);
+            return Vector4(_mm_mul_ps(Simd(), Other.Simd()));
         }
 
         Vector4 operator-(const Vector4& Other) const
         {
-            return Vector4(x - Other.x, y - Other.y, z - Other.z, w - Other.w);
+            return Vector4(_mm_sub_ps(Simd(), Other.Simd()));
         }
 
         Vector4 operator-() const
         {
-            return Vector4(-x, -y, -z, -w);
+            return Vector4(simd::negate(Simd()));
         }
 
         void operator*=(const float value)
         {
-            x *= value;
-            y *= value;
-            z *= value;
-            w *= value;
+            simd::store4(&x, _mm_mul_ps(Simd(), _mm_set1_ps(value)));
         }
 
         Vector4 operator /(const float rhs) const
         {
-            return Vector4(x / rhs, y / rhs, z / rhs, w / rhs);
+            return Vector4(_mm_div_ps(Simd(), _mm_set1_ps(rhs)));
         }
 
         Vector4 operator/(const Vector4& Other) const
         {
-            return Vector4(x / Other.x, y / Other.y, z / Other.z, w / Other.w);
+            return Vector4(_mm_div_ps(Simd(), Other.Simd()));
         }
 
-        [[nodiscard]] float Length()        const { return sqrt(x * x + y * y + z * z + w * w); }
-        [[nodiscard]] float LengthSquared() const { return x * x + y * y + z * z + w * w; }
+        [[nodiscard]] float Length() const
+        {
+            const __m128 v = Simd();
+            return _mm_cvtss_f32(_mm_sqrt_ss(simd::dot4_splat(v, v)));
+        }
+
+        [[nodiscard]] float LengthSquared() const
+        {
+            const __m128 v = Simd();
+            return simd::dot4(v, v);
+        }
 
         void Normalize()
         {
-            const auto length_squared = LengthSquared();
-            if (!approximate_equals(length_squared, 1.0f) && length_squared > 0.0f)
+            const __m128 v              = Simd();
+            const __m128 length_squared = simd::dot4_splat(v, v);
+            const float length_squared_ = _mm_cvtss_f32(length_squared);
+            if (!approximate_equals(length_squared_, 1.0f) && length_squared_ > 0.0f)
             {
-                const auto length_inverted = 1.0f / sqrt(length_squared);
-                x *= length_inverted;
-                y *= length_inverted;
-                z *= length_inverted;
-                w *= length_inverted;
+                simd::store4(&x, _mm_div_ps(v, _mm_sqrt_ps(length_squared)));
             }
         };
 
         [[nodiscard]] Vector4 Normalized() const
         {
-            const auto length_squared = LengthSquared();
-            if (!approximate_equals(length_squared, 1.0f) && length_squared > 0.0f)
-            {
-                const auto length_inverted = 1.0f / sqrt(length_squared);
-                return (*this) * length_inverted;
-            }
-            else
-            {
-                return *this;
-            }
+            Vector4 result = *this;
+            result.Normalize();
+            return result;
         }
 
         Vector4 operator+(const Vector4& rhs) const
         {
-            return Vector4(
-                x + rhs.x,
-                y + rhs.y,
-                z + rhs.z,
-                w + rhs.w
-            );
+            return Vector4(_mm_add_ps(Simd(), rhs.Simd()));
         }
 
         void operator+=(const Vector4& rhs)
         {
-            x += rhs.x;
-            y += rhs.y;
-            z += rhs.z;
-            w += rhs.w;
+            simd::store4(&x, _mm_add_ps(Simd(), rhs.Simd()));
         }
 
         [[nodiscard]] Vector4 Lerp(const Vector4& rhs, float t) const
         {
-            return (*this) * (1.0f - t) + rhs * t;
+            return Lerp(*this, rhs, t);
         }
 
         [[nodiscard]] static Vector4 Lerp(const Vector4& a, const Vector4& b, float t)
         {
-            return a * (1.0f - t) + b * t;
+            const __m128 va = a.Simd();
+            return Vector4(_mm_fmadd_ps(_mm_sub_ps(b.Simd(), va), _mm_set1_ps(t), va));
         }
 
         [[nodiscard]] static float Distance(const Vector4& a, const Vector4& b)        { return (b - a).Length(); }

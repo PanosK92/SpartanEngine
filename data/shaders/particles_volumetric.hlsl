@@ -257,6 +257,7 @@ Surface build_volume_surface(float3 position, float3 ray_direction, uint2 pixel,
     surface.anisotropic_rotation   = 0.0f;
     surface.sheen                  = 0.0f;
     surface.subsurface_scattering  = 0.0f;
+    surface.flake_weight           = 0.0f;
     surface.occlusion              = 1.0f;
     surface.emissive               = 0.0f;
     surface.F0                     = 0.04f;

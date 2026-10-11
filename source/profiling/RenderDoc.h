@@ -16,8 +16,6 @@ namespace spartan
         static void Shutdown();
         static void Tick();
         static void FrameCapture();
-        static void StartCapture();
-        static void EndCapture();
         static void LaunchRenderDocUi();
     };
 }

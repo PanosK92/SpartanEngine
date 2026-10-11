@@ -40,10 +40,12 @@ namespace spartan
 
             ~Rectangle() = default;
 
+            // (x, y, width, height)
+            [[nodiscard]] __m128 Simd() const { return simd::load4(&x); }
+
             bool operator==(const Rectangle& rhs) const
             {
-                return x == rhs.x && y == rhs.y &&
-                       width == rhs.width && height == rhs.height;
+                return simd::equal_mask(Simd(), rhs.Simd()) == 0xF;
             }
 
             bool operator!=(const Rectangle& rhs) const
@@ -53,41 +55,17 @@ namespace spartan
 
             bool IsDefined() const
             {
-                return width > 0.0f && height > 0.0f;
+                return (_mm_movemask_ps(_mm_cmpgt_ps(Simd(), _mm_setzero_ps())) & 0xC) == 0xC;
             }
 
             void Merge(const Vector2& point)
             {
-                float min_x = x;
-                float min_y = y;
-                float max_x = x + width;
-                float max_y = y + height;
-
-                min_x = std::min(min_x, point.x);
-                min_y = std::min(min_y, point.y);
-                max_x = std::max(max_x, point.x);
-                max_y = std::max(max_y, point.y);
-
-                x      = min_x;
-                y      = min_y;
-                width  = max_x - min_x;
-                height = max_y - min_y;
-            }
-
-            bool Intersects(const Rectangle& other) const
-            {
-                return !(x + width  < other.x ||
-                         other.x + other.width < x ||
-                         y + height < other.y ||
-                         other.y + other.height < y);
-            }
-
-            bool Contains(const Rectangle& other) const
-            {
-                return x <= other.x &&
-                       y <= other.y &&
-                       x + width  >= other.x + other.width &&
-                       y + height >= other.y + other.height;
+                // work on (min_x, min_y, max_x, max_y), the point goes first so a nan component is skipped
+                const __m128 rect    = Simd();
+                const __m128 corners = _mm_add_ps(rect, _mm_movelh_ps(_mm_setzero_ps(), rect));
+                const __m128 p       = _mm_movelh_ps(point.Simd(), point.Simd());
+                const __m128 merged  = _mm_blend_ps(_mm_min_ps(p, corners), _mm_max_ps(p, corners), 0xC);
+                simd::store4(&x, _mm_sub_ps(merged, _mm_movelh_ps(_mm_setzero_ps(), merged)));
             }
 
             // top-left + size
