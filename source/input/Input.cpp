@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ========
 #include "pch.h"
 #include "Input.h"
+#include "../profiling/Profiler.h"
 #include <chrono>
 SP_WARNINGS_OFF
 #include <SDL3/SDL.h>
@@ -98,6 +99,8 @@ namespace spartan
             m_keys[i]          = true;
             injected_ticked[i] = true;
         }
+
+        Profiler::MarkInputSample();
     }
 
     double Input::GetInjectionTime()

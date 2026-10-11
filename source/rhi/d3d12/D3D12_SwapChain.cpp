@@ -15,6 +15,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_SyncPrimitive.h"
 #include "../display/Display.h"
 #include "../../profiling/Breadcrumbs.h"
+#include "../../profiling/Profiler.h"
 #include "../core/Event.h"
 #include "../core/Window.h"
 #include "../rendering/Renderer.h"
@@ -537,7 +538,11 @@ namespace spartan
 
         // present
         HRESULT result = static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->Present(sync_interval, flags);
-        
+        if (SUCCEEDED(result))
+        {
+            Profiler::MarkPresented(m_image_index, m_rhi_swapchain);
+        }
+
         if (FAILED(result))
         {
             if (result == DXGI_ERROR_DEVICE_REMOVED || result == DXGI_ERROR_DEVICE_RESET)

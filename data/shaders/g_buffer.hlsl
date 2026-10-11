@@ -427,19 +427,14 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     surface.flags               = material.flags;
 #endif
 
-    // two sided transparents (glass, water) render with cull none so the back face of
-    // the shell is rasterized when the camera is on the other side, the geometric
-    // normal still points outward in that case which makes the gbuffer normal face
-    // away from the viewer, fresnel collapses to grazing in the refraction pass and
-    // the surface ends up looking opaque/mirror like instead of transparent, flipping
-    // both normal and tangent here keeps the shading frame oriented towards the
-    // camera regardless of which face is hit
-    // Two-sided leaf cards and solid modelled leaves also need a lighting
-    // normal on the visible side; otherwise their backs shade almost black.
-    // Procedural blades/petals flip after their curved normal is constructed below.
+    // two sided surfaces render with cull none, so the back of the shell is rasterized
+    // when the camera is on the other side. the geometric normal still points outward,
+    // which lights that face away from the viewer. flipping normal and tangent keeps the
+    // shading frame towards the camera. opaque shells such as the car body use draw flag
+    // bit 3, the same two-sided bit the meshlet cull reads. procedural blades flip later.
     const bool is_impostor = (vertex.draw_flags & draw_flag_impostor) != 0u;
     if (!is_front_face && !is_impostor && !surface.is_grass_blade() && !surface.is_flower() &&
-        (pass_is_transparent() || material.is_alpha_tested() || surface.is_foliage() || material.subsurface_scattering > 0.0f))
+        (pass_is_transparent() || material.is_alpha_tested() || surface.is_foliage() || material.subsurface_scattering > 0.0f || (vertex.draw_flags & 8u) != 0u))
     {
         vertex.normal  = -vertex.normal;
         vertex.tangent = -vertex.tangent;

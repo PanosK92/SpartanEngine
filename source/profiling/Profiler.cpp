@@ -26,6 +26,11 @@ Commercial use requires written permission and negotiated payment terms.
 #include <deque>
 #include <fstream>
 #include <thread>
+#ifdef _WIN32
+#include <Windows.h>
+#include <dwmapi.h>
+#pragma comment(lib, "dwmapi.lib")
+#endif
 //====================================
 
 //= NAMESPACES =====
@@ -1006,6 +1011,268 @@ namespace spartan
             }
         }
 
+        // Input latency is the age of the sample that produced the frame now scanning out.
+        // Input::Tick stamps the sample. The display time is the swapchain's present
+        // statistics on D3D12, or the window composition clock on Vulkan.
+        struct InputLatency
+        {
+            static constexpr uint32_t capacity = 64;
+            static constexpr uint32_t image_capacity = 8;
+
+            struct IdStamp
+            {
+                uint64_t id = 0;
+                int64_t input_qpc = 0;
+            };
+
+            struct ImageStamp
+            {
+                uint64_t sequence = 0;
+                uint32_t image = 0;
+                int64_t input_qpc = 0;
+                bool live = false;
+            };
+
+            int64_t input_qpc = 0;
+            bool input_valid = false;
+            double qpc_to_ms = 0.0;
+            float milliseconds = 0.0f;
+            bool valid = false;
+            bool display_clock = false;
+            bool logged = false;
+            bool dxgi_live = false;
+
+            struct PendingStamp
+            {
+                int64_t input_qpc = 0;
+                int64_t present_qpc = 0;
+            };
+
+            IdStamp id_stamps[capacity] = {};
+            PendingStamp pending[capacity] = {};
+            uint32_t pending_head = 0;
+            uint32_t pending_count = 0;
+            bool logged_clock = false;
+            bool desktop_clock = false;
+
+            ImageStamp images[image_capacity] = {};
+            uint64_t image_sequence = 0;
+
+            void ensure_frequency()
+            {
+#ifdef _WIN32
+                if (qpc_to_ms != 0.0)
+                {
+                    return;
+                }
+                LARGE_INTEGER frequency;
+                QueryPerformanceFrequency(&frequency);
+                qpc_to_ms = 1000.0 / static_cast<double>(frequency.QuadPart);
+#else
+                (void)this;
+#endif
+            }
+
+            void accept(const int64_t sample_qpc, const uint64_t display_qpc)
+            {
+                if (sample_qpc <= 0 || display_qpc <= static_cast<uint64_t>(sample_qpc))
+                {
+                    return;
+                }
+                const double ms = static_cast<double>(display_qpc - static_cast<uint64_t>(sample_qpc)) * qpc_to_ms;
+                if (ms < 0.5 || ms > 500.0)
+                {
+                    return;
+                }
+                milliseconds = valid ? milliseconds + (static_cast<float>(ms) - milliseconds) * 0.25f : static_cast<float>(ms);
+                valid = true;
+                display_clock = true;
+                if (!logged)
+                {
+                    SP_LOG_INFO("Input latency %.1f ms", milliseconds);
+                    logged = true;
+                }
+            }
+
+            void push_pending(const int64_t present_qpc)
+            {
+                if (pending_count == capacity)
+                {
+                    pending_head = (pending_head + 1) % capacity;
+                    pending_count--;
+                }
+                PendingStamp& stamp = pending[(pending_head + pending_count) % capacity];
+                stamp.input_qpc = input_qpc;
+                stamp.present_qpc = present_qpc;
+                pending_count++;
+            }
+
+            void remember_image(uint32_t image)
+            {
+                ImageStamp& slot = images[image_sequence % image_capacity];
+                slot.sequence = image_sequence;
+                slot.image = image;
+                slot.input_qpc = input_qpc;
+                slot.live = true;
+                image_sequence++;
+            }
+
+            void release_image(uint32_t image)
+            {
+                if (display_clock)
+                {
+                    return;
+                }
+                ImageStamp* released = nullptr;
+                for (ImageStamp& stamp : images)
+                {
+                    if (stamp.live && stamp.image == image && (released == nullptr || stamp.sequence < released->sequence))
+                    {
+                        released = &stamp;
+                    }
+                }
+                if (released == nullptr)
+                {
+                    return;
+                }
+                ImageStamp* successor = nullptr;
+                for (ImageStamp& stamp : images)
+                {
+                    if (stamp.live && stamp.sequence == released->sequence + 1)
+                    {
+                        successor = &stamp;
+                        break;
+                    }
+                }
+                released->live = false;
+                if (successor == nullptr)
+                {
+                    return;
+                }
+#ifdef _WIN32
+                LARGE_INTEGER now;
+                QueryPerformanceCounter(&now);
+                accept(successor->input_qpc, static_cast<uint64_t>(now.QuadPart));
+#else
+                (void)successor;
+#endif
+            }
+
+            void push_id(uint64_t id)
+            {
+                if (id == 0)
+                {
+                    return;
+                }
+                IdStamp& stamp = id_stamps[id % capacity];
+                stamp.id = id;
+                stamp.input_qpc = input_qpc;
+            }
+
+            void report_id(uint64_t id, uint64_t display_qpc)
+            {
+                if (id == 0)
+                {
+                    return;
+                }
+                const IdStamp& stamp = id_stamps[id % capacity];
+                if (stamp.id != id)
+                {
+                    return;
+                }
+                accept(stamp.input_qpc, display_qpc);
+            }
+
+#if defined(API_GRAPHICS_D3D12)
+            bool poll_dxgi(void* swapchain_pointer)
+            {
+                IDXGISwapChain* swapchain = static_cast<IDXGISwapChain*>(swapchain_pointer);
+                UINT present_count = 0;
+                if (FAILED(swapchain->GetLastPresentCount(&present_count)))
+                {
+                    return false;
+                }
+                push_id(present_count);
+                DXGI_FRAME_STATISTICS stats = {};
+                const HRESULT result = swapchain->GetFrameStatistics(&stats);
+                if (result == DXGI_ERROR_FRAME_STATISTICS_DISJOINT)
+                {
+                    return true;
+                }
+                if (FAILED(result))
+                {
+                    return false;
+                }
+                dxgi_live = true;
+                if (stats.PresentCount != 0 && stats.SyncQPCTime.QuadPart > 0)
+                {
+                    report_id(stats.PresentCount, static_cast<uint64_t>(stats.SyncQPCTime.QuadPart));
+                }
+                return true;
+            }
+#endif
+
+            void poll_dwm()
+            {
+#ifdef _WIN32
+                LARGE_INTEGER now;
+                QueryPerformanceCounter(&now);
+                // Per-window timing returns E_INVALIDARG on this OS, including for ordinary top-level windows.
+                // The desktop clock still reports qpcVBlank, which is the scanout start.
+                DWM_TIMING_INFO info = {};
+                info.cbSize = sizeof(info);
+                HWND hwnd = nullptr;
+                if (!desktop_clock)
+                {
+                    hwnd = static_cast<HWND>(Window::GetHandleRaw());
+                }
+                HRESULT timing = DwmGetCompositionTimingInfo(hwnd, &info);
+                if (FAILED(timing) && hwnd != nullptr)
+                {
+                    desktop_clock = true;
+                    info = {};
+                    info.cbSize = sizeof(info);
+                    timing = DwmGetCompositionTimingInfo(nullptr, &info);
+                }
+                if (!logged_clock)
+                {
+                    logged_clock = true;
+                    SP_LOG_INFO("Input latency clock: hr 0x%08lx desktop %d qpc_displayed %llu qpc_vblank %llu qpc_now %lld", static_cast<unsigned long>(timing), desktop_clock ? 1 : 0, static_cast<unsigned long long>(info.qpcFrameDisplayed), static_cast<unsigned long long>(info.qpcVBlank), static_cast<long long>(now.QuadPart));
+                }
+                if (FAILED(timing))
+                {
+                    return;
+                }
+                // the frame on screen is the newest present that was queued before this scanout
+                push_pending(now.QuadPart);
+                const uint64_t display_qpc = info.qpcFrameDisplayed != 0 ? info.qpcFrameDisplayed : info.qpcVBlank;
+                if (display_qpc == 0)
+                {
+                    return;
+                }
+                int64_t matched_input = 0;
+                int64_t matched_present = -1;
+                for (uint32_t i = 0; i < pending_count; i++)
+                {
+                    const PendingStamp& stamp = pending[(pending_head + i) % capacity];
+                    if (stamp.present_qpc <= static_cast<int64_t>(display_qpc) && stamp.present_qpc > matched_present)
+                    {
+                        matched_present = stamp.present_qpc;
+                        matched_input = stamp.input_qpc;
+                    }
+                }
+                if (matched_present >= 0)
+                {
+                    accept(matched_input, display_qpc);
+                }
+#else
+                (void)0;
+#endif
+            }
+        };
+
+        InputLatency input_latency;
+
     }
 
     void Profiler::Initialize()
@@ -1151,6 +1418,50 @@ namespace spartan
     const string& Profiler::GetRecordingError()
     {
         return capture_error;
+    }
+
+    void Profiler::MarkInputSample()
+    {
+#ifdef _WIN32
+        input_latency.ensure_frequency();
+        LARGE_INTEGER tick;
+        QueryPerformanceCounter(&tick);
+        input_latency.input_qpc = tick.QuadPart;
+        input_latency.input_valid = true;
+#endif
+    }
+
+    void Profiler::MarkPresented(uint32_t image_index, void* dxgi_swapchain)
+    {
+        if (!input_latency.input_valid)
+        {
+            return;
+        }
+        input_latency.remember_image(image_index);
+#if defined(API_GRAPHICS_D3D12)
+        if (dxgi_swapchain != nullptr && input_latency.poll_dxgi(dxgi_swapchain))
+        {
+            return;
+        }
+#else
+        (void)dxgi_swapchain;
+#endif
+        input_latency.poll_dwm();
+    }
+
+    void Profiler::MarkImageReleased(uint32_t image_index)
+    {
+        input_latency.release_image(image_index);
+    }
+
+    float Profiler::GetInputLatencyMs()
+    {
+        return input_latency.milliseconds;
+    }
+
+    bool Profiler::HasInputLatency()
+    {
+        return input_latency.valid;
     }
 
     void Profiler::FrameStart()
@@ -1732,6 +2043,8 @@ namespace spartan
             float cpu_peak_ms     = 0.0f;
             float gpu_ms          = 0.0f;
             float gpu_peak_ms     = 0.0f;
+            float latency_ms      = 0.0f;
+            bool latency_valid    = false;
             bool gpu_valid        = false;
             bool capped           = false;
             uint64_t frame        = 0;
@@ -1898,6 +2211,8 @@ namespace spartan
             snapshot.gpu_valid     = cvar_debug_gpu_timing.GetValue() && time_gpu_avg > 0.0f;
             snapshot.gpu_ms        = snapshot.gpu_valid ? time_gpu_avg : 0.0f;
             snapshot.gpu_peak_ms   = snapshot.gpu_valid && has_samples ? max(time_gpu_last, snapshot.gpu_peak_ms * peak_decay) : 0.0f;
+            snapshot.latency_ms    = input_latency.milliseconds;
+            snapshot.latency_valid = input_latency.valid;
 
             // the limiter or vsync sets the pace when the frame lands on the limit and neither processor fills it
             const bool on_limit = snapshot.frame_ms <= snapshot.budget_ms * 1.15f;
@@ -2139,6 +2454,22 @@ namespace spartan
             }
 
             y = graph_y1 + px(14.0f);
+        }
+
+        {
+            const float row_height = max(font_body->GetLineHeight(), px(16.0f));
+            const float mid        = y + row_height * 0.5f;
+            if (snapshot.latency_valid)
+            {
+                snprintf(buffer, sizeof(buffer), "%.1f ms", snapshot.latency_ms);
+            }
+            else
+            {
+                snprintf(buffer, sizeof(buffer), "--");
+            }
+            text(font_small, "LATENCY", left, center_top(font_small, mid), col::muted);
+            text_right(font_body, buffer, right, center_top(font_body, mid), snapshot.latency_valid ? col::text : col::dim);
+            y += row_height + px(6.0f);
         }
 
         if (!compact)

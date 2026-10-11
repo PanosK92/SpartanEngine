@@ -53,6 +53,12 @@ namespace spartan
         static uint32_t GetCapturedIncompleteCount();
         static uint32_t GetCapturedDroppedTimestamps();
         static float GetFps();
+        // Age of the input sample in the frame that is scanning out, in milliseconds.
+        static void MarkInputSample();
+        static void MarkPresented(uint32_t image_index, void* dxgi_swapchain = nullptr);
+        static void MarkImageReleased(uint32_t image_index);
+        static float GetInputLatencyMs();
+        static bool HasInputLatency();
         static float GetUpdateInterval();
         static void SetUpdateInterval(float interval);
         static bool IsCpuStuttering();

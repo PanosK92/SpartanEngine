@@ -596,6 +596,7 @@ namespace spartan
 
             // acquire with a reasonable timeout
             VkResult result;
+            const auto acquire_start = chrono::steady_clock::now();
             {
                 ScopedTimeBlock time_block(
                     "acquire_image_wait"
@@ -614,9 +615,15 @@ namespace spartan
                     &m_image_index
                 );
             }
+            const double acquire_wait_ms = chrono::duration<double, milli>(chrono::steady_clock::now() - acquire_start).count();
 
             if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR)
             {
+                // a blocking acquire returns when this image is released, which is when the next presented frame starts scanning out
+                if (acquire_wait_ms >= 2.0)
+                {
+                    Profiler::MarkImageReleased(m_image_index);
+                }
                 m_acquired_semaphore_index =
                     semaphore_index;
                 semaphore_index =
@@ -665,6 +672,10 @@ namespace spartan
         // we know the previous presentation completed, so the semaphore is safe to signal again
         RHI_SyncPrimitive* rendering_complete_semaphore = m_rendering_complete_semaphore[m_image_index].get();
         bool success = RHI_Device::GetQueue(RHI_Queue_Type::Present)->Present(m_rhi_swapchain, m_image_index, rendering_complete_semaphore);
+        if (success)
+        {
+            Profiler::MarkPresented(m_image_index, nullptr);
+        }
 
         // clear acquisition state after presentation
         m_image_acquired = false;
