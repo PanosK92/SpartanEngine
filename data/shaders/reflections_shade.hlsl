@@ -21,8 +21,12 @@ static const uint  k_exact_shadow_lights    = 2;
 // hits smoother than this trace their own reflection, rougher ones read the prefiltered sky
 static const float k_second_bounce_start    = 0.25f;
 static const float k_second_bounce_end      = 0.35f;
-// one pixel in four feeds the radiance cache each frame
-static const uint  k_cache_update_divisor   = 4;
+// a 0.25 m cell is covered by many pixels, so one write in sixteen still fills it within a few frames
+static const uint  k_cache_update_divisor   = 16;
+// diffuse bounces only need nearby occlusion, the specular bounce below keeps the long ray
+static const float k_cache_bounce_distance  = 32.0f;
+// a facing clearcoat is a few percent of the lobe, trace the coat only once it carries real energy
+static const float k_coat_trace_fresnel     = 0.10f;
 // misses cross this much air before reaching the sky
 static const float k_fog_miss_distance      = 256.0f;
 
@@ -350,7 +354,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         ray.Origin    = position + normal * 0.01f;
         ray.Direction = bounce;
         ray.TMin      = 0.001f;
-        ray.TMax      = 500.0f;
+        ray.TMax      = k_cache_bounce_distance;
         RaySurface far_end = ray_surface_trace(ray, float2(0.0f, 0.5f));
         float3 incoming    = far_end.hit
             ? ray_surface_shade_secondary(far_end, -bounce, tex4, mip_count, float2(thread_id.xy), light_count)
@@ -363,7 +367,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // smooth hits and coats trace it, a reflection inside the reflection, rougher ones read the sky
     float  env_roughness = saturate(max(roughness, source_roughness * rough_reflection));
     float  traced_share  = 1.0f - smoothstep(k_second_bounce_start, k_second_bounce_end, env_roughness);
-    bool   trace_bounce  = traced_share > 0.0f || clearcoat > 0.0f;
+    float  coat_fresnel  = F_Schlick(0.04f, 1.0f, n_dot_v) * clearcoat;
+    bool   trace_bounce  = traced_share > 0.0f || coat_fresnel > k_coat_trace_fresnel;
     float3 bounce_light  = 0.0f;
     if (trace_bounce)
     {
@@ -397,7 +402,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     {
         float2 coat_brdf = ray_env_brdf(coat_roughness, n_dot_v_brdf);
         float  coat_f    = (0.04f * coat_brdf.x + coat_brdf.y) * clearcoat;
-        ibl_specular     = ibl_specular * (1.0f - coat_f) + bounce_light * coat_f * coat_tint;
+        float3 coat_env  = trace_bounce ? bounce_light : sky_specular;
+        ibl_specular     = ibl_specular * (1.0f - coat_f) + coat_env * coat_f * coat_tint;
     }
 
     // sampled at the actual hit uv, in the same units as primary emission
