@@ -261,6 +261,8 @@ namespace spartan
         // workers, then update visibility on the caller. Entries must be unique.
         static void RefreshBounds(const std::vector<Render*>& renders);
         void SetInstances(const std::vector<math::Matrix>& transforms);
+        // the global geometry buffer was emptied, the owned slot is gone, append the instances again
+        void ReuploadInstances();
 
         // render distance
         float GetMaxRenderDistance() const                         { return m_scene->max_distance_render; }

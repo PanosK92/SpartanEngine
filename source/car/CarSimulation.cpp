@@ -158,6 +158,43 @@ namespace car
     }
 
 
+    void Simulation::set_assembly_pose(const PxTransform& pose)
+    {
+            if (!body || !pose.isValid())
+            {
+                return;
+            }
+            const PxTransform current = body->getGlobalPose();
+            body->setGlobalPose(pose);
+            if (can_apply_force(body))
+            {
+                body->setLinearVelocity(PxVec3(0));
+                body->setAngularVelocity(PxVec3(0));
+            }
+            if (!current.isValid())
+            {
+                return;
+            }
+            const PxTransform delta = pose * current.getInverse();
+            if (delta.p.magnitudeSquared() < 1e-10f && fabsf(delta.q.w) > 1.0f - 1e-7f)
+            {
+                return;
+            }
+            for (int i = 0; i < multibody.actor_count; i++)
+            {
+                if (PxRigidDynamic* actor = multibody.actors[i])
+                {
+                    actor->setGlobalPose(delta * actor->getGlobalPose());
+                    if (can_apply_force(actor))
+                    {
+                        actor->setLinearVelocity(PxVec3(0));
+                        actor->setAngularVelocity(PxVec3(0));
+                    }
+                }
+            }
+    }
+
+
     void Simulation::set_force_retention(bool enabled)
     {
             if (body)
@@ -213,7 +250,10 @@ namespace car
             }
             if (!is_finite_vec(force))
             {
-                SP_LOG_WARNING("dropping non finite force (%.3f, %.3f, %.3f) before addForce", force.x, force.y, force.z);
+                if (!suspension_recovery_latched)
+                {
+                    SP_LOG_WARNING("dropping non finite force (%.3f, %.3f, %.3f) before addForce", force.x, force.y, force.z);
+                }
                 return;
             }
             body->addForce(force, mode);
@@ -228,7 +268,10 @@ namespace car
             }
             if (!is_finite_vec(torque))
             {
-                SP_LOG_WARNING("dropping non finite torque (%.3f, %.3f, %.3f) before addTorque", torque.x, torque.y, torque.z);
+                if (!suspension_recovery_latched)
+                {
+                    SP_LOG_WARNING("dropping non finite torque (%.3f, %.3f, %.3f) before addTorque", torque.x, torque.y, torque.z);
+                }
                 return;
             }
             body->addTorque(torque, mode);
@@ -243,12 +286,18 @@ namespace car
             }
             if (!is_finite_vec(force))
             {
-                SP_LOG_WARNING("dropping non finite force (%.3f, %.3f, %.3f) before addForceAtPos", force.x, force.y, force.z);
+                if (!suspension_recovery_latched)
+                {
+                    SP_LOG_WARNING("dropping non finite force (%.3f, %.3f, %.3f) before addForceAtPos", force.x, force.y, force.z);
+                }
                 return;
             }
             if (!is_finite_vec(pos))
             {
-                SP_LOG_WARNING("dropping non finite position (%.3f, %.3f, %.3f) before addForceAtPos", pos.x, pos.y, pos.z);
+                if (!suspension_recovery_latched)
+                {
+                    SP_LOG_WARNING("dropping non finite position (%.3f, %.3f, %.3f) before addForceAtPos", pos.x, pos.y, pos.z);
+                }
                 return;
             }
             PxRigidBodyExt::addForceAtPos(*body, force, pos, mode);
@@ -2568,7 +2617,7 @@ namespace car
                 const suspension_geometry& geometry = is_front(i) ? spec.front_geometry : spec.rear_geometry;
                 if (!create_suspension_corner(i, geometry))
                 {
-                    SP_LOG_WARNING("suspension corner %d could not be built", i);
+                    SP_LOG_WARNING("suspension corner %d could not be built, wheel offset (%.3f, %.3f, %.3f)", i, wheel_offsets[i].x, wheel_offsets[i].y, wheel_offsets[i].z);
                     destroy_multibody();
                     return false;
                 }
@@ -5530,7 +5579,10 @@ namespace car
                 if (sanitize_wheel_state(i))
                 {
                     event_flags |= 8;
-                    SP_LOG_WARNING("car::tick: scrubbed non finite state from wheel %d before tick", i);
+                    if (!suspension_recovery_latched)
+                    {
+                        SP_LOG_WARNING("car::tick: scrubbed non finite state from wheel %d before tick", i);
+                    }
                 }
             }
 
@@ -5550,19 +5602,44 @@ namespace car
                         mechanism_bad = !actor->getGlobalPose().isFinite() || !is_finite_vec(actor->getLinearVelocity()) || !is_finite_vec(actor->getAngularVelocity());
                     }
                 }
-                if (pose_bad)
+                if (!pose_bad && !mechanism_bad)
                 {
-                    SP_LOG_WARNING("car::tick: body pose is non finite, resetting to identity");
-                    body->setGlobalPose(PxTransform(PxVec3(0, 1.0f, 0)));
+                    last_finite_chassis_pose = pose;
+                    last_finite_chassis_pose_valid = true;
+                    suspension_recovery_latched = false;
                 }
-                // moving only the chassis leaves the suspension behind and its joints explode on the next step
-                if ((pose_bad || mechanism_bad) && multibody.initialized)
+                else
                 {
-                    SP_LOG_WARNING("car::tick: rebuilding the suspension assembly around the recovered chassis");
-                    body->setLinearVelocity(PxVec3(0));
-                    body->setAngularVelocity(PxVec3(0));
-                    lin_bad = ang_bad = false;
-                    rebuild_multibody(false);
+                    const PxTransform recovered = last_finite_chassis_pose_valid ? last_finite_chassis_pose : PxTransform(PxVec3(0.0f, 1.0f, 0.0f));
+                    if (pose_bad)
+                    {
+                        body->setGlobalPose(recovered);
+                    }
+                    if (!suspension_recovery_latched)
+                    {
+                        SP_LOG_WARNING("car::tick: chassis state is non finite, restoring the last finite pose");
+                        // moving only the chassis leaves the suspension behind and its joints explode on the next step
+                        if (multibody.initialized)
+                        {
+                            body->setLinearVelocity(PxVec3(0));
+                            body->setAngularVelocity(PxVec3(0));
+                            lin_bad = ang_bad = false;
+                            if (!rebuild_multibody(false))
+                            {
+                                suspension_recovery_latched = true;
+                            }
+                        }
+                        else
+                        {
+                            suspension_recovery_latched = true;
+                        }
+                    }
+                    else if (lin_bad || ang_bad)
+                    {
+                        body->setLinearVelocity(PxVec3(0));
+                        body->setAngularVelocity(PxVec3(0));
+                        lin_bad = ang_bad = false;
+                    }
                 }
                 if (lin_bad)
                 {
@@ -6218,11 +6295,19 @@ namespace car
 
     void Simulation::set_wheel_offset(int wheel, float x, float z)
     {
-            if (wheel >= 0 && wheel < wheel_count)
+            // World-space centres that leak in here are kilometres out. The suspension
+            // build treats these as chassis-local, so a bad write cannot replace a good one.
+            if (wheel >= 0 && wheel < wheel_count
+                && std::isfinite(x) && std::isfinite(z)
+                && fabsf(x) <= 4.0f && fabsf(z) <= 6.0f)
             {
                 wheel_offsets[wheel].x = x;
                 wheel_offsets[wheel].z = z;
                 refresh_geometry_cache();
+            }
+            else if (wheel >= 0 && wheel < wheel_count)
+            {
+                SP_LOG_WARNING("ignoring wheel %d offset (%.2f, %.2f), keeping (%.2f, %.2f)", wheel, x, z, wheel_offsets[wheel].x, wheel_offsets[wheel].z);
             }
     }
 

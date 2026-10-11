@@ -341,13 +341,8 @@ namespace spartan
             VehicleState().vehicle_render_position   = VehicleState().vehicle_physics_position;
             VehicleState().vehicle_render_rotation   = VehicleState().vehicle_physics_rotation;
 
-            actor->setGlobalPose(to_px_transform(GetEntity()->GetPosition(), GetEntity()->GetRotation()));
-
-            if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
-            {
-                dynamic->setLinearVelocity(PxVec3(0, 0, 0));
-                dynamic->setAngularVelocity(PxVec3(0, 0, 0));
-            }
+            // the assembly is built where the car was created, moving only the chassis would leave it there for play
+            GetVehicleSimulation()->set_assembly_pose(to_px_transform(GetEntity()->GetPosition(), GetEntity()->GetRotation()));
 
             // still tick so play stop can restore skeleton body visibility and m_was_playing
             if (VehicleState().car)
@@ -744,6 +739,55 @@ namespace spartan
         VehicleState().vehicle_simulation->set_handbrake(value);
     }
 
+    // Mesh bounds times the entity's own local matrix. The render world box is pinned
+    // while a tire is deforming, and a stale box near the origin becomes a multi
+    // kilometre chassis offset once the car sits far from the world origin.
+    bool wheel_hub_in_vehicle(Entity* vehicle, Entity* wheel, Vector3& hub, Vector3& mesh_center_offset)
+    {
+        mesh_center_offset = Vector3::Zero;
+        if (!vehicle || !wheel)
+        {
+            return false;
+        }
+
+        Vector3 mesh_center = Vector3::Zero;
+        if (Render* render = wheel->GetComponent<Render>())
+        {
+            const Vector3 center = render->GetBoundingBoxMesh().GetCenter();
+            if (center.IsFinite())
+            {
+                mesh_center = center;
+            }
+        }
+
+        Vector3 point = mesh_center;
+        bool reached_vehicle = wheel == vehicle;
+        for (Entity* entity = wheel; entity && entity != vehicle; entity = entity->GetParent())
+        {
+            const Matrix& local = entity->GetLocalMatrix();
+            if (!local.IsFinite())
+            {
+                return false;
+            }
+            if (entity == wheel)
+            {
+                mesh_center_offset = local * mesh_center - entity->GetPositionLocal();
+            }
+            point = local * point;
+            reached_vehicle = entity->GetParent() == vehicle;
+        }
+        if (!reached_vehicle || !point.IsFinite() || !mesh_center_offset.IsFinite())
+        {
+            return false;
+        }
+        if (fabsf(point.x) > 4.0f || fabsf(point.y) > 3.0f || fabsf(point.z) > 6.0f)
+        {
+            return false;
+        }
+        hub = point;
+        return true;
+    }
+
     void CarPhysics::SetWheelEntity(WheelIndex wheel, Entity* entity)
     {
         if (physics.GetBodyType() != BodyType::Custom)
@@ -774,27 +818,12 @@ namespace spartan
                 }
 
                 Entity* vehicle_entity = GetEntity();
-                if (vehicle_entity)
+                Vector3 hub = Vector3::Zero;
+                Vector3 center_offset = Vector3::Zero;
+                if (wheel_hub_in_vehicle(vehicle_entity, entity, hub, center_offset))
                 {
-                    // transform wheel world position to vehicle-local space
-                    Vector3 vehicle_world_pos = vehicle_entity->GetPosition();
-                    Quaternion vehicle_world_rot = vehicle_entity->GetRotation();
-                    Quaternion vehicle_world_rot_inv = vehicle_world_rot.Conjugate();
-
-                    // try to get the actual mesh center from the render's bounding box
-                    Vector3 wheel_world_pos = entity->GetPosition();
-                    Render* render = entity->GetComponent<Render>();
-                    if (render)
-                    {
-                        render->Tick();
-                        BoundingBox aabb = render->GetBoundingBox();
-                        wheel_world_pos = aabb.GetCenter();
-                        Vector3 center_offset = entity->GetRotation().Conjugate() * (wheel_world_pos - entity->GetPosition());
-                        VehicleState().wheel_mesh_center_offsets[index] = center_offset.IsFinite() ? center_offset : Vector3::Zero;
-                    }
-
-                    Vector3 local_pos = vehicle_world_rot_inv * (wheel_world_pos - vehicle_world_pos);
-                    VehicleState().vehicle_simulation->set_wheel_offset(index, local_pos.x, local_pos.z);
+                    VehicleState().wheel_mesh_center_offsets[index] = center_offset;
+                    VehicleState().vehicle_simulation->set_wheel_offset(index, hub.x, hub.z);
                 }
             }
         }
@@ -1745,10 +1774,11 @@ namespace spartan
             return;
         }
 
-        // get vehicle's world transform to convert wheel world positions to vehicle-local space
-        Vector3 vehicle_world_pos = vehicle_entity->GetPosition();
-        Quaternion vehicle_world_rot = vehicle_entity->GetRotation();
-        Quaternion vehicle_world_rot_inv = vehicle_world_rot.Conjugate();
+        PxVec3 previous_offsets[static_cast<int>(WheelIndex::Count)];
+        for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
+        {
+            previous_offsets[i] = VehicleState().vehicle_simulation->get_wheel_offset(i);
+        }
 
         for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
         {
@@ -1758,45 +1788,32 @@ namespace spartan
                 continue;
             }
 
-            // skip wheels with non finite world transforms, the bbox derived from such a transform
-            // would otherwise crash the frustum culler assert when render->Tick runs below
             if (!wheel_entity->GetMatrix().IsFinite())
             {
                 SP_LOG_WARNING("non finite world matrix on wheel '%s' in SyncWheelOffsetsFromEntities, skipping", wheel_entity->GetObjectName().c_str());
                 continue;
             }
 
-            // try to get the actual mesh center from the render's bounding box
-            // this handles meshes where the origin is not at the geometric center
-            Vector3 wheel_world_pos = wheel_entity->GetPosition();
-
-            Render* render = wheel_entity->GetComponent<Render>();
-            if (render)
+            Vector3 hub = Vector3::Zero;
+            Vector3 center_offset = Vector3::Zero;
+            if (!wheel_hub_in_vehicle(vehicle_entity, wheel_entity, hub, center_offset))
             {
-                render->Tick(); // ensure bounding box is up to date
-                BoundingBox aabb = render->GetBoundingBox();
-                Vector3 aabb_center = aabb.GetCenter();
-                if (!aabb_center.IsNaN())
-                {
-                    wheel_world_pos = aabb_center;
-                }
-                else
-                {
-                    SP_LOG_WARNING("non finite bbox center on wheel '%s' in SyncWheelOffsetsFromEntities, using entity origin", wheel_entity->GetObjectName().c_str());
-                }
+                SP_LOG_WARNING("wheel '%s' is not a usable suspension hardpoint, keeping the previous offset", wheel_entity->GetObjectName().c_str());
+                continue;
             }
 
-            // transform to vehicle-local space
-            // this handles cases where wheel is a child of an intermediate entity (e.g. "model")
-            Vector3 local_pos = vehicle_world_rot_inv * (wheel_world_pos - vehicle_world_pos);
-
-            // update the physics wheel offset x and z to match the mesh position
-            VehicleState().vehicle_simulation->set_wheel_offset(i, local_pos.x, local_pos.z);
+            VehicleState().wheel_mesh_center_offsets[i] = center_offset;
+            VehicleState().vehicle_simulation->set_wheel_offset(i, hub.x, hub.z);
         }
 
         if (VehicleState().vehicle_simulation->has_multibody() && !VehicleState().vehicle_simulation->rebuild_multibody())
         {
-            SP_LOG_ERROR("failed to rebuild car suspension after wheel synchronization");
+            // the old assembly survives a failed rebuild, the wheel offsets must keep matching it
+            for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
+            {
+                VehicleState().vehicle_simulation->set_wheel_offset(i, previous_offsets[i].x, previous_offsets[i].z);
+            }
+            SP_LOG_ERROR("failed to rebuild car suspension after wheel synchronization, keeping the previous wheel offsets");
         }
     }
 

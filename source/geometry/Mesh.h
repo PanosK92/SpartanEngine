@@ -169,6 +169,8 @@ namespace spartan
 
         // gpu buffers
         void CreateGpuBuffers();
+        // the global geometry buffer was emptied, upload again so the offsets point into the new one
+        void ReuploadGpuBuffers();
         void BuildAccelerationStructure(uint32_t sub_mesh_index, bool allow_update = false);
         RHI_Buffer* GetIndexBuffer();
         RHI_Buffer* GetVertexBuffer();

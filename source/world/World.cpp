@@ -795,6 +795,21 @@ namespace spartan
             lock_guard lock(entity_access_mutex);
             entities_pending.insert(entities_pending.end(), retained.begin(), retained.end());
         }
+        // the geometry buffer only appends, the restored scene would stack on the one it replaces
+        // until the gpu runs out of memory, cached meshes and surviving templates move to a fresh one
+        Renderer::ResetWorldGeometry();
+        GeometryBuffer::ReserveForWorldLoad(GetResourceDirectory());
+        for (const auto& resource : ResourceCache::GetByType(ResourceType::Mesh))
+        {
+            static_pointer_cast<Mesh>(resource)->ReuploadGpuBuffers();
+        }
+        for (Entity* entity : retained)
+        {
+            if (Render* render = entity->GetComponent<Render>())
+            {
+                render->ReuploadInstances();
+            }
+        }
         auto world = state->document->child("World");
         if (callbacks.before_load) callbacks.before_load();
         if (callbacks.load) callbacks.load(world);

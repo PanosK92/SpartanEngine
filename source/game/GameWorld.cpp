@@ -62,6 +62,10 @@ namespace spartan::game
         };
         callbacks.stop_play = [] {
             island_wildlife::Clear(true);
+            for (Car* car : Car::GetAll())
+            {
+                if (car) car->PrepareForPlayStop();
+            }
         };
         callbacks.before_tick = [](float dt) { island_wildlife::Tick(dt); };
         callbacks.after_tick = [](float dt) { island_road_details::Tick(dt); };

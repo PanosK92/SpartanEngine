@@ -1426,6 +1426,18 @@ namespace spartan
         m_ready_for_blas.store(true, std::memory_order_release);
     }
 
+    void Mesh::ReuploadGpuBuffers()
+    {
+        // a mesh that never reached the buffer has nothing to move
+        if (!m_ready_for_blas.exchange(false, std::memory_order_acq_rel))
+        {
+            return;
+        }
+
+        InvalidateAllBlas();
+        CreateGpuBuffers();
+    }
+
     RHI_Buffer* Mesh::GetVertexBuffer()
     {
         return GeometryBuffer::GetVertexBuffer();

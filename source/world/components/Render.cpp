@@ -862,6 +862,18 @@ namespace spartan
         if (refresh_bounds) Tick(); // update bounding boxes, frustum and distance culling
     }
 
+    void Render::ReuploadInstances()
+    {
+        m_global_instance_slot          = 0;
+        m_global_instance_slot_capacity = 0;
+        m_global_instance_offset        = 0;
+        if (!m_scene->instances.empty())
+        {
+            const vector<Instance> instances = m_scene->instances;
+            SetInstances(instances, false);
+        }
+    }
+
     void Render::RefreshBounds(const vector<Render*>& renders)
     {
         if (renders.empty()) return;

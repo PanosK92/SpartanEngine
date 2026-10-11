@@ -7,6 +7,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 #pragma once
 #include "Environment.h"
+#include "../math/Quaternion.h"
 #include <memory>
 #include <vector>
 #include <set>
@@ -36,8 +37,16 @@ namespace spartan
         bool IsStarting() const { return phase == Phase::Capturing || phase == Phase::Starting; }
         bool IsActive() const { return phase != Phase::Idle; }
     private:
+        struct Pose
+        {
+            math::Vector3 position;
+            math::Quaternion rotation;
+            math::Vector3 scale;
+        };
+        bool StopFast();
         enum class Phase : uint8_t { Idle, Capturing, Starting, Ready, Stopping };
         std::shared_ptr<PlayState> snapshot;
+        std::unordered_map<uint64_t, Pose> poses;
         Phase phase = Phase::Idle;
         std::vector<Entity*> capture_roots;
         std::vector<Entity*> start_queue;

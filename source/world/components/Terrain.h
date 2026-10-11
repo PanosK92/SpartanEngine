@@ -520,16 +520,11 @@ namespace spartan
         {
             TerrainPlatform pad;
             std::vector<uint64_t> members; // every floor the pad covers, empty for a terraced building
-            std::vector<Entity*> grounded; // the slabs that stand on the ground rather than on a member
-            bool grown = false;            // false when the building is terraced and kept a pad per part
         };
         // the pad the floors of the candidates' building need
         bool MeasurePad(const std::vector<Entity*>& candidates, MeasuredPad& out);
         // drop single pads owned by members other than keep_id, true when any was restored
         bool RetireClusterPads(const std::vector<uint64_t>& members, uint64_t keep_id);
-        // true when the ground under the slab is clearly below its bottom somewhere
-        bool SlabFloats(Entity* slab);
-        void RefitPlatformsToOwners();
         void RestorePropMaskFootprint(
             float center_x,
             float center_z,
@@ -683,8 +678,6 @@ namespace spartan
         mutable std::shared_ptr<const TerrainSculptLayer> m_sculpt_snapshot;
         // pads under buildings, replayed after generate from the seed heightfield
         std::vector<TerrainPlatform> m_platforms;
-        // set by the worker when the pads are replayed, the main thread refits them once loading ends
-        std::atomic<bool> m_platforms_refit_pending = false;
         bool m_live_pad_active           = false;
         TerrainPlatform m_live_pad;
         bool m_live_pad_dirty            = false;

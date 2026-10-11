@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "World.h"
 #include "Entity.h"
 #include "components/Terrain.h"
+#include "components/Animator.h"
 #include "../io/pugixml.hpp"
 using namespace std;
 namespace spartan
@@ -24,9 +25,12 @@ namespace spartan
         world.append_child("Entities");
         if (callbacks.save) callbacks.save(world);
         capture_roots.clear();
+        poses.clear();
+        poses.reserve(entities.size());
         start_queue = entities;
         for (Entity* entity : entities)
         {
+            if (!entity->IsTransient()) poses[entity->GetObjectId()] = { entity->GetPositionLocal(), entity->GetRotationLocal(), entity->GetScaleLocal() };
             if (!entity->IsTransient() && !entity->GetParent()) capture_roots.push_back(entity);
             if (auto terrain = entity->GetComponent<Terrain>()) snapshot->sculpt[entity->GetObjectId()] = terrain->GetSculptSnapshot();
         }
@@ -51,9 +55,74 @@ namespace spartan
             return;
         }
         phase = Phase::Stopping;
-        auto authored = std::move(snapshot); // ClearScene resets this PlaySession.
         if (callbacks.stop_play) callbacks.stop_play();
+        if (StopFast())
+        {
+            Environment::SetSettings(snapshot->environment);
+            Reset();
+            return;
+        }
+        SP_LOG_INFO("play stop: authored entities were deleted or terrain was sculpted, reloading the edit scene");
+        auto authored = std::move(snapshot); // ClearScene resets this PlaySession.
         World::RestorePlayState(authored);
+    }
+
+    // transforms, component Stop and play-spawned entities cover what play changes, a full
+    // reload is only needed when authored entities are gone or the terrain sculpt changed
+    bool PlaySession::StopFast()
+    {
+        const vector<Entity*> entities = World::GetEntities();
+        unordered_set<uint64_t> live;
+        live.reserve(entities.size());
+        for (Entity* entity : entities)
+        {
+            if (entity) live.insert(entity->GetObjectId());
+        }
+        for (const auto& [id, pose] : poses)
+        {
+            if (!live.contains(id)) return false;
+        }
+        for (const auto& [id, sculpt] : snapshot->sculpt)
+        {
+            Entity* entity = World::GetEntityById(id);
+            Terrain* terrain = entity ? entity->GetComponent<Terrain>() : nullptr;
+            if (!terrain || terrain->GetSculptSnapshot() != sculpt) return false;
+        }
+
+        for (Entity* entity : entities)
+        {
+            if (entity) entity->Stop();
+        }
+
+        unordered_set<Entity*> spawned;
+        for (Entity* entity : World::GetEntities())
+        {
+            if (auto it = poses.find(entity->GetObjectId()); it != poses.end())
+            {
+                entity->SetPositionLocal(it->second.position);
+                entity->SetRotationLocal(it->second.rotation);
+                entity->SetScaleLocal(it->second.scale);
+            }
+            // transient entities are owned by their component, prefab entities are rebuilt by their owner
+            else if (!entity->IsTransient() && !entity->HasPrefabData() && !entity->IsPrefabOwned())
+            {
+                spawned.insert(entity);
+            }
+        }
+
+        // the pose restore puts bones back at mid-play values, re-bind so skinned meshes leave play at rest
+        for (Entity* entity : World::GetEntities())
+        {
+            if (Animator* animator = entity->GetComponent<Animator>()) animator->ApplyBindPose();
+        }
+
+        // removal takes the descendants too, so only the topmost spawned entity is removed
+        for (Entity* entity : spawned)
+        {
+            if (!spawned.contains(entity->GetParent())) World::RemoveEntity(entity);
+        }
+        SP_LOG_INFO("play stop: restored %zu poses, removed %zu play spawned entities", poses.size(), spawned.size());
+        return true;
     }
 
     void PlaySession::Tick()
@@ -89,6 +158,7 @@ namespace spartan
     void PlaySession::Reset()
     {
         snapshot.reset();
+        poses.clear();
         capture_roots.clear();
         start_queue.clear();
         capture_cursor = start_cursor = 0;

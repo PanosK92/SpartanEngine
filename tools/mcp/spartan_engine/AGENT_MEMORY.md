@@ -55,12 +55,7 @@ Shared memory for agents working on Spartan Engine. Keep it short, factual and c
 - Add native engine tools when agents repeatedly need the same multi-step sequence; keep MCP schemas close to engine metadata. Log only unknown commands as capability gaps.
 - Open gaps: a second play-mode entry per session has hit VK_ERROR_DEVICE_LOST during car renders; a second world_load per session blows up GPU memory; no MCP capture of the full audio mix (engine_sound_capture records only the engine synth), UI clicking or camera follow for a moving car; Memory Viewer CSV export is button only; ReSTIR hit shaders do not apply puddles; restir direct lacks cloud shadows, ocean transmission and non-TLAS grass contact shadows; GeometryInfo storage buffer is rewritten at offset 0 per TLAS rebuild while older frames may read it; world_save after play has crashed in Render::UpdateLodIndices on a freed car Mesh (restart before playing again).
 
-## Inspector (Properties) redesign workflow
-- Kit: editor_ui layout::fold(title, open, summary), layout::note, property_segmented/percent/meter; component_summary() goes before component_begin.
-
 ## Shutdown crashes and GPU leaks
-- A "still allocations" or VMA leak at exit usually means shutdown aborted before RHI_Device::Destroy. Check the Windows Application event log for 0xc0000409 with P9=7 (abort). log.txt stopping before 'ResourceCache::Shutdown' points to World::Shutdown.
-- Component destructors run under World's entity_access_mutex. Any World::GetEntityById/RemoveEntity inside one throws resource_deadlock_would_occur, which calls terminate. Components that spawn entities (Traffic, Pedestrians, RaceDriver) must be stopped in World::Shutdown's pre-delete list and clean up in Stop/Remove, not in the destructor.
 - To get a call stack for an abort, temporarily install a SIGABRT handler that logs spartan::get_callstack_c_str().
 
 ## Editor UI
@@ -95,3 +90,6 @@ Shared memory for agents working on Spartan Engine. Keep it short, factual and c
 
 ## Terrain pads
 - Live pads (TerrainSnap.cpp) measure the whole building: find_snap_platform grows over floor-like meshes (bottom within 2 m of seed) under the assembly root (highest ancestor below a world_layer/location_root tag). Height = min(max bottom of 0.2-1.5 m slabs not resting on another member, min mid-thickness) + sink min(0.04, thickness/4). After each load RefitPlatformsToOwners re-measures single-owner pads once and replaces one only if a grounded slab floats >0.15 m; terraced pads (villa 9046*, stone terraces 9017*) are left alone. Refit is live only, persist with world_save. Probe pad ground with world_raycast from ABOVE pad height (refine sits at pad+0.02, often inside the slab); rays from below read the coarse tile 0.3-0.5 m low. Ground under sidewalks at bed level is hidden by the deck, not a gap. Never pipe MSBuild through Select-String/Select -First (hangs holding the PCH); log to a file with /nodeReuse:false. Other agents' headless_start can retarget both spartan_engine namespaces; check spartan_status first.
+
+## Play mode
+- Play stop (2026-10-11): PlaySession::Stop now takes StopFast first (pose snapshot taken in Begin, Entity::Stop on all, restore local poses, Animator::ApplyBindPose, remove non-transient non-prefab entities created during play, Car::PrepareForPlayStop via callbacks.stop_play). It is one frame on plan.world. The full XML World::RestorePlayState reload (~25 s on plan.world, rebuilds terrain/scatter) is only the fallback when an authored entity was deleted during play or a Terrain sculpt snapshot pointer changed; it logs 'reloading the edit scene'. Verify with console_read filter 'play stop'. tool_batch engine_set_mode play + engine_wait frames did not actually enter play; drive play/stop with separate calls.

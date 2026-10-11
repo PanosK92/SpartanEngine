@@ -87,6 +87,10 @@ namespace car
         PxVec3          previous_position = PxVec3(0);
         PxVec3          scene_origin = PxVec3(0); // physics positions + this = map positions
         bool            position_valid = false;
+        PxTransform     last_finite_chassis_pose = PxTransform(PxVec3(0.0f, 1.0f, 0.0f));
+        bool            last_finite_chassis_pose_valid = false;
+        // a failed recovery must not rebuild and log on every physics substep
+        bool            suspension_recovery_latched = false;
         PxVec3          contact_impulse = PxVec3(0);
         struct contact_report
         {
@@ -161,6 +165,8 @@ namespace car
         void set_mechanism_simulation_enabled(bool enabled);
         bool has_multibody() const;
         bool ensure_multibody(PxPhysics* physics, PxScene* scene);
+        // places the chassis and carries the suspension assembly rigidly with it, velocities are zeroed
+        void set_assembly_pose(const PxTransform& pose);
         void set_force_retention(bool enabled);
         void clear_force_accumulators();
 

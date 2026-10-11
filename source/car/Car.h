@@ -128,6 +128,7 @@ namespace spartan
         void SetSteering(float value);
         void SetHandbrake(float value);
         void ResetToSpawn();
+        void PrepareForPlayStop();
         void SummonToPlayer();
         static void SummonPlayerCar();
 

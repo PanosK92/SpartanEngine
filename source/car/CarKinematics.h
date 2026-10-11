@@ -50,19 +50,33 @@ namespace car
     // relative to the authored design pose, so static alignment is preserved.
     inline bool solve_suspension_pose(const suspension_pickups& p, const PxVec3& hub, float bump, PxTransform& pose, float rack = 0)
     {
+        // Link lengths do not depend on where the hub sits. A 0.0001 finite-difference
+        // step is smaller than float32 ulp once the hub is kilometres from the origin,
+        // the Jacobian goes singular and the corner is rejected.
+        suspension_pickups local = p;
+        for (int i = 0; i < 4; ++i)
+        {
+            local.inner[i] -= hub;
+            local.outer[i] -= hub;
+        }
+        local.toe_inner -= hub;
+        local.toe_outer -= hub;
+        local.shock_top -= hub;
+        local.shock_bottom -= hub;
+
         float x[6] = {0, bump, 0, 0, 0, 0};
         auto transform = [&](const float* a) {
             PxVec3 r(a[3], a[4], a[5]); float angle = r.magnitude();
-            return PxTransform(hub + PxVec3(a[0], a[1], a[2]), angle > 1e-8f ? PxQuat(angle, r / angle) : PxQuat(PxIdentity));
+            return PxTransform(PxVec3(a[0], a[1], a[2]), angle > 1e-8f ? PxQuat(angle, r / angle) : PxQuat(PxIdentity));
         };
         auto residual = [&](const float* a, float* f) {
             PxTransform t = transform(a);
             for (int i = 0; i < 5; ++i)
             {
-                PxVec3 in = i < 4 ? p.inner[i] : p.toe_inner + PxVec3(rack, 0, 0);
-                PxVec3 out = i < 4 ? p.outer[i] : p.toe_outer;
-                PxVec3 rest_in = i < 4 ? p.inner[i] : p.toe_inner;
-                f[i] = (t.transform(out - hub) - in).magnitude() - (out - rest_in).magnitude();
+                PxVec3 in = i < 4 ? local.inner[i] : local.toe_inner + PxVec3(rack, 0, 0);
+                PxVec3 out = i < 4 ? local.outer[i] : local.toe_outer;
+                PxVec3 rest_in = i < 4 ? local.inner[i] : local.toe_inner;
+                f[i] = (t.transform(out) - in).magnitude() - (out - rest_in).magnitude();
             }
             f[5] = a[1] - bump;
         };
@@ -70,7 +84,7 @@ namespace car
         {
             float f[6]; residual(x, f);
             float error = 0; for (float v : f) error = PxMax(error, fabsf(v));
-            if (error < 2e-6f) { pose = transform(x); return true; }
+            if (error < 2e-6f) { pose = transform(x); pose.p += hub; return true; }
             float m[6][7];
             for (int j = 0; j < 6; ++j)
             {

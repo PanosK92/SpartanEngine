@@ -377,7 +377,6 @@ namespace spartan
             float margin        = 0.0f;
             uint32_t mesh_count = 0;
             vector<Entity*> floors;
-            vector<Entity*> grounded;
         };
 
         bool pads_match(const TerrainPlatform& a, const TerrainPlatform& b)
@@ -981,7 +980,6 @@ namespace spartan
                 float height = -numeric_limits<float>::max();
                 float cap    = numeric_limits<float>::max();
                 float thin   = numeric_limits<float>::max();
-                out.grounded.clear();
                 for (MeshFootprint* mesh : used)
                 {
                     if (mesh->height < slab_min || mesh->height > slab_max || rests_on_member(mesh))
@@ -989,7 +987,6 @@ namespace spartan
                         continue;
                     }
 
-                    out.grounded.push_back(mesh->entity);
                     height = max(height, mesh->bottom);
                     cap    = min(cap, mesh->bottom + mesh->height * 0.5f);
                     thin   = min(thin, mesh->height);
@@ -3246,8 +3243,6 @@ namespace spartan
         wanted.max_z     = desc.max_z;
 
         // a terraced building's other pads are its steps, not leftovers to retire
-        out.grown    = !terraced;
-        out.grounded = desc.grounded;
         out.members.clear();
         if (!terraced)
         {
@@ -3289,105 +3284,6 @@ namespace spartan
         }
 
         return !stale.empty();
-    }
-
-    bool Terrain::SlabFloats(Entity* slab)
-    {
-        Render* render = slab ? slab->GetComponent<Render>() : nullptr;
-        if (!render || !render->GetMesh())
-        {
-            return false;
-        }
-
-        // the oriented corners pulled a little inwards, a rotated slab's aabb corners are bare ground
-        const BoundingBox local = render->GetBoundingBoxMesh();
-        const Matrix world      = slab->GetMatrix();
-        const Vector3 center    = world * local.GetCenter();
-        array<Vector3, 8> corners;
-        local.GetCorners(&corners);
-
-        float bottom = numeric_limits<float>::max();
-        for (const Vector3& corner : corners)
-        {
-            bottom = min(bottom, (world * corner).y);
-        }
-
-        auto gap_at = [&](const Vector3& point)
-        {
-            float ground = 0.0f;
-            return SampleHeight(point.x, point.z, ground) ? bottom - ground : 0.0f;
-        };
-
-        const float tolerance = 0.15f;
-        if (gap_at(center) > tolerance)
-        {
-            return true;
-        }
-
-        for (const Vector3& corner : corners)
-        {
-            if (gap_at(center + (world * corner - center) * 0.9f) > tolerance)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    void Terrain::RefitPlatformsToOwners()
-    {
-        // a pad outlives the geometry it was cut for, a reinstalled building, or a pad an older cut made
-        // for one part of it, so each pad is measured against the building on it once per load, and
-        // only a pad that leaves a slab floating is replaced, a building sunk into its pad was placed so
-        unordered_map<uint64_t, uint32_t> pads_per_owner;
-        for (const TerrainPlatform& pad : m_platforms)
-        {
-            pads_per_owner[pad.entity_id]++;
-        }
-
-        vector<TerrainPlatform> retired;
-        vector<TerrainPlatform> stamped;
-        for (const TerrainPlatform& pad : m_platforms)
-        {
-            if (pad.entity_id == 0 || pads_per_owner[pad.entity_id] > 1)
-            {
-                continue;
-            }
-
-            Entity* owner = World::GetEntityById(pad.entity_id);
-            if (!owner || !owner->GetActive())
-            {
-                continue;
-            }
-
-            MeasuredPad measured;
-            if (!MeasurePad({ owner }, measured) || !measured.grown)
-            {
-                continue;
-            }
-
-            bool floating = false;
-            for (Entity* slab : measured.grounded)
-            {
-                if (SlabFloats(slab))
-                {
-                    floating = true;
-                    break;
-                }
-            }
-
-            if (floating)
-            {
-                retired.push_back(pad);
-                stamped.push_back(measured.pad);
-            }
-        }
-
-        if (!stamped.empty())
-        {
-            ReplacePlatforms(retired, stamped, "refit to its floating building");
-        }
     }
 
     void Terrain::CommitLivePad(bool punch)
@@ -3439,11 +3335,6 @@ namespace spartan
         if (m_positions_seed.size() != m_positions.size())
         {
             return;
-        }
-
-        if (!ProgressTracker::IsLoading(ProgressType::World) && m_platforms_refit_pending.exchange(false, memory_order_acq_rel))
-        {
-            RefitPlatformsToOwners();
         }
 
         FollowPlatformOwners();
@@ -3647,7 +3538,6 @@ namespace spartan
             return false;
         }
 
-        m_platforms_refit_pending.store(true, memory_order_release);
         for (const TerrainPlatform& platform : m_platforms)
         {
             float center_x = platform.center_x;
