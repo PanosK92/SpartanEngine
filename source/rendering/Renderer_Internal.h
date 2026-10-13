@@ -272,7 +272,26 @@ namespace spartan
             uint64_t           pending_compute_timeline_value = 0;
         };
 
-        // Device resources are shared; camera history and exposure belong to a view.
+        // pass history that follows the camera of one view, it lives in PassState while that view renders
+        struct ViewPassHistory
+        {
+            bool cleared_reflections    = false;
+            bool cleared_rt_reflections = false;
+            bool cleared_rt_shadows     = false;
+            bool depth_history_cleared  = false;
+            bool hiz_history_valid      = false;
+            RestirState restir;
+            TemporalPingPong cloud_history;
+            TemporalPingPong ssao_history;
+            TemporalPingPong fog_history;
+            Renderer_RenderTarget fog_source       = Renderer_RenderTarget::fog_scatter;
+            Renderer_RenderTarget fog_water_source = Renderer_RenderTarget::fog_water_source;
+            TemporalPingPong particle_volume_history;
+            RHI_Texture* vrs_last_cleared_texture = nullptr;
+        };
+
+        // Device resources are shared; camera history, exposure and screen sized targets belong to a view.
+        // While a view is inactive its renderer globals are parked here, see swap_view_state.
         struct ViewState
         {
             Cb_Frame frame = {};
@@ -281,15 +300,36 @@ namespace spartan
             math::Matrix view_projection_previous_right;
             Camera* camera = nullptr;
             ExposureState exposure;
-            std::shared_ptr<RHI_Texture> output, exposure_current, exposure_previous;
             uint32_t temporal_frame = 0;
             float near_plane = 0.0f, far_plane = 1.0f;
             bool dirty_orthographic_projection = true;
+
+            ViewPassHistory history;
+            math::Vector2 resolution_render = math::Vector2::Zero;
+            math::Vector2 resolution_output = math::Vector2::Zero;
+            bool taau_reset_history         = true;
+            bool hiz_suppressed             = true;
+            std::vector<ShadowSlice> shadow_slices;
+            uint32_t light_count            = 0;
+            uint32_t volumetric_light_count = 0;
+            uint32_t frame_resource_index   = 0;
         };
         ViewState& view();
         Camera* GetViewCamera();
         bool IsViewWireframe();
-        RHI_Texture* GetViewRenderTarget(Renderer_RenderTarget type);
+
+        // selects which set of per view render targets GetRenderTarget resolves to
+        void SetViewRenderTargets(bool secondary);
+        // (re)creates the secondary set at the active resolution when it is missing or stale, true when it did
+        bool EnsureSecondaryRenderTargets();
+        void ReleaseSecondaryRenderTargets();
+        bool HasSecondaryRenderTargets();
+        // points the per frame buffer slots at a frame resource
+        void BindFrameResource(uint32_t index);
+        // renders the secondary view with its own targets, history and frame slots, ahead of the primary in the same frame
+        void RenderSecondaryView(Entity* camera_entity, Entity* root, uint32_t width, uint32_t height);
+        // the lights the active view shades with
+        const std::vector<Entity*>& GetViewLightEntities();
 
         struct State
         {
@@ -312,7 +352,7 @@ namespace spartan
             bool m_draw_lods_uploaded = false;
             std::vector<uint32_t> m_tessellated_draws; // indices into m_draw_calls, args slot is the position in this list
             bool m_tessellated_gpu_culled = false;
-            std::array<FrameResource, renderer_draw_data_buffer_count> m_frame_resources;
+            std::array<FrameResource, renderer_frame_resource_count> m_frame_resources;
             uint32_t m_frame_resource_index;
             uint32_t m_cpu_indirect_draw_arg_count;
             std::array<Sb_DrawData, renderer_max_draw_calls> m_draw_data_cpu;

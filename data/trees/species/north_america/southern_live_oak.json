@@ -1,0 +1,21 @@
+{
+  "id": "southern_live_oak",
+  "name": "Southern Live Oak",
+  "scientific": "Quercus virginiana",
+  "region": "North America",
+  "description": "The plantation oak of Louisiana and Georgia. A short, massive trunk throws out enormous, sinuous limbs that reach sideways for twice the tree height and sag to the ground.",
+  "class": "broadleaf",
+  "evergreen": true,
+  "budget": 14000,
+  "height": 15.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.07, "taper": 0.3, "flare": 0.7, "lean": 4, "gnarl": 0.5, "twist": 0.2, "segments": 12, "stems": 4, "split_height": 0.18, "split_angle": 60 },
+  "crown": { "shape": "umbrella", "base": 0.2, "width": 1.2 },
+  "levels": [
+    { "count": 12, "start": 0.15, "end": 0.98, "length": 0.62, "length_var": 0.2, "down_angle": 75, "down_angle_tip": 55, "down_angle_var": 15, "curve": 40, "curve_var": 50, "gravity": 0.35, "radius_ratio": 0.62, "segments": 8 },
+    { "count": 9, "start": 0.15, "end": 1.0, "length": 0.5, "length_var": 0.25, "down_angle": 55, "down_angle_var": 20, "curve": -25, "curve_var": 40, "gravity": 0.2, "radius_ratio": 0.55, "segments": 4 },
+    { "count": 6, "start": 0.2, "end": 1.0, "length": 0.42, "down_angle": 45, "down_angle_var": 20, "curve_var": 30, "gravity": 0.2, "radius_ratio": 0.6, "segments": 3 }
+  ],
+  "leaves": { "shape": "elliptic", "size": 0.05, "card_size": 0.55, "density": 1.2, "start": 0.3, "tilt": 0.3, "per_card": 14, "color": [0.08, 0.16, 0.05], "color_back": [0.20, 0.26, 0.12], "spring_color": [0.22, 0.34, 0.08], "color_var": 0.06, "translucency": 0.3 },
+  "bark": { "style": "furrowed", "color": [0.182, 0.169, 0.150], "color_dark": [0.046, 0.039, 0.033], "scale": 0.9, "roughness": 0.95 }
+}

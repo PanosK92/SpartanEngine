@@ -1,0 +1,21 @@
+{
+  "id": "aleppo_pine",
+  "name": "Aleppo Pine",
+  "scientific": "Pinus halepensis",
+  "region": "Greece",
+  "description": "The pine of the Aegean coast and the source of retsina resin. A leaning, often crooked trunk with grey bark and an open, irregular crown of light green needle tufts.",
+  "class": "conifer",
+  "evergreen": true,
+  "budget": 12000,
+  "height": 15.0,
+  "height_var": 0.2,
+  "trunk": { "radius": 0.022, "taper": 0.12, "flare": 0.35, "lean": 10, "gnarl": 0.45, "twist": 0.1, "segments": 12 },
+  "crown": { "shape": "tend_flame", "base": 0.4, "width": 0.38 },
+  "levels": [
+    { "count": 22, "start": 0.3, "end": 0.98, "length": 0.42, "length_var": 0.3, "down_angle": 75, "down_angle_tip": 40, "down_angle_var": 18, "whorl": 3, "rotate": 110, "curve": 30, "curve_var": 35, "gravity": 0.05, "radius_ratio": 0.45, "segments": 6 },
+    { "count": 7, "start": 0.3, "end": 1.0, "length": 0.45, "length_var": 0.25, "down_angle": 45, "down_angle_var": 15, "curve": 20, "curve_var": 25, "radius_ratio": 0.55, "segments": 4 },
+    { "count": 4, "start": 0.4, "end": 1.0, "length": 0.4, "down_angle": 40, "down_angle_var": 15, "curve": 15, "radius_ratio": 0.6, "segments": 2 }
+  ],
+  "leaves": { "shape": "needle", "size": 0.09, "card_size": 1.0, "density": 2.6, "start": 0.2, "tilt": 0.35, "per_card": 10, "color": [0.17, 0.25, 0.08], "color_back": [0.24, 0.32, 0.12], "color_var": 0.07, "translucency": 0.3 },
+  "bark": { "style": "plated", "color": [0.234, 0.195, 0.163], "color_dark": [0.078, 0.052, 0.039], "scale": 0.8, "roughness": 0.9 }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "cherry_blossom",
+  "name": "Cherry Blossom",
+  "scientific": "Prunus serrulata",
+  "region": "Japan",
+  "description": "The sakura of the hanami parks. A short trunk with banded, glossy bark and wide spreading limbs that carry clouds of pink blossom in spring before the leaves arrive.",
+  "class": "broadleaf",
+  "evergreen": false,
+  "budget": 12000,
+  "height": 9.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.035, "taper": 0.2, "flare": 0.5, "lean": 5, "gnarl": 0.3, "twist": 0.1, "segments": 10, "stems": 3, "split_height": 0.25, "split_angle": 40 },
+  "crown": { "shape": "vase", "base": 0.3, "width": 0.8 },
+  "levels": [
+    { "count": 11, "start": 0.25, "end": 0.98, "length": 0.55, "length_var": 0.2, "down_angle": 55, "down_angle_tip": 40, "down_angle_var": 15, "curve": 15, "curve_var": 30, "gravity": 0.15, "radius_ratio": 0.6, "segments": 6 },
+    { "count": 9, "start": 0.2, "end": 1.0, "length": 0.5, "length_var": 0.2, "down_angle": 55, "down_angle_var": 18, "curve": -10, "curve_var": 25, "gravity": 0.22, "radius_ratio": 0.55, "segments": 4 },
+    { "count": 6, "start": 0.25, "end": 1.0, "length": 0.4, "down_angle": 45, "down_angle_var": 18, "curve_var": 20, "gravity": 0.2, "radius_ratio": 0.6, "segments": 3 }
+  ],
+  "leaves": { "shape": "elliptic", "size": 0.08, "card_size": 0.6, "density": 1.2, "start": 0.3, "tilt": 0.35, "per_card": 10, "color": [0.12, 0.24, 0.06], "color_back": [0.24, 0.32, 0.12], "spring_color": [0.30, 0.38, 0.12], "autumn_color": [0.70, 0.25, 0.08], "autumn_color_b": [0.60, 0.40, 0.08], "color_var": 0.08, "flowers": true, "flower_color": [0.96, 0.70, 0.78], "translucency": 0.5 },
+  "bark": { "style": "ringed", "color": [0.195, 0.130, 0.117], "color_dark": [0.078, 0.052, 0.046], "scale": 1.0, "roughness": 0.6 }
+}

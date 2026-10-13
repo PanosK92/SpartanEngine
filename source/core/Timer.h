@@ -31,6 +31,10 @@ namespace spartan
         static FpsLimitType GetFpsLimitType();
         static void OnVsyncToggled(const bool enabled);
 
+        // frames the display receives per rendered frame, frame generation presents 2, the limit paces displayed frames
+        static void SetPresentsPerFrame(uint32_t count);
+        static uint32_t GetPresentsPerFrame();
+
         // Offline capture: every frame reports exactly this delta and skips pacing, so
         // simulated time advances by one video frame no matter how long a frame takes.
         // Zero or negative returns to real time.

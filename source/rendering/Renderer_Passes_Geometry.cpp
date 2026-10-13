@@ -527,7 +527,7 @@ namespace spartan
 
     void Renderer::Pass_ShadowMaps()
     {
-        if (World::GetLightCount() == 0)
+        if (GetViewLightEntities().empty())
         {
             return;
         }
@@ -568,7 +568,7 @@ namespace spartan
         vector<ShadowSlice> slices;
         uint32_t argument_count = 0;
         bool has_alpha_draws = false;
-        for (Entity* entity_light : World::GetEntitiesLights())
+        for (Entity* entity_light : GetViewLightEntities())
         {
             Light* light = entity_light->GetComponent<Light>();
             if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityRadiometric() == 0.0f)
@@ -868,7 +868,7 @@ namespace spartan
         };
         vector<ShadowSlice> slices;
         vector<array<uint32_t, 4>> slice_data;
-        for (Entity* entity_light : World::GetEntitiesLights())
+        for (Entity* entity_light : GetViewLightEntities())
         {
             Light* light = entity_light->GetComponent<Light>();
             if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityRadiometric() == 0.0f)
@@ -1480,7 +1480,7 @@ namespace spartan
         }
 
         bool is_wireframe                     = IsViewWireframe();
-        bool xr_multiview                     = Xr::IsSessionRunning() && Xr::GetStereoMode();
+        bool xr_multiview                     = IsStereoView();
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid);
         rasterizer_state                      = is_wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : rasterizer_state;
 
@@ -1675,7 +1675,7 @@ namespace spartan
     {
         RHI_CommandList::BeginPass("g_buffer_indirect");
 
-        const bool xr_multiview = Xr::IsSessionRunning() && Xr::GetStereoMode();
+        const bool xr_multiview = IsStereoView();
         const bool mesh_path    = use_mesh_shaders();
 
         RHI_PipelineState pso;
@@ -1793,7 +1793,7 @@ namespace spartan
     {
         RHI_CommandList::BeginPass(is_transparent_pass ? "g_buffer_transparent_draw" : "g_buffer_tessellated");
 
-        const bool xr_multiview = Xr::IsSessionRunning() && Xr::GetStereoMode();
+        const bool xr_multiview = IsStereoView();
 
         RHI_PipelineState pso;
         pso.name                             = is_transparent_pass ? "g_buffer_transparent" : "g_buffer_tessellated";
@@ -1929,7 +1929,7 @@ namespace spartan
         pso.clear_color[0] = rhi_color_load;
         pso.clear_depth = rhi_depth_load;
         pso.resolution_scale = true;
-        pso.is_multiview = Xr::IsSessionRunning() && Xr::GetStereoMode();
+        pso.is_multiview = IsStereoView();
 
         // This pass exists before any tire slips. Compile its pipeline during
         // those initial frames, rather than blocking the first braking draw.
@@ -2028,6 +2028,12 @@ namespace spartan
     {
         // fills the per-slot per-lod sections of grass_instances around the camera, then bakes
         // instance_count into the indirect args, slot 0 is grass and the higher slots are micro detail
+
+        // a preview does not draw grass, refilling around its camera would only clobber the primary rings
+        if (IsSecondaryViewActive())
+        {
+            return;
+        }
 
         // the far grass carpet follows slot 0, it ends where the last ring ends and grows under the
         // same gates, the terrain reads it through the frame buffer
@@ -2591,6 +2597,12 @@ namespace spartan
         // g-buffer pass, shares the geometry stage render pass and sets its own vertex shader that
         // reads grass_instances
 
+        // the instances were populated around the primary camera and belong to no preview subtree
+        if (IsSecondaryViewActive())
+        {
+            return;
+        }
+
         bool any_ready = false;
         for (const PassState::GpuScatterSlot& slot : m_pass_state.gpu_scatter)
         {
@@ -2613,7 +2625,7 @@ namespace spartan
         }
 
         // pso, matches the rest of the geometry stage so the draw lands in the same render pass
-        const bool xr_multiview = Xr::IsSessionRunning() && Xr::GetStereoMode();
+        const bool xr_multiview = IsStereoView();
 
         RHI_PipelineState pso;
         pso.name                             = "grass_gbuffer";
@@ -2775,7 +2787,7 @@ namespace spartan
             return;
         }
 
-        bool xr_multiview = Xr::IsSessionRunning() && Xr::GetStereoMode();
+        bool xr_multiview = IsStereoView();
 
         RHI_CommandList::BeginPass("meshlet_visualize");
         {

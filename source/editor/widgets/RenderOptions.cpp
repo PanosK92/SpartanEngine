@@ -719,6 +719,15 @@ namespace
             limit_text = buffer;
         }
 
+        // the limit paces displayed frames, frame generation renders a fraction of them
+        const uint32_t presents_per_frame = Timer::GetPresentsPerFrame();
+        if (presents_per_frame > 1 && type != FpsLimitType::Unlocked)
+        {
+            const float rendered = (vsync || type == FpsLimitType::FixedToMonitor ? monitor_hz : Timer::GetFpsLimit()) / static_cast<float>(presents_per_frame);
+            snprintf(buffer, sizeof(buffer), "%s%.0f rendered", separator, rendered);
+            limit_text += buffer;
+        }
+
         char rate[32];
         if (vsync || type == FpsLimitType::FixedToMonitor)
         {
@@ -728,11 +737,16 @@ namespace
         {
             snprintf(rate, sizeof(rate), type == FpsLimitType::Unlocked ? "unlocked" : "%.0f fps", Timer::GetFpsLimit());
         }
-        const string summary = string(cvar_hdr.GetValueAs<bool>() ? "HDR" : "SDR") + separator + rate;
+        string summary = string(cvar_hdr.GetValueAs<bool>() ? "HDR" : "SDR") + separator + rate;
+        if (cvar_frame_generation.GetValueAs<bool>())
+        {
+            summary += separator + string("FG");
+        }
         if (section_begin("Display", summary))
         {
             cvar_toggle("HDR", "r.hdr", "High dynamic range output on HDR displays. When off, output is SDR with the sRGB transfer.");
             cvar_toggle("VSync", "r.vsync", "Synchronise presentation with the monitor refresh, removes tearing and caps the frame rate to it.");
+            cvar_toggle("Frame generation", "r.frame_generation", "AMD FSR 3.1 frame generation, presents an interpolated frame between every two rendered ones. Works on any GPU vendor, D3D12 and Vulkan. Pair it with an upscaler and a base frame rate of 60+ for the best latency and quality.");
 
             if (row_begin("Frame rate limit", "Caps how often frames are produced. Follows the monitor while VSync is on."))
             {

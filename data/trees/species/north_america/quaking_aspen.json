@@ -1,0 +1,21 @@
+{
+  "id": "quaking_aspen",
+  "name": "Quaking Aspen",
+  "scientific": "Populus tremuloides",
+  "region": "North America",
+  "description": "The aspen of the Rocky Mountain groves. A tall, pale, smooth trunk scarred black where branches fell, under a small high crown of round leaves that shimmer and turn gold.",
+  "class": "broadleaf",
+  "evergreen": false,
+  "budget": 10000,
+  "height": 18.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.012, "taper": 0.05, "flare": 0.25, "lean": 2, "gnarl": 0.1, "segments": 12 },
+  "crown": { "shape": "tend_flame", "base": 0.55, "width": 0.25 },
+  "levels": [
+    { "count": 22, "start": 0.5, "end": 0.98, "length": 0.38, "length_var": 0.25, "down_angle": 45, "down_angle_tip": 30, "down_angle_var": 12, "rotate": 137, "curve": 20, "curve_var": 20, "gravity": 0.12, "radius_ratio": 0.45, "segments": 5 },
+    { "count": 8, "start": 0.2, "end": 1.0, "length": 0.45, "length_var": 0.2, "down_angle": 45, "down_angle_var": 15, "curve_var": 20, "gravity": 0.18, "radius_ratio": 0.5, "segments": 3 },
+    { "count": 5, "start": 0.3, "end": 1.0, "length": 0.4, "down_angle": 40, "down_angle_var": 15, "gravity": 0.2, "radius_ratio": 0.55, "segments": 2 }
+  ],
+  "leaves": { "shape": "round", "size": 0.055, "card_size": 0.45, "density": 1.25, "start": 0.2, "tilt": 0.5, "per_card": 12, "color": [0.14, 0.28, 0.06], "color_back": [0.28, 0.40, 0.14], "spring_color": [0.36, 0.52, 0.12], "autumn_color": [0.85, 0.65, 0.08], "autumn_color_b": [0.80, 0.55, 0.06], "color_var": 0.07, "translucency": 0.6 },
+  "bark": { "style": "birch", "color": [0.70, 0.70, 0.62], "color_dark": [0.12, 0.12, 0.10], "scale": 1.0, "roughness": 0.72 }
+}

@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../EditorHistory.h"
 #include "AssetViewer.h"
 #include "AssetViewerCommon.h"
+#include "PreviewRig.h"
 #include "../imgui/ImGui_Extension.h"
 #include "../imgui/ImGui_Style.h"
 #include "../imgui/ImGui_EditorUi.h"
@@ -2074,55 +2075,9 @@ void AssetViewer::CreatePreviewRig(Entity* root)
     root->SetActive(true);
     RefreshPreviewBounds(root);
 
-    Entity* rig_entity = World::CreateEntity();
-    rig_entity->SetObjectName("asset_viewer_rig");
-    rig_entity->SetTransient(true);
-    rig_entity->SetParent(root);
-    m_preview_rig_id = rig_entity->GetObjectId();
-
-    Entity* camera_entity = World::CreateEntity();
-    camera_entity->SetObjectName("asset_viewer_camera");
-    camera_entity->SetTransient(true);
-    camera_entity->SetParent(rig_entity);
-    Camera* camera = camera_entity->AddComponent<Camera>();
-    camera->SetFovHorizontalDeg(50.0f);
-    camera->SetExposureMode(
-        CameraExposureMode::automatic
-    );
-    m_preview_camera_id = camera_entity->GetObjectId();
-
-    Entity* key_entity = World::CreateEntity();
-    key_entity->SetObjectName("asset_viewer_key_light");
-    key_entity->SetTransient(true);
-    key_entity->SetParent(rig_entity);
-    key_entity->SetRotation(
-        math::Quaternion::FromLookRotation(
-            math::Vector3(-0.45f, -0.8f, 0.65f),
-            math::Vector3::Up
-        )
-    );
-    Light* key_light = key_entity->AddComponent<Light>();
-    key_light->SetLightType(LightType::Directional);
-    key_light->SetIntensity(85000.0f);
-    key_light->SetColor(Color::standard_white);
-
-    Entity* fill_entity = World::CreateEntity();
-    fill_entity->SetObjectName("asset_viewer_fill_light");
-    fill_entity->SetTransient(true);
-    fill_entity->SetParent(rig_entity);
-    fill_entity->SetPosition(
-        m_preview_center +
-        math::Vector3(
-            m_preview_radius * 2.0f,
-            m_preview_radius * 1.2f,
-            -m_preview_radius * 1.5f
-        )
-    );
-    Light* fill_light = fill_entity->AddComponent<Light>();
-    fill_light->SetLightType(LightType::Point);
-    fill_light->SetIntensity(5000.0f);
-    fill_light->SetRange(m_preview_radius * 8.0f);
-    fill_light->SetColor(Color::standard_white);
+    const preview_rig::rig_ids ids = preview_rig::create(root, m_preview_center, m_preview_radius, "asset_viewer");
+    m_preview_rig_id    = ids.rig;
+    m_preview_camera_id = ids.camera;
 
     UpdatePreviewCamera();
 
@@ -2150,104 +2105,19 @@ void AssetViewer::RefreshPreviewBounds(Entity* root)
     {
         CollectPreviewEntities(render_entities);
     }
-    bool bounds_found = false;
-    math::BoundingBox bounds;
-    for (Entity* entity : render_entities)
-    {
-        Render* render =
-            entity ?
-            entity->GetComponent<Render>() :
-            nullptr;
-        if (!render || !render->GetMesh())
-        {
-            continue;
-        }
-        const math::BoundingBox render_bounds =
-            render->GetBoundingBoxMesh() *
-            entity->GetMatrix();
-        if (!bounds_found)
-        {
-            bounds = render_bounds;
-            bounds_found = true;
-        }
-        else
-        {
-            bounds.Merge(render_bounds);
-        }
-    }
-
-    m_preview_center = bounds_found
-        ? bounds.GetCenter()
-        : math::Vector3::Zero;
-    if (bounds_found)
-    {
-        // half the diagonal is the enclosing sphere, the longest axis alone
-        // under estimates it and crops elongated assets
-        const math::Vector3 size = bounds.GetSize();
-        m_preview_radius = max(
-            0.001f,
-            size.Length() * 0.5f
-        );
-    }
-    else
-    {
-        m_preview_radius = 1.0f;
-    }
+    preview_rig::compute_bounds(render_entities, m_preview_center, m_preview_radius);
 }
 
 void AssetViewer::UpdatePreviewCamera()
 {
-    Entity* camera_entity =
-        World::GetEntityById(m_preview_camera_id);
-    if (!camera_entity)
-    {
-        return;
-    }
-
-    const math::Vector3 direction(
-        cos(m_preview_pitch) * sin(m_preview_yaw),
-        sin(m_preview_pitch),
-        -cos(m_preview_pitch) * cos(m_preview_yaw)
-    );
-
-    Camera* camera = camera_entity->GetComponent<Camera>();
-    const float fov_horizontal =
-        camera
-            ? camera->GetFovHorizontalRad()
-            : 50.0f * math::deg_to_rad;
-    const float aspect = max(0.05f, m_preview_aspect);
-    const float fov_vertical =
-        2.0f *
-        atan(
-            tan(fov_horizontal * 0.5f) /
-            aspect
-        );
-
-    // fit the bounding sphere against the tighter frustum axis, otherwise a
-    // wide or tall panel crops the asset
-    const float fov_fit = min(fov_horizontal, fov_vertical);
-    float distance =
-        m_preview_radius *
-        1.15f /
-        max(0.01f, sin(fov_fit * 0.5f));
-    distance /= max(0.05f, m_preview_zoom);
-
-    // the near plane is fixed engine side, keep small assets in front of it
-    const float near_plane =
-        camera ? camera->GetNearPlane() : 0.1f;
-    distance = max(
-        distance,
-        near_plane + m_preview_radius * 1.05f
-    );
-
-    const math::Vector3 position =
-        m_preview_center + direction * distance;
-    camera_entity->SetPosition(position);
-    camera_entity->SetRotation(
-        math::Quaternion::FromLookRotation(
-            (m_preview_center - position).Normalized(),
-            math::Vector3::Up
-        )
+    preview_rig::place_camera(
+        World::GetEntityById(m_preview_camera_id),
+        m_preview_center,
+        m_preview_radius,
+        m_preview_yaw,
+        m_preview_pitch,
+        m_preview_zoom,
+        m_preview_aspect
     );
 }
 

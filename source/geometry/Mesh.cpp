@@ -204,7 +204,7 @@ namespace spartan
                 throw runtime_error("Failed to open mesh: " + file_path);
             }
 
-            uint32_t version = 6; // meshlet unique-vertex remaps + micro-indices, MeshletBounds at 24 bytes
+            uint32_t version = 7; // 6 + per sub-mesh impostor card, the atlas is rebaked from lod 0 through the generated cache
             outfile.write(reinterpret_cast<const char*>(&version), sizeof(uint32_t));
 
             uint32_t type = static_cast<uint32_t>(m_type);
@@ -265,6 +265,31 @@ namespace spartan
             outfile.write(reinterpret_cast<const char*>(&meshlet_micro_count), sizeof(uint32_t));
             outfile.write(reinterpret_cast<const char*>(m_meshlet_micro_indices.data()), meshlet_micro_count * sizeof(uint32_t));
 
+            for (const SubMesh& sub : m_sub_meshes)
+            {
+                const uint32_t has_impostor = sub.impostor ? 1 : 0;
+                outfile.write(reinterpret_cast<const char*>(&has_impostor), sizeof(uint32_t));
+                if (!has_impostor)
+                {
+                    continue;
+                }
+
+                const MeshImpostor& impostor = *sub.impostor;
+                const MeshLod& lod           = impostor.lod;
+                const uint32_t lod_words[6]  = { lod.vertex_offset, lod.vertex_count, lod.index_offset, lod.index_count, lod.meshlet_offset, lod.meshlet_count };
+                outfile.write(reinterpret_cast<const char*>(lod_words), sizeof(lod_words));
+                const Vector3 lod_min = lod.aabb.GetMin();
+                const Vector3 lod_max = lod.aabb.GetMax();
+                const float floats[14] =
+                {
+                    lod_min.x, lod_min.y, lod_min.z, lod_max.x, lod_max.y, lod_max.z,
+                    impostor.center.x, impostor.center.y, impostor.center.z, impostor.radius,
+                    impostor.uv_min.x, impostor.uv_min.y, impostor.uv_scale.x, impostor.uv_scale.y
+                };
+                outfile.write(reinterpret_cast<const char*>(floats), sizeof(floats));
+                outfile.write(reinterpret_cast<const char*>(&impostor.resolution), sizeof(uint32_t));
+            }
+
             outfile.close();
             if (!outfile) throw runtime_error("Failed to write mesh: " + file_path);
             SP_LOG_INFO("Mesh '%s': saved %u sub-meshes, %u vertices, %u indices", m_object_name.c_str(), submesh_count, vertex_count, index_count);
@@ -301,9 +326,9 @@ namespace spartan
 
                 uint32_t version;
                 infile.read(reinterpret_cast<char*>(&version), sizeof(uint32_t));
-                if (version != 5 && version != 6)
+                if (version < 5 || version > 7)
                 {
-                    SP_LOG_ERROR("Unsupported mesh cache version for file: %s (got %u, supported 5-6)", file_path.c_str(), version);
+                    SP_LOG_ERROR("Unsupported mesh cache version for file: %s (got %u, supported 5-7)", file_path.c_str(), version);
                     return false;
                 }
 
@@ -401,6 +426,38 @@ namespace spartan
                     infile.read(reinterpret_cast<char*>(meshlet_micro_indices.data()), meshlet_micro_count * sizeof(uint32_t));
                 }
 
+                if (version >= 7)
+                {
+                    for (SubMesh& sub : sub_meshes)
+                    {
+                        uint32_t has_impostor = 0;
+                        infile.read(reinterpret_cast<char*>(&has_impostor), sizeof(uint32_t));
+                        if (!has_impostor)
+                        {
+                            continue;
+                        }
+
+                        auto impostor = make_shared<MeshImpostor>();
+                        uint32_t lod_words[6] = {};
+                        float floats[14]      = {};
+                        infile.read(reinterpret_cast<char*>(lod_words), sizeof(lod_words));
+                        infile.read(reinterpret_cast<char*>(floats), sizeof(floats));
+                        infile.read(reinterpret_cast<char*>(&impostor->resolution), sizeof(uint32_t));
+                        impostor->lod.vertex_offset  = lod_words[0];
+                        impostor->lod.vertex_count   = lod_words[1];
+                        impostor->lod.index_offset   = lod_words[2];
+                        impostor->lod.index_count    = lod_words[3];
+                        impostor->lod.meshlet_offset = lod_words[4];
+                        impostor->lod.meshlet_count  = lod_words[5];
+                        impostor->lod.aabb           = BoundingBox(Vector3(floats[0], floats[1], floats[2]), Vector3(floats[3], floats[4], floats[5]));
+                        impostor->center             = Vector3(floats[6], floats[7], floats[8]);
+                        impostor->radius             = floats[9];
+                        impostor->uv_min             = Vector2(floats[10], floats[11]);
+                        impostor->uv_scale           = Vector2(floats[12], floats[13]);
+                        sub.impostor                 = move(impostor);
+                    }
+                }
+
                 InvalidateAllBlas();
                 Clear();
                 m_sub_meshes = std::move(sub_meshes);
@@ -415,6 +472,26 @@ namespace spartan
 
                 // one line per mesh, a line per sub mesh was a thousand lines on a large world
                 SP_LOG_INFO("Mesh '%s': loaded %u sub-meshes, %u vertices, %u indices", m_object_name.c_str(), submesh_count, vertex_count, index_count);
+
+                // the card came from the file, its atlas is baked from the same lod 0 the importer baked it from
+                for (uint32_t sub_idx = 0; sub_idx < static_cast<uint32_t>(m_sub_meshes.size()); sub_idx++)
+                {
+                    SubMesh& sub = m_sub_meshes[sub_idx];
+                    if (!sub.impostor || sub.lods.empty())
+                    {
+                        continue;
+                    }
+                    vector<uint32_t> lod_indices;
+                    vector<RHI_Vertex_PosTexNorTan> lod_vertices;
+                    if (GetGeometryLod(sub_idx, 0, &lod_indices, &lod_vertices))
+                    {
+                        BakeImpostorTexels(lod_vertices, lod_indices, *sub.impostor);
+                    }
+                    if (sub.impostor->texels.empty())
+                    {
+                        sub.impostor.reset();
+                    }
+                }
 
                 SetResourceFilePath(file_path);
                 CreateGpuBuffers();
@@ -902,6 +979,37 @@ namespace spartan
         }
     }
 
+    void Mesh::BakeImpostorTexels(const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices, MeshImpostor& impostor) const
+    {
+        generated_cache::Hash hash;
+        hash.Add(uint32_t(1)); // impostor bake version
+        hash.Add(mesh_impostor_frames);
+        hash.Add(impostor.resolution);
+        hash.Add(mesh_impostor_layers);
+        hash.Add(vertices);
+        hash.Add(indices);
+        const auto path  = generated_cache::Path(World::GetResourceDirectory(), "impostors", hash.value);
+        const bool cache = !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
+        const size_t expected_words = static_cast<size_t>(mesh_impostor_frames) * mesh_impostor_frames *
+            impostor.resolution * impostor.resolution * mesh_impostor_layers * 2;
+        if (!cache || !generated_cache::Load(path, hash.value, impostor.texels) || impostor.texels.size() != expected_words)
+        {
+            geometry_processing::bake_impostor(
+                vertices,
+                indices,
+                mesh_impostor_frames,
+                impostor.resolution,
+                mesh_impostor_layers,
+                impostor.center,
+                impostor.radius,
+                impostor.uv_min,
+                impostor.uv_scale,
+                impostor.texels
+            );
+            if (cache) generated_cache::Save(path, hash.value, impostor.texels);
+        }
+    }
+
     void Mesh::AddImpostor(const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices, const uint32_t sub_mesh_index)
     {
         if (vertices.empty() || indices.size() < 3)
@@ -930,34 +1038,7 @@ namespace spartan
         impostor->uv_min   = uv_lo;
         impostor->uv_scale = Vector2(max(uv_hi.x - uv_lo.x, 1e-6f), max(uv_hi.y - uv_lo.y, 1e-6f));
         impostor->resolution = impostor->radius >= mesh_impostor_large_radius ? mesh_impostor_resolution_large : mesh_impostor_resolution;
-
-        generated_cache::Hash hash;
-        hash.Add(uint32_t(1)); // impostor bake version
-        hash.Add(mesh_impostor_frames);
-        hash.Add(impostor->resolution);
-        hash.Add(mesh_impostor_layers);
-        hash.Add(vertices);
-        hash.Add(indices);
-        const auto path  = generated_cache::Path(World::GetResourceDirectory(), "impostors", hash.value);
-        const bool cache = !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
-        const size_t expected_words = static_cast<size_t>(mesh_impostor_frames) * mesh_impostor_frames *
-            impostor->resolution * impostor->resolution * mesh_impostor_layers * 2;
-        if (!cache || !generated_cache::Load(path, hash.value, impostor->texels) || impostor->texels.size() != expected_words)
-        {
-            geometry_processing::bake_impostor(
-                vertices,
-                indices,
-                mesh_impostor_frames,
-                impostor->resolution,
-                mesh_impostor_layers,
-                impostor->center,
-                impostor->radius,
-                impostor->uv_min,
-                impostor->uv_scale,
-                impostor->texels
-            );
-            if (cache) generated_cache::Save(path, hash.value, impostor->texels);
-        }
+        BakeImpostorTexels(vertices, indices, *impostor);
 
         // the corners ride in the uv, the vertex stage turns the card toward the camera, the positions
         // only have to give the lod aabb and the meshlet sphere a volume that holds the card in any orientation

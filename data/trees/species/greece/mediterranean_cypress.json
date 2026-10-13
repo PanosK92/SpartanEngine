@@ -1,0 +1,20 @@
+{
+  "id": "mediterranean_cypress",
+  "name": "Mediterranean Cypress",
+  "scientific": "Cupressus sempervirens",
+  "region": "Greece",
+  "description": "The dark green flame beside every chapel and cemetery. Upright branches hug a straight trunk, the scale leaves form a tight column that tapers to a point.",
+  "class": "conifer",
+  "evergreen": true,
+  "budget": 9000,
+  "height": 18.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.016, "taper": 0.06, "flare": 0.3, "lean": 1, "gnarl": 0.05, "twist": 0.2, "segments": 12 },
+  "crown": { "shape": "flame", "base": 0.05, "width": 0.09 },
+  "levels": [
+    { "count": 60, "start": 0.05, "end": 0.98, "length": 0.22, "length_var": 0.2, "down_angle": 22, "down_angle_tip": 12, "down_angle_var": 6, "rotate": 137.5, "curve": 6, "curve_var": 8, "radius_ratio": 0.4, "segments": 4 },
+    { "count": 8, "start": 0.2, "end": 1.0, "length": 0.45, "down_angle": 28, "down_angle_var": 10, "curve_var": 10, "radius_ratio": 0.5, "segments": 2 }
+  ],
+  "leaves": { "shape": "scale", "size": 0.12, "card_size": 0.55, "density": 1.6, "start": 0.15, "tilt": 0.1, "per_card": 8, "color": [0.04, 0.09, 0.04], "color_back": [0.09, 0.14, 0.07], "color_var": 0.05, "translucency": 0.2 },
+  "bark": { "style": "fibrous", "color": [0.195, 0.143, 0.104], "color_dark": [0.065, 0.046, 0.033], "scale": 0.7, "roughness": 0.92 }
+}

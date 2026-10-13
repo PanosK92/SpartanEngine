@@ -34,9 +34,7 @@ namespace spartan
         // top of atmosphere solar illuminance, the single master intensity for the sun
         const float sun_illuminance_lux = 120000.0f;
 
-        // directional matrix parameters
-        // Keep leaf cutouts resolved throughout the dense 64 m fog region.
-        const float cascade_near_extent    = 64.0f;
+        // directional matrix parameters, the near cascade extent is per light
         const float cascade_far_extent     = 2000.0f;
         const float cascade_depth_behind   = 2000.0f;
         const float cascade_depth_ahead    = 8000.0f;
@@ -761,6 +759,18 @@ namespace spartan
         UpdateMatrices();
     }
 
+    void Light::SetCascadeNearExtent(const float extent)
+    {
+        const float clamped = clamp(extent, 0.5f, cascade_far_extent);
+        if (clamped == m_cascade_near_extent)
+        {
+            return;
+        }
+
+        m_cascade_near_extent = clamped;
+        UpdateMatrices();
+    }
+
     void Light::SetAngle(float angle)
     {
         angle = lighting::lighting_spot_half_angle(angle);
@@ -956,7 +966,7 @@ namespace spartan
             {
                 // compute shadow extents (both fixed sizes)
                 float extents[2];
-                extents[0] = cascade_near_extent; // near cascade: fixed
+                extents[0] = m_cascade_near_extent; // near cascade: fixed
                 extents[1] = cascade_far_extent;  // far cascade: fixed, bigger than near
 
                 float atlas_width = static_cast<float>(Renderer::GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth());
@@ -1005,8 +1015,8 @@ namespace spartan
         {
             // near cascade (tight, camera following)
             m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
-                -cascade_near_extent, cascade_near_extent,
-                -cascade_near_extent, cascade_near_extent,
+                -m_cascade_near_extent, m_cascade_near_extent,
+                -m_cascade_near_extent, m_cascade_near_extent,
                 cascade_depth, 0.0f
             );
 

@@ -15,7 +15,7 @@ local SEVEN_ZIP_CACHE  = path.join(PROJECT_ROOT, "third_party", "lzma_sdk", "bin
 local SEVEN_ZIP_URL    = "https://www.7-zip.org/a/7zr.exe"
 
 local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/byrj4cytjj9krvm49pto6/libraries.7z?rlkey=w7axjqiqdooded5tpovg80nn2&dl=1"
-local LIBRARY_HASH     = "3477dc97dfef688c4e4348032e3c658ba6fbd6352f0fa39a38702167423c6e68"
+local LIBRARY_HASH     = "e98c666559e207bda91c351b7dbd325385092634d09a2a328cef77c5779cae9f"
 
 local LINUX_LIBRARIES_DIR     = path.join(LIBRARIES_DIR, "linux")
 local LINUX_RUNTIME_LIBRARIES = { "libdxcompiler.so", "libdxil.so" }
@@ -24,6 +24,16 @@ local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "dxcompiler.dll"),
     path.join(LIBRARIES_DIR, "libxess.dll"),
     path.join(LIBRARIES_DIR, "nvngx_dlss.dll"),
+    path.join(LIBRARIES_DIR, "amd_fidelityfx_dx12.dll"),
+    path.join(LIBRARIES_DIR, "amd_fidelityfx_vk.dll"),
+}
+
+-- FidelityFX SDK 1.1.4 signed runtime, fsr 3.1 frame generation; ffx api headers are vendored in third_party/fidelityfx.
+local FIDELITYFX_VERSION = "1.1.4"
+local FIDELITYFX_URL = "https://raw.githubusercontent.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/v" .. FIDELITYFX_VERSION .. "/PrebuiltSignedDLL/"
+local FIDELITYFX_FILES = {
+    { name = "amd_fidelityfx_dx12.dll", sha256 = "12a5081257ec95b0b53ad51b4a87fb3c03f97fe0bbb59f9496968f8d50ef93a6" },
+    { name = "amd_fidelityfx_vk.dll",   sha256 = "a1624cc4238fef046f30c4d80ce3f47be63fc5f5373f49e3ee9edb9960f54c78" },
 }
 
 -- DLSS 4.5 Super Resolution; headers are vendored in third_party/dlss.
@@ -479,6 +489,29 @@ local function ensure_dlss_sdk()
     print("dlss sdk " .. DLSS_VERSION .. " verified")
 end
 
+local function ensure_fidelityfx_sdk()
+    if not is_windows() then
+        print("  not windows, skipping fidelityfx sdk")
+        return
+    end
+
+    for _, entry in ipairs(FIDELITYFX_FILES) do
+        local destination = path.join(LIBRARIES_DIR, entry.name)
+        if compute_sha256(destination) ~= entry.sha256 then
+            local temporary = destination .. ".tmp"
+            print("downloading fidelityfx " .. FIDELITYFX_VERSION .. ": " .. entry.name)
+            local result, code = download_with_progress(FIDELITYFX_URL .. entry.name, temporary)
+            if result ~= "OK" or compute_sha256(temporary) ~= entry.sha256 then
+                os.remove(temporary)
+                error(string.format("fidelityfx download or checksum failed: %s (http %s)", tostring(result), tostring(code)))
+            end
+            copy_file(temporary, destination)
+            os.remove(temporary)
+        end
+    end
+    print("fidelityfx sdk " .. FIDELITYFX_VERSION .. " verified")
+end
+
 local function ensure_steamworks()
     if file_exists(STEAM_DLL) and file_exists(STEAM_LIB) then
         print("steamworks sdk present, skipping download")
@@ -563,9 +596,10 @@ function setup.run()
     print("\n[3/7] extracting archive...")
     extract_archive()
 
-    print("\n[4/7] ensuring upscaler sdks...")
+    print("\n[4/7] ensuring upscaler and frame generation sdks...")
     ensure_xess_sdk()
     ensure_dlss_sdk()
+    ensure_fidelityfx_sdk()
 
     print("\n[5/7] ensuring d3d12 agility sdk...")
     ensure_agility_sdk()

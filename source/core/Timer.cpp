@@ -45,6 +45,7 @@ namespace spartan
         bool has_sample     = false;
         bool vsync_enabled  = false;
         double fixed_delta_ms = 0.0;
+        uint32_t presents_per_frame = 1;
 
         float get_monitor_fps()
         {
@@ -95,7 +96,7 @@ namespace spartan
         // the maximum value is the existing UI/settings sentinel for unlocked
         if (fps_limit < fps_max)
         {
-            const Clock::duration interval = chrono::round<Clock::duration>(chrono::duration<double>(1.0 / fps_limit));
+            const Clock::duration interval = chrono::round<Clock::duration>(chrono::duration<double>(static_cast<double>(presents_per_frame) / fps_limit));
             if (reset_deadline)
             {
                 next_tick_time = last_tick_time + interval;
@@ -205,6 +206,23 @@ namespace spartan
         {
             SetFpsLimit(fps_limit_previous);
         }
+    }
+
+    void Timer::SetPresentsPerFrame(uint32_t count)
+    {
+        count = max(count, 1u);
+        if (presents_per_frame == count)
+        {
+            return;
+        }
+
+        presents_per_frame = count;
+        reset_deadline     = true;
+    }
+
+    uint32_t Timer::GetPresentsPerFrame()
+    {
+        return presents_per_frame;
     }
 
     void Timer::SetFixedDeltaSec(double seconds)

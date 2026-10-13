@@ -20,6 +20,13 @@ Commercial use requires written permission and negotiated payment terms.
 using namespace std;
 //==================
 
+// forward declarations from vulkan_framegeneration.cpp
+namespace spartan::frame_generation_vk
+{
+    bool owns(void* swapchain);
+    VkResult queue_present(VkQueue queue, const VkPresentInfoKHR* present_info);
+}
+
 namespace spartan
 {
     namespace
@@ -376,7 +383,8 @@ namespace spartan
         present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
         present_info.pImageIndices      = &image_index;
 
-        VkResult result = vkQueuePresentKHR(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type)), &present_info);
+        VkQueue queue   = static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type));
+        VkResult result = frame_generation_vk::owns(swapchain) ? frame_generation_vk::queue_present(queue, &present_info) : vkQueuePresentKHR(queue, &present_info);
 
         // out of date must recreate before the next present, suboptimal presented successfully but should recreate when convenient
         if (result == VK_ERROR_OUT_OF_DATE_KHR)

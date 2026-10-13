@@ -1,0 +1,20 @@
+{
+  "id": "monkey_puzzle",
+  "name": "Monkey Puzzle",
+  "scientific": "Araucaria araucana",
+  "region": "South America",
+  "description": "The living fossil of the Chilean Andes. A straight column trunk with regular whorls of long, rope like, upcurving branches densely armoured with sharp scale leaves.",
+  "class": "conifer",
+  "evergreen": true,
+  "budget": 13000,
+  "height": 25.0,
+  "height_var": 0.12,
+  "trunk": { "radius": 0.022, "taper": 0.04, "flare": 0.35, "lean": 1, "gnarl": 0.05, "segments": 14 },
+  "crown": { "shape": "hemispherical", "base": 0.5, "width": 0.38 },
+  "levels": [
+    { "count": 35, "start": 0.45, "end": 0.98, "length": 0.42, "length_var": 0.1, "down_angle": 90, "down_angle_tip": 60, "down_angle_var": 6, "whorl": 5, "rotate": 37, "curve": -45, "curve_var": 10, "gravity": 0.25, "radius_ratio": 0.4, "segments": 6 },
+    { "count": 6, "start": 0.35, "end": 0.95, "length": 0.35, "length_var": 0.15, "down_angle": 70, "down_angle_var": 10, "planar": true, "curve": -30, "curve_var": 8, "radius_ratio": 0.6, "segments": 3 }
+  ],
+  "leaves": { "shape": "scale", "size": 0.03, "card_size": 0.8, "density": 2.0, "start": 0.05, "tilt": 0.4, "per_card": 12, "color": [0.07, 0.16, 0.06], "color_back": [0.14, 0.22, 0.10], "color_var": 0.05, "translucency": 0.15 },
+  "bark": { "style": "ringed", "color": [0.221, 0.189, 0.156], "color_dark": [0.078, 0.065, 0.052], "scale": 1.0, "roughness": 0.9 }
+}

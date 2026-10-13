@@ -1,0 +1,18 @@
+{
+  "id": "date_palm",
+  "name": "Date Palm",
+  "scientific": "Phoenix dactylifera",
+  "region": "Middle East",
+  "description": "The palm of the oases. A tall, slightly leaning stem clad in the diamond stubs of old leaf bases, crowned by a fountain of stiff, grey green feather fronds.",
+  "class": "palm",
+  "evergreen": true,
+  "budget": 9000,
+  "height": 16.0,
+  "height_var": 0.2,
+  "trunk": { "radius": 0.022, "taper": 0.04, "flare": 0.2, "lean": 7, "gnarl": 0.1, "segments": 12 },
+  "crown": { "shape": "spherical", "base": 0.9, "width": 0.4 },
+  "levels": [],
+  "palm": { "fronds": 40, "frond_length": 4.5, "droop": 0.35 },
+  "leaves": { "shape": "pinnate", "size": 0.4, "card_size": 1.0, "density": 1.0, "start": 0.9, "tilt": 0.2, "per_card": 1, "color": [0.20, 0.26, 0.14], "color_back": [0.30, 0.34, 0.22], "color_var": 0.07, "translucency": 0.3 },
+  "bark": { "style": "ringed", "color": [0.260, 0.215, 0.156], "color_dark": [0.091, 0.072, 0.052], "scale": 1.2, "roughness": 0.92 }
+}

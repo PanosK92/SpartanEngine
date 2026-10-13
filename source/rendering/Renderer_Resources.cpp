@@ -52,8 +52,56 @@ namespace spartan
         array<shared_ptr<RHI_DepthStencilState>, static_cast<uint32_t>(Renderer_DepthStencilState::Max)> depth_stencil_states;
         array<shared_ptr<RHI_BlendState>, static_cast<uint32_t>(Renderer_BlendState::Max)>               blend_states;
 
-        // renderer resources
-        array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)> render_targets;
+        // renderer resources, the primary set also holds the world targets every view samples, the
+        // secondary set only fills the per view slots and is sized to the secondary view
+        using render_target_set = array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)>;
+        render_target_set render_targets;
+        render_target_set secondary_render_targets;
+        render_target_set* view_render_targets = &render_targets;
+        uint64_t secondary_render_targets_signature = 0;
+
+        // shared by every view, they hold the sky, the weather and the water of the one world
+        bool is_world_render_target(const Renderer_RenderTarget type)
+        {
+            switch (type)
+            {
+                case Renderer_RenderTarget::lut_brdf_specular:
+                case Renderer_RenderTarget::lut_atmosphere_transmittance:
+                case Renderer_RenderTarget::lut_atmosphere_multiscatter:
+                case Renderer_RenderTarget::lut_sky_view:
+                case Renderer_RenderTarget::cloud_noise:
+                case Renderer_RenderTarget::cloud_shadow:
+                case Renderer_RenderTarget::cloud_environment:
+                case Renderer_RenderTarget::skysphere:
+                case Renderer_RenderTarget::sky_sh:
+                case Renderer_RenderTarget::screenshot_sdr:
+                case Renderer_RenderTarget::screenshot_sdr_2:
+                case Renderer_RenderTarget::wind_field:
+                case Renderer_RenderTarget::car_rain_surface:
+                case Renderer_RenderTarget::car_rain_micro:
+                case Renderer_RenderTarget::car_rain_ids:
+                case Renderer_RenderTarget::ocean_spectrum:
+                case Renderer_RenderTarget::ocean_fft_a:
+                case Renderer_RenderTarget::ocean_fft_b:
+                case Renderer_RenderTarget::ocean_displacement:
+                case Renderer_RenderTarget::ocean_displacement_previous:
+                case Renderer_RenderTarget::ocean_normal:
+                case Renderer_RenderTarget::frame_output_stereo:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        render_target_set& view_targets()
+        {
+            return *view_render_targets;
+        }
+
+        bool is_secondary_target_set()
+        {
+            return view_render_targets == &secondary_render_targets;
+        }
         array<shared_ptr<RHI_Shader>,  static_cast<uint32_t>(Renderer_Shader::max)>       shaders;
         array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>      samplers;
         array<shared_ptr<RHI_Buffer>,  static_cast<uint32_t>(Renderer_Buffer::Max)>       buffers;
@@ -79,24 +127,27 @@ namespace spartan
     void Renderer::CreateBuffers()
     {
         const bool capture_mode                  = cvar_debug_renderdoc.GetValue();
-        const uint32_t indirect_draw_capacity    = capture_mode ? 32 * 1024 : renderer_max_indirect_draws;
-        const uint32_t survivor_capacity = capture_mode ? 2 * 1024 * 1024 : renderer_max_instance_cull_entries;
-        const uint32_t cull_task_capacity = capture_mode ? survivor_capacity / INSTANCE_CULL_BATCH_SIZE + renderer_max_indirect_draws : renderer_max_cull_tasks;
-        const uint32_t meshlet_instance_capacity = capture_mode ? 1024 * 1024 : renderer_max_meshlet_instances;
-        const uint32_t visible_triangle_capacity = capture_mode ? 8 * 1024 * 1024 : renderer_max_visible_triangles;
+        const uint32_t indirect_draw_capacity_primary    = capture_mode ? 32 * 1024 : renderer_max_indirect_draws;
+        const uint32_t survivor_capacity_primary         = capture_mode ? 2 * 1024 * 1024 : renderer_max_instance_cull_entries;
+        const uint32_t cull_task_capacity_primary        = capture_mode ? survivor_capacity_primary / INSTANCE_CULL_BATCH_SIZE + renderer_max_indirect_draws : renderer_max_cull_tasks;
+        const uint32_t meshlet_instance_capacity_primary = capture_mode ? 1024 * 1024 : renderer_max_meshlet_instances;
+        const uint32_t visible_triangle_capacity_primary = capture_mode ? 8 * 1024 * 1024 : renderer_max_visible_triangles;
 
-        uint32_t element_count = renderer_draw_data_buffer_count;
+        // per frame in flight, one frame constant slot per view plus the primary's restore after a secondary view
+        uint32_t element_count = renderer_frame_resource_count + renderer_draw_data_buffer_count;
 
         // initialization values
         uint32_t spd_counter_value = 0;
         array<Instance, renderer_max_instance_count> identity;
         identity.fill(Instance::GetIdentity());
 
+        // materials and lights are written by commands in the frame's own stream, not through a mapping, so every
+        // view reads the values it uploaded even while an earlier view or frame that uploaded others is in flight
         at(buffers, Renderer_Buffer::ConstantFrame)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, sizeof(Cb_Frame),                           element_count,                          nullptr,            true, "frame");
         at(buffers, Renderer_Buffer::SpdCounter)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    1,                                      &spd_counter_value, true, "spd_counter");
         at(buffers, Renderer_Buffer::SpdCounterCompute)  = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    1,                                      &spd_counter_value, true, "spd_counter_compute");
-        at(buffers, Renderer_Buffer::MaterialParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Material)), rhi_max_array_size,                     nullptr,            true, "materials");
-        at(buffers, Renderer_Buffer::LightParameters)    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Light)),    rhi_max_array_size,                     nullptr,            true, "lights");
+        at(buffers, Renderer_Buffer::MaterialParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Material)), rhi_max_array_size,                     nullptr,            false, "materials");
+        at(buffers, Renderer_Buffer::LightParameters)    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Light)),    rhi_max_array_size,                     nullptr,            false, "lights");
         at(buffers, Renderer_Buffer::DummyInstance)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Instance, sizeof(Instance),                           static_cast<uint32_t>(identity.size()), &identity,          true, "dummy_instance_buffer");
         // one record per tlas instance, scattered foliage enters per instance so this outgrows the entity count
         at(buffers, Renderer_Buffer::GeometryInfo)       = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_GeometryInfo)), rhi_max_array_size * 4,                 nullptr,            true, "geometry_info");
@@ -104,10 +155,10 @@ namespace spartan
         // one buffer for every frame, each writes its own offset region so the bindless descriptors never change under in-flight commands
         at(buffers, Renderer_Buffer::Decals) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(DecalParameters)),
-            renderer_max_decals * renderer_draw_data_buffer_count, nullptr, true, "decals");
+            renderer_max_decals * renderer_frame_resource_count, nullptr, true, "decals");
         at(buffers, Renderer_Buffer::RainOcclusion) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(float)),
-            RAIN_OCCLUSION_RESOLUTION * RAIN_OCCLUSION_RESOLUTION * renderer_draw_data_buffer_count, nullptr, true, "rain_occlusion");
+            RAIN_OCCLUSION_RESOLUTION * RAIN_OCCLUSION_RESOLUTION * renderer_frame_resource_count, nullptr, true, "rain_occlusion");
         at(buffers, Renderer_Buffer::CarRainDrops) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(SurfaceWaterDrop)),
             SurfaceWater::drops_max * renderer_draw_data_buffer_count, nullptr, true, "car_rain_drops");
@@ -116,19 +167,26 @@ namespace spartan
             SurfaceWater::texels_max * renderer_draw_data_buffer_count, nullptr, true, "car_rain_texels");
         at(buffers, Renderer_Buffer::DrawData) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)),
-            renderer_max_draw_calls * renderer_draw_data_buffer_count, nullptr, true,
+            renderer_max_draw_calls * renderer_frame_resource_count, nullptr, true,
             "draw_data"
         );
         at(buffers, Renderer_Buffer::AABBs) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_Aabb)),
-            renderer_max_aabbs * renderer_draw_data_buffer_count, nullptr, true,
+            renderer_max_aabbs * renderer_frame_resource_count, nullptr, true,
             "aabbs"
         );
 
-        // per-frame rotated buffers
-        for (uint32_t i = 0; i < renderer_draw_data_buffer_count; i++)
+        // per-frame rotated buffers, the slots past the primary ring belong to the secondary view, which
+        // only ever draws an isolated asset, so they get the reduced capture budgets
+        for (uint32_t i = 0; i < renderer_frame_resource_count; i++)
         {
             FrameResource& fr = m_frame_resources[i];
+            const bool secondary_slot = i >= renderer_draw_data_buffer_count;
+            const uint32_t indirect_draw_capacity    = secondary_slot ? 32 * 1024 : indirect_draw_capacity_primary;
+            const uint32_t survivor_capacity         = secondary_slot ? 2 * 1024 * 1024 : survivor_capacity_primary;
+            const uint32_t cull_task_capacity        = secondary_slot ? survivor_capacity / INSTANCE_CULL_BATCH_SIZE + renderer_max_indirect_draws : cull_task_capacity_primary;
+            const uint32_t meshlet_instance_capacity = secondary_slot ? 1024 * 1024 : meshlet_instance_capacity_primary;
+            const uint32_t visible_triangle_capacity = secondary_slot ? 8 * 1024 * 1024 : visible_triangle_capacity_primary;
 
             // args for the non-indexed indirect draws, slot 0 opaque slot 1 alpha-tested, slots 2 and 3 their late ranges
             // vertex_count of slots 0 and 1 is bumped atomically by the triangle cull pass for its half of the survivor list
@@ -263,7 +321,7 @@ namespace spartan
         // built each frame on the cpu in UpdateLights, scanned per pixel by the volumetric fog loop
         at(buffers, Renderer_Buffer::VolumetricLightIndices) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
-            rhi_max_array_size, nullptr, true, "volumetric_light_indices"
+            rhi_max_array_size, nullptr, false, "volumetric_light_indices"
         );
 
         const uint32_t unknown_wave_bounds[renderer_ocean_max_cascades] = { 0x7f800000u, 0x7f800000u, 0x7f800000u, 0x7f800000u };
@@ -458,9 +516,9 @@ namespace spartan
         bool need_ssao = cvar_ssao.GetValueAs<bool>();
         if (need_ssao)
         {
-            if (!at(render_targets, Renderer_RenderTarget::ssao))
+            if (!at(view_targets(), Renderer_RenderTarget::ssao))
             {
-                at(render_targets, Renderer_RenderTarget::ssao) = make_shared<RHI_Texture>(
+                at(view_targets(), Renderer_RenderTarget::ssao) = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type2D,
                     width,
                     height,
@@ -471,9 +529,9 @@ namespace spartan
                     "ssao"
                 );
             }
-            if (!at(render_targets, Renderer_RenderTarget::ssao_history_0))
+            if (!at(view_targets(), Renderer_RenderTarget::ssao_history_0))
             {
-                at(render_targets, Renderer_RenderTarget::ssao_history_0) = make_shared<RHI_Texture>(
+                at(view_targets(), Renderer_RenderTarget::ssao_history_0) = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type2D,
                     width,
                     height,
@@ -483,7 +541,7 @@ namespace spartan
                     flags,
                     "ssao_history_0"
                 );
-                at(render_targets, Renderer_RenderTarget::ssao_history_1) = make_shared<RHI_Texture>(
+                at(view_targets(), Renderer_RenderTarget::ssao_history_1) = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type2D,
                     width,
                     height,
@@ -496,53 +554,56 @@ namespace spartan
                 m_pass_state.ssao_history.Reset();
             }
         }
-        else if (at(render_targets, Renderer_RenderTarget::ssao))
+        else if (at(view_targets(), Renderer_RenderTarget::ssao))
         {
-            at(render_targets, Renderer_RenderTarget::ssao)           = nullptr;
-            at(render_targets, Renderer_RenderTarget::ssao_history_0) = nullptr;
-            at(render_targets, Renderer_RenderTarget::ssao_history_1) = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao)           = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao_history_0) = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao_history_1) = nullptr;
             m_pass_state.ssao_history.Reset();
         }
         
+        // a secondary view is absent from the tlas and never traces, it only needs the raster targets
+        const bool can_trace = RHI_Device::IsSupportedRayTracing() && !is_secondary_target_set();
+
         // ray traced reflections gbuffer, concurrent sharing so rt reflections can run on the compute queue
-        bool need_rt_reflections = cvar_ray_traced_reflections.GetValueAs<bool>() && RHI_Device::IsSupportedRayTracing();
-        if (need_rt_reflections && !at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position))
+        bool need_rt_reflections = cvar_ray_traced_reflections.GetValueAs<bool>() && can_trace;
+        if (need_rt_reflections && !at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_position))
         {
-            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "gbuffer_reflections_position");
-            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_normal)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_reflections_normal");
-            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_albedo)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_reflections_albedo");
-            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_emissive) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_reflections_emissive");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_position) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "gbuffer_reflections_position");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_normal)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_reflections_normal");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_albedo)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_reflections_albedo");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_emissive) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_reflections_emissive");
         }
-        else if (!need_rt_reflections && at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position))
+        else if (!need_rt_reflections && at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_position))
         {
-            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position) = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_normal)   = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_albedo)   = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_emissive) = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_position) = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_normal)   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_albedo)   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_emissive) = nullptr;
         }
         
         // restir, allocate or free both the reservoirs and the output ring together so the feature is fully on or fully off
-        bool need_restir          = cvar_restir_pt.GetValueAs<bool>() && RHI_Device::IsSupportedRayTracing();
+        bool need_restir          = cvar_restir_pt.GetValueAs<bool>() && can_trace;
         float restir_scale        = cvar_restir_pt_scale.GetValue();
         static float last_restir_scale = -1.0f;
-        bool restir_scale_changed = need_restir && at(render_targets, Renderer_RenderTarget::restir_reservoir0) && (last_restir_scale != restir_scale);
+        bool restir_scale_changed = need_restir && at(view_targets(), Renderer_RenderTarget::restir_reservoir0) && (last_restir_scale != restir_scale);
 
         auto release_restir_resources = [&]()
         {
-            for_restir_reservoir_slot([&](uint32_t, Renderer_RenderTarget rt) { at(render_targets, rt) = nullptr; });
-            at(render_targets, Renderer_RenderTarget::restir_shift0)                   = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_shift1)                   = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_shift2)                   = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_output)                   = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_duplication)              = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised)                 = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised_previous)        = nullptr;
+            for_restir_reservoir_slot([&](uint32_t, Renderer_RenderTarget rt) { at(view_targets(), rt) = nullptr; });
+            at(view_targets(), Renderer_RenderTarget::restir_shift0)                   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_shift1)                   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_shift2)                   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_output)                   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_duplication)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_denoised)                 = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_denoised_previous)        = nullptr;
             m_pass_state.restir.accumulation_valid = false;
-            at(render_targets, Renderer_RenderTarget::nrd_in_mv)                       = nullptr;
-            at(render_targets, Renderer_RenderTarget::nrd_in_normal_roughness)         = nullptr;
-            at(render_targets, Renderer_RenderTarget::nrd_in_viewz)                    = nullptr;
-            at(render_targets, Renderer_RenderTarget::nrd_in_diff_radiance)            = nullptr;
-            at(render_targets, Renderer_RenderTarget::nrd_out_diff_radiance)           = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_in_mv)                       = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_in_normal_roughness)         = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_in_viewz)                    = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_in_diff_radiance)            = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_out_diff_radiance)           = nullptr;
         };
 
         auto allocate_restir_resources = [&]()
@@ -559,22 +620,22 @@ namespace spartan
             };
             for_restir_reservoir_slot([&](uint32_t i, Renderer_RenderTarget rt)
             {
-                at(render_targets, rt) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, reservoir_names[i]);
+                at(view_targets(), rt) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, reservoir_names[i]);
             });
             // paired spatial reuse shift results, rgb = f_dst, a = jacobian, lin 2026 3
-            at(render_targets, Renderer_RenderTarget::restir_shift0)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_shift0");
-            at(render_targets, Renderer_RenderTarget::restir_shift1)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_shift1");
-            at(render_targets, Renderer_RenderTarget::restir_shift2)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_shift2");
-            at(render_targets, Renderer_RenderTarget::restir_output)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_output");
-            at(render_targets, Renderer_RenderTarget::restir_duplication)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R8_Unorm,           restir_flags, "restir_duplication");
-            at(render_targets, Renderer_RenderTarget::restir_denoised)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_denoised");
-            at(render_targets, Renderer_RenderTarget::restir_denoised_previous)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_denoised_previous");
+            at(view_targets(), Renderer_RenderTarget::restir_shift0)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_shift0");
+            at(view_targets(), Renderer_RenderTarget::restir_shift1)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_shift1");
+            at(view_targets(), Renderer_RenderTarget::restir_shift2)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_shift2");
+            at(view_targets(), Renderer_RenderTarget::restir_output)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_output");
+            at(view_targets(), Renderer_RenderTarget::restir_duplication)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R8_Unorm,           restir_flags, "restir_duplication");
+            at(view_targets(), Renderer_RenderTarget::restir_denoised)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_denoised");
+            at(view_targets(), Renderer_RenderTarget::restir_denoised_previous)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_denoised_previous");
             m_pass_state.restir.accumulation_valid = false;
-            at(render_targets, Renderer_RenderTarget::nrd_in_mv)                       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "nrd_in_mv");
-            at(render_targets, Renderer_RenderTarget::nrd_in_normal_roughness)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R10G10B10A2_Unorm, restir_flags, "nrd_in_normal_roughness");
-            at(render_targets, Renderer_RenderTarget::nrd_in_viewz)                    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32_Float,         restir_flags, "nrd_in_viewz");
-            at(render_targets, Renderer_RenderTarget::nrd_in_diff_radiance)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "nrd_in_diff_radiance");
-            at(render_targets, Renderer_RenderTarget::nrd_out_diff_radiance)           = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "nrd_out_diff_radiance");
+            at(view_targets(), Renderer_RenderTarget::nrd_in_mv)                       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "nrd_in_mv");
+            at(view_targets(), Renderer_RenderTarget::nrd_in_normal_roughness)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R10G10B10A2_Unorm, restir_flags, "nrd_in_normal_roughness");
+            at(view_targets(), Renderer_RenderTarget::nrd_in_viewz)                    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32_Float,         restir_flags, "nrd_in_viewz");
+            at(view_targets(), Renderer_RenderTarget::nrd_in_diff_radiance)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "nrd_in_diff_radiance");
+            at(view_targets(), Renderer_RenderTarget::nrd_out_diff_radiance)           = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "nrd_out_diff_radiance");
 
             last_restir_scale = restir_scale;
         };
@@ -585,12 +646,12 @@ namespace spartan
             allocate_restir_resources();
             m_pass_state.restir.reservoirs_initialized = false;
         }
-        else if (need_restir && !at(render_targets, Renderer_RenderTarget::restir_reservoir0))
+        else if (need_restir && !at(view_targets(), Renderer_RenderTarget::restir_reservoir0))
         {
             allocate_restir_resources();
             m_pass_state.restir.reservoirs_initialized = false;
         }
-        else if (!need_restir && at(render_targets, Renderer_RenderTarget::restir_reservoir0))
+        else if (!need_restir && at(view_targets(), Renderer_RenderTarget::restir_reservoir0))
         {
             release_restir_resources();
             last_restir_scale = -1.0f;
@@ -633,79 +694,79 @@ namespace spartan
         // release old render targets before allocating replacements
         if (create_render)
         {
-            at(render_targets, Renderer_RenderTarget::frame_render)                = nullptr;
-            at(render_targets, Renderer_RenderTarget::frame_render_opaque)         = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_color)               = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_normal)              = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_normal_previous)     = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_material)            = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_emissive)            = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_velocity)            = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_velocity_previous)   = nullptr;
-            at(render_targets, Renderer_RenderTarget::dlss_reactivity)              = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_depth)               = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_depth_previous)      = nullptr;
-            at(render_targets, Renderer_RenderTarget::light_diffuse)               = nullptr;
-            at(render_targets, Renderer_RenderTarget::light_specular)              = nullptr;
-            at(render_targets, Renderer_RenderTarget::particle_volume)             = nullptr;
-            at(render_targets, Renderer_RenderTarget::particle_volume_history)     = nullptr;
-            at(render_targets, Renderer_RenderTarget::cloud_raw)                   = nullptr;
-            at(render_targets, Renderer_RenderTarget::cloud_raw_distance)          = nullptr;
-            at(render_targets, Renderer_RenderTarget::cloud_resolved_0)            = nullptr;
-            at(render_targets, Renderer_RenderTarget::cloud_resolved_distance_0)   = nullptr;
-            at(render_targets, Renderer_RenderTarget::cloud_resolved_1)            = nullptr;
-            at(render_targets, Renderer_RenderTarget::cloud_resolved_distance_1)   = nullptr;
-            at(render_targets, Renderer_RenderTarget::cloud_composite)             = nullptr;
-            at(render_targets, Renderer_RenderTarget::cloud_velocity)              = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_depth_hiz)           = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_depth_hiz_early)     = nullptr;
-            at(render_targets, Renderer_RenderTarget::sss)                         = nullptr;
-            at(render_targets, Renderer_RenderTarget::ssao)                        = nullptr;
-            at(render_targets, Renderer_RenderTarget::ssao_history_0)              = nullptr;
-            at(render_targets, Renderer_RenderTarget::ssao_history_1)              = nullptr;
-            at(render_targets, Renderer_RenderTarget::reflections)                 = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position)= nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_normal)  = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_albedo)  = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_reflections_emissive) = nullptr;
-            at(render_targets, Renderer_RenderTarget::ray_traced_shadows)             = nullptr;
-            at(render_targets, Renderer_RenderTarget::ray_traced_shadows_local)       = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_output)                   = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_shift0)                   = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_shift1)                   = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_shift2)                   = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_duplication)              = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised)                 = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised_previous)        = nullptr;
+            at(view_targets(), Renderer_RenderTarget::frame_render)                = nullptr;
+            at(view_targets(), Renderer_RenderTarget::frame_render_opaque)         = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_color)               = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_normal)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_normal_previous)     = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_material)            = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_emissive)            = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_velocity)            = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_velocity_previous)   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::dlss_reactivity)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_depth)               = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_depth_previous)      = nullptr;
+            at(view_targets(), Renderer_RenderTarget::light_diffuse)               = nullptr;
+            at(view_targets(), Renderer_RenderTarget::light_specular)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::particle_volume)             = nullptr;
+            at(view_targets(), Renderer_RenderTarget::particle_volume_history)     = nullptr;
+            at(view_targets(), Renderer_RenderTarget::cloud_raw)                   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::cloud_raw_distance)          = nullptr;
+            at(view_targets(), Renderer_RenderTarget::cloud_resolved_0)            = nullptr;
+            at(view_targets(), Renderer_RenderTarget::cloud_resolved_distance_0)   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::cloud_resolved_1)            = nullptr;
+            at(view_targets(), Renderer_RenderTarget::cloud_resolved_distance_1)   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::cloud_composite)             = nullptr;
+            at(view_targets(), Renderer_RenderTarget::cloud_velocity)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_depth_hiz)           = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_depth_hiz_early)     = nullptr;
+            at(view_targets(), Renderer_RenderTarget::sss)                         = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao)                        = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao_history_0)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ssao_history_1)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::reflections)                 = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_position)= nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_normal)  = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_albedo)  = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_reflections_emissive) = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ray_traced_shadows)             = nullptr;
+            at(view_targets(), Renderer_RenderTarget::ray_traced_shadows_local)       = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_output)                   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_shift0)                   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_shift1)                   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_shift2)                   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_duplication)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_denoised)                 = nullptr;
+            at(view_targets(), Renderer_RenderTarget::restir_denoised_previous)        = nullptr;
             m_pass_state.restir.accumulation_valid = false;
-            at(render_targets, Renderer_RenderTarget::nrd_in_mv)                       = nullptr;
-            at(render_targets, Renderer_RenderTarget::nrd_in_normal_roughness)         = nullptr;
-            at(render_targets, Renderer_RenderTarget::nrd_in_viewz)                    = nullptr;
-            at(render_targets, Renderer_RenderTarget::nrd_in_diff_radiance)            = nullptr;
-            at(render_targets, Renderer_RenderTarget::nrd_out_diff_radiance)           = nullptr;
-            at(render_targets, Renderer_RenderTarget::nrd_screen_mv)                   = nullptr;
-            at(render_targets, Renderer_RenderTarget::nrd_screen_normal_roughness)     = nullptr;
-            at(render_targets, Renderer_RenderTarget::nrd_screen_viewz)                = nullptr;
-            at(render_targets, Renderer_RenderTarget::nrd_in_spec_radiance)            = nullptr;
-            at(render_targets, Renderer_RenderTarget::nrd_out_spec_radiance)           = nullptr;
-            at(render_targets, Renderer_RenderTarget::nrd_in_penumbra)                 = nullptr;
-            at(render_targets, Renderer_RenderTarget::nrd_out_shadow)                  = nullptr;
-            for_restir_reservoir_slot([](uint32_t, Renderer_RenderTarget rt) { at(render_targets, rt) = nullptr; });
-            at(render_targets, Renderer_RenderTarget::shading_rate)                 = nullptr;
-            at(render_targets, Renderer_RenderTarget::shadow_atlas)                 = nullptr;
-            at(render_targets, Renderer_RenderTarget::debug_output)                 = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_in_mv)                       = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_in_normal_roughness)         = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_in_viewz)                    = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_in_diff_radiance)            = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_out_diff_radiance)           = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_screen_mv)                   = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_screen_normal_roughness)     = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_screen_viewz)                = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_in_spec_radiance)            = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_out_spec_radiance)           = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_in_penumbra)                 = nullptr;
+            at(view_targets(), Renderer_RenderTarget::nrd_out_shadow)                  = nullptr;
+            for_restir_reservoir_slot([](uint32_t, Renderer_RenderTarget rt) { at(view_targets(), rt) = nullptr; });
+            at(view_targets(), Renderer_RenderTarget::shading_rate)                 = nullptr;
+            at(view_targets(), Renderer_RenderTarget::shadow_atlas)                 = nullptr;
+            at(view_targets(), Renderer_RenderTarget::debug_output)                 = nullptr;
         }
         if (create_output)
         {
-            at(render_targets, Renderer_RenderTarget::frame_output)                = nullptr;
-            at(render_targets, Renderer_RenderTarget::frame_output_2)              = nullptr;
-            at(render_targets, Renderer_RenderTarget::screenshot_sdr)              = nullptr;
-            at(render_targets, Renderer_RenderTarget::screenshot_sdr_2)            = nullptr;
-            at(render_targets, Renderer_RenderTarget::taau_history)                = nullptr;
-            at(render_targets, Renderer_RenderTarget::frame_output_stereo)         = nullptr;
-            at(render_targets, Renderer_RenderTarget::bloom)                       = nullptr;
-            at(render_targets, Renderer_RenderTarget::outline)                     = nullptr;
-            at(render_targets, Renderer_RenderTarget::gbuffer_depth_opaque_output) = nullptr;
+            at(view_targets(), Renderer_RenderTarget::frame_output)                = nullptr;
+            at(view_targets(), Renderer_RenderTarget::frame_output_2)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::screenshot_sdr)              = nullptr;
+            at(view_targets(), Renderer_RenderTarget::screenshot_sdr_2)            = nullptr;
+            at(view_targets(), Renderer_RenderTarget::taau_history)                = nullptr;
+            at(view_targets(), Renderer_RenderTarget::frame_output_stereo)         = nullptr;
+            at(view_targets(), Renderer_RenderTarget::bloom)                       = nullptr;
+            at(view_targets(), Renderer_RenderTarget::outline)                     = nullptr;
+            at(view_targets(), Renderer_RenderTarget::gbuffer_depth_opaque_output) = nullptr;
         }
 
         uint32_t width_render  = static_cast<uint32_t>(GetResolutionRender().x);
@@ -729,7 +790,7 @@ namespace spartan
 
         // vr stereo: render and present at the eye swapchain aspect (beamng ground truth).
         // using the desktop window aspect here then stretching into the hmd causes stereo distortion.
-        bool xr_stereo           = Xr::IsSessionRunning() && Xr::GetStereoMode();
+        bool xr_stereo           = Xr::IsSessionRunning() && Xr::GetStereoMode() && !is_secondary_target_set();
         if (xr_stereo && Xr::GetRecommendedWidth() > 0 && Xr::GetRecommendedHeight() > 0)
         {
             width_output  = Xr::GetRecommendedWidth();
@@ -744,44 +805,44 @@ namespace spartan
         auto create_gbuffer = [&]()
         {
             // concurrent sharing, the compute batch writes it and the graphics queue reads it from the blit onward
-            at(render_targets, Renderer_RenderTarget::frame_render)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "frame_render");
-            at(render_targets, Renderer_RenderTarget::frame_render_opaque) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_render_opaque");
-            at(render_targets, Renderer_RenderTarget::particle_volume)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, renderer_particle_volume_width, renderer_particle_volume_height, renderer_particle_volume_depth, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "particle_volume");
+            at(view_targets(), Renderer_RenderTarget::frame_render)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "frame_render");
+            at(view_targets(), Renderer_RenderTarget::frame_render_opaque) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_render_opaque");
+            at(view_targets(), Renderer_RenderTarget::particle_volume)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, renderer_particle_volume_width, renderer_particle_volume_height, renderer_particle_volume_depth, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "particle_volume");
             // the splat only deposits a fixed size subset of the live particles each frame, so a single
             // frame of the grid is a sparse decimated sample of the medium, accumulating it against a
             // reprojected history is what turns that subset into a dense field without splatting more
-            at(render_targets, Renderer_RenderTarget::particle_volume_history) = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, renderer_particle_volume_width, renderer_particle_volume_height, renderer_particle_volume_depth, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "particle_volume_history");
+            at(view_targets(), Renderer_RenderTarget::particle_volume_history) = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, renderer_particle_volume_width, renderer_particle_volume_height, renderer_particle_volume_depth, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "particle_volume_history");
             m_pass_state.particle_volume_history.Reset();
 
             // debug output sits at render resolution so debug raster passes can share gbuffer_depth for read-equal tests
-            at(render_targets, Renderer_RenderTarget::debug_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "debug_output");
+            at(view_targets(), Renderer_RenderTarget::debug_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "debug_output");
 
             // gbuffer, concurrent sharing so async compute (ssao, sss) can read while graphics writes
             uint32_t flags = RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing;
-            at(render_targets, Renderer_RenderTarget::gbuffer_color)    = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_color");
-            at(render_targets, Renderer_RenderTarget::gbuffer_normal)   = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_normal");
-            at(render_targets, Renderer_RenderTarget::gbuffer_material) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_material");
-            at(render_targets, Renderer_RenderTarget::gbuffer_emissive) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R11G11B10_Float, flags, "gbuffer_emissive");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_color)    = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_color");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_normal)   = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_normal");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_material) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_material");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_emissive) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R11G11B10_Float, flags, "gbuffer_emissive");
             // rgba: xy = ndc velocity, z = radial motion blur mask, w = signed previous surface depth
-            at(render_targets, Renderer_RenderTarget::gbuffer_velocity) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_velocity");
-            at(render_targets, Renderer_RenderTarget::dlss_reactivity)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "dlss_reactivity");
-            at(render_targets, Renderer_RenderTarget::gbuffer_depth)    = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float,          flags, "gbuffer_depth");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_velocity) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_velocity");
+            at(view_targets(), Renderer_RenderTarget::dlss_reactivity)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "dlss_reactivity");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_depth)    = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float,          flags, "gbuffer_depth");
             // restir's temporal gate tests disocclusion against the prior depth, the current frame's depth ghosts moving objects
-            at(render_targets, Renderer_RenderTarget::gbuffer_depth_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float, flags, "gbuffer_depth_previous");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_depth_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float, flags, "gbuffer_depth_previous");
             m_pass_state.depth_history_cleared = false;
             // previous frame normals for the same gate, sampling the current normal buffer at
             // prev_uv reads a different surface whenever anything moved
-            at(render_targets, Renderer_RenderTarget::gbuffer_normal_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_normal_previous");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_normal_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_normal_previous");
             // previous frame velocity, restir's temporal pass reads the occluder's motion at the
             // reprojected position to build a dual motion vector on disocclusion, lin 2026 6.4
-            at(render_targets, Renderer_RenderTarget::gbuffer_velocity_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_velocity_previous");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_velocity_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_velocity_previous");
 
             // hi-z pyramids, amd depth format restrictions force a separate r32 texture for uav and a manual blit
             // full mip chain so the cull shader can pick a level where the bounds fit in ~1-2 texels
             uint32_t hiz_mip_count = static_cast<uint32_t>(floor(log2(static_cast<float>(max(width_render, height_render))))) + 1;
             const uint32_t hiz_flags = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews;
-            at(render_targets, Renderer_RenderTarget::gbuffer_depth_hiz)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, hiz_mip_count, RHI_Format::R32_Float, hiz_flags, "depth_hiz");
-            at(render_targets, Renderer_RenderTarget::gbuffer_depth_hiz_early) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, hiz_mip_count, RHI_Format::R32_Float, hiz_flags, "depth_hiz_early");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_depth_hiz)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, hiz_mip_count, RHI_Format::R32_Float, hiz_flags, "depth_hiz");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_depth_hiz_early) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, hiz_mip_count, RHI_Format::R32_Float, hiz_flags, "depth_hiz_early");
             m_pass_state.hiz_history_valid = false;
         };
 
@@ -790,14 +851,14 @@ namespace spartan
             const uint32_t width_cloud  = max((width_render + 1) / 2, 1u);
             const uint32_t height_cloud = max((height_render + 1) / 2, 1u);
             const uint32_t flags        = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit;
-            at(render_targets, Renderer_RenderTarget::cloud_raw)                 = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_raw");
-            at(render_targets, Renderer_RenderTarget::cloud_raw_distance)        = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R32_Float, flags, "cloud_raw_distance");
-            at(render_targets, Renderer_RenderTarget::cloud_resolved_0)          = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_resolved_0");
-            at(render_targets, Renderer_RenderTarget::cloud_resolved_distance_0) = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R32_Float, flags, "cloud_resolved_distance_0");
-            at(render_targets, Renderer_RenderTarget::cloud_resolved_1)          = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_resolved_1");
-            at(render_targets, Renderer_RenderTarget::cloud_resolved_distance_1) = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R32_Float, flags, "cloud_resolved_distance_1");
-            at(render_targets, Renderer_RenderTarget::cloud_composite)           = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_composite");
-            at(render_targets, Renderer_RenderTarget::cloud_velocity)            = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_Rtv, "cloud_velocity");
+            at(view_targets(), Renderer_RenderTarget::cloud_raw)                 = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_raw");
+            at(view_targets(), Renderer_RenderTarget::cloud_raw_distance)        = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R32_Float, flags, "cloud_raw_distance");
+            at(view_targets(), Renderer_RenderTarget::cloud_resolved_0)          = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_resolved_0");
+            at(view_targets(), Renderer_RenderTarget::cloud_resolved_distance_0) = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R32_Float, flags, "cloud_resolved_distance_0");
+            at(view_targets(), Renderer_RenderTarget::cloud_resolved_1)          = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_resolved_1");
+            at(view_targets(), Renderer_RenderTarget::cloud_resolved_distance_1) = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R32_Float, flags, "cloud_resolved_distance_1");
+            at(view_targets(), Renderer_RenderTarget::cloud_composite)           = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_composite");
+            at(view_targets(), Renderer_RenderTarget::cloud_velocity)            = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_Rtv, "cloud_velocity");
             m_pass_state.cloud_history.Reset();
         };
 
@@ -806,24 +867,24 @@ namespace spartan
             // light_* textures are produced by the compute lighting batch, concurrent sharing keeps
             // them safe if any future graphics pass samples them without ownership transfer
             uint32_t flags = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing;
-            at(render_targets, Renderer_RenderTarget::light_diffuse)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_diffuse");
-            at(render_targets, Renderer_RenderTarget::light_specular)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_specular");
+            at(view_targets(), Renderer_RenderTarget::light_diffuse)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_diffuse");
+            at(view_targets(), Renderer_RenderTarget::light_specular)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_specular");
 
-            at(render_targets, Renderer_RenderTarget::sss)                = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 4, 1, RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "sss");
-            at(render_targets, Renderer_RenderTarget::reflections)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "reflections");
-            at(render_targets, Renderer_RenderTarget::ray_traced_shadows)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "ray_traced_shadows");
-            at(render_targets, Renderer_RenderTarget::ray_traced_shadows_local) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, nrd_local_shadow_max, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "ray_traced_shadows_local");
+            at(view_targets(), Renderer_RenderTarget::sss)                = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 4, 1, RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "sss");
+            at(view_targets(), Renderer_RenderTarget::reflections)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "reflections");
+            at(view_targets(), Renderer_RenderTarget::ray_traced_shadows)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "ray_traced_shadows");
+            at(view_targets(), Renderer_RenderTarget::ray_traced_shadows_local) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, nrd_local_shadow_max, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "ray_traced_shadows_local");
 
             // nrd screen guides and signals for reflections (reblur specular) and shadows (sigma)
             // must share one resolution: both presets use the same nrd pool_screen
-            at(render_targets, Renderer_RenderTarget::nrd_screen_mv)               = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_screen_mv");
-            at(render_targets, Renderer_RenderTarget::nrd_screen_normal_roughness) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R10G10B10A2_Unorm, flags, "nrd_screen_normal_roughness");
-            at(render_targets, Renderer_RenderTarget::nrd_screen_viewz)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_screen_viewz");
-            at(render_targets, Renderer_RenderTarget::nrd_in_spec_radiance)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_in_spec_radiance");
-            at(render_targets, Renderer_RenderTarget::nrd_out_spec_radiance)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_spec_radiance");
-            at(render_targets, Renderer_RenderTarget::nrd_in_penumbra)             = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_in_penumbra");
+            at(view_targets(), Renderer_RenderTarget::nrd_screen_mv)               = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_screen_mv");
+            at(view_targets(), Renderer_RenderTarget::nrd_screen_normal_roughness) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R10G10B10A2_Unorm, flags, "nrd_screen_normal_roughness");
+            at(view_targets(), Renderer_RenderTarget::nrd_screen_viewz)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_screen_viewz");
+            at(view_targets(), Renderer_RenderTarget::nrd_in_spec_radiance)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_in_spec_radiance");
+            at(view_targets(), Renderer_RenderTarget::nrd_out_spec_radiance)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_spec_radiance");
+            at(view_targets(), Renderer_RenderTarget::nrd_in_penumbra)             = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_in_penumbra");
             // sigma_shadow writes a 1-component texel, rgba16f fails vk image write component count
-            at(render_targets, Renderer_RenderTarget::nrd_out_shadow)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16_Float, flags, "nrd_out_shadow");
+            at(view_targets(), Renderer_RenderTarget::nrd_out_shadow)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16_Float, flags, "nrd_out_shadow");
         };
 
         // gated by cvar_restir_pt so disabling restir frees the output ring as well as the reservoir slots managed by UpdateOptionalRenderTargets
@@ -836,21 +897,23 @@ namespace spartan
                 uint32_t texel_size_y = max(RHI_Device::PropertyGetMaxShadingRateTexelSizeY(), 1u);
                 uint32_t vrs_width    = (width_render + texel_size_x - 1) / texel_size_x;
                 uint32_t vrs_height   = (height_render + texel_size_y - 1) / texel_size_y;
-                at(render_targets, Renderer_RenderTarget::shading_rate) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, vrs_width, vrs_height, 1, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_Vrs | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "shading_rate");
+                at(view_targets(), Renderer_RenderTarget::shading_rate) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, vrs_width, vrs_height, 1, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_Vrs | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "shading_rate");
             }
             // concurrent sharing, the opaque light compute batch reads the atlas after the graphics shadow pass writes it
-            at(render_targets, Renderer_RenderTarget::shadow_atlas) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_shadow_atlas, renderer_resolution_shadow_atlas, 1, 1, RHI_Format::D32_Float, RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "shadow_atlas");
+            // a secondary view lights one asset with a couple of studio lights, a quarter of the area is plenty
+            const uint32_t atlas_resolution = is_secondary_target_set() ? renderer_resolution_shadow_atlas / 2 : renderer_resolution_shadow_atlas;
+            at(view_targets(), Renderer_RenderTarget::shadow_atlas) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, atlas_resolution, atlas_resolution, 1, 1, RHI_Format::D32_Float, RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "shadow_atlas");
         };
 
         auto create_output_targets = [&]()
         {
             uint32_t mip_count = compute_mip_count(width_output, height_output, 16);
-            at(render_targets, Renderer_RenderTarget::frame_output)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews | RHI_Texture_ConcurrentSharing, "frame_output");
-            at(render_targets, Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_output_2");
+            at(view_targets(), Renderer_RenderTarget::frame_output)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews | RHI_Texture_ConcurrentSharing, "frame_output");
+            at(view_targets(), Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_output_2");
             // stereo needs one history layer per eye, frame_render and frame_output stay 2d and are reused per eye
             if (xr_stereo)
             {
-                at(render_targets, Renderer_RenderTarget::taau_history) = make_shared<RHI_Texture>(
+                at(view_targets(), Renderer_RenderTarget::taau_history) = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type2DArray,
                     width_output,
                     height_output,
@@ -863,7 +926,7 @@ namespace spartan
             }
             else
             {
-                at(render_targets, Renderer_RenderTarget::taau_history) = make_shared<RHI_Texture>(
+                at(view_targets(), Renderer_RenderTarget::taau_history) = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type2D,
                     width_output,
                     height_output,
@@ -878,7 +941,7 @@ namespace spartan
             // stereo output, 2-layer array for xr swapchain blit (only when vr is active)
             if (xr_stereo)
             {
-                at(render_targets, Renderer_RenderTarget::frame_output_stereo) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_output, height_output, Xr::eye_count, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_output_stereo");
+                at(view_targets(), Renderer_RenderTarget::frame_output_stereo) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_output, height_output, Xr::eye_count, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_output_stereo");
             }
 
             // Size the pyramid from its own half-resolution base, including tiny
@@ -888,9 +951,9 @@ namespace spartan
             uint32_t bloom_mips = 1;
             for (uint32_t edge = min(bloom_width, bloom_height); edge >= 16; edge /= 2)
                 bloom_mips++;
-            at(render_targets, Renderer_RenderTarget::bloom) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, bloom_width, bloom_height, 1, bloom_mips, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "bloom");
-            at(render_targets, Renderer_RenderTarget::outline)                     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv,         "outline");
-            at(render_targets, Renderer_RenderTarget::gbuffer_depth_opaque_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::D32_Float,          RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,   "depth_opaque_output");
+            at(view_targets(), Renderer_RenderTarget::bloom) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, bloom_width, bloom_height, 1, bloom_mips, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "bloom");
+            at(view_targets(), Renderer_RenderTarget::outline)                     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv,         "outline");
+            at(view_targets(), Renderer_RenderTarget::gbuffer_depth_opaque_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::D32_Float,          RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,   "depth_opaque_output");
         };
 
         auto create_atmosphere_luts = [&]()
@@ -921,10 +984,6 @@ namespace spartan
                 "sky_sh"
             );
 
-            at(render_targets, Renderer_RenderTarget::auto_exposure)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "auto_exposure_1");
-            at(render_targets, Renderer_RenderTarget::auto_exposure_previous) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "auto_exposure_2");
-            at(render_targets, Renderer_RenderTarget::dof_focus)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "dof_focus_1");
-            at(render_targets, Renderer_RenderTarget::dof_focus_previous)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "dof_focus_2");
         };
 
         auto create_wind = [&]()
@@ -991,12 +1050,12 @@ namespace spartan
             create_ocean();
         }
 
-        if (!at(render_targets, Renderer_RenderTarget::fog_scatter))
+        if (!at(view_targets(), Renderer_RenderTarget::fog_scatter))
         {
             const uint32_t fog_flags = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing;
             const auto create_fog = [&](Renderer_RenderTarget target, const char* name, bool integrated)
             {
-                at(render_targets, target) = make_shared<RHI_Texture>(
+                at(view_targets(), target) = make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type3D, renderer_fog_volume_width, renderer_fog_volume_height,
                     renderer_fog_volume_depth + (integrated ? 1u : 0u), 1,
                     // A half-float interface fraction shifts the water boundary
@@ -1010,10 +1069,18 @@ namespace spartan
             create_fog(Renderer_RenderTarget::fog_water_history, "fog_water_history", false);
             create_fog(Renderer_RenderTarget::fog_integrated, "fog_integrated", true);
             create_fog(Renderer_RenderTarget::fog_transmittance, "fog_transmittance", true);
-            at(render_targets, Renderer_RenderTarget::fog_sky_visibility) = make_shared<RHI_Texture>(
+            at(view_targets(), Renderer_RenderTarget::fog_sky_visibility) = make_shared<RHI_Texture>(
                 RHI_Texture_Type::Type3D, renderer_fog_sky_width, renderer_fog_sky_height, renderer_fog_sky_depth, 1,
                 RHI_Format::R8_Unorm, fog_flags, "fog_sky_visibility");
             m_pass_state.fog_history.Reset();
+        }
+
+        if (!at(view_targets(), Renderer_RenderTarget::auto_exposure))
+        {
+            at(view_targets(), Renderer_RenderTarget::auto_exposure)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "auto_exposure_1");
+            at(view_targets(), Renderer_RenderTarget::auto_exposure_previous) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "auto_exposure_2");
+            at(view_targets(), Renderer_RenderTarget::dof_focus)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "dof_focus_1");
+            at(view_targets(), Renderer_RenderTarget::dof_focus_previous)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "dof_focus_2");
         }
 
         // size for every blur input, including fixed-size textures when the viewport is small
@@ -1022,16 +1089,16 @@ namespace spartan
         uint32_t blur_height = 1;
         for (Renderer_RenderTarget target : { Renderer_RenderTarget::outline, Renderer_RenderTarget::cloud_shadow })
         {
-            if (RHI_Texture* input = at(render_targets, target).get())
+            if (RHI_Texture* input = GetRenderTarget(target))
             {
                 blur_width  = max(blur_width, input->GetWidth());
                 blur_height = max(blur_height, input->GetHeight());
             }
         }
-        RHI_Texture* blur = at(render_targets, Renderer_RenderTarget::blur).get();
+        RHI_Texture* blur = at(view_targets(), Renderer_RenderTarget::blur).get();
         if (!blur || blur->GetWidth() != blur_width || blur->GetHeight() != blur_height)
         {
-            at(render_targets, Renderer_RenderTarget::blur) = make_shared<RHI_Texture>(
+            at(view_targets(), Renderer_RenderTarget::blur) = make_shared<RHI_Texture>(
                 RHI_Texture_Type::Type2D,
                 blur_width,
                 blur_height,
@@ -1663,7 +1730,7 @@ namespace spartan
 
     array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)>& Renderer::GetRenderTargets()
     {
-        return render_targets;
+        return view_targets();
     }
 
     array<shared_ptr<RHI_Shader>, static_cast<uint32_t>(Renderer_Shader::max)>& Renderer::GetShaders()
@@ -1704,8 +1771,64 @@ namespace spartan
 
     RHI_Texture* Renderer::GetRenderTarget(const Renderer_RenderTarget type)
     {
-        if (RHI_Texture* target = GetViewRenderTarget(type)) return target;
-        return render_targets[static_cast<uint8_t>(type)].get();
+        if (is_world_render_target(type))
+        {
+            return render_targets[static_cast<uint8_t>(type)].get();
+        }
+        return view_targets()[static_cast<uint8_t>(type)].get();
+    }
+
+    void Renderer::SetViewRenderTargets(const bool secondary)
+    {
+        view_render_targets = secondary ? &secondary_render_targets : &render_targets;
+    }
+
+    bool Renderer::EnsureSecondaryRenderTargets()
+    {
+        SP_ASSERT(is_secondary_target_set());
+
+        // the set follows the size and the cvars that decide which optional targets exist
+        const uint64_t signature =
+            (static_cast<uint64_t>(m_resolution_render.x) << 0)  |
+            (static_cast<uint64_t>(m_resolution_render.y) << 16) |
+            (static_cast<uint64_t>(cvar_ssao.GetValueAs<bool>()) << 32);
+        if (secondary_render_targets_signature == signature && at(secondary_render_targets, Renderer_RenderTarget::frame_output))
+        {
+            return false;
+        }
+
+        // targets still referenced by in flight frames are released by the deletion queue once those finish
+        CreateRenderTargets(true, true, true);
+        for (const shared_ptr<RHI_Texture>& target : secondary_render_targets)
+        {
+            if (target)
+            {
+                target->InvalidateGpuState();
+            }
+        }
+        secondary_render_targets_signature = signature;
+        SP_LOG_INFO("secondary view render targets created at %ux%u", static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
+        return true;
+    }
+
+    void Renderer::ReleaseSecondaryRenderTargets()
+    {
+        if (!at(secondary_render_targets, Renderer_RenderTarget::frame_output))
+        {
+            return;
+        }
+
+        for (shared_ptr<RHI_Texture>& target : secondary_render_targets)
+        {
+            target = nullptr;
+        }
+        secondary_render_targets_signature = 0;
+        SP_LOG_INFO("secondary view render targets released");
+    }
+
+    bool Renderer::HasSecondaryRenderTargets()
+    {
+        return at(secondary_render_targets, Renderer_RenderTarget::frame_output) != nullptr;
     }
 
     RHI_Shader* Renderer::GetShader(const Renderer_Shader type)
@@ -1754,10 +1877,24 @@ namespace spartan
             fr.completion_value    = 0;
         }
 
-        fr.lines_uploaded = false;
-        fr.lines_vertex_count = 0;
-        fr.debug_triangles_uploaded = false;
-        fr.debug_triangles_vertex_count = 0;
+        // the secondary slot of the same ring position completes with this frame
+        for (const uint32_t index : { m_frame_resource_index, m_frame_resource_index + renderer_draw_data_buffer_count })
+        {
+            FrameResource& slot = m_frame_resources[index];
+            slot.lines_uploaded               = false;
+            slot.lines_vertex_count           = 0;
+            slot.debug_triangles_uploaded     = false;
+            slot.debug_triangles_vertex_count = 0;
+        }
+
+        BindFrameResource(m_frame_resource_index);
+        m_cpu_indirect_draw_arg_count = 0;
+    }
+
+    void Renderer::BindFrameResource(const uint32_t index)
+    {
+        m_frame_resource_index = index;
+        FrameResource& fr = m_frame_resources[index];
 
         buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawArgs)]     = fr.indirect_draw_args;
         buffers[static_cast<uint8_t>(Renderer_Buffer::CpuIndirectDrawArgs)]  = fr.cpu_indirect_draw_args;
@@ -1769,7 +1906,6 @@ namespace spartan
         buffers[static_cast<uint8_t>(Renderer_Buffer::SurvivingInstances)]   = fr.surviving_instances;
         buffers[static_cast<uint8_t>(Renderer_Buffer::TreeWindCache)]        = fr.tree_wind_cache;
         buffers[static_cast<uint8_t>(Renderer_Buffer::InstanceDispatchArgs)] = fr.instance_dispatch_args;
-        m_cpu_indirect_draw_arg_count = 0;
     }
 
     RHI_Texture* Renderer::GetStandardTexture(const Renderer_StandardTexture type)

@@ -511,6 +511,67 @@ namespace spartan
             }
         }
 
+        // matches ALPHA_THRESHOLD_DEFAULT in common.hlsl
+        constexpr float alpha_test_cutoff = 0.6f;
+
+        float alpha_coverage(const vector<std::byte>& pixels, const float scale)
+        {
+            const size_t count = pixels.size() / 4;
+            if (count == 0)
+            {
+                return 0.0f;
+            }
+            const float cutoff = alpha_test_cutoff * 255.0f;
+            size_t passed      = 0;
+            for (size_t i = 0; i < count; i++)
+            {
+                passed += static_cast<float>(to_integer<uint32_t>(pixels[i * 4 + 3])) * scale > cutoff ? 1 : 0;
+            }
+            return static_cast<float>(passed) / static_cast<float>(count);
+        }
+
+        // leaves, needles, grass and fences are almost all fully clear or fully opaque, glass and smoke are not
+        bool is_alpha_cutout(const vector<std::byte>& pixels)
+        {
+            const size_t count = pixels.size() / 4;
+            size_t clear       = 0;
+            size_t binary      = 0;
+            for (size_t i = 0; i < count; i++)
+            {
+                const uint32_t a = to_integer<uint32_t>(pixels[i * 4 + 3]);
+                clear  += a < 13 ? 1 : 0;
+                binary += (a < 13 || a > 242) ? 1 : 0;
+            }
+            return count > 0 && clear > count / 20 && binary * 10 >= count * 9;
+        }
+
+        // a box filtered mip averages thin cutouts below the alpha test, so a tree thins out and vanishes with distance,
+        // rescaling each mip's alpha to keep the base level's coverage holds the silhouette (castano, 2010)
+        void preserve_alpha_coverage(vector<std::byte>& pixels, const float target)
+        {
+            float low  = 0.0f;
+            float high = 8.0f;
+            for (uint32_t i = 0; i < 12; i++)
+            {
+                const float mid = (low + high) * 0.5f;
+                if (alpha_coverage(pixels, mid) < target)
+                {
+                    low = mid;
+                }
+                else
+                {
+                    high = mid;
+                }
+            }
+            const float scale = (low + high) * 0.5f;
+            const size_t count = pixels.size() / 4;
+            for (size_t i = 0; i < count; i++)
+            {
+                const float a     = static_cast<float>(to_integer<uint32_t>(pixels[i * 4 + 3])) * scale;
+                pixels[i * 4 + 3] = std::byte(static_cast<uint8_t>(min(a + 0.5f, 255.0f)));
+            }
+        }
+
         uint32_t compute_count(uint32_t width, uint32_t height)
         {
             uint32_t mip_count = 1; // base level counts
@@ -1073,6 +1134,10 @@ namespace spartan
             bake_key.Add(m_width); bake_key.Add(m_height); bake_key.Add(m_format); bake_key.Add(target);
             const auto& pixels = m_slices[0].mips[0].bytes;
             bake_key.Add(generated_cache::HashBytes(pixels.data(), pixels.size()));
+            if (pixels.size() == static_cast<size_t>(m_width) * m_height * 4 && mips::is_alpha_cutout(pixels))
+            {
+                bake_key.Add(uint32_t{1}); // coverage preserving alpha mips, bump when that filter changes
+            }
             bake_path = generated_cache::Path(World::GetResourceDirectory(), "texture_mips", bake_key.value);
             vector<uint8_t> bytes;
             const uint32_t mip_count = mips::compute_count(m_width, m_height);
@@ -1104,6 +1169,9 @@ namespace spartan
             uint32_t mip_count = mips::compute_count(m_width, m_height);
             for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(m_slices.size()); slice_index++)
             {
+                const vector<std::byte>& base = m_slices[slice_index].mips[0].bytes;
+                const bool cutout             = base.size() == static_cast<size_t>(m_width) * m_height * 4 && mips::is_alpha_cutout(base);
+                const float coverage          = cutout ? mips::alpha_coverage(base, 1.0f) : 0.0f;
                 for (uint32_t mip_index = 1; mip_index < mip_count; mip_index++)
                 {
                     AllocateMip(slice_index);
@@ -1114,6 +1182,11 @@ namespace spartan
                         max(1u, m_width  >> (mip_index - 1)),            // larger width
                         max(1u, m_height >> (mip_index - 1))             // larger height
                     );
+
+                    if (cutout && coverage > 0.0f)
+                    {
+                        mips::preserve_alpha_coverage(m_slices[slice_index].mips[mip_index].bytes, coverage);
+                    }
                 }
             }
             Breadcrumbs::EndMarker(); // mip_generation

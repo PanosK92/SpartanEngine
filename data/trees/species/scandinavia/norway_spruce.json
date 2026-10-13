@@ -1,0 +1,20 @@
+{
+  "id": "norway_spruce",
+  "name": "Norway Spruce",
+  "scientific": "Picea abies",
+  "region": "Scandinavia",
+  "description": "The Christmas tree of the northern taiga. A straight reddish trunk under a dark, narrow cone whose branches sweep down and curl up at the tips, hung with curtains of shoots.",
+  "class": "conifer",
+  "evergreen": true,
+  "budget": 14000,
+  "height": 30.0,
+  "height_var": 0.12,
+  "trunk": { "radius": 0.015, "taper": 0.03, "flare": 0.35, "lean": 1, "gnarl": 0.05, "segments": 14 },
+  "crown": { "shape": "conical", "base": 0.06, "width": 0.2 },
+  "levels": [
+    { "count": 80, "start": 0.06, "end": 0.98, "length": 0.3, "length_var": 0.1, "down_angle": 95, "down_angle_tip": 60, "down_angle_var": 6, "whorl": 5, "rotate": 37, "curve": -25, "curve_var": 10, "gravity": 0.3, "radius_ratio": 0.35, "segments": 5 },
+    { "count": 12, "start": 0.1, "end": 0.95, "length": 0.36, "length_var": 0.15, "down_angle": 70, "down_angle_var": 10, "curve_var": 8, "gravity": 0.55, "radius_ratio": 0.5, "segments": 3 }
+  ],
+  "leaves": { "shape": "needle", "size": 0.02, "card_size": 1.0, "density": 2.3, "start": 0.05, "tilt": 0.5, "per_card": 12, "color": [0.04, 0.10, 0.04], "color_back": [0.10, 0.16, 0.09], "color_var": 0.05, "translucency": 0.2 },
+  "bark": { "style": "plated", "color": [0.234, 0.169, 0.130], "color_dark": [0.078, 0.052, 0.039], "scale": 1.4, "roughness": 0.9 }
+}

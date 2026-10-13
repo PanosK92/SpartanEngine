@@ -5098,6 +5098,140 @@ register_tool(
   { annotations: edit_tool, outputSchema: output_schemas.generic },
 );
 
+const tree_controls_schema = {
+  species: z.string().optional().describe("species id from tree_species_list, e.g. olive, aleppo_pine"),
+  reset: z.boolean().optional().describe("reset every control to the species defaults before applying the rest"),
+  age: z.number().min(0).max(1).optional().describe("0 young sapling, 1 old veteran"),
+  leafiness: z.number().min(0).max(1).optional().describe("0 sparse crown, 1 dense crown"),
+  branchiness: z.number().min(0).max(1).optional().describe("0 few long limbs, 1 many short branches"),
+  wildness: z.number().min(0).max(1).optional().describe("0 tidy and symmetric, 1 wind bent and irregular"),
+  season: z.enum(["spring", "summer", "autumn", "winter"]).optional(),
+  seed: z.number().int().min(0).optional(),
+  quality: z.enum(["mobile", "standard", "hero"]).optional().describe("triangle budget tier"),
+};
+
+const tree_view_schema = {
+  yaw: z.number().optional().describe("preview orbit yaw in degrees"),
+  pitch: z.number().min(-83).max(83).optional().describe("preview orbit pitch in degrees, positive looks down"),
+  zoom: z.number().min(0.2).max(8).optional().describe("1 frames the whole tree, larger moves closer"),
+  lod: z.number().int().min(0).optional().describe("preview a single mesh LOD"),
+};
+
+register_tool(
+  server,
+  "tree_creator_open",
+  "Show or hide the Tree Creator window (procedural trees from regional species presets).",
+  {
+    visible: z.boolean().optional(),
+  },
+  "tree_creator_open",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "tree_species_list",
+  "List the Tree Creator species presets grouped by region, with their defaults. Pass reload to re-read data/trees/species/**.json from disk.",
+  {
+    region: z.string().optional().describe("filter by region name, e.g. Greece"),
+    reload: z.boolean().optional(),
+  },
+  "tree_species_list",
+  { annotations: read_only, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "tree_generate",
+  "Generate a tree in the Tree Creator preview from a species preset and the simple controls (age, leafiness, branchiness, wildness, season, seed, quality). Unnamed controls keep their current values. Returns triangle and vertex counts per LOD, height and crown width.",
+  {
+    ...tree_controls_schema,
+    ...tree_view_schema,
+  },
+  "tree_generate",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
+register_local_tool("tree_preview_capture", {
+  title: "tree preview capture",
+  description: "Render the Tree Creator preview to a PNG (inside project/mcp/library/thumbnails/) and return it as image content. Optional yaw, pitch (degrees), zoom and lod change the preview view first.",
+  inputSchema: {
+    path: z.string().optional().describe("png file name"),
+    width: z.number().int().min(128).max(2048).optional(),
+    height: z.number().int().min(128).max(2048).optional(),
+    wait_ms: z.number().int().min(0).max(20000).optional(),
+    ...tree_view_schema,
+  },
+  outputSchema: output_schemas.generic,
+  annotations: edit_tool,
+}, async (args) => {
+  const { wait_ms, ...command_args } = args;
+  const request_started_ms = Date.now();
+  const result = await send_engine_command("tree_preview_capture", command_args);
+  if (!result.ok || !result.path)
+  {
+    return tool_result(result);
+  }
+
+  const file_path = path.isAbsolute(result.path) ? result.path : path.join(binaries_directory, result.path);
+  const deadline = Date.now() + (wait_ms ?? 8000);
+  let image_buffer = null;
+  while (Date.now() <= deadline)
+  {
+    try
+    {
+      const stat = await fs.stat(file_path);
+      if (stat.mtimeMs >= request_started_ms - 5 && stat.size > 0)
+      {
+        // the engine writes the file in one go, a second stat confirms it stopped growing
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const settled = await fs.stat(file_path);
+        if (settled.size === stat.size)
+        {
+          image_buffer = await fs.readFile(file_path);
+          break;
+        }
+      }
+    }
+    catch
+    {
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  const normalized = normalize_result({ ...result, ready: Boolean(image_buffer) });
+  const content = [{ type: "text", text: JSON.stringify(normalized) }];
+  if (image_buffer)
+  {
+    content.push({ type: "image", mimeType: "image/png", data: image_buffer.toString("base64") });
+  }
+  return { structuredContent: normalized, content, isError: false };
+});
+
+register_tool(
+  server,
+  "tree_export",
+  "Generate a tree (same controls as tree_generate) and export it to project/models/trees/<name>/ as a .prefab with a .mesh (meshoptimizer LODs, foliage impostor as the last LOD), bark and foliage materials, textures and a trunk capsule collider. variations exports several seeds at once. Load the result with prefab_load or scatter it by prefab path.",
+  {
+    ...tree_controls_schema,
+    name: z.string().optional().describe("folder and file name, defaults to <species>_<seed>"),
+    variations: z.number().int().min(1).max(16).optional().describe("export this many consecutive seeds"),
+  },
+  "tree_export",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "tree_species_save",
+  "Write a species preset JSON (same schema as data/trees/species/<region>/<id>.json) and reload the species list, so an agent can author new regional presets.",
+  {
+    json: z.string().describe("the full species JSON document"),
+  },
+  "tree_species_save",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
 register_tool(
   server,
   "asset_viewer_refresh",

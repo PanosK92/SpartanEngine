@@ -847,6 +847,74 @@ namespace spartan
             return true;
         }
 
+        // fsr frame generation runs its own present thread, it needs a queue in a present capable graphics family and an image acquire queue, both unused by the engine
+        void* frame_generation_present         = nullptr;
+        void* frame_generation_acquire         = nullptr;
+        uint32_t index_frame_generation_present  = numeric_limits<uint32_t>::max();
+        uint32_t index_frame_generation_acquire  = numeric_limits<uint32_t>::max();
+        uint32_t local_index_frame_generation_present = 0;
+        uint32_t local_index_frame_generation_acquire = 0;
+
+        void detect_frame_generation_queues(VkPhysicalDevice physical_device, unordered_map<uint32_t, uint32_t>& family_queue_counts)
+        {
+            uint32_t queue_family_count = 0;
+            vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
+            vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+            vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families.data());
+
+            auto take_queue = [&](uint32_t family, uint32_t* out_family, uint32_t* out_local_index) -> bool
+            {
+                auto it             = family_queue_counts.find(family);
+                const uint32_t used = it != family_queue_counts.end() ? it->second : 0;
+                if (queue_families[family].queueCount <= used)
+                {
+                    return false;
+                }
+                *out_family                 = family;
+                *out_local_index            = used;
+                family_queue_counts[family] = used + 1;
+                return true;
+            };
+
+            // the graphics family is the one the engine already presents from
+            if (!take_queue(index_graphics, &index_frame_generation_present, &local_index_frame_generation_present))
+            {
+                SP_LOG_INFO("FSR frame generation is unavailable on Vulkan, graphics family %u has no spare queue for its present thread", index_graphics);
+                return;
+            }
+
+            // image acquire needs no capability, prefer the least capable family
+            const VkQueueFlags preferences[] = { VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT, VK_QUEUE_GRAPHICS_BIT, 0 };
+            for (const VkQueueFlags excluded : preferences)
+            {
+                for (uint32_t i = 0; i < queue_family_count; i++)
+                {
+                    if ((queue_families[i].queueFlags & excluded) == 0 && take_queue(i, &index_frame_generation_acquire, &local_index_frame_generation_acquire))
+                    {
+                        SP_LOG_INFO("FSR frame generation queues: present family %u queue %u, image acquire family %u queue %u", index_frame_generation_present, local_index_frame_generation_present, index_frame_generation_acquire, local_index_frame_generation_acquire);
+                        return;
+                    }
+                }
+            }
+
+            family_queue_counts[index_graphics]--;
+            index_frame_generation_present = numeric_limits<uint32_t>::max();
+            SP_LOG_INFO("FSR frame generation is unavailable on Vulkan, no spare queue for image acquisition");
+        }
+    }
+
+    // used by vulkan_framegeneration.cpp
+    namespace frame_generation_vk_queues
+    {
+        bool available()
+        {
+            return queues::frame_generation_present && queues::frame_generation_acquire;
+        }
+
+        void* present_queue()     { return queues::frame_generation_present; }
+        uint32_t present_family() { return queues::index_frame_generation_present; }
+        void* acquire_queue()     { return queues::frame_generation_acquire; }
+        uint32_t acquire_family() { return queues::index_frame_generation_acquire; }
     }
 
     namespace vulkan_memory_allocator
@@ -2127,8 +2195,13 @@ namespace spartan
                 require_queue(queues::index_compute, 0);
                 require_queue(queues::index_copy, 0);
                 require_queue(queues::index_present, queues::local_index_present);
+                queues::detect_frame_generation_queues(RHI_Context::device_physical, family_queue_counts);
 
-                static float queue_priorities[2] = { 1.0f, 1.0f };
+                static vector<float> queue_priorities;
+                for (const auto& entry : family_queue_counts)
+                {
+                    queue_priorities.resize(max(queue_priorities.size(), static_cast<size_t>(entry.second)), 1.0f);
+                }
                 for (const auto& entry : family_queue_counts)
                 {
                     VkDeviceQueueCreateInfo queue_create_info = {};
@@ -2136,7 +2209,7 @@ namespace spartan
                     queue_create_info.flags                   = 0;
                     queue_create_info.queueFamilyIndex        = entry.first;
                     queue_create_info.queueCount              = entry.second;
-                    queue_create_info.pQueuePriorities        = queue_priorities;
+                    queue_create_info.pQueuePriorities        = queue_priorities.data();
                     queue_create_infos.push_back(queue_create_info);
                 }
             }
@@ -2224,6 +2297,14 @@ namespace spartan
 
             vkGetDeviceQueue(RHI_Context::device, queues::index_present, queues::local_index_present, reinterpret_cast<VkQueue*>(&queues::present));
             SetResourceName(queues::present, RHI_Resource_Type::Queue, queues::present_dedicated ? "present" : "present_shared_graphics");
+
+            if (queues::index_frame_generation_present != numeric_limits<uint32_t>::max() && queues::index_frame_generation_acquire != numeric_limits<uint32_t>::max())
+            {
+                vkGetDeviceQueue(RHI_Context::device, queues::index_frame_generation_present, queues::local_index_frame_generation_present, reinterpret_cast<VkQueue*>(&queues::frame_generation_present));
+                SetResourceName(queues::frame_generation_present, RHI_Resource_Type::Queue, "frame_generation_present");
+                vkGetDeviceQueue(RHI_Context::device, queues::index_frame_generation_acquire, queues::local_index_frame_generation_acquire, reinterpret_cast<VkQueue*>(&queues::frame_generation_acquire));
+                SetResourceName(queues::frame_generation_acquire, RHI_Resource_Type::Queue, "frame_generation_image_acquire");
+            }
 
             queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Graphics)] = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
             queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");

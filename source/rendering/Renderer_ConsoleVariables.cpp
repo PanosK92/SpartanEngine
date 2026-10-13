@@ -14,6 +14,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rhi/RHI_Device.h"
 #include "../rhi/RHI_SwapChain.h"
 #include "../rhi/RHI_VendorTechnology.h"
+#include "../rhi/RHI_FrameGeneration.h"
 #include "../xr/Xr.h"
 //==============================================
 
@@ -67,6 +68,26 @@ namespace spartan
             {
                 swapchain->SetVsync(get<float>(value) != 0.0f);
             }
+        }
+
+        void on_frame_generation_change(const CVarVariant& value)
+        {
+            // a value loaded before the swapchain exists is applied by the renderer once it creates it
+            RHI_SwapChain* swapchain = RHI_Device::GetSwapChain();
+            if (!swapchain)
+            {
+                return;
+            }
+
+            const bool enabled = get<float>(value) != 0.0f;
+            if (enabled && !RHI_FrameGeneration::IsSupported())
+            {
+                SP_LOG_WARNING("FSR frame generation is not supported on this system");
+                *ConsoleRegistry::Get().Find("r.frame_generation")->m_value_ptr = 0.0f;
+                return;
+            }
+
+            swapchain->SetFrameGeneration(enabled);
         }
 
         void on_vrs_change(const CVarVariant& value)
@@ -192,6 +213,7 @@ namespace spartan
     TConsoleVar<float> cvar_hdr                            ("r.hdr",                            0.0f,                                                    "enable hdr output",                       on_hdr_change);
     TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,                                                    "legacy display gamma metadata; SDR output uses the fixed sRGB transfer");
     TConsoleVar<float> cvar_vsync                          ("r.vsync",                          0.0f,                                                    "vertical sync",                           on_vsync_change);
+    TConsoleVar<float> cvar_frame_generation               ("r.frame_generation",               0.0f,                                                    "amd fsr 3.1 frame generation, presents a generated frame between every two rendered ones, works on any vendor", on_frame_generation_change);
     // resolution
     TConsoleVar<float> cvar_variable_rate_shading          ("r.variable_rate_shading",          0.0f,                                                    "variable rate shading",                   on_vrs_change);
     TConsoleVar<float> cvar_mesh_shaders                   ("r.mesh_shaders",                   1.0f,                                                    "mesh shaders for opaque/alpha depth+gbuffer, on by default and falls back to vertex pull when the device or the shaders are unavailable", on_mesh_shaders_change);

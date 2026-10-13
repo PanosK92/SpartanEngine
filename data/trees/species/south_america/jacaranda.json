@@ -1,0 +1,21 @@
+{
+  "id": "jacaranda",
+  "name": "Jacaranda",
+  "scientific": "Jacaranda mimosifolia",
+  "region": "South America",
+  "description": "The violet tree of Buenos Aires avenues. A short trunk with a wide, airy, vase shaped crown of fern like compound leaves, covered in late spring in lilac blue bells.",
+  "class": "broadleaf",
+  "evergreen": false,
+  "budget": 12000,
+  "height": 14.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.028, "taper": 0.18, "flare": 0.45, "lean": 4, "gnarl": 0.3, "twist": 0.1, "segments": 10, "stems": 3, "split_height": 0.3, "split_angle": 32 },
+  "crown": { "shape": "vase", "base": 0.35, "width": 0.75 },
+  "levels": [
+    { "count": 11, "start": 0.3, "end": 0.98, "length": 0.55, "length_var": 0.22, "down_angle": 45, "down_angle_tip": 35, "down_angle_var": 15, "curve": 20, "curve_var": 30, "gravity": 0.15, "radius_ratio": 0.58, "segments": 6 },
+    { "count": 8, "start": 0.25, "end": 1.0, "length": 0.48, "length_var": 0.22, "down_angle": 50, "down_angle_var": 18, "curve": -10, "curve_var": 25, "gravity": 0.2, "radius_ratio": 0.55, "segments": 4 },
+    { "count": 5, "start": 0.3, "end": 1.0, "length": 0.42, "down_angle": 45, "down_angle_var": 18, "curve_var": 20, "gravity": 0.2, "radius_ratio": 0.6, "segments": 3 }
+  ],
+  "leaves": { "shape": "pinnate", "size": 0.12, "card_size": 0.65, "density": 1.5, "start": 0.3, "tilt": 0.4, "per_card": 6, "color": [0.12, 0.26, 0.06], "color_back": [0.24, 0.34, 0.12], "spring_color": [0.30, 0.40, 0.10], "autumn_color": [0.55, 0.50, 0.12], "autumn_color_b": [0.48, 0.42, 0.10], "color_var": 0.07, "flowers": true, "flower_color": [0.52, 0.42, 0.86], "translucency": 0.5 },
+  "bark": { "style": "plated", "color": [0.221, 0.195, 0.169], "color_dark": [0.078, 0.065, 0.059], "scale": 0.8, "roughness": 0.88 }
+}

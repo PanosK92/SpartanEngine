@@ -1,0 +1,21 @@
+{
+  "id": "japanese_maple",
+  "name": "Japanese Maple",
+  "scientific": "Acer palmatum",
+  "region": "Japan",
+  "description": "The momiji of temple gardens. A low, multi stemmed tree with layered, horizontal sprays of fine star shaped leaves that turn scarlet in autumn.",
+  "class": "broadleaf",
+  "evergreen": false,
+  "budget": 11000,
+  "height": 6.0,
+  "height_var": 0.2,
+  "trunk": { "radius": 0.035, "taper": 0.2, "flare": 0.45, "lean": 6, "gnarl": 0.3, "twist": 0.15, "segments": 10, "stems": 4, "split_height": 0.12, "split_angle": 32, "stem_spread": 0.15 },
+  "crown": { "shape": "umbrella", "base": 0.25, "width": 0.85 },
+  "levels": [
+    { "count": 10, "start": 0.25, "end": 0.98, "length": 0.55, "length_var": 0.2, "down_angle": 60, "down_angle_tip": 45, "down_angle_var": 15, "curve": -15, "curve_var": 25, "gravity": 0.12, "radius_ratio": 0.6, "segments": 6 },
+    { "count": 9, "start": 0.2, "end": 1.0, "length": 0.5, "length_var": 0.2, "down_angle": 65, "down_angle_var": 12, "planar": true, "curve": -5, "curve_var": 15, "gravity": 0.25, "radius_ratio": 0.5, "segments": 4 },
+    { "count": 6, "start": 0.25, "end": 1.0, "length": 0.4, "down_angle": 55, "down_angle_var": 15, "planar": true, "gravity": 0.25, "radius_ratio": 0.6, "segments": 3 }
+  ],
+  "leaves": { "shape": "palmate", "size": 0.07, "card_size": 0.5, "density": 1.15, "start": 0.3, "tilt": 0.15, "per_card": 10, "color": [0.20, 0.32, 0.06], "color_back": [0.30, 0.40, 0.12], "spring_color": [0.50, 0.20, 0.10], "autumn_color": [0.70, 0.08, 0.04], "autumn_color_b": [0.78, 0.30, 0.04], "color_var": 0.1, "translucency": 0.6 },
+  "bark": { "style": "smooth", "color": [0.195, 0.176, 0.163], "color_dark": [0.091, 0.078, 0.072], "scale": 1.0, "roughness": 0.72 }
+}

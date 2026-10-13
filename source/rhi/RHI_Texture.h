@@ -216,6 +216,7 @@ namespace spartan
         friend class RHI_DescriptorSetLayout;
         friend class RHI_Device;
         friend class RHI_VendorTechnology;
+        friend class RHI_FrameGeneration;
 
         void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0);
         bool ReadFromFile(const std::string& file_path);

@@ -19,6 +19,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "RHI_Queue.h"
 #include "RHI_CommandList.h"
 #include "RHI_Texture.h"
+#include "RHI_FrameGeneration.h"
+#include "../core/Timer.h"
 //==========================
 
 //= NAMESPACES ===============
@@ -263,6 +265,21 @@ namespace spartan
         Bind(RHI_Frame_List::Graphics);
     }
 
+    void RHI_Device::BeginComputeLists()
+    {
+        RHI_Queue* queue_compute = GetQueue(RHI_Queue_Type::Compute);
+        for (RHI_Frame_List list : { RHI_Frame_List::ComputeA, RHI_Frame_List::ComputeB })
+        {
+            RHI_CommandList*& compute_list = frame_lists[frame_list_index(list)];
+            if (compute_list && compute_list->GetState() == RHI_CommandListState::Recording)
+            {
+                continue;
+            }
+            compute_list = queue_compute->NextCommandList();
+            compute_list->Begin();
+        }
+    }
+
     RHI_CommandList* RHI_Device::Cmd()
     {
         if (frame_override)
@@ -380,9 +397,11 @@ namespace spartan
             return {};
         }
         SP_ASSERT(cmd_list->GetState() == RHI_CommandListState::Recording);
+        Timer::SetPresentsPerFrame(RHI_FrameGeneration::IsActive() ? 2 : 1);
         if (frame_swapchain && frame_swapchain->IsImageAcquired())
         {
             cmd_list->render_pass_end();
+            RHI_FrameGeneration::EndFrame(cmd_list, frame_swapchain.get());
             cmd_list->prepare_for_present(frame_swapchain.get());
             cmd_list->Submit(
                 frame_swapchain->GetImageAcquiredSemaphore(),

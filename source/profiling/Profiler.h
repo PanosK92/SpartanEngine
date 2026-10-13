@@ -52,7 +52,13 @@ namespace spartan
         static uint64_t GetCapturedFrameNumber();
         static uint32_t GetCapturedIncompleteCount();
         static uint32_t GetCapturedDroppedTimestamps();
+        // rendered frames per second, frame generation adds the generated ones on top of these for the display
         static float GetFps();
+        static float GetFpsGenerated();
+        static float GetFpsPresented();
+        static bool IsFrameGenerating();
+        // input to display delay frame generation adds by holding each rendered frame back, included in GetInputLatencyMs
+        static float GetFrameGenerationLatencyMs();
         // Age of the input sample in the frame that is scanning out, in milliseconds.
         static void MarkInputSample();
         static void MarkPresented(uint32_t image_index, void* dxgi_swapchain = nullptr);

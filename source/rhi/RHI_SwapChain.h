@@ -43,6 +43,10 @@ namespace spartan
         void SetVsync(const bool enabled);
         bool GetVsync();
 
+        // fsr frame generation, recreates the swapchain as the ffx frame generation swapchain
+        void SetFrameGeneration(const bool enabled);
+        bool GetFrameGeneration() const { return m_frame_generation; }
+
         // loop
         void AcquireNextImage();
         void Present(RHI_CommandList* cmd_list_frame);
@@ -87,6 +91,7 @@ namespace spartan
         RHI_Present_Mode m_present_mode = RHI_Present_Mode::Immediate;
 
         // misc
+        bool m_frame_generation  = false;
         bool m_is_dirty          = false;
         bool m_image_acquired    = false;
         uint32_t m_image_index   = 0;

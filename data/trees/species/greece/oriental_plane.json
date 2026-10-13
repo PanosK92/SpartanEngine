@@ -1,0 +1,21 @@
+{
+  "id": "oriental_plane",
+  "name": "Oriental Plane",
+  "scientific": "Platanus orientalis",
+  "region": "Greece",
+  "description": "The village square tree, Hippocrates taught under one on Kos. A massive trunk with peeling cream and olive bark under a broad, domed crown of large palmate leaves.",
+  "class": "broadleaf",
+  "evergreen": false,
+  "budget": 13000,
+  "height": 24.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.035, "taper": 0.2, "flare": 0.6, "lean": 4, "gnarl": 0.3, "segments": 12, "stems": 2, "split_height": 0.3, "split_angle": 25 },
+  "crown": { "shape": "spherical", "base": 0.3, "width": 0.55 },
+  "levels": [
+    { "count": 16, "start": 0.2, "end": 0.97, "length": 0.52, "length_var": 0.2, "down_angle": 62, "down_angle_tip": 35, "down_angle_var": 15, "curve": 22, "curve_var": 25, "gravity": 0.08, "radius_ratio": 0.6, "segments": 7 },
+    { "count": 9, "start": 0.2, "end": 1.0, "length": 0.48, "length_var": 0.2, "down_angle": 50, "down_angle_tip": 35, "down_angle_var": 15, "curve": -5, "curve_var": 20, "gravity": 0.12, "radius_ratio": 0.55, "segments": 4 },
+    { "count": 6, "start": 0.25, "end": 1.0, "length": 0.42, "down_angle": 45, "down_angle_var": 18, "curve_var": 15, "gravity": 0.15, "radius_ratio": 0.6, "segments": 3 }
+  ],
+  "leaves": { "shape": "palmate", "size": 0.17, "card_size": 0.8, "density": 1.0, "start": 0.3, "tilt": 0.55, "per_card": 7, "color": [0.12, 0.25, 0.06], "color_back": [0.26, 0.36, 0.14], "spring_color": [0.30, 0.48, 0.10], "autumn_color": [0.52, 0.32, 0.08], "autumn_color_b": [0.45, 0.38, 0.12], "color_var": 0.1, "translucency": 0.5 },
+  "bark": { "style": "peeling", "color": [0.403, 0.377, 0.286], "color_dark": [0.195, 0.195, 0.130], "scale": 1.6, "roughness": 0.8 }
+}

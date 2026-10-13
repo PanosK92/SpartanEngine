@@ -1,0 +1,20 @@
+{
+  "id": "greek_fir",
+  "name": "Greek Fir",
+  "scientific": "Abies cephalonica",
+  "region": "Greece",
+  "description": "The fir of Mount Ainos and the Peloponnese mountains. A straight grey trunk and a dense, dark, regularly tiered cone with stiff needles on flat sprays.",
+  "class": "conifer",
+  "evergreen": true,
+  "budget": 14000,
+  "height": 22.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.018, "taper": 0.04, "flare": 0.3, "lean": 1.5, "gnarl": 0.06, "segments": 14 },
+  "crown": { "shape": "conical", "base": 0.1, "width": 0.22 },
+  "levels": [
+    { "count": 70, "start": 0.1, "end": 0.98, "length": 0.3, "length_var": 0.12, "down_angle": 88, "down_angle_tip": 55, "down_angle_var": 6, "whorl": 5, "rotate": 37, "curve": 12, "curve_var": 8, "gravity": 0.12, "radius_ratio": 0.38, "segments": 5 },
+    { "count": 11, "start": 0.1, "end": 0.95, "length": 0.38, "length_var": 0.15, "down_angle": 62, "down_angle_var": 8, "planar": true, "curve_var": 6, "gravity": 0.05, "radius_ratio": 0.5, "segments": 3 }
+  ],
+  "leaves": { "shape": "needle", "size": 0.025, "card_size": 1.0, "density": 2.2, "start": 0.05, "tilt": 0.25, "per_card": 12, "color": [0.05, 0.11, 0.05], "color_back": [0.14, 0.20, 0.13], "color_var": 0.05, "translucency": 0.25 },
+  "bark": { "style": "smooth", "color": [0.208, 0.202, 0.195], "color_dark": [0.078, 0.072, 0.065], "scale": 1.0, "roughness": 0.85 }
+}

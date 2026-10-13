@@ -1,0 +1,21 @@
+{
+  "id": "silver_birch",
+  "name": "Silver Birch",
+  "scientific": "Betula pendula",
+  "region": "Scandinavia",
+  "description": "The white birch of the Finnish lakes. A slender chalk white trunk with black diamonds, a light open crown and drooping twigs of small, toothed, triangular leaves.",
+  "class": "broadleaf",
+  "evergreen": false,
+  "budget": 11000,
+  "height": 18.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.013, "taper": 0.05, "flare": 0.3, "lean": 4, "gnarl": 0.15, "segments": 12 },
+  "crown": { "shape": "tend_flame", "base": 0.3, "width": 0.32 },
+  "levels": [
+    { "count": 26, "start": 0.3, "end": 0.98, "length": 0.4, "length_var": 0.25, "down_angle": 50, "down_angle_tip": 30, "down_angle_var": 15, "rotate": 137, "curve": 35, "curve_var": 20, "gravity": 0.25, "radius_ratio": 0.45, "segments": 6 },
+    { "count": 9, "start": 0.2, "end": 1.0, "length": 0.5, "length_var": 0.2, "down_angle": 55, "down_angle_var": 15, "curve": 40, "curve_var": 15, "gravity": 0.9, "radius_ratio": 0.45, "segments": 4 },
+    { "count": 5, "start": 0.3, "end": 1.0, "length": 0.4, "down_angle": 35, "down_angle_var": 10, "gravity": 1.0, "radius_ratio": 0.5, "segments": 3 }
+  ],
+  "leaves": { "shape": "ovate", "size": 0.05, "card_size": 0.45, "density": 1.2, "start": 0.2, "tilt": 0.55, "per_card": 12, "color": [0.15, 0.28, 0.06], "color_back": [0.28, 0.38, 0.14], "spring_color": [0.36, 0.52, 0.10], "autumn_color": [0.70, 0.58, 0.10], "autumn_color_b": [0.62, 0.48, 0.08], "color_var": 0.07, "translucency": 0.55 },
+  "bark": { "style": "birch", "color": [0.82, 0.80, 0.76], "color_dark": [0.08, 0.08, 0.08], "scale": 1.0, "roughness": 0.75 }
+}

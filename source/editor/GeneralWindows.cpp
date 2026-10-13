@@ -644,9 +644,13 @@ license.)";
             { "R",               "X / Cross",        "Reset to Spawn"            },
             { "H",               "D-Pad Down",       "Summon Car Here"           },
             { "V",               "Triangle / Y",     "Cycle Camera View"         },
-            { "-",               "L1",               "Shift Down (Manual)"       },
-            { "-",               "R1",               "Shift Up (Manual)"         },
-            { "-",               "Right Stick",      "Camera Orbit (Chase View)" },
+            { "Page Down",       "L1",               "Shift Down (Manual)"       },
+            { "Page Up",         "R1",               "Shift Up (Manual)"         },
+            { "-",               "D-Pad Left",       "Toggle Auto / Manual Gearbox" },
+            { "Hold R-Click",    "Right Stick",      "Camera Orbit (Chase View)" },
+            { "C",               "R3",               "Recenter Camera"           },
+            { "F3",              "Touchpad",         "Telemetry / Car Picker"    },
+            { "-",               "Create / Back",    "Toggle Controller Feedback" },
             { "L",               "D-Pad Up",         "Headlights (Off / Low / High)" },
             { "Automatic",       "Automatic",        "Brake Lights (On Brake)"   }
         };

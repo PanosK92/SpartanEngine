@@ -1,0 +1,21 @@
+{
+  "id": "horse_chestnut",
+  "name": "Horse Chestnut",
+  "scientific": "Aesculus hippocastanum",
+  "region": "Central Europe",
+  "description": "The beer garden and avenue tree. A stout trunk under a dense, rounded dome of big hand shaped leaves, lit up in May by upright white flower candles.",
+  "class": "broadleaf",
+  "evergreen": false,
+  "budget": 12000,
+  "height": 20.0,
+  "height_var": 0.12,
+  "trunk": { "radius": 0.03, "taper": 0.16, "flare": 0.5, "lean": 2, "gnarl": 0.18, "twist": 0.25, "segments": 12, "stems": 2, "split_height": 0.35, "split_angle": 22 },
+  "crown": { "shape": "spherical", "base": 0.28, "width": 0.55 },
+  "levels": [
+    { "count": 15, "start": 0.25, "end": 0.97, "length": 0.5, "length_var": 0.18, "down_angle": 60, "down_angle_tip": 30, "down_angle_var": 12, "curve": 25, "curve_var": 20, "gravity": 0.15, "radius_ratio": 0.6, "segments": 7 },
+    { "count": 8, "start": 0.2, "end": 1.0, "length": 0.45, "length_var": 0.2, "down_angle": 50, "down_angle_var": 15, "curve": 15, "curve_var": 20, "gravity": 0.18, "radius_ratio": 0.55, "segments": 4 },
+    { "count": 5, "start": 0.3, "end": 1.0, "length": 0.4, "down_angle": 40, "down_angle_var": 15, "curve": 20, "radius_ratio": 0.6, "segments": 3 }
+  ],
+  "leaves": { "shape": "palmate", "size": 0.2, "card_size": 0.85, "density": 1.15, "start": 0.35, "tilt": 0.35, "per_card": 6, "color": [0.09, 0.21, 0.04], "color_back": [0.22, 0.32, 0.10], "spring_color": [0.26, 0.44, 0.08], "autumn_color": [0.55, 0.30, 0.07], "autumn_color_b": [0.40, 0.20, 0.05], "color_var": 0.08, "flowers": true, "flower_color": [0.92, 0.90, 0.84], "translucency": 0.45 },
+  "bark": { "style": "plated", "color": [0.221, 0.189, 0.163], "color_dark": [0.078, 0.065, 0.052], "scale": 1.2, "roughness": 0.88 }
+}

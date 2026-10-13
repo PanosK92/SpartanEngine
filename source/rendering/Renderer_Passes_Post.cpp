@@ -19,6 +19,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rhi/RHI_Device.h"
 #include "../rhi/RHI_Shader.h"
 #include "../rhi/RHI_VendorTechnology.h"
+#include "../rhi/RHI_FrameGeneration.h"
 #include "../xr/Xr.h"
 #include "../../data/shaders/shared_taau.h"
 //=============================================
@@ -58,7 +59,7 @@ namespace spartan
         }
 
         // ssao uses a single depth view, skip in stereo so the right eye is not darkened by left eye occlusion
-        if (Xr::IsSessionRunning() && Xr::GetStereoMode())
+        if (IsStereoView())
         {
             return;
         }
@@ -217,7 +218,7 @@ namespace spartan
         RHI_Texture* tex_pre_tonemap = tex_in;
 
         // hmd swapchain is sdr srgb, desktop hdr encode (pq/scrgb) reads as washed out in the headset
-        const bool xr_stereo = Xr::IsSessionRunning() && Xr::GetStereoMode();
+        const bool xr_stereo = IsStereoView();
         Pass_Tonemap(tex_in, tex_out, xr_stereo);
         swap(tex_in, tex_out);
 
@@ -301,8 +302,8 @@ namespace spartan
 
         RHI_CommandList::BeginMarker("post_process");
         Pass_PostProcess_Color(tex_in, tex_out, eye_layer);
-        // grid, lines, icons and editor overlays stay on the desktop mirror, not in the hmd
-        if (!(Xr::IsSessionRunning() && Xr::GetStereoMode()))
+        // grid, lines, icons and editor overlays stay on the desktop mirror, not in the hmd or in an asset preview
+        if (!(IsStereoView()) && !IsSecondaryViewActive())
         {
             Pass_PostProcess_EditorOverlays(rt_frame_output);
         }
@@ -558,6 +559,12 @@ namespace spartan
             else
             {
                 RHI_CommandList::Blit(tex_in, tex_out, false, resolution_scale);
+            }
+
+            // frame generation interpolates the presented frame, so only the primary view feeds it
+            if (!is_stereo && !IsSecondaryViewActive() && RHI_FrameGeneration::IsActive())
+            {
+                RHI_FrameGeneration::Prepare(tex_depth, tex_velocity);
             }
 
             // generate mips for refraction roughness

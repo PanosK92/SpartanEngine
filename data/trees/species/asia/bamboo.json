@@ -1,0 +1,19 @@
+{
+  "id": "bamboo",
+  "name": "Moso Bamboo",
+  "scientific": "Phyllostachys edulis",
+  "region": "Asia",
+  "description": "The bamboo of the Chinese and Japanese groves. A clump of tall, jointed, green culms that bow at the top, with short side twigs carrying feathery sprays of narrow blade leaves.",
+  "class": "shrub",
+  "evergreen": true,
+  "budget": 11000,
+  "height": 14.0,
+  "height_var": 0.2,
+  "trunk": { "radius": 0.006, "taper": 0.02, "flare": 0.0, "lean": 7, "gnarl": 0.04, "segments": 10, "stems": 12, "split_height": 0.0, "split_angle": 6, "stem_spread": 0.12 },
+  "crown": { "shape": "tend_flame", "base": 0.4, "width": 0.3 },
+  "levels": [
+    { "count": 16, "start": 0.4, "end": 1.0, "length": 0.14, "length_var": 0.25, "down_angle": 55, "down_angle_tip": 35, "down_angle_var": 12, "rotate": 180, "curve": 10, "curve_var": 10, "gravity": 0.25, "radius_ratio": 0.3, "segments": 3 }
+  ],
+  "leaves": { "shape": "blade", "size": 0.14, "card_size": 0.6, "density": 1.25, "start": 0.1, "tilt": 0.6, "per_card": 10, "color": [0.20, 0.32, 0.08], "color_back": [0.30, 0.40, 0.14], "spring_color": [0.32, 0.46, 0.10], "color_var": 0.07, "translucency": 0.55 },
+  "bark": { "style": "ringed", "color": [0.234, 0.286, 0.117], "color_dark": [0.104, 0.130, 0.052], "scale": 2.5, "roughness": 0.45 }
+}

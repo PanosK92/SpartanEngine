@@ -681,6 +681,7 @@ namespace
         fill_light->SetIntensity(5000.0f);
         fill_light->SetRange(radius * 8.0f);
         fill_light->SetColor(Color::standard_white);
+        fill_light->SetFlag(LightFlags::Shadows, false);
 
         // the renderer walks the committed entity lists, without this the first frame misses the rig
         World::ProcessPendingAdditions();

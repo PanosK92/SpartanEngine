@@ -13,6 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_CommandList.h"
 #include "../RHI_Queue.h"
 #include "../RHI_SyncPrimitive.h"
+#include "../RHI_FrameGeneration.h"
 #include "../display/Display.h"
 #include "../../profiling/Breadcrumbs.h"
 #include "../../profiling/Profiler.h"
@@ -38,6 +39,13 @@ namespace spartan::d3d12_descriptors
     uint32_t GetRtvDescriptorSize();
     uint32_t AllocateRtv();
     D3D12_CPU_DESCRIPTOR_HANDLE GetRtvHandle(uint32_t index);
+}
+
+// forward declarations from d3d12_framegeneration.cpp
+namespace spartan::frame_generation_d3d12
+{
+    IDXGISwapChain4* swapchain_create(HWND hwnd, DXGI_SWAP_CHAIN_DESC1* desc, IDXGIFactory* factory, ID3D12CommandQueue* queue);
+    void swapchain_release(IDXGISwapChain3* swapchain);
 }
 
 namespace spartan
@@ -297,29 +305,40 @@ namespace spartan
             return;
         }
 
-        // create swap chain
-        IDXGISwapChain1* swap_chain_temp = nullptr;
-        if (!d3d12_utility::error::check(factory->CreateSwapChainForHwnd(
-            command_queue,
-            hwnd,
-            &swap_chain_desc,
-            nullptr,
-            nullptr,
-            &swap_chain_temp
-        )))
+        // the ffx frame generation swapchain stands in for the dxgi one, falls back to dxgi when the runtime refuses
+        if (m_frame_generation)
         {
-            SP_LOG_ERROR("Failed to create swap chain");
-            return;
+            IDXGISwapChain4* swapchain_fg = frame_generation_d3d12::swapchain_create(hwnd, &swap_chain_desc, factory.Get(), command_queue);
+            m_rhi_swapchain               = static_cast<IDXGISwapChain3*>(swapchain_fg);
+            m_frame_generation            = swapchain_fg != nullptr;
         }
 
-        // upgrade to swapchain3
-        if (!d3d12_utility::error::check(swap_chain_temp->QueryInterface(IID_PPV_ARGS(reinterpret_cast<IDXGISwapChain3**>(&m_rhi_swapchain)))))
+        // create swap chain
+        if (!m_rhi_swapchain)
         {
-            SP_LOG_ERROR("Failed to query IDXGISwapChain3");
+            IDXGISwapChain1* swap_chain_temp = nullptr;
+            if (!d3d12_utility::error::check(factory->CreateSwapChainForHwnd(
+                command_queue,
+                hwnd,
+                &swap_chain_desc,
+                nullptr,
+                nullptr,
+                &swap_chain_temp
+            )))
+            {
+                SP_LOG_ERROR("Failed to create swap chain");
+                return;
+            }
+
+            // upgrade to swapchain3
+            if (!d3d12_utility::error::check(swap_chain_temp->QueryInterface(IID_PPV_ARGS(reinterpret_cast<IDXGISwapChain3**>(&m_rhi_swapchain)))))
+            {
+                SP_LOG_ERROR("Failed to query IDXGISwapChain3");
+                swap_chain_temp->Release();
+                return;
+            }
             swap_chain_temp->Release();
-            return;
         }
-        swap_chain_temp->Release();
 
         // fall back to sdr when the display rejects hdr10 color space, mirrors vulkan surface format check
         if (m_format == format_hdr && !set_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain), m_format))
@@ -387,12 +406,13 @@ namespace spartan
         m_image_index    = static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetCurrentBackBufferIndex();
         m_image_acquired = true;
 
-        SP_LOG_INFO("Swapchain created with resolution: %dx%d, HDR: %s (%s), VSync: %s",
+        SP_LOG_INFO("Swapchain created with resolution: %dx%d, HDR: %s (%s), VSync: %s, frame generation: %s",
             m_width,
             m_height,
             m_format == format_hdr ? "enabled" : "disabled",
             rhi_format_to_string(m_format),
-            m_present_mode == RHI_Present_Mode::Fifo ? "enabled" : "disabled"
+            m_present_mode == RHI_Present_Mode::Fifo ? "enabled" : "disabled",
+            m_frame_generation ? "enabled" : "disabled"
         );
     }
 
@@ -409,7 +429,7 @@ namespace spartan
         if (m_rhi_swapchain)
         {
             forget_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
-            static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->Release();
+            frame_generation_d3d12::swapchain_release(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
             m_rhi_swapchain = nullptr;
         }
     }
@@ -439,6 +459,7 @@ namespace spartan
 
         // wait for gpu
         RHI_Device::QueueWaitAll();
+        RHI_FrameGeneration::OnSwapChainRecreate();
 
         // release backbuffers before resizing
         destroy_swapchain_resources(this);
@@ -588,6 +609,7 @@ namespace spartan
 
         // wait gpu, recreate buffers in the new format
         RHI_Device::QueueWaitAll();
+        RHI_FrameGeneration::OnSwapChainRecreate();
         destroy_swapchain_resources(this);
 
         IDXGISwapChain3* dxgi = static_cast<IDXGISwapChain3*>(m_rhi_swapchain);
@@ -672,7 +694,7 @@ namespace spartan
             RHI_Device::QueueWaitAll();
             destroy_swapchain_resources(this);
             forget_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
-            static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->Release();
+            frame_generation_d3d12::swapchain_release(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
             m_rhi_swapchain = nullptr;
             Create();
         }
@@ -681,6 +703,32 @@ namespace spartan
     bool RHI_SwapChain::GetVsync()
     {
         return m_present_mode == RHI_Present_Mode::Fifo;
+    }
+
+    void RHI_SwapChain::SetFrameGeneration(const bool enabled)
+    {
+        if (enabled && !RHI_FrameGeneration::IsSupported())
+        {
+            SP_LOG_WARNING("FSR frame generation is not supported on this system");
+            return;
+        }
+
+        if (m_frame_generation == enabled)
+        {
+            return;
+        }
+
+        m_frame_generation = enabled;
+
+        if (m_rhi_swapchain)
+        {
+            RHI_Device::QueueWaitAll();
+            destroy_swapchain_resources(this);
+            forget_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
+            frame_generation_d3d12::swapchain_release(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
+            m_rhi_swapchain = nullptr;
+            Create();
+        }
     }
 
     RHI_SyncPrimitive* RHI_SwapChain::GetImageAcquiredSemaphore() const

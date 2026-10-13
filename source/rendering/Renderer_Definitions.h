@@ -80,6 +80,9 @@ namespace spartan
     const uint32_t restir_pairing_element_count    = 254 * 254 + 230 * 230 + 210 * 210;
     const uint32_t renderer_max_decals = 8192; // shared by all receivers in one view, ring-buffered per frame
     const uint32_t renderer_draw_data_buffer_count = 4;       // matches command list pool size, avoids cpu-gpu memcpy races
+    // the primary view and one secondary view render in the same frame, each owns a ring of frame slots
+    const uint32_t renderer_view_count             = 2;
+    const uint32_t renderer_frame_resource_count   = renderer_draw_data_buffer_count * renderer_view_count;
     const uint32_t renderer_max_indirect_draws     = 131072;  // per render component lod draw data, cull shader clamps writes
     // Preserve the old instance budget, plus one partial batch per possible draw.
     const uint32_t renderer_max_instance_cull_entries = 8 * 1024 * 1024;

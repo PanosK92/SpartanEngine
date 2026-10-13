@@ -45,6 +45,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "rhi/RHI_PipelineState.h"
 #include "rhi/RHI_RasterizerState.h"
 #include "rhi/RHI_DepthStencilState.h"
+#include "rhi/RHI_FrameGeneration.h"
+#include <cfloat>
 #include <Settings.h>
 SP_WARNINGS_OFF
 #include <SDL3/SDL_video.h>
@@ -464,8 +466,15 @@ namespace ImGui::RHI
             RHI_CommandList::SetCullMode(RHI_CullMode::None);
         };
 
+        // where the 3d view lands in the backbuffer, frame generation interpolates only that area
+        const uint64_t frame_output_id = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output)->GetObjectId();
+        bool frame_rect_found          = false;
+        ImVec2 frame_rect_min          = ImVec2(FLT_MAX, FLT_MAX);
+        ImVec2 frame_rect_max          = ImVec2(-FLT_MAX, -FLT_MAX);
+
         // a replay into the ui screenshot target must not run user callbacks, they record external passes
-        auto draw_pass = [&](const char* name, const bool gpu_timing, const bool run_callbacks, const bool sdr_capture)
+        // frame_only replays just the 3d view draws, the frame generation hudless image
+        auto draw_pass = [&](const char* name, const bool gpu_timing, const bool run_callbacks, const bool sdr_capture, const bool frame_only)
         {
             RHI_CommandList::BeginPass(name, gpu_timing);
             setup_render_state();
@@ -521,6 +530,26 @@ namespace ImGui::RHI
                         if (draw_index == numeric_limits<uint32_t>::max())
                         {
                             continue;
+                        }
+
+                        spartan::RHI_Texture* texture_cmd = reinterpret_cast<spartan::RHI_Texture*>(pcmd->GetTexID());
+                        const bool is_frame_cmd           = texture_cmd && texture_cmd->GetRhiResource() && texture_cmd->GetObjectId() == frame_output_id;
+                        if (frame_only && !is_frame_cmd)
+                        {
+                            continue;
+                        }
+
+                        if (is_frame_cmd && is_main_window && !frame_only && !sdr_capture)
+                        {
+                            for (uint32_t k = 0; k < pcmd->ElemCount; k++)
+                            {
+                                const ImDrawVert& vertex = cmd_list_imgui->VtxBuffer[cmd_list_imgui->IdxBuffer[pcmd->IdxOffset + k] + pcmd->VtxOffset];
+                                frame_rect_min.x         = min(frame_rect_min.x, max(vertex.pos.x, pcmd->ClipRect.x));
+                                frame_rect_min.y         = min(frame_rect_min.y, max(vertex.pos.y, pcmd->ClipRect.y));
+                                frame_rect_max.x         = max(frame_rect_max.x, min(vertex.pos.x, pcmd->ClipRect.z));
+                                frame_rect_max.y         = max(frame_rect_max.y, min(vertex.pos.y, pcmd->ClipRect.w));
+                            }
+                            frame_rect_found = true;
                         }
 
                         // set scissor rectangle
@@ -617,10 +646,33 @@ namespace ImGui::RHI
             RHI_CommandList::EndPass();
         };
 
-        draw_pass(is_main_window ? "imgui_window_main" : "imgui_window_child", is_main_window, true, false);
+        draw_pass(is_main_window ? "imgui_window_main" : "imgui_window_child", is_main_window, true, false, false);
 
         if (is_main_window)
         {
+            math::Rectangle frame_rect;
+            if (frame_rect_found && frame_rect_max.x > frame_rect_min.x && frame_rect_max.y > frame_rect_min.y)
+            {
+                frame_rect.x      = (frame_rect_min.x - draw_data->DisplayPos.x) * draw_data->FramebufferScale.x;
+                frame_rect.y      = (frame_rect_min.y - draw_data->DisplayPos.y) * draw_data->FramebufferScale.y;
+                frame_rect.width  = (frame_rect_max.x - frame_rect_min.x) * draw_data->FramebufferScale.x;
+                frame_rect.height = (frame_rect_max.y - frame_rect_min.y) * draw_data->FramebufferScale.y;
+            }
+            RHI_FrameGeneration::SetGenerationRect(frame_rect);
+
+            // the 3d view over black, ffx diffs it against the backbuffer to find the ui pixels
+            if (RHI_Texture* hudless = RHI_FrameGeneration::GetHudlessTarget(swapchain->GetWidth(), swapchain->GetHeight(), swapchain->GetFormat()))
+            {
+                RHI_CommandList::ClearTexture(hudless, Color::standard_black);
+                pso.render_target_swapchain         = nullptr;
+                pso.render_target_color_textures[0] = hudless;
+                pso.clear_color[0]                  = rhi_color_load;
+                draw_pass("imgui_frame_generation_hudless", false, false, false, true);
+                pso.render_target_color_textures[0] = nullptr;
+                pso.render_target_swapchain         = swapchain;
+                RHI_FrameGeneration::SetHudlessRecorded();
+            }
+
             if (RHI_Texture* capture = Renderer::GetUiScreenshotTarget(swapchain->GetWidth(), swapchain->GetHeight()))
             {
                 // cleared once up front, a render pass restart (texture transitions) must load, not clear again
@@ -628,7 +680,7 @@ namespace ImGui::RHI
                 pso.render_target_swapchain         = nullptr;
                 pso.render_target_color_textures[0] = capture;
                 pso.clear_color[0]                  = rhi_color_load;
-                draw_pass("imgui_screenshot", false, false, true);
+                draw_pass("imgui_screenshot", false, false, true, false);
                 pso.render_target_color_textures[0] = nullptr;
                 Renderer::SetUiScreenshotRecorded();
             }

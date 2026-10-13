@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../rhi/RHI_CommandList.h"
 #include "../rhi/RHI_Implementation.h"
 #include "../rhi/RHI_SwapChain.h"
+#include "../rhi/RHI_FrameGeneration.h"
 #include "../core/ThreadPool.h"
 #include "../core/Timer.h"
 #include "../core/Window.h"
@@ -92,6 +93,12 @@ namespace spartan
         constexpr double fps_update_interval_sec = 0.25;
         double fps_elapsed_sec = 0.0;
         uint32_t fps_frame_count = 0;
+
+        // frames ffx interpolated in the same window, rendered plus generated is what the display receives
+        float m_fps_generated          = 0.0f;
+        uint64_t fps_generated_start   = 0;
+        float latency_published_ms     = 0.0f;
+        float latency_hold_published_ms = 0.0f;
 
         // every presented frame, including pacing, feeds the overlay graph and the percentile lows
         const uint32_t frame_history_size = 512;
@@ -331,6 +338,10 @@ namespace spartan
             CaptureColumn_GpuCalibrated,
             CaptureColumn_CalibrationDeviationMs,
             CaptureColumn_InvalidGpuScopes,
+            CaptureColumn_FpsGenerated,
+            CaptureColumn_FpsPresented,
+            CaptureColumn_InputLatencyMs,
+            CaptureColumn_FrameGenerationLatencyMs,
             CaptureColumn_Count
         };
 
@@ -753,6 +764,14 @@ namespace spartan
                 format_float(m_fps);
             fields[CaptureColumn_FpsLimit] =
                 format_float(Timer::GetFpsLimit());
+            fields[CaptureColumn_FpsGenerated] =
+                format_float(m_fps_generated);
+            fields[CaptureColumn_FpsPresented] =
+                format_float(m_fps + m_fps_generated);
+            fields[CaptureColumn_InputLatencyMs] =
+                format_float(latency_published_ms);
+            fields[CaptureColumn_FrameGenerationLatencyMs] =
+                format_float(latency_hold_published_ms);
             fields[CaptureColumn_CpuStutter] =
                 is_stuttering_cpu ? "1" : "0";
             fields[CaptureColumn_GpuStutter] =
@@ -1037,6 +1056,9 @@ namespace spartan
             bool input_valid = false;
             double qpc_to_ms = 0.0;
             float milliseconds = 0.0f;
+            // frame generation presents the interpolated frame first and the rendered one half a rendered frame later,
+            // the display clocks only see the present call, so that hold is added, the interpolation gpu time is not
+            float hold_ms = 0.0f;
             bool valid = false;
             bool display_clock = false;
             bool logged = false;
@@ -1079,7 +1101,7 @@ namespace spartan
                 {
                     return;
                 }
-                const double ms = static_cast<double>(display_qpc - static_cast<uint64_t>(sample_qpc)) * qpc_to_ms;
+                const double ms = static_cast<double>(display_qpc - static_cast<uint64_t>(sample_qpc)) * qpc_to_ms + static_cast<double>(hold_ms);
                 if (ms < 0.5 || ms > 500.0)
                 {
                     return;
@@ -1368,7 +1390,8 @@ namespace spartan
             "ram_process_mb,ram_available_mb,"
             "ram_total_mb,api,capture_mode,"
             "gpu_timing_enabled,gpu_timing_valid,"
-            "cpu_scope,gpu_span_ms,gpu_calibrated,calibration_deviation_ms,invalid_gpu_scopes\n";
+            "cpu_scope,gpu_span_ms,gpu_calibrated,calibration_deviation_ms,invalid_gpu_scopes,"
+            "fps_generated,fps_presented,input_latency_ms,frame_generation_latency_ms\n";
         if (!write_capture_buffer())
         {
             close_capture();
@@ -1437,9 +1460,13 @@ namespace spartan
         {
             return;
         }
+        input_latency.hold_ms     = m_fps_generated > 0.0f && m_fps > 0.0f ? 500.0f / m_fps : 0.0f;
+        latency_published_ms      = input_latency.valid ? input_latency.milliseconds : 0.0f;
+        latency_hold_published_ms = input_latency.hold_ms;
         input_latency.remember_image(image_index);
 #if defined(API_GRAPHICS_D3D12)
-        if (dxgi_swapchain != nullptr && input_latency.poll_dxgi(dxgi_swapchain))
+        // the ffx proxy swapchain presents from its own thread, its present counts do not match ours
+        if (dxgi_swapchain != nullptr && !RHI_FrameGeneration::IsActive() && input_latency.poll_dxgi(dxgi_swapchain))
         {
             return;
         }
@@ -1462,6 +1489,11 @@ namespace spartan
     bool Profiler::HasInputLatency()
     {
         return input_latency.valid;
+    }
+
+    float Profiler::GetFrameGenerationLatencyMs()
+    {
+        return input_latency.hold_ms;
     }
 
     void Profiler::FrameStart()
@@ -1540,9 +1572,12 @@ namespace spartan
             fps_frame_count++;
             if (fps_elapsed_sec >= fps_update_interval_sec)
             {
-                m_fps = static_cast<float>(fps_frame_count / fps_elapsed_sec);
-                fps_elapsed_sec = 0.0;
-                fps_frame_count = 0;
+                const uint64_t generated = RHI_FrameGeneration::GetGeneratedFrameCount();
+                m_fps                    = static_cast<float>(fps_frame_count / fps_elapsed_sec);
+                m_fps_generated          = static_cast<float>(static_cast<double>(generated - fps_generated_start) / fps_elapsed_sec);
+                fps_generated_start      = generated;
+                fps_elapsed_sec          = 0.0;
+                fps_frame_count          = 0;
             }
 
             frame_history_ms[frame_history_head] = static_cast<float>(delta_sec * 1000.0);
@@ -1924,6 +1959,21 @@ namespace spartan
         return m_fps;
     }
 
+    float Profiler::GetFpsGenerated()
+    {
+        return m_fps_generated;
+    }
+
+    float Profiler::GetFpsPresented()
+    {
+        return m_fps + m_fps_generated;
+    }
+
+    bool Profiler::IsFrameGenerating()
+    {
+        return m_fps_generated > 0.0f;
+    }
+
     float Profiler::GetUpdateInterval()
     {
         return profiling_interval_sec;
@@ -2045,6 +2095,11 @@ namespace spartan
             float gpu_peak_ms     = 0.0f;
             float latency_ms      = 0.0f;
             bool latency_valid    = false;
+            float fps_rendered    = 0.0f;
+            float fps_generated   = 0.0f;
+            float fg_latency_ms   = 0.0f;
+            uint32_t presents     = 1;
+            bool generating       = false;
             bool gpu_valid        = false;
             bool capped           = false;
             uint64_t frame        = 0;
@@ -2168,9 +2223,15 @@ namespace spartan
 
         void refresh_snapshot(OverlaySnapshot& snapshot, const bool has_samples)
         {
-            snapshot.fps      = m_fps;
-            snapshot.frame_ms = m_fps > 0.0f ? 1000.0f / m_fps : 0.0f;
-            snapshot.frame    = Renderer::GetFrameNumber();
+            // the headline is what the display receives, frame time and the meters stay per rendered frame
+            snapshot.generating    = m_fps_generated > 0.0f;
+            snapshot.fps_rendered  = m_fps;
+            snapshot.fps_generated = m_fps_generated;
+            snapshot.fps           = m_fps + m_fps_generated;
+            snapshot.frame_ms      = m_fps > 0.0f ? 1000.0f / m_fps : 0.0f;
+            snapshot.frame         = Renderer::GetFrameNumber();
+            snapshot.presents      = Timer::GetPresentsPerFrame();
+            snapshot.fg_latency_ms = input_latency.hold_ms;
 
             // the budget is whatever the frame is paced to, an unlocked frame is judged against the display
             const FpsLimitType limit_type = Timer::GetFpsLimitType();
@@ -2179,7 +2240,7 @@ namespace spartan
             {
                 snapshot.target_hz = 60.0f;
             }
-            snapshot.budget_ms = 1000.0f / snapshot.target_hz;
+            snapshot.budget_ms = 1000.0f * static_cast<float>(snapshot.presents) / snapshot.target_hz;
 
             // percentile lows describe stutter far better than a min that is dominated by one hitch
             static vector<float> sorted;
@@ -2359,7 +2420,12 @@ namespace spartan
             text(font_large, buffer, left, y, healthy ? col::text : status);
 
             const float baseline = y + font_large->GetAscent();
-            text(font_small, "FPS", left + font_large->GetTextWidth(buffer) + px(5.0f), baseline - font_small->GetAscent(), col::muted);
+            const float fps_x    = left + font_large->GetTextWidth(buffer) + px(5.0f);
+            text(font_small, "FPS", fps_x, baseline - font_small->GetAscent(), col::muted);
+            if (snapshot.generating)
+            {
+                text(font_small, "FG", fps_x + font_small->GetTextWidth("FPS", false) + px(5.0f), baseline - font_small->GetAscent(), col::accent);
+            }
 
             snprintf(buffer, sizeof(buffer), "%.2f ms", snapshot.frame_ms);
             text_right(font_body, buffer, right, y, col::text);
@@ -2401,6 +2467,16 @@ namespace spartan
                 text(font_small, value, x + font_small->GetTextWidth(label, false) + gap, y, col::text);
             };
 
+            // frame generation splits the headline into the frames the renderer made and the ones ffx interpolated
+            if (snapshot.generating)
+            {
+                snprintf(buffer, sizeof(buffer), "%.0f", snapshot.fps_rendered);
+                stat("RENDERED", buffer, left, 0.0f);
+                snprintf(buffer, sizeof(buffer), "%.0f", snapshot.fps_generated);
+                stat("GENERATED", buffer, right, 1.0f);
+                y += font_small->GetLineHeight() + px(6.0f);
+            }
+
             snprintf(buffer, sizeof(buffer), "%.0f", snapshot.low_1_fps);
             stat("1% LOW", buffer, left, 0.0f);
             snprintf(buffer, sizeof(buffer), "%.0f", snapshot.low_01_fps);
@@ -2414,7 +2490,14 @@ namespace spartan
         // frame time graph, newest frame on the right, bars are only colored when they miss the budget
         {
             text(font_small, "FRAME TIME", left, y, col::dim);
-            snprintf(buffer, sizeof(buffer), "budget %.1f ms  |  %.0f Hz", snapshot.budget_ms, snapshot.target_hz);
+            if (snapshot.presents > 1)
+            {
+                snprintf(buffer, sizeof(buffer), "budget %.1f ms  |  %.0f Hz / %u", snapshot.budget_ms, snapshot.target_hz, snapshot.presents);
+            }
+            else
+            {
+                snprintf(buffer, sizeof(buffer), "budget %.1f ms  |  %.0f Hz", snapshot.budget_ms, snapshot.target_hz);
+            }
             text_right(font_small, buffer, right, y, col::dim);
             y += font_small->GetLineHeight() + px(5.0f);
 
@@ -2469,6 +2552,14 @@ namespace spartan
             }
             text(font_small, "LATENCY", left, center_top(font_small, mid), col::muted);
             text_right(font_body, buffer, right, center_top(font_body, mid), snapshot.latency_valid ? col::text : col::dim);
+
+            // the share frame generation adds by holding each rendered frame back, already part of the total
+            if (snapshot.generating && snapshot.latency_valid)
+            {
+                char hold[32];
+                snprintf(hold, sizeof(hold), "incl. FG +%.1f ms", snapshot.fg_latency_ms);
+                text(font_small, hold, left + font_small->GetTextWidth("LATENCY", false) + px(8.0f), center_top(font_small, mid), col::dim);
+            }
             y += row_height + px(6.0f);
         }
 

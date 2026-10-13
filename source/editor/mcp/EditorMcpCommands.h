@@ -48,4 +48,5 @@ namespace editor_mcp
     // one translation unit per widget, each registers the commands that drive it
     void register_asset_viewer(Editor* editor);
     void register_sequencer(Editor* editor);
+    void register_tree_creator(Editor* editor);
 }

@@ -10,6 +10,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "WorldHelpers.h"
 #include "World.h"
 #include "Entity.h"
+#include "Prefab.h"
 #include "components/Render.h"
 #include "components/Physics.h"
 #include "components/Terrain.h"
@@ -117,6 +118,9 @@ namespace spartan
     {
         // generated foliage meshes and folder materials, cached so a respawn does not rebuild them
         unordered_map<string, shared_ptr<Mesh>> builtin_meshes;
+
+        // prefab scatter paths, the mesh its parts render and the id of the prototype that carries them
+        unordered_map<string, pair<Mesh*, uint64_t>> prefab_meshes;
         unordered_map<string, shared_ptr<Material>> scatter_materials;
 
         shared_ptr<Mesh> build_grass_blade_mesh()
@@ -268,6 +272,66 @@ namespace spartan
                 builtin_meshes[path] = mesh;
 
                 return mesh.get();
+            }
+
+            // a prefab (the tree creator exports these) becomes the prototype of the mesh its parts render,
+            // only the renderable parts survive, a collider child would spawn a body at every tile origin
+            if (FileSystem::GetExtensionFromFilePath(path) == EXTENSION_PREFAB)
+            {
+                auto it = prefab_meshes.find(path);
+                if (it != prefab_meshes.end())
+                {
+                    Entity* cached = World::GetEntityById(it->second.second);
+                    if (cached && it->second.first->GetRootEntity() == cached)
+                    {
+                        return it->second.first;
+                    }
+                    prefab_meshes.erase(it);
+                }
+
+                Entity* prototype = World::CreateEntity();
+                prototype->SetObjectName(FileSystem::GetFileNameWithoutExtensionFromFilePath(path));
+                prototype->SetTransient(true);
+                prototype->SetActive(false);
+                if (!Prefab::LoadFromFile(path, prototype))
+                {
+                    World::RemoveEntity(prototype);
+                    return nullptr;
+                }
+
+                Mesh* mesh = nullptr;
+                vector<Entity*> doomed;
+                for (Entity* child : prototype->GetChildren())
+                {
+                    Render* render = child->GetComponent<Render>();
+                    if (!render || !render->GetMesh())
+                    {
+                        doomed.push_back(child);
+                        continue;
+                    }
+                    if (!mesh)
+                    {
+                        mesh = render->GetMesh();
+                    }
+                }
+                for (Entity* child : doomed)
+                {
+                    World::RemoveEntity(child);
+                }
+                if (prototype->GetComponent<Physics>())
+                {
+                    prototype->RemoveComponent<Physics>();
+                }
+
+                if (!mesh)
+                {
+                    World::RemoveEntity(prototype);
+                    return nullptr;
+                }
+
+                mesh->SetRootEntity(prototype);
+                prefab_meshes[path] = { mesh, prototype->GetObjectId() };
+                return mesh;
             }
 
             const uint32_t flags  = Mesh::GetDefaultFlags() |
@@ -1602,6 +1666,7 @@ namespace spartan
         // procedural grass references a mesh and a material owned by these vectors,
         // the caller is expected to disable it first so the renderer drops its references
         builtin_meshes.clear();
+        prefab_meshes.clear();
         scatter_materials.clear();
         scatter_material_owners.clear();
         scatter_layer_materials.clear();

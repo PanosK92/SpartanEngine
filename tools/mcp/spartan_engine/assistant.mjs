@@ -33,6 +33,11 @@ const read_only_mode = process.argv.includes("--read-only") || ["1", "true", "ye
 const mutating_tools = new Set([
   "engine_set_mode",
   "cvar_set",
+  "tree_creator_open",
+  "tree_generate",
+  "tree_preview_capture",
+  "tree_export",
+  "tree_species_save",
   "asset_viewer_open",
   "asset_viewer_select",
   "asset_viewer_preview_entity",

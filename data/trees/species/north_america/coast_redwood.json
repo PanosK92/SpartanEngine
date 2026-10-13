@@ -1,0 +1,20 @@
+{
+  "id": "coast_redwood",
+  "name": "Coast Redwood",
+  "scientific": "Sequoia sempervirens",
+  "region": "North America",
+  "description": "The giant of the California fog belt. A colossal, column straight trunk of soft, fibrous red bark, bare for half its height, under a narrow spire of flat needle sprays.",
+  "class": "conifer",
+  "evergreen": true,
+  "budget": 14000,
+  "height": 60.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.02, "taper": 0.05, "flare": 0.7, "lean": 1, "gnarl": 0.06, "segments": 16 },
+  "crown": { "shape": "tapered_cylindrical", "base": 0.45, "width": 0.14 },
+  "levels": [
+    { "count": 70, "start": 0.42, "end": 0.98, "length": 0.32, "length_var": 0.25, "down_angle": 92, "down_angle_tip": 60, "down_angle_var": 10, "rotate": 137, "curve": -15, "curve_var": 15, "gravity": 0.25, "radius_ratio": 0.3, "segments": 5 },
+    { "count": 9, "start": 0.15, "end": 0.95, "length": 0.4, "length_var": 0.2, "down_angle": 65, "down_angle_var": 10, "planar": true, "curve_var": 10, "gravity": 0.3, "radius_ratio": 0.5, "segments": 3 }
+  ],
+  "leaves": { "shape": "needle", "size": 0.02, "card_size": 1.2, "density": 3.2, "start": 0.05, "tilt": 0.35, "per_card": 12, "color": [0.06, 0.13, 0.05], "color_back": [0.13, 0.20, 0.10], "color_var": 0.05, "translucency": 0.25 },
+  "bark": { "style": "fibrous", "color": [0.293, 0.156, 0.098], "color_dark": [0.091, 0.046, 0.033], "scale": 1.2, "roughness": 0.95 }
+}

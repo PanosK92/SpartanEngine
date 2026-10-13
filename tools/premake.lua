@@ -265,7 +265,7 @@ function spartan_project_configuration(runtime, minimal)
                 "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/openxr",
                 "../third_party/lua", "../third_party/lua/lua",
                 "../third_party/nrd/Include", "../third_party/nrd/Integration", "../third_party/nri/Include",
-                "../third_party/dlss", "../third_party/xess",
+                "../third_party/dlss", "../third_party/xess", "../third_party/fidelityfx",
                 "../third_party/steamworks/public",
                 "../third_party/lzma_sdk/spartan"
             }

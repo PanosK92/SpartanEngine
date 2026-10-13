@@ -26,6 +26,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "widgets/RenderOptions.h"
 #include "widgets/TextureViewer.h"
 #include "widgets/AssetViewer.h"
+#include "widgets/TreeCreator.h"
 #include "mcp/McpAssistant.h"
 //===================================
 
@@ -49,5 +50,6 @@ void Editor::RegisterWidgets()
     AddWidget<RenderOptions>();
     AddWidget<TextureViewer>();
     AddWidget<AssetViewer>();
+    AddWidget<TreeCreator>();
     AddWidget<McpAssistant>();
 }

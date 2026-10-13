@@ -1,0 +1,21 @@
+{
+  "id": "european_beech",
+  "name": "European Beech",
+  "scientific": "Fagus sylvatica",
+  "region": "Central Europe",
+  "description": "The cathedral tree of the German and Danish forests. A smooth, elephant grey trunk carries rising limbs and a tall dome of glossy oval leaves layered on flat sprays.",
+  "class": "broadleaf",
+  "evergreen": false,
+  "budget": 13000,
+  "height": 28.0,
+  "height_var": 0.12,
+  "trunk": { "radius": 0.025, "taper": 0.1, "flare": 0.55, "lean": 2, "gnarl": 0.12, "segments": 12, "stems": 2, "split_height": 0.4, "split_angle": 18 },
+  "crown": { "shape": "tend_flame", "base": 0.35, "width": 0.45 },
+  "levels": [
+    { "count": 16, "start": 0.3, "end": 0.98, "length": 0.48, "length_var": 0.2, "down_angle": 52, "down_angle_tip": 30, "down_angle_var": 12, "curve": 18, "curve_var": 15, "gravity": 0.12, "radius_ratio": 0.55, "segments": 7 },
+    { "count": 10, "start": 0.15, "end": 1.0, "length": 0.45, "length_var": 0.2, "down_angle": 55, "down_angle_var": 12, "planar": true, "curve": -8, "curve_var": 12, "gravity": 0.2, "radius_ratio": 0.5, "segments": 4 },
+    { "count": 6, "start": 0.2, "end": 1.0, "length": 0.4, "down_angle": 50, "down_angle_var": 15, "planar": true, "gravity": 0.15, "radius_ratio": 0.6, "segments": 3 }
+  ],
+  "leaves": { "shape": "elliptic", "size": 0.08, "card_size": 0.6, "density": 1.25, "start": 0.25, "tilt": 0.15, "per_card": 12, "color": [0.10, 0.23, 0.04], "color_back": [0.24, 0.36, 0.12], "spring_color": [0.34, 0.52, 0.10], "autumn_color": [0.60, 0.30, 0.06], "autumn_color_b": [0.52, 0.22, 0.05], "color_var": 0.07, "translucency": 0.55 },
+  "bark": { "style": "smooth", "color": [0.273, 0.273, 0.260], "color_dark": [0.117, 0.117, 0.111], "scale": 1.2, "roughness": 0.7 }
+}

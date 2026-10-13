@@ -1,0 +1,21 @@
+{
+  "id": "ginkgo",
+  "name": "Ginkgo",
+  "scientific": "Ginkgo biloba",
+  "region": "Asia",
+  "description": "The temple tree of China, unchanged for 200 million years. A straight trunk with sparse, stiff, ascending limbs and clusters of fan shaped leaves that turn butter yellow all at once.",
+  "class": "broadleaf",
+  "evergreen": false,
+  "budget": 11000,
+  "height": 22.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.02, "taper": 0.08, "flare": 0.4, "lean": 2, "gnarl": 0.12, "segments": 12 },
+  "crown": { "shape": "tend_flame", "base": 0.25, "width": 0.38 },
+  "levels": [
+    { "count": 20, "start": 0.22, "end": 0.98, "length": 0.42, "length_var": 0.3, "down_angle": 45, "down_angle_tip": 30, "down_angle_var": 15, "rotate": 137, "curve": 10, "curve_var": 20, "gravity": 0.05, "radius_ratio": 0.5, "segments": 5 },
+    { "count": 7, "start": 0.2, "end": 1.0, "length": 0.42, "length_var": 0.25, "down_angle": 50, "down_angle_var": 18, "curve_var": 20, "gravity": 0.1, "radius_ratio": 0.5, "segments": 3 },
+    { "count": 4, "start": 0.3, "end": 1.0, "length": 0.38, "down_angle": 45, "down_angle_var": 18, "radius_ratio": 0.55, "segments": 2 }
+  ],
+  "leaves": { "shape": "heart", "size": 0.06, "card_size": 0.45, "density": 1.7, "start": 0.2, "tilt": 0.45, "per_card": 10, "color": [0.20, 0.32, 0.06], "color_back": [0.30, 0.40, 0.12], "spring_color": [0.36, 0.52, 0.12], "autumn_color": [0.88, 0.70, 0.08], "autumn_color_b": [0.82, 0.62, 0.06], "color_var": 0.06, "translucency": 0.55 },
+  "bark": { "style": "furrowed", "color": [0.234, 0.215, 0.189], "color_dark": [0.072, 0.065, 0.059], "scale": 1.0, "roughness": 0.9 }
+}

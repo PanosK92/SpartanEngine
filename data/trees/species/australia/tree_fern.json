@@ -1,0 +1,18 @@
+{
+  "id": "tree_fern",
+  "name": "Soft Tree Fern",
+  "scientific": "Dicksonia antarctica",
+  "region": "Australia",
+  "description": "The fern of the Tasmanian gullies. A thick, shaggy brown stem of matted roots topped by a wide, symmetric rosette of long, arching, finely divided fronds.",
+  "class": "palm",
+  "evergreen": true,
+  "budget": 8000,
+  "height": 4.5,
+  "height_var": 0.25,
+  "trunk": { "radius": 0.055, "taper": 0.05, "flare": 0.25, "lean": 4, "gnarl": 0.15, "segments": 10 },
+  "crown": { "shape": "spherical", "base": 0.85, "width": 0.9 },
+  "levels": [],
+  "palm": { "fronds": 18, "frond_length": 2.4, "droop": 0.55 },
+  "leaves": { "shape": "pinnate", "size": 0.3, "card_size": 1.0, "density": 1.0, "start": 0.9, "tilt": 0.3, "per_card": 1, "color": [0.12, 0.24, 0.05], "color_back": [0.22, 0.32, 0.10], "spring_color": [0.30, 0.45, 0.08], "color_var": 0.06, "translucency": 0.5 },
+  "bark": { "style": "fibrous", "color": [0.182, 0.117, 0.072], "color_dark": [0.052, 0.033, 0.020], "scale": 1.4, "roughness": 0.98 }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "olive",
+  "name": "Olive",
+  "scientific": "Olea europaea",
+  "region": "Greece",
+  "description": "The tree of Attica. A short, twisted and often hollow trunk that splits low into a few heavy limbs, carrying a loose, silver green crown of narrow leaves.",
+  "class": "broadleaf",
+  "evergreen": true,
+  "budget": 11000,
+  "height": 7.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.065, "taper": 0.35, "flare": 0.75, "lean": 9, "gnarl": 0.75, "twist": 0.9, "segments": 10, "stems": 3, "split_height": 0.28, "split_angle": 32 },
+  "crown": { "shape": "hemispherical", "base": 0.35, "width": 0.65 },
+  "levels": [
+    { "count": 9, "start": 0.3, "end": 1.0, "length": 0.55, "length_var": 0.25, "down_angle": 60, "down_angle_tip": 35, "down_angle_var": 20, "curve": 25, "curve_var": 40, "gravity": 0.15, "radius_ratio": 0.6, "segments": 6 },
+    { "count": 8, "start": 0.2, "end": 1.0, "length": 0.55, "length_var": 0.25, "down_angle": 50, "down_angle_tip": 35, "down_angle_var": 20, "curve": -10, "curve_var": 30, "gravity": 0.25, "radius_ratio": 0.55, "segments": 4 },
+    { "count": 6, "start": 0.25, "end": 1.0, "length": 0.45, "down_angle": 45, "down_angle_var": 20, "curve_var": 20, "gravity": 0.3, "radius_ratio": 0.6, "segments": 3 }
+  ],
+  "leaves": { "shape": "lanceolate", "size": 0.06, "card_size": 0.7, "density": 1.3, "start": 0.25, "tilt": 0.35, "per_card": 16, "color": [0.13, 0.17, 0.08], "color_back": [0.32, 0.35, 0.26], "spring_color": [0.20, 0.25, 0.12], "color_var": 0.08, "flowers": true, "flower_color": [0.85, 0.85, 0.70], "translucency": 0.35 },
+  "bark": { "style": "twisted", "color": [0.21, 0.19, 0.16], "color_dark": [0.05, 0.045, 0.04], "scale": 0.9, "roughness": 0.92 }
+}

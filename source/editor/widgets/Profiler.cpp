@@ -756,13 +756,21 @@ void Profiler::OnTickVisible()
     const bool gpu_known = capture.has_gpu && capture.calibrated;
     char frame_label[48];
     snprintf(frame_label, sizeof(frame_label), "Frame %llu", static_cast<unsigned long long>(capture.revision));
-    editor_ui::stat_strip("##frame_stats", {
+    vector<editor_ui::Stat> frame_stats = {
         { editor_ui::format::milliseconds(capture.wall) + "  " + fps_text(capture.wall), frame_label, budget_tint(capture.wall) },
         { editor_ui::format::milliseconds(capture.cpu), "CPU elapsed", lane_tint(0) },
         { gpu_known ? editor_ui::format::milliseconds(capture.gpu) : string("n/a"), "GPU span", lane_tint(1) },
         { editor_ui::format::milliseconds(capture.wait), "Waiting", ImGui::Style::color_text_muted },
         { editor_ui::format::milliseconds(capture.pacing), "Pacing", ImGui::Style::color_text_muted }
-    });
+    };
+    // frame timings are per rendered frame, frame generation puts more frames on the display than that
+    if (spartan::Profiler::IsFrameGenerating())
+    {
+        char displayed[48];
+        snprintf(displayed, sizeof(displayed), "%.0f fps  +%.1f ms", spartan::Profiler::GetFpsPresented(), spartan::Profiler::GetFrameGenerationLatencyMs());
+        frame_stats.insert(frame_stats.begin() + 1, editor_ui::Stat{ displayed, "Displayed (frame gen)", ImGui::Style::color_text_muted });
+    }
+    editor_ui::stat_strip("##frame_stats", frame_stats);
     ImGui::SetItemTooltip("%s", "CPU elapsed includes the waits shown next to it, it is not core utilization. GPU span runs from the first to the last GPU pass including gaps, it is not hardware utilization.");
 
     ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(2.0f)));

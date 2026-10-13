@@ -222,9 +222,15 @@ namespace spartan
         void ClearAtlasRectangles();
         math::BoundingBox GetBoundingBox() const { return m_bounding_box; }
 
+        // half size in meters of the near directional cascade, small scenes trade coverage for texel density
+        void SetCascadeNearExtent(const float extent);
+        float GetCascadeNearExtent() const { return m_cascade_near_extent; }
+
+        // directional cascades fit the view camera and the atlas rectangles, a view that changes either refits them
+        void UpdateMatrices();
+
     private:
         void ValidateSettings();
-        void UpdateMatrices();
         void UpdateViewMatrix();
         void UpdateProjectionMatrix();
         void UpdateBoundingBox();
@@ -252,6 +258,7 @@ namespace spartan
         float m_draw_distance            = 512.0f; // max distance at which light will affect objects (meters)
         float m_distance_shadows         = 64.0f;  // max distance at which shadow maps are rendered (meters)
         float m_distance_volumetric      = 32.0f;  // max distance at which volumetric scattering is computed (meters)
+        float m_cascade_near_extent      = 64.0f;
 
         // matrices/frustums per slice/face/cascade
         std::array<math::Frustum, 6> m_frustums;

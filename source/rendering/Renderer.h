@@ -99,6 +99,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_hdr;
     extern TConsoleVar<float> cvar_gamma;
     extern TConsoleVar<float> cvar_vsync;
+    extern TConsoleVar<float> cvar_frame_generation;
     extern TConsoleVar<float> cvar_variable_rate_shading;
     extern TConsoleVar<float> cvar_mesh_shaders;
     extern TConsoleVar<float> cvar_resolution_scale;
@@ -304,6 +305,8 @@ namespace spartan
         bool IsSecondaryViewReady();
         // true only while the frame currently being recorded belongs to a secondary view
         bool IsSecondaryViewActive();
+        // the active view renders both eyes, a secondary view never does
+        bool IsStereoView();
         // ray traced shadows are live this frame, the shadow atlas is neither rendered nor read
         bool IsRayTracedShadowsActive();
         void InvalidateSecondaryView();

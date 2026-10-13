@@ -2360,52 +2360,6 @@ namespace spartan
             }
         }
         TickCarPicker();
-
-        if (IsSpectated() && !m_cinematic)
-        {
-            Renderer::DrawString(
-                "SPECTATING   key / mouse  >  gamepad\n"
-                "Cars\tF3\tTouchpad\n"
-                "Light\tL\tDpadUp\n"
-                "View\tV\tTri\n"
-                "ReCam\tC\tR3\n"
-                "Look\tRClk\tRStick",
-                math::Vector2(0.006f, 0.03f));
-        }
-
-        if (m_is_occupied && !m_cinematic && m_ai_driver)
-        {
-            Renderer::DrawString(
-                "AI DRIVING   key / mouse  >  gamepad\n"
-                "Light\tL\tDpadUp\n"
-                "View\tV\tTri\n"
-                "ReCam\tC\tR3\n"
-                "Look\tRClk\tRStick",
-                math::Vector2(0.006f, 0.03f));
-        }
-
-        // osd controls cheat sheet, top left as tidy rows, each row reads action then keyboard or mouse then gamepad
-        if (m_is_occupied && !m_cinematic && !m_ai_driver)
-        {
-            Renderer::DrawString(
-                "CONTROLS   key / mouse  >  gamepad\n"
-                "Gas\tUp\tR2\n"
-                "Brake\tDown\tL2\n"
-                "Steer\tL/R\tLStick\n"
-                "Hbrk\tSpace\tCircle\n"
-                "Shift\tPgUp/Dn\tR1/L1\n"
-                "Auto/Man\t-\tDpadLeft\n"
-                "Telem/Cars\tF3\tTouchpad\n"
-                "Feedback\t-\tCreate\n"
-                "Light\tL\tDpadUp\n"
-                "View\tV\tTri\n"
-                "ReCam\tC\tR3\n"
-                "Look\tRClk\tRStick\n"
-                "Reset\tR\tCross\n"
-                "Summon\tH\tDpadDn\n"
-                "Exit\tE\tSquare",
-                math::Vector2(0.006f, 0.03f));
-        }
     }
 
     void Car::TickInput()

@@ -1063,6 +1063,8 @@ namespace spartan
             json += ",\"loading\":" + json_bool(ProgressTracker::IsLoading());
             json += ",\"minimized\":" + json_bool(!Engine::IsHeadless() && Window::IsMinimized());
             json += ",\"fps\":" + std::to_string(Profiler::GetFps());
+            json += ",\"fps_presented\":" + std::to_string(Profiler::GetFpsPresented());
+            json += ",\"frame_generation\":" + json_bool(Profiler::IsFrameGenerating());
             json += ",\"frame_ms\":" + std::to_string(Profiler::GetFrameDurationMs());
             json += ",\"time_seconds\":" + std::to_string(Timer::GetTimeSec());
             json += ",\"frame_number\":" + std::to_string(Renderer::GetFrameNumber());

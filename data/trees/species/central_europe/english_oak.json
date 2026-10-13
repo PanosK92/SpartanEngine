@@ -1,0 +1,21 @@
+{
+  "id": "english_oak",
+  "name": "English Oak",
+  "scientific": "Quercus robur",
+  "region": "Central Europe",
+  "description": "The field oak of old hedgerows. A short massive trunk opens into heavy, crooked, almost horizontal limbs and a broad, irregular crown of lobed leaves.",
+  "class": "broadleaf",
+  "evergreen": false,
+  "budget": 13000,
+  "height": 22.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.04, "taper": 0.22, "flare": 0.6, "lean": 3, "gnarl": 0.4, "twist": 0.1, "segments": 12, "stems": 3, "split_height": 0.32, "split_angle": 35 },
+  "crown": { "shape": "spherical", "base": 0.3, "width": 0.6 },
+  "levels": [
+    { "count": 14, "start": 0.25, "end": 0.97, "length": 0.55, "length_var": 0.25, "down_angle": 70, "down_angle_tip": 40, "down_angle_var": 18, "curve": 30, "curve_var": 45, "gravity": 0.1, "radius_ratio": 0.62, "segments": 7 },
+    { "count": 9, "start": 0.15, "end": 1.0, "length": 0.5, "length_var": 0.25, "down_angle": 55, "down_angle_tip": 35, "down_angle_var": 20, "curve": -15, "curve_var": 40, "gravity": 0.15, "radius_ratio": 0.55, "segments": 4 },
+    { "count": 6, "start": 0.2, "end": 1.0, "length": 0.42, "down_angle": 45, "down_angle_var": 22, "curve_var": 30, "gravity": 0.15, "radius_ratio": 0.6, "segments": 3 }
+  ],
+  "leaves": { "shape": "lobed", "size": 0.1, "card_size": 0.65, "density": 1.1, "start": 0.3, "tilt": 0.5, "per_card": 9, "color": [0.10, 0.20, 0.05], "color_back": [0.22, 0.30, 0.12], "spring_color": [0.30, 0.42, 0.10], "autumn_color": [0.45, 0.28, 0.07], "autumn_color_b": [0.38, 0.22, 0.06], "color_var": 0.09, "translucency": 0.4 },
+  "bark": { "style": "furrowed", "color": [0.215, 0.195, 0.169], "color_dark": [0.052, 0.046, 0.039], "scale": 1.0, "roughness": 0.95 }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "baobab",
+  "name": "Baobab",
+  "scientific": "Adansonia digitata",
+  "region": "Africa",
+  "description": "The upside down tree of the savanna. An enormous, bottle shaped, smooth grey trunk ends abruptly in a short tangle of thick, root like branches with sparse hand shaped leaves.",
+  "class": "broadleaf",
+  "evergreen": false,
+  "budget": 11000,
+  "height": 18.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.16, "taper": 0.55, "flare": 0.4, "lean": 1, "gnarl": 0.2, "twist": 0.05, "segments": 16 },
+  "crown": { "shape": "umbrella", "base": 0.62, "width": 0.65 },
+  "levels": [
+    { "count": 9, "start": 0.72, "end": 1.0, "length": 0.42, "length_var": 0.25, "down_angle": 55, "down_angle_tip": 40, "down_angle_var": 18, "curve": 30, "curve_var": 50, "gravity": 0.05, "radius_ratio": 0.42, "segments": 6 },
+    { "count": 6, "start": 0.3, "end": 1.0, "length": 0.5, "length_var": 0.25, "down_angle": 50, "down_angle_var": 20, "curve": 25, "curve_var": 45, "radius_ratio": 0.5, "segments": 4 },
+    { "count": 4, "start": 0.3, "end": 1.0, "length": 0.4, "down_angle": 45, "down_angle_var": 20, "curve_var": 30, "radius_ratio": 0.6, "segments": 3 }
+  ],
+  "leaves": { "shape": "palmate", "size": 0.12, "card_size": 0.6, "density": 1.2, "start": 0.4, "tilt": 0.4, "per_card": 6, "color": [0.12, 0.24, 0.06], "color_back": [0.24, 0.32, 0.12], "spring_color": [0.26, 0.40, 0.08], "autumn_color": [0.50, 0.42, 0.10], "autumn_color_b": [0.45, 0.32, 0.08], "color_var": 0.08, "translucency": 0.45 },
+  "bark": { "style": "smooth", "color": [0.312, 0.286, 0.260], "color_dark": [0.156, 0.143, 0.130], "scale": 2.0, "roughness": 0.8 }
+}

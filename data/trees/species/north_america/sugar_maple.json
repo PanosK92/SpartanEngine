@@ -1,0 +1,21 @@
+{
+  "id": "sugar_maple",
+  "name": "Sugar Maple",
+  "scientific": "Acer saccharum",
+  "region": "North America",
+  "description": "The maple of Vermont and the Canadian flag. A grey furrowed trunk under a dense oval crown of lobed leaves that burn orange and red in the fall.",
+  "class": "broadleaf",
+  "evergreen": false,
+  "budget": 13000,
+  "height": 24.0,
+  "height_var": 0.12,
+  "trunk": { "radius": 0.024, "taper": 0.1, "flare": 0.45, "lean": 2, "gnarl": 0.15, "segments": 12, "stems": 2, "split_height": 0.38, "split_angle": 20 },
+  "crown": { "shape": "spherical", "base": 0.3, "width": 0.5 },
+  "levels": [
+    { "count": 16, "start": 0.28, "end": 0.98, "length": 0.48, "length_var": 0.2, "down_angle": 50, "down_angle_tip": 30, "down_angle_var": 12, "curve": 18, "curve_var": 18, "gravity": 0.1, "radius_ratio": 0.58, "segments": 7 },
+    { "count": 9, "start": 0.2, "end": 1.0, "length": 0.46, "length_var": 0.2, "down_angle": 50, "down_angle_var": 15, "curve": -5, "curve_var": 20, "gravity": 0.15, "radius_ratio": 0.55, "segments": 4 },
+    { "count": 6, "start": 0.25, "end": 1.0, "length": 0.4, "down_angle": 45, "down_angle_var": 15, "curve_var": 15, "gravity": 0.15, "radius_ratio": 0.6, "segments": 3 }
+  ],
+  "leaves": { "shape": "palmate", "size": 0.12, "card_size": 0.65, "density": 1.2, "start": 0.3, "tilt": 0.4, "per_card": 8, "color": [0.10, 0.23, 0.05], "color_back": [0.24, 0.34, 0.12], "spring_color": [0.32, 0.48, 0.10], "autumn_color": [0.80, 0.30, 0.04], "autumn_color_b": [0.72, 0.10, 0.04], "color_var": 0.1, "translucency": 0.55 },
+  "bark": { "style": "furrowed", "color": [0.247, 0.234, 0.215], "color_dark": [0.078, 0.072, 0.065], "scale": 1.1, "roughness": 0.9 }
+}

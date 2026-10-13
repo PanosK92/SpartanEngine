@@ -1,0 +1,21 @@
+{
+  "id": "scots_pine",
+  "name": "Scots Pine",
+  "scientific": "Pinus sylvestris",
+  "region": "Scandinavia",
+  "description": "The pine of the Swedish heath. A tall clean trunk, grey brown below and glowing orange above, with a high, flat topped crown of blue green needle tufts.",
+  "class": "conifer",
+  "evergreen": true,
+  "budget": 12000,
+  "height": 24.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.016, "taper": 0.06, "flare": 0.3, "lean": 4, "gnarl": 0.2, "twist": 0.05, "segments": 12 },
+  "crown": { "shape": "tend_flame", "base": 0.55, "width": 0.3 },
+  "levels": [
+    { "count": 18, "start": 0.55, "end": 0.98, "length": 0.4, "length_var": 0.3, "down_angle": 75, "down_angle_tip": 45, "down_angle_var": 15, "whorl": 3, "rotate": 110, "curve": 25, "curve_var": 30, "gravity": 0.05, "radius_ratio": 0.45, "segments": 6 },
+    { "count": 7, "start": 0.3, "end": 1.0, "length": 0.42, "length_var": 0.25, "down_angle": 50, "down_angle_var": 15, "curve": 20, "curve_var": 20, "radius_ratio": 0.55, "segments": 4 },
+    { "count": 4, "start": 0.4, "end": 1.0, "length": 0.4, "down_angle": 40, "down_angle_var": 15, "curve": 15, "radius_ratio": 0.6, "segments": 2 }
+  ],
+  "leaves": { "shape": "needle", "size": 0.05, "card_size": 0.9, "density": 3.0, "start": 0.35, "tilt": 0.3, "per_card": 10, "color": [0.10, 0.18, 0.10], "color_back": [0.18, 0.26, 0.18], "color_var": 0.06, "translucency": 0.25 },
+  "bark": { "style": "plated", "color": [0.358, 0.208, 0.117], "color_dark": [0.104, 0.065, 0.046], "scale": 0.9, "roughness": 0.88 }
+}

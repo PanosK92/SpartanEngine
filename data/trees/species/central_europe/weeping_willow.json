@@ -1,0 +1,21 @@
+{
+  "id": "weeping_willow",
+  "name": "Weeping Willow",
+  "scientific": "Salix babylonica",
+  "region": "Central Europe",
+  "description": "The riverbank willow. A short fissured trunk splits into arching limbs whose long whip like shoots hang straight down in curtains of narrow leaves.",
+  "class": "broadleaf",
+  "evergreen": false,
+  "budget": 13000,
+  "height": 14.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.045, "taper": 0.25, "flare": 0.55, "lean": 6, "gnarl": 0.35, "twist": 0.2, "segments": 10, "stems": 3, "split_height": 0.25, "split_angle": 30 },
+  "crown": { "shape": "spherical", "base": 0.25, "width": 0.75 },
+  "levels": [
+    { "count": 12, "start": 0.2, "end": 0.97, "length": 0.55, "length_var": 0.2, "down_angle": 50, "down_angle_tip": 30, "down_angle_var": 15, "curve": 45, "curve_var": 25, "gravity": 0.3, "radius_ratio": 0.6, "segments": 7 },
+    { "count": 12, "start": 0.2, "end": 1.0, "length": 0.75, "length_var": 0.2, "down_angle": 60, "down_angle_var": 15, "curve": 70, "curve_var": 20, "gravity": 2.4, "radius_ratio": 0.4, "segments": 7 },
+    { "count": 6, "start": 0.2, "end": 1.0, "length": 0.95, "length_var": 0.25, "down_angle": 25, "down_angle_var": 10, "gravity": 4.0, "radius_ratio": 0.45, "segments": 5 }
+  ],
+  "leaves": { "shape": "lanceolate", "size": 0.1, "card_size": 0.7, "density": 1.3, "start": 0.15, "tilt": 0.85, "per_card": 14, "color": [0.20, 0.32, 0.08], "color_back": [0.34, 0.42, 0.20], "spring_color": [0.40, 0.55, 0.12], "autumn_color": [0.60, 0.55, 0.12], "autumn_color_b": [0.50, 0.45, 0.10], "color_var": 0.06, "translucency": 0.55 },
+  "bark": { "style": "furrowed", "color": [0.234, 0.208, 0.169], "color_dark": [0.065, 0.052, 0.046], "scale": 1.2, "roughness": 0.92 }
+}

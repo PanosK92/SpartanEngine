@@ -62,6 +62,7 @@ namespace editor_mcp
     {
         register_asset_viewer(editor);
         register_sequencer(editor);
+        register_tree_creator(editor);
 
         // lists every editor window, or shows/hides (and optionally undocks, resizes with width + height, or moves with x + y, in pixels relative to the editor window) the one whose title matches, case insensitive
         add(

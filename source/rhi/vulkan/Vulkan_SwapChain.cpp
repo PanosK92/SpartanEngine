@@ -13,6 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Implementation.h"
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_Queue.h"
+#include "../RHI_FrameGeneration.h"
 #include "../display/Display.h"
 #include "../rendering/Renderer.h"
 #include "../../profiling/Profiler.h"
@@ -30,6 +31,18 @@ SP_WARNINGS_ON
 using namespace std;
 using namespace spartan::math;
 //============================
+
+// forward declarations from vulkan_framegeneration.cpp
+namespace spartan::frame_generation_vk
+{
+    bool owns(void* swapchain);
+    bool swapchain_replace(void** swapchain, const VkSwapchainCreateInfoKHR& create_info);
+    VkResult swapchain_recreate(void** swapchain, const VkSwapchainCreateInfoKHR& create_info);
+    void release();
+    VkResult get_swapchain_images(void* swapchain, uint32_t* count, VkImage* images);
+    VkResult acquire_next_image(void* swapchain, uint64_t timeout, VkSemaphore semaphore, uint32_t* image_index);
+    void set_hdr_metadata(void* swapchain, const VkHdrMetadataEXT* metadata);
+}
 
 namespace spartan
 {
@@ -63,6 +76,12 @@ namespace spartan
             hdr_metadata.minLuminance              = 0.0f;
             hdr_metadata.maxContentLightLevel      = 0.0f;
             hdr_metadata.maxFrameAverageLightLevel = 0.0f;
+
+            if (frame_generation_vk::owns(swapchain))
+            {
+                frame_generation_vk::set_hdr_metadata(swapchain, &hdr_metadata);
+                return;
+            }
 
             PFN_vkSetHdrMetadataEXT pfnVkSetHdrMetadataEXT = (PFN_vkSetHdrMetadataEXT)vkGetDeviceProcAddr(RHI_Context::device , "vkSetHdrMetadataEXT");
             SP_ASSERT(pfnVkSetHdrMetadataEXT != nullptr);
@@ -320,7 +339,14 @@ namespace spartan
 
         if (m_rhi_swapchain)
         {
-            vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), nullptr);
+            if (frame_generation_vk::owns(m_rhi_swapchain))
+            {
+                frame_generation_vk::release();
+            }
+            else
+            {
+                vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), nullptr);
+            }
             m_rhi_swapchain = nullptr;
         }
 
@@ -404,6 +430,17 @@ namespace spartan
             }
         }
 
+        // the frame generation context is sized to the swapchain, turning frame generation off also drops the ffx swapchain
+        if (frame_generation_vk::owns(m_rhi_swapchain))
+        {
+            RHI_FrameGeneration::OnSwapChainRecreate();
+            if (!m_frame_generation)
+            {
+                frame_generation_vk::release();
+                m_rhi_swapchain = nullptr;
+            }
+        }
+
         // match the surface extent when the platform locks it, using logical sdl size here causes vk_suboptimal_khr recreate loops under dpi scaling
         if (capabilities.currentExtent.width != UINT32_MAX)
         {
@@ -451,17 +488,44 @@ namespace spartan
             SP_ERROR_WINDOW("RivaTuner is running and may crash the engine. Please close RivaTuner and restart the engine.");
         }
 
-        SP_ASSERT_VK(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkSwapchainKHR*>(&m_rhi_swapchain)));
-   
-        // destroy old swapchain if it existed
-        if (create_info.oldSwapchain != VK_NULL_HANDLE)
+        if (frame_generation_vk::owns(m_rhi_swapchain))
         {
-            vkDestroySwapchainKHR(RHI_Context::device, create_info.oldSwapchain, nullptr);
+            SP_ASSERT_VK(frame_generation_vk::swapchain_recreate(&m_rhi_swapchain, create_info));
         }
-    
+        else
+        {
+            SP_ASSERT_VK(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkSwapchainKHR*>(&m_rhi_swapchain)));
+
+            // destroy old swapchain if it existed
+            if (create_info.oldSwapchain != VK_NULL_HANDLE)
+            {
+                vkDestroySwapchainKHR(RHI_Context::device, create_info.oldSwapchain, nullptr);
+            }
+
+            // ffx destroys the native swapchain and returns its own, a failure can leave no swapchain behind
+            if (m_frame_generation && !frame_generation_vk::swapchain_replace(&m_rhi_swapchain, create_info))
+            {
+                m_frame_generation = false;
+                if (!m_rhi_swapchain)
+                {
+                    create_info.oldSwapchain = VK_NULL_HANDLE;
+                    SP_ASSERT_VK(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkSwapchainKHR*>(&m_rhi_swapchain)));
+                }
+            }
+        }
+
+        auto get_swapchain_images = [this](uint32_t* count, VkImage* images)
+        {
+            if (frame_generation_vk::owns(m_rhi_swapchain))
+            {
+                return frame_generation_vk::get_swapchain_images(m_rhi_swapchain, count, images);
+            }
+            return vkGetSwapchainImagesKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), count, images);
+        };
+
         // get new images
         uint32_t image_count = 0;
-        SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), &image_count, nullptr));
+        SP_ASSERT_VK(get_swapchain_images(&image_count, nullptr));
         m_buffer_count = image_count;
         m_rhi_rt.assign(m_buffer_count, nullptr);
         m_rhi_rtv.assign(m_buffer_count, nullptr);
@@ -477,7 +541,7 @@ namespace spartan
             m_buffer_count
         );
         semaphore_index = 0;
-        SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), &image_count, reinterpret_cast<VkImage*>(m_rhi_rt.data())));
+        SP_ASSERT_VK(get_swapchain_images(&image_count, reinterpret_cast<VkImage*>(m_rhi_rt.data())));
     
         // create new image views
         for (uint32_t i = 0; i < m_buffer_count; i++)
@@ -524,12 +588,13 @@ namespace spartan
         }
 
          SP_LOG_INFO(
-            "Swapchain created with resolution: %dx%d, HDR: %s (%s), VSync: %s",
+            "Swapchain created with resolution: %dx%d, HDR: %s (%s), VSync: %s, frame generation: %s",
             m_width,
             m_height,
             m_format == format_hdr ? "enabled" : "disabled",
             rhi_format_to_string(m_format),
-            m_present_mode == RHI_Present_Mode::Fifo ? "enabled" : "disabled"
+            m_present_mode == RHI_Present_Mode::Fifo ? "enabled" : "disabled",
+            m_frame_generation ? "enabled" : "disabled"
         );
 
         // reset state after swapchain recreation
@@ -601,19 +666,26 @@ namespace spartan
                 ScopedTimeBlock time_block(
                     "acquire_image_wait"
                 );
-                result = vkAcquireNextImageKHR(
-                    RHI_Context::device,
-                    static_cast<VkSwapchainKHR>(
-                        m_rhi_swapchain
-                    ),
-                    100000000,
-                    static_cast<VkSemaphore>(
-                        signal_semaphore->
-                            GetRhiResource()
-                    ),
-                    nullptr,
-                    &m_image_index
-                );
+                if (frame_generation_vk::owns(m_rhi_swapchain))
+                {
+                    result = frame_generation_vk::acquire_next_image(m_rhi_swapchain, 100000000, static_cast<VkSemaphore>(signal_semaphore->GetRhiResource()), &m_image_index);
+                }
+                else
+                {
+                    result = vkAcquireNextImageKHR(
+                        RHI_Context::device,
+                        static_cast<VkSwapchainKHR>(
+                            m_rhi_swapchain
+                        ),
+                        100000000,
+                        static_cast<VkSemaphore>(
+                            signal_semaphore->
+                                GetRhiResource()
+                        ),
+                        nullptr,
+                        &m_image_index
+                    );
+                }
             }
             const double acquire_wait_ms = chrono::duration<double, milli>(chrono::steady_clock::now() - acquire_start).count();
 
@@ -671,7 +743,9 @@ namespace spartan
         // use per-image semaphore to avoid reuse conflicts - when this image is re-acquired,
         // we know the previous presentation completed, so the semaphore is safe to signal again
         RHI_SyncPrimitive* rendering_complete_semaphore = m_rendering_complete_semaphore[m_image_index].get();
-        bool success = RHI_Device::GetQueue(RHI_Queue_Type::Present)->Present(m_rhi_swapchain, m_image_index, rendering_complete_semaphore);
+        // the ffx present submits its interpolation work to the queue it is called on, which has to be the game queue
+        const RHI_Queue_Type queue_type = frame_generation_vk::owns(m_rhi_swapchain) ? RHI_Queue_Type::Graphics : RHI_Queue_Type::Present;
+        bool success = RHI_Device::GetQueue(queue_type)->Present(m_rhi_swapchain, m_image_index, rendering_complete_semaphore);
         if (success)
         {
             Profiler::MarkPresented(m_image_index, nullptr);
@@ -731,5 +805,20 @@ namespace spartan
     {
         // for v-sync, we could Mailbox for lower latency, but fifo is always supported, so we'll assume that
         return m_present_mode == RHI_Present_Mode::Fifo;
+    }
+
+    void RHI_SwapChain::SetFrameGeneration(const bool enabled)
+    {
+        if (enabled && !RHI_FrameGeneration::IsSupported())
+        {
+            SP_LOG_WARNING("FSR frame generation is not supported on this system");
+            return;
+        }
+
+        if (m_frame_generation != enabled)
+        {
+            m_frame_generation = enabled;
+            m_is_dirty         = true;
+        }
     }
 }

@@ -1,0 +1,20 @@
+{
+  "id": "lombardy_poplar",
+  "name": "Lombardy Poplar",
+  "scientific": "Populus nigra 'Italica'",
+  "region": "Italy",
+  "description": "The windbreak column of the Po valley. Steep upright branches hug a single straight stem into a narrow flame of small triangular leaves that tremble in the wind.",
+  "class": "broadleaf",
+  "evergreen": false,
+  "budget": 11000,
+  "height": 25.0,
+  "height_var": 0.12,
+  "trunk": { "radius": 0.017, "taper": 0.05, "flare": 0.35, "lean": 1, "gnarl": 0.12, "segments": 12 },
+  "crown": { "shape": "flame", "base": 0.06, "width": 0.13 },
+  "levels": [
+    { "count": 60, "start": 0.05, "end": 0.98, "length": 0.32, "length_var": 0.2, "down_angle": 22, "down_angle_tip": 12, "down_angle_var": 6, "rotate": 137, "curve": -6, "curve_var": 8, "gravity": 0.0, "radius_ratio": 0.4, "segments": 5 },
+    { "count": 6, "start": 0.2, "end": 1.0, "length": 0.42, "length_var": 0.2, "down_angle": 30, "down_angle_var": 10, "curve_var": 10, "radius_ratio": 0.55, "segments": 3 }
+  ],
+  "leaves": { "shape": "ovate", "size": 0.07, "card_size": 0.5, "density": 1.4, "start": 0.15, "tilt": 0.3, "per_card": 12, "color": [0.12, 0.24, 0.06], "color_back": [0.24, 0.34, 0.12], "spring_color": [0.32, 0.46, 0.12], "autumn_color": [0.62, 0.50, 0.08], "autumn_color_b": [0.55, 0.42, 0.06], "color_var": 0.07, "translucency": 0.5 },
+  "bark": { "style": "furrowed", "color": [0.234, 0.215, 0.182], "color_dark": [0.065, 0.059, 0.052], "scale": 1.1, "roughness": 0.9 }
+}

@@ -1176,7 +1176,7 @@ namespace spartan
 
         // bend sss is screen space from one depth view, applying left eye contacts to the right eye
         // darkens half the frame, clear to lit and skip until a stereo aware path exists
-        if (Xr::IsSessionRunning() && Xr::GetStereoMode())
+        if (IsStereoView())
         {
             if (tex_sss)
             {
@@ -1195,7 +1195,7 @@ namespace spartan
         // any light whose flags claim contact shadows, so the last frame that did write would keep being
         // applied. clear to lit and leave
         bool any_light = false;
-        const auto& lights = IsSecondaryViewActive() ? World::GetEntities() : World::GetEntitiesLights();
+        const auto& lights = GetViewLightEntities();
         for (Entity* entity : lights)
         {
             Light* light = entity->GetComponent<Light>();
@@ -1433,7 +1433,7 @@ namespace spartan
         const bool use_history =
             m_pass_state.fog_history.valid &&
             !IsSecondaryViewActive() &&
-            !(Xr::IsSessionRunning() && Xr::GetStereoMode()) &&
+            !(IsStereoView()) &&
             !m_pass_state.sky.state_changed_this_frame &&
             (Renderer::view().frame.camera_position - Renderer::view().frame.camera_position_previous).LengthSquared() < 100.0f &&
             eye == 0;
@@ -1557,6 +1557,12 @@ namespace spartan
 
     void Renderer::Pass_Fog_Composite(uint32_t eye_layer /*= rhi_all_mips*/)
     {
+        // a preview is a studio shot, the world's haze would wash an asset out in proportion to how big it is
+        if (IsSecondaryViewActive())
+        {
+            return;
+        }
+
         RHI_CommandList::BeginPass("fog_composite");
         SetCommonTextures(eye_layer);
         {

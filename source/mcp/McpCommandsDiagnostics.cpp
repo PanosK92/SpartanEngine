@@ -448,6 +448,11 @@ namespace spartan::mcp_diagnostics
 
             std::string json = "{\"ok\":true";
             json += ",\"fps\":" + std::to_string(Profiler::GetFps());
+            json += ",\"fps_generated\":" + std::to_string(Profiler::GetFpsGenerated());
+            json += ",\"fps_presented\":" + std::to_string(Profiler::GetFpsPresented());
+            json += ",\"frame_generation\":" + json_bool(Profiler::IsFrameGenerating());
+            json += ",\"input_latency_ms\":" + std::to_string(Profiler::HasInputLatency() ? Profiler::GetInputLatencyMs() : 0.0f);
+            json += ",\"frame_generation_latency_ms\":" + std::to_string(Profiler::GetFrameGenerationLatencyMs());
             json += ",\"frame_ms\":" + std::to_string(Profiler::GetFrameDurationMs());
             json += ",\"cpu_ms\":" + std::to_string(Profiler::GetTimeCpuLast());
             json += ",\"gpu_ms\":" + std::to_string(Profiler::GetTimeGpuLast());

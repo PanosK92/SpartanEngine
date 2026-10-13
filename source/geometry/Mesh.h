@@ -237,6 +237,8 @@ namespace spartan
 
     private:
         void AddImpostor(const std::vector<RHI_Vertex_PosTexNorTan>& vertices, const std::vector<uint32_t>& indices, const uint32_t sub_mesh_index);
+        // fills the atlas of a card whose framing is already set, through the generated cache unless the mesh skips it
+        void BakeImpostorTexels(const std::vector<RHI_Vertex_PosTexNorTan>& vertices, const std::vector<uint32_t>& indices, MeshImpostor& impostor) const;
 
         // geometry
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices; // all vertices of a model file

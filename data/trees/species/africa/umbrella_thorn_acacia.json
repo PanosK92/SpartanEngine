@@ -1,0 +1,21 @@
+{
+  "id": "umbrella_thorn_acacia",
+  "name": "Umbrella Thorn Acacia",
+  "scientific": "Vachellia tortilis",
+  "region": "Africa",
+  "description": "The flat topped acacia of the Serengeti skyline. A short trunk forks into a few slanting limbs that spread into a wide, thin, perfectly flat table of tiny feathery leaves.",
+  "class": "broadleaf",
+  "evergreen": false,
+  "budget": 10000,
+  "height": 9.0,
+  "height_var": 0.2,
+  "trunk": { "radius": 0.03, "taper": 0.25, "flare": 0.4, "lean": 6, "gnarl": 0.4, "twist": 0.1, "segments": 10, "stems": 3, "split_height": 0.25, "split_angle": 40 },
+  "crown": { "shape": "umbrella", "base": 0.65, "width": 1.15 },
+  "levels": [
+    { "count": 10, "start": 0.3, "end": 1.0, "length": 0.55, "length_var": 0.25, "down_angle": 60, "down_angle_tip": 80, "down_angle_var": 12, "curve": -30, "curve_var": 25, "gravity": -0.05, "radius_ratio": 0.55, "segments": 6 },
+    { "count": 10, "start": 0.3, "end": 1.0, "length": 0.5, "length_var": 0.2, "down_angle": 70, "down_angle_var": 12, "planar": true, "curve": -20, "curve_var": 20, "gravity": -0.05, "radius_ratio": 0.5, "segments": 4 },
+    { "count": 6, "start": 0.3, "end": 1.0, "length": 0.4, "down_angle": 65, "down_angle_var": 15, "planar": true, "radius_ratio": 0.6, "segments": 2 }
+  ],
+  "leaves": { "shape": "pinnate", "size": 0.05, "card_size": 0.5, "density": 1.8, "start": 0.3, "tilt": 0.05, "per_card": 10, "color": [0.17, 0.25, 0.09], "color_back": [0.28, 0.34, 0.16], "spring_color": [0.26, 0.36, 0.10], "autumn_color": [0.48, 0.42, 0.14], "autumn_color_b": [0.40, 0.36, 0.12], "color_var": 0.07, "translucency": 0.35 },
+  "bark": { "style": "furrowed", "color": [0.195, 0.163, 0.130], "color_dark": [0.059, 0.046, 0.033], "scale": 0.9, "roughness": 0.94 }
+}

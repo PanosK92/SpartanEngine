@@ -1,0 +1,20 @@
+{
+  "id": "cedar_of_lebanon",
+  "name": "Cedar of Lebanon",
+  "scientific": "Cedrus libani",
+  "region": "Middle East",
+  "description": "The cedar on the flag of Lebanon. A massive trunk carries wide, flat, horizontal tiers of dark blue green needle plates, the old trees spreading as wide as they are tall.",
+  "class": "conifer",
+  "evergreen": true,
+  "budget": 14000,
+  "height": 30.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.03, "taper": 0.12, "flare": 0.5, "lean": 3, "gnarl": 0.25, "segments": 14, "stems": 2, "split_height": 0.5, "split_angle": 20 },
+  "crown": { "shape": "umbrella", "base": 0.25, "width": 0.7 },
+  "levels": [
+    { "count": 22, "start": 0.2, "end": 0.98, "length": 0.55, "length_var": 0.25, "down_angle": 88, "down_angle_tip": 70, "down_angle_var": 10, "whorl": 2, "rotate": 137, "curve": -8, "curve_var": 12, "gravity": 0.0, "radius_ratio": 0.5, "segments": 7 },
+    { "count": 12, "start": 0.15, "end": 1.0, "length": 0.38, "length_var": 0.2, "down_angle": 75, "down_angle_var": 10, "planar": true, "curve_var": 8, "gravity": 0.05, "radius_ratio": 0.5, "segments": 3 }
+  ],
+  "leaves": { "shape": "needle", "size": 0.025, "card_size": 1.1, "density": 3.2, "start": 0.1, "tilt": 0.05, "per_card": 12, "color": [0.07, 0.13, 0.10], "color_back": [0.14, 0.20, 0.16], "color_var": 0.05, "translucency": 0.2 },
+  "bark": { "style": "plated", "color": [0.208, 0.182, 0.163], "color_dark": [0.065, 0.052, 0.046], "scale": 1.1, "roughness": 0.92 }
+}

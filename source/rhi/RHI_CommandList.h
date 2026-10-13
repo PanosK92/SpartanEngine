@@ -377,6 +377,7 @@ namespace spartan
     private:
         friend class RHI_Texture;
         friend class RHI_VendorTechnology;
+        friend class RHI_FrameGeneration;
         friend class RHI_Device;
         friend class RHI_Buffer;
         friend class RHI_AccelerationStructure;

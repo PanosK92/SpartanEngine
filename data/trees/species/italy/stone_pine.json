@@ -1,0 +1,21 @@
+{
+  "id": "stone_pine",
+  "name": "Stone Pine",
+  "scientific": "Pinus pinea",
+  "region": "Italy",
+  "description": "The umbrella pine of the Roman roads. A tall bare trunk with orange plated bark under a flat, dense parasol of long bright needles.",
+  "class": "conifer",
+  "evergreen": true,
+  "budget": 12000,
+  "height": 18.0,
+  "height_var": 0.15,
+  "trunk": { "radius": 0.02, "taper": 0.1, "flare": 0.3, "lean": 6, "gnarl": 0.25, "twist": 0.05, "segments": 12, "stems": 2, "split_height": 0.62, "split_angle": 28 },
+  "crown": { "shape": "umbrella", "base": 0.62, "width": 0.7 },
+  "levels": [
+    { "count": 12, "start": 0.62, "end": 1.0, "length": 0.42, "length_var": 0.2, "down_angle": 55, "down_angle_tip": 70, "down_angle_var": 12, "curve": -25, "curve_var": 20, "gravity": 0.0, "radius_ratio": 0.6, "segments": 6 },
+    { "count": 9, "start": 0.25, "end": 1.0, "length": 0.45, "length_var": 0.2, "down_angle": 55, "down_angle_var": 15, "curve": -20, "curve_var": 20, "gravity": -0.05, "radius_ratio": 0.55, "segments": 4 },
+    { "count": 6, "start": 0.4, "end": 1.0, "length": 0.4, "down_angle": 45, "down_angle_var": 15, "curve": -10, "radius_ratio": 0.6, "segments": 2 }
+  ],
+  "leaves": { "shape": "needle", "size": 0.12, "card_size": 1.1, "density": 1.9, "start": 0.45, "tilt": 0.1, "per_card": 12, "color": [0.14, 0.24, 0.07], "color_back": [0.22, 0.30, 0.10], "color_var": 0.06, "translucency": 0.3 },
+  "bark": { "style": "plated", "color": [0.312, 0.195, 0.117], "color_dark": [0.091, 0.052, 0.033], "scale": 0.8, "roughness": 0.9 }
+}

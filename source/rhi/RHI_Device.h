@@ -57,6 +57,8 @@ namespace spartan
         static void AcquireSwapChainImage();
         static void BlitToBackBuffer(RHI_Texture* texture);
         static void BeginFrame(bool acquire_compute);
+        // reopens the compute lists a view already submitted, so another view can record into them in the same frame
+        static void BeginComputeLists();
         static void Bind(RHI_Frame_List list);
         static void Bind(RHI_CommandList* cmd_list);
         static bool IsRecording();
@@ -191,6 +193,7 @@ namespace spartan
         friend class RHI_Buffer;
         friend class RHI_Texture;
         friend class RHI_VendorTechnology;
+        friend class RHI_FrameGeneration;
         friend class RHI_AccelerationStructure;
         // properties
         static float m_timestamp_period;
