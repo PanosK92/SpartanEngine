@@ -30,6 +30,10 @@ namespace spartan
         // records the frame inputs, depth and velocity are the render resolution targets the upscaler consumed
         static void Prepare(RHI_Texture* tex_depth, RHI_Texture* tex_velocity);
 
+        // preserve the display-encoded scene before editor overlays and on-screen text are drawn
+        static void CaptureScene(RHI_Texture* texture);
+        static RHI_Texture* GetScene();
+
         // backbuffer copy without ui, ffx diffs it against the backbuffer to keep ui pixels out of interpolation
         static RHI_Texture* GetHudlessTarget(uint32_t width, uint32_t height, RHI_Format format);
         static void SetHudlessRecorded();
@@ -48,7 +52,6 @@ namespace spartan
         static void OnFramesGenerated(uint32_t count);
 
         // shared state, implemented in RHI_FrameGeneration.cpp
-        static RHI_Texture* GetHudless();
         static RHI_Texture* ConsumeHudlessRecorded();
         static math::Rectangle GetGenerationRect(uint32_t backbuffer_width, uint32_t backbuffer_height);
         static void ReleaseHudless();

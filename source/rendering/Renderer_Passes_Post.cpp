@@ -305,6 +305,7 @@ namespace spartan
         // grid, lines, icons and editor overlays stay on the desktop mirror, not in the hmd or in an asset preview
         if (!(IsStereoView()) && !IsSecondaryViewActive())
         {
+            RHI_FrameGeneration::CaptureScene(rt_frame_output);
             Pass_PostProcess_EditorOverlays(rt_frame_output);
         }
         RHI_CommandList::EndMarker();

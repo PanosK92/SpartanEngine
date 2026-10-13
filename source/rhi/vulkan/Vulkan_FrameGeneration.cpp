@@ -448,7 +448,8 @@ namespace spartan
         const uint32_t render_height = Renderer::GetScaledDimension(params.render_height, resolution_scale);
 
         frame_id++;
-        configure(true, GetHudless(), GetGenerationRect(params.display_width, params.display_height));
+        // allocate before configuring, including the first frame and the first frame after resize
+        configure(true, GetHudlessTarget(params.display_width, params.display_height, swapchain->GetFormat()), GetGenerationRect(params.display_width, params.display_height));
 
         tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list);
         tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
@@ -513,14 +514,15 @@ namespace spartan
             return;
         }
 
-        if (RHI_Texture* hudless = ConsumeHudlessRecorded())
+        RHI_Texture* hudless = ConsumeHudlessRecorded();
+        if (hudless)
         {
             hudless->SetLayout(RHI_Image_Layout::General, cmd_list);
             cmd_list->FlushBarriers();
         }
 
-        // a frame that skipped the 3d view has nothing to interpolate from
-        if (context_fg && !prepared_this_frame)
+        // never interpolate a frame without current scene inputs and a current ui-free backbuffer
+        if (context_fg && (!prepared_this_frame || !hudless))
         {
             configure(false, nullptr, math::Rectangle());
         }

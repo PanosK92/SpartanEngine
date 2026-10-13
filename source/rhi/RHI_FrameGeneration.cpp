@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "RHI_FrameGeneration.h"
 #include "RHI_Texture.h"
+#include "RHI_CommandList.h"
 #include <atomic>
 //=============================
 
@@ -22,7 +23,8 @@ namespace spartan
     namespace
     {
         shared_ptr<RHI_Texture> hudless;
-        bool hudless_valid    = false; // holds a recorded frame, ffx can use it
+        shared_ptr<RHI_Texture> scene;
+        bool scene_recorded   = false;
         bool hudless_recorded = false; // recorded this frame, needs the transition to a shader read state
         Rectangle generation_rect;
         atomic<uint64_t> generated_frames = 0;
@@ -48,8 +50,7 @@ namespace spartan
 
         if (!hudless || hudless->GetWidth() != width || hudless->GetHeight() != height || hudless->GetFormat() != format)
         {
-            hudless       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, format, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_generation_hudless");
-            hudless_valid = false;
+            hudless = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, format, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_generation_hudless");
         }
 
         return hudless->GetRhiResource() ? hudless.get() : nullptr;
@@ -60,23 +61,44 @@ namespace spartan
         hudless_recorded = hudless != nullptr;
     }
 
-    RHI_Texture* RHI_FrameGeneration::GetHudless()
+    void RHI_FrameGeneration::CaptureScene(RHI_Texture* texture)
     {
-        return hudless_valid ? hudless.get() : nullptr;
+        scene_recorded = false;
+        if (!IsActive() || !texture)
+        {
+            return;
+        }
+
+        if (!scene || scene->GetWidth() != texture->GetWidth() || scene->GetHeight() != texture->GetHeight() || scene->GetFormat() != texture->GetFormat())
+        {
+            scene = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture->GetWidth(), texture->GetHeight(), 1, 1, texture->GetFormat(), RHI_Texture_Srv | RHI_Texture_ClearBlit, "frame_generation_scene");
+        }
+
+        if (scene->GetRhiResource())
+        {
+            RHI_CommandList::Copy(texture, scene.get(), false);
+            scene_recorded = true;
+        }
+    }
+
+    RHI_Texture* RHI_FrameGeneration::GetScene()
+    {
+        return scene_recorded ? scene.get() : nullptr;
     }
 
     RHI_Texture* RHI_FrameGeneration::ConsumeHudlessRecorded()
     {
         RHI_Texture* texture = hudless_recorded ? hudless.get() : nullptr;
-        hudless_valid        = hudless_valid || hudless_recorded;
         hudless_recorded     = false;
+        scene_recorded       = false;
         return texture;
     }
 
     void RHI_FrameGeneration::ReleaseHudless()
     {
         hudless          = nullptr;
-        hudless_valid    = false;
+        scene            = nullptr;
+        scene_recorded   = false;
         hudless_recorded = false;
     }
 

@@ -243,6 +243,15 @@ namespace spartan
             return;
         }
         cmd_list->begin_marker("blit_to_back_buffer");
+        if (RHI_Texture* scene = RHI_FrameGeneration::GetScene())
+        {
+            if (RHI_Texture* hudless = RHI_FrameGeneration::GetHudlessTarget(frame_swapchain->GetWidth(), frame_swapchain->GetHeight(), frame_swapchain->GetFormat()))
+            {
+                cmd_list->blit(scene, hudless, false);
+                RHI_FrameGeneration::SetGenerationRect(math::Rectangle());
+                RHI_FrameGeneration::SetHudlessRecorded();
+            }
+        }
         cmd_list->blit(texture, frame_swapchain.get());
         cmd_list->end_marker();
     }

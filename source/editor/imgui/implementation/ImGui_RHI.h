@@ -534,7 +534,7 @@ namespace ImGui::RHI
 
                         spartan::RHI_Texture* texture_cmd = reinterpret_cast<spartan::RHI_Texture*>(pcmd->GetTexID());
                         const bool is_frame_cmd           = texture_cmd && texture_cmd->GetRhiResource() && texture_cmd->GetObjectId() == frame_output_id;
-                        if (frame_only && !is_frame_cmd)
+                        if (frame_only && (!is_frame_cmd || !RHI_FrameGeneration::GetScene()))
                         {
                             continue;
                         }
@@ -588,7 +588,8 @@ namespace ImGui::RHI
                                             array_level = static_cast<float>(spartan::gui::GetTexturePreview().layer);
                                         }
 
-                                        texture_bound = texture;
+                                        // keep the same viewport transform and display encoding, but exclude engine text and overlays
+                                        texture_bound = frame_only ? RHI_FrameGeneration::GetScene() : texture;
                                     }
                                 }
                             }
@@ -661,7 +662,7 @@ namespace ImGui::RHI
             RHI_FrameGeneration::SetGenerationRect(frame_rect);
 
             // the 3d view over black, ffx diffs it against the backbuffer to find the ui pixels
-            if (RHI_Texture* hudless = RHI_FrameGeneration::GetHudlessTarget(swapchain->GetWidth(), swapchain->GetHeight(), swapchain->GetFormat()))
+            if (RHI_Texture* hudless = frame_rect_found && RHI_FrameGeneration::GetScene() ? RHI_FrameGeneration::GetHudlessTarget(swapchain->GetWidth(), swapchain->GetHeight(), swapchain->GetFormat()) : nullptr)
             {
                 RHI_CommandList::ClearTexture(hudless, Color::standard_black);
                 pso.render_target_swapchain         = nullptr;
