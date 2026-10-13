@@ -4,7 +4,7 @@
 -- Commercial use requires written permission and negotiated payment terms.
 
 CPP_VERSION      = "C++20"
-SOLUTION_NAME    = "Spartan"
+SOLUTION_NAME    = "spartan"
 EXECUTABLE_NAME  = "spartan"
 SOURCE_DIR       = "../source"
 LIBRARY_DIR      = "../third_party/libraries"
@@ -151,11 +151,11 @@ function solution_configuration()
             linktimeoptimization "Off"
 end
 
-function spartan_project_configuration(runtime, minimal)
-    local executable = EXECUTABLE_NAME .. (minimal and "_engine" or (runtime and "_runtime" or ""))
-    project(minimal and "SpartanEngine" or (runtime and "SpartanRuntime" or SOLUTION_NAME))
+function spartan_project_configuration()
+    local executable = EXECUTABLE_NAME
+    project(SOLUTION_NAME)
         location "../"
-        objdir(OBJ_DIR .. (minimal and "/engine" or (runtime and "/runtime" or "/editor")) .. "/" .. ARG_API_GRAPHICS)
+        objdir(OBJ_DIR .. "/editor/" .. ARG_API_GRAPHICS)
         cppdialect(CPP_VERSION)
         kind "WindowedApp"
         staticruntime "On"
@@ -171,21 +171,8 @@ function spartan_project_configuration(runtime, minimal)
             SOURCE_DIR .. "/**.hpp", SOURCE_DIR .. "/**.inl",
             SOURCE_DIR .. "/**.rc"
         }
-        -- The engine target deliberately cannot link game implementations.
-        if minimal then
-            removefiles { SOURCE_DIR .. "/car/**", SOURCE_DIR .. "/game/**" }
-        else
-            defines { "SP_GAME" }
-        end
-        if runtime then
-            defines { "SP_RUNTIME" }
-            removefiles { SOURCE_DIR .. "/editor/**", SOURCE_DIR .. "/mcp/**", SOURCE_DIR .. "/game/**Mcp.cpp" }
-            -- geometry/TreeSpecies parses species files with this reader, and the reader has no other mcp dependencies
-            files { SOURCE_DIR .. "/mcp/McpJson.cpp", SOURCE_DIR .. "/mcp/McpJson.h" }
-            files { SOURCE_DIR .. "/editor/imgui/source/**.cpp", SOURCE_DIR .. "/editor/imgui/implementation/**.cpp" }
-        else
-            removefiles { SOURCE_DIR .. "/runtime/**" }
-        end
+        defines { "SP_GAME" }
+        removefiles { SOURCE_DIR .. "/runtime/**" }
         files(lzma_sdk.sources())
         -- Recast bakes tiles, Detour queries them, DetourCrowd handles pedestrian avoidance.
         includedirs {
@@ -341,7 +328,5 @@ end
 if generation_actions[_ACTION] then
     configure_graphics_api()
     solution_configuration()
-    spartan_project_configuration(false)
-    spartan_project_configuration(true)
-    spartan_project_configuration(true, true)
+    spartan_project_configuration()
 end

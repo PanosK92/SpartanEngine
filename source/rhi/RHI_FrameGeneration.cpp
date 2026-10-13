@@ -72,6 +72,8 @@ namespace spartan
         if (!scene || scene->GetWidth() != texture->GetWidth() || scene->GetHeight() != texture->GetHeight() || scene->GetFormat() != texture->GetFormat())
         {
             scene = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture->GetWidth(), texture->GetHeight(), 1, 1, texture->GetFormat(), RHI_Texture_Srv | RHI_Texture_ClearBlit, "frame_generation_scene");
+            // copy-only textures have no render-target flags or initial data, so the constructor defers allocation
+            scene->PrepareForGpu();
         }
 
         if (scene->GetRhiResource())

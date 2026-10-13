@@ -75,8 +75,8 @@ void ProgressDialog::OnTick()
         return;
     }
     if (m_visible_since == 0.0) m_visible_since = ImGui::GetTime();
-    // Tiny texture loads should not flash a card over the editor.
-    SetVisible(ImGui::GetTime() - m_visible_since >= 0.15);
+    // World opens need immediate feedback; only incidental loads should be debounced.
+    SetVisible(ProgressTracker::IsLoading(ProgressType::World) || ImGui::GetTime() - m_visible_since >= 0.15);
 }
 
 void ProgressDialog::OnTickVisible()

@@ -1193,9 +1193,12 @@ namespace
         if (selected_index >= 0 && selected_index < static_cast<int>(world_files.size()))
         {
             const string world_path = world_files[selected_index].file_path;
+            if (!spartan::World::LoadFromFile(world_path))
+            {
+                return;
+            }
             record_world_opened(world_path);
             WorldPreviews::RequestGeneration(world_path);
-            spartan::World::LoadFromFile(world_path);
         }
         visible_world_list = false;
     }

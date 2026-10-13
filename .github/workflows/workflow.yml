@@ -69,7 +69,7 @@ jobs:
 
       - name: Build
         shell: cmd
-        run: msbuild /p:Platform=x64 /p:Configuration=release /m Spartan.slnx
+        run: msbuild /p:Platform=x64 /p:Configuration=release /m spartan.slnx
 
       - name: Startup smoke test (no GPU)
         id: smoke

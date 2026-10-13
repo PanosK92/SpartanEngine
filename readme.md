@@ -163,7 +163,7 @@ A full vehicle dynamics model running inside the PhysX fixed-timestep loop. Not 
 Prebuilt binaries ship with every **[release](https://github.com/PanosK92/SpartanEngine/releases)**. From source, see the **[Building Guide](https://github.com/PanosK92/SpartanEngine/wiki/Building)**.
 
 ```powershell
-# Windows: then open Spartan.slnx (use d3d12 for DirectX 12, or no arguments for a menu)
+# Windows: then open spartan.slnx (use d3d12 for DirectX 12, or no arguments for a menu)
 generate_project_files.bat vs2026 vulkan
 ```
 

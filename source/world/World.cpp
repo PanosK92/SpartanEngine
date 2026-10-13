@@ -329,6 +329,8 @@ namespace spartan
             bool notify_loaded = false;
             bool restore_edit_mode = false;
             string pending_path;
+            ProgressTask pending_progress;
+            uint64_t pending_frame = 0;
             WorldPreparation preparation;
         };
         WorldIoOperation io;
@@ -1909,8 +1911,16 @@ namespace spartan
             return false;
         }
 
-        // imgui still holds texture ids from this frame, shutdown must wait until the next tick
+        // Reserve the load and publish progress at the request, before any teardown or job waits.
+        WorldIoState expected = WorldIoState::Idle;
+        if (!io.state.compare_exchange_strong(expected, WorldIoState::Loading))
+        {
+            return false;
+        }
         io.pending_path = file_path_;
+        io.pending_progress = ProgressTracker::Begin(ProgressType::World,
+            FileSystem::GetFileNameFromFilePath(file_path_), "Finishing previous world work");
+        io.pending_frame = Renderer::GetFrameNumber();
         return true;
     }
 
@@ -1932,28 +1942,22 @@ namespace spartan
             return;
         }
 
-        const string file_path_ = io.pending_path;
-        io.pending_path.clear();
-
-        // reject re-entrant loads, the second Shutdown below would tear down the world while the first load's workers are still building it
-        WorldIoState expected = WorldIoState::Idle;
-        if (
-            !io.state.compare_exchange_strong(
-                expected,
-                WorldIoState::Loading
-            )
-        )
+        // The request may arrive after the progress widget has ticked. Give the next
+        // complete UI frame time to present it before releasing any old scene resources.
+        // Keep pumping frames while workers drain instead of blocking in Shutdown's Flush.
+        if (Renderer::GetFrameNumber() <= io.pending_frame + 1 || ThreadPool::AreTasksRunning())
         {
             return;
         }
 
+        const string file_path_ = move(io.pending_path);
+        io.pending_path.clear();
+        auto load_progress = move(io.pending_progress);
+
         // ensure prefabs are registered before loading
         if (callbacks.before_load) callbacks.before_load();
 
-        // Include teardown/job waits in the same visible task and elapsed time.
-        // Shutdown finishes the previous world's handle, so retain this one locally.
-        auto load_progress = ProgressTracker::Begin(ProgressType::World,
-            FileSystem::GetFileNameFromFilePath(file_path_), "Finishing previous world work");
+        // Shutdown finishes the previous world's handle, so retain the new one locally.
         // shutdown synchronously before async loading
         Shutdown();
         Renderer::ResetWorldGeometry();
