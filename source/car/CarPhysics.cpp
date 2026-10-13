@@ -290,27 +290,12 @@ namespace spartan
             Quaternion physics_rot;
             from_px_transform(actor->getGlobalPose(), physics_pos, physics_rot);
 
-            // extrapolate the leftover time so the chassis stays smooth between fixed steps, bounded by one physx step
-            PxRigidDynamic* dynamic         = actor->is<PxRigidDynamic>();
-            Vector3 physics_vel             = dynamic ? from_px_vec3(dynamic->getLinearVelocity())  : Vector3::Zero;
-            Vector3 physics_ang_vel         = dynamic ? from_px_vec3(dynamic->getAngularVelocity()) : Vector3::Zero;
-            float leftover_time             = PhysicsWorld::GetInterpolationAlpha() * PhysicsWorld::GetFixedTimeStep();
-            Vector3 render_pos              = physics_pos + physics_vel * leftover_time;
-            Quaternion render_rot           = physics_rot;
-            float ang_speed                 = physics_ang_vel.Length();
-            if (ang_speed > 0.001f)
-            {
-                Vector3 axis         = physics_ang_vel / ang_speed;
-                float angle          = ang_speed * leftover_time;
-                Quaternion delta_rot = Quaternion::FromAxisAngle(axis, angle);
-                render_rot           = delta_rot * physics_rot;
-                render_rot.Normalize();
-            }
+            // render the latest completed 200 Hz physics pose without prediction or blending
             VehicleState().vehicle_physics_position = physics_pos;
             VehicleState().vehicle_physics_rotation = physics_rot;
-            VehicleState().vehicle_render_position  = render_pos;
-            VehicleState().vehicle_render_rotation  = render_rot;
-            GetEntity()->SetPositionAndRotation(render_pos, render_rot);
+            VehicleState().vehicle_render_position  = physics_pos;
+            VehicleState().vehicle_render_rotation  = physics_rot;
+            GetEntity()->SetPositionAndRotation(physics_pos, physics_rot);
 
             // update wheel visuals
             if (VehicleState().vehicle_sim_mode == VehicleSimMode::Cheap)

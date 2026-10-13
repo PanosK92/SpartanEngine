@@ -69,7 +69,8 @@ namespace spartan
         const std::shared_ptr<RacingLine>& GetLine() const { return m_line; }
         const AiDriverSettings& GetSettings() const { return m_settings; }
         const AiDriverStats& GetStats() const       { return m_stats; }
-        bool IsHolding() const                      { return m_hold_time > 0.0f; } // still on the grid, waiting out the launch delay
+        bool IsHolding() const                      { return m_grid_waiting || m_hold_time > 0.0f; }
+        void SetGridWaiting(bool waiting)           { m_grid_waiting = waiting; }
         bool IsFinished() const                     { return m_stats.finished; }
 
     private:
@@ -183,6 +184,7 @@ namespace spartan
         float m_line_integral = 0.0f;
         float m_brake_limit   = 1.0f; // most pedal the tires take before a wheel locks, found by feel like threshold braking
         float m_hold_time     = 0.0f;
+        bool m_grid_waiting   = false; // race organizer holds the countdown until every car is ready
         bool m_timing         = false; // the lap in progress started at the line
 
         // traffic
@@ -191,6 +193,7 @@ namespace spartan
         float m_pass_target  = 0.0f; // meters right of the racing line the car wants to drive at, 0 is on the line
         float m_pass_offset  = 0.0f; // where it drives now, eased toward the target
         float m_pass_rate    = 0.0f; // m/s the offset moves at
+        float m_pass_commit  = 0.0f; // finish a lane change before reconsidering the racing line
         float m_blocked_time = 0.0f; // standing behind a car, a queue is not being stuck until it lasts
 
         // learning and recovery timers

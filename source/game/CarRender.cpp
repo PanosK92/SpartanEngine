@@ -139,9 +139,7 @@ namespace spartan::game
                 }
                 if (!bounds.isEmpty() && bounds.isFinite())
                 {
-                    // TickVehicle extrapolates the visual chassis between fixed
-                    // steps. Follow that rendered pose so contact cannot lag the
-                    // visible panels at speed. Entity positions are already world-space.
+                    // follow the chassis pose; entity positions are already world-space
                     const Quaternion rotation = root->GetRotation();
                     const physx::PxVec3 e = bounds.minimum.abs().maximum(bounds.maximum.abs());
                     const auto axis = [&](const physx::PxVec3& v, float extent)

@@ -200,20 +200,38 @@ namespace car
         static float membrane_bow(float chord, float rest_length, float axial_rigidity, float line_pressure)
         {
             if (line_pressure <= 0 || chord <= 1e-6f) return 0;
-            auto residual = [&](float bow)
+            auto residual = [&](float bow, float* derivative = nullptr)
             {
                 const float slope = 4.0f * bow / chord;
+                const float root = std::sqrt(1.0f + slope * slope);
+                const float inverse_sinh = std::asinh(slope);
                 const float arc = slope < 1e-3f ? chord * (1.0f + slope * slope / 6.0f) :
-                    0.5f * chord * (std::sqrt(1.0f + slope * slope) + std::asinh(slope) / slope);
+                    0.5f * chord * (root + inverse_sinh / slope);
                 const float tension = axial_rigidity * std::max(arc / rest_length - 1.0f, 0.0f);
+                if (derivative)
+                {
+                    const float arc_derivative = slope < 1e-3f ? 4.0f * slope / 3.0f :
+                        2.0f * (slope * root - inverse_sinh) / (slope * slope);
+                    const float tension_derivative = arc > rest_length ? axial_rigidity * arc_derivative / rest_length : 0.0f;
+                    *derivative = 8.0f * (tension + bow * tension_derivative) / (chord * chord);
+                }
                 return 8.0f * tension * bow / (chord * chord) - line_pressure;
             };
             float lo = 0, hi = std::max(chord, rest_length);
             while (residual(hi) < 0) hi *= 2;
+            float bow = (lo + hi) * 0.5f;
             for (int i = 0; i < 24; ++i)
             {
-                const float mid = (lo + hi) * 0.5f;
-                if (residual(mid) < 0) lo = mid; else hi = mid;
+                // Safeguarded Newton solves the same tensile equilibrium as bisection,
+                // retaining the bracket for slack strips and near-zero derivatives.
+                float derivative;
+                const float value = residual(bow, &derivative);
+                if (value < 0) lo = bow; else hi = bow;
+                const float correction = derivative > 0 ? value / derivative : hi - lo;
+                if (std::abs(correction) < 1e-7f || hi - lo < 1e-7f)
+                    return bow;
+                const float next = bow - correction;
+                bow = next > lo && next < hi ? next : (lo + hi) * 0.5f;
             }
             return (lo + hi) * 0.5f;
         }

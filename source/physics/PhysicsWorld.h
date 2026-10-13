@@ -74,9 +74,6 @@ namespace spartan
         static void* GetScene();
         static void* GetPhysics();
         
-        // interpolation alpha for smooth rendering between fixed physics steps
-        // 0 = at previous physics state, 1 = at current physics state
-        static float GetInterpolationAlpha();
         static float GetFixedTimeStep();
 
         // Invoked on the physics worker during contact reporting. Install before simulation;

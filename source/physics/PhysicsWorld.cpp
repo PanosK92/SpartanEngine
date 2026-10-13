@@ -17,6 +17,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Physics.h"
 #include "../world/components/Ragdoll.h"
 #include "../world/World.h"
+#include <thread>
 SP_WARNINGS_OFF
 #ifdef DEBUG
     #define _DEBUG 1
@@ -49,14 +50,9 @@ namespace spartan
     namespace settings
     {
         float gravity = -9.81f; // gravity value in m/s^2
-        float hz      = 200.0f; // simulation frequency in hz
+        constexpr float hz = 200.0f; // simulation frequency in hz
     }
     
-    namespace interpolation
-    {
-        float alpha = 0.0f; // interpolation factor between physics steps (0 = previous, 1 = current)
-    }
-
     namespace
     {
         struct StepCallback
@@ -461,7 +457,10 @@ namespace spartan
         // scene
         PxSceneDesc scene_desc(physics->getTolerancesScale());
         scene_desc.gravity                 = PxVec3(0.0f, settings::gravity, 0.0f);
-        scene_desc.cpuDispatcher           = PxDefaultCpuDispatcherCreate(1);
+        // Independent vehicle islands can solve concurrently. Keep the pool small
+        // to leave CPU capacity for rendering and avoid tiny-task scheduling overhead.
+        const uint32_t physics_workers = clamp(std::thread::hardware_concurrency() / 2u, 1u, 4u);
+        scene_desc.cpuDispatcher           = PxDefaultCpuDispatcherCreate(physics_workers);
         scene_desc.filterShader            = collision_filter_shader;
         scene_desc.simulationEventCallback = &contact_callback;
         ConfigurePhysicsScene(scene_desc);
@@ -514,7 +513,6 @@ namespace spartan
             !Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused))
         {
             accumulated_time = 0.0f;
-            interpolation::alpha = 0.0f;
             return;
         }
 
@@ -577,9 +575,6 @@ namespace spartan
                     accumulated_time -= fixed_time_step;
                 }
                 
-                // compute interpolation alpha for smooth rendering
-                // alpha = how far into the next physics step we are (0 to 1)
-                interpolation::alpha = accumulated_time / fixed_time_step;
 
             }
             // object picking, skip when right is held so cube shoot does not also grab
@@ -718,11 +713,6 @@ namespace spartan
         return physx_mutex;
     }
     
-    float PhysicsWorld::GetInterpolationAlpha()
-    {
-        return interpolation::alpha;
-    }
-
     float PhysicsWorld::GetFixedTimeStep()
     {
         return 1.0f / settings::hz;

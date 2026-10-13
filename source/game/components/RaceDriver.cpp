@@ -152,6 +152,8 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_speed, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_edge_margin, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_start_distance, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_start_offset, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_grid_start, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_start_delay, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_learning, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_verbose, bool);
@@ -207,6 +209,7 @@ namespace spartan
         DestroyCar();
         m_stats       = AiDriverStats();
         m_car_spawns  = 0;
+        m_grid_released = false;
         m_watch_time  = 0.0f;
         m_spawn_delay = 0.0f;
 
@@ -271,6 +274,28 @@ namespace spartan
 
         if (m_car && !Engine::IsFlagSet(EngineMode::Paused))
         {
+            if (m_grid_start && !m_grid_released)
+            {
+                vector<RaceDriver*> grid;
+                bool ready = true;
+                for (Entity* entity : World::GetEntities())
+                {
+                    RaceDriver* driver = entity->IsActive() ? entity->GetComponent<RaceDriver>() : nullptr;
+                    if (driver && driver->m_grid_start && driver->m_line && driver->m_line->GetTrackEntityId() == m_line->GetTrackEntityId())
+                    {
+                        grid.push_back(driver);
+                        ready = ready && car_alive(driver->m_car) && driver->m_car->GetAiDriver();
+                    }
+                }
+                if (ready)
+                {
+                    for (RaceDriver* driver : grid)
+                    {
+                        driver->m_grid_released = true;
+                        driver->m_car->GetAiDriver()->SetGridWaiting(false);
+                    }
+                }
+            }
             Watch(static_cast<float>(Timer::GetDeltaTimeSec()));
         }
     }
@@ -385,7 +410,20 @@ namespace spartan
         const size_t grid              = m_line->IndexAt(m_start_distance, fraction);
         const RacingLine::Point& point = m_line->GetPoint(grid);
 
-        const Vector3 spawn_position = point.position + Vector3(0.0f, 1.0f, 0.0f);
+        const Vector3 grid_position = m_grid_start
+            ? point.center + point.right * clamp(m_start_offset, -point.room_left + 1.7f, point.room_right - 1.7f)
+            : point.position;
+        const Vector3 spawn_position = grid_position + Vector3(0.0f, 1.0f, 0.0f);
+        // replacements wait for a gap instead of materializing inside the racing field
+        if (m_car_spawns > 0)
+        {
+            for (Car* other : Car::GetAll())
+            {
+                Entity* root = other->GetRootEntity();
+                if (root && Vector3::DistanceSquared(root->GetPosition(), spawn_position) < 400.0f)
+                    return false;
+            }
+        }
         Car* car                     = nullptr;
         if (!m_car_prefab_path.empty())
         {
@@ -419,11 +457,13 @@ namespace spartan
             return false;
         }
         vehicle->SetTransient(true);
-        car->PlaceAt(point.position, Quaternion::FromLookRotation(m_line->DirectionAt(grid), Vector3::Up));
+        car->PlaceAt(grid_position, Quaternion::FromLookRotation(m_line->DirectionAt(grid), Vector3::Up));
+        vehicle->SetObjectName(GetEntity()->GetObjectName() + "_car");
 
         AiDriverSettings settings = GetDriverSettings();
         settings.launch_delay     = m_start_delay;
         car->SetAiDriver(make_unique<AiDriver>(m_line, settings));
+        car->GetAiDriver()->SetGridWaiting(m_grid_start && !m_grid_released);
         m_car        = car;
         m_watch_time = 0.0f;
         m_car_spawns++;
@@ -492,6 +532,8 @@ namespace spartan
         node.append_attribute("max_speed")       = m_max_speed;
         node.append_attribute("edge_margin")     = m_edge_margin;
         node.append_attribute("start_distance")  = m_start_distance;
+        node.append_attribute("start_offset")    = m_start_offset;
+        node.append_attribute("grid_start")      = m_grid_start;
         node.append_attribute("start_delay")     = m_start_delay;
         node.append_attribute("learning")        = m_learning;
         node.append_attribute("verbose")         = m_verbose;
@@ -506,6 +548,8 @@ namespace spartan
         m_max_speed       = clamp(node.attribute("max_speed").as_float(m_max_speed), 5.0f, 150.0f);
         m_edge_margin     = max(node.attribute("edge_margin").as_float(m_edge_margin), 0.0f);
         m_start_distance  = node.attribute("start_distance").as_float(m_start_distance);
+        m_start_offset    = node.attribute("start_offset").as_float(m_start_offset);
+        m_grid_start      = node.attribute("grid_start").as_bool(m_grid_start);
         m_start_delay     = max(node.attribute("start_delay").as_float(m_start_delay), 0.0f);
         m_learning        = node.attribute("learning").as_bool(m_learning);
         m_verbose         = node.attribute("verbose").as_bool(m_verbose);

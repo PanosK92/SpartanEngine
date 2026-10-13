@@ -60,6 +60,8 @@ namespace spartan
         float m_max_speed          = 95.0f; // m/s
         float m_edge_margin        = 1.7f;  // meters the racing line keeps between the car's center and the road edge
         float m_start_distance     = 0.0f;  // grid slot along the track
+        float m_start_offset       = 0.0f;  // grid position right of the road center
+        bool m_grid_start          = false; // synchronize with other grid drivers on this track
         float m_start_delay        = 2.0f;  // seconds on the grid before the launch
         bool m_learning            = true;
         bool m_verbose             = false;
@@ -68,6 +70,7 @@ namespace spartan
         AiDriverStats m_stats;
         float m_track_length  = 0.0f;
         uint32_t m_car_spawns = 0; // a car that dies or keeps crashing is replaced, so the race never stops
+        bool m_grid_released = false;
 
         // watchdog window
         float m_watch_time      = 0.0f;
