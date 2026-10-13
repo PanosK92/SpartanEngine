@@ -180,6 +180,8 @@ function spartan_project_configuration(runtime, minimal)
         if runtime then
             defines { "SP_RUNTIME" }
             removefiles { SOURCE_DIR .. "/editor/**", SOURCE_DIR .. "/mcp/**", SOURCE_DIR .. "/game/**Mcp.cpp" }
+            -- geometry/TreeSpecies parses species files with this reader, and the reader has no other mcp dependencies
+            files { SOURCE_DIR .. "/mcp/McpJson.cpp", SOURCE_DIR .. "/mcp/McpJson.h" }
             files { SOURCE_DIR .. "/editor/imgui/source/**.cpp", SOURCE_DIR .. "/editor/imgui/implementation/**.cpp" }
         else
             removefiles { SOURCE_DIR .. "/runtime/**" }
