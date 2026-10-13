@@ -15,7 +15,7 @@ namespace spartan
 {
     class Entity;
 
-    // the fastest path around a closed spline road, or along an open route from a start to a finish, sampled every couple of meters
+    // a smooth racing path around a closed spline road, or along an open route from a start to a finish, sampled every couple of meters
     // pure geometry, one line is shared by every ai driver racing that road
     class RacingLine
     {
@@ -26,6 +26,9 @@ namespace spartan
             math::Vector3 right;          // horizontal, to the right of the direction of travel
             math::Vector3 position;       // racing line
             math::Vector3 line_right;     // horizontal, to the right of the racing line, which crosses the road at an angle
+            math::Vector3 direction;      // cached heading along the line
+            math::Vector3 segment;        // horizontal vector to the next line point
+            float inverse_segment_length_squared = 0.0f;
             float half_width = 0.0f;
             float room_left  = 0.0f;      // from the centerline to the edge of the drivable road on the left, where cars can pass
             float room_right = 0.0f;

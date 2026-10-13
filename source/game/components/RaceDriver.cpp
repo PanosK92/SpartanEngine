@@ -8,6 +8,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "pch.h"
 #include "RaceDriver.h"
 #include "../../world/components/Physics.h"
+#include "../../world/components/Spline.h"
 #include "../../world/Entity.h"
 #include "../../world/World.h"
 #include "../../car/Car.h"
@@ -214,7 +215,8 @@ namespace spartan
         m_spawn_delay = 0.0f;
 
         Entity* track  = m_track_entity_id != 0 ? World::GetEntityById(m_track_entity_id) : GetEntity();
-        m_line         = RacingLine::Build(track, m_edge_margin);
+        Spline* road   = track ? track->GetComponent<Spline>() : nullptr;
+        m_line         = road ? road->GetRacingLine(m_edge_margin) : nullptr;
         m_track_length = m_line ? m_line->GetLength() : 0.0f;
         if (m_line)
         {

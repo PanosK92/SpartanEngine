@@ -3743,6 +3743,13 @@ void Properties::ShowSpline(spartan::Spline* spline) const
             }
 
             // width (start)
+            if (profile == static_cast<int>(spartan::SplineProfile::Road))
+            {
+                bool show_racing_line = spline->GetShowRacingLine();
+                if (property_toggle("Show Racing Line", &show_racing_line, "draw the shared AI path on the road"))
+                    spline->SetShowRacingLine(show_racing_line);
+            }
+
             if (property_float("Width (Start)", &road_width, 0.1f, 0.5f, 100.0f, "width at the start of the spline", "%.1f m"))
             {
                 spline->SetRoadWidth(road_width);

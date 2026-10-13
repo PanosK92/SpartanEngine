@@ -47,10 +47,6 @@ namespace spartan
             SP_LOG_ERROR("racing_line: '%s' needs a spline road with at least three control points", spline_entity ? spline_entity->GetObjectName().c_str() : "null");
             return nullptr;
         }
-        if (!spline->GetClosedLoop())
-        {
-            SP_LOG_WARNING("racing_line: '%s' is not a closed loop, cars will race back to the start across the gap", spline_entity->GetObjectName().c_str());
-        }
 
         // the generated deck is what the wheels touch, control points can sit off a road that conforms to terrain
         vector<Vector3> dense;
@@ -75,6 +71,18 @@ namespace spartan
                 dense.push_back(spline->GetPoint(t));
                 dense_t.push_back(t);
             }
+        }
+
+        if (!spline->GetClosedLoop())
+        {
+            vector<Sample> samples;
+            samples.reserve(dense.size());
+            for (size_t i = 0; i < dense.size(); ++i)
+            {
+                const float half_width = (spline->GetRoadWidth() + (spline->GetRoadWidthEnd() - spline->GetRoadWidth()) * dense_t[i]) * 0.5f;
+                samples.push_back({dense[i], half_width, half_width, half_width});
+            }
+            return BuildOpen(samples, {spline_entity->GetObjectId()}, edge_margin);
         }
 
         // a closed loop repeats its first point at the end
@@ -117,7 +125,7 @@ namespace spartan
             const float span     = max(dense_distance[segment + 1] - dense_distance[segment], 1e-4f);
             const float fraction = (distance - dense_distance[segment]) / span;
             const size_t next    = (segment + 1) % dense.size();
-            const float t        = dense_t[segment] + (dense_t[next] - dense_t[segment]) * fraction;
+            const float t        = dense_t[segment] + ((next == 0 ? 1.0f : dense_t[next]) - dense_t[segment]) * fraction;
 
             Point& point     = line->m_points[i];
             point.center     = Vector3::Lerp(dense[segment], dense[next], fraction);
@@ -194,37 +202,95 @@ namespace spartan
 
     void RacingLine::BuildLine(float edge_margin)
     {
-        // elastic band: every point is pulled toward the chord between its neighbours and held inside the road
-        // coarse chords shape the whole corner (outside, apex, outside), fine ones smooth it, the result approaches the minimum curvature line
         const size_t count = m_points.size();
         for (Point& point : m_points)
         {
-            point.offset   = 0.0f;
+            point.offset = 0.0f;
             point.position = point.center;
         }
 
-        const int64_t reaches[] = { 64, 32, 16, 8, 4, 2, 1 };
-        for (int64_t reach : reaches)
+        if (m_closed)
         {
-            if (reach * 4 > static_cast<int64_t>(count))
+            // Minimize integrated squared curvature, not path length. The latter
+            // hugs the inside of bends instead of opening the entry and exit.
+            auto bending = [](const Vector3& a, const Vector3& b, const Vector3& c)
             {
-                continue;
-            }
-            for (uint32_t iteration = 0; iteration < 100; iteration++)
+                const Vector3 ab = planar(b - a), bc = planar(c - b), ac = planar(c - a);
+                const double ab2 = ab.LengthSquared(), bc2 = bc.LengthSquared(), ac2 = ac.LengthSquared();
+                const double cross = ab.Cross(bc).y;
+                return 4.0 * cross * cross / max(ab2 * bc2 * ac2, 1e-12) * (sqrt(ab2) + sqrt(bc2)) * 0.5;
+            };
+            // Wide stencils plan the whole corner; progressively smaller ones
+            // refine transitions. All work happens once when the road changes.
+            for (int64_t reach : {64, 32, 16, 8, 4, 2, 1})
             {
-                // an open line keeps its start and finish where they were asked for
-                const size_t first = m_closed ? 0 : 1;
-                const size_t last  = m_closed ? count : count - 1;
-                for (size_t i = first; i < last; i++)
+                if (reach * 4 >= static_cast<int64_t>(count)) continue;
+                for (uint32_t iteration = 0; iteration < 100; ++iteration)
                 {
-                    Point& point         = m_points[i];
-                    const Vector3& back  = m_points[Wrap(static_cast<int64_t>(i) - reach)].position;
-                    const Vector3& ahead = m_points[Wrap(static_cast<int64_t>(i) + reach)].position;
-                    const Vector3 chord  = (back + ahead) * 0.5f;
-                    const float limit    = max(point.half_width - edge_margin, 0.0f);
-                    const float pull     = planar(chord - point.position).Dot(point.right);
-                    point.offset         = clamp(point.offset + pull * 0.6f, -limit, limit);
-                    point.position       = point.center + point.right * point.offset;
+                    float largest_move = 0.0f;
+                    for (size_t order = 0; order < count; ++order)
+                    {
+                        const size_t i = iteration % 2 ? count - 1 - order : order;
+                        Point& point = m_points[i];
+                        const Vector3 a = m_points[Wrap(static_cast<int64_t>(i) - reach * 2)].position;
+                        const Vector3 b = m_points[Wrap(static_cast<int64_t>(i) - reach)].position;
+                        const Vector3 d = m_points[Wrap(static_cast<int64_t>(i) + reach)].position;
+                        const Vector3 e = m_points[Wrap(static_cast<int64_t>(i) + reach * 2)].position;
+                        auto cost = [&](float offset)
+                        {
+                            const Vector3 c = point.center + point.right * offset;
+                            return bending(a, b, c) + bending(b, c, d) + bending(c, d, e);
+                        };
+                        constexpr float probe = 0.25f;
+                        const double current = cost(point.offset);
+                        const double lower = cost(point.offset - probe), upper = cost(point.offset + probe);
+                        const double gradient = (upper - lower) / (2.0 * probe);
+                        const double hessian = (upper - 2.0 * current + lower) / (probe * probe);
+                        float step = hessian > 1e-12 ? static_cast<float>(-gradient / hessian) : (gradient > 0 ? -probe : probe);
+                        step = clamp(step, -1.0f, 1.0f);
+                        const float limit = max(point.half_width - edge_margin, 0.0f);
+                        for (int trial = 0; trial < 6; ++trial)
+                        {
+                            const float candidate = clamp(point.offset + step, -limit, limit);
+                            if (cost(candidate) < current)
+                            {
+                                largest_move = max(largest_move, fabsf(candidate - point.offset));
+                                point.offset = candidate;
+                                point.position = point.center + point.right * point.offset;
+                                break;
+                            }
+                            step *= 0.5f;
+                        }
+                    }
+                    if (largest_move < 0.0001f) break;
+                }
+            }
+        }
+        else
+        {
+            const int64_t reaches[] = { 64, 32, 16, 8, 4, 2, 1 };
+            for (int64_t reach : reaches)
+            {
+                if (reach * 4 > static_cast<int64_t>(count))
+                {
+                    continue;
+                }
+                for (uint32_t iteration = 0; iteration < 100; iteration++)
+                {
+                    // an open line keeps its start and finish where they were asked for
+                    const size_t first = m_closed ? 0 : 1;
+                    const size_t last  = m_closed ? count : count - 1;
+                    for (size_t i = first; i < last; i++)
+                    {
+                        Point& point         = m_points[i];
+                        const Vector3& back  = m_points[Wrap(static_cast<int64_t>(i) - reach)].position;
+                        const Vector3& ahead = m_points[Wrap(static_cast<int64_t>(i) + reach)].position;
+                        const Vector3 chord  = (back + ahead) * 0.5f;
+                        const float limit    = max(point.half_width - edge_margin, 0.0f);
+                        const float pull     = planar(chord - point.position).Dot(point.right);
+                        point.offset         = clamp(point.offset + pull * 0.6f, -limit, limit);
+                        point.position       = point.center + point.right * point.offset;
+                    }
                 }
             }
         }
@@ -236,6 +302,11 @@ namespace spartan
             point.distance    = distance;
             point.step        = Vector3::Distance(point.position, m_points[Wrap(static_cast<int64_t>(i) + 1)].position);
             point.line_right  = Vector3::Up.Cross(planar_direction(m_points[Wrap(static_cast<int64_t>(i) + 1)].position - m_points[Wrap(static_cast<int64_t>(i) - 1)].position));
+            point.segment     = planar(m_points[Wrap(static_cast<int64_t>(i) + 1)].position - point.position);
+            point.inverse_segment_length_squared = 1.0f / max(point.segment.LengthSquared(), 1e-6f);
+            point.direction   = !m_closed && i + 2 >= count
+                ? planar_direction(point.position - m_points[Wrap(static_cast<int64_t>(i) - 2)].position)
+                : planar_direction(m_points[Wrap(static_cast<int64_t>(i) + 2)].position - point.position);
             distance         += point.step;
         }
         m_length = distance;
@@ -304,13 +375,7 @@ namespace spartan
 
     Vector3 RacingLine::DirectionAt(size_t index) const
     {
-        // the finish of an open line has nothing ahead, it keeps the direction it arrived with
-        const int64_t ahead = static_cast<int64_t>(index) + 2;
-        if (!m_closed && ahead >= static_cast<int64_t>(m_points.size()))
-        {
-            return planar_direction(m_points[index].position - m_points[Wrap(static_cast<int64_t>(index) - 2)].position);
-        }
-        return planar_direction(m_points[Wrap(ahead)].position - m_points[index].position);
+        return m_points[index].direction;
     }
 
     RacingLine::Projection RacingLine::Project(const Vector3& position, size_t hint, bool full_search) const
@@ -332,8 +397,8 @@ namespace spartan
         {
             const size_t i       = Wrap(j);
             const Vector3 a      = planar(m_points[i].position);
-            const Vector3 ab     = planar(m_points[Wrap(j + 1)].position) - a;
-            const float t        = clamp((p - a).Dot(ab) / max(ab.LengthSquared(), 1e-6f), 0.0f, 1.0f);
+            const Vector3& ab    = m_points[i].segment;
+            const float t        = clamp((p - a).Dot(ab) * m_points[i].inverse_segment_length_squared, 0.0f, 1.0f);
             const float distance = (a + ab * t - p).LengthSquared();
             if (distance < best_distance)
             {

@@ -26,11 +26,6 @@ namespace spartan
     {
         constexpr float gravity = 9.81f;
 
-        // lateral tracking, natural frequency in rad/s, damping ratio and a slow integral for the understeer a steady corner leaves
-        constexpr float line_frequency     = 1.5f;
-        constexpr float line_damping       = 1.0f;
-        constexpr float line_integral_gain = 0.4f;
-
         // traffic
         constexpr float traffic_range   = 250.0f; // meters, cars further away are ignored
         constexpr float car_length      = 4.6f;   // center to center when two cars touch nose to tail
@@ -301,7 +296,8 @@ namespace spartan
 
     float AiDriver::Margin() const
     {
-        return 0.84f + 0.12f * m_settings.skill;
+        // Keep tire capacity available for path corrections and racing side by side.
+        return 0.58f + 0.12f * m_settings.skill + (m_attack_time > 0.0f ? 0.04f : 0.0f);
     }
 
     float AiDriver::SpeedAt(float distance) const
@@ -364,15 +360,12 @@ namespace spartan
         m_line_error     = 0.0f;
         m_center_offset  = m_line->GetPoint(index).offset;
         m_steering       = 0.0f;
-        m_line_integral  = 0.0f;
         m_throttle       = 0.0f;
         m_stuck_time     = 0.0f;
         m_upside_time    = 0.0f;
         m_wrong_way_time = 0.0f;
         m_previous_speed = 0.0f;
         m_yaw_rate       = 0.0f;
-        m_drift_accel    = 0.0f;
-        m_previous_delta = 0.0f;
         m_decel          = 0.0f;
         m_saturated_time = 0.0f;
         m_brake_limit    = 1.0f;
@@ -380,6 +373,7 @@ namespace spartan
         m_pass_offset    = 0.0f;
         m_pass_rate      = 0.0f;
         m_pass_commit    = 0.0f;
+        m_attack_time    = 0.0f;
         m_blocked_time   = 0.0f;
         m_blocker        = Blocker();
     }
@@ -473,10 +467,32 @@ namespace spartan
         }
         m_traffic = move(seen);
         m_pass_commit = max(m_pass_commit - delta_time, 0.0f);
+        const bool was_attacking = m_attack_time > 0.0f;
+        m_attack_time = max(m_attack_time - delta_time, 0.0f);
+        if (m_line->IsClosed())
+        {
+            for (const Nearby& car : nearby)
+                if (car.along > 0.0f && car.along < 120.0f && car.speed > -1.0f)
+                    m_attack_time = 3.0f;
+        }
+        if (was_attacking != (m_attack_time > 0.0f)) BuildPlan();
 
-        // an offset fits where the car keeps its clearance from both road edges, here and beside the car it passes
+        // Reserve a corridor through the upcoming bend before committing to a
+        // lateral offset; checking only the current point reacts too late.
+        float minimum_offset = -numeric_limits<float>::max();
+        float maximum_offset = numeric_limits<float>::max();
+        for (float seconds : {0.0f, 0.5f, 1.0f, 1.5f})
+        {
+            float fraction = 0.0f;
+            const auto& point = m_line->GetPoint(m_line->IndexAt(m_distance + max(speed, 5.0f) * seconds, fraction));
+            minimum_offset = max(minimum_offset, -point.room_left + edge_clearance - point.offset);
+            maximum_offset = min(maximum_offset, point.room_right - edge_clearance - point.offset);
+        }
+
+        // an offset fits through the approach and beside the car it passes
         auto fits = [&](float offset, size_t index)
         {
+            if (offset < minimum_offset || offset > maximum_offset) return false;
             for (size_t i : { m_index, index })
             {
                 const RacingLine::Point& point = m_line->GetPoint(i);
@@ -520,14 +536,17 @@ namespace spartan
 
         // pass on the left first like a driver on a right hand road, the right if only that side is open
         // the side lane must be free of cars going the same way beside the one being passed, and of oncoming cars for as long as the pass takes
-        if (blocker && m_pass_target == 0.0f && blocker->along < 60.0f && blocker->speed < plan_speed - 3.0f && speed > 3.0f)
+        if (blocker && m_pass_target == 0.0f && fabsf(m_pass_offset) < 0.5f && fabsf(m_line_error) < 1.0f
+            && blocker->along < min(max(25.0f, speed * 1.5f), 80.0f)
+            && blocker->speed < plan_speed + (m_line->IsClosed() ? 1.0f : -3.0f) && speed > 3.0f)
         {
             const float closing   = max(speed - max(blocker->speed, 0.0f), 4.0f);
             const float pass_time = min((blocker->along + car_length * 2.0f + 10.0f) / closing, 12.0f);
             for (float side : { -1.0f, 1.0f })
             {
                 const float offset = blocker->lateral + side * pass_spacing;
-                bool clear         = fabsf(offset - m_pass_offset) > 1.0f && fits(offset, blocker->index) && merge_clear(offset);
+                bool clear         = fabsf(offset - m_pass_offset) > 1.0f && offset > minimum_offset + 0.5f && offset < maximum_offset - 0.5f
+                    && fits(offset, blocker->index) && merge_clear(offset);
                 for (const Nearby& car : nearby)
                 {
                     if (!clear)
@@ -584,8 +603,7 @@ namespace spartan
         }
 
         // the racing line sweeps across the road at corners; a constant offset must never carry a car off the deck
-        const RacingLine::Point& road = m_line->GetPoint(m_index);
-        m_pass_target = clamp(m_pass_target, -road.room_left + edge_clearance - road.offset, road.room_right - edge_clearance - road.offset);
+        m_pass_target = clamp(m_pass_target, minimum_offset, maximum_offset);
 
         // a pass is not permission to stop braking before the car has actually cleared the old lane
         blocker = nullptr;
@@ -705,72 +723,60 @@ namespace spartan
         // the line is followed at the passing offset, the error the controller sees is from there
         const float tracking_error = m_line_error - m_pass_offset;
 
-        // steering: the line's curvature a moment ahead is the feedforward, a critically damped lateral acceleration pulls the car back onto the line
-        // commanding acceleration instead of an angle keeps the gain right at every speed, where pure pursuit weaves once the car is quick
-        // the lateral velocity term uses the real velocity, so a sliding car is caught by where it is going rather than where it points
-        // the car turns its wheel at a limited rate like a player's, so a command arrives late and a loop that ignores it weaves
-        // the controller acts on where the car will be once the wheel gets there, and the wheel angle it tracks is the car's
-        float steering_rate    = 20.0f;
+        // Aim the rear axle at a point ahead on the actual path. Looking farther
+        // ahead with speed avoids chasing individual samples or noisy derivatives.
         float applied_steering = m_steering;
-        float deadzone         = 0.0f;
+        float deadzone = 0.0f;
         if (car::Simulation* simulation = CarPhysics::Get(*physics).GetVehicleSimulation())
         {
-            steering_rate    = max(simulation->get_spec().steering_rate, 0.1f);
-            deadzone         = clamp(simulation->get_spec().steering_deadzone, 0.0f, 0.5f);
-            const float raw  = simulation->get_steering();
-            applied_steering = copysignf(max(fabsf(raw) - deadzone, 0.0f) / (1.0f - deadzone), raw);
+            deadzone = clamp(simulation->get_spec().steering_deadzone, 0.0f, 0.5f);
+            // The simulation reports the rack after deadzone filtering and
+            // rate limiting. Removing the deadzone twice corrupts the model.
+            applied_steering = simulation->get_steering();
         }
-        // the rack's travel to the last command, then the tires and the body take about a tenth of a second to answer
-        const float response_lag  = clamp(fabsf(m_steering - applied_steering) / steering_rate, 0.0f, 0.25f) + 0.1f;
-
-        const float preview       = max(speed, 0.0f) * (0.15f + response_lag);
-        const float feedforward   = m_line->CurvatureAt(m_distance + preview);
-        // measured against the line's own direction, where the line crosses the road the road's normal would read its sweep as drift
+        const float preview_time = 1.0f + clamp((speed - 30.0f) * 0.01f, 0.0f, 0.4f);
+        const float preview = clamp(max(speed, 0.0f) * preview_time, 8.0f, 85.0f);
+        float fraction = 0.0f;
+        const size_t aim_index = m_line->IndexAt(m_distance + preview, fraction);
+        const auto& aim_a = m_line->GetPoint(aim_index);
+        const auto& aim_b = m_line->GetPoint(m_line->Wrap(static_cast<int64_t>(aim_index) + 1));
+        // Follow the maneuver ahead of the car, not a moving lateral target
+        // underneath it, which otherwise leaves a full steering lag of error.
+        const float offset_reach = fabsf(m_pass_rate) * min(preview / max(speed, 5.0f), 0.8f);
+        const float future_offset = m_pass_offset + clamp(m_pass_target - m_pass_offset, -offset_reach, offset_reach);
+        const float aim_offset = clamp(future_offset, -aim_a.room_left + edge_clearance - aim_a.offset, aim_a.room_right - edge_clearance - aim_a.offset);
+        const Vector3 target = Vector3::Lerp(aim_a.position, aim_b.position, fraction) + aim_a.line_right * aim_offset;
+        // Tire slip means the chassis heading is not the direction of travel.
+        // Pursuit from the heading alone settles parallel to the line with an
+        // error proportional to speed. Track the rear axle's actual course.
+        const Vector3 rear_velocity = planar(velocity + physics->GetAngularVelocity().Cross(-flat_forward * (wheelbase * 0.5f)));
+        const Vector3 course = speed > 5.0f ? planar_direction(rear_velocity) : flat_forward;
+        const Vector3 course_right = Vector3::Up.Cross(course);
+        const Vector3 to_target = planar(target - (position - flat_forward * (wheelbase * 0.5f)));
+        const float feedforward = 2.0f * to_target.Dot(course_right) / max(to_target.LengthSquared(), 4.0f);
         const float lateral_speed_now = planar(velocity).Dot(here.line_right);
-        // sideways acceleration off the line keeps acting through the lag, measured from the velocity itself
-        // speed times yaw rate is only the path's acceleration while the body slip holds still, a swinging tail reads as a g of drift that is not there
-        if (m_previous_delta > 0.0f)
-        {
-            const float measured = (lateral_speed_now - m_previous_lateral_speed) / delta_time;
-            m_drift_accel       += (clamp(measured, -30.0f, 30.0f) - m_drift_accel) * min(1.0f, delta_time / 0.1f);
-        }
-        m_previous_lateral_speed  = lateral_speed_now;
-        m_previous_delta          = delta_time;
-        const float drift_accel   = m_drift_accel;
-        const float lateral_speed = lateral_speed_now + drift_accel * response_lag;
-        const float predicted     = tracking_error + lateral_speed_now * response_lag + 0.5f * drift_accel * response_lag * response_lag;
-        m_line_integral           = clamp(m_line_integral + tracking_error * delta_time, -4.0f, 4.0f);
-        // a fast car's yaw answers later, a softer loop at speed keeps the correction from feeding a weave
-        const float frequency     = clamp(line_frequency - (speed - 20.0f) * 0.012f, 0.9f, line_frequency);
-        // the integral's lag and the car's own yaw lag add up at speed, so it shrinks with the loop and the damping grows
-        const float slowdown      = frequency / line_frequency;
-        const float damping       = line_damping + clamp((speed - 30.0f) * 0.02f, 0.0f, 0.5f);
-        // far off the line the car closes in at a capped lateral speed, rushing back builds a sideways speed the tires then cannot stop
-        const float approach      = max(1.5f, speed * 0.06f);
-        const float desired_drift = m_pass_rate - clamp(frequency / (2.0f * damping) * predicted, -approach, approach);
-        const float correction    = 2.0f * damping * frequency * (lateral_speed - desired_drift) + line_integral_gain * slowdown * slowdown * slowdown * m_line_integral;
-        // never ask for more turn than the tires can give, past that the only thing extra steering buys is a spin
-        const float max_curvature = m_model.CorneringLimit(speed) * 1.3f / max(speed * speed, 25.0f);
-        const float wanted        = clamp(feedforward - correction / max(speed * speed, 25.0f), -max_curvature, max_curvature);
-        // a driver feels the tail start to swing long before it slides: yaw beyond what the wheel asks for is taken back off the wheel
-        // one sided, a car turning less than asked is understeer, which the slip gain below answers
-        const float yawing        = speed > 8.0f ? m_yaw_rate / speed : 0.0f;
-        const float yaw_excess    = yawing - wanted;
-        const float curvature     = yaw_excess * yawing > 0.0f ? wanted - 0.6f * yaw_excess : wanted;
-        // understeer is a steady corner's slip, so only the corner itself gets the boost, corrections stay kinematic or they multiply the loop gain
-        // saturated fronts make no more force with more angle, only more scrub, so the boost stops there too
-        const float front_room    = clamp((0.98f - m_model.front_use) / 0.08f, 0.0f, 1.0f);
-        const float corner        = clamp(feedforward, -max_curvature, max_curvature);
-        const float slip_gain     = 1.0f + min(m_model.understeer * speed * speed * fabsf(corner), 1.5f) * front_room;
-        const float curved        = wheelbase * (curvature + corner * (slip_gain - 1.0f)) / max(tanf(max_steer), 0.05f);
-        float steer               = copysignf(powf(min(fabsf(curved), 1.0f), 1.0f / max(linearity, 0.1f)), curved);
-
+        const float max_curvature = m_model.CorneringLimit(speed) * 0.85f / max(speed * speed, 25.0f);
+        const float wanted = clamp(feedforward, -max_curvature, max_curvature);
+        const float yawing = speed > 8.0f ? m_yaw_rate / speed : 0.0f;
+        const float yaw_excess = yawing - wanted;
+        const float curvature = yaw_excess * yawing > 0.0f ? wanted - 0.8f * yaw_excess : wanted;
+        const float front_room = clamp((0.98f - m_model.front_use) / 0.08f, 0.0f, 1.0f);
+        // Compensate the steady corner's tire slip without multiplying the
+        // tracking feedback gain. Boosting both creates a high-speed weave.
+        const float corner = clamp(m_line->CurvatureAt(m_distance + max(speed, 0.0f) * 0.2f), -max_curvature, max_curvature);
+        const float slip_gain = 1.0f + min(m_model.understeer * speed * speed, 1.5f) * front_room;
+        const float curved = wheelbase * (curvature + corner * (slip_gain - 1.0f)) / max(tanf(max_steer), 0.05f);
+        float steer = copysignf(powf(min(fabsf(curved), 1.0f), 1.0f / max(linearity, 0.1f)), curved);
         // oversteer: the tail swings past the path, steer toward where the car is going like a driver catching a slide
         // tire force falls once a patch slides, so friction use alone cannot tell a slide from grip, body slip beyond this car's normal can
         // the normal slip is what a limit corner shows, a straight or a gentle bend asks for a fraction of it
         const float demand         = clamp(fabsf(here.curvature) * speed * speed / max(m_model.CorneringLimit(speed), 1.0f), 0.2f, 1.0f);
         const float slip_threshold = m_model.slip_normal * demand * 1.3f + 0.03f;
-        const float rear_limit     = body_slip * m_yaw_rate < 0.0f ? clamp((fabsf(body_slip) - slip_threshold) / 0.06f, 0.0f, 1.0f) : 0.0f;
+        // Ordinary cornering needs slip. Countersteer only when the car also
+        // yaws beyond the requested turn, or the slip is already a large slide.
+        const bool excess_yaw = yaw_excess * yawing > 0.0f && fabsf(yaw_excess) > 0.001f;
+        const float rear_limit = body_slip * m_yaw_rate < 0.0f && (excess_yaw || fabsf(body_slip) > 0.3f)
+            ? clamp((fabsf(body_slip) - slip_threshold) / 0.06f, 0.0f, 1.0f) : 0.0f;
         const bool oversteer       = rear_limit > 0.0f;
         const bool spinning        = fabsf(body_slip) > 0.6f;
         if (oversteer)
@@ -783,6 +789,10 @@ namespace spartan
         // pedals: every speed the plan asks for within stopping distance sets the deceleration needed now
         // braking from that forecast instead of from the speed error means the car is never late into a corner
         float target_speed       = SpeedAt(m_distance + max(speed, 0.0f) * 0.4f);
+        // The precomputed plan assumes the car is on the line. A correction or
+        // passing maneuver can need a tighter turn, so budget for that turn too.
+        const float tracking_speed = sqrtf(m_model.CorneringLimit(speed) * Margin() / max(fabsf(feedforward), 1e-5f));
+        target_speed = min(target_speed, tracking_speed);
         const float capacity     = m_model.BrakingLimit(speed);
         float needed             = 0.0f;
         // a slower car ahead: stop within the gap to it if it stopped dead, and settle at a gap that grows with speed
@@ -823,7 +833,7 @@ namespace spartan
         const float error         = target_speed - speed;
         float throttle            = needed > braking_point * 0.75f ? 0.0f : clamp(0.3f + 0.35f * error, 0.0f, 1.0f);
         float brake               = needed > braking_point * 0.85f ? clamp(needed / max(capacity, 1.0f) * 1.15f, 0.0f, 1.0f) : 0.0f;
-        brake                     = max(brake, clamp((speed - SpeedAt(m_distance) - 2.0f) * 0.2f, 0.0f, 1.0f));
+        brake                     = max(brake, clamp((speed - min(SpeedAt(m_distance), tracking_speed) - 1.0f) * 0.2f, 0.0f, 1.0f));
         brake                     = max(brake, clamp((speed - follow_speed - 1.5f) * 0.15f, 0.0f, 0.6f));
         if (follow_speed < 1.0f)
         {
@@ -880,14 +890,17 @@ namespace spartan
 
         // the tires slip, so the car turns less than its wheel angle says, the yaw it really gets tells by how much
         // the wheel angle is the one the car has, a rack still travelling would read as understeer
-        if (speed > 15.0f && fabsf(steer - m_steering) < 0.03f && fabsf(m_steering - applied_steering) < 0.02f && !oversteer)
+        if (speed > 15.0f && fabsf(steer - m_steering) < 0.03f && fabsf(m_steering - applied_steering) < 0.02f && fabsf(yaw_excess) < 0.0008f && !oversteer)
         {
             const float achieved  = fabsf(m_yaw_rate) / speed;
             const float commanded = tanf(max_steer) * powf(fabsf(applied_steering), linearity) / wheelbase;
             const float lateral   = fabsf(lateral_accel);
-            if (commanded > 0.004f && achieved > 0.002f && lateral > 3.0f && m_model.front_use < 0.95f)
+            if (commanded > 0.0005f && achieved > 0.0002f && lateral > 0.5f && m_model.front_use < 0.95f)
             {
-                const float measured = clamp((commanded / achieved - 1.0f) / lateral, 0.0f, 0.3f);
+                // Bicycle-model understeer gain grows with speed squared, not
+                // speed squared times curvature. The latter understeers badly
+                // in fast gentle bends while overcompensating tight corners.
+                const float measured = clamp((commanded / achieved - 1.0f) / (speed * speed), 0.0f, 0.005f);
                 m_model.understeer  += (measured - m_model.understeer) * min(1.0f, delta_time * 0.5f);
             }
         }

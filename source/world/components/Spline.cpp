@@ -20,6 +20,9 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../resource/ResourceCache.h"
 #include "../../physics/PhysicsWorld.h"
 #include "../../core/ProgressTracker.h"
+#ifdef SP_GAME
+#include "../../car/RacingLine.h"
+#endif
 SP_WARNINGS_OFF
 #include "../../io/pugixml.hpp"
 #include <sol/sol.hpp>
@@ -522,6 +525,7 @@ namespace spartan
     Spline::Spline(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_closed_loop, SetClosedLoop, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_show_racing_line, SetShowRacingLine, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_resolution, SetResolution, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_road_width, SetRoadWidth, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_needs_road_regeneration, bool);
@@ -724,6 +728,24 @@ namespace spartan
         }
     }
 
+    std::shared_ptr<RacingLine> Spline::GetRacingLine(float edge_margin)
+    {
+#ifdef SP_GAME
+        if (m_profile != SplineProfile::Road || !m_mesh_enabled || m_generated_road_frames.empty()) return nullptr;
+        const uint64_t revision = m_entity_ptr->GetTransformRevision();
+        if (revision != m_racing_line_transform_revision)
+        {
+            m_racing_lines.clear();
+            m_racing_line_transform_revision = revision;
+        }
+        auto [entry, inserted] = m_racing_lines.try_emplace(edge_margin);
+        if (inserted) entry->second = RacingLine::Build(m_entity_ptr, edge_margin);
+        return entry->second;
+#else
+        return nullptr;
+#endif
+    }
+
     void Spline::Tick()
     {
         SP_PROFILE_CPU();
@@ -854,6 +876,21 @@ namespace spartan
             m_prev_world_revision = m_entity_ptr->GetTransformRevision();
         }
 
+        // The overlay uses the exact cached path handed to the drivers.
+#ifdef SP_GAME
+        if (m_show_racing_line)
+        {
+            if (const auto line = GetRacingLine())
+            {
+                const Color color(0.15f, 1.0f, 0.25f, 1.0f);
+                const Vector3 lift(0.0f, 0.08f, 0.0f);
+                const size_t segments = line->GetCount() - (line->IsClosed() ? 0 : 1);
+                for (size_t i = 0; i < segments; ++i)
+                    Renderer::DrawLine(line->GetPoint(i).position + lift, line->GetPoint(line->Wrap(static_cast<int64_t>(i) + 1)).position + lift, color, color);
+            }
+        }
+#endif
+
         // debug lines are edit only, road meshes already generated above
         if (Engine::IsFlagSet(EngineMode::Playing))
         {
@@ -941,6 +978,7 @@ namespace spartan
 
     void Spline::Save(pugi::xml_node& node)
     {
+        node.append_attribute("show_racing_line") = m_show_racing_line;
         node.append_attribute("closed_loop")   = m_closed_loop;
         node.append_attribute("resolution")    = m_resolution;
         node.append_attribute("road_width")    = m_road_width;
@@ -1015,6 +1053,7 @@ namespace spartan
 
     void Spline::Load(pugi::xml_node& node)
     {
+        m_show_racing_line = node.attribute("show_racing_line").as_bool(false);
         m_closed_loop             = node.attribute("closed_loop").as_bool(false);
         m_resolution              = node.attribute("resolution").as_uint(20);
         m_road_width              = node.attribute("road_width").as_float(8.0f);
@@ -2433,6 +2472,7 @@ namespace spartan
         road_network_members.erase(this);
         m_base_road_frames.clear();
         m_generated_road_frames.clear();
+        m_racing_lines.clear();
         m_junction_frames.clear();
         m_junction_segments.clear();
         m_junction_patches.clear();
@@ -3558,7 +3598,11 @@ namespace spartan
 
     void Spline::GenerateMesh(const vector<SplineFrame>& frames, const vector<Vector2>& profile_points, bool close_profile)
     {
-        if (m_profile == SplineProfile::Road) m_generated_road_frames = frames;
+        if (m_profile == SplineProfile::Road)
+        {
+            m_generated_road_frames = frames;
+            m_racing_lines.clear();
+        }
         if (frames.size() < 2 || profile_points.size() < 2)
         {
             return;

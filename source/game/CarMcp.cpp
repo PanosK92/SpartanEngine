@@ -21,6 +21,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "world/World.h"
 #include "world/Entity.h"
 #include "world/components/Physics.h"
+#include "world/components/Spline.h"
 #include "components/RaceDriver.h"
 #include "world/components/Camera.h"
 #include "rendering/Renderer.h"
@@ -233,8 +234,6 @@ namespace spartan
         // the racing line of a spline road, shared with a race on that road or with earlier drivers so every car races the same line
         std::shared_ptr<RacingLine> find_racing_line(const std::optional<std::string>& track, std::string& error)
         {
-            static std::unordered_map<uint64_t, std::weak_ptr<RacingLine>> built_lines;
-
             Entity* track_entity = nullptr;
             if (track)
             {
@@ -271,17 +270,13 @@ namespace spartan
                 error = "no race is running, pass track with a spline road id or name";
                 return nullptr;
             }
-            if (std::shared_ptr<RacingLine> line = built_lines[track_entity->GetObjectId()].lock())
-            {
-                return line;
-            }
-            std::shared_ptr<RacingLine> line = RacingLine::Build(track_entity);
+            Spline* road = track_entity->GetComponent<Spline>();
+            std::shared_ptr<RacingLine> line = road ? road->GetRacingLine() : nullptr;
             if (!line)
             {
                 error = "track is not a spline road with at least three control points";
                 return nullptr;
             }
-            built_lines[track_entity->GetObjectId()] = line;
             return line;
         }
 

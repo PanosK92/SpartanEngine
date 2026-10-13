@@ -96,7 +96,7 @@ namespace spartan
             float mass             = 1500.0f;
             float peak_slip        = 0.1f;    // slip ratio where the tires make their most braking force
             float slip_normal      = 0.08f;   // radians of body slip the car shows cornering at the limit without sliding
-            float understeer       = 0.05f;   // extra steering per m/s^2 of lateral acceleration
+            float understeer       = 0.0005f; // extra curvature gain per (m/s)^2
 
             // tire use, smoothed like a driver feels it through the seat
             float front_use   = 0.0f;
@@ -174,14 +174,10 @@ namespace spartan
         float m_line_error    = 0.0f;
         float m_center_offset = 0.0f;
         float m_yaw_rate      = 0.0f;
-        float m_drift_accel   = 0.0f; // m/s^2 sideways off the racing line
-        float m_previous_lateral_speed = 0.0f;
-        float m_previous_delta         = 0.0f;
 
         // controls
         float m_steering      = 0.0f;
         float m_throttle      = 0.0f;
-        float m_line_integral = 0.0f;
         float m_brake_limit   = 1.0f; // most pedal the tires take before a wheel locks, found by feel like threshold braking
         float m_hold_time     = 0.0f;
         bool m_grid_waiting   = false; // race organizer holds the countdown until every car is ready
@@ -194,6 +190,7 @@ namespace spartan
         float m_pass_offset  = 0.0f; // where it drives now, eased toward the target
         float m_pass_rate    = 0.0f; // m/s the offset moves at
         float m_pass_commit  = 0.0f; // finish a lane change before reconsidering the racing line
+        float m_attack_time  = 0.0f; // hold racing intent briefly when a competitor is ahead
         float m_blocked_time = 0.0f; // standing behind a car, a queue is not being stuck until it lasts
 
         // learning and recovery timers

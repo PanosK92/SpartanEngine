@@ -10,6 +10,8 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ========================
 #include "Component.h"
 #include <mutex>
+#include <map>
+#include <memory>
 #include "../../math/Quaternion.h"
 #include "../../math/Vector2.h"
 #include "../../math/Vector3.h"
@@ -19,6 +21,7 @@ Commercial use requires written permission and negotiated payment terms.
 namespace spartan
 {
     class Mesh;
+    class RacingLine;
 
     // cross-section profile that gets extruded along the spline
     enum class SplineProfile : uint8_t
@@ -198,6 +201,9 @@ namespace spartan
         const std::vector<SplineCarveSample>& GetCarveSamples() const { return m_carve_samples; }
         // Final rendered deck, including roads that do not carve terrain.
         const std::vector<SplineFrame>& GetRoadFrames() const { return m_generated_road_frames; }
+        std::shared_ptr<RacingLine> GetRacingLine(float edge_margin = 1.7f);
+        bool GetShowRacingLine() const { return m_show_racing_line; }
+        void SetShowRacingLine(bool show) { m_show_racing_line = show; }
         bool CarvesTerrain() const;
 
         // embankment skirt, closes the gap between a raised deck and the ground
@@ -259,6 +265,9 @@ namespace spartan
         void SetInstanceRandomYaw(float degrees)                { m_instance_random_yaw = degrees; }
 
     private:
+        bool m_show_racing_line = false;
+        uint64_t m_racing_line_transform_revision = uint64_t(-1);
+        std::map<float, std::shared_ptr<RacingLine>> m_racing_lines;
         static void SolveRoadJunctions(const std::vector<Spline*>& members);
         // state and phases of the junction solver for one connected road network
         struct JunctionSolve;
