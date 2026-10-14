@@ -211,6 +211,8 @@ namespace spartan
         resource_desc.Flags               = D3D12_RESOURCE_FLAG_NONE;
 
         uint32_t array_length = GetArrayLength();
+        m_rhi_rtv.resize(IsRtv() ? array_length : 0, nullptr);
+        m_rhi_dsv.resize(IsDsv() ? array_length : 0, nullptr);
 
         if (m_type == RHI_Texture_Type::Type2D || m_type == RHI_Texture_Type::Type2DArray)
         {
@@ -488,7 +490,8 @@ namespace spartan
             // per-layer 2d srvs for array textures, lets compute passes sample individual layers
             if (m_type == RHI_Texture_Type::Type2DArray && array_length > 1)
             {
-                const uint32_t layer_count = min<uint32_t>(array_length, rhi_max_render_target_count);
+                const uint32_t layer_count = array_length;
+                m_rhi_srv_layers.resize(layer_count, nullptr);
                 for (uint32_t layer = 0; layer < layer_count; layer++)
                 {
                     uint32_t layer_srv_index               = d3d12_descriptors::AllocateCbvSrvUavCpu();
@@ -527,7 +530,7 @@ namespace spartan
             }
             else if (m_type == RHI_Texture_Type::Type2DArray || m_type == RHI_Texture_Type::TypeCube)
             {
-                const uint32_t slice_count = min<uint32_t>(array_length, rhi_max_render_target_count);
+                const uint32_t slice_count = array_length;
                 for (uint32_t slice = 0; slice < slice_count; slice++)
                 {
                     uint32_t rtv_index                     = d3d12_descriptors::AllocateRtv();
@@ -596,7 +599,7 @@ namespace spartan
             }
             else if (m_type == RHI_Texture_Type::Type2DArray || m_type == RHI_Texture_Type::TypeCube)
             {
-                const uint32_t slice_count = min<uint32_t>(array_length, rhi_max_render_target_count);
+                const uint32_t slice_count = array_length;
                 for (uint32_t slice = 0; slice < slice_count; slice++)
                 {
                     uint32_t dsv_index                     = d3d12_descriptors::AllocateDsv();
@@ -687,6 +690,9 @@ namespace spartan
         for (auto& v : m_rhi_srv_layers) { d3d12_descriptors::FreeCbvSrvUavCpu(v); v = nullptr; }
         for (auto& v : m_rhi_rtv) { d3d12_descriptors::FreeRtv(v); v = nullptr; }
         for (auto& v : m_rhi_dsv) { d3d12_descriptors::FreeDsv(v); v = nullptr; }
+        m_rhi_srv_layers.clear();
+        m_rhi_rtv.clear();
+        m_rhi_dsv.clear();
         d3d12_descriptors::FreeRtv(m_rhi_rtv_multiview);
         m_rhi_rtv_multiview = nullptr;
         d3d12_descriptors::FreeDsv(m_rhi_dsv_multiview);

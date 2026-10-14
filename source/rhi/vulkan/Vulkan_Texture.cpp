@@ -468,6 +468,8 @@ namespace spartan
 
         // create image views
         Breadcrumbs::BeginMarker("texture_create_views");
+        m_rhi_rtv.resize(IsRtv() ? GetArrayLength() : 0, nullptr);
+        m_rhi_dsv.resize(IsDsv() ? GetArrayLength() : 0, nullptr);
         {
             // shader resource views
             if (IsSrv() || IsUav())
@@ -485,6 +487,7 @@ namespace spartan
                 // per-layer 2d views for array textures (used by compute passes to sample individual layers)
                 if (m_type == RHI_Texture_Type::Type2DArray && m_depth > 1)
                 {
+                    m_rhi_srv_layers.resize(GetArrayLength(), nullptr);
                     for (uint32_t i = 0; i < m_depth; i++)
                     {
                         create_image_view_2d_layer(m_rhi_resource, m_rhi_srv_layers[i], this, i, 0, m_mip_count);
@@ -563,22 +566,24 @@ namespace spartan
                 m_rhi_srv_mips[i] = nullptr;
             }
 
-            for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+            for (void* view : m_rhi_srv_layers)
             {
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_srv_layers[i]);
-                m_rhi_srv_layers[i] = nullptr;
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, view);
             }
+            m_rhi_srv_layers.clear();
         }
 
         // rtv and dsv
-        for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+        for (void* view : m_rhi_dsv)
         {
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_dsv[i]);
-            m_rhi_dsv[i] = nullptr;
-
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_rtv[i]);
-            m_rhi_rtv[i] = nullptr;
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, view);
         }
+        m_rhi_dsv.clear();
+        for (void* view : m_rhi_rtv)
+        {
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, view);
+        }
+        m_rhi_rtv.clear();
 
         // multiview full-array views
         RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_rtv_multiview);

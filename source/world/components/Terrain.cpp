@@ -1773,6 +1773,16 @@ namespace spartan
         hash.Add(layer.grass_ring_radius);
         hash.Add(layer.grass_cell_size);
         hash.Add(layer.flags);
+        // Canopies reserve their footprint around buildings, including pads outside the tile.
+        if (layer.flags & TerrainScatterFlags_Canopy)
+        {
+            hash.Add(uint32_t(1)); // canopy clearance algorithm
+            for (const TerrainPlatform& pad : m_platforms)
+            {
+                hash.Add(pad.center_x); hash.Add(pad.center_z);
+                hash.Add(pad.half_x); hash.Add(pad.half_z); hash.Add(pad.yaw);
+            }
+        }
         const uint32_t axis = max(m_tile_count, 1u);
         const TerrainGridMapping mapping = GetGridMapping();
         // Formations can sample support beyond their owner tile. Include their full reach.
@@ -1843,6 +1853,58 @@ namespace spartan
         };
 
         placement::find_transforms(layer, context, tile_index, transforms_out, m_triangle_data, coverage_out);
+
+        // A valid trunk position can still put a wide crown through a building. Keep the whole
+        // canopy clear of authored pads, without enlarging or deforming the terrain platforms.
+        if ((layer.flags & TerrainScatterFlags_Canopy) && mesh_bounds && !transforms_out.empty())
+        {
+            const Vector3 lo = mesh_bounds->GetMin();
+            const Vector3 hi = mesh_bounds->GetMax();
+            const float rx = max(abs(lo.x), abs(hi.x));
+            const float rz = max(abs(lo.z), abs(hi.z));
+            const float radius = sqrtf(rx * rx + rz * rz);
+            const Matrix tile_world = Matrix::CreateTranslation(context.tile_offset) * GetEntity()->GetMatrix();
+            float min_x = numeric_limits<float>::max(), min_z = min_x;
+            float max_x = -min_x, max_z = -min_x;
+            for (const Matrix& local : transforms_out)
+            {
+                const Matrix world = local * tile_world;
+                const Vector3 p = world.GetTranslation();
+                const Vector3 scale = world.GetScale();
+                const float reach = radius * max(scale.x, max(scale.y, scale.z));
+                min_x = min(min_x, p.x - reach); max_x = max(max_x, p.x + reach);
+                min_z = min(min_z, p.z - reach); max_z = max(max_z, p.z + reach);
+            }
+            struct Footprint { float x, z, hx, hz, c, s; };
+            vector<Footprint> nearby;
+            for (const TerrainPlatform& pad : m_platforms)
+            {
+                if (pad.max_x < min_x || pad.min_x > max_x || pad.max_z < min_z || pad.min_z > max_z)
+                    continue;
+                nearby.push_back({pad.center_x, pad.center_z, pad.half_x, pad.half_z, cosf(pad.yaw), sinf(pad.yaw)});
+            }
+            if (!nearby.empty())
+            {
+                size_t kept = 0;
+                for (const Matrix& local : transforms_out)
+                {
+                    const Matrix world = local * tile_world;
+                    const Vector3 p = world.GetTranslation();
+                    const Vector3 scale = world.GetScale();
+                    const float reach = radius * max(scale.x, max(scale.y, scale.z));
+                    bool blocked = false;
+                    for (const Footprint& pad : nearby)
+                    {
+                        const float dx = p.x - pad.x, dz = p.z - pad.z;
+                        const float ox = max(abs(dx * pad.c + dz * pad.s) - pad.hx, 0.0f);
+                        const float oz = max(abs(-dx * pad.s + dz * pad.c) - pad.hz, 0.0f);
+                        if (ox * ox + oz * oz <= reach * reach) { blocked = true; break; }
+                    }
+                    if (!blocked) transforms_out[kept++] = local;
+                }
+                transforms_out.resize(kept);
+            }
+        }
     }
 
     void Terrain::SaveToFile(const char* file_path)

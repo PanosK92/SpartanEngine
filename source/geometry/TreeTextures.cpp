@@ -180,11 +180,12 @@ namespace spartan::trees
             }
         }
 
-        void paint_bark(const species& s, const uint32_t size, vector<uint8_t>& albedo, vector<uint8_t>& normal)
+        void paint_bark(const species& s, const uint32_t size, vector<uint8_t>& albedo, vector<uint8_t>& normal, vector<uint8_t>& roughness)
         {
             const uint32_t seed = static_cast<uint32_t>(texture_hash(s, season::summer) & 0xffffffffu);
             vector<float> height(static_cast<size_t>(size) * size, 0.0f);
             albedo.resize(static_cast<size_t>(size) * size * 4);
+            roughness.resize(albedo.size());
             const Vector3 light = s.bark_color;
             const Vector3 dark  = s.bark_color_dark;
             float strength      = 4.0f;
@@ -215,15 +216,15 @@ namespace spartan::trees
                         }
                         case bark_style::plated:
                         {
-                            const float warp  = fbm(u, v, 3, 3, 3, seed + 3u) - 0.5f;
-                            const cell plates = worley(u + warp * 0.06f, v, 5, 4, seed, 1.6f);
-                            const float gap   = smoothstep(0.02f, 0.16f, plates.f2 - plates.f1);
-                            const float tone  = static_cast<float>(plates.id & 255) / 255.0f;
-                            const float flake = fbm(u, v, 16, 12, 4, seed + 77u);
-                            h     = gap * (0.6f + 0.4f * flake);
-                            const Vector3 plate = mix(light * 0.8f, light * 1.15f, tone);
-                            color = mix(dark * 0.8f, plate, gap) * (0.82f + 0.32f * flake);
-                            strength = 5.5f;
+                            // Narrow, vertically broken scales rather than large polygonal paving stones.
+                            const float warp = fbm(u, v, 4, 3, 4, seed + 3u) - 0.5f;
+                            const float grain = fbm(u + warp * 0.035f, v, 48, 5, 4, seed + 17u);
+                            const cell plates = worley(u + warp * 0.04f, v, 18, 7, seed, 0.65f);
+                            const float gap = smoothstep(0.008f, 0.085f, plates.f2 - plates.f1);
+                            const float flake = fbm(u, v, 38, 18, 4, seed + 77u);
+                            h = gap * 0.55f + grain * 0.3f + flake * 0.15f;
+                            color = mix(dark, light, 0.25f + 0.65f * gap) * (0.72f + grain * 0.35f + flake * 0.2f);
+                            strength = 8.0f;
                             break;
                         }
                         case bark_style::smooth:
@@ -273,19 +274,15 @@ namespace spartan::trees
                         }
                         case bark_style::twisted:
                         {
-                            // the grain spirals, a whole turn per tile keeps the skew seamless
-                            // long fibrous ridges split by deep fissures, old olives read as rope rather than as plates
-                            const float twisted_u = u + v;
-                            const float warp      = fbm(twisted_u, v, 3, 2, 3, seed + 7u) - 0.5f;
-                            const float strand    = fbm(twisted_u + warp * 0.12f, v, 14, 2, 5, seed);
-                            const float ridge     = 1.0f - abs(strand * 2.0f - 1.0f);
-                            const cell fissures   = worley(twisted_u + warp * 0.08f, v, 8, 2, seed + 21u, 0.35f);
-                            const float fissure   = 1.0f - smoothstep(0.0f, 0.14f, fissures.f2 - fissures.f1);
-                            const float weather   = fbm(u, v, 2, 2, 4, seed + 60u);
-                            h     = pow(saturate(ridge), 1.2f) * (1.0f - fissure * 0.75f);
-                            color = mix(dark, light, smoothstep(0.08f, 0.75f, h)) * (0.86f + 0.28f * fine);
-                            color = mix(color, Vector3(0.36f, 0.36f, 0.33f), smoothstep(0.55f, 0.8f, weather) * 0.45f * h);
-                            strength = 6.0f;
+                            // The mesh supplies the trunk twist; bark grain follows the stem, not a diagonal rope.
+                            const float warp = fbm(u, v, 4, 2, 4, seed + 7u) - 0.5f;
+                            const float strand = fbm(u + warp * 0.055f, v, 36, 3, 5, seed);
+                            const float ridge = smoothstep(0.23f, 0.64f, strand);
+                            const float weather = fbm(u, v, 9, 6, 4, seed + 60u);
+                            h = ridge * 0.7f + fine * 0.18f + weather * 0.12f;
+                            color = mix(dark, light, 0.2f + ridge * 0.65f) * (0.82f + fine * 0.3f);
+                            color = mix(color, Vector3(0.32f, 0.31f, 0.28f), smoothstep(0.52f, 0.8f, weather) * 0.3f);
+                            strength = 8.0f;
                             break;
                         }
                         case bark_style::ringed:
@@ -306,6 +303,11 @@ namespace spartan::trees
                     p[1] = to_srgb8(color.y);
                     p[2] = to_srgb8(color.z);
                     p[3] = 255;
+                    // Dry fissures scatter more than the exposed, weathered ridges.
+                    const uint8_t r = static_cast<uint8_t>(255.0f * clamp(s.bark_roughness + (0.5f - h) * 0.18f + (fine - 0.5f) * 0.12f, 0.55f, 1.0f));
+                    uint8_t* rp = &roughness[(static_cast<size_t>(y) * size + x) * 4];
+                    rp[0] = rp[1] = rp[2] = r;
+                    rp[3] = 255;
                 }
             }
             height_to_normal(height, size, strength, normal);
@@ -957,7 +959,7 @@ namespace spartan::trees
     {
         output.bark_size = 512;
         output.leaf_size = 1024;
-        paint_bark(s, output.bark_size, output.bark_albedo, output.bark_normal);
+        paint_bark(s, output.bark_size, output.bark_albedo, output.bark_normal, output.bark_roughness);
         paint_atlas(s, time, output.leaf_size, output.leaf_albedo, output.leaf_normal);
     }
 
@@ -968,10 +970,11 @@ namespace spartan::trees
         const string stem = directory + (directory.empty() || directory.back() == '/' ? "" : "/") + s.id + "_" + to_string(time) + "_" + hash_text;
         paths.bark_albedo = stem + "_bark.png";
         paths.bark_normal = stem + "_bark_normal.png";
+        paths.bark_roughness = stem + "_bark_roughness.png";
         paths.leaf_albedo = stem + "_leaf.png";
         paths.leaf_normal = stem + "_leaf_normal.png";
 
-        if (FileSystem::Exists(paths.bark_albedo) && FileSystem::Exists(paths.bark_normal) && FileSystem::Exists(paths.leaf_albedo) && FileSystem::Exists(paths.leaf_normal))
+        if (FileSystem::Exists(paths.bark_albedo) && FileSystem::Exists(paths.bark_normal) && FileSystem::Exists(paths.bark_roughness) && FileSystem::Exists(paths.leaf_albedo) && FileSystem::Exists(paths.leaf_normal))
         {
             return true;
         }
@@ -981,6 +984,7 @@ namespace spartan::trees
         generate_textures(s, time, set);
         ImageImporter::SaveSdrRgba8(paths.bark_albedo, set.bark_size, set.bark_size, set.bark_albedo.data());
         ImageImporter::SaveSdrRgba8(paths.bark_normal, set.bark_size, set.bark_size, set.bark_normal.data());
+        ImageImporter::SaveSdrRgba8(paths.bark_roughness, set.bark_size, set.bark_size, set.bark_roughness.data());
         ImageImporter::SaveSdrRgba8(paths.leaf_albedo, set.leaf_size, set.leaf_size, set.leaf_albedo.data());
         ImageImporter::SaveSdrRgba8(paths.leaf_normal, set.leaf_size, set.leaf_size, set.leaf_normal.data());
         return FileSystem::Exists(paths.leaf_albedo);

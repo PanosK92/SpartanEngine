@@ -776,11 +776,14 @@ namespace spartan
                         const uint32_t end = draw_call.instance_index + draw_call.instance_count;
                         uint32_t run_start = draw_call.instance_index;
                         uint32_t run_count = 0;
+                        uint32_t run_lod = lod_index;
+                        Camera* view_camera = World::GetCamera();
+                        const float tan_half_fov = view_camera ? tan(view_camera->GetFovVerticalRad() * 0.5f) : 0.57735f;
                         const auto flush_run = [&]()
                         {
                             if (run_count == 0) return;
-                            RHI_CommandList::DrawIndexed(render->GetIndexCount(lod_index), render->GetIndexOffset(lod_index),
-                                render->GetVertexOffset(lod_index), render->GetGlobalInstanceOffset() + run_start, run_count);
+                            RHI_CommandList::DrawIndexed(render->GetIndexCount(run_lod), render->GetIndexOffset(run_lod),
+                                render->GetVertexOffset(run_lod), render->GetGlobalInstanceOffset() + run_start, run_count);
                             run_count = 0;
                         };
                         vector<uint32_t> visible_instances;
@@ -813,8 +816,24 @@ namespace spartan
                         sort(visible_instances.begin(), visible_instances.end());
                         for (const uint32_t instance : visible_instances)
                         {
-                            if (run_count != 0 && instance != run_start + run_count) flush_run();
-                            if (run_count == 0) run_start = instance;
+                            // A terrain tile's LOD says nothing about an individual tree's coverage.
+                            // Shadows need the silhouette, not the near-camera branch tessellation.
+                            uint32_t instance_lod = lod_index;
+                            if (wind && render->GetLodCount() > 1)
+                            {
+                                const BoundingBox bounds = render->GetInstanceBounds(instance);
+                                const float radius = bounds.GetExtents().Length();
+                                const float distance = max(Vector3::Distance(camera, bounds.GetCenter()), 0.1f);
+                                const float coverage = radius / (distance * tan_half_fov);
+                                instance_lod = coverage >= 0.4f ? 0u : coverage >= 0.2f ? 1u : coverage >= 0.1f ? 2u : coverage >= 0.05f ? 3u : 4u;
+                                instance_lod = min(instance_lod + lod_index_bias, render->GetLodCount() - 1);
+                            }
+                            if (run_count != 0 && (instance != run_start + run_count || instance_lod != run_lod)) flush_run();
+                            if (run_count == 0)
+                            {
+                                run_start = instance;
+                                run_lod = instance_lod;
+                            }
                             ++run_count;
                         }
                         flush_run();

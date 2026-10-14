@@ -173,9 +173,9 @@ namespace spartan
         void*& GetRhiResource()                      { return m_rhi_resource; }
         void* GetRhiSrv() const                      { return m_rhi_srv; }
         void* GetRhiSrvMip(const uint32_t i) const   { return m_rhi_srv_mips[i]; }
-        void* GetRhiSrvLayer(const uint32_t i) const { return m_rhi_srv_layers[i]; }
-        void* GetRhiDsv(const uint32_t i = 0) const  { return m_rhi_dsv[i]; }
-        void* GetRhiRtv(const uint32_t i = 0) const  { return m_rhi_rtv[i]; }
+        void* GetRhiSrvLayer(const uint32_t i) const { return i < m_rhi_srv_layers.size() ? m_rhi_srv_layers[i] : nullptr; }
+        void* GetRhiDsv(const uint32_t i = 0) const  { return i < m_rhi_dsv.size() ? m_rhi_dsv[i] : nullptr; }
+        void* GetRhiRtv(const uint32_t i = 0) const  { return i < m_rhi_rtv.size() ? m_rhi_rtv[i] : nullptr; }
         void* GetRhiRtvMultiview() const             { return m_rhi_rtv_multiview; }
         void* GetRhiDsvMultiview() const             { return m_rhi_dsv_multiview; }
         void RHI_DestroyResource();
@@ -202,9 +202,10 @@ namespace spartan
         // api resources
         void* m_rhi_srv                                                 = nullptr;     // an srv with all mips
         std::array<void*, rhi_max_mip_count> m_rhi_srv_mips             = { nullptr }; // an srv for each mip
-        std::array<void*, rhi_max_render_target_count> m_rhi_srv_layers = { nullptr }; // per-layer srvs for array textures
-        std::array<void*, rhi_max_render_target_count> m_rhi_rtv        = { nullptr };
-        std::array<void*, rhi_max_render_target_count> m_rhi_dsv        = { nullptr };
+        // Per-layer storage is independent of the simultaneous render-target binding limit.
+        std::vector<void*> m_rhi_srv_layers; // per-layer srvs for array textures
+        std::vector<void*> m_rhi_rtv;
+        std::vector<void*> m_rhi_dsv;
         void* m_rhi_rtv_multiview                                       = nullptr;
         void* m_rhi_dsv_multiview                                       = nullptr;
         void* m_rhi_resource                                            = nullptr;

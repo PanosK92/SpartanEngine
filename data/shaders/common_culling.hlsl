@@ -281,7 +281,11 @@ uint sphere_lod_index_impostor(float3 center_world, float radius_world, uint lod
     {
         return lod_count - 1u;
     }
-    return min(sphere_lod_index(center_world, radius_world, lod_count), lod_count - 2u);
+    // Preserve full foliage geometry only for a crown filling much of the view.
+    // Between that and the impostor, use the inexpensive intermediate card LODs.
+    float coverage = sphere_screen_fraction(center_world, radius_world);
+    uint lod = coverage >= 0.45f ? 0u : coverage >= 0.28f ? 1u : coverage >= 0.18f ? 2u : 3u;
+    return min(lod, lod_count - 2u);
 }
 
 // largest world-axis scale of the upper 3x3, used to lift a local-space radius into world units

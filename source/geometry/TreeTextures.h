@@ -25,6 +25,7 @@ namespace spartan::trees
         uint32_t leaf_size = 1024;
         std::vector<uint8_t> bark_albedo; // srgb rgba8
         std::vector<uint8_t> bark_normal; // tangent space rgba8
+        std::vector<uint8_t> bark_roughness; // linear rgba8
         std::vector<uint8_t> leaf_albedo; // srgb rgba8, alpha is the cutout
         std::vector<uint8_t> leaf_normal;
     };
@@ -33,12 +34,13 @@ namespace spartan::trees
     {
         std::string bark_albedo;
         std::string bark_normal;
+        std::string bark_roughness;
         std::string leaf_albedo;
         std::string leaf_normal;
     };
 
     void generate_textures(const species& s, season time, texture_set& output);
 
-    // writes the four maps into the directory under names keyed by the species state, an existing set is reused
+    // writes the five maps into the directory under names keyed by the species state, an existing set is reused
     bool ensure_textures(const species& s, season time, const std::string& directory, texture_paths& paths);
 }
