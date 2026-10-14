@@ -3448,7 +3448,7 @@ namespace spartan
                     light_buffer_entry.atlas_offsets[i]      = light_component->GetAtlasOffset(i);
                     light_buffer_entry.atlas_scales[i]       = light_component->GetAtlasScale(i);
                     const math::Rectangle& rect              = light_component->GetAtlasRectangle(i);
-                    light_buffer_entry.atlas_texel_sizes[i] = Vector2(1.0f / rect.width, 1.0f / rect.height);
+                    light_buffer_entry.atlas_texel_sizes[i] = rect.IsDefined() ? Vector2(1.0f / rect.width, 1.0f / rect.height) : Vector2::Zero;
                 }
                 else
                 {
@@ -3782,9 +3782,35 @@ namespace spartan
     void Renderer::UpdateDrawCalls_CollectAndSort()
     {
         SP_PROFILE_CPU();
-        // the atlas needs off-screen casters, their shadows can enter the camera's fog volume,
-        // with ray traced shadows the tlas owns them and only visible draws are collected
-        const bool shadow_maps_required = !light_entities().empty() && !IsRayTracedShadowsActive();
+        // The near sun cascade also runs with ray tracing: its casters use the
+        // same wind deformation as the visible trees, including off-screen trees.
+        const bool shadow_maps_required = !light_entities().empty();
+        const bool near_shadow_only = IsRayTracedShadowsActive();
+        auto needs_shadow_caster = [&](const RenderSceneData& data)
+        {
+            if (!shadow_maps_required || !(data.flags & RenderFlags::CastsShadows) ||
+                data.distance_squared > data.max_distance_shadow * data.max_distance_shadow)
+                return false;
+            if (!near_shadow_only)
+                return true;
+
+            BoundingBox bounds = data.bounding_box;
+            if (!bounds.IsInfinite() && data.material->GetProperty(MaterialProperty::WindAnimation) > 0.0f)
+            {
+                // Conservatively retain branches that bend into the cascade.
+                const float padding = bounds.GetExtents().Length() * 0.5f + 2.0f;
+                const Vector3 pad(padding, padding, padding);
+                bounds = BoundingBox(bounds.GetMin() - pad, bounds.GetMax() + pad);
+            }
+            for (Entity* entity : GetViewLightEntities())
+            {
+                Light* light = entity->GetComponent<Light>();
+                if (light->GetLightType() == LightType::Directional && light->GetFlag(LightFlags::Shadows) &&
+                    light->GetIntensityRadiometric() > 0.0f && light->IsBoundsInViewFrustum(bounds, 0))
+                    return true;
+            }
+            return false;
+        };
         // the gpu culls tessellated draws itself, so they are kept off screen too
         const bool tessellation_gpu_driven = cvar_tessellation_gpu_driven.GetValueAs<bool>();
         auto is_gpu_culled_tessellated = [tessellation_gpu_driven](const Material* material)
@@ -3810,7 +3836,7 @@ namespace spartan
                 if (!data.active.load(memory_order_relaxed) || !data.mesh || !data.material) continue;
                 Render* render = data.render;
                 batch.transparent |= data.material->IsTransparent();
-                if (!data.is_visible && !(shadow_maps_required && (data.flags & RenderFlags::CastsShadows)) &&
+                if (!data.is_visible && !needs_shadow_caster(data) &&
                     (!data.has_decals || !data.instances.empty()) && !is_gpu_culled_tessellated(data.material)) continue;
                 batch.renders.push_back(render);
             }
@@ -3838,7 +3864,7 @@ namespace spartan
                 Sb_DrawData decal_range;
                 fill_decal_draw_fields(decal_range, render);
             }
-            // off-screen geometry is only kept when classic shadow maps need the caster
+            // Off-screen geometry is only kept when a shadow cascade needs it.
             if (!render->IsVisible())
             {
                 if (material->IsTransparent())
@@ -3847,7 +3873,7 @@ namespace spartan
                 }
 
                 if (
-                    (!shadow_maps_required || !render->HasFlag(RenderFlags::CastsShadows)) &&
+                    !needs_shadow_caster(render->GetSceneData()) &&
                     !is_gpu_culled_tessellated(material)
                 )
                 {
@@ -4304,18 +4330,16 @@ namespace spartan
     {
         constexpr uint32_t RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT = 0x00000002; // VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR
         constexpr uint32_t RHI_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT                 = 0x00000004; // VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR
+        constexpr uint32_t RHI_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT              = 0x00000008; // VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR
 
         const RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
 
         const uint32_t instance_mask = tlas_instance_mask(render, material);
 
-        // cutouts stay non opaque so inline shadow queries can alpha test them, everything else
-        // is force opaque and never yields a candidate to the shader
+        // Mesh BLAS geometry is opaque by default. Cutouts must explicitly
+        // override it, otherwise inline queries never get to test their alpha.
         uint32_t flags = cull_mode == RHI_CullMode::None ? RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT : 0;
-        if (!material->IsAlphaTested())
-        {
-            flags |= RHI_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT;
-        }
+        flags |= material->IsAlphaTested() ? RHI_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT : RHI_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT;
 
         instance                                             = {};
         instance.instance_custom_index                       = material->GetIndex(); // for hit shader material lookup
@@ -4711,7 +4735,7 @@ namespace spartan
                     if (transform_changed ||
                         cache.instance.device_address != device_address ||
                         cache.instance.instance_custom_index != material->GetIndex() ||
-                        cache.instance.flags != ((static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) == RHI_CullMode::None ? 2u : 0u) | (material->IsAlphaTested() ? 0u : 4u)) ||
+                        cache.instance.flags != ((static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) == RHI_CullMode::None ? 2u : 0u) | (material->IsAlphaTested() ? 8u : 4u)) ||
                         cache.instance.mask != tlas_instance_mask(render, material) ||
                         cache.geometry.vertex_offset != render->GetVertexOffset(0) ||
                         cache.geometry.index_offset != render->GetIndexOffset(0))
@@ -4895,6 +4919,11 @@ namespace spartan
             }
             for (uint32_t i = 0; i < light->GetSliceCount(); ++i)
             {
+                // With ray tracing only the animated near sun cascade reads the
+                // atlas. Give it the resolution instead of dividing it between
+                // unused local-light faces and losing the individual leaf cutouts.
+                if (IsRayTracedShadowsActive() && (light->GetLightType() != LightType::Directional || i != 0))
+                    continue;
                 m_shadow_slices.emplace_back(light, i, 0, math::Rectangle::Zero);
             }
         }
@@ -5755,9 +5784,8 @@ namespace spartan
             RHI_SyncPrimitive* compute_b_timeline = batch_b.timeline.get();
             const uint64_t compute_b_value        = batch_b.value;
 
-            // the atlas and ray traced shadows are mutually exclusive, with rays live the tlas
-            // owns every caster and this submit is skipped outright
-            const bool shadow_maps_required = !light_entities().empty() && !IsRayTracedShadowsActive();
+            // Keep the animated near sun cascade alongside ray-traced shadows.
+            const bool shadow_maps_required = !light_entities().empty();
             RHI_Device::Bind(RHI_Frame_List::Graphics);
             if (shadow_maps_required)
             {

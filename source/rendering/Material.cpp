@@ -701,6 +701,7 @@ namespace spartan
 
     Material::Material() : IResource(ResourceType::Material)
     {
+        m_object_size = sizeof(*this);
         m_textures.fill(nullptr);
         m_properties.fill(0.0f);
 

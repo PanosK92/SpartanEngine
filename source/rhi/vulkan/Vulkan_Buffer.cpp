@@ -127,7 +127,7 @@ namespace spartan
             if (min_alignment > 0 && min_alignment != m_stride)
             {
                 m_stride      = static_cast<uint32_t>(static_cast<uint64_t>((m_stride + min_alignment - 1) & ~(min_alignment - 1)));
-                m_object_size = m_stride * m_element_count;
+                m_object_size = static_cast<uint64_t>(m_stride) * m_element_count;
             }
 
             // create
@@ -144,7 +144,7 @@ namespace spartan
         
             // compute worst-case size for all shader groups
             uint64_t max_padding = base_align - 1;
-            m_object_size        = m_element_count * m_aligned_handle_size + 2 * max_padding;
+            m_object_size        = static_cast<uint64_t>(m_element_count) * m_aligned_handle_size + 2 * max_padding;
         
             VkBufferUsageFlags flags_usage     = VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
             VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
@@ -167,9 +167,7 @@ namespace spartan
             uint64_t padding_hit      = (base_align - (current_address % base_align)) % base_align;
             m_hit_offset              = m_miss_offset + m_aligned_handle_size + padding_hit;
         
-            // actual size (account for extra shader groups if > 3)
-            uint32_t extra_groups = (m_element_count > 3) ? (m_element_count - 3) : 0;
-            m_object_size = m_hit_offset + m_aligned_handle_size + extra_groups * m_aligned_handle_size;
+            // Keep the allocated buffer size, including alignment padding.
         }
 
         if (!m_rhi_resource)

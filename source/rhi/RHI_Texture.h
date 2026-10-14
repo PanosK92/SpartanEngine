@@ -90,7 +90,7 @@ namespace spartan
         uint32_t GetBitsPerChannel() const          { return m_bits_per_channel; }
         void SetBitsPerChannel(const uint32_t bits) { m_bits_per_channel = bits; }
         uint32_t GetBytesPerChannel() const         { return m_bits_per_channel / 8; }
-        uint32_t GetBytesPerPixel() const           { return (m_bits_per_channel / 8) * m_channel_count; }
+        uint32_t GetBytesPerPixel() const           { return rhi_format_to_bytes(m_format); }
 
         uint32_t GetChannelCount()  const                  { return m_channel_count; }
         void SetChannelCount(const uint32_t channel_count) { m_channel_count = channel_count; }
@@ -112,13 +112,15 @@ namespace spartan
         // defer_to_frame permits a supported backend to queue the copy on the current graphics list.
         bool UpdateRegion(uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data, bool defer_to_frame = false);
         // back to idle so a later sampler can prepare it again
-        void ReleaseGpuResources() { RHI_DestroyResource(); m_resource_state = ResourceState::Max; }
+        void ReleaseGpuResources() { RHI_DestroyResource(); m_resident_mip = 0; ComputeMemoryUsage(); m_resource_state = ResourceState::Max; }
         void InvalidateGpuState() { ClearLayouts(); }
         RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layouts[mip]; }
         const std::array<RHI_Image_Layout, rhi_max_mip_count>& GetLayouts() const { return m_layouts; }
         void SetLayoutDirect(uint32_t mip_index, uint32_t mip_range, RHI_Image_Layout layout);
         void ClearLayouts();
         static size_t CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count);
+        // Tightly packed payload, excluding GPU allocation alignment and metadata.
+        uint64_t CalculateMipChainSize(uint32_t first_mip = 0) const;
         static void ShutdownCompressionPool();
 
         // data

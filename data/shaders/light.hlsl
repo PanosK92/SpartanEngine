@@ -177,7 +177,8 @@ void evaluate_light(
         float L_shadow_contact = 1.0f;
 
         {
-            // ray traced shadows replace the atlas entirely, the tlas holds every caster
+            // Ray tracing handles distant/local shadows; the near sun cascade
+            // follows the animated geometry that is not deformed in the TLAS.
             const bool want_shadows          = light.has_shadows();
             const bool ray_traced            = want_shadows && is_ray_traced_shadows_enabled();
             const bool use_rt_shadow_texture = ray_traced && light.is_directional();
@@ -188,6 +189,7 @@ void evaluate_light(
             if (use_rt_shadow_texture)
             {
                 L_shadow_primary = sample_ray_traced_shadow(surface.uv);
+                L_shadow_primary = compute_animated_near_shadow(surface, light, L_shadow_primary);
             }
             else if (use_nrd_local_shadow)
             {

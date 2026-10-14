@@ -732,7 +732,8 @@ namespace spartan
             }
 
             // write layout: for each slice, for each mip, write uint64 size then bytes
-            for (uint32_t array_index = 0; array_index < m_depth; array_index++)
+            const uint32_t array_length = m_type == RHI_Texture_Type::Type3D ? 1 : m_depth;
+            for (uint32_t array_index = 0; array_index < array_length; array_index++)
             {
                 const RHI_Texture_Slice& slice = m_slices[array_index];
                 if (slice.mips.size() != m_mip_count)
@@ -855,8 +856,8 @@ namespace spartan
             m_bits_per_channel= rhi_format_to_bits_per_channel(m_format);
 
             // allocate slices and load mips
-            m_slices.resize(m_depth);
-            for (uint32_t array_index = 0; array_index < m_depth; array_index++)
+            m_slices.resize(GetArrayLength());
+            for (uint32_t array_index = 0; array_index < GetArrayLength(); array_index++)
             {
                 RHI_Texture_Slice& slice = m_slices[array_index];
                 slice.mips.resize(m_mip_count);
@@ -927,6 +928,7 @@ namespace spartan
 
     void RHI_Texture::AllocateMip(uint32_t slice_index /*= 0*/)
     {
+        SP_ASSERT(m_type != RHI_Texture_Type::Type3D || slice_index == 0);
         // ensure slices exist up to the requested index
         while (m_slices.size() <= slice_index)
         {
@@ -934,32 +936,39 @@ namespace spartan
         }
 
         RHI_Texture_Mip& mip = m_slices[slice_index].mips.emplace_back();
-        m_depth              = static_cast<uint32_t>(m_slices.size());
+        if (m_type != RHI_Texture_Type::Type3D)
+            m_depth = static_cast<uint32_t>(m_slices.size());
         m_mip_count          = static_cast<uint32_t>(m_slices[slice_index].mips.size());
         uint32_t mip_index   = static_cast<uint32_t>(m_slices[slice_index].mips.size()) - 1;
         uint32_t width       = max(1u, m_width >> mip_index);
         uint32_t height      = max(1u, m_height >> mip_index);
-        uint32_t depth       = (GetType() == RHI_Texture_Type::Type3D) ? (m_depth >> mip_index) : 1;
+        uint32_t depth       = (GetType() == RHI_Texture_Type::Type3D) ? max(1u, m_depth >> mip_index) : 1;
         size_t size_bytes    = CalculateMipSize(width, height, depth, m_format, m_bits_per_channel, m_channel_count);
         mip.bytes.resize(size_bytes);
     }
 
     void RHI_Texture::ComputeMemoryUsage()
     {
-        m_object_size = 0;
+        m_object_size = CalculateMipChainSize(m_resident_mip);
+    }
+
+    uint64_t RHI_Texture::CalculateMipChainSize(uint32_t first_mip) const
+    {
+        uint64_t size = 0;
 
         uint32_t array_length = (m_type == RHI_Texture_Type::Type3D) ? 1 : m_depth;
         for (uint32_t array_index = 0; array_index < array_length; array_index++)
         {
-            for (uint32_t mip_index = m_resident_mip; mip_index < m_mip_count; mip_index++)
+            for (uint32_t mip_index = first_mip; mip_index < m_mip_count; mip_index++)
             {
                 const uint32_t mip_width  = max(1u, m_width >> mip_index);
                 const uint32_t mip_height = max(1u, m_height >> mip_index);
                 const uint32_t mip_depth  = (m_type == RHI_Texture_Type::Type3D) ? max(1u, m_depth >> mip_index) : 1;
 
-                m_object_size += CalculateMipSize(mip_width, mip_height, mip_depth, m_format, m_bits_per_channel, m_channel_count);
+                size += CalculateMipSize(mip_width, mip_height, mip_depth, m_format, m_bits_per_channel, m_channel_count);
             }
         }
+        return size;
     }
 
     void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, uint32_t mip_index /*= all_mips*/, uint32_t mip_range /*= 0*/)
@@ -1290,15 +1299,15 @@ namespace spartan
                 SP_ASSERT(false);
                 return 0;
             }
-            uint32_t num_blocks_wide = (width + block_width - 1) / block_width;
-            uint32_t num_blocks_high = (height + block_height - 1) / block_height;
+            size_t num_blocks_wide = (static_cast<size_t>(width) + block_width - 1) / block_width;
+            size_t num_blocks_high = (static_cast<size_t>(height) + block_height - 1) / block_height;
             return static_cast<size_t>(num_blocks_wide) * static_cast<size_t>(num_blocks_high) * static_cast<size_t>(depth) * static_cast<size_t>(block_size);
         }
         else
         {
             SP_ASSERT(channel_count > 0);
             SP_ASSERT(bits_per_channel > 0);
-            return static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(depth) * static_cast<size_t>(channel_count) * static_cast<size_t>(bits_per_channel / 8);
+            return static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(depth) * static_cast<size_t>(rhi_format_to_bytes(format));
         }
     }
 }

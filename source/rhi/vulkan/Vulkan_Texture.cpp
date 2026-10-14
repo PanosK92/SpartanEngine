@@ -201,20 +201,21 @@ namespace spartan
             const uint32_t height    = texture->GetHeight();
             const uint32_t depth     = texture->GetDepth();
             const uint32_t mip_count = texture->GetMipCount();
+            const uint32_t array_length = texture->GetArrayLength();
 
-            regions.resize(static_cast<size_t>(depth) * mip_count);
+            regions.resize(static_cast<size_t>(array_length) * mip_count);
 
             VkDeviceSize buffer_offset    = 0;
             VkDeviceSize buffer_alignment = RHI_Device::PropertyGetOptimalBufferCopyOffsetAlignment();
 
-            for (uint32_t array_index = 0; array_index < depth; array_index++)
+            for (uint32_t array_index = 0; array_index < array_length; array_index++)
             {
                 for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
                 {
                     uint32_t region_index = mip_index + array_index * mip_count;
                     uint32_t mip_width    = max(1u, width >> mip_index);
                     uint32_t mip_height   = max(1u, height >> mip_index);
-                    uint32_t mip_depth    = texture->GetType() == RHI_Texture_Type::Type3D ? (depth >> mip_index) : 1;
+                    uint32_t mip_depth    = texture->GetType() == RHI_Texture_Type::Type3D ? max(1u, depth >> mip_index) : 1;
 
                     SP_ASSERT(mip_width != 0 && mip_height != 0 && mip_depth != 0);
 
@@ -244,13 +245,13 @@ namespace spartan
         {
             SP_ASSERT_MSG(texture->HasData(), "No data to stage");
 
-            const uint32_t depth     = texture->GetDepth();
+            const uint32_t array_length = texture->GetArrayLength();
             const uint32_t mip_count = texture->GetMipCount();
 
             void* mapped_data = nullptr;
             RHI_Device::MemoryMap(staging_buffer, mapped_data);
 
-            for (uint32_t array_index = 0; array_index < depth; array_index++)
+            for (uint32_t array_index = 0; array_index < array_length; array_index++)
             {
                 for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
                 {

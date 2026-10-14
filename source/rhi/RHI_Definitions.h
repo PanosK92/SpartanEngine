@@ -597,7 +597,8 @@ namespace spartan
         return static_cast<uint32_t>(format);
     }
 
-    // returns the size of a single pixel in bytes for the given format
+    // Returns bytes per texel for uncompressed formats. Compressed formats must
+    // use CalculateMipSize: their storage is rounded to whole blocks.
     static uint32_t rhi_format_to_bytes(const RHI_Format format)
     {
         switch (format)
@@ -623,11 +624,13 @@ namespace spartan
             case RHI_Format::D16_Unorm:             return 2;
             case RHI_Format::D32_Float:             return 4;
             case RHI_Format::D32_Float_S8X24_Uint:  return 8;
-            case RHI_Format::BC1_Unorm:             return 1;  // ~0.5 bytes/pixel (8 bytes per 4x4 block)
-            case RHI_Format::BC3_Unorm:             return 1;  // ~1 byte/pixel (16 bytes per 4x4 block)
-            case RHI_Format::BC5_Unorm:             return 1;  // ~1 byte/pixel (16 bytes per 4x4 block)
-            case RHI_Format::BC7_Unorm:             return 1;  // ~1 byte/pixel (16 bytes per 4x4 block)
-            case RHI_Format::ASTC:                  return 1;  // varies, approximate
+            case RHI_Format::BC1_Unorm:
+            case RHI_Format::BC3_Unorm:
+            case RHI_Format::BC5_Unorm:
+            case RHI_Format::BC7_Unorm:
+            case RHI_Format::ASTC:
+                assert(false && "compressed formats require block-based sizing");
+                return 0;
             case RHI_Format::B8R8G8A8_Unorm:        return 4;
             case RHI_Format::Max:                   break;
         }

@@ -3068,8 +3068,7 @@ namespace spartan
             
             // for large textures (>16mb), use dedicated allocations to avoid vma pooling
             // this ensures memory is returned to the driver when freed rather than held in pools
-            uint32_t bytes_per_pixel  = rhi_format_to_bytes(texture->GetFormat());
-            uint64_t texture_size     = static_cast<uint64_t>(texture->GetWidth()) * texture->GetHeight() * texture->GetDepth() * texture->GetMipCount() * bytes_per_pixel;
+            uint64_t texture_size     = texture->CalculateMipChainSize();
             const uint64_t size_16_mb = 16 * 1024 * 1024;
             if (texture_size >= size_16_mb)
             {

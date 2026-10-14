@@ -174,6 +174,7 @@ namespace spartan
             create_info.pCode                    = reinterpret_cast<const uint32_t*>(shader_buffer->GetBufferPointer());
 
             SP_ASSERT_VK(vkCreateShaderModule(RHI_Context::device, &create_info, nullptr, &shader_module));
+            m_object_size = create_info.codeSize;
 
             // name the shader module (useful for gpu-based validation)
             RHI_Device::SetResourceName(static_cast<void*>(shader_module), RHI_Resource_Type::Shader, m_object_name.c_str());

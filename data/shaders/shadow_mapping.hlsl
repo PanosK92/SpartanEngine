@@ -110,58 +110,75 @@ float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, 
     return clamp(penumbra, g_minimum_penumbra_size, g_maximum_penumbra_size);
 }
 
+// Orthographic reverse-Z stores nearer blockers at larger depth values. Convert
+// their separation to metres before applying the sun's angular radius, so tall
+// trees soften on the ground while contact shadows retain leaf detail.
+float2 directional_filter_radius(Light light, float3 coords, float receiver_depth, float2 texel)
+{
+    float4x4 transform = light_get_transform(light, (uint)coords.z);
+    float2 world_to_uv = 0.5f * float2(
+        length(float3(transform[0][0], transform[1][0], transform[2][0])),
+        length(float3(transform[0][1], transform[1][1], transform[2][1])));
+    float world_to_depth = length(float3(transform[0][2], transform[1][2], transform[2][2]));
+    const float sun_angular_radius = 0.00465f;
+    float2 search_radius = max(texel * 2.0f, 50.0f * sun_angular_radius * world_to_uv);
+    float separation_sum = 0.0f;
+    uint blocker_count = 0;
+    for (uint i = 0; i < g_penumbra_sample_count; i++)
+    {
+        float2 uv = coords.xy + g_vogel_samples_penumbra[i] * search_radius;
+        if (any(uv < 0.0f) || any(uv > 1.0f))
+            continue;
+        float blocker = light_sample_depth(light, float3(uv, coords.z));
+        if (blocker > receiver_depth + 1e-6f)
+        {
+            separation_sum += (blocker - receiver_depth) / max(world_to_depth, 1e-6f);
+            blocker_count++;
+        }
+    }
+    float separation = separation_sum / max(float(blocker_count), 1.0f);
+    return clamp(separation * sun_angular_radius * world_to_uv, texel * 1.5f, texel * 32.0f);
+}
+
 // compute shadow factor using vogel disk sampling
 float vogel_depth(Light light, Surface surface, float3 sample_coords, float receiver_depth, float filter_size_multiplier = 1.0f)
 {
     uint cascade_index = (uint)sample_coords.z;
     bool far_directional = light.is_directional() && cascade_index == 1;
 
-    // early out, far cascade skips the fully shadowed out so terrain height cannot paint a solid rectangle
-    float center = light_compare_depth(light, sample_coords, receiver_depth);
-    if (!far_directional && center <= 0.001f)
-    {
-        return 0.0f;
-    }
-    if (center >= 0.999f)
-    {
-        return 1.0f;
-    }
-
-    // atlas texel size in cascade local space, computed once and shared with the penumbra search
-    float2 texel_size_cascade_local =
-        light_get_atlas_texel_size(
-            light,
-            cascade_index
-        ) /
-        light_get_atlas_scale(
-            light,
-            cascade_index
-        );
+    // The CPU already supplies 1 / slice resolution, not 1 / atlas resolution.
+    // A single fully lit/shadowed center tap does not prove the entire filter
+    // footprint is uniform: skipping the other taps exposes the texel grid.
+    float2 texel_size_cascade_local = light_get_atlas_texel_size(light, cascade_index);
     float  rotation_angle           = float(cascade_index) * 0.785398163f;
     float  shadow_factor            = 0.0f;
     
     // far cascade uses a fixed kernel, pcss blocker search is larger than a far texel and self shadows the whole slice
-    float penumbra = 1.0f;
-    if (!far_directional)
+    float2 filter_size = texel_size_cascade_local * g_shadow_filter_size;
+    if (light.is_directional() && !far_directional)
     {
-        float light_distance = light.is_directional() ? 1000.0f : length(surface.position - light.position);
-        penumbra             = compute_penumbra(light, rotation_angle, sample_coords, receiver_depth, light_distance, texel_size_cascade_local);
+        filter_size = directional_filter_radius(light, sample_coords, receiver_depth, texel_size_cascade_local);
     }
-
-    float valid_sample_count = 0.0f;
+    else if (!far_directional)
+    {
+        float light_distance = length(surface.position - light.position);
+        filter_size *= compute_penumbra(light, rotation_angle, sample_coords, receiver_depth, light_distance, texel_size_cascade_local);
+    }
+    filter_size *= filter_size_multiplier;
     
     // sample shadow map
     for (uint i = 0; i < g_shadow_sample_count; i++)
     {
-        float2 filter_size = texel_size_cascade_local * g_shadow_filter_size * filter_size_multiplier * penumbra;
         float2 offset      = vogel_disk_sample(i, g_shadow_sample_count, rotation_angle) * filter_size;
         float2 sample_uv   = sample_coords.xy + offset;
 
-        // check bounds and fade
-        float2 uv_clamped = clamp(sample_uv, 0.0f, 1.0f);
-        float2 fade_dist  = min(sample_uv, 1.0f - sample_uv) * 10.0f;
-        float fade_factor = saturate(min(fade_dist.x, fade_dist.y));
-        float is_valid    = step(0.0f, sample_uv.x) * step(sample_uv.x, 1.0f) * step(0.0f, sample_uv.y) * step(sample_uv.y, 1.0f);
+        if (any(sample_uv < 0.0f) || any(sample_uv > 1.0f))
+        {
+            shadow_factor += 1.0f;
+            continue;
+        }
+        // Keep bilinear taps inside this tile instead of reading a neighbor.
+        float2 uv_clamped = clamp(sample_uv, texel_size_cascade_local * 0.5f, 1.0f - texel_size_cascade_local * 0.5f);
 
         // depth comparison
         float depth_sample = light_compare_depth(
@@ -169,14 +186,10 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
             float3(uv_clamped, sample_coords.z),
             receiver_depth
         );
-        depth_sample       = lerp(1.0f, depth_sample, fade_factor * is_valid + (1.0f - is_valid));
-        
         shadow_factor      += depth_sample;
-        valid_sample_count += is_valid;
     }
 
-    float sample_count = max(valid_sample_count, 1.0f);
-    return shadow_factor / sample_count;
+    return shadow_factor * g_shadow_sample_reciprocal;
 }
 
 // compute depth bias using slope-scaled technique in world space
@@ -209,6 +222,30 @@ float3 compute_normal_offset(Surface surface, Light light, uint cascade_index)
     
     float normal_sign = surface.is_foliage() && surface.subsurface_scattering > 0.0f && n_dot_l < 0.0f ? -1.0f : 1.0f;
     return surface.normal * (offset_amount * normal_sign);
+}
+
+// Nearby receivers use the actual wind-deformed, alpha-tested geometry. The
+// static TLAS cannot follow individual tree instances bending in the wind.
+// Replace its shadow here (min would retain the displaced rest-pose shadow),
+// then blend back before reaching the edge of the near cascade.
+float compute_animated_near_shadow(Surface surface, Light light, float ray_shadow)
+{
+    if (any(light_get_atlas_scale(light, 0) <= 0.0f))
+        return ray_shadow;
+
+    float weight = 1.0f - smoothstep(30.0f, 50.0f, surface.camera_to_pixel_length);
+    if (weight <= 0.0f)
+        return ray_shadow;
+
+    float3 position = surface.position + compute_normal_offset(surface, light, 0);
+    float4 clip = mul(float4(position, 1.0f), light_get_transform(light, 0));
+    float3 ndc = clip.xyz / clip.w;
+    if (!cascade_contains(ndc))
+        return ray_shadow;
+
+    weight *= 1.0f - smoothstep(0.75f, 0.95f, max(abs(ndc.x), abs(ndc.y)));
+    float shadow = vogel_depth(light, surface, float3(ndc_to_uv(ndc.xy), 0.0f), ndc.z);
+    return lerp(ray_shadow, shadow, weight);
 }
 
 // main shadow computation function

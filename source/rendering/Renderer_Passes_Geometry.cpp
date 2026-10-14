@@ -532,13 +532,6 @@ namespace spartan
             return;
         }
 
-        // ray traced shadows replace the atlas, every caster is in the tlas and the shaders
-        // never read it, the readiness bit covers pending blas builds so there is no gap
-        if (IsRayTracedShadowsActive())
-        {
-            return;
-        }
-
         if (cvar_shadows_gpu_driven.GetValue() && Pass_ShadowMaps_GpuDriven())
         {
             return;
@@ -578,6 +571,10 @@ namespace spartan
 
             for (uint32_t array_index = 0; array_index < light->GetSliceCount(); array_index++)
             {
+                // Ray tracing keeps local and distant shadows; rasterize the animated near sun cascade.
+                if (IsRayTracedShadowsActive() && (light->GetLightType() != LightType::Directional || array_index != 0))
+                    continue;
+
                 const math::Rectangle& rect = light->GetAtlasRectangle(array_index);
                 if (!rect.IsDefined())
                 {
@@ -878,6 +875,10 @@ namespace spartan
 
             for (uint32_t array_index = 0; array_index < light->GetSliceCount(); array_index++)
             {
+                // Ray tracing keeps local and distant shadows; rasterize the animated near sun cascade.
+                if (IsRayTracedShadowsActive() && (light->GetLightType() != LightType::Directional || array_index != 0))
+                    continue;
+
                 const math::Rectangle& rect = light->GetAtlasRectangle(array_index);
                 if (!rect.IsDefined())
                 {

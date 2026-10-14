@@ -161,6 +161,7 @@ namespace spartan
 
     void Mesh::Clear()
     {
+        m_object_size = 0;
         m_ready_for_blas = false;
         m_cpu_geometry_released = false;
 
@@ -518,8 +519,7 @@ namespace spartan
         SetResourceFilePath(file_path);
 
         // compute memory usage
-        m_object_size  = m_vertices.size() * sizeof(RHI_Vertex_PosTexNorTan);
-        m_object_size += m_indices.size() * sizeof(uint32_t);
+        m_object_size = GetMemoryUsage();
 
         SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
         return true;
@@ -606,11 +606,22 @@ namespace spartan
             m_meshlet_micro_indices.capacity() * sizeof(uint32_t);
     }
 
-    uint32_t Mesh::GetMemoryUsage() const
+    uint64_t Mesh::GetMemoryUsage() const
     {
-        uint32_t size  = 0;
-        size          += uint32_t(m_indices.size()  * sizeof(uint32_t));
-        size          += uint32_t(m_vertices.size() * sizeof(RHI_Vertex_PosTexNorTan));
+        // Geometry remains on the GPU after releasing its CPU mirror.
+        if (m_cpu_geometry_released)
+            return m_object_size;
+
+        uint64_t size = m_vertices.size() * sizeof(RHI_Vertex_PosTexNorTan) +
+            m_indices.size() * sizeof(uint32_t) +
+            m_meshlets.size() * sizeof(Sb_MeshletBounds) +
+            m_meshlet_vertices.size() * sizeof(uint32_t) +
+            m_meshlet_micro_indices.size() * sizeof(uint32_t);
+        for (const SubMesh& sub_mesh : m_sub_meshes)
+        {
+            if (sub_mesh.impostor)
+                size += sub_mesh.impostor->texels.size() * sizeof(sub_mesh.impostor->texels[0]);
+        }
 
         return size;
     }
@@ -1172,11 +1183,7 @@ namespace spartan
                 static_cast<uint32_t>(m_meshlets.size());
             lod.aabb = aabb;
 
-            m_object_size =
-                m_vertices.size() *
-                sizeof(RHI_Vertex_PosTexNorTan) +
-                m_indices.size() *
-                sizeof(uint32_t);
+            m_object_size = GetMemoryUsage();
         }
 
         InvalidateAllBlas();
@@ -1359,6 +1366,7 @@ namespace spartan
             m_vertices.data(),
             instance->m_global_vertex_capacity
         );
+        instance->m_object_size = instance->GetMemoryUsage();
         instance->m_ready_for_blas.store(true, memory_order_release);
 
         instance->SetObjectName(GetObjectName() + "_skinned_instance");
@@ -1504,6 +1512,7 @@ namespace spartan
 
         // publish to the renderer only after global offsets are finalized and every sub-mesh has at least lod 0,
         // release ordering pairs with the acquire load in BuildAccelerationStructure
+        m_object_size = GetMemoryUsage();
         m_ready_for_blas.store(true, std::memory_order_release);
     }
 

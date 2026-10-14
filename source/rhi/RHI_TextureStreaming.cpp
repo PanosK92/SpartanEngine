@@ -55,11 +55,7 @@ namespace spartan
 
         uint64_t mip_bytes(const RHI_Texture& texture, uint32_t first)
         {
-            uint64_t bytes = 0;
-            for (uint32_t mip = first; mip < texture.GetMipCount(); ++mip)
-                bytes += RHI_Texture::CalculateMipSize(max(1u, texture.GetWidth() >> mip), max(1u, texture.GetHeight() >> mip),
-                    1, texture.GetFormat(), texture.GetBitsPerChannel(), texture.GetChannelCount());
-            return bytes;
+            return texture.CalculateMipChainSize(first);
         }
 
         uint64_t to_bytes(float mb, float fallback)

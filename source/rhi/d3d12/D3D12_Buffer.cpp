@@ -71,7 +71,7 @@ namespace spartan
 
             // worst case size, base alignment padding can be up to (base_align - 1) per group
             uint64_t max_padding = base_align - 1;
-            size                 = m_element_count * m_aligned_handle_size + 2 * max_padding;
+            size                 = static_cast<uint64_t>(m_element_count) * m_aligned_handle_size + 2 * max_padding;
             m_object_size        = size;
         }
 

@@ -968,6 +968,8 @@ namespace
 
         char size_text[48];
         snprintf(size_text, sizeof(size_text), "%u \xC3\x97 %u", tex->GetWidth(), tex->GetHeight());
+        if (tex->GetType() == spartan::RHI_Texture_Type::Type3D)
+            snprintf(size_text, sizeof(size_text), "%u x %u x %u", tex->GetWidth(), tex->GetHeight(), tex->GetDepth());
         if (editor_ui::layout::fold("Info", true, size_text))
         {
             char text[96];
@@ -975,9 +977,9 @@ namespace
             editor_ui::property_text("Format", format_name(tex->GetFormat()));
             snprintf(text, sizeof(text), "%s, %u channel%s", texture_type_label(tex->GetType()), tex->GetChannelCount(), tex->GetChannelCount() == 1 ? "" : "s");
             editor_ui::property_text("Type", text);
-            snprintf(text, sizeof(text), "%u of %u resident", tex->GetResidentMipCount(), tex->GetMipCount());
+            snprintf(text, sizeof(text), "%u of %u resident", tex->GetRhiResource() ? tex->GetResidentMipCount() : 0, tex->GetMipCount());
             editor_ui::property_text("Mips", text, "Streaming keeps only the mips the camera needs in memory");
-            if (tex->GetResidentMip() > 0)
+            if (tex->GetRhiResource() && tex->GetResidentMip() > 0)
             {
                 snprintf(text, sizeof(text), "%u \xC3\x97 %u from mip %u", tex->GetResidentWidth(), tex->GetResidentHeight(), tex->GetResidentMip());
                 editor_ui::property_text("Resident", text, "The largest mip currently in memory");
@@ -988,7 +990,8 @@ namespace
                 editor_ui::property_text("Slices", text);
             }
             const uint64_t bytes = texture_byte_estimate(tex);
-            editor_ui::property_text("Memory", bytes > 0 ? editor_ui::format::bytes(static_cast<double>(bytes)) : std::string("not resident"));
+            editor_ui::property_text("GPU payload", bytes > 0 ? editor_ui::format::bytes(static_cast<double>(bytes)) : std::string("not resident"), "Resident mip payload; excludes allocation alignment, metadata and CPU copies");
+            editor_ui::property_text("CPU data", editor_ui::format::bytes(static_cast<double>(tex->GetCpuBytes())), "Retained mip byte buffers, including reserved capacity; excludes object and container overhead");
         }
 
         const int max_mip   = static_cast<int>(tex->GetResidentMipCount()) - 1;

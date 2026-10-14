@@ -133,7 +133,7 @@ namespace spartan
         // any level of a sub-mesh, the returned indices are local to the returned vertices
         bool GetGeometryLod(uint32_t sub_mesh_index, uint32_t lod_index, std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices);
         uint32_t GetLodCount(uint32_t sub_mesh_index) const;
-        uint32_t GetMemoryUsage() const;
+        uint64_t GetMemoryUsage() const;
         uint64_t GetCpuBytes() const;
         void AddLod(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const uint32_t sub_mesh_index);
         void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, uint32_t* sub_mesh_index = nullptr);

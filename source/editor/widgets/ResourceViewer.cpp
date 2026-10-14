@@ -137,10 +137,11 @@ void ResourceViewer::OnTickVisible()
 
     editor_ui::stat_strip("##resource_stats", {
         { to_string(resources.size()), "Resources" },
-        { editor_ui::format::bytes(static_cast<double>(total_bytes)), "In memory" },
+        { editor_ui::format::bytes(static_cast<double>(total_bytes)), "Payload estimate" },
         { to_string(segments.size()), "Kinds" },
         { editor_ui::format::bytes(static_cast<double>(largest)), "Largest" }
     });
+    ImGui::TextDisabled("Payload estimates exclude allocation overhead and retained CPU copies. Untracked sizes are excluded.");
     ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(2.0f)));
     const int hovered_segment = editor_ui::stacked_bar("##resource_composition", segments, static_cast<double>(total_bytes), ImGui::EditorUi::scaled(8.0f));
     ImGui::Dummy(ImVec2(0, ImGui::EditorUi::scaled(2.0f)));
@@ -225,7 +226,7 @@ void ResourceViewer::OnTickVisible()
         const float dpi = Window::GetDpiScale();
         ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, 1.0f);
         ImGui::TableSetupColumn("Kind", ImGuiTableColumnFlags_WidthFixed, 110.0f * dpi);
-        ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_PreferSortDescending, 120.0f * dpi);
+        ImGui::TableSetupColumn("Payload estimate", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_PreferSortDescending, 140.0f * dpi);
         ImGui::TableSetupColumn("Path", ImGuiTableColumnFlags_WidthStretch, 1.6f);
         ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultHide, 170.0f * dpi);
         ImGui::TableSetupScrollFreeze(0, 1);
@@ -299,7 +300,11 @@ void ResourceViewer::OnTickVisible()
 
                 ImGui::TableSetColumnIndex(2);
                 const uint64_t size = resource->GetObjectSize();
-                editor_ui::cell_bar(size > 0 ? editor_ui::format::bytes(static_cast<double>(size)).c_str() : "-", largest > 0 ? static_cast<float>(static_cast<double>(size) / static_cast<double>(largest)) : 0.0f, type_tint(type));
+                editor_ui::cell_bar(size > 0 ? editor_ui::format::bytes(static_cast<double>(size)).c_str() : "untracked", largest > 0 ? static_cast<float>(static_cast<double>(size) / static_cast<double>(largest)) : 0.0f, type_tint(type));
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+                {
+                    ImGui::SetTooltip("Textures: resident mip payload, or full payload before upload.\nMeshes: geometry payload including meshlets.\nMaterials: object size only.\nThese are not total CPU/GPU allocations; see Memory Viewer for tracked allocations.");
+                }
 
                 ImGui::TableSetColumnIndex(3);
                 ImGui::TextColored(ImGui::Style::color_text_muted, "%s", path.empty() ? "generated at runtime" : path.c_str());
