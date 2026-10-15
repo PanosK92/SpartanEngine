@@ -3034,7 +3034,7 @@ namespace spartan
         const float width_px  = static_cast<float>(GetViewport().width);
         const float height_px = static_cast<float>(GetViewport().height);
         float y               = height_px * position_screen_percentage.y - line_height * static_cast<float>(line_count) * 0.5f;
-        const float shadow    = large ? 3.0f : 2.0f;
+        const float shadow    = large ? 5.0f : 3.0f;
         const Color shadow_color(0.0f, 0.0f, 0.0f, clamp(alpha, 0.0f, 1.0f) * 0.55f);
         const Color text_color(color.x, color.y, color.z, clamp(alpha, 0.0f, 1.0f));
 

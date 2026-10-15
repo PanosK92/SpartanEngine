@@ -180,6 +180,119 @@ export function png_encode_rgb(width, height, rgb)
   ]);
 }
 
+// 5x7 bitmap glyphs, one five bit row per entry, enough for frame labels like "S2 4.50S X0.25"
+const glyphs = {
+  "0": [14, 17, 19, 21, 25, 17, 14], "1": [4, 12, 4, 4, 4, 4, 14], "2": [14, 17, 1, 2, 4, 8, 31], "3": [31, 2, 4, 2, 1, 17, 14],
+  "4": [2, 6, 10, 18, 31, 2, 2], "5": [31, 16, 30, 1, 1, 17, 14], "6": [6, 8, 16, 30, 17, 17, 14], "7": [31, 1, 2, 4, 8, 8, 8],
+  "8": [14, 17, 17, 14, 17, 17, 14], "9": [14, 17, 17, 15, 1, 2, 12],
+  "A": [14, 17, 17, 31, 17, 17, 17], "B": [30, 17, 17, 30, 17, 17, 30], "C": [14, 17, 16, 16, 16, 17, 14], "D": [28, 18, 17, 17, 17, 18, 28],
+  "E": [31, 16, 16, 30, 16, 16, 31], "F": [31, 16, 16, 30, 16, 16, 16], "G": [14, 17, 16, 23, 17, 17, 15], "H": [17, 17, 17, 31, 17, 17, 17],
+  "I": [14, 4, 4, 4, 4, 4, 14], "J": [7, 2, 2, 2, 2, 18, 12], "K": [17, 18, 20, 24, 20, 18, 17], "L": [16, 16, 16, 16, 16, 16, 31],
+  "M": [17, 27, 21, 21, 17, 17, 17], "N": [17, 17, 25, 21, 19, 17, 17], "O": [14, 17, 17, 17, 17, 17, 14], "P": [30, 17, 17, 30, 16, 16, 16],
+  "Q": [14, 17, 17, 17, 21, 18, 13], "R": [30, 17, 17, 30, 20, 18, 17], "S": [15, 16, 16, 14, 1, 1, 30], "T": [31, 4, 4, 4, 4, 4, 4],
+  "U": [17, 17, 17, 17, 17, 17, 14], "V": [17, 17, 17, 17, 17, 10, 4], "W": [17, 17, 17, 21, 21, 21, 10], "X": [17, 17, 10, 4, 10, 17, 17],
+  "Y": [17, 17, 17, 10, 4, 4, 4], "Z": [31, 1, 2, 4, 8, 16, 31],
+  ".": [0, 0, 0, 0, 0, 12, 12], ":": [0, 12, 12, 0, 12, 12, 0], "-": [0, 0, 0, 31, 0, 0, 0], "+": [0, 4, 4, 31, 4, 4, 0],
+  "/": [0, 1, 2, 4, 8, 16, 0], "#": [10, 10, 31, 10, 31, 10, 10], "_": [0, 0, 0, 0, 0, 0, 31], "(": [2, 4, 8, 8, 8, 4, 2],
+  ")": [8, 4, 2, 2, 2, 4, 8], "%": [24, 25, 2, 4, 8, 19, 3], "=": [0, 0, 31, 0, 31, 0, 0],
+};
+
+function draw_label(rgb, image_width, x0, y0, text, scale)
+{
+  let cursor = x0;
+  for (const character of String(text).toUpperCase())
+  {
+    const rows = glyphs[character];
+    if (rows)
+    {
+      for (let row = 0; row < 7; row++)
+      {
+        for (let column = 0; column < 5; column++)
+        {
+          if (!(rows[row] & (16 >> column)))
+          {
+            continue;
+          }
+          for (let sy = 0; sy < scale; sy++)
+          {
+            for (let sx = 0; sx < scale; sx++)
+            {
+              const index = ((y0 + row * scale + sy) * image_width + cursor + column * scale + sx) * 3;
+              if (index >= 0 && index + 2 < rgb.length)
+              {
+                rgb[index] = rgb[index + 1] = rgb[index + 2] = 255;
+              }
+            }
+          }
+        }
+      }
+    }
+    cursor += 6 * scale;
+  }
+}
+
+// a grid of box-downscaled frames with a label band on each, so a whole cut can be judged from one image
+export function contact_sheet(images, labels, { columns = 3, tile_width = 480 } = {})
+{
+  if (images.length === 0)
+  {
+    throw new Error("no images for the contact sheet");
+  }
+  const gap         = 4;
+  const scale       = 2;
+  const band        = 7 * scale + 6;
+  const first       = images[0];
+  const tile_height = Math.max(1, Math.round(tile_width * first.height / first.width));
+  const cols        = Math.max(1, Math.min(columns, images.length));
+  const rows        = Math.ceil(images.length / cols);
+  const width       = cols * tile_width + (cols + 1) * gap;
+  const height      = rows * tile_height + (rows + 1) * gap;
+  const rgb         = Buffer.alloc(width * height * 3, 18);
+
+  images.forEach((image, index) =>
+  {
+    const ox = gap + (index % cols) * (tile_width + gap);
+    const oy = gap + Math.floor(index / cols) * (tile_height + gap);
+    const sx = image.width / tile_width;
+    const sy = image.height / tile_height;
+    for (let y = 0; y < tile_height; y++)
+    {
+      const y0 = Math.floor(y * sy);
+      const y1 = Math.max(y0 + 1, Math.floor((y + 1) * sy));
+      for (let x = 0; x < tile_width; x++)
+      {
+        const x0 = Math.floor(x * sx);
+        const x1 = Math.max(x0 + 1, Math.floor((x + 1) * sx));
+        let r = 0, g = 0, b = 0, count = 0;
+        // a sparse 4x4 tap grid inside the footprint is plenty for a thumbnail and keeps big frames fast
+        const step_x = Math.max(1, Math.floor((x1 - x0) / 4));
+        const step_y = Math.max(1, Math.floor((y1 - y0) / 4));
+        for (let py = y0; py < y1; py += step_y)
+        {
+          for (let px = x0; px < x1; px += step_x)
+          {
+            const source = (py * image.width + px) * 4;
+            r += image.pixels[source];
+            g += image.pixels[source + 1];
+            b += image.pixels[source + 2];
+            count++;
+          }
+        }
+        const target = ((oy + y) * width + ox + x) * 3;
+        const darken = y < band && labels[index] ? 0.45 : 1.0;
+        rgb[target]     = Math.round(r / count * darken);
+        rgb[target + 1] = Math.round(g / count * darken);
+        rgb[target + 2] = Math.round(b / count * darken);
+      }
+    }
+    if (labels[index])
+    {
+      draw_label(rgb, width, ox + 4, oy + 3, labels[index], scale);
+    }
+  });
+  return { png: png_encode_rgb(width, height, rgb), width, height };
+}
+
 // changed pixels are red over a dimmed grey copy of b, the image is box-downscaled so it stays readable inline
 export function compare_images(a, b, threshold, max_width = 1024)
 {
@@ -917,6 +1030,226 @@ export function register_agent_toolkit(context)
     {
       return tool_result(structured_error(error.message, { code: "screenshot_compare_failed", a: path_a, b: path_b }));
     }
+  });
+
+  // sequencer stills: the engine replays the take (or jumps the playhead) and writes capture_NN.png at each time
+  async function run_sequencer_capture(times, { mode, fps, directory, timeout_ms = 180000, labels = [], columns, tile_width })
+  {
+    const minimized = await minimized_error();
+    if (minimized)
+    {
+      return { ok: false, error: minimized };
+    }
+    const start = await send_engine_command("sequencer_capture", { action: "start", times, mode, fps, directory });
+    if (!start.ok)
+    {
+      return { ok: false, error: start };
+    }
+
+    const deadline = Date.now() + timeout_ms;
+    let render     = start.render;
+    while (render?.active && Date.now() < deadline)
+    {
+      await sleep(250);
+      const status = await send_engine_command("sequencer_capture", { action: "status" });
+      if (status.ok)
+      {
+        render = status.render;
+      }
+    }
+    if (render?.active)
+    {
+      await send_engine_command("sequencer_capture", { action: "stop" });
+      return { ok: false, error: structured_error(`capture did not finish within ${timeout_ms} ms`, { code: "capture_timeout", render }) };
+    }
+
+    const frames  = [];
+    const decoded = [];
+    for (let i = 0; i < (render?.files ?? []).length; i++)
+    {
+      const file = render.files[i];
+      let buffer = null;
+      for (let attempt = 0; attempt < 20 && !buffer; attempt++)
+      {
+        try
+        {
+          buffer = await fs.readFile(file);
+        }
+        catch
+        {
+          await sleep(100);
+        }
+      }
+      if (!buffer)
+      {
+        continue;
+      }
+      const time  = render.times[i];
+      const label = labels[i] ?? `${i + 1} T ${Number(time).toFixed(2)}S`;
+      frames.push({ index: i, time, file, label, buffer });
+      decoded.push(png_decode(buffer));
+    }
+    if (frames.length === 0)
+    {
+      return { ok: false, error: structured_error(render?.last_error || "the capture wrote no frames", { code: "capture_empty", render }) };
+    }
+
+    const sheet      = contact_sheet(decoded, frames.map((frame) => frame.label), { columns: columns ?? Math.min(4, Math.ceil(Math.sqrt(frames.length))), tile_width: tile_width ?? (frames.length <= 4 ? 640 : 400) });
+    const sheet_path = path.join(path.dirname(frames[0].file), "contact_sheet.png");
+    await fs.writeFile(sheet_path, sheet.png);
+    return { ok: true, render, frames, sheet, sheet_path, mode: render.scrubbed ? "scrub" : "simulate" };
+  }
+
+  const time_ref = z.union([z.number().min(0), z.string().min(1)]);
+
+  register_local_tool("sequencer_capture", {
+    title: "sequencer capture",
+    description: [
+      "See the sequence at chosen moments. times are seconds or references (beat:N, bar:N, marker:NAME, each with an optional +/-seconds).",
+      "mode simulate replays the take from a preroll at a fixed timestep so drives, physics and slow motion are exactly where the final take has them; scrub jumps the playhead (instant, exact for shots without drives); auto picks simulate when there are drive events.",
+      "Stills are clean captures with the cinematic overlay (fades, letterbox, titles). Returns a labelled contact sheet image (also written as contact_sheet.png next to the frames) plus each frame when there are 3 or fewer, or when individual is true.",
+      "Drive events need play mode (unpaused) for simulate.",
+    ].join(" "),
+    inputSchema: {
+      times: z.array(time_ref).min(1).max(64),
+      mode: z.enum(["auto", "simulate", "scrub"]).optional(),
+      fps: z.number().min(5).max(120).optional().describe("simulation step for simulate mode, default 30"),
+      directory: z.string().optional().describe("output folder relative to binaries, default sequencer_renders/<world>_capture"),
+      individual: z.boolean().optional(),
+      columns: z.number().int().min(1).max(8).optional(),
+      tile_width: z.number().int().min(160).max(1280).optional(),
+      timeout_ms: z.number().int().min(5000).max(900000).optional(),
+    },
+    annotations: edit_tool,
+  }, async (args) =>
+  {
+    const result = await run_sequencer_capture(args.times, args);
+    if (!result.ok)
+    {
+      return tool_result(result.error);
+    }
+    const images = [{ type: "image", mimeType: "image/png", data: result.sheet.png.toString("base64") }];
+    if (args.individual ?? result.frames.length <= 3)
+    {
+      for (const frame of result.frames)
+      {
+        images.push({ type: "image", mimeType: "image/png", data: frame.buffer.toString("base64") });
+      }
+    }
+    return with_images({
+      ok: true,
+      mode: result.mode,
+      frames: result.frames.map(({ buffer, ...frame }) => frame),
+      sheet_path: result.sheet_path,
+      last_error: result.render.last_error || undefined,
+    }, images);
+  });
+
+  register_local_tool("sequencer_review", {
+    title: "sequencer review",
+    description: [
+      "Review the whole cut in one call: captures the start, middle and end of every camera shot (frames_per_shot 1 to 3) as one contact sheet, one row per shot,",
+      "and returns a per-shot summary (time range, camera move, target, keyed track values at the middle, visible titles) with warnings for flash cuts, blends longer than their shot and missing entities.",
+      "Use it after building or changing a sequence, then fix shots and review again.",
+    ].join(" "),
+    inputSchema: {
+      frames_per_shot: z.number().int().min(1).max(3).optional(),
+      mode: z.enum(["auto", "simulate", "scrub"]).optional(),
+      fps: z.number().min(5).max(120).optional(),
+      tile_width: z.number().int().min(160).max(960).optional(),
+      timeout_ms: z.number().int().min(5000).max(900000).optional(),
+    },
+    annotations: edit_tool,
+  }, async (args) =>
+  {
+    const state = await send_engine_command("sequencer_get");
+    if (!state.ok)
+    {
+      return tool_result(state);
+    }
+    const events = state.events ?? [];
+    if (events.length === 0)
+    {
+      return tool_result(structured_error("the sequence has no camera shots", { code: "empty_sequence" }));
+    }
+
+    const per_shot = args.frames_per_shot ?? 3;
+    const times    = [];
+    const labels   = [];
+    const shots    = [];
+    events.forEach((event, index) =>
+    {
+      const start  = event.time;
+      const end    = index + 1 < events.length ? events[index + 1].time : state.duration;
+      const length = Math.max(end - start, 0);
+      const margin = Math.min(0.15, length * 0.1);
+      const picks  = per_shot === 1 ? [(start + end) / 2] : per_shot === 2 ? [start + margin, end - margin] : [start + margin, (start + end) / 2, end - margin];
+      const names  = per_shot === 1 ? ["MID"] : per_shot === 2 ? ["IN", "OUT"] : ["IN", "MID", "OUT"];
+      picks.forEach((time, pick) =>
+      {
+        times.push(Number(Math.max(0, Math.min(time, state.duration)).toFixed(3)));
+        labels.push(`S${index + 1} ${names[pick]} ${time.toFixed(2)}S`);
+      });
+
+      const warnings = [];
+      if (length < 0.5)
+      {
+        warnings.push(`flash cut, only ${length.toFixed(2)} s long`);
+      }
+      if ((event.blend_in ?? 0) > length)
+      {
+        warnings.push("blend_in is longer than the shot, it never settles");
+      }
+      for (const field of ["camera_name", "target_name", "anchor", "path"])
+      {
+        if (event[field] === "missing")
+        {
+          warnings.push(`${field.replace("_name", "")} entity is missing`);
+        }
+      }
+      shots.push({
+        index,
+        start: Number(start.toFixed(3)),
+        end: Number(end.toFixed(3)),
+        length: Number(length.toFixed(3)),
+        move: event.move ?? (event.rig ? "rig" : "cut"),
+        camera: event.camera_name,
+        target: event.target_name || undefined,
+        warnings: warnings.length ? warnings : undefined,
+      });
+    });
+    if (times.length > 64)
+    {
+      return tool_result(structured_error(`${times.length} frames is too many for one review, use frames_per_shot 1 or sequencer_capture on a range`, { code: "too_many_frames" }));
+    }
+
+    const result = await run_sequencer_capture(times, { ...args, labels, columns: per_shot, tile_width: args.tile_width ?? (per_shot === 1 ? 480 : 360) });
+    if (!result.ok)
+    {
+      return tool_result(result.error);
+    }
+    const samples = await send_engine_command("sequencer_sample", { times: times.filter((_, i) => i % per_shot === Math.floor(per_shot / 2)) });
+    if (samples.ok)
+    {
+      samples.samples.forEach((sample, index) =>
+      {
+        if (shots[index])
+        {
+          shots[index].tracks = sample.tracks;
+          shots[index].titles = sample.titles?.length ? sample.titles : undefined;
+          shots[index].bar    = sample.bar;
+        }
+      });
+    }
+    return with_images({
+      ok: true,
+      mode: result.mode,
+      duration: state.duration,
+      shots,
+      sheet_path: result.sheet_path,
+      frames_written: result.frames.length,
+      last_error: result.render.last_error || undefined,
+    }, [{ type: "image", mimeType: "image/png", data: result.sheet.png.toString("base64") }]);
   });
 
   return { minimized_error };

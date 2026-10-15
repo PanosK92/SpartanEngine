@@ -2507,7 +2507,10 @@ register_tool(
   { annotations: edit_tool },
 );
 
-register_tool(server, "sequencer_get", "Read the sequencer state: duration, loop, playback time, preview flag, the sorted camera shots (with rig fields when animated), the spline_events track, the drive_events track (each with its speed keys and a live autopilot readout: staged, active, distance, speed_kmh, target_kmh, lateral_error, throttle, brake, steering) and the render status (active, frames_written, frames_total, directory, last_error).", {}, "sequencer_get", {
+// sequencer time arguments: seconds, or beat:N / bar:N (1 based, from the bpm grid) / marker:NAME, each with an optional +/-seconds
+const sequencer_time = z.union([z.number().min(0), z.string().min(1)]);
+
+register_tool(server, "sequencer_get", "Read the sequencer state: duration, loop, playback time, preview flag, the sorted camera shots (with rig and move fields when animated), the spline_events track, the drive_events track (each with its speed keys and a live autopilot readout: staged, active, distance, speed_kmh, target_kmh, lateral_error, throttle, brake, steering), the current world time_scale, the cinematic block (curves per channel, titles, markers, music, bpm grid, fade colour) and the render status (active, frames_written, frames_total, directory, last_error, files, times).", {}, "sequencer_get", {
   annotations: read_only,
 });
 
@@ -2518,7 +2521,7 @@ register_tool(
   {
     duration: z.number().min(1).max(3600).optional(),
     loop: z.boolean().optional(),
-    time: z.number().min(0).optional(),
+    time: sequencer_time.optional(),
     visible: z.boolean().optional(),
     preview: z.boolean().optional(),
   },
@@ -2557,6 +2560,19 @@ const sequencer_shot_schema = {
   shake: z.number().min(0).max(3).optional().describe("handheld sway 0-1, anchor space also adds engine vibration"),
   lag: z.number().min(0).max(2).optional().describe("heading space only, seconds the camera heading trails the car so it swings out into corners"),
   ease: z.enum(["linear", "in_out", "in", "out"]).optional().describe("motion curve from start to end over the shot, default in_out"),
+  move: z.enum(["rig", "orbit", "dolly_zoom", "path"]).optional().describe([
+    "camera move. rig: position/look start to end. orbit: circles the target (or look point) from orbit_angle_start to orbit_angle_end degrees at orbit_radius/orbit_height, pair with a sequencer_time span at 0 for a frozen-time Matrix shot.",
+    "dolly_zoom: moves position_start to position_end while the fov compensates so the subject keeps its size (vertigo). path: flies along a spline (path) from path_start to path_end (0-1), offset by position_start/end in the path frame, looking at target or ahead",
+  ].join(" ")),
+  orbit_radius: z.number().min(0.1).max(500).optional(),
+  orbit_height: z.number().min(-100).max(500).optional().describe("meters above the orbit centre"),
+  orbit_angle_start: z.number().min(-3600).max(3600).optional().describe("degrees around the centre measured from the target's (or anchor's) forward: 0 faces its nose, 90 its side, 180 its tail"),
+  orbit_angle_end: z.number().min(-3600).max(3600).optional(),
+  orbit_rise: z.number().min(-100).max(100).optional().describe("meters the camera climbs over the shot"),
+  path: z.union([z.string(), z.number().int()]).optional().describe("spline entity for move path, setting it implies move path"),
+  path_start: z.number().min(0).max(1).optional(),
+  path_end: z.number().min(0).max(1).optional(),
+  blend_in: z.number().min(0).max(10).optional().describe("seconds the shot blends in from the previous shot's pose instead of cutting, ~0.3 whip pan, 1-2 smooth transition"),
 };
 
 register_tool(
@@ -2569,7 +2585,7 @@ register_tool(
     "Camera poses are applied after physics and before rendering, so car mounted shots never lag. Consecutive shots cut hard: temporal history is reset.",
   ].join(" "),
   {
-    time: z.number().min(0),
+    time: sequencer_time,
     ...sequencer_shot_schema,
   },
   "sequencer_event_add",
@@ -2582,7 +2598,7 @@ register_tool(
   "Change any field of an existing shot by index (time, camera, target, or any rig field). Pass target 'none' to clear the lock, rig false to turn animation off. Events are re-sorted by time, so re-read indices from the returned state.",
   {
     index: z.number().int().min(0),
-    time: z.number().min(0).optional(),
+    time: sequencer_time.optional(),
     ...sequencer_shot_schema,
   },
   "sequencer_event_update",
@@ -2608,8 +2624,8 @@ register_tool(
     "Only works in play mode: sequencer_playback play (or sequencer_render start) stages the car at rest at start_distance, holds it on the handbrake until start, and after end brakes it to a stop.",
   ].join(" "),
   {
-    start: z.number().min(0),
-    end: z.number().min(0),
+    start: sequencer_time,
+    end: sequencer_time,
     ...sequencer_drive_schema,
   },
   "sequencer_drive_add",
@@ -2622,8 +2638,8 @@ register_tool(
   "Change any field of an existing drive event by index. speed_keys replaces the whole profile.",
   {
     index: z.number().int().min(0),
-    start: z.number().min(0).optional(),
-    end: z.number().min(0).optional(),
+    start: sequencer_time.optional(),
+    end: sequencer_time.optional(),
     ...sequencer_drive_schema,
   },
   "sequencer_drive_update",
@@ -2653,14 +2669,160 @@ register_tool(
   {
     action: z.enum(["start", "stop", "status"]),
     fps: z.number().min(1).max(120).optional(),
-    start: z.number().min(0).optional(),
-    end: z.number().min(0).optional(),
+    start: sequencer_time.optional(),
+    end: sequencer_time.optional(),
     preroll: z.number().min(0).max(30).optional(),
     stride: z.number().int().min(1).optional(),
     directory: z.string().optional(),
   },
   "sequencer_render",
   { annotations: edit_tool },
+);
+
+const sequencer_ease = z.enum(["linear", "in_out", "in", "out", "hold"]);
+const sequencer_curve_schema = {
+  time: sequencer_time.optional().describe("set: key time. remove: removes the key within 0.05 s"),
+  value: z.number().optional(),
+  ease: sequencer_ease.optional().describe("shape of the segment arriving at the key, hold steps (a cut), default in_out"),
+  keys: z.array(z.union([
+    z.object({ time: sequencer_time, value: z.number(), ease: sequencer_ease.optional() }),
+    z.array(z.union([z.number(), z.string()])).min(2).max(3),
+  ])).optional().describe("several keys at once, [{time, value, ease}] or [[time, value, ease?]]"),
+  replace: z.boolean().optional().describe("with keys, clear the channel first"),
+  start: sequencer_time.optional().describe("span start"),
+  end: sequencer_time.optional().describe("span end"),
+  ramp: z.number().min(0).max(10).optional().describe("span: seconds to ramp in and out, 0 cuts, default 0.25"),
+  base: z.number().optional().describe("span: value outside the span, defaults to the current curve value"),
+  index: z.number().int().min(0).optional().describe("remove: key index"),
+  all: z.boolean().optional().describe("clear: every channel of the group"),
+};
+const sequencer_curve_text = [
+  "Curves are eased keys on the sequencer timeline, held flat before the first and after the last key; channels without keys leave the engine alone and everything is restored when playback stops.",
+  "action set (time + value, or keys), span (value between start and end with ramps, replacing keys inside: the fastest way to make a moment), remove (index or time), clear (channel, or all), list.",
+  "Omitting action means set when value or keys are given, else list. Times accept seconds, beat:N, bar:N or marker:NAME with an optional +/-seconds.",
+].join(" ");
+
+register_tool(
+  server,
+  "sequencer_time",
+  [
+    "Slow motion and frozen time on the sequencer timeline: the time_scale channel scales the world clock (physics, cars, particles, rain, ocean, animation) while the timeline and the camera keep running in real time.",
+    "0 freezes the world, so a span at 0 under an orbit shot is a Matrix style bullet time sweep; 0.25 is classic slow motion; >1 speeds up.",
+    "World audio is pitched down and muffled with the slow down unless sequencer_audio slowmo_audio is off, music stays clean. Drive speed keys are timeline seconds, so a car covers less road during slow motion.",
+    sequencer_curve_text,
+  ].join(" "),
+  {
+    action: z.enum(["set", "span", "remove", "clear", "list"]).optional(),
+    channel: z.enum(["time_scale"]).optional(),
+    ...sequencer_curve_schema,
+  },
+  "sequencer_time",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "sequencer_world",
+  [
+    "Animate the environment over the sequence: time_of_day (local solar hours, values past 24 run into the next day, so 17.5 to 20.5 is a sunset), rain, clouds and puddles (0-1) and wind (m/s).",
+    "While time_of_day is keyed the environment clock is pinned so only the keys move the sun. World channels have no neutral value: a span needs base when the channel has no keys yet.",
+    sequencer_curve_text,
+  ].join(" "),
+  {
+    action: z.enum(["set", "span", "remove", "clear", "list"]).optional(),
+    channel: z.enum(["time_of_day", "rain", "clouds", "wind", "puddles"]).optional(),
+    ...sequencer_curve_schema,
+  },
+  "sequencer_world",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "sequencer_audio",
+  [
+    "Mix the showcase audio over time. Curves: gain_vehicle (engine, tyres, wind on the car), gain_ambience (rain, wind, ocean), gain_sfx (everything else), gain_music, each 0-4 with 1 neutral, and muffle 0-1 (a low pass on the world groups, the underwater or dream feel).",
+    "group can stand in for channel (vehicle, ambience, sfx, music). Typical cut: span gain_vehicle down and gain_music up under a montage, then swap back for an engine moment.",
+    "action music sets the music clip (path relative to binaries or absolute, start = timeline second the song starts, offset = seconds into the song, volume); it plays in sync with the playhead during live playback only, not in sequencer_render or capture stills.",
+    "action slowmo_audio (enabled) toggles the pitch and muffle that follow time_scale. action meter returns each group's peak (and dB) since the previous meter call plus its gain, muffle and pitch, call it twice during playback to check the mix.",
+    "action group (entity + group) assigns every audio source under an entity to a mixer group when auto detection got it wrong.",
+    sequencer_curve_text,
+  ].join(" "),
+  {
+    action: z.enum(["set", "span", "remove", "clear", "list", "music", "slowmo_audio", "meter", "group"]).optional(),
+    channel: z.enum(["gain_vehicle", "gain_ambience", "gain_sfx", "gain_music", "muffle"]).optional(),
+    group: z.string().optional().describe("curve actions: vehicle, ambience, sfx or music as a channel shortcut. action group: auto, vehicle, ambience, sfx or music"),
+    entity: z.union([z.string(), z.number().int()]).optional().describe("action group: entity whose audio sources are reassigned"),
+    path: z.string().optional().describe("action music: audio file, empty string removes the music"),
+    offset: z.number().min(0).optional().describe("action music: seconds into the song at its start time"),
+    volume: z.number().min(0).max(4).optional(),
+    enabled: z.boolean().optional().describe("action slowmo_audio"),
+    ...sequencer_curve_schema,
+  },
+  "sequencer_audio",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "sequencer_overlay",
+  [
+    "Transitions and titles drawn over the final image, kept in clean captures and renders. Curves: fade (0 clear to 1 solid fade_color) and letterbox (target aspect such as 2.39 or 2.0, below 1 is off; animating from 0 slides the bars in from the screen aspect).",
+    "action fade_in / fade_out (time, duration) writes the two fade keys for you, fade_color (color r,g,b 0-1) sets the fade colour (black by default, white for a flash).",
+    "action title (text, start, end or duration, position center / lower_third / top or x,y as screen fractions, large, fade seconds, color) adds a title card, title_update (index + fields), title_remove (index or all).",
+    "Use \\n in text for a second line.",
+    sequencer_curve_text,
+  ].join(" "),
+  {
+    action: z.enum(["set", "span", "remove", "clear", "list", "fade_in", "fade_out", "fade_color", "title", "title_update", "title_remove"]).optional(),
+    channel: z.enum(["fade", "letterbox"]).optional(),
+    text: z.string().optional(),
+    duration: z.number().min(0).max(600).optional().describe("title length, or fade_in/fade_out length (default 1)"),
+    position: z.enum(["center", "lower_third", "top"]).optional(),
+    x: z.number().min(0).max(1).optional(),
+    y: z.number().min(0).max(1).optional(),
+    large: z.boolean().optional().describe("title font size, default true"),
+    fade: z.number().min(0).max(10).optional().describe("title fade in and out seconds, default 0.5"),
+    color: vector3.optional().describe("title colour or fade_color, rgb 0-1"),
+    ...sequencer_curve_schema,
+  },
+  "sequencer_overlay",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "sequencer_markers",
+  [
+    "Beat sync and named moments. action grid sets bpm, beat_offset (seconds of the first downbeat), beats_per_bar and snap (panel dragging snaps to beats, hold Alt to disable).",
+    "With a grid every time argument of the sequencer tools accepts beat:N and bar:N (1 based), e.g. cut on bar:5 and slow down from beat:17-0.1.",
+    "action set (name, time) adds or moves a named marker, usable as marker:NAME; remove (index, name or all); resolve (times) turns references into seconds; list returns the state.",
+  ].join(" "),
+  {
+    action: z.enum(["list", "set", "remove", "grid", "resolve"]).optional(),
+    name: z.string().optional(),
+    time: sequencer_time.optional(),
+    index: z.number().int().min(0).optional(),
+    all: z.boolean().optional(),
+    bpm: z.number().min(0).max(400).optional().describe("0 turns the grid off"),
+    beat_offset: z.number().optional(),
+    beats_per_bar: z.number().int().min(1).max(16).optional(),
+    snap: z.boolean().optional(),
+    times: z.array(sequencer_time).optional(),
+  },
+  "sequencer_markers",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "sequencer_sample",
+  "Read what the sequence does at given times without moving the playhead: the active shot (index, move, target), beat and bar, time_scale plus every keyed track value, visible titles and a marker when one sits within 0.05 s. Cheap, use it to check a cut before capturing stills with sequencer_capture.",
+  {
+    times: z.array(sequencer_time).min(1).max(256),
+  },
+  "sequencer_sample",
+  { annotations: read_only },
 );
 
 register_tool(

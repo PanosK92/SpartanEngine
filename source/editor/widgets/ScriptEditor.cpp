@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <filesystem>
 #include "ScriptEditor.h"
 #include "imgui/TextEditor.h"
+#include "resource/ResourceCache.h"
 #include "world/Entity.h"
 #include "world/World.h"
 #include "world/components/Script.h"
@@ -21,6 +22,8 @@ ScriptEditor::ScriptEditor(Editor* editor)
     m_title           = "Script Editor";
     m_flags           = ImGuiWindowFlags_NoScrollbar;
     m_visible         = false;
+    m_toolbar_order   = 11;
+    m_toolbar_icon    = static_cast<int>(IconType::Script);
     m_alpha           = 1.0f;
 
     TextEditor.SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());

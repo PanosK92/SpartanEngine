@@ -254,6 +254,7 @@ public:
     static std::optional<ShotEase> FindEase(const std::string& name);
     static const char* GetMoveName(ShotMove move);
     static std::optional<ShotMove> FindMove(const std::string& name);
+    static bool IsAnimated(const CameraEvent& event) { return event.rig || event.move != ShotMove::Rig; }
 
     // a full snapshot of the editable state, used by the undo/redo command
     struct State
@@ -397,6 +398,8 @@ private:
         spartan::math::Vector3 position    = spartan::math::Vector3::Zero;
         spartan::math::Quaternion rotation = spartan::math::Quaternion::Identity;
         float fov                          = 0.0f; // 0 keeps the camera's own
+        spartan::math::Vector3 look        = spartan::math::Vector3::Zero;
+        bool has_look                      = false;
     };
 
     // runtime state of one drive, rebuilt whenever a take is staged
@@ -418,7 +421,6 @@ private:
     void EvaluateCamera(int index, bool cut);
     // stateful shots update the heading lag, a previous shot sampled for a blend does not
     ShotPose EvaluateShotPose(const CameraEvent& event, int index, float time, bool cut, bool stateful, spartan::Entity* camera);
-    static bool IsAnimated(const CameraEvent& event) { return event.rig || event.move != ShotMove::Rig; }
     void EvaluateDrives(float delta_time);
     void StageDrives();
     bool WaitForDrives(float delta_time);
@@ -525,6 +527,7 @@ private:
     RenderRequest m_render_request;
     RenderStatus m_render_status;
     uint32_t m_render_frame_index = 0;
+    uint32_t m_render_finish_wait = 0; // frames left before finishing, the last screenshot is taken on the next rendered frame
     uint32_t m_render_save_failures_start = 0;
     float m_render_fps_ui         = 30.0f;
 

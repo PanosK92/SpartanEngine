@@ -47,7 +47,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - \`undo_redo\` routes editor undo and redo through the command stack.
 - \`viewport_frame\` frames complete descendant bounds from perspective, front, back, left, right, or top views without keyboard focus. Use \`camera_set_view\` for custom poses.
 - \`screenshot_take\` queues a renderer screenshot and can return the saved PNG as image content for visual inspection.
-- The editor sequencer (shots, spline followers, physics drives) is controlled with \`sequencer_get\`, \`sequencer_set\`, \`sequencer_playback\`, \`sequencer_event_*\`, \`sequencer_spline_*\`, \`sequencer_drive_*\` and \`sequencer_render\`; \`camera\` accepts an entity id or name, events re-sort by time, and state auto-saves to \`sequencer_<world>.xml\` under the project directory.
+- The editor sequencer (shots, spline followers, physics drives) is controlled with \`sequencer_get\`, \`sequencer_set\`, \`sequencer_playback\`, \`sequencer_event_*\`, \`sequencer_spline_*\`, \`sequencer_drive_*\` and \`sequencer_render\`, with cinematic tracks in \`sequencer_time\` (slow motion, freeze), \`sequencer_audio\`, \`sequencer_world\`, \`sequencer_overlay\` and \`sequencer_markers\` (bpm grid, beat:N, bar:N, marker:NAME times); see it with \`sequencer_capture\`, \`sequencer_review\` and \`sequencer_sample\`; \`camera\` accepts an entity id or name, events re-sort by time, and state auto-saves to \`sequencer_<world>.xml\` under the project directory.
 
 ## Good Agent Strategies
 - Start engine tasks with \`spartan_status\` or \`context_snapshot\`.

@@ -92,6 +92,8 @@ namespace spartan
         LightDirectional,
         LightPoint,
         LightSpot,
+        Sequencer,
+        Tree,
         Max
     };
 

@@ -581,7 +581,9 @@ namespace spartan
                 { IconType::Memory,        "icons/memory.png"           },
                 { IconType::LightDirectional, "icons/light_directional.png" },
                 { IconType::LightPoint,    "icons/light_point.png"      },
-                { IconType::LightSpot,     "icons/light_spot.png"       }
+                { IconType::LightSpot,     "icons/light_spot.png"       },
+                { IconType::Sequencer,     "icons/sequencer.png"        },
+                { IconType::Tree,          "icons/tree.png"             }
             };
             return table;
         }

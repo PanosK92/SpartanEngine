@@ -189,7 +189,7 @@ TreeCreator::TreeCreator(Editor* editor) : Widget(editor)
     m_title         = "Tree Creator";
     m_visible       = false;
     m_toolbar_order = 9;
-    m_toolbar_icon  = static_cast<int>(IconType::Terrain);
+    m_toolbar_icon  = static_cast<int>(IconType::Tree);
     m_size_initial  = Vector2(1360.0f, 800.0f);
     m_size_min      = Vector2(940.0f, 540.0f);
     m_next_request  = chrono::steady_clock::now();

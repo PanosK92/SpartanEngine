@@ -798,7 +798,7 @@ function engine_mode_from_prompt(value) {
 function is_engine_mode_request(value) {
   return /\b(play|run|pause|resume|unpause|edit mode|stop playing|stop simulation|start simulation)\b/.test(value) &&
     !/\b(source|code|file|cpp|c\+\+|javascript)\b/.test(value) &&
-    !/\b(sequencer|sequence|timeline|cinematic|camera cut)\b/.test(value);
+    !/\b(sequencer|sequence|timeline|cinematic|camera cut|slow ?mo(tion)?|bullet time|matrix|time freeze|freeze frame|letterbox|fade (in|out)|title card|music|beat|bpm)\b/.test(value);
 }
 
 function is_console_request(value) {

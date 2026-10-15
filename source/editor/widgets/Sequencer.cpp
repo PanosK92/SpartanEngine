@@ -371,9 +371,11 @@ bool Sequencer::DriveEvent::operator==(const DriveEvent& other) const
 
 Sequencer::Sequencer(Editor* editor) : Widget(editor)
 {
-    m_title   = "Sequencer";
-    m_visible = false;
-    m_dock    = WidgetDock::Down;
+    m_title         = "Sequencer";
+    m_visible       = false;
+    m_dock          = WidgetDock::Down;
+    m_toolbar_order = 10;
+    m_toolbar_icon  = static_cast<int>(IconType::Sequencer);
 
     m_world_loaded_handle = SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoaded, SP_EVENT_HANDLER(Load));
     m_world_ticked_handle = SP_SUBSCRIBE_TO_EVENT(EventType::WorldTicked, SP_EVENT_HANDLER(OnWorldTicked));
@@ -895,6 +897,8 @@ void Sequencer::EvaluateCamera(int index, bool cut)
                 if (direction.LengthSquared() > 1e-6f)
                 {
                     from.rotation = Quaternion::FromLookRotation(direction.Normalized(), Vector3::Up);
+                    from.look     = target->GetPosition();
+                    from.has_look = true;
                 }
             }
             if (Camera* component = previous_camera->GetComponent<Camera>())
@@ -906,8 +910,22 @@ void Sequencer::EvaluateCamera(int index, bool cut)
         if (from_valid)
         {
             const float w = apply_ease(ShotEase::InOut, (m_time - event.time) / event.blend_in);
-            pose.position = Vector3::Lerp(from.position, pose.position, w);
-            pose.rotation = Quaternion::Lerp(from.rotation, pose.rotation, w);
+            const Vector3 position = Vector3::Lerp(from.position, pose.position, w);
+            const Vector3 look     = Vector3::Lerp(from.look, pose.look, w);
+            const Vector3 aim      = look - position;
+            if (from.has_look && pose.has_look && aim.LengthSquared() > 1e-6f)
+            {
+                // aiming at a blended look point keeps the subject framed even when the two shots face opposite ways,
+                // where a rotation blend swings through the empty side; shake and roll ride on top as offsets
+                const Quaternion offset_from = Quaternion::FromLookRotation((from.look - from.position).Normalized(), Vector3::Up).Inverse() * from.rotation;
+                const Quaternion offset_to   = Quaternion::FromLookRotation((pose.look - pose.position).Normalized(), Vector3::Up).Inverse() * pose.rotation;
+                pose.rotation = Quaternion::FromLookRotation(aim.Normalized(), Vector3::Up) * Quaternion::Lerp(offset_from, offset_to, w);
+            }
+            else
+            {
+                pose.rotation = Quaternion::Lerp(from.rotation, pose.rotation, w);
+            }
+            pose.position = position;
             if (from.fov > 0.0f && pose.fov > 0.0f)
             {
                 pose.fov = from.fov + (pose.fov - from.fov) * w;
@@ -1069,6 +1087,8 @@ Sequencer::ShotPose Sequencer::EvaluateShotPose(const CameraEvent& event, int in
     pose.position = position;
     pose.rotation = rotation;
     pose.fov      = fov;
+    pose.look     = look;
+    pose.has_look = direction.LengthSquared() > 1e-6f;
     return pose;
 }
 
@@ -1580,6 +1600,7 @@ bool Sequencer::StartRender(const RenderRequest& request, string& error)
     m_render_status.directory      = m_render_request.directory;
     m_render_status.frames_total   = capture ? static_cast<uint32_t>(m_render_request.capture_times.size()) : (steps + m_render_request.stride - 1) / m_render_request.stride;
     m_render_frame_index           = 0;
+    m_render_finish_wait           = 0;
     m_render_save_failures_start   = Renderer::GetScreenshotSaveFailures();
 
     Timer::SetFixedDeltaSec(1.0 / m_render_request.fps);
@@ -1762,6 +1783,16 @@ void Sequencer::TickRender()
         return;
     }
 
+    // clean capture stays on until the queued final screenshot has rendered, or the editor overlay lands in it
+    if (m_render_finish_wait > 0)
+    {
+        if (--m_render_finish_wait == 0)
+        {
+            FinishRender();
+        }
+        return;
+    }
+
     const float half_frame = 0.5f / m_render_request.fps;
     if (m_render_status.capture)
     {
@@ -1786,7 +1817,7 @@ void Sequencer::TickRender()
         }
         if (m_render_frame_index >= times.size() || !m_playing)
         {
-            FinishRender();
+            m_render_finish_wait = 2;
         }
         return;
     }
@@ -1818,7 +1849,7 @@ void Sequencer::TickRender()
 
     if (m_time >= m_render_request.end - half_frame || !m_playing || m_render_status.frames_written >= m_render_status.frames_total)
     {
-        FinishRender();
+        m_render_finish_wait = 2;
     }
 }
 
@@ -1891,6 +1922,14 @@ void Sequencer::OnTickVisible()
         else if (m_drive_selected != -1)
         {
             DeleteSelectedDrive();
+        }
+        else if (m_curve_channel >= 0 && m_curve_selected >= 0)
+        {
+            RemoveCurveKey(static_cast<Channel>(m_curve_channel), m_curve_selected);
+        }
+        else if (m_title_selected >= 0)
+        {
+            RemoveTitle(m_title_selected);
         }
     }
 }
@@ -1990,6 +2029,7 @@ void Sequencer::DrawToolbar()
     ImGui::SameLine();
     ImGui::AlignTextToFramePadding();
     ImGui::Text("%s / %s", format_time(m_time).c_str(), format_time(m_duration).c_str());
+    DrawTrackToolbar();
 
     // duration, right aligned
     const float input_width = 80.0f;
@@ -2075,10 +2115,13 @@ void Sequencer::DrawTimeline()
     DrawCameraTrack(timeline_x, camera_track_y, timeline_width, pixels_per_sec);
     DrawSplineTrack(timeline_x, spline_track_y, timeline_width, pixels_per_sec);
     DrawDriveTrack(timeline_x, drive_track_y, timeline_width, pixels_per_sec);
+    DrawTrackLanes(timeline_x, origin.x, drive_track_y + track_height + 2.0f, timeline_width, pixels_per_sec);
 
-    // playhead, spans every track
+    // beat grid and markers over every track, then the playhead on top
     const float playhead_x    = timeline_x + max(m_time, 0.0f) * pixels_per_sec;
-    const float tracks_bottom = drive_track_y + track_height;
+    const float tracks_bottom = drive_track_y + track_height + 2.0f + GetTrackLanesHeight();
+    DrawBeatGrid(timeline_x, origin.y + ruler_height, tracks_bottom, pixels_per_sec);
+    DrawMarkers(timeline_x, origin.y, tracks_bottom, pixels_per_sec);
     draw->AddLine(ImVec2(playhead_x, origin.y), ImVec2(playhead_x, tracks_bottom), col_playhead, 2.0f);
     draw->AddTriangleFilled(ImVec2(playhead_x - 5.0f, origin.y), ImVec2(playhead_x + 5.0f, origin.y), ImVec2(playhead_x, origin.y + 8.0f), col_playhead);
 }
@@ -2108,6 +2151,7 @@ void Sequencer::DrawCameraTrack(float origin_x, float track_y, float width, floa
     }
     else if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
     {
+        DeselectAll();
         m_selected        = hovered_event;
         m_spline_selected = -1;
         m_drive_selected  = -1;
@@ -2176,7 +2220,15 @@ void Sequencer::DrawCameraTrack(float origin_x, float track_y, float width, floa
         }
 
         string label = get_entity_name(m_events[i].camera_entity_id);
-        if (m_events[i].rig)
+        if (m_events[i].move != ShotMove::Rig)
+        {
+            label = GetMoveName(m_events[i].move);
+            if (m_events[i].blend_in > 0.0f)
+            {
+                label = "~ " + label;
+            }
+        }
+        else if (m_events[i].rig)
         {
             label = string(space_names[static_cast<int>(m_events[i].space)]) + " shot";
             if (m_events[i].anchor_entity_id != 0 && m_events[i].space != ShotSpace::World)
@@ -2250,6 +2302,7 @@ void Sequencer::DrawSplineTrack(float origin_x, float track_y, float width, floa
     }
     else if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
     {
+        DeselectAll();
         m_spline_selected = hovered_event;
         m_selected        = -1;
         m_drive_selected  = -1;
@@ -2403,6 +2456,7 @@ void Sequencer::DrawDriveTrack(float origin_x, float track_y, float width, float
     }
     else if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
     {
+        DeselectAll();
         m_drive_selected  = hovered_event;
         m_selected        = -1;
         m_spline_selected = -1;
@@ -2672,6 +2726,99 @@ void Sequencer::DrawShotInspector(float width)
     }
     if (!event.rig)
     {
+        return;
+    }
+
+    {
+        const char* move_labels[] = { "rig", "orbit", "dolly zoom", "path" };
+        int move = static_cast<int>(event.move);
+        inspector_label("move", width);
+        if (ImGui::Combo("##seq_i_move", &move, move_labels, IM_ARRAYSIZE(move_labels)))
+        {
+            const State before = CaptureState();
+            event.move         = static_cast<ShotMove>(move);
+            CommitState(before);
+        }
+        ImGuiSp::tooltip("rig moves between from and to, orbit circles the look at target (bullet time with a frozen time scale),\ndolly zoom solves the fov so the subject keeps its size, path rides a spline");
+    }
+    inspector_label("blend in", width);
+    ImGui::DragFloat("##seq_i_blend", &event.blend_in, 0.01f, 0.0f, 10.0f, event.blend_in > 0.0f ? "%.2f s" : "cut");
+    track_edit();
+    ImGuiSp::tooltip("ease in from the previous shot instead of cutting, a short blend is a whip pan");
+
+    if (event.move == ShotMove::Orbit)
+    {
+        inspector_label("radius", width);
+        ImGui::DragFloat("##seq_i_or", &event.orbit_radius, 0.05f, 0.1f, 500.0f, "%.2f m");
+        track_edit();
+        inspector_label("height", width);
+        ImGui::DragFloat("##seq_i_oh", &event.orbit_height, 0.05f, -50.0f, 200.0f, "%.2f m");
+        track_edit();
+        inspector_label("angle from", width);
+        ImGui::DragFloat("##seq_i_oa0", &event.orbit_angle_start, 0.5f, -1080.0f, 1080.0f, "%.1f deg");
+        track_edit();
+        inspector_label("angle to", width);
+        ImGui::DragFloat("##seq_i_oa1", &event.orbit_angle_end, 0.5f, -1080.0f, 1080.0f, "%.1f deg");
+        track_edit();
+        inspector_label("rise", width);
+        ImGui::DragFloat("##seq_i_orise", &event.orbit_rise, 0.05f, -100.0f, 100.0f, "%.2f m");
+        track_edit();
+        inspector_label("center from", width);
+        ImGui::DragFloat3("##seq_i_ocs", &event.look_start.x, 0.05f);
+        track_edit();
+        inspector_label("center to", width);
+        ImGui::DragFloat3("##seq_i_oce", &event.look_end.x, 0.05f);
+        track_edit();
+        ImGuiSp::tooltip("offset from the target in its heading frame, or a world point without a target");
+    }
+    else if (event.move == ShotMove::Path)
+    {
+        uint64_t path_id = event.path_entity_id;
+        inspector_label("spline", width);
+        if (spline_combo("##seq_i_path", path_id))
+        {
+            const State before   = CaptureState();
+            event.path_entity_id = path_id;
+            CommitState(before);
+        }
+        inspector_label("along from", width);
+        ImGui::DragFloat("##seq_i_p0", &event.path_start, 0.002f, 0.0f, 1.0f, "%.3f");
+        track_edit();
+        inspector_label("along to", width);
+        ImGui::DragFloat("##seq_i_p1", &event.path_end, 0.002f, 0.0f, 1.0f, "%.3f");
+        track_edit();
+        inspector_label("offset from", width);
+        ImGui::DragFloat3("##seq_i_pos0", &event.position_start.x, 0.05f);
+        track_edit();
+        inspector_label("offset to", width);
+        ImGui::DragFloat3("##seq_i_pos1", &event.position_end.x, 0.05f);
+        track_edit();
+        ImGuiSp::tooltip("x right, y up, z forward along the spline");
+    }
+    if (event.move == ShotMove::Orbit || event.move == ShotMove::Path)
+    {
+        ImGui::Dummy(ImVec2(0.0f, 4.0f));
+        inspector_section("lens");
+        inspector_label("fov from", width);
+        ImGui::DragFloat("##seq_i_fs", &event.fov_start, 0.2f, 0.0f, 150.0f, event.fov_start > 0.0f ? "%.1f deg" : "camera");
+        track_edit();
+        inspector_label("fov to", width);
+        ImGui::DragFloat("##seq_i_fe", &event.fov_end, 0.2f, 0.0f, 150.0f, event.fov_end > 0.0f ? "%.1f deg" : "same");
+        track_edit();
+        inspector_label("roll", width);
+        ImGui::DragFloat("##seq_i_roll", &event.roll, 0.1f, -45.0f, 45.0f, "%.1f deg");
+        track_edit();
+        inspector_label("shake", width);
+        ImGui::DragFloat("##seq_i_shake", &event.shake, 0.01f, 0.0f, 3.0f, "%.2f");
+        track_edit();
+        int ease = static_cast<int>(event.ease);
+        inspector_label("ease", width);
+        if (ImGui::Combo("##seq_i_ease", &ease, ease_names, IM_ARRAYSIZE(ease_names)))
+        {
+            const State before = CaptureState();
+            event.ease         = static_cast<ShotEase>(ease);
+            CommitState(before);
+        }
         return;
     }
 
@@ -3119,10 +3266,26 @@ void Sequencer::DrawInspector()
         return;
     }
 
-    // nothing selected
+    // a key on one of the curve lanes is selected
+    if (m_curve_channel >= 0 && m_curve_channel < static_cast<int>(Channel::Count) && m_curve_selected >= 0 &&
+        m_curve_selected < static_cast<int>(m_cinematic.curves[m_curve_channel].size()))
+    {
+        DrawCurveKeyInspector(width);
+        return;
+    }
+
+    // a title card is selected
+    if (m_title_selected >= 0 && m_title_selected < static_cast<int>(m_cinematic.titles.size()))
+    {
+        DrawTitleInspector(width);
+        return;
+    }
+
+    // nothing selected, the sequence wide settings
     ImGui::PushTextWrapPos(0.0f);
-    ImGui::TextDisabled("select a shot on the timeline to edit it, or use + camera, + motion and + drive to add one");
+    ImGui::TextDisabled("select a shot on the timeline to edit it, or use + camera, + motion and + drive to add one, double click a lane to key it");
     ImGui::PopTextWrapPos();
+    DrawCinematicInspector(width);
 }
 
 void Sequencer::ClampToDuration()
