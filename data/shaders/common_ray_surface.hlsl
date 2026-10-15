@@ -145,6 +145,14 @@ RaySurface ray_surface_reconstruct(float ray_t, uint instance_index, uint primit
         // the texture's missing blue channel is zero, not a negative tangent space z, using it flips
         // the normal behind the wall and the visibility rays from the hit start outside the room
         normal_sample     = normalize(normal_sample * 2.0f - 1.0f);
+        // same road low pass removal as the g-buffer
+        if (mat.flags & ((1u << 22) | (1u << 23)))
+        {
+            uint width, height, levels;
+            material_textures[NonUniformResourceIndex(normal_texture_index)].GetDimensions(0, width, height, levels);
+            float low_mip     = max(float(levels) - 5.0f, normal_mip);
+            normal_sample.xy -= material_textures[NonUniformResourceIndex(normal_texture_index)].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, low_mip).xy * 2.0f - 1.0f;
+        }
         normal_sample.z   = sqrt(max(0.0f, 1.0f - dot(normal_sample.xy, normal_sample.xy)));
         normal_sample.xy *= saturate(max(0.01f, mat.normal));
 
@@ -213,7 +221,7 @@ RaySurface ray_surface_reconstruct(float ray_t, uint instance_index, uint primit
         emission = sampled_emission * photometric_to_radiometric(lighting_emissive_nits_texture);
     }
 
-    road_weathering(mat.flags, hit_pos, texcoord, .6, albedo, roughness, exp2(albedo_mip) * road_asphalt_repeat / 4096.0);
+    road_weathering(mat.flags, hit_pos, texcoord, geometric, normalize(mul(tangent_object, obj_to_world)), .6, albedo, roughness, exp2(albedo_mip) * road_asphalt_repeat / 4096.0);
     float occlusion         = terrain_shaded ? terrain.occlusion : 1.0f;
     float3 decal_tangent    = normalize(tangent_world - geometric * dot(tangent_world, geometric));
     float3 decal_bitangent  = normalize(cross(geometric, decal_tangent));

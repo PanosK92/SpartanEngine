@@ -97,5 +97,8 @@ namespace spartan
 
         // appended bytes still waiting for BuildIfDirty
         static uint64_t GetPendingUploadBytes();
+
+        // true once vertices [0, vertex_end) and indices [0, index_end) are uploaded, gpu reads past that fault the device
+        static bool IsResident(uint32_t vertex_end, uint32_t index_end);
     };
 }

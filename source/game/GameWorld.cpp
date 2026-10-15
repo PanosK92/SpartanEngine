@@ -73,9 +73,18 @@ namespace spartan::game
                 if (car) car->PrepareForPlayStop();
             }
         };
-        callbacks.before_tick = [](float dt) { CarPhysics::BeginTireDeformationBatch(); island_wildlife::Tick(dt); island_atmosphere::Tick(dt); };
+        callbacks.before_tick = [](float dt) { CarPhysics::BeginTireDeformationBatch(); island_wildlife::Tick(dt); };
         callbacks.after_pretick = [] { CarPhysics::FlushTireDeformationBatch(); };
-        callbacks.after_tick = [](float dt) { island_road_details::Tick(dt); vehicle_particle_wake::Tick(dt); };
+        // leaves and the car wake run in the editor too, so shots can be framed and tuned without entering play
+        callbacks.after_tick = [](float dt)
+        {
+            island_road_details::Tick(dt);
+            if (!Engine::IsFlagSet(EngineMode::Paused))
+            {
+                island_atmosphere::Tick(dt);
+            }
+            vehicle_particle_wake::Tick(dt);
+        };
         callbacks.controls = [] { CameraController::Tick(); };
         callbacks.save = [](pugi::xml_node& node) { if (island_features) node.append_attribute("island_features") = true; };
         callbacks.load = [](pugi::xml_node& node) { island_features = node.attribute("island_features").as_bool(false); };

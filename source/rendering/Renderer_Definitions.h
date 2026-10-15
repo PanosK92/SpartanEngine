@@ -198,6 +198,8 @@ namespace spartan
         OverlayLarge,
         CinematicSmall,
         CinematicLarge,
+        CinematicLabel,    // tracked kickers and legend body
+        CinematicHeadline, // legend headlines
         Max
     };
 

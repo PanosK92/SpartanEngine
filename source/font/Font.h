@@ -57,8 +57,12 @@ namespace spartan
 
         // pixel space with a top left origin, the position is the top of the line box
         // tabular digits share one advance so changing numbers do not shift the layout
-        void AddText(const char* text, const math::Vector2& position_pixels, const Color& color, const bool tabular_digits = true);
-        float GetTextWidth(const char* text, const bool tabular_digits = true);
+        // tracking is extra screen pixels after every glyph, wide tracked capitals are the trailer title look
+        // scale resizes the glyphs from their atlas size, so one atlas serves every output resolution
+        void AddText(const char* text, const math::Vector2& position_pixels, const Color& color, const bool tabular_digits = true, const float tracking = 0.0f, const float scale = 1.0f);
+        float GetTextWidth(const char* text, const bool tabular_digits = true, const float tracking = 0.0f, const float scale = 1.0f);
+        // the em size in pixels the atlas was rasterized at, sizes are points at 96 dpi
+        float GetPixelSize() const  { return static_cast<float>(m_font_size) * 96.0f / 72.0f; }
         float GetAscent() const     { return static_cast<float>(m_ascent); }
         float GetLineHeight() const { return static_cast<float>(m_ascent + m_descent); }
 
@@ -103,7 +107,7 @@ namespace spartan
         void SetGlyph(const uint32_t char_code, const Glyph& glyph) { m_glyphs[char_code] = glyph; }
 
     private:
-        void add_text_baseline(const char* text, float x, float y, const uint32_t color, const bool tabular_digits);
+        void add_text_baseline(const char* text, float x, float y, const uint32_t color, const bool tabular_digits, const float tracking = 0.0f, const float scale = 1.0f);
         void add_quad(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, const uint32_t color);
 
         uint32_t m_font_size        = 14;

@@ -117,6 +117,10 @@ float cover_height(float3 position)
     return rain_occluder_height(int2(floor(position.xz / cell_size)));
 }
 
+static const uint foliage_material_bits = (1u << 11) | (1u << 12) | (1u << 21);
+// foliage plus anything that sways in the wind, which is how tree bark and branches are told apart from roofs
+static const uint vegetation_material_bits = foliage_material_bits | (1u << 9);
+
 bool under_cover(float3 position)
 {
     return position.y < cover_height(position) - 0.25;
@@ -202,16 +206,26 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     #ifdef RAY_TRACING_ENABLED
         if (emitter.collision_traced != 0u)
         {
+            // a canopy is where leaves come from, so swaying vegetation is looked through and only a roof blocks the birth
             RayDesc ray;
             ray.Origin    = p.position;
             ray.Direction = float3(0, 1, 0);
             ray.TMin      = 0.001;
             ray.TMax      = 60.0;
-            RayQuery<RAY_FLAG_CULL_NON_OPAQUE> query;
-            query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
-            while (query.Proceed()) {}
-            if (query.CommittedStatus() != COMMITTED_NOTHING)
-                return;
+            for (uint hop = 0u; hop < 4u; hop++)
+            {
+                RayQuery<RAY_FLAG_CULL_NON_OPAQUE> query;
+                query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
+                while (query.Proceed()) {}
+                if (query.CommittedStatus() == COMMITTED_NOTHING)
+                    break;
+
+                uint flags = material_parameters[geometry_infos[query.CommittedInstanceIndex()].material_index].flags;
+                if ((flags & vegetation_material_bits) == 0u || hop == 3u)
+                    return;
+
+                ray.TMin = query.CommittedRayT() + 0.05;
+            }
         }
     #endif
     }
@@ -552,9 +566,6 @@ void apply_traced_collision(inout Particle p, inout float3 new_pos, EmitterParam
 static const uint leaf_probe_unknown = 0u; // off screen, occluded or foliage, the depth buffer cannot tell
 static const uint leaf_probe_free    = 1u; // visibly in front of the surface behind it
 static const uint leaf_probe_contact = 2u; // touching or slightly through the visible surface
-
-static const uint foliage_material_bits = (1u << 11) | (1u << 12) | (1u << 21);
-
 // The visible surface at the leaf's pixel decides everything the depth buffer can know: a leaf
 // in front of it is in open air, a leaf slightly behind it has passed into it, and a leaf deep
 // behind it is merely occluded. Foliage cards are skipped when the ray traced fallback can see
@@ -619,7 +630,7 @@ uint leaf_depth_probe(float3 position, float reach, bool skip_foliage, out float
 }
 
 // Swept ray against solid triangles, used where the depth buffer has no answer.
-bool leaf_trace_contact(float3 previous, float3 next, EmitterParams emitter, out float3 contact_position, out float3 normal)
+bool leaf_trace_contact(float3 previous, float3 next, EmitterParams emitter, out float3 contact_position, out float3 normal, bool through_vegetation = false)
 {
     contact_position = next;
     normal = float3(0, 1, 0);
@@ -639,6 +650,16 @@ bool leaf_trace_contact(float3 previous, float3 next, EmitterParams emitter, out
         RayQuery<RAY_FLAG_CULL_NON_OPAQUE> query;
         query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x09, ray);
         while (query.Proceed()) {}
+        // the carpet lies on the ground under a tree, not on the branches the ray crosses on the way down
+        for (uint hop = 0u; through_vegetation && hop < 4u && query.CommittedStatus() != COMMITTED_NOTHING; hop++)
+        {
+            if ((material_parameters[geometry_infos[query.CommittedInstanceIndex()].material_index].flags & vegetation_material_bits) == 0u)
+                break;
+
+            ray.TMin = query.CommittedRayT() + 0.05;
+            query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x09, ray);
+            while (query.Proceed()) {}
+        }
         if (query.CommittedStatus() == COMMITTED_NOTHING) return false;
         GeometryInfo geo = geometry_infos[query.CommittedInstanceIndex()];
         uint base = geo.index_offset + query.CommittedPrimitiveIndex() * 3u;
@@ -946,7 +967,7 @@ void simulate_leaf(inout Particle p, uint index, EmitterParams emitter)
         bool found = false;
         if (traced)
         {
-            found = leaf_trace_contact(p.position, p.position - float3(0, 64, 0), emitter, contact, normal);
+            found = leaf_trace_contact(p.position, p.position - float3(0, 64, 0), emitter, contact, normal, true);
         }
         else
         {
@@ -965,7 +986,7 @@ void simulate_leaf(inout Particle p, uint index, EmitterParams emitter)
             float3 surface_point, surface_normal;
             float3 seat  = contact + normal * leaf_contact_offset;
             bool visible = leaf_depth_probe(seat, 0.05, true, surface_point, surface_normal, height) != leaf_probe_unknown;
-            if (visible && distance(seat, camera) < 35.0)
+            if (visible && distance(seat, camera) < 35.0 && emitter.seed_visible == 0u)
             {
                 write_dead(p, index);
                 return;

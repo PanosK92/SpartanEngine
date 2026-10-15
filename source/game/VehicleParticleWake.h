@@ -30,7 +30,6 @@ namespace spartan::vehicle_particle_wake
 
     inline void Tick(float dt)
     {
-        if (!Engine::IsFlagSet(EngineMode::Playing)) { Clear(); return; }
         if (Engine::IsFlagSet(EngineMode::Paused)) return;
         if (!World::GetCamera()) { Clear(); return; }
         if (dt <= 0) return;

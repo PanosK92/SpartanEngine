@@ -229,11 +229,13 @@ namespace spartan
             uint32_t max_height = 0;
             get_character_max_dimensions(&max_width, &max_height, face, outline_size);
 
+            // large title fonts widen the atlas so it stays roughly square instead of a tall strip
+            const uint32_t width          = max(ATLAS_WIDTH, min(4096u, max_width * 12));
             const uint32_t glyph_count    = GLYPH_END - GLYPH_START;
-            const uint32_t glyphs_per_row = ATLAS_WIDTH / max_width;
+            const uint32_t glyphs_per_row = max(width / max_width, 1u);
             const uint32_t row_count      = static_cast<uint32_t>(ceil(float(glyph_count) / float(glyphs_per_row)));
 
-            *atlas_width        = ATLAS_WIDTH;
+            *atlas_width        = width;
             *atlas_height       = max_height * row_count;
             *atlas_cell_width   = max_width;
             *atlas_cell_height  = max_height;

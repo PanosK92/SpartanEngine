@@ -1957,6 +1957,10 @@ void FileDialog::ItemDrag(FileDialogItem* item)
         if (FileSystem::IsEngineMaterialFile(path_full))  { set_payload(ImGuiSp::DragPayloadType::Material, path_full, path_relative); }
         if (FileSystem::IsEngineLuaFile(path_full))       { set_payload(ImGuiSp::DragPayloadType::Lua,      path_full, path_relative); }
         if (FileSystem::IsEnginePrefabFile(path_full))    { set_payload(ImGuiSp::DragPayloadType::Prefab,   path_full, path_relative); }
+        if (FileSystem::GetExtensionFromFilePath(path_full) == ".xml" && FileSystem::GetFileNameFromFilePath(path_full).rfind("sequencer_", 0) == 0)
+        {
+            set_payload(ImGuiSp::DragPayloadType::Sequence, path_full, path_relative);
+        }
 
         // drag preview
         ImGui::BeginTooltip();

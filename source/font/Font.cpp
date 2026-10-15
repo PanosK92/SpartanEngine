@@ -130,7 +130,7 @@ namespace spartan
         }
     }
 
-    void Font::add_text_baseline(const char* text, float x, float y, const uint32_t color, const bool tabular_digits)
+    void Font::add_text_baseline(const char* text, float x, float y, const uint32_t color, const bool tabular_digits, const float tracking, const float scale)
     {
         // define a maximum vertex limit
         const uint32_t max_vertices = 100'000;
@@ -162,11 +162,11 @@ namespace spartan
             else if (character == ASCII_NEW_LINE)
             {
                 cursor_x  = origin_x;
-                cursor_y += m_char_max_height;
+                cursor_y += m_char_max_height * scale;
             }
             else if (character == ASCII_SPACE)
             {
-                cursor_x += glyph.horizontal_advance;
+                cursor_x += glyph.horizontal_advance * scale + tracking;
             }
             else
             {
@@ -174,11 +174,13 @@ namespace spartan
                 const float advance = static_cast<float>(tabular ? m_digit_advance : glyph.horizontal_advance);
                 const float center  = tabular ? floor((advance - static_cast<float>(glyph.horizontal_advance)) * 0.5f) : 0.0f;
 
-                const float left = cursor_x + center + glyph.offset_x;
-                const float top  = cursor_y - glyph.offset_y;
-                add_quad(left, top, left + glyph.width, top + glyph.height, glyph.uv_x_left, glyph.uv_y_top, glyph.uv_x_right, glyph.uv_y_bottom, color);
+                // unscaled glyphs snap to whole pixels so atlas texels stay aligned, scaled ones are filtered anyway
+                float left = cursor_x + (center + glyph.offset_x) * scale;
+                left       = scale == 1.0f ? floor(left + 0.5f) : left;
+                const float top = cursor_y - glyph.offset_y * scale;
+                add_quad(left, top, left + glyph.width * scale, top + glyph.height * scale, glyph.uv_x_left, glyph.uv_y_top, glyph.uv_x_right, glyph.uv_y_bottom, color);
 
-                cursor_x += advance;
+                cursor_x += advance * scale + tracking;
             }
         }
     }
@@ -190,21 +192,24 @@ namespace spartan
         add_text_baseline(text, x, y, pack_color(m_color), false);
     }
 
-    void Font::AddText(const char* text, const Vector2& position_pixels, const Color& color, const bool tabular_digits)
+    void Font::AddText(const char* text, const Vector2& position_pixels, const Color& color, const bool tabular_digits, const float tracking, const float scale)
     {
-        add_text_baseline(text, position_pixels.x, position_pixels.y + static_cast<float>(m_ascent), pack_color(color), tabular_digits);
+        add_text_baseline(text, position_pixels.x, position_pixels.y + static_cast<float>(m_ascent) * scale, pack_color(color), tabular_digits, tracking, scale);
     }
 
-    float Font::GetTextWidth(const char* text, const bool tabular_digits)
+    float Font::GetTextWidth(const char* text, const bool tabular_digits, const float tracking, const float scale)
     {
-        float width = 0.0f;
+        float width  = 0.0f;
+        uint32_t count = 0;
         for (const char* p = text; *p != '\0' && *p != ASCII_NEW_LINE; ++p)
         {
             const bool tabular = tabular_digits && is_digit(*p);
             width += static_cast<float>(tabular ? m_digit_advance : m_glyphs[*p].horizontal_advance);
+            count++;
         }
 
-        return width;
+        // the last glyph's trailing tracking is not part of the visible width, so tracked text still centers
+        return width * scale + tracking * static_cast<float>(count > 0 ? count - 1 : 0);
     }
 
     void Font::AddRect(const Vector2& min_pixels, const Vector2& max_pixels, const Color& color)
@@ -225,7 +230,8 @@ namespace spartan
 
     void Font::SetSize(const uint32_t size)
     {
-        m_font_size = clamp<uint32_t>(size, 8, 50);
+        // cinematic titles go up to 200 so they stay sharp on 4k output
+        m_font_size = clamp<uint32_t>(size, 8, 200);
     }
 
     void Font::UpdateVertexAndIndexBuffers()

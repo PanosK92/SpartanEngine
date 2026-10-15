@@ -1557,27 +1557,38 @@ namespace spartan
         }
 
         // geometry buffers, vertex pulling via bindless structured buffers
-        static uint64_t last_vertex_buffer_id = 0;
-        if (RHI_Buffer* current_vertex = GeometryBuffer::GetVertexBuffer(); current_vertex && current_vertex->GetObjectId() != last_vertex_buffer_id)
+        // the bindless set is shared by every frame in flight and written in place, a buffer that grew mid session
+        // must not be swapped under frames still executing, they would read the new buffer before this frame copies into it
+        static uint64_t last_vertex_buffer_id   = 0;
+        static uint64_t last_index_buffer_id    = 0;
+        static uint64_t last_instance_buffer_id = 0;
+        RHI_Buffer* current_vertex   = GeometryBuffer::GetVertexBuffer();
+        RHI_Buffer* current_index    = GeometryBuffer::GetIndexBuffer();
+        RHI_Buffer* current_instance = GeometryBuffer::GetInstanceBuffer();
+        if (!current_instance)
+        {
+            current_instance = GetBuffer(Renderer_Buffer::DummyInstance);
+        }
+        const bool vertex_swapped   = current_vertex && current_vertex->GetObjectId() != last_vertex_buffer_id;
+        const bool index_swapped    = current_index && current_index->GetObjectId() != last_index_buffer_id;
+        const bool instance_swapped = current_instance && current_instance->GetObjectId() != last_instance_buffer_id;
+        if ((vertex_swapped && last_vertex_buffer_id != 0) || (index_swapped && last_index_buffer_id != 0) || (instance_swapped && last_instance_buffer_id != 0))
+        {
+            RHI_Device::QueueWaitAll();
+        }
+        if (vertex_swapped)
         {
             RHI_Device::UpdateBindlessGeometryVertices(current_vertex);
             last_vertex_buffer_id = current_vertex->GetObjectId();
         }
-        static uint64_t last_index_buffer_id = 0;
-        if (RHI_Buffer* current_index = GeometryBuffer::GetIndexBuffer(); current_index && current_index->GetObjectId() != last_index_buffer_id)
+        if (index_swapped)
         {
             RHI_Device::UpdateBindlessGeometryIndices(current_index);
             last_index_buffer_id = current_index->GetObjectId();
         }
 
         // global instance buffer for instanced indirect draws, falls back to dummy until the global buffer exists
-        static uint64_t last_instance_buffer_id = 0;
-        RHI_Buffer* current_instance            = GeometryBuffer::GetInstanceBuffer();
-        if (!current_instance)
-        {
-            current_instance = GetBuffer(Renderer_Buffer::DummyInstance);
-        }
-        if (current_instance && current_instance->GetObjectId() != last_instance_buffer_id)
+        if (instance_swapped)
         {
             RHI_Device::UpdateBindlessInstances(current_instance);
             last_instance_buffer_id = current_instance->GetObjectId();
@@ -3025,16 +3036,19 @@ namespace spartan
         }
 
         // centered on the position, one line per newline, with a soft drop shadow so it reads over a bright sky
-        const float line_height = font->GetLineHeight() * 1.15f;
+        // sized in 1080p pixels and scaled to the output height
+        const float width_px    = static_cast<float>(GetViewport().width);
+        const float height_px   = static_cast<float>(GetViewport().height);
+        const float unit        = height_px / 1080.0f;
+        const float scale       = unit * (large ? 84.0f : 40.0f) / font->GetPixelSize();
+        const float line_height = font->GetLineHeight() * scale * 1.15f;
         uint32_t line_count     = 1;
         for (const char* p = text; *p; ++p)
         {
             line_count += *p == '\n' ? 1 : 0;
         }
-        const float width_px  = static_cast<float>(GetViewport().width);
-        const float height_px = static_cast<float>(GetViewport().height);
         float y               = height_px * position_screen_percentage.y - line_height * static_cast<float>(line_count) * 0.5f;
-        const float shadow    = large ? 5.0f : 3.0f;
+        const float shadow    = (large ? 4.0f : 2.5f) * unit;
         const Color shadow_color(0.0f, 0.0f, 0.0f, clamp(alpha, 0.0f, 1.0f) * 0.55f);
         const Color text_color(color.x, color.y, color.z, clamp(alpha, 0.0f, 1.0f));
 
@@ -3048,15 +3062,232 @@ namespace spartan
                 ++end;
             }
             line.assign(cursor, end);
-            const float x = width_px * position_screen_percentage.x - font->GetTextWidth(line.c_str(), false) * 0.5f;
-            font->AddText(line.c_str(), Vector2(x + shadow, y + shadow), shadow_color, false);
-            font->AddText(line.c_str(), Vector2(x, y), text_color, false);
+            const float x = width_px * position_screen_percentage.x - font->GetTextWidth(line.c_str(), false, 0.0f, scale) * 0.5f;
+            font->AddText(line.c_str(), Vector2(x + shadow, y + shadow), shadow_color, false, 0.0f, scale);
+            font->AddText(line.c_str(), Vector2(x, y), text_color, false, 0.0f, scale);
             y += line_height;
             if (!*end)
             {
                 break;
             }
             cursor = end + 1;
+        }
+    }
+
+    void Renderer::DrawCinematicTitle(const CinematicTitle& title)
+    {
+        if (!title.text)
+        {
+            return;
+        }
+        if (title.style == CinematicTitleStyle::Plain)
+        {
+            const float fade  = max(title.fade, 1e-3f);
+            const float alpha = title.fade > 0.0f ? min({ 1.0f, title.age / fade, title.remaining / fade }) : 1.0f;
+            DrawCinematicText(title.text, title.position, alpha, title.large, title.color);
+            return;
+        }
+
+        shared_ptr<Font>& font_back     = GetFont(Renderer_Font::CinematicSmall);
+        shared_ptr<Font>& font_large    = GetFont(Renderer_Font::CinematicLarge);
+        shared_ptr<Font>& font_label    = GetFont(Renderer_Font::CinematicLabel);
+        shared_ptr<Font>& font_headline = GetFont(Renderer_Font::CinematicHeadline);
+        if (!font_back || !font_large || !font_label || !font_headline)
+        {
+            return;
+        }
+
+        auto saturate     = [](float x) { return clamp(x, 0.0f, 1.0f); };
+        auto ease_out     = [](float x) { x = clamp(x, 0.0f, 1.0f); return 1.0f - (1.0f - x) * (1.0f - x) * (1.0f - x); };
+        auto smooth       = [](float x) { x = clamp(x, 0.0f, 1.0f); return x * x * (3.0f - 2.0f * x); };
+        const float fade  = max(title.fade, 0.05f);
+        const float enter = title.age;
+        const float life  = saturate(title.age / max(title.age + title.remaining, 1e-3f));
+        const float out   = smooth(title.remaining / fade);
+
+        // the first line leads, the rest is the tagline or body
+        string headline = title.text;
+        string body;
+        if (const size_t split = headline.find('\n'); split != string::npos)
+        {
+            body     = headline.substr(split + 1);
+            headline = headline.substr(0, split);
+        }
+        const string kicker = title.kicker ? title.kicker : "";
+
+        // laid out in 1080p pixels and scaled to the output height
+        const float width_px  = static_cast<float>(GetViewport().width);
+        const float height_px = static_cast<float>(GetViewport().height);
+        const float unit      = height_px / 1080.0f;
+        const Color white(title.color.x, title.color.y, title.color.z, 1.0f);
+        const Color accent(title.accent.x, title.accent.y, title.accent.z, 1.0f);
+        auto with_alpha = [](Color color, float alpha) { color.a = clamp(alpha, 0.0f, 1.0f); return color; };
+
+        if (title.style == CinematicTitleStyle::Trailer)
+        {
+            // every element arrives a beat after the one before it and they all leave together
+            const float in_kicker  = smooth((enter - 0.0f) / fade);
+            const float in_main    = smooth((enter - fade * 0.25f) / fade);
+            const float in_rule    = ease_out((enter - fade * 0.45f) / (fade * 1.4f));
+            const float in_tagline = smooth((enter - fade * 0.8f) / fade);
+
+            Font& large          = *font_large;
+            Font& label          = *font_label;
+            const float em       = 84.0f * unit;
+            const float s_main   = em / large.GetPixelSize();
+            const float s_kicker = 22.0f * unit / label.GetPixelSize();
+            const float s_tag    = 22.0f * unit / label.GetPixelSize();
+            // the headline tracks out over its whole life, a slow push that reads as motion even on a held frame
+            const float tracking = em * (0.2f + 0.06f * life + 0.12f * (1.0f - in_main));
+            const float main_w   = large.GetTextWidth(headline.c_str(), false, tracking, s_main);
+            const float center_x = width_px * title.position.x;
+            const float center_y = height_px * title.position.y;
+            const float main_h   = large.GetLineHeight() * s_main;
+            const float main_top = center_y - main_h * 0.5f + (1.0f - in_main) * 12.0f * unit;
+
+            // a soft band behind the block so it reads over a bright frame without a visible box
+            {
+                const float band_h = main_h * 3.4f;
+                const int strips   = 32;
+                for (int i = 0; i < strips; i++)
+                {
+                    const float f0 = static_cast<float>(i) / strips;
+                    const float f1 = static_cast<float>(i + 1) / strips;
+                    const float w  = sinf(3.14159265f * (f0 + f1) * 0.5f);
+                    font_back->AddRect(Vector2(0.0f, center_y - band_h * 0.5f + band_h * f0), Vector2(width_px, center_y - band_h * 0.5f + band_h * f1), Color(0.0f, 0.0f, 0.0f, 0.3f * w * w * in_main * out));
+                }
+            }
+
+            if (!kicker.empty())
+            {
+                const float k_tracking = 22.0f * unit * 0.6f;
+                const float k_w        = label.GetTextWidth(kicker.c_str(), false, k_tracking, s_kicker);
+                const float k_y        = main_top - label.GetLineHeight() * s_kicker - main_h * 0.1f;
+                label.AddText(kicker.c_str(), Vector2(center_x - k_w * 0.5f, k_y), with_alpha(accent, in_kicker * out), false, k_tracking, s_kicker);
+            }
+
+            const float shadow = 3.0f * unit;
+            large.AddText(headline.c_str(), Vector2(center_x - main_w * 0.5f, main_top + shadow), Color(0.0f, 0.0f, 0.0f, 0.35f * in_main * out), false, tracking, s_main);
+            large.AddText(headline.c_str(), Vector2(center_x - main_w * 0.5f, main_top), with_alpha(white, in_main * out), false, tracking, s_main);
+
+            // a hairline grows out from the center under the headline
+            const float rule_y = main_top + main_h * 1.06f;
+            const float rule_w = max(main_w * 0.3f, 140.0f * unit) * in_rule * (0.6f + 0.4f * out);
+            label.AddRect(Vector2(center_x - rule_w * 0.5f, rule_y), Vector2(center_x + rule_w * 0.5f, rule_y + max(2.0f * unit, 1.0f)), with_alpha(accent, 0.9f * out * min(in_rule * 3.0f, 1.0f)));
+
+            if (!body.empty())
+            {
+                const float b_tracking = 22.0f * unit * 0.45f;
+                float y                = rule_y + main_h * 0.3f;
+                size_t cursor          = 0;
+                while (cursor <= body.size())
+                {
+                    const size_t end  = min(body.find('\n', cursor), body.size());
+                    const string line = body.substr(cursor, end - cursor);
+                    const float w     = label.GetTextWidth(line.c_str(), false, b_tracking, s_tag);
+                    label.AddText(line.c_str(), Vector2(center_x - w * 0.5f, y), with_alpha(white, 0.85f * in_tagline * out), false, b_tracking, s_tag);
+                    y      += label.GetLineHeight() * s_tag * 1.5f;
+                    cursor  = end + 1;
+                }
+            }
+            return;
+        }
+
+        // legend: an accent bar wipes down, the kicker and headline slide in beside it, body lines follow
+        Font& label          = *font_label;
+        Font& head           = *font_headline;
+        const float in_bar   = ease_out(enter / (fade * 0.8f));
+        const float in_kick  = ease_out((enter - fade * 0.15f) / fade);
+        const float in_head  = ease_out((enter - fade * 0.3f) / fade);
+        const float in_body  = ease_out((enter - fade * 0.6f) / fade);
+        const float s_kick   = 20.0f * unit / label.GetPixelSize();
+        const float s_head   = 50.0f * unit / head.GetPixelSize();
+        const float s_body   = 25.0f * unit / label.GetPixelSize();
+        const float slide    = 46.0f * unit;
+        const float drift    = (1.0f - out) * -18.0f * unit; // leaving, everything eases back towards the bar
+        const float left     = width_px * title.position.x;
+        const float top      = height_px * title.position.y;
+        const float gap      = 24.0f * unit;
+        const float k_track  = 20.0f * unit * 0.5f;
+        const float h_track  = 50.0f * unit * 0.03f;
+        const float b_track  = 25.0f * unit * 0.02f;
+        const float kick_h   = label.GetLineHeight() * s_kick;
+        const float head_h   = head.GetLineHeight() * s_head;
+        const float body_h   = label.GetLineHeight() * s_body * 1.3f;
+
+        vector<string> lines;
+        for (size_t cursor = 0; !body.empty() && cursor <= body.size();)
+        {
+            const size_t end = min(body.find('\n', cursor), body.size());
+            lines.push_back(body.substr(cursor, end - cursor));
+            cursor = end + 1;
+        }
+
+        float block_w        = head.GetTextWidth(headline.c_str(), false, h_track, s_head);
+        const float kicker_h = kicker.empty() ? 0.0f : kick_h + 12.0f * unit;
+        float block_h        = kicker_h + head_h;
+        if (!kicker.empty())
+        {
+            block_w = max(block_w, label.GetTextWidth(kicker.c_str(), false, k_track, s_kick));
+        }
+        if (!lines.empty())
+        {
+            block_h += 8.0f * unit;
+        }
+        for (const string& line : lines)
+        {
+            block_h += body_h;
+            block_w  = max(block_w, label.GetTextWidth(line.c_str(), false, b_track, s_body));
+        }
+
+        // a feathered shadow pool behind the text, dark at the text and gone at every edge, never a visible box
+        {
+            const float x_min  = max(left - 140.0f * unit, 0.0f);
+            const float x_max  = left + gap + block_w + 220.0f * unit;
+            const float pad    = 70.0f * unit;
+            const float y_min  = top - pad;
+            const float y_max  = top + block_h + pad;
+            const int columns  = 36;
+            const int rows     = 14;
+            for (int r = 0; r < rows; r++)
+            {
+                const float v0 = static_cast<float>(r) / rows;
+                const float v1 = static_cast<float>(r + 1) / rows;
+                const float wv = sinf(3.14159265f * (v0 + v1) * 0.5f);
+                for (int c = 0; c < columns; c++)
+                {
+                    const float u0 = static_cast<float>(c) / columns;
+                    const float u1 = static_cast<float>(c + 1) / columns;
+                    const float uc = (u0 + u1) * 0.5f;
+                    // ramps in quickly from the left, stays flat behind the text, fades out slowly to the right
+                    const float wu = smooth(uc / 0.15f) * (1.0f - smooth((uc - 0.55f) / 0.45f));
+                    const float a  = 0.32f * wu * wv * wv * in_bar * out;
+                    font_back->AddRect(Vector2(x_min + (x_max - x_min) * u0, y_min + (y_max - y_min) * v0), Vector2(x_min + (x_max - x_min) * u1, y_min + (y_max - y_min) * v1), Color(0.0f, 0.0f, 0.0f, a));
+                }
+            }
+        }
+
+        // the bar
+        label.AddRect(Vector2(left, top + 2.0f * unit), Vector2(left + 4.0f * unit, top + 2.0f * unit + block_h * in_bar), with_alpha(accent, out));
+
+        const float text_x = left + gap + drift;
+        const float shadow = 2.5f * unit;
+        float y            = top;
+        if (!kicker.empty())
+        {
+            label.AddText(kicker.c_str(), Vector2(text_x - (1.0f - in_kick) * slide, y), with_alpha(accent, in_kick * out), false, k_track, s_kick);
+            y += kicker_h;
+        }
+        head.AddText(headline.c_str(), Vector2(text_x - (1.0f - in_head) * slide + shadow, y + shadow), Color(0.0f, 0.0f, 0.0f, 0.4f * in_head * out), false, h_track, s_head);
+        head.AddText(headline.c_str(), Vector2(text_x - (1.0f - in_head) * slide, y), with_alpha(white, in_head * out), false, h_track, s_head);
+        y += head_h + 8.0f * unit;
+        for (size_t i = 0; i < lines.size(); i++)
+        {
+            // each body line lands a little after the one above it
+            const float in_line = ease_out((enter - fade * (0.6f + 0.12f * static_cast<float>(i))) / fade);
+            label.AddText(lines[i].c_str(), Vector2(text_x - (1.0f - in_line) * slide * 0.6f + shadow * 0.6f, y + shadow * 0.6f), Color(0.0f, 0.0f, 0.0f, 0.35f * in_line * in_body * out), false, b_track, s_body);
+            label.AddText(lines[i].c_str(), Vector2(text_x - (1.0f - in_line) * slide * 0.6f, y), with_alpha(white, 0.88f * in_line * in_body * out), false, b_track, s_body);
+            y += body_h;
         }
     }
 
@@ -3362,6 +3593,9 @@ namespace spartan
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsRoadPaint)               ? (1U << 23) : 0;
                 properties[count].flags |= is_pooled_emitter_material(material)                                ? (1U << 24) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::PaintPreset) > 0.0f        ? (1U << 25) : 0;
+                // quarter metres in bits 26-31, read by road_half_width in common_road.hlsl
+                const float road_half_width = std::min(std::max(material->GetProperty(MaterialProperty::RoadHalfWidth), 0.0f), 15.75f);
+                properties[count].flags |= static_cast<uint32_t>(road_half_width * 4.0f + 0.5f) << 26;
                 // keep in sync with Surface struct in common_structs.hlsl
             }
     
@@ -3948,6 +4182,8 @@ namespace spartan
                 prefetch_scene_data(entries, i + 8, end);
                 const RenderSceneData& data = *entries[i];
                 if (!data.active.load(memory_order_relaxed) || !data.mesh || !data.material) continue;
+                // meshes published by a loader thread after this frame's geometry upload are drawn from the next frame
+                if (!data.mesh->IsGpuResident()) continue;
                 Render* render = data.render;
                 batch.transparent |= data.material->IsTransparent();
                 if (!data.is_visible && !needs_shadow_caster(data) &&

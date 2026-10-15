@@ -1621,7 +1621,7 @@ namespace spartan
             vector<Vector3> positions;
             vector<float> distance;
             vector<size_t> nodes;
-            vector<bool> previous_segments;
+            vector<uint8_t> previous_segments;
             vector<JunctionPatch> previous_patches;
         };
         struct Node { size_t road; size_t frame; size_t end; };
@@ -1697,7 +1697,7 @@ namespace spartan
             }
             road.previous_segments = move(spline->m_junction_segments);
             road.previous_patches = move(spline->m_junction_patches);
-            spline->m_junction_segments.assign(road.frames.size() - 1, false);
+            spline->m_junction_segments.assign(road.frames.size() - 1, 0);
             spline->m_junction_patches.clear();
             roads.push_back(move(road));
         }
@@ -1705,7 +1705,7 @@ namespace spartan
 
     void Spline::JunctionSolve::HashNetwork()
     {
-        network_hash.Add(uint32_t(2)); // per-connected-network junction solver and border generator version
+        network_hash.Add(uint32_t(3)); // per-connected-network junction solver and border generator version
         cache_network = !roads.empty();
         for (const Road& road : roads)
         {
@@ -2057,7 +2057,33 @@ namespace spartan
             {
                 const Junction& junction = junctions[j];
                 for (size_t i = cut.lo; i <= cut.hi; i++) lower[i] = upper[i] = junction.center.y;
-                for (size_t i = cut.lo; i < cut.hi; i++) spline->m_junction_segments[i] = true;
+                // which sides other roads join from, so a through road keeps its paint on the closed side
+                uint8_t flags = 1;
+                if (cut.lo == 0 || cut.hi + 1 >= count)
+                {
+                    flags |= 8;
+                }
+                else
+                {
+                    const size_t mid = (cut.lo + cut.hi) / 2;
+                    const Vector3 right = spline->m_entity_ptr->GetMatrix() * (road.frames[mid].position + road.frames[mid].right) - road.positions[mid];
+                    for (const Cut& other : junction.cuts)
+                    {
+                        if (other.road == r) continue;
+                        const Road& joining = roads[other.road];
+                        const bool joins_at_start = other.lo == 0;
+                        const bool joins_at_end = other.hi + 1 >= joining.frames.size();
+                        if (!joins_at_start && !joins_at_end)
+                        {
+                            flags |= 6;
+                            continue;
+                        }
+                        const Vector3 mouth = joining.positions[joins_at_start ? other.hi : other.lo];
+                        const float side = (mouth - road.positions[mid]).Dot(right);
+                        flags |= side > 1.0f ? 4 : side < -1.0f ? 2 : 6;
+                    }
+                }
+                for (size_t i = cut.lo; i < cut.hi; i++) spline->m_junction_segments[i] |= flags;
                 const float blend = max(spline->m_smoothing_length * 0.5f, junction.radius * 2.0f);
                 for (size_t i = 0; i < count; i++)
                 {
@@ -3631,7 +3657,8 @@ namespace spartan
         }
 
         generated_cache::Hash cache_hash;
-        cache_hash.Add(uint32_t(2)); // road extrusion, junction skirts and paint generator version
+        cache_hash.Add(uint32_t(3)); // road extrusion, junction skirts and paint generator version
+        cache_hash.Add(JunctionUvSnap());
         cache_hash.Add(sizeof(RHI_Vertex_PosTexNorTan));
         cache_hash.Add(road_surface::asphalt_repeat);
         cache_hash.Add(frames);
@@ -3646,7 +3673,7 @@ namespace spartan
         cache_hash.Add(m_sidewalk_enabled);
         cache_hash.Add(m_sidewalk_ranges);
         cache_hash.Add(static_cast<uint64_t>(m_junction_segments.size()));
-        for (bool segment : m_junction_segments) cache_hash.Add(segment);
+        for (uint8_t segment : m_junction_segments) cache_hash.Add(segment);
         cache_hash.Add(static_cast<uint64_t>(m_junction_patches.size()));
         for (const JunctionPatch& patch : m_junction_patches)
         {
@@ -3714,11 +3741,12 @@ namespace spartan
         if (!deck_mesh) return;
 
         float total_length = frames.back().distance;
+        const float finish_width = m_road_width == m_road_width_end ? fabsf(m_road_width) : 0.0f;
 
         if (layered_finish)
         {
-            road_surface::SetLayer(m_entity_ptr,"spline_road_paint",paint_mesh,1);
-            road_surface::SetLayer(m_entity_ptr,"spline_road_shoulder",shoulder_mesh,2);
+            road_surface::SetLayer(m_entity_ptr,"spline_road_paint",paint_mesh,1,finish_width);
+            road_surface::SetLayer(m_entity_ptr,"spline_road_shoulder",shoulder_mesh,2,finish_width);
         }
         else
         {
@@ -3760,7 +3788,7 @@ namespace spartan
             render->SetDefaultMaterial();
         }
 
-        if (layered_finish) render->SetMaterial(road_surface::MaterialFor(0));
+        if (layered_finish) render->SetMaterial(road_surface::MaterialFor(0,finish_width));
 
         // Asphalt and junctions sit on top of terrain; do not coat them in ground material.
         render->SetFlag(RenderFlags::ExcludeFromTerrainBlend, m_profile == SplineProfile::Road);
@@ -3852,6 +3880,11 @@ namespace spartan
             const uint32_t edge_count = close_profile ? cur_profile_count : cur_profile_count - 1;
             if (i - 1 < m_junction_segments.size() && m_junction_segments[i - 1])
             {
+                // a through road keeps its lines across, minus the edge line where a road joins
+                const uint8_t flags = m_junction_segments[i - 1];
+                if (layered_finish && !(flags & 8) && (flags & 6) != 6)
+                    road_surface::Markings(frames[i-1],frame,m_road_width+(m_road_width_end-m_road_width)*frames[i-1].t,current_width,
+                        geometry.paint_vertices,geometry.paint_indices,(flags & 2) != 0,(flags & 4) != 0);
                 previous_profile = move(cur_profile);
                 previous_u = move(u);
                 continue;
@@ -3911,6 +3944,13 @@ namespace spartan
         }
     }
 
+    Vector2 Spline::JunctionUvSnap() const
+    {
+        const float r=road_surface::asphalt_repeat;
+        const Vector3 position=m_entity_ptr->GetMatrix().GetTranslation();
+        return Vector2(position.x-floorf(position.x/r)*r,position.z-floorf(position.z/r)*r);
+    }
+
     void Spline::AppendJunctionGeometry(RoadGeometry& geometry) const
     {
         const bool layered_finish = m_profile == SplineProfile::Road && road_surface::Enabled(m_entity_ptr);
@@ -3948,15 +3988,17 @@ namespace spartan
             {
                 // Same unpainted aggregate as the deck: no atlas mirroring or
                 // stripes leaking into the junction. Rebase before half packing.
+                // u-world.x/r must be whole for common_road.hlsl to tell the patch from the deck
                 const float r=road_surface::asphalt_repeat;
-                const Vector2 origin(floorf(patch.center.x/r),floorf(patch.center.z/r));
+                const Vector2 snap=JunctionUvSnap();
+                const Vector2 origin(floorf((patch.center.x+snap.x)/r),floorf((patch.center.z+snap.y)/r));
                 for (size_t i=0;i<patch.boundary.size();++i)
                 {
                     const Vector3 a=patch.boundary[i],b=patch.boundary[(i+1)%patch.boundary.size()];
                     const Vector3 normal=(b-patch.center).Cross(a-patch.center).Normalized();
                     const uint32_t base=static_cast<uint32_t>(geometry.vertices.size());
                     for (const Vector3 p:{patch.center,b,a})
-                        geometry.vertices.emplace_back(p,Vector2(p.x/r-origin.x,p.z/r-origin.y),normal,Vector3::Right);
+                        geometry.vertices.emplace_back(p,Vector2((p.x+snap.x)/r-origin.x,(p.z+snap.y)/r-origin.y),normal,Vector3::Right);
                     geometry.indices.insert(geometry.indices.end(),{base,base+1,base+2});
                 }
                 continue;

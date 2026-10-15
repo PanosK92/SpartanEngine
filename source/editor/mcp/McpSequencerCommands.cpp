@@ -19,6 +19,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "audio/AudioMixer.h"
 #include "car/Car.h"
 #include "file_system/FileSystem.h"
+#include "resource/ResourceCache.h"
 #include "mcp/McpJson.h"
 #include <cstdlib>
 #include <cmath>
@@ -160,6 +161,55 @@ namespace editor_mcp
             for (size_t i = 0; i < numbers.size(); i += 2)
             {
                 keys.push_back({ numbers[i], numbers[i + 1] });
+            }
+            return true;
+        }
+
+        bool parse_rev_keys(const string& value, vector<Sequencer::RevKey>& keys)
+        {
+            vector<Sequencer::SpeedKey> pairs;
+            keys.clear();
+            if (!parse_speed_keys(value, pairs))
+            {
+                return false;
+            }
+            for (const Sequencer::SpeedKey& pair : pairs)
+            {
+                keys.push_back({ pair.time, clamp(pair.speed_kmh, 0.0f, 1.0f) });
+            }
+            return true;
+        }
+
+        // flat triples of start, end and throttle, an empty list clears them
+        bool parse_burnouts(const string& value, vector<Sequencer::BurnoutSpan>& spans)
+        {
+            spans.clear();
+            string text = value;
+            for (char& c : text)
+            {
+                if (c == ',' || c == '[' || c == ']' || c == ';')
+                {
+                    c = ' ';
+                }
+            }
+            vector<float> numbers;
+            istringstream stream(text);
+            float parsed = 0.0f;
+            while (stream >> parsed)
+            {
+                numbers.push_back(parsed);
+            }
+            if (numbers.size() % 3 != 0)
+            {
+                return false;
+            }
+            for (size_t i = 0; i < numbers.size(); i += 3)
+            {
+                if (numbers[i + 1] <= numbers[i])
+                {
+                    return false;
+                }
+                spans.push_back({ numbers[i], numbers[i + 1], clamp(numbers[i + 2], 0.82f, 1.0f) });
             }
             return true;
         }
@@ -522,6 +572,22 @@ namespace editor_mcp
                     return false;
                 }
             }
+            if (const string* keys = find(request, "rev_keys"))
+            {
+                if (!parse_rev_keys(*keys, event.rev_keys))
+                {
+                    error = "rev_keys must be pairs of time seconds and throttle 0 to 1, e.g. 0,0,0.5,1,1.2,0";
+                    return false;
+                }
+            }
+            if (const string* spans = find(request, "burnouts"))
+            {
+                if (!parse_burnouts(*spans, event.burnouts))
+                {
+                    error = "burnouts must be triples of start seconds, end seconds and throttle 0.82 to 1, e.g. 4,7,1";
+                    return false;
+                }
+            }
             return true;
         }
 
@@ -593,7 +659,8 @@ namespace editor_mcp
                 const Sequencer::TitleEvent& title = cinematic.titles[i];
                 json += (i > 0 ? "," : "") + string("{\"index\":") + to_string(i) + ",\"start\":" + number(title.start_time) + ",\"end\":" + number(title.end_time) +
                     ",\"text\":" + quote(title.text) + ",\"x\":" + number(title.x) + ",\"y\":" + number(title.y) + ",\"large\":" + boolean(title.large) +
-                    ",\"fade\":" + number(title.fade) + ",\"color\":" + color_json(title.color) + "}";
+                    ",\"fade\":" + number(title.fade) + ",\"color\":" + color_json(title.color) +
+                    ",\"style\":" + quote(Sequencer::GetTitleStyleName(title.style)) + ",\"kicker\":" + quote(title.kicker) + ",\"accent\":" + color_json(title.accent) + "}";
             }
             json += "],\"markers\":[";
             for (size_t i = 0; i < cinematic.markers.size(); i++)
@@ -611,6 +678,14 @@ namespace editor_mcp
             const Sequencer::Snapshot snapshot = sequencer->GetSnapshot();
 
             string json = "{\"ok\":true";
+            json += ",\"file\":\"" + escape(sequencer->GetFilePath()) + "\"";
+            json += ",\"sequences\":[";
+            const vector<string> sequences = sequencer->GetSequenceFiles();
+            for (size_t i = 0; i < sequences.size(); i++)
+            {
+                json += (i > 0 ? ",\"" : "\"") + escape(FileSystem::GetFileNameFromFilePath(sequences[i])) + "\"";
+            }
+            json += "]";
             json += ",\"duration\":" + number(snapshot.duration);
             json += ",\"time\":" + number(snapshot.time);
             json += string(",\"playing\":") + boolean(snapshot.playing);
@@ -705,6 +780,16 @@ namespace editor_mcp
                 for (size_t k = 0; k < event.speed_keys.size(); k++)
                 {
                     json += (k > 0 ? "," : "") + string("[") + number(event.speed_keys[k].time) + "," + number(event.speed_keys[k].speed_kmh) + "]";
+                }
+                json += "],\"rev_keys\":[";
+                for (size_t k = 0; k < event.rev_keys.size(); k++)
+                {
+                    json += (k > 0 ? "," : "") + string("[") + number(event.rev_keys[k].time) + "," + number(event.rev_keys[k].throttle) + "]";
+                }
+                json += "],\"burnouts\":[";
+                for (size_t k = 0; k < event.burnouts.size(); k++)
+                {
+                    json += (k > 0 ? "," : "") + string("[") + number(event.burnouts[k].start) + "," + number(event.burnouts[k].end) + "," + number(event.burnouts[k].throttle) + "]";
                 }
                 json += "],\"autopilot\":{";
                 json += string("\"staged\":") + boolean(telemetry.staged);
@@ -1086,6 +1171,30 @@ namespace editor_mcp
                 }
                 title.color = *parsed;
             }
+            if (const string* style = find(request, "style"))
+            {
+                const optional<Sequencer::TitleStyle> parsed = Sequencer::FindTitleStyle(unquote(*style));
+                if (!parsed)
+                {
+                    error = "style must be plain, trailer or legend";
+                    return false;
+                }
+                title.style = *parsed;
+            }
+            if (const string* kicker = find(request, "kicker"))
+            {
+                title.kicker = *kicker;
+            }
+            if (const string* accent = find(request, "accent"))
+            {
+                const optional<Vector3> parsed = as_vector(accent);
+                if (!parsed)
+                {
+                    error = "accent must be r,g,b in 0..1";
+                    return false;
+                }
+                title.accent = *parsed;
+            }
             return true;
         }
 
@@ -1119,6 +1228,22 @@ namespace editor_mcp
                 if (!sequencer)
                 {
                     return failure(missing_panel);
+                }
+
+                // a bare name means sequencer_<name>.xml in the project folder, the same files the toolbar picker lists
+                if (const string* file = find(request, "file"))
+                {
+                    string file_path = *file;
+                    if (file_path.find('/') == string::npos && file_path.find('\\') == string::npos)
+                    {
+                        const string name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+                        file_path         = string(ResourceCache::GetProjectDirectory()) + (name.rfind("sequencer_", 0) == 0 ? name : "sequencer_" + name) + ".xml";
+                    }
+                    if (!FileSystem::Exists(file_path))
+                    {
+                        return failure("no sequence at '" + file_path + "'");
+                    }
+                    sequencer->LoadSequence(file_path);
                 }
 
                 Sequencer::TimelineRequest timeline;

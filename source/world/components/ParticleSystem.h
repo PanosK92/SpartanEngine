@@ -162,6 +162,10 @@ namespace spartan
         bool GetRainOccluded() const          { return m_rain_occluded; }
         void SetRainOccluded(bool occluded)   { m_rain_occluded = occluded; }
 
+        // leaf litter is normally laid only where nobody sees it appear, a camera cut replaces the whole frame so it may be laid in view
+        bool GetSeedVisible() const           { return m_seed_visible; }
+        void SetSeedVisible(bool visible)     { m_seed_visible = visible; }
+
         // simulation
         float GetDrag() const;
         void SetDrag(float drag);
@@ -263,6 +267,7 @@ namespace spartan
         float m_volume_shadowing            = 0.5f;
         math::Vector4 m_ground_plane = math::Vector4::Zero;
         bool m_rain_occluded         = false;
+        bool m_seed_visible          = false;
         float m_drag                        = 1.2f;
         float m_turbulence_strength         = 0.3f;
         float m_wind_influence              = 0.0f;

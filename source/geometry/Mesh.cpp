@@ -1601,6 +1601,13 @@ namespace spartan
             uint32_t global_vertex_offset = m_global_vertex_offset + lod.vertex_offset;
             uint32_t global_index_offset  = m_global_index_offset + lod.index_offset;
 
+            // a loader thread can publish a mesh after this frame's geometry upload, its range may lie past the
+            // end of the current gpu buffer, so the build waits until the range is resident and retries next frame
+            if (!GeometryBuffer::IsResident(global_vertex_offset + lod.vertex_count, global_index_offset + lod.index_count))
+            {
+                return;
+            }
+
             // create geometry for this sub-mesh using global buffer addresses
             RHI_AccelerationStructureGeometry geo;
             geo.transparent           = false;
@@ -1619,6 +1626,11 @@ namespace spartan
             m_blas[i] = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Bottom, blas_name.c_str());
             m_blas[i]->BuildBottomLevel(geometries, primitive_counts, allow_update);
         }
+    }
+
+    bool Mesh::IsGpuResident() const
+    {
+        return GeometryBuffer::IsResident(m_global_vertex_offset + m_global_vertex_capacity, m_global_index_offset + m_global_index_capacity);
     }
 
     void Mesh::InvalidateBlas(uint32_t sub_mesh_index)
@@ -1667,6 +1679,10 @@ namespace spartan
 
         uint32_t global_vertex_offset = m_global_vertex_offset + lod.vertex_offset;
         uint32_t global_index_offset  = m_global_index_offset + lod.index_offset;
+        if (!GeometryBuffer::IsResident(global_vertex_offset + lod.vertex_count, global_index_offset + lod.index_count))
+        {
+            return;
+        }
 
         RHI_AccelerationStructureGeometry geo;
         geo.transparent           = false;

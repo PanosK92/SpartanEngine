@@ -18,6 +18,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "rendering/Renderer.h"
 #include "rhi/RHI_Viewport.h"
 #include "file_system/FileSystem.h"
+#include "../imgui/ImGui_EditorUi.h"
 #include "../imgui/ImGui_Extension.h"
 #include "../imgui/ImGui_Style.h"
 SP_WARNINGS_OFF
@@ -156,11 +157,11 @@ namespace
         const size_t last = text.find_last_not_of(" \t");
         return text.substr(first, last - first + 1);
     }
+}
 
-    ImU32 to_u32(const ImVec4& color, float alpha = 1.0f)
-    {
-        return ImGui::ColorConvertFloat4ToU32(ImVec4(color.x, color.y, color.z, color.w * alpha));
-    }
+ImVec4 sequencer_common::channel_color(Sequencer::Channel channel)
+{
+    return info(channel).color;
 }
 
 //= NAMES =======================================================================================================================
@@ -181,6 +182,34 @@ bool Sequencer::Cinematic::operator==(const Cinematic& other) const
 const char* Sequencer::GetChannelName(Channel channel)
 {
     return channel < Channel::Count ? info(channel).name : "unknown";
+}
+
+const char* Sequencer::GetTitleStyleName(TitleStyle style)
+{
+    switch (style)
+    {
+        case TitleStyle::Trailer: return "trailer";
+        case TitleStyle::Legend:  return "legend";
+        default:                  return "plain";
+    }
+}
+
+optional<Sequencer::TitleStyle> Sequencer::FindTitleStyle(const string& name_in)
+{
+    const string name = normalize_name(name_in);
+    if (name == "plain")
+    {
+        return TitleStyle::Plain;
+    }
+    if (name == "trailer" || name == "hero")
+    {
+        return TitleStyle::Trailer;
+    }
+    if (name == "legend" || name == "caption" || name == "callout")
+    {
+        return TitleStyle::Legend;
+    }
+    return nullopt;
 }
 
 optional<Sequencer::Channel> Sequencer::FindChannel(const string& name_in)
@@ -540,12 +569,18 @@ void Sequencer::ApplyOverlayTrack(bool previewing)
         {
             continue;
         }
-        float alpha = 1.0f;
-        if (title.fade > 0.0f)
-        {
-            alpha = min({ 1.0f, (t - title.start_time) / title.fade, (title.end_time - t) / title.fade });
-        }
-        Renderer::DrawCinematicText(title.text.c_str(), Vector2(title.x, title.y), alpha, title.large, title.color);
+        CinematicTitle card;
+        card.text      = title.text.c_str();
+        card.kicker    = title.kicker.c_str();
+        card.position  = Vector2(title.x, title.y);
+        card.color     = title.color;
+        card.accent    = title.accent;
+        card.style     = static_cast<CinematicTitleStyle>(title.style);
+        card.large     = title.large;
+        card.age       = t - title.start_time;
+        card.remaining = title.end_time - t;
+        card.fade      = title.fade;
+        Renderer::DrawCinematicTitle(card);
     }
 }
 
@@ -969,6 +1004,12 @@ void Sequencer::SaveTracks(pugi::xml_node& root) const
         title_node.append_attribute("large") = title.large;
         title_node.append_attribute("fade")  = title.fade;
         write_color(title_node, "color", title.color);
+        if (title.style != TitleStyle::Plain)
+        {
+            title_node.append_attribute("style")  = GetTitleStyleName(title.style);
+            title_node.append_attribute("kicker") = title.kicker.c_str();
+            write_color(title_node, "accent", title.accent);
+        }
     }
 
     for (const Marker& marker : m_cinematic.markers)
@@ -1032,6 +1073,9 @@ void Sequencer::LoadTracks(const pugi::xml_node& root)
         title.large      = title_node.attribute("large").as_bool(true);
         title.fade       = title_node.attribute("fade").as_float(0.5f);
         title.color      = read_color(title_node, "color", Vector3::One);
+        title.style      = FindTitleStyle(title_node.attribute("style").as_string("plain")).value_or(TitleStyle::Plain);
+        title.kicker     = title_node.attribute("kicker").as_string("");
+        title.accent     = read_color(title_node, "accent", TitleEvent().accent);
         m_cinematic.titles.push_back(title);
     }
 
@@ -1057,49 +1101,39 @@ void Sequencer::DeselectAll()
 
 float Sequencer::GetTrackLanesHeight() const
 {
-    return (static_cast<float>(TrackGroup::Count) + 1.0f) * (lane_height + 2.0f);
+    return (static_cast<float>(TrackGroup::Count) + 1.0f) * (lane_height + track_gap);
 }
 
-void Sequencer::DrawTrackLanes(float origin_x, float label_x, float track_y, float width, float pixels_per_sec)
+void Sequencer::DrawTrackLanes(float origin_x, float track_y, float pixels_per_sec)
 {
-    ImDrawList* draw           = ImGui::GetWindowDrawList();
-    const ImU32 col_text       = ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_info);
-    const float label_offset_y = (lane_height - ImGui::GetFontSize()) * 0.5f;
-
     float y = track_y;
     for (int group = 0; group < static_cast<int>(TrackGroup::Count); group++)
     {
-        draw->AddText(ImVec2(label_x, y + label_offset_y), col_text, group_names[group]);
-        DrawCurveLane(static_cast<TrackGroup>(group), origin_x, y, width, pixels_per_sec);
-        y += lane_height + 2.0f;
+        DrawCurveLane(static_cast<TrackGroup>(group), origin_x, y, pixels_per_sec);
+        y += lane_height + track_gap;
     }
-    draw->AddText(ImVec2(label_x, y + label_offset_y), col_text, "titles");
-    DrawTitleLane(origin_x, y, width, pixels_per_sec);
+    DrawTitleLane(origin_x, y, pixels_per_sec);
 }
 
-void Sequencer::DrawCurveLane(TrackGroup group, float origin_x, float track_y, float width, float pixels_per_sec)
+void Sequencer::DrawCurveLane(TrackGroup group, float origin_x, float track_y, float pixels_per_sec)
 {
-    ImDrawList* draw         = ImGui::GetWindowDrawList();
-    const ImU32 col_bg       = ImGui::ColorConvertFloat4ToU32(ImGui::Style::bg_color_1);
-    const ImU32 col_tick     = ImGui::ColorConvertFloat4ToU32(ImGui::Style::h_color_2);
-    const ImU32 col_playhead = ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_accent_1);
+    ImDrawList* draw = ImGui::GetWindowDrawList();
 
     ImGui::PushID(static_cast<int>(group));
-    const ImVec2 lane_min = ImVec2(origin_x, track_y);
-    const ImVec2 lane_max = ImVec2(origin_x + width, track_y + lane_height);
+    const ImVec2 lane_min = ImVec2(m_lane_x, track_y);
+    const ImVec2 lane_max = ImVec2(m_lane_x + m_lane_w, track_y + lane_height);
     ImGui::SetCursorScreenPos(lane_min);
-    ImGui::InvisibleButton("##lane", ImVec2(width, lane_height));
+    ImGui::InvisibleButton("##lane", ImVec2(m_lane_w, lane_height));
     const bool hovered     = ImGui::IsItemHovered();
     const float mouse_x    = ImGui::GetIO().MousePos.x;
-    const float mouse_time = clamp((mouse_x - lane_min.x) / pixels_per_sec, 0.0f, m_duration);
-    draw->AddRectFilled(lane_min, lane_max, col_bg, 3.0f);
+    const float mouse_time = clamp((mouse_x - origin_x) / pixels_per_sec, 0.0f, m_duration);
 
     // each channel draws its curve normalized to its own key range, so small moves still read
-    int hovered_channel = -1;
-    int hovered_key     = -1;
-    float hovered_dist  = edge_grab_px + 1.0f;
-    const float inner_top    = lane_min.y + 5.0f;
-    const float inner_bottom = lane_max.y - 5.0f;
+    int hovered_channel      = -1;
+    int hovered_key          = -1;
+    float hovered_dist       = edge_grab_px + 1.0f;
+    const float inner_top    = lane_min.y + 6.0f;
+    const float inner_bottom = lane_max.y - 6.0f;
     bool any_keys            = false;
     for (size_t c = 0; c < static_cast<size_t>(Channel::Count); c++)
     {
@@ -1108,9 +1142,9 @@ void Sequencer::DrawCurveLane(TrackGroup group, float origin_x, float track_y, f
         {
             continue;
         }
-        any_keys     = true;
-        float lo     = keys.front().value;
-        float hi     = keys.front().value;
+        any_keys = true;
+        float lo = keys.front().value;
+        float hi = keys.front().value;
         for (const CurveKey& key : keys)
         {
             lo = min(lo, key.value);
@@ -1126,49 +1160,73 @@ void Sequencer::DrawCurveLane(TrackGroup group, float origin_x, float track_y, f
             return inner_bottom - (value - lo) / (hi - lo) * (inner_bottom - inner_top);
         };
 
+        // the curve over the visible window with a soft fill under it
         const Channel channel = static_cast<Channel>(c);
-        const ImU32 color     = to_u32(channel_infos[c].color, 0.9f);
+        const ImVec4& tint    = channel_infos[c].color;
+        const ImU32 fill      = to_color(tint, 0.07f);
+        const ImU32 line      = to_color(tint, 0.85f);
         ImVec2 previous;
-        for (float x = 0.0f; x <= width; x += 3.0f)
+        for (float x = 0.0f; x <= m_lane_w + 3.0f; x += 3.0f)
         {
-            const float t   = x / pixels_per_sec;
-            const ImVec2 p  = ImVec2(lane_min.x + x, to_y(EvaluateCurve(channel, t)));
+            const float t  = clamp((m_lane_x + x - origin_x) / pixels_per_sec, 0.0f, m_duration);
+            const ImVec2 p = ImVec2(m_lane_x + x, to_y(EvaluateCurve(channel, t)));
             if (x > 0.0f)
             {
-                draw->AddLine(previous, p, to_u32(channel_infos[c].color, 0.55f), 1.5f);
+                draw->AddQuadFilled(previous, p, ImVec2(p.x, lane_max.y), ImVec2(previous.x, lane_max.y), fill);
+                draw->AddLine(previous, p, line, 1.5f);
             }
             previous = p;
         }
 
         for (int k = 0; k < static_cast<int>(keys.size()); k++)
         {
-            const float kx    = lane_min.x + keys[k].time * pixels_per_sec;
-            const float ky    = to_y(keys[k].value);
-            const bool select = m_curve_channel == static_cast<int>(c) && m_curve_selected == k;
-            const float r     = select ? 6.0f : 4.5f;
-            draw->AddQuadFilled(ImVec2(kx, ky - r), ImVec2(kx + r, ky), ImVec2(kx, ky + r), ImVec2(kx - r, ky), color);
-            if (select)
-            {
-                draw->AddQuad(ImVec2(kx, ky - r - 1.0f), ImVec2(kx + r + 1.0f, ky), ImVec2(kx, ky + r + 1.0f), ImVec2(kx - r - 1.0f, ky), col_playhead, 2.0f);
-            }
-            const float dist = fabsf(mouse_x - kx);
+            const float kx    = IM_ROUND(origin_x + keys[k].time * pixels_per_sec);
+            const float ky    = IM_ROUND(to_y(keys[k].value));
+            const float dist  = fabsf(mouse_x - kx);
             if (hovered && dist < hovered_dist)
             {
                 hovered_dist    = dist;
                 hovered_channel = static_cast<int>(c);
                 hovered_key     = k;
             }
+            const bool select = m_curve_channel == static_cast<int>(c) && m_curve_selected == k;
+            const float r     = select ? 6.0f : 5.0f;
+            if (select)
+            {
+                ImGui::EditorUi::draw_glow(draw, ImVec2(kx - r, ky - r), ImVec2(kx + r, ky + r), tint, r, 6.0f, 1.0f);
+            }
+            draw->AddQuadFilled(ImVec2(kx, ky - r - 1.5f), ImVec2(kx + r + 1.5f, ky), ImVec2(kx, ky + r + 1.5f), ImVec2(kx - r - 1.5f, ky), to_color(ImGui::Style::color_canvas_deep));
+            draw->AddQuadFilled(ImVec2(kx, ky - r), ImVec2(kx + r, ky), ImVec2(kx, ky + r), ImVec2(kx - r, ky), to_color(select ? ImGui::Style::lerp(tint, ImVec4(1, 1, 1, 1), 0.4f) : tint));
+            if (select)
+            {
+                draw->AddQuad(ImVec2(kx, ky - r - 2.5f), ImVec2(kx + r + 2.5f, ky), ImVec2(kx, ky + r + 2.5f), ImVec2(kx - r - 2.5f, ky), to_color(ImGui::Style::color_accent_hi), 1.5f);
+            }
         }
     }
     if (!any_keys)
     {
-        const char* hint  = group == TrackGroup::Time ? "double click to key the time scale" : group == TrackGroup::Audio ? "double click to key the mix" :
-                            group == TrackGroup::World ? "double click to key time of day or weather" : "double click to key fades or letterbox";
-        const ImVec2 size = ImGui::CalcTextSize(hint);
-        draw->AddText(ImVec2(lane_min.x + (width - size.x) * 0.5f, lane_min.y + (lane_height - size.y) * 0.5f), col_tick, hint);
+        const char* hint = group == TrackGroup::Time ? "double click to key the time scale" : group == TrackGroup::Audio ? "double click to key the mix" :
+                           group == TrackGroup::World ? "double click to key time of day or weather" : "double click to key fades or letterbox";
+        draw_empty_hint(draw, lane_min, lane_max, hint);
+    }
+    if (hovered_key != -1 && m_curve_dragging == -1 && !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId))
+    {
+        const channel_info& ci = channel_infos[hovered_channel];
+        const CurveKey& key    = m_cinematic.curves[hovered_channel][hovered_key];
+        ImGui::BeginTooltip();
+        ImGui::TextColored(ci.color, "%s", ci.name);
+        ImGui::SameLine();
+        ImGui::Text(ci.format, key.value);
+        ImGui::TextDisabled("at %s, eases %s", format_time(key.time).c_str(), ease_names[static_cast<int>(key.ease)]);
+        ImGui::EndTooltip();
     }
 
     // interactions
+    if (m_lane_popup_request == static_cast<int>(group))
+    {
+        m_lane_popup_request = -1;
+        ImGui::OpenPopup("##seq_lane_add");
+    }
     if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && hovered_key == -1)
     {
         m_lane_popup_time  = SnapTime(mouse_time);
@@ -1219,11 +1277,15 @@ void Sequencer::DrawCurveLane(TrackGroup group, float origin_x, float track_y, f
         {
             const float time_min = m_curve_dragging > 0 ? keys[m_curve_dragging - 1].time + 0.01f : 0.0f;
             const float time_max = m_curve_dragging + 1 < static_cast<int>(keys.size()) ? keys[m_curve_dragging + 1].time - 0.01f : m_duration;
-            const float new_time = clamp(SnapTime(mouse_time - m_curve_drag_offset), time_min, max(time_min, time_max));
+            const float new_time = clamp(SnapDrag(mouse_time - m_curve_drag_offset, SnapSource::Curve, m_curve_dragging), time_min, max(time_min, time_max));
             if (new_time != keys[m_curve_dragging].time)
             {
                 keys[m_curve_dragging].time = new_time;
                 m_curve_drag_moved          = true;
+            }
+            if (m_curve_drag_moved)
+            {
+                m_drag_readout = new_time;
             }
         }
         else
@@ -1246,7 +1308,10 @@ void Sequencer::DrawCurveLane(TrackGroup group, float origin_x, float track_y, f
             {
                 continue;
             }
-            if (ImGui::MenuItem(channel_infos[c].name))
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::Style::lerp(channel_infos[c].color, ImVec4(1, 1, 1, 1), 0.35f));
+            const bool clicked = ImGui::MenuItem(channel_infos[c].name, m_cinematic.curves[c].empty() ? nullptr : "keyed");
+            ImGui::PopStyleColor();
+            if (clicked)
             {
                 const Channel channel = static_cast<Channel>(c);
                 CurveKey key;
@@ -1322,7 +1387,7 @@ void Sequencer::DrawCurveLane(TrackGroup group, float origin_x, float track_y, f
                 }
                 ImGui::EndMenu();
             }
-            if (ImGui::MenuItem("delete"))
+            if (ImGui::MenuItem("delete", "del"))
             {
                 RemoveCurveKey(channel, m_curve_selected);
             }
@@ -1332,22 +1397,17 @@ void Sequencer::DrawCurveLane(TrackGroup group, float origin_x, float track_y, f
     ImGui::PopID();
 }
 
-void Sequencer::DrawTitleLane(float origin_x, float track_y, float width, float pixels_per_sec)
+void Sequencer::DrawTitleLane(float origin_x, float track_y, float pixels_per_sec)
 {
-    ImDrawList* draw         = ImGui::GetWindowDrawList();
-    const ImU32 col_bg       = ImGui::ColorConvertFloat4ToU32(ImGui::Style::bg_color_1);
-    const ImU32 col_tick     = ImGui::ColorConvertFloat4ToU32(ImGui::Style::h_color_2);
-    const ImU32 col_text     = ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_info);
-    const ImU32 col_playhead = ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_accent_1);
+    ImDrawList* draw = ImGui::GetWindowDrawList();
 
-    const ImVec2 lane_min = ImVec2(origin_x, track_y);
-    const ImVec2 lane_max = ImVec2(origin_x + width, track_y + lane_height);
+    const ImVec2 lane_min = ImVec2(m_lane_x, track_y);
+    const ImVec2 lane_max = ImVec2(m_lane_x + m_lane_w, track_y + lane_height);
     ImGui::SetCursorScreenPos(lane_min);
-    ImGui::InvisibleButton("##seq_title_lane", ImVec2(width, lane_height));
+    ImGui::InvisibleButton("##seq_title_lane", ImVec2(m_lane_w, lane_height));
     const bool hovered     = ImGui::IsItemHovered();
     const float mouse_x    = ImGui::GetIO().MousePos.x;
-    const float mouse_time = clamp((mouse_x - lane_min.x) / pixels_per_sec, 0.0f, m_duration);
-    draw->AddRectFilled(lane_min, lane_max, col_bg, 3.0f);
+    const float mouse_time = clamp((mouse_x - origin_x) / pixels_per_sec, 0.0f, m_duration);
 
     // the topmost title under the cursor and which part of it, an edge resizes and the body moves
     int hovered_title = -1;
@@ -1355,8 +1415,8 @@ void Sequencer::DrawTitleLane(float origin_x, float track_y, float width, float 
     for (int i = static_cast<int>(m_cinematic.titles.size()) - 1; i >= 0 && hovered; i--)
     {
         const TitleEvent& title = m_cinematic.titles[i];
-        const float x0 = lane_min.x + title.start_time * pixels_per_sec;
-        const float x1 = lane_min.x + title.end_time * pixels_per_sec;
+        const float x0 = origin_x + title.start_time * pixels_per_sec;
+        const float x1 = origin_x + title.end_time * pixels_per_sec;
         if (mouse_x >= x0 - edge_grab_px && mouse_x <= x1 + edge_grab_px)
         {
             hovered_title = i;
@@ -1364,19 +1424,17 @@ void Sequencer::DrawTitleLane(float origin_x, float track_y, float width, float 
             break;
         }
     }
-    if (hovered_title != -1 && hovered_edge != 0)
+    if ((hovered_title != -1 && hovered_edge != 0) || (m_title_dragging != -1 && m_title_drag_edge != 0))
     {
         ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
     }
 
     if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && hovered_title == -1)
     {
-        TitleEvent title;
-        title.start_time = SnapTime(mouse_time);
-        title.end_time   = min(title.start_time + 3.0f, m_duration);
-        title.text       = "title";
-        AddTitle(title);
-        m_title_selected = static_cast<int>(m_cinematic.titles.size()) - 1;
+        const float saved = m_time;
+        m_time            = mouse_time;
+        AddTitleAtPlayhead();
+        m_time            = saved;
     }
     else if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
     {
@@ -1413,18 +1471,25 @@ void Sequencer::DrawTitleLane(float origin_x, float track_y, float width, float 
             const float span        = title.end_time - title.start_time;
             if (m_title_drag_edge < 0)
             {
-                title.start_time = clamp(SnapTime(mouse_time), 0.0f, title.end_time - min_event_gap);
+                title.start_time = clamp(SnapDrag(mouse_time, SnapSource::Title, m_title_dragging), 0.0f, title.end_time - min_event_gap);
+                m_drag_readout   = title.start_time;
             }
             else if (m_title_drag_edge > 0)
             {
-                title.end_time = clamp(SnapTime(mouse_time), title.start_time + min_event_gap, m_duration);
+                title.end_time = clamp(SnapDrag(mouse_time, SnapSource::Title, m_title_dragging), title.start_time + min_event_gap, m_duration);
+                m_drag_readout = title.end_time;
             }
             else
             {
-                title.start_time = clamp(SnapTime(mouse_time - m_title_drag_offset), 0.0f, max(m_duration - span, 0.0f));
+                title.start_time = clamp(SnapWindow(mouse_time - m_title_drag_offset, span, SnapSource::Title, m_title_dragging), 0.0f, max(m_duration - span, 0.0f));
                 title.end_time   = title.start_time + span;
+                m_drag_readout   = title.start_time;
             }
             m_title_drag_moved |= !(before == title);
+            if (!m_title_drag_moved)
+            {
+                m_drag_readout = -1.0f;
+            }
         }
         else
         {
@@ -1436,33 +1501,35 @@ void Sequencer::DrawTitleLane(float origin_x, float track_y, float width, float 
         }
     }
 
+    const ImVec4 hue = track_hue(7);
     for (int i = 0; i < static_cast<int>(m_cinematic.titles.size()); i++)
     {
         const TitleEvent& title = m_cinematic.titles[i];
-        const ImVec2 bar_min    = ImVec2(lane_min.x + title.start_time * pixels_per_sec + 1.0f, lane_min.y + 3.0f);
-        const ImVec2 bar_max    = ImVec2(lane_min.x + title.end_time * pixels_per_sec - 1.0f, lane_max.y - 3.0f);
-        ImVec4 fill             = ImGui::Style::color_accent_2;
-        fill.w                  = 0.7f;
-        draw->AddRectFilled(bar_min, bar_max, ImGui::ColorConvertFloat4ToU32(fill), 3.0f);
-        // the fades as ramps at both ends
-        const float fade_px = min(title.fade * pixels_per_sec, (bar_max.x - bar_min.x) * 0.5f);
-        draw->AddTriangleFilled(ImVec2(bar_min.x, bar_max.y), ImVec2(bar_min.x + fade_px, bar_min.y), ImVec2(bar_min.x, bar_min.y), col_bg);
-        draw->AddTriangleFilled(ImVec2(bar_max.x, bar_max.y), ImVec2(bar_max.x, bar_min.y), ImVec2(bar_max.x - fade_px, bar_min.y), col_bg);
-        if (i == m_title_selected || i == hovered_title)
+        const ImVec2 bar_min    = ImVec2(origin_x + title.start_time * pixels_per_sec + 1.0f, lane_min.y + 4.0f);
+        const ImVec2 bar_max    = ImVec2(origin_x + title.end_time * pixels_per_sec - 1.0f, lane_max.y - 4.0f);
+        if (bar_max.x < m_lane_x || bar_min.x > m_lane_x + m_lane_w)
         {
-            draw->AddRect(bar_min, bar_max, col_playhead, 3.0f, i == m_title_selected ? 2.0f : 1.0f);
+            continue;
         }
+        draw_clip(draw, bar_min, bar_max, hue, i == m_title_selected, i == hovered_title);
+
+        // the fades darken the ends of the card
+        const float fade_px = min(title.fade * pixels_per_sec, (bar_max.x - bar_min.x) * 0.5f);
+        if (fade_px > 1.0f)
+        {
+            const ImU32 dark  = to_color(ImGui::Style::color_canvas_deep, 0.75f);
+            const ImU32 clear = to_color(ImGui::Style::color_canvas_deep, 0.0f);
+            draw->AddRectFilledMultiColor(bar_min, ImVec2(bar_min.x + fade_px, bar_max.y), dark, clear, clear, dark);
+            draw->AddRectFilledMultiColor(ImVec2(bar_max.x - fade_px, bar_min.y), bar_max, clear, dark, dark, clear);
+        }
+
         string label = title.text;
         replace(label.begin(), label.end(), '\n', ' ');
-        draw->PushClipRect(bar_min, bar_max, true);
-        draw->AddText(ImVec2(bar_min.x + 6.0f + fade_px * 0.5f, bar_min.y + (bar_max.y - bar_min.y - ImGui::GetFontSize()) * 0.5f), col_text, label.c_str());
-        draw->PopClipRect();
+        draw_clip_text(draw, bar_min, bar_max, label.c_str(), nullptr, nullptr, false, Glyph::Plus);
     }
     if (m_cinematic.titles.empty())
     {
-        const char* hint  = "double click to add a title card";
-        const ImVec2 size = ImGui::CalcTextSize(hint);
-        draw->AddText(ImVec2(lane_min.x + (width - size.x) * 0.5f, lane_min.y + (lane_height - size.y) * 0.5f), col_tick, hint);
+        draw_empty_hint(draw, lane_min, lane_max, "double click to add a title card");
     }
 
     if (ImGui::BeginPopup("##seq_title"))
@@ -1478,7 +1545,7 @@ void Sequencer::DrawTitleLane(float origin_x, float track_y, float width, float 
                 AddTitle(copy);
                 m_title_selected = static_cast<int>(m_cinematic.titles.size()) - 1;
             }
-            if (ImGui::MenuItem("delete"))
+            if (ImGui::MenuItem("delete", "del"))
             {
                 RemoveTitle(m_title_selected);
             }
@@ -1494,58 +1561,217 @@ void Sequencer::DrawBeatGrid(float origin_x, float top, float bottom, float pixe
     {
         return;
     }
-    ImDrawList* draw      = ImGui::GetWindowDrawList();
-    const ImU32 col_beat  = IM_COL32(255, 255, 255, 14);
-    const ImU32 col_bar   = IM_COL32(255, 255, 255, 40);
+    ImDrawList* draw       = ImGui::GetWindowDrawList();
+    const ImU32 col_beat   = IM_COL32(255, 255, 255, 10);
+    const ImU32 col_bar    = IM_COL32(255, 255, 255, 30);
     const uint32_t per_bar = max(m_cinematic.beats_per_bar, 1u);
-    const float first     = m_cinematic.beat_offset - floorf(m_cinematic.beat_offset / beat_length) * beat_length;
-    int beat              = -static_cast<int>(floorf(m_cinematic.beat_offset / beat_length));
-    for (float t = first; t <= m_duration + 0.001f; t += beat_length, beat++)
+    const float view_end   = m_view_start + m_lane_w / pixels_per_sec;
+    const int first_beat   = static_cast<int>(floorf((max(m_view_start, 0.0f) - m_cinematic.beat_offset) / beat_length));
+    for (int beat = first_beat;; beat++)
     {
+        const float t = m_cinematic.beat_offset + static_cast<float>(beat) * beat_length;
+        if (t > min(view_end, m_duration) + 0.001f)
+        {
+            break;
+        }
+        if (t < 0.0f)
+        {
+            continue;
+        }
         const bool bar = ((beat % static_cast<int>(per_bar)) + static_cast<int>(per_bar)) % static_cast<int>(per_bar) == 0;
-        const float x  = origin_x + t * pixels_per_sec;
+        const float x  = IM_ROUND(origin_x + t * pixels_per_sec) + 0.5f;
         draw->AddLine(ImVec2(x, top), ImVec2(x, bottom), bar ? col_bar : col_beat);
     }
 }
 
-void Sequencer::DrawMarkers(float origin_x, float top, float bottom, float pixels_per_sec)
+void Sequencer::DrawMarkerStrip(float origin_x, float top, float pixels_per_sec)
 {
-    ImDrawList* draw       = ImGui::GetWindowDrawList();
-    const ImU32 col_marker = IM_COL32(120, 220, 255, 220);
-    const ImU32 col_line   = IM_COL32(120, 220, 255, 60);
-    for (const Marker& marker : m_cinematic.markers)
+    ImDrawList* draw         = ImGui::GetWindowDrawList();
+    const ImGuiIO& io        = ImGui::GetIO();
+    const ImVec4 tint        = ImVec4(0.98f, 0.82f, 0.42f, 1.0f);
+    const float label_size   = ImGui::GetFontSize() * 0.82f;
+    const ImVec2 strip_min   = ImVec2(m_lane_x, top);
+    const ImVec2 strip_max   = ImVec2(m_lane_x + m_lane_w, top + marker_height);
+    ImGui::SetCursorScreenPos(strip_min);
+    ImGui::InvisibleButton("##seq_markers", ImVec2(m_lane_w, marker_height));
+    const bool hovered       = ImGui::IsItemHovered();
+    const float mouse_time   = clamp((io.MousePos.x - origin_x) / pixels_per_sec, 0.0f, m_duration);
+    vector<Marker>& markers  = m_cinematic.markers;
+
+    // a flag is the line plus its label, either one picks the marker
+    int hovered_marker = -1;
+    for (int i = static_cast<int>(markers.size()) - 1; i >= 0 && hovered; i--)
     {
-        const float x = origin_x + marker.time * pixels_per_sec;
-        draw->AddLine(ImVec2(x, top), ImVec2(x, bottom), col_line, 1.0f);
-        draw->AddTriangleFilled(ImVec2(x, top + ruler_height), ImVec2(x, top + ruler_height - 9.0f), ImVec2(x + 7.0f, top + ruler_height - 4.5f), col_marker);
-        draw->AddText(ImVec2(x + 9.0f, top + ruler_height - ImGui::GetFontSize() - 1.0f), col_marker, marker.name.c_str());
+        const float x       = origin_x + markers[i].time * pixels_per_sec;
+        const float label_w = ImGui::GetFont()->CalcTextSizeA(label_size, FLT_MAX, 0.0f, markers[i].name.c_str()).x;
+        if (io.MousePos.x >= x - 5.0f && io.MousePos.x <= x + label_w + 14.0f)
+        {
+            hovered_marker = i;
+            break;
+        }
+    }
+    if (hovered_marker != -1 || m_marker_dragging != -1)
+    {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+    }
+
+    if (hovered && hovered_marker == -1 && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+    {
+        const float saved = m_time;
+        m_time            = SnapDrag(mouse_time, SnapSource::Marker, -1);
+        AddMarkerAtPlayhead();
+        m_time            = saved;
+    }
+    else if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && hovered_marker != -1)
+    {
+        m_marker_dragging    = hovered_marker;
+        m_marker_drag_offset = mouse_time - markers[hovered_marker].time;
+        m_marker_drag_moved  = false;
+        m_drag_undo_state    = CaptureState();
+    }
+    else if (ImGui::IsItemClicked(ImGuiMouseButton_Right) && hovered_marker != -1)
+    {
+        m_marker_selected = hovered_marker;
+        snprintf(m_marker_name, sizeof(m_marker_name), "%s", markers[hovered_marker].name.c_str());
+        ImGui::OpenPopup("##seq_marker");
+    }
+
+    if (m_marker_dragging != -1 && m_marker_dragging < static_cast<int>(markers.size()))
+    {
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        {
+            const float new_time = clamp(SnapDrag(mouse_time - m_marker_drag_offset, SnapSource::Marker, m_marker_dragging), 0.0f, m_duration);
+            m_marker_drag_moved |= new_time != markers[m_marker_dragging].time;
+            markers[m_marker_dragging].time = new_time;
+            if (m_marker_drag_moved)
+            {
+                m_drag_readout = new_time;
+            }
+        }
+        else
+        {
+            if (m_marker_drag_moved)
+            {
+                sort(markers.begin(), markers.end(), [](const Marker& a, const Marker& b) { return a.time < b.time; });
+                CommitState(m_drag_undo_state);
+            }
+            m_marker_dragging = -1;
+        }
+    }
+    else
+    {
+        m_marker_dragging = -1;
+    }
+
+    draw->AddRectFilled(strip_min, strip_max, to_color(ImGui::Style::lerp(ImGui::Style::color_canvas_deep, ImGui::Style::color_canvas, 0.55f)));
+    for (int i = 0; i < static_cast<int>(markers.size()); i++)
+    {
+        const Marker& marker = markers[i];
+        const float x        = IM_ROUND(origin_x + marker.time * pixels_per_sec) + 0.5f;
+        const bool lit       = i == hovered_marker || i == m_marker_dragging;
+        const float label_w  = ImGui::GetFont()->CalcTextSizeA(label_size, FLT_MAX, 0.0f, marker.name.c_str()).x;
+        const ImVec2 flag_min = ImVec2(x, top + 3.0f);
+        const ImVec2 flag_max = ImVec2(x + label_w + 12.0f, top + marker_height - 3.0f);
+        draw->AddLine(ImVec2(x, top), ImVec2(x, m_lane_bottom), to_color(tint, lit ? 0.6f : 0.28f), 1.0f);
+        draw->AddRectFilled(flag_min, flag_max, to_color(tint, lit ? 0.32f : 0.18f), 3.0f, ImDrawFlags_RoundCornersRight);
+        draw->AddRectFilled(flag_min, ImVec2(x + 2.0f, flag_max.y), to_color(tint));
+        draw->AddText(nullptr, label_size, ImVec2(x + 7.0f, IM_ROUND(flag_min.y + (flag_max.y - flag_min.y - label_size) * 0.5f)), to_color(ImGui::Style::lerp(tint, ImVec4(1, 1, 1, 1), 0.3f)), marker.name.c_str());
+    }
+    if (markers.empty() && hovered)
+    {
+        draw->AddText(nullptr, label_size, ImVec2(strip_min.x + 8.0f, IM_ROUND(top + (marker_height - label_size) * 0.5f)), to_color(ImGui::Style::color_text_faint), "double click to drop a marker, m drops one at the playhead");
+    }
+    draw->AddLine(ImVec2(strip_min.x, strip_max.y - 0.5f), ImVec2(strip_max.x, strip_max.y - 0.5f), to_color(ImGui::Style::color_border));
+
+    if (ImGui::BeginPopup("##seq_marker"))
+    {
+        if (m_marker_selected >= 0 && m_marker_selected < static_cast<int>(markers.size()))
+        {
+            ImGui::TextDisabled("marker at %s", format_time(markers[m_marker_selected].time).c_str());
+            ImGui::SetNextItemWidth(160.0f);
+            if (ImGui::IsWindowAppearing())
+            {
+                ImGui::SetKeyboardFocusHere();
+            }
+            if (ImGui::InputText("##seq_marker_name", m_marker_name, sizeof(m_marker_name), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
+            {
+                const string name = trim(m_marker_name);
+                if (!name.empty() && name != markers[m_marker_selected].name)
+                {
+                    const State before = CaptureState();
+                    markers[m_marker_selected].name = name;
+                    CommitState(before);
+                }
+                ImGui::CloseCurrentPopup();
+            }
+            ImGuiSp::tooltip("rename, agents address markers by name as marker:NAME");
+            ImGui::Separator();
+            if (ImGui::MenuItem("go to"))
+            {
+                m_playing = false;
+                m_time    = markers[m_marker_selected].time;
+            }
+            if (ImGui::MenuItem("delete"))
+            {
+                RemoveMarker(m_marker_selected);
+                m_marker_selected = -1;
+            }
+        }
+        ImGui::EndPopup();
     }
 }
 
 void Sequencer::DrawTrackToolbar()
 {
+    // state chips laid out from the cursor: the live time scale, the bar and beat, the recording progress
+    ImVec2 pen        = ImGui::GetCursorScreenPos();
+    bool any          = false;
+    auto chip         = [&](const char* text, const ImVec4& background, const ImVec4& foreground)
+    {
+        ImGui::SetCursorScreenPos(pen);
+        ImGui::EditorUi::draw_chip(text, background, foreground);
+        pen.x = ImGui::GetItemRectMax().x + 6.0f;
+        any   = true;
+    };
+
+    const ImVec4 amber = ImVec4(1.0f, 0.78f, 0.25f, 1.0f);
+    if (m_render_status.active)
+    {
+        char text[64];
+        snprintf(text, sizeof(text), "rec  %u / %u", m_render_status.frames_written, m_render_status.frames_total);
+        chip(text, ImGui::Style::with_alpha(ImGui::Style::color_error, 0.16f), ImGui::Style::color_error);
+    }
     if (m_applied_time_scale != 1.0f)
     {
-        ImGui::SameLine();
-        ImGui::AlignTextToFramePadding();
+        char text[32];
         if (m_applied_time_scale == 0.0f)
         {
-            ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.25f, 1.0f), "frozen");
+            snprintf(text, sizeof(text), "frozen");
         }
         else
         {
-            ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.25f, 1.0f), "x%.2f", m_applied_time_scale);
+            snprintf(text, sizeof(text), "x%.2f", m_applied_time_scale);
         }
+        chip(text, ImGui::Style::with_alpha(amber, 0.14f), amber);
     }
     const float beat_length = GetBeatLength();
     if (beat_length > 0.0f)
     {
-        const float beat      = max((m_time - m_cinematic.beat_offset) / beat_length, 0.0f);
+        const float beat       = max((m_time - m_cinematic.beat_offset) / beat_length, 0.0f);
         const uint32_t per_bar = max(m_cinematic.beats_per_bar, 1u);
-        const uint32_t whole  = static_cast<uint32_t>(beat);
-        ImGui::SameLine();
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextDisabled("bar %u.%u", whole / per_bar + 1, whole % per_bar + 1);
+        const uint32_t whole   = static_cast<uint32_t>(beat);
+        char text[32];
+        snprintf(text, sizeof(text), "bar %u.%u", whole / per_bar + 1, whole % per_bar + 1);
+        chip(text, ImGui::Style::with_alpha(ImGui::Style::color_text, 0.05f), ImGui::Style::color_text_muted);
+    }
+    if (m_preview && !m_playing)
+    {
+        chip("preview", ImGui::Style::color_accent_dim, ImGui::Style::color_accent_1);
+    }
+    if (!any)
+    {
+        ImGui::SetCursorScreenPos(pen);
+        ImGui::Dummy(ImVec2(0.0f, 0.0f));
     }
 }
 
@@ -1569,9 +1795,15 @@ void Sequencer::DrawCurveKeyInspector(float width)
         }
     };
 
-    inspector_section((string(group_names[static_cast<int>(ci.group)]) + " key").c_str());
-    inspector_label("channel", width);
-    ImGui::TextColored(ci.color, "%s", ci.name);
+    {
+        char kicker[64];
+        snprintf(kicker, sizeof(kicker), "%s key %d of %d", group_names[static_cast<int>(ci.group)], m_curve_selected + 1, static_cast<int>(keys.size()));
+        char value[64];
+        snprintf(value, sizeof(value), ci.format, key.value);
+        const string subtitle = string(value) + "  at " + format_time(key.time);
+        inspector_header(kicker, ci.name, subtitle.c_str(), ci.color);
+    }
+    inspector_section("key");
 
     {
         const float t_min = m_curve_selected > 0 ? keys[m_curve_selected - 1].time + 0.01f : 0.0f;
@@ -1619,13 +1851,10 @@ void Sequencer::DrawCurveKeyInspector(float width)
     ImGui::PopTextWrapPos();
 
     ImGui::Dummy(ImVec2(0.0f, 8.0f));
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.45f, 0.18f, 0.18f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.60f, 0.22f, 0.22f, 1.0f));
-    if (ImGuiSp::button("delete", ImVec2(width, 0.0f)))
+    if (danger_button("delete key", ImVec2(width, 0.0f)))
     {
         RemoveCurveKey(channel, m_curve_selected);
     }
-    ImGui::PopStyleColor(2);
 }
 
 void Sequencer::DrawTitleInspector(float width)
@@ -1643,7 +1872,16 @@ void Sequencer::DrawTitleInspector(float width)
         }
     };
 
-    inspector_section("title card");
+    {
+        string first_line = title.text.substr(0, title.text.find('\n'));
+        if (first_line.empty())
+        {
+            first_line = "untitled";
+        }
+        const string subtitle = format_time(title.start_time) + "  to  " + format_time(title.end_time);
+        inspector_header("title card", first_line.c_str(), subtitle.c_str(), track_hue(7));
+    }
+    inspector_section("text");
     {
         char buffer[512];
         snprintf(buffer, sizeof(buffer), "%s", title.text.c_str());
@@ -1686,14 +1924,38 @@ void Sequencer::DrawTitleInspector(float width)
     ImGui::ColorEdit3("##seq_t_color", &title.color.x, ImGuiColorEditFlags_NoInputs);
     track_edit();
 
+    inspector_section("style");
+    {
+        static const char* styles[] = { "plain", "trailer", "legend" };
+        int style = static_cast<int>(title.style);
+        inspector_label("style", width);
+        if (ImGui::Combo("##seq_t_style", &style, styles, IM_COUNTOF(styles)))
+        {
+            const State before = CaptureState();
+            title.style        = static_cast<TitleStyle>(style);
+            CommitState(before);
+        }
+    }
+    if (title.style != TitleStyle::Plain)
+    {
+        char buffer[256];
+        snprintf(buffer, sizeof(buffer), "%s", title.kicker.c_str());
+        inspector_label("kicker", width);
+        if (ImGui::InputText("##seq_t_kicker", buffer, sizeof(buffer)))
+        {
+            title.kicker = buffer;
+        }
+        track_edit();
+        inspector_label("accent", width);
+        ImGui::ColorEdit3("##seq_t_accent", &title.accent.x, ImGuiColorEditFlags_NoInputs);
+        track_edit();
+    }
+
     ImGui::Dummy(ImVec2(0.0f, 8.0f));
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.45f, 0.18f, 0.18f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.60f, 0.22f, 0.22f, 1.0f));
-    if (ImGuiSp::button("delete", ImVec2(width, 0.0f)))
+    if (danger_button("delete title", ImVec2(width, 0.0f)))
     {
         RemoveTitle(m_title_selected);
     }
-    ImGui::PopStyleColor(2);
 }
 
 void Sequencer::DrawCinematicInspector(float width)
@@ -1803,9 +2065,6 @@ void Sequencer::DrawCinematicInspector(float width)
     }
     if (ImGuiSp::button("+ marker at playhead", ImVec2(width, 0.0f)))
     {
-        Marker marker;
-        marker.time = SnapTime(max(m_time, 0.0f));
-        marker.name = "m" + to_string(m_cinematic.markers.size() + 1);
-        SetMarker(marker);
+        AddMarkerAtPlayhead();
     }
 }

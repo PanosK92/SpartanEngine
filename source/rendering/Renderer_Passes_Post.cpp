@@ -992,6 +992,7 @@ namespace spartan
             params.emitter_velocity     = emitter->GetEmitterVelocity();
             params.ground_plane         = emitter->GetGroundPlane();
             params.rain_occluded        = emitter->GetRainOccluded() ? 1u : 0u;
+            params.seed_visible         = emitter->GetSeedVisible() ? 1u : 0u;
             const uint64_t owner_id     = emitter->GetEntity()->GetObjectId();
             params.owner_id_low         = static_cast<uint32_t>(owner_id);
             params.owner_id_high        = static_cast<uint32_t>(owner_id >> 32u);

@@ -109,6 +109,10 @@ namespace spartan
         bool dirty = false;
         mutex buffer_mutex;
 
+        // committed vertex and index counts mirrored for lock free residency checks from draw preparation threads
+        atomic<uint32_t> resident_vertices{0};
+        atomic<uint32_t> resident_indices{0};
+
         // hard-cap learned from previous oom failures, prevents retrying ever-larger allocations every frame
         // once set, AppendInstances drops new instances and BuildIfDirty stops attempting to grow past it
         uint32_t instance_capacity_failed_at = 0;
@@ -768,6 +772,8 @@ namespace spartan
         {
             upload_tail(impostor_texels, impostor_texel_buffer.get());
         }
+        resident_vertices.store(vertices.committed, memory_order_release);
+        resident_indices.store(indices.committed, memory_order_release);
 
         dirty = false;
     }
@@ -786,6 +792,11 @@ namespace spartan
         for (const auto& [offset, data] : instance_writes) bytes += data.capacity() * sizeof(Instance);
         for (const auto& [offset, history] : vertex_history) bytes += history.pose.capacity() * sizeof(RHI_Vertex_PosTexNorTan);
         return bytes;
+    }
+
+    bool GeometryBuffer::IsResident(uint32_t vertex_end, uint32_t index_end)
+    {
+        return vertex_end <= resident_vertices.load(memory_order_acquire) && index_end <= resident_indices.load(memory_order_acquire);
     }
 
     uint64_t GeometryBuffer::GetPendingUploadBytes()
@@ -861,6 +872,8 @@ namespace spartan
         first_history_vertex.store(UINT32_MAX, memory_order_release);
         vertices.reset();
         indices.reset();
+        resident_vertices.store(0, memory_order_release);
+        resident_indices.store(0, memory_order_release);
         meshlet_bounds.reset();
         meshlet_vertices.reset();
         meshlet_micro_indices.reset();

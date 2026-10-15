@@ -16,12 +16,13 @@ namespace spartan::road_surface
 
     // The application supplies authored road styling; the spline only builds geometry.
     inline bool (*enabled)(Entity*) = nullptr;
-    inline std::shared_ptr<Material> (*material_for)(int) = nullptr;
+    // width is the asphalt width in metres, 0 where it varies along the road
+    inline std::shared_ptr<Material> (*material_for)(int,float) = nullptr;
     inline bool Enabled(Entity* entity) { return enabled && material_for && enabled(entity); }
-    inline std::shared_ptr<Material> MaterialFor(int layer) { return material_for ? material_for(layer) : nullptr; }
+    inline std::shared_ptr<Material> MaterialFor(int layer,float width) { return material_for ? material_for(layer,width) : nullptr; }
 
     inline void SetLayer(Entity* parent,const char* name,
-        const std::shared_ptr<Mesh>& mesh,int layer)
+        const std::shared_ptr<Mesh>& mesh,int layer,float width)
     {
         Entity* child=parent->GetChildByName(name);
         if (child) {child->RemoveComponent<Physics>();child->RemoveComponent<Render>();}
@@ -35,7 +36,7 @@ namespace spartan::road_surface
         mesh->SetObjectName(std::string(name)+"_"+std::to_string(parent->GetObjectId()));
         mesh->CreateGpuBuffers();
         Render* render=child->AddComponent<Render>();
-        render->SetOwnedMesh(mesh);render->SetMaterial(MaterialFor(layer));
+        render->SetOwnedMesh(mesh);render->SetMaterial(MaterialFor(layer,width));
         render->SetFlag(RenderFlags::ExcludeFromTerrainBlend,layer!=2);
         if (layer==1) render->SetFlag(RenderFlags::CastsShadows,false);
         if (layer==2)
@@ -49,7 +50,7 @@ namespace spartan::road_surface
     // asphalt repeat. Clip each dash to the final trimmed road segment so the
     // junction remains clear. The surface grain comes from the asphalt normal.
     inline void Markings(const SplineFrame& a,const SplineFrame& b,float width_a,float width_b,
-        std::vector<RHI_Vertex_PosTexNorTan>& vertices,std::vector<uint32_t>& indices)
+        std::vector<RHI_Vertex_PosTexNorTan>& vertices,std::vector<uint32_t>& indices,bool skip_left=false,bool skip_right=false)
     {
         const float span=b.distance-a.distance;
         if (span<.0001f) return;
@@ -117,6 +118,7 @@ namespace spartan::road_surface
             for (int dash=static_cast<int>(floorf(a.distance/9));dash*9<b.distance;++dash)
                 ribbon(dash*9.0f,dash*9.0f+3.0f,0,.13f);
         }
-        for (float side:{-1.0f,1.0f}) ribbon(a.distance,b.distance,side,.12f);
+        for (float side:{-1.0f,1.0f})
+            if (!(side<0 ? skip_left : skip_right)) ribbon(a.distance,b.distance,side,.12f);
     }
 }

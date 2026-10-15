@@ -5372,7 +5372,13 @@ namespace car
         // Tire damping alone needs some slip to oppose gravity on a slope.
         // Hold a slow, supported empty car in place while its suspension settles.
         // Vertical travel, pitch and roll remain free, including during a spawn drop.
-        bool hold = parked && body->getLinearVelocity().magnitudeSquared() < 1.0f;
+        // A driven car stopped on its brakes is held the same way. The front axle on the service brake and the
+        // rear on service plus handbrake otherwise wind their static tire springs up against each other and
+        // rock the car back and forth without ever settling.
+        const bool brakes_held = (input.handbrake > 0.5f || input.brake > 0.5f) && !is_brake_reverse_throttle()
+            && (input.throttle <= spec.input_deadzone || is_in_neutral());
+        const float speed_squared = body->getLinearVelocity().magnitudeSquared();
+        bool hold = (parked && speed_squared < 1.0f) || (brakes_held && speed_squared < 0.35f * 0.35f);
         for (int i = 0; i < wheel_count; ++i)
         {
             hold = hold && wheels[i].grounded

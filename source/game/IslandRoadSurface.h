@@ -17,7 +17,7 @@ namespace spartan::island_road_surface
             && entity->GetParent()->GetObjectName()=="roads";
     }
 
-    inline std::shared_ptr<Material> MaterialFor(int layer)
+    inline std::shared_ptr<Material> BaseMaterial(int layer)
     {
         const char* names[]={"island_asphalt","island_road_paint","island_road_shoulder"};
         auto material=ResourceCache::GetByName<Material>(names[layer]);
@@ -53,4 +53,24 @@ namespace spartan::island_road_surface
         return material;
     }
 
+    // Asphalt and paint get a runtime clone per road width so the shader knows where the
+    // edges are (dust, crumbling, edge cracks). Clones share the packed textures of the
+    // base, so a width costs a material slot, not a 4k repack.
+    inline std::shared_ptr<Material> MaterialFor(int layer,float width)
+    {
+        std::shared_ptr<Material> base=BaseMaterial(layer);
+        const int quarter_metres=static_cast<int>(width*4.0f+0.5f);
+        if (layer==2 || quarter_metres<=0) return base;
+
+        const std::string name=base->GetObjectName()+"_w"+std::to_string(quarter_metres);
+        if (auto variant=ResourceCache::GetByName<Material>(name)) return variant;
+
+        if (base->GetResourceState()==ResourceState::Max) base->PrepareForGpu();
+        if (base->GetResourceState()!=ResourceState::PreparedForGpu) return base;
+
+        std::shared_ptr<Material> variant=base->Clone(name);
+        variant->SetObjectName(name);
+        variant->SetProperty(MaterialProperty::RoadHalfWidth,quarter_metres*.125f);
+        return ResourceCache::Cache(variant);
+    }
 }

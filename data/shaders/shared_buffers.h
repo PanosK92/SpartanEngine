@@ -1235,6 +1235,11 @@ struct EmitterParams
     SHARED_FLOAT  collision_clearance SHARED_DEFAULT(0.0f);
     // weather rain, particles die where the rain occlusion grid says a roof or the ground stops them
     SHARED_UINT   rain_occluded SHARED_DEFAULT(0);
+    // leaf litter may be laid in view, set for the moments after a camera cut
+    SHARED_UINT   seed_visible  SHARED_DEFAULT(0);
+    SHARED_UINT   padding_seed_0 SHARED_DEFAULT(0);
+    SHARED_UINT   padding_seed_1 SHARED_DEFAULT(0);
+    SHARED_UINT   padding_seed_2 SHARED_DEFAULT(0);
     SHARED_UINT   owner_id_low  SHARED_DEFAULT(0);
     SHARED_UINT   owner_id_high SHARED_DEFAULT(0);
     // World-space body wake samples (float4 arrays keep CPU/GPU strides aligned).

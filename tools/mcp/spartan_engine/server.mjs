@@ -2517,8 +2517,9 @@ register_tool(server, "sequencer_get", "Read the sequencer state: duration, loop
 register_tool(
   server,
   "sequencer_set",
-  "Set sequencer duration in seconds, loop flag, playhead time, widget visibility, or preview. preview true keeps the shot under the playhead driving the render camera while paused, so camera shots can be framed with sequencer_set time + screenshot_take. Only the arguments you pass change.",
+  "Set sequencer duration in seconds, loop flag, playhead time, widget visibility, or preview. preview true keeps the shot under the playhead driving the render camera while paused, so camera shots can be framed with sequencer_set time + screenshot_take. file opens another sequence first (a name like plan or sequencer_plan.xml from the project folder, or a path), the same as picking it in the toolbar list or dropping it on the sequencer; the reply lists file and every sequence in the project. A world load returns to the world's own sequencer_<world>.xml. Only the arguments you pass change.",
   {
+    file: z.string().optional(),
     duration: z.number().min(1).max(3600).optional(),
     loop: z.boolean().optional(),
     time: sequencer_time.optional(),
@@ -2613,6 +2614,8 @@ const sequencer_drive_schema = {
   max_lateral_g: z.number().min(0.1).max(2).optional().describe("corner speed limit, the autopilot brakes ahead of corners to respect it, ~0.7 wet, ~1.0 dry"),
   reverse: z.boolean().optional().describe("drive from the spline end toward its start"),
   speed_keys: z.array(z.number()).optional().describe("flat pairs of absolute timeline seconds and target km/h, e.g. [2,0,6,160,9,70]; linear between keys, held past the ends"),
+  rev_keys: z.array(z.number()).optional().describe("flat pairs of absolute timeline seconds and throttle 0-1, e.g. [7,0,7.4,1,8,0.2]; between the first and last key, wherever the speed keys hold the car at 0 and it has stopped, it sits in neutral on the handbrake and revs on the spot, so one event can rev, drive, park and rev again"),
+  burnouts: z.array(z.number()).optional().describe("flat triples of start seconds, end seconds and throttle 0.82-1, e.g. [4,7,1]; while the speed keys hold the car at 0 it does a line lock burnout in first gear (fronts braked, rears spinning, tire smoke) and launches when the span ends and the speed keys rise; wins over rev_keys, [] clears"),
 };
 
 register_tool(
@@ -2635,7 +2638,7 @@ register_tool(
 register_tool(
   server,
   "sequencer_drive_update",
-  "Change any field of an existing drive event by index. speed_keys replaces the whole profile.",
+  "Change any field of an existing drive event by index. speed_keys and rev_keys replace the whole profile.",
   {
     index: z.number().int().min(0),
     start: sequencer_time.optional(),
@@ -2769,7 +2772,7 @@ register_tool(
   [
     "Transitions and titles drawn over the final image, kept in clean captures and renders. Curves: fade (0 clear to 1 solid fade_color) and letterbox (target aspect such as 2.39 or 2.0, below 1 is off; animating from 0 slides the bars in from the screen aspect).",
     "action fade_in / fade_out (time, duration) writes the two fade keys for you, fade_color (color r,g,b 0-1) sets the fade colour (black by default, white for a flash).",
-    "action title (text, start, end or duration, position center / lower_third / top or x,y as screen fractions, large, fade seconds, color) adds a title card, title_update (index + fields), title_remove (index or all).",
+    "action title (text, start, end or duration, position center / lower_third / top or x,y as screen fractions, large, fade seconds, color, style plain / trailer / legend, kicker, accent) adds a title card. style trailer: centered tracked capitals that slowly track out, kicker above in the accent colour, a hairline rule and the text's later lines as a tagline below. style legend: a left aligned caption card at x,y (its top left), accent bar, tracked kicker, the first text line as headline and later lines as body, sliding in from the left, title_update (index + fields), title_remove (index or all).",
     "Use \\n in text for a second line.",
     sequencer_curve_text,
   ].join(" "),
@@ -2784,6 +2787,9 @@ register_tool(
     large: z.boolean().optional().describe("title font size, default true"),
     fade: z.number().min(0).max(10).optional().describe("title fade in and out seconds, default 0.5"),
     color: vector3.optional().describe("title colour or fade_color, rgb 0-1"),
+    style: z.enum(["plain", "trailer", "legend"]).optional().describe("title layout and animation, default plain"),
+    kicker: z.string().optional().describe("small tracked line above the title in the accent colour, trailer and legend styles"),
+    accent: vector3.optional().describe("trailer and legend accent colour (kicker, rule, bar), rgb 0-1"),
     ...sequencer_curve_schema,
   },
   "sequencer_overlay",

@@ -361,6 +361,13 @@ namespace spartan
                 m_retry_time = 1.0f;
                 return;
             }
+            // a sequencer drive or another controller owns the car, launching would teleport it to the grid slot
+            if (car->IsExternallyControlled())
+            {
+                m_status     = "the car is externally controlled";
+                m_retry_time = 1.0f;
+                return;
+            }
             Launch(car);
             return;
         }

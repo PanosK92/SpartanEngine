@@ -18,6 +18,8 @@ Commercial use requires written permission and negotiated payment terms.
 #ifdef _WIN32 // windows
 #include <Windows.h>
 #include <shellapi.h>
+#include <DbgHelp.h>
+#pragma comment(lib, "dbghelp.lib")
 #endif
 
 // force the working directory to the executable's own, the shell can hand us a different cwd
@@ -32,9 +34,27 @@ static void set_working_directory_to_executable()
 }
 
 #ifdef _WIN32 // windows
+// the system crash dump is a minidump without the heap, a use after free cannot be traced from it
+static LONG WINAPI write_full_crash_dump(EXCEPTION_POINTERS* exception)
+{
+    HANDLE file = CreateFileA("crash_full.dmp", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file != INVALID_HANDLE_VALUE)
+    {
+        MINIDUMP_EXCEPTION_INFORMATION info = {};
+        info.ThreadId          = GetCurrentThreadId();
+        info.ExceptionPointers = exception;
+        info.ClientPointers    = FALSE;
+        const MINIDUMP_TYPE type = static_cast<MINIDUMP_TYPE>(MiniDumpWithFullMemory | MiniDumpWithHandleData | MiniDumpWithThreadInfo | MiniDumpWithUnloadedModules);
+        MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), file, type, &info, nullptr, nullptr);
+        CloseHandle(file);
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     set_working_directory_to_executable();
+    SetUnhandledExceptionFilter(write_full_crash_dump);
 
     // convert command line to argv-like format
     int argc;

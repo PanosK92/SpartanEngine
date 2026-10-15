@@ -36,6 +36,9 @@ namespace spartan::island_atmosphere
     inline uint32_t sequence = 0;
     inline uint32_t shelter_frames = 0;
     inline Vector3 previous_viewer = Vector3::Zero;
+    inline Vector3 previous_forward = Vector3::Forward;
+    inline Vector3 motion = Vector3::Zero;
+    inline uint32_t seed_visible_frames = 0;
     inline bool viewer_known = false;
     inline std::vector<BoundingBox> canopies, interiors;
 
@@ -61,6 +64,8 @@ namespace spartan::island_atmosphere
         sample_clock = clock = 0;
         sequence = 0;
         shelter_frames = 0;
+        motion = Vector3::Zero;
+        seed_visible_frames = 0;
         viewer_known = false;
         canopies.clear();
         interiors.clear();
@@ -117,6 +122,14 @@ namespace spartan::island_atmosphere
             {
                 const BoundingBox& canopy = canopies[std::min(static_cast<size_t>(Random() * canopies.size()), canopies.size() - 1)];
                 position = canopy.GetCenter();
+            }
+            else if (kind == Litter && ahead.LengthSquared() > 6 * 6)
+            {
+                // litter in view is only laid beyond 35 m, so a travelling camera has its carpet laid on the road ahead
+                const Vector3 along = ahead.Normalized();
+                const Vector3 across(-along.z, 0, along.x);
+                radius   = 16.0f;
+                position = viewer + along * (46.0f + Random() * 14.0f) + across * ((Random() - 0.5f) * 14.0f);
             }
             else
             {
@@ -179,17 +192,26 @@ namespace spartan::island_atmosphere
             ++shelter_frames;
             return;
         }
-        const Vector3 viewer = World::GetCamera()->GetEntity()->GetPosition();
-        Vector3 ahead = viewer_known && dt > 0.001f ? (viewer - previous_viewer) / dt : Vector3::Zero;
+        const Vector3 viewer  = World::GetCamera()->GetEntity()->GetPosition();
+        const Vector3 forward = World::GetCamera()->GetEntity()->GetForward();
+        // a cut moves the camera further than its own motion carries it in a frame, or turns it at once
+        const bool turned = forward.LengthSquared() > 0.5f && previous_forward.LengthSquared() > 0.5f && forward.Dot(previous_forward) < 0.8f;
+        const bool cut = !viewer_known || (viewer - previous_viewer - motion * dt).Length() > 4.0f || turned;
+        Vector3 ahead = !cut && dt > 0.001f ? (viewer - previous_viewer) / dt : Vector3::Zero;
         ahead.y = 0;
         if (ahead.LengthSquared() > 45 * 45) ahead = ahead.Normalized() * 45;
-        previous_viewer = viewer;
+        motion = cut ? Vector3::Zero : motion + (ahead - motion) * (1 - expf(-std::clamp(dt, 0.0f, 0.1f) * 4));
+        previous_viewer  = viewer;
+        previous_forward = forward;
         viewer_known = true;
         dt = std::clamp(dt, 0.0f, 0.1f);
         clock += dt;
         sample_clock -= dt;
-        bool sample = sample_clock <= 0;
+        bool sample = sample_clock <= 0 || cut;
         if (sample) { sample_clock = 0.5f; SampleNeighborhood(viewer); }
+        if (cut) seed_visible_frames = 4;
+        const bool moving = motion.LengthSquared() > 6 * 6;
+        const Vector3 along = moving ? motion.Normalized() : Vector3::Zero;
         if (!root_id)
         {
             Entity* root = World::CreateEntity();
@@ -228,12 +250,17 @@ namespace spartan::island_atmosphere
             // Do not wait a whole particle lifetime to replenish the view at racing
             // speed. Old particles keep simulating in the same fixed GPU slice.
             const float recycle_distance = kind == Litter ? 58.0f : (i / KindCount < 4 ? 38.0f : 85.0f);
-            if (patch.placed && (patch.position - viewer).LengthSquared() > recycle_distance * recycle_distance)
+            // the carpet laid ahead is relaid once the camera has passed it
+            const bool passed = moving && kind == Litter && (patch.position - viewer).Dot(along) < -10.0f;
+            if (patch.placed && ((patch.position - viewer).LengthSquared() > recycle_distance * recycle_distance || passed))
             {
                 patch.placed = false;
                 patch.rate = 0;
             }
-            if (!patch.placed && sample) Place(patch, kind, terrain, viewer, ahead);
+            // after a cut the carpet around the new view is filled at once, the frame changed anyway
+            if (patch.placed && cut && kind == Litter) patch.warm_start = true;
+            if (!patch.placed && sample) Place(patch, kind, terrain, viewer, motion);
+            if (kind == Litter) patch.particles->SetSeedVisible(seed_visible_frames > 0);
             float distance = (patch.position - viewer).Length();
             float target = patch.placed && !indoors ?
                 patch.authored_rate * patch.weight * (1 - Smooth(65, 100, distance)) * (kind == Leaves || kind == Litter ? 0.6f + 0.4f * dry : dry) : 0;
@@ -250,5 +277,6 @@ namespace spartan::island_atmosphere
             if (target == 0 && patch.rate < 0.01f) patch.rate = 0;
             patch.particles->SetEmissionRate(patch.rate);
         }
+        if (seed_visible_frames > 0) --seed_visible_frames;
     }
 }

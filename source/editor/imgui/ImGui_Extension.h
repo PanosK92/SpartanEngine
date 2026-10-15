@@ -52,6 +52,7 @@ namespace ImGuiSp
         "Material",
         "Lua",
         "Prefab",
+        "Sequence",
         "Undefined",
     };
 
@@ -64,6 +65,7 @@ namespace ImGuiSp
         Material,
         Lua,
         Prefab,
+        Sequence,
         Undefined
     };
 

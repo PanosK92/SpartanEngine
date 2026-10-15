@@ -131,6 +131,28 @@ namespace spartan
         Max
     };
 
+    // how a sequencer title card is laid out and animated over the final image
+    enum class CinematicTitleStyle : uint8_t
+    {
+        Plain,   // centered lines with a drop shadow
+        Trailer, // wide tracked capitals that slowly track out, an accent kicker above, a rule and a tagline below
+        Legend   // left aligned caption card: accent bar, tracked kicker, headline, body lines, slides in from the left
+    };
+
+    struct CinematicTitle
+    {
+        const char* text        = nullptr; // first line is the headline, later lines are the tagline or body
+        const char* kicker      = nullptr; // small tracked line above the headline, may be empty
+        math::Vector2 position  = math::Vector2(0.5f, 0.5f); // screen fractions, the center for plain and trailer, the top left for legend
+        math::Vector3 color     = math::Vector3::One;
+        math::Vector3 accent    = math::Vector3(0.95f, 0.62f, 0.25f);
+        CinematicTitleStyle style = CinematicTitleStyle::Plain;
+        bool large              = true;
+        float age               = 0.0f; // seconds since the title appeared
+        float remaining         = 0.0f; // seconds until it is gone
+        float fade              = 0.5f; // seconds of the entry and exit animation
+    };
+
     namespace Renderer
     {
         void SetSurfaceWater(const SurfaceWater& water);
@@ -254,6 +276,8 @@ namespace spartan
         void SetCinematicOverlay(float fade, const math::Vector3& fade_color, float letterbox_aspect);
         // title text, kept in clean captures unlike every other text, position is the center in screen fractions
         void DrawCinematicText(const char* text, const math::Vector2& position_screen_percentage, float alpha, bool large, const math::Vector3& color);
+        // a styled title card, animated from its age and remaining time
+        void DrawCinematicTitle(const CinematicTitle& title);
         // the next frame is a hard cut, temporal history and motion vectors must not bridge it
         void NotifyCameraCut();
         // with r.screenshot_ui set, the editor records its final ui frame into this target, null when no such capture is pending

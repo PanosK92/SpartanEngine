@@ -182,6 +182,9 @@ namespace spartan
         uint32_t GetGlobalMeshletVertexOffset() const    { return m_global_meshlet_vertex_offset; }
         uint32_t GetGlobalMeshletMicroOffset() const     { return m_global_meshlet_micro_offset; }
 
+        // the whole global vertex and index slice is on the gpu, draws and blas builds must wait for it
+        bool IsGpuResident() const;
+
         // root entity
         Entity* GetRootEntity() { return m_root_entity; }
         void SetRootEntity(Entity* entity) { m_root_entity = entity; }

@@ -108,6 +108,7 @@ namespace spartan
         IsFoliage,                  // thin leaves/petals, allows light through the back side
         IsRoadSurface,              // subtle world-space asphalt weathering
         IsRoadPaint,                // worn mineral road paint
+        RoadHalfWidth,              // half the asphalt width in metres, lets the road shader find the edges
     
         // sentinel
         Max                         // total number of properties

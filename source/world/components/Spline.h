@@ -162,7 +162,7 @@ namespace spartan
         float GetSidewalkWidthAt(float t) const;
         const std::vector<math::Vector2>& GetSidewalkRanges() const { return m_sidewalk_ranges; }
         void SetSidewalkRanges(const std::vector<math::Vector2>& ranges) { m_sidewalk_ranges = ranges; }
-        bool IsJunctionSegment(size_t i) const { return i < m_junction_segments.size() && m_junction_segments[i]; }
+        bool IsJunctionSegment(size_t i) const { return i < m_junction_segments.size() && m_junction_segments[i] != 0; }
         void SetSidewalkWidth(float width)            { m_sidewalk_width = width; }
         float GetCurbHeight() const                   { return m_curb_height; }
         void SetCurbHeight(float height)              { m_curb_height = height; }
@@ -304,6 +304,8 @@ namespace spartan
         void GenerateMesh(const std::vector<SplineFrame>& frames, const std::vector<math::Vector2>& profile_points, bool close_profile);
         void ExtrudeRoadGeometry(const std::vector<SplineFrame>& frames, const std::vector<math::Vector2>& profile_points, bool close_profile, float v_period, RoadGeometry& geometry) const;
         void AppendJunctionGeometry(RoadGeometry& geometry) const;
+        // the entity's world xz offset within one asphalt repeat, aligns junction patch uvs to the world
+        math::Vector2 JunctionUvSnap() const;
         void AttachSidewalk(const std::shared_ptr<Mesh>& sidewalk_mesh);
 
         // resolve the runtime source spline entity pointer from the stored id
@@ -435,7 +437,8 @@ namespace spartan
         std::vector<SplineFrame> m_base_road_frames;
         std::vector<SplineFrame> m_generated_road_frames;
         std::vector<SplineFrame> m_junction_frames;
-        std::vector<bool> m_junction_segments;
+        // 0 off a junction, else 1 | 2 a road joins on the left | 4 on the right | 8 this road ends here
+        std::vector<uint8_t> m_junction_segments;
         struct JunctionPatch
         {
             math::Vector3 center;

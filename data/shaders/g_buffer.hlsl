@@ -706,6 +706,16 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     {
         float3 normal_sample  = sample_texture(vertex, material_texture_index_normal).xyz;
         float3 tangent_normal = normalize(unpack(normal_sample));
+
+        // the island asphalt normal map bulges like a pillow across each tile, which shows as a
+        // gradient with a straight seam every repeat, so its 16x16 texel low pass is removed
+        if (material.flags & ((1u << 22) | (1u << 23)))
+        {
+            uint width, height, levels;
+            GET_TEXTURE(material_texture_index_normal).GetDimensions(0, width, height, levels);
+            float3 low_pass    = GET_TEXTURE(material_texture_index_normal).SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), vertex.uv_misc.xy, max(float(levels) - 5.0f, 0.0f)).xyz;
+            tangent_normal.xy -= unpack(low_pass).xy;
+        }
     
         // reconstruct z for bc5 two-channel normal maps
         tangent_normal.z = fast_sqrt(max(0.0f, 1.0f - dot(tangent_normal.xy, tangent_normal.xy)));
@@ -758,9 +768,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     }
 
     float road_footprint = max(length(dpdx_world), length(dpdy_world));
-    float road_macro     = road_macro_height(material.flags, height_map);
-    float road_paint     = road_weathering(material.flags, position_world, vertex.uv_misc.xy, height_map, albedo.rgb, roughness, road_footprint);
-    road_surface_detail(material.flags, position_world, vertex.uv_misc.xy, normalize(vertex.normal), height_map, road_paint, albedo.rgb, normal, occlusion);
+    RoadWear road_wear_state = road_wear(material.flags, position_world, vertex.uv_misc.xy, normalize(vertex.normal), normalize(vertex.tangent), road_footprint);
+    float road_macro     = road_macro_height(material.flags, road_wear_state, height_map);
+    float road_paint     = road_weathering(material.flags, road_wear_state, position_world, vertex.uv_misc.xy, height_map, albedo.rgb, roughness, road_footprint);
+    road_surface_detail(material.flags, road_wear_state, position_world, vertex.uv_misc.xy, normalize(vertex.normal), height_map, road_paint, albedo.rgb, normal, occlusion);
 
     // fft ocean shading, normal from the displaced surface so lighting follows the swell
     if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
