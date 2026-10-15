@@ -1190,7 +1190,7 @@ namespace spartan
         {
             denoiser_id = nrd_common::id_gi;
             nrd::ReblurSettings reblur = {};
-            nrd_common::fill_preset_gi(reblur, common::cb_frame->delta_time);
+            nrd_common::fill_preset_gi(reblur, common::cb_frame->delta_time_real);
             if (pool.integration.SetDenoiserSettings(denoiser_id, &reblur) != nrd::Result::SUCCESS)
             {
                 return false;
@@ -1202,7 +1202,7 @@ namespace spartan
         {
             denoiser_id = nrd_common::id_reflections;
             nrd::ReblurSettings reblur = {};
-            nrd_common::fill_preset_reflections(reblur, common::cb_frame->delta_time);
+            nrd_common::fill_preset_reflections(reblur, common::cb_frame->delta_time_real);
             if (pool.integration.SetDenoiserSettings(denoiser_id, &reblur) != nrd::Result::SUCCESS)
             {
                 return false;

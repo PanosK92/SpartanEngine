@@ -28,6 +28,9 @@ namespace spartan
         // spread execution of a given function across all available threads
         static void ParallelLoop(std::function<void(uint32_t work_index_start, uint32_t work_index_end)>&& function, const uint32_t work_total);
 
+        // memcpy that splits multi-megabyte copies across the pool, inline on pool workers
+        static void ParallelCopy(void* destination, const void* source, size_t size);
+
         // wait for all threads to finish work
         static void Flush(bool remove_queued = false);
 

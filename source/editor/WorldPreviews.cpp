@@ -367,7 +367,7 @@ void WorldPreviews::Tick()
         return;
     }
 
-    preview_request.capture_delay_remaining_sec -= spartan::Timer::GetDeltaTimeSec();
+    preview_request.capture_delay_remaining_sec -= spartan::Timer::GetDeltaTimeRealSec();
     if (preview_request.capture_delay_remaining_sec > 0.0)
     {
         return;

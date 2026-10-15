@@ -13,6 +13,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_CommandList.h"
 #include "../RHI_Queue.h"
 #include "D3D12_Internal.h"
+#include "../../core/ThreadPool.h"
 #include <wrl/client.h>
 //================================
 
@@ -333,7 +334,7 @@ namespace spartan
                 static_cast<uint64_t>(m_offset) + upload_size <= m_object_size,
                 ("buffer \"" + GetObjectName() + "\" was handed more data than it can hold").c_str()
             );
-            memcpy(static_cast<uint8_t*>(m_data_gpu) + m_offset, data_cpu, upload_size);
+            ThreadPool::ParallelCopy(static_cast<uint8_t*>(m_data_gpu) + m_offset, data_cpu, upload_size);
 
             // upload-heap writes become visible to the gpu at the next ExecuteCommandLists boundary, no barrier needed
             return;

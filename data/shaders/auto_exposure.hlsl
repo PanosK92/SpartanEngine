@@ -122,7 +122,7 @@ void main_cs(uint group_index : SV_GroupIndex)
     float alpha            =
         adaptation_speed <= 0.0f ?
         1.0f :
-        1.0f - exp(-speed * buffer_frame.delta_time);
+        1.0f - exp(-speed * buffer_frame.delta_time_real);
     float exposure         = exp2(lerp(log2(prev_exposure), log2(target_exposure), alpha));
 
     tex_uav[uint2(0, 0)] = float4(exposure, exposure, exposure, 1.0f);

@@ -11,9 +11,11 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../car/CarPhysics.h"
 #endif
 #include "Sequencer.h"
+#include "SequencerCommon.h"
 #include <algorithm>
 #include <thread>
 #include <chrono>
+#include <filesystem>
 #include "world/World.h"
 #include "world/Entity.h"
 #include "world/components/Camera.h"
@@ -42,14 +44,8 @@ using namespace spartan;
 using namespace spartan::math;
 //======================
 
-namespace
+namespace sequencer_common
 {
-    const float ruler_height  = 24.0f;
-    const float track_height  = 40.0f;
-    const float min_event_gap = 0.05f;
-    const float edge_grab_px  = 6.0f;
-    const float label_width   = 72.0f;
-
     // below this speed the handbrake holds the car, the automatic gearbox reverses on the brake pedal at rest
     const float drive_hold_speed = 1.5f;
     // how many png encodes may queue before a recording waits for them
@@ -330,6 +326,8 @@ namespace
     }
 }
 
+using namespace sequencer_common;
+
 namespace
 {
     // snapshot based undo step, restores the whole sequencer state on apply or revert
@@ -358,7 +356,10 @@ bool Sequencer::CameraEvent::operator==(const CameraEvent& other) const
         position_start == other.position_start && position_end == other.position_end &&
         look_start == other.look_start && look_end == other.look_end &&
         fov_start == other.fov_start && fov_end == other.fov_end && aperture == other.aperture &&
-        roll == other.roll && shake == other.shake && lag == other.lag && ease == other.ease;
+        roll == other.roll && shake == other.shake && lag == other.lag && ease == other.ease &&
+        move == other.move && orbit_radius == other.orbit_radius && orbit_height == other.orbit_height &&
+        orbit_angle_start == other.orbit_angle_start && orbit_angle_end == other.orbit_angle_end && orbit_rise == other.orbit_rise &&
+        path_entity_id == other.path_entity_id && path_start == other.path_start && path_end == other.path_end && blend_in == other.blend_in;
 }
 
 bool Sequencer::DriveEvent::operator==(const DriveEvent& other) const
@@ -719,6 +720,8 @@ Sequencer::Snapshot Sequencer::GetSnapshot() const
     snapshot.events        = m_events;
     snapshot.spline_events = m_spline_events;
     snapshot.drive_events  = m_drive_events;
+    snapshot.cinematic     = m_cinematic;
+    snapshot.time_scale    = m_applied_time_scale;
     snapshot.render        = m_render_status;
     snapshot.duration      = m_duration;
     snapshot.time          = m_time;
@@ -745,7 +748,7 @@ void Sequencer::OnWorldTicked()
         return;
     }
 
-    const float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
+    const float delta_time = static_cast<float>(Timer::GetDeltaTimeRealSec());
     const bool frozen      = Engine::IsFlagSet(EngineMode::Playing) && Engine::IsFlagSet(EngineMode::Paused);
     const bool waiting     = !frozen && WaitForDrives(delta_time);
     if (m_playing && !m_skip_advance && !frozen && !waiting)
@@ -772,6 +775,7 @@ void Sequencer::OnWorldTicked()
     {
         TickRender();
     }
+    TickScrubCapture();
 
     // playback that ran off the end hands the cars back
     if (!m_playing && !m_render_status.active && any_of(m_drive_runtime.begin(), m_drive_runtime.end(), [](const DriveRuntime& r) { return r.staged; }))
@@ -783,6 +787,7 @@ void Sequencer::OnWorldTicked()
 void Sequencer::Evaluate(float delta_time)
 {
     const bool previewing = m_playing || m_scrubbing || m_preview || m_render_status.active;
+    EvaluateTracks(previewing);
     if (!previewing)
     {
         if (m_was_previewing)
@@ -808,7 +813,8 @@ void Sequencer::Evaluate(float delta_time)
         }
     }
 
-    EvaluateDrives(delta_time);
+    // the autopilot integrates in simulation time so slow motion slows its steering and speed tracking with the cars
+    EvaluateDrives(delta_time * m_applied_time_scale);
 
     const int index = GetEventIndexAtTime(max(m_time, 0.0f));
     const bool cut  = index != m_last_event;
@@ -827,8 +833,9 @@ void Sequencer::Evaluate(float delta_time)
 void Sequencer::EvaluateCamera(int index, bool cut)
 {
     const CameraEvent& event = m_events[index];
+    const bool animated      = IsAnimated(event);
     Entity* camera           = World::GetEntityById(event.camera_entity_id);
-    if (!camera && event.rig)
+    if (!camera && animated)
     {
         // an animated shot owns no pose of its own, so any camera will do when the one it was authored with is gone
         camera = GetOrCreateShotCamera();
@@ -838,17 +845,18 @@ void Sequencer::EvaluateCamera(int index, bool cut)
     {
         return;
     }
-    if (cut)
+
+    // a blended shot eases in from wherever the previous shot is, so there is no cut for the renderer's history to drop
+    const bool blending = animated && event.blend_in > 0.0f && index > 0 && m_time < event.time + event.blend_in;
+    if (cut && (!blending || m_last_event == -1))
     {
         Renderer::NotifyCameraCut();
     }
 
-    Entity* target = GetMovingEntity(World::GetEntityById(event.target_entity_id));
-
     // legacy cut, the camera keeps its pose and pans to keep its target in view
-    if (!event.rig)
+    if (!animated)
     {
-        if (target)
+        if (Entity* target = GetMovingEntity(World::GetEntityById(event.target_entity_id)))
         {
             Vector3 direction = target->GetPosition() - camera->GetPosition();
             if (direction.LengthSquared() > 0.0f)
@@ -864,9 +872,71 @@ void Sequencer::EvaluateCamera(int index, bool cut)
         return;
     }
 
+    ShotPose pose = EvaluateShotPose(event, index, m_time, cut, true, camera);
+    if (blending)
+    {
+        // the previous shot keeps moving through the blend, sampled at the current time past its own end
+        const CameraEvent& previous = m_events[index - 1];
+        Entity* previous_camera     = World::GetEntityById(previous.camera_entity_id);
+        ShotPose from;
+        bool from_valid = false;
+        if (IsAnimated(previous))
+        {
+            from       = EvaluateShotPose(previous, index - 1, m_time, false, false, previous_camera ? previous_camera : camera);
+            from_valid = true;
+        }
+        else if (previous_camera)
+        {
+            from.position = previous_camera->GetPosition();
+            from.rotation = previous_camera->GetRotation();
+            if (Entity* target = GetMovingEntity(World::GetEntityById(previous.target_entity_id)))
+            {
+                const Vector3 direction = target->GetPosition() - from.position;
+                if (direction.LengthSquared() > 1e-6f)
+                {
+                    from.rotation = Quaternion::FromLookRotation(direction.Normalized(), Vector3::Up);
+                }
+            }
+            if (Camera* component = previous_camera->GetComponent<Camera>())
+            {
+                from.fov = component->GetFovHorizontalDeg();
+            }
+            from_valid = true;
+        }
+        if (from_valid)
+        {
+            const float w = apply_ease(ShotEase::InOut, (m_time - event.time) / event.blend_in);
+            pose.position = Vector3::Lerp(from.position, pose.position, w);
+            pose.rotation = Quaternion::Lerp(from.rotation, pose.rotation, w);
+            if (from.fov > 0.0f && pose.fov > 0.0f)
+            {
+                pose.fov = from.fov + (pose.fov - from.fov) * w;
+            }
+        }
+    }
+
+    camera->SetPosition(pose.position);
+    camera->SetRotation(pose.rotation);
+    if (Camera* component = camera->GetComponent<Camera>())
+    {
+        if (pose.fov > 0.0f)
+        {
+            component->SetFovHorizontalDeg(pose.fov);
+        }
+        if (event.aperture > 0.0f)
+        {
+            component->SetAperture(event.aperture);
+        }
+        component->RefreshMatrices();
+    }
+}
+
+Sequencer::ShotPose Sequencer::EvaluateShotPose(const CameraEvent& event, int index, float time, bool cut, bool stateful, Entity* camera)
+{
     const float next_time = index + 1 < static_cast<int>(m_events.size()) ? m_events[index + 1].time : m_duration;
     const float span      = max(next_time - event.time, 0.001f);
-    const float u         = apply_ease(event.ease, (m_time - event.time) / span);
+    const float u         = apply_ease(event.ease, (time - event.time) / span);
+    Entity* target        = GetMovingEntity(World::GetEntityById(event.target_entity_id));
 
     // the frame positions are authored in
     Vector3 origin      = Vector3::Zero;
@@ -883,23 +953,89 @@ void Sequencer::EvaluateCamera(int index, bool cut)
         {
             // a camera car follows the heading with some slack, swinging out on corner entry
             float yaw = heading_yaw(anchor->GetForward());
-            const float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
-            if (event.lag > 0.0f && !cut)
+            if (stateful)
             {
-                const float k = 1.0f - expf(-delta_time / event.lag);
-                m_lag_yaw    += remainderf(yaw - m_lag_yaw, 2.0f * pi) * k;
+                const float delta_time = static_cast<float>(Timer::GetDeltaTimeRealSec());
+                if (event.lag > 0.0f && !cut)
+                {
+                    const float k = 1.0f - expf(-delta_time / event.lag);
+                    m_lag_yaw    += remainderf(yaw - m_lag_yaw, 2.0f * pi) * k;
+                }
+                else
+                {
+                    m_lag_yaw = yaw;
+                }
+                yaw = m_lag_yaw;
             }
-            else
-            {
-                m_lag_yaw = yaw;
-            }
-            frame = Quaternion::FromAxisAngle(Vector3::Up, m_lag_yaw);
+            frame = Quaternion::FromAxisAngle(Vector3::Up, yaw);
         }
     }
 
-    const Vector3 position = origin + frame * Vector3::Lerp(event.position_start, event.position_end, u);
-    const Vector3 look_local = Vector3::Lerp(event.look_start, event.look_end, u);
-    const Vector3 look       = target ? target->GetPosition() + target->GetRotation() * look_local : origin + frame * look_local;
+    const Vector3 offset_local = Vector3::Lerp(event.position_start, event.position_end, u);
+    const Vector3 look_local   = Vector3::Lerp(event.look_start, event.look_end, u);
+    Vector3 position           = origin + frame * offset_local;
+    Vector3 look               = target ? target->GetPosition() + target->GetRotation() * look_local : origin + frame * look_local;
+    float fov                  = 0.0f;
+    if (event.fov_start > 0.0f)
+    {
+        const float fov_end = event.fov_end > 0.0f ? event.fov_end : event.fov_start;
+        fov                 = event.fov_start + (fov_end - event.fov_start) * u;
+    }
+
+    if (event.move == ShotMove::Orbit)
+    {
+        // circles a center that follows the target's heading, so a frozen car can be swept around like bullet time
+        float base_yaw = 0.0f;
+        Vector3 center = Vector3::Zero;
+        if (target)
+        {
+            base_yaw = heading_yaw(target->GetForward());
+            center   = target->GetPosition() + Quaternion::FromAxisAngle(Vector3::Up, base_yaw) * look_local;
+        }
+        else
+        {
+            base_yaw = anchor && event.space != ShotSpace::World ? heading_yaw(frame * Vector3::Forward) : 0.0f;
+            center   = origin + frame * look_local;
+        }
+        const float angle = base_yaw - (event.orbit_angle_start + (event.orbit_angle_end - event.orbit_angle_start) * u) * deg_to_rad;
+        position          = center + Vector3(sinf(angle), 0.0f, cosf(angle)) * event.orbit_radius + Vector3::Up * (event.orbit_height + event.orbit_rise * u);
+        look              = center;
+    }
+    else if (event.move == ShotMove::DollyZoom)
+    {
+        // the fov follows the subject distance so the subject keeps its framing while the background stretches
+        const Vector3 position_first = origin + frame * event.position_start;
+        const Vector3 look_first     = target ? target->GetPosition() + target->GetRotation() * event.look_start : origin + frame * event.look_start;
+        const float distance_first   = Vector3::Distance(position_first, look_first);
+        const float distance         = Vector3::Distance(position, look);
+        const float fov_first        = (event.fov_start > 0.0f ? event.fov_start : 60.0f) * deg_to_rad;
+        if (distance_first > 0.01f && distance > 0.01f)
+        {
+            fov = clamp(2.0f * atanf(distance_first * tanf(fov_first * 0.5f) / distance) * rad_to_deg, 5.0f, 150.0f);
+        }
+    }
+    else if (event.move == ShotMove::Path)
+    {
+        Entity* path_entity = World::GetEntityById(event.path_entity_id);
+        Spline* spline      = path_entity ? path_entity->GetComponent<Spline>() : nullptr;
+        if (spline && spline->GetControlPointCount() >= 2)
+        {
+            const float t   = clamp(event.path_start + (event.path_end - event.path_start) * u, 0.0f, 1.0f);
+            Vector3 tangent = spline->GetTangent(t);
+            if (event.path_end < event.path_start)
+            {
+                tangent = tangent * -1.0f;
+            }
+            tangent.y = 0.0f;
+            tangent   = tangent.LengthSquared() > 1e-8f ? tangent.Normalized() : Vector3::Forward;
+            const Quaternion path_frame = Quaternion::FromLookRotation(tangent, Vector3::Up);
+            position = spline->GetPoint(t) + path_frame * offset_local;
+            if (!target)
+            {
+                look = look_local == Vector3::Zero ? position + tangent * 10.0f : position + path_frame * look_local;
+            }
+        }
+    }
 
     Vector3 direction = look - position;
     Quaternion rotation = camera->GetRotation();
@@ -914,7 +1050,7 @@ void Sequencer::EvaluateCamera(int index, bool cut)
     float roll_offset  = event.roll * deg_to_rad;
     if (event.shake > 0.0f)
     {
-        const float t = m_time;
+        const float t = time;
         yaw_offset   += sway(t, 1.3f) * event.shake * 1.4f * deg_to_rad;
         pitch_offset += sway(t * 1.13f, 4.1f) * event.shake * 0.9f * deg_to_rad;
         roll_offset  += sway(t * 0.71f, 7.7f) * event.shake * 0.7f * deg_to_rad;
@@ -929,22 +1065,11 @@ void Sequencer::EvaluateCamera(int index, bool cut)
         rotation = rotation * Quaternion::FromYawPitchRoll(yaw_offset, pitch_offset, roll_offset);
     }
 
-    camera->SetPosition(position);
-    camera->SetRotation(rotation);
-
-    if (Camera* component = camera->GetComponent<Camera>())
-    {
-        if (event.fov_start > 0.0f)
-        {
-            const float fov_end = event.fov_end > 0.0f ? event.fov_end : event.fov_start;
-            component->SetFovHorizontalDeg(event.fov_start + (fov_end - event.fov_start) * u);
-        }
-        if (event.aperture > 0.0f)
-        {
-            component->SetAperture(event.aperture);
-        }
-        component->RefreshMatrices();
-    }
+    ShotPose pose;
+    pose.position = position;
+    pose.rotation = rotation;
+    pose.fov      = fov;
+    return pose;
 }
 
 bool Sequencer::BuildDrivePath(const DriveEvent& event, DriveRuntime& runtime)
@@ -1413,6 +1538,19 @@ bool Sequencer::StartRender(const RenderRequest& request, string& error)
     m_render_request.start   = clamp(request.start, 0.0f, m_duration);
     const float end          = request.end < 0.0f ? m_duration : clamp(request.end, m_render_request.start, m_duration);
     m_render_request.end     = end;
+    const bool capture       = !m_render_request.capture_times.empty();
+    if (capture)
+    {
+        // stills replay the take from the start and only write at the requested moments
+        for (float& time : m_render_request.capture_times)
+        {
+            time = clamp(time, 0.0f, m_duration);
+        }
+        sort(m_render_request.capture_times.begin(), m_render_request.capture_times.end());
+        m_render_request.start  = m_render_request.capture_times.front();
+        m_render_request.end    = m_render_request.capture_times.back();
+        m_render_request.stride = 1;
+    }
     if (m_render_request.directory.empty())
     {
         m_render_request.directory = "sequencer_renders/" + FileSystem::GetFileNameWithoutExtensionFromFilePath(World::GetFilePath());
@@ -1423,22 +1561,24 @@ bool Sequencer::StartRender(const RenderRequest& request, string& error)
     {
         FileSystem::CreateDirectory_(m_render_request.directory);
     }
+    const char* stale_prefix = capture ? "capture_" : "frame_";
     for (const string& file : FileSystem::GetFilesInDirectory(m_render_request.directory))
     {
         const string name = FileSystem::GetFileNameFromFilePath(file);
-        if (name.rfind("frame_", 0) == 0 && FileSystem::GetExtensionFromFilePath(file) == ".png")
+        if (name.rfind(stale_prefix, 0) == 0 && FileSystem::GetExtensionFromFilePath(file) == ".png")
         {
             FileSystem::Delete(file);
         }
     }
 
-    const uint32_t steps = static_cast<uint32_t>(floorf((end - m_render_request.start) * m_render_request.fps + 0.5f)) + 1;
+    const uint32_t steps = static_cast<uint32_t>(floorf((m_render_request.end - m_render_request.start) * m_render_request.fps + 0.5f)) + 1;
 
     m_render_status                = RenderStatus();
     m_render_status.active         = true;
+    m_render_status.capture        = capture;
     m_render_status.fps            = m_render_request.fps;
     m_render_status.directory      = m_render_request.directory;
-    m_render_status.frames_total   = (steps + m_render_request.stride - 1) / m_render_request.stride;
+    m_render_status.frames_total   = capture ? static_cast<uint32_t>(m_render_request.capture_times.size()) : (steps + m_render_request.stride - 1) / m_render_request.stride;
     m_render_frame_index           = 0;
     m_render_save_failures_start   = Renderer::GetScreenshotSaveFailures();
 
@@ -1464,10 +1604,190 @@ void Sequencer::StopRender()
     }
 }
 
+bool Sequencer::HasSimulatedMotion() const
+{
+    // drives are the only thing a jumped playhead cannot reproduce, spline followers and every track are pure functions of time
+    return !m_drive_events.empty();
+}
+
+bool Sequencer::StartCapture(const CaptureRequest& request, string& error)
+{
+    if (m_render_status.active)
+    {
+        error = "a render or capture is already running";
+        return false;
+    }
+    if (request.times.empty())
+    {
+        error = "no capture times were given";
+        return false;
+    }
+    if (request.times.size() > 64)
+    {
+        error = "at most 64 stills per capture";
+        return false;
+    }
+    if (m_events.empty())
+    {
+        error = "there are no camera events to capture";
+        return false;
+    }
+
+    bool simulate = HasSimulatedMotion();
+    if (request.mode == "simulate")
+    {
+        simulate = true;
+    }
+    else if (request.mode == "scrub")
+    {
+        simulate = false;
+    }
+    else if (request.mode != "auto")
+    {
+        error = "mode must be auto, simulate or scrub";
+        return false;
+    }
+
+    const string directory = request.directory.empty() ? "sequencer_renders/" + FileSystem::GetFileNameWithoutExtensionFromFilePath(World::GetFilePath()) + "_capture" : request.directory;
+    if (simulate)
+    {
+        RenderRequest render;
+        render.fps           = request.fps;
+        render.directory     = directory;
+        render.capture_times = request.times;
+        return StartRender(render, error);
+    }
+
+    if (!FileSystem::Exists(directory))
+    {
+        FileSystem::CreateDirectory_(directory);
+    }
+    for (const string& file : FileSystem::GetFilesInDirectory(directory))
+    {
+        const string name = FileSystem::GetFileNameFromFilePath(file);
+        if (name.rfind("capture_", 0) == 0 && FileSystem::GetExtensionFromFilePath(file) == ".png")
+        {
+            FileSystem::Delete(file);
+        }
+    }
+
+    m_scrub_times = request.times;
+    for (float& time : m_scrub_times)
+    {
+        time = clamp(time, 0.0f, m_duration);
+    }
+    m_render_status              = RenderStatus();
+    m_render_status.active       = true;
+    m_render_status.capture      = true;
+    m_render_status.scrubbed     = true;
+    m_render_status.directory    = directory;
+    m_render_status.frames_total = static_cast<uint32_t>(m_scrub_times.size());
+    m_render_save_failures_start = Renderer::GetScreenshotSaveFailures();
+    m_render_request             = RenderRequest();
+    m_render_request.directory   = directory;
+    m_scrub_index                = 0;
+    m_scrub_wait                 = -1;
+    m_scrub_was_preview          = m_preview;
+    m_scrub_was_time             = m_time;
+    m_playing                    = false;
+    m_preview                    = true;
+    Renderer::SetCleanCapture(true);
+    return true;
+}
+
+void Sequencer::TickScrubCapture()
+{
+    if (!m_render_status.active || !m_render_status.scrubbed)
+    {
+        return;
+    }
+    if (m_scrub_index >= m_scrub_times.size())
+    {
+        FinishScrubCapture();
+        return;
+    }
+
+    // jump, then give temporal upscaling and history a few frames to converge on the new view before the still
+    const int settle_frames = 8;
+    if (m_scrub_wait < 0)
+    {
+        m_time       = m_scrub_times[m_scrub_index];
+        m_last_event = -1;
+        m_scrub_wait = settle_frames;
+        return;
+    }
+    if (m_scrub_wait > 0)
+    {
+        m_scrub_wait--;
+        return;
+    }
+
+    char name[32];
+    snprintf(name, sizeof(name), "/capture_%02u.png", static_cast<uint32_t>(m_scrub_index));
+    const string path = m_render_request.directory + name;
+    if (Renderer::Screenshot(path))
+    {
+        m_render_status.frames_written++;
+        m_render_status.files.push_back(filesystem::absolute(path).generic_string());
+        m_render_status.times.push_back(m_time);
+        m_scrub_index++;
+        m_scrub_wait = -1;
+    }
+}
+
+void Sequencer::FinishScrubCapture()
+{
+    Renderer::SetCleanCapture(false);
+    m_render_status.active = false;
+    m_preview              = m_scrub_was_preview;
+    m_time                 = m_scrub_was_time;
+    m_last_event           = -1;
+
+    const auto wait_start = chrono::steady_clock::now();
+    while (Renderer::GetScreenshotSavesInFlight() > 0 && chrono::steady_clock::now() - wait_start < chrono::seconds(30))
+    {
+        this_thread::sleep_for(chrono::milliseconds(5));
+    }
+    const uint32_t failures = Renderer::GetScreenshotSaveFailures() - m_render_save_failures_start;
+    if (failures > 0)
+    {
+        m_render_status.last_error = to_string(failures) + " stills failed to save, check free disk space";
+    }
+}
+
 void Sequencer::TickRender()
 {
-    if (!m_render_status.active)
+    if (!m_render_status.active || m_render_status.scrubbed)
     {
+        return;
+    }
+
+    const float half_frame = 0.5f / m_render_request.fps;
+    if (m_render_status.capture)
+    {
+        // one still per frame, a second time inside the same frame lands on the next one
+        const vector<float>& times = m_render_request.capture_times;
+        if (m_render_frame_index < times.size() && m_time >= times[m_render_frame_index] - half_frame)
+        {
+            char name[32];
+            snprintf(name, sizeof(name), "/capture_%02u.png", m_render_frame_index);
+            const string path = m_render_request.directory + name;
+            if (Renderer::Screenshot(path))
+            {
+                m_render_status.frames_written++;
+                m_render_status.files.push_back(filesystem::absolute(path).generic_string());
+                m_render_status.times.push_back(m_time);
+            }
+            else
+            {
+                m_render_status.last_error = "a still was dropped because a screenshot was still pending";
+            }
+            m_render_frame_index++;
+        }
+        if (m_render_frame_index >= times.size() || !m_playing)
+        {
+            FinishRender();
+        }
         return;
     }
 
@@ -1478,7 +1798,6 @@ void Sequencer::TickRender()
         this_thread::sleep_for(chrono::milliseconds(2));
     }
 
-    const float half_frame = 0.5f / m_render_request.fps;
     if (m_time >= m_render_request.start - half_frame)
     {
         if (m_render_frame_index % m_render_request.stride == 0)
@@ -1505,6 +1824,11 @@ void Sequencer::TickRender()
 
 void Sequencer::FinishRender()
 {
+    if (m_render_status.scrubbed)
+    {
+        FinishScrubCapture();
+        return;
+    }
     Timer::SetFixedDeltaSec(0.0);
     Renderer::SetCleanCapture(false);
     m_render_status.active = false;
@@ -2817,6 +3141,22 @@ void Sequencer::ClampToDuration()
         event.start_time = min(event.start_time, m_duration);
         event.end_time   = min(event.end_time, m_duration);
     }
+    for (vector<CurveKey>& curve : m_cinematic.curves)
+    {
+        for (CurveKey& key : curve)
+        {
+            key.time = min(key.time, m_duration);
+        }
+    }
+    for (TitleEvent& title : m_cinematic.titles)
+    {
+        title.start_time = min(title.start_time, m_duration);
+        title.end_time   = min(title.end_time, m_duration);
+    }
+    for (Marker& marker : m_cinematic.markers)
+    {
+        marker.time = min(marker.time, m_duration);
+    }
     m_time = min(m_time, m_duration);
 }
 
@@ -2988,6 +3328,7 @@ Sequencer::State Sequencer::CaptureState() const
     state.events        = m_events;
     state.spline_events = m_spline_events;
     state.drive_events  = m_drive_events;
+    state.cinematic     = m_cinematic;
     return state;
 }
 
@@ -2998,12 +3339,14 @@ void Sequencer::ApplyState(const State& state)
     m_events          = state.events;
     m_spline_events   = state.spline_events;
     m_drive_events    = state.drive_events;
+    m_cinematic       = state.cinematic;
     m_selected        = -1;
     m_spline_selected = -1;
     m_drive_selected  = -1;
     m_dragging        = -1;
     m_spline_dragging = -1;
     m_drive_dragging  = -1;
+    DeselectAll();
     m_time            = min(m_time, m_duration);
     Save();
 }
@@ -3011,7 +3354,8 @@ void Sequencer::ApplyState(const State& state)
 void Sequencer::CommitState(const State& before)
 {
     // skip when nothing actually changed so undo steps stay meaningful
-    if (before.duration == m_duration && before.loop == m_loop && before.events == m_events && before.spline_events == m_spline_events && before.drive_events == m_drive_events)
+    if (before.duration == m_duration && before.loop == m_loop && before.events == m_events && before.spline_events == m_spline_events &&
+        before.drive_events == m_drive_events && before.cinematic == m_cinematic)
     {
         return;
     }
@@ -3060,9 +3404,31 @@ void Sequencer::Save() const
         node.append_attribute("time")             = event.time;
         node.append_attribute("camera_entity_id") = event.camera_entity_id;
         node.append_attribute("target_entity_id") = event.target_entity_id;
-        if (event.rig)
+        if (IsAnimated(event))
         {
             node.append_attribute("rig")              = true;
+            if (event.move != ShotMove::Rig)
+            {
+                node.append_attribute("move") = GetMoveName(event.move);
+            }
+            if (event.move == ShotMove::Orbit)
+            {
+                node.append_attribute("orbit_radius")      = event.orbit_radius;
+                node.append_attribute("orbit_height")      = event.orbit_height;
+                node.append_attribute("orbit_angle_start") = event.orbit_angle_start;
+                node.append_attribute("orbit_angle_end")   = event.orbit_angle_end;
+                node.append_attribute("orbit_rise")        = event.orbit_rise;
+            }
+            if (event.move == ShotMove::Path)
+            {
+                node.append_attribute("path_entity_id") = event.path_entity_id;
+                node.append_attribute("path_start")     = event.path_start;
+                node.append_attribute("path_end")       = event.path_end;
+            }
+            if (event.blend_in > 0.0f)
+            {
+                node.append_attribute("blend_in") = event.blend_in;
+            }
             node.append_attribute("anchor_entity_id") = event.anchor_entity_id;
             node.append_attribute("space")            = static_cast<int>(event.space);
             write_vector(node, "position_start", event.position_start);
@@ -3103,6 +3469,7 @@ void Sequencer::Save() const
             key_node.append_attribute("speed_kmh") = key.speed_kmh;
         }
     }
+    SaveTracks(root);
     doc.save_file(file_path.c_str());
 }
 
@@ -3126,6 +3493,13 @@ void Sequencer::Load()
     m_spline_selected = -1;
     m_drive_selected  = -1;
     World::SetActiveCamera(nullptr);
+
+    // the environment snapshot belongs to the world that was just unloaded
+    m_world_snapshot_valid = false;
+    m_music_entity_id      = 0;
+    RestoreTracks();
+    m_cinematic = Cinematic();
+    DeselectAll();
 
     const string file_path = GetFilePath();
     if (file_path.empty() || !FileSystem::Exists(file_path))
@@ -3151,6 +3525,16 @@ void Sequencer::Load()
         event.rig              = node.attribute("rig").as_bool(false);
         if (event.rig)
         {
+            event.move              = FindMove(node.attribute("move").as_string("rig")).value_or(ShotMove::Rig);
+            event.orbit_radius      = node.attribute("orbit_radius").as_float(6.0f);
+            event.orbit_height      = node.attribute("orbit_height").as_float(1.5f);
+            event.orbit_angle_start = node.attribute("orbit_angle_start").as_float(0.0f);
+            event.orbit_angle_end   = node.attribute("orbit_angle_end").as_float(90.0f);
+            event.orbit_rise        = node.attribute("orbit_rise").as_float(0.0f);
+            event.path_entity_id    = node.attribute("path_entity_id").as_ullong(0);
+            event.path_start        = node.attribute("path_start").as_float(0.0f);
+            event.path_end          = node.attribute("path_end").as_float(1.0f);
+            event.blend_in          = node.attribute("blend_in").as_float(0.0f);
             event.anchor_entity_id = node.attribute("anchor_entity_id").as_ullong(0);
             event.space            = static_cast<ShotSpace>(clamp(node.attribute("space").as_int(0), 0, 2));
             event.position_start   = read_vector(node, "position_start");
@@ -3198,4 +3582,6 @@ void Sequencer::Load()
         }
         m_drive_events.push_back(event);
     }
+
+    LoadTracks(root);
 }

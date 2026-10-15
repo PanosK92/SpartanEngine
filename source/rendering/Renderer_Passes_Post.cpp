@@ -33,6 +33,23 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace
+    {
+        struct cinematic_overlay
+        {
+            float fade     = 0.0f;
+            Vector3 color  = Vector3::Zero;
+            float aspect   = 0.0f;
+        } cinematic;
+    }
+
+    void Renderer::SetCinematicOverlay(float fade, const Vector3& fade_color, float letterbox_aspect)
+    {
+        cinematic.fade   = isfinite(fade) ? clamp(fade, 0.0f, 1.0f) : 0.0f;
+        cinematic.color  = fade_color;
+        cinematic.aspect = isfinite(letterbox_aspect) && letterbox_aspect >= 0.5f ? letterbox_aspect : 0.0f;
+    }
+
     template<typename F>
     void Renderer::Pass_Compute(const char* name, Renderer_Shader shader_enum,
                                 RHI_Texture* tex_in, RHI_Texture* tex_out, F setup)
@@ -283,6 +300,18 @@ namespace spartan
             run_effect("vhs", Renderer_Shader::vhs_c, [&]()
             {
                 m_pcb_pass_cpu.set(pass_vhs::force_sdr, force_sdr);
+            });
+        }
+
+        // asset previews and the headset never show the sequencer's overlay
+        if ((cinematic.fade > 0.0f || cinematic.aspect > 0.0f) && !IsSecondaryViewActive() && !IsStereoView())
+        {
+            run_effect("cinematic", Renderer_Shader::cinematic_c, [&]()
+            {
+                m_pcb_pass_cpu.set(pass_cinematic::fade, cinematic.fade);
+                m_pcb_pass_cpu.set(pass_cinematic::fade_color, cinematic.color);
+                m_pcb_pass_cpu.set(pass_cinematic::letterbox, cinematic.aspect);
+                m_pcb_pass_cpu.set(pass_cinematic::force_sdr, force_sdr);
             });
         }
     }

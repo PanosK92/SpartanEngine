@@ -26,7 +26,13 @@ namespace spartan
         uint32_t last_global_revision = 0;
         uint64_t resource_poll_frame = 0;
         // material change tracking - things that change the nature of the material for rendering
-        unordered_map<uint64_t, size_t> material_state_hashes;
+        // the stamp is the scan that last saw the material, older entries belong to removed materials
+        struct MaterialState
+        {
+            size_t hash    = 0;
+            uint64_t stamp = 0;
+        };
+        unordered_map<uint64_t, MaterialState> material_state_hashes;
 
         // light change tracking - things that change the nature of the light for rendering
         unordered_map<uint64_t, size_t> light_state_hashes;
@@ -115,49 +121,32 @@ namespace spartan
         }
 
         bool changed = std::exchange(materials_invalidated, false);
-        pmr::unordered_set<uint64_t> seen(FrameAllocator::GetResource());
-        seen.reserve(World::GetEntitiesWithRender().size());
+        const uint64_t stamp = Material::NewVisitStamp();
 
-        for (Entity* entity : World::GetEntitiesWithRender())
+        for (const RenderSceneData* data : World::GetRenderSceneData())
         {
-            if (!entity)
-            {
-                continue;
-            }
-
-            Render* render = entity->GetComponent<Render>();
-            if (!render)
-            {
-                continue;
-            }
-
-            Material* material = render->GetMaterial();
+            Material* material = data->material;
             if (!material)
             {
                 continue;
             }
 
-            const uint64_t id = material->GetObjectId();
-            if (!seen.insert(id).second)
+            if (!material->Visit(stamp))
             {
                 continue;
             }
 
-            size_t current_hash = compute_material_hash(material);
-            auto it = material_state_hashes.find(id);
-            if (it == material_state_hashes.end())
+            const size_t current_hash = compute_material_hash(material);
+            auto [it, inserted] = material_state_hashes.try_emplace(material->GetObjectId());
+            if (inserted || it->second.hash != current_hash)
             {
-                material_state_hashes[id] = current_hash;
+                it->second.hash = current_hash;
                 changed = true;
             }
-            else if (it->second != current_hash)
-            {
-                it->second = current_hash;
-                changed = true;
-            }
+            it->second.stamp = stamp;
         }
 
-        changed |= std::erase_if(material_state_hashes, [&](const auto& entry) { return !seen.contains(entry.first); }) != 0;
+        changed |= std::erase_if(material_state_hashes, [stamp](const auto& entry) { return entry.second.stamp != stamp; }) != 0;
         return changed;
     }
 

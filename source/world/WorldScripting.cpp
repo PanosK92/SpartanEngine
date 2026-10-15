@@ -90,6 +90,10 @@ namespace spartan
         Timer["GetTimeSec"]                     = &Timer::GetTimeSec;
         Timer["GetDeltaTimeMs"]                 = &Timer::GetDeltaTimeMs;
         Timer["GetDeltaTimeSec"]                = &Timer::GetDeltaTimeSec;
+        Timer["GetDeltaTimeRealSec"]            = &Timer::GetDeltaTimeRealSec;
+        Timer["GetSimTimeSec"]                  = &Timer::GetSimTimeSec;
+        Timer["GetTimeScale"]                   = &Timer::GetTimeScale;
+        Timer["SetTimeScale"]                   = &Timer::SetTimeScale;
         Timer["GetDeltaTimeSmoothedMs"]         = &Timer::GetDeltaTimeSmoothedMs;
         Timer["GetDeltaTimeSmoothedSec"]        = &Timer::GetDeltaTimeSmoothedSec;
 

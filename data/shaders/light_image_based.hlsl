@@ -121,6 +121,33 @@ float3 get_dominant_specular_direction(float3 normal, float3 view_dir, float rou
     return normalize(lerp(normal, reflection, factor));
 }
 
+// solid angle shared by two spherical caps over 2pi, oat and sander 2007 with the jimenez 2016 smoothstep fit
+float spherical_caps_intersection(float cos_cap1, float cos_cap2, float cos_distance)
+{
+    float r1 = fast_acos(cos_cap1);
+    float r2 = fast_acos(cos_cap2);
+    float d  = fast_acos(cos_distance);
+
+    if (min(r1, r2) <= max(r1, r2) - d)
+        return 1.0f - max(cos_cap1, cos_cap2);
+
+    if (r1 + r2 <= d)
+        return 0.0f;
+
+    float delta = abs(r1 - r2);
+    float x     = 1.0f - saturate((d - delta) / max(r1 + r2 - delta, 1e-4f));
+    return x * x * (3.0f - 2.0f * x) * (1.0f - max(cos_cap1, cos_cap2));
+}
+
+// jimenez 2016 gtso, the fraction of the reflection lobe cone that falls inside the bent normal visibility cone
+float specular_occlusion_cones(float3 bent_normal, float visibility, float3 reflection, float roughness_alpha)
+{
+    float cos_visibility = sqrt(saturate(1.0f - visibility));
+    float cos_specular   = exp2(-3.321928f * roughness_alpha * roughness_alpha);
+    float cos_distance   = dot(bent_normal, reflection);
+    return saturate(spherical_caps_intersection(cos_visibility, cos_specular, cos_distance) / max(1.0f - cos_specular, 1e-4f));
+}
+
 float3 fresnel_schlick_roughness(float cos_theta, float3 F0, float roughness)
 {
     // roughness modified fresnel
@@ -161,20 +188,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float mip_count_environment        = pass_float(pass_light_image_based::environment_mip_count);
     float mip_level                    = surface.roughness * surface.roughness * (mip_count_environment - 1.0f);
     
-    // specular occlusion stack, three terms in sequence
-
     // water has analytic normals and an unoccluded sky view, the ao and bent normal terms run on placeholder data and wrongly crush its reflection, so the open ocean keeps only the horizon fade
     float specular_occlusion = 1.0f;
     if (!surface.is_water())
     {
-        // lagarde 2014 cone aperture vs ao, derives the cone aperture from roughness
-        specular_occlusion = saturate(pow(n_dot_v + surface.occlusion, exp2(-16.0f * surface.roughness - 1.0f)) - 1.0f + surface.occlusion);
-
-        // bent normal cone overlap, jimenez 2016, weighted by smoothness^2 so it only bites near mirrors
-        float bent_dot               = saturate(dot(surface.bent_normal, dominant_specular_direction));
-        float smoothness             = 1.0f - surface.roughness;
-        float bent_reflection_factor = lerp(1.0f, bent_dot, smoothness * smoothness);
-        specular_occlusion          *= bent_reflection_factor;
+        // a near mirror lobe is thinner than the visibility cone is accurate, the cone test turns binary
+        // and aliases there, so it hands over to lagarde 2014 which only needs the ao
+        float specular_occlusion_cone  = specular_occlusion_cones(surface.bent_normal, surface.occlusion, dominant_specular_direction, surface.roughness_alpha);
+        float specular_occlusion_ao    = saturate(pow(n_dot_v + surface.occlusion, exp2(-16.0f * surface.roughness - 1.0f)) - 1.0f + surface.occlusion);
+        specular_occlusion       = lerp(specular_occlusion_ao, specular_occlusion_cone, smoothstep(0.01f, 0.09f, surface.roughness_alpha));
     }
 
     // horizon fade, lagarde 2014, stops sampling the panorama below the surface plane
@@ -188,9 +210,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         mip_level
     ).rgb;
 
-    // diffuse directional gtao on sh, bent normal is the visibility cone axis, ao narrows
-    // higher bands (soft integration over the open cone), multi-bounce is applied as a
-    // relative boost so occlusion is not squared on top of the cone
+    // diffuse directional gtao on sh, the sky is integrated over the visibility cone around the
+    // bent normal, multi-bounce is applied as a relative boost so occlusion is not squared on top of the cone
     float3 sky_sh[9];
     sh_load_l2(tex5, sky_sh);
     const float ibl_visibility_floor = 0.1f;

@@ -1565,7 +1565,7 @@ namespace spartan
     {
         // Count every completed frame, including pacing and stalls. Averaging
         // frame counts over elapsed time avoids bias from averaging reciprocal deltas.
-        const double delta_sec = Timer::GetDeltaTimeSec();
+        const double delta_sec = Timer::GetDeltaTimeRealSec();
         if (delta_sec > 0.0)
         {
             fps_elapsed_sec += delta_sec;
@@ -1777,7 +1777,7 @@ namespace spartan
         }
 
         // check whether we should profile or not
-        time_since_profiling_sec += static_cast<float>(Timer::GetDeltaTimeSec());
+        time_since_profiling_sec += static_cast<float>(Timer::GetDeltaTimeRealSec());
         if (time_since_profiling_sec >= profiling_interval_sec)
         {
             time_since_profiling_sec = 0.0f;
@@ -2311,7 +2311,7 @@ namespace spartan
 
         static OverlaySnapshot snapshot;
         static double time_since_refresh = fps_update_interval_sec;
-        time_since_refresh += Timer::GetDeltaTimeSec();
+        time_since_refresh += Timer::GetDeltaTimeRealSec();
         if (time_since_refresh >= fps_update_interval_sec)
         {
             time_since_refresh = 0.0;

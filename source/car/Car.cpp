@@ -2196,6 +2196,7 @@ namespace spartan
             audio_source->SetLoop(true);
             audio_source->SetPlayOnStart(false);
             audio_source->SetVolume(0.8f);
+            audio_source->SetGroup(AudioGroup::Vehicle);
         }
 
         // the source above holds the shared device open, so its native rate is known now
@@ -2216,6 +2217,7 @@ namespace spartan
             audio_source->SetAudioClip("project/music/cars/car_door.wav");
             audio_source->SetLoop(false);
             audio_source->SetPlayOnStart(false);
+            audio_source->SetGroup(AudioGroup::Vehicle);
         }
 
         // tire squeal (synthesized)
@@ -2228,6 +2230,7 @@ namespace spartan
             audio_source->SetLoop(true);
             audio_source->SetPlayOnStart(false);
             audio_source->SetVolume(0.0f);
+            audio_source->SetGroup(AudioGroup::Vehicle);
         }
     }
 
@@ -2913,7 +2916,7 @@ namespace spartan
         Physics* car_physics = m_vehicle_entity->GetComponent<Physics>();
         const float speed = car_physics ? car_physics->GetLinearVelocity().Length() : 0.0f;
         m_chase_camera.Update(m_vehicle_entity->GetPosition(), m_vehicle_entity->GetForward(),
-            speed, static_cast<float>(Timer::GetDeltaTimeSec()), m_camera_wind_shake);
+            speed, static_cast<float>(Timer::GetDeltaTimeRealSec()), m_camera_wind_shake);
 
         camera->SetPosition(m_chase_camera.position);
         if (Camera* camera_component = camera->GetComponent<Camera>())

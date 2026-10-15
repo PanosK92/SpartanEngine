@@ -46,6 +46,8 @@ namespace spartan
         bool vsync_enabled  = false;
         double fixed_delta_ms = 0.0;
         uint32_t presents_per_frame = 1;
+        double time_scale  = 1.0;
+        double sim_time_ms = 0.0;
 
         float get_monitor_fps()
         {
@@ -72,6 +74,7 @@ namespace spartan
         delta_time_ms          = 0.0;
         delta_time_smoothed_ms = 0.0;
         pacing_time_ms         = 0.0;
+        sim_time_ms            = 0.0;
         reset_deadline         = true;
         has_sample             = false;
     }
@@ -86,6 +89,7 @@ namespace spartan
         {
             delta_time_ms          = fixed_delta_ms;
             time_ms               += fixed_delta_ms;
+            sim_time_ms           += fixed_delta_ms * time_scale;
             delta_time_smoothed_ms = fixed_delta_ms;
             has_sample             = true;
             last_tick_time         = frame_end;
@@ -132,6 +136,7 @@ namespace spartan
         // Keep raw deltas truthful; simulation-specific clamping belongs to consumers.
         delta_time_ms         = chrono::duration<double, milli>(frame_end - last_tick_time).count();
         time_ms               = chrono::duration<double, milli>(frame_end - start_time).count();
+        sim_time_ms          += delta_time_ms * time_scale;
         delta_time_smoothed_ms = has_sample
             ? delta_time_smoothed_ms + (delta_time_ms - delta_time_smoothed_ms) * weight_delta
             : delta_time_ms;
@@ -237,6 +242,16 @@ namespace spartan
         return fixed_delta_ms / 1000.0;
     }
 
+    void Timer::SetTimeScale(double scale)
+    {
+        time_scale = isfinite(scale) ? clamp(scale, 0.0, 16.0) : 1.0;
+    }
+
+    double Timer::GetTimeScale()
+    {
+        return time_scale;
+    }
+
     double Timer::GetTimeMs()
     {
         return time_ms;
@@ -247,12 +262,27 @@ namespace spartan
         return time_ms / 1000.0;
     }
 
+    double Timer::GetSimTimeSec()
+    {
+        return sim_time_ms / 1000.0;
+    }
+
     double Timer::GetDeltaTimeMs()
+    {
+        return delta_time_ms * time_scale;
+    }
+
+    double Timer::GetDeltaTimeSec()
+    {
+        return delta_time_ms * time_scale / 1000.0;
+    }
+
+    double Timer::GetDeltaTimeRealMs()
     {
         return delta_time_ms;
     }
 
-    double Timer::GetDeltaTimeSec()
+    double Timer::GetDeltaTimeRealSec()
     {
         return delta_time_ms / 1000.0;
     }

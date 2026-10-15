@@ -34,6 +34,7 @@ namespace spartan::island_atmosphere
     inline uint64_t root_id = 0;
     inline float sample_clock = 0, clock = 0;
     inline uint32_t sequence = 0;
+    inline uint32_t shelter_frames = 0;
     inline Vector3 previous_viewer = Vector3::Zero;
     inline bool viewer_known = false;
     inline std::vector<BoundingBox> canopies, interiors;
@@ -59,6 +60,7 @@ namespace spartan::island_atmosphere
         root_id = 0;
         sample_clock = clock = 0;
         sequence = 0;
+        shelter_frames = 0;
         viewer_known = false;
         canopies.clear();
         interiors.clear();
@@ -169,6 +171,14 @@ namespace spartan::island_atmosphere
         if (!game::GetIslandFeatures() || !World::GetCamera()) return;
         Terrain* terrain = Terrain::FindActive();
         if (!terrain || !terrain->HasHeightfield()) return;
+        // leaves are born and settle only under open sky, the gpu reads the same roof grid as rain,
+        // and the warm start waits until that grid has traced the cells around the camera
+        Weather::RequestShelter();
+        if (shelter_frames < 45)
+        {
+            ++shelter_frames;
+            return;
+        }
         const Vector3 viewer = World::GetCamera()->GetEntity()->GetPosition();
         Vector3 ahead = viewer_known && dt > 0.001f ? (viewer - previous_viewer) / dt : Vector3::Zero;
         ahead.y = 0;

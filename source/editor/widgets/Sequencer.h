@@ -23,6 +23,11 @@ namespace spartan
     class Entity;
 }
 
+namespace pugi
+{
+    class xml_node;
+}
+
 class Sequencer : public Widget
 {
 public:
@@ -45,7 +50,17 @@ public:
         Linear,
         InOut,
         In,
-        Out
+        Out,
+        Hold // steps to the key's value when it is reached, for curves only
+    };
+
+    // how an animated shot places the camera
+    enum class ShotMove : uint8_t
+    {
+        Rig,       // from position_start to position_end in the shot space
+        Orbit,     // circles the target (or a world center), the bullet time move
+        DollyZoom, // rig motion with the fov solved so the subject keeps its size, the vertigo effect
+        Path       // rides a spline entity
     };
 
     // a cut to a camera, active from its time until the next event
@@ -54,6 +69,20 @@ public:
         float time                = 0.0f;
         uint64_t camera_entity_id = 0;
         uint64_t target_entity_id = 0; // optional, the camera pans to look at this entity
+
+        ShotMove move             = ShotMove::Rig;
+        // orbit: angles in degrees, 0 looks at the target's front (or along +z without a target), positive turns counter clockwise seen from above
+        float orbit_radius        = 6.0f;
+        float orbit_height        = 1.5f;
+        float orbit_angle_start   = 0.0f;
+        float orbit_angle_end     = 90.0f;
+        float orbit_rise          = 0.0f; // meters added to the height over the shot
+        // path: a spline entity and the normalized range the camera travels, position_start offsets it in the path frame
+        uint64_t path_entity_id   = 0;
+        float path_start          = 0.0f;
+        float path_end            = 1.0f;
+        // seconds the shot eases in from the previous shot's pose instead of cutting, short blends make whip pans
+        float blend_in            = 0.0f;
 
         // motion, when off the camera keeps its own pose and only the look at lock applies
         bool rig                  = false;
@@ -122,6 +151,110 @@ public:
         float path_length     = 0.0f;
     };
 
+    // every keyed value the timeline can drive, grouped into the time, audio, world and overlay tracks
+    enum class Channel : uint8_t
+    {
+        TimeScale,     // simulation speed, 1 real time, 0 frozen
+        GainVehicle,   // group gains, 1 is the source's own level
+        GainAmbience,
+        GainSfx,
+        GainMusic,
+        Muffle,        // low pass on vehicle, ambience and sfx, 0 to 1
+        TimeOfDay,     // utc hours, 0 to 24
+        Rain,          // 0 to 1
+        Clouds,        // 0 to 1
+        Wind,          // m/s, keeps the direction
+        Puddles,       // 0 to 1
+        Fade,          // 0 clear, 1 solid fade color
+        Letterbox,     // target aspect ratio, 0 off
+        Count
+    };
+
+    enum class TrackGroup : uint8_t
+    {
+        Time,
+        Audio,
+        World,
+        Overlay,
+        Count
+    };
+
+    // a keyed value, the ease shapes the segment that arrives at this key
+    struct CurveKey
+    {
+        float time      = 0.0f;
+        float value     = 0.0f;
+        ShotEase ease   = ShotEase::InOut;
+        bool operator==(const CurveKey& other) const = default;
+    };
+
+    // centered text over the frame, fading in and out at its edges
+    struct TitleEvent
+    {
+        float start_time = 0.0f;
+        float end_time   = 3.0f;
+        std::string text;
+        float x          = 0.5f; // center, screen fractions
+        float y          = 0.82f;
+        bool large       = true;
+        float fade       = 0.5f; // seconds
+        spartan::math::Vector3 color = spartan::math::Vector3::One;
+        bool operator==(const TitleEvent& other) const = default;
+    };
+
+    struct Marker
+    {
+        float time = 0.0f;
+        std::string name;
+        bool operator==(const Marker& other) const = default;
+    };
+
+    // a music file played in sync with the playhead
+    struct MusicClip
+    {
+        std::string path;    // empty is no music
+        float start  = 0.0f; // timeline seconds the clip starts at
+        float offset = 0.0f; // seconds into the file at that moment
+        float volume = 1.0f;
+        bool operator==(const MusicClip& other) const = default;
+    };
+
+    // everything beyond cameras, splines and drives, compared and stored as one block
+    struct Cinematic
+    {
+        std::vector<CurveKey> curves[static_cast<size_t>(Channel::Count)];
+        std::vector<TitleEvent> titles;
+        std::vector<Marker> markers;
+        MusicClip music;
+        float bpm            = 0.0f; // 0 has no beat grid
+        float beat_offset    = 0.0f; // timeline seconds of beat 1
+        uint32_t beats_per_bar = 4;
+        bool snap_to_beats   = true;
+        bool slowmo_audio    = true; // world audio muffles and pitches down with the time scale
+        spartan::math::Vector3 fade_color = spartan::math::Vector3::Zero;
+        bool operator==(const Cinematic& other) const;
+    };
+
+    // the value of every track at one moment, for previews and the agent's timing checks
+    struct TrackSample
+    {
+        float time       = 0.0f;
+        int shot         = -1;
+        float values[static_cast<size_t>(Channel::Count)] = {};
+        bool keyed[static_cast<size_t>(Channel::Count)]   = {};
+        std::vector<int> titles; // indices of visible titles
+        float beat       = 0.0f; // 1 based, 0 without a grid
+    };
+
+    static const char* GetChannelName(Channel channel);
+    static std::optional<Channel> FindChannel(const std::string& name);
+    static TrackGroup GetChannelGroup(Channel channel);
+    static float GetChannelDefault(Channel channel);
+    static const char* GetEaseName(ShotEase ease);
+    static std::optional<ShotEase> FindEase(const std::string& name);
+    static const char* GetMoveName(ShotMove move);
+    static std::optional<ShotMove> FindMove(const std::string& name);
+
     // a full snapshot of the editable state, used by the undo/redo command
     struct State
     {
@@ -130,6 +263,7 @@ public:
         std::vector<CameraEvent> events;
         std::vector<SplineEvent> spline_events;
         std::vector<DriveEvent> drive_events;
+        Cinematic cinematic;
     };
 
     // restores a snapshot into the widget and persists it, used by the undo/redo command
@@ -144,16 +278,31 @@ public:
         float preroll = 1.0f;  // seconds simulated before time zero so staged cars settle
         uint32_t stride = 1;   // keep every nth frame, for quick previews
         std::string directory;
+        std::vector<float> capture_times; // when set only these moments are written, as capture_NN.png
     };
 
     struct RenderStatus
     {
         bool active             = false;
+        bool capture            = false; // a still capture rather than a frame sequence
+        bool scrubbed           = false; // the capture jumped the playhead instead of simulating
         uint32_t frames_written = 0;
         uint32_t frames_total   = 0;
         float fps               = 0.0f;
         std::string directory;
         std::string last_error;
+        std::vector<std::string> files;  // capture paths, in the order of the requested times
+        std::vector<float> times;
+    };
+
+    // stills at chosen moments, simulate replays the take from zero so physics drives are where they will be,
+    // scrub jumps the playhead which is instant but only exact for shots without simulated motion
+    struct CaptureRequest
+    {
+        std::vector<float> times;
+        std::string directory;
+        std::string mode = "auto"; // auto, simulate or scrub
+        float fps        = 30.0f;  // simulation step of a simulated capture
     };
 
     // plain view of the timeline for drivers outside the panel
@@ -164,11 +313,13 @@ public:
         std::vector<DriveEvent> drive_events;
         std::vector<DriveTelemetry> drive_telemetry;
         RenderStatus render;
+        Cinematic cinematic;
         float duration = 0.0f;
         float time     = 0.0f;
         bool playing   = false;
         bool loop      = false;
         bool preview   = false;
+        float time_scale = 1.0f; // what the time track applies right now
     };
 
     enum class Playback
@@ -207,7 +358,29 @@ public:
     void ClearDriveEvents();
     bool StartRender(const RenderRequest& request, std::string& error);
     void StopRender();
+    bool StartCapture(const CaptureRequest& request, std::string& error);
     Snapshot GetSnapshot() const;
+
+    // keyed tracks, a key at the same time and channel is replaced rather than duplicated
+    void SetCurveKey(Channel channel, const CurveKey& key);
+    bool UpdateCurveKey(Channel channel, int index, const CurveKey& key);
+    bool RemoveCurveKey(Channel channel, int index);
+    void ClearCurve(Channel channel);
+    void AddTitle(const TitleEvent& title);
+    bool UpdateTitle(int index, const TitleEvent& title);
+    bool RemoveTitle(int index);
+    void ClearTitles();
+    void SetMarker(const Marker& marker);
+    bool RemoveMarker(int index);
+    void ClearMarkers();
+    // music, beat grid, fade color and the slow motion audio switch, everything in the block except keys, titles and markers
+    void SetCinematicSettings(const Cinematic& settings);
+
+    // the evaluated value of every track at a time, without touching the world
+    TrackSample SampleTracks(float time) const;
+    // numbers, "beat:N", "bar:N" or "marker:NAME", each optionally followed by +seconds or -seconds
+    std::optional<float> ResolveTime(const std::string& text, std::string& error) const;
+    float GetBeatLength() const;
 
     // the car and the entity that actually moves for any entity inside a car's hierarchy, or the entity itself
     static spartan::Car* FindCar(spartan::Entity* entity);
@@ -218,6 +391,14 @@ public:
     static spartan::Entity* GetOrCreateShotCamera();
 
 private:
+    // the camera pose a shot produces at the current time, before the blend from the previous shot
+    struct ShotPose
+    {
+        spartan::math::Vector3 position    = spartan::math::Vector3::Zero;
+        spartan::math::Quaternion rotation = spartan::math::Quaternion::Identity;
+        float fov                          = 0.0f; // 0 keeps the camera's own
+    };
+
     // runtime state of one drive, rebuilt whenever a take is staged
     struct DriveRuntime
     {
@@ -235,6 +416,9 @@ private:
     void OnWorldTicked();
     void Evaluate(float delta_time);
     void EvaluateCamera(int index, bool cut);
+    // stateful shots update the heading lag, a previous shot sampled for a blend does not
+    ShotPose EvaluateShotPose(const CameraEvent& event, int index, float time, bool cut, bool stateful, spartan::Entity* camera);
+    static bool IsAnimated(const CameraEvent& event) { return event.rig || event.move != ShotMove::Rig; }
     void EvaluateDrives(float delta_time);
     void StageDrives();
     bool WaitForDrives(float delta_time);
@@ -242,6 +426,34 @@ private:
     bool BuildDrivePath(const DriveEvent& event, DriveRuntime& runtime);
     void TickRender();
     void FinishRender();
+    void TickScrubCapture();
+    void FinishScrubCapture();
+
+    // tracks, SequencerTracks.cpp
+    float EvaluateCurve(Channel channel, float time, bool* keyed = nullptr) const;
+    void EvaluateTracks(bool previewing);
+    void ApplyTimeTrack(bool previewing);
+    void ApplyAudioTrack(bool previewing);
+    void ApplyWorldTrack(bool previewing);
+    void ApplyOverlayTrack(bool previewing);
+    void ApplyMusic(bool previewing);
+    void RestoreTracks();
+    bool HasKeys(TrackGroup group) const;
+    float SnapTime(float time) const;
+    void SaveTracks(pugi::xml_node& root) const;
+    void LoadTracks(const pugi::xml_node& root);
+    void DrawTrackLanes(float origin_x, float label_x, float track_y, float width, float pixels_per_sec);
+    void DrawCurveLane(TrackGroup group, float origin_x, float track_y, float width, float pixels_per_sec);
+    void DrawTitleLane(float origin_x, float track_y, float width, float pixels_per_sec);
+    void DrawBeatGrid(float origin_x, float top, float bottom, float pixels_per_sec);
+    void DrawMarkers(float origin_x, float top, float bottom, float pixels_per_sec);
+    void DrawCurveKeyInspector(float width);
+    void DrawTitleInspector(float width);
+    void DrawCinematicInspector(float width);
+    void DrawTrackToolbar();
+    void DeselectAll();
+    float GetTrackLanesHeight() const;
+    bool HasSimulatedMotion() const;
 
     void DrawToolbar();
     void DrawTimeline();
@@ -317,6 +529,50 @@ private:
     float m_render_fps_ui         = 30.0f;
 
     State m_drag_undo_state; // captured when a drag begins, committed when it ends
+
+    // keyed tracks
+    Cinematic m_cinematic;
+    bool m_tracks_applied        = false; // the tracks drove the world last frame and must hand it back
+    bool m_world_snapshot_valid  = false;
+    double m_world_time_scale    = 0.0;   // the environment's own day speed, pinned while time of day is keyed
+    float m_world_rain           = 0.0f;
+    float m_world_clouds         = 0.0f;
+    float m_world_puddles        = 0.0f;
+    spartan::math::Vector3 m_world_wind = spartan::math::Vector3::Zero;
+    double m_world_days          = 0.0;
+    uint32_t m_world_applied     = 0;     // bit per world channel the track has overridden since the snapshot
+    float m_applied_time_scale   = 1.0f;
+    uint64_t m_music_entity_id   = 0;
+    std::string m_music_loaded_path;
+
+    // curve and title selection, a curve key is addressed by its channel and index
+    int m_curve_channel          = -1;
+    int m_curve_selected         = -1;
+    int m_curve_dragging         = -1;
+    float m_curve_drag_offset    = 0.0f;
+    bool m_curve_drag_moved      = false;
+    int m_title_selected         = -1;
+    int m_title_dragging         = -1;
+    int m_title_drag_edge        = 0;
+    float m_title_drag_offset    = 0.0f;
+    bool m_title_drag_moved      = false;
+    int m_marker_dragging        = -1;
+    bool m_show_cinematic        = false; // the inspector shows the music, beat grid and overlay settings
+    float m_lane_popup_time      = 0.0f;
+    int m_lane_popup_group       = 0;
+
+    // shot blending, the pose the previous shot left the camera in when the cut happened
+    ShotPose m_last_pose;
+    ShotPose m_blend_from;
+    bool m_last_pose_valid       = false;
+    float m_blend_start_time     = 0.0f;
+
+    // scrubbed capture, jumps the playhead to each time and waits for the image to settle
+    std::vector<float> m_scrub_times;
+    size_t m_scrub_index         = 0;
+    int m_scrub_wait             = 0;
+    bool m_scrub_was_preview     = false;
+    float m_scrub_was_time       = 0.0f;
 
     uint64_t m_world_loaded_handle = 0;
     uint64_t m_world_ticked_handle = 0;

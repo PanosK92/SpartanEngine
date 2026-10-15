@@ -154,7 +154,7 @@ namespace spartan
         static const float fly_speed         = 12.0f; // editor fly speed in m/s
         static const float walk_speed        = 2.2f;  // grounded walk speed in m/s
         static const float run_speed         = 5.5f;  // grounded sprint speed in m/s
-        float delta_time                     = static_cast<float>(Timer::GetDeltaTimeSec());
+        float delta_time                     = static_cast<float>(Timer::GetDeltaTimeRealSec());
 
         // input mapping
         bool button_move_forward    = Input::GetKey(KeyCode::W);
@@ -672,7 +672,7 @@ namespace spartan
         // 0.25s nearby, up to 0.55s across a large island
         const float lerp_duration = 0.25f + clamp(m_lerp_to_target_distance * 0.00015f, 0.0f, 0.3f);
 
-        m_lerp_to_target_alpha += static_cast<float>(Timer::GetDeltaTimeSec()) / lerp_duration;
+        m_lerp_to_target_alpha += static_cast<float>(Timer::GetDeltaTimeRealSec()) / lerp_duration;
         float alpha = clamp(m_lerp_to_target_alpha, 0.0f, 1.0f);
         alpha = alpha * alpha * (3.0f - 2.0f * alpha);
 

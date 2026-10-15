@@ -588,7 +588,18 @@ namespace spartan
                 // The cap is 40 ms of simulation per frame, so below 25 FPS the world
                 // runs in slow motion. Keep that in mind when judging vehicle behaviour.
                 constexpr uint32_t max_steps_per_frame = 8;
-                const float elapsed = max(static_cast<float>(Timer::GetDeltaTimeSec()), 0.0f);
+                // slow motion keeps the real step cadence and shortens each step, stepping less often
+                // would leave frames with no step at all and the world would visibly stutter
+                const float time_scale = static_cast<float>(Timer::GetTimeScale());
+                if (time_scale <= 0.0f)
+                {
+                    accumulated_time = 0.0f;
+                    lock_guard<mutex> lock(contact_mutex);
+                    pending_contacts.clear();
+                    return;
+                }
+                const float step_scale = min(time_scale, 1.0f);
+                const float elapsed    = max(static_cast<float>(Timer::GetDeltaTimeRealSec()), 0.0f) * max(time_scale, 1.0f);
                 accumulated_time += min(elapsed, fixed_time_step * max_steps_per_frame);
 
                 // fresh contact list for this frame's simulation steps
@@ -622,7 +633,7 @@ namespace spartan
                         // the registration captured by this step's immutable snapshot.
                         const auto current = callback_generations.find(entry.owner);
                         if (current != callback_generations.end() && current->second == generation)
-                            entry.callback(fixed_time_step);
+                            entry.callback(fixed_time_step * step_scale);
                     }
 
                     SP_PROFILE_CPU_END();
@@ -632,7 +643,7 @@ namespace spartan
                     SP_PROFILE_CPU_END();
                     SP_PROFILE_CPU_START("physics_simulate");
                     SP_PROFILE_CPU_START("physics_dispatch");
-                    scene->simulate(fixed_time_step);
+                    scene->simulate(fixed_time_step * step_scale);
                     SP_PROFILE_CPU_END();
                     // The next substep's forces/queries and World::PreTick read
                     // these results. Do not overlap arbitrary world work here:

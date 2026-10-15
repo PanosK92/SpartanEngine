@@ -196,6 +196,8 @@ namespace spartan
         OverlaySmall,
         Overlay,
         OverlayLarge,
+        CinematicSmall,
+        CinematicLarge,
         Max
     };
 
@@ -368,6 +370,7 @@ namespace spartan
         taau_c,
         dlss_reactivity_c,
         film_grain_c,
+        cinematic_c,
         motion_blur_c,
         depth_of_field_focus_c,
         depth_of_field_c,

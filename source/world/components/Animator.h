@@ -21,6 +21,7 @@ Commercial use requires written permission and negotiated payment terms.
 namespace spartan
 {
     class Mesh;
+    class Render;
     struct Skeleton;
     struct AnimationClip;
 
@@ -146,6 +147,8 @@ namespace spartan
         void RestoreBindEntityPoses();
         void EnsureDynamicBlas(Mesh* mesh);
         void MarkBlasNeedsRefit(Mesh* mesh);
+        const std::vector<Render*>& ResolveSkinRenders(Mesh* mesh);
+        bool IsSkinDue(Mesh* mesh);
         void ApplyHierarchy(
             const Skeleton& skeleton,
             const std::vector<math::Matrix>& local_matrices
@@ -202,6 +205,11 @@ namespace spartan
         bool m_hands_attached = false;
         bool m_hands_attach_attempted = false;
         bool m_dynamic_blas_ready = false;
+        // renders drawing the skinned mesh, resolved once per mesh and checked by id before use
+        std::vector<uint64_t> m_skin_render_ids;
+        std::vector<Render*> m_skin_renders;
+        const Mesh* m_skin_renders_mesh = nullptr;
+        bool m_skin_published = false;
         bool m_foot_ik_enabled = false;
         bool m_foot_ik_resolved = false;
         float m_foot_ik_weight = 1.0f;

@@ -402,7 +402,7 @@ namespace spartan
         VehicleState().vehicle_simulation->road_temperature = environment.road_temperature;
         VehicleState().vehicle_simulation->ambient_pressure = environment.pressure;
         VehicleState().vehicle_simulation->air_density = environment.air_density;
-        const auto wind = World::SampleWind(GetEntity()->GetPosition(), static_cast<float>(Timer::GetTimeSec()));
+        const auto wind = World::SampleWind(GetEntity()->GetPosition(), static_cast<float>(Timer::GetSimTimeSec()));
         VehicleState().vehicle_simulation->wind_velocity = PxVec3(wind.x, wind.y, wind.z);
         VehicleState().vehicle_simulation->tick(dt);
     }
@@ -964,20 +964,23 @@ namespace spartan
         actor_scale.x = roundf(actor_scale.x * 1000000.0f) / 1000000.0f;
         actor_scale.y = roundf(actor_scale.y * 1000000.0f) / 1000000.0f;
         actor_scale.z = roundf(actor_scale.z * 1000000.0f) / 1000000.0f;
-        SP_PROFILE_CPU_START("chassis_collect_geometry");
-        vector<uint32_t> indices;
-        vector<RHI_Vertex_PosTexNorTan> vertices;
-        vector<PxVec3> points;
-        vector<uint8_t> point_valid;
-        for (const auto& [ent, render] : render_entities)
+        // Compose in body space. Going through world space loses precision far
+        // from the origin and the former path applied chassis scale twice.
+        vector<Matrix> mesh_to_body_matrices(render_entities.size());
+        vector<uint8_t> mesh_in_body(render_entities.size(), 0);
+        generated_cache::Hash source_key;
+        source_key.Bytes(&actor_scale, sizeof(actor_scale));
+        source_key.Add(car_cfg.suspension_height);
+        for (int i = 0; i < car::wheel_count; ++i)
         {
-            indices.clear();
-            vertices.clear();
-            render->GetGeometry(&indices, &vertices);
-            if (vertices.empty()) continue;
-
-            // Compose in body space. Going through world space loses precision far
-            // from the origin and the former path applied chassis scale twice.
+            const PxVec3 offset = VehicleState().vehicle_simulation->get_wheel_offset(i);
+            source_key.Bytes(&offset, sizeof(offset));
+            source_key.Add(car_cfg.wheel_width_for(i));
+            source_key.Add(car_cfg.wheel_radius_for(i));
+        }
+        for (size_t i = 0; i < render_entities.size(); ++i)
+        {
+            const auto& [ent, render] = render_entities[i];
             Matrix mesh_to_body = Matrix::Identity;
             Entity* ancestor = ent;
             while (ancestor && ancestor != GetEntity())
@@ -986,47 +989,80 @@ namespace spartan
                 ancestor = ancestor->GetParent();
             }
             if (!ancestor) continue;
-            mesh_to_body = mesh_to_body * Matrix(Vector3::Zero, Quaternion::Identity, actor_scale);
-
-            points.clear();
-            point_valid.clear();
-            points.reserve(vertices.size());
-            point_valid.reserve(vertices.size());
-            for (const auto& vertex : vertices)
-            {
-                Vector3 v = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]) * mesh_to_body;
-                // Retain existing suspension/curb clearance independently of hull fitting.
-                if (v.y < wheel_well_min_y && is_in_wheel_well(v)) v.y = wheel_well_min_y;
-                else if (v.y < body_floor_min_y) v.y = body_floor_min_y;
-                points.emplace_back(v.x, v.y, v.z);
-                // Test each transformed vertex once. PxVec3::isFinite invokes
-                // the Windows double classifier for each coordinate; repeating
-                // that for every indexed corner dominated traffic creation.
-                point_valid.push_back(v.IsFinite());
-            }
-            source_vertex_count += points.size();
-            for (size_t i = 0; i + 2 < indices.size(); i += 3)
-            {
-                const uint32_t a = indices[i], b = indices[i + 1], c = indices[i + 2];
-                if (a >= points.size() || b >= points.size() || c >= points.size()) continue;
-                if (!point_valid[a] || !point_valid[b] || !point_valid[c]) continue;
-                surface.push_back({points[a], points[b], points[c]});
-            }
+            mesh_to_body_matrices[i] = mesh_to_body * Matrix(Vector3::Zero, Quaternion::Identity, actor_scale);
+            mesh_in_body[i] = 1;
+            const Mesh* mesh = render->GetMesh();
+            source_key.Add(mesh ? mesh->GetObjectId() : uint64_t(0));
+            source_key.Add(render->GetSubMeshIndex());
+            source_key.Add(render->GetIndexCount(0));
+            source_key.Add(render->GetVertexOffset(0));
+            source_key.Bytes(&mesh_to_body_matrices[i], sizeof(Matrix));
         }
-        SP_PROFILE_CPU_END();
 
         PxCookingParams params(physics->getTolerancesScale());
         params.convexMeshCookingType = PxConvexMeshCookingType::eQUICKHULL;
         params.gaussMapLimit = 32;
         PxInsertionCallback* insertion = PxGetStandaloneInsertionCallback();
-        if (!insertion || surface.empty()) return;
+        if (!insertion) return;
+
+        auto collect_surface = [&]()
+        {
+            SP_PROFILE_CPU_START("chassis_collect_geometry");
+            vector<uint32_t> indices;
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            vector<PxVec3> points;
+            vector<uint8_t> point_valid;
+            for (size_t entity_index = 0; entity_index < render_entities.size(); ++entity_index)
+            {
+                Render* render = render_entities[entity_index].second;
+                if (!mesh_in_body[entity_index]) continue;
+                indices.clear();
+                vertices.clear();
+                render->GetGeometry(&indices, &vertices);
+                if (vertices.empty()) continue;
+                const Matrix& mesh_to_body = mesh_to_body_matrices[entity_index];
+
+                points.clear();
+                point_valid.clear();
+                points.reserve(vertices.size());
+                point_valid.reserve(vertices.size());
+                for (const auto& vertex : vertices)
+                {
+                    Vector3 v = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]) * mesh_to_body;
+                    // Retain existing suspension/curb clearance independently of hull fitting.
+                    if (v.y < wheel_well_min_y && is_in_wheel_well(v)) v.y = wheel_well_min_y;
+                    else if (v.y < body_floor_min_y) v.y = body_floor_min_y;
+                    points.emplace_back(v.x, v.y, v.z);
+                    // Test each transformed vertex once. PxVec3::isFinite invokes
+                    // the Windows double classifier for each coordinate; repeating
+                    // that for every indexed corner dominated traffic creation.
+                    point_valid.push_back(v.IsFinite());
+                }
+                source_vertex_count += points.size();
+                for (size_t i = 0; i + 2 < indices.size(); i += 3)
+                {
+                    const uint32_t a = indices[i], b = indices[i + 1], c = indices[i + 2];
+                    if (a >= points.size() || b >= points.size() || c >= points.size()) continue;
+                    if (!point_valid[a] || !point_valid[b] || !point_valid[c]) continue;
+                    surface.push_back({points[a], points[b], points[c]});
+                }
+            }
+            SP_PROFILE_CPU_END();
+        };
 
         static car::chassis_collision::cache chassis_cache; // protected by physx_lock
-        auto hulls = [&]()
+        auto hulls = chassis_cache.get_by_source(source_key.value, params, *insertion);
+        if (hulls.empty())
         {
-            ScopedTimeBlock block("chassis_fit_or_cache");
-            return chassis_cache.get(surface, params, *insertion, World::GetResourceDirectory());
-        }();
+            collect_surface();
+            if (surface.empty()) return;
+            hulls = [&]()
+            {
+                ScopedTimeBlock block("chassis_fit_or_cache");
+                return chassis_cache.get(surface, params, *insertion, World::GetResourceDirectory());
+            }();
+            if (!hulls.empty()) chassis_cache.remember_source(source_key.value, hulls);
+        }
         if (hulls.empty())
         {
             SP_LOG_WARNING("BuildChassisConvexShapes: fitting failed, retaining previous chassis");

@@ -55,6 +55,9 @@ namespace spartan
 
         // relative offset into the same vertex arena, zero when this frame has no deformation
         static uint32_t GetPreviousVertexOffset(uint32_t offset);
+        // freeze this frame's deformed ranges so GetPreviousVertexOffset answers without locking
+        // until the next tracked vertex update
+        static void SnapshotVertexHistory();
         static void UpdateIndices(const uint32_t* data, uint32_t offset, uint32_t count);
         static void UpdateMeshletBounds(const Sb_MeshletBounds* data, uint32_t offset, uint32_t count);
         static void UpdateMeshletVertices(const uint32_t* data, uint32_t offset, uint32_t count);

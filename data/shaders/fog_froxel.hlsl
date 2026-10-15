@@ -472,7 +472,7 @@ void fog_inject_cell(uint3 thread_id, inout bool water_cache_valid, inout float3
         {
             float4 history = tex3d.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), float3(previous_uv, previous_u), 0.0f);
             float density_change = abs(history.a - density) / max(density, 1e-5f);
-            float keep = exp(-max(buffer_frame.delta_time, 0.001f) / 0.18f);
+            float keep = exp(-max(buffer_frame.delta_time_real, 0.001f) / 0.18f);
             keep *= 1.0f - smoothstep(0.25f, 0.75f, density_change);
             // Reprojection already accounts for camera motion. Retain small
             // shadow changes to filter grid aliasing; reject real light changes.
@@ -491,7 +491,7 @@ void fog_inject_cell(uint3 thread_id, inout bool water_cache_valid, inout float3
         {
             float4 history = tex_fog_water_source.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp),
                 float3(previous_uv, fog_distance_to_slice(previous_distance)), 0.0f);
-            float keep = min(exp(-max(buffer_frame.delta_time, 0.001f) / 0.06f), 0.85f);
+            float keep = min(exp(-max(buffer_frame.delta_time_real, 0.001f) / 0.06f), 0.85f);
             // Alpha is coverage, not luminance. Reject samples straddling air.
             keep *= smoothstep(0.99f, 1.0f, history.a);
             float change = abs(luminance(history.rgb) - luminance(water_rate))

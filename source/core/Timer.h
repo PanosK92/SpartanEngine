@@ -41,12 +41,20 @@ namespace spartan
         static void SetFixedDeltaSec(double seconds);
         static double GetFixedDeltaSec();
 
+        // Simulation speed: 1 is real time, below 1 is slow motion, 0 freezes the world.
+        // GetDeltaTime* and GetSimTime* follow it; cameras, ui and tools read the real variants.
+        static void SetTimeScale(double scale);
+        static double GetTimeScale();
+
         // Frame-boundary snapshots in a monotonic clock domain. Raw deltas include
         // pacing and stalls; smoothed deltas are for display, not simulation.
         static double GetTimeMs();
         static double GetTimeSec();
+        static double GetSimTimeSec();
         static double GetDeltaTimeMs();
         static double GetDeltaTimeSec();
+        static double GetDeltaTimeRealMs();
+        static double GetDeltaTimeRealSec();
         static double GetDeltaTimeSmoothedMs();
         static double GetDeltaTimeSmoothedSec();
         static double GetPacingTimeMs();

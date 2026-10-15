@@ -334,5 +334,40 @@ namespace car::chassis_collision
             }
             return result;
         }
+
+        // Identical source meshes, transforms and clearances produce the same surface.
+        // Keyed on those, a traffic spawn skips collecting and hashing the whole body.
+        struct source_entry
+        {
+            uint64_t key;
+            std::vector<std::vector<PxVec3>> hulls;
+        };
+        std::vector<source_entry> sources;
+
+        std::vector<mesh_ptr> get_by_source(uint64_t key, const PxCookingParams& params, PxInsertionCallback& insertion)
+        {
+            std::vector<mesh_ptr> result;
+            for (const source_entry& e : sources)
+            {
+                if (e.key != key) continue;
+                for (const auto& points : e.hulls)
+                {
+                    auto mesh = cook(points, params, insertion);
+                    if (!mesh) return {};
+                    result.push_back(std::move(mesh));
+                }
+                break;
+            }
+            return result;
+        }
+
+        void remember_source(uint64_t key, const std::vector<mesh_ptr>& hulls)
+        {
+            source_entry e{key, {}};
+            for (const auto& mesh : hulls)
+                e.hulls.emplace_back(mesh->getVertices(), mesh->getVertices() + mesh->getNbVertices());
+            if (sources.size() == 16) sources.erase(sources.begin());
+            sources.push_back(std::move(e));
+        }
     };
 }

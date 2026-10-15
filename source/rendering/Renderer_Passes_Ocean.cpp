@@ -454,7 +454,7 @@ namespace spartan
             const float period = 6.0f + 3.0f * sqrtf(max(surf, 0.0f));
             wave_height.store(surf);
             wave_period.store(period);
-            wave_time.store(static_cast<float>(fmod(Timer::GetTimeSec(), static_cast<double>(period) * 2048.0)));
+            wave_time.store(static_cast<float>(fmod(Timer::GetSimTimeSec(), static_cast<double>(period) * 2048.0)));
 
             const Vector3 wind = World::GetWind();
             const float wind_length = sqrtf(wind.x * wind.x + wind.z * wind.z);

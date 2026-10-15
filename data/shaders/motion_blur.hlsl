@@ -705,7 +705,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float shutter_speed = pass_float(pass_motion_blur::shutter_speed);
     float frame_time =
         max(
-            buffer_frame.delta_time,
+            buffer_frame.delta_time_real,
             MIN_FRAME_TIME
         );
     float shutter_ratio =

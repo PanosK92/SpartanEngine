@@ -2878,7 +2878,7 @@ namespace spartan
         // wind
         if (m_cloth_wind_enabled)
         {
-            float time = static_cast<float>(Timer::GetTimeSec());
+            float time = static_cast<float>(Timer::GetSimTimeSec());
             for (auto& p : m_cloth_particles)
             {
                 if (p.inverse_mass == 0.0f)

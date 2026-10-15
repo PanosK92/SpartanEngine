@@ -11,6 +11,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../RHI_Device.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Implementation.h"
+#include "../../core/ThreadPool.h"
 //================================
 
 //= NAMESPACES =====
@@ -228,7 +229,7 @@ namespace spartan
             ("buffer \"" + GetObjectName() + "\" overflowed, either it is pushed more times than it has slots or a push is missing its ResetOffset").c_str()
         );
 
-        memcpy(static_cast<uint8_t*>(m_data_gpu) + m_offset, data_cpu, upload_size);
+        ThreadPool::ParallelCopy(static_cast<uint8_t*>(m_data_gpu) + m_offset, data_cpu, upload_size);
 
         VkAccessFlags2 dst_access = 0;
         switch (m_type)

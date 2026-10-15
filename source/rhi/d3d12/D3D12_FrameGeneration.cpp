@@ -404,7 +404,7 @@ namespace spartan
         // engine velocity is unjittered ndc curr minus prev with y up, ffx wants prev minus curr in pixels with y down
         prepare.motionVectorScale.x     = -0.5f * static_cast<float>(render_width);
         prepare.motionVectorScale.y     =  0.5f * static_cast<float>(render_height);
-        prepare.frameTimeDelta          = frame.delta_time * 1000.0f;
+        prepare.frameTimeDelta          = frame.delta_time_real * 1000.0f;
         // reverse z, ffx takes the plane that maps to depth 0 as near
         prepare.cameraNear              = camera->GetFarPlane();
         prepare.cameraFar               = camera->GetNearPlane();

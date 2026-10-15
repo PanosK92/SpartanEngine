@@ -1287,6 +1287,7 @@ namespace spartan
             { Renderer_Shader::film_grain_c,                          RHI_Shader_Type::Compute, "film_grain.hlsl"                                                            },
             { Renderer_Shader::chromatic_aberration_c,                RHI_Shader_Type::Compute, "chromatic_aberration.hlsl"                                                  },
             { Renderer_Shader::vhs_c,                                 RHI_Shader_Type::Compute, "vhs.hlsl"                                                                   },
+            { Renderer_Shader::cinematic_c,                           RHI_Shader_Type::Compute, "cinematic.hlsl"                                                             },
 
             { Renderer_Shader::output_c,                              RHI_Shader_Type::Compute, "output.hlsl"                                                                },
             { Renderer_Shader::motion_blur_c,                         RHI_Shader_Type::Compute, "motion_blur.hlsl"                                                           },
@@ -1428,6 +1429,10 @@ namespace spartan
         fonts[static_cast<uint32_t>(Renderer_Font::OverlaySmall)] = make_shared<Font>(dir_font + "Inter/Inter-Regular.ttf",  size(8.0f),  white, Font_Outline_None);
         fonts[static_cast<uint32_t>(Renderer_Font::Overlay)]      = make_shared<Font>(dir_font + "Inter/Inter-SemiBold.ttf", size(10.0f), white, Font_Outline_None);
         fonts[static_cast<uint32_t>(Renderer_Font::OverlayLarge)] = make_shared<Font>(dir_font + "Inter/Inter-SemiBold.ttf", size(22.0f), white, Font_Outline_None);
+
+        // sequencer titles draw into the output image, so their size follows pixels rather than the ui scale
+        fonts[static_cast<uint32_t>(Renderer_Font::CinematicSmall)] = make_shared<Font>(dir_font + "Inter/Inter-Regular.ttf",  26, Color::standard_white, Font_Outline_None);
+        fonts[static_cast<uint32_t>(Renderer_Font::CinematicLarge)] = make_shared<Font>(dir_font + "Inter/Inter-SemiBold.ttf", 50, Color::standard_white, Font_Outline_None);
     }
 
     void Renderer::CreateStandardMeshes()

@@ -1031,6 +1031,16 @@ namespace spartan
                 changed.clear();
                 changed.swap(render_bounds_pending);
             }
+            // Spawning or despawning moving renders (cars, characters) leaves every
+            // static leaf intact. Keep the tree and drop only borrowed pointers that
+            // no longer belong to the index, without reading them.
+            if (render_spatial_rebuild && cvar_spatial_render.GetValue() != 0 && render_spatial_index.RetainStatic(all_render_entries))
+            {
+                erase_if(changed, [](Render* render) { return !render_spatial_index.IsStatic(render); });
+                erase_if(render_previous_candidates, [](const RenderSceneData* data) { return !render_spatial_index.Contains(data); });
+                render_spatial_rebuild = false;
+                CountWorldWork(WorldWork::spatial_retains);
+            }
             // Membership may have removed previous candidates even in reference
             // mode, where no tree rebuild is performed this frame.
             if (render_spatial_rebuild) render_previous_candidates.clear();
@@ -1046,11 +1056,18 @@ namespace spartan
                 // is read. Pending pointers may refer to removed components.
                 changed.clear();
                 render_previous_candidates.clear();
-                for (const auto* data : all_render_entries)
+                std::array<WorldWorkCounters, 8> rebuild_work;
+                const uint32_t count = static_cast<uint32_t>(all_render_entries.size());
+                ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
                 {
-                    data->render->AcknowledgeSpatialBounds();
-                    data->render->Tick();
-                }
+                    ScopedWorldWork scope(rebuild_work[begin]);
+                    for (uint32_t i = count * begin / 8; i < count * end / 8; ++i)
+                    {
+                        all_render_entries[i]->render->AcknowledgeSpatialBounds();
+                        all_render_entries[i]->render->Tick();
+                    }
+                }, 8u);
+                for (const auto& batch : rebuild_work) work_counters.Merge(batch);
                 render_spatial_index.Build(all_render_entries);
                 render_spatial_rebuild = false;
                 CountWorldWork(WorldWork::spatial_rebuilds);

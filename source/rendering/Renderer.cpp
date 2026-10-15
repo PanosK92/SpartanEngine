@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <unordered_map>
 #include <future>
 #include <cmath>
+#include <immintrin.h>
 #include "Renderer_Internal.h"
 #include "Material.h"
 #include "IesProfile.h"
@@ -226,6 +227,17 @@ namespace spartan
                 : World::GetEntitiesWithRender();
         }
 
+        // scene records are pooled but scattered, scans over every render are bound by these misses
+        void prefetch_scene_data(const vector<const RenderSceneData*>& entries, size_t index, size_t end)
+        {
+            if (index < end)
+            {
+                const char* data = reinterpret_cast<const char*>(entries[index]);
+                _mm_prefetch(data, _MM_HINT_T0);
+                _mm_prefetch(data + 64, _MM_HINT_T0);
+            }
+        }
+
         const vector<const RenderSceneData*>& render_scene_data(bool filter_secondary = true)
         {
             if (!secondary_render_root_active)
@@ -273,7 +285,7 @@ namespace spartan
             const Vector3 camera_position = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
             const auto& entries = render_scene_data();
             struct Candidates { vector<Render*> renders; vector<Render*> builds; vector<Render*> instanced; bool missing = false; };
-            static array<Candidates, 8> batches;
+            static array<Candidates, 32> batches;
             for (auto& batch : batches)
             {
                 batch.renders.clear();
@@ -285,8 +297,10 @@ namespace spartan
             auto collect = [&](uint32_t first, uint32_t last)
             {
                 auto& batch = batches[first];
-                for (size_t i = entries.size() * first / jobs; i < entries.size() * last / jobs; ++i)
+                const size_t end = entries.size() * last / jobs;
+                for (size_t i = entries.size() * first / jobs; i < end; ++i)
                 {
+                    prefetch_scene_data(entries, i + 8, end);
                     const RenderSceneData& data = *entries[i];
                     if (!data.active.load(memory_order_relaxed) || (data.flags & RenderFlags::ExcludeFromRayTracing)) continue;
                     Render* render = data.render;
@@ -313,8 +327,10 @@ namespace spartan
                     if (!missing && render->NeedsBlasRefit()) batch.builds.push_back(render);
                 }
             };
+            SP_PROFILE_CPU_START("rt_collect");
             if (jobs == 1) collect(0, 1);
             else ThreadPool::ParallelLoop(collect, jobs);
+            SP_PROFILE_CPU_END();
             // Stable source order preserves the TLAS membership comparison.
             for (const auto& batch : batches)
             {
@@ -631,7 +647,7 @@ namespace spartan
             }
 
             const float gpu_time_target   = 16.67f;
-            const float adjustment_factor = static_cast<float>(0.05f * Timer::GetDeltaTimeSec());
+            const float adjustment_factor = static_cast<float>(0.05f * Timer::GetDeltaTimeRealSec());
             float       screen_percentage = Renderer::GetResolutionScale();
             const float gpu_time          = Profiler::GetTimeGpuLast();
 
@@ -1241,6 +1257,7 @@ namespace spartan
         const Vector3 streaming_position = streaming_camera ? streaming_camera->GetEntity()->GetPosition() : Vector3::Zero;
         const float streaming_focal_length = streaming_camera ? GetViewport().height / (2.0f * tan(streaming_camera->GetFovVerticalRad() * 0.5f)) : 0.0f;
         const auto& streaming_entries = render_scene_data(false);
+        SP_PROFILE_CPU_START("material_demand");
         for (size_t i = m_frame_num % demand_frames; i < streaming_entries.size(); i += demand_frames)
         {
             const RenderSceneData& data = *streaming_entries[i];
@@ -1304,6 +1321,8 @@ namespace spartan
                 pixels = projected_pixels(data.bounding_box);
             demand = max(demand, pixels);
         }
+        SP_PROFILE_CPU_END();
+        SP_PROFILE_CPU_START("material_requests");
         if (m_frame_num % demand_frames == demand_frames - 1)
         for (const auto& [id, demand] : material_pixels)
         {
@@ -1352,6 +1371,7 @@ namespace spartan
         }
         static uint64_t uploaded_secondary_signature = 0;
         const bool secondary_changed = secondary_signature != uploaded_secondary_signature;
+        SP_PROFILE_CPU_END();
 
         // Consume renderer-owned scene input changes before deciding whether to upload.
         const bool world_changed =
@@ -1398,11 +1418,13 @@ namespace spartan
             UpdateMaterials();
         }
         bindless_textures_dirty = false;
+        SP_PROFILE_CPU_START("material_bindless");
         RHI_CommandList::PrepareTexturesForSampling(&m_bindless_textures);
         RHI_Device::UpdateBindlessMaterials(
             &m_bindless_textures,
             update_materials ? GetBuffer(Renderer_Buffer::MaterialParameters) : nullptr
         );
+        SP_PROFILE_CPU_END();
 
         // null srvs write the 1m checkerboard, keep retrying until gpu prep finishes
         for (RHI_Texture* texture : m_bindless_textures)
@@ -1441,11 +1463,13 @@ namespace spartan
         }
 
         // frustum and draw distance membership depend on the camera, rebuild every frame
+        SP_PROFILE_CPU_START("bindless_lights");
         UpdateLights();
         if (lights_changed)
         {
             RHI_Device::UpdateBindlessLights(GetBuffer(Renderer_Buffer::LightParameters));
         }
+        SP_PROFILE_CPU_END();
 
         if (m_bindless_samplers_dirty)
         {
@@ -1454,7 +1478,10 @@ namespace spartan
         }
 
         // aabbs change every frame with entity transforms
+        SP_PROFILE_CPU_START("bindless_aabbs");
         UpdateBoundingBoxes();
+        SP_PROFILE_CPU_END();
+        SP_PROFILE_CPU_START("bindless_frame_uploads");
         static bool aabbs_descriptor_set = false;
         if (!aabbs_descriptor_set)
         {
@@ -1473,7 +1500,7 @@ namespace spartan
                 // Stream the scene's contiguous records in one copy instead of
                 // interleaving thousands of small write-combined GPU writes
                 // with pointer chasing and material sorting on the CPU.
-                memcpy(static_cast<char*>(mapped) + frame_byte_offset, m_draw_data_cpu.data(), upload_size);
+                ThreadPool::ParallelCopy(static_cast<char*>(mapped) + frame_byte_offset, m_draw_data_cpu.data(), upload_size);
             }
             else
             {
@@ -1490,7 +1517,7 @@ namespace spartan
             else
                 RHI_CommandList::UpdateBuffer(buffer, offset, size, m_decal_data.data());
         }
-        if (Weather::GetWetness() > 0.0f)
+        if (Weather::IsShelterActive())
         {
             RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::RainOcclusion);
             const uint32_t size = Weather::occlusion_resolution * Weather::occlusion_resolution * sizeof(float);
@@ -1606,6 +1633,7 @@ namespace spartan
             tasks_buffer->ResetOffset();
             tasks_buffer->Update(&m_cull_tasks[0], tasks_buffer->GetStride() * m_cull_task_count);
         }
+        SP_PROFILE_CPU_END();
     }
 
     void Renderer::TickLogClusterOverflowRateLimited()
@@ -2059,8 +2087,9 @@ namespace spartan
         Renderer::view().frame.resolution_render     = m_resolution_render;
         Renderer::view().frame.taa_jitter_previous   = Renderer::view().frame.taa_jitter_current;
         Renderer::view().frame.taa_jitter_current    = Renderer::view().jitter_offset;
-        Renderer::view().frame.time                  = Timer::GetTimeSec();
+        Renderer::view().frame.time                  = Timer::GetSimTimeSec();
         Renderer::view().frame.delta_time            = static_cast<float>(Timer::GetDeltaTimeSec());
+        Renderer::view().frame.delta_time_real       = static_cast<float>(Timer::GetDeltaTimeRealSec());
         Renderer::view().frame.frame                 = ++view().temporal_frame;
         Renderer::view().frame.resolution_scale      = GetResolutionScale();
         Renderer::view().frame.restir_pt_scale       = cvar_restir_pt_scale.GetValue();
@@ -2282,7 +2311,7 @@ namespace spartan
         const bool ray_tracing_ready = ray_tracing_allowed && !frame_is_loading &&
             (!pending_blas || tlas_available);
         Renderer::view().frame.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>() && ray_tracing_ready, 1 << 0);
-        Renderer::view().frame.set_bit(cvar_ssao.GetValueAs<bool>(),                                        1 << 1);
+        Renderer::view().frame.set_bit(cvar_ssao.GetValueAs<bool>() && !IsStereoView(),                     1 << 1);
         Renderer::view().frame.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available && ray_tracing_ready, 1 << 2);
         Renderer::view().frame.set_bit(cvar_restir_pt.GetValueAs<bool>() && ray_tracing_ready,              1 << 3);
 
@@ -2987,6 +3016,50 @@ namespace spartan
         }
     }
 
+    void Renderer::DrawCinematicText(const char* text, const Vector2& position_screen_percentage, float alpha, bool large, const Vector3& color)
+    {
+        shared_ptr<Font>& font = GetFont(large ? Renderer_Font::CinematicLarge : Renderer_Font::CinematicSmall);
+        if (!font || !text || alpha <= 0.0f)
+        {
+            return;
+        }
+
+        // centered on the position, one line per newline, with a soft drop shadow so it reads over a bright sky
+        const float line_height = font->GetLineHeight() * 1.15f;
+        uint32_t line_count     = 1;
+        for (const char* p = text; *p; ++p)
+        {
+            line_count += *p == '\n' ? 1 : 0;
+        }
+        const float width_px  = static_cast<float>(GetViewport().width);
+        const float height_px = static_cast<float>(GetViewport().height);
+        float y               = height_px * position_screen_percentage.y - line_height * static_cast<float>(line_count) * 0.5f;
+        const float shadow    = large ? 3.0f : 2.0f;
+        const Color shadow_color(0.0f, 0.0f, 0.0f, clamp(alpha, 0.0f, 1.0f) * 0.55f);
+        const Color text_color(color.x, color.y, color.z, clamp(alpha, 0.0f, 1.0f));
+
+        string line;
+        const char* cursor = text;
+        while (true)
+        {
+            const char* end = cursor;
+            while (*end && *end != '\n')
+            {
+                ++end;
+            }
+            line.assign(cursor, end);
+            const float x = width_px * position_screen_percentage.x - font->GetTextWidth(line.c_str(), false) * 0.5f;
+            font->AddText(line.c_str(), Vector2(x + shadow, y + shadow), shadow_color, false);
+            font->AddText(line.c_str(), Vector2(x, y), text_color, false);
+            y += line_height;
+            if (!*end)
+            {
+                break;
+            }
+            cursor = end + 1;
+        }
+    }
+
     void Renderer::SetPresentInRenderer(const bool enabled)
     {
         m_present_in_renderer = enabled;
@@ -3033,6 +3106,83 @@ namespace spartan
         }
     }
 
+    namespace
+    {
+        // stable lsd radix sort by key, bytes that every key shares are skipped, so short keys cost few passes
+        void radix_sort_keys(vector<pair<uint64_t, uint32_t>>& keys)
+        {
+            const size_t count = keys.size();
+            if (count < 64)
+            {
+                stable_sort(keys.begin(), keys.end(), [](const pair<uint64_t, uint32_t>& a, const pair<uint64_t, uint32_t>& b) { return a.first < b.first; });
+                return;
+            }
+
+            static vector<pair<uint64_t, uint32_t>> scratch;
+            scratch.resize(count);
+            uint32_t histograms[8][256] = {};
+            for (const pair<uint64_t, uint32_t>& key : keys)
+            {
+                for (uint32_t pass = 0; pass < 8; ++pass)
+                {
+                    histograms[pass][(key.first >> (pass * 8)) & 0xff]++;
+                }
+            }
+
+            pair<uint64_t, uint32_t>* source      = keys.data();
+            pair<uint64_t, uint32_t>* destination = scratch.data();
+            for (uint32_t pass = 0; pass < 8; ++pass)
+            {
+                uint32_t* histogram = histograms[pass];
+                if (histogram[(source[0].first >> (pass * 8)) & 0xff] == count)
+                {
+                    continue;
+                }
+
+                uint32_t offset = 0;
+                for (uint32_t bucket = 0; bucket < 256; ++bucket)
+                {
+                    const uint32_t bucket_count = histogram[bucket];
+                    histogram[bucket]           = offset;
+                    offset                     += bucket_count;
+                }
+                for (size_t i = 0; i < count; ++i)
+                {
+                    destination[histogram[(source[i].first >> (pass * 8)) & 0xff]++] = source[i];
+                }
+                swap(source, destination);
+            }
+
+            if (source != keys.data())
+            {
+                memcpy(keys.data(), source, count * sizeof(pair<uint64_t, uint32_t>));
+            }
+        }
+
+        // Reads only once the render's decal range is staged, so scene draws can be filled on worker threads.
+        void fill_draw_data(Sb_DrawData& entry, const math::Matrix& transform, const math::Matrix& transform_previous, uint32_t material_index, uint32_t is_transparent, const Render* render)
+        {
+            entry.transform          = transform;
+            entry.transform_previous = transform_previous;
+            entry.motion_blur_id     = render ? render->GetMotionBlurId() | (render->GetMotionBlurGroup() ? 0x80000000u : 0u) : 0;
+            entry.material_index     = material_index;
+            entry.is_transparent     = is_transparent;
+            entry.aabb_index         = 0;
+            entry.lod_first_index    = 0;
+            entry.flags              = render && render->ExcludesTerrainBlend() ? (1u << 6) : 0u;
+            entry.flags             |= render && is_drops_vehicle(render->GetEntity()) ? (1u << 7) : 0u;
+            entry.instance_offset    = 0;
+            entry.instance_index     = 0;
+            entry.lod_vertex_offset  = 0;
+            entry.previous_vertex_offset = render ? GeometryBuffer::GetPreviousVertexOffset(render->GetVertexOffset()) : 0;
+            entry.meshlet_vertex_base = 0;
+            entry.meshlet_micro_base = 0;
+
+            fill_uv_draw_fields_from_render(entry, render);
+            fill_decal_draw_fields(entry, render);
+        }
+    }
+
     uint32_t Renderer::WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous, uint32_t material_index, uint32_t is_transparent, const Render* render, bool is_ui)
     {
         // A full scene must still leave room for the UI projection. Otherwise
@@ -3052,25 +3202,8 @@ namespace spartan
 
         uint32_t index = m_draw_data_count++;
 
-        Sb_DrawData& entry       = m_draw_data_cpu[index];
-        entry.transform          = transform;
-        entry.transform_previous = transform_previous;
-        entry.motion_blur_id     = render ? render->GetMotionBlurId() | (render->GetMotionBlurGroup() ? 0x80000000u : 0u) : 0;
-        entry.material_index     = material_index;
-        entry.is_transparent     = is_transparent;
-        entry.aabb_index         = 0;
-        entry.lod_first_index    = 0;
-        entry.flags              = render && render->ExcludesTerrainBlend() ? (1u << 6) : 0u;
-        entry.flags             |= render && is_drops_vehicle(render->GetEntity()) ? (1u << 7) : 0u;
-        entry.instance_offset    = 0;
-        entry.instance_index     = 0;
-        entry.lod_vertex_offset  = 0;
-        entry.previous_vertex_offset = render ? GeometryBuffer::GetPreviousVertexOffset(render->GetVertexOffset()) : 0;
-        entry.meshlet_vertex_base = 0;
-        entry.meshlet_micro_base = 0;
-
-        fill_uv_draw_fields_from_render(entry, render);
-        fill_decal_draw_fields(entry, render);
+        Sb_DrawData& entry = m_draw_data_cpu[index];
+        fill_draw_data(entry, transform, transform_previous, material_index, is_transparent, render);
 
         // the draw data buffer is a single large allocation partitioned into per-frame regions;
         // each frame writes to its own region so there is no write-after-read race with the gpu
@@ -3104,9 +3237,10 @@ namespace spartan
     {
         SP_PROFILE_CPU();
         static array<Sb_Material, rhi_max_array_size> properties;
-        static unordered_set<uint64_t> unique_material_ids;
+        static uint32_t previous_count = 0;
         static bool capacity_warning_logged = false;
         uint32_t count = 0;
+        const uint64_t stamp = Material::NewVisitStamp();
         // Materials and textures have independent indices. Share descriptors for reused
         // textures and reserve slot 0 for absent maps, including textureless grass.
         unordered_map<RHI_Texture*, uint32_t> texture_indices;
@@ -3143,9 +3277,9 @@ namespace spartan
                    format == RHI_Format::BC7_Unorm;
         };
     
-        auto update_material = [&count, &should_decode_as_srgb, &texture_indices, &texture_count](Material* material)
+        auto update_material = [&count, &should_decode_as_srgb, &texture_indices, &texture_count, stamp](Material* material)
         {
-            if (unique_material_ids.find(material->GetObjectId()) != unique_material_ids.end())
+            if (!material->Visit(stamp))
             {
                 return;
             }
@@ -3161,7 +3295,6 @@ namespace spartan
                 return;
             }
 
-            unique_material_ids.insert(material->GetObjectId());
             {
                 // uv state (tiling, offset, invert, rotation, world_space_uv) intentionally not uploaded here,
                 // it is per-render and lives on Sb_DrawData (see WriteDrawData) and Sb_GeometryInfo for rt
@@ -3286,9 +3419,9 @@ namespace spartan
             }
         };
     
-        properties.fill(Sb_Material{});
+        // slots past the previous upload were never written since their last reset
+        fill(properties.begin(), properties.begin() + previous_count, Sb_Material{});
         m_bindless_textures.fill(nullptr);
-        unique_material_ids.clear();
 
         // terrain goes first so the enabled layers land as one contiguous block, the surface
         // material then only has to carry the base index and the shader can walk the rest
@@ -3396,6 +3529,7 @@ namespace spartan
             }
         }
 
+        previous_count = count;
         RHI_Buffer* buffer = Renderer::GetBuffer(Renderer_Buffer::MaterialParameters);
         RHI_CommandList::UpdateBuffer(buffer, 0, buffer->GetStride() * max(count, 1u), &properties[0]);
     }
@@ -3733,43 +3867,8 @@ namespace spartan
     void Renderer::UpdateBoundingBoxes()
     {
         SP_ASSERT(m_draw_calls_prepass_count + m_indirect_render_count <= renderer_max_aabbs);
-        static uint32_t prev_aabb_count = 0;
-        for (uint32_t i = 0; i < prev_aabb_count; i++)
-        {
-            m_bindless_aabbs[i] = Sb_Aabb();
-        }
-
-        // prepass aabbs come first in the buffer, slot index is the prepass draw index
-        for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
-        {
-            const Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
-            Render* render                     = draw_call.render;
-            const BoundingBox& aabb            = render->GetBoundingBox();
-            m_bindless_aabbs[i].min            = aabb.GetMin();
-            m_bindless_aabbs[i].max            = aabb.GetMax();
-        }
-
-        // indirect draw aabbs, the slot is taken straight from m_indirect_draw_data[].aabb_index so the writes
-        // here always land on the slot the cull shader will read for that draw, no filter divergence can drift it
-        const uint32_t aabb_frame_offset = m_frame_resource_index * renderer_max_aabbs;
-        for (uint32_t i = 0; i < m_indirect_draw_count; i++)
-        {
-            Render* render                   = m_indirect_renders[i];
-            const Sb_DrawData& draw_data     = m_indirect_draw_data[i];
-            const uint32_t aabb_slot_global  = draw_data.aabb_index;
-            if (aabb_slot_global < aabb_frame_offset)
-            {
-                continue;
-            }
-            const uint32_t aabb_slot = aabb_slot_global - aabb_frame_offset;
-            if (aabb_slot >= renderer_max_aabbs)
-            {
-                continue;
-            }
-            const BoundingBox& aabb         = render->GetBoundingBox();
-            m_bindless_aabbs[aabb_slot].min = aabb.GetMin();
-            m_bindless_aabbs[aabb_slot].max = aabb.GetMax();
-        }
+        // the slots were written by draw preparation, prepass draws first, then one per indirect render,
+        // the indirect slot is the one its draw records carry in aabb_index, so the cull shader reads it
 
         // upload covers both the prepass region and the trailing indirect region, the indirect aabb slots start at m_draw_calls_prepass_count
         const uint32_t total_aabb_count = m_draw_calls_prepass_count + m_indirect_render_count;
@@ -3780,7 +3879,6 @@ namespace spartan
             uint32_t upload_size       = static_cast<uint32_t>(sizeof(Sb_Aabb)) * total_aabb_count;
             RHI_CommandList::UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_bindless_aabbs[0]);
         }
-        prev_aabb_count = total_aabb_count;
     }
 
     void Renderer::UpdateDrawCalls_ResetCounts()
@@ -3819,180 +3917,238 @@ namespace spartan
             return tessellation_gpu_driven && !material->IsTransparent() && material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
         };
 
-        struct Candidates { vector<Render*> renders; bool transparent = false; };
-        static array<Candidates, 8> batches;
+        // Candidates are classified on the workers, so the serial staging below reads one compact list.
+        enum : uint8_t
+        {
+            candidate_drawn   = 1 << 0, // visible, or kept off screen for a shadow cascade or the gpu tessellation cull
+            candidate_decals  = 1 << 1, // receiver data is staged even off screen, a reflection may still see it
+            candidate_grouped = 1 << 2  // shares one motion blur stencil value with its group (all wheel parts)
+        };
+        struct Candidate
+        {
+            Render* render = nullptr;
+            uint8_t flags  = 0;
+        };
+        struct Candidates { vector<Candidate> renders; bool transparent = false; };
+        static array<Candidates, 32> batches;
         for (auto& batch : batches)
         {
             batch.renders.clear();
             batch.transparent = false;
         }
         const auto& entries = render_scene_data();
+        SP_PROFILE_CPU_START("draw_collect");
         const uint32_t jobs = entries.size() >= 256 ? static_cast<uint32_t>(batches.size()) : 1u;
         auto collect = [&](uint32_t first, uint32_t last)
         {
             auto& batch = batches[first];
-            for (size_t i = entries.size() * first / jobs; i < entries.size() * last / jobs; ++i)
+            const size_t end = entries.size() * last / jobs;
+            for (size_t i = entries.size() * first / jobs; i < end; ++i)
             {
+                prefetch_scene_data(entries, i + 8, end);
                 const RenderSceneData& data = *entries[i];
                 if (!data.active.load(memory_order_relaxed) || !data.mesh || !data.material) continue;
                 Render* render = data.render;
                 batch.transparent |= data.material->IsTransparent();
                 if (!data.is_visible && !needs_shadow_caster(data) &&
                     (!data.has_decals || !data.instances.empty()) && !is_gpu_culled_tessellated(data.material)) continue;
-                batch.renders.push_back(render);
+
+                Material* material = render->GetMaterial();
+                uint8_t flags      = 0;
+                if (render->IsVisible() || needs_shadow_caster(render->GetSceneData()) || is_gpu_culled_tessellated(material))
+                {
+                    flags |= candidate_drawn;
+                }
+                if (!render->GetDecals().empty() && !render->HasInstancing())
+                {
+                    flags |= candidate_decals;
+                }
+                if (render->GetMotionBlurGroup())
+                {
+                    flags |= candidate_grouped;
+                }
+                batch.transparent |= material->IsTransparent();
+                batch.renders.push_back({ render, flags });
             }
         };
         if (jobs == 1) collect(0, 1);
         else ThreadPool::ParallelLoop(collect, jobs);
+        SP_PROFILE_CPU_END();
 
-        // Only the compact candidate set touches shared draw/decal staging.
-        // Merge in source order so capacity limits choose the same geometry.
-        static vector<Render*> candidates;
-        candidates.clear();
+        SP_PROFILE_CPU_START("draw_stage");
+        // Merge in source order so capacity limits choose the same geometry. Only decal
+        // receivers and motion groups touch shared staging here.
+        // Motion IDs must be assigned before either CPU or indirect draw records are written.
+        // Normal finite half-float patterns encode 30719 IDs exactly; overflow stays unclassified.
+        // Groups take the first IDs, every other draw takes a unique one after them in the write below.
+        constexpr uint32_t motion_id_max     = 30719;
+        constexpr uint32_t motion_id_ungrouped = UINT32_MAX;
+        uint32_t motion_group_count = 0;
+        pmr::unordered_map<uint64_t, uint32_t> motion_groups(FrameAllocator::GetResource());
+        static vector<Render*> accepted;
+        static vector<uint32_t> accepted_motion;
+        accepted.clear();
+        accepted_motion.clear();
         for (const auto& batch : batches)
         {
             m_transparents_present |= batch.transparent;
-            candidates.insert(candidates.end(), batch.renders.begin(), batch.renders.end());
-        }
-        // IDs must be assigned before either CPU or indirect draw records are written.
-        // Normal finite half-float patterns encode 30719 IDs exactly; overflow stays unclassified.
-        uint32_t motion_id = 0;
-        pmr::unordered_map<uint64_t, uint32_t> motion_masks(FrameAllocator::GetResource());
-        // Only shared groups need a lookup entry. Most scenery has a unique ID;
-        // rebuilding a hash node for each of those every frame adds no information.
-        for (Render* candidate : candidates)
-        {
-            if (Render* render = candidate; render->GetMotionBlurGroup())
-                motion_masks.try_emplace(render->GetMotionBlurGroup(), 0);
-        }
-        for (Render* candidate : candidates)
-        {
-            if (Render* render = candidate)
+            for (const Candidate& candidate : batch.renders)
             {
-                // All wheel parts, including the brake interior, get the exact same stencil value.
-                const uint64_t key = render->GetMotionBlurGroup() ? render->GetMotionBlurGroup() : render->GetEntity()->GetObjectId();
-                auto entry = motion_masks.find(key);
-                if (entry == motion_masks.end())
+                Render* render = candidate.render;
+                if (candidate.flags & candidate_decals)
                 {
-                    render->SetMotionBlurId(++motion_id <= 30719 ? motion_id : 0);
+                    Sb_DrawData decal_range;
+                    fill_decal_draw_fields(decal_range, render);
                 }
-                else
-                {
-                    // UINT32_MAX remembers a group that exhausted the finite ID budget.
-                    if (entry->second == 0)
-                        entry->second = ++motion_id <= 30719 ? motion_id : UINT32_MAX;
-                    render->SetMotionBlurId(entry->second == UINT32_MAX ? 0 : entry->second);
-                }
-            }
-        }
-        for (Render* render : candidates)
-        {
-            Entity* entity = render->GetEntity();
-            Material* material = render->GetMaterial();
-
-            // Stage receiver data even off screen: a reflection may still see it.
-            if (!render->GetDecals().empty() && !render->HasInstancing())
-            {
-                Sb_DrawData decal_range;
-                fill_decal_draw_fields(decal_range, render);
-            }
-            // Off-screen geometry is only kept when a shadow cascade needs it.
-            if (!render->IsVisible())
-            {
-                if (material->IsTransparent())
-                {
-                    m_transparents_present = true;
-                }
-
-                if (
-                    !needs_shadow_caster(render->GetSceneData()) &&
-                    !is_gpu_culled_tessellated(material)
-                )
+                if (!(candidate.flags & candidate_drawn))
                 {
                     continue;
                 }
-            }
 
-            if (material->IsTransparent())
+                uint32_t motion = motion_id_ungrouped;
+                if (candidate.flags & candidate_grouped)
+                {
+                    uint32_t& group_id = motion_groups.try_emplace(render->GetMotionBlurGroup(), 0).first->second;
+                    if (group_id == 0)
+                    {
+                        group_id = ++motion_group_count;
+                    }
+                    motion = group_id <= motion_id_max ? group_id : 0;
+                }
+                accepted.push_back(render);
+                accepted_motion.push_back(motion);
+            }
+        }
+        SP_PROFILE_CPU_END();
+        SP_PROFILE_CPU_START("draw_write");
+
+        // A full scene must still leave room for the UI projection.
+        const uint32_t draw_data_limit = renderer_max_draw_calls - renderer_reserved_ui_draw_calls;
+        const uint32_t draw_call_room  = renderer_max_draw_calls - min(m_draw_call_count, renderer_max_draw_calls);
+        const uint32_t draw_data_room  = draw_data_limit - min(m_draw_data_count, draw_data_limit);
+        const uint32_t write_count     = min(static_cast<uint32_t>(accepted.size()), min(draw_call_room, draw_data_room));
+        if (write_count < accepted.size() && write_count == draw_data_room)
+        {
+            static bool logged = false;
+            if (!logged)
             {
-                m_transparents_present = true;
+                SP_LOG_WARNING("draw data budget exhausted (%u), dropping further draws this frame (UI capacity is reserved)", draw_data_limit);
+                logged = true;
             }
-
-            if (m_draw_call_count >= renderer_max_draw_calls)
-            {
-                break;
-            }
-
-            uint32_t draw_data_index = WriteDrawData(
-                entity->GetMatrix(),
-                matrix_previous_for_velocity(entity),
-                material->GetIndex(),
-                material->IsTransparent() ? 1 : 0,
-                render
-            );
-            if (draw_data_index == numeric_limits<uint32_t>::max())
-            {
-                break;
-            }
-
-            Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
-            draw_call.render             = render;
-            draw_call.material_id        = material->GetObjectId();
-            draw_call.is_transparent     = material->IsTransparent();
-            draw_call.is_alpha_tested    = material->IsAlphaTested();
-            // Off-screen casters no longer receive a per-frame visibility tick.
-            draw_call.distance_squared   = Vector3::DistanceSquared(cull_camera_position,
-                render->GetBoundingBox().GetClosestPoint(cull_camera_position));
-            draw_call.lod_index          = render->GetLodIndex();
-            draw_call.camera_visible     = render->IsVisible();
-            draw_call.instance_index     = 0;
-            draw_call.instance_count     = render->GetInstanceCount();
-            draw_call.draw_data_index    = draw_data_index;
         }
 
-        // opaque before transparent, then by material id, then by distance
-        sort(m_draw_calls.begin(), m_draw_calls.begin() + m_draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
+        // opaque before transparent, then by material, then by distance (front to back, transparent back to front)
+        auto draw_sort_key = [](bool transparent, uint32_t material_index, float distance_squared)
         {
-            const bool a_transparent = a.is_transparent;
-            const bool b_transparent = b.is_transparent;
-            if (a_transparent != b_transparent)
-            {
-                return !a_transparent;
-            }
+            uint32_t distance_bits = 0;
+            memcpy(&distance_bits, &distance_squared, sizeof(distance_bits));
+            distance_bits = transparent ? ~distance_bits : distance_bits;
+            return (static_cast<uint64_t>(transparent) << 63) | (static_cast<uint64_t>(material_index & 0x7fffffffu) << 32) | distance_bits;
+        };
+        static vector<pair<uint64_t, uint32_t>> sort_keys;
 
-            const uint64_t a_material_id = a.material_id;
-            const uint64_t b_material_id = b.material_id;
-            if (a_material_id != b_material_id)
+        const uint32_t draw_call_base = m_draw_call_count;
+        const uint32_t draw_data_base = m_draw_data_count;
+        m_draw_call_count += write_count;
+        m_draw_data_count += write_count;
+        sort_keys.resize(m_draw_call_count);
+        for (uint32_t i = 0; i < draw_call_base; ++i)
+        {
+            const Renderer_DrawCall& dc = m_draw_calls[i];
+            sort_keys[i] = { draw_sort_key(dc.is_transparent, dc.render->GetMaterial()->GetIndex(), dc.distance_squared), i };
+        }
+        auto write_draws = [&](uint32_t first, uint32_t last)
+        {
+            for (uint32_t i = first; i < last; ++i)
             {
-                return a_material_id < b_material_id;
-            }
+                Render* render     = accepted[i];
+                Entity* entity     = render->GetEntity();
+                Material* material = render->GetMaterial();
+                const uint32_t data_index = draw_data_base + i;
 
-            return a_transparent ? a.distance_squared > b.distance_squared : a.distance_squared < b.distance_squared;
-        });
+                const uint32_t motion = accepted_motion[i] != motion_id_ungrouped ? accepted_motion[i] : motion_group_count + 1 + i;
+                render->SetMotionBlurId(motion <= motion_id_max ? motion : 0);
+
+                fill_draw_data(m_draw_data_cpu[data_index], entity->GetMatrix(), matrix_previous_for_velocity(entity), material->GetIndex(), material->IsTransparent() ? 1 : 0, render);
+
+                Renderer_DrawCall& draw_call = m_draw_calls[draw_call_base + i];
+                draw_call.render             = render;
+                draw_call.material_id        = material->GetObjectId();
+                draw_call.is_transparent     = material->IsTransparent();
+                draw_call.is_alpha_tested    = material->IsAlphaTested();
+                // Off-screen casters no longer receive a per-frame visibility tick.
+                draw_call.distance_squared   = Vector3::DistanceSquared(cull_camera_position,
+                    render->GetBoundingBox().GetClosestPoint(cull_camera_position));
+                draw_call.lod_index          = render->GetLodIndex();
+                draw_call.camera_visible     = render->IsVisible();
+                draw_call.instance_index     = 0;
+                draw_call.instance_count     = render->GetInstanceCount();
+                draw_call.draw_data_index    = m_frame_resource_index * renderer_max_draw_calls + data_index;
+                sort_keys[draw_call_base + i] = { draw_sort_key(draw_call.is_transparent, material->GetIndex(), draw_call.distance_squared), draw_call_base + i };
+            }
+        };
+        if (write_count >= 512)
+        {
+            ThreadPool::ParallelLoop(write_draws, write_count);
+        }
+        else
+        {
+            write_draws(0, write_count);
+        }
+        SP_PROFILE_CPU_END();
+        SP_PROFILE_CPU_START("draw_sort");
+
+        // sorting packed keys and gathering once is far cheaper than swapping whole draw calls
+        radix_sort_keys(sort_keys);
+        static vector<Renderer_DrawCall> sorted_draw_calls;
+        sorted_draw_calls.resize(m_draw_call_count);
+        for (uint32_t i = 0; i < m_draw_call_count; ++i)
+        {
+            sorted_draw_calls[i] = m_draw_calls[sort_keys[i].second];
+        }
+        copy(sorted_draw_calls.begin(), sorted_draw_calls.end(), m_draw_calls.begin());
+        SP_PROFILE_CPU_END();
     }
 
     void Renderer::UpdateDrawCalls_BuildPrepass()
     {
         SP_PROFILE_CPU();
+        // opaque before alpha tested, then front to back
+        static vector<pair<uint64_t, uint32_t>> prepass_keys;
+        prepass_keys.clear();
         for (uint32_t i = 0; i < m_draw_call_count; ++i)
         {
             const Renderer_DrawCall& dc = m_draw_calls[i];
             if (!dc.is_transparent && dc.camera_visible)
             {
-                m_draw_calls_prepass[m_draw_calls_prepass_count++] = dc;
+                uint32_t distance_bits = 0;
+                memcpy(&distance_bits, &dc.distance_squared, sizeof(distance_bits));
+                prepass_keys.push_back({ (static_cast<uint64_t>(dc.is_alpha_tested) << 32) | distance_bits, i });
             }
         }
+        radix_sort_keys(prepass_keys);
 
-        sort(m_draw_calls_prepass.begin(), m_draw_calls_prepass.begin() + m_draw_calls_prepass_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
+        // the prepass aabbs lead the bindless aabb buffer, the slot is the prepass draw index
+        m_draw_calls_prepass_count = static_cast<uint32_t>(prepass_keys.size());
+        auto gather = [&](uint32_t first, uint32_t last)
         {
-            const bool a_alpha = a.is_alpha_tested;
-            const bool b_alpha = b.is_alpha_tested;
-            if (a_alpha != b_alpha)
+            for (uint32_t i = first; i < last; ++i)
             {
-                return !a_alpha;
+                const Renderer_DrawCall& dc = m_draw_calls[prepass_keys[i].second];
+                m_draw_calls_prepass[i]     = dc;
+                const BoundingBox& aabb     = dc.render->GetBoundingBox();
+                m_bindless_aabbs[i].min     = aabb.GetMin();
+                m_bindless_aabbs[i].max     = aabb.GetMax();
             }
-            return a.distance_squared < b.distance_squared;
-        });
+        };
+        if (m_draw_calls_prepass_count >= 512)
+        {
+            ThreadPool::ParallelLoop(gather, m_draw_calls_prepass_count);
+        }
+        else if (m_draw_calls_prepass_count > 0)
+        {
+            gather(0, m_draw_calls_prepass_count);
+        }
     }
 
     void Renderer::UpdateDrawCalls_BuildIndirectAndCullTasks()
@@ -4004,7 +4160,6 @@ namespace spartan
         m_indirect_draw_count       = 0;
         m_indirect_render_count = 0;
         m_cull_task_count           = 0;
-        m_cull_tasks.clear();
         m_draw_lods.clear();
         m_draw_lods_uploaded = false;
         const bool use_gpu_lod = cvar_gpu_lod.GetValueAs<bool>();
@@ -4018,30 +4173,64 @@ namespace spartan
         // the cull pipeline drops survivors silently once a budget is hit, tracked so the log below can name the culprit
         uint64_t expected_survivors_worst_case = 0;
 
-        for (uint32_t i = 0; i < m_draw_call_count; i++)
+        // Per-draw state is resolved in parallel. Slots and the shared LOD tables are then
+        // assigned serially in submission order, and the records they describe filled in parallel.
+        struct IndirectPlan
         {
+            const Renderer_DrawCall* dc  = nullptr;
+            const MeshImpostor* impostor = nullptr;
+            uint32_t lod_first           = 0;
+            uint32_t lod_last            = 0;
+            uint32_t lod_valid_mask      = 0;
+            uint32_t lods_emit           = 0;
+            uint32_t meshlets_worst      = 0;
+            uint32_t draw_base           = 0;
+            uint32_t task_base           = 0;
+            uint32_t inst_n              = 0;
+            uint32_t render_aabb_slot    = 0;
+            uint32_t base_flags          = 0;
+            uint32_t mesh_lod_count      = 0;
+            uint32_t gpu_lod_count       = 0;
+            uint32_t lod_draw_offsets    = 0;
+            uint32_t lod_table_offset    = 0;
+            float max_distance_sq        = 0.0f;
+            bool valid                   = false;
+            bool gpu_lod                 = false;
+            bool gpu_lod_patch           = false;
+        };
+        static vector<IndirectPlan> draw_plans;
+        static vector<uint32_t> plans;
+        draw_plans.resize(m_draw_call_count);
+        plans.clear();
+        uint32_t cull_task_total = 0;
+
+        SP_PROFILE_CPU_START("indirect_plan");
+        auto plan_draw = [&](uint32_t i)
+        {
+            IndirectPlan& plan = draw_plans[i];
+            plan.valid = false;
             const Renderer_DrawCall& dc = m_draw_calls[i];
             Render* render              = dc.render;
             Material* material          = render->GetMaterial();
 
             if (!material || material->IsTransparent())
             {
-                continue;
+                return;
             }
             if (!dc.camera_visible)
             {
-                continue;
+                return;
             }
             if (material->GetProperty(MaterialProperty::Tessellation) > 0.0f)
             {
-                continue;
+                return;
             }
 
             Entity* entity = render->GetEntity();
             Mesh* mesh     = render->GetMesh();
             if (!mesh)
             {
-                continue;
+                return;
             }
 
             const bool is_instanced = render->HasInstancing();
@@ -4098,17 +4287,8 @@ namespace spartan
             }
             if (lods_emit == 0)
             {
-                continue;
+                return;
             }
-
-            if (m_indirect_draw_count + lods_emit > indirect_draw_capacity)
-            {
-                continue;
-            }
-            expected_survivors_worst_case += static_cast<uint64_t>(inst_n) * static_cast<uint64_t>(meshlets_worst);
-
-            const uint32_t render_aabb_slot = aabb_frame_offset + m_draw_calls_prepass_count + m_indirect_render_count;
-            m_indirect_render_count++;
 
             const bool is_two_sided    = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
             const bool is_alpha_tested = material->IsAlphaTested();
@@ -4146,63 +4326,81 @@ namespace spartan
             const float max_distance    = render->GetMaxRenderDistance();
             const bool  finite_distance = max_distance > 0.0f && max_distance < numeric_limits<float>::max() * 0.5f;
             const float max_distance_sq = finite_distance ? (max_distance * max_distance) : 0.0f;
-            const Matrix& transform_prev = base_draw.transform_previous;
-            const uint32_t lod_reference_draw_index = m_indirect_draw_count;
-            uint32_t lod_draw_offsets = 0;
 
-            for (uint32_t lod = lod_first; lod < lod_last; lod++)
+            plan.valid            = true;
+            plan.dc               = &dc;
+            plan.impostor         = impostor;
+            plan.lod_first        = lod_first;
+            plan.lod_last         = lod_last;
+            plan.lods_emit        = lods_emit;
+            plan.meshlets_worst   = meshlets_worst;
+            plan.inst_n           = inst_n;
+            plan.base_flags       = base_flags;
+            plan.mesh_lod_count   = mesh_lod_count;
+            plan.gpu_lod_count    = gpu_lod_count;
+            plan.max_distance_sq  = max_distance_sq;
+            plan.gpu_lod          = gpu_lod;
+            plan.gpu_lod_patch    = gpu_lod_patch;
+            plan.lod_draw_offsets = 0;
+            plan.lod_table_offset = 0;
+            plan.lod_valid_mask   = 0;
+            for (uint32_t lod = 0; lod < max(lod_last, mesh_lod_count) && lod < 32u; lod++)
             {
-                const uint32_t lod_meshlet_count = render->GetMeshletCount(lod);
-                if (lod_meshlet_count == 0 || render->GetIndexCount(lod) == 0)
+                plan.lod_valid_mask |= lod_valid(lod) ? (1u << lod) : 0u;
+            }
+        };
+        if (m_draw_call_count >= 256)
+        {
+            ThreadPool::ParallelLoop([&](uint32_t first, uint32_t last) { for (uint32_t i = first; i < last; i++) plan_draw(i); }, m_draw_call_count);
+        }
+        else
+        {
+            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            {
+                plan_draw(i);
+            }
+        }
+
+        for (uint32_t i = 0; i < m_draw_call_count; i++)
+        {
+            IndirectPlan& plan = draw_plans[i];
+            if (!plan.valid || m_indirect_draw_count + plan.lods_emit > indirect_draw_capacity)
+            {
+                continue;
+            }
+            expected_survivors_worst_case += static_cast<uint64_t>(plan.inst_n) * static_cast<uint64_t>(plan.meshlets_worst);
+
+            plan.render_aabb_slot = aabb_frame_offset + m_draw_calls_prepass_count + m_indirect_render_count;
+            m_indirect_render_count++;
+            plan.draw_base = m_indirect_draw_count;
+            plan.task_base = cull_task_total;
+
+            for (uint32_t lod = plan.lod_first; lod < plan.lod_last; lod++)
+            {
+                if (!(plan.lod_valid_mask & (1u << lod)))
                 {
                     continue;
                 }
 
                 const uint32_t draw_idx = m_indirect_draw_count++;
-                if (gpu_lod && lod < 7u)
-                    lod_draw_offsets |= (draw_idx - lod_reference_draw_index) << (lod * 3u);
-                Sb_DrawData& draw_data  = m_indirect_draw_data[draw_idx];
-                draw_data.transform     = base_draw.transform;
-                draw_data.transform_previous = transform_prev;
-                draw_data.motion_blur_id     = base_draw.motion_blur_id;
-                draw_data.material_index     = material->GetIndex();
-                draw_data.is_transparent     = 0;
-                draw_data.aabb_index         = render_aabb_slot;
-                draw_data.lod_first_index    = render->GetIndexOffset(lod);
-                draw_data.flags              = base_flags | ((lod & 7u) << 8u) | ((gpu_lod_count & 7u) << 11u);
-                if (impostor && lod == mesh_lod_count)
+                if (plan.gpu_lod && lod < 7u)
                 {
-                    // the card turns to face the camera, so winding and meshlet cones mean nothing for it
-                    // its silhouette is cut per texel, so an opaque trunk card still takes the alpha tested path
-                    draw_data.flags                |= (1u << 14) | 8u | 16u;
-                    draw_data.impostor_texel_offset = impostor->texel_offset;
-                    draw_data.impostor_layout       = mesh_impostor_frames | (impostor->resolution << 8) | (mesh_impostor_layers << 24);
-                    draw_data.impostor_center       = impostor->center;
-                    draw_data.impostor_radius       = impostor->radius;
-                    draw_data.impostor_uv_min       = impostor->uv_min;
-                    draw_data.impostor_uv_scale     = impostor->uv_scale;
+                    plan.lod_draw_offsets |= (draw_idx - plan.draw_base) << (lod * 3u);
                 }
-                draw_data.instance_offset    = render->GetGlobalInstanceOffset();
-                draw_data.instance_index     = 0;
-                draw_data.lod_vertex_offset  = render->GetVertexOffset(lod);
-                draw_data.previous_vertex_offset = GeometryBuffer::GetPreviousVertexOffset(draw_data.lod_vertex_offset);
-                draw_data.lod_meshlet_offset = render->GetGlobalMeshletOffset() + render->GetMeshletOffset(lod);
-                draw_data.meshlet_vertex_base = render->GetMesh()->GetGlobalMeshletVertexOffset();
-                draw_data.meshlet_micro_base = render->GetMesh()->GetGlobalMeshletMicroOffset();
-                draw_data.lod_meshlet_count  = lod_meshlet_count;
-                if (gpu_lod_patch)
+
+                if (plan.gpu_lod_patch)
                 {
-                    draw_data.flags                 = (draw_data.flags & ~(7u << 11u)) | ((mesh_lod_count & 7u) << 11u) | draw_flag_gpu_lod;
-                    const SubMesh* submesh = &mesh->GetSubMesh(render->GetSubMeshIndex());
+                    Render* render         = plan.dc->render;
+                    const SubMesh* submesh = &render->GetMesh()->GetSubMesh(render->GetSubMeshIndex());
                     auto [table, inserted] = lod_tables.try_emplace(submesh);
                     if (inserted) table->second.fill(UINT32_MAX);
                     uint32_t& table_offset = table->second[lod];
                     if (table_offset == UINT32_MAX)
                     {
                         table_offset = static_cast<uint32_t>(m_draw_lods.size());
-                        for (uint32_t table_lod = 0; table_lod < mesh_lod_count; table_lod++)
+                        for (uint32_t table_lod = 0; table_lod < plan.mesh_lod_count; table_lod++)
                         {
-                            const uint32_t source          = lod_valid(table_lod) ? table_lod : lod;
+                            const uint32_t source          = (plan.lod_valid_mask & (1u << table_lod)) ? table_lod : lod;
                             const BoundingBox& source_aabb = render->GetLodAabb(source);
                             const Vector3 source_extent    = source_aabb.GetMax() - source_aabb.GetMin();
                             Sb_DrawLod& entry              = m_draw_lods.emplace_back();
@@ -4216,40 +4414,132 @@ namespace spartan
                             entry.previous_vertex_offset   = GeometryBuffer::GetPreviousVertexOffset(entry.vertex_offset);
                         }
                     }
-                    draw_data.impostor_texel_offset = table_offset;
+                    plan.lod_table_offset = table_offset;
                 }
-                draw_data.uv_tiling = base_draw.uv_tiling;
-                draw_data.uv_offset = base_draw.uv_offset;
-                draw_data.uv_invert = base_draw.uv_invert;
-                draw_data.uv_rotation = base_draw.uv_rotation;
-                draw_data.uv_world_space = base_draw.uv_world_space;
-                draw_data.decal_offset = base_draw.decal_offset;
-                draw_data.decal_count = base_draw.decal_count;
-
-                const BoundingBox& lod_aabb_local = render->GetLodAabb(lod);
-                const Vector3 lod_extent          = lod_aabb_local.GetMax() - lod_aabb_local.GetMin();
-                draw_data.lod_aabb_min            = lod_aabb_local.GetMin();
-                draw_data.lod_aabb_extent         = lod_extent;
-                draw_data.lod_aabb_diag           = lod_extent.Length();
-                draw_data.max_render_distance_squared = max_distance_sq;
-
-                m_indirect_renders[draw_idx] = render;
-
             }
 
-            // Cull each instance once, then select its draw from the LOD chain.
-            // Missing LODs map to the first valid draw rather than leaving a hole.
-            for (uint32_t inst = 0; inst < inst_n; inst += INSTANCE_CULL_BATCH_SIZE)
-            {
-                Sb_CullTask& task = m_cull_tasks.emplace_back();
-                ++m_cull_task_count;
-                task.draw_index = lod_reference_draw_index;
-                task.lod_reference_draw_index = lod_reference_draw_index;
-                task.instance_index = inst;
-                task.instance_count = min(INSTANCE_CULL_BATCH_SIZE, inst_n - inst);
-                task.lod_draw_offsets = gpu_lod ? (lod_draw_offsets | 0x80000000u) : 0u;
-            }
+            cull_task_total += (plan.inst_n + INSTANCE_CULL_BATCH_SIZE - 1) / INSTANCE_CULL_BATCH_SIZE;
+            plans.push_back(i);
         }
+        m_cull_task_count = cull_task_total;
+        // never shrunk, so steady frames reuse the storage without clearing it
+        if (m_cull_tasks.size() < cull_task_total)
+        {
+            m_cull_tasks.resize(cull_task_total);
+        }
+        SP_PROFILE_CPU_END();
+
+        SP_PROFILE_CPU_START("indirect_fill");
+        auto fill_plans = [&](uint32_t first, uint32_t last)
+        {
+            for (uint32_t p = first; p < last; p++)
+            {
+                const IndirectPlan& plan     = draw_plans[plans[p]];
+                const Renderer_DrawCall& dc  = *plan.dc;
+                Render* render               = dc.render;
+                Material* material           = render->GetMaterial();
+                const MeshImpostor* impostor = plan.impostor;
+                const uint32_t mesh_lod_count = plan.mesh_lod_count;
+                const uint32_t gpu_lod_count  = plan.gpu_lod_count;
+                const uint32_t base_flags     = plan.base_flags;
+                const uint32_t render_aabb_slot = plan.render_aabb_slot;
+                const float max_distance_sq   = plan.max_distance_sq;
+                const Sb_DrawData& base_draw  = m_draw_data_cpu[dc.draw_data_index - m_frame_resource_index * renderer_max_draw_calls];
+                const Matrix& transform_prev  = base_draw.transform_previous;
+                uint32_t draw_idx             = plan.draw_base;
+
+                // every lod of this render shares one aabb slot, after the prepass slots
+                const uint32_t aabb_slot = render_aabb_slot - aabb_frame_offset;
+                if (aabb_slot < renderer_max_aabbs)
+                {
+                    const BoundingBox& aabb         = render->GetBoundingBox();
+                    m_bindless_aabbs[aabb_slot].min = aabb.GetMin();
+                    m_bindless_aabbs[aabb_slot].max = aabb.GetMax();
+                }
+
+                for (uint32_t lod = plan.lod_first; lod < plan.lod_last; lod++)
+                {
+                    const uint32_t lod_meshlet_count = render->GetMeshletCount(lod);
+                    if (lod_meshlet_count == 0 || render->GetIndexCount(lod) == 0)
+                    {
+                        continue;
+                    }
+
+                    Sb_DrawData& draw_data  = m_indirect_draw_data[draw_idx];
+                    m_indirect_renders[draw_idx] = render;
+                    draw_idx++;
+                    draw_data.transform          = base_draw.transform;
+                    draw_data.transform_previous = transform_prev;
+                    draw_data.motion_blur_id     = base_draw.motion_blur_id;
+                    draw_data.material_index     = material->GetIndex();
+                    draw_data.is_transparent     = 0;
+                    draw_data.aabb_index         = render_aabb_slot;
+                    draw_data.lod_first_index    = render->GetIndexOffset(lod);
+                    draw_data.flags              = base_flags | ((lod & 7u) << 8u) | ((gpu_lod_count & 7u) << 11u);
+                    if (impostor && lod == mesh_lod_count)
+                    {
+                        // the card turns to face the camera, so winding and meshlet cones mean nothing for it
+                        // its silhouette is cut per texel, so an opaque trunk card still takes the alpha tested path
+                        draw_data.flags                |= (1u << 14) | 8u | 16u;
+                        draw_data.impostor_texel_offset = impostor->texel_offset;
+                        draw_data.impostor_layout       = mesh_impostor_frames | (impostor->resolution << 8) | (mesh_impostor_layers << 24);
+                        draw_data.impostor_center       = impostor->center;
+                        draw_data.impostor_radius       = impostor->radius;
+                        draw_data.impostor_uv_min       = impostor->uv_min;
+                        draw_data.impostor_uv_scale     = impostor->uv_scale;
+                    }
+                    draw_data.instance_offset        = render->GetGlobalInstanceOffset();
+                    draw_data.instance_index         = 0;
+                    draw_data.lod_vertex_offset      = render->GetVertexOffset(lod);
+                    draw_data.previous_vertex_offset = GeometryBuffer::GetPreviousVertexOffset(draw_data.lod_vertex_offset);
+                    draw_data.lod_meshlet_offset     = render->GetGlobalMeshletOffset() + render->GetMeshletOffset(lod);
+                    draw_data.meshlet_vertex_base    = render->GetMesh()->GetGlobalMeshletVertexOffset();
+                    draw_data.meshlet_micro_base     = render->GetMesh()->GetGlobalMeshletMicroOffset();
+                    draw_data.lod_meshlet_count      = lod_meshlet_count;
+                    if (plan.gpu_lod_patch)
+                    {
+                        draw_data.flags                 = (draw_data.flags & ~(7u << 11u)) | ((mesh_lod_count & 7u) << 11u) | draw_flag_gpu_lod;
+                        draw_data.impostor_texel_offset = plan.lod_table_offset;
+                    }
+                    draw_data.uv_tiling      = base_draw.uv_tiling;
+                    draw_data.uv_offset      = base_draw.uv_offset;
+                    draw_data.uv_invert      = base_draw.uv_invert;
+                    draw_data.uv_rotation    = base_draw.uv_rotation;
+                    draw_data.uv_world_space = base_draw.uv_world_space;
+                    draw_data.decal_offset   = base_draw.decal_offset;
+                    draw_data.decal_count    = base_draw.decal_count;
+
+                    const BoundingBox& lod_aabb_local     = render->GetLodAabb(lod);
+                    const Vector3 lod_extent              = lod_aabb_local.GetMax() - lod_aabb_local.GetMin();
+                    draw_data.lod_aabb_min                = lod_aabb_local.GetMin();
+                    draw_data.lod_aabb_extent             = lod_extent;
+                    draw_data.lod_aabb_diag               = lod_extent.Length();
+                    draw_data.max_render_distance_squared = max_distance_sq;
+                }
+
+                // Cull each instance once, then select its draw from the LOD chain.
+                // Missing LODs map to the first valid draw rather than leaving a hole.
+                const uint32_t lod_draw_offsets = plan.gpu_lod ? (plan.lod_draw_offsets | 0x80000000u) : 0u;
+                Sb_CullTask* task = m_cull_tasks.data() + plan.task_base;
+                for (uint32_t inst = 0; inst < plan.inst_n; inst += INSTANCE_CULL_BATCH_SIZE, ++task)
+                {
+                    task->draw_index               = plan.draw_base;
+                    task->lod_reference_draw_index = plan.draw_base;
+                    task->instance_index           = inst;
+                    task->instance_count           = min(INSTANCE_CULL_BATCH_SIZE, plan.inst_n - inst);
+                    task->lod_draw_offsets         = lod_draw_offsets;
+                }
+            }
+        };
+        if (plans.size() >= 64)
+        {
+            ThreadPool::ParallelLoop(fill_plans, static_cast<uint32_t>(plans.size()));
+        }
+        else
+        {
+            fill_plans(0, static_cast<uint32_t>(plans.size()));
+        }
+        SP_PROFILE_CPU_END();
 
         // Report the conservative pre-cull meshlet bound once per session.
         static bool s_logged_survivor_overflow   = false;
@@ -4269,6 +4559,7 @@ namespace spartan
     {
         SP_PROFILE_CPU();
         UpdateDrawCalls_ResetCounts();
+        GeometryBuffer::SnapshotVertexHistory();
         UpdateDrawCalls_CollectAndSort();
         UpdateDrawCalls_BuildPrepass();
         UpdateDrawCalls_BuildIndirectAndCullTasks();
@@ -4422,11 +4713,25 @@ namespace spartan
     static vector<SingleTlasCache> single_tlas_caches;
 
 
-    static bool refresh_instanced_tlas_cache(InstancedTlasCache& cache, Render* render, Material* material, const Vector3& camera_position)
+    // scatter beyond its shadow distance casts nothing in either path, the margin lets the
+    // camera travel before the set has to be rebuilt
+    constexpr float instanced_tlas_hysteresis = 25.0f;
+
+    // one bounds group of a stale instanced cache, groups are rebuilt in parallel and then appended in order
+    struct InstancedTlasGroupWork
     {
-        // scatter beyond its shadow distance casts nothing in either path, the margin lets the
-        // camera travel before the set has to be rebuilt
-        constexpr float hysteresis = 25.0f;
+        uint32_t cache_index = 0;
+        Render* render       = nullptr;
+        Material* material   = nullptr;
+        const Render::InstanceBoundsGroup* group = nullptr;
+        vector<RHI_AccelerationStructureInstance> instances;
+        vector<Sb_GeometryInfo> geometry_infos;
+    };
+
+    // true when the cache must be rebuilt, its header is then updated and its instance lists cleared
+    static bool begin_instanced_tlas_refresh(InstancedTlasCache& cache, Render* render, Material* material, const Vector3& camera_position)
+    {
+        constexpr float hysteresis = instanced_tlas_hysteresis;
         constexpr float radius_max = 500.0f;
         const float radius = min(render->GetMaxShadowDistance(), radius_max);
 
@@ -4458,36 +4763,35 @@ namespace spartan
         cache.group_count    = static_cast<uint32_t>(render->GetInstanceBoundsGroups().size());
         cache.instances.clear();
         cache.geometry_infos.clear();
+        return true;
+    }
 
-        const float cull_radius = radius + hysteresis;
-        const float cull_radius_squared = cull_radius * cull_radius;
-        for (const Render::InstanceBoundsGroup& group : render->GetInstanceBoundsGroups())
+    static void build_instanced_tlas_group(InstancedTlasGroupWork& work, const InstancedTlasCache& cache)
+    {
+        work.instances.clear();
+        work.geometry_infos.clear();
+        Render* render              = work.render;
+        const Vector3& center       = cache.cull_center;
+        const float cull_radius     = cache.cull_radius + instanced_tlas_hysteresis;
+        const float cull_radius_sq  = cull_radius * cull_radius;
+        const Render::InstanceBoundsGroup& group = *work.group;
+        for (uint32_t j = group.offset; j < group.offset + group.count; ++j)
         {
-            if (Vector3::DistanceSquared(camera_position, group.bounds.GetClosestPoint(camera_position)) > cull_radius_squared)
+            const uint32_t index      = render->GetGroupedInstanceIndex(j);
+            const BoundingBox& bounds = render->GetInstanceBounds(index);
+            if (Vector3::DistanceSquared(center, bounds.GetClosestPoint(center)) > cull_radius_sq)
             {
                 continue;
             }
 
-            for (uint32_t j = group.offset; j < group.offset + group.count; ++j)
+            const Matrix world = render->GetInstance(index, true);
+            if (!is_transform_traceable(world) || !is_bounding_box_traceable(bounds))
             {
-                const uint32_t index      = render->GetGroupedInstanceIndex(j);
-                const BoundingBox& bounds = render->GetInstanceBounds(index);
-                if (Vector3::DistanceSquared(camera_position, bounds.GetClosestPoint(camera_position)) > cull_radius_squared)
-                {
-                    continue;
-                }
-
-                const Matrix world = render->GetInstance(index, true);
-                if (!is_transform_traceable(world) || !is_bounding_box_traceable(bounds))
-                {
-                    continue;
-                }
-
-                build_tlas_instance(render, material, world, blas_address, cache.instances.emplace_back(), cache.geometry_infos.emplace_back());
+                continue;
             }
-        }
 
-        return true;
+            build_tlas_instance(render, work.material, world, cache.blas_address, work.instances.emplace_back(), work.geometry_infos.emplace_back());
+        }
     }
 
     void Renderer::UpdateAccelerationStructures()
@@ -4650,6 +4954,9 @@ namespace spartan
                 // invalidate shifted slots after membership changes or entity reuse.
                 needs_tlas_rebuild |= instanced_tlas_caches.size() != ray_tracing_instanced_renders.size();
                 instanced_tlas_caches.resize(ray_tracing_instanced_renders.size());
+                static vector<InstancedTlasGroupWork> group_work;
+                uint32_t group_work_count = 0;
+                const float cull_margin   = instanced_tlas_hysteresis;
                 for (size_t i = 0; i < ray_tracing_instanced_renders.size(); ++i)
                 {
                     Render* render = ray_tracing_instanced_renders[i];
@@ -4662,9 +4969,57 @@ namespace spartan
                         continue;
                     }
 
-                    if (refresh_instanced_tlas_cache(cache, render, material, camera_position))
+                    if (!begin_instanced_tlas_refresh(cache, render, material, camera_position))
                     {
-                        needs_tlas_rebuild = true;
+                        continue;
+                    }
+                    needs_tlas_rebuild = true;
+
+                    const float cull_radius    = cache.cull_radius + cull_margin;
+                    const float cull_radius_sq = cull_radius * cull_radius;
+                    for (const Render::InstanceBoundsGroup& group : render->GetInstanceBoundsGroups())
+                    {
+                        if (Vector3::DistanceSquared(camera_position, group.bounds.GetClosestPoint(camera_position)) > cull_radius_sq)
+                        {
+                            continue;
+                        }
+                        if (group_work.size() <= group_work_count)
+                        {
+                            group_work.emplace_back();
+                        }
+                        InstancedTlasGroupWork& work = group_work[group_work_count++];
+                        work.cache_index = static_cast<uint32_t>(i);
+                        work.render      = render;
+                        work.material    = material;
+                        work.group       = &group;
+                    }
+                }
+
+                if (group_work_count > 0)
+                {
+                    auto build_groups = [&](uint32_t first, uint32_t last)
+                    {
+                        for (uint32_t w = first; w < last; ++w)
+                        {
+                            build_instanced_tlas_group(group_work[w], instanced_tlas_caches[group_work[w].cache_index]);
+                        }
+                    };
+                    if (group_work_count >= 4)
+                    {
+                        ThreadPool::ParallelLoop(build_groups, group_work_count);
+                    }
+                    else
+                    {
+                        build_groups(0, group_work_count);
+                    }
+
+                    // work items are in cache then group order, so appending keeps the serial layout
+                    for (uint32_t w = 0; w < group_work_count; ++w)
+                    {
+                        InstancedTlasGroupWork& work = group_work[w];
+                        InstancedTlasCache& cache    = instanced_tlas_caches[work.cache_index];
+                        cache.instances.insert(cache.instances.end(), work.instances.begin(), work.instances.end());
+                        cache.geometry_infos.insert(cache.geometry_infos.end(), work.geometry_infos.begin(), work.geometry_infos.end());
                     }
                 }
                 SP_PROFILE_CPU_END();
@@ -4708,10 +5063,9 @@ namespace spartan
                 m_tlas = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Top, "world_tlas");
             }
 
-            static vector<RHI_AccelerationStructureInstance> instances; // static to avoid per-frame heap alloc
+            // static to avoid per-frame heap alloc, never cleared since compaction overwrites every slot it keeps
+            static vector<RHI_AccelerationStructureInstance> instances;
             static vector<Sb_GeometryInfo> geometry_infos;
-            instances.clear();
-            geometry_infos.clear();
 
             single_tlas_caches.resize(ray_tracing_renders.size());
             uint32_t invalid_transforms   = 0;
@@ -4720,7 +5074,7 @@ namespace spartan
             // Each render owns a stable output slot. Preparation only reads scene state;
             // the main thread compacts the results and submits GPU work afterwards.
             const uint32_t render_count = static_cast<uint32_t>(ray_tracing_renders.size());
-            const uint32_t jobs = min(render_count, 8u);
+            const uint32_t jobs = min(render_count, 32u);
             if (jobs > 0)
             ThreadPool::ParallelLoop([&](uint32_t first_job, uint32_t last_job)
             {
@@ -4765,37 +5119,80 @@ namespace spartan
                         build_tlas_instance(render, material, m, device_address, cache.instance, cache.geometry);
                     }
                     fill_uv_draw_fields_from_render(cache.geometry, render);
+                    // decal ranges were staged by draw preparation earlier this frame and are only read here
+                    cache.geometry.decal_offset = 0;
+                    cache.geometry.decal_count  = 0;
+                    if (!render->GetDecals().empty())
+                    {
+                        const auto range = m_decal_ranges.find(render);
+                        if (range != m_decal_ranges.end())
+                        {
+                            cache.geometry.decal_offset = range->second.first;
+                            cache.geometry.decal_count  = range->second.second;
+                        }
+                    }
                     cache.valid = true;
                 }
             }, jobs);
+            SP_PROFILE_CPU_START("rt_compact");
 
-            size_t instanced_index = 0;
-            for (size_t i = 0; i < ray_tracing_renders.size(); ++i)
+            // each render's output slot comes from a prefix sum, then the copies run in parallel
+            static vector<uint32_t> output_offsets;
+            static vector<uint32_t> instanced_slots;
+            output_offsets.resize(render_count);
+            instanced_slots.resize(render_count);
+            uint32_t output_count    = 0;
+            uint32_t instanced_index = 0;
+            for (uint32_t i = 0; i < render_count; ++i)
             {
-                Render* render = ray_tracing_renders[i];
                 const SingleTlasCache& cache = single_tlas_caches[i];
+                output_offsets[i] = output_count;
                 if (cache.instanced)
                 {
-                    const InstancedTlasCache& instanced = instanced_tlas_caches[instanced_index++];
-                    instances.insert(instances.end(), instanced.instances.begin(), instanced.instances.end());
-                    geometry_infos.insert(geometry_infos.end(), instanced.geometry_infos.begin(), instanced.geometry_infos.end());
+                    instanced_slots[i] = instanced_index;
+                    output_count += static_cast<uint32_t>(instanced_tlas_caches[instanced_index++].instances.size());
                 }
                 else if (cache.valid)
                 {
-                    instances.push_back(cache.instance);
-                    geometry_infos.push_back(cache.geometry);
-                    auto& geometry = geometry_infos.back();
-                    const auto range = m_decal_ranges.find(render);
-                    geometry.decal_offset = range != m_decal_ranges.end() ? range->second.first : 0;
-                    geometry.decal_count = range != m_decal_ranges.end() ? range->second.second : 0;
+                    output_count++;
                 }
                 else if (cache.invalid_transform)
                 {
                     ++invalid_transforms;
-                    if (!first_invalid_name) first_invalid_name = render->GetEntity()->GetObjectName().c_str();
+                    if (!first_invalid_name) first_invalid_name = ray_tracing_renders[i]->GetEntity()->GetObjectName().c_str();
                 }
             }
+            instances.resize(output_count);
+            geometry_infos.resize(output_count);
+            auto copy_outputs = [&](uint32_t first, uint32_t last)
+            {
+                for (uint32_t i = first; i < last; ++i)
+                {
+                    const SingleTlasCache& cache = single_tlas_caches[i];
+                    const uint32_t offset        = output_offsets[i];
+                    if (cache.instanced)
+                    {
+                        const InstancedTlasCache& instanced = instanced_tlas_caches[instanced_slots[i]];
+                        copy(instanced.instances.begin(), instanced.instances.end(), instances.begin() + offset);
+                        copy(instanced.geometry_infos.begin(), instanced.geometry_infos.end(), geometry_infos.begin() + offset);
+                    }
+                    else if (cache.valid)
+                    {
+                        instances[offset]      = cache.instance;
+                        geometry_infos[offset] = cache.geometry;
+                    }
+                }
+            };
+            if (render_count >= 256)
+            {
+                ThreadPool::ParallelLoop(copy_outputs, render_count);
+            }
+            else if (render_count > 0)
+            {
+                copy_outputs(0, render_count);
+            }
 
+            SP_PROFILE_CPU_END();
             // log only when the count moves so a persistent bad entity does not spam every frame
             static uint32_t last_invalid_transforms = 0;
             if (invalid_transforms != last_invalid_transforms)
@@ -5172,6 +5569,10 @@ namespace spartan
             {
                 Pass_PostProcess_EditorOverlays(tex_sdr);
                 Pass_Text(tex_sdr, false);
+            }
+            else if (!secondary_render_root_active)
+            {
+                Pass_Text(tex_sdr, false, true);
             }
         }
         RHI_CommandList::EndMarker();

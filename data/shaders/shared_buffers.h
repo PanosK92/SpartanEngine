@@ -88,7 +88,7 @@ struct FrameBufferData
     SHARED_FLOAT camera_last_movement_time;
     SHARED_FLOAT hdr_enabled;
     SHARED_FLOAT hdr_max_nits;
-    SHARED_FLOAT padding_restir;
+    SHARED_FLOAT delta_time_real; // unscaled by the simulation time scale, for temporal filters and adaptation
 
     SHARED_FLOAT3 camera_position_previous;
     SHARED_FLOAT  resolution_scale;
@@ -549,6 +549,14 @@ namespace pass_chromatic_aberration
 namespace pass_vhs
 {
     static const SHARED_UINT force_sdr = 0; // bool
+}
+
+namespace pass_cinematic
+{
+    static const SHARED_UINT fade       = 0; // float, 0 clear to 1 solid color
+    static const SHARED_UINT fade_color = 1; // float3, display referred
+    static const SHARED_UINT letterbox  = 4; // float, target aspect ratio, 0 is off
+    static const SHARED_UINT force_sdr  = 5; // bool
 }
 
 namespace pass_bloom

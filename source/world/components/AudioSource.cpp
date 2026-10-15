@@ -402,7 +402,7 @@ namespace spartan
                 }
                 // doppler effect
                 {
-                    const float dt             = static_cast<float>(Timer::GetDeltaTimeSec());
+                    const float dt             = static_cast<float>(Timer::GetDeltaTimeRealSec());
                     const float speed_of_sound = 343.0f;
 
                     Vector3 rel_velocity = (camera_position - camera_position_previous) / dt - (sound_position - position_previous) / dt;
@@ -471,6 +471,8 @@ namespace spartan
 
             m_volume_reverb_active = found_reverb_volume;
         }
+
+        ApplyMixer();
 
         // clips are pushed from here, synthesis is pulled by the audio thread and only needs the mix
         if (m_synthesis_mode)
@@ -629,6 +631,10 @@ namespace spartan
 
         int frames_needed = (bytes_needed + static_cast<int>(2 * sizeof(float)) - 1) / static_cast<int>(2 * sizeof(float));
         float peak = 0.0f;
+        float meter_peak       = 0.0f;
+        const AudioGroup group = static_cast<AudioGroup>(m_synthesis_group.load(memory_order_relaxed));
+        const float muffle     = m_synthesis_muffle.load(memory_order_relaxed);
+        const float lowpass_a  = muffle > 0.0f ? AudioMixer::GetMuffleCoefficient(muffle, rate) : 1.0f;
         while (frames_needed > 0)
         {
             const int frames = min(frames_needed, static_cast<int>(synthesis_chunk_frames));
@@ -686,6 +692,15 @@ namespace spartan
                     }
                 }
 
+                for (int i = 0; i < frames; ++i)
+                {
+                    m_synthesis_lowpass_l += (chunk[2 * i] - m_synthesis_lowpass_l) * lowpass_a;
+                    m_synthesis_lowpass_r += (chunk[2 * i + 1] - m_synthesis_lowpass_r) * lowpass_a;
+                    chunk[2 * i]     = m_synthesis_lowpass_l;
+                    chunk[2 * i + 1] = m_synthesis_lowpass_r;
+                    meter_peak = max(meter_peak, max(fabsf(m_synthesis_lowpass_l), fabsf(m_synthesis_lowpass_r)));
+                }
+
                 if (stopping)
                 {
                     for (int i = 0; i < frames * 2; ++i)
@@ -697,6 +712,7 @@ namespace spartan
 
             SDL_PutAudioStreamData(stream, chunk, frames * 2 * static_cast<int>(sizeof(float)));
         }
+        AudioMixer::ReportPeak(group, meter_peak * AudioMixer::GetGain(group));
 
         // report silence once the fade and any reverb tail are done; a restart that raced us wins
         if (state == synthesis_stopping && max(m_synthesis_gain_l, m_synthesis_gain_r) < 1e-4f && peak < 1e-4f)
@@ -725,7 +741,7 @@ namespace spartan
             return;
         }
 
-        m_ambient_update_timer -= static_cast<float>(Timer::GetDeltaTimeSec());
+        m_ambient_update_timer -= static_cast<float>(Timer::GetDeltaTimeRealSec());
         if (m_ambient_update_timer <= 0.0f)
         {
             m_ambient_update_timer = 0.1f;
@@ -841,8 +857,72 @@ namespace spartan
                 m_position = static_cast<uint32_t>((elapsed + GetEntity()->GetObjectId()) % frames) * m_clip->spec->channels * sizeof(float);
             }
         }
+        ApplyMixer();
         // Refill enough frames even at low rendering frame rates, with a bounded queue.
         for (int i = 0; i < 4 && m_is_playing; ++i) FeedAudioChunk();
+    }
+
+    AudioGroup AudioSource::GetResolvedGroup() const
+    {
+        if (m_group != AudioGroup::Auto)
+        {
+            return m_group;
+        }
+        return m_ambient ? AudioGroup::Ambience : AudioGroup::Sfx;
+    }
+
+    void AudioSource::SetGroup(AudioGroup group)
+    {
+        m_group = group < AudioGroup::Count ? group : AudioGroup::Auto;
+    }
+
+    void AudioSource::ApplyMixer()
+    {
+        const AudioGroup group = GetResolvedGroup();
+        m_synthesis_group.store(static_cast<uint8_t>(group), memory_order_relaxed);
+        m_synthesis_muffle.store(AudioMixer::GetMuffle(group), memory_order_relaxed);
+        if (!m_stream)
+        {
+            return;
+        }
+
+        // the stream gain is applied at mix time, so a fader move is heard without waiting for queued audio
+        SDL_SetAudioStreamGain(m_stream, AudioMixer::GetGain(group));
+        const float pitch = AudioMixer::GetPitch(group);
+        if (pitch != m_mixer_pitch)
+        {
+            m_mixer_pitch = pitch;
+            SetPitch(m_pitch);
+        }
+    }
+
+    float AudioSource::GetPlaybackPosition() const
+    {
+        if (!m_clip || !m_clip->spec || m_clip->spec->freq <= 0 || m_clip->spec->channels <= 0)
+        {
+            return 0.0f;
+        }
+        const float frame_bytes   = static_cast<float>(m_clip->spec->channels * sizeof(float));
+        const float queued_frames = m_stream ? static_cast<float>(SDL_GetAudioStreamQueued(m_stream)) / static_cast<float>(2 * sizeof(float)) : 0.0f;
+        const float frames        = static_cast<float>(m_position) / frame_bytes - queued_frames;
+        return max(frames, 0.0f) / static_cast<float>(m_clip->spec->freq);
+    }
+
+    void AudioSource::SetPlaybackPosition(float seconds)
+    {
+        if (!m_clip || !m_clip->spec || m_clip->spec->freq <= 0 || m_clip->spec->channels <= 0)
+        {
+            return;
+        }
+        const uint32_t frame_bytes = static_cast<uint32_t>(m_clip->spec->channels) * sizeof(float);
+        const uint32_t frames      = m_clip->length / frame_bytes;
+        const float clamped        = isfinite(seconds) ? max(seconds, 0.0f) : 0.0f;
+        const uint32_t frame       = min(static_cast<uint32_t>(clamped * static_cast<float>(m_clip->spec->freq)), frames);
+        m_position                 = frame * frame_bytes;
+        if (m_stream)
+        {
+            SDL_ClearAudioStream(m_stream);
+        }
     }
 
     void AudioSource::Save(pugi::xml_node& node)
@@ -860,6 +940,7 @@ namespace spartan
         node.append_attribute("reverb_wet")        = m_reverb_wet;
         node.append_attribute("ambient")           = m_ambient;
         node.append_attribute("ambient_profile")   = m_ambient_profile;
+        node.append_attribute("group")             = static_cast<uint32_t>(m_group);
     }
 
     void AudioSource::Load(pugi::xml_node& node)
@@ -877,6 +958,7 @@ namespace spartan
         m_reverb_wet       = node.attribute("reverb_wet").as_float(0.3f);
         m_ambient          = node.attribute("ambient").as_bool(false);
         SetAmbientProfile(node.attribute("ambient_profile").as_uint(0));
+        SetGroup(static_cast<AudioGroup>(node.attribute("group").as_uint(0)));
 
         SetAudioClip(m_file_path);
     }
@@ -997,7 +1079,7 @@ namespace spartan
 
         if (m_is_playing && m_stream)
         {
-            const float effective_pitch = m_pitch * m_doppler_ratio;
+            const float effective_pitch = clamp(m_pitch * m_doppler_ratio * m_mixer_pitch, 0.01f, 10.0f);
             CHECK_SDL_ERROR(SDL_SetAudioStreamFrequencyRatio(m_stream, effective_pitch));
         }
     }
@@ -1124,6 +1206,23 @@ namespace spartan
 
                 m_reverb_write_pos = (m_reverb_write_pos + 1) % reverb_buffer_size;
             }
+        }
+
+        // mixer muffle, a coefficient of one passes the signal through and keeps the filter state warm
+        {
+            const AudioGroup group = GetResolvedGroup();
+            const float muffle     = AudioMixer::GetMuffle(group);
+            const float a          = muffle > 0.0f ? AudioMixer::GetMuffleCoefficient(muffle, static_cast<float>(m_clip->spec->freq)) : 1.0f;
+            float peak             = 0.0f;
+            for (uint32_t i = 0; i < num_samples; ++i)
+            {
+                m_lowpass_l += (m_stereo_chunk[2 * i] - m_lowpass_l) * a;
+                m_lowpass_r += (m_stereo_chunk[2 * i + 1] - m_lowpass_r) * a;
+                m_stereo_chunk[2 * i]     = m_lowpass_l;
+                m_stereo_chunk[2 * i + 1] = m_lowpass_r;
+                peak = max(peak, max(fabsf(m_lowpass_l), fabsf(m_lowpass_r)));
+            }
+            AudioMixer::ReportPeak(group, peak * AudioMixer::GetGain(group));
         }
 
         if (!SDL_PutAudioStreamData(m_stream, m_stereo_chunk.data(), static_cast<int>(m_stereo_chunk.size() * sizeof(float))))

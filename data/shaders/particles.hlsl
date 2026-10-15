@@ -26,6 +26,8 @@ static const uint particle_lighting_emissive   = 2u;
 // how much of the skylight a billboard collects, kept in step with volume_sky_fill so the billboard
 // and volumetric paths do not disagree on smoke color when an emitter switches between them
 static const float particle_sky_fill           = 0.14f;
+static const float leaf_sky_fill               = 0.6f;
+static const float leaf_translucency           = 0.5f;
 // how fast the texture churn boils, and how many cycles of it fit across one puff
 static const float churn_speed                 = 1.1f;
 static const float churn_frequency             = 5.0f;
@@ -81,6 +83,45 @@ float3 random_in_cone(uint seed, float3 axis, float cone_angle)
     return safe_normalize(axis * cos_theta + (tangent * cos(phi) + bitan * sin(phi)) * sin_theta, axis);
 }
 
+// Leaves (render modes 2 and 5) reuse the smoke wake fields for their rigid body state:
+// wake_axis    = plate normal, w > 0.5 while resting
+// wake_origin  = angular velocity, w = seconds spent slow in contact
+// birth_effect = in-plane tangent, w = fraction of open sky above it (lit leaves have no emissive)
+// ground_plane = normal of the surface touched last frame, w = seconds alive (0 = unseeded litter)
+bool is_leaf_mode(uint render_mode)
+{
+    return render_mode == 2u || render_mode == 5u;
+}
+
+bool in_view_frustum(float3 position)
+{
+    float4 clip = mul(float4(position, 1.0), buffer_frame.view_projection);
+    if (clip.w <= 0.0)
+    {
+        return false;
+    }
+
+    float2 ndc = clip.xy / clip.w;
+    return all(abs(ndc) < 1.05);
+}
+
+// height of the topmost static surface over a point, the shelter grid rain uses, off screen roofs included
+float cover_height(float3 position)
+{
+    float cell_size = buffer_frame.rain_occlusion.z;
+    if (cell_size <= 0.0)
+    {
+        return rain_height_exposed;
+    }
+
+    return rain_occluder_height(int2(floor(position.xz / cell_size)));
+}
+
+bool under_cover(float3 position)
+{
+    return position.y < cover_height(position) - 0.25;
+}
+
 #ifdef EMIT
 
 [numthreads(256, 1, 1)]
@@ -103,13 +144,15 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     uint raw_slot;
     InterlockedAdd(particle_counter[emitter_index], 1, raw_slot);
     uint slot = emitter.range_start + (raw_slot % emitter.range_count);
-    // A resting leaf owns its slot until the player leaves the area. Never replace
-    // it with a new birth just because the emitter's ring counter wrapped.
-    if ((emitter.render_mode == 2u || emitter.render_mode == 5u))
+    // A leaf is one persistent body. A birth never replaces a leaf in flight, and a resting
+    // leaf only yields its slot when nobody can watch it vanish: outside the view or far away.
+    if (is_leaf_mode(emitter.render_mode))
     {
         Particle resident = particle_buffer_a[slot];
-        if (resident.owner_id_low == emitter.owner_id_low && resident.owner_id_high == emitter.owner_id_high &&
-            resident.emitter_index == emitter_index && resident.lifetime > 0.0 && resident.wake_axis.w > 0.5)
+        bool alive = resident.owner_id_low == emitter.owner_id_low && resident.owner_id_high == emitter.owner_id_high &&
+            resident.emitter_index == emitter_index && resident.lifetime > 0.0;
+        bool watched = in_view_frustum(resident.position) && distance(resident.position, get_camera_position()) < 45.0;
+        if (alive && (resident.wake_axis.w < 0.5 || watched))
             return;
     }
 
@@ -151,6 +194,27 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // Distribute births over this frame's travelled segment instead of leaving
     // disconnected clusters at the current position of a fast-moving emitter.
     p.position     = emitter.position + offset - emitter.emitter_velocity * emitter.delta_time * rng(seed + 47u);
+    // leaves come down from the open sky, a birth under a roof is a leaf falling out of the ceiling
+    if (is_leaf_mode(emitter.render_mode))
+    {
+        if (under_cover(p.position))
+            return;
+    #ifdef RAY_TRACING_ENABLED
+        if (emitter.collision_traced != 0u)
+        {
+            RayDesc ray;
+            ray.Origin    = p.position;
+            ray.Direction = float3(0, 1, 0);
+            ray.TMin      = 0.001;
+            ray.TMax      = 60.0;
+            RayQuery<RAY_FLAG_CULL_NON_OPAQUE> query;
+            query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
+            while (query.Proceed()) {}
+            if (query.CommittedStatus() != COMMITTED_NOTHING)
+                return;
+        }
+    #endif
+    }
     p.lifetime     = emitter.lifetime * r_life;
     p.velocity     = dir * emitter.start_speed * r_speed + emitter.emitter_velocity * emitter.velocity_inheritance;
     p.previous_position = p.position;
@@ -169,16 +233,20 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float3 travel  = float3(emitter.emitter_velocity.x, 0.0, emitter.emitter_velocity.z);
     float3 forward = safe_normalize(cross(emitter.vortex_axis, float3(0, 1, 0)), float3(0, 0, 1));
     p.wake_axis    = float4(length(travel) > 2.0 ? normalize(travel) : forward, emitter.vortex_radius);
-    // Leaves do not use wheel wakes. This union stores their contact normal and
-    // settled flag without increasing the particle buffer stride for every effect.
-    if ((emitter.render_mode == 2u || emitter.render_mode == 5u)) p.wake_axis = 0.0;
-    if (emitter.render_mode == 2u || emitter.render_mode == 5u)
+    p.birth_effect = float4(emitter.thermal_strength, emitter.thermal_decay, emitter.rollup_strength, emitter.emissive_strength);
+    if (is_leaf_mode(emitter.render_mode))
     {
+        float3 normal  = random_direction(seed + 523u);
+        float3 tangent = safe_normalize(cross(normal, random_direction(seed + 811u)), safe_normalize(cross(normal, float3(0, 1, 0)), float3(1, 0, 0)));
+        p.wake_axis    = float4(normal, 0.0);
+        p.wake_origin  = float4(random_direction(seed + 997u) * (1.0 + 3.0 * rng(seed + 1009u)), 0.0);
+        p.birth_effect = float4(tangent, 1.0);
+        p.ground_plane = float4(0.0, 0.0, 0.0, emitter.render_mode == 5u ? 0.0 : 0.0001);
+        // each leaf is born with its own dryness, a fixed property, so nothing recolours it later
+        p.birth_color.rgb  = lerp(p.birth_color.rgb, emitter.end_color.rgb, rng(seed + 947u) * 0.7);
         p.birth_color.rgb *= lerp(float3(0.42, 0.55, 0.30), float3(1.18, 0.95, 0.66), rng(seed + 941u));
         p.color = p.birth_color;
     }
-    if (emitter.render_mode == 5u) p.ground_plane.w = 0.0; // not yet surface-seeded
-    p.birth_effect = float4(emitter.thermal_strength, emitter.thermal_decay, emitter.rollup_strength, emitter.emissive_strength);
 
     particle_buffer_a[slot] = p;
 }
@@ -481,7 +549,77 @@ void apply_traced_collision(inout Particle p, inout float3 new_pos, EmitterParam
 
 #endif
 
-bool leaf_surface_contact(float3 previous, float3 next, EmitterParams emitter, out float3 contact_position, out float3 normal)
+static const uint leaf_probe_unknown = 0u; // off screen, occluded or foliage, the depth buffer cannot tell
+static const uint leaf_probe_free    = 1u; // visibly in front of the surface behind it
+static const uint leaf_probe_contact = 2u; // touching or slightly through the visible surface
+
+static const uint foliage_material_bits = (1u << 11) | (1u << 12) | (1u << 21);
+
+// The visible surface at the leaf's pixel decides everything the depth buffer can know: a leaf
+// in front of it is in open air, a leaf slightly behind it has passed into it, and a leaf deep
+// behind it is merely occluded. Foliage cards are skipped when the ray traced fallback can see
+// the solid ground under them, otherwise a leaf born inside a canopy would perch on its cards.
+uint leaf_depth_probe(float3 position, float reach, bool skip_foliage, out float3 surface_point, out float3 surface_normal, out float height)
+{
+    surface_point  = position;
+    surface_normal = float3(0, 1, 0);
+    height         = 0.0;
+
+    float4 clip = mul(float4(position, 1.0), buffer_frame.view_projection);
+    if (clip.w <= 0.0)
+    {
+        return leaf_probe_unknown;
+    }
+
+    float3 ndc = clip.xyz / clip.w;
+    float2 uv  = ndc.xy * float2(0.5, -0.5) + 0.5;
+    if (any(uv <= 0.0) || any(uv >= 1.0))
+    {
+        return leaf_probe_unknown;
+    }
+
+    int2 pixel  = int2(uv * get_render_resolution_active());
+    float depth = tex_depth.Load(int3(pixel, 0)).r;
+    if (depth <= 0.0)
+    {
+        return leaf_probe_free;
+    }
+
+    float4 normal_sample = tex_normal.Load(int3(pixel, 0));
+    float normal_length  = length(normal_sample.xyz);
+    if (normal_length <= 0.1)
+    {
+        return leaf_probe_unknown;
+    }
+
+    if (skip_foliage && (material_parameters[unpack_material_index(normal_sample.a)].flags & foliage_material_bits) != 0u)
+    {
+        return leaf_probe_unknown;
+    }
+
+    surface_normal = normal_sample.xyz / normal_length;
+    float3 visible = get_position(depth, uv);
+    height         = dot(position - visible, surface_normal);
+    float gap      = linearize_depth(ndc.z) - linearize_depth(depth);
+    float band     = 0.03 + 0.002 * clip.w;
+    if (gap <= 0.0)
+    {
+        if (height > band)
+        {
+            return leaf_probe_free;
+        }
+    }
+    else if (gap > reach + band || height > band)
+    {
+        return leaf_probe_unknown;
+    }
+
+    surface_point = position - surface_normal * height;
+    return leaf_probe_contact;
+}
+
+// Swept ray against solid triangles, used where the depth buffer has no answer.
+bool leaf_trace_contact(float3 previous, float3 next, EmitterParams emitter, out float3 contact_position, out float3 normal)
 {
     contact_position = next;
     normal = float3(0, 1, 0);
@@ -514,20 +652,7 @@ bool leaf_surface_contact(float3 previous, float3 next, EmitterParams emitter, o
         return true;
     }
 #endif
-    // Raster-only fallback uses the visible surface, never a flat emitter plane
-    // that could put a leaf underneath a raised sidewalk.
-    float4 clip = mul(float4(next, 1), buffer_frame.view_projection);
-    if (clip.w <= 0) return false;
-    float2 uv = clip.xy / clip.w * float2(0.5, -0.5) + 0.5;
-    if (any(uv <= 0) || any(uv >= 1)) return false;
-    int2 pixel = int2(uv * get_render_resolution_active());
-    float depth = tex_depth.Load(int3(pixel, 0)).r;
-    if (depth <= 0) return false;
-    contact_position = get_position(depth, uv);
-    normal = safe_normalize(get_normal(pixel), float3(0, 1, 0));
-    float before = dot(previous - contact_position, normal);
-    float after = dot(next - contact_position, normal);
-    return before >= 0 && after <= 0.012 && distance(next, contact_position) < length(next - previous) + 0.06;
+    return false;
 }
 
 void apply_moving_emitter_push(inout Particle p, EmitterParams emitter)
@@ -728,6 +853,328 @@ float3 body_wake_velocity(float3 position, EmitterParams emitter)
     return flow * strongest / max(weights, 0.001);
 }
 
+static const float leaf_contact_offset = 0.01; // resting height of the blade above its support
+static const float leaf_settle_speed   = 0.12; // below this a leaf in contact counts as stopped
+static const float leaf_settle_time    = 0.35; // seconds stopped before it goes to sleep
+
+// Slow gusts over a still mean wind, so a few resting leaves skitter instead of all or none.
+float leaf_gust(float3 position, float time)
+{
+    return 0.5 + 1.5 * pow(curl_value_noise(position * 0.06 + float3(time * 0.35, time * 0.05, time * 0.2)), 3.0);
+}
+
+void write_dead(inout Particle p, uint index)
+{
+    p.lifetime = 0.0;
+    particle_buffer_a[index] = p;
+}
+
+// How much open sky a leaf sees, so one blown under a roof is not lit like one on the open road.
+// Two rays every eighth frame, filtered over time, is enough for a value that changes this slowly.
+bool update_leaf_sky(inout Particle p, uint index, EmitterParams emitter)
+{
+    if (((emitter.frame + index) & 7u) != 0u)
+    {
+        return false;
+    }
+
+    // without ray tracing the shelter grid still knows whether a roof is overhead
+    if (emitter.collision_traced == 0u)
+    {
+        p.birth_effect.w = lerp(p.birth_effect.w, under_cover(p.position) ? 0.15 : 1.0, 0.2);
+        return true;
+    }
+
+#ifdef RAY_TRACING_ENABLED
+    float3 up   = dot(p.ground_plane.xyz, p.ground_plane.xyz) > 0.5 ? p.ground_plane.xyz : float3(0, 1, 0);
+    float open  = 0.0;
+    [unroll]
+    for (uint i = 0u; i < 2u; i++)
+    {
+        RayDesc ray;
+        ray.Origin    = p.position + up * 0.03;
+        ray.Direction = safe_normalize(up + random_direction(index * 9781u + emitter.frame * 31u + i * 7u), up);
+        ray.TMin      = 0.001;
+        ray.TMax      = 40.0;
+        RayQuery<RAY_FLAG_CULL_NON_OPAQUE> query;
+        query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
+        while (query.Proceed()) {}
+        open += query.CommittedStatus() == COMMITTED_NOTHING ? 0.5 : 0.0;
+    }
+
+    p.birth_effect.w = lerp(p.birth_effect.w, open, 0.2);
+#endif
+    return true;
+}
+
+// A leaf is a thin plate. It is one body for its whole life: it tumbles in the air, collides with
+// whatever the depth buffer (or the ray traced scene, where the depth buffer cannot see) says is
+// there, slides under gravity, wind and friction, and sleeps once it has stopped on a surface it can
+// rest on. A sleeping leaf costs one depth fetch a frame and wakes up again when its support goes
+// away or when the wind or a passing car can overcome its static friction.
+void simulate_leaf(inout Particle p, uint index, EmitterParams emitter)
+{
+    float dt      = emitter.delta_time;
+    float time    = fmod((float)buffer_frame.time, 600.0f);
+    float3 camera = get_camera_position();
+    bool traced   = emitter.collision_traced != 0u;
+    bool litter   = emitter.render_mode == 5u;
+
+    // the pool is bounded per neighbourhood, so it is distance that frees a leaf, never a timer
+    if (distance(p.position, camera) > (litter ? 60.0 : 160.0) || dot(float4(p.position, 1.0), emitter.ground_plane) < -3.0)
+    {
+        write_dead(p, index);
+        return;
+    }
+
+    float gravity  = max(-emitter.gravity_modifier, 0.0) * 9.81;
+    float friction = 0.55 + 0.5 * rng(index + 617u);
+    float k_normal = emitter.drag * 9.0;  // broadside drag, a falling leaf is a parachute
+    float k_plane  = emitter.drag * 2.0;  // edge-on drag, the same leaf is a glider
+    // walls and a roof keep the breeze out, a leaf drifting in through a door drops near it
+    float sheltered = under_cover(p.position) ? 0.12 : lerp(0.12, 1.0, saturate(p.birth_effect.w));
+    float3 wind     = buffer_frame.wind * emitter.wind_influence * leaf_gust(p.position, time) * sheltered;
+    float3 body    = body_wake_velocity(p.position, emitter);
+
+    float3 contact, normal;
+    float height;
+
+    // Litter is the carpet that was already there before anyone looked. It is laid on real triangles
+    // where it cannot be seen appearing, a birth that would pop in nearby is dropped instead.
+    if (litter && p.ground_plane.w == 0.0)
+    {
+        bool found = false;
+        if (traced)
+        {
+            found = leaf_trace_contact(p.position, p.position - float3(0, 64, 0), emitter, contact, normal);
+        }
+        else
+        {
+            contact = float3(p.position.x, cover_height(p.position), p.position.z);
+            normal  = float3(0, 1, 0);
+            found   = contact.y > rain_height_exposed * 0.5 && contact.y < p.position.y;
+        }
+
+        if (!found || normal.y < 0.45)
+        {
+            write_dead(p, index);
+            return;
+        }
+        else
+        {
+            float3 surface_point, surface_normal;
+            float3 seat  = contact + normal * leaf_contact_offset;
+            bool visible = leaf_depth_probe(seat, 0.05, true, surface_point, surface_normal, height) != leaf_probe_unknown;
+            if (visible && distance(seat, camera) < 35.0)
+            {
+                write_dead(p, index);
+                return;
+            }
+
+            float3 tilt = safe_normalize(normal + random_direction(index * 7919u + 3u) * 0.12, normal);
+            p.position          = seat;
+            p.previous_position = seat;
+            p.velocity          = 0.0;
+            p.wake_axis         = float4(tilt, 1.0);
+            p.wake_origin       = 0.0;
+            p.birth_effect.xyz  = safe_normalize(cross(tilt, random_direction(index * 104729u + 5u)), float3(1, 0, 0));
+            p.ground_plane      = float4(normal, visible ? 0.0001 : 30.0);
+            particle_buffer_a[index] = p;
+            return;
+        }
+    }
+
+    float3 n       = safe_normalize(p.wake_axis.xyz, float3(0, 1, 0));
+    float3 omega   = p.wake_origin.xyz;
+    float3 support = p.ground_plane.xyz;
+
+    if (p.wake_axis.w > 0.5)
+    {
+        // asleep, only the questions that can wake it are asked
+        float3 surface_point, surface_normal;
+        uint probe       = leaf_depth_probe(p.position, 0.06, traced, surface_point, surface_normal, height);
+        bool unsupported = probe == leaf_probe_free;
+        if (probe == leaf_probe_unknown && traced && ((emitter.frame + index) & 15u) == 0u)
+        {
+            unsupported = !leaf_trace_contact(p.position + support * 0.03, p.position - support * 0.06, emitter, contact, normal);
+        }
+
+        // ray traced and rasterized geometry disagree by a few centimetres on tessellated ground,
+        // the leaf follows the surface it is drawn against instead of sinking under it
+        bool sunk = probe == leaf_probe_contact && height < -0.004 && height > -0.05 && dot(surface_normal, support) > 0.8;
+
+        float3 air     = wind * 0.5 + body;
+        float air_n    = dot(air, support);
+        float3 air_t   = air - support * air_n;
+        float load     = gravity * max(support.y, 0.0);
+        bool blown     = k_plane * length(air_t) > friction * load * (1.0 + rng(index + 211u) * 0.6) || k_normal * air_n > load * 1.5;
+
+        bool fading_in = p.ground_plane.w < 1.0;
+        if (fading_in)
+        {
+            p.ground_plane.w += dt;
+        }
+        bool sky_changed = update_leaf_sky(p, index, emitter);
+
+        if (!unsupported && !blown)
+        {
+            if (sunk)
+            {
+                p.position          = surface_point + surface_normal * leaf_contact_offset;
+                p.previous_position = p.position;
+            }
+
+            if (sunk || fading_in || sky_changed)
+            {
+                particle_buffer_a[index] = p;
+            }
+            return;
+        }
+
+        // wake into the same body, the air that lifted it sets it spinning
+        p.wake_axis.w = 0.0;
+        p.position   += support * 0.01;
+        p.velocity    = air_t * 0.35 + support * (blown ? 0.3 + min(abs(air_n), 2.0) * 0.5 : 0.0);
+        omega         = cross(support, safe_normalize(air_t, float3(1, 0, 0))) * (2.0 + length(air_t));
+        p.wake_origin.w = 0.0;
+    }
+
+    p.ground_plane.w = min(p.ground_plane.w + dt, 30.0);
+    bool touching    = dot(support, support) > 0.5;
+
+    // the wind near a surface is slower, the boundary layer shelters anything lying in it
+    float3 air = (touching ? wind * 0.5 : wind) + body;
+    p.velocity.y -= gravity * dt;
+
+    // plate drag, strong across the blade and weak along it, so a falling leaf glides sideways
+    float3 relative = p.velocity - air;
+    float rel_n     = dot(relative, n);
+    float3 rel_t    = relative - n * rel_n;
+    relative        = n * rel_n * exp(-k_normal * dt) + rel_t * exp(-k_plane * dt);
+    p.velocity      = air + relative;
+    p.velocity     += curl_turbulence(p.position, p.size, time) * emitter.turbulence_strength * dt;
+
+    // aerodynamic torque turns the blade broadside to the flow it falls through, it overshoots,
+    // and that overshoot plus small eddies is the pendulum flutter and tumble of a real leaf
+    float rel_speed  = length(relative);
+    float3 flow      = relative / max(rel_speed, 0.0001);
+    float3 broadside = flow * (dot(n, flow) >= 0.0 ? 1.0 : -1.0);
+    float3 eddy      = curl_potential(p.position * 1.3 + float3(rng(index) * 97.0, rng(index + 1u) * 97.0, time * 0.6)) - 0.5;
+    float3 torque    = cross(n, broadside) * rel_speed * 6.0 + eddy * (3.0 + rel_speed * 4.0);
+    omega            = (omega + torque * dt) * exp(-1.5 * dt);
+    float spin       = length(omega);
+    if (spin > 20.0)
+    {
+        omega *= 20.0 / spin;
+    }
+
+    float3 new_pos = p.position + p.velocity * dt;
+    float travel   = length(new_pos - p.position);
+
+    // the depth buffer answers for everything it can see, the ray traced scene for the rest
+    float3 surface_point, surface_normal;
+    uint probe = leaf_depth_probe(new_pos, travel + 0.08, traced, surface_point, surface_normal, height);
+    bool hit   = probe == leaf_probe_contact;
+    if (hit)
+    {
+        contact = surface_point;
+        normal  = surface_normal;
+    }
+    else if (probe == leaf_probe_unknown && traced)
+    {
+        float3 reach_end = new_pos - (touching ? support * 0.03 : float3(0, 0, 0));
+        hit = leaf_trace_contact(p.position, reach_end, emitter, contact, normal);
+    }
+    else if (probe == leaf_probe_unknown)
+    {
+        // no ray tracing: the shelter grid is a coarse collider for the roofs and ground nobody sees
+        float top = cover_height(new_pos);
+        if (p.position.y >= top - 0.02 && new_pos.y < top + leaf_contact_offset)
+        {
+            hit     = true;
+            contact = float3(new_pos.x, top, new_pos.z);
+            normal  = float3(0, 1, 0);
+        }
+    }
+
+    float timer = p.wake_origin.w;
+    if (hit)
+    {
+        float h_new = dot(new_pos - contact, normal);
+        if (h_new > leaf_contact_offset + 0.04)
+        {
+            hit = false;
+        }
+    }
+
+    if (hit)
+    {
+        float h_new = dot(new_pos - contact, normal);
+        float into  = max(leaf_contact_offset - h_new, 0.0);
+
+        // depenetration beyond the leaf's own approach is the surface moving into it, a bumper or a
+        // door, and the leaf leaves with that surface's speed instead of being teleported out
+        float approach      = max(-dot(new_pos - p.position, normal), 0.0);
+        float surface_speed = min(max(into - approach - 0.01, 0.0) / max(dt, 0.0001), 25.0);
+        new_pos += normal * into;
+
+        float v_n = dot(p.velocity, normal);
+        if (v_n < surface_speed)
+        {
+            p.velocity += normal * (surface_speed - v_n + max(-v_n, 0.0) * 0.1);
+        }
+
+        // Coulomb friction, gravity and wind pressing the blade down set how hard it grips
+        float load   = gravity * max(normal.y, 0.0) + k_normal * max(-dot(air, normal), 0.0) * 0.1;
+        float3 v_t   = p.velocity - normal * dot(p.velocity, normal);
+        float v_t_len = length(v_t);
+        if (v_t_len > 0.0)
+        {
+            p.velocity -= v_t * min(friction * load * dt / v_t_len, 1.0);
+        }
+
+        // contact lays the blade down on the surface and kills the tumble
+        float side = dot(n, normal) >= 0.0 ? 1.0 : -1.0;
+        n          = safe_normalize(lerp(n, normal * side, 1.0 - exp(-14.0 * dt)), n);
+        omega     *= exp(-10.0 * dt);
+        support    = normal;
+
+        float speed = length(p.velocity - normal * surface_speed);
+        bool still  = normal.y > 0.5 && speed < leaf_settle_speed && abs(dot(n, normal)) > 0.95 && surface_speed <= 0.0;
+        timer       = still ? timer + dt : 0.0;
+    }
+    else
+    {
+        support = 0.0;
+        timer   = 0.0;
+    }
+
+    // integrate the orientation, the tangent follows so the blade never twists on screen
+    float3 t = p.birth_effect.xyz;
+    n        = safe_normalize(n + cross(omega, n) * dt, n);
+    t        = t + cross(omega, t) * dt;
+    t        = safe_normalize(t - n * dot(t, n), safe_normalize(cross(n, float3(0, 1, 0)), float3(1, 0, 0)));
+
+    p.position     = new_pos;
+    p.birth_effect = float4(t, p.birth_effect.w);
+    p.ground_plane = float4(support, p.ground_plane.w);
+    p.color.a      = p.birth_color.a;
+    update_leaf_sky(p, index, emitter);
+
+    if (timer > leaf_settle_time)
+    {
+        p.velocity  = 0.0;
+        p.wake_axis = float4(n, 1.0);
+        p.wake_origin = 0.0;
+        particle_buffer_a[index] = p;
+        return;
+    }
+
+    p.wake_axis   = float4(n, 0.0);
+    p.wake_origin = float4(omega, timer);
+    particle_buffer_a[index] = p;
+}
+
 [numthreads(256, 1, 1)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
@@ -762,68 +1209,13 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     p.previous_position = p.position;
     p.previous_size = p.size;
 
-    const bool leaf = (emitter.render_mode == 2u || emitter.render_mode == 5u);
+    if (is_leaf_mode(emitter.render_mode))
+    {
+        simulate_leaf(p, index, emitter);
+        return;
+    }
+
     float3 body_flow = body_wake_velocity(p.position, emitter);
-    if (emitter.render_mode == 5u && p.ground_plane.w == 0.0)
-    {
-        // Pre-existing litter is placed on actual triangles, including raised
-        // sidewalks. Once seeded it uses the same persistent contact/wind state
-        // as a fallen leaf. Never project it again after wind lifts it.
-        p.ground_plane.w = 1.0;
-        float3 contact, normal;
-        if (leaf_surface_contact(p.position, p.position - float3(0, 64, 0), emitter, contact, normal) && normal.y > 0.45)
-        {
-            p.position = contact + normal * (0.008 + rng(index) * 0.006);
-            p.previous_position = p.position;
-            p.velocity = 0;
-            p.wake_axis = float4(normal, 1);
-            p.color = float4(lerp(p.birth_color.rgb, emitter.end_color.rgb, 0.35), p.birth_color.a);
-            particle_buffer_a[index] = p;
-            return;
-        }
-        // Raster-only devices still drop litter through the normal collision
-        // path; they cannot query an unseen ground surface.
-        p.velocity.y = -6.0;
-    }
-    if (leaf)
-    {
-        // Local accumulation has a spatial lifetime, not a timer. Looking away
-        // does not remove it; leaving the neighborhood frees the bounded pool.
-        if (distance(p.position, get_camera_position()) > (emitter.render_mode == 5u ? 60.0 : 160.0))
-        {
-            p.lifetime = 0;
-            particle_buffer_a[index] = p;
-            return;
-        }
-        if (p.wake_axis.w > 0.5)
-        {
-            float3 normal = p.wake_axis.xyz;
-            float3 wind = buffer_frame.wind * emitter.wind_influence;
-            float3 tangent = wind - normal * dot(wind, normal);
-            // Static friction keeps litter at rest in a gentle breeze. A strong
-            // wind can lift it back into the same gravity/drag simulation.
-            bool supported = true;
-            if (emitter.collision_traced != 0u && ((emitter.frame + index) & 15u) == 0u)
-            {
-                float3 support_point, support_normal;
-                supported = leaf_surface_contact(p.position + normal * 0.03, p.position - normal * 0.04,
-                                                 emitter, support_point, support_normal);
-            }
-            float wake_speed = length(body_flow);
-            if (!supported || length(tangent) > 8.0 || wake_speed > 1.2 + rng(index + 617u) * 1.4)
-            {
-                p.wake_axis.w = 0;
-                p.velocity = tangent * 0.25 + body_flow * 0.65 + normal * (0.35 + min(wake_speed * 0.2, 1.8));
-                p.lifetime = p.max_lifetime;
-                p.position += normal * 0.015;
-            }
-            else
-            {
-                particle_buffer_a[index] = p;
-                return;
-            }
-        }
-    }
 
     // integrate gravity
     p.velocity.y += emitter.gravity_modifier * 9.81 * dt;
@@ -881,31 +1273,6 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     p.velocity += wake_velocity;
     float3 new_pos = p.position + p.velocity * dt;
 
-    if (leaf)
-    {
-        float3 contact, normal;
-        if (leaf_surface_contact(p.position, new_pos, emitter, contact, normal))
-        {
-            new_pos = contact + normal * 0.008;
-            p.velocity -= normal * min(dot(p.velocity, normal), 0.0);
-            p.velocity *= 0.2; // inelastic impact and surface friction
-            if (normal.y > 0.45)
-            {
-                // Reserve one quarter of each slice for continuing airborne
-                // motion even when the local accumulation budget is full.
-                bool can_rest = emitter.render_mode == 5u || ((index - emitter.range_start) & 3u) != 0u;
-                p.position = new_pos;
-                p.velocity = 0;
-                p.wake_axis = float4(normal, can_rest ? 1.0 : 0.0);
-                p.lifetime = can_rest ? p.max_lifetime : 0.0;
-                p.color = float4(lerp(p.birth_color.rgb, emitter.end_color.rgb, 0.35), p.birth_color.a);
-                p.size = p.start_size;
-                particle_buffer_a[index] = p;
-                return;
-            }
-        }
-    }
-
     // a drop ends on the first thing above it, the ground in the open, a roof over a garage
     if (emitter.rain_occluded != 0u)
     {
@@ -919,7 +1286,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     }
 
     // fresh puffs need a short grace period to leave tight emitters such as exhaust tips
-    const bool ballistic = !leaf && dot(p.ground_plane.xyz, p.ground_plane.xyz) > 0.5;
+    const bool ballistic = dot(p.ground_plane.xyz, p.ground_plane.xyz) > 0.5;
     if (ballistic && dot(float4(new_pos, 1.0), p.ground_plane) < 0.0)
     {
         p.lifetime = 0.0;
@@ -929,7 +1296,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // Tire smoke is born against the road. A lifetime-relative grace period can
     // leave it without collision for a full second, allowing the wake to bury it.
     bool collision_ready = p.birth_effect.z > 0.0 ? age_seconds > 0.03 : age_for_collision > 0.18;
-    if (!leaf && !ballistic && emitter.rain_occluded == 0u && collision_ready && distance(p.position, emitter.position) > emitter.collision_clearance)
+    if (!ballistic && emitter.rain_occluded == 0u && collision_ready && distance(p.position, emitter.position) > emitter.collision_clearance)
     {
     #ifdef RAY_TRACING_ENABLED
         if (emitter.collision_traced != 0u)
@@ -973,7 +1340,6 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float dilution = entrains ? pow(saturate(p.start_size / max(p.size, 0.001)), 0.65) : 1.0;
     float fade = entrains ? smoothstep(0.45, 1.0, t) : smoothstep(0.0, 1.0, t);
     p.color.a = lerp(p.birth_color.a, emitter.end_color.a, fade) * dilution;
-    if (leaf) p.color.a = p.birth_color.a;
 
     particle_buffer_a[index] = p;
 }
@@ -1033,7 +1399,7 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     o.contact_normal = 0.0;
 
     Particle p = particle_buffer_a[index];
-    bool settled_leaf = (emitter.render_mode == 2u || emitter.render_mode == 5u) && p.wake_axis.w > 0.5;
+    bool leaf = is_leaf_mode(emitter.render_mode);
 
     // skip dead, invisible or foreign emitter particles
     if (p.lifetime <= 0.0 || p.max_lifetime <= 0.0 || p.color.a <= 0.0 || p.emitter_index != emitter_index ||
@@ -1083,13 +1449,16 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     }
     float longitudinal = c.x + (flame ? 1.0 : 0.0);
     float3 world = p.position + right * longitudinal * half_size_x + up * c.y * half_size_y;
-    if (settled_leaf)
+    // a leaf is drawn in its own simulated plane in flight and at rest alike, so landing is not a
+    // switch between two looks, and it is lit two sided from the face the camera sees
+    float3 leaf_offset = 0.0;
+    if (leaf)
     {
-        float3 normal = p.wake_axis.xyz;
-        right = safe_normalize(cross(float3(0, 0, 1), normal), float3(1, 0, 0));
-        up = cross(normal, right);
-        world = p.position + (right * c.x + up * c.y) * p.size * 0.5;
-        o.contact_normal = normal;
+        float3 normal  = safe_normalize(p.wake_axis.xyz, float3(0, 1, 0));
+        float3 tangent = safe_normalize(p.birth_effect.xyz - normal * dot(p.birth_effect.xyz, normal), safe_normalize(cross(float3(0, 0, 1), normal), float3(1, 0, 0)));
+        leaf_offset    = (tangent * c.x + cross(normal, tangent) * c.y) * p.size * 0.5;
+        world          = p.position + leaf_offset;
+        o.contact_normal = dot(normal, get_camera_position() - p.position) < 0.0 ? -normal : normal;
     }
 
     float4 clip   = mul(float4(world, 1.0),      buffer_frame.view_projection);
@@ -1098,9 +1467,10 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     // age driven fade in, rotation and spin, matches the old compute look
     float age_t    = 1.0 - saturate(p.lifetime / p.max_lifetime);
     o.nature_shape.y = max(p.max_lifetime - p.lifetime, 0.0);
-    if (settled_leaf) o.nature_shape.y = -1.0;
+    // negative marks a leaf drawn in its own plane, minus two when the camera sees its underside
+    if (leaf) o.nature_shape.y = dot(p.wake_axis.xyz, get_camera_position() - p.position) < 0.0 ? -2.0 : -1.0;
     float fade_in  = saturate(age_t / (luminous ? 0.04 : 0.2));
-    if ((emitter.render_mode == 2u || emitter.render_mode == 5u)) fade_in = settled_leaf ? 1.0 : saturate(o.nature_shape.y / 0.5);
+    if (leaf) fade_in = saturate(p.ground_plane.w / 0.75);
     float base_ang = rng(index * 2654435761u) * 6.28318530718;
     float spin     = (rng(index * 40503u + 13u) * 2.0 - 1.0) * 1.2;
     float ang      = base_ang + spin * age_t;
@@ -1119,7 +1489,7 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     float previous_length_scale = flame ? max(length(previous_projected_flow), 0.2) : 1.0;
     float3 previous_world = p.previous_position + previous_right * longitudinal * p.previous_size * (0.5 + stretch * 1.5) * previous_length_scale
         + previous_up * c.y * p.previous_size * (0.5 - saturate(stretch) * 0.2);
-    if (settled_leaf) previous_world = world;
+    if (leaf) previous_world = p.previous_position + leaf_offset;
     o.clip_current = mul(float4(world, 1), (pass_is_right_eye() ? buffer_frame.view_projection_unjittered_right : buffer_frame.view_projection_unjittered));
     o.clip_previous = mul(float4(previous_world, 1), get_view_projection_previous_unjittered());
     o.position  = clip;
@@ -1129,21 +1499,25 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     if (emitter.render_mode >= 2u)
     {
         // Airborne details dissolve near the lens, keeping cockpit/road views clear.
-        if (!settled_leaf) o.alpha *= smoothstep(1.5, 5.0, distance(p.position, get_camera_position()));
-        if (!settled_leaf) o.alpha *= 1.0 - smoothstep(0.85, 1.0, age_t);
-        if ((emitter.render_mode == 2u || emitter.render_mode == 5u))
-            o.alpha *= emitter.render_mode == 5u ? 1.0 - smoothstep(50.0, 60.0, distance(p.position, get_camera_position())) :
-                                                  1.0 - smoothstep(140.0, 160.0, distance(p.position, get_camera_position()));
+        float camera_distance = distance(p.position, get_camera_position());
+        if (!leaf) o.alpha *= smoothstep(1.5, 5.0, camera_distance);
+        if (!leaf) o.alpha *= 1.0 - smoothstep(0.85, 1.0, age_t);
+        if (leaf)
+        {
+            // only a leaf brushing the lens fades, the far edge matches the spatial cull
+            o.alpha *= smoothstep(0.3, 0.9, camera_distance);
+            o.alpha *= emitter.render_mode == 5u ? 1.0 - smoothstep(50.0, 60.0, camera_distance) : 1.0 - smoothstep(140.0, 160.0, camera_distance);
+        }
     }
     o.lin_depth = linearize_depth(clip_c.z / max(clip_c.w, 1e-6));
-    if (settled_leaf) o.lin_depth = linearize_depth(clip.z / max(clip.w, 1e-6));
+    if (leaf) o.lin_depth = linearize_depth(clip.z / max(clip.w, 1e-6));
     o.rot       = float2(cos(ang), sin(ang));
     o.use_tex   = use_texture;
     o.position_world = p.position;
-    if (settled_leaf) o.position_world = world;
+    if (leaf) o.position_world = world;
     o.age_t     = age_t;
     o.render_params = float4((float)emitter.blend_mode, (float)emitter.lighting_mode, p.birth_effect.w, emitter.soft_depth_scale);
-    if (settled_leaf) o.render_params.w = 1000.0;
+    if (leaf) o.render_params.w = 1000.0;
     o.flipbook  = float4((float)emitter.flipbook_rows, (float)emitter.flipbook_columns, emitter.flipbook_fps, rng(index * 1664525u + 1013904223u));
     o.churn     = emitter.churn_strength;
     return o;
@@ -1235,10 +1609,23 @@ float trace_particle_shadow_ray(Light light, Surface surface)
 // a smoke quad covers a large part of the screen and puffs stack many deep, so a ray query per light
 // per pixel multiplies into billions of traversals, only the primary light is allowed to trace and
 // the local lights stay unshadowed, the atlas is not rendered with ray traced shadows
-float3 evaluate_particle_light(uint light_index, uint2 pixel, Surface surface, bool allow_ray_traced_shadow)
+// translucency > 0 marks a solid blade (a leaf): its bent_normal is the geometric face, its normal
+// carries the fold and veins, it gets a waxy specular lobe, and a light behind it shines through
+float3 evaluate_particle_light(uint light_index, uint2 pixel, Surface surface, bool allow_ray_traced_shadow, float translucency)
 {
     Light light;
     light.Build(light_index, surface);
+
+    bool transmitted = translucency > 0.0 && dot(surface.bent_normal, light.to_pixel) > 0.0;
+    Surface shadow_surface = surface;
+    if (translucency > 0.0)
+    {
+        shadow_surface.normal = transmitted ? -surface.bent_normal : surface.bent_normal;
+    }
+    if (transmitted)
+    {
+        light.Build(light_index, shadow_surface);
+    }
 
     if (light.has_shadows())
     {
@@ -1248,16 +1635,22 @@ float3 evaluate_particle_light(uint light_index, uint2 pixel, Surface surface, b
         {
             if (allow_ray_traced_shadow)
             {
-                shadow = trace_particle_shadow_ray(light, surface);
+                shadow = trace_particle_shadow_ray(light, shadow_surface);
             }
         }
         else
     #endif
         {
-            shadow = compute_shadow(surface, light);
+            shadow = compute_shadow(shadow_surface, light);
         }
 
         light.radiance *= shadow;
+    }
+
+    // light through a thin blade is filtered twice by its pigment, so it comes out deeper and warmer
+    if (transmitted)
+    {
+        return surface.albedo * saturate(surface.albedo * 2.2) * light.radiance * translucency * INV_PI;
     }
 
     if (!any(light.radiance > 0.0))
@@ -1268,22 +1661,36 @@ float3 evaluate_particle_light(uint light_index, uint2 pixel, Surface surface, b
     AngularInfo angular_info;
     angular_info.Build(light, surface);
 
+    if (translucency > 0.0)
+    {
+        float3 specular = BRDF_Specular_Isotropic(surface, angular_info);
+        return (BRDF_Diffuse(surface, angular_info) * surface.diffuse_energy + specular) * light.radiance;
+    }
+
     return BRDF_Diffuse(surface, angular_info) * light.radiance;
 }
 
-float3 evaluate_particle_lighting(uint2 pixel, Surface surface)
+float3 evaluate_particle_lighting(uint2 pixel, Surface surface, float translucency)
 {
     // skylight, the flat eight percent term had no illuminant at all so the warm sun was the only
     // thing with a hue and smoke read brown, the divide by pi keeps it in the same units as the
     // diffuse lobe below
     float3 sky     = get_sky_fill_radiance() * particle_sky_fill / 3.14159265;
     float3 ambient = surface.albedo * (0.02 + sky);
+
+    // a leaf is an opaque surface, not a puff of scattering medium, so it takes the skylight the
+    // ground around it takes, more from above than from the ground bounce below
+    if (translucency > 0.0)
+    {
+        ambient = surface.albedo * (0.02 + get_sky_fill_radiance() * leaf_sky_fill * surface.occlusion * (0.55 + 0.45 * surface.normal.y) / 3.14159265);
+    }
+
     float3 result  = ambient;
     uint total_lights = buffer_frame.cluster_light_count;
 
     if (total_lights > 0u)
     {
-        result += evaluate_particle_light(0u, pixel, surface, true);
+        result += evaluate_particle_light(0u, pixel, surface, true, translucency);
     }
 
     if (total_lights > 1u)
@@ -1306,7 +1713,7 @@ float3 evaluate_particle_lighting(uint2 pixel, Surface surface)
             for (uint k = 0u; k < light_count; k++)
             {
                 uint light_index = cluster_light_indices[range.x + k];
-                result += evaluate_particle_light(light_index, pixel, surface, false);
+                result += evaluate_particle_light(light_index, pixel, surface, false, translucency);
             }
         }
     }
@@ -1320,6 +1727,19 @@ struct particle_output
     float4 velocity : SV_Target1;
     float4 reactivity : SV_Target2;
 };
+
+float leaf_hash(float2 p)
+{
+    return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453);
+}
+
+float leaf_noise(float2 p)
+{
+    float2 i = floor(p);
+    float2 f = frac(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return lerp(lerp(leaf_hash(i), leaf_hash(i + float2(1, 0)), f.x), lerp(leaf_hash(i + float2(0, 1)), leaf_hash(i + float2(1, 1)), f.x), f.y);
+}
 
 particle_output main_ps(ps_input input)
 {
@@ -1348,11 +1768,12 @@ particle_output main_ps(ps_input input)
 
     float3 base_color = input.color;
     float alpha_mask  = 1.0;
+    float leaf_height = 0.0;
+    bool leaf_blade   = false;
     uint nature = (uint)round(input.nature_shape.x);
     if (nature >= 2u)
     {
         float phase = input.flipbook.w * 6.2831853;
-        bool settled = input.nature_shape.y < 0.0;
         float seconds = max(input.nature_shape.y, 0.0);
         float angle = phase + seconds * (0.7 + input.flipbook.w);
         float2 q = float2(input.local.x * cos(angle) - input.local.y * sin(angle),
@@ -1360,21 +1781,42 @@ particle_output main_ps(ps_input input)
         falloff = 1.0;
         if ((nature == 2u || nature == 5u))
         {
-            // Pointed blade, fine stem and veins. Foreshortening varies independently
-            // from spin, so each leaf flutters edge-on instead of rotating as a disc.
-            float flutter = settled ? 1.0 : 0.18 + 0.82 * abs(sin(seconds * 3.4 + phase));
-            q.x /= flutter;
-            float center = 0.10 * sin(q.y * 3.0 + seconds * 1.3 + phase);
-            float width = lerp(0.24, 0.40, input.flipbook.w) * saturate(1.0 - pow(abs(q.y / 0.78), 1.4));
-            float edge = max(abs(q.x - center) - width, abs(q.y) - 0.78);
-            float aa = max(fwidth(edge), 0.008);
-            float blade = 1.0 - smoothstep(-aa, aa, edge);
-            float stem = (1.0 - smoothstep(0.009, 0.025, abs(q.x - center))) *
-                         (1.0 - smoothstep(0.80, 0.93, abs(q.y)));
-            alpha_mask = max(blade, stem);
-            float vein = exp(-abs(q.x - center) * 110.0);
-            float ribs = pow(saturate(cos((q.y - abs(q.x - center) * 0.8) * 38.0)), 12.0);
-            base_color *= (0.65 + 0.35 * flutter) * (1.0 - vein * 0.25 - ribs * 0.10);
+            // blade outline, each leaf with its own width, taper and serration, around a slightly bent midrib
+            float seed   = input.flipbook.w;
+            float center = 0.08 * sin(q.y * 3.0 + phase);
+            float dx     = q.x - center;
+            float along  = q.y / 0.78; // minus one at the stem end, one at the tip
+            float taper  = lerp(1.1, 2.0, frac(seed * 7.13));
+            float width  = lerp(0.24, 0.42, seed) * saturate(1.0 - pow(abs(along), taper));
+            width       *= 1.0 + 0.07 * sin(atan2(dx, q.y) * lerp(14.0, 28.0, frac(seed * 5.31)));
+            float edge   = max(abs(dx) - width, abs(q.y) - 0.78);
+            float aa     = max(fwidth(edge), 0.008);
+            float blade  = 1.0 - smoothstep(-aa, aa, edge);
+            float stem   = (1.0 - smoothstep(0.009, 0.025, abs(dx))) * (1.0 - smoothstep(0.80, 0.93, abs(q.y)));
+            alpha_mask   = max(blade, stem);
+            float vein   = exp(-abs(dx) * 110.0);
+            float ribs   = pow(saturate(cos((q.y - abs(dx) * 0.8) * 22.0)), 6.0);
+
+            // height over the blade in quad units: the halves rise from a creased midrib, the blade
+            // cups or arches, the tip and rim curl, and the side veins stand slightly proud
+            leaf_height = abs(dx) * 0.28 + dx * dx * lerp(-0.4, 0.7, frac(seed * 11.1)) + along * along * 0.07 + ribs * 0.012 - vein * 0.015;
+            leaf_blade  = true;
+
+            // a dry leaf is never one flat colour: fresher at the stem, drier at the tip and rim,
+            // with rot blotches and specks, a pale midrib, and a duller, paler underside
+            float2 nq    = q * 2.5 + seed * 37.0;
+            float blotch = leaf_noise(nq) * 0.65 + leaf_noise(nq * 2.9 + 5.0) * 0.35;
+            float rim    = smoothstep(-0.10, 0.0, edge);
+            float3 tint  = base_color * lerp(float3(1.10, 1.06, 0.80), float3(0.88, 0.80, 0.74), along * 0.5 + 0.5);
+            tint         = lerp(tint, tint * float3(0.50, 0.38, 0.28), smoothstep(0.55, 0.85, blotch) * 0.85);
+            tint         = lerp(tint, tint * float3(0.62, 0.50, 0.40), rim * 0.7);
+            tint        *= 1.0 - 0.45 * pow(leaf_noise(q * 15.0 + seed * 91.0), 6.0);
+            tint        *= 1.0 + vein * 0.18 - ribs * 0.06;
+            if (input.nature_shape.y < -1.5)
+            {
+                tint = lerp(tint, dot(tint, float3(0.3, 0.59, 0.11)) * float3(1.05, 1.0, 0.9), 0.3) * 1.12;
+            }
+            base_color = tint;
         }
         else if (nature == 3u)
         {
@@ -1441,6 +1883,16 @@ particle_output main_ps(ps_input input)
         alpha_mask    = sample.a;
     }
 
+    // the blade's relief bends the normal through screen derivatives (mikkelsen 2010), so a quad
+    // needs no tangent frame and the fold survives whatever orientation the leaf tumbles into,
+    // evaluated outside any branch so the derivatives stay defined
+    float3 dpdx        = ddx(input.position_world);
+    float3 dpdy        = ddy(input.position_world);
+    float local_rate   = length(ddx(input.local)) + length(ddy(input.local));
+    float relief       = leaf_height * (length(dpdx) + length(dpdy)) / max(local_rate, 1e-6);
+    float relief_dx    = ddx(relief);
+    float relief_dy    = ddy(relief);
+
     uint lighting_mode = (uint)round(input.render_params.y);
     float3 lit_color = base_color;
     if (lighting_mode == particle_lighting_lit)
@@ -1451,7 +1903,22 @@ particle_output main_ps(ps_input input)
             surface.normal = input.contact_normal;
             surface.bent_normal = input.contact_normal;
         }
-        lit_color = evaluate_particle_lighting(uint2(pixel), surface);
+        float translucency = 0.0;
+        if (leaf_blade)
+        {
+            float3 face = surface.normal;
+            float3 r1   = cross(dpdy, face);
+            float3 r2   = cross(face, dpdx);
+            float det   = dot(dpdx, r1);
+            float3 grad = sign(det) * (relief_dx * r1 + relief_dy * r2);
+            surface.normal          = safe_normalize(abs(det) * face - grad, face);
+            surface.bent_normal     = face;
+            surface.roughness       = input.nature_shape.y < -1.5 ? 0.8 : 0.55; // waxy cuticle on top, matte below
+            surface.roughness_alpha = surface.roughness * surface.roughness;
+            surface.occlusion       = lerp(0.3, 1.0, saturate(input.render_params.z)); // open sky fraction, a covered leaf still gets the bounce
+            translucency            = leaf_translucency;
+        }
+        lit_color = evaluate_particle_lighting(uint2(pixel), surface, translucency);
     }
     else if (lighting_mode == particle_lighting_emissive)
     {

@@ -113,6 +113,8 @@ namespace car
         PxVec3          prev_velocity           = PxVec3(0);
         float           vehicle_sleep_timer     = 0.0f;
         bool            vehicle_sleeping        = false;
+        int             sleep_probe_step        = 0;
+        bool            sleep_support_static    = false;
         bool            parked                  = false;
         PxRigidDynamicLockFlags parking_locks;
         float           engine_brake_torque     = 0.0f;
@@ -127,6 +129,8 @@ namespace car
         multibody_state multibody;
         bool simulation_enabled = true;
         bool mechanism_simulation_enabled = true;
+        PxTransform assembly_anchor = PxTransform(PxIdentity);
+        bool assembly_anchor_valid = false;
 
     public:
 

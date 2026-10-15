@@ -173,7 +173,16 @@ namespace car
             {
                 return;
             }
-            const PxTransform current = body->getGlobalPose();
+            // at kilometre coordinates the read back pose and any delta composed from it carry rounding noise,
+            // applied every editor frame that noise walks the mechanism off the chassis, so measure from the
+            // last requested pose while the body still sits there and skip requests that did not change
+            const PxTransform read_back = body->getGlobalPose();
+            const bool at_anchor = assembly_anchor_valid &&
+                (read_back.p - assembly_anchor.p).magnitudeSquared() < 1e-6f &&
+                fabsf(read_back.q.dot(assembly_anchor.q)) > 1.0f - 1e-6f;
+            const PxTransform current = at_anchor ? assembly_anchor : read_back;
+            assembly_anchor = pose;
+            assembly_anchor_valid = true;
             body->setGlobalPose(pose);
             if (can_apply_force(body))
             {
@@ -184,11 +193,11 @@ namespace car
             {
                 return;
             }
-            const PxTransform delta = pose * current.getInverse();
-            if (delta.p.magnitudeSquared() < 1e-10f && fabsf(delta.q.w) > 1.0f - 1e-7f)
+            if ((pose.p - current.p).magnitudeSquared() < 1e-10f && fabsf(pose.q.dot(current.q)) > 1.0f - 1e-7f)
             {
                 return;
             }
+            const PxTransform delta = pose * current.getInverse();
             for (int i = 0; i < multibody.actor_count; i++)
             {
                 if (PxRigidDynamic* actor = multibody.actors[i])
@@ -2672,6 +2681,7 @@ namespace car
     {
         scene_origin += shift;
         previous_position -= shift;
+        assembly_anchor.p -= shift;
         aero_debug.position -= shift;
         aero_debug.front_aero_pos -= shift;
         aero_debug.rear_aero_pos -= shift;
@@ -2844,6 +2854,8 @@ namespace car
             lateral_accel = 0.0f;
             vehicle_sleep_timer = 0.0f;
             vehicle_sleeping = true;
+            sleep_probe_step = 0;
+            sleep_support_static = false;
     }
 
 
@@ -5678,20 +5690,35 @@ namespace car
             }
 
             bool steering_adjusting = fabsf(input_target.steering - input.steering) > 0.001f;
-            // In automatic mode the brake pedal also requests reverse after a
-            // stop, so it must wake a car that is still in a forward gear.
-            bool motion_requested = input.throttle > spec.input_deadzone || input.brake > spec.input_deadzone || steering_adjusting || starter_requested;
+            // In automatic mode the brake pedal drives in reverse, and past the
+            // reverse request threshold it shifts there after a stop. Below that
+            // a held brake only holds the car, so it may sleep on the pedal.
+            bool brake_drives = input.brake > spec.input_deadzone && (is_brake_reverse_throttle() || (!manual_shifting && input.brake > 0.8f));
+            bool motion_requested = input.throttle > spec.input_deadzone || brake_drives || steering_adjusting || starter_requested;
             if (vehicle_sleeping)
             {
                 // Tire actors use queries, not rigid collision contacts. PhysX
                 // cannot automatically wake them when a queried support moves.
-                update_suspension(scene, dt, false);
-                update_parking_hold();
+                // Static support cannot move, so it is re-probed every 4th step;
+                // between probes the contact actors may be stale and are not read.
+                const bool probe = !sleep_support_static || ++sleep_probe_step >= 4;
                 bool externally_awake = !body->isSleeping();
-                for (int i = 0; i < wheel_count; i++)
+                if (probe)
                 {
-                    externally_awake = externally_awake || !wheels[i].grounded
-                        || ground_point_velocity(wheels[i]).magnitudeSquared() > 0.0001f;
+                    sleep_probe_step = 0;
+                    update_suspension(scene, dt, false);
+                    update_parking_hold();
+                    sleep_support_static = true;
+                    for (int i = 0; i < wheel_count; i++)
+                    {
+                        externally_awake = externally_awake || !wheels[i].grounded
+                            || ground_point_velocity(wheels[i]).magnitudeSquared() > 0.0001f;
+                        for (int r = 0; r < wheels[i].row_count; r++)
+                        {
+                            const PxRigidActor* support = wheels[i].contacts[r].actor;
+                            sleep_support_static = sleep_support_static && (!support || support->is<PxRigidStatic>());
+                        }
+                    }
                 }
                 for (int i = 0; i < multibody.actor_count && !externally_awake; i++)
                 {
@@ -5775,9 +5802,7 @@ namespace car
             apply_aero_and_resistance();
             // Keep the low-speed settling tolerance, but never park at a jump
             // apex, during body rotation/wheelspin, or on a moving support.
-            bool driver_idle = !motion_requested
-                && input.brake <= spec.input_deadzone
-                && fabsf(input.steering) <= spec.input_deadzone;
+            bool driver_idle = !motion_requested;
             bool supported_and_quiet = body->getAngularVelocity().magnitudeSquared() < 0.0025f;
             for (int i = 0; i < wheel_count; i++)
             {

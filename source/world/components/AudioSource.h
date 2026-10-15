@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 
 //= includes =========
 #include "Component.h"
+#include "../../audio/AudioMixer.h"
 #include <atomic>
 #include <string>
 #include <vector>
@@ -70,6 +71,16 @@ namespace spartan
         float GetProgress() const;
         float GetDuration() const; // seconds, 0 without a clip
 
+        // seconds into the clip that are audible now, the feed runs ahead of the speakers by the queued audio
+        float GetPlaybackPosition() const;
+        // jumps the clip to a time and drops whatever was queued so the jump is heard immediately
+        void SetPlaybackPosition(float seconds);
+
+        // the mixer group, auto resolves ambient beds to ambience and the rest to sfx
+        AudioGroup GetGroup() const { return m_group; }
+        void SetGroup(AudioGroup group);
+        AudioGroup GetResolvedGroup() const;
+
         bool GetMute() const { return m_mute; }
         void SetMute(bool mute);
 
@@ -114,8 +125,13 @@ namespace spartan
         void DestroyStream();
         static void SynthesisStreamCallback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount);
         void TickAmbient(bool in_play_mode);
+        void ApplyMixer();
 
         std::vector<float> m_stereo_chunk; // reused to avoid per-call allocation
+        AudioGroup m_group                             = AudioGroup::Auto;
+        float m_lowpass_l                              = 0.0f; // clip feed, main thread
+        float m_lowpass_r                              = 0.0f;
+        float m_mixer_pitch                            = 1.0f;
         std::string m_name                             = "N/A";
         bool m_is_3d                                   = false;
         bool m_mute                                    = false;
@@ -156,6 +172,10 @@ namespace spartan
         std::atomic<float> m_synthesis_decay            { 0.5f };
         std::atomic<float> m_synthesis_wet              { 0.3f };
         std::atomic<int> m_synthesis_state              { synthesis_running };
+        std::atomic<float> m_synthesis_muffle           { 0.0f };
+        std::atomic<uint8_t> m_synthesis_group          { static_cast<uint8_t>(AudioGroup::Sfx) };
+        float m_synthesis_lowpass_l                     = 0.0f; // audio thread
+        float m_synthesis_lowpass_r                     = 0.0f; // audio thread
 
         // reverb state
         bool m_reverb_enabled         = false;

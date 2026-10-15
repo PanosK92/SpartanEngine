@@ -197,7 +197,7 @@ float smooth_focus_distance(float target_distance)
 
     // pull nearer a touch faster, matches how real lenses and eyes settle
     float speed = target_distance < prev ? FOCUS_ADAPT_SPEED * 1.6f : FOCUS_ADAPT_SPEED;
-    float alpha = 1.0f - exp(-speed * buffer_frame.delta_time);
+    float alpha = 1.0f - exp(-speed * buffer_frame.delta_time_real);
     return lerp(prev, target_distance, alpha);
 }
 

@@ -539,13 +539,14 @@ namespace spartan
         }
     }
 
-    void Renderer::Pass_Text(RHI_Texture* tex_out, const bool display_encoded)
+    void Renderer::Pass_Text(RHI_Texture* tex_out, const bool display_encoded, const bool cinematic_only)
     {
         const auto& shader_v = GetShader(Renderer_Shader::font_v);
         const auto& shader_p = GetShader(Renderer_Shader::font_p);
 
+        const uint32_t font_first = cinematic_only ? static_cast<uint32_t>(Renderer_Font::CinematicSmall) : 0;
         bool has_text = false;
-        for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_Font::Max); i++)
+        for (uint32_t i = font_first; i < static_cast<uint32_t>(Renderer_Font::Max); i++)
         {
             const shared_ptr<Font>& font = GetFont(static_cast<Renderer_Font>(i));
             has_text |= font && font->HasText();
@@ -564,7 +565,7 @@ namespace spartan
             RHI_CommandList::SetCullMode(RHI_CullMode::Back);
             m_pcb_pass_cpu.set(pass_font::display_encoded, display_encoded);
 
-            for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_Font::Max); i++)
+            for (uint32_t i = font_first; i < static_cast<uint32_t>(Renderer_Font::Max); i++)
             {
                 const shared_ptr<Font>& font = GetFont(static_cast<Renderer_Font>(i));
                 if (!font || !font->HasText())

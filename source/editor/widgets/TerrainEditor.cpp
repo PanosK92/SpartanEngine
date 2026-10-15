@@ -549,7 +549,7 @@ void TerrainEditor::TickScatter()
     // since the last one rather than the age of the first, and a whole drag collapses into one rebuild
     const float quiet_period = 0.6f;
 
-    m_scatter_timer += static_cast<float>(Timer::GetDeltaTimeSec());
+    m_scatter_timer += static_cast<float>(Timer::GetDeltaTimeRealSec());
     if (m_scatter_timer < quiet_period)
     {
         return;
@@ -1826,7 +1826,7 @@ void TerrainEditor::TickSculpting()
     if (Input::GetKey(KeyCode::Click_Left) && !Input::GetKey(KeyCode::Click_Right))
     {
         TerrainBrush stroke = m_brush;
-        const float dt      = static_cast<float>(Timer::GetDeltaTimeSec());
+        const float dt      = static_cast<float>(Timer::GetDeltaTimeRealSec());
         stroke.strength     = m_strength_per_second * dt;
         if (!m_sculpt_before)
         {

@@ -156,6 +156,17 @@ namespace spartan
         map<uint32_t, VertexHistory> vertex_history;
         atomic<uint32_t> first_history_vertex{UINT32_MAX};
 
+        // Ranges deformed this frame, sorted by source offset. Draw preparation queries
+        // every draw and LOD, often from several threads, so it must not take buffer_mutex.
+        struct HistoryRange
+        {
+            uint32_t first = 0;
+            uint32_t count = 0;
+            uint32_t delta = 0;
+        };
+        vector<HistoryRange> history_snapshot;
+        atomic<uint64_t> history_snapshot_frame{UINT64_MAX};
+
         // writes into whichever side holds the range, the gpu part is staged when staged is given, uploaded right away otherwise
         template<typename T>
         void write(Stream<T>& stream, StagedWrites<T>* staged, RHI_Buffer* buffer, const T* data, uint32_t offset, uint32_t count)
@@ -406,6 +417,7 @@ namespace spartan
         if (track_motion && count > 0)
         {
             VertexHistory& history = vertex_history[offset];
+            history_snapshot_frame.store(UINT64_MAX, memory_order_release);
             first_history_vertex.store(min(first_history_vertex.load(memory_order_relaxed), offset), memory_order_release);
             if (history.count != count)
             {
@@ -448,6 +460,13 @@ namespace spartan
         // Static geometry is appended before the deforming instances. Reject
         // that entire prefix without a mutex or an ordered-map traversal.
         if (offset < first_history_vertex.load(memory_order_acquire)) return 0;
+        if (history_snapshot_frame.load(memory_order_acquire) == Renderer::GetFrameNumber())
+        {
+            auto it = upper_bound(history_snapshot.begin(), history_snapshot.end(), offset, [](uint32_t value, const HistoryRange& range) { return value < range.first; });
+            if (it == history_snapshot.begin()) return 0;
+            --it;
+            return offset - it->first < it->count ? it->delta : 0;
+        }
         lock_guard<mutex> lock(buffer_mutex);
         auto it = vertex_history.upper_bound(offset);
         if (it == vertex_history.begin()) return 0;
@@ -456,6 +475,21 @@ namespace spartan
         // A paused or throttled animator must not replay its last motion vector.
         if (offset - it->first >= history.count || history.frame != Renderer::GetFrameNumber()) return 0;
         return history.offset - it->first;
+    }
+
+    void GeometryBuffer::SnapshotVertexHistory()
+    {
+        lock_guard<mutex> lock(buffer_mutex);
+        const uint64_t frame = Renderer::GetFrameNumber();
+        history_snapshot.clear();
+        for (const auto& [first, history] : vertex_history)
+        {
+            if (history.frame == frame && history.count > 0)
+            {
+                history_snapshot.push_back({ first, history.count, history.offset - first });
+            }
+        }
+        history_snapshot_frame.store(frame, memory_order_release);
     }
 
     void GeometryBuffer::UpdateIndices(const uint32_t* data, const uint32_t offset, const uint32_t count)
@@ -822,6 +856,8 @@ namespace spartan
         impostor_texel_capacity    = 0;
         impostor_texels.reset();
         vertex_history.clear();
+        history_snapshot.clear();
+        history_snapshot_frame.store(UINT64_MAX, memory_order_release);
         first_history_vertex.store(UINT32_MAX, memory_order_release);
         vertices.reset();
         indices.reset();

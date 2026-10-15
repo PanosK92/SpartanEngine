@@ -509,7 +509,10 @@ namespace spartan
         {
             const uint32_t index = next + std::countr_zero((m_component_mask & included) >> next);
             next = index + 1;
-            if (Component* component = m_components[index].get()) component->Tick();
+            if (Component* component = m_components[index].get())
+            {
+                component->Tick();
+            }
         }
     }
 

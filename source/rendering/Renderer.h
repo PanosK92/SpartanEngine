@@ -249,6 +249,11 @@ namespace spartan
         uint32_t GetScreenshotSaveFailures();
         // screenshots skip text and editor overlays, for cinematic frame sequences
         void SetCleanCapture(bool enabled);
+        // sequencer overlay over the final image and screenshots: fade 0..1 towards a color, letterbox bars
+        // for an aspect ratio (0 is off), set every frame it should show and cleared with zeros
+        void SetCinematicOverlay(float fade, const math::Vector3& fade_color, float letterbox_aspect);
+        // title text, kept in clean captures unlike every other text, position is the center in screen fractions
+        void DrawCinematicText(const char* text, const math::Vector2& position_screen_percentage, float alpha, bool large, const math::Vector3& color);
         // the next frame is a hard cut, temporal history and motion vectors must not bridge it
         void NotifyCameraCut();
         // with r.screenshot_ui set, the editor records its final ui frame into this target, null when no such capture is pending
@@ -258,7 +263,6 @@ namespace spartan
         // returns the entry index, or uint32_max when the frame budget is full, a null render writes an identity uv transform
         // is_ui grants access to reserved entries so scene/outline draws cannot starve presentation
         uint32_t WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous = math::Matrix::Identity, uint32_t material_index = 0, uint32_t is_transparent = 0, const Render* render = nullptr, bool is_ui = false);
-
         // gpu scatter, camera relative rings populated on the gpu with no entities behind them, slot 0
         // is grass and the higher slots are micro detail, the caller keeps ownership of the mesh,
         // material and heightmap and must outlive the renderer's use
@@ -467,7 +471,7 @@ namespace spartan
         void Pass_DebugTriangles(RHI_Texture* tex_out);
         void Pass_Outline(RHI_Texture* tex_out);
         void Pass_Icons(RHI_Texture* tex_out);
-        void Pass_Text(RHI_Texture* tex_out, const bool display_encoded);
+        void Pass_Text(RHI_Texture* tex_out, const bool display_encoded, const bool cinematic_only = false);
         // asset preview backdrop and wireframe recolour, secondary views only
         void Pass_PreviewStudio(RHI_Texture* tex_out);
         // passes - post-process

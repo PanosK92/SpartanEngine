@@ -11,8 +11,10 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../../profiling/Profiler.h"
 #include <cctype>
 #include "Animator.h"
+#include "Camera.h"
 #include "Render.h"
 #include "../Entity.h"
+#include "../World.h"
 #include "../../animation/AnimationClip.h"
 #include "../../animation/AnimationEvaluate.h"
 #include "../../animation/AnimationIk.h"
@@ -47,6 +49,7 @@ namespace spartan
         };
         bool batch_skinning = false;
         vector<SkinningJob> skinning_jobs;
+        uint32_t skinning_frame = 0;
 
         // every authoring tool names leg joints differently: thigh_l, thigh.L, UpperLeg.L,
         // LeftUpLeg, mixamorig:LeftUpLeg. strip the namespace, case, separators and trailing
@@ -215,6 +218,7 @@ namespace spartan
     void Animator::BeginSkinningBatch()
     {
         batch_skinning = true;
+        ++skinning_frame;
     }
 
     void Animator::FlushSkinningBatch()
@@ -255,6 +259,7 @@ namespace spartan
             if (job.succeeded) CountWorldWork(WorldWork::animation_vertices, job.animator->m_skinned_vertices.size());
             if (!job.succeeded) continue;
             Animator* animator = job.animator;
+            animator->m_skin_published = true;
             // Keep both allocations: the old mesh storage becomes next frame's
             // skinning destination, removing one full-mesh copy from the main thread.
             job.mesh->GetVertices().swap(animator->m_skinned_vertices);
@@ -274,6 +279,9 @@ namespace spartan
         skinning_jobs.erase(remove_if(skinning_jobs.begin(), skinning_jobs.end(),
             [this](const SkinningJob& job) { return job.animator == this; }), skinning_jobs.end());
         m_mesh = nullptr;
+        m_skin_published = false;
+        m_skin_render_ids.clear();
+        m_skin_renders_mesh = nullptr;
         m_bind_vertices.clear();
         m_skinned_vertices.clear();
         m_anim_pose.clear();
@@ -1295,30 +1303,93 @@ namespace spartan
             return;
         }
 
+        for (Render* render : ResolveSkinRenders(mesh))
+        {
+            if (!render->HasFlag(RenderFlags::ExcludeFromRayTracing))
+            {
+                render->SetNeedsBlasRefit(true);
+            }
+        }
+    }
+
+    const vector<Render*>& Animator::ResolveSkinRenders(Mesh* mesh)
+    {
+        m_skin_renders.clear();
+        bool valid = m_skin_renders_mesh == mesh && !m_skin_render_ids.empty();
+        for (uint64_t id : m_skin_render_ids)
+        {
+            if (!valid)
+            {
+                break;
+            }
+            Entity* entity = World::GetEntityById(id);
+            Render* render = entity ? entity->GetComponent<Render>() : nullptr;
+            valid = render && render->GetMesh() == mesh;
+            if (valid)
+            {
+                m_skin_renders.push_back(render);
+            }
+        }
+        if (valid)
+        {
+            return m_skin_renders;
+        }
+
+        // the hierarchy walk allocates and visits every joint, so it only runs when the binding changes
+        m_skin_renders.clear();
+        m_skin_render_ids.clear();
+        m_skin_renders_mesh = mesh;
         vector<Entity*> nodes;
         nodes.push_back(GetEntity());
         GetEntity()->GetDescendants(&nodes);
-
         for (Entity* node : nodes)
         {
-            if (!node)
+            Render* render = node ? node->GetComponent<Render>() : nullptr;
+            if (render && render->GetMesh() == mesh)
             {
-                continue;
+                m_skin_renders.push_back(render);
+                m_skin_render_ids.push_back(node->GetObjectId());
             }
-
-            Render* render = node->GetComponent<Render>();
-            if (!render || render->GetMesh() != mesh)
-            {
-                continue;
-            }
-
-            if (render->HasFlag(RenderFlags::ExcludeFromRayTracing))
-            {
-                continue;
-            }
-
-            render->SetNeedsBlasRefit(true);
         }
+        return m_skin_renders;
+    }
+
+    bool Animator::IsSkinDue(Mesh* mesh)
+    {
+        // The first pose always publishes. Afterwards distant and off-screen characters
+        // skin at a reduced rate; off-screen ones still refresh their shadow and reflection
+        // shapes. The per-entity phase spreads the reduced-rate work across frames.
+        if (!m_skin_published || m_skin_renders_mesh != mesh)
+        {
+            return true;
+        }
+
+        bool visible = false;
+        float distance_squared = numeric_limits<float>::max();
+        for (Render* render : ResolveSkinRenders(mesh))
+        {
+            visible = visible || render->IsVisible();
+        }
+        if (Camera* camera = World::GetCamera())
+        {
+            distance_squared = Vector3::DistanceSquared(camera->GetEntity()->GetPosition(), GetEntity()->GetPosition());
+        }
+
+        uint32_t interval = 1;
+        if (!visible)
+        {
+            interval = 8;
+        }
+        else if (distance_squared > 60.0f * 60.0f)
+        {
+            interval = 4;
+        }
+        else if (distance_squared > 25.0f * 25.0f)
+        {
+            interval = 2;
+        }
+        const uint32_t phase = static_cast<uint32_t>(GetEntity()->GetObjectId() % 8);
+        return (skinning_frame + phase) % interval == 0;
     }
 
     void Animator::ApplyHierarchy(
@@ -1707,7 +1778,10 @@ namespace spartan
 
         if (m_external_pose_active)
         {
-            SkinFromLocalPose(mesh, *skeleton, m_external_local_matrices);
+            if (!batch_skinning || IsSkinDue(mesh))
+            {
+                SkinFromLocalPose(mesh, *skeleton, m_external_local_matrices);
+            }
             return;
         }
 
@@ -1775,7 +1849,10 @@ namespace spartan
 
         ApplyFootIk(*skeleton, local_matrices);
         m_last_local_matrices = local_matrices;
-        SkinFromLocalPose(mesh, *skeleton, local_matrices);
+        if (!batch_skinning || IsSkinDue(mesh))
+        {
+            SkinFromLocalPose(mesh, *skeleton, local_matrices);
+        }
     }
 
     float Animator::GetFootIkGroundOffset()

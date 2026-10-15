@@ -68,6 +68,8 @@ namespace spartan
         float wetness       = 0.0f;
         float puddles       = 0.0f;
         float shelter       = 0.0f;
+        bool shelter_requested = false;
+        bool shelter_active    = false;
         bool initialized = false;
         Vector3 camera_last = Vector3::Zero;
         Vector3 camera_velocity = Vector3::Zero;
@@ -271,6 +273,7 @@ namespace spartan
                 audio->SetLoop(true);
                 audio->SetPlayOnStart(false);
                 audio->SetVolume(0.0f);
+                audio->SetGroup(AudioGroup::Ambience);
             }
 
             return entity ? entity->GetComponent<AudioSource>() : nullptr;
@@ -416,7 +419,9 @@ namespace spartan
         camera_last     = camera_position;
         camera_has_last = true;
 
-        if (rain > 0.0f || wetness > 0.0f)
+        shelter_active    = rain > 0.0f || wetness > 0.0f || shelter_requested;
+        shelter_requested = false;
+        if (shelter_active)
         {
             grid_tick(camera_position);
 
@@ -432,6 +437,16 @@ namespace spartan
     float Weather::GetRain()
     {
         return rain;
+    }
+
+    void Weather::RequestShelter()
+    {
+        shelter_requested = true;
+    }
+
+    bool Weather::IsShelterActive()
+    {
+        return shelter_active;
     }
 
     float Weather::GetWetness()

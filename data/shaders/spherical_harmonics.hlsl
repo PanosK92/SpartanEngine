@@ -51,17 +51,21 @@ void sh_load_l2(Texture2D tex_sh, out float3 L[9])
     }
 }
 
-// cosine-convolved irradiance, optional ao band limit for dir gtao cone
-// low ao narrows the visibility cone so higher sh bands fade out
-float3 sh_irradiance_l2(float3 dir, float3 L[9], float ao)
+// irradiance through a visibility cone around dir (the bent normal), gtao visibility is cosine
+// weighted so it equals sin^2 of the cone half angle, the bands are the exact zonal coefficients
+// of a cosine lobe clipped to that cone, at visibility 1 they reduce to ramamoorthi's a0 a1 a2,
+// a narrower cone darkens band 0 the most, so occluded pixels keep the sky's direction
+float3 sh_irradiance_l2(float3 dir, float3 L[9], float visibility)
 {
     float b[9];
     sh_eval_basis_l2(normalize(dir), b);
 
-    float visibility = saturate(ao);
-    float k0         = sh_a0;
-    float k1         = sh_a1 * visibility;
-    float k2         = sh_a2 * visibility * visibility;
+    float sin2 = saturate(visibility);
+    float cos2 = 1.0f - sin2;
+    float cos3 = cos2 * sqrt(cos2);
+    float k0   = sh_a0 * sin2;
+    float k1   = sh_a1 * (1.0f - cos3);
+    float k2   = sh_a2 * sin2 * (1.0f + 3.0f * cos2);
 
     float3 E = 0.0f.xxx;
     E += L[0] * (b[0] * k0);
@@ -73,10 +77,7 @@ float3 sh_irradiance_l2(float3 dir, float3 L[9], float ao)
     E += L[6] * (b[6] * k2);
     E += L[7] * (b[7] * k2);
     E += L[8] * (b[8] * k2);
-    // Band attenuation only changes directionality. The DC band survives even
-    // at zero visibility, so integrate the visible fraction as well. Otherwise
-    // enclosed surfaces receive the full average sky and AO cannot darken them.
-    return max(E, 0.0f.xxx) * visibility;
+    return max(E, 0.0f.xxx);
 }
 
 #endif

@@ -44,6 +44,11 @@ namespace spartan
         // Fraction of rain reaching a world position, sampled from the shelter grid.
         static float GetExposure(const math::Vector3& position);
 
+        // the shelter grid is kept while it rains or the ground is wet, anything else that needs to know
+        // what is under a roof (falling leaves) asks for it every frame
+        static void RequestShelter();
+        static bool IsShelterActive();
+
         // occlusion_resolution squared heights of the topmost static surface, addressed toroidally by world cell
         static const float* GetOcclusionHeights();
         // world xz of the min corner of the window the grid currently covers
