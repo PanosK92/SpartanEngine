@@ -9,6 +9,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "fog.hlsl"
 #include "sky/clouds.hlsl"
 #include "fog_medium.hlsl"
+#include "light_cluster.hlsl"
 #include "sky/atmosphere.hlsl"
 //=======================
 
@@ -56,8 +57,27 @@ uint fog_air_light_mask(uint3 group_id, uint first_light)
         if ((light.flags & (1u << 6)) != 0u)
             extent += 0.5f * length(float2(light.area_width, light.area_height));
         float3 delta = light.position - center;
-        if ((light.flags & 1u) != 0u || dot(delta, delta) <= (radius + extent) * (radius + extent))
-            mask |= 1u << i;
+        if ((light.flags & 1u) == 0u)
+        {
+            if (dot(delta, delta) > (radius + extent) * (radius + extent))
+                continue;
+            // A spotlight's range sphere includes most of the space behind and
+            // beside its beam. Cull that space before every cell constructs the
+            // light and samples its IES profile. Area emitters use a different
+            // attenuation model and retain their expanded range sphere.
+            if ((light.flags & (1u << 2)) != 0u && (light.flags & (1u << 6)) == 0u &&
+                light.angle > 0.0f && light.angle < 1.5697963f &&
+                dot(light.direction, light.direction) > 1e-8f)
+            {
+                float angle = lighting_spot_half_angle(light.angle);
+                if (light_ies_slot(light.flags) != 0u)
+                    angle = atan(1.414214f * tan(angle));
+                if (!cone_intersects_sphere(light.position, normalize(light.direction), extent,
+                    cos(angle), sin(angle), center, radius))
+                    continue;
+            }
+        }
+        mask |= 1u << i;
     }
     return mask;
 }
@@ -233,6 +253,7 @@ float3 fog_light_samples(
 )
 {
     LightParameters parameters = light_parameters[light_index];
+    if (!in_water && (parameters.flags & 1u) != 0u && !any(sigma_s > 0.0f)) return 0.0f;
     if ((parameters.flags & 1u) == 0u)
     {
         float radius = parameters.range;
@@ -304,7 +325,7 @@ float3 fog_light_medium(
 }
 
 // One density/lighting injection for both air and water. No camera-medium switch.
-void fog_inject_cell(uint3 thread_id)
+void fog_inject_cell(uint3 thread_id, inout bool water_cache_valid, inout float3 water_cache)
 {
     if (any(thread_id >= uint3(fog_width, fog_height, fog_depth)))
         return;
@@ -318,6 +339,23 @@ void fog_inject_cell(uint3 thread_id)
     // Filter unresolved density noise to the cell footprint, along and across the ray.
     float cell_footprint = max((d1 - d0) * 0.5f, centre_distance / float(fog_height));
     FogMedium medium = fog_sample_medium(sample_pos, get_camera_position().y + ray_direction.y * d0, get_camera_position().y + ray_direction.y * d1, cell_footprint, true);
+    // Clear, dry cells outside every local light have no source or extinction.
+    // The atmosphere pass already supplies celestial scattering. Avoid the
+    // lighting quadrature and history setup for these provably empty cells.
+    if (medium.water == 0.0f && medium.air_extinction == 0.0f &&
+        buffer_frame.volumetric_light_count <= fog_light_mask_words * 32u)
+    {
+        uint local_lights = 0u;
+        [unroll] for (uint word = 0u; word < fog_light_mask_words; ++word)
+            local_lights |= fog_group_air_lights[word];
+        if (local_lights == 0u)
+        {
+            tex_fog_water_source_uav[thread_id] = 0.0f;
+            tex3d_uav[thread_id] = 0.0f;
+            tex_fog_extinction_uav[thread_id] = 0.0f;
+            return;
+        }
+    }
     // Preserve both source terms in interface cells. Lighting the entire cell
     // from its submerged centre makes the air above distant water alternate dark/light.
     float water_length = (d1 - d0) * medium.water;
@@ -332,6 +370,7 @@ void fog_inject_cell(uint3 thread_id)
     float water_distance = water_start + fog_segment_centroid(get_ocean_extinction().g, water_length);
     float water_sample_start = water_start;
     float water_sample_length = water_length;
+    bool stable_water_sample = false;
     // Limit the source sample to the physical water column, not the screen's
     // opaque depth. A far cell can extend beneath the seabed by hundreds of
     // metres; lighting it there makes alternating black coastal rings.
@@ -343,6 +382,7 @@ void fog_inject_cell(uint3 thread_id)
         // rather than letting the sample jump with the frustum's slice phase.
         // Dense near-camera / underwater cells retain their local sampling.
         bool distant_entry = get_camera_position().y > buffer_frame.ocean_sea_level && sea_entry > fog_detail_far;
+        stable_water_sample = distant_entry && d1 > fog_detail_far;
         float entry_distance = distant_entry ? sea_entry : water_start;
         float column = distant_entry ? 8.0f / max(get_ocean_extinction().b, 1e-5f) : water_length;
         float3 entry = get_camera_position() + ray_direction * entry_distance;
@@ -374,7 +414,8 @@ void fog_inject_cell(uint3 thread_id)
         positions[1] = get_camera_position() + ray_direction * (air_start + air_length * 0.75f);
         float3 sigma_s = (air_extinction * 0.95f).xxx;
         scatter_rate = fog_light_medium(positions, 2u, ray_direction, thread_id, uv, false, sigma_s);
-        scatter_rate += fog_ambient_medium(sky, uv, air_distance, air_position, ray_direction, false) * sigma_s;
+        if (air_extinction > 0.0f)
+            scatter_rate += fog_ambient_medium(sky, uv, air_distance, air_position, ray_direction, false) * sigma_s;
     }
     medium.air_extinction = air_extinction;
     float3 water_position = get_camera_position() + ray_direction * water_distance;
@@ -397,8 +438,23 @@ void fog_inject_cell(uint3 thread_id)
             float d = water_samples == 2u ? clamp(water_distance + offset, water_sample_start, water_sample_start + water_sample_length) : water_distance;
             positions[j] = get_camera_position() + ray_direction * d;
         }
-        water_rate = fog_light_medium(positions, water_samples, ray_direction, thread_id, uv, true, get_ocean_scattering(), angular_footprint);
-        water_rate += fog_ambient_medium(sky, uv, water_distance, water_position, ray_direction, true) * get_ocean_scattering();
+        if (stable_water_sample && water_cache_valid)
+        {
+            water_rate = water_cache;
+        }
+        else
+        {
+            water_rate = fog_light_medium(positions, water_samples, ray_direction, thread_id, uv, true, get_ocean_scattering(), angular_footprint);
+            water_rate += fog_ambient_medium(sky, uv, water_distance, water_position, ray_direction, true) * get_ocean_scattering();
+            // Far cells in this column use the same ocean-entry anchor, seabed
+            // limit, footprint and single lighting sample. Reuse that exact
+            // result for the next depth slice handled by this thread.
+            if (stable_water_sample)
+            {
+                water_cache = water_rate;
+                water_cache_valid = true;
+            }
+        }
     }
     // History texels represent cells, not their displaced lighting quadrature
     // points. Reproject the grid centre so a stationary camera samples exactly
@@ -462,8 +518,10 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 local_id : SV_GroupThreadID, uin
         fog_group_air_lights[group_index] = fog_air_light_mask(group_id, group_index * 32u);
     GroupMemoryBarrierWithGroupSync();
     // Retain the CPU's 8x8x4 cell tiling with fewer resident threads per group.
+    bool water_cache_valid = false;
+    float3 water_cache = 0.0f;
     [loop] for (uint z = 0u; z < 4u; z += 2u)
-        fog_inject_cell(group_id * uint3(8u, 8u, 4u) + local_id + uint3(0u, 0u, z));
+        fog_inject_cell(group_id * uint3(8u, 8u, 4u) + local_id + uint3(0u, 0u, z), water_cache_valid, water_cache);
 }
 
 #elif defined(FOG_SKY_VISIBILITY)

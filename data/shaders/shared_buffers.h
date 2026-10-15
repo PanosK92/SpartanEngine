@@ -937,6 +937,7 @@ struct CullTask
     SHARED_UINT lod_reference_draw_index SHARED_DEFAULT(0);
     SHARED_UINT instance_index SHARED_DEFAULT(0);
     SHARED_UINT instance_count SHARED_DEFAULT(1);
+    SHARED_UINT lod_draw_offsets SHARED_DEFAULT(0); // three bits per LOD, bit 31 enables selection
 };
 
 // emitted by the instance cull pass (phase a) for every surviving (renderable lod, instance) tuple
@@ -968,6 +969,9 @@ struct SurvivingInstance
 // bounds are the world aabb when shadow_caster_flag_world_bounds is set, otherwise the lod 0 local aabb of one instance
 #define shadow_caster_flag_world_bounds 1u
 #define shadow_caster_flag_wind         2u
+#define shadow_caster_flag_lod          4u
+#define shadow_caster_lod_shift         3u
+#define shadow_caster_lod_count_shift   6u
 #define shadow_cull_group_size          64u
 struct ShadowCaster
 {
@@ -1130,7 +1134,7 @@ struct GrassInstance
     SHARED_UINT  normal_yaw_scale; // normal_oct (high 16) | yaw_packed (8) | scale_packed (8)
 };
 
-// gpu particle (160 bytes)
+// gpu particle (176 bytes, keep the structured-buffer stride aligned to float4)
 struct Particle
 {
     SHARED_FLOAT3 position;
@@ -1149,6 +1153,11 @@ struct Particle
     SHARED_FLOAT4 wake_origin;  // xyz = shed contact point, w = circulation strength
     SHARED_FLOAT4 wake_axis;    // xyz = travel direction at birth, w = tire radius
     SHARED_FLOAT4 birth_effect; // buoyancy, cooling rate, rollup, emissive strength
+    // Stable owner identity prevents recycled emitter indices adopting old particles.
+    SHARED_UINT owner_id_low  SHARED_DEFAULT(0);
+    SHARED_UINT owner_id_high SHARED_DEFAULT(0);
+    SHARED_UINT owner_padding_0 SHARED_DEFAULT(0);
+    SHARED_UINT owner_padding_1 SHARED_DEFAULT(0);
 };
 
 // gpu emitter parameters
@@ -1218,6 +1227,12 @@ struct EmitterParams
     SHARED_FLOAT  collision_clearance SHARED_DEFAULT(0.0f);
     // weather rain, particles die where the rain occlusion grid says a roof or the ground stops them
     SHARED_UINT   rain_occluded SHARED_DEFAULT(0);
+    SHARED_UINT   owner_id_low  SHARED_DEFAULT(0);
+    SHARED_UINT   owner_id_high SHARED_DEFAULT(0);
+    // World-space body wake samples (float4 arrays keep CPU/GPU strides aligned).
+    SHARED_FLOAT4 body_wake_center[64];
+    SHARED_FLOAT4 body_wake_axis[64];
+    SHARED_FLOAT4 body_wake_shape[64];
 };
 
 // c++ backward compatibility aliases

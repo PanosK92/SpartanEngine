@@ -163,10 +163,15 @@ namespace spartan
         }
 
         // the occupied car's parts, their rain droplets answer its g forces
-        bool is_drops_vehicle(const Entity* entity)
+        bool is_drops_vehicle(Entity* entity)
         {
-            Entity* vehicle = World::GetEntityById(Renderer::GetSurfaceWater().entity_id);
-            return vehicle && entity && (entity == vehicle || entity->IsDescendantOf(vehicle));
+            const uint64_t vehicle_id = Renderer::GetSurfaceWater().entity_id;
+            if (!vehicle_id) return false;
+            // Membership only needs ancestor IDs, not a locked world lookup for
+            // every draw and LOD of every object in the scene.
+            for (Entity* ancestor = entity; ancestor; ancestor = ancestor->GetParent())
+                if (ancestor->GetObjectId() == vehicle_id) return true;
+            return false;
         }
 
         // a secondary view borrows the frame from the primary camera, the entity history
@@ -1586,7 +1591,18 @@ namespace spartan
 
         if (m_cull_task_count > 0)
         {
-            RHI_Buffer* tasks_buffer = GetBuffer(Renderer_Buffer::CullTasks);
+            // This frame slot has completed its previous GPU use. Grow its mapped
+            // task buffer instead of dropping draws when the island fills the view.
+            FrameResource& frame = m_frame_resources[m_frame_resource_index];
+            if (frame.cull_tasks->GetElementCount() < m_cull_task_count)
+            {
+                uint32_t capacity = frame.cull_tasks->GetElementCount();
+                while (capacity < m_cull_task_count) capacity *= 2;
+                frame.cull_tasks = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, sizeof(Sb_CullTask),
+                    capacity, nullptr, true, (string("cull_tasks_") + to_string(m_frame_resource_index)).c_str());
+                BindFrameResource(m_frame_resource_index);
+            }
+            RHI_Buffer* tasks_buffer = frame.cull_tasks.get();
             tasks_buffer->ResetOffset();
             tasks_buffer->Update(&m_cull_tasks[0], tasks_buffer->GetStride() * m_cull_task_count);
         }
@@ -1671,6 +1687,10 @@ namespace spartan
 
     bool Renderer::IsRayTracedShadowsActive()
     {
+        // Rendering invariant: ray-traced shadows and raster shadow maps are
+        // mutually exclusive per view. Do not add a near-cascade, foliage or
+        // quality fallback alongside RT. Fix missing RT features in the RT
+        // path; a hybrid mode requires explicit user approval.
         // same bit the shaders branch on, so cpu and gpu agree on which path owns the frame
         return (Renderer::view().frame.options & (1u << 2)) != 0;
     }
@@ -3782,34 +3802,15 @@ namespace spartan
     void Renderer::UpdateDrawCalls_CollectAndSort()
     {
         SP_PROFILE_CPU();
-        // The near sun cascade also runs with ray tracing: its casters use the
-        // same wind deformation as the visible trees, including off-screen trees.
-        const bool shadow_maps_required = !light_entities().empty();
-        const bool near_shadow_only = IsRayTracedShadowsActive();
+        // Ray-traced shadows use the TLAS exclusively. Raster casters are
+        // only needed for the shadow-map fallback (including secondary views).
+        const bool shadow_maps_required = !IsRayTracedShadowsActive() && !GetViewLightEntities().empty();
+        const Vector3 cull_camera_position = GetViewCamera() ? GetViewCamera()->GetEntity()->GetPosition() : Vector3::Zero;
         auto needs_shadow_caster = [&](const RenderSceneData& data)
         {
-            if (!shadow_maps_required || !(data.flags & RenderFlags::CastsShadows) ||
-                data.distance_squared > data.max_distance_shadow * data.max_distance_shadow)
-                return false;
-            if (!near_shadow_only)
-                return true;
-
-            BoundingBox bounds = data.bounding_box;
-            if (!bounds.IsInfinite() && data.material->GetProperty(MaterialProperty::WindAnimation) > 0.0f)
-            {
-                // Conservatively retain branches that bend into the cascade.
-                const float padding = bounds.GetExtents().Length() * 0.5f + 2.0f;
-                const Vector3 pad(padding, padding, padding);
-                bounds = BoundingBox(bounds.GetMin() - pad, bounds.GetMax() + pad);
-            }
-            for (Entity* entity : GetViewLightEntities())
-            {
-                Light* light = entity->GetComponent<Light>();
-                if (light->GetLightType() == LightType::Directional && light->GetFlag(LightFlags::Shadows) &&
-                    light->GetIntensityRadiometric() > 0.0f && light->IsBoundsInViewFrustum(bounds, 0))
-                    return true;
-            }
-            return false;
+            return shadow_maps_required && (data.flags & RenderFlags::CastsShadows) &&
+                Vector3::DistanceSquared(cull_camera_position,
+                    data.bounding_box.GetClosestPoint(cull_camera_position)) <= data.max_distance_shadow * data.max_distance_shadow;
         };
         // the gpu culls tessellated draws itself, so they are kept off screen too
         const bool tessellation_gpu_driven = cvar_tessellation_gpu_driven.GetValueAs<bool>();
@@ -3852,6 +3853,37 @@ namespace spartan
         {
             m_transparents_present |= batch.transparent;
             candidates.insert(candidates.end(), batch.renders.begin(), batch.renders.end());
+        }
+        // IDs must be assigned before either CPU or indirect draw records are written.
+        // Normal finite half-float patterns encode 30719 IDs exactly; overflow stays unclassified.
+        uint32_t motion_id = 0;
+        pmr::unordered_map<uint64_t, uint32_t> motion_masks(FrameAllocator::GetResource());
+        // Only shared groups need a lookup entry. Most scenery has a unique ID;
+        // rebuilding a hash node for each of those every frame adds no information.
+        for (Render* candidate : candidates)
+        {
+            if (Render* render = candidate; render->GetMotionBlurGroup())
+                motion_masks.try_emplace(render->GetMotionBlurGroup(), 0);
+        }
+        for (Render* candidate : candidates)
+        {
+            if (Render* render = candidate)
+            {
+                // All wheel parts, including the brake interior, get the exact same stencil value.
+                const uint64_t key = render->GetMotionBlurGroup() ? render->GetMotionBlurGroup() : render->GetEntity()->GetObjectId();
+                auto entry = motion_masks.find(key);
+                if (entry == motion_masks.end())
+                {
+                    render->SetMotionBlurId(++motion_id <= 30719 ? motion_id : 0);
+                }
+                else
+                {
+                    // UINT32_MAX remembers a group that exhausted the finite ID budget.
+                    if (entry->second == 0)
+                        entry->second = ++motion_id <= 30719 ? motion_id : UINT32_MAX;
+                    render->SetMotionBlurId(entry->second == UINT32_MAX ? 0 : entry->second);
+                }
+            }
         }
         for (Render* render : candidates)
         {
@@ -3908,7 +3940,9 @@ namespace spartan
             draw_call.material_id        = material->GetObjectId();
             draw_call.is_transparent     = material->IsTransparent();
             draw_call.is_alpha_tested    = material->IsAlphaTested();
-            draw_call.distance_squared   = render->GetDistanceSquared();
+            // Off-screen casters no longer receive a per-frame visibility tick.
+            draw_call.distance_squared   = Vector3::DistanceSquared(cull_camera_position,
+                render->GetBoundingBox().GetClosestPoint(cull_camera_position));
             draw_call.lod_index          = render->GetLodIndex();
             draw_call.camera_visible     = render->IsVisible();
             draw_call.instance_index     = 0;
@@ -3970,17 +4004,19 @@ namespace spartan
         m_indirect_draw_count       = 0;
         m_indirect_render_count = 0;
         m_cull_task_count           = 0;
+        m_cull_tasks.clear();
         m_draw_lods.clear();
         m_draw_lods_uploaded = false;
         const bool use_gpu_lod = cvar_gpu_lod.GetValueAs<bool>();
+        // Repeated scene instances share immutable per-mesh LOD data. Emit one
+        // table per submesh/fallback LOD, rather than rebuilding it per entity.
+        pmr::unordered_map<const SubMesh*, array<uint32_t, 8>> lod_tables(FrameAllocator::GetResource());
         const uint32_t aabb_frame_offset = m_frame_resource_index * renderer_max_aabbs;
         const uint32_t indirect_draw_capacity = GetBuffer(Renderer_Buffer::IndirectDrawData)->GetElementCount();
-        const uint32_t cull_task_capacity = GetBuffer(Renderer_Buffer::CullTasks)->GetElementCount();
         const uint32_t meshlet_instance_capacity = GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount();
 
         // the cull pipeline drops survivors silently once a budget is hit, tracked so the log below can name the culprit
         uint64_t expected_survivors_worst_case = 0;
-        uint32_t cull_task_overflow_renders = 0;
 
         for (uint32_t i = 0; i < m_draw_call_count; i++)
         {
@@ -4008,7 +4044,7 @@ namespace spartan
                 continue;
             }
 
-            const bool is_instanced = dc.instance_count > 1;
+            const bool is_instanced = render->HasInstancing();
             const uint32_t inst_n   = is_instanced ? dc.instance_count : 1;
             const bool is_skinned   =
                 render->HasBoundingBoxOverride() ||
@@ -4018,12 +4054,12 @@ namespace spartan
             // submit every lod and let instance cull keep each instance on the lod its screen coverage wants
             // foliage with a baked impostor gets it as one extra gpu lod after the mesh chain, the count must fit in three flag bits
             const uint32_t mesh_lod_count = max(render->GetLodCount(), 1u);
-            const bool gpu_lod            = is_instanced && !is_skinned && mesh_lod_count > 1u;
-            const bool impostors_enabled  = cvar_foliage_impostors.GetValueAs<bool>();
-            const MeshImpostor* impostor  = (impostors_enabled && gpu_lod && mesh_lod_count < 7u) ? render->GetImpostor() : nullptr;
+            const MeshImpostor* impostor  = render->UsesImpostor() ? render->GetImpostor() : nullptr;
+            // Single trees use the same candidate LODs as scattered trees when an impostor exists.
+            const bool gpu_lod            = !is_skinned && ((is_instanced && mesh_lod_count > 1u) || impostor);
             const uint32_t gpu_lod_count  = mesh_lod_count + (impostor ? 1u : 0u);
             // a single draw that the instance cull rewrites to the lod its coverage wants, the lod count must fit three flag bits
-            const bool gpu_lod_patch      = !is_instanced && !is_skinned && mesh_lod_count > 1u && mesh_lod_count <= 7u && use_gpu_lod;
+            const bool gpu_lod_patch      = !gpu_lod && !is_instanced && !is_skinned && mesh_lod_count > 1u && mesh_lod_count <= 7u && use_gpu_lod;
             auto lod_valid = [render](uint32_t lod)
             {
                 return render->GetMeshletCount(lod) != 0 && render->GetIndexCount(lod) != 0;
@@ -4065,17 +4101,10 @@ namespace spartan
                 continue;
             }
 
-            const uint32_t tasks_add = ((inst_n + INSTANCE_CULL_BATCH_SIZE - 1u) / INSTANCE_CULL_BATCH_SIZE) * lods_emit;
             if (m_indirect_draw_count + lods_emit > indirect_draw_capacity)
             {
                 continue;
             }
-            if (m_cull_task_count + tasks_add > cull_task_capacity)
-            {
-                cull_task_overflow_renders++;
-                continue;
-            }
-
             expected_survivors_worst_case += static_cast<uint64_t>(inst_n) * static_cast<uint64_t>(meshlets_worst);
 
             const uint32_t render_aabb_slot = aabb_frame_offset + m_draw_calls_prepass_count + m_indirect_render_count;
@@ -4084,7 +4113,10 @@ namespace spartan
             const bool is_two_sided    = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
             const bool is_alpha_tested = material->IsAlphaTested();
             const bool skip_hiz        = entity && entity->GetTimeSinceLastTransform() <= 0.1f;
-            uint32_t base_flags        = 0u;
+            // The CPU record already resolved hierarchy, UV and decal state for
+            // this same render/view. Reuse it for every indirect LOD.
+            const Sb_DrawData& base_draw = m_draw_data_cpu[dc.draw_data_index - m_frame_resource_index * renderer_max_draw_calls];
+            uint32_t base_flags = base_draw.flags;
             if (is_skinned)
             {
                 base_flags |= 1u;
@@ -4106,14 +4138,6 @@ namespace spartan
                 base_flags |= 32u;
             }
 
-            if (render->ExcludesTerrainBlend())
-                base_flags |= 1u << 6;
-
-            if (is_drops_vehicle(entity))
-            {
-                base_flags |= 1u << 7;
-            }
-
             if (impostor)
             {
                 base_flags |= 1u << 15;
@@ -4122,8 +4146,9 @@ namespace spartan
             const float max_distance    = render->GetMaxRenderDistance();
             const bool  finite_distance = max_distance > 0.0f && max_distance < numeric_limits<float>::max() * 0.5f;
             const float max_distance_sq = finite_distance ? (max_distance * max_distance) : 0.0f;
-            const Matrix transform_prev = matrix_previous_for_velocity(entity);
+            const Matrix& transform_prev = base_draw.transform_previous;
             const uint32_t lod_reference_draw_index = m_indirect_draw_count;
+            uint32_t lod_draw_offsets = 0;
 
             for (uint32_t lod = lod_first; lod < lod_last; lod++)
             {
@@ -4134,10 +4159,12 @@ namespace spartan
                 }
 
                 const uint32_t draw_idx = m_indirect_draw_count++;
+                if (gpu_lod && lod < 7u)
+                    lod_draw_offsets |= (draw_idx - lod_reference_draw_index) << (lod * 3u);
                 Sb_DrawData& draw_data  = m_indirect_draw_data[draw_idx];
-                draw_data.transform     = entity->GetMatrix();
+                draw_data.transform     = base_draw.transform;
                 draw_data.transform_previous = transform_prev;
-                draw_data.motion_blur_id     = render->GetMotionBlurId() | (render->GetMotionBlurGroup() ? 0x80000000u : 0u);
+                draw_data.motion_blur_id     = base_draw.motion_blur_id;
                 draw_data.material_index     = material->GetIndex();
                 draw_data.is_transparent     = 0;
                 draw_data.aabb_index         = render_aabb_slot;
@@ -4166,25 +4193,38 @@ namespace spartan
                 if (gpu_lod_patch)
                 {
                     draw_data.flags                 = (draw_data.flags & ~(7u << 11u)) | ((mesh_lod_count & 7u) << 11u) | draw_flag_gpu_lod;
-                    draw_data.impostor_texel_offset = static_cast<uint32_t>(m_draw_lods.size());
-                    for (uint32_t table_lod = 0; table_lod < mesh_lod_count; table_lod++)
+                    const SubMesh* submesh = &mesh->GetSubMesh(render->GetSubMeshIndex());
+                    auto [table, inserted] = lod_tables.try_emplace(submesh);
+                    if (inserted) table->second.fill(UINT32_MAX);
+                    uint32_t& table_offset = table->second[lod];
+                    if (table_offset == UINT32_MAX)
                     {
-                        const uint32_t source          = lod_valid(table_lod) ? table_lod : lod;
-                        const BoundingBox& source_aabb = render->GetLodAabb(source);
-                        const Vector3 source_extent    = source_aabb.GetMax() - source_aabb.GetMin();
-                        Sb_DrawLod& entry              = m_draw_lods.emplace_back();
-                        entry.first_index              = render->GetIndexOffset(source);
-                        entry.vertex_offset            = render->GetVertexOffset(source);
-                        entry.meshlet_offset           = render->GetGlobalMeshletOffset() + render->GetMeshletOffset(source);
-                        entry.meshlet_count            = render->GetMeshletCount(source);
-                        entry.aabb_min                 = source_aabb.GetMin();
-                        entry.aabb_diag                = source_extent.Length();
-                        entry.aabb_extent              = source_extent;
-                        entry.previous_vertex_offset   = GeometryBuffer::GetPreviousVertexOffset(entry.vertex_offset);
+                        table_offset = static_cast<uint32_t>(m_draw_lods.size());
+                        for (uint32_t table_lod = 0; table_lod < mesh_lod_count; table_lod++)
+                        {
+                            const uint32_t source          = lod_valid(table_lod) ? table_lod : lod;
+                            const BoundingBox& source_aabb = render->GetLodAabb(source);
+                            const Vector3 source_extent    = source_aabb.GetMax() - source_aabb.GetMin();
+                            Sb_DrawLod& entry              = m_draw_lods.emplace_back();
+                            entry.first_index              = render->GetIndexOffset(source);
+                            entry.vertex_offset            = render->GetVertexOffset(source);
+                            entry.meshlet_offset           = render->GetGlobalMeshletOffset() + render->GetMeshletOffset(source);
+                            entry.meshlet_count            = render->GetMeshletCount(source);
+                            entry.aabb_min                 = source_aabb.GetMin();
+                            entry.aabb_diag                = source_extent.Length();
+                            entry.aabb_extent              = source_extent;
+                            entry.previous_vertex_offset   = GeometryBuffer::GetPreviousVertexOffset(entry.vertex_offset);
+                        }
                     }
+                    draw_data.impostor_texel_offset = table_offset;
                 }
-                fill_uv_draw_fields_from_render(draw_data, render);
-                fill_decal_draw_fields(draw_data, render);
+                draw_data.uv_tiling = base_draw.uv_tiling;
+                draw_data.uv_offset = base_draw.uv_offset;
+                draw_data.uv_invert = base_draw.uv_invert;
+                draw_data.uv_rotation = base_draw.uv_rotation;
+                draw_data.uv_world_space = base_draw.uv_world_space;
+                draw_data.decal_offset = base_draw.decal_offset;
+                draw_data.decal_count = base_draw.decal_count;
 
                 const BoundingBox& lod_aabb_local = render->GetLodAabb(lod);
                 const Vector3 lod_extent          = lod_aabb_local.GetMax() - lod_aabb_local.GetMin();
@@ -4195,20 +4235,24 @@ namespace spartan
 
                 m_indirect_renders[draw_idx] = render;
 
-                for (uint32_t inst = 0; inst < inst_n; inst += INSTANCE_CULL_BATCH_SIZE)
-                {
-                    Sb_CullTask& task   = m_cull_tasks[m_cull_task_count++];
-                    task.draw_index     = draw_idx;
-                    task.lod_reference_draw_index = lod_reference_draw_index;
-                    task.instance_index = inst;
-                    task.instance_count = min(INSTANCE_CULL_BATCH_SIZE, inst_n - inst);
-                }
+            }
+
+            // Cull each instance once, then select its draw from the LOD chain.
+            // Missing LODs map to the first valid draw rather than leaving a hole.
+            for (uint32_t inst = 0; inst < inst_n; inst += INSTANCE_CULL_BATCH_SIZE)
+            {
+                Sb_CullTask& task = m_cull_tasks.emplace_back();
+                ++m_cull_task_count;
+                task.draw_index = lod_reference_draw_index;
+                task.lod_reference_draw_index = lod_reference_draw_index;
+                task.instance_index = inst;
+                task.instance_count = min(INSTANCE_CULL_BATCH_SIZE, inst_n - inst);
+                task.lod_draw_offsets = gpu_lod ? (lod_draw_offsets | 0x80000000u) : 0u;
             }
         }
 
-        // reported once per session, either the survivor count exceeded the buffer or the cull task budget rejected renders
+        // Report the conservative pre-cull meshlet bound once per session.
         static bool s_logged_survivor_overflow   = false;
-        static bool s_logged_cull_task_overflow  = false;
         if (!s_logged_survivor_overflow && expected_survivors_worst_case > meshlet_instance_capacity)
         {
             SP_LOG_WARNING(
@@ -4218,35 +4262,11 @@ namespace spartan
             );
             s_logged_survivor_overflow = true;
         }
-        if (!s_logged_cull_task_overflow && cull_task_overflow_renders > 0)
-        {
-            SP_LOG_WARNING(
-                "instance cull task budget exhausted, %u render lods rejected, current capacity is %u",
-                cull_task_overflow_renders,
-                cull_task_capacity
-            );
-            s_logged_cull_task_overflow = true;
-        }
+
     }
 
     void Renderer::UpdateDrawCalls()
     {
-        // IDs must be assigned before either CPU or indirect draw records are written.
-        // Normal finite half-float patterns encode 30719 IDs exactly; overflow stays unclassified.
-        uint32_t motion_id = 0;
-        pmr::unordered_map<uint64_t, uint32_t> motion_masks(FrameAllocator::GetResource());
-        for (Entity* entity : render_entities())
-        {
-            if (Render* render = entity->GetComponent<Render>())
-            {
-                // All wheel parts, including the brake interior, get the exact same stencil value.
-                const uint64_t key = render->GetMotionBlurGroup() ? render->GetMotionBlurGroup() : entity->GetObjectId();
-                auto [entry, inserted] = motion_masks.try_emplace(key, 0);
-                if (inserted)
-                    entry->second = ++motion_id <= 30719 ? motion_id : 0;
-                render->SetMotionBlurId(entry->second);
-            }
-        }
         SP_PROFILE_CPU();
         UpdateDrawCalls_ResetCounts();
         UpdateDrawCalls_CollectAndSort();
@@ -4907,6 +4927,10 @@ namespace spartan
                 continue;
             }
             light->ClearAtlasRectangles();
+            if (IsRayTracedShadowsActive())
+            {
+                continue;
+            }
             if (light->GetIndex() == numeric_limits<uint32_t>::max())
             {
                 continue;
@@ -4919,11 +4943,6 @@ namespace spartan
             }
             for (uint32_t i = 0; i < light->GetSliceCount(); ++i)
             {
-                // With ray tracing only the animated near sun cascade reads the
-                // atlas. Give it the resolution instead of dividing it between
-                // unused local-light faces and losing the individual leaf cutouts.
-                if (IsRayTracedShadowsActive() && (light->GetLightType() != LightType::Directional || i != 0))
-                    continue;
                 m_shadow_slices.emplace_back(light, i, 0, math::Rectangle::Zero);
             }
         }
@@ -5586,7 +5605,11 @@ namespace spartan
 
     void Renderer::Pass_GraphicsPhase2_ShadowsAndRT()
     {
-        Pass_ShadowMaps();
+        // Select one shadow technique before entering the raster pass.
+        if (!IsRayTracedShadowsActive())
+        {
+            Pass_ShadowMaps();
+        }
     }
 
     void Renderer::ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer)

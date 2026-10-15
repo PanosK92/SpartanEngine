@@ -134,7 +134,10 @@ namespace spartan
             point.room_right = point.half_width;
         }
 
-        line->Finish(edge_margin);
+        // A geometric optimum touching the body clearance leaves no room for
+        // tire slip, steering lag or a side-by-side correction at racing speed.
+        // Preserve a tracking reserve on closed circuits, including lap one.
+        line->Finish(max(edge_margin, 2.8f));
         SP_LOG_INFO("racing_line: '%s' %.0f m, %zu points", spline_entity->GetObjectName().c_str(), line->m_length, count);
         return line;
     }

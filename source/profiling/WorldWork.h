@@ -23,6 +23,7 @@ namespace spartan
         X(physics_activation_cached_skips) X(physics_actors_tested) X(physics_actors_activated) X(physics_actors_deactivated) \
         X(render_tick_calls) X(bounds_checks) X(bounds_rebuilt) X(bounds_instances_rebuilt) \
         X(cull_calls) X(cull_cached_skips) X(cull_tests) X(render_visible) X(visibility_changes) X(lod_updates) \
+        X(spatial_rebuilds) X(spatial_bounds_updates) X(spatial_candidates) X(spatial_visibility_mismatches) \
         X(animation_jobs) X(animation_vertices)
 
     enum class WorldWork : size_t

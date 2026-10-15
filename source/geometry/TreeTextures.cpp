@@ -216,15 +216,21 @@ namespace spartan::trees
                         }
                         case bark_style::plated:
                         {
-                            // Narrow, vertically broken scales rather than large polygonal paving stones.
-                            const float warp = fbm(u, v, 4, 3, 4, seed + 3u) - 0.5f;
-                            const float grain = fbm(u + warp * 0.035f, v, 48, 5, 4, seed + 17u);
-                            const cell plates = worley(u + warp * 0.04f, v, 18, 7, seed, 0.65f);
-                            const float gap = smoothstep(0.008f, 0.085f, plates.f2 - plates.f1);
-                            const float flake = fbm(u, v, 38, 18, 4, seed + 77u);
-                            h = gap * 0.55f + grain * 0.3f + flake * 0.15f;
-                            color = mix(dark, light, 0.25f + 0.65f * gap) * (0.72f + grain * 0.35f + flake * 0.2f);
-                            strength = 8.0f;
+                            // Multiscale longitudinal grain and broken fissures. Voronoi outlines
+                            // make bark look like cut stone, especially after mip filtering.
+                            const float warp = fbm(u, v, 5, 3, 4, seed + 3u) - 0.5f;
+                            const float grain_u = u + warp * 0.045f;
+                            const float ridges = fbm(grain_u, v, 18, 3, 5, seed + 17u);
+                            const float fissure = 1.0f - smoothstep(0.28f, 0.46f, ridges);
+                            const float fibers = fbm(grain_u, v, 90, 12, 3, seed + 91u);
+                            const float chips = fbm(u, v, 45, 32, 4, seed + 77u);
+                            const float pores = fbm(u, v, 150, 110, 2, seed + 81u);
+                            const float cross = abs(sin(v * 6.283185307f * 11.0f + fbm(u, v, 8, 4, 3, seed + 50u) * 9.0f));
+                            const float splits = (1.0f - smoothstep(0.025f, 0.12f, cross)) * smoothstep(0.48f, 0.65f, chips);
+                            h = (1.0f - fissure) * 0.48f + fibers * 0.18f + chips * 0.23f + pores * 0.11f - splits * 0.18f;
+                            const float tone = saturate(0.35f + ridges * 0.5f + (chips - 0.5f) * 0.7f - fissure * 0.48f - splits * 0.22f);
+                            color = mix(dark * 0.75f, light, tone) * (0.63f + fibers * 0.38f + pores * 0.35f);
+                            strength = 7.0f;
                             break;
                         }
                         case bark_style::smooth:
@@ -279,8 +285,10 @@ namespace spartan::trees
                             const float strand = fbm(u + warp * 0.055f, v, 36, 3, 5, seed);
                             const float ridge = smoothstep(0.23f, 0.64f, strand);
                             const float weather = fbm(u, v, 9, 6, 4, seed + 60u);
-                            h = ridge * 0.7f + fine * 0.18f + weather * 0.12f;
-                            color = mix(dark, light, 0.2f + ridge * 0.65f) * (0.82f + fine * 0.3f);
+                            const float fibers = fbm(u + warp * 0.025f, v, 100, 9, 3, seed + 85u);
+                            const float pores = fbm(u, v, 140, 90, 2, seed + 90u);
+                            h = ridge * 0.58f + fibers * 0.2f + pores * 0.1f + weather * 0.12f;
+                            color = mix(dark, light, 0.2f + ridge * 0.65f) * (0.55f + fibers * 0.55f + pores * 0.35f);
                             color = mix(color, Vector3(0.32f, 0.31f, 0.28f), smoothstep(0.52f, 0.8f, weather) * 0.3f);
                             strength = 8.0f;
                             break;
@@ -310,7 +318,7 @@ namespace spartan::trees
                     rp[3] = 255;
                 }
             }
-            height_to_normal(height, size, strength, normal);
+            height_to_normal(height, size, strength * static_cast<float>(size) / 512.0f, normal);
         }
 
         // the twig atlas, painted in physical units so leaves keep their proportions on a card that is not square
@@ -957,7 +965,7 @@ namespace spartan::trees
 
     void generate_textures(const species& s, const season time, texture_set& output)
     {
-        output.bark_size = 512;
+        output.bark_size = 1024;
         output.leaf_size = 1024;
         paint_bark(s, output.bark_size, output.bark_albedo, output.bark_normal, output.bark_roughness);
         paint_atlas(s, time, output.leaf_size, output.leaf_albedo, output.leaf_normal);

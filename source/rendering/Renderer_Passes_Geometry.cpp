@@ -527,7 +527,10 @@ namespace spartan
 
     void Renderer::Pass_ShadowMaps()
     {
-        if (GetViewLightEntities().empty())
+        SP_ASSERT_MSG(!IsRayTracedShadowsActive(), "Shadow techniques are mutually exclusive: raster shadow pass entered with RT shadows active");
+        // Keep the guard even if assertions are disabled. Never silently add
+        // raster cascades to RT for foliage animation or any other workaround.
+        if (IsRayTracedShadowsActive() || GetViewLightEntities().empty())
         {
             return;
         }
@@ -571,10 +574,6 @@ namespace spartan
 
             for (uint32_t array_index = 0; array_index < light->GetSliceCount(); array_index++)
             {
-                // Ray tracing keeps local and distant shadows; rasterize the animated near sun cascade.
-                if (IsRayTracedShadowsActive() && (light->GetLightType() != LightType::Directional || array_index != 0))
-                    continue;
-
                 const math::Rectangle& rect = light->GetAtlasRectangle(array_index);
                 if (!rect.IsDefined())
                 {
@@ -643,10 +642,12 @@ namespace spartan
                     }
                     ShadowBatch& batch = slice.batches[it->second];
 
-                    const bool close_to_shadow      = render->GetDistanceSquared() < 100.0f * 100.0f;
+                    const bool close_to_shadow      = draw_call.distance_squared < 100.0f * 100.0f;
                     const uint32_t lod_index_bias   = light->GetLightType() == LightType::Directional ? 1 : 0;
                     const uint32_t lod_index_shadow = clamp(render->GetLodIndex() + lod_index_bias, 0u, render->GetLodCount() - 1);
-                    const uint32_t lod_index        = close_to_shadow ? draw_call.lod_index : lod_index_shadow;
+                    const uint32_t lod_index        = material->GetProperty(MaterialProperty::WindAnimation) > 0.0f
+                        ? min(draw_call.lod_index + (light->GetLightType() == LightType::Directional ? 2u : 1u), render->GetLodCount() - 1)
+                        : (close_to_shadow ? draw_call.lod_index : lod_index_shadow);
 
                     Sb_IndirectDrawArgs& argument = batch.arguments.emplace_back();
                     argument.index_count          = render->GetIndexCount(lod_index);
@@ -761,10 +762,12 @@ namespace spartan
                     RHI_CommandList::SetBufferVertex(render->GetVertexBuffer(), instance_buffer);
                     RHI_CommandList::SetBufferIndex(render->GetIndexBuffer());
 
-                    const bool close_to_shadow      = render->GetDistanceSquared() < 100.0f * 100.0f;
+                    const bool close_to_shadow      = draw_call.distance_squared < 100.0f * 100.0f;
                     const uint32_t lod_index_bias   = light->GetLightType() == LightType::Directional ? 1 : 0;
                     const uint32_t lod_index_shadow = clamp(render->GetLodIndex() + lod_index_bias, 0u, render->GetLodCount() - 1);
-                    const uint32_t lod_index        = close_to_shadow ? draw_call.lod_index : lod_index_shadow;
+                    const uint32_t lod_index        = material->GetProperty(MaterialProperty::WindAnimation) > 0.0f
+                        ? min(draw_call.lod_index + (light->GetLightType() == LightType::Directional ? 2u : 1u), render->GetLodCount() - 1)
+                        : (close_to_shadow ? draw_call.lod_index : lod_index_shadow);
                     if (render->HasInstancing() && !render->HasBoundingBoxOverride())
                     {
                         // A tile may contain thousands of trees outside this
@@ -777,7 +780,7 @@ namespace spartan
                         uint32_t run_start = draw_call.instance_index;
                         uint32_t run_count = 0;
                         uint32_t run_lod = lod_index;
-                        Camera* view_camera = World::GetCamera();
+                        Camera* view_camera = Renderer::GetViewCamera();
                         const float tan_half_fov = view_camera ? tan(view_camera->GetFovVerticalRad() * 0.5f) : 0.57735f;
                         const auto flush_run = [&]()
                         {
@@ -826,7 +829,7 @@ namespace spartan
                                 const float distance = max(Vector3::Distance(camera, bounds.GetCenter()), 0.1f);
                                 const float coverage = radius / (distance * tan_half_fov);
                                 instance_lod = coverage >= 0.4f ? 0u : coverage >= 0.2f ? 1u : coverage >= 0.1f ? 2u : coverage >= 0.05f ? 3u : 4u;
-                                instance_lod = min(instance_lod + lod_index_bias, render->GetLodCount() - 1);
+                                instance_lod = min(instance_lod + (light->GetLightType() == LightType::Directional ? 2u : 1u), render->GetLodCount() - 1);
                             }
                             if (run_count != 0 && (instance != run_start + run_count || instance_lod != run_lod)) flush_run();
                             if (run_count == 0)
@@ -856,6 +859,12 @@ namespace spartan
 
     bool Renderer::Pass_ShadowMaps_GpuDriven()
     {
+        SP_ASSERT_MSG(!IsRayTracedShadowsActive(), "Shadow techniques are mutually exclusive: GPU raster shadow pass entered with RT shadows active");
+        if (IsRayTracedShadowsActive())
+        {
+            return false;
+        }
+
         RHI_Shader* shader_clear  = GetShader(Renderer_Shader::shadow_cull_clear_c);
         RHI_Shader* shader_cull   = GetShader(Renderer_Shader::shadow_cull_c);
         RHI_Shader* shader_args   = GetShader(Renderer_Shader::shadow_cull_args_c);
@@ -894,10 +903,6 @@ namespace spartan
 
             for (uint32_t array_index = 0; array_index < light->GetSliceCount(); array_index++)
             {
-                // Ray tracing keeps local and distant shadows; rasterize the animated near sun cascade.
-                if (IsRayTracedShadowsActive() && (light->GetLightType() != LightType::Directional || array_index != 0))
-                    continue;
-
                 const math::Rectangle& rect = light->GetAtlasRectangle(array_index);
                 if (!rect.IsDefined())
                 {
@@ -975,29 +980,40 @@ namespace spartan
                     group.alpha_tested  = alpha_tested;
                 }
 
-                // same lod rule as the cpu path, directional cascades go one lod coarser past 100 m
-                const bool close_to_shadow        = render->GetDistanceSquared() < 100.0f * 100.0f;
-                const uint32_t lod_local          = draw_call.lod_index;
-                const uint32_t lod_directional    = close_to_shadow ? lod_local : min(render->GetLodIndex() + 1, render->GetLodCount() - 1);
-                const bool per_instance           = render->HasInstancing() && !render->HasBoundingBoxOverride();
-
-                Sb_ShadowCaster& caster          = groups[it->second].casters.emplace_back();
-                caster.draw_data_index           = draw_call.draw_data_index;
-                caster.instance_offset           = render->HasInstancing() ? render->GetGlobalInstanceOffset() : 0u;
-                caster.instance_count            = draw_call.instance_count;
-                caster.flags                     = per_instance ? 0u : shadow_caster_flag_world_bounds;
-                caster.flags                    |= material->GetProperty(MaterialProperty::WindAnimation) > 0.0f ? shadow_caster_flag_wind : 0u;
-                caster.index_count_directional   = render->GetIndexCount(lod_directional);
-                caster.first_index_directional   = render->GetIndexOffset(lod_directional);
-                caster.vertex_offset_directional = static_cast<int32_t>(render->GetVertexOffset(lod_directional));
-                caster.index_count_local         = render->GetIndexCount(lod_local);
-                caster.first_index_local         = render->GetIndexOffset(lod_local);
-                caster.vertex_offset_local       = static_cast<int32_t>(render->GetVertexOffset(lod_local));
-                const BoundingBox& bounds        = per_instance ? render->GetLodAabb(0) : render->GetBoundingBox();
-                caster.bounds_min                = bounds.GetMin();
-                caster.bounds_max                = bounds.GetMax();
-                caster.max_shadow_distance       = per_instance ? shadow_distance : 0.0f;
-                instance_total                  += caster.instance_count;
+                const uint32_t lod_count = render->GetLodCount();
+                const bool wind = material->GetProperty(MaterialProperty::WindAnimation) > 0.0f;
+                const bool per_instance = render->HasInstancing() && !render->HasBoundingBoxOverride();
+                const bool per_instance_lod = wind && per_instance && lod_count > 1 && lod_count <= 7;
+                const bool close_to_shadow = draw_call.distance_squared < 100.0f * 100.0f;
+                const uint32_t lod_local = wind ? min(draw_call.lod_index + 1u, lod_count - 1) : draw_call.lod_index;
+                const uint32_t lod_directional = wind ? min(draw_call.lod_index + 2u, lod_count - 1) :
+                    (close_to_shadow ? lod_local : min(render->GetLodIndex() + 1, lod_count - 1));
+                const BoundingBox& bounds = per_instance ? render->GetLodAabb(0) : render->GetBoundingBox();
+                // Candidate LODs share bounds and transforms. The GPU accepts each instance
+                // once per slice, choosing a coarser silhouette independently of the tile LOD.
+                for (uint32_t lod = per_instance_lod ? 1u : 0u; lod < (per_instance_lod ? lod_count : 1u); ++lod)
+                {
+                    const uint32_t directional = per_instance_lod ? lod : lod_directional;
+                    const uint32_t local = per_instance_lod ? lod : lod_local;
+                    Sb_ShadowCaster& caster          = groups[it->second].casters.emplace_back();
+                    caster.draw_data_index           = draw_call.draw_data_index;
+                    caster.instance_offset           = render->HasInstancing() ? render->GetGlobalInstanceOffset() : 0u;
+                    caster.instance_count            = draw_call.instance_count;
+                    caster.flags                     = per_instance ? 0u : shadow_caster_flag_world_bounds;
+                    caster.flags                    |= wind ? shadow_caster_flag_wind : 0u;
+                    caster.flags                    |= per_instance_lod ? shadow_caster_flag_lod | (lod << shadow_caster_lod_shift) | (lod_count << shadow_caster_lod_count_shift) : 0u;
+                    caster.index_count_directional   = render->GetIndexCount(directional);
+                    caster.first_index_directional   = render->GetIndexOffset(directional);
+                    caster.vertex_offset_directional = static_cast<int32_t>(render->GetVertexOffset(directional));
+                    caster.index_count_local         = render->GetIndexCount(local);
+                    caster.first_index_local         = render->GetIndexOffset(local);
+                    caster.vertex_offset_local       = static_cast<int32_t>(render->GetVertexOffset(local));
+                    caster.bounds_min                = bounds.GetMin();
+                    caster.bounds_max                = bounds.GetMax();
+                    caster.max_shadow_distance       = per_instance ? shadow_distance : 0.0f;
+                }
+                // LOD candidates are exclusive, so do not multiply visible-buffer capacity by the LOD count.
+                instance_total += draw_call.instance_count;
             }
         }
 

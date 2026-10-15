@@ -152,8 +152,13 @@ namespace spartan
             return result;
         }
 
+        bool generation_enabled = false;
+
         void configure(const bool enabled, RHI_Texture* hudless, const math::Rectangle& rect)
         {
+            // Disabling an already disabled context can still wait on the present queue.
+            if (!enabled && !generation_enabled) return;
+
             ffxConfigureDescFrameGeneration config     = {};
             config.header.type                         = FFX_API_CONFIGURE_DESC_TYPE_FRAMEGENERATION;
             config.swapChain                           = swapchain_fg;
@@ -169,6 +174,7 @@ namespace spartan
             config.frameID                             = frame_id;
 
             ffxReturnCode_t result = ffx.Configure(&context_fg, &config.header);
+            if (result == FFX_API_RETURN_OK) generation_enabled = enabled;
             if (result != FFX_API_RETURN_OK && !logged_dispatch_error)
             {
                 SP_LOG_WARNING("FSR frame generation configure failed: %u", static_cast<uint32_t>(result));
@@ -186,6 +192,7 @@ namespace spartan
             RHI_Device::QueueWaitAll();
             configure(false, nullptr, math::Rectangle());
             ffx.DestroyContext(&context_fg, nullptr);
+            generation_enabled = false;
             context_fg          = nullptr;
             prepared_this_frame = false;
         }
@@ -333,7 +340,7 @@ namespace spartan
         RHI_CommandList* cmd_list = RHI_Device::Cmd();
         RHI_SwapChain* swapchain  = RHI_Device::GetSwapChain();
         Camera* camera            = World::GetCamera();
-        if (!IsActive() || !cmd_list || !tex_depth || !tex_velocity || !swapchain || !camera || !camera->GetEntity())
+        if (!HasPresentationSource() || !IsActive() || !cmd_list || !tex_depth || !tex_velocity || !swapchain || !camera || !camera->GetEntity())
         {
             return;
         }

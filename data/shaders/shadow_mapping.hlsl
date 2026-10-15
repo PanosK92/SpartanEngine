@@ -224,30 +224,6 @@ float3 compute_normal_offset(Surface surface, Light light, uint cascade_index)
     return surface.normal * (offset_amount * normal_sign);
 }
 
-// Nearby receivers use the actual wind-deformed, alpha-tested geometry. The
-// static TLAS cannot follow individual tree instances bending in the wind.
-// Replace its shadow here (min would retain the displaced rest-pose shadow),
-// then blend back before reaching the edge of the near cascade.
-float compute_animated_near_shadow(Surface surface, Light light, float ray_shadow)
-{
-    if (any(light_get_atlas_scale(light, 0) <= 0.0f))
-        return ray_shadow;
-
-    float weight = 1.0f - smoothstep(30.0f, 50.0f, surface.camera_to_pixel_length);
-    if (weight <= 0.0f)
-        return ray_shadow;
-
-    float3 position = surface.position + compute_normal_offset(surface, light, 0);
-    float4 clip = mul(float4(position, 1.0f), light_get_transform(light, 0));
-    float3 ndc = clip.xyz / clip.w;
-    if (!cascade_contains(ndc))
-        return ray_shadow;
-
-    weight *= 1.0f - smoothstep(0.75f, 0.95f, max(abs(ndc.x), abs(ndc.y)));
-    float shadow = vogel_depth(light, surface, float3(ndc_to_uv(ndc.xy), 0.0f), ndc.z);
-    return lerp(ray_shadow, shadow, weight);
-}
-
 // main shadow computation function
 float compute_shadow(Surface surface, Light light)
 {

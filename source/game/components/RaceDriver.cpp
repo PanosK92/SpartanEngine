@@ -141,7 +141,23 @@ namespace spartan
             assign_fresh_ids(entity, random);
         }
 
-        const Color race_car_paint = Color(0.92f, 0.62f, 0.02f, 1.0f);
+        Color race_car_paint(Entity* driver)
+        {
+            // Persistent entity ids seed the grid order. Adjacent entrants use
+            // distinct curated paints, stable across respawns and world loads.
+            static const Color palette[] = {
+                Color(0.75f, 0.025f, 0.02f, 1.0f), Color(0.02f, 0.18f, 0.8f, 1.0f),
+                Color(0.92f, 0.62f, 0.02f, 1.0f), Color(0.06f, 0.52f, 0.15f, 1.0f),
+                Color(0.85f, 0.85f, 0.82f, 1.0f), Color(0.4f, 0.035f, 0.65f, 1.0f),
+                Color(0.95f, 0.22f, 0.025f, 1.0f), Color(0.025f, 0.65f, 0.7f, 1.0f),
+                Color(0.04f, 0.045f, 0.055f, 1.0f), Color(0.7f, 0.035f, 0.3f, 1.0f)
+            };
+            size_t rank = 0;
+            for (Entity* entity : World::GetEntities())
+                if (entity->GetComponent<RaceDriver>() && entity->GetObjectId() < driver->GetObjectId())
+                    ++rank;
+            return palette[rank % size(palette)];
+        }
     }
 
     RaceDriver::RaceDriver(Entity* entity) : Component(entity)
@@ -346,7 +362,7 @@ namespace spartan
         {
             const float driven    = progress - m_watch_progress;
             const uint32_t resets = m_stats.resets - m_watch_resets;
-            broken                = broken || driven < watch_min_distance || resets >= watch_max_resets;
+            broken                = broken || (driven < watch_min_distance && !m_stats.following) || resets >= watch_max_resets;
             if (broken)
             {
                 SP_LOG_WARNING("race_driver: replacing the race car, %.0f m and %u resets in the last %.0f s", driven, resets, watch_window);
@@ -440,7 +456,7 @@ namespace spartan
             config.vehicle_sim_mode    = VehicleSimMode::Full;
             config.customize_materials = true;
             config.paint_preset        = MaterialPaintPreset::GlossSolid;
-            config.paint_color         = race_car_paint;
+            config.paint_color         = race_car_paint(GetEntity());
             car                        = Car::Create(config);
             if (car && car->GetRootEntity())
             {
@@ -485,7 +501,7 @@ namespace spartan
         {
             return nullptr;
         }
-        prepare_race_car_entity(entity, position, race_car_paint);
+        prepare_race_car_entity(entity, position, race_car_paint(GetEntity()));
 
         // the holder plays the role of the player's car root, the car prefab and its overrides build under it
         Entity* holder = World::CreateEntity();

@@ -5227,7 +5227,7 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
             property_slider("Soft edges", &soft_depth_scale, 0.0f, 100.0f, "%.1f", "How particles fade where they cut into geometry, lower is softer, higher is a tighter line.", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
 
             uint32_t render_mode = static_cast<uint32_t>(particle_system->GetRenderMode());
-            static vector<string> render_modes = { "Sprites", "Volumetric" };
+            static vector<string> render_modes = { "Sprites", "Volumetric", "Leaf", "Seed", "Firefly", "Leaf litter" };
             if (property_segmented("Draw as", render_modes, &render_mode, "Sprites are camera-facing quads, cheap and crisp. Volumetric raymarches the particles as density, for thick smoke that lights and shadows itself."))
             {
                 particle_system->SetRenderMode(static_cast<spartan::ParticleRenderMode>(render_mode));

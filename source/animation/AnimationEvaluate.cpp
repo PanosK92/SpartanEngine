@@ -128,15 +128,24 @@ namespace spartan
             v = (v - j * (y * dt)) * e;
         }
 
-        // row-vector upper 3x3, skips translation and the w divide, bone matrices are rigid so the
-        // plain 3x3 is also correct for normals, no inverse transpose needed
-        Vector3 transform_direction(const Matrix& m, const Vector3& v)
+        // Skin matrices are transposed once per bone/section. Their rows can
+        // then be loaded directly for all vertices influenced by that bone.
+        Vector3 skin_position(const Matrix& rows, const Vector3& v)
         {
-            return Vector3(
-                v.x * m.m00 + v.y * m.m10 + v.z * m.m20,
-                v.x * m.m01 + v.y * m.m11 + v.z * m.m21,
-                v.x * m.m02 + v.y * m.m12 + v.z * m.m22
-            );
+            __m128 result = _mm_fmadd_ps(rows.Column(0), _mm_broadcast_ss(&v.x), rows.Column(3));
+            result = _mm_fmadd_ps(rows.Column(1), _mm_broadcast_ss(&v.y), result);
+            result = _mm_fmadd_ps(rows.Column(2), _mm_broadcast_ss(&v.z), result);
+            const __m128 w = simd::splat<3>(result);
+            if (_mm_cvtss_f32(w) != 1.0f) result = _mm_div_ps(result, w);
+            return Vector3(result);
+        }
+
+        Vector3 skin_direction(const Matrix& rows, const Vector3& v)
+        {
+            __m128 result = _mm_mul_ps(rows.Column(0), _mm_broadcast_ss(&v.x));
+            result = _mm_fmadd_ps(rows.Column(1), _mm_broadcast_ss(&v.y), result);
+            result = _mm_fmadd_ps(rows.Column(2), _mm_broadcast_ss(&v.z), result);
+            return Vector3(result);
         }
     }
 
@@ -511,6 +520,8 @@ namespace spartan
                     }
                 }
 
+                for (Matrix& skin : skin_matrices) skin.Transpose();
+
                 auto skin_vertices =
                     [&](
                         const uint32_t vertex_start,
@@ -568,11 +579,11 @@ namespace spartan
                             }
 
                             const Matrix& skin = skin_matrices[bone_index];
-                            skinned += (skin * bind_pos) * weight;
+                            skinned += skin_position(skin, bind_pos) * weight;
                             skinned_nor +=
-                                transform_direction(skin, bind_nor) * weight;
+                                skin_direction(skin, bind_nor) * weight;
                             skinned_tan +=
-                                transform_direction(skin, bind_tan) * weight;
+                                skin_direction(skin, bind_tan) * weight;
                             weight_sum += weight;
                         }
 

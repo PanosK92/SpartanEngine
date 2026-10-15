@@ -12,6 +12,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <vector>
 #include <functional>
 #include "../math/Vector3.h"
+#include "../math/BoundingBox.h"
 //==========================
 
 namespace physx
@@ -67,10 +68,28 @@ namespace spartan
         static void Tick();
         static void DrawDebugVisualization();
 
+        struct StepStatistics
+        {
+            uint32_t steps = 0;
+            uint32_t assisted_tasks = 0;
+            uint32_t active_bodies = 0;
+            uint32_t active_constraints = 0;
+            uint32_t solver_rows = 0;
+            uint32_t contact_pairs = 0;
+        };
+        // Counts from the last completed frame; scene counts are per-step peaks.
+        static StepStatistics GetStepStatistics();
+
         static void AddActor(physx::PxRigidActor* actor);
         static void RemoveActor(physx::PxRigidActor* actor);
 
         static math::Vector3 GetGravity();
+        // Non-camera simulation participants need scenery collision too.
+        static void SetCollisionInterest(const void* owner, const math::Vector3& position, float radius);
+        static void RemoveCollisionInterest(const void* owner);
+        static bool HasCollisionInterests();
+        static uint64_t GetCollisionInterestRevision();
+        static bool IsCollisionRelevant(const math::BoundingBox& bounds, float extra_radius = 0.0f);
         static void* GetScene();
         static void* GetPhysics();
         
@@ -98,6 +117,8 @@ namespace spartan
         // cast a ray against static geometry and return the closest hit position + the entity that was hit
         static bool RaycastStatic(const math::Vector3& origin, const math::Vector3& direction, float max_distance, math::Vector3& hit_position, Entity*& hit_entity);
         static bool RaycastStatic(const math::Vector3& origin, const math::Vector3& direction, float max_distance, PhysicsRaycastHit& hit, Entity* ignored_entity = nullptr);
+        // Sweep a road-aligned body corridor; unlike sparse rays this detects thin obstacles between the flanks.
+        static bool BoxCastStatic(const math::Vector3& origin, const math::Vector3& direction, const math::Vector3& half_extents, float max_distance, PhysicsRaycastHit& hit);
 
         static bool SphereCast(const math::Vector3& origin, const math::Vector3& direction, float radius, float max_distance, uint32_t ignored_collision_group, math::Vector3& hit_position, float& hit_distance, Entity*& hit_entity);
 

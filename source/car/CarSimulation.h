@@ -126,6 +126,7 @@ namespace car
         SelfFilterCallback self_filter;
         multibody_state multibody;
         bool simulation_enabled = true;
+        bool mechanism_simulation_enabled = true;
 
     public:
 

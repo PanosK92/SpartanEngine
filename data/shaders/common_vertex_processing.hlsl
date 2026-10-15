@@ -561,7 +561,7 @@ groupshared TreeWindState mesh_tree_wind_current;
 groupshared TreeWindState mesh_tree_wind_previous;
 void cache_mesh_tree_wind(DrawData draw, uint instance_index, uint cache_slot_plus_one)
 {
-    if ((material_parameters[draw.material_index].flags & (1u << 9)) != 0u)
+    if ((draw.flags & (1u << 14)) == 0u && (material_parameters[draw.material_index].flags & (1u << 9)) != 0u)
     {
         if (cache_slot_plus_one != 0u)
         {
@@ -1092,21 +1092,25 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     // capture the undisplaced world xz before the ocean displacement shifts it, the fft normal and foam are indexed in this domain
     vertex.ocean_world_xz = position.xz;
 
-    // apply wind animation and other world-space effects
-    // note: we need to save and restore vertex.normal/tangent because process_world_space modifies them
-    // the second call is only for computing position_previous, we don't want to double-transform normals
-    vertex_processing::process_world_space(surface, position, vertex, input.position, transform, instance_id, 0.0f);
-    
-    // save the correctly transformed normals before computing previous position
-    float3 saved_normal  = vertex.normal;
-    float3 saved_tangent = vertex.tangent;
-    
-    // compute previous position (this will incorrectly modify vertex.normal/tangent, but we'll restore them)
-    vertex_processing::process_world_space(surface, position_previous, vertex, position_local_previous, transform_previous, instance_id, -buffer_frame.delta_time);
-    
-    // restore the correct normals from the current frame
-    vertex.normal  = saved_normal;
-    vertex.tangent = saved_tangent;
+    // Impostors replace the animated position below; do not evaluate discarded wind.
+    if ((_draw.flags & draw_flag_impostor) == 0u)
+    {
+        // apply wind animation and other world-space effects
+        // note: we need to save and restore vertex.normal/tangent because process_world_space modifies them
+        // the second call is only for computing position_previous, we don't want to double-transform normals
+        vertex_processing::process_world_space(surface, position, vertex, input.position, transform, instance_id, 0.0f);
+
+        // save the correctly transformed normals before computing previous position
+        float3 saved_normal  = vertex.normal;
+        float3 saved_tangent = vertex.tangent;
+
+        // compute previous position (this will incorrectly modify vertex.normal/tangent, but we'll restore them)
+        vertex_processing::process_world_space(surface, position_previous, vertex, position_local_previous, transform_previous, instance_id, -buffer_frame.delta_time);
+
+        // restore the correct normals from the current frame
+        vertex.normal  = saved_normal;
+        vertex.tangent = saved_tangent;
+    }
 
     // the impostor card turns to the baked frame nearest the camera, wind is baked out so the result replaces it
     if ((_draw.flags & draw_flag_impostor) != 0u)

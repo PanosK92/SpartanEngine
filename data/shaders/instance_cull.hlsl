@@ -18,7 +18,7 @@ RWStructuredBuffer<uint>     instance_visibility   : register(u89);
 
 groupshared uint gs_visibility[INSTANCE_CULL_BATCH_SIZE / 32u];
 
-// phase a of the gpu cull, one thread per (renderable lod, instance) task
+// phase a of the gpu cull, one thread per renderable instance
 // rebuilds the per-instance world transform, runs distance + side-frustum + hi-z on the instance bounds and
 // compacts survivors into surviving_instances while bumping instance_dispatch_args.group_count_x, phase b then
 // does a DispatchIndirect over that count and expands each survivor's meshlets
@@ -44,6 +44,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
 
     bool     survives     = false;
     bool     drawn_early  = false;
+    bool     whole_instance = false;
     CullTask task         = (CullTask)0;
     uint     visible_word = task_index * (INSTANCE_CULL_BATCH_SIZE / 32u) + (thread_id.x >> 5u);
     uint     visible_bit  = 1u << (thread_id.x & 31u);
@@ -60,6 +61,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         bool skinned         = (draw.flags & 1u) != 0u;
         bool is_per_instance = (draw.flags & 2u) != 0u;
         bool skip_hiz        = (draw.flags & 32u) != 0u;
+        bool has_impostor    = (draw.flags & (1u << 15)) != 0u;
 
         // per-instance world transform, non-instanced draws keep draw.transform, instanced rebuild from the packed instance buffer
         float4x4 world_xform = is_per_instance
@@ -93,7 +95,8 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
         // closest point on the instance sphere, origin distance was dropping roads and buildings
         // whose entity pivot sat hundreds of metres away from the mesh in front of the camera
         bool passes_distance = true;
-        if (draw.max_render_distance_squared > 0.0f)
+        // Baked impostors persist beyond the authored mesh render-distance limit.
+        if (!has_impostor && draw.max_render_distance_squared > 0.0f)
         {
             float3 to_camera = center_world - buffer_frame.camera_position;
             float dist_center = length(to_camera);
@@ -107,17 +110,12 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
             && sphere_in_side_planes(center_world, radius_world, plane_l, plane_r, plane_b, plane_t)
             && sphere_contributes(center_world, radius_world, CULL_CONTRIBUTION_MESH_PX);
 
-        // instanced tiles submit one draw per lod, keep the instance only on the lod its screen coverage wants
-        if (survives && is_per_instance)
+        // One task covers the entire LOD chain. Offsets account for missing mesh LODs.
+        if (survives && (task.lod_draw_offsets & 0x80000000u) != 0u)
         {
             uint lod_count = (draw.flags >> 11u) & 7u;
-            if (lod_count > 1u)
-            {
-                uint draw_lod     = (draw.flags >> 8u) & 7u;
-                bool has_impostor = (draw.flags & (1u << 15)) != 0u;
-                uint wanted_lod   = has_impostor ? sphere_lod_index_impostor(center_world, lod_radius, lod_count) : sphere_lod_index(center_world, lod_radius, lod_count);
-                survives          = wanted_lod == draw_lod;
-            }
+            uint wanted_lod = has_impostor ? sphere_lod_index_impostor(center_world, lod_radius, lod_count) : sphere_lod_index(center_world, lod_radius, lod_count);
+            task.draw_index += (task.lod_draw_offsets >> (wanted_lod * 3u)) & 7u;
         }
 
         // a non-instanced draw is a single thread, so it can rewrite its own draw to the lod its coverage wants
@@ -142,13 +140,14 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 thread_id : SV_GroupThreadID)
             indirect_draw_data_rw[task.draw_index].flags                  = (draw.flags & ~(7u << 8u)) | (lod << 8u);
         }
 
+        whole_instance = (indirect_draw_data[task.draw_index].flags & (1u << 14)) != 0u;
         if (survives)
         {
             if (late)
             {
                 // the early cull keeps every meshlet of hi-z exempt and skinned instances, it left nothing behind for these
                 drawn_early = (instance_visibility[visible_word] & visible_bit) != 0u;
-                survives    = (skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, depth_bias)) && !(drawn_early && (skip_hiz || skinned));
+                survives    = (skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level, depth_bias)) && !(drawn_early && (skip_hiz || skinned || whole_instance));
             }
             else
             {

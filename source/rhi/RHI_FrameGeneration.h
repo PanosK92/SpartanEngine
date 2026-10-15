@@ -53,6 +53,7 @@ namespace spartan
 
         // shared state, implemented in RHI_FrameGeneration.cpp
         static RHI_Texture* ConsumeHudlessRecorded();
+        static bool HasPresentationSource();
         static math::Rectangle GetGenerationRect(uint32_t backbuffer_width, uint32_t backbuffer_height);
         static void ReleaseHudless();
     };

@@ -24,6 +24,7 @@ namespace spartan
     class ProgressTask;
     class Camera;
     class Light;
+    class Render;
     struct RenderSceneData;
     struct WorldWorkCounters;
     struct PlayState;
@@ -38,6 +39,7 @@ namespace spartan
         void (*stop_play)() = nullptr;
         void (*before_tick)(float) = nullptr;
         void (*after_tick)(float) = nullptr;
+        void (*after_pretick)() = nullptr;
         void (*controls)() = nullptr;
         void (*save)(pugi::xml_node&) = nullptr;
         void (*load)(pugi::xml_node&) = nullptr;
@@ -124,6 +126,7 @@ namespace spartan
         static const std::vector<Entity*>& GetEntitiesWithRender();
         static const std::vector<const RenderSceneData*>& GetRenderSceneData();
         static void InvalidateRenderSceneData();
+        static void NotifyRenderBoundsChanged(Render* render);
         // editor gizmo icons, excludes render-only props
         static const std::vector<Entity*>& GetEntitiesWithIcon();
         static const std::vector<Entity*>& GetEntitiesWithParticles();

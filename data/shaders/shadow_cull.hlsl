@@ -76,6 +76,17 @@ bool shadow_instance_visible(ShadowCaster caster, uint instance_index, uint4 sli
     float3 center_local = (caster.bounds_min + caster.bounds_max) * 0.5f;
     float3 center       = mul(float4(center_local, 1.0f), world).xyz;
     float radius        = length(caster.bounds_max - caster.bounds_min) * 0.5f * max_world_scale(world);
+    if ((caster.flags & shadow_caster_flag_lod) != 0u)
+    {
+        // One candidate per mesh LOD; exactly one accepts each tree in each light slice.
+        // Use distance and vertical FOV even for off-screen casters whose shadows enter the view.
+        float coverage = radius * abs(buffer_frame.projection._m11) / max(length(center - buffer_frame.camera_position), 0.1f);
+        uint lod = coverage >= 0.4f ? 0u : coverage >= 0.2f ? 1u : coverage >= 0.1f ? 2u : coverage >= 0.05f ? 3u : 4u;
+        uint count = (caster.flags >> shadow_caster_lod_count_shift) & 7u;
+        lod = min(lod + (slice.z != 0u ? 2u : 1u), count - 1u);
+        if (lod != ((caster.flags >> shadow_caster_lod_shift) & 7u))
+            return false;
+    }
     if ((caster.flags & shadow_caster_flag_wind) != 0u)
     {
         radius += tree_wind_cull_padding(center, radius, world[3].xyz);

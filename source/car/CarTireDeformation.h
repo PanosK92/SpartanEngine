@@ -4,6 +4,7 @@
 #include <array>
 #include <vector>
 #include <cstdint>
+#include <cstring>
 #include "../math/Vector3.h"
 
 namespace car
@@ -89,16 +90,18 @@ namespace car
         std::vector<face> cavity_faces;
         float radius = 0, width = 0;
         static constexpr int contact_lanes = 9;
-        struct contact_sample { V point; binding weights{}; float radial = 0; };
+        struct contact_sample { V point; binding weights{}; float radial = 0, inverse_mass = 0; };
         std::array<contact_sample, sectors * contact_lanes> contact_samples{};
         bool has_contact_samples = false;
+        bool support_cache_valid = false;
+        float support_pressure = 0, support_stiffness = 0, support_bow = 0, support_volume = 0;
         static int index(int r, int x, int a) { return (r * lanes + x) * sectors + (a % sectors); }
         static bool pinned(int i) { return i < lanes * sectors; }
 
         void initialize(float r, float w)
         {
             radius = r; width = w; beams.clear(); cavity_faces.clear();
-            contact_samples = {}; has_contact_samples = false;
+            contact_samples = {}; has_contact_samples = false; support_cache_valid = false;
             for (int band = 0; band < bands; ++band)
                 for (int lane = 0; lane < lanes; ++lane)
                     for (int a = 0; a < sectors; ++a)
@@ -164,6 +167,10 @@ namespace car
             {
                 sample.point = p; sample.radial = radial;
                 sample.weights = bind(p, V(0.0f), V(0.0f));
+                sample.inverse_mass = 0;
+                for (int k = 0; k < 8; ++k)
+                    if (!pinned(sample.weights.nodes[k]))
+                        sample.inverse_mass += sample.weights.weight[k] * sample.weights.weight[k];
                 has_contact_samples = true;
             }
         }
@@ -174,13 +181,12 @@ namespace car
             {
                 if (sample.radial == 0) continue;
                 V p = sample.point;
-                float inverse_mass = 0;
+                const float inverse_mass = sample.inverse_mass;
                 for (int k = 0; k < 8; ++k)
                 {
                     const int node = sample.weights.nodes[k];
                     const float weight = sample.weights.weight[k];
                     p += (position[node] - rest[node]) * weight;
-                    if (!pinned(node)) inverse_mass += weight * weight;
                 }
                 const float penetration = -(normal.Dot(p) + distance);
                 if (penetration <= 0 || inverse_mass < 1e-8f) continue;
@@ -245,26 +251,45 @@ namespace car
             // improve this reduced model; this is not a carcass FE simulation.
             const float ea = std::max(reference_stiffness, 1.0f) * pitch / width * span;
             const float base_pressure = std::max(pressure_bar, 0.0f) * 100000.0f;
-            const float base_bow = membrane_bow(span, span, ea, base_pressure * pitch);
+            // The unloaded envelope is invariant across relaxation passes and
+            // frames with the same inflation/stiffness. Geometry resets this cache.
+            const bool refresh_support = !support_cache_valid || support_pressure != pressure_bar || support_stiffness != reference_stiffness;
+            const float base_bow = refresh_support ? membrane_bow(span, span, ea, base_pressure * pitch) : support_bow;
             auto volume = [&](const std::array<V, node_count>& points)
             {
-                auto physical = [&](int i)
+                // Shared vertices occur in several faces. Inflate each point
+                // once, instead of reconstructing it three times per triangle.
+                std::array<V, node_count> physical;
+                for (int i = 0; i < node_count; ++i)
                 {
                     V p = points[i];
                     const int band = i / (lanes * sectors), lane = (i / sectors) % lanes;
                     const float t = float(band) / (bands - 1);
                     if (lane != 1) p.x += (lane ? 1.0f : -1.0f) * 4.0f * base_bow * t * (1.0f - t);
-                    return p;
-                };
+                    physical[i] = p;
+                }
                 double result = 0;
                 for (const face& f : cavity_faces)
-                    result += physical(f.a).Dot(physical(f.b).Cross(physical(f.c))) / 6.0;
+                    result += physical[f.a].Dot(physical[f.b].Cross(physical[f.c])) / 6.0;
                 return static_cast<float>(result);
             };
-            const float rest_volume = volume(rest);
+            const float rest_volume = refresh_support ? volume(rest) : support_volume;
+            if (refresh_support)
+            {
+                support_pressure = pressure_bar;
+                support_stiffness = reference_stiffness;
+                support_bow = base_bow;
+                support_volume = rest_volume;
+                support_cache_valid = true;
+            }
             float pressure = base_pressure;
             for (int iteration = 0; iteration < iterations; ++iteration)
             {
+                // Unloaded sectors and the opposite shoulder often have the
+                // exact same chord. Reuse their tensile equilibrium at this
+                // pressure; no quantization or change to solver tolerances.
+                struct BowCache { float length = -1, bow = 0; };
+                std::array<BowCache, 128> bows;
                 for (int lane : {0, lanes - 1})
                     for (int a = 0; a < sectors; ++a)
                     {
@@ -274,7 +299,15 @@ namespace car
                         const float length = chord.Length();
                         const V axis(lane ? 1.0f : -1.0f, 0, 0);
                         const V outward = (axis - chord * (axis.Dot(chord) / std::max(chord.LengthSquared(), 1e-12f))).Normalized();
-                        const float bow = membrane_bow(length, span, ea, pressure * pitch);
+                        uint32_t length_bits;
+                        memcpy(&length_bits, &length, sizeof(length_bits));
+                        BowCache& cached = bows[(length_bits ^ (length_bits >> 7)) & 127u];
+                        if (cached.length != length)
+                        {
+                            cached.length = length;
+                            cached.bow = membrane_bow(length, span, ea, pressure * pitch);
+                        }
+                        const float bow = cached.bow;
                         for (int band = 1; band < bands - 1; ++band)
                         {
                             const float t = float(band) / (bands - 1);

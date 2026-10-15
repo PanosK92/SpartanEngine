@@ -17,6 +17,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Physics.h"
 #include "../world/components/Ragdoll.h"
 #include "../world/World.h"
+#include "../commands/console/ConsoleCommands.h"
 #include <thread>
 SP_WARNINGS_OFF
 #ifdef DEBUG
@@ -29,6 +30,7 @@ SP_WARNINGS_OFF
 #define PX_PHYSX_STATIC_LIB
 #include <physx/PxPhysicsAPI.h>
 #include "PhysicsSceneConfig.h"
+#include "PhysicsDispatcher.h"
 #include "PhysicsSceneOrigin.h"
 SP_WARNINGS_ON
 //=====================================
@@ -44,7 +46,64 @@ namespace spartan
     namespace
     {
         recursive_mutex physx_mutex;
+        PhysicsWorld::StepStatistics step_statistics;
+        TConsoleVar<bool> cvar_physics_assist("physics.assist", true, "Execute ready PhysX jobs on the calling thread while waiting for simulation results");
         PhysicsSceneOrigin scene_origin;
+        struct CollisionInterest { const void* owner; Vector3 position; float radius; };
+        vector<CollisionInterest> collision_interests;
+        atomic<uint64_t> collision_interest_revision{1};
+        constexpr float collision_interest_slack = 2.0f;
+    }
+
+    void PhysicsWorld::SetCollisionInterest(const void* owner, const Vector3& position, float radius)
+    {
+        lock_guard<recursive_mutex> lock(physx_mutex);
+        for (CollisionInterest& interest : collision_interests)
+        {
+            if (interest.owner != owner) continue;
+            const float padded_radius = max(radius, 0.0f) + collision_interest_slack;
+            // Keep a fixed conservative envelope until the participant leaves
+            // its slack. All points in its real radius remain inside this envelope.
+            if (interest.radius == padded_radius &&
+                Vector3::DistanceSquared(interest.position, position) <= collision_interest_slack * collision_interest_slack)
+                return;
+            interest.position = position;
+            interest.radius = padded_radius;
+            collision_interest_revision.fetch_add(1, memory_order_release);
+            return;
+        }
+        collision_interests.push_back({owner, position, max(radius, 0.0f) + collision_interest_slack});
+        collision_interest_revision.fetch_add(1, memory_order_release);
+    }
+
+    void PhysicsWorld::RemoveCollisionInterest(const void* owner)
+    {
+        lock_guard<recursive_mutex> lock(physx_mutex);
+        if (erase_if(collision_interests, [owner](const CollisionInterest& interest) { return interest.owner == owner; }))
+            collision_interest_revision.fetch_add(1, memory_order_release);
+    }
+
+    uint64_t PhysicsWorld::GetCollisionInterestRevision()
+    {
+        return collision_interest_revision.load(memory_order_acquire);
+    }
+
+    bool PhysicsWorld::HasCollisionInterests()
+    {
+        lock_guard<recursive_mutex> lock(physx_mutex);
+        return !collision_interests.empty();
+    }
+
+    bool PhysicsWorld::IsCollisionRelevant(const BoundingBox& bounds, float extra_radius)
+    {
+        lock_guard<recursive_mutex> lock(physx_mutex);
+        for (const CollisionInterest& interest : collision_interests)
+        {
+            const float radius = interest.radius + extra_radius;
+            if (Vector3::DistanceSquared(interest.position, bounds.GetClosestPoint(interest.position)) <= radius * radius)
+                return true;
+        }
+        return false;
     }
 
     namespace settings
@@ -247,7 +306,7 @@ namespace spartan
         static PxFoundation* foundation           = nullptr;
         static PxPhysics* physics                 = nullptr;
         static PxScene* scene                     = nullptr;
-        static PxDefaultCpuDispatcher* dispatcher = nullptr;
+        static PhysicsDispatcher* dispatcher = nullptr;
         static mutex contact_mutex;
         static vector<PhysicsContact> pending_contacts;
 
@@ -460,7 +519,7 @@ namespace spartan
         // Independent vehicle islands can solve concurrently. Keep the pool small
         // to leave CPU capacity for rendering and avoid tiny-task scheduling overhead.
         const uint32_t physics_workers = clamp(std::thread::hardware_concurrency() / 2u, 1u, 4u);
-        scene_desc.cpuDispatcher           = PxDefaultCpuDispatcherCreate(physics_workers);
+        scene_desc.cpuDispatcher           = new PhysicsDispatcher(physics_workers);
         scene_desc.filterShader            = collision_filter_shader;
         scene_desc.simulationEventCallback = &contact_callback;
         ConfigurePhysicsScene(scene_desc);
@@ -468,7 +527,7 @@ namespace spartan
         SP_ASSERT(scene);
 
         // store dispatcher
-        dispatcher = static_cast<PxDefaultCpuDispatcher*>(scene_desc.cpuDispatcher);
+        dispatcher = static_cast<PhysicsDispatcher*>(scene_desc.cpuDispatcher);
 
         // debug visualization parameters are enabled on demand, see DrawDebugVisualization
         set_visualization_enabled(false);
@@ -483,6 +542,8 @@ namespace spartan
         Physics::Shutdown();
         contact_observer = nullptr;
         step_callbacks.clear();
+        collision_interests.clear();
+        collision_interest_revision.fetch_add(1, memory_order_release);
         callback_generations.clear();
         ++callback_revision;
 
@@ -506,6 +567,7 @@ namespace spartan
     void PhysicsWorld::Tick()
     {
         SP_PROFILE_CPU();
+        step_statistics = {};
         static float accumulated_time = 0.0f;
 
         // Loading, play boot and paused/editor time are not simulation debt.
@@ -569,9 +631,28 @@ namespace spartan
                     Physics::TickBuoyancy();
                     SP_PROFILE_CPU_END();
                     SP_PROFILE_CPU_START("physics_simulate");
+                    SP_PROFILE_CPU_START("physics_dispatch");
                     scene->simulate(fixed_time_step);
-                    scene->fetchResults(true); // block
                     SP_PROFILE_CPU_END();
+                    // The next substep's forces/queries and World::PreTick read
+                    // these results. Do not overlap arbitrary world work here:
+                    // it also creates/removes actors and changes their poses.
+                    SP_PROFILE_CPU_START("physics_fetch_results");
+                    while (cvar_physics_assist.GetValue() && !scene->checkResults(false))
+                    {
+                        if (dispatcher->Assist()) ++step_statistics.assisted_tasks;
+                        else std::this_thread::yield();
+                    }
+                    scene->fetchResults(true);
+                    SP_PROFILE_CPU_END();
+                    SP_PROFILE_CPU_END();
+                    PxSimulationStatistics stats;
+                    scene->getSimulationStatistics(stats);
+                    ++step_statistics.steps;
+                    step_statistics.active_bodies = max(step_statistics.active_bodies, stats.nbActiveDynamicBodies);
+                    step_statistics.active_constraints = max(step_statistics.active_constraints, stats.nbActiveConstraints);
+                    step_statistics.solver_rows = max(step_statistics.solver_rows, stats.nbAxisSolverConstraints);
+                    step_statistics.contact_pairs = max(step_statistics.contact_pairs, stats.nbDiscreteContactPairsWithContacts);
                     accumulated_time -= fixed_time_step;
                 }
                 
@@ -593,6 +674,11 @@ namespace spartan
             }
         }
 
+    }
+
+    PhysicsWorld::StepStatistics PhysicsWorld::GetStepStatistics()
+    {
+        return step_statistics;
     }
 
     void PhysicsWorld::DrawDebugVisualization()
@@ -889,6 +975,28 @@ namespace spartan
         }
 
         return false;
+    }
+
+    bool PhysicsWorld::BoxCastStatic(const Vector3& origin, const Vector3& direction, const Vector3& half_extents, float max_distance, PhysicsRaycastHit& hit)
+    {
+        hit = PhysicsRaycastHit();
+        if (!scene || max_distance <= 0.0f || direction.LengthSquared() < 1e-8f || half_extents.x <= 0.0f || half_extents.y <= 0.0f || half_extents.z <= 0.0f)
+            return false;
+        lock_guard<recursive_mutex> scene_lock(physx_mutex);
+        const Vector3 local = ToPhysicsPosition(origin);
+        const Vector3 forward = direction.Normalized();
+        const Quaternion rotation = Quaternion::FromLookRotation(forward);
+        const PxTransform pose(PxVec3(local.x, local.y, local.z), PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
+        PxSweepBuffer result;
+        if (!scene->sweep(PxBoxGeometry(half_extents.x, half_extents.y, half_extents.z), pose,
+            PxVec3(forward.x, forward.y, forward.z), max_distance, result, PxHitFlag::eDEFAULT, PxQueryFilterData(PxQueryFlag::eSTATIC)))
+            return false;
+        if (!result.hasBlock) return false;
+        hit.position = ToWorldPosition(Vector3(result.block.position.x, result.block.position.y, result.block.position.z));
+        hit.normal = Vector3(result.block.normal.x, result.block.normal.y, result.block.normal.z);
+        hit.distance = result.block.distance;
+        hit.entity = result.block.actor ? static_cast<Entity*>(result.block.actor->userData) : nullptr;
+        return true;
     }
 
     bool PhysicsWorld::SphereCast(const Vector3& origin, const Vector3& direction, float radius, float max_distance, uint32_t ignored_collision_group, Vector3& hit_position, float& hit_distance, Entity*& hit_entity)

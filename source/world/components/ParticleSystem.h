@@ -60,6 +60,10 @@ namespace spartan
     {
         Billboard,
         Volumetric,
+        Leaf,       // procedural fluttering leaf silhouette
+        Seed,       // fine airborne seed filaments
+        Firefly,    // small pulsing luminous core
+        LeafLitter, // surface-seeded leaves, lifted by wind into the leaf simulation
         Count
     };
 

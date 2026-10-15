@@ -335,7 +335,7 @@ namespace spartan
         {
             State()
             {
-                m_cull_tasks.resize(renderer_max_cull_tasks);
+                m_cull_tasks.reserve(renderer_max_cull_tasks);
             }
 
             std::array<Renderer_DrawCall, renderer_max_draw_calls> m_draw_calls;

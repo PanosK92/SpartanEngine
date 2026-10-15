@@ -30,6 +30,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/components/Light.h"
 #include "../world/components/Render.h"
 #include "../world/components/Physics.h"
+#include "../physics/PhysicsWorld.h"
+#include "../car/CarSimulation.h"
 #include "../file_system/FileSystem.h"
 #include <fstream>
 #include <iostream>
@@ -219,6 +221,52 @@ namespace spartan
             return valid;
         });
         RunTest("World.EnvironmentWeather", Test_EnvironmentWeather);
+        RunTest("Physics.VehicleModeTransitions", [](std::string& error)
+        {
+            std::lock_guard lock(PhysicsWorld::GetMutex());
+            for (const char* path : {"project/cars/porsche_911_gt3.car", "project/cars/ferrari_laferrari.car"})
+            {
+                const auto* definition = car::load_car_file(path);
+                if (!definition) { error = std::string("Missing fixture: ") + path; return false; }
+                car::Simulation simulation;
+                simulation.load_car(definition->performance);
+                car::setup_params params;
+                params.physics = static_cast<physx::PxPhysics*>(PhysicsWorld::GetPhysics());
+                params.scene = static_cast<physx::PxScene*>(PhysicsWorld::GetScene());
+                if (!simulation.setup(params)) { error = "Vehicle fixture setup failed"; return false; }
+                auto check = [&](bool active, bool mechanism)
+                {
+                    physx::PxU32 position, velocity;
+                    auto* body = simulation.get_body();
+                    body->getSolverIterationCounts(position, velocity);
+                    if (position != (mechanism ? car::suspension_position_iterations : 4) ||
+                        velocity != (mechanism ? car::suspension_velocity_iterations : 1) ||
+                        body->getActorFlags().isSet(physx::PxActorFlag::eDISABLE_SIMULATION) != !active)
+                        return false;
+                    const auto& assembly = simulation.get_multibody_state();
+                    for (int i = 0; i < assembly.actor_count; ++i)
+                        if (assembly.actors[i]->getActorFlags().isSet(physx::PxActorFlag::eDISABLE_SIMULATION) != !(active && mechanism))
+                            return false;
+                    return true;
+                };
+                bool valid = check(true, true);
+                simulation.set_mechanism_simulation_enabled(false);
+                valid &= check(true, false);
+                simulation.set_simulation_enabled(false);
+                valid &= check(false, false);
+                simulation.set_simulation_enabled(true);
+                valid &= check(true, false); // Reactivation must not silently enable suspension.
+                valid &= simulation.rebuild_multibody();
+                valid &= check(true, false); // Rebuild must preserve both budget and disabled actors.
+                simulation.set_simulation_enabled(false);
+                simulation.set_mechanism_simulation_enabled(true);
+                valid &= check(false, true);
+                simulation.set_simulation_enabled(true);
+                valid &= check(true, true);
+                if (!valid) { error = std::string("Vehicle mode invariant failed: ") + path; return false; }
+            }
+            return true;
+        });
         RunTest("World.ComponentCopy", Test_ComponentCopy);
         RunTest("RHI.BackendInitialization",  Test_RHI_BackendInitialization);
         RunTest("RHI.MemoryAllocation",          Test_RHI_MemoryAllocation);

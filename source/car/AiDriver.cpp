@@ -15,7 +15,11 @@ Commercial use requires written permission and negotiated payment terms.
 #include "CarSimulation.h"
 #include "RacingLine.h"
 #include "../world/Entity.h"
+#include "../world/World.h"
+#include "../world/Environment.h"
+#include "../world/components/Light.h"
 #include "../world/components/Physics.h"
+#include "../physics/PhysicsWorld.h"
 
 using namespace std;
 using namespace spartan::math;
@@ -28,10 +32,10 @@ namespace spartan
 
         // traffic
         constexpr float traffic_range   = 250.0f; // meters, cars further away are ignored
-        constexpr float car_length      = 4.6f;   // center to center when two cars touch nose to tail
-        constexpr float corridor        = 2.3f;   // lateral center to center distance two cars pass each other at
+        constexpr float car_length      = 5.2f;   // includes a buffer around the LaFerrari's 4.93 m collision body
+        constexpr float corridor        = 2.7f;   // collision body width plus tracking uncertainty
         constexpr float pass_spacing    = 3.4f;   // how far beside a car the driver passes it
-        constexpr float edge_clearance  = 1.3f;   // meters between the car's center and the edge of the road when passing
+        constexpr float edge_clearance  = 1.5f;   // meters between the car's center and the edge of the road when passing
 
         Vector3 planar(Vector3 value)
         {
@@ -60,6 +64,8 @@ namespace spartan
             return;
         }
         const car::car_preset& spec = simulation->get_spec();
+        length = max(spec.length, 1.0f);
+        width = max(spec.width, 0.5f);
         if (spec.mass > 100.0f)
         {
             mass = spec.mass;
@@ -184,6 +190,7 @@ namespace spartan
 
     AiDriver::~AiDriver()
     {
+        PhysicsWorld::RemoveCollisionInterest(this);
         if (m_trace)
         {
             fclose(m_trace);
@@ -246,6 +253,9 @@ namespace spartan
             // preserve the grid lane until traffic permits a merge onto the racing line
             m_pass_offset   = projection.line_error;
             m_pass_target   = projection.line_error;
+            // Launch in the grid lane; immediately merging every row queues
+            // the field behind one car before the race has even started.
+            m_pass_commit   = m_line->IsClosed() && m_settings.launch_delay > 0.0f ? 4.0f : 0.0f;
         }
         else
         {
@@ -268,6 +278,7 @@ namespace spartan
 
     void AiDriver::Release()
     {
+        PhysicsWorld::RemoveCollisionInterest(this);
         if (!m_car)
         {
             return;
@@ -297,7 +308,7 @@ namespace spartan
     float AiDriver::Margin() const
     {
         // Keep tire capacity available for path corrections and racing side by side.
-        return 0.58f + 0.12f * m_settings.skill + (m_attack_time > 0.0f ? 0.04f : 0.0f);
+        return 0.58f + 0.14f * powf(m_settings.skill, 4.0f);
     }
 
     float AiDriver::SpeedAt(float distance) const
@@ -336,9 +347,12 @@ namespace spartan
             const RacingLine::Point& point = m_line->GetPoint(i);
             Plan& plan                     = m_plan[i];
             const Plan& next               = m_plan[m_line->Wrap(static_cast<int64_t>(i) + 1)];
-            const float grip               = m_model.CorneringLimit(next.speed) * margin * plan.grip_scale;
+            // The friction ellipse uses physical capacity, not the reduced
+            // target grip a second time. Double discounting made every apex
+            // look fully saturated and needlessly extended the braking zone.
+            const float grip               = m_model.CorneringLimit(next.speed) * plan.grip_scale;
             const float lateral_use        = min(next.speed * next.speed * fabsf(point.curvature) / max(grip, 0.1f), 1.0f);
-            const float decel              = m_model.BrakingLimit(next.speed) * margin * sqrtf(max(1.0f - lateral_use * lateral_use, 0.15f));
+            const float decel              = m_model.BrakingLimit(next.speed) * 0.8f * sqrtf(max(1.0f - lateral_use * lateral_use, 0.0f));
             plan.speed                     = min(plan.speed, sqrtf(next.speed * next.speed + 2.0f * decel * point.step));
         }
         m_plan_key          = m_model.Key();
@@ -364,6 +378,7 @@ namespace spartan
         m_stuck_time     = 0.0f;
         m_upside_time    = 0.0f;
         m_wrong_way_time = 0.0f;
+        m_recovery_retry_time = 0.0f;
         m_previous_speed = 0.0f;
         m_yaw_rate       = 0.0f;
         m_decel          = 0.0f;
@@ -373,15 +388,44 @@ namespace spartan
         m_pass_offset    = 0.0f;
         m_pass_rate      = 0.0f;
         m_pass_commit    = 0.0f;
-        m_attack_time    = 0.0f;
-        m_blocked_time   = 0.0f;
+        m_pass_car       = nullptr;
         m_blocker        = Blocker();
+        m_obstacle_gap   = 1000.0f;
+        m_obstacle_time  = 0.0f;
+        m_corridor_speed = m_settings.max_speed;
+    }
+
+    float AiDriver::ObstacleGap(float offset, float speed) const
+    {
+        // Sweep the full body width in short road-aligned chords at bumper
+        // height. Ground-facing hits are drivable deck.
+        const float reach = clamp(speed * speed / max(m_model.BrakingLimit(speed), 1.0f) + speed + 15.0f, 20.0f, 180.0f);
+        for (float ahead = 0.0f; ahead < reach; ahead += 5.0f)
+        {
+            float blend_a = 0.0f, blend_b = 0.0f;
+            const size_t ai = m_line->IndexAt(m_distance + ahead, blend_a);
+            const size_t bi = m_line->IndexAt(m_distance + ahead + 5.0f, blend_b);
+            const auto& a = m_line->GetPoint(ai);
+            const auto& b = m_line->GetPoint(bi);
+            const auto& a_next = m_line->GetPoint(m_line->Wrap(static_cast<int64_t>(ai) + 1));
+            const auto& b_next = m_line->GetPoint(m_line->Wrap(static_cast<int64_t>(bi) + 1));
+            const Vector3 from = Vector3::Lerp(a.position, a_next.position, blend_a) + a.line_right * offset + Vector3::Up * 0.6f;
+            const Vector3 to = Vector3::Lerp(b.position, b_next.position, blend_b) + b.line_right * offset + Vector3::Up * 0.6f;
+            const Vector3 segment = to - from;
+            if (segment.LengthSquared() < 0.01f) continue;
+            PhysicsRaycastHit hit;
+            if (PhysicsWorld::BoxCastStatic(from, segment, Vector3(m_model.width * 0.5f + 0.2f, 0.25f, 0.1f), segment.Length(), hit)
+                && hit.normal.y < 0.65f)
+                return max(0.0f, ahead + hit.distance - m_model.length * 0.5f);
+        }
+        return 1000.0f;
     }
 
     void AiDriver::WatchTraffic(float delta_time, float speed, float plan_speed)
     {
         const Vector3 position = m_car->GetRootEntity()->GetPosition();
         const float length     = m_line->GetLength();
+        const float edge_clearance = max(1.5f, m_model.width * 0.5f + 0.4f);
 
         // lateral is right of the racing line, speed is along the line
         struct Nearby
@@ -391,8 +435,37 @@ namespace spartan
             float speed   = 0.0f;
             float intended_lateral = 0.0f;
             size_t index  = 0;
+            float lateral_speed = 0.0f;
+            const Car* car = nullptr;
         };
         vector<Nearby> nearby;
+        m_obstacle_time -= delta_time;
+        const bool scan_obstacles = m_obstacle_time <= 0.0f;
+        if (scan_obstacles)
+        {
+            m_obstacle_time = 0.1f;
+            const float current_gap = ObstacleGap(m_line_error, speed);
+            const float target_gap = ObstacleGap(m_pass_target, speed);
+            // Do not stop in a clear lane merely because returning to the
+            // racing line would hit an obstacle. Retain the occupied corridor.
+            if (current_gap > target_gap + 5.0f && target_gap < max(30.0f, speed * 4.0f))
+            {
+                m_pass_target = m_line_error;
+                m_pass_offset = m_line_error;
+                m_pass_rate = 0.0f;
+            }
+            m_obstacle_gap = current_gap;
+        }
+        else if (m_obstacle_gap < 1000.0f)
+        {
+            m_obstacle_gap = max(0.0f, m_obstacle_gap - max(speed, 0.0f) * delta_time);
+        }
+        if (m_obstacle_gap < 180.0f)
+        {
+            float fraction = 0.0f;
+            const size_t index = m_line->IndexAt(m_distance + m_obstacle_gap + car_length, fraction);
+            nearby.push_back({m_obstacle_gap + car_length, m_line_error, 0.0f, m_line_error, index});
+        }
         unordered_map<const Car*, TrafficCar> seen;
         for (Car* other : Car::GetAll())
         {
@@ -416,12 +489,13 @@ namespace spartan
             }
             seen[other] = track;
 
-            // the projection only searches a window ahead, a second one further on reaches oncoming cars in time
-            RacingLine::Projection projection = m_line->Project(at, m_index, false);
-            if (projection.distance - m_distance > 100.0f)
-            {
-                projection = m_line->Project(at, m_line->Wrap(static_cast<int64_t>(m_index) + 55), false);
-            }
+            // Track each opponent's own segment. The ego window excludes fast
+            // cars behind and can project them onto the wrong side of a bend.
+            RacingLine::Projection projection = m_line->Project(at, known != m_traffic.end() ? known->second.index : m_index, known == m_traffic.end());
+            seen[other].index = projection.index;
+            if (Physics* body = root->GetComponent<Physics>(); body && CarPhysics::Get(*body).IsVehicleSimulationActive())
+                track.velocity = body->GetLinearVelocity();
+            seen[other].velocity = track.velocity;
             float along = projection.distance - m_distance;
             if (m_line->IsClosed() && fabsf(along) > length * 0.5f)
             {
@@ -436,7 +510,7 @@ namespace spartan
                 {
                     intended += driver->m_pass_target - driver->m_line_error;
                 }
-                nearby.push_back({ along, projection.line_error, track.velocity.Dot(m_line->DirectionAt(projection.index)), intended, projection.index });
+                nearby.push_back({ along, projection.line_error, track.velocity.Dot(m_line->DirectionAt(projection.index)), intended, projection.index, track.velocity.Dot(point.line_right), other });
                 continue;
             }
 
@@ -467,26 +541,26 @@ namespace spartan
         }
         m_traffic = move(seen);
         m_pass_commit = max(m_pass_commit - delta_time, 0.0f);
-        const bool was_attacking = m_attack_time > 0.0f;
-        m_attack_time = max(m_attack_time - delta_time, 0.0f);
-        if (m_line->IsClosed())
-        {
-            for (const Nearby& car : nearby)
-                if (car.along > 0.0f && car.along < 120.0f && car.speed > -1.0f)
-                    m_attack_time = 3.0f;
-        }
-        if (was_attacking != (m_attack_time > 0.0f)) BuildPlan();
 
         // Reserve a corridor through the upcoming bend before committing to a
         // lateral offset; checking only the current point reacts too late.
         float minimum_offset = -numeric_limits<float>::max();
         float maximum_offset = numeric_limits<float>::max();
-        for (float seconds : {0.0f, 0.5f, 1.0f, 1.5f})
+        for (float seconds = 0.0f; seconds <= 5.0f; seconds += 0.15f)
         {
             float fraction = 0.0f;
             const auto& point = m_line->GetPoint(m_line->IndexAt(m_distance + max(speed, 5.0f) * seconds, fraction));
             minimum_offset = max(minimum_offset, -point.room_left + edge_clearance - point.offset);
             maximum_offset = min(maximum_offset, point.room_right - edge_clearance - point.offset);
+        }
+
+        // A narrowing corridor can have no common offset. Do not pass reversed
+        // limits to clamp; keep the local road valid and slow before the pinch.
+        if (minimum_offset > maximum_offset)
+        {
+            const auto& point = m_line->GetPoint(m_index);
+            minimum_offset = -point.room_left + edge_clearance - point.offset;
+            maximum_offset = max(minimum_offset, point.room_right - edge_clearance - point.offset);
         }
 
         // an offset fits through the approach and beside the car it passes
@@ -508,16 +582,31 @@ namespace spartan
         // check the entire merge, including a faster car approaching from behind and another driver's intended lane
         auto merge_clear = [&](float target)
         {
-            const float duration = clamp(fabsf(target - m_pass_offset) / max(speed * 0.12f, 1.5f), 1.0f, 3.0f);
-            const float left = min(m_line_error, target) - corridor;
-            const float right = max(m_line_error, target) + corridor;
+            const float rate = clamp(speed * 0.06f, 1.5f, 2.0f) * clamp(speed / 2.0f, 0.1f, 1.0f);
+            const float duration = max(1.5f, 1.5f * fabsf(target - m_line_error) / rate);
             for (const Nearby& car : nearby)
             {
-                if (max(car.lateral, car.intended_lateral) < left || min(car.lateral, car.intended_lateral) > right)
-                    continue;
-                const float future = car.along + (car.speed - speed) * duration;
-                if (min(car.along, future) < car_length + 3.0f && max(car.along, future) > -car_length - 3.0f)
-                    return false;
+                // Check swept intervals in time, not the union of two lanes:
+                // the latter either rejects valid passes or misses a cut-in.
+                for (float t = 0.0f; t < max(duration, 3.0f); t += 0.15f)
+                {
+                    const float end = t + 0.15f;
+                    const float a = car.along + (car.speed - speed) * t;
+                    const float b = car.along + (car.speed - speed) * end;
+                    if (min(a, b) > car_length + 2.0f || max(a, b) < -car_length - 2.0f) continue;
+                    const auto offset_at = [&](float time)
+                    {
+                        const float u = clamp(time / duration, 0.0f, 1.0f);
+                        return m_line_error + (target - m_line_error) * u * u * (3.0f - 2.0f * u);
+                    };
+                    const float other_a = car.lateral + clamp(car.lateral_speed * t, -pass_spacing, pass_spacing);
+                    const float other_b = car.lateral + clamp(car.lateral_speed * end, -pass_spacing, pass_spacing);
+                    const float uncertainty = 0.25f + 0.15f * end;
+                    const float left = min({other_a, other_b, car.intended_lateral}) - corridor - uncertainty;
+                    const float right = max({other_a, other_b, car.intended_lateral}) + corridor + uncertainty;
+                    if (max(offset_at(t), offset_at(end)) > left && min(offset_at(t), offset_at(end)) < right)
+                        return false;
+                }
             }
             return true;
         };
@@ -536,17 +625,19 @@ namespace spartan
 
         // pass on the left first like a driver on a right hand road, the right if only that side is open
         // the side lane must be free of cars going the same way beside the one being passed, and of oncoming cars for as long as the pass takes
-        if (blocker && m_pass_target == 0.0f && fabsf(m_pass_offset) < 0.5f && fabsf(m_line_error) < 1.0f
-            && blocker->along < min(max(25.0f, speed * 1.5f), 80.0f)
-            && blocker->speed < plan_speed + (m_line->IsClosed() ? 1.0f : -3.0f) && speed > 3.0f)
+        if (scan_obstacles && blocker && m_pass_target == 0.0f && fabsf(m_pass_offset) < 0.5f && fabsf(m_line_error) < 1.0f
+            && blocker->along < min(max(25.0f, speed * (blocker->speed < 3.0f ? 5.0f : 1.5f)), 120.0f)
+            && blocker->speed < plan_speed + (m_line->IsClosed() ? 1.0f : -3.0f) && (speed > 3.0f || (blocker->speed < 1.0f && blocker->along > car_length + 2.0f)))
         {
             const float closing   = max(speed - max(blocker->speed, 0.0f), 4.0f);
             const float pass_time = min((blocker->along + car_length * 2.0f + 10.0f) / closing, 12.0f);
             for (float side : { -1.0f, 1.0f })
             {
                 const float offset = blocker->lateral + side * pass_spacing;
-                bool clear         = fabsf(offset - m_pass_offset) > 1.0f && offset > minimum_offset + 0.5f && offset < maximum_offset - 0.5f
-                    && fits(offset, blocker->index) && merge_clear(offset);
+                bool clear         = fabsf(offset - m_pass_offset) > 1.0f && fabsf(offset) <= pass_spacing + 2.0f
+                    && offset > minimum_offset + 0.5f && offset < maximum_offset - 0.5f
+                    && fits(offset, blocker->index) && merge_clear(offset)
+                    && ObstacleGap(offset, speed) > min(blocker->along + 15.0f, 180.0f);
                 for (const Nearby& car : nearby)
                 {
                     if (!clear)
@@ -570,13 +661,14 @@ namespace spartan
                 {
                     m_pass_target = offset;
                     m_pass_commit = 2.5f;
+                    m_pass_car = blocker->car;
                     SP_LOG_INFO("ai_driver %s: passing a car %.0f m ahead doing %.0f km/h, %.1f m to the %s", m_name.c_str(), blocker->along, blocker->speed * 3.6f, fabsf(offset), offset < 0.0f ? "left" : "right");
                     blocker = nullptr;
                     break;
                 }
             }
         }
-        else if (m_pass_target != 0.0f)
+        else if (scan_obstacles && m_pass_target != 0.0f)
         {
             // back to the line once nothing on it would start a pass again, a car length behind to past where passes start
             // or at once when an oncoming car shows up
@@ -584,6 +676,8 @@ namespace spartan
             bool danger     = false;
             for (const Nearby& car : nearby)
             {
+                if (car.car && car.car == m_pass_car && car.along > -car_length - 3.0f)
+                    line_clear = false;
                 const bool close = car.along > -car_length - 3.0f && car.along < car_length + 5.0f;
                 const bool slow  = car.along > 0.0f && car.along < 70.0f && car.speed < plan_speed - 1.0f;
                 if (fabsf(car.lateral) < corridor + 0.3f && (close || slow))
@@ -595,27 +689,53 @@ namespace spartan
                     danger = true;
                 }
             }
-            if (((line_clear && m_pass_commit <= 0.0f) || danger || !fits(m_pass_target, m_index)) && merge_clear(0.0f))
+            if (((line_clear && m_pass_commit <= 0.0f) || danger || !fits(m_pass_target, m_index)) && merge_clear(0.0f)
+                && ObstacleGap(0.0f, speed) > min(180.0f, max(40.0f, speed * 5.0f)))
             {
-                SP_LOG_INFO("ai_driver %s: %s", m_name.c_str(), danger ? "oncoming car, pulling back in" : "passed, back on the line");
+                SP_LOG_INFO("ai_driver %s: %s", m_name.c_str(), danger ? "oncoming car, pulling back in" : "returning to the racing line");
                 m_pass_target = 0.0f;
+                m_pass_car = nullptr;
             }
         }
 
         // the racing line sweeps across the road at corners; a constant offset must never carry a car off the deck
-        m_pass_target = clamp(m_pass_target, minimum_offset, maximum_offset);
+        const float bounded_target = clamp(m_pass_target, minimum_offset, maximum_offset);
+        if (merge_clear(bounded_target)) m_pass_target = bounded_target;
+        m_corridor_speed = m_settings.max_speed;
+        if (fabsf(bounded_target - m_pass_target) > 0.01f)
+        {
+            // Another car owns the escape lane. Yield before the road runs out
+            // instead of clamping the steering target through that car.
+            for (float ahead = 2.0f; ahead <= max(speed, 5.0f) * 3.0f; ahead += 2.0f)
+            {
+                float fraction = 0.0f;
+                const auto& point = m_line->GetPoint(m_line->IndexAt(m_distance + ahead, fraction));
+                const float center = point.offset + m_pass_offset;
+                if (center < -point.room_left + edge_clearance || center > point.room_right - edge_clearance)
+                {
+                    m_corridor_speed = sqrtf(2.0f * m_model.BrakingLimit(speed) * Margin() * max(ahead - speed * 0.3f - 3.0f, 0.0f));
+                    break;
+                }
+            }
+        }
 
         // a pass is not permission to stop braking before the car has actually cleared the old lane
         blocker = nullptr;
         for (const Nearby& car : nearby)
         {
-            const bool path = fabsf(car.lateral - m_line_error) < corridor || fabsf(car.lateral - m_pass_target) < corridor;
+            const float predicted = car.lateral + clamp(car.lateral_speed, -pass_spacing, pass_spacing);
+            const float left = min({car.lateral, predicted, car.intended_lateral}) - corridor;
+            const float right = max({car.lateral, predicted, car.intended_lateral}) + corridor;
+            const bool path = max(m_line_error, m_pass_target) > left && min(m_line_error, m_pass_target) < right;
             if (car.along > 0.0f && path && (!blocker || car.along < blocker->along))
                 blocker = &car;
         }
 
-        const float rate = clamp(speed * 0.12f, 1.5f, 3.5f);
-        const float step = clamp(m_pass_target - m_pass_offset, -rate * delta_time, rate * delta_time);
+        const float rate = clamp(speed * 0.06f, 1.5f, 2.0f) * clamp(speed / 2.0f, 0.0f, 1.0f);
+        const float desired_rate = clamp((m_pass_target - m_pass_offset) * 1.5f, -rate, rate);
+        const float lateral_budget = max(0.3f, m_model.CorneringLimit(speed) * 0.7f - speed * speed * fabsf(m_line->CurvatureAt(m_distance)));
+        m_pass_rate += clamp(desired_rate - m_pass_rate, -lateral_budget * delta_time, lateral_budget * delta_time);
+        const float step = clamp(m_pass_rate * delta_time, -fabsf(m_pass_target - m_pass_offset), fabsf(m_pass_target - m_pass_offset));
         m_pass_offset   += step;
         m_pass_rate      = step / delta_time;
 
@@ -624,7 +744,6 @@ namespace spartan
         {
             m_blocker = { true, max(blocker->along - car_length, 0.0f), blocker->speed };
         }
-        m_blocked_time       = m_blocker.found && speed < 1.0f ? m_blocked_time + delta_time : 0.0f;
         m_stats.passing      = m_pass_target != 0.0f || fabsf(m_pass_offset) > 0.2f;
         m_stats.following    = m_blocker.found && m_blocker.gap < 60.0f;
     }
@@ -637,6 +756,28 @@ namespace spartan
         {
             return;
         }
+        // Use scene illumination rather than a clock: edited sun intensity and
+        // atmospheric attenuation affect the switch too. Separate dusk/daylight
+        // thresholds prevent flickering as illumination crosses the boundary.
+        m_recovery_retry_time = max(0.0f, m_recovery_retry_time - delta_time);
+        m_light_sample_time -= delta_time;
+        if (m_light_sample_time <= 0.0f)
+        {
+            m_light_sample_time = 0.5f;
+            float daylight_lux = 0.0f;
+            if (Light* sun = World::GetDirectionalLight(); sun && sun->GetEntity()->GetActive())
+            {
+                const Color transmission = sun->GetColorEffective();
+                const float luminance = 0.2126f * transmission.r + 0.7152f * transmission.g + 0.0722f * transmission.b;
+                const float clouds = Environment::GetCloudCoverageEffective();
+                const float cloud_transmission = 1.0f - 0.75f * clouds * clouds * clouds;
+                daylight_lux = cloud_transmission * sun->GetIntensityPhotometric() * luminance * max(0.0f, -sun->GetEntity()->GetForward().y);
+            }
+            if (daylight_lux < 1500.0f)
+                m_car->SetHeadlights(CarHeadlights::Low);
+            else if (daylight_lux > 2500.0f)
+                m_car->SetHeadlights(CarHeadlights::Off);
+        }
         m_line->KeepCollisionLoaded();
         // leaving the car hands its controls to the player, the driver keeps them until it is released
         m_car->SetExternallyControlled(true);
@@ -648,6 +789,7 @@ namespace spartan
         const Vector3 forward  = vehicle->GetForward();
         const Vector3 velocity = physics->GetLinearVelocity();
         const float speed      = velocity.Dot(forward);
+        PhysicsWorld::SetCollisionInterest(this, position, 200.0f);
 
         const size_t previous_index = m_index;
         RacingLine::Projection projection = m_line->Project(position, m_index, false);
@@ -722,6 +864,11 @@ namespace spartan
         WatchTraffic(delta_time, speed, SpeedAt(m_distance + max(speed, 0.0f) * 0.4f));
         // the line is followed at the passing offset, the error the controller sees is from there
         const float tracking_error = m_line_error - m_pass_offset;
+        m_stats.tracking_error = tracking_error;
+        m_stats.max_tracking_error = max(m_stats.max_tracking_error, fabsf(tracking_error));
+        const float body_half_width = 0.5f * (m_model.width * fabsf(vehicle->GetRight().Dot(here.right)) + m_model.length * fabsf(forward.Dot(here.right)));
+        m_stats.road_clearance = min(m_center_offset + here.room_left, here.room_right - m_center_offset) - body_half_width;
+        if (m_stats.road_clearance < 0.0f) m_stats.offroad_time += delta_time;
 
         // Aim the rear axle at a point ahead on the actual path. Looking farther
         // ahead with speed avoids chasing individual samples or noisy derivatives.
@@ -734,8 +881,9 @@ namespace spartan
             // rate limiting. Removing the deadzone twice corrupts the model.
             applied_steering = simulation->get_steering();
         }
-        const float preview_time = 1.0f + clamp((speed - 30.0f) * 0.01f, 0.0f, 0.4f);
-        const float preview = clamp(max(speed, 0.0f) * preview_time, 8.0f, 85.0f);
+        const float preview_time = 0.65f + clamp((speed - 30.0f) * 0.005f, 0.0f, 0.2f);
+        const bool maneuvering = m_pass_target != 0.0f && speed < 5.0f;
+        const float preview = clamp(max(speed, 0.0f) * preview_time, maneuvering ? 3.0f : 6.0f, 55.0f);
         float fraction = 0.0f;
         const size_t aim_index = m_line->IndexAt(m_distance + preview, fraction);
         const auto& aim_a = m_line->GetPoint(aim_index);
@@ -743,7 +891,7 @@ namespace spartan
         // Follow the maneuver ahead of the car, not a moving lateral target
         // underneath it, which otherwise leaves a full steering lag of error.
         const float offset_reach = fabsf(m_pass_rate) * min(preview / max(speed, 5.0f), 0.8f);
-        const float future_offset = m_pass_offset + clamp(m_pass_target - m_pass_offset, -offset_reach, offset_reach);
+        const float future_offset = maneuvering ? m_pass_target : m_pass_offset + clamp(m_pass_target - m_pass_offset, -offset_reach, offset_reach);
         const float aim_offset = clamp(future_offset, -aim_a.room_left + edge_clearance - aim_a.offset, aim_a.room_right - edge_clearance - aim_a.offset);
         const Vector3 target = Vector3::Lerp(aim_a.position, aim_b.position, fraction) + aim_a.line_right * aim_offset;
         // Tire slip means the chassis heading is not the direction of travel.
@@ -793,7 +941,10 @@ namespace spartan
         // passing maneuver can need a tighter turn, so budget for that turn too.
         const float tracking_speed = sqrtf(m_model.CorneringLimit(speed) * Margin() / max(fabsf(feedforward), 1e-5f));
         target_speed = min(target_speed, tracking_speed);
-        const float capacity     = m_model.BrakingLimit(speed);
+        target_speed = min(target_speed, m_corridor_speed);
+        // Use the grip left by the current turn when planning a stop or a
+        // following gap. Full straight-line braking is not available in a bend.
+        const float capacity = m_model.BrakingLimit(speed) * sqrtf(max(1.0f - m_model.lateral_use * m_model.lateral_use, 0.1f));
         float needed             = 0.0f;
         // a slower car ahead: stop within the gap to it if it stopped dead, and settle at a gap that grows with speed
         float follow_speed       = numeric_limits<float>::max();
@@ -801,15 +952,37 @@ namespace spartan
         {
             const float other    = max(m_blocker.speed, 0.0f);
             // racers run close, on a public road the gap is the one a careful driver keeps, room to react to a sudden stop
-            const float time_gap = m_line->IsClosed() ? 0.6f : 1.4f;
+            const float time_gap = m_line->IsClosed() && other > 8.0f ? 0.5f : 1.4f;
             const float headway  = max(m_blocker.gap - 3.0f - max(speed, 0.0f) * time_gap, 0.0f);
             follow_speed         = sqrtf(other * other + capacity * 0.5f * 2.0f * headway);
-            target_speed         = min(target_speed, follow_speed);
+            follow_speed         = min(follow_speed, max(0.0f, other + 0.6f * (m_blocker.gap - 3.0f - max(speed, 0.0f) * time_gap)));
             if (speed > other)
             {
                 needed = (speed * speed - other * other) / (2.0f * max(m_blocker.gap - 2.0f, 0.5f));
             }
         }
+        // A stopped car may need to creep into a verified passing corridor.
+        // Keep enough longitudinal room to stop until it has cleared the obstacle.
+        if (m_blocker.found && m_blocker.speed < 1.0f && m_blocker.gap > 2.5f
+            && m_pass_target != 0.0f && speed < 3.0f)
+            follow_speed = max(follow_speed, min(2.0f, sqrtf(2.0f * capacity * (m_blocker.gap - 2.5f))));
+
+        // Leave steering room if traffic forces a stop before an obstacle.
+        const float obstacle_buffer = m_pass_target != 0.0f ? 3.0f : 10.0f;
+        const float obstacle_speed = sqrtf(2.0f * capacity * Margin() * max(m_obstacle_gap - obstacle_buffer - max(speed, 0.0f) * 0.3f, 0.0f));
+        follow_speed = min(follow_speed, obstacle_speed);
+        target_speed = min(target_speed, follow_speed);
+        if (m_obstacle_gap < 1000.0f)
+            needed = max(needed, speed * speed / (2.0f * max(m_obstacle_gap - 3.0f, 0.5f)));
+
+        // Before an excursion, reserve enough time to arrest outward motion.
+        // Reducing only throttle after leaving the asphalt is too late.
+        const float edge_room = m_stats.road_clearance - 0.3f;
+        const float outward = m_center_offset * lateral_speed_now > 0.0f ? fabsf(lateral_speed_now) : 0.0f;
+        const float lateral_reserve = max(0.5f, m_model.CorneringLimit(speed) - fabsf(lateral_accel));
+        const float lateral_stop = outward * 1.0f + outward * outward / (2.0f * lateral_reserve);
+        if (edge_room < 0.0f || (outward > 0.2f && edge_room < 0.2f + lateral_stop))
+            target_speed = min(target_speed, max(5.0f, speed * 0.7f));
         {
             const float reaction = max(speed, 0.0f) * 0.2f;
             const float horizon  = min(speed * speed / max(capacity, 1.0f) + reaction + 20.0f, 600.0f);
@@ -828,13 +1001,14 @@ namespace spartan
                 k++;
             }
         }
-        // the plan's braking zones are drawn at margin * capacity, so the need reaches that exactly at the braking point
-        const float braking_point = capacity * Margin();
+        // Use the measured braking capacity, retaining reserve for forecast errors.
+        const float braking_point = capacity * 0.85f;
         const float error         = target_speed - speed;
-        float throttle            = needed > braking_point * 0.75f ? 0.0f : clamp(0.3f + 0.35f * error, 0.0f, 1.0f);
-        float brake               = needed > braking_point * 0.85f ? clamp(needed / max(capacity, 1.0f) * 1.15f, 0.0f, 1.0f) : 0.0f;
+        float throttle            = needed > braking_point ? 0.0f : clamp(0.3f + 0.5f * error, 0.0f, 1.0f);
+        float brake               = needed > braking_point ? clamp(needed / max(capacity, 1.0f), 0.0f, 1.0f) : 0.0f;
         brake                     = max(brake, clamp((speed - min(SpeedAt(m_distance), tracking_speed) - 1.0f) * 0.2f, 0.0f, 1.0f));
         brake                     = max(brake, clamp((speed - follow_speed - 1.5f) * 0.15f, 0.0f, 0.6f));
+        brake                     = max(brake, clamp((speed - target_speed - 1.0f) * 0.2f, 0.0f, 0.8f));
         if (follow_speed < 1.0f)
         {
             throttle = 0.0f;
@@ -872,17 +1046,12 @@ namespace spartan
 
         // back off while the driven wheels spin or the rear steps out, easing rather than snapping so a lift does not swing the tail
         // past the tire's peak slip a spinning tire loses side grip first, which is what lets the tail wander on a straight
-        float spin = 0.0f;
-        for (uint32_t w = 0; w < wheel_count; w++)
-        {
-            spin = max(spin, CarPhysics::Get(*physics).GetWheelSlipRatio(static_cast<WheelIndex>(w)));
-        }
-        float excess = max(spin - m_model.peak_slip * 1.1f, 0.0f) / m_model.peak_slip;
+        // The car's traction control already regulates wheel slip. A second
+        // throttle limiter here fights it and leaves the car coasting on exits.
         if (oversteer)
         {
-            excess += rear_limit * 0.6f;
+            throttle *= 1.0f - rear_limit * 0.6f;
         }
-        throttle *= clamp(1.0f - excess, 0.15f, 1.0f);
         if (!on_road)
         {
             throttle *= 0.6f;
@@ -1017,26 +1186,23 @@ namespace spartan
         }
 
         // recovery: put the car back on the line when it is stuck, upside down, far off the road or facing backwards
-        // waiting in a queue is not being stuck, unless the queue never moves
-        const bool queued = m_blocker.found && m_blocker.gap < 12.0f && m_blocked_time < 45.0f;
+        // A blocked road is not a broken car. Keep yielding rather than
+        // teleporting through a stationary queue after a timeout.
+        const bool queued = m_blocker.found && m_blocker.gap < 12.0f;
         m_stuck_time      = speed < 1.0f && !queued ? m_stuck_time + delta_time : 0.0f;
         m_upside_time     = vehicle->GetUp().y < 0.3f ? m_upside_time + delta_time : 0.0f;
         m_wrong_way_time  = flat_forward.Dot(m_line->DirectionAt(m_index)) < -0.2f ? m_wrong_way_time + delta_time : 0.0f;
         const bool lost   = m_center_offset < -here.room_left - 15.0f || m_center_offset > here.room_right + 15.0f;
         if (m_stuck_time > 3.0f || m_upside_time > 2.0f || m_wrong_way_time > 2.5f || lost)
         {
-            SP_LOG_WARNING("ai_driver %s: recovering at %.0f m (stuck %.1f s, upside %.1f s, wrong way %.1f s, offset %.1f m)", m_name.c_str(), m_distance, m_stuck_time, m_upside_time, m_wrong_way_time, m_center_offset);
-            // a reset is a mistake worth learning from right away, not a lap later
-            if (m_settings.learning)
+            // A blocked recovery site can remain occupied for seconds. Hold the
+            // brakes and retry at 2 Hz instead of scanning traffic every physics step.
+            if (m_recovery_retry_time > 0.0f)
             {
-                for (int64_t k = -60; k <= 10; k++)
-                {
-                    float& scale = m_plan[m_line->Wrap(static_cast<int64_t>(m_index) + k)].grip_scale;
-                    scale        = max(scale * 0.9f, 0.6f);
-                }
-                BuildPlan();
+                m_car->SetThrottle(0.0f);
+                m_car->SetBrake(1.0f);
+                return;
             }
-            plan_here.trouble = true;
             size_t index = m_line->Wrap(static_cast<int64_t>(m_index) - 5);
             bool clear = false;
             for (int attempt = 0; attempt < 30 && !clear; ++attempt)
@@ -1062,10 +1228,23 @@ namespace spartan
             }
             if (!clear)
             {
+                m_recovery_retry_time = 0.5f;
                 m_car->SetThrottle(0.0f);
                 m_car->SetBrake(1.0f);
                 return;
             }
+            SP_LOG_WARNING("ai_driver %s: recovering at %.0f m (stuck %.1f s, upside %.1f s, wrong way %.1f s, offset %.1f m)", m_name.c_str(), m_distance, m_stuck_time, m_upside_time, m_wrong_way_time, m_center_offset);
+            // Learn once for an actual recovery, not for every blocked retry.
+            if (m_settings.learning)
+            {
+                for (int64_t k = -60; k <= 10; k++)
+                {
+                    float& scale = m_plan[m_line->Wrap(static_cast<int64_t>(m_index) + k)].grip_scale;
+                    scale = max(scale * 0.9f, 0.6f);
+                }
+                BuildPlan();
+            }
+            plan_here.trouble = true;
             PlaceOnLine(index);
             m_car->PlaceAt(m_line->GetPoint(index).position, Quaternion::FromLookRotation(m_line->DirectionAt(index), Vector3::Up));
             m_stats.resets++;

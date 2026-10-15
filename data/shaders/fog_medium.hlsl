@@ -38,44 +38,51 @@ FogMedium fog_sample_medium(float3 position, float y0, float y1, float footprint
             return medium;
         }
     }
-    float terrain_valid;
-    float terrain_y = sample_ocean_terrain_height(position.xz, terrain_valid);
-    // Camera integration stops at opaque depth. Do not discard a whole cell
-    // because its centre lies in the seabed: its front can still contain air
-    // and illuminated water, especially in distant shoreline cells.
-
     float sea_level = buffer_frame.ocean_enabled > 0.5f ? buffer_frame.ocean_sea_level : 0.0f;
-    float ground_y = terrain_valid > 0.5f ? max(terrain_y, sea_level) : sea_level;
-    float above_ground = max(position.y - ground_y, 0.0f);
-    float shelter = 0.0f;
-    if (terrain_valid > 0.5f && buffer_frame.terrain_maps_enabled > 0.5f)
+    float air = 0.0f;
+    const float mist_density = max(pass_float(pass_fog::mist_density), 0.0f);
+    // Clear-weather maps have no authored mist. Terrain/noise work would be
+    // multiplied by zero; water coverage below remains independent of mist.
+    [branch] if (mist_density > 0.0f)
     {
-        float2 terrain_uv = (position.xz - buffer_frame.terrain_height_mapping.xy) * buffer_frame.terrain_height_mapping.zw;
-        float4 analysis = tex_terrain_map_a.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), terrain_uv, 0.0f);
-        shelter = saturate(analysis.b * 0.6f + analysis.g * 0.25f + saturate(analysis.r * 2.0f - 1.0f) * 0.35f);
-    }
+        float terrain_valid;
+        float terrain_y = sample_ocean_terrain_height(position.xz, terrain_valid);
+        // Camera integration stops at opaque depth. Do not discard a whole cell
+        // because its centre lies in the seabed: its front can still contain air
+        // and illuminated water, especially in distant shoreline cells.
 
-    float height_scale = max(pass_float(pass_fog::mist_height), 1.0f);
-    float ground_amount = max(pass_float(pass_fog::ground_mist), 0.0f);
-    float breakup = saturate(pass_float(pass_fog::mist_variation));
-    float3 advected = position - buffer_frame.wind * (float(buffer_frame.time) * 0.08f);
-    // Filter unresolved density detail to its mean instead of letting a far
-    // voxel sample unrelated noise peaks as the camera moves through the grid.
-    float coarse = 0.5f;
-    float fine = 0.5f;
-    if (footprint < 100.0f)
-        coarse = lerp(fog_noise(advected * float3(0.008f, 0.022f, 0.008f)), 0.5f,
-            smoothstep(20.0f, 100.0f, footprint));
-    if (footprint < 32.0f)
-        fine = lerp(fog_noise(advected * 0.031f), 0.5f,
-            smoothstep(8.0f, 32.0f, footprint));
-    float noise = coarse * 0.7f + fine * 0.3f;
-    float structure = lerp(1.0f, smoothstep(0.18f, 0.82f, noise) * 1.8f, breakup);
-    float wind_mixing = rcp(1.0f + length(buffer_frame.wind) * (1.0f - shelter) * 0.06f);
-    float air = max(pass_float(pass_fog::mist_density), 0.0f) * (
-        0.00025f * exp(-max(position.y - sea_level, 0.0f) / height_scale)
-        + 0.0012f * ground_amount * exp(-above_ground / 35.0f)
-            * (0.25f + shelter * 1.75f) * wind_mixing * structure);
+        float ground_y = terrain_valid > 0.5f ? max(terrain_y, sea_level) : sea_level;
+        float above_ground = max(position.y - ground_y, 0.0f);
+        float shelter = 0.0f;
+        if (terrain_valid > 0.5f && buffer_frame.terrain_maps_enabled > 0.5f)
+        {
+            float2 terrain_uv = (position.xz - buffer_frame.terrain_height_mapping.xy) * buffer_frame.terrain_height_mapping.zw;
+            float4 analysis = tex_terrain_map_a.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), terrain_uv, 0.0f);
+            shelter = saturate(analysis.b * 0.6f + analysis.g * 0.25f + saturate(analysis.r * 2.0f - 1.0f) * 0.35f);
+        }
+
+        float height_scale = max(pass_float(pass_fog::mist_height), 1.0f);
+        float ground_amount = max(pass_float(pass_fog::ground_mist), 0.0f);
+        float breakup = saturate(pass_float(pass_fog::mist_variation));
+        float3 advected = position - buffer_frame.wind * (float(buffer_frame.time) * 0.08f);
+        // Filter unresolved density detail to its mean instead of letting a far
+        // voxel sample unrelated noise peaks as the camera moves through the grid.
+        float coarse = 0.5f;
+        float fine = 0.5f;
+        if (footprint < 100.0f)
+            coarse = lerp(fog_noise(advected * float3(0.008f, 0.022f, 0.008f)), 0.5f,
+                smoothstep(20.0f, 100.0f, footprint));
+        if (footprint < 32.0f)
+            fine = lerp(fog_noise(advected * 0.031f), 0.5f,
+                smoothstep(8.0f, 32.0f, footprint));
+        float noise = coarse * 0.7f + fine * 0.3f;
+        float structure = lerp(1.0f, smoothstep(0.18f, 0.82f, noise) * 1.8f, breakup);
+        float wind_mixing = rcp(1.0f + length(buffer_frame.wind) * (1.0f - shelter) * 0.06f);
+        air = mist_density * (
+            0.00025f * exp(-max(position.y - sea_level, 0.0f) / height_scale)
+            + 0.0012f * ground_amount * exp(-above_ground / 35.0f)
+                * (0.25f + shelter * 1.75f) * wind_mixing * structure);
+    }
 
     if (buffer_frame.ocean_enabled > 0.5f)
     {

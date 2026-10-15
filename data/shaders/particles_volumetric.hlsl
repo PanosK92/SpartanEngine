@@ -346,7 +346,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     uint emitter_index = min(particle.emitter_index, root.emitter_count - 1u);
     EmitterParams emitter = particle_emitter[emitter_index];
-    if (emitter.render_mode != particle_render_volumetric)
+    if (emitter.render_mode != particle_render_volumetric ||
+        particle.owner_id_low != emitter.owner_id_low || particle.owner_id_high != emitter.owner_id_high)
     {
         return;
     }

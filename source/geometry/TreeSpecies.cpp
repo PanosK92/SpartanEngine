@@ -534,7 +534,7 @@ namespace spartan::trees
     uint64_t texture_hash(const species& s, const season time)
     {
         uint64_t hash = 0xcbf29ce484222325ull;
-        hash_combine(hash, 9); // texture generator version, bump it whenever the painters change
+        hash_combine(hash, 10); // texture generator version, bump it whenever the painters change
         hash_combine(hash, static_cast<uint64_t>(time));
         hash_combine(hash, static_cast<uint64_t>(s.leaf));
         hash_combine(hash, static_cast<uint64_t>(s.bark));

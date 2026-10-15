@@ -274,6 +274,7 @@ namespace spartan
         math::Matrix m_activation_world = math::Matrix::Identity;
         float m_activation_slack = 0.0f;
         bool m_activation_valid = false;
+        uint64_t m_activation_collision_revision = 0;
 
         // mesh convex source entity - the entity hierarchy to walk for building compound convex shapes
         Entity* m_mesh_convex_source = nullptr;

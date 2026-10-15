@@ -99,11 +99,13 @@ namespace spartan
         RegisterAttribute("m_mesh", "Mesh*", [this]() { return m_scene->mesh; },
             [this](const std::any& value) { m_scene->mesh = std::any_cast<Mesh*>(value); });
         RegisterAttribute("m_bounding_box", "BoundingBox", [this]() { return m_scene->bounding_box; },
-            [this](const std::any& value) { m_scene->bounding_box = std::any_cast<BoundingBox>(value); });
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_mesh, BoundingBox);
+            [this](const std::any& value) { m_scene->bounding_box = std::any_cast<BoundingBox>(value); InvalidateSpatialBounds(); });
+        RegisterAttribute("m_bounding_box_mesh", "BoundingBox", [this]() { return m_bounding_box_mesh; },
+            [this](const std::any& value) { m_bounding_box_mesh = std::any_cast<BoundingBox>(value); m_bounding_box_dirty = true; InvalidateSpatialBounds(); });
         RegisterAttribute("m_sub_mesh_index", "uint32_t", [this]() { return m_scene->sub_mesh_index; },
             [this](const std::any& value) { m_scene->sub_mesh_index = std::any_cast<uint32_t>(value); });
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_dirty, bool);
+        RegisterAttribute("m_bounding_box_dirty", "bool", [this]() { return m_bounding_box_dirty; },
+            [this](const std::any& value) { m_bounding_box_dirty = std::any_cast<bool>(value); InvalidateSpatialBounds(); });
         RegisterAttribute("m_instances", "vector<Instance>", [this]() { return m_scene->instances; },
             [this](const std::any& value) { m_scene->instances = std::any_cast<vector<Instance>>(value); });
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_transform_previous, Matrix);
@@ -388,8 +390,15 @@ namespace spartan
         }
     }
 
+    void Render::InvalidateSpatialBounds()
+    {
+        if (!m_spatial_dirty.exchange(true, memory_order_relaxed))
+            World::NotifyRenderBoundsChanged(this);
+    }
+
     void Render::Tick()
     {
+        m_scene->visibility_tick = World::GetWorkCounterTick();
         CountWorldWork(WorldWork::render_tick_calls);
         const bool was_visible = m_scene->is_visible;
         // deferred default material assignment (renderer may not be ready during load)
@@ -439,7 +448,7 @@ namespace spartan
         }
 
         const Vector3 camera_position = camera->GetEntity()->GetPosition();
-        const float max_distance = m_scene->max_distance_render;
+        const float max_distance = UsesImpostor() ? FLT_MAX : m_scene->max_distance_render;
         const float max_distance_sq = max_distance * max_distance;
 
         if (!m_scene->is_visible && m_scene->distance_squared > max_distance_sq)
@@ -550,6 +559,7 @@ namespace spartan
 
     void Render::SetMesh(Mesh* mesh, const uint32_t sub_mesh_index)
     {
+        InvalidateSpatialBounds();
         if (!mesh)
         {
             SP_LOG_WARNING("Render::SetMesh called with null mesh");
@@ -585,6 +595,7 @@ namespace spartan
 
     void Render::ClearMesh()
     {
+        InvalidateSpatialBounds();
         m_scene->mesh              = nullptr;
         m_owned_mesh.reset();
         m_scene->sub_mesh_index    = 0;
@@ -820,6 +831,7 @@ namespace spartan
 
     void Render::SetInstances(const vector<Instance>& instances, bool refresh_bounds)
     {
+        InvalidateSpatialBounds();
         // a scattered prop owns one physics actor per instance, the slot lookup is free when there is none
         if (Physics* physics = GetEntity()->GetComponent<Physics>())
         {
@@ -919,6 +931,17 @@ namespace spartan
         return m_scene->mesh->GetLodCount(m_scene->sub_mesh_index);
     }
 
+    bool Render::UsesImpostor() const
+    {
+        // Keep CPU visibility and GPU LOD submission in agreement. An unavailable or
+        // disabled impostor must not make the full mesh exempt from distance culling.
+        const uint32_t lod_count = GetLodCount();
+        return cvar_foliage_impostors.GetValueAs<bool>() && lod_count > 0 && lod_count < 7 &&
+            m_scene->mesh && !m_scene->mesh->IsSkinned() && !HasBoundingBoxOverride() &&
+            m_scene->material && !m_scene->material->IsTransparent() &&
+            m_scene->material->GetProperty(MaterialProperty::Tessellation) <= 0.0f && GetImpostor();
+    }
+
     const MeshImpostor* Render::GetImpostor() const
     {
         Mesh* mesh = m_scene->mesh;
@@ -952,6 +975,7 @@ namespace spartan
 
     void Render::SetBoundingBoxOverride(const BoundingBox& world_box)
     {
+        InvalidateSpatialBounds();
         GetEntity()->WakePhysicsPreTick();
         m_scene->bounding_box = world_box;
         m_scene->cull_camera_position = Vector3::Infinity;
@@ -963,6 +987,7 @@ namespace spartan
 
     void Render::ClearBoundingBoxOverride()
     {
+        InvalidateSpatialBounds();
         if (!m_bounding_box_override)
         {
             return;

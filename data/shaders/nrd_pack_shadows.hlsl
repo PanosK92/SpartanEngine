@@ -41,16 +41,28 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     if (depth <= 0.0f || view_z >= denoising_range)
     {
-        tex_uav[thread_id.xy]  = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        tex_uav2[thread_id.xy] = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        tex_uav3[thread_id.xy] = float4(denoising_range * 2.0f, 0.0f, 0.0f, 0.0f);
+        if (!is_local)
+        {
+            tex_uav[thread_id.xy]  = float4(0.0f, 0.0f, 0.0f, 0.0f);
+            tex_uav2[thread_id.xy] = float4(0.0f, 0.0f, 0.0f, 0.0f);
+            tex_uav3[thread_id.xy] = float4(denoising_range * 2.0f, 0.0f, 0.0f, 0.0f);
+        }
         tex_uav4[thread_id.xy] = float4(NRD_FP16_MAX, 0.0f, 0.0f, 0.0f);
         return;
     }
 
-    float3 normal_ws = get_normal(uv);
-    float2 velocity_ndc = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).xy;
-    float2 mv = velocity_ndc * float2(-0.5f, 0.5f);
+    // The sun pack runs first and all SIGMA lights share the same camera
+    // guides. Local lights only replace the penumbra signal; NRD reads the
+    // guides without modifying them.
+    if (!is_local)
+    {
+        float3 normal_ws = get_normal(uv);
+        float2 velocity_ndc = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).xy;
+        float2 mv = velocity_ndc * float2(-0.5f, 0.5f);
+        tex_uav[thread_id.xy]  = float4(mv, 0.0f, 0.0f);
+        tex_uav2[thread_id.xy] = NRD_FrontEnd_PackNormalAndRoughness(normal_ws, 1.0f, 0.0f);
+        tex_uav3[thread_id.xy] = float4(view_z, 0.0f, 0.0f, 0.0f);
+    }
 
     float visibility   = 1.0f;
     float blocker_dist = 0.0f;
@@ -87,8 +99,5 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         ? SIGMA_FrontEnd_PackPenumbra(distance_to_occluder, dist_to_light, light_size)
         : SIGMA_FrontEnd_PackPenumbra(distance_to_occluder, tan_light_angular_radius);
 
-    tex_uav[thread_id.xy]  = float4(mv, 0.0f, 0.0f);
-    tex_uav2[thread_id.xy] = NRD_FrontEnd_PackNormalAndRoughness(normal_ws, 1.0f, 0.0f);
-    tex_uav3[thread_id.xy] = float4(view_z, 0.0f, 0.0f, 0.0f);
     tex_uav4[thread_id.xy] = float4(penumbra, 0.0f, 0.0f, 0.0f);
 }

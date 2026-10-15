@@ -103,6 +103,15 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     uint raw_slot;
     InterlockedAdd(particle_counter[emitter_index], 1, raw_slot);
     uint slot = emitter.range_start + (raw_slot % emitter.range_count);
+    // A resting leaf owns its slot until the player leaves the area. Never replace
+    // it with a new birth just because the emitter's ring counter wrapped.
+    if ((emitter.render_mode == 2u || emitter.render_mode == 5u))
+    {
+        Particle resident = particle_buffer_a[slot];
+        if (resident.owner_id_low == emitter.owner_id_low && resident.owner_id_high == emitter.owner_id_high &&
+            resident.emitter_index == emitter_index && resident.lifetime > 0.0 && resident.wake_axis.w > 0.5)
+            return;
+    }
 
     // high-entropy seed from frame, thread id, and raw slot
     uint seed = dispatch_thread_id.x * 7919u + emitter.frame * 104729u + raw_slot * 2654435761u;
@@ -119,6 +128,11 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         float theta = rng(seed + 1303u) * 6.28318530718;
         offset      = float3(r * cos(theta), (rng(seed + 1307u) * 2.0 - 1.0) * emitter.radius * 0.45, r * sin(theta));
     }
+
+    // Thin the edge of litter patches so neighboring carpets merge without a
+    // visible circular boundary. The leaves themselves remain fully opaque.
+    if (emitter.render_mode == 5u && rng(seed + 1889u) >
+        1.0 - smoothstep(0.6, 1.0, length(offset.xz) / max(emitter.radius, 0.001))) return;
 
     // bias the launch upward and blend toward the emitter direction when requested
     float3 dir_random = random_direction(seed + 277803737u);
@@ -146,6 +160,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     p.color         = emitter.start_color;
     p.size          = emitter.start_size * r_size;
     p.emitter_index = emitter_index;
+    p.owner_id_low = emitter.owner_id_low;
+    p.owner_id_high = emitter.owner_id_high;
     p.start_size    = emitter.start_size * r_size;
     p.end_size      = emitter.end_size * r_size;
     p.birth_color  = emitter.start_color;
@@ -153,6 +169,15 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float3 travel  = float3(emitter.emitter_velocity.x, 0.0, emitter.emitter_velocity.z);
     float3 forward = safe_normalize(cross(emitter.vortex_axis, float3(0, 1, 0)), float3(0, 0, 1));
     p.wake_axis    = float4(length(travel) > 2.0 ? normalize(travel) : forward, emitter.vortex_radius);
+    // Leaves do not use wheel wakes. This union stores their contact normal and
+    // settled flag without increasing the particle buffer stride for every effect.
+    if ((emitter.render_mode == 2u || emitter.render_mode == 5u)) p.wake_axis = 0.0;
+    if (emitter.render_mode == 2u || emitter.render_mode == 5u)
+    {
+        p.birth_color.rgb *= lerp(float3(0.42, 0.55, 0.30), float3(1.18, 0.95, 0.66), rng(seed + 941u));
+        p.color = p.birth_color;
+    }
+    if (emitter.render_mode == 5u) p.ground_plane.w = 0.0; // not yet surface-seeded
     p.birth_effect = float4(emitter.thermal_strength, emitter.thermal_decay, emitter.rollup_strength, emitter.emissive_strength);
 
     particle_buffer_a[slot] = p;
@@ -456,6 +481,55 @@ void apply_traced_collision(inout Particle p, inout float3 new_pos, EmitterParam
 
 #endif
 
+bool leaf_surface_contact(float3 previous, float3 next, EmitterParams emitter, out float3 contact_position, out float3 normal)
+{
+    contact_position = next;
+    normal = float3(0, 1, 0);
+#ifdef RAY_TRACING_ENABLED
+    if (emitter.collision_traced != 0u)
+    {
+        float3 travel = next - previous;
+        float distance = length(travel);
+        if (distance < 0.00001) return false;
+        RayDesc ray;
+        ray.Origin = previous;
+        ray.Direction = travel / distance;
+        ray.TMin = 0.001;
+        ray.TMax = distance + 0.012;
+        // Ignore foliage cards and grass; land on the actual road, sidewalk,
+        // terrain or other solid triangle, including surfaces behind the camera.
+        RayQuery<RAY_FLAG_CULL_NON_OPAQUE> query;
+        query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x09, ray);
+        while (query.Proceed()) {}
+        if (query.CommittedStatus() == COMMITTED_NOTHING) return false;
+        GeometryInfo geo = geometry_infos[query.CommittedInstanceIndex()];
+        uint base = geo.index_offset + query.CommittedPrimitiveIndex() * 3u;
+        float3 a = geometry_vertices[geo.vertex_offset + geometry_indices[base]].position;
+        float3 b = geometry_vertices[geo.vertex_offset + geometry_indices[base + 1u]].position;
+        float3 c = geometry_vertices[geo.vertex_offset + geometry_indices[base + 2u]].position;
+        float3x3 transform = float3x3(geo.object_to_world_0.xyz, geo.object_to_world_1.xyz, geo.object_to_world_2.xyz);
+        normal = safe_normalize(cross(mul(b - a, transform), mul(c - a, transform)), float3(0, 1, 0));
+        if (dot(normal, ray.Direction) > 0) normal = -normal;
+        contact_position = previous + ray.Direction * query.CommittedRayT();
+        return true;
+    }
+#endif
+    // Raster-only fallback uses the visible surface, never a flat emitter plane
+    // that could put a leaf underneath a raised sidewalk.
+    float4 clip = mul(float4(next, 1), buffer_frame.view_projection);
+    if (clip.w <= 0) return false;
+    float2 uv = clip.xy / clip.w * float2(0.5, -0.5) + 0.5;
+    if (any(uv <= 0) || any(uv >= 1)) return false;
+    int2 pixel = int2(uv * get_render_resolution_active());
+    float depth = tex_depth.Load(int3(pixel, 0)).r;
+    if (depth <= 0) return false;
+    contact_position = get_position(depth, uv);
+    normal = safe_normalize(get_normal(pixel), float3(0, 1, 0));
+    float before = dot(previous - contact_position, normal);
+    float after = dot(next - contact_position, normal);
+    return before >= 0 && after <= 0.012 && distance(next, contact_position) < length(next - previous) + 0.06;
+}
+
 void apply_moving_emitter_push(inout Particle p, EmitterParams emitter)
 {
     float speed = length(emitter.emitter_velocity);
@@ -611,6 +685,49 @@ float3 apply_tire_aerodynamics(inout Particle p, EmitterParams emitter, float ag
     return flow;
 }
 
+// Counter-rotating streamwise vortices shed behind moving bodies. Samples stay
+// in world space, overlap smoothly, and lose circulation as the wake ages.
+float3 body_wake_velocity(float3 position, EmitterParams emitter)
+{
+    if (emitter.render_mode < 2u || emitter.render_mode > 5u) return 0;
+    float3 flow = 0;
+    float weights = 0;
+    float strongest = 0;
+    [loop] for (uint i = 0; i < 64; ++i)
+    {
+        float4 center = emitter.body_wake_center[i];
+        if (center.w <= 0) break; // CPU packs active samples contiguously
+        float4 axis = emitter.body_wake_axis[i];
+        float4 shape = emitter.body_wake_shape[i];
+        float3 delta = position - center.xyz;
+        float along = dot(delta, axis.xyz);
+        float radius = shape.y + shape.z * 0.55;
+        if (abs(along) > axis.w || abs(delta.y) > radius * 1.8) continue;
+        float3 right = cross(float3(0, 1, 0), axis.xyz);
+        float across = dot(delta, right);
+        if (abs(across) > shape.x + radius * 1.8) continue;
+        float envelope = 1.0 - smoothstep(0.25, 1.0, abs(along) / axis.w);
+        envelope *= 1.0 - smoothstep(0.6, 1.8, abs(delta.y) / radius);
+        envelope *= 1.0 - smoothstep(shape.x, shape.x + radius * 1.8, abs(across));
+        float decay = pow(saturate(1.0 - shape.z / 1.8), 1.5);
+        float strength = center.w * decay;
+        float3 swirl = 0;
+        [unroll] for (int side = -1; side <= 1; side += 2)
+        {
+            float3 radial = right * (across - side * shape.x) + float3(0, delta.y, 0);
+            float r2 = dot(radial, radial) / (radius * radius);
+            // Finite core: the pair lifts between vortices and rolls outward above.
+            swirl -= side * cross(axis.xyz, radial) / radius * exp(-r2);
+        }
+        float3 local_flow = axis.xyz * 0.65 + swirl * 1.5 + float3(0, 0.32, 0);
+        flow += local_flow * strength * envelope;
+        weights += envelope;
+        strongest = max(strongest, envelope);
+    }
+    // Overlapping trail samples must not multiply one car's energy.
+    return flow * strongest / max(weights, 0.001);
+}
+
 [numthreads(256, 1, 1)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
@@ -632,18 +749,88 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // uninitialized slots whose emitter_index is garbage and would read out of bounds
     uint ei = min(p.emitter_index, emitter.emitter_count - 1);
     emitter = particle_emitter[ei];
+    if (p.owner_id_low != emitter.owner_id_low || p.owner_id_high != emitter.owner_id_high ||
+        index < emitter.range_start || index >= emitter.range_start + emitter.range_count)
+    {
+        p.lifetime = 0;
+        particle_buffer_a[index] = p;
+        return;
+    }
 
     float dt = emitter.delta_time;
 
     p.previous_position = p.position;
     p.previous_size = p.size;
 
+    const bool leaf = (emitter.render_mode == 2u || emitter.render_mode == 5u);
+    float3 body_flow = body_wake_velocity(p.position, emitter);
+    if (emitter.render_mode == 5u && p.ground_plane.w == 0.0)
+    {
+        // Pre-existing litter is placed on actual triangles, including raised
+        // sidewalks. Once seeded it uses the same persistent contact/wind state
+        // as a fallen leaf. Never project it again after wind lifts it.
+        p.ground_plane.w = 1.0;
+        float3 contact, normal;
+        if (leaf_surface_contact(p.position, p.position - float3(0, 64, 0), emitter, contact, normal) && normal.y > 0.45)
+        {
+            p.position = contact + normal * (0.008 + rng(index) * 0.006);
+            p.previous_position = p.position;
+            p.velocity = 0;
+            p.wake_axis = float4(normal, 1);
+            p.color = float4(lerp(p.birth_color.rgb, emitter.end_color.rgb, 0.35), p.birth_color.a);
+            particle_buffer_a[index] = p;
+            return;
+        }
+        // Raster-only devices still drop litter through the normal collision
+        // path; they cannot query an unseen ground surface.
+        p.velocity.y = -6.0;
+    }
+    if (leaf)
+    {
+        // Local accumulation has a spatial lifetime, not a timer. Looking away
+        // does not remove it; leaving the neighborhood frees the bounded pool.
+        if (distance(p.position, get_camera_position()) > (emitter.render_mode == 5u ? 60.0 : 160.0))
+        {
+            p.lifetime = 0;
+            particle_buffer_a[index] = p;
+            return;
+        }
+        if (p.wake_axis.w > 0.5)
+        {
+            float3 normal = p.wake_axis.xyz;
+            float3 wind = buffer_frame.wind * emitter.wind_influence;
+            float3 tangent = wind - normal * dot(wind, normal);
+            // Static friction keeps litter at rest in a gentle breeze. A strong
+            // wind can lift it back into the same gravity/drag simulation.
+            bool supported = true;
+            if (emitter.collision_traced != 0u && ((emitter.frame + index) & 15u) == 0u)
+            {
+                float3 support_point, support_normal;
+                supported = leaf_surface_contact(p.position + normal * 0.03, p.position - normal * 0.04,
+                                                 emitter, support_point, support_normal);
+            }
+            float wake_speed = length(body_flow);
+            if (!supported || length(tangent) > 8.0 || wake_speed > 1.2 + rng(index + 617u) * 1.4)
+            {
+                p.wake_axis.w = 0;
+                p.velocity = tangent * 0.25 + body_flow * 0.65 + normal * (0.35 + min(wake_speed * 0.2, 1.8));
+                p.lifetime = p.max_lifetime;
+                p.position += normal * 0.015;
+            }
+            else
+            {
+                particle_buffer_a[index] = p;
+                return;
+            }
+        }
+    }
+
     // integrate gravity
     p.velocity.y += emitter.gravity_modifier * 9.81 * dt;
 
     // Drag approaches the surrounding air velocity instead of accelerating with wind forever.
     // Exponential relaxation gives the same damping at different frame rates.
-    float3 air_velocity = buffer_frame.wind * emitter.wind_influence;
+    float3 air_velocity = buffer_frame.wind * emitter.wind_influence + body_flow;
     p.velocity = lerp(air_velocity, p.velocity, exp(-emitter.drag * dt));
 
     // entrainment
@@ -694,6 +881,31 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     p.velocity += wake_velocity;
     float3 new_pos = p.position + p.velocity * dt;
 
+    if (leaf)
+    {
+        float3 contact, normal;
+        if (leaf_surface_contact(p.position, new_pos, emitter, contact, normal))
+        {
+            new_pos = contact + normal * 0.008;
+            p.velocity -= normal * min(dot(p.velocity, normal), 0.0);
+            p.velocity *= 0.2; // inelastic impact and surface friction
+            if (normal.y > 0.45)
+            {
+                // Reserve one quarter of each slice for continuing airborne
+                // motion even when the local accumulation budget is full.
+                bool can_rest = emitter.render_mode == 5u || ((index - emitter.range_start) & 3u) != 0u;
+                p.position = new_pos;
+                p.velocity = 0;
+                p.wake_axis = float4(normal, can_rest ? 1.0 : 0.0);
+                p.lifetime = can_rest ? p.max_lifetime : 0.0;
+                p.color = float4(lerp(p.birth_color.rgb, emitter.end_color.rgb, 0.35), p.birth_color.a);
+                p.size = p.start_size;
+                particle_buffer_a[index] = p;
+                return;
+            }
+        }
+    }
+
     // a drop ends on the first thing above it, the ground in the open, a roof over a garage
     if (emitter.rain_occluded != 0u)
     {
@@ -707,7 +919,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     }
 
     // fresh puffs need a short grace period to leave tight emitters such as exhaust tips
-    const bool ballistic = dot(p.ground_plane.xyz, p.ground_plane.xyz) > 0.5;
+    const bool ballistic = !leaf && dot(p.ground_plane.xyz, p.ground_plane.xyz) > 0.5;
     if (ballistic && dot(float4(new_pos, 1.0), p.ground_plane) < 0.0)
     {
         p.lifetime = 0.0;
@@ -717,7 +929,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // Tire smoke is born against the road. A lifetime-relative grace period can
     // leave it without collision for a full second, allowing the wake to bury it.
     bool collision_ready = p.birth_effect.z > 0.0 ? age_seconds > 0.03 : age_for_collision > 0.18;
-    if (!ballistic && emitter.rain_occluded == 0u && collision_ready && distance(p.position, emitter.position) > emitter.collision_clearance)
+    if (!leaf && !ballistic && emitter.rain_occluded == 0u && collision_ready && distance(p.position, emitter.position) > emitter.collision_clearance)
     {
     #ifdef RAY_TRACING_ENABLED
         if (emitter.collision_traced != 0u)
@@ -761,6 +973,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float dilution = entrains ? pow(saturate(p.start_size / max(p.size, 0.001)), 0.65) : 1.0;
     float fade = entrains ? smoothstep(0.45, 1.0, t) : smoothstep(0.0, 1.0, t);
     p.color.a = lerp(p.birth_color.a, emitter.end_color.a, fade) * dilution;
+    if (leaf) p.color.a = p.birth_color.a;
 
     particle_buffer_a[index] = p;
 }
@@ -787,6 +1000,8 @@ struct ps_input
     float4 clip_current   : TEXCOORD11;
     float4 clip_previous  : TEXCOORD12;
     nointerpolation float2 emissive_shape : TEXCOORD13; // short flame, small spark
+    nointerpolation float2 nature_shape : TEXCOORD14; // render mode, age in seconds
+    nointerpolation float3 contact_normal : TEXCOORD15;
 };
 
 ps_input main_vs(uint vertex_id : SV_VertexID)
@@ -814,11 +1029,15 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     o.churn     = 0.0;
     o.clip_current = o.clip_previous = float4(0, 0, 0, 1);
     o.emissive_shape = 0.0;
+    o.nature_shape = float2((float)emitter.render_mode, 0.0);
+    o.contact_normal = 0.0;
 
     Particle p = particle_buffer_a[index];
+    bool settled_leaf = (emitter.render_mode == 2u || emitter.render_mode == 5u) && p.wake_axis.w > 0.5;
 
     // skip dead, invisible or foreign emitter particles
-    if (p.lifetime <= 0.0 || p.max_lifetime <= 0.0 || p.color.a <= 0.0 || p.emitter_index != emitter_index)
+    if (p.lifetime <= 0.0 || p.max_lifetime <= 0.0 || p.color.a <= 0.0 || p.emitter_index != emitter_index ||
+        p.owner_id_low != emitter.owner_id_low || p.owner_id_high != emitter.owner_id_high)
     {
         return o;
     }
@@ -864,13 +1083,24 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     }
     float longitudinal = c.x + (flame ? 1.0 : 0.0);
     float3 world = p.position + right * longitudinal * half_size_x + up * c.y * half_size_y;
+    if (settled_leaf)
+    {
+        float3 normal = p.wake_axis.xyz;
+        right = safe_normalize(cross(float3(0, 0, 1), normal), float3(1, 0, 0));
+        up = cross(normal, right);
+        world = p.position + (right * c.x + up * c.y) * p.size * 0.5;
+        o.contact_normal = normal;
+    }
 
     float4 clip   = mul(float4(world, 1.0),      buffer_frame.view_projection);
     float4 clip_c = mul(float4(p.position, 1.0), buffer_frame.view_projection);
 
     // age driven fade in, rotation and spin, matches the old compute look
     float age_t    = 1.0 - saturate(p.lifetime / p.max_lifetime);
+    o.nature_shape.y = max(p.max_lifetime - p.lifetime, 0.0);
+    if (settled_leaf) o.nature_shape.y = -1.0;
     float fade_in  = saturate(age_t / (luminous ? 0.04 : 0.2));
+    if ((emitter.render_mode == 2u || emitter.render_mode == 5u)) fade_in = settled_leaf ? 1.0 : saturate(o.nature_shape.y / 0.5);
     float base_ang = rng(index * 2654435761u) * 6.28318530718;
     float spin     = (rng(index * 40503u + 13u) * 2.0 - 1.0) * 1.2;
     float ang      = base_ang + spin * age_t;
@@ -889,18 +1119,31 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     float previous_length_scale = flame ? max(length(previous_projected_flow), 0.2) : 1.0;
     float3 previous_world = p.previous_position + previous_right * longitudinal * p.previous_size * (0.5 + stretch * 1.5) * previous_length_scale
         + previous_up * c.y * p.previous_size * (0.5 - saturate(stretch) * 0.2);
+    if (settled_leaf) previous_world = world;
     o.clip_current = mul(float4(world, 1), (pass_is_right_eye() ? buffer_frame.view_projection_unjittered_right : buffer_frame.view_projection_unjittered));
     o.clip_previous = mul(float4(previous_world, 1), get_view_projection_previous_unjittered());
     o.position  = clip;
     o.local     = c;
     o.color     = p.color.rgb;
     o.alpha     = p.color.a * fade_in;
+    if (emitter.render_mode >= 2u)
+    {
+        // Airborne details dissolve near the lens, keeping cockpit/road views clear.
+        if (!settled_leaf) o.alpha *= smoothstep(1.5, 5.0, distance(p.position, get_camera_position()));
+        if (!settled_leaf) o.alpha *= 1.0 - smoothstep(0.85, 1.0, age_t);
+        if ((emitter.render_mode == 2u || emitter.render_mode == 5u))
+            o.alpha *= emitter.render_mode == 5u ? 1.0 - smoothstep(50.0, 60.0, distance(p.position, get_camera_position())) :
+                                                  1.0 - smoothstep(140.0, 160.0, distance(p.position, get_camera_position()));
+    }
     o.lin_depth = linearize_depth(clip_c.z / max(clip_c.w, 1e-6));
+    if (settled_leaf) o.lin_depth = linearize_depth(clip.z / max(clip.w, 1e-6));
     o.rot       = float2(cos(ang), sin(ang));
     o.use_tex   = use_texture;
     o.position_world = p.position;
+    if (settled_leaf) o.position_world = world;
     o.age_t     = age_t;
     o.render_params = float4((float)emitter.blend_mode, (float)emitter.lighting_mode, p.birth_effect.w, emitter.soft_depth_scale);
+    if (settled_leaf) o.render_params.w = 1000.0;
     o.flipbook  = float4((float)emitter.flipbook_rows, (float)emitter.flipbook_columns, emitter.flipbook_fps, rng(index * 1664525u + 1013904223u));
     o.churn     = emitter.churn_strength;
     return o;
@@ -1105,6 +1348,50 @@ particle_output main_ps(ps_input input)
 
     float3 base_color = input.color;
     float alpha_mask  = 1.0;
+    uint nature = (uint)round(input.nature_shape.x);
+    if (nature >= 2u)
+    {
+        float phase = input.flipbook.w * 6.2831853;
+        bool settled = input.nature_shape.y < 0.0;
+        float seconds = max(input.nature_shape.y, 0.0);
+        float angle = phase + seconds * (0.7 + input.flipbook.w);
+        float2 q = float2(input.local.x * cos(angle) - input.local.y * sin(angle),
+                          input.local.x * sin(angle) + input.local.y * cos(angle));
+        falloff = 1.0;
+        if ((nature == 2u || nature == 5u))
+        {
+            // Pointed blade, fine stem and veins. Foreshortening varies independently
+            // from spin, so each leaf flutters edge-on instead of rotating as a disc.
+            float flutter = settled ? 1.0 : 0.18 + 0.82 * abs(sin(seconds * 3.4 + phase));
+            q.x /= flutter;
+            float center = 0.10 * sin(q.y * 3.0 + seconds * 1.3 + phase);
+            float width = lerp(0.24, 0.40, input.flipbook.w) * saturate(1.0 - pow(abs(q.y / 0.78), 1.4));
+            float edge = max(abs(q.x - center) - width, abs(q.y) - 0.78);
+            float aa = max(fwidth(edge), 0.008);
+            float blade = 1.0 - smoothstep(-aa, aa, edge);
+            float stem = (1.0 - smoothstep(0.009, 0.025, abs(q.x - center))) *
+                         (1.0 - smoothstep(0.80, 0.93, abs(q.y)));
+            alpha_mask = max(blade, stem);
+            float vein = exp(-abs(q.x - center) * 110.0);
+            float ribs = pow(saturate(cos((q.y - abs(q.x - center) * 0.8) * 38.0)), 12.0);
+            base_color *= (0.65 + 0.35 * flutter) * (1.0 - vein * 0.25 - ribs * 0.10);
+        }
+        else if (nature == 3u)
+        {
+            float2 tuft = q - float2(0, 0.12);
+            float r = length(tuft);
+            float a = atan2(tuft.y, tuft.x);
+            float filament = pow(abs(cos(a * 7.0 + phase)), 22.0);
+            float halo = exp(-r * r * 9.0);
+            float stem = exp(-q.x * q.x * 1800.0) * (1.0 - smoothstep(0.25, 0.65, abs(q.y + 0.15)));
+            alpha_mask = saturate(halo * (0.12 + 0.8 * filament) + stem * 0.65);
+        }
+        else if (nature == 4u)
+        {
+            float pulse = pow(0.5 + 0.5 * sin(seconds * 2.6 + phase), 3.0);
+            alpha_mask = exp(-dot(q, q) * 18.0) * (0.12 + 0.88 * pulse);
+        }
+    }
     if (input.emissive_shape.y > 0.5)
     {
         // A hot grain has a narrow incandescent core, not a miniature smoke sprite.
@@ -1159,6 +1446,11 @@ particle_output main_ps(ps_input input)
     if (lighting_mode == particle_lighting_lit)
     {
         Surface surface = build_particle_surface(input.position_world, base_color, uint2(pixel), input.local);
+        if (dot(input.contact_normal, input.contact_normal) > 0.5)
+        {
+            surface.normal = input.contact_normal;
+            surface.bent_normal = input.contact_normal;
+        }
         lit_color = evaluate_particle_lighting(uint2(pixel), surface);
     }
     else if (lighting_mode == particle_lighting_emissive)

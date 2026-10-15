@@ -14,6 +14,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "../world/TerrainSystem.h"
 #include "../core/ProgressTracker.h"
 #include "IslandWildlife.h"
+#include "IslandAtmosphere.h"
+#include "VehicleParticleWake.h"
 #include "IslandRoadDetails.h"
 #include "../car/Car.h"
 #include "../car/CarPhysics.h"
@@ -55,20 +57,25 @@ namespace spartan::game
         };
         callbacks.before_entities_destroyed = [] { Car::ShutdownAll(); };
         callbacks.after_entities_destroyed = [] {
+            vehicle_particle_wake::Clear();
             island_wildlife::Clear(false);
+            island_atmosphere::Clear(false);
             island_road_details::Clear();
             island_features = false;
             landscape_prepared = false;
         };
         callbacks.stop_play = [] {
+            vehicle_particle_wake::Clear();
             island_wildlife::Clear(true);
+            island_atmosphere::Clear(true);
             for (Car* car : Car::GetAll())
             {
                 if (car) car->PrepareForPlayStop();
             }
         };
-        callbacks.before_tick = [](float dt) { island_wildlife::Tick(dt); };
-        callbacks.after_tick = [](float dt) { island_road_details::Tick(dt); };
+        callbacks.before_tick = [](float dt) { CarPhysics::BeginTireDeformationBatch(); island_wildlife::Tick(dt); island_atmosphere::Tick(dt); };
+        callbacks.after_pretick = [] { CarPhysics::FlushTireDeformationBatch(); };
+        callbacks.after_tick = [](float dt) { island_road_details::Tick(dt); vehicle_particle_wake::Tick(dt); };
         callbacks.controls = [] { CameraController::Tick(); };
         callbacks.save = [](pugi::xml_node& node) { if (island_features) node.append_attribute("island_features") = true; };
         callbacks.load = [](pugi::xml_node& node) { island_features = node.attribute("island_features").as_bool(false); };

@@ -26,6 +26,8 @@ namespace spartan
         shared_ptr<RHI_Texture> scene;
         bool scene_recorded   = false;
         bool hudless_recorded = false; // recorded this frame, needs the transition to a shader read state
+        // Optimistically prepare the first frame; subsequent frames need a visible scene.
+        bool presentation_source = true;
         Rectangle generation_rect;
         atomic<uint64_t> generated_frames = 0;
     }
@@ -88,9 +90,15 @@ namespace spartan
         return scene_recorded ? scene.get() : nullptr;
     }
 
+    bool RHI_FrameGeneration::HasPresentationSource()
+    {
+        return presentation_source;
+    }
+
     RHI_Texture* RHI_FrameGeneration::ConsumeHudlessRecorded()
     {
         RHI_Texture* texture = hudless_recorded ? hudless.get() : nullptr;
+        presentation_source = texture != nullptr;
         hudless_recorded     = false;
         scene_recorded       = false;
         return texture;
@@ -98,6 +106,7 @@ namespace spartan
 
     void RHI_FrameGeneration::ReleaseHudless()
     {
+        presentation_source = true;
         hudless          = nullptr;
         scene            = nullptr;
         scene_recorded   = false;

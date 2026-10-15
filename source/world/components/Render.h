@@ -75,6 +75,7 @@ namespace spartan
         Mesh* mesh = nullptr;
         Material* material = nullptr;
         std::vector<Instance> instances;
+        uint64_t visibility_tick = UINT64_MAX;
     };
     static_assert(sizeof(RenderSceneData) == 128, "Keep render scene data within two cache lines");
 
@@ -91,6 +92,17 @@ namespace spartan
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
         void Tick() override;
+        // Coalesced across repeated parent/child and simulation-substep updates.
+        void InvalidateSpatialBounds();
+        void AcknowledgeSpatialBounds() { m_spatial_dirty.store(false, std::memory_order_relaxed); }
+        void SetSpatiallyDynamic(bool dynamic)
+        {
+            m_spatial_dynamic = dynamic;
+            // Moving renders tick directly, so they need no dirty-queue traffic.
+            m_spatial_dirty.store(dynamic, std::memory_order_relaxed);
+        }
+        bool IsSpatiallyDynamic() const { return m_spatial_dynamic; }
+        void ClearVisibility() { m_scene->is_visible = false; }
 
         static void RegisterForScripting(sol::state_view State);
         sol::reference AsLua(sol::state_view state) override;
@@ -112,6 +124,7 @@ namespace spartan
         uint32_t GetLodCount() const;
         // the per-lod getters address it as lod GetLodCount()
         const MeshImpostor* GetImpostor() const;
+        bool UsesImpostor() const;
         uint32_t GetLodIndex() const { return m_scene->lod_index; }
         uint32_t GetIndexOffset(const uint32_t lod = 0) const;
         uint32_t GetIndexCount(const uint32_t lod = 0) const;
@@ -304,7 +317,9 @@ namespace spartan
 
     private:
         friend class Entity;
-        void SetEntityActive(bool active) { m_scene->active.store(active, std::memory_order_relaxed); }
+        void SetEntityActive(bool active) { m_scene->active.store(active, std::memory_order_relaxed); InvalidateSpatialBounds(); }
+        std::atomic<bool> m_spatial_dirty{true};
+        bool m_spatial_dynamic = false;
         std::unique_ptr<RenderSceneData> m_scene;
         std::vector<Decal> m_decals;
 

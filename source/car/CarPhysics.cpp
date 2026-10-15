@@ -64,6 +64,13 @@ namespace spartan
         std::vector<std::function<void()>> skin, uploads;
     };
 
+    namespace
+    {
+        struct PendingTire { uint64_t car, wheel; int index; };
+        std::vector<PendingTire> pending_tires;
+        bool defer_tire_deformation = false;
+    }
+
     struct TireVisualState
     {
         struct BoundVertex
@@ -1809,11 +1816,6 @@ namespace spartan
             return;
         }
 
-        TireDeformationBatch batch;
-        std::array<TireDeformationBatch, 4> wheel_batches;
-        std::array<bool, 4> valid_wheels{};
-        batch.skin.reserve(256);
-        batch.uploads.reserve(16);
         for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
         {
             Entity* wheel_entity = VehicleState().wheel_entities[i];
@@ -1848,15 +1850,21 @@ namespace spartan
 
             const Vector3 angular = from_px_vec3(wheel_actor->getAngularVelocity());
             const Vector3 angular_render = TransformVehicleRotationToRender(Quaternion::Identity) * angular;
-            vector<Entity*> spinning_parts = {wheel_entity};
+            // All mesh parts use the same wheel-space pivot. Compute it once,
+            // and reuse traversal storage rather than allocating for every wheel.
+            const Vector3 pivot_local = wheel_entity->GetMatrix().Inverted() *
+                (wheel_position + wheel_rotation * VehicleState().wheel_mesh_center_offsets[i]);
+            thread_local vector<Entity*> spinning_parts;
+            spinning_parts.clear();
+            spinning_parts.push_back(wheel_entity);
             wheel_entity->GetDescendants(&spinning_parts);
             for (Entity* part : spinning_parts)
             {
                 if (Render* render = part->GetComponent<Render>())
-                    render->SetMotionBlurAngularVelocity(angular_render, wheel_entity->GetMatrix().Inverted() * (wheel_position + wheel_rotation * VehicleState().wheel_mesh_center_offsets[i]), wheel_entity->GetObjectId());
+                    render->SetMotionBlurAngularVelocity(angular_render, pivot_local, wheel_entity->GetObjectId());
             }
 
-            valid_wheels[i] = true;
+            pending_tires.push_back({GetEntity()->GetObjectId(), wheel_entity->GetObjectId(), i});
 
             // The caliper shares the axle origin and scale, but follows the upright,
             // not the spinning wheel body. This also retains steering and camber.
@@ -1876,33 +1884,67 @@ namespace spartan
                 }
             }
         }
+        if (!defer_tire_deformation) FlushTireDeformationBatch();
+    }
+
+    void CarPhysics::BeginTireDeformationBatch()
+    {
+        pending_tires.clear();
+        defer_tire_deformation = true;
+    }
+
+    void CarPhysics::FlushTireDeformationBatch()
+    {
+        defer_tire_deformation = false;
+        if (pending_tires.empty()) return;
         SP_PROFILE_CPU_START("tire_deformation_all_wheels");
-        // Imported mesh creation/rebinding stays on the main thread. Once the
-        // private meshes exist, each wheel owns all of its mutable cage/render
-        // state and can prepare independently; the physics snapshot is read-only.
-        const auto& config = VehicleState().vehicle_simulation->get_config();
-        const auto& spec = VehicleState().vehicle_simulation->get_spec();
-        bool can_prepare_in_parallel = true;
-        for (int i = 0; i < 4; ++i)
-            if (valid_wheels[i] && (!VehicleState().tire_visuals[i] ||
-                VehicleState().tire_visuals[i]->cage.radius != config.wheel_radius_for(i) ||
-                VehicleState().tire_visuals[i]->cage.width != (i < 2 ? spec.front_wheel_width : spec.rear_wheel_width)))
-                can_prepare_in_parallel = false;
-        auto prepare = [&](uint32_t first, uint32_t last)
+        struct Work { CarPhysics* car; int index; bool parallel; TireDeformationBatch batch; };
+        std::vector<Work> work;
+        work.reserve(pending_tires.size());
+        for (const PendingTire& pending : pending_tires)
+        {
+            Entity* entity = World::GetEntityById(pending.car);
+            Physics* physics = entity ? entity->GetComponent<Physics>() : nullptr;
+            if (!physics || physics->GetBodyType() != BodyType::Custom) continue;
+            CarPhysics& car = Get(*physics);
+            auto& state = car.VehicleState();
+            // A car controller can replace the preset during PreTick. Never
+            // deform a retired wheel or keep pointers across that callback.
+            if (!state.vehicle_simulation || !state.wheel_entities[pending.index] ||
+                state.wheel_entities[pending.index]->GetObjectId() != pending.wheel) continue;
+            const auto& config = state.vehicle_simulation->get_config();
+            const auto& spec = state.vehicle_simulation->get_spec();
+            const auto& visual = state.tire_visuals[pending.index];
+            const bool parallel = visual && visual->cage.radius == config.wheel_radius_for(pending.index) &&
+                visual->cage.width == (pending.index < 2 ? spec.front_wheel_width : spec.rear_wheel_width);
+            work.push_back({&car, pending.index, parallel, {}});
+        }
+        pending_tires.clear();
+        if (work.empty())
+        {
+            SP_PROFILE_CPU_END();
+            return;
+        }
+        SP_PROFILE_CPU_START("tire_prepare_batch");
+        // Resource creation/rebinding stays on the main thread. Existing cages
+        // are private per wheel and prepare across all nearby cars together.
+        for (auto& wheel : work)
+            if (!wheel.parallel) wheel.car->UpdateTireDeformation(wheel.index, true, &wheel.batch);
+        ThreadPool::ParallelLoop([&](uint32_t first, uint32_t last)
         {
             for (uint32_t i = first; i < last; ++i)
-                if (valid_wheels[i]) UpdateTireDeformation(i, true, &wheel_batches[i]);
-        };
-        SP_PROFILE_CPU_START("tire_prepare_batch");
-        if (can_prepare_in_parallel) ThreadPool::ParallelLoop(prepare, 4);
-        else prepare(0, 4);
+                if (work[i].parallel) work[i].car->UpdateTireDeformation(work[i].index, true, &work[i].batch);
+        }, static_cast<uint32_t>(work.size()));
         SP_PROFILE_CPU_END();
-        for (auto& wheel : wheel_batches)
+        TireDeformationBatch batch;
+        batch.skin.reserve(256);
+        batch.uploads.reserve(32);
+        for (auto& wheel : work)
         {
-            for (auto& job : wheel.skin) batch.skin.push_back(std::move(job));
-            for (auto& upload : wheel.uploads) batch.uploads.push_back(std::move(upload));
+            for (auto& job : wheel.batch.skin) batch.skin.push_back(std::move(job));
+            for (auto& upload : wheel.batch.uploads) batch.uploads.push_back(std::move(upload));
         }
-        // One dispatch for the whole car, not a dispatch/barrier for every
+        // One dispatch for all nearby cars, not a dispatch/barrier for every
         // material of every wheel. Mesh uploads run only after all jobs join.
         if (!batch.skin.empty())
         {
@@ -2281,12 +2323,18 @@ namespace spartan
             }
             wheel_entity->SetPositionAndRotation(wheel_position, wheel_rotation);
             const Vector3 axis = (is_front ? steer_q : Quaternion::Identity) * car_right;
-            vector<Entity*> spinning_parts = {wheel_entity};
+            // All mesh parts use the same wheel-space pivot. Compute it once,
+            // and reuse traversal storage rather than allocating for every wheel.
+            const Vector3 pivot_local = wheel_entity->GetMatrix().Inverted() *
+                (wheel_position + wheel_rotation * VehicleState().wheel_mesh_center_offsets[i]);
+            thread_local vector<Entity*> spinning_parts;
+            spinning_parts.clear();
+            spinning_parts.push_back(wheel_entity);
             wheel_entity->GetDescendants(&spinning_parts);
             for (Entity* part : spinning_parts)
             {
                 if (Render* render = part->GetComponent<Render>())
-                    render->SetMotionBlurAngularVelocity(axis * VehicleState().cheap_wheel_angular_speed, wheel_entity->GetMatrix().Inverted() * (wheel_position + wheel_rotation * VehicleState().wheel_mesh_center_offsets[i]), wheel_entity->GetObjectId());
+                    render->SetMotionBlurAngularVelocity(axis * VehicleState().cheap_wheel_angular_speed, pivot_local, wheel_entity->GetObjectId());
             }
             if (Entity* caliper = VehicleState().wheel_calipers[i])
                 caliper->SetRotation((is_front ? steer_q : Quaternion::Identity) * base);

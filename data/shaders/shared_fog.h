@@ -17,12 +17,15 @@ using std::pow;
 #define FOG_INLINE
 #endif
 
-static const unsigned int fog_width = 256;
-static const unsigned int fog_height = 144;
+// Low-frequency scattering is reconstructed at full resolution. Keep the
+// depth distribution dense for nearby shafts and water interfaces without
+// shading millions of redundant screen-space cells.
+static const unsigned int fog_width = 128;
+static const unsigned int fog_height = 72;
 static const unsigned int fog_depth = 128;
 static const float fog_near_slices = 96.0f;
 // sky visibility is low frequency, trace it on a coarser grid
-static const unsigned int fog_sky_visibility_divisor_xy = 4;
+static const unsigned int fog_sky_visibility_divisor_xy = 2;
 static const unsigned int fog_sky_visibility_divisor_z = 2;
 static const float fog_detail_far = 64.0f;
 static const float fog_far = 32000.0f;

@@ -192,6 +192,8 @@ namespace spartan
             json += ",\"mcp_controlled\":" + json_bool(car->IsExternallyControlled());
             json += ",\"view\":" + json_string(car_view_to_name(car->GetCurrentView()));
             json += ",\"show_telemetry\":" + json_bool(car->GetShowTelemetry());
+            json += ",\"headlights\":" + std::to_string(static_cast<int>(car->GetHeadlights()));
+            json += ",\"rear_lamps\":" + json_bool(car->GetRearLamps());
             json += ",\"playing\":" + json_bool(Engine::IsFlagSet(EngineMode::Playing));
             if (physics && physics->GetBodyType() == BodyType::Custom)
             {
@@ -221,6 +223,9 @@ namespace spartan
                 json += ",\"lap_time\":" + std::to_string(stats.lap_time) + ",\"last_lap_time\":" + std::to_string(stats.last_lap_time);
                 json += ",\"best_lap_time\":" + std::to_string(stats.best_lap_time) + ",\"ideal_lap\":" + std::to_string(stats.ideal_lap);
                 json += ",\"distance\":" + std::to_string(stats.distance) + ",\"travelled\":" + std::to_string(stats.travelled) + ",\"line_error\":" + std::to_string(stats.line_error);
+                json += ",\"tracking_error\":" + std::to_string(stats.tracking_error) + ",\"max_tracking_error\":" + std::to_string(stats.max_tracking_error);
+                json += ",\"road_clearance\":" + std::to_string(stats.road_clearance) + ",\"offroad_time\":" + std::to_string(stats.offroad_time);
+                json += ",\"following\":" + json_bool(stats.following) + ",\"passing\":" + json_bool(stats.passing);
                 json += ",\"target_kmh\":" + std::to_string(stats.target_kmh) + "}";
             }
             else

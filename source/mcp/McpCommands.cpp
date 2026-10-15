@@ -7346,6 +7346,17 @@ namespace spartan
                     return json + "}";
                 }
             },
+            { "physics_work_snapshot", [](const McpRequest&)
+                {
+                    const auto stats = PhysicsWorld::GetStepStatistics();
+                    return std::string("{\"ok\":true,\"steps\":") + std::to_string(stats.steps)
+                        + ",\"assisted_tasks\":" + std::to_string(stats.assisted_tasks)
+                        + ",\"active_bodies\":" + std::to_string(stats.active_bodies)
+                        + ",\"active_constraints\":" + std::to_string(stats.active_constraints)
+                        + ",\"solver_rows\":" + std::to_string(stats.solver_rows)
+                        + ",\"contact_pairs\":" + std::to_string(stats.contact_pairs) + "}";
+                }
+            },
             { "engine_set_mode",               command_engine_set_mode },
             { "undo_redo",                     command_undo_redo },
             { "terrain_scatter_get",           command_terrain_scatter_get },

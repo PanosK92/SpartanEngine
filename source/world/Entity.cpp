@@ -148,6 +148,7 @@ namespace spartan
             // a clone of a runtime only entity is runtime only too, without this a cloned prop is
             // written into the world file and comes back on load as an orphan nothing can clean up
             clone->SetTransient(entity->IsTransient());
+            clone->SetPrefabTransformOverrideEnabled(entity->IsPrefabTransformOverrideEnabled());
 
             // clone all the components
             for (const auto& component_original : entity->GetAllComponents())
@@ -474,9 +475,10 @@ namespace spartan
         WakePhysicsPreTick();
     }
 
-    void Entity::SleepPhysicsPreTick(const Vector3& camera_position, float radius)
+    void Entity::SleepPhysicsPreTick(const Vector3& camera_position, float radius, uint64_t interest_revision)
     {
         PreTickGate* gate = GetPreTickGate();
+        gate->collision_revision = interest_revision;
         gate->sleep_origin = camera_position;
         gate->sleep_radius_squared = radius * radius;
     }
@@ -627,7 +629,7 @@ namespace spartan
             }
         }
 
-        const bool has_transform = HasPrefabTransformChanged();
+        const bool has_transform = m_prefab_transform_override_enabled && HasPrefabTransformChanged();
 
         if (has_transform || has_user_components || has_user_children)
         {
@@ -802,7 +804,8 @@ namespace spartan
                         continue;
                     }
 
-                    load_transform_override(target, component_node);
+                    if (target->m_prefab_transform_override_enabled)
+                        load_transform_override(target, component_node);
 
                     for (pugi::xml_node override_child = component_node.first_child(); override_child; override_child = override_child.next_sibling())
                     {
@@ -894,6 +897,7 @@ namespace spartan
         if (!m_components[index]) return;
         m_components[index].reset();
         m_component_mask &= ~(uint64_t(1) << index);
+        World::InvalidateRenderSceneData();
         RefreshPreTickGate();
     }
 
@@ -1047,6 +1051,7 @@ namespace spartan
         m_transform_parent = m_parent;
         m_parent_transform_revision = parent_revision;
         ++m_transform_revision;
+        if (Render* render = GetComponent<Render>()) render->InvalidateSpatialBounds();
         WakePhysicsPreTick();
         m_last_transform_time_sec = Timer::GetTimeSec();
         if (TransformCache* cache = m_transform_cache.load(memory_order_acquire))

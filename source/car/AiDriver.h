@@ -42,6 +42,10 @@ namespace spartan
         float distance      = 0.0f; // along the racing line
         float travelled     = 0.0f; // meters along the line since taking over, every lap included
         float line_error    = 0.0f;
+        float tracking_error = 0.0f; // relative to the chosen passing path
+        float road_clearance = 0.0f; // signed clearance of the body from the nearest road edge
+        float offroad_time   = 0.0f; // seconds with the body outside the road, cumulative
+        float max_tracking_error = 0.0f;
         float ideal_lap     = 0.0f; // lap time the current speed plan predicts
         float cornering_g   = 0.0f; // usable cornering grip at 30 m/s
         float braking_g     = 0.0f; // usable braking at 30 m/s
@@ -91,9 +95,11 @@ namespace spartan
             float aero_prior       = 0.0f;    // from the car's lift coefficients, holds the fit until fast samples arrive
             float long_ratio       = 1.0f;    // peak drive and brake force over peak cornering force
             float balance          = 0.85f;   // share of the tires' total grip the chassis reaches before an axle saturates
-            float brake_efficiency = 0.7f;    // share of the longitudinal grip the brakes and abs turn into deceleration
+            float brake_efficiency = 0.5f;    // conservative until an actual stop measures the brakes and abs
             float roll_limit       = 1000.0f; // m/s^2, tall cars tip before the tires give up
             float mass             = 1500.0f;
+            float length           = 4.6f;
+            float width            = 2.0f;
             float peak_slip        = 0.1f;    // slip ratio where the tires make their most braking force
             float slip_normal      = 0.08f;   // radians of body slip the car shows cornering at the limit without sliding
             float understeer       = 0.0005f; // extra curvature gain per (m/s)^2
@@ -137,6 +143,7 @@ namespace spartan
         {
             math::Vector3 position;
             math::Vector3 velocity;
+            size_t index = 0;
         };
 
         // the closest car in the path the driver is taking
@@ -151,6 +158,7 @@ namespace spartan
         void Release();
         void Tick(float delta_time);
         void WatchTraffic(float delta_time, float speed, float plan_speed);
+        float ObstacleGap(float offset, float speed) const;
 
         Physics* GetPhysics() const;
         float Margin() const;
@@ -180,18 +188,21 @@ namespace spartan
         float m_throttle      = 0.0f;
         float m_brake_limit   = 1.0f; // most pedal the tires take before a wheel locks, found by feel like threshold braking
         float m_hold_time     = 0.0f;
+        float m_light_sample_time = 0.0f;
         bool m_grid_waiting   = false; // race organizer holds the countdown until every car is ready
         bool m_timing         = false; // the lap in progress started at the line
 
         // traffic
         std::unordered_map<const Car*, TrafficCar> m_traffic;
         Blocker m_blocker;
+        const Car* m_pass_car = nullptr; // compared by identity only; never dereferenced
         float m_pass_target  = 0.0f; // meters right of the racing line the car wants to drive at, 0 is on the line
         float m_pass_offset  = 0.0f; // where it drives now, eased toward the target
         float m_pass_rate    = 0.0f; // m/s the offset moves at
         float m_pass_commit  = 0.0f; // finish a lane change before reconsidering the racing line
-        float m_attack_time  = 0.0f; // hold racing intent briefly when a competitor is ahead
-        float m_blocked_time = 0.0f; // standing behind a car, a queue is not being stuck until it lasts
+        float m_obstacle_gap = 1000.0f;
+        float m_obstacle_time = 0.0f;
+        float m_corridor_speed = 150.0f;
 
         // learning and recovery timers
         float m_previous_speed  = 0.0f;
@@ -201,6 +212,7 @@ namespace spartan
         float m_stuck_time      = 0.0f;
         float m_upside_time     = 0.0f;
         float m_wrong_way_time  = 0.0f;
+        float m_recovery_retry_time = 0.0f;
         float m_rebuild_time    = 0.0f;
         float m_log_time        = 0.0f;
         float m_trace_time      = 0.0f;

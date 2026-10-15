@@ -80,14 +80,15 @@ namespace spartan
             }
             const Vector3 position = camera->GetEntity()->GetPosition();
             const float distance_squared = Vector3::DistanceSquared(position, render->GetBoundingBox().GetClosestPoint(position));
-            const bool outside = distance_squared > distance_deactivate_squared;
+            const uint64_t interest_revision = PhysicsWorld::GetCollisionInterestRevision();
+            const bool outside = distance_squared > distance_deactivate_squared && !PhysicsWorld::IsCollisionRelevant(render->GetBoundingBox(), 40.0f);
             if (outside && remember && std::isfinite(distance_squared))
             {
                 const float distance = sqrtf(distance_squared);
                 // Distance to a fixed box is 1-Lipschitz: the camera cannot reach
                 // the preparation boundary before moving this far. Round inward.
                 const float margin = max(0.01f, distance * 0.00001f);
-                entity->SleepPhysicsPreTick(position, max(0.0f, distance - distance_deactivate - margin));
+                entity->SleepPhysicsPreTick(position, max(0.0f, distance - distance_deactivate - margin), interest_revision);
             }
             return outside;
         }
@@ -812,7 +813,7 @@ namespace spartan
             render->GetBoundingBox().GetClosestPoint(camera_pos)
         );
 
-        if (m_actors_active_count == 0 && box_distance_squared > distance_activate_squared)
+        if (m_actors_active_count == 0 && box_distance_squared > distance_activate_squared && !PhysicsWorld::IsCollisionRelevant(render->GetBoundingBox()))
         {
             CountWorldWork(WorldWork::physics_activation_box_skips);
             return;
@@ -830,7 +831,8 @@ namespace spartan
         // Distance to a fixed point (or box) changes by at most the camera's
         // displacement. Until that displacement reaches the closest hysteresis
         // boundary, no actor can change state. Edits invalidate the proof.
-        if (instanced && m_activation_valid && world == m_activation_world &&
+        const uint64_t interest_revision = PhysicsWorld::GetCollisionInterestRevision();
+        if (instanced && m_activation_valid && m_activation_collision_revision == interest_revision && world == m_activation_world &&
             (camera_pos == m_activation_camera ||
              Vector3::DistanceSquared(camera_pos, m_activation_camera) < m_activation_slack * m_activation_slack))
         {
@@ -852,17 +854,18 @@ namespace spartan
                 ? render->GetInstancePosition(i, world)
                 : render->GetBoundingBox().GetClosestPoint(camera_pos);
             const float distance_squared = Vector3::DistanceSquared(camera_pos, closest_point);
+            const BoundingBox interest_bounds = instanced ? BoundingBox(closest_point, closest_point) : render->GetBoundingBox();
 
             // use hysteresis to prevent flickering at boundary
             const bool is_active = m_actors_active[i];
-            if (is_active && distance_squared > distance_deactivate_squared)
+            if (is_active && distance_squared > distance_deactivate_squared && !PhysicsWorld::IsCollisionRelevant(interest_bounds, 40.0f))
             {
                 CountWorldWork(WorldWork::physics_actors_deactivated);
                 PhysicsWorld::RemoveActor(actor);
                 m_actors_active[i] = false;
                 m_actors_active_count--;
             }
-            else if (!is_active && distance_squared <= distance_activate_squared)
+            else if (!is_active && (distance_squared <= distance_activate_squared || PhysicsWorld::IsCollisionRelevant(interest_bounds)))
             {
                 CountWorldWork(WorldWork::physics_actors_activated);
                 PhysicsWorld::AddActor(actor);
@@ -872,6 +875,7 @@ namespace spartan
             const float threshold = m_actors_active[i] ? distance_deactivate : distance_activate;
             activation_slack = min(activation_slack, fabsf(sqrtf(distance_squared) - threshold));
         }
+        m_activation_collision_revision = interest_revision;
         m_activation_camera = camera_pos;
         m_activation_world = world;
         // Round conservatively at the boundary; a false miss only costs a rescan.
@@ -2612,7 +2616,8 @@ namespace spartan
                     ? (render->HasInstancing() ? render->GetInstancePosition(i, world)
                                               : render->GetBoundingBox().GetClosestPoint(camera_position))
                     : camera_position;
-                if (!stream_static || Vector3::DistanceSquared(camera_position, closest_point) <= distance_deactivate_squared)
+                const BoundingBox interest_bounds = stream_static && !render->HasInstancing() ? render->GetBoundingBox() : BoundingBox(closest_point, closest_point);
+                if (!stream_static || Vector3::DistanceSquared(camera_position, closest_point) <= distance_deactivate_squared || PhysicsWorld::IsCollisionRelevant(interest_bounds, 40.0f))
                 {
                     PhysicsWorld::AddActor(actor);
                     m_actors_active[i] = true;

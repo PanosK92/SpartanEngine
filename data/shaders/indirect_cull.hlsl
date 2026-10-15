@@ -104,7 +104,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
         // keyed by global instance, not survivor order, the late cull reorders survivors after the early depth prepass and
         // both passes must agree on cached vs local evaluation or the equal depth test rejects the whole instance
         uint wind_slot        = gs_draw.instance_offset + si.instance_index;
-        gs_wind_slot          = split_opaque_alpha && gs_wind && is_per_instance && wind_slot < wind_cache_limit ? wind_slot + 1u : 0u;
+        gs_wind_slot          = split_opaque_alpha && gs_wind && (gs_draw.flags & (1u << 14)) == 0u && is_per_instance && wind_slot < wind_cache_limit ? wind_slot + 1u : 0u;
         if (gs_wind_slot != 0u)
         {
             float4x4 instance = pull_instance_transform(gs_draw.instance_offset, si.instance_index);
@@ -132,9 +132,10 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
             out_mi.instance_index = gs_instance_index;
             out_mi.padding0       = gs_wind_slot;
 
-            if (gs_skinned)
+            if (gs_skinned || (gs_draw.flags & (1u << 14)) != 0u)
             {
-                // skinned bounds are invalid after deformation, the instance already passed phase a so keep every meshlet
+                // Skinned bounds are deformed; impostors are a single rotating card.
+                // Phase A already tested the whole instance; retain it exactly once.
                 is_visible = !gs_drawn_early;
             }
             else

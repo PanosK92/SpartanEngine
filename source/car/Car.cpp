@@ -1586,6 +1586,9 @@ namespace spartan
         // mesh root is shared via the resource cache, clone so every car instance gets its own hierarchy
         // the root itself is transient so it never leaks into the world file on save
         Entity* car_entity = mesh_root->Clone();
+        // The cached template is transient, but an authored car's generated parts
+        // must participate in play-pose capture regardless of which car loaded first.
+        car_entity->SetTransient(false);
         car_entity->SetActive(true);
         mesh_root->SetActive(false);
         mesh_root->SetTransient(true);
@@ -1840,6 +1843,7 @@ namespace spartan
 
         // clone the cached wheel root because each car owns wheel transforms
         Entity* wheel_base = wheel_source->Clone();
+        wheel_base->SetTransient(false);
         wheel_base->SetParent(nullptr);
         wheel_base->SetActive(true);
         wheel_root->SetActive(false);
@@ -1913,6 +1917,11 @@ namespace spartan
         Entity* wheel_fr = wheel_base->Clone();
         Entity* wheel_rl = wheel_base->Clone();
         Entity* wheel_rr = wheel_base->Clone();
+
+        // Suspension and spin animate these transforms. Replaying a saved pose
+        // would turn that pose into new suspension hardpoints on the next load.
+        for (Entity* wheel : {wheel_fl, wheel_fr, wheel_rl, wheel_rr})
+            wheel->SetPrefabTransformOverrideEnabled(false);
 
         const float suspension_height   = CarPhysics::Get(*physics).GetSuspensionHeight();
         const float preset_wheelbase    = preset.wheelbase   > 0.0f ? preset.wheelbase   : 2.6f;

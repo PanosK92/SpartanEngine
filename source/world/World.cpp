@@ -11,6 +11,8 @@ Commercial use requires written permission and negotiated payment terms.
 #include "commands/CommandStack.h"
 #include <unordered_set>
 #include "World.h"
+#include "RenderSpatialIndex.h"
+#include "../commands/console/ConsoleCommands.h"
 #include "TerrainSystem.h"
 #include "PlaySession.h"
 #include "WorldPreparation.h"
@@ -269,6 +271,13 @@ namespace spartan
                 SP_LOG_INFO("Gpu geometry (%s): %8.1f MB %s, %u meshes, %u entities, %llu vertices, %llu indices (lod0 %llu)", label, largest[i].first / (1024.0 * 1024.0), largest[i].second.c_str(), totals.meshes, totals.entities, totals.vertices, totals.indices, totals.lod0_indices);
             }
         }
+        TConsoleVar<int32_t> cvar_spatial_render("world.spatial_render", 1, "Persistent render BVH: 0 reference traversal, 1 spatial, 2 validate visibility");
+        RenderSpatialIndex render_spatial_index;
+        bool render_spatial_rebuild = true;
+        mutex render_bounds_mutex;
+        vector<Render*> render_bounds_pending;
+        vector<const RenderSceneData*> render_candidates;
+        vector<const RenderSceneData*> render_previous_candidates;
         uint64_t work_counter_tick = 0;
         unordered_map<uint64_t, Entity*> entities_by_id; // published entities, guarded by entity_access_mutex
         // Cached views borrow entities owned by the world. Keep invalidation and
@@ -278,6 +287,7 @@ namespace spartan
             vector<Entity*> lights, render, ragdolls, logic, icons, particles, volumes;
             vector<Entity::PreTickGate*> pretick;
             vector<const RenderSceneData*> render_data;
+            vector<Entity*> render_physics, render_followups;
             atomic<bool> render_dirty{true};
 
             void Clear()
@@ -990,10 +1000,12 @@ namespace spartan
             Camera* pretick_camera = GetCamera();
             Vector3 pretick_position = pretick_camera ? pretick_camera->GetEntity()->GetPosition() : Vector3::Zero;
             bool pretick_playing = Engine::IsFlagSet(EngineMode::Playing);
+            // Moving autonomous participants invalidate the same conservative
+            // sleep proof when their collision envelope changes.
             for (Entity::PreTickGate* gate : views.pretick)
             {
                 CountWorldWork(WorldWork::pretick_candidates);
-                if (!gate->ShouldRun(pretick_playing, pretick_camera != nullptr, pretick_position))
+                if (!gate->ShouldRun(pretick_playing, pretick_camera != nullptr, pretick_position, PhysicsWorld::GetCollisionInterestRevision()))
                 {
                     CountWorldWork(WorldWork::pretick_sleeping);
                     continue;
@@ -1008,77 +1020,138 @@ namespace spartan
             }
 
             SP_PROFILE_CPU_END();
+            if (callbacks.after_pretick) callbacks.after_pretick();
             Animator::BeginSkinningBatch();
             SP_PROFILE_CPU_START("world_render_tick");
-            // renderables cover most of the scene, cull/lod in parallel then finish other components
-            const auto& render_entries = GetRenderSceneData();
-            const uint32_t render_count = static_cast<uint32_t>(render_entries.size());
-            if (render_count > 0)
+            const auto& all_render_entries = GetRenderSceneData();
+            SP_PROFILE_CPU_START("world_spatial_update");
+            static vector<Render*> changed;
             {
-                if (render_count >= 64)
+                lock_guard lock(render_bounds_mutex);
+                changed.clear();
+                changed.swap(render_bounds_pending);
+            }
+            // Membership may have removed previous candidates even in reference
+            // mode, where no tree rebuild is performed this frame.
+            if (render_spatial_rebuild) render_previous_candidates.clear();
+            if (cvar_spatial_render.GetValue() == 0)
+            {
+                // Reference mode pays no BVH maintenance cost. Rebuild on re-enable.
+                render_spatial_rebuild = true;
+                render_candidates = all_render_entries;
+            }
+            else if (render_spatial_rebuild)
+            {
+                // Destruction invalidates membership before any borrowed pointer
+                // is read. Pending pointers may refer to removed components.
+                changed.clear();
+                render_previous_candidates.clear();
+                for (const auto* data : all_render_entries)
                 {
-                    // Physics::Tick only streams this entity's static actors and
-                    // serializes scene writes through PhysicsWorld. It can finish
-                    // beside its own render update; other components keep
-                    // their original order on the main thread after the join.
-                    static array<vector<Entity*>, 8> followups;
-                    for (auto& list : followups) list.clear();
-                    const uint32_t jobs = min(render_count, 8u);
-                    std::array<WorldWorkCounters, 8> batch_work;
-                    ThreadPool::ParallelLoop([&](uint32_t first_job, uint32_t last_job)
+                    data->render->AcknowledgeSpatialBounds();
+                    data->render->Tick();
+                }
+                render_spatial_index.Build(all_render_entries);
+                render_spatial_rebuild = false;
+                CountWorldWork(WorldWork::spatial_rebuilds);
+            }
+            else
+            {
+                std::array<WorldWorkCounters, 8> bounds_work;
+                const uint32_t count = static_cast<uint32_t>(changed.size());
+                if (count)
+                {
+                    ThreadPool::ParallelLoop([&](uint32_t begin, uint32_t end)
                     {
-                        ScopedWorldWork batch_scope(batch_work[first_job]);
-                        auto& pending = followups[first_job];
-                        const uint32_t start = render_count * first_job / jobs;
-                        const uint32_t end = render_count * last_job / jobs;
-                        for (uint32_t i = start; i < end; i++)
+                        ScopedWorldWork scope(bounds_work[begin]);
+                        for (uint32_t i = count * begin / 8; i < count * end / 8; ++i)
                         {
-                            const RenderSceneData& data = *render_entries[i];
-                            Entity* entity = data.entity;
-                            if (!entity->GetActive())
-                            {
-                                continue;
-                            }
+                            Render* render = changed[i];
+                            render->AcknowledgeSpatialBounds();
+                            render->UpdateAabb();
+                        }
+                    }, 8u);
+                    for (const auto& batch : bounds_work) work_counters.Merge(batch);
+                    for (Render* render : changed) render_spatial_index.Refit(render);
+                }
+                CountWorldWork(WorldWork::spatial_bounds_updates, changed.size());
+            }
+            if (cvar_spatial_render.GetValue() != 0)
+                render_spatial_index.Query(GetCamera(), render_candidates);
+            CountWorldWork(WorldWork::spatial_candidates, render_candidates.size());
+            SP_PROFILE_CPU_END();
 
-                            CountWorldWork(WorldWork::render_entities);
-                            Render* render = data.render;
-                            if (render)
+            // Rendering and collision streaming have independent work lists.
+            // Off-screen entities retain physics, scripts, animation and audio.
+            const uint32_t render_count = static_cast<uint32_t>(render_candidates.size());
+            const bool reference_traversal = cvar_spatial_render.GetValue() == 0;
+            const uint32_t physics_count = reference_traversal ? 0u : static_cast<uint32_t>(views.render_physics.size());
+            const uint32_t work_count = render_count + physics_count;
+            if (work_count)
+            {
+                const uint32_t jobs = min(work_count, 64u);
+                std::array<WorldWorkCounters, 64> batch_work;
+                std::atomic<uint32_t> next_job{0};
+                ThreadPool::ParallelLoop([&](uint32_t, uint32_t)
+                {
+                    for (uint32_t job = next_job.fetch_add(1, memory_order_relaxed); job < jobs;
+                        job = next_job.fetch_add(1, memory_order_relaxed))
+                    {
+                        ScopedWorldWork batch_scope(batch_work[job]);
+                        for (uint32_t i = work_count * job / jobs; i < work_count * (job + 1) / jobs; ++i)
+                        {
+                            if (i < render_count)
                             {
-                                render->Tick();
-                            }
-                            if (render && entity->CanTickWithParallelRender())
-                            {
-                                if (Physics* physics = entity->GetComponent<Physics>()) physics->Tick();
+                                const auto* data = render_candidates[i];
+                                if (!data->active.load(memory_order_relaxed)) continue;
+                                CountWorldWork(WorldWork::render_entities);
+                                data->render->Tick();
+                                if ((reference_traversal || data->render->IsSpatiallyDynamic()) && data->entity->CanTickWithParallelRender())
+                                    if (Physics* physics = data->entity->GetComponent<Physics>()) physics->Tick();
                             }
                             else
-                                pending.push_back(entity);
-                        }
-                    }, jobs);
-
-                    for (const auto& batch : batch_work) work_counters.Merge(batch);
-                    SP_PROFILE_CPU_START("world_post_render_tick");
-                    for (const auto& pending : followups)
-                    {
-                        for (Entity* entity : pending)
-                        {
-                            if (entity->GetActive())
-                                entity->Tick(false);
+                            {
+                                Entity* entity = views.render_physics[i - render_count];
+                                if (entity->GetActive())
+                                    if (Render* render = entity->GetComponent<Render>(); render && !render->IsSpatiallyDynamic())
+                                        if (Physics* physics = entity->GetComponent<Physics>()) physics->Tick();
+                            }
                         }
                     }
-                    SP_PROFILE_CPU_END();
-                }
-                else
+                }, min(jobs, 8u));
+                for (const auto& batch : batch_work) work_counters.Merge(batch);
+            }
+            // Clear only objects which left the candidate set. Keeping the old
+            // visibility until Tick preserves temporal culling and change counters.
+            for (auto* data : render_previous_candidates)
+            {
+                if (data->visibility_tick != work_counter_tick)
                 {
-                    for (Entity* entity : views.render)
-                    {
-                        if (entity->GetActive())
-                        {
-                            CountWorldWork(WorldWork::render_entities);
-                            entity->Tick();
-                        }
-                    }
+                    CountWorldWork(WorldWork::visibility_changes, data->is_visible);
+                    data->render->ClearVisibility();
                 }
             }
+            render_previous_candidates.clear();
+            for (auto* data : render_candidates)
+                if (data->is_visible) render_previous_candidates.push_back(data);
+            if (cvar_spatial_render.GetValue() == 2)
+            {
+                uint32_t mismatches = 0;
+                for (const auto* data : all_render_entries)
+                {
+                    if (!data->active.load(memory_order_relaxed)) continue;
+                    const bool spatial_visible = data->is_visible;
+                    data->render->UpdateAabb();
+                    data->render->UpdateFrustumAndDistanceCulling();
+                    mismatches += spatial_visible != data->is_visible;
+                }
+                CountWorldWork(WorldWork::spatial_visibility_mismatches, mismatches);
+                if (mismatches) SP_LOG_WARNING("Spatial visibility differs from full traversal for %u renderables", mismatches);
+            }
+            SP_PROFILE_CPU_START("world_post_render_tick");
+            for (Entity* entity : views.render_followups)
+                if (entity->GetActive()) entity->Tick(false);
+            SP_PROFILE_CPU_END();
             SP_PROFILE_CPU_END();
             if (callbacks.controls) callbacks.controls();
             SP_PROFILE_CPU_START("world_logic_tick");
@@ -2694,6 +2767,12 @@ namespace spartan
         return views.lights;
     }
 
+    void World::NotifyRenderBoundsChanged(Render* render)
+    {
+        lock_guard lock(render_bounds_mutex);
+        render_bounds_pending.push_back(render);
+    }
+
     void World::InvalidateRenderSceneData()
     {
         views.render_dirty.store(true, memory_order_relaxed);
@@ -2705,11 +2784,21 @@ namespace spartan
         // may invalidate this from a loader, but workers never resize the published view.
         if (views.render_dirty.exchange(false, memory_order_relaxed))
         {
+            render_spatial_rebuild = true;
+            views.render_physics.clear();
+            views.render_followups.clear();
             views.render_data.clear();
             views.render_data.reserve(views.render.size());
             for (Entity* entity : views.render)
                 if (Render* render = entity->GetComponent<Render>())
+                {
                     views.render_data.push_back(&render->GetSceneData());
+                    if (entity->CanTickWithParallelRender())
+                    {
+                        if (entity->GetComponent<Physics>()) views.render_physics.push_back(entity);
+                    }
+                    else views.render_followups.push_back(entity);
+                }
         }
         return views.render_data;
     }

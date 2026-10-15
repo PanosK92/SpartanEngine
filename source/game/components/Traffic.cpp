@@ -502,16 +502,20 @@ namespace spartan
         CarPhysics::Get(*driver.physics).SetVehicleRoadSurface(current.position, current.tangent);
         const float lookahead = std::clamp(3.0f + driver.spline_speed * 0.35f, 3.0f, 8.0f);
         const auto target = path.Sample(driver.road_progress + lookahead);
-        float target_speed = driver.cruise_speed;
+        float target_speed_squared = driver.cruise_speed * driver.cruise_speed;
         // Brake before curves, including the connector through a junction.
         for (float ahead = 3.0f; ahead <= 40.0f; ahead += 3.0f)
         {
             const auto a = path.Sample(driver.road_progress + ahead - 2.0f);
             const auto b = path.Sample(driver.road_progress + ahead + 2.0f);
             const float curvature = (horizontal(b.tangent) - horizontal(a.tangent)).Length() / 4.0f;
-            const float corner_speed = sqrtf(2.5f / std::max(curvature, 0.001f));
-            target_speed = std::min(target_speed, sqrtf(corner_speed * corner_speed + 4.0f * std::max(ahead - 5.0f, 0.0f)));
+            const float corner_speed_squared = 2.5f / std::max(curvature, 0.001f);
+            target_speed_squared = std::min(target_speed_squared,
+                corner_speed_squared + 4.0f * std::max(ahead - 5.0f, 0.0f));
         }
+        // All limits are nonnegative, so compare their squares and take a
+        // single root after the curve scan instead of two per sample.
+        float target_speed = sqrtf(target_speed_squared);
         // Test the planned lane, not a straight ray that cuts a curved road.
         // Headway includes the player and keeps distant traffic from overlapping.
         const Vector3 position = driver.entity->GetPosition();

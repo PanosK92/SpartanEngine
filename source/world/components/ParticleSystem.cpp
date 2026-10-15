@@ -837,7 +837,9 @@ namespace spartan
 
     bool ParticleSystem::HasLiveParticles() const
     {
-        return m_live_time_remaining > 0.0f;
+        // Settled leaves have a spatial lifetime on the GPU. They can remain after
+        // emission stops (rain, indoors), so the CPU's airborne timer cannot cull them.
+        return m_render_mode == ParticleRenderMode::Leaf || m_render_mode == ParticleRenderMode::LeafLitter || m_live_time_remaining > 0.0f;
     }
 
     uint32_t ParticleSystem::GetEstimatedLiveParticles() const

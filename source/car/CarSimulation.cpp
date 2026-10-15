@@ -123,7 +123,7 @@ namespace car
             {
                 if (multibody.actors[i])
                 {
-                    multibody.actors[i]->setActorFlag(PxActorFlag::eDISABLE_SIMULATION, !enabled);
+                    multibody.actors[i]->setActorFlag(PxActorFlag::eDISABLE_SIMULATION, !(enabled && mechanism_simulation_enabled));
                 }
             }
             if (enabled)
@@ -134,11 +134,20 @@ namespace car
 
     void Simulation::set_mechanism_simulation_enabled(bool enabled)
     {
+            mechanism_simulation_enabled = enabled;
+            // Cheap traffic has no suspension constraints. Keeping 64/4 on its
+            // chassis makes its contact island pay the full closed-loop budget.
+            // Restore that budget before enabling the physical suspension again.
+            if (body)
+            {
+                body->setSolverIterationCounts(enabled ? suspension_position_iterations : 4,
+                                               enabled ? suspension_velocity_iterations : 1);
+            }
             for (int i = 0; i < multibody.actor_count; i++)
             {
                 if (multibody.actors[i])
                 {
-                    multibody.actors[i]->setActorFlag(PxActorFlag::eDISABLE_SIMULATION, !enabled);
+                    multibody.actors[i]->setActorFlag(PxActorFlag::eDISABLE_SIMULATION, !(simulation_enabled && enabled));
                 }
             }
     }
@@ -1031,7 +1040,7 @@ namespace car
 
     void Simulation::restore_actor_motion(PxRigidDynamic* actor, const actor_motion_state& state)
     {
-            if (!actor || !body || !state.valid
+            if (!actor || !body || !state.valid || !can_apply_force(actor)
                 || actor->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC))
             {
                 return;
@@ -2609,8 +2618,9 @@ namespace car
             }
             multibody.physics = physics;
             multibody.scene = scene;
-            body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, false);
-            body->setSolverIterationCounts(suspension_position_iterations, suspension_velocity_iterations);
+            body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, !mechanism_simulation_enabled);
+            body->setSolverIterationCounts(mechanism_simulation_enabled ? suspension_position_iterations : 4,
+                                           mechanism_simulation_enabled ? suspension_velocity_iterations : 1);
 
             for (int i = 0; i < wheel_count; i++)
             {
@@ -2653,6 +2663,7 @@ namespace car
 
             update_assembled_center_of_mass();
             multibody.initialized = true;
+            set_mechanism_simulation_enabled(mechanism_simulation_enabled);
             return true;
     }
 
@@ -2703,7 +2714,7 @@ namespace car
             destroy_multibody();
             multibody = replacement;
             restore_multibody_motion(motion);
-            if (was_sleeping)
+            if (was_sleeping && simulation_enabled && mechanism_simulation_enabled)
             {
                 sleep_vehicle_assembly();
             }
@@ -4790,6 +4801,7 @@ namespace car
 
             cfg = params.car_config;
             simulation_enabled = true;
+            mechanism_simulation_enabled = params.create_mechanisms;
             // preset geometry must be applied before deriving body suspension and wheel constants
             apply_car_spec(spec, true);
 

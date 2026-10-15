@@ -59,20 +59,21 @@ namespace spartan
             float sleep_radius_squared = 0.0f;
             bool active = true;
             bool physics_running = false;
+            uint64_t collision_revision = 0;
             bool other_work = false;
-            bool ShouldRun(bool playing, bool has_camera, const math::Vector3& camera_position) const
+            bool ShouldRun(bool playing, bool has_camera, const math::Vector3& camera_position, uint64_t interest_revision) const
             {
                 if (!active) return false;
                 if (other_work || !playing) return true;
                 if (!physics_running) return false;
-                return !has_camera || sleep_radius_squared <= 0.0f ||
+                return !has_camera || collision_revision != interest_revision || sleep_radius_squared <= 0.0f ||
                     math::Vector3::DistanceSquared(camera_position, sleep_origin) >= sleep_radius_squared;
             }
         };
         PreTickGate* GetPreTickGate();
         void RefreshPreTickGate();
         void WakePhysicsPreTick() { if (m_pretick_gate) m_pretick_gate->sleep_radius_squared = 0.0f; }
-        void SleepPhysicsPreTick(const math::Vector3& camera_position, float radius);
+        void SleepPhysicsPreTick(const math::Vector3& camera_position, float radius, uint64_t interest_revision);
 
         // io
         void Save(pugi::xml_node& node);
@@ -112,6 +113,7 @@ namespace spartan
 
             component->SetType(type);
             component->Initialize();
+            World::InvalidateRenderSceneData();
             RefreshPreTickGate();
 
             return component;
@@ -218,6 +220,10 @@ namespace spartan
         // so anything the user adds afterwards is detected as an override and persisted
         void MarkPrefabBaseline();
         bool IsPrefabOwned() const { return m_prefab_owned; }
+        // Generated simulation parts keep their prefab rest transform, while still
+        // accepting added components/children. This policy is set by the factory.
+        void SetPrefabTransformOverrideEnabled(bool enabled) { m_prefab_transform_override_enabled = enabled; }
+        bool IsPrefabTransformOverrideEnabled() const { return m_prefab_transform_override_enabled; }
 
         // transient entities are not serialized (e.g. dynamically created entities like flashlights)
         void SetTransient(bool transient)  { m_transient = transient; }
@@ -298,6 +304,7 @@ namespace spartan
 
         // m_prefab_owned marks an entity from a prefab base, the mask marks which of its components came from that base
         bool m_prefab_owned = false;
+        bool m_prefab_transform_override_enabled = true;
         uint64_t m_prefab_component_mask = 0;
         math::Vector3 m_prefab_position_local    = math::Vector3::Zero;
         math::Quaternion m_prefab_rotation_local = math::Quaternion::Identity;

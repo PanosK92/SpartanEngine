@@ -390,7 +390,7 @@ namespace spartan
         }
 
         // particle buffers
-        const uint32_t particle_max = 100000;
+        const uint32_t particle_max = 200000;
         const uint32_t particle_counter_max = 64;
         uint32_t particle_counter_init[particle_counter_max] = {};
         // Simulation, emission and rendering own these buffers on the GPU.
@@ -1400,6 +1400,7 @@ namespace spartan
             // built for devices without ray tracing never carry the spir-v ray query capability
             const bool needs_ray_tracing_define =
                 e.rt_only ||
+                e.id == Renderer_Shader::particle_simulate_c ||
                 e.id == Renderer_Shader::particle_render_p ||
                 e.id == Renderer_Shader::particle_volume_composite_c ||
                 e.id == Renderer_Shader::fog_sky_visibility_c ||

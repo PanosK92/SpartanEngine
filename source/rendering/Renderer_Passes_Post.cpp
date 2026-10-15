@@ -8,10 +8,12 @@ Commercial use requires written permission and negotiated payment terms.
 //= INCLUDES ==================================
 #include "pch.h"
 #include "Renderer_Internal.h"
+#include "../profiling/Profiler.h"
 #include "../world/Entity.h"
 #include "../world/World.h"
 #include "../world/components/Camera.h"
 #include "../world/components/ParticleSystem.h"
+#include "../world/ParticleWake.h"
 #include "../rhi/RHI_CommandList.h"
 #include "../rhi/RHI_Queue.h"
 #include "../rhi/RHI_AccelerationStructure.h"
@@ -452,6 +454,7 @@ namespace spartan
 
         RHI_CommandList::BeginPass("aa_upscale");
         {
+            SP_PROFILE_CPU_START("upscale_dispatch");
             bool is_stereo = eye_layer != rhi_all_mips;
             Renderer_AntiAliasing_Upsampling method = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
 
@@ -562,14 +565,19 @@ namespace spartan
                 RHI_CommandList::Blit(tex_in, tex_out, false, resolution_scale);
             }
 
+            SP_PROFILE_CPU_END();
+            SP_PROFILE_CPU_START("frame_generation_prepare");
             // frame generation interpolates the presented frame, so only the primary view feeds it
             if (!is_stereo && !IsSecondaryViewActive() && RHI_FrameGeneration::IsActive())
             {
                 RHI_FrameGeneration::Prepare(tex_depth, tex_velocity);
             }
 
+            SP_PROFILE_CPU_END();
+            SP_PROFILE_CPU_START("upscale_mips");
             // generate mips for refraction roughness
             Pass_Downscale(tex_out, Renderer_DownsampleFilter::Average);
+            SP_PROFILE_CPU_END();
         }
         RHI_CommandList::EndPass();
     }
@@ -808,6 +816,14 @@ namespace spartan
         }
         volume_shaders_ready = volume_shaders_ready && buf_volume_density && buf_volume_color && tex_volume && tex_volume_history;
 
+        // Keep the small environmental slices ahead of vehicle effects. Their
+        // offsets must not change when traffic adds an emitter: settled leaves
+        // remain in these GPU slots for as long as the player stays nearby.
+        auto environmental = [](ParticleSystem* emitter) {
+            return emitter->GetRenderMode() >= ParticleRenderMode::Leaf;
+        };
+        std::stable_partition(emitters.begin(), emitters.end(), environmental);
+
         // clamp the emitter count to the emitter buffer capacity
         uint32_t emitter_capacity = static_cast<uint32_t>(buf_emitter->GetObjectSize() / sizeof(Sb_EmitterParams));
         uint32_t emitter_count    = std::min(static_cast<uint32_t>(emitters.size()), emitter_capacity);
@@ -819,10 +835,37 @@ namespace spartan
         vector<uint32_t> range_counts(emitter_count, 0);
         vector<uint32_t> emit_counts(emitter_count, 0);
         bool volume_present = false;
+        uint64_t requested_particles[2] = {};
+        uint32_t nonempty_emitters[2] = {};
+        for (uint32_t i = 0; i < emitter_count; ++i)
+        {
+            const uint32_t group = environmental(emitters[i]) ? 0u : 1u;
+            requested_particles[group] += emitters[i]->GetMaxParticles();
+            nonempty_emitters[group] += emitters[i]->GetMaxParticles() > 0 ? 1u : 0u;
+        }
+        // Authored capacities can exceed the shared pool (two cars already do).
+        // Divide oversubscribed capacity by requested size, not current emission:
+        // idle smoke must not starve later effects, nor move slices when revs change.
+        // Nature gets its authored capacity, capped at half of the
+        // pool. The rest remains available for smoke, weather and vehicle debris.
+        uint32_t budgets[2];
+        budgets[0] = static_cast<uint32_t>(std::min<uint64_t>(requested_particles[0], buffer_capacity / 2u));
+        budgets[1] = buffer_capacity - budgets[0];
         for (uint32_t i = 0; i < emitter_count; i++)
         {
             range_starts[i] = total_particles;
-            range_counts[i] = std::min(emitters[i]->GetMaxParticles(), buffer_capacity - total_particles);
+            const uint32_t group = environmental(emitters[i]) ? 0u : 1u;
+            const uint32_t budget = budgets[group];
+            const uint32_t guaranteed = std::min(nonempty_emitters[group], budget);
+            uint32_t requested = emitters[i]->GetMaxParticles();
+            uint32_t allocation = requested;
+            if (requested_particles[group] > budget && requested > 0)
+            {
+                allocation = budget >= nonempty_emitters[group] ? 1u + static_cast<uint32_t>(
+                    static_cast<uint64_t>(requested - 1u) * (budget - guaranteed) /
+                    std::max<uint64_t>(requested_particles[group] - nonempty_emitters[group], 1u)) : 0u;
+            }
+            range_counts[i] = std::min(allocation, buffer_capacity - total_particles);
             total_particles += range_counts[i];
             if (total_particles >= buffer_capacity)
             {
@@ -920,6 +963,18 @@ namespace spartan
             params.emitter_velocity     = emitter->GetEmitterVelocity();
             params.ground_plane         = emitter->GetGroundPlane();
             params.rain_occluded        = emitter->GetRainOccluded() ? 1u : 0u;
+            const uint64_t owner_id     = emitter->GetEntity()->GetObjectId();
+            params.owner_id_low         = static_cast<uint32_t>(owner_id);
+            params.owner_id_high        = static_cast<uint32_t>(owner_id >> 32u);
+            static_assert(particle_wake::capacity == 64);
+            static_assert(sizeof(Sb_EmitterParams) % 16 == 0);
+            for (uint32_t wake = 0; wake < particle_wake::capacity; ++wake)
+            {
+                const auto& source = particle_wake::sources[wake];
+                params.body_wake_center[wake] = source.center_strength;
+                params.body_wake_axis[wake] = source.axis_length;
+                params.body_wake_shape[wake] = source.shape;
+            }
         }
 
         // the volumetric path costs a clear, a scatter, a full grid resolve and a full resolution ray
@@ -1017,7 +1072,10 @@ namespace spartan
 
         for (uint32_t i = 0; i < emitter_count; i++)
         {
-            emitter_params[i].collision_traced = tlas_collision ? 1u : 0u;
+            // Persistent leaves need off-screen surface queries. Keep the existing
+            // depth collision path for smoke rather than adding six rays per puff.
+            const auto mode = emitters[i]->GetRenderMode();
+            emitter_params[i].collision_traced = tlas_collision && (mode == ParticleRenderMode::Leaf || mode == ParticleRenderMode::LeafLitter) ? 1u : 0u;
         }
 
         buf_emitter->ResetOffset();
@@ -1059,6 +1117,7 @@ namespace spartan
             if (tlas_collision)
             {
                 RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas_collision);
+                RHI_CommandList::SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
             }
             RHI_CommandList::Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
         }

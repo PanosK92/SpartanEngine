@@ -21,7 +21,7 @@ groupshared MeshletBounds   gs_mb;
 groupshared float4x4        gs_world_xform;
 groupshared bool            gs_skip_backface;
 groupshared bool            gs_is_alpha;
-groupshared bool            gs_wind;
+groupshared bool            gs_deformed;
 groupshared uint            gs_triangle_count;
 groupshared uint            gs_base_index_pos;
 
@@ -45,7 +45,7 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
             gs_mb             = meshlet_bounds[gs_mi.meshlet_index];
             gs_world_xform    = mul(pull_instance_transform(gs_draw.instance_offset, gs_mi.instance_index), gs_draw.transform);
             gs_skip_backface  = ((gs_draw.flags & 1u) | (gs_draw.flags & 8u)) != 0u;
-            gs_wind           = (material_parameters[gs_draw.material_index].flags & (1u << 9)) != 0u;
+            gs_deformed       = (material_parameters[gs_draw.material_index].flags & (1u << 9)) != 0u || (gs_draw.flags & (1u << 14)) != 0u;
             // alpha-tested is uniform across the workgroup since every thread shares this meshlet instance, it routes survivors to the alpha half
             gs_is_alpha       = (gs_draw.flags & 16u) != 0u;
             // first_index and triangle_count come out of the compressed bounds, the helpers stay in lockstep with the cpu packer in build_meshlets
@@ -82,7 +82,7 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
 
         bool keep = true;
 
-        if (!gs_skip_backface && !gs_wind)
+        if (!gs_skip_backface && !gs_deformed)
         {
             // engine convention is left-handed coords with cw front-face winding
             // for a cw-from-camera triangle in lh coords, cross(p1-p0, p2-p0) points back at the camera so a front-facing triangle has dot(face_normal, view_dir) <= 0
@@ -91,9 +91,9 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
             keep               = dot(face_normal, view_dir) <= 0.0f;
         }
 
-        // Rest-pose triangles cannot reject geometry displaced by wind. The
+        // Rest-pose triangles cannot reject wind motion or camera-facing impostors. The
         // instance and meshlet passes already tested the expanded motion bounds.
-        if (keep && !gs_wind)
+        if (keep && !gs_deformed)
         {
             // transform to clip space for frustum + sub-pixel tests
             float4 p0_clip = mul(float4(p0_world, 1.0f), buffer_frame.view_projection);

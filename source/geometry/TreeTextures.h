@@ -21,7 +21,7 @@ namespace spartan::trees
 {
     struct texture_set
     {
-        uint32_t bark_size = 512;
+        uint32_t bark_size = 1024;
         uint32_t leaf_size = 1024;
         std::vector<uint8_t> bark_albedo; // srgb rgba8
         std::vector<uint8_t> bark_normal; // tangent space rgba8

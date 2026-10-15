@@ -177,8 +177,8 @@ void evaluate_light(
         float L_shadow_contact = 1.0f;
 
         {
-            // Ray tracing handles distant/local shadows; the near sun cascade
-            // follows the animated geometry that is not deformed in the TLAS.
+            // Ray tracing and raster shadow maps are mutually exclusive.
+            // Do not blend a raster near/foliage cascade into the RT result.
             const bool want_shadows          = light.has_shadows();
             const bool ray_traced            = want_shadows && is_ray_traced_shadows_enabled();
             const bool use_rt_shadow_texture = ray_traced && light.is_directional();
@@ -189,7 +189,6 @@ void evaluate_light(
             if (use_rt_shadow_texture)
             {
                 L_shadow_primary = sample_ray_traced_shadow(surface.uv);
-                L_shadow_primary = compute_animated_near_shadow(surface, light, L_shadow_primary);
             }
             else if (use_nrd_local_shadow)
             {
@@ -234,8 +233,10 @@ void evaluate_light(
                         )
                     )
                 ].x;
-                float contact_fade = 1.0f - saturate((surface.camera_to_pixel_length - 25.0f) / 50.0f);
-                L_shadow_contact   = lerp(1.0f, contact, contact_fade);
+                // Every visible depth sample can cast contact shadows, including foliage
+                // impostors. A world-distance fade erased them beyond 75 metres even
+                // though the screen-space pass had already paid to compute them.
+                L_shadow_contact = contact;
             }
         }
 

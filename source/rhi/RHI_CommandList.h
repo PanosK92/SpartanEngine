@@ -425,6 +425,7 @@ namespace spartan
         RHI_Image_Layout GetTrackedImageLayout(void* image, uint32_t mip_index);
         void SetTrackedImageLayout(void* image, uint32_t mip_index, uint32_t mip_range, RHI_Image_Layout layout);
         bool IsTextureBindingUsed(uint32_t slot, bool storage) const;
+        void UpdateBindingMasks() const;
         RHI_Resource_Access GetBufferAccess(uint32_t slot) const;
         RHI_Barrier_Scope GetResourceScope() const;
 
@@ -492,6 +493,8 @@ namespace spartan
         mutable uint64_t m_texture_bindings_hash = 0;
         mutable std::bitset<rhi_max_resource_slots> m_texture_bindings_srv;
         mutable std::bitset<rhi_max_resource_slots> m_texture_bindings_uav;
+        mutable std::bitset<rhi_max_resource_slots> m_buffer_bindings_srv;
+        mutable std::bitset<rhi_max_resource_slots> m_buffer_bindings_uav;
         bool m_batch_barrier_flush = false;
         bool m_flushing_barriers = false;
         RHI_PipelineState m_pso;
