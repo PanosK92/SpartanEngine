@@ -16,6 +16,7 @@ Commercial use requires written permission and negotiated payment terms.
 #include <cstring>
 #include <fstream>
 #include <functional>
+#include <initializer_list>
 #include <map>
 #include <regex>
 #include <sstream>
@@ -77,6 +78,26 @@ namespace
         {
             auto it = attributes.find(name);
             return it == attributes.end() ? fallback : (it->second == "true" || it->second == "1");
+        }
+
+        // a named choice, written as its name or as its index, same as the engine's loader
+        int get_choice(const char* name, std::initializer_list<const char*> choices, int fallback) const
+        {
+            auto it = attributes.find(name);
+            if (it == attributes.end())
+            {
+                return fallback;
+            }
+            int index = 0;
+            for (const char* choice : choices)
+            {
+                if (it->second == choice)
+                {
+                    return index;
+                }
+                index++;
+            }
+            return std::stoi(it->second);
         }
 
         int get_array(const char* name, float* out, int capacity) const
@@ -169,6 +190,26 @@ namespace
         c.boost_max_pressure = car.get("boost_max_pressure", 0.0f);
         c.turbo_enabled = car.get_bool("turbo_enabled", false) && c.boost_max_pressure > 0.0f;
         c.boost_wastegate_rpm = car.get("boost_wastegate_rpm", 0.0f);
+        c.induction = static_cast<engine_sound::forced_induction>(car.get_choice("forced_induction", { "turbo", "roots", "twin_screw", "centrifugal" }, 0));
+        c.turbo_count = static_cast<int>(car.get("turbo_count", 1.0f));
+        c.supercharger_drive_ratio = car.get("supercharger_drive_ratio", 2.0f);
+        c.supercharger_lobes = static_cast<int>(car.get("supercharger_lobes", 3.0f));
+        c.valves_per_cylinder = static_cast<int>(car.get("valves_per_cylinder", 4.0f));
+        c.camshafts_per_bank = static_cast<int>(car.get("camshafts_per_bank", 2.0f));
+        c.solid_lifters = car.get_bool("solid_lifters", false);
+        c.cam_drive_type = static_cast<engine_sound::cam_drive>(car.get_choice("cam_drive", { "chain", "belt", "gear" }, 0));
+        c.injection = static_cast<engine_sound::fuel_injection>(car.get_choice("fuel_injection", { "port", "direct", "port_direct", "mechanical" }, 0));
+        c.individual_throttle_bodies = car.get_bool("individual_throttle_bodies", false);
+        c.air_cooled = car.get_bool("air_cooled", false);
+        c.cooling_fan_ratio = car.get("cooling_fan_ratio", 1.6f);
+        c.cooling_fan_blades = static_cast<int>(car.get("cooling_fan_blades", 11.0f));
+        c.catalytic_converter = car.get_bool("catalytic_converter", true);
+        c.particulate_filter = car.get_bool("particulate_filter", false);
+        c.crossover = static_cast<engine_sound::exhaust_crossover>(car.get_choice("exhaust_crossover", { "none", "h_pipe", "x_pipe", "merged" }, 0));
+        c.exhaust_valve = car.get_bool("exhaust_valve", false);
+        c.gearbox = static_cast<engine_sound::gearbox_type>(car.get_choice("gearbox_type", { "manual", "dual_clutch", "automatic", "straight_cut" }, 0));
+        c.electric_motor = car.get_bool("electric_enabled", false);
+        c.motor_pole_pairs = static_cast<int>(car.get("electric_motor_pole_pairs", 4.0f));
 
         float values[engine_sound::tuning::max_cylinders] = {};
         int count = car.get_array("engine_firing_order", values, engine_sound::tuning::max_cylinders);
@@ -577,6 +618,8 @@ int main(int argc, char** argv)
             c = first;
         }
         synth.set_parameters(c.rpm, c.throttle, c.load, c.boost, c.fuel_cut, c.gear, c.shifting, view, c.gearbox_rpm, c.overrun, 1.0f);
+        // the motor sits behind the gearbox, a mid gear's ratio is close enough for a scripted run
+        synth.set_electric(c.gearbox_rpm / 1.6f, c.throttle * 0.8f);
         synth.generate(audio.data() + static_cast<size_t>(b) * block_size * 2, block_size, true);
         state.time += dt;
 

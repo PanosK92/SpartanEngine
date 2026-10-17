@@ -657,7 +657,11 @@ namespace engine_sound
             steepener  tailpipe_front;
             // a turbine wheel takes energy out of each pulse and smears it
             one_pole   turbine;
+            // a catalyst's fine channels, and a particulate filter's porous walls, soak up the top of each pulse
+            one_pole   aftertreatment;
             muffler    can;
+            // an active flap routes the flow around the chambers, a second can with the flap open
+            muffler    can_open;
             pipe       tailpipe;
             dc_blocker dc;
             // what the tailpipe radiates, the open end differentiates below its cutoff
@@ -681,7 +685,9 @@ namespace engine_sound
                 collector_down.reset();
                 collector_up.reset();
                 turbine.reset();
+                aftertreatment.reset();
                 can.reset();
+                can_open.reset();
                 tailpipe.reset();
                 dc.reset();
                 radiation.reset();
@@ -736,6 +742,27 @@ namespace engine_sound
             float tailpipe_radius   = 0.03f;
             float radiation_gain    = 0.0f;
             float turbine_transmission = 1.0f;
+            // what part of the gas skips the turbine through the wastegate, zero shut, one wide open
+            float wastegate_open    = 0.0f;
+            // share of a pulse's top end the aftertreatment lets through, one is a bare pipe
+            float aftertreatment_keep = 1.0f;
+            // share of the other bank each bank's pipe carries past the crossover
+            float crossover_mix     = 0.0f;
+            // active exhaust flap, zero shut through the chambers, one open around them
+            float exhaust_valve_open = 0.0f;
+            // an exhaust driven turbocharger, as opposed to a belt driven blower
+            bool  turbocharged      = false;
+            // a wheel sized for less flow is smaller and spins faster, so it whistles higher
+            float turbo_pitch       = 1.0f;
+            // valvetrain and timing drive voicing
+            float tick_level        = 1.0f;
+            float tick_hz           = 3200.0f;
+            float tick_decay_s      = 0.0012f;
+            float cam_drive_order   = 21.0f;
+            float cam_drive_level   = 0.0f;
+            // a water jacket damps what the block radiates, an air cooled one lets it all out
+            float structure_gain    = 1.0f;
+            float gear_whine        = 1.0f;
             float gas_temperature   = primary_cold_temperature;
             float back_pressure     = ambient_pressure;
 
@@ -829,7 +856,49 @@ namespace engine_sound
                 const float chamber_pass    = 2.0f * chamber_ratio / (chamber_ratio * chamber_ratio + 1.0f);
                 const float recording_gain  = powf(chamber_pass, -0.5f * static_cast<float>(muffler::chamber_count));
                 radiation_gain       = tailpipe_radius / (4.0f * listener_distance_m) * pascal_per_bar / full_scale_pascal * recording_gain;
-                turbine_transmission = config.turbo_enabled ? 0.5f : 1.0f;
+                const bool exhaust_turbine = config.turbo_enabled && config.induction == forced_induction::turbo;
+                turbine_transmission = exhaust_turbine ? 0.5f : 1.0f;
+                wastegate_open       = 0.0f;
+                const bool has_catalyst = config.catalytic_converter || config.particulate_filter;
+                // the pipes were voiced with a catalyst in them, a particulate filter's walls take a good deal more
+                aftertreatment_keep  = config.particulate_filter ? 0.4f : 1.0f;
+                const float aftertreatment_hz = 3500.0f;
+                switch (config.crossover)
+                {
+                    case exhaust_crossover::h_pipe: crossover_mix = 0.15f; break;
+                    case exhaust_crossover::x_pipe: crossover_mix = 0.4f; break;
+                    case exhaust_crossover::merged: crossover_mix = 0.5f; break;
+                    default: crossover_mix = 0.0f; break;
+                }
+                crossover_mix = nb > 1 ? crossover_mix : 0.0f;
+                exhaust_valve_open = 0.0f;
+
+                turbocharged = exhaust_turbine;
+                {
+                    // compressor wheels are sized for their share of the engine's flow, tip speed sets a smaller one spinning faster
+                    const float flow_per_turbo = std::max(config.displacement_l, 0.3f) * std::max(config.redline_rpm, 3000.0f) / static_cast<float>(std::max(config.turbo_count, 1));
+                    turbo_pitch = std::clamp(sqrtf(14000.0f / flow_per_turbo), 0.7f, 1.5f);
+                }
+
+                // two big valves are heavier and land lower than four or five small ones; rockers on a single
+                // cam add their own clatter, and solid lifters tap on every lash they take up
+                const int valves = std::clamp(config.valves_per_cylinder, 2, 5);
+                tick_hz      = valves <= 2 ? 2300.0f : (valves == 3 ? 2800.0f : (valves == 4 ? 3200.0f : 3600.0f));
+                tick_level   = (valves <= 2 ? 1.1f : 1.0f) * (config.camshafts_per_bank <= 1 ? 1.25f : 1.0f) * (config.solid_lifters ? 1.8f : 1.0f);
+                tick_decay_s = config.solid_lifters ? 0.002f : 0.0012f;
+                switch (config.cam_drive_type)
+                {
+                    case cam_drive::belt: cam_drive_order = 19.0f; cam_drive_level = 0.0012f; break;
+                    case cam_drive::gear: cam_drive_order = 36.0f; cam_drive_level = 0.01f; break;
+                    default: cam_drive_order = 21.0f; cam_drive_level = 0.0035f; break;
+                }
+                structure_gain = config.air_cooled ? 1.6f : 1.0f;
+                switch (config.gearbox)
+                {
+                    case gearbox_type::dual_clutch: gear_whine = 1.4f; break;
+                    case gearbox_type::automatic: gear_whine = 0.5f; break;
+                    default: gear_whine = 1.0f; break;
+                }
 
                 rng seed_rng;
                 seed_rng.seed(0xC0FFEE00u + static_cast<std::uint32_t>(n * 131 + nb));
@@ -894,11 +963,15 @@ namespace engine_sound
                     const float collector_length = config.collector_length_m * (1.0f + (nb > 1 ? (b == 0 ? -0.5f : 0.5f) * bank_run_mismatch : 0.0f));
                     bank.collector_down.configure(collector_length, sound_speed(collector_cold_temperature), pass_gain, 0.0f, sample_rate);
                     bank.collector_up.configure(collector_length, sound_speed(collector_cold_temperature), pass_gain, collector_loss_hz, sample_rate);
-                    // pulses only steepen as far as the catalytic converter, its fine channels break the fronts up
-                    bank.collector_front.configure(std::min(config.collector_length_m, catalyst_distance_m), sound_speed(collector_cold_temperature), sample_rate);
+                    // pulses only steepen as far as the catalytic converter, its fine channels break the fronts up,
+                    // without one they keep steepening all the way down the collector
+                    const float steepening_length = has_catalyst ? std::min(config.collector_length_m, catalyst_distance_m) : config.collector_length_m;
+                    bank.collector_front.configure(steepening_length, sound_speed(collector_cold_temperature), sample_rate);
                     bank.tailpipe_front.configure(config.tailpipe_length_m, sound_speed(tailpipe_cold_temperature), sample_rate);
                     bank.turbine.set_cutoff(2500.0f, sample_rate);
+                    bank.aftertreatment.set_cutoff(aftertreatment_hz, sample_rate);
                     bank.can.configure(config.muffler_level, config.displacement_l, config.tailpipe_length_m, tailpipe_radius, tailpipe_cold_temperature, sample_rate);
+                    bank.can_open.configure(config.muffler_level * 0.5f, config.displacement_l, config.tailpipe_length_m, tailpipe_radius, tailpipe_cold_temperature, sample_rate);
                     bank.tailpipe.configure(config.tailpipe_length_m, sound_speed(tailpipe_cold_temperature), tailpipe_feedback, tailpipe_loss_hz, sample_rate);
                     // Keep the bass cutoff in Hz when the internal sample rate changes.
                     bank.dc.r = expf(-two_pi * 18.0f / sample_rate);
@@ -963,6 +1036,7 @@ namespace engine_sound
                     b.collector_down.set_speed_scale(speed_scale);
                     b.collector_up.set_speed_scale(speed_scale);
                     b.can.set_speed_scale(speed_scale);
+                    b.can_open.set_speed_scale(speed_scale);
                     b.tailpipe.set_speed_scale(speed_scale);
                     b.radiation.set_cutoff(radiation_hz, sample_rate);
                     b.exit_reflection.set_cutoff(radiation_hz, sample_rate);
@@ -1210,6 +1284,26 @@ namespace engine_sound
             turbo_bypass_valve == other.turbo_bypass_valve &&
             boost_max_pressure == other.boost_max_pressure &&
             boost_wastegate_rpm == other.boost_wastegate_rpm &&
+            induction == other.induction &&
+            turbo_count == other.turbo_count &&
+            supercharger_drive_ratio == other.supercharger_drive_ratio &&
+            supercharger_lobes == other.supercharger_lobes &&
+            valves_per_cylinder == other.valves_per_cylinder &&
+            camshafts_per_bank == other.camshafts_per_bank &&
+            solid_lifters == other.solid_lifters &&
+            cam_drive_type == other.cam_drive_type &&
+            injection == other.injection &&
+            individual_throttle_bodies == other.individual_throttle_bodies &&
+            air_cooled == other.air_cooled &&
+            cooling_fan_ratio == other.cooling_fan_ratio &&
+            cooling_fan_blades == other.cooling_fan_blades &&
+            catalytic_converter == other.catalytic_converter &&
+            particulate_filter == other.particulate_filter &&
+            crossover == other.crossover &&
+            exhaust_valve == other.exhaust_valve &&
+            gearbox == other.gearbox &&
+            electric_motor == other.electric_motor &&
+            motor_pole_pairs == other.motor_pole_pairs &&
             engine_stage == other.engine_stage &&
             exhaust_stage == other.exhaust_stage &&
             intake_stage == other.intake_stage &&
@@ -1274,6 +1368,12 @@ namespace engine_sound
             m_bov_bp.set_bandpass(3000.0f, 1.5f, m_sample_rate);
             m_hiss_bp.set_bandpass(4500.0f, 0.8f, m_sample_rate);
             m_tick_hp.set_highpass(3200.0f, 0.7f, m_sample_rate);
+            m_injector_bp.set_bandpass(6500.0f, 2.0f, m_sample_rate);
+            m_pump_bp.set_bandpass(2400.0f, 1.5f, m_sample_rate);
+            m_fan_bp.set_bandpass(1500.0f, 1.2f, m_sample_rate);
+            m_chain_slap.set_cutoff(30.0f, m_sample_rate);
+            m_motor_rpm_smooth.set_cutoff(10.0f, m_sample_rate);
+            m_motor_load_smooth.set_cutoff(10.0f, m_sample_rate);
             m_starter_bp.set_bandpass(950.0f, 0.7f, m_sample_rate);
             m_starter_lp.set_lowpass(1800.0f, 0.7f, m_sample_rate);
             m_body_lp.set_lowpass(16000.0f, 0.6f, m_sample_rate);
@@ -1297,6 +1397,8 @@ namespace engine_sound
 
             m_limiter_release = expf(-1.0f / (0.05f * m_sample_rate));
             m_tick_decay      = expf(-1.0f / (0.0012f * m_sample_rate));
+            m_injector_decay  = expf(-1.0f / (0.0005f * m_sample_rate));
+            m_pump_decay      = expf(-1.0f / (0.0025f * m_sample_rate));
             m_bov_decay       = expf(-1.0f / (0.45f * m_sample_rate));
             m_attack_step     = 1.0f / (0.002f * m_sample_rate);
             m_bov_sweep       = 1.0f - expf(-1.0f / (0.4f * m_sample_rate));
@@ -1345,6 +1447,12 @@ namespace engine_sound
             m_gear.store(gear, std::memory_order_relaxed);
             m_shifting.store(shifting, std::memory_order_relaxed);
             m_view.store(static_cast<int>(view), std::memory_order_relaxed);
+        }
+
+        void set_electric(float motor_rpm, float motor_load)
+        {
+            m_target_motor_rpm.store(std::isfinite(motor_rpm) ? std::clamp(fabsf(motor_rpm), 0.0f, 30000.0f) : 0.0f, std::memory_order_relaxed);
+            m_target_motor_load.store(std::isfinite(motor_load) ? clamp01(fabsf(motor_load)) : 0.0f, std::memory_order_relaxed);
         }
 
         void start()
@@ -1502,18 +1610,21 @@ namespace engine_sound
                 // induction roar: the charge follows manifold pressure, the plate only adds its hiss
                 float intake = 0.0f;
                 {
-                    float breath = frame.breath;
-                    breath += m_intake_honk.process(breath) * (0.6f + 0.8f * cfg.intake_stage);
+                    // trumpets breathe straight from the airbox, as open as a full intake upgrade and their plates hiss each on their own
+                    const bool itb = cfg.individual_throttle_bodies;
+                    const float intake_open = itb ? std::max(cfg.intake_stage, 0.45f) : cfg.intake_stage;
+                    float breath = frame.breath * (itb ? 1.15f : 1.0f);
+                    breath += m_intake_honk.process(breath) * (0.6f + 0.8f * intake_open);
                     float plate = throttle * sqrtf(throttle);
-                    breath += m_intake_bp.process(white) * 0.045f * std::min(pulse_env_smooth, 1.0f) * plate;
+                    breath += m_intake_bp.process(white) * (itb ? 0.08f : 0.045f) * std::min(pulse_env_smooth, 1.0f) * plate;
                     breath = m_intake_hp.process(breath);
-                    float gain = (0.3f + 0.7f * rpm_norm) * (0.25f + 0.75f * cfg.intake_stage);
+                    float gain = (0.3f + 0.7f * rpm_norm) * (0.25f + 0.75f * intake_open);
                     intake = breath * gain * 0.4f * p.intake_level * m_view_weight[1];
                 }
 
                 // Compressor whistle, bypass discharge and closed-throttle compressor surge.
                 float turbo = 0.0f;
-                if (cfg.turbo_enabled)
+                if (model.turbocharged)
                 {
                     float shaft_target = 0.08f + 0.92f * sqrtf(clamp01(boost_norm));
                     shaft_target = std::max(shaft_target, 0.12f + 0.3f * throttle * rpm_norm);
@@ -1523,7 +1634,7 @@ namespace engine_sound
                     float shaft = shaft_target < m_shaft_smooth.z
                         ? (m_shaft_smooth.z += (shaft_target - m_shaft_smooth.z) * m_shaft_coast)
                         : m_shaft_smooth.process(shaft_target);
-                    float freq  = 900.0f + 6500.0f * powf(shaft, 1.6f);
+                    float freq  = (900.0f + 6500.0f * powf(shaft, 1.6f)) * model.turbo_pitch;
                     m_whistle_phase += two_pi * freq * dt;
                     m_whistle_phase2 += two_pi * freq * 1.985f * dt;
                     if (m_whistle_phase > two_pi)
@@ -1534,12 +1645,23 @@ namespace engine_sound
                     {
                         m_whistle_phase2 -= two_pi;
                     }
-                    float whistle = sinf(m_whistle_phase) * 0.6f + sinf(m_whistle_phase2) * 0.15f + m_whistle_bp.process(white) * 0.18f;
+                    float tone = sinf(m_whistle_phase);
+                    if (cfg.turbo_count > 1)
+                    {
+                        // no two wheels spin at quite the same speed, the pair beats against each other
+                        m_whistle_phase3 += two_pi * freq * 1.012f * dt;
+                        if (m_whistle_phase3 > two_pi)
+                        {
+                            m_whistle_phase3 -= two_pi;
+                        }
+                        tone = 0.62f * (tone + sinf(m_whistle_phase3));
+                    }
+                    float whistle = tone * 0.6f + sinf(m_whistle_phase2) * 0.15f + m_whistle_bp.process(white) * 0.18f;
                     float whistle_gain = powf(shaft, 2.5f) * (0.35f + 0.65f * boost_norm) * (0.5f + 0.5f * cfg.turbo_stage) * (0.4f + 0.6f * throttle);
 
                     // A wastegate regulates exhaust flow; it does not periodically reverse
                     // compressor flow. Steady boost gets broadband air noise, not a 27 Hz chop.
-                    float hiss = m_hiss_bp.process(white) * boost_norm * 0.15f;
+                    float hiss = m_hiss_bp.process(white) * (boost_norm * 0.15f + model.wastegate_open * 0.1f);
 
                     // compressor surge, the trapped charge stalls the wheel in a train of chops that
                     // slows and falls in pitch as the wheel spins down, the stutututu after a shift
@@ -1579,10 +1701,48 @@ namespace engine_sound
 
                     turbo = (whistle * whistle_gain * 0.12f + hiss * 0.1f + bov * 0.4f + surge * 0.55f) * p.turbo_level * m_view_weight[2];
                 }
+                else if (cfg.turbo_enabled)
+                {
+                    // a belt driven blower turns with the crank: no lag, no wheel left coasting, no charge to vent;
+                    // at a closed throttle its bypass opens and the rotors idle in their own air, quieter but still there
+                    const float rotor_hz = rpm / 60.0f * std::max(cfg.supercharger_drive_ratio, 0.1f);
+                    const float lobes = static_cast<float>(std::clamp(cfg.supercharger_lobes, 2, 16));
+                    float pitch_hz = rotor_hz * lobes;
+                    if (cfg.induction == forced_induction::roots)
+                    {
+                        // both rotors sweep a pocket of charge past the outlet once per lobe
+                        pitch_hz *= 2.0f;
+                    }
+                    pitch_hz = std::min(pitch_hz, 0.22f * m_sample_rate);
+                    m_blower_phase += pitch_hz * dt;
+                    m_blower_phase -= floorf(m_blower_phase);
+                    const float a = two_pi * m_blower_phase;
+                    float whine = 0.0f;
+                    if (cfg.induction == forced_induction::roots)
+                    {
+                        // each pocket dumps into the higher outlet pressure at once, a buzzy pulse train
+                        whine = sinf(a) + 0.55f * sinf(2.0f * a) + 0.32f * sinf(3.0f * a) + 0.18f * sinf(4.0f * a);
+                    }
+                    else if (cfg.induction == forced_induction::twin_screw)
+                    {
+                        // the screws compress inside the case, a smoother and higher song
+                        whine = sinf(a) + 0.22f * sinf(2.0f * a);
+                    }
+                    else
+                    {
+                        whine = sinf(a) + 0.12f * sinf(1.985f * a);
+                    }
+                    const float speed   = clamp01(rpm / std::max(cfg.redline_rpm, 1.0f));
+                    const float squeeze = clamp01(0.15f + 0.85f * std::max(boost_norm, load * throttle));
+                    const float whine_gain = (0.25f + 0.75f * speed) * squeeze * (0.6f + 0.4f * cfg.turbo_stage);
+                    const float rush = m_hiss_bp.process(white) * squeeze * speed;
+                    turbo = (whine * whine_gain * 0.05f + rush * 0.02f) * p.turbo_level * m_view_weight[2];
+                }
 
-                // valvetrain ticks and a faint gear whine
+                // valvetrain ticks, timing drive, injectors, cooling fan, a faint gear whine and a hybrid's motor
                 float mech = 0.0f;
                 {
+                    // every cylinder seats its intake and its exhaust valves once a cycle
                     m_tick_phase += rpm / 60.0f * static_cast<float>(n) * dt;
                     if (m_tick_phase >= 1.0f)
                     {
@@ -1591,7 +1751,55 @@ namespace engine_sound
                     }
                     float tick = m_tick_hp.process(white) * m_tick_env * 0.3f;
                     m_tick_env *= m_tick_decay;
-                    float tick_gain = (0.9f - 0.6f * load) * (1.0f - 0.5f * rpm_norm) * 0.06f;
+                    // hydraulic lifters soak up their lash and fade as revs rise, solid ones are hit harder the faster they run
+                    const float tick_rpm = cfg.solid_lifters ? 0.8f + 0.3f * rpm_norm : 1.0f - 0.5f * rpm_norm;
+                    float tick_gain = (0.9f - 0.6f * load) * tick_rpm * 0.06f * model.tick_level;
+
+                    // the timing drive meshes at a fixed order of the crank, a chain slaps a little as it goes
+                    float timing = 0.0f;
+                    {
+                        m_cam_drive_phase += rpm / 60.0f * model.cam_drive_order * dt;
+                        m_cam_drive_phase -= floorf(m_cam_drive_phase);
+                        const float a = two_pi * m_cam_drive_phase;
+                        const float slap = 1.0f + 0.6f * m_chain_slap.process(white) * (cfg.cam_drive_type == cam_drive::chain ? 1.0f : 0.0f);
+                        timing = (sinf(a) + 0.3f * sinf(2.0f * a)) * slap * model.cam_drive_level * (0.35f + 0.65f * rpm_norm);
+                    }
+
+                    // a direct injector slams open against two hundred bar, its pump strokes off a three lobe cam
+                    float injectors = 0.0f;
+                    if (cfg.injection == fuel_injection::direct || cfg.injection == fuel_injection::port_direct)
+                    {
+                        m_injector_phase += rpm / 60.0f * static_cast<float>(n) * 0.5f * dt;
+                        if (m_injector_phase >= 1.0f)
+                        {
+                            m_injector_phase -= 1.0f;
+                            m_injector_env = 0.75f + 0.25f * m_noise.uniform();
+                        }
+                        m_pump_phase += rpm / 60.0f * 1.5f * dt;
+                        if (m_pump_phase >= 1.0f)
+                        {
+                            m_pump_phase -= 1.0f;
+                            m_pump_env = 1.0f;
+                        }
+                        const float click = m_injector_bp.process(white) * m_injector_env;
+                        const float stroke = m_pump_bp.process(white) * m_pump_env;
+                        m_injector_env *= m_injector_decay;
+                        m_pump_env *= m_pump_decay;
+                        // a dual system runs its port injectors at light load and hands over to the direct ones as load rises
+                        const float share = cfg.injection == fuel_injection::direct ? 1.0f : smoothstep(0.25f, 0.7f, load);
+                        injectors = (click * 0.022f + stroke * 0.016f) * share;
+                    }
+
+                    // an air cooled engine drives its own blower, the blades pass at a fixed order and the rush grows with speed
+                    float fan = 0.0f;
+                    if (cfg.air_cooled)
+                    {
+                        m_fan_phase += rpm / 60.0f * cfg.cooling_fan_ratio * static_cast<float>(std::max(cfg.cooling_fan_blades, 1)) * dt;
+                        m_fan_phase -= floorf(m_fan_phase);
+                        const float a = two_pi * m_fan_phase;
+                        const float speed = clamp01(rpm / std::max(cfg.redline_rpm, 1.0f));
+                        fan = ((sinf(a) + 0.35f * sinf(2.0f * a)) * 0.5f + m_fan_bp.process(white)) * (0.08f + speed * speed) * 0.012f;
+                    }
 
                     // gears mesh at the gearbox shaft speed, so the whine dies with the clutch open;
                     // reverse is straight cut and sings loudly even at walking pace
@@ -1611,13 +1819,40 @@ namespace engine_sound
                             float tone = sinf(m_whine_phase) + 0.7f * sinf(2.0f * m_whine_phase) + 0.35f * sinf(3.0f * m_whine_phase);
                             whine = tone * (0.5f + 0.5f * load) * 0.03f * std::min(shaft_norm * 4.0f, 1.0f);
                         }
+                        else if (cfg.gearbox == gearbox_type::straight_cut)
+                        {
+                            // spur gears in every forward gear, the reverse gear's song all the way up
+                            float tone = sinf(m_whine_phase) + 0.7f * sinf(2.0f * m_whine_phase) + 0.35f * sinf(3.0f * m_whine_phase);
+                            whine = tone * (0.5f + 0.5f * load) * 0.012f * shaft_norm;
+                        }
                         else
                         {
-                            whine = (sinf(m_whine_phase) + 0.4f * sinf(2.0f * m_whine_phase)) * (0.4f + 0.6f * load) * 0.006f * shaft_norm;
+                            whine = (sinf(m_whine_phase) + 0.4f * sinf(2.0f * m_whine_phase)) * (0.4f + 0.6f * load) * 0.006f * shaft_norm * model.gear_whine;
                         }
                     }
 
-                    mech = (tick * tick_gain + whine) * p.mechanical_level * m_view_weight[3];
+                    // a three phase motor's torque ripple sings at six times its electrical frequency, the inverter's
+                    // switching carrier sits above it with sidebands that follow the motor
+                    float motor = 0.0f;
+                    if (cfg.electric_motor)
+                    {
+                        const float motor_rpm  = m_motor_rpm_smooth.process(m_target_motor_rpm.load(std::memory_order_relaxed));
+                        const float motor_load = m_motor_load_smooth.process(m_target_motor_load.load(std::memory_order_relaxed));
+                        const float electrical_hz = motor_rpm / 60.0f * static_cast<float>(std::max(cfg.motor_pole_pairs, 1));
+                        m_motor_phase += std::min(electrical_hz * 6.0f, 0.22f * m_sample_rate) * dt;
+                        m_motor_phase -= floorf(m_motor_phase);
+                        m_motor_electrical_phase += electrical_hz * dt;
+                        m_motor_electrical_phase -= floorf(m_motor_electrical_phase);
+                        m_inverter_phase += 9000.0f * dt;
+                        m_inverter_phase -= floorf(m_inverter_phase);
+                        const float a = two_pi * m_motor_phase;
+                        const float speed = clamp01(motor_rpm / std::max(cfg.redline_rpm, 1.0f));
+                        const float ripple = (sinf(a) + 0.3f * sinf(2.0f * a)) * (0.15f + 0.85f * sqrtf(motor_load)) * smoothstep(0.0f, 0.05f, speed) * 0.012f;
+                        const float carrier = sinf(two_pi * m_inverter_phase) * cosf(2.0f * two_pi * m_motor_electrical_phase) * motor_load * 0.003f;
+                        motor = ripple + carrier;
+                    }
+
+                    mech = ((tick * tick_gain + timing + injectors) * model.structure_gain + fan + whine + motor) * p.mechanical_level * m_view_weight[3];
                     // Measured starts have a broad gear/brush rasp, pulsed by
                     // compression, rather than a single low electronic tone.
                     if (starter_env > 0.0f || starter_click > 1e-5f)
@@ -2015,7 +2250,9 @@ namespace engine_sound
                 if (intake_angle < duration)
                 {
                     float valve = tables.sine_lobe(intake_angle * inverse_duration);
-                    induction += valve * valve * c.imbalance;
+                    float pulse = valve * valve;
+                    // a trumpet per cylinder has no plenum to round each gulp off
+                    induction += (cfg.individual_throttle_bodies ? pulse * pulse : pulse) * c.imbalance;
                 }
             }
             model.torque_ripple = torque;
@@ -2043,6 +2280,7 @@ namespace engine_sound
             }
 
             // per bank collector, muffler, tailpipe
+            float into_can[2] = { 0.0f, 0.0f };
             for (int b = 0; b < nb; b++)
             {
                 exhaust_bank& bank = model.banks[static_cast<size_t>(b)];
@@ -2078,11 +2316,38 @@ namespace engine_sound
                 bank.collector_up.send(model.can_reflection * model.collector_flow_damping * x);
                 // what goes on into the can has steepened on its way down, outside the loop so no bounce steepens twice
                 x = bank.collector_front.process(x);
-                if (cfg.turbo_enabled)
+                if (model.turbine_transmission < 1.0f)
                 {
-                    x = bank.turbine.process(x) * model.turbine_transmission;
+                    // gas let past the turbine by the wastegate keeps its pulse shape
+                    const float through = bank.turbine.process(x) * model.turbine_transmission;
+                    x = through + (x - through) * 0.2f * model.wastegate_open;
                 }
-                x = bank.can.process(x);
+                if (model.aftertreatment_keep < 1.0f)
+                {
+                    const float body = bank.aftertreatment.process(x);
+                    x = body + (x - body) * model.aftertreatment_keep;
+                }
+                into_can[b] = x;
+            }
+
+            // a crossover lets each bank's pipe carry some of the other's pulses, filling in the gaps of an uneven bank
+            if (model.crossover_mix > 0.0f)
+            {
+                const float a = into_can[0];
+                const float b = into_can[1];
+                into_can[0] = a + (b - a) * model.crossover_mix;
+                into_can[1] = b + (a - b) * model.crossover_mix;
+            }
+
+            for (int b = 0; b < nb; b++)
+            {
+                exhaust_bank& bank = model.banks[static_cast<size_t>(b)];
+                float x = bank.can.process(into_can[b]);
+                if (cfg.exhaust_valve)
+                {
+                    const float open = bank.can_open.process(into_can[b]);
+                    x += (open - x) * model.exhaust_valve_open;
+                }
                 x = bank.tailpipe.process(bank.tailpipe_front.process(x));
                 x = bank.dc.process(x);
                 // the open end throws the bass back up the pipe inverted, so the gas at the exit moves with the
@@ -2185,6 +2450,12 @@ namespace engine_sound
             m_surge_bp.reset();
             m_hiss_bp.reset();
             m_tick_hp.reset();
+            m_injector_bp.reset();
+            m_pump_bp.reset();
+            m_fan_bp.reset();
+            m_chain_slap.reset();
+            m_motor_rpm_smooth.reset();
+            m_motor_load_smooth.reset();
             m_starter_bp.reset();
             m_starter_lp.reset();
             m_body_lp.reset();
@@ -2200,8 +2471,11 @@ namespace engine_sound
             m_noise.seed(0xA5A5F00Du);
             m_event_rng.seed(0x1234ABCDu);
             m_control_counter = 0;
-            m_whistle_phase = m_whistle_phase2 = 0.0f;
+            m_whistle_phase = m_whistle_phase2 = m_whistle_phase3 = 0.0f;
             m_tick_phase = m_whine_phase = m_surge_phase = 0.0f;
+            m_blower_phase = m_cam_drive_phase = m_fan_phase = 0.0f;
+            m_injector_phase = m_injector_env = m_pump_phase = m_pump_env = 0.0f;
+            m_motor_phase = m_motor_electrical_phase = m_inverter_phase = 0.0f;
             m_bov_freq = 3000.0f;
             m_surge_rate = 22.0f;
             m_lift_armed = false;
@@ -2405,10 +2679,33 @@ namespace engine_sound
                 m_lift_time = 0.0f;
             }
 
-            if (cfg.turbo_enabled)
+            m_tick_hp.set_highpass(model.tick_hz, 0.7f, m_sample_rate);
+            m_tick_decay = expf(-1.0f / (model.tick_decay_s * m_sample_rate));
+            if (cfg.air_cooled)
             {
+                const float blade_hz = rpm / 60.0f * cfg.cooling_fan_ratio * static_cast<float>(std::max(cfg.cooling_fan_blades, 1));
+                m_fan_bp.set_bandpass(std::clamp(blade_hz * 1.4f, 200.0f, 9000.0f), 1.2f, m_sample_rate);
+            }
+
+            // an active flap opens once the driver leans on it past the lower revs, and takes a moment to swing
+            if (cfg.exhaust_valve)
+            {
+                const float flap_target = smoothstep(0.45f, 0.75f, load) * smoothstep(0.2f, 0.45f, rpm_norm);
+                model.exhaust_valve_open += (flap_target - model.exhaust_valve_open) * (1.0f - expf(-block_dt / 0.25f));
+            }
+
+            if (model.turbocharged)
+            {
+                // the gate opens to hold boost, and wider still where the boost is tapered off at the top
+                float gate = smoothstep(0.8f, 1.0f, boost_norm);
+                if (cfg.boost_wastegate_rpm > 0.0f)
+                {
+                    gate = std::max(gate, throttle * clamp01((rpm - cfg.boost_wastegate_rpm) / 2000.0f));
+                }
+                model.wastegate_open += (gate - model.wastegate_open) * (1.0f - expf(-block_dt / 0.05f));
+
                 float shaft = m_shaft_smooth.z;
-                float freq  = 900.0f + 6500.0f * powf(shaft, 1.6f);
+                float freq  = (900.0f + 6500.0f * powf(shaft, 1.6f)) * model.turbo_pitch;
                 m_whistle_bp.set_bandpass(freq, 8.0f, m_sample_rate);
                 m_bov_bp.set_bandpass(m_bov_freq, 1.5f, m_sample_rate);
                 // Each returning flow packet sweeps down through the intake resonance.
@@ -2457,7 +2754,6 @@ namespace engine_sound
                     trigger_pop(model, bank, 0.8f + 0.8f * m_event_rng.uniform());
                 }
             }
-            (void)load;
         }
 
         float m_sample_rate = static_cast<float>(tuning::sample_rate);
@@ -2544,6 +2840,27 @@ namespace engine_sound
 
         float m_whistle_phase  = 0.0f;
         float m_whistle_phase2 = 0.0f;
+        float m_whistle_phase3 = 0.0f;
+        float m_blower_phase   = 0.0f;
+        float m_cam_drive_phase = 0.0f;
+        one_pole m_chain_slap;
+        biquad m_injector_bp;
+        biquad m_pump_bp;
+        biquad m_fan_bp;
+        float m_injector_phase = 0.0f;
+        float m_injector_env   = 0.0f;
+        float m_injector_decay = 0.99f;
+        float m_pump_phase     = 0.0f;
+        float m_pump_env       = 0.0f;
+        float m_pump_decay     = 0.99f;
+        float m_fan_phase      = 0.0f;
+        std::atomic<float> m_target_motor_rpm { 0.0f };
+        std::atomic<float> m_target_motor_load { 0.0f };
+        one_pole m_motor_rpm_smooth;
+        one_pole m_motor_load_smooth;
+        float m_motor_phase    = 0.0f;
+        float m_motor_electrical_phase = 0.0f;
+        float m_inverter_phase = 0.0f;
         float m_charge = 0.0f;
         float m_turbo_release_time = 1.0f;
         float m_bov_env        = 0.0f;
@@ -2603,6 +2920,11 @@ namespace engine_sound
     void synthesizer::set_parameters(float rpm, float throttle, float load, float boost_pressure, bool fuel_cut, int gear, bool shifting, listener_view view, float gearbox_rpm, bool overrun, float bank_pan)
     {
         m_implementation->set_parameters(rpm, throttle, load, boost_pressure, fuel_cut, gear, shifting, view, gearbox_rpm, overrun, bank_pan);
+    }
+
+    void synthesizer::set_electric(float motor_rpm, float motor_load)
+    {
+        m_implementation->set_electric(motor_rpm, motor_load);
     }
 
     void synthesizer::generate(float* output_buffer, int num_samples, bool stereo)
@@ -2679,6 +3001,11 @@ namespace engine_sound
     void set_parameters(float rpm, float throttle, float load, float boost, bool fuel_cut, int gear, bool shifting, listener_view view, float gearbox_rpm, bool overrun, float bank_pan)
     {
         get_synthesizer().set_parameters(rpm, throttle, load, boost, fuel_cut, gear, shifting, view, gearbox_rpm, overrun, bank_pan);
+    }
+
+    void set_electric(float motor_rpm, float motor_load)
+    {
+        get_synthesizer().set_electric(motor_rpm, motor_load);
     }
 
     void generate(float* buffer, int num_samples, bool stereo)

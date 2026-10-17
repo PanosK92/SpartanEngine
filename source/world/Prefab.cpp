@@ -22,6 +22,25 @@ using namespace std;
 
 namespace spartan
 {
+    namespace
+    {
+        // ids stored in a .prefab file would be shared by every instance, and id based lookups, deletes and clones would then hit all of them
+        void assign_fresh_ids(pugi::xml_node node)
+        {
+            static atomic<uint64_t> counter = 0;
+            pugi::xml_attribute id = node.attribute("id");
+            if (!id)
+            {
+                id = node.append_attribute("id");
+            }
+            id.set_value(SpartanObject().GetObjectId() ^ (++counter * 0x9E3779B97F4A7C15ull));
+            for (pugi::xml_node child = node.child("Entity"); child; child = child.next_sibling("Entity"))
+            {
+                assign_fresh_ids(child);
+            }
+        }
+    }
+
     unordered_map<string, PrefabCreateFn>& Prefab::GetRegistry()
     {
         static unordered_map<string, PrefabCreateFn> registry;
@@ -188,6 +207,7 @@ namespace spartan
         // load child entities
         for (pugi::xml_node child_node = prefab_node.child("Entity"); child_node; child_node = child_node.next_sibling("Entity"))
         {
+            assign_fresh_ids(child_node);
             Entity* child = World::CreateEntity();
             child->Load(child_node);
             child->SetParent(parent);

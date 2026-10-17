@@ -48,32 +48,59 @@
   <Resource file="concrete_packed_slot0.tex_packed.texture" />
   <Resource file="cone_orange.xml" />
   <Resource file="cp_board_fuel_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_board_fuel_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_board_rt_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_board_rt_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_board_spartan_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_board_spartan_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_board_tyres_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_board_tyres_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_concrete_barrier_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_concrete_barrier_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_container_blue_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_container_blue_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_container_green_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_container_green_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_container_orange_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_container_orange_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_corrugated_wall_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_corrugated_wall_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_curb_stripes_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_curb_stripes_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_dark_metal_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_dark_metal_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_galv_steel_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_galv_steel_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_glass_tint_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_glass_tint_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_hay_bale_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_hay_bale_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_lamp_amber_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_lamp_amber_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_lamp_green_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_lamp_green_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_lamp_red_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_lamp_red_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_lamp_white_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_lamp_white_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_meadow_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_meadow_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_paint_red_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_paint_red_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_paint_white_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_paint_white_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_roller_door_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_roller_door_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_rubber_tire_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_rubber_tire_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_seat_blue_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_seat_blue_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_sign_drag3_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_sign_drag3_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_sign_park_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_sign_park_packed_slot0.tex_packed_2.texture" />
   <Resource file="cp_sign_startfinish_packed_slot0.tex_packed.texture" />
+  <Resource file="cp_sign_startfinish_packed_slot0.tex_packed_2.texture" />
   <Resource file="disc_003_2.xml" />
   <Resource file="disc_003_3.xml" />
   <Resource file="disc_004_2.xml" />
@@ -223,9 +250,9 @@
   <Variable name="r.grid" value="0.000000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="-3.34279 0.41735 -162.731" rotation="0 0 0 1" scale="1 1 1">
+  <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="-2.66246 1.83616 -160.667" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <Entity name="component_camera" id="1001000000000000002" active="true" position="-91.6572 2.58265 506.731" rotation="-0.0322078 0.644035 0.0271563 0.763835" scale="1 1 1">
+   <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.77 0" rotation="0.0682093 0.710302 -0.0694991 0.697129" scale="1 1 1">
     <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
    </Entity>
   </Entity>

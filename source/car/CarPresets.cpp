@@ -51,6 +51,30 @@ namespace car
             }
         }
 
+        // a named choice, written as its name or as its index, an unknown name is an error left for validation
+        void read_choice(pugi::xml_node node, const char* name, std::initializer_list<const char*> choices, int& value)
+        {
+            pugi::xml_attribute attribute = node.attribute(name);
+            if (!attribute)
+            {
+                return;
+            }
+            const string text = attribute.as_string();
+            int index = 0;
+            for (const char* choice : choices)
+            {
+                if (text == choice)
+                {
+                    value = index;
+                    return;
+                }
+                index++;
+            }
+            char* end = nullptr;
+            const long number = strtol(text.c_str(), &end, 10);
+            value = end != text.c_str() && *end == '\0' ? static_cast<int>(number) : -1;
+        }
+
         void read_float_array(pugi::xml_node node, const char* name, float* values, int count)
         {
             pugi::xml_attribute attribute = node.attribute(name);
@@ -229,6 +253,16 @@ namespace car
                     firing_order_used[cylinder] = true;
                 }
             }
+            require(preset.forced_induction >= 0 && preset.forced_induction <= 3, "forced_induction");
+            require(preset.turbo_count >= 1 && preset.turbo_count <= 4, "turbo_count");
+            require(finite_range(preset.supercharger_drive_ratio, 0.5f, 20.0f) && preset.supercharger_lobes >= 2 && preset.supercharger_lobes <= 16, "supercharger_drive");
+            require(preset.valves_per_cylinder >= 2 && preset.valves_per_cylinder <= 5 && preset.camshafts_per_bank >= 0 && preset.camshafts_per_bank <= 2, "valvetrain");
+            require(preset.cam_drive >= 0 && preset.cam_drive <= 2, "cam_drive");
+            require(preset.fuel_injection >= 0 && preset.fuel_injection <= 3, "fuel_injection");
+            require(finite_range(preset.cooling_fan_ratio, 0.2f, 5.0f) && preset.cooling_fan_blades >= 1 && preset.cooling_fan_blades <= 32, "cooling_fan");
+            require(preset.exhaust_crossover >= 0 && preset.exhaust_crossover <= 3, "exhaust_crossover");
+            require(preset.gearbox_type >= 0 && preset.gearbox_type <= 3, "gearbox_type");
+            require(preset.electric_motor_pole_pairs >= 1 && preset.electric_motor_pole_pairs <= 16, "electric_motor_pole_pairs");
             float crank_axis_length = sqrtf(preset.engine_crank_axis_x * preset.engine_crank_axis_x + preset.engine_crank_axis_y * preset.engine_crank_axis_y + preset.engine_crank_axis_z * preset.engine_crank_axis_z);
             require(finite_range(crank_axis_length, 0.99f, 1.01f), "engine_crank_axis");
             require(finite_range(preset.final_drive, 0.1f, 10.0f) && finite_range(preset.clutch_engagement_rate, 0.1f, 100.0f) && finite_range(preset.clutch_max_torque, 10.0f, 10000.0f) && finite_range(preset.driveline_inertia, 0.001f, 10.0f) && finite_range(preset.drivetrain_efficiency, 0.1f, 1.0f) && finite_range(preset.driveshaft_stiffness, 1.0f, 1000000.0f) && finite_range(preset.driveshaft_damping, 0.0f, 10000.0f), "drivetrain");
@@ -546,6 +580,25 @@ namespace car
             READ_ENGINE_ARRAY(engine_firing_intervals_deg);
             READ_ENGINE_ARRAY(engine_firing_order);
             READ_ENGINE_ARRAY(engine_cylinder_bank);
+            read_choice(node, "forced_induction", { "turbo", "roots", "twin_screw", "centrifugal" }, preset.forced_induction);
+            READ_INT(turbo_count);
+            READ_FLOAT(supercharger_drive_ratio);
+            READ_INT(supercharger_lobes);
+            READ_INT(valves_per_cylinder);
+            READ_INT(camshafts_per_bank);
+            READ_BOOL(solid_lifters);
+            read_choice(node, "cam_drive", { "chain", "belt", "gear" }, preset.cam_drive);
+            read_choice(node, "fuel_injection", { "port", "direct", "port_direct", "mechanical" }, preset.fuel_injection);
+            READ_BOOL(individual_throttle_bodies);
+            READ_BOOL(air_cooled);
+            READ_FLOAT(cooling_fan_ratio);
+            READ_INT(cooling_fan_blades);
+            READ_BOOL(catalytic_converter);
+            READ_BOOL(particulate_filter);
+            read_choice(node, "exhaust_crossover", { "none", "h_pipe", "x_pipe", "merged" }, preset.exhaust_crossover);
+            READ_BOOL(exhaust_valve);
+            read_choice(node, "gearbox_type", { "manual", "dual_clutch", "automatic", "straight_cut" }, preset.gearbox_type);
+            READ_INT(electric_motor_pole_pairs);
 
             READ_FLOAT_ARRAY(gear_ratios);
             READ_INT(gear_count);

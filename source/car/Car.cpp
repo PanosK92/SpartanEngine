@@ -2681,6 +2681,27 @@ namespace spartan
                 config.turbo_enabled       = preset.turbo_enabled && preset.boost_max_pressure > 0.0f;
                 config.boost_max_pressure  = preset.boost_max_pressure;
                 config.boost_wastegate_rpm = preset.boost_wastegate_rpm;
+                // the upgrade path bolts a turbo onto an atmospheric engine, a supercharged one keeps its blower
+                config.induction           = base.turbo_enabled ? static_cast<engine_sound::forced_induction>(preset.forced_induction) : engine_sound::forced_induction::turbo;
+                config.turbo_count         = preset.turbo_count;
+                config.supercharger_drive_ratio = preset.supercharger_drive_ratio;
+                config.supercharger_lobes  = preset.supercharger_lobes;
+                config.valves_per_cylinder = preset.valves_per_cylinder;
+                config.camshafts_per_bank  = preset.camshafts_per_bank;
+                config.solid_lifters       = preset.solid_lifters;
+                config.cam_drive_type      = static_cast<engine_sound::cam_drive>(preset.cam_drive);
+                config.injection           = static_cast<engine_sound::fuel_injection>(preset.fuel_injection);
+                config.individual_throttle_bodies = preset.individual_throttle_bodies;
+                config.air_cooled          = preset.air_cooled;
+                config.cooling_fan_ratio   = preset.cooling_fan_ratio;
+                config.cooling_fan_blades  = preset.cooling_fan_blades;
+                config.catalytic_converter = preset.catalytic_converter;
+                config.particulate_filter  = preset.particulate_filter;
+                config.crossover           = static_cast<engine_sound::exhaust_crossover>(preset.exhaust_crossover);
+                config.exhaust_valve       = preset.exhaust_valve;
+                config.gearbox             = static_cast<engine_sound::gearbox_type>(preset.gearbox_type);
+                config.electric_motor      = preset.electric_enabled;
+                config.motor_pole_pairs    = preset.electric_motor_pole_pairs;
                 config.engine_stage        = stage_fraction(upgrades.engine, base.engine_stage_max);
                 config.exhaust_stage       = stage_fraction(upgrades.exhaust, base.exhaust_stage_max);
                 config.intake_stage        = stage_fraction(upgrades.intake, base.intake_stage_max);
@@ -2759,6 +2780,13 @@ namespace spartan
                 overrun,
                 bank_pan
             );
+            if (preset.electric_enabled)
+            {
+                // the motor sits ahead of the final drive, it turns with the driven wheels
+                const float motor_rpm = fabsf(simulation->get_average_driven_angular_velocity(false)) * preset.final_drive * 60.0f / (2.0f * math::pi);
+                const float motor_load = fabsf(simulation->get_motor_torque()) / std::max(preset.electric_motor_torque, 1.0f);
+                engine_sound::set_electric(motor_rpm, motor_load);
+            }
 
             // the synth already breathes with load, this gain only adds the distance and the body
             const float engine_volume_scale = 1.0f;

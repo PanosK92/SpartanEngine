@@ -124,6 +124,21 @@ namespace spartan
             return Vector3::Zero;
         }
 
+        bool is_static_actor(Entity* entity)
+        {
+            while (entity)
+            {
+                if (Physics* physics = entity->GetComponent<Physics>())
+                {
+                    return physics->IsStatic();
+                }
+
+                entity = entity->GetParent();
+            }
+
+            return false;
+        }
+
         // small lift + cap, velocity itself comes from the dynamic hit body / hitter
         Vector3 shape_launch_velocity(Vector3 launch)
         {
@@ -943,6 +958,12 @@ namespace spartan
             }
 
             if (!other || other == self || other->HasTag("pedestrian") || other->GetComponent<Ragdoll>())
+            {
+                continue;
+            }
+
+            // the hit capsule is posed onto stairs and walls every frame, depenetration from scenery is not a hit
+            if (is_static_actor(other))
             {
                 continue;
             }

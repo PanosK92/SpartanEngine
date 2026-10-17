@@ -30,6 +30,46 @@ namespace engine_sound
         cabin
     };
 
+    // the hardware around the cylinders, each gives an engine part of its voice
+    enum class forced_induction : int
+    {
+        turbo,       // exhaust driven, lags, whistles and vents its charge on lift
+        roots,       // belt driven lobes, whines locked to the crank
+        twin_screw,  // belt driven screws, a higher and smoother whine
+        centrifugal  // belt driven impeller, a whistle locked to the crank
+    };
+
+    enum class cam_drive : int
+    {
+        chain,
+        belt,
+        gear
+    };
+
+    enum class fuel_injection : int
+    {
+        port,
+        direct,      // high pressure injectors and their cam driven pump tick
+        port_direct, // port at light load, direct as load rises
+        mechanical   // continuous or pump driven, no solenoids to click
+    };
+
+    enum class exhaust_crossover : int
+    {
+        none,   // true dual, each bank keeps its own pipe
+        h_pipe, // a balance tube, the banks share a little
+        x_pipe, // the banks merge and split again, much of the off beat is evened out
+        merged  // one pipe for both banks
+    };
+
+    enum class gearbox_type : int
+    {
+        manual,      // helical, synchronised
+        dual_clutch,
+        automatic,   // torque converter planetary, the quietest gears
+        straight_cut // spur gears, a dog box or a sequential, they sing
+    };
+
     struct engine_config
     {
         int cylinder_count = 4;
@@ -61,6 +101,29 @@ namespace engine_sound
         bool turbo_bypass_valve = true; // a working bypass vents charge instead of compressor surge
         float boost_max_pressure = 0.0f;
         float boost_wastegate_rpm = 0.0f;
+        forced_induction induction = forced_induction::turbo;
+        int turbo_count = 1; // the flow split over more wheels makes each smaller and faster
+        float supercharger_drive_ratio = 2.0f; // rotor or impeller turns per crank turn
+        int supercharger_lobes = 3; // per rotor
+        // valvetrain
+        int valves_per_cylinder = 4;
+        int camshafts_per_bank = 2; // zero is a pushrod engine's single cam in the block
+        bool solid_lifters = false; // mechanical lash taps where hydraulic lifters stay silent
+        cam_drive cam_drive_type = cam_drive::chain;
+        fuel_injection injection = fuel_injection::port;
+        bool individual_throttle_bodies = false;
+        // an air cooled engine has no water jacket to hold its mechanical noise in, and a fan of its own
+        bool air_cooled = false;
+        float cooling_fan_ratio = 1.6f;
+        int cooling_fan_blades = 11;
+        // exhaust aftertreatment and routing
+        bool catalytic_converter = true;
+        bool particulate_filter = false;
+        exhaust_crossover crossover = exhaust_crossover::none;
+        bool exhaust_valve = false; // an active flap that bypasses the muffler at high load
+        gearbox_type gearbox = gearbox_type::manual;
+        bool electric_motor = false;
+        int motor_pole_pairs = 4;
         // upgrade stages as a fraction of their maximum stage
         float engine_stage = 0.0f;
         float exhaust_stage = 0.0f;
@@ -132,6 +195,8 @@ namespace engine_sound
             bool overrun,
             float bank_pan
         );
+        // a hybrid's traction motor, its speed and its torque as a fraction of peak
+        void set_electric(float motor_rpm, float motor_load);
         void generate(
             float* output_buffer,
             int num_samples,
@@ -170,6 +235,7 @@ namespace engine_sound
         bool overrun,
         float bank_pan
     );
+    void set_electric(float motor_rpm, float motor_load);
     void generate(
         float* buffer,
         int num_samples,

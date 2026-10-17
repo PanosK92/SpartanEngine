@@ -124,6 +124,15 @@ namespace car
             intake_valve_duration_deg = 220.0f;
             engine_combustion_variation = 0.025f;
             turbo_bypass_valve = true;
+            turbo_count = 1;
+            supercharger_drive_ratio = 2.0f;
+            supercharger_lobes = 3;
+            valves_per_cylinder = 4;
+            camshafts_per_bank = 2;
+            cooling_fan_ratio = 1.6f;
+            cooling_fan_blades = 11;
+            catalytic_converter = true;
+            electric_motor_pole_pairs = 4;
             for (int i = 0; i < max_engine_cylinders; i++)
             {
                 engine_firing_order[i] = static_cast<float>(i);
@@ -267,6 +276,26 @@ namespace car
         float engine_firing_intervals_deg[max_engine_cylinders]; // zero means even firing; otherwise sum to 720
         float engine_firing_order[max_engine_cylinders];
         float engine_cylinder_bank[max_engine_cylinders];
+        // the hardware around the cylinders that the engine sound voices, enums follow engine_sound in CarEngineSoundSynthesis.h
+        int   forced_induction;          // 0 turbo, 1 roots, 2 twin_screw, 3 centrifugal, only read with turbo_enabled
+        int   turbo_count;
+        float supercharger_drive_ratio;  // rotor or impeller turns per crank turn
+        int   supercharger_lobes;        // per rotor
+        int   valves_per_cylinder;
+        int   camshafts_per_bank;        // 0 pushrod, 1 sohc, 2 dohc
+        bool  solid_lifters;             // mechanical lash adjustment
+        int   cam_drive;                 // 0 chain, 1 belt, 2 gear
+        int   fuel_injection;            // 0 port, 1 direct, 2 port_direct, 3 mechanical
+        bool  individual_throttle_bodies;
+        bool  air_cooled;
+        float cooling_fan_ratio;         // fan turns per crank turn, air cooled only
+        int   cooling_fan_blades;
+        bool  catalytic_converter;
+        bool  particulate_filter;
+        int   exhaust_crossover;         // 0 none, 1 h_pipe, 2 x_pipe, 3 merged
+        bool  exhaust_valve;             // active muffler bypass flap
+        int   gearbox_type;              // 0 manual, 1 dual_clutch, 2 automatic, 3 straight_cut
+        int   electric_motor_pole_pairs;
 
         // gear indices are zero reverse one neutral and two onward forward
         float gear_ratios[max_gears];
