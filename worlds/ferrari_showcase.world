@@ -100,7 +100,7 @@
   </Entity>
   <Entity name="floor" id="9100000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="5000 1 5000">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="showroom_floor_epoxy" material_path="project/mcp/blockout/materials/showroom_floor_epoxy.xml" material_default="false" ovr_uv_tiling_x="0.400000006" ovr_uv_tiling_y="0.400000006" ovr_uv_world_space="1" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="showroom_floor_epoxy" material_path="project/ferrari_showcase_resources/studio/showroom_floor_epoxy.xml" material_default="false" ovr_uv_tiling_x="0.400000006" ovr_uv_tiling_y="0.400000006" ovr_uv_world_space="1" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="tube_front_warm" id="12638874799870260079" active="true" position="-2.23517e-08 1.15 -5.04129" rotation="0 0 0 1" scale="0.02 2.3 0.02">
    <light flags="5" light_type="3" color_r="1" color_g="0.653803825" color_b="0.342766613" temperature="2700" intensity="1" intensity_photometric="400000" range="225.675827" angle="0.52359879" preset="5" area_width="0.100000001" area_height="2.3499999" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
@@ -134,7 +134,7 @@
   <Entity name="turntable" id="9100000000000000006" active="true" position="0 -0.1 0" rotation="0 0 0 1" scale="0.75 0.75 0.75">
    <script file_path="project/scripts/turntable.lua" Tick="" />
    <Entity name="disc" id="9100000000000000007" active="true" position="0 0.15 0" rotation="0 0 0 1" scale="5 0.3 5">
-    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="turntable_gloss_black" material_path="project/mcp/blockout/materials/turntable_gloss_black.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="turntable_gloss_black" material_path="project/ferrari_showcase_resources/studio/turntable_gloss_black.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="ferrari" id="9100000000000000008" active="true" position="0 0.3 0" rotation="0 0 0 1" scale="1 1 1">
     <prefab type="car" static_physics="false" drivable="false" paint_preset="metallic" paint_color_r="0.392156869" paint_color_b="0" paint_color_g="0" paint_color_a="1" />
@@ -157,23 +157,23 @@
    </Entity>
   </Entity>
   <Entity name="studio_dome" id="7711851863863613765" active="true" position="0 0 0" rotation="0 0 0 1" scale="20 20 20">
-   <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="studio_void_black" material_path="project/mcp/blockout/materials/studio_void_black.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="studio_void_black" material_path="project/ferrari_showcase_resources/studio/studio_void_black.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="turntable_led_ring" id="5628212500599411116" active="true" position="0 0.02 0" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="led_ring_r380" mesh_path="project/mcp/blockout/meshes/led_ring_r380.mesh" sub_mesh_index="0" material_name="led_ring_ferrari_red" material_path="project/mcp/blockout/materials/led_ring_ferrari_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="led_ring_r380" mesh_path="project/ferrari_showcase_resources/studio/led_ring_r380.mesh" sub_mesh_index="0" material_name="led_ring_ferrari_red" material_path="project/ferrari_showcase_resources/studio/led_ring_ferrari_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="horizon_light_line" id="4326116253090323148" active="true" position="0 1.1 0" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="horizon_ring_r13" mesh_path="project/mcp/blockout/meshes/horizon_ring_r13.mesh" sub_mesh_index="0" material_name="horizon_line_cool" material_path="project/mcp/blockout/materials/horizon_line_cool.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   <render mesh_name="horizon_ring_r13" mesh_path="project/ferrari_showcase_resources/studio/horizon_ring_r13.mesh" sub_mesh_index="0" material_name="horizon_line_cool" material_path="project/ferrari_showcase_resources/studio/horizon_line_cool.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="softbox_rig" id="4419162497369731583" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="softbox_strip_left" id="4430169054899749101" active="true" position="-1.25 4.2 0" rotation="0 0 0 1" scale="0.22 0.03 5.6">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="softbox_emissive_white" material_path="project/mcp/blockout/materials/softbox_emissive_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="softbox_emissive_white" material_path="project/ferrari_showcase_resources/studio/softbox_emissive_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="softbox_strip_center" id="14185483153044346854" active="true" position="0 4.2 0" rotation="0 0 0 1" scale="0.22 0.03 5.6">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="softbox_emissive_white" material_path="project/mcp/blockout/materials/softbox_emissive_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="softbox_emissive_white" material_path="project/ferrari_showcase_resources/studio/softbox_emissive_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="softbox_strip_right" id="14165080421823028558" active="true" position="1.25 4.2 0" rotation="0 0 0 1" scale="0.22 0.03 5.6">
-    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="softbox_emissive_white" material_path="project/mcp/blockout/materials/softbox_emissive_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="softbox_emissive_white" material_path="project/ferrari_showcase_resources/studio/softbox_emissive_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="softbox_light_left" id="13774891375695565306" active="true" position="-1.25 4.17 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
     <light flags="1" light_type="3" color_r="1.00889552" color_g="1.00090468" color_b="0.964844942" temperature="6500" intensity="8" intensity_photometric="120000" range="30" angle="0.52359879" preset="5" area_width="0.219999999" area_height="5.5999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
