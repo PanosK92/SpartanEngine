@@ -945,6 +945,9 @@ namespace spartan
                 // simplify geometry
                 bool preserve_uvs   = true;
                 bool preserve_edges = m_flags & static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges);
+                // each level simplifies the one above it, so it only gets the part of its budget the levels above left over,
+                // terrain keeps the unbounded reduction, its tiles are many and their silhouettes are seams the edge locks hold
+                const float max_error = preserve_edges ? 1.0f : mesh_lod_max_error[lod_level] - mesh_lod_max_error[lod_level - 1];
                 // Disconnected branches/cards need component pruning to form useful distance LODs.
                 // Keep terrain borders and the original LOD 0 untouched.
                 // Reuse the exact simplification for repeated imports. Hash the
@@ -957,6 +960,7 @@ namespace spartan
                 lod_hash.Add(static_cast<uint64_t>(target_index_count));
                 lod_hash.Add(preserve_uvs);
                 lod_hash.Add(preserve_edges);
+                lod_hash.Add(max_error);
                 const auto lod_path = generated_cache::Path(World::GetResourceDirectory(), "lods", lod_hash.value);
                 const bool cache_lods = !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessSkipCache));
                 if (!cache_lods || !generated_cache::Load(lod_path, lod_hash.value, lod_vertices, lod_indices))
@@ -964,7 +968,7 @@ namespace spartan
                     if (foliage_cards)
                         geometry_processing::thin_foliage_cards(lod_indices, lod_vertices, target_index_count);
                     else
-                        geometry_processing::simplify(lod_indices, lod_vertices, target_index_count, preserve_uvs, preserve_edges, !preserve_edges);
+                        geometry_processing::simplify(lod_indices, lod_vertices, target_index_count, preserve_uvs, preserve_edges, !preserve_edges, max_error);
                     if (cache_lods) generated_cache::Save(lod_path, lod_hash.value, lod_vertices, lod_indices);
                 }
 

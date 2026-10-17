@@ -1,94 +1,188 @@
 <?xml version="1.0"?>
 <World name="ferrari_showcase" description="Ferrari laferrari rotating on a lit turntable">
+ <OwnedResources>
+  <Resource file="albedo.texture" />
+  <Resource file="apex_game_caliper.xml" />
+  <Resource file="apex_game_caliper_packed_slot0.tex_packed.texture" />
+  <Resource file="apex_game_rim.xml" />
+  <Resource file="apex_game_rim_packed_slot0.tex_packed.texture" />
+  <Resource file="apex_game_rotor.xml" />
+  <Resource file="apex_game_rotor_packed_slot0.tex_packed.texture" />
+  <Resource file="apex_game_rubber.xml" />
+  <Resource file="apex_game_rubber_packed_slot0.tex_packed.texture" />
+  <Resource file="apex_r1_wheel.mesh" />
+  <Resource file="black_2.xml" />
+  <Resource file="body.xml" />
+  <Resource file="break_lights_001_2.xml" />
+  <Resource file="break_lights_glasses_2.xml" />
+  <Resource file="breake_lights_chrom_2.xml" />
+  <Resource file="carbon_fiber_2.xml" />
+  <Resource file="carbon_fiber_base_color.texture" />
+  <Resource file="chrome_2.xml" />
+  <Resource file="chrome_base_color.texture" />
+  <Resource file="disc_003_2.xml" />
+  <Resource file="disc_004_2.xml" />
+  <Resource file="disc_006_2.xml" />
+  <Resource file="disk_2.xml" />
+  <Resource file="engine_glass_2.xml" />
+  <Resource file="ferrari_laferrari_29.xml" />
+  <Resource file="front_headlights_001_2.xml" />
+  <Resource file="game_caliper_color.texture" />
+  <Resource file="game_caliper_normal.texture" />
+  <Resource file="game_rim_color.texture" />
+  <Resource file="game_rim_normal.texture" />
+  <Resource file="game_rotor_color.texture" />
+  <Resource file="game_rotor_normal.texture" />
+  <Resource file="game_rubber_color.texture" />
+  <Resource file="game_rubber_normal.texture" />
+  <Resource file="glasses_2.xml" />
+  <Resource file="head_lights_glasses_002_2.xml" />
+  <Resource file="horizon_line_cool_packed_slot0.tex_packed.texture" />
+  <Resource file="inside_stickers_2.xml" />
+  <Resource file="inside_stickers_base_color.texture" />
+  <Resource file="int_mirror_2.xml" />
+  <Resource file="interior_2_001_2.xml" />
+  <Resource file="led_ring_ferrari_red_packed_slot0.tex_packed.texture" />
+  <Resource file="logo.texture" />
+  <Resource file="logos_2.xml" />
+  <Resource file="logos_base_color.texture" />
+  <Resource file="material_009_2.xml" />
+  <Resource file="material_019_2.xml" />
+  <Resource file="material_113_2.xml" />
+  <Resource file="material_116_2.xml" />
+  <Resource file="material_144_2.xml" />
+  <Resource file="material_146_2.xml" />
+  <Resource file="material_147_2.xml" />
+  <Resource file="normal.texture" />
+  <Resource file="paint_normal.texture" />
+  <Resource file="rear_headlights_2.xml" />
+  <Resource file="rear_logo_2.xml" />
+  <Resource file="rear_something_2.xml" />
+  <Resource file="red_light_2.xml" />
+  <Resource file="rim_001_2.xml" />
+  <Resource file="rim_002_2.xml" />
+  <Resource file="run_lights_2.xml" />
+  <Resource file="scene_2.mesh" />
+  <Resource file="seats_nuts_2.xml" />
+  <Resource file="seets_logo_2.xml" />
+  <Resource file="showroom_floor_epoxy_packed_slot0.tex_packed.texture" />
+  <Resource file="side_mirrors_2.xml" />
+  <Resource file="softbox_emissive_white_packed_slot0.tex_packed.texture" />
+  <Resource file="studio_void_black_packed_slot0.tex_packed.texture" />
+  <Resource file="tail_lights_2.xml" />
+  <Resource file="tile_black.xml" />
+  <Resource file="tile_black_packed_slot0.tex_packed_2.texture" />
+  <Resource file="tread_001_2.xml" />
+  <Resource file="tread_002_2.xml" />
+  <Resource file="tread_003_2.xml" />
+  <Resource file="tread_004_2.xml" />
+  <Resource file="tube_front_warm_emitter.xml" />
+  <Resource file="tube_left_cyan_emitter.xml" />
+  <Resource file="tube_right_red_emitter.xml" />
+  <Resource file="turntable_gloss_black_packed_slot0.tex_packed.texture" />
+  <Resource file="viper_2.xml" />
+  <Resource file="wireframe_color_0xe0c657_2.xml" />
+ </OwnedResources>
+ <Environment utc_days="9665.25" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.800000012" />
  <ConsoleVariables>
-  <Variable name="r.lights" value="1.000000" />
-  <Variable name="r.ray_traced_reflections" value="1.000000" />
-  <Variable name="r.dithering" value="0.000000" />
-  <Variable name="r.bloom" value="1.000000" />
-  <Variable name="r.bloom_scatter" value="0.700000" />
   <Variable name="r.atmosphere.mist_density" value="1.000000" />
   <Variable name="r.atmosphere.mist_height" value="300.000000" />
   <Variable name="r.atmosphere.ground_mist" value="1.000000" />
   <Variable name="r.atmosphere.mist_variation" value="0.650000" />
+  <Variable name="r.ray_traced_reflections" value="1.000000" />
+  <Variable name="r.dithering" value="0.000000" />
+  <Variable name="r.bloom" value="1.000000" />
+  <Variable name="r.bloom_scatter" value="0.700000" />
  </ConsoleVariables>
  <Entities>
   <Entity name="music" id="9100000000000000001" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <audio_source path="project/music/soundtrack/gran_turismo_4.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
+   <audio_source path="project/music/soundtrack/gran_turismo_4.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" ambient="false" ambient_profile="0" group="0" />
   </Entity>
   <Entity name="floor" id="9100000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="5000 1 5000">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <render mesh_name="standard_quad" sub_mesh_index="0" material_name="material_rock" material_default="false" ovr_uv_tiling_x="0.400000006" ovr_uv_tiling_y="0.400000006" ovr_uv_world_space="1" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="showroom_floor_epoxy" material_path="project/mcp/blockout/materials/showroom_floor_epoxy.xml" material_default="false" ovr_uv_tiling_x="0.400000006" ovr_uv_tiling_y="0.400000006" ovr_uv_world_space="1" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="tube_front_warm" id="12638874799870260079" active="true" position="-2.23517e-08 1.15 -5.04129" rotation="0 0 0 1" scale="0.02 2.3 0.02">
-   <light flags="5" light_type="3" color_r="1" color_g="0.653803825" color_b="0.342766613" temperature="2700" intensity="1" intensity_photometric="400000" range="225.675827" angle="0.52359879" index="1" preset="5" area_width="0.100000001" area_height="2.3499999" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <render mesh_name="standard_cylinder" sub_mesh_index="0" material_name="tube_front_warm_emitter" material_path="project/ferrari_showcase_resources/tube_front_warm_emitter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
+   <light flags="5" light_type="3" color_r="1" color_g="0.653803825" color_b="0.342766613" temperature="2700" intensity="1" intensity_photometric="400000" range="225.675827" angle="0.52359879" preset="5" area_width="0.100000001" area_height="2.3499999" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="tube_front_warm_emitter" material_path="project/ferrari_showcase_resources/tube_front_warm_emitter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="walls" id="6007008001612798289" active="true" position="0 -4.4 0" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="Cube_1_1" id="2124977161275690050" active="true" position="10.0771 1.13078 1.95973" rotation="0 0 0 1" scale="1 5.8 20">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="tile_black" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showcase_resources/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Cube_1" id="10406687217253271126" active="true" position="-10.1229 1.13078 1.2597" rotation="0 0 0 1" scale="1 5.8 20">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="tile_black" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showcase_resources/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Cube_2" id="7640846457856079411" active="true" position="0.377128 1.13078 -8.5403" rotation="0 0.707108 0 0.707106" scale="1 5.8 20">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="tile_black" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showcase_resources/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="Cube" id="5196688867028285157" active="true" position="0.377128 1.13078 11.4597" rotation="0 0.707108 0 0.707106" scale="1 5.8 20">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="tile_black" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="tile_black" material_path="./project/ferrari_showcase_resources/tile_black.xml" material_default="false" ovr_uv_tiling_x="4" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
   </Entity>
   <Entity name="Directional" id="11601109533259598530" active="true" position="0 0 0" rotation="0.92388 0 0 -0.382683" scale="1 1 1">
-   <light flags="3" light_type="0" color_r="1" color_g="0.816754639" color_b="0.669110954" temperature="4100" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="3" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <light flags="3" light_type="0" color_r="1" color_g="0.816754639" color_b="0.669110954" temperature="4100" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="3" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
   </Entity>
   <Entity name="light_directional" id="9100000000000000004" active="false" position="0 5 0" rotation="-0.26101 0 0 0.965336" scale="1 1 1">
-   <light flags="1" light_type="0" color_r="1" color_g="0.949999988" color_b="0.850000024" temperature="5500" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <light flags="1" light_type="0" color_r="1" color_g="0.949999988" color_b="0.850000024" temperature="5500" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
   </Entity>
   <Entity name="turntable" id="9100000000000000006" active="true" position="0 -0.1 0" rotation="0 0 0 1" scale="0.75 0.75 0.75">
-   <script file_path="project/scripts/turntable.lua" />
+   <script file_path="project/scripts/turntable.lua" Tick="" />
    <Entity name="disc" id="9100000000000000007" active="true" position="0 0.15 0" rotation="0 0 0 1" scale="5 0.3 5">
-    <render mesh_name="standard_cylinder" sub_mesh_index="0" material_name="tile_black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
+    <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="turntable_gloss_black" material_path="project/mcp/blockout/materials/turntable_gloss_black.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    </Entity>
    <Entity name="ferrari" id="9100000000000000008" active="true" position="0 0.3 0" rotation="0 0 0 1" scale="1 1 1">
-    <prefab type="car" static_physics="false" drivable="false" paint_preset="metallic" paint_color_r="0.392156869" paint_color_g="0" paint_color_b="0" paint_color_a="1" />
+    <prefab type="car" static_physics="false" drivable="false" paint_preset="metallic" paint_color_r="0.392156869" paint_color_b="0" paint_color_g="0" paint_color_a="1" />
    </Entity>
   </Entity>
   <Entity name="tube_right_red" id="12638874799870260081" active="true" position="5.025 1.15 0.0250001" rotation="0 -0.706985 0 0.707228" scale="0.02 2.3 0.02">
-   <light flags="5" light_type="3" color_r="1" color_g="0.25" color_b="0.349999994" temperature="2700" intensity="1" intensity_photometric="400000" range="225.675827" angle="0.52359879" index="2" preset="5" area_width="0.109999999" area_height="2.33999991" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <render mesh_name="standard_cylinder" sub_mesh_index="0" material_name="tube_right_red_emitter" material_path="project/ferrari_showcase_resources/tube_right_red_emitter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
+   <light flags="5" light_type="3" color_r="1" color_g="0.25" color_b="0.349999994" temperature="2700" intensity="1" intensity_photometric="400000" range="225.675827" angle="0.52359879" preset="5" area_width="0.109999999" area_height="2.33999991" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="tube_right_red_emitter" material_path="project/ferrari_showcase_resources/tube_right_red_emitter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="tube_left_cyan" id="12638874799870260080" active="true" position="-4.95 1.15 0.05" rotation="0 0.707229 0 0.706984" scale="0.02 2.3 0.02">
-   <light flags="5" light_type="3" color_r="0.300000012" color_g="0.75" color_b="1" temperature="6500" intensity="1" intensity_photometric="400000" range="225.675827" angle="0.52359879" index="3" preset="5" area_width="0.100000001" area_height="2.33999991" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <render mesh_name="standard_cylinder" sub_mesh_index="0" material_name="tube_left_cyan_emitter" material_path="project/ferrari_showcase_resources/tube_left_cyan_emitter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
+   <light flags="5" light_type="3" color_r="0.300000012" color_g="0.75" color_b="1" temperature="6500" intensity="1" intensity_photometric="400000" range="225.675827" angle="0.52359879" preset="5" area_width="0.100000001" area_height="2.33999991" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+   <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="tube_left_cyan_emitter" material_path="project/ferrari_showcase_resources/tube_left_cyan_emitter.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="physics_body_camera" id="9100000000000000002" active="true" position="-6.42897 1.25562 -4.63016" rotation="0 0 0 1" scale="1 1 1">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <Entity name="component_camera" id="9100000000000000003" active="true" position="0 0.77 0" rotation="-0.060947 -0.468086 0.0291917 -0.881095" scale="1 1 1">
-    <camera exposure_mode="1" aperture="2.8" shutter_speed="0.020833334" iso="400" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="6" flags="49" />
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+   <Entity name="component_camera" id="9100000000000000003" active="true" position="0 0.77 0" rotation="0.0596205 0.468257 -0.0316883 0.881009" scale="1 1 1">
+    <camera flags="49" preset="6" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="2.79999995" shutter_speed="0.020833334" iso="400" fov_horizontal="1.57079637" aspect_ratio_override="0" near_plane="0.100000001" far_plane="10000" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
+   </Entity>
+  </Entity>
+  <Entity name="studio_dome" id="7711851863863613765" active="true" position="0 0 0" rotation="0 0 0 1" scale="20 20 20">
+   <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="studio_void_black" material_path="project/mcp/blockout/materials/studio_void_black.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="turntable_led_ring" id="5628212500599411116" active="true" position="0 0.02 0" rotation="0 0 0 1" scale="1 1 1">
+   <render mesh_name="led_ring_r380" mesh_path="project/mcp/blockout/meshes/led_ring_r380.mesh" sub_mesh_index="0" material_name="led_ring_ferrari_red" material_path="project/mcp/blockout/materials/led_ring_ferrari_red.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="horizon_light_line" id="4326116253090323148" active="true" position="0 1.1 0" rotation="0 0 0 1" scale="1 1 1">
+   <render mesh_name="horizon_ring_r13" mesh_path="project/mcp/blockout/meshes/horizon_ring_r13.mesh" sub_mesh_index="0" material_name="horizon_line_cool" material_path="project/mcp/blockout/materials/horizon_line_cool.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="softbox_rig" id="4419162497369731583" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="softbox_strip_left" id="4430169054899749101" active="true" position="-1.25 4.2 0" rotation="0 0 0 1" scale="0.22 0.03 5.6">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="softbox_emissive_white" material_path="project/mcp/blockout/materials/softbox_emissive_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="softbox_strip_center" id="14185483153044346854" active="true" position="0 4.2 0" rotation="0 0 0 1" scale="0.22 0.03 5.6">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="softbox_emissive_white" material_path="project/mcp/blockout/materials/softbox_emissive_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="softbox_strip_right" id="14165080421823028558" active="true" position="1.25 4.2 0" rotation="0 0 0 1" scale="0.22 0.03 5.6">
+    <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="softbox_emissive_white" material_path="project/mcp/blockout/materials/softbox_emissive_white.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="softbox_light_left" id="13774891375695565306" active="true" position="-1.25 4.17 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+    <light flags="1" light_type="3" color_r="1.00889552" color_g="1.00090468" color_b="0.964844942" temperature="6500" intensity="8" intensity_photometric="120000" range="30" angle="0.52359879" preset="5" area_width="0.219999999" area_height="5.5999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+   </Entity>
+   <Entity name="softbox_light_center" id="13775155454183560148" active="true" position="0 4.17 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+    <light flags="1" light_type="3" color_r="1.00889552" color_g="1.00090468" color_b="0.964844942" temperature="6500" intensity="8" intensity_photometric="120000" range="30" angle="0.52359879" preset="5" area_width="0.219999999" area_height="5.5999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+   </Entity>
+   <Entity name="softbox_light_right" id="13775296915644614764" active="true" position="1.25 4.17 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+    <light flags="1" light_type="3" color_r="1.00889552" color_g="1.00090468" color_b="0.964844942" temperature="6500" intensity="8" intensity_photometric="120000" range="30" angle="0.52359879" preset="5" area_width="0.219999999" area_height="5.5999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
    </Entity>
   </Entity>
  </Entities>

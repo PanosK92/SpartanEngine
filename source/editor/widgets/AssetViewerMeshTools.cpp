@@ -592,7 +592,9 @@ void AssetViewer::BuildWorkingLods()
                 working.vertices,
                 target,
                 true,
-                false
+                false,
+                true,
+                mesh_lod_max_error[lod] - mesh_lod_max_error[lod - 1]
             );
         }
 

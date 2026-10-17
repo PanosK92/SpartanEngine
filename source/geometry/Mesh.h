@@ -73,6 +73,20 @@ namespace spartan
     // only sheds a few triangles costs memory and a draw range while looking identical
     static constexpr float mesh_lod_min_reduction = 0.9f;
 
+    // largest simplification error a level may have, as a fraction of the mesh extent. a level is drawn up
+    // to the screen coverage that selects the level above it (Render::UpdateLodIndices, sphere_lod_index),
+    // 0.20 of the screen height for lod 1, so its error must stay near 1.5 px of a 1080p view there. without
+    // this bound the simplifier meets its triangle ratio at any error and round parts such as wheel rims
+    // turn into squares a few metres from the camera
+    static constexpr float mesh_lod_max_error[mesh_lod_count] =
+    {
+        0.0f,
+        1.5f / (0.20f * 1080.0f),
+        1.5f / (0.10f * 1080.0f),
+        1.5f / (0.048f * 1080.0f),
+        1.5f / (0.024f * 1080.0f)
+    };
+
     // the level after the last simplified one of a foliage crown, a forest a kilometre out is hundreds of
     // thousands of crowns a few pixels tall and no amount of card thinning makes that cheap
     //

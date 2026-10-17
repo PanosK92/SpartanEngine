@@ -22,7 +22,8 @@ namespace spartan::geometry_processing
         size_t target_index_count,
         const bool preserve_uvs,  // typically true, false for non-rendered geometry like physics meshes
         const bool preserve_edges, // for terrain tiles where edges must match neighboring tiles
-        const bool prune_components = false // distance LODs may remove small disconnected details
+        const bool prune_components = false, // distance LODs may remove small disconnected details
+        const float max_error = 1.0f // relative to the mesh extent, the target index count is not met past it
     );
 
     // distance lod for leaf cards, error driven simplification prunes every card at once because each

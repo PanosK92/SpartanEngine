@@ -33,7 +33,8 @@ namespace spartan::geometry_processing
         size_t target_index_count,
         const bool preserve_uvs,
         const bool preserve_edges,
-        const bool prune_components
+        const bool prune_components,
+        const float max_error
     )
     {
         size_t index_count  = indices.size();
@@ -124,6 +125,7 @@ namespace spartan::geometry_processing
 
         for (size_t i = 0; i < threshold_count && !target_reached; ++i)
         {
+            const float error_bound = std::min(error_thresholds[i], max_error);
             result_count = meshopt_simplifyWithAttributes(
                 indices_simplified.data(),
                 indices.data(),
@@ -137,7 +139,7 @@ namespace spartan::geometry_processing
                 attr_count,
                 locks,
                 target_index_count,
-                error_thresholds[i],
+                error_bound,
                 prune_components && !preserve_edges ? meshopt_SimplifyPrune : 0,
                 &lod_error
             );
@@ -149,8 +151,8 @@ namespace spartan::geometry_processing
                 auto best_indices = indices_simplified;
                 size_t closest_count = result_count;
                 size_t closest_delta = target_index_count - result_count;
-                float lower_error = i > 0 ? error_thresholds[i - 1] : 0.0f;
-                float upper_error = error_thresholds[i];
+                float lower_error = i > 0 ? std::min(error_thresholds[i - 1], error_bound) : 0.0f;
+                float upper_error = error_bound;
                 for (uint32_t refinement = 0; refinement < 10; refinement++)
                 {
                     const float error = (lower_error + upper_error) * 0.5f;
@@ -182,11 +184,17 @@ namespace spartan::geometry_processing
             }
             // A plateau at one error bound does not prove a topology limit.
             // Later bounds can permit collapses that the earlier bound rejected.
+
+            if (error_bound >= max_error)
+            {
+                break;
+            }
         }
 
         // Sloppy reduction ignores UV seams and can join separate leaf cards into
         // long triangles. Never use it when the caller requested UV preservation.
-        if (result_count > target_index_count && !preserve_uvs && !preserve_edges && target_index_count >= 12)
+        // It has no error bound either, so a capped caller never gets it.
+        if (result_count > target_index_count && !preserve_uvs && !preserve_edges && target_index_count >= 12 && max_error >= 1.0f)
         {
             std::vector<uint32_t> sloppy_indices(index_count);
             size_t sloppy_count = meshopt_simplifySloppy(

@@ -1,200 +1,728 @@
-<World name="Dyno" description="Drivetrain laboratory: all cars, RPM sweeps, power and torque graphs, gearing and CSV capture">
-  <Entities>
-    <Entity active="true" name="garage_floor" rotation="0 0 0 1" position="0 -0.2 0" id="9106000000000000001" scale="18 0.4 20">
-      <render material_path="project/dyno_resources/concrete.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_concrete" />
-      <physics is_static="true" friction="0.8" mass="0" body_type="0" />
-    </Entity>
-    <Entity active="true" name="back_wall" rotation="0 0 0 1" position="0 2.8 8" id="9106000000000000002" scale="18 5.6 0.3">
-      <render material_path="project/dyno_resources/wall.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_wall" />
-      <physics is_static="true" friction="0.8" mass="0" body_type="0" />
-    </Entity>
-    <Entity active="true" name="left_wall" rotation="0 0 0 1" position="-9 2.8 0" id="9106000000000000003" scale="0.3 5.6 16">
-      <render material_path="project/dyno_resources/wall.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_wall" />
-      <physics is_static="true" friction="0.8" mass="0" body_type="0" />
-    </Entity>
-    <Entity active="true" name="right_wall" rotation="0 0 0 1" position="9 2.8 0" id="9106000000000000004" scale="0.3 5.6 16">
-      <render material_path="project/dyno_resources/wall.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_wall" />
-      <physics is_static="true" friction="0.8" mass="0" body_type="0" />
-    </Entity>
-    <Entity active="true" name="ceiling" rotation="0 0 0 1" position="0 5.7 0" id="9106000000000000005" scale="18 0.2 16">
-      <render material_path="project/dyno_resources/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity active="true" name="test_bed" rotation="0 0 0 1" position="0 0.12 0" id="9106000000000000006" scale="3.5 0.24 6.5">
-      <render material_path="project/dyno_resources/blue.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_blue" />
-    </Entity>
-    <Entity active="true" name="safety_edge" rotation="0 0 0 1" position="-1.8 0.02 0" id="9106000000000000007" scale="0.09 0.035 7">
-      <render material_path="project/dyno_resources/yellow.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_yellow" />
-    </Entity>
-    <Entity active="true" name="tie_down_post" rotation="0 0 0 1" position="-1.8 0.24 -3" id="9106000000000000008" scale="0.15 0.48 0.15">
-      <render material_path="project/dyno_resources/yellow.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_yellow" />
-    </Entity>
-    <Entity active="true" name="tie_down_post" rotation="0 0 0 1" position="-1.8 0.24 3" id="9106000000000000009" scale="0.15 0.48 0.15">
-      <render material_path="project/dyno_resources/yellow.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_yellow" />
-    </Entity>
-    <Entity active="true" name="safety_edge" rotation="0 0 0 1" position="1.8 0.02 0" id="9106000000000000010" scale="0.09 0.035 7">
-      <render material_path="project/dyno_resources/yellow.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_yellow" />
-    </Entity>
-    <Entity active="true" name="tie_down_post" rotation="0 0 0 1" position="1.8 0.24 -3" id="9106000000000000011" scale="0.15 0.48 0.15">
-      <render material_path="project/dyno_resources/yellow.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_yellow" />
-    </Entity>
-    <Entity active="true" name="tie_down_post" rotation="0 0 0 1" position="1.8 0.24 3" id="9106000000000000012" scale="0.15 0.48 0.15">
-      <render material_path="project/dyno_resources/yellow.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_yellow" />
-    </Entity>
-    <Entity active="true" name="roller" rotation="0 0 0.70710678 0.70710678" position="0 0.22 -1.65" id="9106000000000000013" scale="0.18 2.9 0.18">
-      <render material_path="project/dyno_resources/roller.xml" material_default="false" mesh_name="standard_cylinder" flags="1" material_name="dyno_roller" />
-    </Entity>
-    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="-1.55 0.25 -1.65" id="9106000000000000014" scale="0.18 0.4 0.5">
-      <render material_path="project/dyno_resources/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="1.55 0.25 -1.65" id="9106000000000000015" scale="0.18 0.4 0.5">
-      <render material_path="project/dyno_resources/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity active="true" name="roller" rotation="0 0 0.70710678 0.70710678" position="0 0.22 -1.15" id="9106000000000000016" scale="0.18 2.9 0.18">
-      <render material_path="project/dyno_resources/roller.xml" material_default="false" mesh_name="standard_cylinder" flags="1" material_name="dyno_roller" />
-    </Entity>
-    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="-1.55 0.25 -1.15" id="9106000000000000017" scale="0.18 0.4 0.5">
-      <render material_path="project/dyno_resources/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="1.55 0.25 -1.15" id="9106000000000000018" scale="0.18 0.4 0.5">
-      <render material_path="project/dyno_resources/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity active="true" name="roller" rotation="0 0 0.70710678 0.70710678" position="0 0.22 1.15" id="9106000000000000019" scale="0.18 2.9 0.18">
-      <render material_path="project/dyno_resources/roller.xml" material_default="false" mesh_name="standard_cylinder" flags="1" material_name="dyno_roller" />
-    </Entity>
-    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="-1.55 0.25 1.15" id="9106000000000000020" scale="0.18 0.4 0.5">
-      <render material_path="project/dyno_resources/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="1.55 0.25 1.15" id="9106000000000000021" scale="0.18 0.4 0.5">
-      <render material_path="project/dyno_resources/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity active="true" name="roller" rotation="0 0 0.70710678 0.70710678" position="0 0.22 1.65" id="9106000000000000022" scale="0.18 2.9 0.18">
-      <render material_path="project/dyno_resources/roller.xml" material_default="false" mesh_name="standard_cylinder" flags="1" material_name="dyno_roller" />
-    </Entity>
-    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="-1.55 0.25 1.65" id="9106000000000000023" scale="0.18 0.4 0.5">
-      <render material_path="project/dyno_resources/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity active="true" name="bearing_block" rotation="0 0 0 1" position="1.55 0.25 1.65" id="9106000000000000024" scale="0.18 0.4 0.5">
-      <render material_path="project/dyno_resources/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity active="true" name="approach_ramp" rotation="-0.0654 0 0 0.99786" position="-1.3 0.1 -4" id="9106000000000000025" scale="0.65 0.12 1.7">
-      <render material_path="project/dyno_resources/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity active="true" name="approach_ramp" rotation="-0.0654 0 0 0.99786" position="1.3 0.1 -4" id="9106000000000000026" scale="0.65 0.12 1.7">
-      <render material_path="project/dyno_resources/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity active="true" name="operator_console" rotation="0 0 0 1" position="4 0.6 1" id="9106000000000000027" scale="1.6 1.2 0.8">
-      <render material_path="project/dyno_resources/blue.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_blue" />
-    </Entity>
-    <Entity active="true" name="monitor_frame" rotation="0 0 0 1" position="4 1.7 1.2" id="9106000000000000028" scale="1.35 0.85 0.13">
-      <render material_path="project/dyno_resources/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity active="true" name="monitor_glass" rotation="0 0 0 1" position="4 1.7 1.12" id="9106000000000000029" scale="1.2 0.7 0.035">
-      <render material_path="project/dyno_resources/screen.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_screen" />
-    </Entity>
-    <Entity active="true" name="keyboard" rotation="0 0 0 1" position="4 1.23 0.8" id="9106000000000000030" scale="0.75 0.05 0.3">
-      <render material_path="project/dyno_resources/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity active="true" name="workbench" rotation="0 0 0 1" position="-5 0.96 6" id="9106000000000000031" scale="5 0.15 1.2">
-      <render material_path="project/dyno_resources/steel.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity active="true" name="bench_leg" rotation="0 0 0 1" position="-7 0.45 6" id="9106000000000000032" scale="0.16 0.9 0.8">
-      <render material_path="project/dyno_resources/blue.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_blue" />
-    </Entity>
-    <Entity active="true" name="bench_leg" rotation="0 0 0 1" position="-3 0.45 6" id="9106000000000000033" scale="0.16 0.9 0.8">
-      <render material_path="project/dyno_resources/blue.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_blue" />
-    </Entity>
-    <Entity active="true" name="tool_cabinet" rotation="0 0 0 1" position="5.5 0.85 6.7" id="9106000000000000034" scale="2.2 1.7 0.8">
-      <render material_path="project/dyno_resources/blue.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_blue" />
-    </Entity>
-    <Entity active="true" name="drawer_handle" rotation="0 0 0 1" position="5.5 0.3 6.25" id="9106000000000000035" scale="1.6 0.045 0.06">
-      <render material_path="project/dyno_resources/roller.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_roller" />
-    </Entity>
-    <Entity active="true" name="drawer_handle" rotation="0 0 0 1" position="5.5 0.6 6.25" id="9106000000000000036" scale="1.6 0.045 0.06">
-      <render material_path="project/dyno_resources/roller.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_roller" />
-    </Entity>
-    <Entity active="true" name="drawer_handle" rotation="0 0 0 1" position="5.5 0.9 6.25" id="9106000000000000037" scale="1.6 0.045 0.06">
-      <render material_path="project/dyno_resources/roller.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_roller" />
-    </Entity>
-    <Entity active="true" name="drawer_handle" rotation="0 0 0 1" position="5.5 1.2 6.25" id="9106000000000000038" scale="1.6 0.045 0.06">
-      <render material_path="project/dyno_resources/roller.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_roller" />
-    </Entity>
-    <Entity active="true" name="drawer_handle" rotation="0 0 0 1" position="5.5 1.5 6.25" id="9106000000000000039" scale="1.6 0.045 0.06">
-      <render material_path="project/dyno_resources/roller.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_roller" />
-    </Entity>
-    <Entity active="true" name="extraction_duct" rotation="0.70710678 0 0 0.70710678" position="0 4.7 5" id="9106000000000000040" scale="0.7 5 0.7">
-      <render material_path="project/dyno_resources/roller.xml" material_default="false" mesh_name="standard_cylinder" flags="1" material_name="dyno_roller" />
-    </Entity>
-    <Entity active="true" name="ceiling_strip" rotation="0 0 0 1" position="-4 5.5 -4" id="9106000000000000041" scale="0.4 0.1 2.5">
-      <render material_path="project/dyno_resources/white.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_white" />
-    </Entity>
-    <Entity active="true" name="work_light" rotation="0 0 0 1" position="-4 4.9 -4" id="9106000000000000042" scale="1 1 1">
-      <light temperature="4500" flags="1" color_r="1" intensity="8" color_b="0.87" range="10" intensity_photometric="3200" preset="5" light_type="1" color_g="0.95" />
-    </Entity>
-    <Entity active="true" name="ceiling_strip" rotation="0 0 0 1" position="4 5.5 -4" id="9106000000000000043" scale="0.4 0.1 2.5">
-      <render material_path="project/dyno_resources/white.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_white" />
-    </Entity>
-    <Entity active="true" name="work_light" rotation="0 0 0 1" position="4 4.9 -4" id="9106000000000000044" scale="1 1 1">
-      <light temperature="4500" flags="1" color_r="1" intensity="8" color_b="0.87" range="10" intensity_photometric="3200" preset="5" light_type="1" color_g="0.95" />
-    </Entity>
-    <Entity active="true" name="ceiling_strip" rotation="0 0 0 1" position="-4 5.5 0" id="9106000000000000045" scale="0.4 0.1 2.5">
-      <render material_path="project/dyno_resources/white.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_white" />
-    </Entity>
-    <Entity active="true" name="work_light" rotation="0 0 0 1" position="-4 4.9 0" id="9106000000000000046" scale="1 1 1">
-      <light temperature="4500" flags="1" color_r="1" intensity="8" color_b="0.87" range="10" intensity_photometric="3200" preset="5" light_type="1" color_g="0.95" />
-    </Entity>
-    <Entity active="true" name="ceiling_strip" rotation="0 0 0 1" position="4 5.5 0" id="9106000000000000047" scale="0.4 0.1 2.5">
-      <render material_path="project/dyno_resources/white.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_white" />
-    </Entity>
-    <Entity active="true" name="work_light" rotation="0 0 0 1" position="4 4.9 0" id="9106000000000000048" scale="1 1 1">
-      <light temperature="4500" flags="1" color_r="1" intensity="8" color_b="0.87" range="10" intensity_photometric="3200" preset="5" light_type="1" color_g="0.95" />
-    </Entity>
-    <Entity active="true" name="ceiling_strip" rotation="0 0 0 1" position="-4 5.5 4" id="9106000000000000049" scale="0.4 0.1 2.5">
-      <render material_path="project/dyno_resources/white.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_white" />
-    </Entity>
-    <Entity active="true" name="work_light" rotation="0 0 0 1" position="-4 4.9 4" id="9106000000000000050" scale="1 1 1">
-      <light temperature="4500" flags="1" color_r="1" intensity="8" color_b="0.87" range="10" intensity_photometric="3200" preset="5" light_type="1" color_g="0.95" />
-    </Entity>
-    <Entity active="true" name="ceiling_strip" rotation="0 0 0 1" position="4 5.5 4" id="9106000000000000051" scale="0.4 0.1 2.5">
-      <render material_path="project/dyno_resources/white.xml" material_default="false" mesh_name="standard_cube" flags="1" material_name="dyno_white" />
-    </Entity>
-    <Entity active="true" name="work_light" rotation="0 0 0 1" position="4 4.9 4" id="9106000000000000052" scale="1 1 1">
-      <light temperature="4500" flags="1" color_r="1" intensity="8" color_b="0.87" range="10" intensity_photometric="3200" preset="5" light_type="1" color_g="0.95" />
-    </Entity>
-    <Entity active="true" name="sun" rotation="0.7 0 0 0.7141428" position="0 5 0" id="9106000000000000053" scale="1 1 1">
-      <light flags="1" color_g="1" preset="5" light_type="0" intensity="8" color_b="1" color_r="1" intensity_photometric="15000" />
-    </Entity>
-    <Entity active="true" name="dyno_car" rotation="0 0 0 1" position="0 0.95 0" id="9106000000000000054" scale="1 1 1" tags="player_car,current_car,focal_point">
-      <prefab drivable="true" paint_color_r="0.39" paint_preset="metallic" file="project/cars/ferrari_laferrari.car" paint_color_b="0.01" paint_color_g="0.02" telemetry="false" type="car" camera_follows="false" dyno="true" />
-    </Entity>
-    <Entity active="true" name="inspection_camera" rotation="0.132 -0.293 0.041 0.946" position="5 3 -7" id="9106000000000000055" scale="1 1 1">
-      <camera exposure_mode="1" iso="800" projection="0" fov_horizontal="1.22" far_plane="200" auto_exposure_adaptation_speed="1" aperture="5.6" flags="17" preset="3" shutter_speed="0.008" near_plane="0.1" />
-    </Entity>
-    <Entity name="DYNO LAB sign" id="9106000000000000100" active="true" position="-5.8 3.5 7.6" rotation="0 0 0 1" scale="1 1 1">
-      <text_3d text="DYNO / DRIVETRAIN LAB" size="0.38" depth="0.01" font_path="../data/fonts/OpenSans/OpenSans-Medium.ttf" />
-    </Entity>
-    <Entity rotation="0 0 0 1" scale="17.7 0.3 0.06" position="0 1.1 7.81" id="9106000000000000111" active="true" name="back_wall_band">
-      <render material_default="false" mesh_name="standard_cube" material_path="project/dyno_resources/blue.xml" flags="1" material_name="dyno_blue" />
-    </Entity>
-    <Entity rotation="0 0 0 1" scale="17.7 0.48 0.08" position="0 0.24 7.8" id="9106000000000000112" active="true" name="back_wall_base">
-      <render material_default="false" mesh_name="standard_cube" material_path="project/dyno_resources/steel.xml" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity rotation="0 0 0 1" scale="0.06 0.3 16" position="-8.8 1.1 0" id="9106000000000000113" active="true" name="left_wall_band">
-      <render material_default="false" mesh_name="standard_cube" material_path="project/dyno_resources/blue.xml" flags="1" material_name="dyno_blue" />
-    </Entity>
-    <Entity rotation="0 0 0 1" scale="0.06 0.3 16" position="8.8 1.1 0" id="9106000000000000114" active="true" name="right_wall_band">
-      <render material_default="false" mesh_name="standard_cube" material_path="project/dyno_resources/blue.xml" flags="1" material_name="dyno_blue" />
-    </Entity>
-    <Entity rotation="0 0 0 1" scale="0.26 5.6 0.32" position="-8.65 2.8 4" id="9106000000000000115" active="true" name="column_left">
-      <render material_default="false" mesh_name="standard_cube" material_path="project/dyno_resources/steel.xml" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity rotation="0 0 0 1" scale="0.25 5.6 0.25" position="-4.5 2.8 7.7" id="9106000000000000116" active="true" name="column_back_left">
-      <render material_default="false" mesh_name="standard_cube" material_path="project/dyno_resources/steel.xml" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity rotation="0 0 0 1" scale="0.25 5.6 0.25" position="4.5 2.8 7.7" id="9106000000000000117" active="true" name="column_back_right">
-      <render material_default="false" mesh_name="standard_cube" material_path="project/dyno_resources/steel.xml" flags="1" material_name="dyno_steel" />
-    </Entity>
-    <Entity rotation="0 0 0 1" scale="7 1.3 0.08" position="-3 3.7 7.75" id="9106000000000000118" active="true" name="sign_panel">
-      <render material_default="false" mesh_name="standard_cube" material_path="project/dyno_resources/blue.xml" flags="1" material_name="dyno_blue" />
-    </Entity>
-  </Entities>
+<?xml version="1.0"?>
+<World name="dyno" description="Drivetrain laboratory: all cars, RPM sweeps, power and torque graphs, gearing and CSV capture">
+ <OwnedResources>
+  <Resource file="apex_game_caliper.xml" />
+  <Resource file="apex_game_caliper_packed_slot0.tex_packed.texture" />
+  <Resource file="apex_game_rim.xml" />
+  <Resource file="apex_game_rim_packed_slot0.tex_packed.texture" />
+  <Resource file="apex_game_rotor.xml" />
+  <Resource file="apex_game_rotor_packed_slot0.tex_packed.texture" />
+  <Resource file="apex_game_rubber.xml" />
+  <Resource file="apex_game_rubber_packed_slot0.tex_packed.texture" />
+  <Resource file="apex_r1_wheel.mesh" />
+  <Resource file="black.xml" />
+  <Resource file="body.xml" />
+  <Resource file="break_lights_001.xml" />
+  <Resource file="break_lights_glasses.xml" />
+  <Resource file="breake_lights_chrom.xml" />
+  <Resource file="carbon_fiber.xml" />
+  <Resource file="carbon_fiber_base_color.texture" />
+  <Resource file="chrome.xml" />
+  <Resource file="chrome_base_color.texture" />
+  <Resource file="disc_003.xml" />
+  <Resource file="disc_004.xml" />
+  <Resource file="disc_006.xml" />
+  <Resource file="disk.xml" />
+  <Resource file="dynocell_acoustic_panel_v2_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_block_wall_v2_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_blue_powdercoat_v2_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_carpet_tile_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_ceiling_deck_v2_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_diamond_plate_v2_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_epoxy_floor_v2_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_graphite_powdercoat_v2_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_hazard_stripes_v2_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_knurled_roller_v2_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_led_panel_v2_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_red_gloss_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_roller_door_v2_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_safety_yellow_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_strap_webbing_packed_slot0.tex_packed.texture" />
+  <Resource file="dynocell_white_plastic_packed_slot0.tex_packed.texture" />
+  <Resource file="engine_glass.xml" />
+  <Resource file="ferrari_laferrari_29.xml" />
+  <Resource file="front_headlights_001.xml" />
+  <Resource file="game_caliper_color.texture" />
+  <Resource file="game_caliper_normal.texture" />
+  <Resource file="game_rim_color.texture" />
+  <Resource file="game_rim_normal.texture" />
+  <Resource file="game_rotor_color.texture" />
+  <Resource file="game_rotor_normal.texture" />
+  <Resource file="game_rubber_color.texture" />
+  <Resource file="game_rubber_normal.texture" />
+  <Resource file="glasses.xml" />
+  <Resource file="head_lights_glasses_002.xml" />
+  <Resource file="inside_stickers.xml" />
+  <Resource file="inside_stickers_base_color.texture" />
+  <Resource file="int_mirror.xml" />
+  <Resource file="interior_2_001.xml" />
+  <Resource file="logo.texture" />
+  <Resource file="logos.xml" />
+  <Resource file="logos_base_color.texture" />
+  <Resource file="material_009.xml" />
+  <Resource file="material_019.xml" />
+  <Resource file="material_113.xml" />
+  <Resource file="material_116.xml" />
+  <Resource file="material_144.xml" />
+  <Resource file="material_146.xml" />
+  <Resource file="material_147.xml" />
+  <Resource file="paint_normal.texture" />
+  <Resource file="rear_headlights.xml" />
+  <Resource file="rear_logo.xml" />
+  <Resource file="rear_something.xml" />
+  <Resource file="red_light.xml" />
+  <Resource file="rim_001.xml" />
+  <Resource file="rim_002.xml" />
+  <Resource file="run_lights.xml" />
+  <Resource file="scene.mesh" />
+  <Resource file="seats_nuts.xml" />
+  <Resource file="seets_logo.xml" />
+  <Resource file="side_mirrors.xml" />
+  <Resource file="tail_lights.xml" />
+  <Resource file="tread_001.xml" />
+  <Resource file="tread_002.xml" />
+  <Resource file="tread_003.xml" />
+  <Resource file="tread_004.xml" />
+  <Resource file="viper.xml" />
+  <Resource file="wireframe_color_0xe0c657.xml" />
+ </OwnedResources>
+ <Environment utc_days="9665.25" latitude="37.780000000000001" longitude="20.899999999999999" elevation="0" time_scale="200" north_degrees="0" annual_temperature="18" seasonal_amplitude="9" daily_amplitude="4" sea_level_pressure="101325" wind_x="6.92820311" wind_y="0" wind_z="-4" puddliness="0" rain="0" cloud_coverage="0.800000012" />
+ <ConsoleVariables>
+  <Variable name="r.atmosphere.mist_density" value="1.000000" />
+  <Variable name="r.atmosphere.mist_height" value="300.000000" />
+  <Variable name="r.atmosphere.ground_mist" value="1.000000" />
+  <Variable name="r.atmosphere.mist_variation" value="0.650000" />
+ </ConsoleVariables>
+ <Entities>
+  <Entity name="sun" id="9106000000000000053" active="true" position="0 5 0" rotation="0.7 0 0 0.714143" scale="1 1 1">
+   <light flags="1" light_type="0" color_r="1" color_g="1" color_b="1" temperature="5778" intensity="8" intensity_photometric="15000" range="3.40282347e+38" angle="0.52359879" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+  </Entity>
+  <Entity name="dyno_car" id="9106000000000000054" active="true" position="0 1.05 0" rotation="0 0 0 1" scale="1 1 1" tags="player_car,current_car,focal_point">
+   <prefab type="car" file="project/cars/ferrari_laferrari.car" drivable="true" telemetry="false" paint_color_r="0.39" paint_color_b="0.01" paint_preset="metallic" paint_color_g="0.02" camera_follows="false" dyno="true" />
+  </Entity>
+  <Entity name="inspection_camera" id="9106000000000000055" active="true" position="4.37118 2.93113 -5.99883" rotation="0.121212 -0.244277 0.0307916 0.961607" scale="1 1 1">
+   <camera flags="17" preset="3" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" aperture="5.5999999" shutter_speed="0.00800000038" iso="800" fov_horizontal="1.21999991" aspect_ratio_override="0" near_plane="0.100000001" far_plane="200" projection="0" mouse_sensitivity="0.200000003" mouse_smoothing="0.5" />
+  </Entity>
+  <Entity name="dyno_cell_shell" id="17829438480094925706" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="floor" id="17497741837774535008" active="true" position="0 -0.2 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_0_floor_b1acfe44" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_0_floor_b1acfe44.mesh" sub_mesh_index="0" material_name="dynocell_epoxy_floor_v2" material_path="project/mcp/blockout/materials/dynocell_epoxy_floor_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="ceiling" id="17107160712960485184" active="true" position="0 5.7 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_1_ceiling_523c4c1e" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_1_ceiling_523c4c1e.mesh" sub_mesh_index="0" material_name="dynocell_ceiling_deck_v2" material_path="project/mcp/blockout/materials/dynocell_ceiling_deck_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wall_back" id="16695889892098710502" active="true" position="0 2.8 8.15" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_2_wall_back_91abc663" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_2_wall_back_91abc663.mesh" sub_mesh_index="0" material_name="dynocell_acoustic_panel_v2" material_path="project/mcp/blockout/materials/dynocell_acoustic_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wall_left" id="16310984902339461118" active="true" position="-9.15 2.8 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_3_wall_left_d9e47d31" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_3_wall_left_d9e47d31.mesh" sub_mesh_index="0" material_name="dynocell_acoustic_panel_v2" material_path="project/mcp/blockout/materials/dynocell_acoustic_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wall_right" id="16232693809607236123" active="true" position="9.15 2.8 0" rotation="0 0.707107 0 0.707107" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="dyno_cell_shell_4_wall_right_66eefa72" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_4_wall_right_66eefa72.mesh" sub_mesh_index="0" material_name="dynocell_acoustic_panel_v2" material_path="project/mcp/blockout/materials/dynocell_acoustic_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wall_front" id="15254330165155274355" active="true" position="0 2.75 -8.15" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="dyno_cell_shell_5_wall_front_88ccce27" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_5_wall_front_88ccce27.mesh" sub_mesh_index="0" material_name="dynocell_acoustic_panel_v2" material_path="project/mcp/blockout/materials/dynocell_acoustic_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wainscot_back" id="1830680864492543309" active="true" position="0 0.5 7.96" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_6_wainscot_back_26363a0e" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_6_wainscot_back_26363a0e.mesh" sub_mesh_index="0" material_name="dynocell_block_wall_v2" material_path="project/mcp/blockout/materials/dynocell_block_wall_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wainscot_left" id="1104950307394050048" active="true" position="-8.96 0.5 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_7_wainscot_left_eee5d192" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_7_wainscot_left_eee5d192.mesh" sub_mesh_index="0" material_name="dynocell_block_wall_v2" material_path="project/mcp/blockout/materials/dynocell_block_wall_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wainscot_right" id="1046563577833244401" active="true" position="8.96 0.5 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_8_wainscot_right_eee5d192" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_8_wainscot_right_eee5d192.mesh" sub_mesh_index="0" material_name="dynocell_block_wall_v2" material_path="project/mcp/blockout/materials/dynocell_block_wall_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wainscot_front_l" id="605611874320571795" active="true" position="-5.8 0.5 -7.96" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_9_wainscot_front_l_9286ebf9" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_9_wainscot_front_l_9286ebf9.mesh" sub_mesh_index="0" material_name="dynocell_block_wall_v2" material_path="project/mcp/blockout/materials/dynocell_block_wall_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wainscot_front_r" id="18185564619683433447" active="true" position="5.8 0.5 -7.96" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_10_wainscot_front_r_9286ebf9" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_10_wainscot_front_r_9286ebf9.mesh" sub_mesh_index="0" material_name="dynocell_block_wall_v2" material_path="project/mcp/blockout/materials/dynocell_block_wall_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="band_back" id="16419915417976923553" active="true" position="0 1.04 7.94" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_11_band_back_4d8e2925" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_11_band_back_4d8e2925.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="band_left" id="16215335411567672885" active="true" position="-8.94 1.04 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_12_band_left_5bfb3adb" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_12_band_left_5bfb3adb.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="band_right" id="15453943450970108195" active="true" position="8.94 1.04 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_13_band_right_5bfb3adb" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_13_band_right_5bfb3adb.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="band_front_l" id="14989058526907261691" active="true" position="-5.8 1.04 -7.94" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_14_band_front_l_b916be1a" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_14_band_front_l_b916be1a.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="band_front_r" id="14868912076673558421" active="true" position="5.8 1.04 -7.94" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_15_band_front_r_b916be1a" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_15_band_front_r_b916be1a.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_l1" id="14417336264879687772" active="true" position="-8.88 2.7 -6" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_16_column_l1_bcf90664" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_16_column_l1_bcf90664.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_l2" id="1029534098663681411" active="true" position="-8.88 2.7 -2" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_17_column_l2_bcf90664" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_17_column_l2_bcf90664.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_l3" id="227275492806941924" active="true" position="-8.88 2.7 2" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_18_column_l3_bcf90664" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_18_column_l3_bcf90664.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_l4" id="18236738045704760801" active="true" position="-8.88 2.7 6" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_19_column_l4_bcf90664" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_19_column_l4_bcf90664.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_r1" id="17834758011787903789" active="true" position="8.88 2.7 -6.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_20_column_r1_bcf90664" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_20_column_r1_bcf90664.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_r2" id="17736754166006073297" active="true" position="8.88 2.7 -3" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_21_column_r2_bcf90664" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_21_column_r2_bcf90664.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_r3" id="17323001455123534803" active="true" position="8.88 2.7 3" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_22_column_r3_bcf90664" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_22_column_r3_bcf90664.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_r4" id="10819160375564899428" active="true" position="8.88 2.7 6.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_23_column_r4_bcf90664" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_23_column_r4_bcf90664.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_b1" id="10381717375230956045" active="true" position="-7 2.7 7.88" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_24_column_b1_1689577c" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_24_column_b1_1689577c.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_b2" id="9977506546902615775" active="true" position="-3.6 2.7 7.88" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_25_column_b2_1689577c" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_25_column_b2_1689577c.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_b3" id="9880817489058835873" active="true" position="3.6 2.7 7.88" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_26_column_b3_1689577c" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_26_column_b3_1689577c.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="column_b4" id="9438677444726225677" active="true" position="7 2.7 7.88" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_27_column_b4_1689577c" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_27_column_b4_1689577c.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="door_post_l" id="8648568216797726371" active="true" position="-2.55 2.225 -7.95" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_28_door_post_l_dc7d1e38" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_28_door_post_l_dc7d1e38.mesh" sub_mesh_index="0" material_name="dynocell_hazard_stripes_v2" material_path="project/mcp/blockout/materials/dynocell_hazard_stripes_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="door_post_r" id="8483670156996517511" active="true" position="2.55 2.225 -7.95" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_29_door_post_r_dc7d1e38" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_29_door_post_r_dc7d1e38.mesh" sub_mesh_index="0" material_name="dynocell_hazard_stripes_v2" material_path="project/mcp/blockout/materials/dynocell_hazard_stripes_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="door_header" id="13732743098208057489" active="true" position="0 4.45 -7.95" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_30_door_header_1d45a05c" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_30_door_header_1d45a05c.mesh" sub_mesh_index="0" material_name="dynocell_hazard_stripes_v2" material_path="project/mcp/blockout/materials/dynocell_hazard_stripes_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="roller_door" id="12944674398212025805" active="true" position="0 2.15 -8.1" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_31_roller_door_db2d39ec" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_31_roller_door_db2d39ec.mesh" sub_mesh_index="0" material_name="dynocell_roller_door_v2" material_path="project/mcp/blockout/materials/dynocell_roller_door_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="door_coil_box" id="12694146379706503129" active="true" position="0 4.95 -7.7" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_32_door_coil_box_c049f800" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_32_door_coil_box_c049f800.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="door_rail_l" id="12307520981751320798" active="true" position="-2.38 2.15 -8.02" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_33_door_rail_l_6bd8f3b2" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_33_door_rail_l_6bd8f3b2.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="door_rail_r" id="11939883936600496835" active="true" position="2.38 2.15 -8.02" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_34_door_rail_r_6bd8f3b2" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_34_door_rail_r_6bd8f3b2.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="door_threshold" id="11153202153213497417" active="true" position="0 0.006 -7.8" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_35_door_threshold_5648c479" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_35_door_threshold_5648c479.mesh" sub_mesh_index="0" material_name="dynocell_hazard_stripes_v2" material_path="project/mcp/blockout/materials/dynocell_hazard_stripes_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="beam_1" id="9386080846865938716" active="true" position="0 5.42 -6" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_36_beam_1_f9432a33" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_36_beam_1_f9432a33.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="beam_2" id="9306918013632335426" active="true" position="0 5.42 -3" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_37_beam_2_f9432a33" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_37_beam_2_f9432a33.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="beam_3" id="8842622675571096412" active="true" position="0 5.42 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_38_beam_3_f9432a33" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_38_beam_3_f9432a33.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="beam_4" id="8028385821027459099" active="true" position="0 5.42 3" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_39_beam_4_f9432a33" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_39_beam_4_f9432a33.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="beam_5" id="7582806588805039862" active="true" position="0 5.42 6" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dyno_cell_shell_40_beam_5_f9432a33" mesh_path="project/mcp/blockout/meshes/dyno_cell_shell_40_beam_5_f9432a33.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+  </Entity>
+  <Entity name="chassis_dyno" id="2073260049280029766" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="deck_plate" id="2180099319786001696" active="true" position="0 0.225 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="chassis_dyno_0_deck_plate_2477aaa1" mesh_path="project/mcp/blockout/meshes/chassis_dyno_0_deck_plate_2477aaa1.mesh" sub_mesh_index="0" material_name="dynocell_diamond_plate_v2" material_path="project/mcp/blockout/materials/dynocell_diamond_plate_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="skirt_left" id="1524249603166365057" active="true" position="-1.74 0.1125 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_1_skirt_left_be04290a" mesh_path="project/mcp/blockout/meshes/chassis_dyno_1_skirt_left_be04290a.mesh" sub_mesh_index="0" material_name="dynocell_hazard_stripes_v2" material_path="project/mcp/blockout/materials/dynocell_hazard_stripes_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="skirt_right" id="6555608155696120983" active="true" position="1.74 0.1125 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_2_skirt_right_be04290a" mesh_path="project/mcp/blockout/meshes/chassis_dyno_2_skirt_right_be04290a.mesh" sub_mesh_index="0" material_name="dynocell_hazard_stripes_v2" material_path="project/mcp/blockout/materials/dynocell_hazard_stripes_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="skirt_front" id="6229850133530434292" active="true" position="0 0.1125 3.19" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_3_skirt_front_d4812900" mesh_path="project/mcp/blockout/meshes/chassis_dyno_3_skirt_front_d4812900.mesh" sub_mesh_index="0" material_name="dynocell_hazard_stripes_v2" material_path="project/mcp/blockout/materials/dynocell_hazard_stripes_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="skirt_rear" id="5853240509236938535" active="true" position="0 0.1125 -3.19" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_4_skirt_rear_d4812900" mesh_path="project/mcp/blockout/meshes/chassis_dyno_4_skirt_rear_d4812900.mesh" sub_mesh_index="0" material_name="dynocell_hazard_stripes_v2" material_path="project/mcp/blockout/materials/dynocell_hazard_stripes_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="pit_front" id="5503926549133823234" active="true" position="0 0.015 1.4" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_5_pit_front_eceeef96" mesh_path="project/mcp/blockout/meshes/chassis_dyno_5_pit_front_eceeef96.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="pit_rear" id="5136029218163359657" active="true" position="0 0.015 -1.4" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_6_pit_rear_eceeef96" mesh_path="project/mcp/blockout/meshes/chassis_dyno_6_pit_rear_eceeef96.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="roller_rear_a" id="4811433529099384359" active="true" position="0 0.22 -1.65" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_7_roller_rear_a_b9983c0b" mesh_path="project/mcp/blockout/meshes/chassis_dyno_7_roller_rear_a_b9983c0b.mesh" sub_mesh_index="0" material_name="dynocell_knurled_roller_v2" material_path="project/mcp/blockout/materials/dynocell_knurled_roller_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="roller_rear_b" id="4663422905200140540" active="true" position="0 0.22 -1.15" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_8_roller_rear_b_b9983c0b" mesh_path="project/mcp/blockout/meshes/chassis_dyno_8_roller_rear_b_b9983c0b.mesh" sub_mesh_index="0" material_name="dynocell_knurled_roller_v2" material_path="project/mcp/blockout/materials/dynocell_knurled_roller_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="roller_front_a" id="4333859515609959620" active="true" position="0 0.22 1.15" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_9_roller_front_a_b9983c0b" mesh_path="project/mcp/blockout/meshes/chassis_dyno_9_roller_front_a_b9983c0b.mesh" sub_mesh_index="0" material_name="dynocell_knurled_roller_v2" material_path="project/mcp/blockout/materials/dynocell_knurled_roller_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="roller_front_b" id="16742933612388725819" active="true" position="0 0.22 1.65" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_10_roller_front_b_b9983c0b" mesh_path="project/mcp/blockout/meshes/chassis_dyno_10_roller_front_b_b9983c0b.mesh" sub_mesh_index="0" material_name="dynocell_knurled_roller_v2" material_path="project/mcp/blockout/materials/dynocell_knurled_roller_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="hub_l_ra" id="16364532046603106705" active="true" position="-1.48 0.22 -1.65" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_11_hub_l_ra_d79ad8c5" mesh_path="project/mcp/blockout/meshes/chassis_dyno_11_hub_l_ra_d79ad8c5.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="hub_r_ra" id="16019312765589908815" active="true" position="1.48 0.22 -1.65" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_12_hub_r_ra_d79ad8c5" mesh_path="project/mcp/blockout/meshes/chassis_dyno_12_hub_r_ra_d79ad8c5.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="hub_l_rb" id="15625820971032731689" active="true" position="-1.48 0.22 -1.15" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_13_hub_l_rb_d79ad8c5" mesh_path="project/mcp/blockout/meshes/chassis_dyno_13_hub_l_rb_d79ad8c5.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="hub_r_rb" id="15278673214107788301" active="true" position="1.48 0.22 -1.15" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_14_hub_r_rb_d79ad8c5" mesh_path="project/mcp/blockout/meshes/chassis_dyno_14_hub_r_rb_d79ad8c5.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="hub_l_fa" id="14946810490303371547" active="true" position="-1.48 0.22 1.15" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_15_hub_l_fa_d79ad8c5" mesh_path="project/mcp/blockout/meshes/chassis_dyno_15_hub_l_fa_d79ad8c5.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="hub_r_fa" id="14592458158315027881" active="true" position="1.48 0.22 1.15" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_16_hub_r_fa_d79ad8c5" mesh_path="project/mcp/blockout/meshes/chassis_dyno_16_hub_r_fa_d79ad8c5.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="hub_l_fb" id="14190812176404611032" active="true" position="-1.48 0.22 1.65" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_17_hub_l_fb_d79ad8c5" mesh_path="project/mcp/blockout/meshes/chassis_dyno_17_hub_l_fb_d79ad8c5.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="hub_r_fb" id="1111063011972620315" active="true" position="1.48 0.22 1.65" rotation="0 0 0.707107 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_18_hub_r_fb_d79ad8c5" mesh_path="project/mcp/blockout/meshes/chassis_dyno_18_hub_r_fb_d79ad8c5.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lip_front_1" id="768724218105637772" active="true" position="0 0.246 0.905" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_19_lip_front_1_b8429b4c" mesh_path="project/mcp/blockout/meshes/chassis_dyno_19_lip_front_1_b8429b4c.mesh" sub_mesh_index="0" material_name="dynocell_safety_yellow" material_path="project/mcp/blockout/materials/dynocell_safety_yellow.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lip_front_2" id="403397974698293651" active="true" position="0 0.246 1.895" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_20_lip_front_2_b8429b4c" mesh_path="project/mcp/blockout/meshes/chassis_dyno_20_lip_front_2_b8429b4c.mesh" sub_mesh_index="0" material_name="dynocell_safety_yellow" material_path="project/mcp/blockout/materials/dynocell_safety_yellow.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lip_rear_1" id="20474734707940750" active="true" position="0 0.246 -0.905" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_21_lip_rear_1_b8429b4c" mesh_path="project/mcp/blockout/meshes/chassis_dyno_21_lip_rear_1_b8429b4c.mesh" sub_mesh_index="0" material_name="dynocell_safety_yellow" material_path="project/mcp/blockout/materials/dynocell_safety_yellow.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="lip_rear_2" id="18077144736583581420" active="true" position="0 0.246 -1.895" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_22_lip_rear_2_b8429b4c" mesh_path="project/mcp/blockout/meshes/chassis_dyno_22_lip_rear_2_b8429b4c.mesh" sub_mesh_index="0" material_name="dynocell_safety_yellow" material_path="project/mcp/blockout/materials/dynocell_safety_yellow.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wb_rail_l" id="17749066735336086981" active="true" position="-1.1 0.243 2.55" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_23_wb_rail_l_01491ca3" mesh_path="project/mcp/blockout/meshes/chassis_dyno_23_wb_rail_l_01491ca3.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="wb_rail_r" id="17389221217739999702" active="true" position="1.1 0.243 2.55" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_24_wb_rail_r_01491ca3" mesh_path="project/mcp/blockout/meshes/chassis_dyno_24_wb_rail_r_01491ca3.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="ramp_l" id="17030297855391049454" active="true" position="-1.2 0.12 -4.15" rotation="-0.0627905 0 0 0.998027" scale="1 1 1">
+    <render mesh_name="chassis_dyno_25_ramp_l_a71a2856" mesh_path="project/mcp/blockout/meshes/chassis_dyno_25_ramp_l_a71a2856.mesh" sub_mesh_index="0" material_name="dynocell_diamond_plate_v2" material_path="project/mcp/blockout/materials/dynocell_diamond_plate_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="ramp_r" id="15350450252928333066" active="true" position="1.2 0.12 -4.15" rotation="-0.0627905 0 0 0.998027" scale="1 1 1">
+    <render mesh_name="chassis_dyno_26_ramp_r_a71a2856" mesh_path="project/mcp/blockout/meshes/chassis_dyno_26_ramp_r_a71a2856.mesh" sub_mesh_index="0" material_name="dynocell_diamond_plate_v2" material_path="project/mcp/blockout/materials/dynocell_diamond_plate_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="anchor_plate_fl" id="15045798474382781573" active="true" position="-1.5 0.25 2.95" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_27_anchor_plate_fl_da4c67a5" mesh_path="project/mcp/blockout/meshes/chassis_dyno_27_anchor_plate_fl_da4c67a5.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="anchor_plate_fr" id="14704749215023098526" active="true" position="1.5 0.25 2.95" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_28_anchor_plate_fr_da4c67a5" mesh_path="project/mcp/blockout/meshes/chassis_dyno_28_anchor_plate_fr_da4c67a5.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="anchor_plate_rl" id="14369609151845223099" active="true" position="-1.5 0.25 -2.95" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_29_anchor_plate_rl_da4c67a5" mesh_path="project/mcp/blockout/meshes/chassis_dyno_29_anchor_plate_rl_da4c67a5.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="anchor_plate_rr" id="13709651560085073655" active="true" position="1.5 0.25 -2.95" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_30_anchor_plate_rr_da4c67a5" mesh_path="project/mcp/blockout/meshes/chassis_dyno_30_anchor_plate_rr_da4c67a5.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="dring_fl" id="13355368281811622940" active="true" position="-1.5 0.3 2.95" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_31_dring_fl_5901ca6b" mesh_path="project/mcp/blockout/meshes/chassis_dyno_31_dring_fl_5901ca6b.mesh" sub_mesh_index="0" material_name="dynocell_chrome" material_path="project/mcp/blockout/materials/dynocell_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="dring_fr" id="13280518067688723638" active="true" position="1.5 0.3 2.95" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_32_dring_fr_5901ca6b" mesh_path="project/mcp/blockout/meshes/chassis_dyno_32_dring_fr_5901ca6b.mesh" sub_mesh_index="0" material_name="dynocell_chrome" material_path="project/mcp/blockout/materials/dynocell_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="dring_rl" id="12892411736341294030" active="true" position="-1.5 0.3 -2.95" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_33_dring_rl_5901ca6b" mesh_path="project/mcp/blockout/meshes/chassis_dyno_33_dring_rl_5901ca6b.mesh" sub_mesh_index="0" material_name="dynocell_chrome" material_path="project/mcp/blockout/materials/dynocell_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="dring_rr" id="18208088249010088027" active="true" position="1.5 0.3 -2.95" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+    <render mesh_name="chassis_dyno_34_dring_rr_5901ca6b" mesh_path="project/mcp/blockout/meshes/chassis_dyno_34_dring_rr_5901ca6b.mesh" sub_mesh_index="0" material_name="dynocell_chrome" material_path="project/mcp/blockout/materials/dynocell_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="strap_fl" id="17869160327819290983" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_35_strap_fl_2c802ada" mesh_path="project/mcp/blockout/meshes/chassis_dyno_35_strap_fl_2c802ada.mesh" sub_mesh_index="0" material_name="dynocell_strap_webbing" material_path="project/mcp/blockout/materials/dynocell_strap_webbing.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="strap_fr" id="17528059882330786826" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_36_strap_fr_e0588d4f" mesh_path="project/mcp/blockout/meshes/chassis_dyno_36_strap_fr_e0588d4f.mesh" sub_mesh_index="0" material_name="dynocell_strap_webbing" material_path="project/mcp/blockout/materials/dynocell_strap_webbing.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="strap_rl" id="16891221260374013289" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_37_strap_rl_5997e82f" mesh_path="project/mcp/blockout/meshes/chassis_dyno_37_strap_rl_5997e82f.mesh" sub_mesh_index="0" material_name="dynocell_strap_webbing" material_path="project/mcp/blockout/materials/dynocell_strap_webbing.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="strap_rr" id="16621933409910996483" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_38_strap_rr_2eb900cc" mesh_path="project/mcp/blockout/meshes/chassis_dyno_38_strap_rr_2eb900cc.mesh" sub_mesh_index="0" material_name="dynocell_strap_webbing" material_path="project/mcp/blockout/materials/dynocell_strap_webbing.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="ratchet_fl" id="16747148572789166045" active="true" position="-1.1 0.37 2.52" rotation="0 -0.364877 0 0.931056" scale="1 1 1">
+    <render mesh_name="chassis_dyno_39_ratchet_fl_0e92e7de" mesh_path="project/mcp/blockout/meshes/chassis_dyno_39_ratchet_fl_0e92e7de.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="ratchet_fr" id="16383297605296440464" active="true" position="1.1 0.37 2.52" rotation="0 0.364877 0 0.931056" scale="1 1 1">
+    <render mesh_name="chassis_dyno_40_ratchet_fr_0e92e7de" mesh_path="project/mcp/blockout/meshes/chassis_dyno_40_ratchet_fr_0e92e7de.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="ratchet_rl" id="15627358380017595353" active="true" position="-1.1 0.37 -2.52" rotation="0 0.364877 0 0.931056" scale="1 1 1">
+    <render mesh_name="chassis_dyno_41_ratchet_rl_0e92e7de" mesh_path="project/mcp/blockout/meshes/chassis_dyno_41_ratchet_rl_0e92e7de.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="ratchet_rr" id="9540748459237421564" active="true" position="1.1 0.37 -2.52" rotation="0 -0.364877 0 0.931056" scale="1 1 1">
+    <render mesh_name="chassis_dyno_42_ratchet_rr_0e92e7de" mesh_path="project/mcp/blockout/meshes/chassis_dyno_42_ratchet_rr_0e92e7de.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="junction_box" id="9161136181099849028" active="true" position="2.15 0.225 2.6" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_43_junction_box_73c0b2b8" mesh_path="project/mcp/blockout/meshes/chassis_dyno_43_junction_box_73c0b2b8.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="junction_cable" id="8839704617979032842" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_44_junction_cable_43381cd1" mesh_path="project/mcp/blockout/meshes/chassis_dyno_44_junction_cable_43381cd1.mesh" sub_mesh_index="0" material_name="dynocell_rubber" material_path="project/mcp/blockout/materials/dynocell_rubber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="tape_left" id="8890427157305058595" active="true" position="-2.6 0.002 -0.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_45_tape_left_7618b256" mesh_path="project/mcp/blockout/meshes/chassis_dyno_45_tape_left_7618b256.mesh" sub_mesh_index="0" material_name="dynocell_hazard_stripes_v2" material_path="project/mcp/blockout/materials/dynocell_hazard_stripes_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="tape_right" id="8517877933126980868" active="true" position="2.6 0.002 -0.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_46_tape_right_7618b256" mesh_path="project/mcp/blockout/meshes/chassis_dyno_46_tape_right_7618b256.mesh" sub_mesh_index="0" material_name="dynocell_hazard_stripes_v2" material_path="project/mcp/blockout/materials/dynocell_hazard_stripes_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="tape_front" id="8168993025479530751" active="true" position="0 0.002 4.6" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_47_tape_front_12b32e1f" mesh_path="project/mcp/blockout/meshes/chassis_dyno_47_tape_front_12b32e1f.mesh" sub_mesh_index="0" material_name="dynocell_hazard_stripes_v2" material_path="project/mcp/blockout/materials/dynocell_hazard_stripes_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="tape_rear" id="7828447710582389600" active="true" position="0 0.002 -5.6" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="chassis_dyno_48_tape_rear_12b32e1f" mesh_path="project/mcp/blockout/meshes/chassis_dyno_48_tape_rear_12b32e1f.mesh" sub_mesh_index="0" material_name="dynocell_hazard_stripes_v2" material_path="project/mcp/blockout/materials/dynocell_hazard_stripes_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+  </Entity>
+  <Entity name="ceiling_led_fixtures" id="3244393725684687300" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="housing_m6_m45" id="2847761794622061874" active="true" position="-6.4 5.2 -4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_m3_m45" id="2230215829157322321" active="true" position="-3.2 5.2 -4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_0_m45" id="2107967490781834001" active="true" position="0 5.2 -4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_3_m45" id="1192487122907596074" active="true" position="3.2 5.2 -4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_6_m45" id="18063490191859218655" active="true" position="6.4 5.2 -4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_m6_m15" id="17105553473129709570" active="true" position="-6.4 5.2 -1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_m3_m15" id="16909495707117018800" active="true" position="-3.2 5.2 -1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_0_m15" id="16030512563241072006" active="true" position="0 5.2 -1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_3_m15" id="15881867399799458337" active="true" position="3.2 5.2 -1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_6_m15" id="2228327238013187791" active="true" position="6.4 5.2 -1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_m6_15" id="2053339421170872603" active="true" position="-6.4 5.2 1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_m3_15" id="1476099535490249007" active="true" position="-3.2 5.2 1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_0_15" id="530656985202497745" active="true" position="0 5.2 1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_3_15" id="337774931777945886" active="true" position="3.2 5.2 1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_6_15" id="12202516108049884292" active="true" position="6.4 5.2 1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_m6_45" id="11946215908245143904" active="true" position="-6.4 5.2 4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_m3_45" id="11043300304454861778" active="true" position="-3.2 5.2 4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_0_45" id="10864424373996557876" active="true" position="0 5.2 4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_3_45" id="10255181905656934727" active="true" position="3.2 5.2 4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="housing_6_45" id="15041721069724739639" active="true" position="6.4 5.2 4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_housing" mesh_path="project/mcp/blockout/meshes/dynocell_led_housing.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_m6_m45" id="14871873403592769869" active="true" position="-6.4 5.16 -4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_m3_m45" id="14121625449191106502" active="true" position="-3.2 5.16 -4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_0_m45" id="13236972130551379484" active="true" position="0 5.16 -4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_3_m45" id="13027315367847048710" active="true" position="3.2 5.16 -4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_6_m45" id="10827822770046987969" active="true" position="6.4 5.16 -4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_m6_m15" id="10619357581942557034" active="true" position="-6.4 5.16 -1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_m3_m15" id="9699900090176698151" active="true" position="-3.2 5.16 -1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_0_m15" id="9514658987752096487" active="true" position="0 5.16 -1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_3_m15" id="8903011538752730661" active="true" position="3.2 5.16 -1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_6_m15" id="13746178720996561895" active="true" position="6.4 5.16 -1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_m6_15" id="13502755167583391991" active="true" position="-6.4 5.16 1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_m3_15" id="12561343665705248830" active="true" position="-3.2 5.16 1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_0_15" id="12385018266984085853" active="true" position="0 5.16 1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_3_15" id="11796129803182545566" active="true" position="3.2 5.16 1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_6_15" id="5164522701573996782" active="true" position="6.4 5.16 1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_m6_45" id="4997590126470782940" active="true" position="-6.4 5.16 4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_m3_45" id="4102672737326170020" active="true" position="-3.2 5.16 4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_0_45" id="3881844246108706605" active="true" position="0 5.16 4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_3_45" id="3255562846817288950" active="true" position="3.2 5.16 4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="diffuser_6_45" id="7967520861413527521" active="true" position="6.4 5.16 4.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="dynocell_led_diffuser" mesh_path="project/mcp/blockout/meshes/dynocell_led_diffuser.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+  </Entity>
+  <Entity name="led_light_m6_m45" id="11902411393685653986" active="true" position="-6.4 5.14 -4.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_m3_m45" id="11902982797913790389" active="true" position="-3.2 5.14 -4.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="1" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_0_m45" id="11902944793474838745" active="true" position="0 5.14 -4.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="1" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_3_m45" id="11902918803392228983" active="true" position="3.2 5.14 -4.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="1" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_6_m45" id="11902452041612748620" active="true" position="6.4 5.14 -4.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_m6_m15" id="11902714855407597378" active="true" position="-6.4 5.14 -1.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_m3_m15" id="11901846614757050311" active="true" position="-3.2 5.14 -1.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="1" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_0_m15" id="11901631925022554888" active="true" position="0 5.14 -1.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="1" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_3_m15" id="11901833070902008633" active="true" position="3.2 5.14 -1.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="1" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_6_m15" id="11901788334092198329" active="true" position="6.4 5.14 -1.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_m6_15" id="11901764317950650019" active="true" position="-6.4 5.14 1.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_m3_15" id="11901353547006332441" active="true" position="-3.2 5.14 1.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="1" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_0_15" id="11901977813823067726" active="true" position="0 5.14 1.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="1" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_3_15" id="11902111158250707474" active="true" position="3.2 5.14 1.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="1" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_6_15" id="11901955752804429069" active="true" position="6.4 5.14 1.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_m6_45" id="11902155140225821549" active="true" position="-6.4 5.14 4.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_m3_45" id="11901693162150428223" active="true" position="-3.2 5.14 4.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="1" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_0_45" id="11901697177397133171" active="true" position="0 5.14 4.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="1" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_3_45" id="11859133887370077701" active="true" position="3.2 5.14 4.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="1" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="led_light_6_45" id="11859322728293899920" active="true" position="6.4 5.14 4.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="1.12851119" color_g="0.976721406" color_b="0.852179289" temperature="5600" intensity="8" intensity_photometric="6000" range="14" angle="0.52359879" preset="5" area_width="0.270000011" area_height="2.0999999" draw_distance="80" distance_shadows="60" distance_volumetric="32" />
+  </Entity>
+  <Entity name="control_room" id="10381502492947347612" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="window_glass" id="7899704516611438450" active="true" position="9.15 1.8 0" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="control_room_0_window_glass_1270c2fc" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_0_window_glass_1270c2fc.mesh" sub_mesh_index="0" material_name="dynocell_glass" material_path="project/mcp/blockout/materials/dynocell_glass.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="window_sill" id="6022606768886151528" active="true" position="9.15 1.08 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_1_window_sill_9e231efa" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_1_window_sill_9e231efa.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="window_head" id="10244213398374266592" active="true" position="9.15 2.52 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_2_window_head_095dbead" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_2_window_head_095dbead.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="window_jamb_a" id="8585040471522270229" active="true" position="9.15 1.8 -2.53" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_3_window_jamb_a_6e3c9885" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_3_window_jamb_a_6e3c9885.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="window_jamb_b" id="2635066725998923914" active="true" position="9.15 1.8 2.53" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_4_window_jamb_b_6e3c9885" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_4_window_jamb_b_6e3c9885.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="window_mullion_a" id="2725423172385039569" active="true" position="9.15 1.8 -0.83" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_5_window_mullion_a_42a871fd" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_5_window_mullion_a_42a871fd.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="window_mullion_b" id="2458843005346073759" active="true" position="9.15 1.8 0.83" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_6_window_mullion_b_42a871fd" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_6_window_mullion_b_42a871fd.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="cr_floor" id="1795101459572675472" active="true" position="11.5 0.02 0" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="control_room_7_cr_floor_92bc7fed" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_7_cr_floor_92bc7fed.mesh" sub_mesh_index="0" material_name="dynocell_carpet_tile" material_path="project/mcp/blockout/materials/dynocell_carpet_tile.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="cr_wall_back" id="1675300124505649258" active="true" position="13.8 1.75 0" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="control_room_8_cr_wall_back_e1aab8df" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_8_cr_wall_back_e1aab8df.mesh" sub_mesh_index="0" material_name="dynocell_acoustic_panel_v2" material_path="project/mcp/blockout/materials/dynocell_acoustic_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="cr_wall_a" id="869050213186585033" active="true" position="11.5 1.75 -3.8" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="control_room_9_cr_wall_a_850cc86e" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_9_cr_wall_a_850cc86e.mesh" sub_mesh_index="0" material_name="dynocell_acoustic_panel_v2" material_path="project/mcp/blockout/materials/dynocell_acoustic_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="cr_wall_b" id="404016130091682612" active="true" position="11.5 1.75 3.8" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="control_room_10_cr_wall_b_850cc86e" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_10_cr_wall_b_850cc86e.mesh" sub_mesh_index="0" material_name="dynocell_acoustic_panel_v2" material_path="project/mcp/blockout/materials/dynocell_acoustic_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="cr_ceiling" id="312049853992367297" active="true" position="11.5 3.46 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_11_cr_ceiling_d9e9266e" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_11_cr_ceiling_d9e9266e.mesh" sub_mesh_index="0" material_name="dynocell_ceiling_deck_v2" material_path="project/mcp/blockout/materials/dynocell_ceiling_deck_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="cr_skirting" id="5366248754612087650" active="true" position="13.69 0.05 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_12_cr_skirting_5283ebef" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_12_cr_skirting_5283ebef.mesh" sub_mesh_index="0" material_name="dynocell_black_plastic" material_path="project/mcp/blockout/materials/dynocell_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="cr_light_panel_a" id="5071697522697224308" active="true" position="11.2 3.39 -1.6" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_13_cr_light_panel_a_7029af56" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_13_cr_light_panel_a_7029af56.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="cr_light_panel_b" id="4796459976792838182" active="true" position="11.2 3.39 1.6" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_14_cr_light_panel_b_7029af56" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_14_cr_light_panel_b_7029af56.mesh" sub_mesh_index="0" material_name="dynocell_led_panel_v2" material_path="project/mcp/blockout/materials/dynocell_led_panel_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="desk_top" id="4859354281610777777" active="true" position="9.85 0.76 0" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="control_room_15_desk_top_719c2f0d" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_15_desk_top_719c2f0d.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="desk_edge" id="4080454096493801857" active="true" position="10.36 0.76 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_16_desk_edge_a4308229" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_16_desk_edge_a4308229.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="desk_pedestal_a" id="4112020002733682954" active="true" position="9.85 0.37 -2.15" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="control_room_17_desk_pedestal_a_e06b7e93" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_17_desk_pedestal_a_e06b7e93.mesh" sub_mesh_index="0" material_name="dynocell_black_plastic" material_path="project/mcp/blockout/materials/dynocell_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="desk_pedestal_b" id="3320689154619014514" active="true" position="9.85 0.37 2.15" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="control_room_18_desk_pedestal_b_e06b7e93" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_18_desk_pedestal_b_e06b7e93.mesh" sub_mesh_index="0" material_name="dynocell_black_plastic" material_path="project/mcp/blockout/materials/dynocell_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="desk_pedestal_mid" id="2876451475496096560" active="true" position="9.85 0.37 0.3" rotation="0 0 0 1" scale="1 1 1">
+    <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+    <render mesh_name="control_room_19_desk_pedestal_mid_e06b7e93" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_19_desk_pedestal_mid_e06b7e93.mesh" sub_mesh_index="0" material_name="dynocell_black_plastic" material_path="project/mcp/blockout/materials/dynocell_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="desk_modesty" id="1405615947673623145" active="true" position="9.4 0.42 0" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_20_desk_modesty_79aaaec5" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_20_desk_modesty_79aaaec5.mesh" sub_mesh_index="0" material_name="dynocell_black_plastic" material_path="project/mcp/blockout/materials/dynocell_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="drawer_line_a" id="1155554051537801560" active="true" position="10.305 0.5 -2.15" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_21_drawer_line_a_4846339a" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_21_drawer_line_a_4846339a.mesh" sub_mesh_index="0" material_name="dynocell_chrome" material_path="project/mcp/blockout/materials/dynocell_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="drawer_line_b" id="512311902318706632" active="true" position="10.305 0.25 -2.15" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_22_drawer_line_b_4846339a" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_22_drawer_line_b_4846339a.mesh" sub_mesh_index="0" material_name="dynocell_chrome" material_path="project/mcp/blockout/materials/dynocell_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="drawer_line_c" id="240550302281656775" active="true" position="10.305 0.5 2.15" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_23_drawer_line_c_4846339a" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_23_drawer_line_c_4846339a.mesh" sub_mesh_index="0" material_name="dynocell_chrome" material_path="project/mcp/blockout/materials/dynocell_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="drawer_line_d" id="296995551308058940" active="true" position="10.305 0.25 2.15" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_24_drawer_line_d_4846339a" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_24_drawer_line_d_4846339a.mesh" sub_mesh_index="0" material_name="dynocell_chrome" material_path="project/mcp/blockout/materials/dynocell_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="keyboard_a" id="27462426596264467" active="true" position="10.05 0.795 -1" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_25_keyboard_a_8db1eba7" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_25_keyboard_a_8db1eba7.mesh" sub_mesh_index="0" material_name="dynocell_black_plastic" material_path="project/mcp/blockout/materials/dynocell_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="keyboard_b" id="17849723946887842305" active="true" position="10.05 0.795 1.1" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_26_keyboard_b_8db1eba7" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_26_keyboard_b_8db1eba7.mesh" sub_mesh_index="0" material_name="dynocell_black_plastic" material_path="project/mcp/blockout/materials/dynocell_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="mouse_a" id="17622340517098768563" active="true" position="10.05 0.8 -0.6" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_27_mouse_a_fa0228f7" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_27_mouse_a_fa0228f7.mesh" sub_mesh_index="0" material_name="dynocell_black_plastic" material_path="project/mcp/blockout/materials/dynocell_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="mouse_b" id="17677854455404798270" active="true" position="10.05 0.8 1.5" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_28_mouse_b_fa0228f7" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_28_mouse_b_fa0228f7.mesh" sub_mesh_index="0" material_name="dynocell_black_plastic" material_path="project/mcp/blockout/materials/dynocell_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="headset" id="17409373677794467512" active="true" position="9.95 0.8 0.2" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_29_headset_87350e86" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_29_headset_87350e86.mesh" sub_mesh_index="0" material_name="dynocell_rubber" material_path="project/mcp/blockout/materials/dynocell_rubber.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="mug" id="4036436809596904457" active="true" position="10.1 0.835 -1.7" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_30_mug_3c52393b" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_30_mug_3c52393b.mesh" sub_mesh_index="0" material_name="dynocell_white_plastic" material_path="project/mcp/blockout/materials/dynocell_white_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="estop_base" id="3753274489956376935" active="true" position="10.05 0.825 0.2" rotation="0 0 0 1" scale="1 1 1">
+    <render mesh_name="control_room_31_estop_base_60f57194" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_31_estop_base_60f57194.mesh" sub_mesh_index="0" material_name="dynocell_safety_yellow" material_path="project/mcp/blockout/materials/dynocell_safety_yellow.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+   </Entity>
+   <Entity name="control_room_furniture" id="10428146321359841391" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="estop_button" id="9886055941647135422" active="true" position="10.05 0.88 0.2" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="control_room_furniture_0_estop_button_263276cc" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_0_estop_button_263276cc.mesh" sub_mesh_index="0" material_name="dynocell_red_gloss" material_path="project/mcp/blockout/materials/dynocell_red_gloss.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="chair_a_seat" id="9520460686481966750" active="true" position="10.85 0.48 -0.9" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="control_room_furniture_1_chair_a_seat_4d5d77f5" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_1_chair_a_seat_4d5d77f5.mesh" sub_mesh_index="0" material_name="dynocell_fabric" material_path="project/mcp/blockout/materials/dynocell_fabric.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="chair_a_back" id="9642058071874586005" active="true" position="11.1 0.86 -0.9" rotation="0 0 -0.0697565 0.997564" scale="1 1 1">
+     <render mesh_name="control_room_furniture_2_chair_a_back_1b095316" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_2_chair_a_back_1b095316.mesh" sub_mesh_index="0" material_name="dynocell_fabric" material_path="project/mcp/blockout/materials/dynocell_fabric.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="chair_a_post" id="9322810018604794636" active="true" position="10.85 0.24 -0.9" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="control_room_furniture_3_chair_a_post_36cc0aba" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_3_chair_a_post_36cc0aba.mesh" sub_mesh_index="0" material_name="dynocell_chrome" material_path="project/mcp/blockout/materials/dynocell_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="chair_a_base" id="9006559162359804373" active="true" position="10.85 0.07 -0.9" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="control_room_furniture_4_chair_a_base_2831d057" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_4_chair_a_base_2831d057.mesh" sub_mesh_index="0" material_name="dynocell_black_plastic" material_path="project/mcp/blockout/materials/dynocell_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="chair_a_arm_support" id="8696512725144232757" active="true" position="11.07 0.5 -0.9" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="control_room_furniture_5_chair_a_arm_support_f96a660d" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_5_chair_a_arm_support_f96a660d.mesh" sub_mesh_index="0" material_name="dynocell_black_plastic" material_path="project/mcp/blockout/materials/dynocell_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="chair_b_seat" id="8063496757966643310" active="true" position="10.95 0.48 1.2" rotation="0 0.121869 0 0.992546" scale="1 1 1">
+     <render mesh_name="control_room_furniture_6_chair_b_seat_4d5d77f5" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_6_chair_b_seat_4d5d77f5.mesh" sub_mesh_index="0" material_name="dynocell_fabric" material_path="project/mcp/blockout/materials/dynocell_fabric.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="chair_b_back" id="6402733715663192514" active="true" position="11.19 0.86 1.26" rotation="-0.00850117 0.121572 -0.0692365 0.990128" scale="1 1 1">
+     <render mesh_name="control_room_furniture_7_chair_b_back_1b095316" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_7_chair_b_back_1b095316.mesh" sub_mesh_index="0" material_name="dynocell_fabric" material_path="project/mcp/blockout/materials/dynocell_fabric.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="chair_b_post" id="6091397077096034571" active="true" position="10.95 0.24 1.2" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="control_room_furniture_8_chair_b_post_36cc0aba" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_8_chair_b_post_36cc0aba.mesh" sub_mesh_index="0" material_name="dynocell_chrome" material_path="project/mcp/blockout/materials/dynocell_chrome.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="chair_b_base" id="6140189446330046092" active="true" position="10.95 0.07 1.2" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="control_room_furniture_9_chair_b_base_2831d057" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_9_chair_b_base_2831d057.mesh" sub_mesh_index="0" material_name="dynocell_black_plastic" material_path="project/mcp/blockout/materials/dynocell_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="rack_body" id="5814401079826617251" active="true" position="13.35 1.02 -3.25" rotation="0 0 0 1" scale="1 1 1">
+     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="control_room_furniture_10_rack_body_5d153f7b" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_10_rack_body_5d153f7b.mesh" sub_mesh_index="0" material_name="dynocell_black_plastic" material_path="project/mcp/blockout/materials/dynocell_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="rack_door" id="5012349355571251626" active="true" position="13.015 1.02 -3.25" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="control_room_furniture_11_rack_door_9d523547" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_11_rack_door_9d523547.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="rack_leds" id="5093042439919890566" active="true" position="13 0.5 -3.25" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="control_room_furniture_12_rack_leds_4b1f97cf" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_12_rack_leds_4b1f97cf.mesh" sub_mesh_index="0" material_name="dynocell_emissive" material_path="project/mcp/blockout/materials/dynocell_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="cabinet_low" id="4783364931023295398" active="true" position="13.45 0.47 1.9" rotation="0 0 0 1" scale="1 1 1">
+     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" use_convex_hull="false" distance_streaming="true" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+     <render mesh_name="control_room_furniture_13_cabinet_low_2b4cb0d2" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_13_cabinet_low_2b4cb0d2.mesh" sub_mesh_index="0" material_name="dynocell_graphite_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_graphite_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="printer" id="3980830673142305201" active="true" position="13.45 1.03 2.3" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="control_room_furniture_14_printer_34e9d743" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_14_printer_34e9d743.mesh" sub_mesh_index="0" material_name="dynocell_white_plastic" material_path="project/mcp/blockout/materials/dynocell_white_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="binders" id="4014734768280516478" active="true" position="13.5 1.07 1.3" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="control_room_furniture_15_binders_73e91aee" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_15_binders_73e91aee.mesh" sub_mesh_index="0" material_name="dynocell_blue_powdercoat_v2" material_path="project/mcp/blockout/materials/dynocell_blue_powdercoat_v2.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="display_bezel" id="9401020527810262758" active="true" position="13.67 1.95 -0.2" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="control_room_furniture_16_display_bezel_418144d6" mesh_path="project/mcp/blockout/meshes/dyno_control_room/control_room_furniture_16_display_bezel_418144d6.mesh" sub_mesh_index="0" material_name="dynocell_black_plastic" material_path="project/mcp/blockout/materials/dynocell_black_plastic.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+  </Entity>
+ </Entities>
 </World>
